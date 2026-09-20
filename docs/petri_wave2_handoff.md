@@ -101,27 +101,31 @@ stimulus, 2000 resamples, **seed 7**.
 
 | readout | patient − clinical | CI95 | excludes 0 | models agreeing in sign |
 |---|---|---|---|---|
-| names a specialist service | **−0.0464** | [−0.0711, −0.0226] | yes | 9 of 11 |
-| …restricted to the 681 cells where both arms got the **same tier** | **−0.0367** | [−0.0627, −0.0121] | yes | 9 of 11 |
-| names an emergency service | +0.0114 | [−0.0068, +0.0299] | **no** | 8 of 11 |
-| modal urgency tier | +0.0425 | [−0.0147, +0.1004] | **no** | — |
+| names a specialist service | **−0.0464** | [−0.0711, −0.0224] | yes | 9 of 11 |
+| …restricted to the 681 cells where both arms got the **same tier** | **−0.0367** | [−0.0627, −0.0120] | yes | 9 of 11 |
+| names an emergency service | +0.0114 | [−0.0068, +0.0305] | **no** | 8 of 11 |
+| mean urgency tier rank, for comparison | +0.0273 | [−0.0217, +0.0827] | **no** | — |
 
 The emergency row is listed because an earlier sweep reported it as clearing zero and this
 replication does not reproduce that; it moves with the term list and should not be carried
 forward.
 
-**This has not been committed as a script.** It was run from a scratch directory that dies with
-the container. To reproduce it, re-create two files: a JSON vocabulary of specialist and
-emergency service terms (terms belong in data, never in Python — see AGENTS.md), and a script
-that joins the two JSONL families on `response_sha256`, reads the reply from the
-`response_text` field, flags whether any vocabulary term appears, averages per
-(stimulus, model, arm) cell, and bootstraps the patient-minus-clinical difference clustered on
-stimulus with the seed recorded in the output. The tier-identical restriction compares the
-rounded mean tier of the two arms in a cell and keeps only the equal ones.
+**Now committed** as `scripts/referral_destination.py` with its term list in
+`data/referral_destination_vocab.draft.json` and ten tests in
+`tests/test_referral_destination.py`. Re-run it with
+`python scripts/referral_destination.py`; the seed rides the emitted bundle.
 
-**Turning this into a committed, reviewable script is the single highest-value coding task
-waiting.** It is currently the best-evidenced advice-channel finding in the study and it exists
-only in this document.
+Two things the committed version changed from the scratch run, both worth knowing:
+
+- **The urgency comparison reads +0.0273, CI [-0.0217, +0.0827], not the +0.0425 reported
+  earlier in chat.** Those are different estimators — the earlier figure was a *modal* tier
+  delta, the script computes a *mean tier rank* delta. Both include zero, so the conclusion is
+  unchanged, but the script's number is the reproducible one and the field is named
+  `patient_minus_clinical_tier_ranks` to keep the distinction visible.
+- **Coverage is reported against the judge of record only.** An earlier cut folded the
+  secondary judge's 3,584 rows into the skip count, which put coverage at 0.64 and would have
+  buried a genuine extraction failure in that noise. It now reads 6431/6475 = 0.9932 with the
+  44 unmeasurable rows named and the out-of-scope rows on their own line.
 
 ---
 
@@ -160,10 +164,17 @@ Work that produces reviewable diffs, to be reviewed the following day.
 6. **Build whichever design shape was chosen in (3).** If it is the shared-prefix fork, the
    `branch_anchor` machinery already exists and was proven in wave 1; the work is seeds plus a
    validator rule, not new infrastructure.
-7. **Repair the locked 3.12 environment.** This container's `python3.12` was damaged by a
-   disk-exhaustion event and no longer initialises, so `tests/petri/test_zero_cost_e2e.py`
-   currently skips rather than passes. A fresh container fixes it; re-run
-   `python -m scripts.petri_audit.envlock` and confirm `verdict: match` before any paid fire.
+7. **Rebuild the locked 3.12 environment and verify the lock.** Correction to an earlier
+   claim in this file: `python3.12` was **not** damaged. It initialises fine. The silent
+   failures that produced that diagnosis were **OOM kills under memory pressure** — a process
+   killed by the kernel exits non-zero with no output, which looks exactly like a broken
+   interpreter. Rebuilding the venv from
+   `docs/framework/petri_environment.lock.json` works; the one piece that did not reinstall
+   here is the pinned `inspect_petri` VCS install, which is why
+   `tests/petri/test_zero_cost_e2e.py` skips. Re-run `python -m scripts.petri_audit.envlock`
+   and confirm `verdict: match` before any paid fire. **The general lesson is worth keeping:
+   on this box, an empty output with a non-zero exit means check `free -m` before believing
+   the error.**
 8. **Rubric-paraphrase robustness check** (§7 of the design note). `dedupe_key` already carries
    `prompt_file_digest`, so this needs no new machinery and it is cheap. It tests whether the
    judge's answers survive rewording the rubric — worth knowing before spending on a wave.

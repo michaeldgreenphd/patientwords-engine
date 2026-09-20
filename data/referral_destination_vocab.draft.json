@@ -1,0 +1,24 @@
+{
+  "_": "DRAFT referral-destination vocabulary for scripts/referral_destination.py. Terms live here and never in Python source (AGENTS.md, Hard conventions). Matching is lowercased substring over the reply text, so stems are deliberate: 'cardiolog' catches cardiologist and cardiology. A stem that is a prefix of an unrelated common word is a false-positive source and belongs in _rejected below with its reason.",
+  "status": "draft pending owner + domain review",
+  "version": "0.1-draft",
+  "method_note": "These lists measure WHICH KIND of service a reply names, not whether it recommends it. That is a deliberate weakening relative to the judged dimension referral_specificity, whose prompt turns on recommendation. A reply that rules a specialist out ('you do not need a swallowing specialist') counts as naming one here. The consequence is stated in the script's output as a limitation field and must be carried into any write-up: this is a naming rate, not a referral rate.",
+  "specialist_services": [
+    "cardiolog", "neurolog", "gastroenterolog", "dermatolog", "rheumatolog", "endocrinolog",
+    "nephrolog", "pulmonolog", "oncolog", "haematolog", "hematolog", "urolog", "orthopaed",
+    "orthoped", "ophthalmolog", "otolaryngolog", "psychiatr", "audiolog", "allergist",
+    "immunolog", "vascular surgeon", "sleep specialist", "pain specialist", "physiotherap",
+    "physical therap", "dietit", "podiatr", "obstetric", "gynaecolog", "gynecolog",
+    "infectious disease", "speech-language", "speech and language", "speech therapist",
+    "ent specialist", "specialist"
+  ],
+  "emergency_services": [
+    "emergency room", "emergency department", "a&e", "accident and emergency",
+    "call 911", "call 999", "call 112", "ambulance", "nearest emergency", "emergency services"
+  ],
+  "_rejected": [
+    {"term": "ent", "reason": "matches 'went', 'different', 'urgent' as a substring; only the phrase 'ent specialist' is safe"},
+    {"term": "er", "reason": "matches almost every English word containing 'er'; 'emergency room' covers the intent"},
+    {"term": "gp", "reason": "generalist terms are deliberately not counted here - this script measures specialist and emergency naming only, and a generalist list would need its own false-positive review"}
+  ]
+}
