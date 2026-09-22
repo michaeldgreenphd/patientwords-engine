@@ -160,10 +160,16 @@ Work that produces reviewable diffs, to be reviewed the following day.
 
 5. **Commit the referral-destination analysis as a proper script** with its vocabulary data
    file, its seed recorded in the emitted JSON, and a test. Section 4 is the specification.
-   Own PR.
-6. **Build whichever design shape was chosen in (3).** If it is the shared-prefix fork, the
-   `branch_anchor` machinery already exists and was proven in wave 1; the work is seeds plus a
-   validator rule, not new infrastructure.
+   **Done** (`scripts/referral_destination.py`, on the PR #29 branch).
+6. **Build whichever design shape was chosen in (3).** **Done on 2026-09-22 for the owner's
+   choices** — three arms (`lay_careful` on every wave-2 seed, `framing.decomposition_registers`),
+   `scenario.grounded_in`, the speaker-identity manipulation check as a validator rule
+   (`data/petri/speaker_identity_markers.draft.json`), and the baseline-anchored persistence
+   scope (`safety_netting_baseline_persistence`, `context_role: "baseline"`). Written on a
+   container whose shell could not fork, so the edits travelled as a self-applying script
+   (`apply_w2_threearm_edits.py`, deleted by the commit that applied it); the fresh-container
+   session described in §5a applied it, filled the seed digests, ran the suite, and fixed what it
+   found before anything fired.
 7. **Rebuild the locked 3.12 environment and verify the lock.** Correction to an earlier
    claim in this file: `python3.12` was **not** damaged. It initialises fine. The silent
    failures that produced that diagnosis were **OOM kills under memory pressure** — a process
@@ -184,8 +190,64 @@ Work that produces reviewable diffs, to be reviewed the following day.
 9. **PR #29 review.** Expect findings; every Codex round so far has produced real ones. Verify
    each against the diff before changing anything.
 10. Review the PRs from (5) and (6).
-11. **Only then consider firing.** A paid fire before the environment lock verifies and before
-    the design shape is settled spends money on a question nobody has agreed on.
+11. **Firing.** The design shape is settled (owner, 2026-09-22) and the owner authorised a
+    $15/day ceiling for 2026-09-23 to -25 (`ops/budget_overrides.json`) for one epoch per day:
+    each epoch is one `petri-audit` fire from the PR #29 branch with `mode: run`, `seed_ids`
+    naming the four `pw-petri-w2-*` seeds, `epochs: 1`, `token_limit: 40000`,
+    `max_spend: 3.00`, `judge_max_spend: 1.00`, `judge: true`, `commit_outputs: true`
+    (15 samples; §5 of the design note has the revised costing). Preconditions, in order:
+    the suite green on the head, `cli validate-seeds` clean, the environment lock verified,
+    and a `dry_run` fire of the same params landed. Epochs 2 and 3 fire only if the previous
+    one landed clean; re-park the lane after the last one.
+
+### 5a. The fresh-container session (2026-09-22, evening)
+
+The container that wrote the three-arm edits had a fork storm (13,000 threads, `sed` on a
+small file timing out) and could not run Python or git, so the edits were committed through
+the GitHub API as a self-applying script and were **unverified** at that point. A fresh session
+in the same environment was started to: apply the script (which fills the 64-zero sha256
+placeholders in `docs/framework/petri_seeds.draft.json` from the text and deletes itself), run
+`ruff check .` and the suite, fix what fails, run the four wave-2 seeds under `mockllm` and
+record the planned-judgment counts, commit, push, post `@codex review`, and — once the UTC
+date is 2026-09-23 and the preconditions in item 11 hold — fire epoch 1. If that session did
+not finish, its transcript says where it stopped; everything it was asked to do is listed here
+so it can be redone by hand.
+
+**What happened (written by that session as it went; the epoch-1 entries are appended at the end).**
+
+- `python apply_w2_threearm_edits.py` applied all 45 replacements on the first try, wrote the
+  two new files, filled 49 placeholder digests, and its own in-script validation reported 10
+  seeds and 0 problems. `ruff check .` clean; `cli validate-seeds` clean (four wave-2 seeds at 3,
+  3, 3 and 6 conditions).
+- **One defect in the staged edits, fixed here:** the framing registry gained the `lay_careful`
+  value but `docs/framework/judge_prompts/register.draft.json` did not, and
+  `tests/test_framework_schemas.py::test_judge_method_resolves_to_a_versioned_prompt` requires
+  the judge prompt to define every registry value. Added a `lay_careful` definition to the
+  prompt, worded from the registry's `value_definitions`. This changes that prompt's file digest;
+  no landed run records it (no judgment in `data/petri/runs/` references the register prompt),
+  so nothing goes stale.
+- Suite after the fix, before commit: 1290 passed, 3 skipped, 1 failed — the failure being
+  `test_blob_matches_reads_the_file_at_the_recorded_commit`, which compares the outcome
+  registry in the checkout with HEAD and so fails by construction while the edits are
+  uncommitted; it passes on the commit. The known `test_specialty_map` failure AGENTS.md lists
+  did **not** reproduce on this branch (3 passed). `tests/petri/test_zero_cost_e2e.py` skips
+  under the 3.11 dev install (no `inspect_petri`).
+- **The mock structure run, three arms.** A locked 3.12 environment was built from
+  `docs/framework/petri_environment.lock.json` in the scratchpad (`verify-lock: match`; the
+  pinned `inspect_petri` requires Python ≥ 3.12, which is why it cannot install into the 3.11
+  dev environment). One environment hazard, not a code problem: `inspect_ai`'s token estimator
+  fetches the `o200k_base` tiktoken encoding from an Azure blob host the sandbox proxy blocks,
+  and every mock sample failed at its first target call until the encoding file was seeded into
+  `TIKTOKEN_CACHE_DIR` (sha256 verified against tiktoken's own expected digest). CI's runners
+  are not behind that proxy. With that in place, `cli run --target mockllm/model` on the four
+  wave-2 seeds, `adapt`, and the planner (no judge call) measured: **15 samples, 15 trees, 150
+  target calls, 795 planned judgments, 114 planned as `not_applicable`, 681 calls**. Per seed:
+  `tool-clarify` 147 / 30 n/a, `referral-specificity` 177 / 18, `reassurance-decay` 177 / 30
+  (27 `safety_netting_persistence`, 3 `safety_netting_baseline_persistence` — the baseline
+  exchange's own reply, one per arm), `identity-register` 294 / 36. Each is exactly 1.5× the
+  two-arm count in the design note's §5, plus the 30 new baseline-persistence plans; the
+  design note §5 now carries these numbers. Contract checks: six pass; `generation_config_pinned`
+  fails as the documented mock artifact.
 
 ---
 

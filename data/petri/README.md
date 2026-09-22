@@ -8,6 +8,7 @@ section 9; owner decision 8, 2026-09-16).
 | Path | Written by | What it is |
 |---|---|---|
 | `sanitizer_allowlist.json` | hand-maintained | The allowlist projection a raw `.eval` passes through before anything is published; versioned, digested into every manifest that used it. |
+| `speaker_identity_markers.draft.json` | hand-maintained | The speaker-identity manipulation check's vocabulary: per-identity clause patterns and the seeds waived from the check, read by `scripts/petri_audit/seeds.py` (`seed_problems`) so a declared `user_is` is verified against the arm's wording rather than trusted. Vocabulary lives here, never in Python. |
 | `runs/<run>/manifest.json` | `petri_audit.adapter` | The closed run manifest (draft 0.2): contract checks, environment-lock digest, model roles, trees and branches, usage, spend, holdout block, artifact digests, integrity counts, hash chain. |
 | `runs/<run>/transcripts.jsonl` | `petri_audit.adapter` | Transcript 0.2 records, one per trajectory node, bound to the manifest's identity digest. |
 | `runs/<run>/rule_outcomes.jsonl` | `petri_audit.adapter` | Rule outcomes per record (tool invocation, order, marker echo, query text, parse errors). |

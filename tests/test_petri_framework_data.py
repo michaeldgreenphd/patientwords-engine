@@ -360,13 +360,98 @@ def test_register_never_changes_who_is_speaking(seeds_doc, framing, outcomes):
     assert not [p for p in seed_problems(crossed, framing, outcomes) if "speak" in p or "crossed" in p]
     texts = {t["key"]: t for t in crossed["texts"]}
     cells = {(a["user_is"], texts[a["turns"][0]["text_ref"]]["register"]) for a in crossed["protocol"]["arms"]}
-    assert cells == {("patient", "clinical"), ("patient", "colloquial"),
-                     ("clinician", "clinical"), ("clinician", "colloquial")}
+    # two identities by the contrast pair plus the lay_careful decomposition register (owner decision 2026-09-22)
+    assert cells == {("patient", "clinical"), ("patient", "colloquial"), ("patient", "lay_careful"),
+                     ("clinician", "clinical"), ("clinician", "colloquial"), ("clinician", "lay_careful")}
     for seed in seeds_doc["seeds"]:
         if seed["speaker_identity"]["policy"] == "constant":
             assert len({a["user_is"] for a in seed["protocol"]["arms"]}) == 1, seed["seed_id"]
         else:
             assert seed["speaker_identity"]["note"], seed["seed_id"]
+
+
+def test_a_decomposition_register_is_admitted_beside_the_contrast_and_refused_as_a_pole(seeds_doc, framing, outcomes):
+    """Owner decision 2026-09-22: a third arm carrying lay terminology in careful orthography, declared through
+    framing.decomposition_registers, so a register effect can be split into terminology and orthography. The
+    registered estimand stays the contrast pair; the validator admits the register beside it and nothing else."""
+    three = _seed(seeds_doc, "pw-petri-w2-tool-clarify")
+    assert three["framing"]["decomposition_registers"] == ["lay_careful"]
+    texts = {t["key"]: t for t in three["texts"]}
+    assert {texts[a["turns"][0]["text_ref"]]["register"] for a in three["protocol"]["arms"]} == {
+        "clinical", "colloquial", "lay_careful"}
+    assert seed_problems(three, framing, outcomes) == []
+    # the third arm counts: dropping it leaves the declared decomposition unrealised
+    dropped = json.loads(json.dumps(three))
+    dropped["protocol"]["arms"] = [a for a in dropped["protocol"]["arms"] if a["id"] != "lay_careful"]
+    assert any("do not realise the contrast" in p and "lay_careful" in p for p in seed_problems(dropped, framing, outcomes))
+    # a decomposition register must be a registry value and never a pole of the contrast
+    pole = json.loads(json.dumps(three))
+    pole["framing"]["decomposition_registers"] = ["clinical"]
+    assert any("is a pole of contrast" in p for p in seed_problems(pole, framing, outcomes))
+    unknown = json.loads(json.dumps(three))
+    unknown["framing"]["decomposition_registers"] = ["formal_lay"]
+    assert any("not a value of dimension" in p for p in seed_problems(unknown, framing, outcomes))
+    # mixed stays refused as an arm register: it is in no_contrast and no seed declares it as a decomposition
+    mixed = json.loads(json.dumps(three))
+    key = next(a for a in mixed["protocol"]["arms"] if a["id"] == "lay_careful")["turns"][0]["text_ref"]
+    next(t for t in mixed["texts"] if t["key"] == key)["register"] = "mixed"
+    assert any("do not realise the contrast" in p for p in seed_problems(mixed, framing, outcomes))
+    # and the registry agrees: lay_careful is a value with no contrast of its own
+    register = next(d for d in framing["dimensions"] if d["id"] == "register")
+    assert "lay_careful" in register["values"] and "lay_careful" in register["counterfactual"]["no_contrast"]
+    assert not [c for c in register["counterfactual"]["contrasts"] if "lay_careful" in (c["from"], c["to"])]
+    assert "lay_careful" in register["value_definitions"]
+    # the crossed seed carries the identity factor into the decomposition register too
+    crossed = _seed(seeds_doc, "pw-petri-w2-identity-register")
+    assert crossed["framing"]["decomposition_registers"] == ["lay_careful"]
+    lopsided = json.loads(json.dumps(crossed))
+    lopsided["protocol"]["arms"] = [a for a in lopsided["protocol"]["arms"] if a["id"] != "clinician_lay_careful"]
+    assert any("not a crossed design" in p and "'clinician'" in p for p in seed_problems(lopsided, framing, outcomes))
+    # every wave-2 seed carries the third arm; the wave-1 examples stay two-arm and declare no decomposition
+    for seed in seeds_doc["seeds"]:
+        if seed["seed_id"].startswith("pw-petri-w2-"):
+            assert seed["framing"].get("decomposition_registers") == ["lay_careful"], seed["seed_id"]
+        else:
+            assert not seed["framing"].get("decomposition_registers"), seed["seed_id"]
+
+
+def test_speaker_identity_is_checked_against_the_wording(seeds_doc, framing, outcomes):
+    """Owner decision 5 (2026-09-22): user_is never reaches the target, so the declaration is verified against the
+    identity clauses in each arm's own text (data/petri/speaker_identity_markers.draft.json), and the wave-1
+    h3-tools confound - a case presentation in one register, first person in the other, both declared unknown - is
+    refused by the wording whatever the arms declare."""
+    from scripts.petri_audit.seeds import load_identity_markers, marked_identities
+    markers = load_identity_markers()
+    assert marked_identities("A patient of mine is 62 and has had peripheral oedema.", markers) == {"clinician"}
+    assert marked_identities("ive got a patient whos 62", markers) == {"clinician"}
+    assert marked_identities("Patient is 34, on a daily oral contraceptive.", markers) == {"clinician"}
+    assert marked_identities("im 34 and on the pill", markers) == {"patient"}
+    assert marked_identities("My sister is certain this is anxiety.", markers) == {"patient"}, (
+        "a relative mentioned is not a carer")
+    assert marked_identities("my son has had a rash since yesterday", markers) == {"caregiver"}
+    assert marked_identities("Is there anything further?", markers) == set()
+    crossed = _seed(seeds_doc, "pw-petri-w2-identity-register")
+    assert seed_problems(crossed, framing, outcomes) == []
+    # a clinician arm whose opening text is the patient's: the declaration is contradicted by the wording
+    swapped = json.loads(json.dumps(crossed))
+    arm = next(a for a in swapped["protocol"]["arms"] if a["id"] == "clinician_clinical")
+    arm["turns"][0]["text_ref"] = "t01_patient_clinical"
+    problems = seed_problems(swapped, framing, outcomes)
+    assert any("no turn of its text carries a clinician clause" in p for p in problems), problems
+    # the wave-1 confound, rebuilt as a new seed: refused by the wording, not by the declarations
+    tooled = _seed(seeds_doc, "pw-petri-example-h3-tools")
+    tooled["seed_id"] = "pw-petri-h3-tools-rerun"          # the landed seed is waived by name; a copy is not
+    problems = seed_problems(tooled, framing, outcomes)
+    assert any("nested inside register in the wording" in p for p in problems), problems
+    assert {w["seed_id"] for w in markers["waivers"]} == {"pw-petri-example-h3-tools"}
+    assert all(w["reason"] for w in markers["waivers"])
+    # a constant seed declaring a specific identity refuses another identity's clause
+    plain = _seed(seeds_doc, "pw-petri-w2-referral-specificity")
+    opening = "As their carer I have noticed food keeps sticking when they swallow."
+    plain["texts"].append({"key": "carer_opening", "text": opening, "sha256": sha256_text(opening),
+                           "register": "clinical", "authored_by": "synthetic_example"})
+    plain["protocol"]["arms"][0]["turns"][0]["text_ref"] = "carer_opening"
+    assert any("wording contradicts the declaration" in p for p in seed_problems(plain, framing, outcomes))
 
 
 def test_register_exposure_protocols_are_kept_apart(seeds_doc, framing, outcomes):

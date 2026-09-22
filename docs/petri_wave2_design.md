@@ -337,8 +337,18 @@ every stimulus differs by a clinical term. And it means a positive wave-2 result
 would not by itself distinguish "the model responds to clinical terminology"
 from "the model responds to how carefully the message is written" — a
 distinction the study's own negative control already shows is live. Separating
-them needs a third arm carrying lay terminology in formal orthography, which is
-a seed to write once wave 2 has said whether there is an effect to decompose.
+them needs a third arm carrying lay terminology in careful orthography.
+
+**The owner chose to run that arm from the start (decision of 2026-09-22:
+three arms).** Every wave-2 seed now carries a `lay_careful` arm — the
+colloquial arm's lay terms in the clinical arm's orthography and formality, at
+the same `context_role` positions — declared through
+`framing.decomposition_registers` and admitted by the validator only beside the
+registered contrast, never as a pole of it. `lay_careful` against `colloquial`
+isolates orthography; `lay_careful` against `clinical` isolates terminology. The
+registered estimand stays the clinical–colloquial pair, and the decomposition is
+reported beside it. On the 2×2 the third register is crossed with identity, so
+that seed is a 2×3 with six cells. The cost consequences are in §5.
 
 **Turns must be answer-agnostic.** A scripted turn cannot respond to what the
 assistant said. Wave 1 shows what happens otherwise: the h3-tools clinical arm
@@ -357,10 +367,12 @@ as two arms, that is the confound wave 1 already has: the clinical arm would be
 the clinician and the colloquial arm the patient, and no analysis separates them.
 The design memo records the same objection against the first H5 draft.
 
-`pw-petri-w2-identity-register` crosses them instead: four arms,
-`patient_clinical`, `patient_colloquial`, `clinician_clinical`,
-`clinician_colloquial`, so the register contrast is estimable within identity and
-the identity contrast within register, and their interaction is estimable at all.
+`pw-petri-w2-identity-register` crosses them instead: six arms since the
+three-arm decision of 2026-09-22 — `patient_clinical`, `patient_colloquial`,
+`patient_lay_careful`, `clinician_clinical`, `clinician_colloquial`,
+`clinician_lay_careful` — so the register contrast is estimable within identity
+and the identity contrast within register, and their interaction is estimable at
+all.
 Identity is carried by an identity clause in turn 1 and by first- against
 third-person reference in turns 2 to 8. Turns 9 and 10 carry no person reference
 in natural English, so the two clinical cells share one text there and the two
@@ -403,9 +415,21 @@ a factorial costs; dropping it puts the design back to the confounded pair.
 **`user_is` never reaches the target.** `scripts/petri_audit/task.py` and
 `controller.py` put it in Sample metadata and the transcript record only. The
 identity cue is whatever the text says, and `user_is` is a declaration *about*
-the text. Nothing checks that an arm's wording realises its declared identity;
-that stays a human review step, and a manipulation-check judge dimension would
-close it (decision 5).
+the text. Since 2026-09-22 (decision 5, taken) `seed_problems` checks the wording
+against `data/petri/speaker_identity_markers.draft.json`: explicit identity
+clauses per arm, one speaker per arm (a clinician's later "I" is theirs), an
+arm declaring a specific identity may carry no other identity's clause, a
+factor arm's text must carry the identity it declares, and — whatever the arms
+declare — every identity the texts carry must appear in every register, which is
+the rule that refuses wave 1's h3-tools confound by its wording. It is a
+validator rule rather than a judge dimension because the framing judge is never
+invoked in the pipeline and a rule refuses a confounded seed before any spend.
+It reads explicit clauses only, so human review of the wording remains a step;
+the vocabulary is data, and the landed h3-tools seed is waived there by name so
+its text stays as it ran. The check also found that `h5-audience`'s clinical
+stimulus was a case-note ("Six-year-old with fever…") against a parent's
+colloquial one; that seed never ran, and its clinical text now opens "My
+six-year-old has had a fever…" so both arms are the parent.
 
 **A validator change shipped with this seed.** `speaker_identity.policy:
 "factor"` previously required only a note. A seed whose clinical arm was a
@@ -521,6 +545,39 @@ fire B: "seed_ids": "pw-petri-w2-reassurance-decay pw-petri-w2-identity-register
 with `token_limit: "40000"`, `epochs: "1"`, `mode: "run"`, and the `max_spend` /
 `judge_max_spend` pairs from the table. Run the `dry_run` mode of each first: it
 is mockllm at $0 and its job summary reports the measured structure.
+
+### Revised for three arms (owner decisions of 2026-09-22)
+
+The two-fire staging above was costed for the two-arm design and is superseded.
+Three arms on the three single-identity seeds and 2×3 on the identity seed give
+**3 + 3 + 3 + 6 = 15 samples per epoch**, 150 target calls at the floor, and at
+`token_limit` 40,000 a pre-flight bound of **$3.00 per epoch on the target
+alone** — above the standing $2/day ceiling before any judge reserve. The
+owner authorised a **$15/day ceiling for 2026-09-23, -24 and -25**
+(`ops/budget_overrides.json`, verbatim quote in the file), one epoch per day,
+epochs 2 and 3 fired only if the previous one landed clean. Each epoch fires as
+**one run** with `seed_ids` naming all four wave-2 seeds, `max_spend: 3.00`,
+`judge_max_spend: 1.00` — **$4.00 committed per epoch-fire**, $12 for the
+campaign against the $45 of authorised headroom.
+
+Expected actual spend is a scaling of the calibrated model above, not a new
+measurement: 1.5× the samples, plus the nine `safety_netting_baseline_persistence`
+judgments per reassurance arm (27 calls, on the order of $0.04). That puts one
+epoch at roughly **$1.15 at the wave-1 mean reply and $1.45 at its maximum**,
+and three epochs at **$3.5–4.4**. The structure was measured before money was
+spent, the way round 4 measured the two-arm design: a local `mockllm` run of the
+four seeds on 2026-09-22 (locked 3.12 environment, `verify-lock: match`),
+adapted and judgment-planned without a judge call, gave **15 samples, 15 trees,
+150 target calls** (the floor: a mock target never calls a tool), **795 planned
+judgments** of which **114 are planned as `not_applicable`**, so **681 calls**.
+Per seed: `tool-clarify` 147 planned (30 `tool_evidence_use` not applicable,
+no tool result under a mock target), `referral-specificity` 177 (18
+`assertion_handling` before the assertion turn), `reassurance-decay` 177 (27
+`safety_netting_persistence` on replies that answer no pressure turn, and 3
+`safety_netting_baseline_persistence` on the baseline exchange's own reply, one
+per arm, leaving the 27 calls costed above), and the 2×3 identity seed 294 (36
+`assertion_handling`). Every seed's count is exactly 1.5× its two-arm count
+below plus, for `reassurance-decay`, the 30 baseline-persistence plans.
 
 One hazard the reserves already cover: the judge ceiling's input estimator counts
 **bytes** as tokens plus 128 framing tokens, which over-estimates English prose
@@ -809,6 +866,27 @@ no-silent-failure rule is doing its job; the rate belongs in the run summary.
 ---
 
 ## 8. Decisions for the owner
+
+**All of these were decided by the owner on 2026-09-22** (the "Wave 2
+Decisions" artifact), and the branch now implements the ones that are code:
+
+| # | decision | owner's answer | state |
+|---|---|---|---|
+| 1 | wave 2's meaning | widen (keep `pilot_wave: 2` as the second set) | as is |
+| 2 | mode B claim-grade | no | as is (exploratory) |
+| 3 | epochs | three full epochs, one per day | `ops/budget_overrides.json` |
+| 4 | provenance as data | add `scenario.grounded_in` | built; four seeds populated |
+| 5 | speaker-identity manipulation check | add | built as a validator rule (§4) |
+| 6 | reference data | the owner will adjudicate it | open, owner task |
+| 7 | contextual tier instrument | keep | as is |
+| 8 | generic adjacent-transition dimension | without | not built |
+| 9 | clarifying question | reuse the generic flag | as is |
+| 10 | baseline-anchored persistence scope | build | built (`safety_netting_baseline_persistence`, `context_role: "baseline"`, the `after` gate) |
+| 11 | identity as its own hypothesis | no, H1 | as is |
+| — | design shape | three arms (`lay_careful`, §3) | built on all four seeds |
+| — | primary readout | referral destination (`scripts/referral_destination.py`) | committed |
+
+The original text of each decision follows for the record.
 
 1. **Wave 2's meaning.** I widened `pilot_wave: 2` from "the H2 and H5 protocol
    shapes wave 1 deferred" to "the second pilot's seed set", and updated the

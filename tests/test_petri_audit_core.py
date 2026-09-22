@@ -35,7 +35,7 @@ from scripts.petri_audit import manifest as manifest_mod  # noqa: E402
 # Tests that are not about the context-role gate pass this: every user turn in these fixtures is marked, so no
 # dimension is withheld under either gate shape - cumulative (any marked turn before this reply) or immediate (the
 # marked turn is the one this reply answers) - and the plan set is the one those tests were written against.
-_ALL_GATES = {role: set(range(1, 64, 2)) for role in ("pressure", "assertion")}
+_ALL_GATES = {role: set(range(1, 64, 2)) for role in ("pressure", "assertion", "baseline")}
 
 @pytest.fixture(scope="module")
 def seed_set() -> seeds.SeedSet:
@@ -67,8 +67,12 @@ def test_every_example_seed_validates_and_expands_to_its_conditions(seed_set):
     assert [s["seed_id"] for s in seeds.select_seeds(seed_set, wave=2)] == [
         "pw-petri-example-h5-audience", "pw-petri-example-h2-authority", "pw-petri-w2-tool-clarify",
         "pw-petri-w2-referral-specificity", "pw-petri-w2-reassurance-decay", "pw-petri-w2-identity-register"]
-    # the 2x2 of speaker identity by register expands to four root conditions, one per cell
-    assert len(seeds.conditions(seed_set.seeds["pw-petri-w2-identity-register"])) == 4
+    # speaker identity by register expands to one root condition per cell: two identities by the contrast pair plus
+    # the lay_careful decomposition register (owner decision 2026-09-22), six cells
+    assert len(seeds.conditions(seed_set.seeds["pw-petri-w2-identity-register"])) == 6
+    # and the three single-identity seeds carry the decomposition arm beside the pair
+    for seed_id in ("pw-petri-w2-tool-clarify", "pw-petri-w2-referral-specificity", "pw-petri-w2-reassurance-decay"):
+        assert len(seeds.conditions(seed_set.seeds[seed_id])) == 3, seed_id
 
 
 def test_an_empty_seed_selection_is_refused_not_reported_clear(seed_set):
@@ -1406,6 +1410,113 @@ def test_the_context_cutoff_is_unchanged_when_no_tool_round_intervenes(seed_set,
     turns = record["turns"]
     assert judge_runner._context_cutoff("evidence_update", 4, turns) == 4
     assert judge_runner._context_cutoff("safety_netting_persistence", 4, turns) == 3
+
+
+def _baseline_rows(record, seed, outcomes, rubric, baseline_turn_ids):
+    plans = judge_runner.plan_record(record, seed, outcomes=outcomes, rubric=rubric, branched_from_turn_id=None,
+                                     gated_turn_ids={"pressure": set(), "assertion": set(),
+                                                     "baseline": set(baseline_turn_ids)})
+    return [p for p in plans if p.key == "safety_netting_baseline_persistence"]
+
+
+def test_baseline_persistence_compares_every_later_reply_with_the_baseline_reply(seed_set, outcomes, rubric):
+    """Owner decision 10 (2026-09-22): the baseline-anchored scope. The reply answering the marked turn is the
+    baseline; every reply of a LATER exchange is compared with that same reply, and the baseline exchange itself is
+    not compared with anything."""
+    seed = seed_set.seeds["pw-petri-w2-reassurance-decay"]
+    assert "safety_netting_baseline_persistence" in seed["judge"]["outcome_dimensions"]
+    assert judge_runner.CONTEXT_ROLE_GATED["safety_netting_baseline_persistence"] == ("baseline", "after")
+    record = _record([
+        {"role": "user", "text": "opening", "id": "m1"},
+        {"role": "assistant", "text": "the baseline reply", "id": "m2"},
+        {"role": "user", "text": "an update", "id": "m3"},
+        {"role": "assistant", "text": "reply two", "id": "m4"},
+        {"role": "user", "text": "another update", "id": "m5"},
+        {"role": "assistant", "text": "reply three", "id": "m6"},
+    ])
+    rows = _baseline_rows(record, seed, outcomes, rubric, [1])
+    assert [p.turn_id for p in rows] == [2, 4, 6], "a plan per assistant turn either way"
+    baseline = next(p for p in rows if p.turn_id == 2)
+    assert baseline.prompt is None
+    assert baseline.not_applicable_reason == "this reply does not follow a completed baseline exchange"
+    for later in (p for p in rows if p.turn_id > 2):
+        assert "the baseline reply" in later.prompt
+        assert later.context_sha256 == framework.sha256_text("the baseline reply")
+    assert "reply three" in rows[2].prompt and "reply two" not in rows[2].prompt, (
+        "anchored to the baseline reply, not to the previous one")
+    # marked on a later turn, the exchanges before the baseline are not eligible either, and the anchor moves
+    rows = _baseline_rows(record, seed, outcomes, rubric, [3])
+    assert [p.turn_id for p in rows if p.prompt is not None] == [6]
+    assert next(p for p in rows if p.turn_id == 6).context_sha256 == framework.sha256_text("reply two")
+    # the derived gate map carries the role from the seed's own marking: the opening turn
+    texts = {t["key"]: t["text"] for t in seed["texts"]}
+    arm = next(a for a in seed["protocol"]["arms"] if a["id"] == "clinical")
+    msgs = []
+    for i, turn in enumerate(arm["turns"], 1):
+        msgs.append({"role": "user", "text": texts[turn["text_ref"]], "id": f"u{i}"})
+        msgs.append({"role": "assistant", "text": f"reply {i}", "id": f"a{i}"})
+    gated = judge_runner.gated_turn_ids_for(_record(msgs), seed, checks.ROOT_BRANCH, "clinical")
+    assert gated["baseline"] == {1}
+    plans = judge_runner.plan_record(_record(msgs), seed, outcomes=outcomes, rubric=rubric,
+                                     branched_from_turn_id=None, gated_turn_ids=gated)
+    base_rows = [p for p in plans if p.key == "safety_netting_baseline_persistence" and p.prompt is not None]
+    assert [p.exchange_index for p in base_rows] == list(range(2, 11)), "nine comparisons per arm, all against reply 1"
+    assert {p.context_sha256 for p in base_rows} == {framework.sha256_text("reply 1")}
+
+
+def test_baseline_reply_is_the_last_message_of_its_exchange_and_never_an_empty_one(seed_set, outcomes, rubric):
+    """A tool round inside the baseline exchange puts a text-less tool call before the final reply: the final reply
+    is the baseline. A baseline exchange whose only assistant message carries no text is refused by name (AGENTS.md:
+    missing data is recorded as such, never as sha256 of the empty string)."""
+    seed = seed_set.seeds["pw-petri-w2-reassurance-decay"]
+    record = _record([
+        {"role": "user", "text": "opening", "id": "m1"},
+        {"role": "assistant", "text": "", "id": "m2",
+         "tool_calls": [{"call_id": "c1", "name": "lookup", "arguments": {"query": "q"}, "parse_error": None}]},
+        {"role": "tool", "text": "RESULT", "id": "m3", "tool_call_id": "c1"},
+        {"role": "assistant", "text": "the baseline reply after the lookup", "id": "m4"},
+        {"role": "user", "text": "an update", "id": "m5"},
+        {"role": "assistant", "text": "reply two", "id": "m6"},
+    ])
+    later = next(p for p in _baseline_rows(record, seed, outcomes, rubric, [1]) if p.turn_id == 6)
+    assert later.context_sha256 == framework.sha256_text("the baseline reply after the lookup")
+    empty = _record([
+        {"role": "user", "text": "opening", "id": "m1"},
+        {"role": "assistant", "text": "", "id": "m2",
+         "tool_calls": [{"call_id": "c1", "name": "lookup", "arguments": {"query": "q"}, "parse_error": None}]},
+        {"role": "tool", "text": "RESULT", "id": "m3", "tool_call_id": "c1"},
+        {"role": "user", "text": "an update", "id": "m4"},
+        {"role": "assistant", "text": "reply two", "id": "m5"},
+    ])
+    later = next(p for p in _baseline_rows(empty, seed, outcomes, rubric, [1]) if p.turn_id == 5)
+    assert later.prompt is None and later.context_sha256 is None
+    assert later.not_applicable_reason == "the baseline reply carries no text to compare against"
+
+
+def test_the_seed_validator_shapes_the_baseline_mark(seed_set):
+    """One baseline per trajectory, at the same position in every arm, and never on the last user turn, after
+    which nothing follows to be compared."""
+    seed = json.loads(json.dumps(seed_set.seeds["pw-petri-w2-reassurance-decay"]))
+    assert seeds.seed_problems(seed, seed_set.framing, seed_set.outcomes) == []
+    marked = [i for i, t in enumerate(seed["protocol"]["arms"][0]["turns"]) if t.get("context_role") == "baseline"]
+    assert marked == [0], "the seed marks its opening turn as the baseline"
+    twice = json.loads(json.dumps(seed))
+    for arm in twice["protocol"]["arms"]:
+        arm["turns"][1]["context_role"] = "baseline"
+    problems = seeds.seed_problems(twice, seed_set.framing, seed_set.outcomes)
+    assert any("exactly one turn per trajectory is marked" in p for p in problems), problems
+    last = json.loads(json.dumps(seed))
+    for arm in last["protocol"]["arms"]:
+        arm["turns"][0]["context_role"] = None
+        arm["turns"][-1]["context_role"] = "baseline"
+    problems = seeds.seed_problems(last, seed_set.framing, seed_set.outcomes)
+    assert any("last user turn" in p and "measure nothing" in p for p in problems), problems
+    # unmarked anywhere, the dimension is refused like the other gated ones
+    nowhere = json.loads(json.dumps(seed))
+    for arm in nowhere["protocol"]["arms"]:
+        arm["turns"][0]["context_role"] = None
+    problems = seeds.seed_problems(nowhere, seed_set.framing, seed_set.outcomes)
+    assert any("no turn anywhere in the seed is marked context_role 'baseline'" in p for p in problems), problems
 
 
 def test_both_replies_of_a_pressure_exchange_get_the_pre_pressure_context(seed_set, outcomes, rubric):
