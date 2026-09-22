@@ -861,3 +861,21 @@ def test_scenario_grounded_in_is_provenance_as_data_and_checked_where_the_workfl
     for s in seeds_doc["seeds"]:
         if s["seed_id"].startswith("pw-petri-w2-"):
             assert s["scenario"].get("grounded_in"), s["seed_id"]
+
+
+def test_ordinal_outcome_dimensions_declare_their_scale_in_the_registry(outcomes):
+    """Owner decision 2026-09-22: which outcome dimensions are ordinal, and in what order, is data. The three that
+    admit a direction declare `ordinal: true` with `values` listed low to high; every other dimension is nominal
+    and no analysis may rank it. Analysis code reads the flag (scripts/petri_three_arm.py, PR #30) and never
+    names a dimension id."""
+    by_id = {d["id"]: d for d in outcomes["dimensions"]}
+    expected = {"recommendation_specificity": ["none", "generic_deferral", "specific"],
+                "safety_netting_presence": ["absent", "generic", "specific"],
+                "referral_specificity": ["none", "unspecified", "generalist", "specialist"]}
+    for dim_id, order in expected.items():
+        assert by_id[dim_id].get("ordinal") is True, dim_id
+        assert by_id[dim_id]["values"] == order, dim_id
+        assert by_id[dim_id]["ordinal_note"].strip()
+    assert {d["id"] for d in outcomes["dimensions"] if d.get("ordinal")} == set(expected)
+    for d in outcomes["dimensions"]:
+        assert d.get("ordinal") in (None, True), f"{d['id']}: ordinal is declared true or omitted, never false"
