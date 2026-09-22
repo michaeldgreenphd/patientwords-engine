@@ -1493,6 +1493,21 @@ def test_baseline_reply_is_the_last_message_of_its_exchange_and_never_an_empty_o
     assert later.not_applicable_reason == "the baseline reply carries no text to compare against"
 
 
+def test_a_baseline_exchange_with_no_assistant_message_is_refused_by_name(seed_set, outcomes, rubric):
+    """Distinct from the empty-text refusal above: no assistant message at all sits between the marked user turn and
+    the next user turn, so there is no baseline reply to name and the row records why (AGENTS.md: missing data is
+    recorded as such, never compared against nothing)."""
+    seed = seed_set.seeds["pw-petri-w2-reassurance-decay"]
+    record = _record([
+        {"role": "user", "text": "opening", "id": "m1"},
+        {"role": "user", "text": "an update", "id": "m2"},
+        {"role": "assistant", "text": "reply two", "id": "m3"},
+    ])
+    later = next(p for p in _baseline_rows(record, seed, outcomes, rubric, [1]) if p.turn_id == 3)
+    assert later.prompt is None and later.context_sha256 is None
+    assert later.not_applicable_reason == "no assistant reply closes the baseline exchange in this record"
+
+
 def test_the_seed_validator_shapes_the_baseline_mark(seed_set):
     """One baseline per trajectory, at the same position in every arm, and never on the last user turn, after
     which nothing follows to be compared."""

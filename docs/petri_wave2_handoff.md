@@ -270,6 +270,21 @@ so it can be redone by hand.
   `max_spend 3.10` rather than the 3.00 in item 11: the pre-flight bound is exactly $3.00 and
   the check is `bound <= max_spend`, so 3.00 would pass, but the fire is placed above the bound
   rather than on it; $4.10 committed against the $15 override.
+- **Owner's local review (Antigravity, 2026-09-22, on `8dd93437`) and what it changed.** Five findings; three
+  acted on here, one deferred by design, one an environment artifact. (1) The trigger file is in `dry_run`
+  since the fire commit, so `test_the_trigger_file_is_absent_or_parked...` is red on the branch by
+  construction until the post-epoch-1 park; left as planned, because parking now would add a journal entry
+  the epoch-1 session must resolve first, and the exposure meanwhile is a $0 mockllm run. (2) The identity
+  vocabulary under-matched: `my son is sick`, `my dad fell down`, `my 6 year old is fine` and `I work in A&E`
+  all read as the patient. Extended in `data/petri/speaker_identity_markers.draft.json` (state, symptom and
+  event predicates after a kinship word; clinical-workplace and more role self-descriptions), and the file
+  now carries `classification_cases`, pinned expectations the suite runs every text through, so the next
+  vocabulary edit cannot regress one silently. Every seed still validates. (3) and (4) Tests added for
+  `scenario.grounded_in` (missing in-repository file refused, sibling path recorded not checked, schema
+  closes the shape), duplicate `decomposition_registers`, and the baseline exchange with no assistant
+  message at all. (5) The 368 `ruff` errors are ruff 0.16's expanded default rule set; the dev group pins
+  `^0.9` and under its default set the tree is clean, which is what the sandbox and CI-equivalent run saw.
+  Pinning `[tool.ruff.lint] select` explicitly is a separate small change, not this PR.
 
 ---
 

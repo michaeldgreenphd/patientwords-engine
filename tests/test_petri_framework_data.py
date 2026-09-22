@@ -391,6 +391,9 @@ def test_a_decomposition_register_is_admitted_beside_the_contrast_and_refused_as
     unknown = json.loads(json.dumps(three))
     unknown["framing"]["decomposition_registers"] = ["formal_lay"]
     assert any("not a value of dimension" in p for p in seed_problems(unknown, framing, outcomes))
+    twice = json.loads(json.dumps(three))
+    twice["framing"]["decomposition_registers"] = ["lay_careful", "lay_careful"]
+    assert any("duplicate decomposition registers" in p for p in seed_problems(twice, framing, outcomes))
     # mixed stays refused as an arm register: it is in no_contrast and no seed declares it as a decomposition
     mixed = json.loads(json.dumps(three))
     key = next(a for a in mixed["protocol"]["arms"] if a["id"] == "lay_careful")["turns"][0]["text_ref"]
@@ -430,6 +433,17 @@ def test_speaker_identity_is_checked_against_the_wording(seeds_doc, framing, out
         "a relative mentioned is not a carer")
     assert marked_identities("my son has had a rash since yesterday", markers) == {"caregiver"}
     assert marked_identities("Is there anything further?", markers) == set()
+    # the pinned cases travel with the vocabulary (data, not Python); the review of 2026-09-22 found five texts that
+    # read as the patient - 'my 6 year old is fine', 'my son is sick', 'my dad fell down', 'I work in A&E' - because
+    # only the 'has had' predicates and the role self-descriptions were listed, so those are asserted here by name too
+    cases = markers["classification_cases"]
+    assert len(cases) >= 15 and {tuple(c["expect"]) for c in cases} >= {("clinician",), ("caregiver",), ("patient",), ()}
+    for case in cases:
+        assert marked_identities(case["text"], markers) == set(case["expect"]), case
+    for text in ("my 6 year old is fine", "my 6 year old is vomiting", "my son is sick", "my dad fell down"):
+        assert marked_identities(text, markers) == {"caregiver"}, text
+    assert marked_identities("I work in A&E", markers) == {"clinician"}
+    assert marked_identities("my sister is a nurse", markers) == {"patient"}, "a relative's role is not the speaker's"
     crossed = _seed(seeds_doc, "pw-petri-w2-identity-register")
     assert seed_problems(crossed, framing, outcomes) == []
     # a clinician arm whose opening text is the patient's: the declaration is contradicted by the wording
@@ -817,3 +831,33 @@ def test_transcript_schema_defers_not_applicable_to_the_registry(transcript_sche
     assert "genuinely unavailable" in value["description"]
     assert "registry" in value["description"] and "prompt file" in value["description"]
     assert "substantive absence value" in value["description"]
+
+
+def test_scenario_grounded_in_is_provenance_as_data_and_checked_where_the_workflow_can(seeds_doc, framing, outcomes):
+    """Owner decision 4 (2026-09-22): where a scenario comes from when no text was copied. The schema closes the
+    shape (file, item_id, a relation from the enum); the validator requires an in-repository file to exist and
+    records a sibling-checkout path (../patientwords/...) without checking it, because the workflow checks out this
+    repository alone."""
+    schema = seeds_doc["seed_schema"]
+    seed = _seed(seeds_doc, "pw-petri-w2-referral-specificity")
+    grounded = seed["scenario"]["grounded_in"]
+    assert any(g["file"].startswith("../patientwords/") for g in grounded), "the seed carries a sibling-checkout path"
+    local = next(i for i, g in enumerate(grounded) if not g["file"].startswith("../"))
+    assert seed_problems(seed, framing, outcomes) == []
+    missing = json.loads(json.dumps(seed))
+    missing["scenario"]["grounded_in"][local]["file"] = "data/petri/does_not_exist.json"
+    problems = seed_problems(missing, framing, outcomes)
+    assert any(f"scenario.grounded_in[{local}]" in p and "not found in the repository" in p for p in problems), problems
+    sibling = json.loads(json.dumps(seed))
+    sibling["scenario"]["grounded_in"][local]["file"] = "../patientwords/data/does_not_exist.json"
+    assert not any("grounded_in" in p for p in seed_problems(sibling, framing, outcomes)), "recorded, not checked"
+    bad = json.loads(json.dumps(seed))
+    bad["scenario"]["grounded_in"][0]["relation"] = "remembered"
+    assert any("grounded_in" in p and "relation" in p for p in validate(bad, schema))
+    short = json.loads(json.dumps(seed))
+    del short["scenario"]["grounded_in"][0]["item_id"]
+    assert any("grounded_in" in p and "item_id" in p for p in validate(short, schema))
+    # every wave-2 seed names its provenance, and every in-repository file named exists (the validator above)
+    for s in seeds_doc["seeds"]:
+        if s["seed_id"].startswith("pw-petri-w2-"):
+            assert s["scenario"].get("grounded_in"), s["seed_id"]
