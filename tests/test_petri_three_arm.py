@@ -17,8 +17,8 @@ from pathlib import Path
 import pytest
 
 from scripts.petri_three_arm import (
-    DEFAULT_JUDGE_OF_RECORD,
     HEADER_NOTE,
+    DEFAULT_JUDGE_OF_RECORD,
     Wave1RefusalError,
     analyze_run_directories,
     analyze_seed,
@@ -378,3 +378,4 @@ def test_provenance_and_header_invariants(tmp_path):
     assert "# " + HEADER_NOTE in md
     assert "run-synth-123" in md
     assert "colloquial_vs_clinical" in md
+

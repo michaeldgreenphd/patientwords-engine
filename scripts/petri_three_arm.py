@@ -14,11 +14,11 @@ dynamically from repository data files, never hardcoded in source.
 from __future__ import annotations
 
 import argparse
-import json
-import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
+import json
 from pathlib import Path
+import sys
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -30,8 +30,6 @@ HEADER_NOTE = (
     "Petri Audit Three-Arm Analysis "
     "(one epoch is structure, not an estimate; no confidence intervals or p-values emitted)"
 )
-
-DEFAULT_JUDGE_OF_RECORD = "anthropic:claude-3-7-sonnet-20250219"
 
 
 class Wave1RefusalError(ValueError):
@@ -94,7 +92,7 @@ class RunProvenance:
     run_ids: list[str]
     manifest_identity_sha256: list[str]
     engine_commits: list[str]
-    judge_of_record: str
+    judge_of_record: list[str]
     seed_digests: dict[str, str]
 
 
@@ -192,11 +190,24 @@ def load_run_rows(run_dir: Path | str) -> tuple[dict[str, Any], list[dict[str, A
 
     if all_exchange_null or not has_lay_careful:
         raise Wave1RefusalError(
-            f"Wave 1 runs cannot be analyzed this way: exchange_index is null on rows "
-            f"({sum(1 for r in rows if r.get('exchange_index') is None)}/{len(rows)} null) "
+            f"Wave-1 rows cannot be re-keyed from themselves: exchange_index does not appear in "
+            f"rows in {rdir} ({sum(1 for r in rows if r.get('exchange_index') is None)}/{len(rows)} null) "
             f"and only arms {sorted(arms_in_run)} are present (missing lay_careful). "
-            f"(Section 5 of docs/petri_wave2_design.md: 'Wave 1 runs cannot be analyzed this way')"
+            "(docs/petri_wave2_handoff.md section 6: 'Wave-1 rows cannot be re-keyed from themselves. "
+            "exchange_index does not appear in data/petri/runs/run_35351739969_1/analysis_rows.jsonl; "
+            "those rows predate the field and record it as null by design rather than being back-filled.')"
         )
+
+    # Manifest must carry artifacts.judge_of_record
+    artifacts = manifest.get("artifacts") or {}
+    judge_rec = artifacts.get("judge_of_record")
+    if not judge_rec:
+        raise ValueError(f"Run {rdir} manifest.json lacks artifacts.judge_of_record")
+    if isinstance(judge_rec, dict):
+        if not judge_rec.get("judge_model"):
+            raise ValueError(f"Run {rdir} manifest.json artifacts.judge_of_record lacks 'judge_model'")
+    elif not isinstance(judge_rec, str):
+        raise TypeError(f"Run {rdir} manifest.json artifacts.judge_of_record is {type(judge_rec).__name__}")
 
     return manifest, rows
 
