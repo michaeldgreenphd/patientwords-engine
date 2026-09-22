@@ -285,6 +285,16 @@ so it can be redone by hand.
   message at all. (5) The 368 `ruff` errors are ruff 0.16's expanded default rule set; the dev group pins
   `^0.9` and under its default set the tree is clean, which is what the sandbox and CI-equivalent run saw.
   Pinning `[tool.ruff.lint] select` explicitly is a separate small change, not this PR.
+- **Re-review of `bd5e7cc2` (Antigravity, same day).** Mutation-tested the three new tests (each fails with its
+  check removed). Confirmed the ruff count was an unpinned 0.16 artifact, the `context is None` branch is
+  unreachable from an adapted transcript (defensive, kept), the baseline-persistence prompt renders and
+  digests correctly, and rows of a tool-calling later exchange join on `final_in_exchange` as the design
+  note already requires. One real finding: the workplace patterns added for finding 2 over-matched an
+  actor ('theatre'), an athlete ('practice'), a cleaner ('surgery') and a sales job ('pharmacy'), which is
+  silent when both arms carry it under `user_is: unknown`. Tightened to the clinical qualifiers, the
+  counter-examples pinned as cases, and the caregiver-event trade-off written into the file as authoring
+  guidance. Its method note is worth keeping: a prompt edit's effect on landed runs is checked by
+  `prompt_ref` in `judgments.jsonl`, not by grepping for the new digest.
 
 ---
 
