@@ -1,10 +1,14 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-18T13:20:00Z",
+  "updated_utc": "2026-09-22T12:25:15Z",
   "updated_by": "routine",
   "queue": {
     "circuit-trace": {
-      "running": null,
+      "running": {
+        "fired_utc": "2026-09-22T12:24:23Z",
+        "commit": "",
+        "note": "Daily drift sentinel 2026-09-22 ($0, maintenance-mode standing item 3a; alias committed and pushed before firing as a4a485b6). First cycle since 2026-09-18 - the Tue/Fri maintenance cron makes 09-19..09-21 expected gaps, not misses. Circuit-trace lane 0 active at cycle open and parked at rest. Params are byte-identical to the 09-18 sentinel apart from the dated pairs_file, verified by reproducing that fire's recorded params_sha256. Opening backstop done first: the 09-18 item-3d PNG sweep (run 35348204868) was GitHub-confirmed completed/success, its journal entry is past the 8h expiry so resolve declined it and it is recorded as a missed-harvest record, and the archive-renders trigger it left at live sweep params was re-parked (c349830a)."
+      },
       "pending": null
     },
     "logits-eval": {
@@ -28,11 +32,7 @@
       "pending": null
     },
     "archive-renders": {
-      "running": {
-        "fired_utc": "2026-09-18T13:05:28Z",
-        "commit": "",
-        "note": "PNG sweep (maintenance item 3d, $0): archive+prune the one eligible unarchived run. drift_sentinel_20260918 is excluded by 3d's own rule - this cycle's sentinel PNGs enter the list from the following cycle. archive-renders lane 0 active at fire time. Harvest and re-park next cycle, not this one."
-      },
+      "running": null,
       "pending": null
     },
     "advice-eval": {
