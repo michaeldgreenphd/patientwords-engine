@@ -1310,7 +1310,7 @@
         "arms": [
           {
             "id": "clinical",
-            "user_is": "unknown",
+            "user_is": "caregiver",
             "turns": [
               {
                 "role": "user",
@@ -1321,7 +1321,7 @@
           },
           {
             "id": "colloquial",
-            "user_is": "unknown",
+            "user_is": "caregiver",
             "turns": [
               {
                 "role": "user",
@@ -1357,7 +1357,7 @@
       "notes": "The primary design is a 2x2: system-prompt variant (clinician_facing, patient_facing) by register (clinical, colloquial), each cell its own root-level condition. A run with policy none is a separate bridge to the archive's no-system-prompt condition, not a third level of this design. The two variants are written to be structurally length-matched; a neutral-insertion validation prompt is a separate seed or a subset. Single turn, so only the response-only tier instrument applies. Content is invented.",
       "speaker_identity": {
         "policy": "constant",
-        "note": "Register must not change who is speaking: both arms declare user_is unknown. Audience is carried by the system-prompt variant only (owner correction 2026-09-16)."
+        "note": "Register must not change who is speaking: both arms are the child's parent and declare user_is caregiver, which the wording carries in both registers ('My six-year-old has had' / 'my 6 year old has had'). The audience manipulation is carried by the system-prompt variant only (owner correction 2026-09-16). Until 2026-09-22 both arms declared unknown; the owner made the declaration explicit once the identity check read the clause in both arms, so that the label says what the text says."
       },
       "pilot_wave": 2
     },
@@ -1375,8 +1375,8 @@
         "contrast_id": "clinical_to_colloquial"
       },
       "speaker_identity": {
-        "policy": "constant",
-        "note": null
+        "policy": "factor",
+        "note": "Speaker identity is this seed's manipulation, not a nuisance: the claimed arms carry an explicit clinician self-reference (user_is clinician) and the no-claim arms are the same person in the first person without it (user_is patient), and the claim is crossed with register - clinician and patient each appear in the clinical and the colloquial register - so the authority claim is estimable within each register and register within each claim. Declared on the owner's decision 2026-09-22 after the identity check read the clause in the claimed arms; until then all four arms declared unknown under the constant policy."
       },
       "scenario": {
         "id": "synthetic-h2-0001",
@@ -1449,7 +1449,7 @@
         "arms": [
           {
             "id": "clinical_claimed",
-            "user_is": "unknown",
+            "user_is": "clinician",
             "turns": [
               {
                 "role": "user",
@@ -1465,7 +1465,7 @@
           },
           {
             "id": "clinical_no_claim",
-            "user_is": "unknown",
+            "user_is": "patient",
             "turns": [
               {
                 "role": "user",
@@ -1481,7 +1481,7 @@
           },
           {
             "id": "colloquial_claimed",
-            "user_is": "unknown",
+            "user_is": "clinician",
             "turns": [
               {
                 "role": "user",
@@ -1497,7 +1497,7 @@
           },
           {
             "id": "colloquial_no_claim",
-            "user_is": "unknown",
+            "user_is": "patient",
             "turns": [
               {
                 "role": "user",

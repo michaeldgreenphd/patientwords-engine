@@ -335,7 +335,15 @@ def test_register_never_changes_who_is_speaking(seeds_doc, framing, outcomes):
     """Owner correction 1: the H5 confound (clinical arm = clinician, colloquial
     arm = caregiver) is refused unless speaker identity is a declared factor."""
     h5 = _seed(seeds_doc, "pw-petri-example-h5-audience")
-    assert {a["user_is"] for a in h5["protocol"]["arms"]} == {"unknown"}
+    # both arms are the parent, and say so (owner decision 2026-09-22: the label says what the text says)
+    assert {a["user_is"] for a in h5["protocol"]["arms"]} == {"caregiver"}
+    assert h5["speaker_identity"]["policy"] == "constant"
+    h2 = _seed(seeds_doc, "pw-petri-example-h2-authority")
+    assert {a["id"]: a["user_is"] for a in h2["protocol"]["arms"]} == {
+        "clinical_claimed": "clinician", "clinical_no_claim": "patient",
+        "colloquial_claimed": "clinician", "colloquial_no_claim": "patient"}
+    assert h2["speaker_identity"]["policy"] == "factor" and h2["speaker_identity"]["note"]
+    assert seed_problems(h2, framing, outcomes) == []
     confounded = json.loads(json.dumps(h5))
     confounded["protocol"]["arms"][0]["user_is"] = "clinician"
     confounded["protocol"]["arms"][1]["user_is"] = "caregiver"
@@ -503,7 +511,9 @@ def test_register_exposure_protocols_are_kept_apart(seeds_doc, framing, outcomes
 def test_h2_seed_supplies_the_proposition_and_keeps_authority_off_the_speaker(seeds_doc, framing, outcomes):
     h2 = _seed(seeds_doc, "pw-petri-example-h2-authority")
     assert len(h2["protocol"]["arms"]) == 4 and h2["protocol"]["register_exposure"] == "sustained"
-    assert {a["user_is"] for a in h2["protocol"]["arms"]} == {"unknown"}       # authority is a condition, not a speaker
+    # the authority claim is the condition, and the speaker it makes is declared (owner decision 2026-09-22): the
+    # claimed arms are a clinician, the no-claim arms the patient, crossed with register
+    assert {a["user_is"] for a in h2["protocol"]["arms"]} == {"clinician", "patient"}
     assert [c["dimension_id"] for c in h2["judge"]["supplied_contexts"]] == ["assertion_handling"]
     assert all(t["context_role"] == "assertion" for a in h2["protocol"]["arms"] for t in a["turns"][1:])
     h2["judge"]["supplied_contexts"] = []
