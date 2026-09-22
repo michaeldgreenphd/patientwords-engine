@@ -248,6 +248,28 @@ so it can be redone by hand.
   two-arm count in the design note's §5, plus the 30 new baseline-persistence plans; the
   design note §5 now carries these numbers. Contract checks: six pass; `generation_config_pinned`
   fails as the documented mock artifact.
+- Committed as `0480ca3b` (the script's deletion included), pushed, `@codex review` posted
+  (comment 5777150083). **Codex refused again on usage limits** (comment 5777152205, within a
+  minute), so the three-arm edits have had no Codex review as of this push; the review request
+  stands for whenever credits return.
+- **Dry run fired and landed:** `fire_trigger.py fire` from this branch, nonce `w2e1-dry`
+  (commit `c8ba8923`), run **35732045435** (attempt 1), conclusion `success` in 1m 42s; every
+  step of the `audit` job green, the judge and commit steps skipped as `dry_run` prescribes;
+  two artifacts uploaded, `petri-audit-exports-35732045435-1` (129,796 bytes zipped) and
+  `petri-audit-raw-eval-35732045435-1` (114,470 bytes). **Its job summary could not be read
+  from this container**: the log and artifact downloads redirect to an Azure blob host the
+  sandbox egress proxy refuses, the public run page hides logs without sign-in, and the
+  check-run annotations carry only runner deprecation notices. What was verified instead: the
+  artifact sizes sit within 2–4% of the local 15-record mock run's (exports zipped 132,284
+  bytes; raw `.eval` 119,474 bytes) and well away from a run whose samples fail (the local
+  all-refused attempt's `.eval` was 212,994 bytes of tracebacks). The 15-sample count is
+  therefore established by the local locked-environment run on the same seed file and harness
+  commit, and consistent with, not read from, the CI artifact. Journal entry resolved and
+  committed (`52cf2b4b`). Lane empty after the resolve.
+- Epoch 1 is scheduled for after the UTC day roll (wake at 2026-09-23T00:10Z), with
+  `max_spend 3.10` rather than the 3.00 in item 11: the pre-flight bound is exactly $3.00 and
+  the check is `bound <= max_spend`, so 3.00 would pass, but the fire is placed above the bound
+  rather than on it; $4.10 committed against the $15 override.
 
 ---
 
