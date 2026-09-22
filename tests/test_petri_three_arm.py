@@ -17,13 +17,17 @@ from pathlib import Path
 import pytest
 
 from scripts.petri_three_arm import (
+    DEFAULT_ADVICE_RUBRIC,
+    DEFAULT_OUTCOME_REGISTRY,
     HEADER_NOTE,
+    RegistryMismatchError,
     Wave1RefusalError,
     analyze_run_directories,
     analyze_seed,
     format_markdown_summary,
     load_ordinal_scales,
     main,
+    sha256_file,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -487,8 +491,10 @@ def test_provenance_and_header_invariants(tmp_path):
     run_dir = tmp_path / "run_synthetic"
     run_dir.mkdir()
 
+    registry_sha = sha256_file(DEFAULT_OUTCOME_REGISTRY)
     manifest = {
         "run_id": "run-synth-123",
+        "framework": {"outcome_registry_sha256": registry_sha},
         "chain": {"identity_sha256": "ident-sha-456"},
         "adapter": {"engine_sha": "commit-789"},
         "seeds": [{"seed_id": "s1", "seed_sha256": "seed-sha-s1"}],
@@ -511,9 +517,11 @@ def test_provenance_and_header_invariants(tmp_path):
 
     report = analyze_run_directories([run_dir])
 
-    assert report.header == HEADER_NOTE
+    assert report.header.startswith(HEADER_NOTE)
     assert "one epoch is structure, not an estimate" in report.header
     assert "no confidence intervals or p-values emitted" in report.header
+    assert "Ordinal dimensions" in report.header
+    assert "Nominal dimensions" in report.header
 
     prov = report.provenance
     assert prov.run_ids == ["run-synth-123"]
@@ -521,11 +529,15 @@ def test_provenance_and_header_invariants(tmp_path):
     assert prov.engine_commits == ["commit-789"]
     assert prov.judge_of_record == ["claude-haiku-4-5"]
     assert prov.seed_digests == {"s1": "seed-sha-s1"}
+    assert prov.outcome_registry_sha256 == registry_sha
+    assert prov.manifest_outcome_registry_sha256 == {"run-synth-123": registry_sha}
+    assert prov.rubric_manifest_status == "not recorded in manifest"
 
     md = format_markdown_summary(report)
     assert "# " + HEADER_NOTE in md
     assert "run-synth-123" in md
     assert "- **Judge of record**: claude-haiku-4-5" in md
+    assert "- **Outcome registry**: `docs/framework/outcome_dimensions.draft.json`" in md
     assert "colloquial_vs_clinical" in md
 
 
@@ -536,6 +548,7 @@ def test_manifest_lacking_judge_of_record_is_refused_by_name(tmp_path):
 
     manifest = {
         "run_id": "run-synth-123",
+        "framework": {"outcome_registry_sha256": sha256_file(DEFAULT_OUTCOME_REGISTRY)},
         "chain": {"identity_sha256": "ident-sha-456"},
         "adapter": {"engine_sha": "commit-789"},
         "seeds": [{"seed_id": "s1", "seed_sha256": "seed-sha-s1"}],
@@ -557,4 +570,212 @@ def test_manifest_lacking_judge_of_record_is_refused_by_name(tmp_path):
     msg = str(exc_info.value)
     assert "lacks artifacts.judge_of_record" in msg
     assert str(run_dir) in msg
+
+
+def test_manifest_outcome_registry_digest_matching_proceeds(tmp_path):
+    """A run whose manifest framework.outcome_registry_sha256 matches loaded registry proceeds."""
+    run_dir = tmp_path / "run_matching"
+    run_dir.mkdir()
+
+    registry_sha = sha256_file(DEFAULT_OUTCOME_REGISTRY)
+    manifest = {
+        "run_id": "run-match-001",
+        "framework": {"outcome_registry_sha256": registry_sha},
+        "chain": {"identity_sha256": "ident-sha-1"},
+        "adapter": {"engine_sha": "commit-1"},
+        "seeds": [{"seed_id": "s1", "seed_sha256": "seed-sha-1"}],
+        "artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5"}},
+    }
+    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    rows = [
+        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+    ]
+    (run_dir / "analysis_rows.jsonl").write_text(
+        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
+    )
+
+    report = analyze_run_directories([run_dir])
+    assert report.provenance.outcome_registry_sha256 == registry_sha
+    assert report.provenance.manifest_outcome_registry_sha256["run-match-001"] == registry_sha
+
+
+def test_manifest_outcome_registry_digest_mismatch_refused_by_name(tmp_path, capsys):
+    """A run whose manifest outcome registry digest differs from loaded registry is refused by name with non-zero exit."""
+    run_dir = tmp_path / "run_mismatch"
+    run_dir.mkdir()
+
+    bogus_sha = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    manifest = {
+        "run_id": "run-mismatch-002",
+        "framework": {"outcome_registry_sha256": bogus_sha},
+        "chain": {"identity_sha256": "ident-sha-2"},
+        "adapter": {"engine_sha": "commit-2"},
+        "seeds": [{"seed_id": "s1", "seed_sha256": "seed-sha-2"}],
+        "artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5"}},
+    }
+    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    rows = [
+        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+    ]
+    (run_dir / "analysis_rows.jsonl").write_text(
+        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
+    )
+
+    # Direct call raises RegistryMismatchError naming run id, path, and both digests
+    with pytest.raises(RegistryMismatchError) as exc_info:
+        analyze_run_directories([run_dir])
+
+    msg = str(exc_info.value)
+    assert "run-mismatch-002" in msg
+    assert "outcome_dimensions.draft.json" in msg
+    assert bogus_sha in msg
+    assert sha256_file(DEFAULT_OUTCOME_REGISTRY) in msg
+
+    # CLI returns non-zero exit code (2) and prints REFUSED naming the details
+    exit_code = main(["--run-dir", str(run_dir)])
+    assert exit_code == 2
+    captured = capsys.readouterr()
+    assert "REFUSED: Run 'run-mismatch-002' manifest framework.outcome_registry_sha256" in captured.err
+    assert bogus_sha in captured.err
+
+
+def test_registry_without_ordinal_flags_reports_nominal_and_names_in_header(tmp_path):
+    """When a registry without ordinal flags is intentionally loaded, dimensions report as nominal
+
+    and the output header explicitly names which dimensions were treated as ordinal and which as nominal.
+    """
+    # Create an intentional registry without ordinal flags
+    custom_registry = tmp_path / "custom_outcome_dimensions.json"
+    registry_data = {
+        "schema_version": "0.1",
+        "dimensions": [
+            {
+                "id": "recommendation_specificity",
+                "name": "Specificity of the recommendation",
+                "values": ["none", "generic_deferral", "specific"],
+                # ordinal flag intentionally omitted / false
+                "ordinal": False,
+            },
+            {
+                "id": "safety_netting_presence",
+                "name": "Safety-netting presence",
+                "values": ["absent", "generic", "specific"],
+                "ordinal": False,
+            },
+        ],
+    }
+    custom_registry.write_text(json.dumps(registry_data), encoding="utf-8")
+    custom_reg_sha = sha256_file(custom_registry)
+
+    run_dir = tmp_path / "run_nominal"
+    run_dir.mkdir()
+
+    manifest = {
+        "run_id": "run-nominal-003",
+        "framework": {"outcome_registry_sha256": custom_reg_sha},
+        "chain": {"identity_sha256": "ident-sha-3"},
+        "adapter": {"engine_sha": "commit-3"},
+        "seeds": [{"seed_id": "s1", "seed_sha256": "seed-sha-3"}],
+        "artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5"}},
+    }
+    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    rows = [
+        # Arm colloquial
+        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "specific", "row_eligible": True},
+        # Arm clinical
+        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "generic_deferral", "row_eligible": True},
+        # Arm lay_careful
+        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "none", "row_eligible": True},
+    ]
+    (run_dir / "analysis_rows.jsonl").write_text(
+        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
+    )
+
+    report = analyze_run_directories([run_dir], outcome_registry_path=custom_registry)
+
+    # In the seed analysis, recommendation_specificity is nominal
+    s1 = report.seeds["s1"]
+    rec_spec = s1.dimensions["recommendation_specificity"]
+    assert rec_spec.is_ordinal is False
+    assert rec_spec.scale is None
+
+    contrast = rec_spec.contrasts["colloquial_vs_clinical"]
+    assert contrast.is_ordinal is False
+    assert contrast.scale is None
+    assert contrast.counts.n_upgrade is None
+    assert contrast.counts.n_downgrade is None
+    assert contrast.counts.n_differing == 1
+    assert contrast.rows[0].comparison == "different"
+
+    # response_only from rubric is ordinal
+    assert s1.dimensions["response_only"].is_ordinal is True
+
+    # Output report lists them in ordinal_dimensions and nominal_dimensions
+    assert "response_only" in report.ordinal_dimensions
+    assert "recommendation_specificity" not in report.ordinal_dimensions
+    assert "recommendation_specificity" in report.nominal_dimensions
+    assert "response_only" not in report.nominal_dimensions
+
+    # Output header explicitly names which dimensions were treated as ordinal and which as nominal
+    assert "Ordinal dimensions (1): response_only" in report.header
+    assert "Nominal dimensions (1): recommendation_specificity" in report.header
+
+    # Markdown rendering also explicitly names both in its header
+    md = format_markdown_summary(report)
+    assert "**Ordinal dimensions (1)**: response_only" in md
+    assert "**Nominal dimensions (1)**: recommendation_specificity" in md
+
+
+def test_manifest_rubric_digest_mismatch_refused_by_name(tmp_path, capsys):
+    """A run whose manifest records a rubric digest that mismatches loaded rubric is refused by name."""
+    run_dir = tmp_path / "run_rubric_mismatch"
+    run_dir.mkdir()
+
+    registry_sha = sha256_file(DEFAULT_OUTCOME_REGISTRY)
+    bogus_rubric_sha = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+    manifest = {
+        "run_id": "run-rubric-mismatch-004",
+        "framework": {
+            "outcome_registry_sha256": registry_sha,
+            "rubric_sha256": bogus_rubric_sha,
+        },
+        "chain": {"identity_sha256": "ident-sha-4"},
+        "adapter": {"engine_sha": "commit-4"},
+        "seeds": [{"seed_id": "s1", "seed_sha256": "seed-sha-4"}],
+        "artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5"}},
+    }
+    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    rows = [
+        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+    ]
+    (run_dir / "analysis_rows.jsonl").write_text(
+        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
+    )
+
+    with pytest.raises(RegistryMismatchError) as exc_info:
+        analyze_run_directories([run_dir])
+
+    msg = str(exc_info.value)
+    assert "run-rubric-mismatch-004" in msg
+    assert "advice_rubric.draft.json" in msg
+    assert bogus_rubric_sha in msg
+    assert sha256_file(DEFAULT_ADVICE_RUBRIC) in msg
+
+    exit_code = main(["--run-dir", str(run_dir)])
+    assert exit_code == 2
+    captured = capsys.readouterr()
+    assert "REFUSED: Run 'run-rubric-mismatch-004' manifest rubric digest" in captured.err
 

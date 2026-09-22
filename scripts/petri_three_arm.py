@@ -14,6 +14,7 @@ dynamically from repository data files, never hardcoded in source.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from collections.abc import Mapping, Sequence
@@ -34,6 +35,28 @@ HEADER_NOTE = (
 
 class Wave1RefusalError(ValueError):
     """Raised when three-arm analysis is attempted on Wave 1 runs."""
+
+
+class RegistryMismatchError(ValueError):
+    """Raised when loaded registry or rubric digest mismatches the run manifest."""
+
+
+def sha256_file(path: Path | str) -> str:
+    """Computes SHA-256 hex digest of a file."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(65536):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _display_path(p: Path | str) -> str:
+    """Returns repository-relative path if inside REPO_ROOT, otherwise str(path)."""
+    path = Path(p)
+    try:
+        return path.resolve().relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return str(path)
 
 
 @dataclass(frozen=True)
@@ -93,12 +116,20 @@ class RunProvenance:
     engine_commits: list[str]
     judge_of_record: list[str]
     seed_digests: dict[str, str]
+    outcome_registry_path: str
+    outcome_registry_sha256: str
+    manifest_outcome_registry_sha256: dict[str, str]
+    rubric_path: str
+    rubric_sha256: str
+    rubric_manifest_status: str
 
 
 @dataclass(frozen=True)
 class ThreeArmReport:
     header: str
     provenance: RunProvenance
+    ordinal_dimensions: list[str]
+    nominal_dimensions: list[str]
     seeds: dict[str, SeedAnalysis]
 
 
@@ -143,12 +174,17 @@ def load_ordinal_scales(
     return scales
 
 
-def load_run_rows(run_dir: Path | str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def load_run_rows(
+    run_dir: Path | str,
+    outcome_registry_path: Path | str | None = None,
+    rubric_path: Path | str | None = None,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Loads manifest and analysis rows from a run directory.
 
     If analysis_rows.jsonl does not exist, judgments.jsonl is read.
     Validates that the run is eligible for three-arm analysis, cleanly refusing
-    Wave 1 runs where exchange_index is null or only 2 arms are present.
+    Wave 1 runs where exchange_index is null or only 2 arms are present,
+    and verifying outcome registry and rubric digests against the manifest.
     """
     rdir = Path(run_dir)
     manifest_path = rdir / "manifest.json"
@@ -156,6 +192,43 @@ def load_run_rows(run_dir: Path | str) -> tuple[dict[str, Any], list[dict[str, A
         raise FileNotFoundError(f"Run directory {rdir} lacks manifest.json")
 
     manifest = load_json(manifest_path)
+    run_id = manifest.get("run_id", str(rdir))
+
+    # Invariant: manifest outcome_registry_sha256 must match loaded outcome registry
+    outcomes_file = Path(outcome_registry_path or DEFAULT_OUTCOME_REGISTRY)
+    if not outcomes_file.is_file():
+        raise FileNotFoundError(f"Outcome registry file not found: {outcomes_file}")
+    loaded_outcome_sha = sha256_file(outcomes_file)
+    manifest_outcome_sha = manifest.get("framework", {}).get("outcome_registry_sha256")
+    if not manifest_outcome_sha:
+        raise RegistryMismatchError(
+            f"Run '{run_id}' manifest.json lacks framework.outcome_registry_sha256"
+        )
+    if loaded_outcome_sha != manifest_outcome_sha:
+        raise RegistryMismatchError(
+            f"Run '{run_id}' manifest framework.outcome_registry_sha256 ({manifest_outcome_sha}) "
+            f"does not match loaded outcome registry {_display_path(outcomes_file)} ({loaded_outcome_sha})"
+        )
+
+    # Invariant: manifest rubric digest (if recorded) must match loaded rubric
+    rubric_file = Path(rubric_path or DEFAULT_ADVICE_RUBRIC)
+    manifest_rubric_sha = (
+        manifest.get("framework", {}).get("rubric_sha256")
+        or manifest.get("framework", {}).get("advice_rubric_sha256")
+        or manifest.get("artifacts", {}).get("rubric_sha256")
+    )
+    if manifest_rubric_sha:
+        if not rubric_file.is_file():
+            raise RegistryMismatchError(
+                f"Run '{run_id}' manifest records rubric digest ({manifest_rubric_sha}), "
+                f"but loaded rubric {_display_path(rubric_file)} does not exist"
+            )
+        loaded_rubric_sha = sha256_file(rubric_file)
+        if loaded_rubric_sha != manifest_rubric_sha:
+            raise RegistryMismatchError(
+                f"Run '{run_id}' manifest rubric digest ({manifest_rubric_sha}) "
+                f"does not match loaded advice rubric {_display_path(rubric_file)} ({loaded_rubric_sha})"
+            )
 
     analysis_rows_path = rdir / "analysis_rows.jsonl"
     judgments_path = rdir / "judgments.jsonl"
@@ -621,12 +694,24 @@ def analyze_seed(
 def analyze_run_directories(
     run_dirs: Sequence[Path | str],
     scales: Mapping[str, list[str]] | None = None,
+    rubric_path: Path | str | None = None,
+    outcome_registry_path: Path | str | None = None,
 ) -> ThreeArmReport:
     """Performs three-arm analysis across one or more run directories."""
     if not run_dirs:
         raise ValueError("No run directories provided")
 
-    active_scales = scales if scales is not None else load_ordinal_scales()
+    rubric_file = Path(rubric_path or DEFAULT_ADVICE_RUBRIC)
+    outcomes_file = Path(outcome_registry_path or DEFAULT_OUTCOME_REGISTRY)
+
+    active_scales = (
+        scales
+        if scales is not None
+        else load_ordinal_scales(
+            rubric_path=rubric_file,
+            outcome_registry_path=outcomes_file,
+        )
+    )
 
     all_rows: list[dict[str, Any]] = []
     run_ids: list[str] = []
@@ -634,12 +719,26 @@ def analyze_run_directories(
     engine_commits: list[str] = []
     seed_digests: dict[str, str] = {}
     judges_of_record: list[str] = []
+    manifest_outcome_digests: dict[str, str] = {}
+    manifest_rubric_digests: dict[str, str | None] = {}
 
     for rdir in run_dirs:
-        manifest, rows = load_run_rows(rdir)
-        run_id = manifest.get("run_id")
-        if run_id:
-            run_ids.append(run_id)
+        manifest, rows = load_run_rows(
+            rdir,
+            outcome_registry_path=outcomes_file,
+            rubric_path=rubric_file,
+        )
+        run_id = manifest.get("run_id") or str(rdir)
+        if manifest.get("run_id"):
+            run_ids.append(manifest["run_id"])
+
+        manifest_outcome_digests[run_id] = manifest.get("framework", {}).get("outcome_registry_sha256", "")
+        manifest_rub_sha = (
+            manifest.get("framework", {}).get("rubric_sha256")
+            or manifest.get("framework", {}).get("advice_rubric_sha256")
+            or manifest.get("artifacts", {}).get("rubric_sha256")
+        )
+        manifest_rubric_digests[run_id] = manifest_rub_sha
 
         identity_sha = manifest.get("chain", {}).get("identity_sha256")
         if identity_sha:
@@ -673,17 +772,54 @@ def analyze_run_directories(
     for sid, srows in sorted(rows_by_seed.items()):
         analyzed_seeds[sid] = analyze_seed(sid, srows, active_scales)
 
+    loaded_outcome_sha = sha256_file(outcomes_file) if outcomes_file.is_file() else ""
+    loaded_rubric_sha = sha256_file(rubric_file) if rubric_file.is_file() else ""
+
+    if all(v is not None for v in manifest_rubric_digests.values()):
+        rubric_status = "verified against manifest"
+    elif any(v is not None for v in manifest_rubric_digests.values()):
+        rubric_status = "partially recorded in manifest"
+    else:
+        rubric_status = "not recorded in manifest"
+
+    ordinal_dims: list[str] = sorted({
+        d_key
+        for s in analyzed_seeds.values()
+        for d_key, d_analysis in s.dimensions.items()
+        if d_analysis.is_ordinal
+    })
+    nominal_dims: list[str] = sorted({
+        d_key
+        for s in analyzed_seeds.values()
+        for d_key, d_analysis in s.dimensions.items()
+        if not d_analysis.is_ordinal
+    })
+
+    header = (
+        f"{HEADER_NOTE}\n"
+        f"Ordinal dimensions ({len(ordinal_dims)}): {', '.join(ordinal_dims) if ordinal_dims else 'none'}\n"
+        f"Nominal dimensions ({len(nominal_dims)}): {', '.join(nominal_dims) if nominal_dims else 'none'}"
+    )
+
     provenance = RunProvenance(
         run_ids=run_ids,
         manifest_identity_sha256=manifest_identities,
         engine_commits=engine_commits,
         judge_of_record=judges_of_record,
         seed_digests=seed_digests,
+        outcome_registry_path=_display_path(outcomes_file),
+        outcome_registry_sha256=loaded_outcome_sha,
+        manifest_outcome_registry_sha256=manifest_outcome_digests,
+        rubric_path=_display_path(rubric_file),
+        rubric_sha256=loaded_rubric_sha,
+        rubric_manifest_status=rubric_status,
     )
 
     return ThreeArmReport(
-        header=HEADER_NOTE,
+        header=header,
         provenance=provenance,
+        ordinal_dimensions=ordinal_dims,
+        nominal_dimensions=nominal_dims,
         seeds=analyzed_seeds,
     )
 
@@ -691,13 +827,18 @@ def analyze_run_directories(
 def format_markdown_summary(report: ThreeArmReport) -> str:
     """Renders human-readable markdown summary tables of the analysis report."""
     lines: list[str] = [
-        f"# {report.header}",
+        f"# {HEADER_NOTE}",
+        "",
+        f"**Ordinal dimensions ({len(report.ordinal_dimensions)})**: {', '.join(report.ordinal_dimensions) if report.ordinal_dimensions else 'none'}",
+        f"**Nominal dimensions ({len(report.nominal_dimensions)})**: {', '.join(report.nominal_dimensions) if report.nominal_dimensions else 'none'}",
         "",
         "## Provenance",
         f"- **Run IDs**: {', '.join(report.provenance.run_ids) or 'None'}",
         f"- **Manifest identities**: {', '.join(report.provenance.manifest_identity_sha256) or 'None'}",
         f"- **Engine commits**: {', '.join(report.provenance.engine_commits) or 'None'}",
         f"- **Judge of record**: {', '.join(report.provenance.judge_of_record) or 'None'}",
+        f"- **Outcome registry**: `{report.provenance.outcome_registry_path}` (`{report.provenance.outcome_registry_sha256[:12]}`)",
+        f"- **Rubric**: `{report.provenance.rubric_path}` ({report.provenance.rubric_manifest_status})",
         f"- **Seeds analyzed**: {len(report.seeds)}",
         "",
     ]
@@ -781,17 +922,22 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
 
+    rubric_path = args.rubric or DEFAULT_ADVICE_RUBRIC
+    outcome_registry_path = args.outcomes or DEFAULT_OUTCOME_REGISTRY
+
     scales = load_ordinal_scales(
-        rubric_path=args.rubric,
-        outcome_registry_path=args.outcomes,
+        rubric_path=rubric_path,
+        outcome_registry_path=outcome_registry_path,
     )
 
     try:
         report = analyze_run_directories(
             run_dirs=args.run_dir,
             scales=scales,
+            rubric_path=rubric_path,
+            outcome_registry_path=outcome_registry_path,
         )
-    except Wave1RefusalError as exc:
+    except (Wave1RefusalError, RegistryMismatchError) as exc:
         print(f"REFUSED: {exc}", file=sys.stderr)
         return 2
     except (KeyError, ValueError, TypeError, OSError) as exc:
