@@ -1,10 +1,14 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-22T12:39:45Z",
-  "updated_by": "session",
+  "updated_utc": "2026-09-22T12:41:26Z",
+  "updated_by": "routine",
   "queue": {
     "circuit-trace": {
-      "running": null,
+      "running": {
+        "fired_utc": "2026-09-22T12:41:10Z",
+        "commit": "",
+        "note": "PARK (resting-state rule): cheapest no-op default committed so branch operations that touch this trigger file re-run a $0/negligible stage instead of the last expensive fire; commit_outputs false where the workflow supports it. Owner-approved maintenance hardening, 2026-08-27."
+      },
       "pending": null
     },
     "logits-eval": {
@@ -28,7 +32,11 @@
       "pending": null
     },
     "archive-renders": {
-      "running": null,
+      "running": {
+        "fired_utc": "2026-09-22T12:41:26Z",
+        "commit": "",
+        "note": "PNG sweep (maintenance item 3d, $0): archive+prune the one eligible unarchived run. drift_sentinel_20260922 is excluded by 3d's own rule - this cycle's sentinel PNGs enter the list from the following cycle. archive-renders lane 0 active at fire time (the opening-backstop re-park, run 35726796943, was GitHub-confirmed terminal and resolved first). Harvest and re-park next cycle, not this one."
+      },
       "pending": null
     },
     "advice-eval": {
