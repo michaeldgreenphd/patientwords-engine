@@ -8,17 +8,17 @@ by name any exchange where an arm has no eligible row or is not_applicable.
 
 Per Section 5 of docs/petri_wave2_design.md:
 One epoch is structure, not an estimate. No confidence intervals or p-values are emitted.
-Ordinal scales (tiers, recommendation_specificity, safety_netting_presence) are loaded
+Ordinal scales (e.g. rubric tiers or dimensions declared ordinal in registries) are loaded
 dynamically from repository data files, never hardcoded in source.
 """
 from __future__ import annotations
 
 import argparse
+import json
+import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
-import json
 from pathlib import Path
-import sys
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -27,7 +27,7 @@ DEFAULT_URGENCY_TIERS = REPO_ROOT / "data" / "urgency_tiers.draft.json"
 DEFAULT_OUTCOME_REGISTRY = REPO_ROOT / "docs" / "framework" / "outcome_dimensions.draft.json"
 
 HEADER_NOTE = (
-    "Petri Audit Three-Arm Analysis "
+    "Three-Arm Petri Audit Analysis "
     "(one epoch is structure, not an estimate; no confidence intervals or p-values emitted)"
 )
 
@@ -36,29 +36,28 @@ class Wave1RefusalError(ValueError):
     """Raised when three-arm analysis is attempted on Wave 1 runs."""
 
 
-
-@dataclass
+@dataclass(frozen=True)
 class ExchangeComparisonRow:
     exchange_index: int
     arm_A_value: str | None
     arm_B_value: str | None
-    same_or_different: bool | None  # True if same, False if different, None if refused/uncompared
-    comparison: str                 # "same", "different", "upgrade", "downgrade", or "refused"
+    same_or_different: bool | None
+    comparison: str
     refusal_reason: str | None = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class ContrastCounts:
     n_exchanges_total: int
     n_compared: int
     n_differing: int
     n_same: int
     n_refused: int
-    n_upgrade: int | None = None    # for ordinal dimensions only
-    n_downgrade: int | None = None  # for ordinal dimensions only
+    n_upgrade: int | None
+    n_downgrade: int | None
 
 
-@dataclass
+@dataclass(frozen=True)
 class ContrastResult:
     contrast_name: str
     arm_A: str
@@ -70,16 +69,16 @@ class ContrastResult:
     rows: list[ExchangeComparisonRow]
 
 
-@dataclass
+@dataclass(frozen=True)
 class DimensionAnalysis:
     dimension_key: str
-    kind: str  # "tier" or "outcome"
+    kind: str
     is_ordinal: bool
     scale: list[str] | None
     contrasts: dict[str, ContrastResult]
 
 
-@dataclass
+@dataclass(frozen=True)
 class SeedAnalysis:
     seed_id: str
     is_identity_seed: bool
@@ -87,7 +86,7 @@ class SeedAnalysis:
     dimensions: dict[str, DimensionAnalysis]
 
 
-@dataclass
+@dataclass(frozen=True)
 class RunProvenance:
     run_ids: list[str]
     manifest_identity_sha256: list[str]
@@ -96,21 +95,21 @@ class RunProvenance:
     seed_digests: dict[str, str]
 
 
-@dataclass
+@dataclass(frozen=True)
 class ThreeArmReport:
     header: str
     provenance: RunProvenance
     seeds: dict[str, SeedAnalysis]
 
 
-def load_json(path: Path | str) -> Any:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+def load_json(path: Path | str) -> dict[str, Any]:
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
 
 
 def load_ordinal_scales(
     rubric_path: Path | str | None = None,
     outcome_registry_path: Path | str | None = None,
-    urgency_tiers_path: Path | str | None = None,
 ) -> dict[str, list[str]]:
     """Loads ordinal scales dynamically from repository data files.
 
@@ -136,14 +135,9 @@ def load_ordinal_scales(
             dim_id = dim.get("id")
             if not dim_id:
                 continue
-            # Ordinal dimensions declared in outcome registry
-            if dim_id == "recommendation_specificity":
-                # Values: ["none", "generic_deferral", "specific"] (low to high specificity)
-                scales[dim_id] = list(dim.get("values", []))
-            elif dim_id == "safety_netting_presence":
-                # Values: ["absent", "generic", "specific"] (absent to explicit)
-                scales[dim_id] = list(dim.get("values", []))
-            elif dim.get("scale") and isinstance(dim["scale"], list):
+            if dim.get("ordinal") and isinstance(dim.get("values"), list):
+                scales[dim_id] = list(dim["values"])
+            elif dim.get("scale") and isinstance(dim.get("scale"), list):
                 scales[dim_id] = list(dim["scale"])
 
     return scales
@@ -250,11 +244,13 @@ def analyze_contrast(
     rows_by_arm: Mapping[str, Mapping[int, dict[str, Any]]],
     exchanges: Sequence[int],
     scale: list[str] | None,
+    errors_by_arm: Mapping[str, Mapping[int, str]] | None = None,
 ) -> ContrastResult:
     """Analyzes a single pairwise contrast (arm_A vs arm_B) across all exchanges.
 
     Joins on (exchange_index, final_in_exchange=True).
-    Refuses by name any exchange where an arm is missing, ineligible, or not_applicable.
+    Refuses by name any exchange where an arm is missing, ineligible, not_applicable,
+    missing final_in_exchange, or has duplicate final rows.
     """
     is_ordinal = scale is not None
     rows_A = rows_by_arm.get(arm_A, {})
@@ -278,7 +274,13 @@ def analyze_contrast(
         val_A: str | None = None
         val_B: str | None = None
 
-        if row_A is None and row_B is None:
+        err_A = errors_by_arm.get(arm_A, {}).get(ex) if errors_by_arm else None
+        err_B = errors_by_arm.get(arm_B, {}).get(ex) if errors_by_arm else None
+
+        if err_A or err_B:
+            err_parts = [e for e in (err_A, err_B) if e]
+            refusal_reason = f"exchange {ex} refused: {'; '.join(err_parts)}"
+        elif row_A is None and row_B is None:
             refusal_reason = f"exchange {ex} refused: neither arm '{arm_A}' nor '{arm_B}' has an eligible row"
         elif row_A is None:
             refusal_reason = f"exchange {ex} refused: arm '{arm_A}' has no eligible row"
@@ -394,24 +396,21 @@ def analyze_seed(
     )
 
     # Group rows: dim_key -> arm -> exchange_index -> row
-    # ONLY consider rows where final_in_exchange is True
-    # (intermediate tool rounds where final_in_exchange is False are excluded from exchange comparisons)
+    # dim_data: dim_key -> arm -> exchange_index -> row (only final_in_exchange=True rows)
     dim_data: dict[str, dict[str, dict[int, dict[str, Any]]]] = {}
+    # dim_errors: dim_key -> arm -> exchange_index -> refusal message
+    dim_errors: dict[str, dict[str, dict[int, str]]] = {}
     dim_kinds: dict[str, str] = {}
     seed_exchanges: set[int] = set()
 
     for r in seed_rows:
-        ex = r.get("exchange_index")
-        if ex is None:
-            continue
-        seed_exchanges.add(ex)
-
-        # Skip intermediate assistant turns (e.g. tool-calling rows that are not final in exchange)
-        if not r.get("final_in_exchange", True):
-            continue
-
         key = r.get("key")
         arm = r.get("arm")
+        ex = r.get("exchange_index")
+
+        if ex is not None:
+            seed_exchanges.add(ex)
+
         if not key or not arm:
             continue
 
@@ -421,15 +420,63 @@ def analyze_seed(
         if arm not in dim_data[key]:
             dim_data[key][arm] = {}
 
-        # If duplicate final_in_exchange row occurs, retain the latest turn
-        existing = dim_data[key][arm].get(ex)
-        if existing is None or r.get("turn_id", 0) >= existing.get("turn_id", 0):
-            dim_data[key][arm][ex] = r
+        if key not in dim_errors:
+            dim_errors[key] = {}
+        if arm not in dim_errors[key]:
+            dim_errors[key][arm] = {}
+
+        if ex is None:
+            continue
+
+        turn_id = r.get("turn_id") if r.get("turn_id") is not None else r.get("assistant_turn_index", "unknown")
+
+        # Invariant 1: Missing or non-boolean final_in_exchange must be refused by name, not defaulted to True.
+        if "final_in_exchange" not in r or r.get("final_in_exchange") is None:
+            err = f"arm '{arm}' row (turn {turn_id}) in exchange {ex} missing 'final_in_exchange'"
+            dim_errors[key][arm][ex] = err
+            dim_data[key][arm].pop(ex, None)
+            continue
+        elif not isinstance(r["final_in_exchange"], bool):
+            err = (
+                f"arm '{arm}' row (turn {turn_id}) in exchange {ex} has non-boolean 'final_in_exchange': "
+                f"{r['final_in_exchange']!r}"
+            )
+            dim_errors[key][arm][ex] = err
+            dim_data[key][arm].pop(ex, None)
+            continue
+
+        # Invariant 2: Intermediate assistant turns (final_in_exchange=False) are excluded from exchange outcomes.
+        if not r["final_in_exchange"]:
+            continue
+
+        # Invariant 3: Two final rows in one exchange for one arm must be refused by name, not resolved to latest turn.
+        if ex in dim_errors[key][arm]:
+            continue
+
+        if ex in dim_data[key][arm]:
+            existing = dim_data[key][arm][ex]
+            prev_turn = (
+                existing.get("turn_id")
+                if existing.get("turn_id") is not None
+                else existing.get("assistant_turn_index", "unknown")
+            )
+            err = (
+                f"arm '{arm}' has multiple rows with final_in_exchange=True in exchange {ex} "
+                f"(turns {prev_turn} and {turn_id})"
+            )
+            dim_errors[key][arm][ex] = err
+            dim_data[key][arm].pop(ex, None)
+            continue
+
+        dim_data[key][arm][ex] = r
 
     exchanges = sorted(seed_exchanges)
     analyzed_dimensions: dict[str, DimensionAnalysis] = {}
+    all_dim_keys = sorted(set(dim_data.keys()) | set(dim_errors.keys()))
 
-    for key, arm_rows in sorted(dim_data.items()):
+    for key in all_dim_keys:
+        arm_rows = dim_data.get(key, {})
+        arm_errors = dim_errors.get(key, {})
         kind = dim_kinds.get(key, "outcome")
         scale = scales.get(key)
         is_ordinal = scale is not None
@@ -446,6 +493,7 @@ def analyze_seed(
                 rows_by_arm=arm_rows,
                 exchanges=exchanges,
                 scale=scale,
+                errors_by_arm=arm_errors,
             )
             # 2. Orthography decomposition: lay_careful vs colloquial
             contrasts["lay_careful_vs_colloquial"] = analyze_contrast(
@@ -455,6 +503,7 @@ def analyze_seed(
                 rows_by_arm=arm_rows,
                 exchanges=exchanges,
                 scale=scale,
+                errors_by_arm=arm_errors,
             )
             # 3. Terminology decomposition: lay_careful vs clinical
             contrasts["lay_careful_vs_clinical"] = analyze_contrast(
@@ -464,6 +513,7 @@ def analyze_seed(
                 rows_by_arm=arm_rows,
                 exchanges=exchanges,
                 scale=scale,
+                errors_by_arm=arm_errors,
             )
         else:
             # 2x3 identity crossed contrasts
@@ -475,6 +525,7 @@ def analyze_seed(
                 rows_by_arm=arm_rows,
                 exchanges=exchanges,
                 scale=scale,
+                errors_by_arm=arm_errors,
             )
             contrasts["patient:lay_careful_vs_colloquial"] = analyze_contrast(
                 contrast_name="patient:lay_careful_vs_colloquial",
@@ -483,6 +534,7 @@ def analyze_seed(
                 rows_by_arm=arm_rows,
                 scale=scale,
                 exchanges=exchanges,
+                errors_by_arm=arm_errors,
             )
             contrasts["patient:lay_careful_vs_clinical"] = analyze_contrast(
                 contrast_name="patient:lay_careful_vs_clinical",
@@ -491,6 +543,7 @@ def analyze_seed(
                 rows_by_arm=arm_rows,
                 scale=scale,
                 exchanges=exchanges,
+                errors_by_arm=arm_errors,
             )
             # (b) Within clinician:
             contrasts["clinician:colloquial_vs_clinical"] = analyze_contrast(
@@ -500,6 +553,7 @@ def analyze_seed(
                 rows_by_arm=arm_rows,
                 scale=scale,
                 exchanges=exchanges,
+                errors_by_arm=arm_errors,
             )
             contrasts["clinician:lay_careful_vs_colloquial"] = analyze_contrast(
                 contrast_name="clinician:lay_careful_vs_colloquial",
@@ -508,6 +562,7 @@ def analyze_seed(
                 rows_by_arm=arm_rows,
                 scale=scale,
                 exchanges=exchanges,
+                errors_by_arm=arm_errors,
             )
             contrasts["clinician:lay_careful_vs_clinical"] = analyze_contrast(
                 contrast_name="clinician:lay_careful_vs_clinical",
@@ -516,6 +571,7 @@ def analyze_seed(
                 rows_by_arm=arm_rows,
                 scale=scale,
                 exchanges=exchanges,
+                errors_by_arm=arm_errors,
             )
             # (c) Identity contrasts within each register:
             contrasts["colloquial:patient_vs_clinician"] = analyze_contrast(
@@ -525,6 +581,7 @@ def analyze_seed(
                 rows_by_arm=arm_rows,
                 scale=scale,
                 exchanges=exchanges,
+                errors_by_arm=arm_errors,
             )
             contrasts["clinical:patient_vs_clinician"] = analyze_contrast(
                 contrast_name="clinical:patient_vs_clinician",
@@ -533,6 +590,7 @@ def analyze_seed(
                 rows_by_arm=arm_rows,
                 scale=scale,
                 exchanges=exchanges,
+                errors_by_arm=arm_errors,
             )
             contrasts["lay_careful:patient_vs_clinician"] = analyze_contrast(
                 contrast_name="lay_careful:patient_vs_clinician",
@@ -541,6 +599,7 @@ def analyze_seed(
                 rows_by_arm=arm_rows,
                 scale=scale,
                 exchanges=exchanges,
+                errors_by_arm=arm_errors,
             )
 
         analyzed_dimensions[key] = DimensionAnalysis(
@@ -562,7 +621,6 @@ def analyze_seed(
 def analyze_run_directories(
     run_dirs: Sequence[Path | str],
     scales: Mapping[str, list[str]] | None = None,
-    judge_of_record: str = DEFAULT_JUDGE_OF_RECORD,
 ) -> ThreeArmReport:
     """Performs three-arm analysis across one or more run directories."""
     if not run_dirs:
@@ -575,6 +633,7 @@ def analyze_run_directories(
     manifest_identities: list[str] = []
     engine_commits: list[str] = []
     seed_digests: dict[str, str] = {}
+    judges_of_record: list[str] = []
 
     for rdir in run_dirs:
         manifest, rows = load_run_rows(rdir)
@@ -596,6 +655,11 @@ def analyze_run_directories(
             if sid and s_sha:
                 seed_digests[sid] = s_sha
 
+        judge_rec = manifest.get("artifacts", {}).get("judge_of_record")
+        judge_name = judge_rec["judge_model"] if isinstance(judge_rec, dict) else str(judge_rec)
+        if judge_name not in judges_of_record:
+            judges_of_record.append(judge_name)
+
         all_rows.extend(rows)
 
     # Group rows by seed_id
@@ -613,7 +677,7 @@ def analyze_run_directories(
         run_ids=run_ids,
         manifest_identity_sha256=manifest_identities,
         engine_commits=engine_commits,
-        judge_of_record=judge_of_record,
+        judge_of_record=judges_of_record,
         seed_digests=seed_digests,
     )
 
@@ -633,7 +697,7 @@ def format_markdown_summary(report: ThreeArmReport) -> str:
         f"- **Run IDs**: {', '.join(report.provenance.run_ids) or 'None'}",
         f"- **Manifest identities**: {', '.join(report.provenance.manifest_identity_sha256) or 'None'}",
         f"- **Engine commits**: {', '.join(report.provenance.engine_commits) or 'None'}",
-        f"- **Judge of record**: {report.provenance.judge_of_record}",
+        f"- **Judge of record**: {', '.join(report.provenance.judge_of_record) or 'None'}",
         f"- **Seeds analyzed**: {len(report.seeds)}",
         "",
     ]
@@ -714,12 +778,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=None,
         help="Optional path to outcome dimensions data file",
     )
-    parser.add_argument(
-        "--judge-model",
-        type=str,
-        default=DEFAULT_JUDGE_OF_RECORD,
-        help="Judge model of record for wave-2 epoch",
-    )
 
     args = parser.parse_args(argv)
 
@@ -732,7 +790,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         report = analyze_run_directories(
             run_dirs=args.run_dir,
             scales=scales,
-            judge_of_record=args.judge_model,
         )
     except Wave1RefusalError as exc:
         print(f"REFUSED: {exc}", file=sys.stderr)

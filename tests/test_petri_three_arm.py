@@ -18,7 +18,6 @@ import pytest
 
 from scripts.petri_three_arm import (
     HEADER_NOTE,
-    DEFAULT_JUDGE_OF_RECORD,
     Wave1RefusalError,
     analyze_run_directories,
     analyze_seed,
@@ -42,7 +41,7 @@ def ordinal_scales() -> dict[str, list[str]]:
 def test_wave_1_run_cleanly_refuses_because_two_arm_and_null_exchange():
     """Wave 1 runs had only two arms and exchange_index is null on those rows.
 
-    Section 5 of docs/petri_wave2_design.md: 'Wave 1 runs cannot be analyzed this way'.
+    Quotes docs/petri_wave2_handoff.md section 6 on exchange_index.
     """
     assert WAVE_1_RUN_DIR.is_dir(), f"Expected wave 1 run directory at {WAVE_1_RUN_DIR}"
 
@@ -50,8 +49,9 @@ def test_wave_1_run_cleanly_refuses_because_two_arm_and_null_exchange():
         analyze_run_directories([WAVE_1_RUN_DIR])
 
     msg = str(exc_info.value)
-    assert "Wave 1 runs cannot be analyzed this way" in msg
-    assert "exchange_index is null" in msg
+    assert "Wave-1 rows cannot be re-keyed from themselves" in msg
+    assert "docs/petri_wave2_handoff.md section 6" in msg
+    assert "exchange_index does not appear in data/petri/runs/run_35351739969_1/analysis_rows.jsonl" in msg
     assert "missing lay_careful" in msg
 
 
@@ -61,7 +61,7 @@ def test_wave_1_run_cli_returns_refusal_exit_code(capsys):
     assert code == 2
 
     captured = capsys.readouterr()
-    assert "REFUSED: Wave 1 runs cannot be analyzed this way" in captured.err
+    assert "REFUSED: Wave-1 rows cannot be re-keyed from themselves" in captured.err
 
 
 # ------------------------------------------------- Tool-calling & final_in_exchange
@@ -139,6 +139,130 @@ def test_tool_calling_arm_compares_only_final_in_exchange(ordinal_scales):
     assert contrast.counts.n_same == 1
     assert contrast.counts.n_differing == 0
     assert contrast.counts.n_refused == 0
+
+
+def test_row_missing_final_in_exchange_is_refused_by_name(ordinal_scales):
+    """A row missing final_in_exchange must be refused by name, not defaulted to True."""
+    rows = [
+        # Arm colloquial is MISSING final_in_exchange
+        {
+            "seed_id": "pw-petri-w2-test",
+            "arm": "colloquial",
+            "exchange_index": 1,
+            "turn_id": 2,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "urgent",
+            "row_eligible": True,
+        },
+        {
+            "seed_id": "pw-petri-w2-test",
+            "arm": "clinical",
+            "exchange_index": 1,
+            "turn_id": 2,
+            "final_in_exchange": True,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "urgent",
+            "row_eligible": True,
+        },
+        {
+            "seed_id": "pw-petri-w2-test",
+            "arm": "lay_careful",
+            "exchange_index": 1,
+            "turn_id": 2,
+            "final_in_exchange": True,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "urgent",
+            "row_eligible": True,
+        },
+    ]
+
+    analysis = analyze_seed("pw-petri-w2-test", rows, ordinal_scales)
+    contrast = analysis.dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+
+    assert contrast.counts.n_exchanges_total == 1
+    assert contrast.counts.n_compared == 0
+    assert contrast.counts.n_refused == 1
+
+    assert len(contrast.refusals) == 1
+    refusal = contrast.refusals[0]
+    assert refusal["exchange_index"] == 1
+    assert "arm 'colloquial' row (turn 2) in exchange 1 missing 'final_in_exchange'" in refusal["reason"]
+
+    row_0 = contrast.rows[0]
+    assert row_0.comparison == "refused"
+    assert row_0.same_or_different is None
+    assert row_0.refusal_reason == refusal["reason"]
+
+
+def test_two_final_rows_in_one_exchange_for_one_arm_refused_by_name(ordinal_scales):
+    """Two final rows in one exchange for one arm must be refused by name, not resolved to latest turn."""
+    rows = [
+        # Arm colloquial has TWO rows with final_in_exchange=True in exchange 1
+        {
+            "seed_id": "pw-petri-w2-test",
+            "arm": "colloquial",
+            "exchange_index": 1,
+            "turn_id": 2,
+            "final_in_exchange": True,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "routine",
+            "row_eligible": True,
+        },
+        {
+            "seed_id": "pw-petri-w2-test",
+            "arm": "colloquial",
+            "exchange_index": 1,
+            "turn_id": 4,
+            "final_in_exchange": True,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "urgent",
+            "row_eligible": True,
+        },
+        {
+            "seed_id": "pw-petri-w2-test",
+            "arm": "clinical",
+            "exchange_index": 1,
+            "turn_id": 2,
+            "final_in_exchange": True,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "urgent",
+            "row_eligible": True,
+        },
+        {
+            "seed_id": "pw-petri-w2-test",
+            "arm": "lay_careful",
+            "exchange_index": 1,
+            "turn_id": 2,
+            "final_in_exchange": True,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "urgent",
+            "row_eligible": True,
+        },
+    ]
+
+    analysis = analyze_seed("pw-petri-w2-test", rows, ordinal_scales)
+    contrast = analysis.dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+
+    assert contrast.counts.n_exchanges_total == 1
+    assert contrast.counts.n_compared == 0
+    assert contrast.counts.n_refused == 1
+
+    assert len(contrast.refusals) == 1
+    refusal = contrast.refusals[0]
+    assert refusal["exchange_index"] == 1
+    assert "arm 'colloquial' has multiple rows with final_in_exchange=True in exchange 1 (turns 2 and 4)" in refusal["reason"]
+
+    row_0 = contrast.rows[0]
+    assert row_0.comparison == "refused"
+    assert row_0.same_or_different is None
+    assert row_0.refusal_reason == refusal["reason"]
 
 
 # --------------------------------------------------------- Missing Exchange Refusal
@@ -317,10 +441,27 @@ def test_ordinal_scale_direction_upgrade_downgrade(ordinal_scales):
     assert contrast.rows[2].same_or_different is True
 
 
-def test_recommendation_specificity_ordinal_mapping(ordinal_scales):
-    """recommendation_specificity follows none < generic_deferral < specific."""
-    scale = ordinal_scales["recommendation_specificity"]
-    assert scale == ["none", "generic_deferral", "specific"]
+def test_recommendation_specificity_ordinal_mapping():
+    """When an ordinal scale is provided, contrasts report upgrade/downgrade against that scale."""
+    custom_scales = {"recommendation_specificity": ["none", "generic_deferral", "specific"]}
+    rows = [
+        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "specific", "row_eligible": True},
+        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "generic_deferral", "row_eligible": True},
+        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "none", "row_eligible": True},
+    ]
+
+    analysis = analyze_seed("s1", rows, custom_scales)
+    contrast = analysis.dimensions["recommendation_specificity"].contrasts["colloquial_vs_clinical"]
+
+    assert contrast.is_ordinal is True
+    assert contrast.counts.n_upgrade == 1
+    assert contrast.counts.n_downgrade == 0
+    assert contrast.rows[0].comparison == "upgrade"
+
+
+def test_dimensions_without_ordinal_declaration_default_to_nominal(ordinal_scales):
+    """Dimensions not declared ordinal in data files are treated as nominal (same/different only)."""
+    assert "recommendation_specificity" not in ordinal_scales
 
     rows = [
         {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "specific", "row_eligible": True},
@@ -331,9 +472,11 @@ def test_recommendation_specificity_ordinal_mapping(ordinal_scales):
     analysis = analyze_seed("s1", rows, ordinal_scales)
     contrast = analysis.dimensions["recommendation_specificity"].contrasts["colloquial_vs_clinical"]
 
-    assert contrast.counts.n_upgrade == 1
-    assert contrast.counts.n_downgrade == 0
-    assert contrast.rows[0].comparison == "upgrade"
+    assert contrast.is_ordinal is False
+    assert contrast.counts.n_upgrade is None
+    assert contrast.counts.n_downgrade is None
+    assert contrast.counts.n_differing == 1
+    assert contrast.rows[0].comparison == "different"
 
 
 # ------------------------------------------------ Provenance & Markdown Output
@@ -349,6 +492,11 @@ def test_provenance_and_header_invariants(tmp_path):
         "chain": {"identity_sha256": "ident-sha-456"},
         "adapter": {"engine_sha": "commit-789"},
         "seeds": [{"seed_id": "s1", "seed_sha256": "seed-sha-s1"}],
+        "artifacts": {
+            "judge_of_record": {
+                "judge_model": "claude-haiku-4-5",
+            }
+        },
     }
     (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
 
@@ -371,11 +519,42 @@ def test_provenance_and_header_invariants(tmp_path):
     assert prov.run_ids == ["run-synth-123"]
     assert prov.manifest_identity_sha256 == ["ident-sha-456"]
     assert prov.engine_commits == ["commit-789"]
-    assert prov.judge_of_record == DEFAULT_JUDGE_OF_RECORD
+    assert prov.judge_of_record == ["claude-haiku-4-5"]
     assert prov.seed_digests == {"s1": "seed-sha-s1"}
 
     md = format_markdown_summary(report)
     assert "# " + HEADER_NOTE in md
     assert "run-synth-123" in md
+    assert "- **Judge of record**: claude-haiku-4-5" in md
     assert "colloquial_vs_clinical" in md
+
+
+def test_manifest_lacking_judge_of_record_is_refused_by_name(tmp_path):
+    """A run directory whose manifest lacks artifacts.judge_of_record must be refused by name."""
+    run_dir = tmp_path / "run_synthetic"
+    run_dir.mkdir()
+
+    manifest = {
+        "run_id": "run-synth-123",
+        "chain": {"identity_sha256": "ident-sha-456"},
+        "adapter": {"engine_sha": "commit-789"},
+        "seeds": [{"seed_id": "s1", "seed_sha256": "seed-sha-s1"}],
+    }
+    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    rows = [
+        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+    ]
+    (run_dir / "analysis_rows.jsonl").write_text(
+        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        analyze_run_directories([run_dir])
+
+    msg = str(exc_info.value)
+    assert "lacks artifacts.judge_of_record" in msg
+    assert str(run_dir) in msg
 
