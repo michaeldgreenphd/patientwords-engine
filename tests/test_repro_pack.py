@@ -377,3 +377,50 @@ def test_unreadable_entry_does_not_hide_an_escalation(packed, capsys):
     out = capsys.readouterr().out
     assert f"ESCALATION: sent pack {v}" in out
     assert "UNREADABLE: entry 3 (no pack_version): missing pack_version, vendor, manifest" in out
+
+
+# ---- templates (2026-09-23): request ids only where captured; every judge named
+
+_DOCS = Path(_MODULE_PATH).resolve().parents[1] / "docs"
+
+
+def test_request_id_text_counts_what_the_records_hold():
+    """Regression: the README told every vendor it could correlate each call by
+    request id, but the OpenRouter-routed vendors' records carry none, and records
+    from before 2026-07-23 carry none either."""
+    assert ae._request_id_text([{"request_id": "a"}, {"request_id": "b"}]).startswith("All 2 records carry")
+    some = ae._request_id_text([{"request_id": "a"}, {"request_id": None}, {}])
+    assert some.startswith("1 of the 3 records carry") and "the other 2 carry none" in some
+    none = ae._request_id_text([{"request_id": None}, {}])
+    assert none.startswith("None of these records carries") and "correlate" not in none
+
+
+def test_judges_text_names_primary_second_and_failed_codings():
+    """Regression: the README said 'a blinded judge' while packs carry second-judge
+    rows too."""
+    rows = ([{"judge_model": "judge-p", "tier": "routine"}] * 3
+            + [{"judge_model": "prov:judge-s", "tier": "routine"}, {"judge_model": "prov:judge-s", "tier": None}])
+    text = ae._judges_text(rows)
+    assert text.startswith("3 by `judge-p` (the primary judge) and 2 by `prov:judge-s` (a second judge")
+    assert "never replace the primary coding" in text
+    assert "1 of these rows returned no usable tier" in text
+    assert ae._judges_text([]) == "none yet."
+    assert "(judge not recorded)" in ae._judges_text([{"tier": "routine"}])
+
+
+def test_pack_readme_carries_the_counted_sentences(packed):
+    bundle = _build(packed)
+    readme = (bundle / "README.md").read_text()
+    assert "All 4 records carry the request id your API returned" in readme
+    assert "4 tier codings of those responses: 4 by `judge-x` (the primary judge)." in readme
+
+
+def test_templates_make_no_unconditional_request_id_or_single_judge_claim():
+    readme = (_DOCS / "repro_pack_readme_template.md").read_text(encoding="utf-8")
+    assert "{request_ids}" in readme and "{judges}" in readme
+    assert "correlate each call by request id" not in readme and "by a\n  blinded judge" not in readme
+    note = (_DOCS / "repro_pack_disclosure_note_template.md").read_text(encoding="utf-8")
+    assert "request ids for log\ncorrelation" not in note and "request ids for log correlation" not in note
+    assert "request ids for [K] of [M]" in note and "second judge" in note
+    # a send after publication cannot claim to precede it (Deviation D2)
+    assert "[Already public:" in note and "[Not yet public:" in note

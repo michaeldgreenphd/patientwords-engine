@@ -1926,6 +1926,51 @@ def _newest_by_key(entries: list[dict]) -> tuple[dict[PackKey, dict], dict[PackK
     return newest, sent_versions
 
 
+def _request_id_text(rows: list[dict]) -> str:
+    """The pack README's request-id sentence, from the records themselves. Request
+    ids exist only where a provider's response headers carried one (capture began
+    2026-07-23; calls routed through an aggregator carry none), so the README says
+    how many records have one instead of promising one per call."""
+    n = len(rows)
+    k = sum(1 for r in rows if r.get("request_id"))
+    if n and k == n:
+        return (f"All {n} records carry the request id your API returned, so your infrastructure "
+                f"team can correlate each call by request id and timestamp.")
+    if k:
+        return (f"{k} of the {n} records carry the request id your API returned and can be "
+                f"correlated by request id and timestamp; the other {n - k} carry none and can be "
+                f"matched only by timestamp and the returned model string.")
+    return ("None of these records carries a request id from your API, so they can be matched "
+            "only by timestamp and the returned model string.")
+
+
+def _judges_text(judgments: list[dict]) -> str:
+    """The pack README's judge breakdown: codings per judge model, which judge is
+    primary and which a second judge (`is_secondary_judge`), and how many rows
+    returned no usable tier. The pack carries every judge's rows for the vendor's
+    responses, so the README names them all rather than 'a judge'."""
+    if not judgments:
+        return "none yet."
+    counts: dict[str, int] = {}
+    for j in judgments:
+        name = j.get("judge_model") or "(judge not recorded)"
+        counts[name] = counts.get(name, 0) + 1
+    parts = []
+    for name, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])):
+        role = ("a second judge, whose codings measure inter-judge agreement and never replace "
+                "the primary coding") if is_secondary_judge(name) else "the primary judge"
+        parts.append(f"{n} by `{name}` ({role})")
+    if len(parts) <= 2:
+        text = " and ".join(parts) + "."
+    else:
+        text = "; ".join(parts[:-1]) + "; and " + parts[-1] + "."
+    failed = sum(1 for j in judgments if j.get("tier") is None)
+    if failed:
+        text += (f" {failed} of these rows returned no usable tier; they are kept as history and "
+                 f"count as no coding.")
+    return text
+
+
 def repro_pack(args) -> Path:
     """Assemble a per-vendor reproduction bundle from the public archive alone.
 
@@ -1947,11 +1992,15 @@ def repro_pack(args) -> Path:
     if not vendor_rows:
         raise SystemExit(f"no advice records match vendor {args.vendor!r}")
     jpath = adv_dir / f"judgments_{stem}.jsonl"
-    j_lines = []
+    j_lines, j_rows = [], []
     if jpath.is_file():
         for ln in jpath.read_text(encoding="utf-8").splitlines():
-            if ln and _vendor_match(json.loads(ln).get("model"), args.vendor):
+            if not ln:
+                continue
+            j = json.loads(ln)
+            if _vendor_match(j.get("model"), args.vendor):
                 j_lines.append(ln)
+                j_rows.append(j)
     received = [r.get("received_utc") or r.get("sent_utc") or "" for r in vendor_rows]
     sents = sorted(r.get("sent_utc") or "" for r in vendor_rows)
     # None-safe: some providers return no build fingerprint (observed on the
@@ -1987,6 +2036,7 @@ def repro_pack(args) -> Path:
     tmpl = tmpl_path.read_text(encoding="utf-8")
     readme = tmpl.format(
         vendor=args.vendor, n_records=len(vendor_rows), n_judgments=len(j_lines),
+        request_ids=_request_id_text(vendor_rows), judges=_judges_text(j_rows),
         window=(sents[0][:10] + " to " + sents[-1][:10]) if sents and sents[0] else "-",
         builds=build_txt, rubric_version=state.get("rubric_version") or "none yet",
         chain_head=state.get("responses_chain_head"), pack_version=manifest["pack_version"],
