@@ -2984,6 +2984,80 @@ def test_pushed_fire_entry_refuses_a_journal_it_cannot_read_at_the_previous_tip(
         assert ft.pushed_fire_entry(repo, "scenario-generation", [entry], **kwargs) is None, over
 
 
+def _lose_blob(repo, git, commit, relpath="ops/trigger_journal.jsonl"):
+    """Delete the loose object holding `relpath` at `commit`. This is what a blobless clone whose lazy fetch failed
+    looks like to `git show`: the commit and its tree are present and name the blob, but the object store cannot
+    produce it. Returns the blob id."""
+    blob = git("rev-parse", f"{commit}:{relpath}").stdout.strip()
+    (repo / ".git" / "objects" / blob[:2] / blob[2:]).unlink()
+    return blob
+
+
+def test_budget_gate_does_not_leave_out_a_replayed_fire_when_the_previous_tips_journal_cannot_be_fetched(
+        repo, tmp_path, capsys, monkeypatch):
+    """Review of the G4 change (2026-09-23), finding R3. The gate jobs check out full history blobless, so the
+    journal blob at --push-before is fetched lazily whenever the push also changed the journal. `cat-file -e` checks
+    the commit alone, and a failed `git show` read as "no journal there", so the replay case below left the fire's
+    entry out after all: park 0.01 + params 1.50 was counted where fire 1.50 + park 0.01 + params 1.50 = 3.01 is
+    true. The journal is now confirmed absent from the tree (`git ls-tree`) before it may read as empty."""
+    git, before, fired, gate = _g4_fired(repo, tmp_path, monkeypatch, "scenario-generation")
+    fire_bytes = trigger_path(repo, "scenario-generation").read_text(encoding="utf-8")
+    assert ft.main(["park", "--repo", str(repo), "--trigger", "scenario-generation", "--no-git"]) == 0
+    git("add", "-A")
+    git("commit", "-qm", "Fire scenario-generation: park")
+    parked = git("rev-parse", "HEAD").stdout.strip()
+    # the replay push restores the paid bytes AND changes the journal (the fire is resolved; it still holds today),
+    # so the journal blob at `parked` is not HEAD's and is the one a blobless clone fetches on demand
+    trigger_path(repo, "scenario-generation").write_text(fire_bytes, encoding="utf-8")
+    rows = ft.load_journal(journal_path(repo))
+    rows[0].update(resolved=True, resolved_utc="2026-09-23T12:00:00Z")
+    ft.save_journal(journal_path(repo), rows)
+    git("commit", "-qam", "restore the paid bytes and resolve the fire")
+    lost = _lose_blob(repo, git, parked)
+    assert lost != git("rev-parse", "HEAD:ops/trigger_journal.jsonl").stdout.strip()
+    capsys.readouterr()
+
+    assert gate("--push-before", parked, "--ref", "main", "--run-attempt", "1") == 6
+    captured = capsys.readouterr()
+    assert "no scenario-generation journal entry is shown to be this push's own fire" in captured.out
+    assert "max_spend 1.50 + today's committed 1.51 (landed 0.00 + held today 1.51)" in captured.err
+
+
+def test_the_push_bindings_read_an_unfetchable_journal_as_unreadable_not_empty(repo, monkeypatch):
+    """journal_at_previous_tip serves both push bindings, so the same unfetchable blob must stop petri-audit's
+    too: journal_nonces_at read it as "no nonces" and push_reservation_problems then passed a replay of a nonce
+    already on the branch. Only a commit whose tree has no journal reads as empty."""
+    monkeypatch.setattr(ft, "utc_now", lambda: datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc))
+    git = _git_repo(repo)
+    (repo / "README.md").write_text("base\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "no journal yet")
+    bare = git("rev-parse", "HEAD").stdout.strip()
+    reservation = {"trigger": "petri-audit", "fired_utc": "2026-09-23T11:00:00Z", "resolved": False,
+                   "evicted": False, "nonce": "pilot-1", "max_spend": 1.0, "lane": "anthropic", "ref": "main"}
+    journal_path(repo).write_text(json.dumps(reservation) + "\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "the reservation")
+    reserved = git("rev-parse", "HEAD").stdout.strip()
+    journal_path(repo).write_text(json.dumps({**reservation, "resolved": True}) + "\n", encoding="utf-8")
+    git("commit", "-qam", "a later journal, so the blob at `reserved` is not HEAD's")
+
+    assert ft.journal_at_previous_tip(repo, bare) == ([], []), "a tree with no journal has no earlier entries"
+    assert ft.journal_at_previous_tip(repo, reserved) == ([reservation], [])
+    assert ft.journal_nonces_at(repo, reserved, "petri-audit") == {"pilot-1"}
+    for unreadable in (None, "", "  ", "0" * 40, "e" * 40):
+        assert ft.journal_at_previous_tip(repo, unreadable) == (None, []), unreadable
+
+    _lose_blob(repo, git, reserved)
+    assert ft.journal_at_previous_tip(repo, reserved) == (None, [])
+    assert ft.journal_nonces_at(repo, reserved, "petri-audit") is None
+    paid = {"target": "anthropic/claude-haiku-4-5", "mode": "run", "max_spend": "1.00", "_nonce": "pilot-1"}
+    problems = ft.push_reservation_problems(repo, "petri-audit", paid, reserved, required=True)
+    assert problems and "could not be read" in problems[0] and "blobless" in problems[0]
+    # the commit with no journal is untouched by the lost blob, and still reads as empty
+    assert ft.journal_at_previous_tip(repo, bare) == ([], [])
+
+
 G4_WORKFLOWS = {"scenario-generation": "scenario_generation.yml", "model-evaluation": "model_evaluation.yml",
                 "advice-eval": "advice_evaluation.yml"}
 

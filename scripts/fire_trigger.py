@@ -1515,23 +1515,49 @@ def fire_ref(repo):
     return branch
 
 
+def journal_at_previous_tip(repo: Path, before: object) -> tuple[list[dict] | None, list[str]]:
+    """(entries, problems) of the journal at `before`, a push's previous tip, for the two push bindings:
+    journal_nonces_at (petri-audit) and pushed_fire_entry (the other paid lanes). entries is [] only when that
+    commit provably has no journal. It is None whenever git cannot answer: no ref, the all-zero sha a ref creation
+    reports, a commit this clone does not have, or a journal that is in the commit's tree but cannot be read.
+
+    None is "unreadable", never "empty". `_git_show` fails the same way for a path that is not in the tree and for
+    content git cannot read, so neither a missing commit nor a missing blob may be read as "no earlier entries".
+    The commit is confirmed to exist first; a shallow clone lacks it. The blob is the case that check left open.
+    The gate jobs check out full history blobless (`filter: blob:none`), so a journal blob that differs from
+    HEAD's is fetched lazily when `git show` asks for it. A failed fetch (network, auth, a promisor that has gone
+    away) exits nonzero just like an absent path. Both bindings read that as "no earlier entries" and so admitted a
+    replay. Reproduced: a fire, then a park as the previous tip, then a push restoring the fire's bytes. The fire's
+    entry was left out, and 2.41 was counted as 1.51 (review of the G4 change, 2026-09-23). `git ls-tree` reads only
+    trees, which a blobless clone holds, so it tells the two apart: a path listed in the tree whose content could
+    not be read is None.
+    """
+    if not isinstance(before, str) or not before.strip():
+        return None, []
+    before = before.strip()
+    if set(before) == {"0"}:
+        return None, []                   # the all-zero sha a ref creation reports: there is no "before" to read
+    if _git(repo, "cat-file", "-e", f"{before}^{{commit}}").returncode != 0:
+        return None, []
+    entries, problems = journal_at(repo, before)
+    if entries is not None:
+        return entries, problems
+    listed = _git(repo, "ls-tree", "--name-only", before, "--", JOURNAL_RELPATH.as_posix())
+    if listed.returncode != 0 or listed.stdout.strip():
+        return None, []                   # in the tree, or git cannot say: the content was there and was not read
+    return [], []
+
+
 def journal_nonces_at(repo, ref, trigger):
     """The nonces `trigger`'s journal entries carry at `ref`, or None when git cannot answer.
 
-    None is "unreadable", never "empty": `_git_show` cannot tell a ref this clone does not have from a ref whose
-    tree carries no journal, and reading the second as the first would turn a shallow checkout into a pass. So the
-    commit is confirmed to exist first, and only then is a missing journal read as no reservations.
+    None is "unreadable", never "empty" (journal_at_previous_tip): a commit this clone does not have, or a journal
+    in its tree whose content could not be fetched, is not a journal with no reservations, and reading it as one
+    would turn a shallow or blobless checkout into a pass. Only a commit whose tree has no journal reads as empty.
     """
-    if not isinstance(ref, str) or not ref.strip():
-        return None
-    ref = ref.strip()
-    if set(ref) == {"0"}:
-        return None                       # the all-zero sha a ref creation reports: there is no "before" to read
-    if _git(repo, "cat-file", "-e", f"{ref}^{{commit}}").returncode != 0:
-        return None
-    entries, _ = journal_at(repo, ref)
+    entries, _ = journal_at_previous_tip(repo, ref)
     if entries is None:
-        return set()
+        return None
     return {e["nonce"] for e in entries
             if e.get("trigger") == trigger and isinstance(e.get("nonce"), str) and e["nonce"]}
 
@@ -1605,7 +1631,8 @@ def push_reservation_problems(repo, trigger, params, before, required):
     if earlier is None:
         return [f"the {trigger} journal at {str(before).strip()!r} could not be read, so whether an earlier push "
                 f"already took the reservation for _nonce {nonce!r} cannot be established; the gate needs the "
-                "ref's history (check out with fetch-depth: 0), and a paid run is refused rather than guessed"]
+                "ref's history (check out with fetch-depth: 0) and, in a blobless clone, the journal's content at "
+                "that commit, and a paid run is refused rather than guessed"]
     if nonce in earlier:
         return [f"the {trigger} reservation for _nonce {nonce!r} was already on this ref before this push: "
                 "fire_trigger.py writes the entry and the trigger file in one commit, so this content was put "
@@ -2373,8 +2400,9 @@ def pushed_fire_entry(repo: Path, trigger: str, entries: list[dict], *, digest: 
     ORDERED UNION rule). None - nothing removed, the double count the gate applied before, which fails closed -
     whenever that cannot be established: no `digest`, no `ref`, no `before` (a workflow_dispatch, whose run has no
     journal entry of its own), no `attempt` or any attempt but the first, the all-zero sha of a ref creation, a
-    commit this clone does not have, or a journal at `before` with a line that does not parse (that line could be
-    the entry). The entry's max_spend is
+    commit this clone does not have, a journal in `before`'s tree whose content could not be fetched
+    (journal_at_previous_tip), or a journal at `before` with a line that does not parse (that line could be the
+    entry). The entry's max_spend is
     deliberately NOT compared with the params' commitment: advice-eval's --params-file holds the resolved params
     with the workflow's defaults filled in, so a genuine fire could fail that comparison. Several entries can
     qualify only when one push carries several fires of the same bytes, which `publish` refuses; a push runs the
@@ -2385,17 +2413,12 @@ def pushed_fire_entry(repo: Path, trigger: str, entries: list[dict], *, digest: 
     # exact "1", not int(): a missing, empty or unparseable attempt is not known to be the first, so it counts twice
     if not isinstance(attempt, str) or attempt.strip() != "1":
         return None
-    if not isinstance(before, str) or not before.strip() or set(before.strip()) == {"0"}:
+    # None from journal_at_previous_tip is "unreadable" (no ref, the all-zero sha, a commit this clone lacks, a blob
+    # a blobless clone could not fetch); only [] - a tree with no journal - may read as "no earlier entries"
+    earlier, problems = journal_at_previous_tip(repo, before)
+    if earlier is None or problems:
         return None
-    before = before.strip()
-    # confirmed to exist first, as journal_nonces_at does: _git_show cannot tell a commit this clone lacks (a
-    # shallow checkout) from one whose tree has no journal, and only the second may read as "no earlier entries"
-    if _git(repo, "cat-file", "-e", f"{before}^{{commit}}").returncode != 0:
-        return None
-    earlier, problems = journal_at(repo, before)
-    if problems:
-        return None
-    was_there = {(e.get("trigger"), e.get("fired_utc")) for e in (earlier or [])}
+    was_there = {(e.get("trigger"), e.get("fired_utc")) for e in earlier}
     candidates = [e for e in entries
                   if e.get("trigger") == trigger
                   and e.get("params_sha256") == digest
