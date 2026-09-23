@@ -320,3 +320,60 @@ def test_legacy_whole_file_entries_are_checked_by_their_own_definition(packed, c
     assert _check(packed) == 0  # stale but unsent: reported, not escalated
     out = capsys.readouterr().out
     assert f"STALE  {v}  acme" in out and "registry_sha256:" in out
+
+
+# ---- defect 3 (2026-09-23): entries of other lanes and unreadable entries never crash --check
+
+def _append_log(p, entry):
+    with open(p["log"], "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+# a pack entry from another lane: no stimuli file, its own manifest shape
+_OTHER_LANE_ENTRY = {"pack_version": "vpetri000001", "vendor": "acme",
+                     "manifest": {"run_ids": ["run_1"], "chain_head": "abc"},
+                     "built_utc": "2026-09-30T00:00:00Z", "sent_utc": None}
+
+
+def test_new_build_entries_declare_the_advice_lane(packed):
+    _build(packed)
+    assert [e.get("lane") for e in _log(packed)] == ["advice"]
+
+
+def test_entries_of_another_lane_are_skipped_and_counted(packed, capsys):
+    v = _build_from(packed, packed["stim"], "dist1")
+    _append_log(packed, dict(_OTHER_LANE_ENTRY, lane="petri"))
+    capsys.readouterr()
+    assert _check(packed) == 0
+    out = capsys.readouterr().out
+    assert "skipped: 1 log entry of lane 'petri'" in out and f"FRESH  {v}  acme" in out
+
+
+def test_entry_without_stimuli_file_is_named_not_a_crash(packed, capsys):
+    """Regression: an entry without manifest.stimuli_file raised KeyError (exit 1)
+    and printed nothing; the contract gate treated only exit 2 as an error, so the
+    crash passed it silently. An undeclared lane reads as advice, so the entry is
+    named as unreadable and the check exits 3."""
+    v = _build_from(packed, packed["stim"], "dist1")
+    _append_log(packed, _OTHER_LANE_ENTRY)
+    capsys.readouterr()
+    assert _check(packed) == 3
+    out = capsys.readouterr().out
+    assert "UNREADABLE: entry 2 (vpetri000001): missing manifest.stimuli_file" in out
+    assert f"FRESH  {v}  acme" in out  # the readable entries are still checked
+
+
+def test_unreadable_entry_does_not_hide_an_escalation(packed, capsys):
+    """Regression: with a sent, stale pack in the log, the crash on the unreadable
+    entry exited 1 before the escalation was printed."""
+    v = _build_from(packed, packed["stim"], "dist1")
+    _send(packed, v)
+    _append_log(packed, {"note": "no pack fields at all"})
+    rub = json.loads(packed["rubric"].read_text())
+    rub["version"] = "t7"
+    packed["rubric"].write_text(json.dumps(rub), encoding="utf-8")
+    capsys.readouterr()
+    assert _check(packed) == 2
+    out = capsys.readouterr().out
+    assert f"ESCALATION: sent pack {v}" in out
+    assert "UNREADABLE: entry 3 (no pack_version): missing pack_version, vendor, manifest" in out

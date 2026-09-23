@@ -1848,6 +1848,42 @@ def _log_entries(log_path) -> list[dict]:
     return _read_jsonl(p) if p.is_file() else []
 
 
+# The disclosure log is one public file; the lane field says which tooling owns an
+# entry. Entries written before 2026-09-23 carry no lane, and every one of them is
+# an advice-lane build or send, so an absent (or null) lane reads as advice.
+ADVICE_LANE = "advice"
+
+
+def _partition_log(entries: list) -> tuple[list[dict], dict[str, int], list[str]]:
+    """Split disclosure-log entries into readable advice-lane entries, a count of
+    entries per other lane (not this check's to judge), and one description per
+    advice-lane entry that lacks what a pack entry needs. Nothing is dropped
+    without being counted or named."""
+    advice: list[dict] = []
+    other_lanes: dict[str, int] = {}
+    unreadable: list[str] = []
+    for n, e in enumerate(entries, 1):
+        if not isinstance(e, dict):
+            unreadable.append(f"entry {n}: not a JSON object")
+            continue
+        lane = e.get("lane") or ADVICE_LANE
+        if lane != ADVICE_LANE:
+            other_lanes[str(lane)] = other_lanes.get(str(lane), 0) + 1
+            continue
+        man = e.get("manifest")
+        missing = [k for k in ("pack_version", "vendor") if not isinstance(e.get(k), str) or not e.get(k)]
+        if not isinstance(man, dict):
+            missing.append("manifest")
+        elif not isinstance(man.get("stimuli_file"), str) or not man.get("stimuli_file"):
+            missing.append("manifest.stimuli_file")
+        if missing:
+            unreadable.append(f"entry {n} ({e.get('pack_version') or 'no pack_version'}): "
+                              f"missing {', '.join(missing)}")
+            continue
+        advice.append(e)
+    return advice, other_lanes, unreadable
+
+
 def _archive_id(stimuli_file: str) -> str:
     """The archive a pack is built from: the stimuli file's stem, which names the
     archive's own files (responses_<stem>.jsonl, judgments_<stem>.jsonl). The stem,
@@ -1872,7 +1908,8 @@ def _pack_key(entry: dict) -> PackKey:
 
 def _newest_by_key(entries: list[dict]) -> tuple[dict[PackKey, dict], dict[PackKey, set[str]]]:
     """Per (vendor, archive): the newest pack by BUILD order, and the set of pack
-    versions with a recorded send.
+    versions with a recorded send. `entries` are readable advice-lane entries
+    (`_partition_log`).
 
     A send entry is a copy of its build entry appended later, so it never makes its
     pack "newer" than a pack built after it; it stands in for the build only when
@@ -1962,9 +1999,9 @@ def repro_pack(args) -> Path:
     if not any(e.get("pack_version") == manifest["pack_version"] for e in entries):
         # supersedes names the newest earlier pack for the SAME (vendor, archive):
         # a pack for another archive of this vendor's records is not replaced by this one
-        newest, _ = _newest_by_key(entries)
+        newest, _ = _newest_by_key(_partition_log(entries)[0])
         prior = newest.get((args.vendor, _archive_id(state["stimuli_file"])))
-        entry = {"pack_version": manifest["pack_version"], "vendor": args.vendor,
+        entry = {"pack_version": manifest["pack_version"], "lane": ADVICE_LANE, "vendor": args.vendor,
                  "manifest": manifest, "built_utc": utc_now_iso(), "sent_utc": None,
                  "sent_to": None,
                  "supersedes": prior["pack_version"] if prior else None,
@@ -1995,13 +2032,25 @@ def repro_pack_check(args) -> int:
     Exit 2 when a (vendor, archive)'s newest pack was sent and is now stale, or
     when an earlier pack for that (vendor, archive) was sent and a newer one is
     built but unsent: either way the vendor holds an outdated bundle. A stale
-    pack that was never sent is reported, not escalated."""
+    pack that was never sent is reported, not escalated.
+
+    Entries of another lane (a declared `lane` other than "advice") are counted
+    and skipped: this check cannot judge them. An advice-lane entry missing what
+    a pack entry needs is named as UNREADABLE and gives exit 3 when nothing
+    escalates, instead of the KeyError (exit 1) that the contract gate used to
+    pass silently while it hid every other line of the check."""
     entries = _log_entries(args.log)
     if not entries:
         print("disclosure log empty - no packs to check")
         return 0
+    advice, other_lanes, unreadable = _partition_log(entries)
+    for lane, n in sorted(other_lanes.items()):
+        print(f"skipped: {n} log entr{'y' if n == 1 else 'ies'} of lane {lane!r} "
+              f"(this check covers lane {ADVICE_LANE!r} only)")
+    for problem in unreadable:
+        print(f"UNREADABLE: {problem} - not checked")
     escalate = False
-    newest, sent_versions = _newest_by_key(entries)
+    newest, sent_versions = _newest_by_key(advice)
     for key in sorted(newest):
         vendor, archive = key
         e = newest[key]
@@ -2026,12 +2075,14 @@ def repro_pack_check(args) -> int:
             print(f"note: {vendor} {archive}: SENT pack(s) {', '.join(sorted(sent))}; newest built is "
                   f"{e['pack_version']} (unsent) - send the superseding pack")
             escalate = True
-    return 2 if escalate else 0
+    if escalate:
+        return 2
+    return 3 if unreadable else 0
 
 
 def repro_pack_record_sent(args) -> None:
     entries = _log_entries(args.log)
-    match = [e for e in entries if e.get("pack_version") == args.record_sent]
+    match = [e for e in entries if isinstance(e, dict) and e.get("pack_version") == args.record_sent]
     if not match:
         raise SystemExit(f"pack {args.record_sent!r} not in {args.log}")
     base = match[-1]
@@ -2165,7 +2216,8 @@ def build_parser() -> argparse.ArgumentParser:
     rp.add_argument("--note", default="")
     rp.add_argument("--check", action="store_true",
                     help="recompute every manifest input; FRESH/STALE for the newest pack of each "
-                         "(vendor, archive); exit 2 when a sent pack is stale or superseded-but-unsent")
+                         "(vendor, archive); exit 2 when a sent pack is stale or superseded-but-unsent, "
+                         "3 when an advice-lane log entry cannot be read (other lanes are skipped)")
     rp.add_argument("--record-sent", metavar="PACK_VERSION",
                     help="append a send event for an existing pack version")
     rp.add_argument("--sent-to", default="", help="role/channel reference only - never private contact details")
