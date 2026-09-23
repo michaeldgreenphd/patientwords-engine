@@ -844,3 +844,75 @@ def test_the_start_marker_is_written_only_once_the_target_model_is_built(tmp_pat
     assert code == 0 and marker.is_file() and next((tmp_path / "petri-run" / "logs").glob("*.eval"))
     assert marker.stat().st_mtime <= next((tmp_path / "petri-run" / "logs").glob("*.eval")).stat().st_mtime
     capsys.readouterr()
+
+
+# --------------------------------------- an openrouter/ target, built offline (2026-09-23)
+
+OPENROUTER_TARGET = "openrouter/openai/gpt-5.4-mini"
+
+
+def _offline_openrouter(monkeypatch, reply):
+    """The production OpenRouter provider built with a dummy key, with only its
+    HTTP call replaced: `reply(request)` returns the ChatCompletion JSON the
+    endpoint would. Everything Inspect does between the request and the
+    ModelOutput (usage parsing and its cached-token subtraction, stop-reason
+    mapping, the retained ModelCall) runs as in a paid run; nothing leaves the
+    machine."""
+    from inspect_ai.model._providers.openai_compatible import OpenAICompatibleAPI
+    from openai.types.chat import ChatCompletion
+
+    async def fake_completion(self, request, config):
+        return ChatCompletion.model_validate(reply(request))
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "offline-dummy-key")
+    monkeypatch.setattr(OpenAICompatibleAPI, "_generate_completion", fake_completion)
+    return get_model(OPENROUTER_TARGET, config=GenerateConfig(temperature=1.0, max_tokens=1024))
+
+
+def _completion(text: str, *, n: int, finish: str = "stop", provider: str | None = "OpenAI", cached: int = 1024,
+                written: int = 512) -> dict:
+    out = {"id": f"gen-{n}", "object": "chat.completion", "created": 0, "model": "openai/gpt-5.4-mini",
+           "choices": [{"index": 0, "finish_reason": finish, "message": {"role": "assistant", "content": text}}],
+           "usage": {"prompt_tokens": 2000, "completion_tokens": 100, "total_tokens": 2100,
+                     "prompt_tokens_details": {"cached_tokens": cached, "cache_write_tokens": written}}}
+    if provider is not None:
+        out["provider"] = provider                 # OpenRouter's upstream host, a top-level field of the response
+    return out
+
+
+def test_an_openrouter_targets_cached_prompt_tokens_are_booked(run, tmp_path_factory, monkeypatch):
+    """Inspect subtracts cached prompt tokens from input_tokens for an
+    OpenAI-shaped response (and OpenRouter's cache writes too); the sidecar
+    priced input and output only, so a cached call was booked below its
+    charge. The manifest and the sidecar now price both cache counts."""
+    from scripts.petri_audit import spend
+
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    calls = iter(range(1, 100))
+    target = _offline_openrouter(monkeypatch, lambda request: _completion(f"reply {next(calls)}", n=0))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("or-logs"), token_limit=40000, cost_limit=5.0)
+    assert log.status == "success", log.error
+    run_dir = tmp_path_factory.mktemp("or-run") / "run_or"
+    result = adapt_run(Path(log.location), seed_set, run_dir, custody="github_actions_artifact:90d",
+                       spend={"max_spend_usd": 5.0, "judge_max_spend_usd": None, "journal_nonce": "or-1",
+                              "cost_limit_per_sample_usd": 5.0, "token_limit_per_sample": 40000},
+                       engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
+    assert result.refused == [] and len(result.records) == 2
+    row = next(r for r in result.manifest["usage"]["by_model"] if r["model"] == OPENROUTER_TARGET)
+    # four calls of 2000 prompt tokens: Inspect reports 1024 cached reads and 512 cache writes apart from input
+    assert (row["calls"], row["input_tokens"], row["input_tokens_cache_read"], row["input_tokens_cache_write"]) == (
+        4, 4 * 464, 4 * 1024, 4 * 512)
+    price = spend.resolve_price(OPENROUTER_TARGET)
+    expected = 4 * (464 * price.input_per_mtok + 100 * price.output_per_mtok + 1024 * price.input_per_mtok
+                    + 512 * 2 * price.input_per_mtok) / 1e6
+    assert result.manifest["usage"]["engine_priced_cost_usd"] == pytest.approx(expected)
+    without_cache = 4 * (464 * price.input_per_mtok + 100 * price.output_per_mtok) / 1e6
+    assert expected > without_cache, "what the sidecar used to book"
+    code = cli.main(["adapt", "--eval", str(Path(log.location)), "--out-dir", str(run_dir.parent / "run_or2"),
+                     "--custody", "github_actions_artifact:90d", "--target", OPENROUTER_TARGET, "--max-spend", "5",
+                     "--no-harness-commit", "--report"])
+    assert code == 0
+    sidecar = framework.load_json(run_dir.parent / "run_or2" / "run_or2.report.json")
+    assert sidecar["cost_usd"] == pytest.approx(expected) and sidecar["billing_channel"] == "openrouter"

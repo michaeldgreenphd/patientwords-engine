@@ -21,6 +21,14 @@ from .framework import ROOT, load_json, sha256_text
 PROVIDERS_PATH = ROOT / "data" / "advice_providers.json"
 FALLBACK_PRICING = (10.0, 50.0)          # scripts/advice_eval.py _FALLBACK_PRICING, USD per million tokens
 ZERO_PRICE_MODELS = ("mockllm/model", "mockllm/judge", "none/none")      # mockllm/judge: the local tests' judge (PR B)
+# Prompt-cache tokens, which Inspect reports apart from `input_tokens` (it subtracts cached reads from an OpenAI-shaped
+# prompt count, _openai.py model_output_from_openai; Anthropic reports reads and writes apart natively). Neither price
+# table carries a cache rate (data/advice_providers.json prices "worst-case, cache-miss rates"), so each is bounded
+# from the input rate, never priced at zero: a cache read costs at most the input rate (Anthropic ~0.1x, OpenAI below
+# 1x), and a cache write at most twice it (Anthropic: 1.25x for the 5-minute TTL, 2x for the 1-hour TTL). Fail-closed
+# upper bounds, not list prices; a registry cache-rate column would be the place to lower them (2026-09-23).
+CACHE_READ_INPUT_MULTIPLIER = 1.0
+CACHE_WRITE_INPUT_MULTIPLIER = 2.0
 
 
 @dataclass(frozen=True)
@@ -29,8 +37,17 @@ class Price:
     output_per_mtok: float
     source: str
 
-    def cost(self, input_tokens: int, output_tokens: int) -> float:
-        return input_tokens * self.input_per_mtok / 1e6 + output_tokens * self.output_per_mtok / 1e6
+    @property
+    def cache_read_per_mtok(self) -> float:
+        return self.input_per_mtok * CACHE_READ_INPUT_MULTIPLIER
+
+    @property
+    def cache_write_per_mtok(self) -> float:
+        return self.input_per_mtok * CACHE_WRITE_INPUT_MULTIPLIER
+
+    def cost(self, input_tokens: int, output_tokens: int, cache_read_tokens: int = 0, cache_write_tokens: int = 0) -> float:
+        return (input_tokens * self.input_per_mtok / 1e6 + output_tokens * self.output_per_mtok / 1e6
+                + cache_read_tokens * self.cache_read_per_mtok / 1e6 + cache_write_tokens * self.cache_write_per_mtok / 1e6)
 
 
 def _engine_pricing() -> dict[str, tuple[float, float]]:
@@ -226,8 +243,10 @@ def preflight_bound(*, samples: int, epochs: int, token_limit: int, price: Price
     a second commitment; it is carried here for the report only and never
     added to the target bound, or the guard would count it twice. Derived
     from the limits the run passes, not from turn counts, which undercount
-    (design memo section 13)."""
-    per_sample = token_limit * max(price.input_per_mtok, price.output_per_mtok) / 1e6
+    (design memo section 13). Inspect's token limit counts prompt-cache
+    tokens too, so the dearest rate includes the cache rates (2026-09-23)."""
+    per_sample = token_limit * max(price.input_per_mtok, price.output_per_mtok, price.cache_read_per_mtok,
+                                   price.cache_write_per_mtok) / 1e6
     total = samples * epochs * per_sample
     return PreflightBound(samples=samples, epochs=epochs, token_limit=token_limit, per_sample_usd=per_sample,
                           judge_reserve_usd=judge_reserve_usd, total_usd=total, max_spend_usd=max_spend_usd)
@@ -240,17 +259,25 @@ def usage_from_samples(samples: Any, role: str = "target") -> dict[str, dict[str
     round 7: a failed eval can retain events with usage but no aggregate, and
     a row with calls and zero tokens priced a paid call at zero); calls
     counted from the events of the given role; an event without a usage block
-    counted in `calls_without_usage`, never priced as zero."""
+    counted in `calls_without_usage`, never priced as zero. Prompt-cache
+    tokens are carried as the adapter carries them (None until a usage
+    reports the field), because Inspect counts them outside `input_tokens`
+    and `reprice_usage` prices them (2026-09-23)."""
     rows: dict[str, dict[str, Any]] = {}
 
     def row(model: str) -> dict[str, Any]:
         return rows.setdefault(model, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0,
+                                       "input_tokens_cache_read": None, "input_tokens_cache_write": None,
                                        "calls": 0, "calls_without_usage": 0})
 
     def add(r: dict[str, Any], usage: Any) -> None:
         r["input_tokens"] += int(getattr(usage, "input_tokens", 0) or 0)
         r["output_tokens"] += int(getattr(usage, "output_tokens", 0) or 0)
         r["total_tokens"] += int(getattr(usage, "total_tokens", 0) or 0)
+        for attr in ("input_tokens_cache_read", "input_tokens_cache_write"):
+            value = getattr(usage, attr, None)
+            if value is not None:
+                r[attr] = (r[attr] or 0) + int(value)
 
     for sample in samples:
         aggregate = dict(getattr(sample, "model_usage", None) or {})
@@ -289,7 +316,11 @@ def reprice_usage(model_usage: dict[str, dict[str, Any]], registry: dict | None 
     charge. A zero-price model (mockllm, the placeholder) with missing usage
     costs exactly 0 whatever its token counts were, so its cost is 0 and the
     missing usage is still recorded on the row (the locked inspect-ai's mockllm
-    returns no usage block at all)."""
+    returns no usage block at all). Prompt-cache reads and writes are priced
+    beside input and output at the bounded cache rates (CACHE_*_MULTIPLIER):
+    Inspect subtracts them from `input_tokens`, so pricing input and output
+    alone under-booked every cached call (2026-09-23). A null cache count is
+    no cached tokens: Inspect subtracts only what the provider reported."""
     rows: list[dict] = []
     total = 0.0
     any_missing = False
@@ -304,21 +335,25 @@ def reprice_usage(model_usage: dict[str, dict[str, Any]], registry: dict | None 
         zero_priced = price.input_per_mtok == 0 and price.output_per_mtok == 0
         in_tok = None if usage.get("input_tokens") is None else int(usage["input_tokens"])
         out_tok = None if usage.get("output_tokens") is None else int(usage["output_tokens"])
+        cache_read = None if usage.get("input_tokens_cache_read") is None else int(usage["input_tokens_cache_read"])
+        cache_write = None if usage.get("input_tokens_cache_write") is None else int(usage["input_tokens_cache_write"])
         if missing and not zero_priced:
             cost = None
             any_missing = True
         elif missing:
             cost = 0.0
         else:
-            cost = price.cost(in_tok, out_tok)
+            cost = price.cost(in_tok, out_tok, cache_read or 0, cache_write or 0)
             total += cost
         rows.append({"model": model, "input_tokens": in_tok, "output_tokens": out_tok,
                      "total_tokens": None if usage.get("total_tokens") is None and missing
                      else int(usage.get("total_tokens") or (in_tok or 0) + (out_tok or 0)),
+                     "input_tokens_cache_read": cache_read, "input_tokens_cache_write": cache_write,
                      "calls": int(usage.get("calls") or 0),
                      "calls_without_usage": int(usage.get("calls_without_usage") or 0), "usage_missing": missing,
                      "cost_usd": None if cost is None else round(cost, 8), "price_source": price.source,
-                     "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok})
+                     "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok,
+                     "cache_read_per_mtok": price.cache_read_per_mtok, "cache_write_per_mtok": price.cache_write_per_mtok})
     return (None if any_missing else round(total, 8)), rows
 
 

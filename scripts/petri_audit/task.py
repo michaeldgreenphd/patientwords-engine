@@ -68,13 +68,16 @@ def study_task(seed_set: SeedSet, seeds: list[dict], *, name: str = "patientword
 def register_prices(models: list[str], registry: dict | None = None) -> dict[str, Price]:
     """Register a price for every model role and the placeholder so Inspect's
     per-sample cost_limit can start; the source of each price is returned for
-    the manifest. Cache rates are filled at the input rate (worst case)."""
+    the manifest. Cache rates are the bounded ones the sidecar reprices with
+    (spend.CACHE_*_MULTIPLIER): the input rate for reads and twice it for
+    writes, since a write at the input rate understated Anthropic's 1.25x and
+    2x cache-write prices (2026-09-23)."""
     out: dict[str, Price] = {}
     for model in [*models, PLACEHOLDER_MODEL]:
         price = resolve_price(model, registry)
         set_model_info(model, ModelInfo(cost=ModelCost(input=price.input_per_mtok, output=price.output_per_mtok,
-                                                       input_cache_write=price.input_per_mtok,
-                                                       input_cache_read=price.input_per_mtok)))
+                                                       input_cache_write=price.cache_write_per_mtok,
+                                                       input_cache_read=price.cache_read_per_mtok)))
         out[model] = price
     return out
 

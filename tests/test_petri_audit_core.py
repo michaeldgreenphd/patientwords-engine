@@ -1337,9 +1337,13 @@ def test_usage_rows_take_token_counts_from_retained_events_when_the_aggregate_la
                                               NS(event="info", role="target", model="m", output=None)])
     with_aggregate = NS(model_usage={"m": usage}, events=[ev("m", usage)])
     rows = spend.usage_from_samples([no_aggregate, with_aggregate])
-    assert rows == {"m": {"input_tokens": 20, "output_tokens": 10, "total_tokens": 30, "calls": 3, "calls_without_usage": 1}}
+    # the cache counts stay None: no usage here reports the field (priced as no cached tokens, 2026-09-23)
+    uncached = {"input_tokens_cache_read": None, "input_tokens_cache_write": None}
+    assert rows == {"m": {"input_tokens": 20, "output_tokens": 10, "total_tokens": 30, **uncached, "calls": 3,
+                          "calls_without_usage": 1}}
     priced = spend.usage_from_samples([with_aggregate, NS(model_usage={}, events=[ev("n", usage)])])
-    assert priced["n"] == {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15, "calls": 1, "calls_without_usage": 0}
+    assert priced["n"] == {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15, **uncached, "calls": 1,
+                           "calls_without_usage": 0}
     assert not spend.usage_is_missing(priced["n"]) and spend.usage_is_missing(rows["m"])
 
 
@@ -1658,3 +1662,49 @@ def test_the_manifest_schema_accepts_recorded_stop_reasons_and_refuses_malformed
     bad = json.loads(json.dumps(rich))
     bad["trees"][0]["branches"][0]["assistant_stop_reasons"] = [{"turn_id": 2}]
     assert any("missing 'stop_reason'" in p for p in framework.validate_with_refs(bad, schema))
+
+
+def test_prompt_cache_tokens_are_priced_never_dropped(tmp_path):
+    """Inspect subtracts cached prompt tokens from `input_tokens` for
+    OpenAI-shaped providers (OpenRouter included) and Anthropic reports cache
+    reads and writes apart; the sidecar priced input and output only, so every
+    cached call was booked below its charge. Reads are priced at the input rate
+    and writes at twice it, the fail-closed bounds (no price table carries a
+    cache rate), in the repricing, the fallback usage path and the bound."""
+    from types import SimpleNamespace as NS
+
+    registry = {"anthropic": {"pricing": {"claude-haiku-4-5": [1.0, 5.0]}}}
+    usage = {"anthropic/claude-haiku-4-5": {"input_tokens": 464_000, "output_tokens": 100_000, "total_tokens": 2_100_000,
+                                            "input_tokens_cache_read": 1_024_000, "input_tokens_cache_write": 512_000,
+                                            "calls": 4, "calls_without_usage": 0}}
+    cost, rows = spend.reprice_usage(usage, registry)
+    # 0.464 input + 0.5 output + 1.024 read at 1x input + 0.512 write at 2x input
+    assert cost == pytest.approx(0.464 + 0.5 + 1.024 + 1.024)
+    assert rows[0]["cost_usd"] == pytest.approx(cost), "reconcile checks that the rows sum to cost_usd"
+    assert (rows[0]["input_tokens_cache_read"], rows[0]["input_tokens_cache_write"]) == (1_024_000, 512_000)
+    assert (rows[0]["cache_read_per_mtok"], rows[0]["cache_write_per_mtok"]) == (1.0, 2.0)
+    uncached_cost, _ = spend.reprice_usage({m: {k: v for k, v in u.items() if "cache" not in k} for m, u in usage.items()}, registry)
+    assert uncached_cost == pytest.approx(0.964), "the pre-fix figure, under-booked by the cached tokens"
+    # a null cache count is no cached tokens (Inspect subtracts only what the provider reported), never missing usage
+    cost, rows = spend.reprice_usage({"anthropic/claude-haiku-4-5": {**usage["anthropic/claude-haiku-4-5"],
+                                                                     "input_tokens_cache_read": None,
+                                                                     "input_tokens_cache_write": None}}, registry)
+    assert cost == pytest.approx(0.964) and rows[0]["usage_missing"] is False
+    report = spend.write_report_sidecar(tmp_path / "c.report.json", run_id="r", eval_id="e", model_usage=usage,
+                                        max_spend_usd=5.0, judge_max_spend_usd=None, run_utc="2026-09-23T00:00:00Z",
+                                        registry=registry)
+    assert report["cost_usd"] == pytest.approx(3.012) and report["cost_basis"] == "engine_repriced_from_inspect_model_usage"
+    # the fallback spend report's usage path carries the cache counts from the aggregate and from retained events
+    cached = NS(input_tokens=464, output_tokens=100, total_tokens=2100, input_tokens_cache_read=1024,
+                input_tokens_cache_write=512)
+    ev = NS(event="model", role="target", model="n", output=NS(usage=cached))
+    rows = spend.usage_from_samples([NS(model_usage={"m": cached}, events=[]), NS(model_usage={}, events=[ev, ev])])
+    assert (rows["m"]["input_tokens_cache_read"], rows["m"]["input_tokens_cache_write"]) == (1024, 512)
+    assert (rows["n"]["input_tokens_cache_read"], rows["n"]["input_tokens_cache_write"]) == (2048, 1024)
+    # the pre-flight bound prices every token at the dearest rate, a cache write included (Inspect's token limit
+    # counts cache tokens): at 3/5 the write rate 6 is the dearest
+    bound = spend.preflight_bound(samples=1, epochs=1, token_limit=1_000_000, price=spend.Price(3.0, 5.0, "x"),
+                                  judge_reserve_usd=0.0, max_spend_usd=5.5)
+    assert bound.per_sample_usd == pytest.approx(6.0) and not bound.within
+    assert spend.preflight_bound(samples=1, epochs=1, token_limit=20000, price=spend.Price(1.0, 5.0, "x"),
+                                 judge_reserve_usd=0.0, max_spend_usd=1.0).per_sample_usd == pytest.approx(0.1)

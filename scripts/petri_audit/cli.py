@@ -229,7 +229,11 @@ def cmd_spend_report(args: argparse.Namespace) -> int:
         if not model_usage and log.stats and log.stats.model_usage:
             for model, usage in log.stats.model_usage.items():
                 model_usage[model] = {"input_tokens": int(usage.input_tokens or 0), "output_tokens": int(usage.output_tokens or 0),
-                                      "total_tokens": int(usage.total_tokens or 0), "calls": 0, "calls_without_usage": 0}
+                                      "total_tokens": int(usage.total_tokens or 0),
+                                      # Inspect counts cached tokens outside input_tokens; reprice_usage prices them
+                                      "input_tokens_cache_read": usage.input_tokens_cache_read,
+                                      "input_tokens_cache_write": usage.input_tokens_cache_write,
+                                      "calls": 0, "calls_without_usage": 0}
     if not model_usage:
         # no evidence of what was spent: the target's usage is recorded as missing, which prices a paid target at the
         # ceiling and a zero-price target at zero
