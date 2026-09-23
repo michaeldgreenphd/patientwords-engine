@@ -753,7 +753,7 @@ def test_mitigation_fire_detection_and_inflight_counting():
     assert not ft.is_mitigation_fire("circuit-trace", {})
     assert not ft.is_mitigation_fire("logits-eval", {"show_mitigation": "true"})
     # a mitigation circuit-trace entry with a recorded imputed commitment
-    # counts toward today's in-flight spend
+    # counts toward the spend held today
     from datetime import datetime, timezone
     now = datetime(2026, 7, 13, 12, 0, tzinfo=timezone.utc)
     entry = {"trigger": "circuit-trace", "fired_utc": "2026-07-13T11:00:00Z",
@@ -838,7 +838,7 @@ def test_judged_fire_journal_entry_records_summed_commitment(repo):
     entry = json.loads(journal_path(repo).read_text().splitlines()[-1])
     assert entry["trigger"] == "advice-eval"
     assert entry["max_spend"] == pytest.approx(1.0)
-    # a second paid fire the same day sees the full 1.0 in-flight: 1.2 would
+    # a second paid fire the same day sees the full 1.0 held: 1.2 would
     # break the 2.0 ceiling (1.0 + 1.2), 0.9 fits
     assert fire(repo, "scenario-generation", {
         "task": "pairs", "num": "5", "max_spend": "1.2", "_nonce": "j6"}) == 4
@@ -899,7 +899,7 @@ def test_inflight_lane_filter_and_override_scope():
     today = now.strftime("%Y-%m-%d")
     entries = [{"trigger": "advice-eval", "fired_utc": ft.iso_utc(now), "resolved": False,
                 "evicted": False, "max_spend": 8.0, "lane": "openrouter"}]
-    # the openrouter in-flight hold does not block the anthropic lane
+    # the openrouter lane's hold does not block the anthropic lane
     assert ft.inflight_max_spend(entries, today, now, 8.0, lane="anthropic") == 0.0
     assert ft.inflight_max_spend(entries, today, now, 8.0, lane="openrouter") == 8.0
     # a dated owner override raises the ANTHROPIC ceiling only
@@ -1620,9 +1620,10 @@ def _resolve_taking_local_side(clone):
 
 
 def test_publish_restamps_a_fire_published_long_after_it_was_made(tmp_path, capsys):
-    """Budget counts in-flight entries fired today and the queue expires entries
-    older than expire_hours, so a fire published a day late must carry the
-    publication time as its fired_utc, with the original kept alongside."""
+    """Budget counts every paid entry fired today, for the whole UTC day, and the
+    queue expires entries older than expire_hours, so a fire published a day late
+    must carry the publication time as its fired_utc, with the original kept
+    alongside."""
     origin, clone = _publish_fixture(tmp_path)
     old = ft.iso_utc(ft.utc_now() - timedelta(hours=26))
     _fire_locally(clone, fired_utc=old)
@@ -1793,9 +1794,9 @@ def test_publish_refuses_when_a_later_commit_restored_the_trigger_file(tmp_path,
 
 
 def test_publish_recomputes_a_paid_fires_commitment_from_the_final_params(tmp_path, capsys):
-    """inflight_max_spend counts the entry's max_spend and lane for the running
-    job, so they must equal what cmd_fire derives from the trigger file that is
-    actually pushed - not what a hand edit during conflict recovery left."""
+    """inflight_max_spend counts the entry's max_spend and lane for the whole UTC
+    day of the fire, so they must equal what cmd_fire derives from the trigger file
+    that is actually pushed - not what a hand edit during conflict recovery left."""
     origin, clone = _publish_fixture(tmp_path)
     write_dashboard(clone, spent=0.0)
     _commit(clone, "dashboard")
@@ -2446,11 +2447,14 @@ def test_journal_reservation_problems_is_scoped_to_the_lane_with_a_nonce_contrac
 def test_budget_gate_refuses_a_reservation_that_is_no_longer_active(repo, tmp_path, capsys):
     """Round 7's check tested `resolved` and `evicted` and not the third condition.
 
-    `entry_is_active` also releases an entry whose `fired_utc` does not parse and
-    one older than the expiry window, and `inflight_max_spend` stops counting it
-    at the same moment - so a stale entry reserves nothing, and accepting it let
-    a merge or re-push of that trigger file start a second irreversible run under
-    a dead hold (Codex round 8 on PR #28).
+    `entry_is_active` also releases from the QUEUE an entry whose `fired_utc` does
+    not parse and one older than the expiry window: the run it reserved has been
+    and gone, so it reserves nothing, and accepting it let a merge or re-push of
+    that trigger file start a second irreversible run under a dead reservation
+    (Codex round 8 on PR #28). That release is the queue's alone. Since 2026-09-23
+    the daily sum still counts an expired entry for the rest of its UTC day
+    (entry_holds_spend); a stamp that does not parse names no day, so it counts on
+    none. The reservation check and the day's sum are two invariants.
     """
     pf = tmp_path / "petri-params.json"
     paid = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
