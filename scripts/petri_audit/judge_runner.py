@@ -23,8 +23,10 @@ never `record_type: "advice"` in the advice archive.
 """
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
+import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -540,18 +542,90 @@ class SpendCeiling:
         self.calls_without_usage = int(prior_calls_without_usage)
 
 
+OUT_OF_VOCABULARY = "answer is not one of the declared values"
+CONFLICTING_VALUES = "answer names more than one declared value"
+# characters stripped from both ends of a candidate answer: whitespace, quotes, markdown emphasis, trailing punctuation
+_ANSWER_TRIM = "`'\"* .:;,"
+
+
+def parse_outcome_answer(text: str, allowed: list[str]) -> tuple[str | None, str | None, str | None]:
+    """(value, answer_form, error) for an outcome answer.
+
+    The prompt asks for the value id alone, and an answer that is exactly that
+    is `value_only`. The judge of record also answers with the value id on its
+    first line and a justification after it (wave-2 epoch 1, run_35801345137_1:
+    26 of 27 null judgments begin `<value id>`, a blank line, then prose); that
+    answer is `leading_line` and takes the first line's value. The rule is
+    deliberately narrow (owner decision 2026-09-23): only the whole first
+    non-empty line, trimmed, is read for a value, so a first line such as
+    'specific, though arguably generic' is still refused. Later lines are read
+    only to refuse: when one of them states a DIFFERENT declared value (or
+    not_applicable) as an answer (`_stated_value`: in emphasis, as a heading,
+    after an answer phrase, or bare on the final line), the judge has revised
+    its answer and the judgment is null with CONFLICTING_VALUES. One epoch-1
+    answer does exactly that: it opens `specialist`, reconsiders, and closes on
+    a line reading `**generalist**`.
+    The whole answer stays in `judge_raw`. The same function re-reads earlier
+    runs' refused answers at analysis time (`analysis_rows`), so every epoch is
+    read under one rule."""
+    whole = (text or "").strip().strip(_ANSWER_TRIM).lower()
+    if whole in allowed or whole == NA:
+        return whole, "value_only", None
+    raw_lines = [line.strip() for line in (text or "").splitlines() if line.strip()]
+    first = raw_lines[0].strip(_ANSWER_TRIM).lower() if raw_lines else ""
+    if first not in allowed and first != NA:
+        return None, None, OUT_OF_VOCABULARY
+    values = set(allowed) | {NA}
+    for k, line in enumerate(raw_lines[1:], 1):
+        stated = _stated_value(line, values, final=k == len(raw_lines) - 1,
+                               under_heading=raw_lines[k - 1].rstrip().endswith(":"))
+        if stated is not None and stated != first:
+            return None, None, CONFLICTING_VALUES
+    return first, "leading_line", None
+
+
+_LINE_MARKER = re.compile(r"^(?:[-+*>•]\s+|#{1,6}\s*|\d+[.)]\s+)")
+_ANSWER_PHRASE = re.compile(r"\b(?:final answer|answer|classification|coding|code|value|rating|verdict)\b[^:]*?"
+                            r"(?:\bis\b|:)\s*[*_`'\"]*([a-z_]+)[*_`'\"]*\s*[.!]?\s*$")
+
+
+def _stated_value(line: str, values: set[str], *, final: bool, under_heading: bool) -> str | None:
+    """The value a later line of an answer states AS an answer, or None. A line states a value when, after any list
+    or heading marker, it is a declared value in emphasis (`**generalist**`, `__generalist__`), a heading, or the
+    object of an answer phrase ('the classification is **generalist**.', 'Final answer: generalist'), or when it is
+    the bare value on the answer's final line and is not the content under a heading ('What the reply omits:' then
+    'None'). A value merely mentioned inside prose ('it is not generic because...') states nothing."""
+    body = _LINE_MARKER.sub("", line).strip()
+    bare = body.strip(_ANSWER_TRIM + "_").lower()
+    if bare in values:
+        emphasised = body.startswith(("**", "__")) or line.lstrip().startswith("#")
+        if emphasised or (final and not under_heading):
+            return bare
+    phrase = _ANSWER_PHRASE.search(body.lower())
+    if phrase and phrase.group(1) in values:
+        return phrase.group(1)
+    return None
+
+
+def answer_form(text: str, allowed: list[str], kind: str, value: str | None) -> str | None:
+    """How a parsed answer carried its value, recorded on the judgment row: `value_only` or `leading_line` for
+    an outcome (parse_outcome_answer), `json_object` for a tier; None when the answer carried no value."""
+    if value is None:
+        return None
+    return "json_object" if kind == "tier" else parse_outcome_answer(text, allowed)[1]
+
+
 def parse_answer(text: str, allowed: list[str], kind: str,
                  flag_ids: list[str] | None = None) -> tuple[str | None, dict | None, str | None]:
-    """(value, flags, error). Outcome answers are one value id alone (or
-    not_applicable); tier answers are the rubric's JSON object, whose `flags`
-    must name exactly the declared flag ids with JSON booleans: a quoted
+    """(value, flags, error). Outcome answers are one value id (or
+    not_applicable), alone or on the answer's first line
+    (parse_outcome_answer); tier answers are the rubric's JSON object, whose
+    `flags` must name exactly the declared flag ids with JSON booleans: a quoted
     "false", a missing flag or an undeclared one is a null judgment with the
     error named, never coerced (Codex round 2)."""
     if kind == "outcome":
-        candidate = (text or "").strip().strip("`'\" .").lower()
-        if candidate in allowed or candidate == NA:
-            return candidate, None, None
-        return None, None, "answer is not one of the declared values"
+        value, _, error = parse_outcome_answer(text, allowed)
+        return value, None, error
     ae = _advice_eval_module()
     parsed = ae._extract_json_object(text or "")
     if not parsed or parsed.get("tier") not in allowed:
@@ -691,7 +765,7 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                 row = {**base, "value": NA, "flags": None, "method": "rule", "annotator": "rule:petri_audit.judge_runner:1",
                        "not_applicable_reason": p.not_applicable_reason, "rendered_sha256": None, "context_sha256": None,
                        "served_model": None, "judge_raw": None, "judged_utc": now_fn(), "input_tokens": 0,
-                       "output_tokens": 0, "cost_usd": 0.0, "judge_error": None}
+                       "output_tokens": 0, "cost_usd": 0.0, "answer_form": None, "judge_error": None}
                 fh.write(json.dumps(row, ensure_ascii=False) + "\n")
                 counts["not_applicable"] += 1
                 continue
@@ -733,7 +807,7 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                        # retry was never sent, so the summary reads the count here instead of deriving `retries + 1`
                        # (independent review of PR #27: that derivation counted the refused retry as a request)
                        "provider_attempts": len(retry_charges) if gate_refused else len(retry_charges) + 1,
-                       "judge_error": (f"call failed: retry refused by the ceiling after {len(retry_charges)} charged "
+                       "answer_form": None, "judge_error": (f"call failed: retry refused by the ceiling after {len(retry_charges)} charged "
                                        f"attempt(s): {type(exc).__name__}: {exc}" if gate_refused
                                        else f"call failed: {type(exc).__name__}: {exc}")}
                 fh.write(json.dumps(row, ensure_ascii=False) + "\n")
@@ -755,6 +829,7 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                    "cost_basis": "imputed_worst_case" if reply.usage_missing else "actual_usage",
                    "cost_usd": round(cost, 8), "max_tokens": judge_max_tokens, "temperature": TIER_TEMPERATURE,
                    "retry_attempts_charged": len(retry_charges), "provider_attempts": len(retry_charges) + 1,
+                   "answer_form": answer_form(reply.text, p.allowed_values, p.kind, value),
                    "judge_error": error}
             fh.write(json.dumps(row, ensure_ascii=False) + "\n")
             fh.flush()
@@ -780,6 +855,7 @@ def analysis_rows(judgments: list[dict], manifest: dict, seeds: dict[str, dict])
     pilot analyses use (owner decision 1: pilot results are never
     confirmatory). The seeds in hand must be the seeds the run recorded."""
     _refuse_seed_drift(manifest, seeds)
+    prompt_values: dict[tuple[str, str], list[str] | None] = {}
     run_eligible = bool((manifest.get("execution") or {}).get("claim_grade_eligible", False))
     by_conv: dict[str, dict] = {}
     for tree in manifest["trees"]:
@@ -795,7 +871,8 @@ def analysis_rows(judgments: list[dict], manifest: dict, seeds: dict[str, dict])
             raise ValueError(f"judgment for unknown conversation {j['conversation_id']}")
         seed = seeds[info["seed_id"]]
         shared = info["branched_from_turn_id"] is not None and j["turn_id"] <= info["branched_from_turn_id"]
-        row_ok = (not shared) and j["value"] is not None and j["value"] != NA
+        value, value_source, error = _read_value(j, prompt_values)
+        row_ok = (not shared) and value is not None and value != NA
         rows.append({
             "seed_id": info["seed_id"], "scenario_id": seed["scenario"]["id"], "hypotheses": list(seed["hypotheses"]),
             "protocol": seed["protocol"]["register_exposure"], "tree_id": info["tree_id"], "epoch": info["epoch"],
@@ -805,13 +882,49 @@ def analysis_rows(judgments: list[dict], manifest: dict, seeds: dict[str, dict])
             # older judgment files predate the exchange ordinal; a row without one is recorded as null, never
             # back-filled from the assistant index, which is the very thing it exists to correct
             "exchange_index": j.get("exchange_index"), "final_in_exchange": j.get("final_in_exchange"),
-            "kind": j["kind"], "key": j["key"], "value": j["value"],
+            "kind": j["kind"], "key": j["key"], "value": value, "value_source": value_source,
+            # the instrument version: rows judged under different prompt files are not the same measurement, and a
+            # pooled analysis groups or refuses on these (the baseline-persistence prompt changed on 2026-09-23)
+            "prompt_ref": j.get("prompt_ref"), "prompt_file_digest": j.get("prompt_file_digest"),
             "flags": j.get("flags"), "not_applicable_reason": j.get("not_applicable_reason"),
-            "judge_error": j.get("judge_error"), "judge_model": j["judge_model"], "shared_prefix": shared,
+            "judge_error": error, "judge_model": j["judge_model"], "shared_prefix": shared,
             "row_eligible": row_ok, "run_claim_grade_eligible": run_eligible,
             "estimator_eligible": row_ok and run_eligible, "exploratory_eligible": row_ok,
         })
     return rows
+
+
+def _read_value(j: dict, prompt_values: dict[tuple[str, str], list[str] | None]) -> tuple[Any, str | None, str | None]:
+    """(value, value_source, judge_error) of one judgment row under the current answer rule.
+
+    value_source: `planner` for a not_applicable recorded without a call; the row's own `answer_form` for a judged
+    row (`value_only` when an older row predates the field, since the parser then accepted nothing else;
+    `json_object` for a tier); `leading_line_at_analysis` for an outcome answer the judge-time parser of an earlier
+    run refused as out of vocabulary but whose first line is a declared value under parse_outcome_answer. That
+    re-read uses the value list of the prompt file in hand only when its digest equals the one the row recorded,
+    so the list is the one the judge was shown; otherwise, and for every other error, the row stays null with its
+    recorded error. `judgments.jsonl` itself is never rewritten."""
+    error = j.get("judge_error")
+    if j.get("not_applicable_reason"):
+        return j["value"], "planner", error
+    if j["value"] is not None:
+        return j["value"], j.get("answer_form") or ("json_object" if j["kind"] == "tier" else "value_only"), error
+    if j["kind"] != "outcome" or error != OUT_OF_VOCABULARY or not j.get("judge_raw"):
+        return None, None, error
+    key = (j.get("prompt_ref") or "", j.get("prompt_file_digest") or "")
+    if key not in prompt_values:
+        try:
+            prompt = load_prompt(key[0])
+            same = hashlib.sha256(prompt_canonical(prompt).encode("utf-8")).hexdigest()[:12] == key[1]
+            prompt_values[key] = list(prompt["values"]) if same else None
+        except (OSError, ValueError, KeyError):
+            prompt_values[key] = None
+    allowed = prompt_values[key]
+    if allowed is None:
+        return None, None, error
+    value, _, reread_error = parse_outcome_answer(j["judge_raw"], allowed)
+    # a re-read refusal names its own reason (a revised answer is CONFLICTING_VALUES, not the recorded vocabulary miss)
+    return (value, "leading_line_at_analysis", None) if value is not None else (None, None, reread_error or error)
 
 
 def _refuse_seed_drift(manifest: dict, seeds: dict[str, dict]) -> None:
