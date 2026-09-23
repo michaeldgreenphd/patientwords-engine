@@ -48,11 +48,26 @@ to compute it or to choose the threshold.
      phrase (the accepted clinical prompt of that row), so, as under Amendment
      3, every holdout row carrying that phrase is removed.
 
-   Sizes, from the sealed registry of 2026-09-23: 183 phrases, 38 twins, 145
-   remain. Within the 20 campaign batches (`tierb.batches` in
-   `ops/dashboard.json`): 163 phrases, 35 twins, 128 remain. The endpoint
-   population decides which of these applies; the list is applied to it
-   unchanged.
+   **Which phrases (a) covers.** Owner ruling 4 names "all 183 sealed
+   phrases" (38 twins, 145 remain). 183 is the whole sealed registry. The
+   endpoint population is narrower, and this amendment does not widen it:
+   Amendment 3 item 1 (observational `pairs_<STAMP>` batches, phrase-deduped,
+   the `paired_stats_rigor.py` pipeline) with the option-B exclusions. On
+   2026-09-23, 20 of the 183 fall outside what that population can measure:
+   - 10 are in the outcome-selected steered batches `pairs_20260809T172338Z`
+     (6) and `pairs_20260811T190638Z` (4). Option B excludes them
+     (`_SUPPLEMENTARY_STAMPS`; divergence log, 2026-08-12). 1 is a twin.
+   - 10 are in `pairs_20260721T132205Z`, an observational batch that was never
+     traced, so it has no measurement to report. 2 are twins.
+
+   So (a) covers **163 phrases, and (b) covers 128 (35 twins removed)**. These
+   are the 163 sealed phrases of the 20 batches in `tierb.batches` of
+   `ops/dashboard.json`, every one of them traced. Each model's readout covers
+   the subset that model measured. If `pairs_20260721T132205Z` is traced before
+   unsealing, it joins by the population's own rule: 173 phrases, 37 twins,
+   136 remain. The frozen list covers all 183, so it applies unchanged
+   whichever of these the endpoint population turns out to be. This reading of
+   the ruling's "all 183" is for the owner to confirm before the endpoint run.
 
    The explore split is not pruned: the reference interval is the registered
    one. Items 2b, 3 and 4 are not repeated on (b).

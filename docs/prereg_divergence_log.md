@@ -19,7 +19,7 @@ retro-edited into the frozen document.
 | 2026-07-17 | confirmatory population made explicit — POPULATION-DEF option B (owner decision) | registration named no explicit supplementary-set exclusion | the outcome-selected supplementary sets (emergency/severity, `claude-sonnet-5`, 2026-07-13: `pairs_20260713T031252Z`, `_135755Z`, `_050937Z`) share the `pairs_<STAMP>` stem; excluded from the confirmatory population by explicit stamp and reported sensitivity-only | precision, not an endpoint change; immaterial (gemma-2-2b −3.13pp vs −3.08pp all-in), no significance flip |
 | 2026-07-12 → removal: site PR michaeldgreenphd/patientwords#8 (date: ____, fill at merge) | a render of holdout row `pairs_20260710T163230Z#44` stayed served on the site | Amendment 3: holdout phrases withheld from every public file | `modes/simulated/pairs_20260710T163230Z/index_44.html` carried the row's sealed clinical phrase and its patient sentence; withholding took the row out of the payload on 2026-07-14, but the exporter never deleted renders and the seal check skipped `modes/`, so the file stayed live, unlinked, until its removal. The 2026-07-13 → 07-17 row above ("every public file holdout-clean") was wrong about this file | **breach** (owner ruling 2, 2026-09-23); removed by site PR #8; the exporter now prunes unlisted renders; disclose the window in the endpoint writeup. Detail below |
 | 2026-09-23 (on the site since 2026-08-08) | the sealed phrase of `pairs_20260712T163501Z#17` occurs inside the accepted clinical prompt of explore row `pairs_20260806T135728Z#9` | the seal is the exact accepted clinical prompt (Amendment 1 hash; Amendment 3 phrase-keyed) | #9's prompt is a different, longer phrase that hashes explore; it is published in three site data files and one traces-site render; the two are near-duplicates | **not a leak** under the registered exact-phrase seal (owner ruling 1, 2026-09-23); allowlisted by the containing field's full sha256 in `data/seal_allowlist.json`; covered by the near-twin readout (Tier B Amendment 5). No number changes. Detail below |
-| 2026-07-19 → removal: first site publish after the engine PR "Make the Tier B seal hold on the public site" merges (date: ____) | patient-side text of holdout rows published in site `data/jlens_swaps.json` | Amendment 3 withholds holdout phrases from public data files; the registered seal covers the clinical phrase only | `scripts/export_pair_swaps.py` had no holdout filter, so the file carried, keyed by label, the verbatim patient sentence, patient-side swap span and target token of holdout rows (32 keys in its first version; 187 at site `0756f2a`) | not a breach of the seal's letter (patient side); withheld from now on (owner ruling 3, 2026-09-23); disclose. Detail below |
+| 2026-07-19 → removal: first site publish after the engine PR "Make the Tier B seal hold on the public site" merges (date: ____) | patient-side text of holdout rows published in site `data/jlens_swaps.json` | Amendment 3 withholds holdout phrases from public data files; the registered seal covers the clinical phrase only | `scripts/export_pair_swaps.py` had no holdout filter, so the file carried, keyed by label, the verbatim patient sentence, patient-side swap span and target token of holdout rows (34 keys in its first version, 32 by the accepted prompt and 2 by the trace-time prompt; 187 at site `0756f2a`, 184 and 3) | not a breach of the seal's letter (patient side); withheld from now on (owner ruling 3, 2026-09-23); disclose. Detail below |
 | 2026-07-21 → 2026-09-23 | the daily seal check did not read most of the site | a seal check over every published artifact (holdout-seal-check skill; Routine publish gate) | `scripts/seal_check.py` skipped any path whose string contained `data/simulated`, `modes`, `.git` or `trace_out`, and matched raw text only; on the site that left 468 of 524 scannable files unread, including the three per-row data files and every render, and it could not see an HTML-escaped phrase | corrective (2026-09-23): excludes only the engine's own `data/simulated/` and `trace_out/` by resolved path and `.git` by path component, decodes HTML entities and JSON escapes, reads a hash-keyed allowlist; every daily "CLEAN" in the window is qualified accordingly. Detail below |
 
 Owner reviews this log at endpoint time; anything confirmatory built on a
@@ -60,7 +60,9 @@ merge). Git history is left as it is (2026-07-21 precedent). Two changes stop a
 repeat: `scripts/export_frontend_simulated.py` now deletes exporter-named renders
 that no export or site file lists (`scripts/render_prune.py`; a dry run against
 site `0756f2a` lists 236 such files, this one among them), and the seal check
-now reads `modes/`.
+now reads `modes/`. Both refuse over a site checkout that keeps tracked files
+off disk (the cloud containers' sparse clone leaves `modes/` out), where the
+prune would otherwise delete nothing and the check would read nothing there.
 
 **(ii) Not a leak: `pairs_20260712T163501Z#17` inside `pairs_20260806T135728Z#9`
 (ruling 1).** The sealed phrase of #17 (64 characters, sha256 `d8ab8d650bef`,
@@ -81,8 +83,10 @@ the patient-side text in (iii) and one label-only row in three versions of
 site `data/urgency_shift.json` on 2026-07-14, inside the window row
 2026-07-13 → 07-17 already discloses. `data/seal_allowlist.json` records the
 ruling keyed on #9's full `top_prompt` sha256 plus label, containing row and
-field; the checker suppresses #17 only inside that exact field, and a bare
-occurrence anywhere still fails. The pair is a near-duplicate (character
+field; the checker suppresses #17 only where that exact field appears whole,
+between field delimiters (a JSON or CSV string's quotes, an HTML element's `>`
+and `<`, a CSV cell's commas and line ends), so a bare occurrence, or the
+field's text run on into other words, still fails. The pair is a near-duplicate (character
 ratio 0.985), one of 38 sealed phrases with an explore or published twin at
 0.90 or more; Tier B Amendment 5 registers the sensitivity readout for all 38.
 No analysis used #17; #9 stays in the explore population as registered; no
@@ -91,11 +95,13 @@ number changes.
 **(iii) Patient-side exposure: site `data/jlens_swaps.json` (ruling 3).** The
 file is keyed by label and gives, per pair, the target token, the patient-side
 swap span and the verbatim patient sentence. `scripts/export_pair_swaps.py` had
-no holdout filter, so its first version (site `b1f58c2`, 2026-07-19) carried 32
-holdout keys and site `0756f2a` carries 187: 184 whose accepted prompt hashes
-holdout and 3 whose trace-time prompt does (the conservative reading of row
-2026-07-17: `pairs_20260710T092635Z#8`, `pairs_20260712T163501Z#19`,
-`pairs_20260712T163501Z#48`). It carries no clinical phrase and no
+no holdout filter. Counted by the rule this entry applies (the accepted prompt
+or, the conservative reading of row 2026-07-17, any trace-time prompt), its
+first version (site `b1f58c2`, 2026-07-19; 370 keys) carried 34 holdout keys:
+32 whose accepted prompt hashes holdout and 2 whose trace-time prompt does
+(`pairs_20260712T163501Z#19`, `pairs_20260712T163501Z#48`). Site `0756f2a`
+carries 187: 184 by the accepted prompt and 3 by the trace-time prompt (those
+two and `pairs_20260710T092635Z#8`). It carries no clinical phrase and no
 measurement, and the census it serves excludes holdout rows, so the page drew
 none of them; the entries were downloadable. The engine copy
 `data/jlens_swaps.json` carried the same. The exporter now applies the same
