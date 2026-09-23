@@ -862,12 +862,17 @@ def _offline_openrouter(monkeypatch, reply):
     endpoint would. Everything Inspect does between the request and the
     ModelOutput (usage parsing and its cached-token subtraction, stop-reason
     mapping, the retained ModelCall) runs as in a paid run; nothing leaves the
-    machine."""
+    machine. The JSON is parsed with the SDK's own lenient `construct_type`,
+    as the real client parses a response (`_strict_response_validation` is
+    off by default): `model_validate` rejects a finish_reason outside OpenAI's
+    enum, such as OpenRouter's documented `error`, which the real client
+    passes through (2026-09-23 review)."""
     from inspect_ai.model._providers.openai_compatible import OpenAICompatibleAPI
+    from openai._models import construct_type
     from openai.types.chat import ChatCompletion
 
     async def fake_completion(self, request, config):
-        return ChatCompletion.model_validate(reply(request))
+        return construct_type(type_=ChatCompletion, value=reply(request))
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "offline-dummy-key")
     monkeypatch.setattr(OpenAICompatibleAPI, "_generate_completion", fake_completion)
@@ -956,6 +961,60 @@ def test_an_openrouter_targets_upstream_hosts_are_counted_from_the_raw_response(
     assert "Azure" not in sanitised and result.manifest["artifacts"]["sanitiser"]["version"] == "0.2"
     # a target not routed through OpenRouter records null
     assert run["r1"].manifest["models"]["target"]["upstream_providers"] is None
+
+
+def _user_texts(request: dict) -> list[str]:
+    """The user texts of an OpenAI-shaped request, in order (string or text-part content)."""
+    out: list[str] = []
+    for m in request.get("messages", []):
+        if m.get("role") == "user":
+            c = m.get("content")
+            out.append(c if isinstance(c, str) else "".join(p.get("text", "") for p in c or [] if isinstance(p, dict)))
+    return out
+
+
+def test_an_openrouter_reply_that_ended_in_error_or_with_no_finish_reason_refuses_its_branch(run, tmp_path_factory,
+                                                                                          monkeypatch):
+    """OpenRouter documents finish_reason `error` for a generation that failed
+    upstream, possibly after partial text, and a response may carry none.
+    Inspect maps both to stop_reason `unknown` (its provider raises only on a
+    top-level error), and the adapter recorded `unknown` and admitted it: the
+    partial reply was exported as the model's answer in a claim-grade run
+    (2026-09-23 review). Both now refuse their branch."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    clinical = seeds.text_of(seed_set.seeds[H1], "stimulus_clinical")
+    counter = iter(range(1, 100))
+
+    def reply(request):
+        n = next(counter)
+        users = _user_texts(request)
+        out = _completion(f"partial reply {n} cut mid-sent", n=n)
+        choice = out["choices"][0]
+        if users[0] != clinical and len(users) == 1:
+            choice["finish_reason"] = "error"
+            choice["error"] = {"code": 502, "message": "upstream provider disconnected mid-generation"}
+        elif users[0] == clinical and len(users) == 2:
+            choice["finish_reason"] = None
+        return out
+
+    log = run_study(study_task(seed_set, chosen), target=_offline_openrouter(monkeypatch, reply), seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("or-error-logs"), token_limit=40000, cost_limit=5.0)
+    assert log.status == "success" and all(s.error is None and s.limit is None for s in log.samples)
+    # what Inspect did with the two endings: no error, no retry, stop_reason unknown
+    endings = sorted(str(e.output.choices[0].stop_reason) for s in log.samples for e in s.events
+                     if getattr(e, "event", None) == "model" and e.role == "target")
+    assert endings == ["stop", "stop", "unknown", "unknown"]
+    result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("or-error") / "run")
+    reasons = sorted(r["reason"] for r in result.refused)
+    assert len(reasons) == 2, reasons
+    assert reasons[0].startswith(f"{H1}::clinical#1:root: assistant turn 4 ended on stop_reason 'unknown', an ending "
+                                 "Inspect could not map"), reasons
+    assert reasons[1].startswith(f"{H1}::colloquial#1:root: assistant turn 2 ended on stop_reason 'unknown'"), reasons
+    m = result.manifest
+    assert result.records == [] and m["trees"] == [] and m["execution"]["claim_grade_eligible"] is False
+    assert m["models"]["target"]["stop_reasons"] == [{"stop_reason": "stop", "calls": 2}, {"stop_reason": "unknown", "calls": 2}]
+    assert manifest_problems(m) == []
 
 
 class _NoToolTarget(ScriptedTarget):

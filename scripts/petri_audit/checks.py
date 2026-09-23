@@ -344,20 +344,33 @@ def generation_problems(expected: dict, request: Any, *, forwards_seed: bool | N
 
 TRUNCATING_STOP_REASONS = ("max_tokens", "model_length", "content_filter")
 """Inspect `StopReason` values (inspect_ai/model/_model_output.py in the locked 0.3.237) under which a reply is
-not the model's whole answer: cut at the output cap (OpenAI-shaped `finish_reason: length` maps here), cut at
-the context window, or withheld by a provider filter. A reasoning model whose hidden reasoning counts against
-`max_tokens` ends here with little or no visible text, which rules and the judge would otherwise score as its
-answer. `unknown` is recorded but not refused: it is Inspect's label for a reason it could not map, not
-evidence of truncation."""
+not the model's whole answer: cut at the output cap (OpenAI-shaped `finish_reason: length` maps to max_tokens),
+a prompt the provider rejected as longer than its context window (model_length: Inspect substitutes the
+provider's error text for the reply, `handle_bad_request` in anthropic.py and openai_compatible.py), or withheld
+by a provider filter. A reasoning model whose hidden reasoning counts against `max_tokens` ends here with little
+or no visible text, which rules and the judge would otherwise score as its answer."""
+
+CLEAN_STOP_REASONS = ("stop", "tool_calls")
+"""The only endings under which a reply is admitted: the model ended its turn, or ended it on a tool call. Every
+other value is refused, `unknown` included (2026-09-23 review: it was recorded and admitted, and a partial reply
+was exported as a claim-grade answer). Inspect's `as_stop_reason` maps any finish_reason it does not know to
+`unknown`, which covers OpenRouter's documented `error` (a generation that failed upstream, possibly after
+partial text; OpenRouter's `on_response` raises only on a top-level error, and the openai SDK builds a response
+without validating it) and a null finish_reason. The direct Anthropic provider maps
+`model_context_window_exceeded`, a reply cut at the context window, to `unknown` too (`message_stop_reason`;
+`pause_turn` is resumed by the provider and never returned). No landed run recorded one: the three Anthropic
+runs' logs hold only stop and tool_calls."""
 
 
 def reply_problems(turns: list[dict], stop_reasons: dict[int, str | None], *, where: str) -> list[str]:
     """Each assistant turn of a record against how the target call that
     produced it ended (`stop_reasons`: turn_id -> Inspect stop reason, None
     when no retained call produced that message). A turn with no recorded
-    ending cannot be shown complete and is a problem, never assumed clean; a
-    truncating stop reason is a problem; so is a reply with neither text nor
-    a tool call (a tool-call turn carries no text legitimately)."""
+    ending cannot be shown complete and is a problem, never assumed clean; so
+    is any ending outside CLEAN_STOP_REASONS, a truncating one named as such
+    and any other (`unknown`) as an ending Inspect could not map; so is a
+    reply with neither text nor a tool call (a tool-call turn carries no text
+    legitimately)."""
     problems: list[str] = []
     for t in turns:
         if t["role"] != "assistant":
@@ -370,9 +383,34 @@ def reply_problems(turns: list[dict], stop_reasons: dict[int, str | None], *, wh
         elif reason in TRUNCATING_STOP_REASONS:
             problems.append(f"{where}: assistant turn {tid} ended on stop_reason {reason!r}; a reply cut at a limit or "
                             "withheld by a filter is not the model's answer")
+        elif reason not in CLEAN_STOP_REASONS:
+            problems.append(f"{where}: assistant turn {tid} ended on stop_reason {reason!r}, an ending Inspect could not "
+                            "map (OpenRouter's finish_reason error or null, Anthropic's context-window stop); the reply "
+                            "cannot be shown to be complete")
         elif not (t.get("text") or "").strip() and not t.get("tool_calls"):
             problems.append(f"{where}: assistant turn {tid} is empty (no text and no tool call, stop_reason {reason!r})")
     return problems
+
+
+def uncarried_ending_refusal(endings: list[tuple[str | None, str]], carried: set[str], *, where: str) -> dict | None:
+    """The refusal for a tree in which a target call ended outside
+    CLEAN_STOP_REASONS with a reply no branch of the tree carries (`endings`:
+    one (id of the assistant message the call produced, or None when it
+    produced none; stop reason) per call; `carried`: every message id on the
+    tree's timeline). reply_problems refuses a branch that carries such a
+    reply; one that no branch carries would be counted in
+    models.target.stop_reasons and refuse nothing, so a claim-grade manifest
+    could sit over it (2026-09-23 review). In the offline mock runs, tool
+    loops and replayed prefixes included, every call's reply is on the
+    timeline, so this guards an invariant of the controller rather than a
+    case seen; the tree is refused as a whole, as a sample error is. None
+    when no such call exists."""
+    stray = [reason for mid, reason in endings if reason not in CLEAN_STOP_REASONS and (mid is None or mid not in carried)]
+    if not stray:
+        return None
+    return {"branch_id": f"{where}:{ROOT_BRANCH}",
+            "reason": f"{len(stray)} target call(s) ended on stop_reason {sorted(set(stray))} with a reply no branch of "
+                      "the tree carries, so no branch can be checked against that ending"}
 
 
 def sample_limit_refusal(limit: Any, *, where: str) -> dict | None:

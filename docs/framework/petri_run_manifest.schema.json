@@ -438,11 +438,11 @@
                       "stop_reason": {
                         "type": "string",
                         "minLength": 1,
-                        "description": "Inspect's StopReason for the target call that produced this turn (stop, tool_calls, unknown; max_tokens, model_length and content_filter never appear here because such a branch is refused)."
+                        "description": "Inspect's StopReason for the target call that produced this turn: stop or tool_calls. Any other value, unknown included, refuses the branch, so none appears here."
                       }
                     }
                   },
-                  "description": "Adapter 0.2 (2026-09-23): one entry per assistant turn of this branch's record, replayed prefix included, in turn order, naming how the target call that produced it ended. Absent only in manifests written by adapter 0.1, which recorded no stop reason. A branch whose turn ended on max_tokens, model_length or content_filter, whose turn has no retained call, or whose turn is empty (no text and no tool call) is refused and listed under integrity.records_refused instead."
+                  "description": "Adapter 0.2 (2026-09-23): one entry per assistant turn of this branch's record, replayed prefix included, in turn order, naming how the target call that produced it ended. Absent only in manifests written by adapter 0.1, which recorded no stop reason. A branch whose turn ended on anything but stop or tool_calls (max_tokens: cut at the output cap; model_length: the prompt was rejected as longer than the context window; content_filter; unknown: an ending Inspect could not map, such as OpenRouter's finish_reason error or null, or the direct Anthropic provider's context-window stop), whose turn has no retained call, or whose turn is empty (no text and no tool call) is refused and listed under integrity.records_refused instead; so is a whole tree in which a call that did not end on stop or tool_calls produced a reply no branch carries."
                 }
               }
             }

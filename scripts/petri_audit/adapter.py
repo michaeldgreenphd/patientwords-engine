@@ -52,6 +52,7 @@ from .checks import (
     staging_problems,
     stimulus_problems,
     tool_results_verdict,
+    uncarried_ending_refusal,
     upstream_provider_name,
 )
 from .controller import INFO_SOURCE
@@ -288,10 +289,12 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         # how each target call ended, keyed by the id of the assistant message it produced: the timeline's messages
         # are those same objects (a replayed prefix included), so each record's assistant turn finds its own call
         stop_by_message: dict[str, str] = {}
+        endings: list[tuple[str | None, str]] = []     # (reply message id, stop reason) per call, for the tree guard
         for e in model_events:
             choice = e.output.choices[0] if e.output is not None and e.output.choices else None
             reason = str(choice.stop_reason) if choice is not None else "no_output"
             stop_counts[reason] = stop_counts.get(reason, 0) + 1
+            endings.append((choice.message.id if choice is not None else None, reason))
             if choice is not None and choice.message.id:
                 stop_by_message[choice.message.id] = reason
             if target_provider == "openrouter":
@@ -354,6 +357,13 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         limits = [d for d in pw if d.get("pw") == "limit"]
         timeline = select_timeline(sample.timelines or [], "target")
         nodes = _walk_nodes(timeline.root)
+        # a call that did not end cleanly is refused through the branch carrying its reply (reply_problems below); one
+        # whose reply no branch carries would be counted and refuse nothing, so the tree is refused (2026-09-23 review)
+        stray = uncarried_ending_refusal(endings, {m.id for span, _, _ in nodes for m in span_messages(span) if m.id},
+                                         where=tree_id)
+        if stray is not None:
+            refused.append(stray)
+            continue
         # the surviving trajectory is the last one the harness created, decided on the timeline before any refusal
         # (Codex round 8: marking the last exported branch promoted an earlier branch when the real survivor was refused)
         survivor_creation = max((c for _, _, c in nodes), default=None)
@@ -447,8 +457,9 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                                           f"({hit[0].get('limit', hit[0].get('reason'))})"})
                 continue
             # every assistant turn must come from a call that ended on its own: a reply cut at max_tokens (a reasoning
-            # model spends its allowance before any text), the context window or a filter, or one with no text and no
-            # tool call, is not an answer the rules or the judge may score (2026-09-23)
+            # model spends its allowance before any text), rejected for length or withheld by a filter, one whose
+            # ending Inspect could not map (`unknown`: OpenRouter's finish_reason error, 2026-09-23 review), or one with
+            # no text and no tool call, is not an answer the rules or the judge may score (2026-09-23)
             turn_stops = {t["turn_id"]: stop_by_message.get(m["id"]) if m["id"] else None
                           for t, m in zip(record["turns"], simple) if t["role"] == "assistant"}
             incomplete = reply_problems(record["turns"], turn_stops, where=where)

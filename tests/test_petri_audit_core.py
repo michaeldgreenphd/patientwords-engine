@@ -1612,12 +1612,19 @@ def test_a_truncated_filtered_empty_or_unrecorded_reply_is_a_named_problem():
              {"turn_id": 6, "role": "assistant", "text": "after the tool"}]
     clean = {2: "stop", 4: "tool_calls", 6: "stop"}
     assert checks.reply_problems(turns, clean, where="t") == [], "a tool-call turn carries no text legitimately"
-    assert checks.reply_problems(turns, {**clean, 6: "unknown"}, where="t") == [], "unknown is recorded, not refused"
     for reason in checks.TRUNCATING_STOP_REASONS:
         problems = checks.reply_problems(turns, {**clean, 6: reason}, where="t")
         assert problems == [f"t: assistant turn 6 ended on stop_reason {reason!r}; a reply cut at a limit or withheld by "
                             "a filter is not the model's answer"], reason
     assert set(checks.TRUNCATING_STOP_REASONS) == {"max_tokens", "model_length", "content_filter"}
+    # 2026-09-23 review: `unknown` was recorded and admitted, but Inspect maps OpenRouter's finish_reason error (a
+    # generation that failed upstream, possibly after partial text) and a null finish_reason there, so it is refused
+    assert checks.CLEAN_STOP_REASONS == ("stop", "tool_calls")
+    for reason in ("unknown", "a_value_a_later_inspect_adds"):         # fail closed on anything outside the clean pair
+        problems = checks.reply_problems(turns, {**clean, 6: reason}, where="t")
+        assert problems == [f"t: assistant turn 6 ended on stop_reason {reason!r}, an ending Inspect could not map "
+                            "(OpenRouter's finish_reason error or null, Anthropic's context-window stop); the reply "
+                            "cannot be shown to be complete"], reason
     # a turn no retained call produced cannot be shown complete: refused, never assumed clean
     missing = checks.reply_problems(turns, {2: "stop", 4: "tool_calls"}, where="t")
     assert len(missing) == 1 and "assistant turn 6 has no target call recording how it ended" in missing[0]
@@ -1627,6 +1634,23 @@ def test_a_truncated_filtered_empty_or_unrecorded_reply_is_a_named_problem():
     blank[5]["text"] = "  \n"
     empty = checks.reply_problems(blank, clean, where="t")
     assert empty == ["t: assistant turn 6 is empty (no text and no tool call, stop_reason 'stop')"]
+
+
+def test_a_call_that_did_not_end_cleanly_refuses_its_tree_when_no_branch_carries_its_reply():
+    """reply_problems refuses a branch carrying a reply that did not end on
+    stop or tool_calls; a call whose reply no branch carries would be counted
+    in models.target.stop_reasons and refuse nothing, leaving that ending
+    under a claim-grade manifest (2026-09-23 review). The tree is refused."""
+    carried = {"m1", "m2", "m3"}
+    clean = [("m1", "stop"), ("m2", "tool_calls"), ("m3", "unknown")]
+    assert checks.uncarried_ending_refusal(clean, carried, where="s#1") is None, "carried: its branch is refused instead"
+    assert checks.uncarried_ending_refusal([("mx", "stop"), ("my", "tool_calls")], carried, where="s#1") is None, \
+        "a clean call is never a reason to refuse"
+    refusal = checks.uncarried_ending_refusal(clean + [("m9", "unknown"), (None, "no_output"), ("m8", "max_tokens")],
+                                              carried, where="s#1")
+    assert refusal == {"branch_id": f"s#1:{checks.ROOT_BRANCH}",
+                       "reason": "3 target call(s) ended on stop_reason ['max_tokens', 'no_output', 'unknown'] with a "
+                                 "reply no branch of the tree carries, so no branch can be checked against that ending"}
 
 
 def test_a_sample_inspect_halted_at_a_limit_is_refused_as_a_tree():
