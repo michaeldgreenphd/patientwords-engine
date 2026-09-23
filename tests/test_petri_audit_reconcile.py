@@ -505,8 +505,9 @@ def test_both_of_the_ledgers_stamp_precedences_must_parse(tmp_path):
 
 
 def test_a_landed_and_booked_fire_that_was_never_resolved_is_named(tmp_path):
-    # until `resolve` runs, entry_is_active keeps counting the whole commitment as in-flight ON TOP of the
-    # landed cost and the entry holds a queue slot until it expires (Codex round 5 on PR #28)
+    # until `resolve` runs the entry holds a queue slot until it expires (Codex round 5 on PR #28). Its commitment
+    # counts beside the landed cost for the rest of its UTC day whether it is resolved or not (fire_trigger's
+    # entry_holds_spend, since 2026-09-23), so the queue slot is the reason to resolve, and the message says so
     journal, runs, dashboard = _layout(tmp_path)
     journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
     _sidecar(runs, "run_1", 0.4, "n1")
@@ -515,6 +516,10 @@ def test_a_landed_and_booked_fire_that_was_never_resolved_is_named(tmp_path):
     problems = "\n".join(reconcile.reconcile(journal, runs, dashboard)["problems"])
     assert "landed and is fully booked but the journal entry is still unresolved" in problems
     assert "fire_trigger.py resolve --trigger petri-audit" in problems
+    # the reason given is the one resolving still has; it no longer claims resolving stops the commitment counting
+    assert "so it holds a queue slot until it expires" in problems
+    assert "for the rest of its UTC day whether it is resolved or not" in problems
+    assert "in-flight" not in problems and "keeps counting" not in problems
     # resolved: silent. And before the fold it is the ordinary gap between landing and resolving, not a problem.
     journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0, resolved=True)) + "\n", encoding="utf-8")
     assert reconcile.reconcile(journal, runs, dashboard)["problems"] == []
@@ -1189,8 +1194,9 @@ def test_a_resolved_entry_without_a_parseable_stamp_is_named(tmp_path):
 
 def test_a_stamp_in_the_future_is_named(tmp_path):
     # the ordering check rejected only stamps BEFORE the fire. A stamp after now books the cost into a future
-    # day's bucket, so spend.today never receives it: once the fire is resolved and its hold released, neither the
-    # landed cost nor the reservation counts against today's ceiling (Codex round 12 on PR #28)
+    # day's bucket, so spend.today never receives it (Codex round 12 on PR #28). Since 2026-09-23 the fire's
+    # commitment still holds for its whole UTC day, resolved or not, so today's ceiling counts it; the stamp is
+    # named because the ledger books the cost to a day it was not spent in
     journal, runs, _ = _layout(tmp_path)
     journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
     _sidecar(runs, "run_1", 0.2, "n1")
