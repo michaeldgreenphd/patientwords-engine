@@ -322,6 +322,118 @@ def test_tierb_upsert_updates_preregistered_row_no_duplicates(tree):
     assert dash["spend"]["generation_spent_usd"] == pytest.approx(0.0985)
 
 
+# --- 2026-09-23 review of the restored Routine fold: a closed Tier B campaign takes no new batch ---
+# attribute_tierb had a start gate and no end, so the first fold after the step came back would have credited
+# the never-booked 2026-07-21 "batch 17" and every one-pair scenario-generation park to the campaign that closed at
+# 1,600/1,600 ($2.7678, 20 rows): 1703/1600, 24 rows, $2.92, one more row per later park.
+
+def _closed_campaign():
+    return {"target_pairs": 1600, "generator": "claude-haiku-4-5", "start_utc": "2026-07-09T00:00:00Z",
+            "accepted_pairs": 1600, "generation_status": "COMPLETE",
+            "batches": [{"file": "pairs_20260710T000000Z.json", "accepted": 1600, "cost_usd": 2.7678,
+                         "status": "landed"}]}
+
+
+def test_closed_tierb_campaign_takes_no_new_batch_but_the_spend_still_books(tree, capsys):
+    tierb = _closed_campaign()
+    seed_dash(tree, {"schema_version": 1, "tierb": json.loads(json.dumps(tierb)),
+                     "spend": {"generation_spent_usd": 2.7678, "lifetime_generation_usd": 71.4448}})
+    # batch-17 shape: a campaign-window haiku batch that was never booked
+    write_sidecar(tree["sim"], "pairs_20260721T132205Z.report.json",
+                  run_timestamp="2026-07-21T13:25:03+00:00", task="pairs",
+                  model="claude-haiku-4-5", accepted=100, cost_usd=0.146685)
+    # park shape: the lane's no-op default generates one haiku pair
+    write_sidecar(tree["sim"], "pairs_20260829T200716Z.report.json",
+                  run_timestamp="2026-08-29T20:07:20+00:00", task="pairs",
+                  model="claude-haiku-4-5", accepted=1, cost_usd=0.001919)
+
+    assert run(tree) == 0
+
+    dash = load_dash(tree)
+    assert dash["tierb"] == tierb                     # rows, count and status untouched
+    assert dash["spend"]["generation_spent_usd"] == 2.7678
+    # the spend is still real spend: lifetime, its day bucket and the ledger carry both
+    assert dash["spend"]["lifetime_generation_usd"] == pytest.approx(71.4448 + 0.146685 + 0.001919, abs=1e-4)
+    assert dash["spend"]["by_day"]["2026-07-21"] == pytest.approx(0.1467)
+    assert dash["spend"]["by_day"]["2026-08-29"] == pytest.approx(0.0019)
+    assert {"pairs_20260721T132205Z.report.json", "pairs_20260829T200716Z.report.json"} <= set(
+        dash["spend"]["entries_seen"])
+    ledger = tree["ledger"].read_text(encoding="utf-8")
+    assert "- pairs_20260721T132205Z.report.json · $0.1467 ·" in ledger
+    # the refusal is reported, batch by batch, not silent
+    out = capsys.readouterr().out
+    for name in ("pairs_20260721T132205Z.report.json", "pairs_20260829T200716Z.report.json"):
+        assert f"note: {name} " in out and "closed at 1600/1600" in out
+    assert "tierB $2.7678/" in out
+
+
+def test_closed_campaign_still_books_a_batch_it_preregistered(tree):
+    # Fired while the campaign was open and landing after another batch reached the target: the Routine's row says
+    # it belongs to the campaign, so it books, and its row does not stay 'generating' for good.
+    tierb = _closed_campaign()
+    tierb["batches"].append({"file": "pairs_late.json", "accepted": 0, "cost_usd": 0.0, "status": "generating"})
+    seed_dash(tree, {"schema_version": 1, "tierb": tierb, "spend": {"generation_spent_usd": 2.7678}})
+    write_sidecar(tree["sim"], "pairs_late.report.json",
+                  run_timestamp="2026-08-06T15:00:00+00:00", task="pairs",
+                  model="claude-haiku-4-5", accepted=50, cost_usd=0.08)
+
+    run(tree)
+
+    dash = load_dash(tree)
+    assert dash["tierb"]["accepted_pairs"] == 1650
+    assert dash["tierb"]["batches"][-1] == {"file": "pairs_late.json", "accepted": 50, "cost_usd": 0.08,
+                                            "status": "landed"}
+    assert len(dash["tierb"]["batches"]) == 2
+    assert dash["spend"]["generation_spent_usd"] == pytest.approx(2.8478)
+
+
+def test_the_batch_that_reaches_the_target_books_and_the_next_one_in_the_same_fold_does_not(tree, capsys):
+    # the gate reads accepted_pairs as it stands before each sidecar, in the fold's filename (= run time) order
+    seed_dash(tree, {"schema_version": 1, "tierb": {
+        "target_pairs": 1600, "generator": "claude-haiku-4-5", "start_utc": "2026-07-09T00:00:00Z",
+        "accepted_pairs": 1550, "batches": []}})
+    write_sidecar(tree["sim"], "pairs_20260805T000000Z.report.json",
+                  run_timestamp="2026-08-05T00:00:00+00:00", task="pairs",
+                  model="claude-haiku-4-5", accepted=100, cost_usd=0.17)
+    write_sidecar(tree["sim"], "pairs_20260829T000000Z.report.json",
+                  run_timestamp="2026-08-29T00:00:00+00:00", task="pairs",
+                  model="claude-haiku-4-5", accepted=1, cost_usd=0.002)
+
+    run(tree)
+
+    dash = load_dash(tree)
+    assert dash["tierb"]["accepted_pairs"] == 1650
+    assert [row["file"] for row in dash["tierb"]["batches"]] == ["pairs_20260805T000000Z.json"]
+    assert dash["spend"]["generation_spent_usd"] == pytest.approx(0.17)
+    assert "note: pairs_20260829T000000Z.report.json " in capsys.readouterr().out
+
+
+def test_the_first_fold_on_the_repos_own_dashboard_leaves_the_closed_tierb_record_alone(tmp_path):
+    """The reviewers' repro against the live state: fold a copy of ops/dashboard.json over the repo's real sidecar
+    directories (read only; the dashboard and the ledger are scratch copies). Whatever has landed since, a closed
+    campaign's tierb block and generation_spent_usd come out unchanged."""
+    root = Path(__file__).resolve().parents[1]
+    dash_path = tmp_path / "dashboard.json"
+    dash_path.write_bytes((root / "ops" / "dashboard.json").read_bytes())
+    before = json.loads(dash_path.read_text(encoding="utf-8"))
+    tierb = before.get("tierb")
+    if not (isinstance(tierb, dict) and tierb.get("target_pairs") is not None
+            and int(tierb.get("accepted_pairs") or 0) >= int(tierb["target_pairs"])):
+        pytest.skip("the repo's dashboard has no closed Tier B campaign to protect")
+    ledger = tmp_path / "ledger.md"
+    ledger.write_text("# scratch ledger\n", encoding="utf-8")
+
+    assert ledger_update.main([
+        "--simulated-dir", str(root / "data" / "simulated"), "--advice-dir", str(root / "data" / "advice"),
+        "--pab-dir", str(root / "data" / "pab"), "--petri-dir", str(root / "data" / "petri" / "runs"),
+        "--trace-dir", str(root / "trace_out"), "--dashboard", str(dash_path), "--ledger", str(ledger),
+        "--date", "2026-09-23"]) == 0
+
+    after = json.loads(dash_path.read_text(encoding="utf-8"))
+    assert after["tierb"] == tierb
+    assert after["spend"].get("generation_spent_usd") == before["spend"].get("generation_spent_usd")
+
+
 def test_batch_file_name_strips_report_suffix():
     assert ledger_update.batch_file_name("batch_x.report.json") == "batch_x.json"
     assert ledger_update.batch_file_name("odd_name.json") == "odd_name.json"
