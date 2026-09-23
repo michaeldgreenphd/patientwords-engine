@@ -144,3 +144,116 @@ def test_sent_stale_pack_escalates(packed, capsys):
                  "--rubric", str(packed["rubric"]), "--providers", str(packed["registry"])])
     assert e.value.code == 2
     assert "ESCALATION" in capsys.readouterr().out
+
+
+# ---- defect 1 (2026-09-23): packs are keyed by (vendor, archive), not vendor alone
+
+def _second_archive(p, stem="stimuli_20990101T000000Z"):
+    """A second archive for the same vendor: the fixture's stimuli, responses and
+    judgments copied under another stem. pack_state reads an archive by its stem,
+    so the copy is a distinct archive with identical content."""
+    src = p["stim"]
+    adv = src.parent
+    stim2 = adv / f"{stem}.json"
+    stim2.write_bytes(src.read_bytes())
+    for kind in ("responses", "judgments"):
+        (adv / f"{kind}_{stem}.jsonl").write_bytes((adv / f"{kind}_{src.stem}.jsonl").read_bytes())
+    return stim2
+
+
+def _build_from(p, stim, out):
+    ae.main(["repro-pack", "--stimuli", str(stim), "--vendor", "acme",
+             "--rubric", str(p["rubric"]), "--providers", str(p["registry"]),
+             "--out", str(p["tmp"] / out), "--log", str(p["log"])])
+    bundle = next((p["tmp"] / out).glob("advice_repro_acme_*"))
+    return json.loads((bundle / "MANIFEST.json").read_text())["pack_version"]
+
+
+def _send(p, version):
+    ae.main(["repro-pack", "--record-sent", version, "--sent-to", "acme safety team (role ref)",
+             "--log", str(p["log"])])
+
+
+def _check(p):
+    with pytest.raises(SystemExit) as e:
+        ae.main(["repro-pack", "--check", "--log", str(p["log"]),
+                 "--rubric", str(p["rubric"]), "--providers", str(p["registry"])])
+    return e.value.code
+
+
+def _log(p):
+    return [json.loads(x) for x in p["log"].read_text().splitlines()]
+
+
+def test_pack_for_another_archive_neither_supersedes_nor_escalates(packed, capsys):
+    """Regression: build archive A's pack, send it, then build archive B's pack.
+    Keyed by vendor alone, B's build wrote `supersedes: <A's pack>` into the public
+    log and --check demanded a superseding send (exit 2) that was not owed."""
+    va = _build_from(packed, packed["stim"], "dist_a")
+    _send(packed, va)
+    stim_b = _second_archive(packed)
+    vb = _build_from(packed, stim_b, "dist_b")
+    assert va != vb
+    build_b = [e for e in _log(packed) if e["pack_version"] == vb]
+    assert len(build_b) == 1 and build_b[0]["supersedes"] is None
+    capsys.readouterr()
+    assert _check(packed) == 0
+    out = capsys.readouterr().out
+    # one line per (vendor, archive): both packs are checked, neither is owed
+    assert f"FRESH  {va}  acme  {packed['stim'].stem}" in out
+    assert f"FRESH  {vb}  acme  {stim_b.stem}" in out
+    assert "superseding" not in out and "ESCALATION" not in out
+
+
+def test_stale_sent_pack_for_an_older_archive_is_still_checked(packed, capsys):
+    """Regression: with packs for two archives sent, only the vendor's newest log
+    entry was checked, so archive A's sent pack going stale passed with exit 0."""
+    va = _build_from(packed, packed["stim"], "dist_a")
+    stim_b = _second_archive(packed)
+    vb = _build_from(packed, stim_b, "dist_b")
+    _send(packed, va)
+    _send(packed, vb)
+    # archive A moves (a judgment row lands); archive B does not
+    jpath = packed["stim"].parent / f"judgments_{packed['stim'].stem}.jsonl"
+    with open(jpath, "a", encoding="utf-8") as f:
+        f.write(json.dumps({"model": "acme:model-1", "judge_model": "judge-y", "tier": "routine"}) + "\n")
+    capsys.readouterr()
+    assert _check(packed) == 2
+    out = capsys.readouterr().out
+    assert f"STALE  {va}  acme  {packed['stim'].stem}" in out
+    assert f"ESCALATION: sent pack {va} (acme, {packed['stim'].stem})" in out
+    assert f"FRESH  {vb}  acme  {stim_b.stem}" in out
+
+
+def test_same_archive_rebuild_supersedes_and_escalates_until_sent(packed, capsys):
+    """Supersession within one (vendor, archive) is unchanged: a rebuild after the
+    inputs moved names the sent pack in `supersedes` and is owed until sent."""
+    v1 = _build_from(packed, packed["stim"], "dist1")
+    _send(packed, v1)
+    rub = json.loads(packed["rubric"].read_text())
+    rub["version"] = "t9"
+    packed["rubric"].write_text(json.dumps(rub), encoding="utf-8")
+    v2 = _build_from(packed, packed["stim"], "dist2")
+    assert [e["supersedes"] for e in _log(packed) if e["pack_version"] == v2] == [v1]
+    capsys.readouterr()
+    assert _check(packed) == 2
+    assert f"newest built is {v2} (unsent) - send the superseding pack" in capsys.readouterr().out
+    _send(packed, v2)
+    assert _check(packed) == 0
+
+
+def test_newest_pack_is_by_build_order_not_by_send_order(packed, capsys):
+    """A send entry is appended after later builds; it must not make its (older)
+    pack the one checked. v2 sent and fresh means nothing is owed, even though v1's
+    send was recorded after it."""
+    v1 = _build_from(packed, packed["stim"], "dist1")
+    rub = json.loads(packed["rubric"].read_text())
+    rub["version"] = "t8"
+    packed["rubric"].write_text(json.dumps(rub), encoding="utf-8")
+    v2 = _build_from(packed, packed["stim"], "dist2")
+    _send(packed, v2)
+    _send(packed, v1)
+    capsys.readouterr()
+    assert _check(packed) == 0
+    out = capsys.readouterr().out
+    assert f"FRESH  {v2}  acme" in out and v1 not in out

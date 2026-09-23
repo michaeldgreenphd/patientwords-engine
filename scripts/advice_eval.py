@@ -1806,6 +1806,47 @@ def _log_entries(log_path) -> list[dict]:
     return _read_jsonl(p) if p.is_file() else []
 
 
+def _archive_id(stimuli_file: str) -> str:
+    """The archive a pack is built from: the stimuli file's stem, which names the
+    archive's own files (responses_<stem>.jsonl, judgments_<stem>.jsonl). The stem,
+    not the path string, so 'data/advice/x.json', './data/advice/x.json' and an
+    absolute path to the same file are one archive."""
+    return Path(stimuli_file).stem
+
+
+PackKey = tuple[str, str]
+
+
+def _pack_key(entry: dict) -> PackKey:
+    """A pack's identity for supersession and freshness: (vendor, archive).
+
+    One vendor has records in several archives, and each archive gets its own pack.
+    Keying by vendor alone (as before 2026-09-23) made a pack for one archive look
+    like a replacement for another archive's pack: building archive B's pack after
+    archive A's pack was sent wrote `supersedes: <A's pack>` into the public log and
+    made --check demand a superseding send that was not owed (exit 2)."""
+    return (entry["vendor"], _archive_id(entry["manifest"]["stimuli_file"]))
+
+
+def _newest_by_key(entries: list[dict]) -> tuple[dict[PackKey, dict], dict[PackKey, set[str]]]:
+    """Per (vendor, archive): the newest pack by BUILD order, and the set of pack
+    versions with a recorded send.
+
+    A send entry is a copy of its build entry appended later, so it never makes its
+    pack "newer" than a pack built after it; it stands in for the build only when
+    the log holds no build entry for that (vendor, archive)."""
+    newest: dict[PackKey, dict] = {}
+    sent_versions: dict[PackKey, set[str]] = {}
+    for e in entries:
+        key = _pack_key(e)
+        if e.get("sent_utc"):
+            sent_versions.setdefault(key, set()).add(e["pack_version"])
+            newest.setdefault(key, e)
+        else:
+            newest[key] = e
+    return newest, sent_versions
+
+
 def repro_pack(args) -> Path:
     """Assemble a per-vendor reproduction bundle from the public archive alone.
 
@@ -1877,11 +1918,14 @@ def repro_pack(args) -> Path:
     # disclosure log: one build event per NEW pack_version (idempotent rebuilds skip)
     entries = _log_entries(args.log)
     if not any(e.get("pack_version") == manifest["pack_version"] for e in entries):
-        prior = [e for e in entries if e.get("vendor") == args.vendor]
+        # supersedes names the newest earlier pack for the SAME (vendor, archive):
+        # a pack for another archive of this vendor's records is not replaced by this one
+        newest, _ = _newest_by_key(entries)
+        prior = newest.get((args.vendor, _archive_id(state["stimuli_file"])))
         entry = {"pack_version": manifest["pack_version"], "vendor": args.vendor,
                  "manifest": manifest, "built_utc": utc_now_iso(), "sent_utc": None,
                  "sent_to": None,
-                 "supersedes": prior[-1]["pack_version"] if prior else None,
+                 "supersedes": prior["pack_version"] if prior else None,
                  "note": args.note or "built"}
         Path(args.log).parent.mkdir(parents=True, exist_ok=True)
         with open(args.log, "a", encoding="utf-8") as f:
@@ -1895,20 +1939,22 @@ _CHECK_FIELDS = ("stimuli_sha256", "responses_chain_head", "responses_count", "r
 
 
 def repro_pack_check(args) -> int:
-    """FRESH/STALE per logged pack vs the archive's current state; exit 2 when a
-    vendor's latest SENT pack is stale (the vendor holds an outdated bundle)."""
+    """FRESH/STALE for the newest pack of every (vendor, archive) against the
+    archive's current state.
+
+    Exit 2 when a (vendor, archive)'s newest pack was sent and is now stale, or
+    when an earlier pack for that (vendor, archive) was sent and a newer one is
+    built but unsent: either way the vendor holds an outdated bundle. A stale
+    pack that was never sent is reported, not escalated."""
     entries = _log_entries(args.log)
     if not entries:
         print("disclosure log empty - no packs to check")
         return 0
     escalate = False
-    latest_by_vendor: dict[str, dict] = {}
-    latest_sent: dict[str, dict] = {}
-    for e in entries:
-        latest_by_vendor[e["vendor"]] = e
-        if e.get("sent_utc"):
-            latest_sent[e["vendor"]] = e
-    for vendor, e in sorted(latest_by_vendor.items()):
+    newest, sent_versions = _newest_by_key(entries)
+    for key in sorted(newest):
+        vendor, archive = key
+        e = newest[key]
         man = e["manifest"]
         cur = pack_state(man["stimuli_file"], args.rubric, args.providers, man.get("analyze_seed", args.seed))
         moved = []
@@ -1916,15 +1962,17 @@ def repro_pack_check(args) -> int:
             if man.get(f) != cur.get(f):
                 moved.append(f"{f}: {man.get(f)} -> {cur.get(f)}")
         status = "FRESH" if not moved else "STALE"
-        print(f"{status}  {e['pack_version']}  {vendor}" + ("" if not moved else "  | " + "; ".join(moved)))
-        sent = latest_sent.get(vendor)
-        if sent and status == "STALE" and sent["pack_version"] == e["pack_version"]:
-            print(f"ESCALATION: sent pack {e['pack_version']} ({vendor}, sent {sent['sent_utc']}) is stale - "
-                  f"an updated pack is owed")
-            escalate = True
-        elif sent and sent["pack_version"] != e["pack_version"]:
-            print(f"note: {vendor} last SENT pack is {sent['pack_version']}; latest built is {e['pack_version']} "
-                  f"(unsent) - send the superseding pack")
+        print(f"{status}  {e['pack_version']}  {vendor}  {archive}"
+              + ("" if not moved else "  | " + "; ".join(moved)))
+        sent = sent_versions.get(key, set())
+        if e["pack_version"] in sent:
+            if status == "STALE":
+                print(f"ESCALATION: sent pack {e['pack_version']} ({vendor}, {archive}) is stale - "
+                      f"an updated pack is owed")
+                escalate = True
+        elif sent:
+            print(f"note: {vendor} {archive}: SENT pack(s) {', '.join(sorted(sent))}; newest built is "
+                  f"{e['pack_version']} (unsent) - send the superseding pack")
             escalate = True
     return 2 if escalate else 0
 
@@ -2064,8 +2112,8 @@ def build_parser() -> argparse.ArgumentParser:
     rp.add_argument("--log", default=DEFAULT_DISCLOSURE_LOG)
     rp.add_argument("--note", default="")
     rp.add_argument("--check", action="store_true",
-                    help="recompute every manifest input; FRESH/STALE per logged pack; exit 2 when a "
-                         "sent pack is stale or superseded-but-unsent")
+                    help="recompute every manifest input; FRESH/STALE for the newest pack of each "
+                         "(vendor, archive); exit 2 when a sent pack is stale or superseded-but-unsent")
     rp.add_argument("--record-sent", metavar="PACK_VERSION",
                     help="append a send event for an existing pack version")
     rp.add_argument("--sent-to", default="", help="role/channel reference only - never private contact details")
