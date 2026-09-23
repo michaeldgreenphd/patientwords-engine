@@ -53,11 +53,27 @@ python scripts/seal_check.py --site ../patientwords
 
 It recomputes the sealed registry via `tierb_split` and scans the site checkout
 plus engine `docs/` and `ops/` (briefs, ledgers, decks under `ops/decks/`,
-audits) for every sealed phrase, exact and whitespace/case-normalized. Scanned
-suffixes: `.json .html .md .csv .txt .yml`; `modes/`, `.git`, `trace_out/`, and
-`data/simulated/` are excluded (the registry's own sources are not leaks). If
-you produced any artifact OUTSIDE those roots this session (a reviewer packet,
-a scratch export, a release staging dir), add it: `--extra docs,ops,<dir>`.
+audits) for every sealed phrase, whitespace/case-normalized, in each file's text
+and its decoded views (HTML entities, JSON escapes, CSV quote doubling). Scanned
+suffixes: `.json .jsonl .html .md .csv .txt .yml`. Only three things are skipped:
+the engine's own `data/simulated/` and `trace_out/` (by RESOLVED path: the
+registry's sources and the measurement store are not leaks) and `.git`
+directories. The site's `modes/` renders, its `data/simulated_*.json` files and
+`.github/` ARE scanned; until 2026-09-23 a substring exclusion skipped all of
+them (`docs/prereg_divergence_log.md`). A full sweep takes about two minutes.
+If you produced any artifact OUTSIDE those roots this session (a reviewer
+packet, a scratch export, a release staging dir), add it:
+`--extra docs,ops,<dir>`.
+
+The only exceptions are owner rulings in `data/seal_allowlist.json`: each entry
+names a sealed label, the published row and field that contain it, and that
+field's full sha256. The check masks only that exact field, so a bare
+occurrence of the phrase anywhere still fails; an entry whose hash stops
+matching is reported INACTIVE and suppresses nothing. The script prints each
+file it cleared under a ruling (`allowlisted: <path> :: <label> inside ...`);
+report those lines with the verdict. Never add an entry yourself: an entry
+needs an owner ruling recorded in the divergence log, and it is never keyed on a
+label alone.
 
 ## Step 3 — Act on the exit code
 
