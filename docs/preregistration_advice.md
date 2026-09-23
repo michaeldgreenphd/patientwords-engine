@@ -326,3 +326,82 @@ Consequences, stated in advance of analysis:
 **D1 owner confirmation (2026-07-29):** the owner confirmed the n=25 stop by
 decision reply ("advice-nat-remainder: stay-25"). Stimuli 26-75 remain
 registered and inert.
+
+## Deviation D2 (2026-09-23, owner-directed): per-model results published before vendor packs were sent
+
+Amendment 3 of this pre-registration (not the Tier B pre-registration's
+Amendment 3, `docs/prereg_amendment3_holdout.md`) requires that (1) a
+reproduction pack reach each affected vendor BEFORE any public per-model
+comparison is published, and (2) every public per-model claim cite a pack
+version that is FRESH at publication time. Neither happened for the
+LLM-responses page (`llm/` on the site). No pack has been sent to any vendor,
+and the page cites no pack version.
+
+What was published, and when. Times are frontend commit times (UTC); the site
+deploys from `main`, so each went public at or shortly after that time.
+Commits marked "fe" are in the frontend repository, "eng" in this one.
+
+- 2026-07-22 20:31Z, fe b51d2cf: the page goes live with verbatim responses
+  per model, both wordings, for five models (anthropic, google, xai, deepseek,
+  moonshotai), archive `stimuli_20260721T235403Z`.
+- 2026-07-23 04:59Z, fe 3f0e533: provisional machine-coded grades for six
+  models (openai added): coded tiers, flag rates and a per-model downgrade
+  map. The first graded per-model comparison.
+- **2026-07-23 11:03Z, eng 5e444ca1: Amendment 3 is written**, about six
+  hours after graded per-model results went live. Everything published
+  above predates the rule; everything published below came after it, with
+  no pack sent.
+- 2026-07-23 17:04Z, fe 00b6ad2: two arms added (claude-sonnet-5,
+  gpt-5.4-mini), eight in all.
+- 2026-07-29 14:52Z, fe 62c7c2c: the natural-question family merged in
+  (archive `stimuli_20260728T194624Z`), fully judged.
+- 2026-07-29 15:36Z, fe 32e23ed: the grok-4.3 featured example (scenario 29,
+  owner-directed), the page's most pointed single-model claim.
+- 2026-07-30 14:53Z, eng bb8b22fb: packs built for six vendors, all from
+  `stimuli_20260728T194624Z`, and logged in `ops/disclosure_log.jsonl` with
+  `sent_utc: null`. They were never sent. The page by then also showed
+  `stimuli_20260721T235403Z`, which no pack covered.
+- 2026-08-08 04:09Z, fe 095123a: the August wave appended (archive
+  `stimuli_20260807T153329Z`); every Gemini arm withheld from then on, so
+  google's records were on the page from 2026-07-22 to 2026-08-08.
+- 2026-08-24 22:55Z, fe 0dc0d9c: the anonymous `stealth/ox-alpha` arm and the
+  judge-agreement matrix added.
+
+Nothing recorded the breach until now. The critic pass of 2026-07-23
+(`docs/critic/critic_20260723.md`) reviewed Amendment 3's pack tooling and
+the page's new figures in the same pass without flagging the order. The six
+logged packs have read STALE since 2026-08-21, when a registry edit (eng
+78d5beb1) became the first of their inputs to move, and the critic passes of
+2026-08-23 to 2026-08-28 reported them as informational because none was
+sent.
+
+Remedy. The pack tooling was fixed before any send (engine PR
+`claude/repro-pack-check-fixes`): packs are keyed by (vendor, archive), the
+registry digest covers only the vendor's own registry blocks, a log entry the
+check cannot read fails the contract gate instead of passing it silently, and
+the pack README and note state request ids and judges as the records hold
+them. After that PR merges, packs are rebuilt from `main` for every
+(vendor, archive) whose records the page has shown: anthropic and openai for
+`stimuli_20260721T235403Z`, `stimuli_20260728T194624Z` and
+`stimuli_20260807T153329Z`; xai, deepseek and moonshotai for the first two;
+google for the first two (on the page 2026-07-22 to 2026-08-08). The owner
+sends them, using the note template's "already public" wording, and records
+each send with `repro-pack --record-sent`. To fill at send time:
+
+- rebuilt at engine commit: `<commit>`
+- pack versions: `<vendor, archive, pack_version for each>`
+- sent: `<date>` (each `--record-sent` entry's `sent_utc` is when the command
+  ran, so record the send the same day)
+- cited on the page from: `<date, frontend commit>`
+- `stealth/ox-alpha` has no identifiable vendor, so rule (1) cannot be met for
+  it: `<kept on the page with this exception / withdrawn>`
+
+No measurement or published number changes.
+
+**Scope ruling (2026-09-23, owner).** The rule binds any public per-model
+claim, whichever page carries it, including the planned Petri Multi-turn page.
+That page names one vendor's model and reports its replies graded by the
+same model, so an Anthropic pack for the Petri runs is sent before the page is
+public and the page cites its version. The Petri lane has no pre-registration
+of its own, so it adopts the rule by its own instrument: decision 16 in
+`docs/petri_wave2_design.md` records the same ruling.
