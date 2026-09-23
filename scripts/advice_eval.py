@@ -1779,8 +1779,46 @@ def _vendor_match(spec: str, vendor: str) -> bool:
     return provider == vendor or model.startswith(vendor + "/")
 
 
-def pack_state(stimuli_path, rubric_path, registry_path, seed) -> dict:
-    """Current value of every manifest input - the freshness basis for --check."""
+def _registry_scope(registry_path, vendor: str, rows: list[dict]) -> dict:
+    """The part of the provider registry a vendor's pack depends on, and its digest.
+
+    The scope is the registry block of every provider a vendor record was requested
+    through (the `provider:` prefix of model_requested: `anthropic` for
+    anthropic:claude-..., `moonshot` for moonshot:moonshotai/..., `openrouter` for
+    openrouter:google/...). A block's per-model `pricing` map is cut to the vendor's
+    own slugs (`<vendor>/...`), because a shared aggregator block prices every
+    vendor's models. Every other field of a scoped block stays in, notes included:
+    they describe the route the vendor's records took.
+
+    Before 2026-09-23 the manifest carried the sha256 of the WHOLE registry file,
+    so any edit to any provider (another vendor's price, a Petri judge's price)
+    staled every pack for every vendor. A block the registry lacks is hashed as
+    null, so its appearing or disappearing still moves the digest. A missing
+    registry file gives a null digest, as the whole-file hash did."""
+    keys = sorted({str(r.get("model_requested") or "").partition(":")[0] for r in rows
+                   if r.get("record_type") == "advice" and _vendor_match(r.get("model_requested"), vendor)})
+    reg_path = Path(registry_path)
+    if not reg_path.is_file():
+        return {"registry_scope": keys, "registry_scope_sha256": None}
+    registry = json.loads(reg_path.read_text(encoding="utf-8"))
+    scoped: dict[str, object] = {}
+    for key in keys:
+        block = registry.get(key)
+        if isinstance(block, dict) and isinstance(block.get("pricing"), dict):
+            block = dict(block)
+            block["pricing"] = {slug: rate for slug, rate in block["pricing"].items()
+                                if str(slug).startswith(vendor + "/")}
+        scoped[key] = block
+    return {"registry_scope": keys, "registry_scope_sha256": sha256_text(canonical_json(scoped))}
+
+
+def pack_state(stimuli_path, rubric_path, registry_path, seed, vendor: str | None = None) -> dict:
+    """Current value of every manifest input - the freshness basis for --check.
+
+    With `vendor`, the registry enters as that vendor's scope (`_registry_scope`).
+    Without it, as the whole file's sha256 (`registry_sha256`): the basis of every
+    pack logged before 2026-09-23, kept so --check reads those entries by the
+    definition they were built under."""
     stem = Path(stimuli_path).stem
     adv_dir = Path(stimuli_path).parent
     responses = adv_dir / f"responses_{stem}.jsonl"
@@ -1790,15 +1828,19 @@ def pack_state(stimuli_path, rubric_path, registry_path, seed) -> dict:
     rubric = {}
     if Path(rubric_path).is_file():
         rubric = json.loads(Path(rubric_path).read_text(encoding="utf-8"))
-    return {
+    state = {
         "stimuli_file": str(stimuli_path), "stimuli_sha256": _sha256_file(stimuli_path),
         "responses_chain_head": rows[-1]["record_sha256"] if rows else None,
         "responses_count": len(rows),
         "rubric_sha256": _sha256_file(rubric_path), "rubric_version": rubric.get("version"),
         "judgments_sha256": _sha256_file(judgments), "judgments_count": len(jrows),
-        "registry_sha256": _sha256_file(registry_path),
         "analyze_seed": int(seed),
     }
+    if vendor is None:
+        state["registry_sha256"] = _sha256_file(registry_path)
+    else:
+        state.update(_registry_scope(registry_path, vendor, rows))
+    return state
 
 
 def _log_entries(log_path) -> list[dict]:
@@ -1855,7 +1897,7 @@ def repro_pack(args) -> Path:
     (a state timestamp), and pack_version is a content hash over the manifest inputs
     plus the engine commit. Wall-clock time appears only in the disclosure LOG entry
     (built_utc), which is not part of the bundle."""
-    state = pack_state(args.stimuli, args.rubric, args.providers, args.seed)
+    state = pack_state(args.stimuli, args.rubric, args.providers, args.seed, vendor=args.vendor)
     stem = Path(args.stimuli).stem
     adv_dir = Path(args.stimuli).parent
     rows_raw = [ln for ln in Path(adv_dir / f"responses_{stem}.jsonl").read_text(encoding="utf-8").splitlines() if ln]
@@ -1935,7 +1977,15 @@ def repro_pack(args) -> Path:
 
 
 _CHECK_FIELDS = ("stimuli_sha256", "responses_chain_head", "responses_count", "rubric_sha256",
-                 "rubric_version", "judgments_sha256", "judgments_count", "registry_sha256")
+                 "rubric_version", "judgments_sha256", "judgments_count")
+_REGISTRY_FIELDS_SCOPED = ("registry_scope", "registry_scope_sha256")
+_REGISTRY_FIELDS_LEGACY = ("registry_sha256",)
+
+
+def _is_scoped_manifest(manifest: dict) -> bool:
+    """Packs built from 2026-09-23 carry the vendor-scoped registry digest; earlier
+    ones carry the whole-file digest and are checked by that definition."""
+    return "registry_scope_sha256" in manifest
 
 
 def repro_pack_check(args) -> int:
@@ -1956,9 +2006,11 @@ def repro_pack_check(args) -> int:
         vendor, archive = key
         e = newest[key]
         man = e["manifest"]
-        cur = pack_state(man["stimuli_file"], args.rubric, args.providers, man.get("analyze_seed", args.seed))
+        scoped = _is_scoped_manifest(man)
+        cur = pack_state(man["stimuli_file"], args.rubric, args.providers, man.get("analyze_seed", args.seed),
+                         vendor=vendor if scoped else None)
         moved = []
-        for f in _CHECK_FIELDS:
+        for f in _CHECK_FIELDS + (_REGISTRY_FIELDS_SCOPED if scoped else _REGISTRY_FIELDS_LEGACY):
             if man.get(f) != cur.get(f):
                 moved.append(f"{f}: {man.get(f)} -> {cur.get(f)}")
         status = "FRESH" if not moved else "STALE"

@@ -98,9 +98,11 @@ def test_pack_contents_and_vendor_selection(packed):
     assert all(ae._vendor_match(r["model_requested"], "acme") for r in recs)
     assert recs[0]["request_id"] == "rq1" and recs[0]["build_fingerprint"] == "fp_t"
     for key in ("responses_chain_head", "responses_count", "rubric_sha256", "rubric_version",
-                "judgments_sha256", "judgments_count", "stimuli_sha256", "registry_sha256",
+                "judgments_sha256", "judgments_count", "stimuli_sha256", "registry_scope_sha256",
                 "engine_commit", "analyze_seed", "pack_version", "generated_utc"):
         assert man.get(key) is not None, key
+    # the registry enters as the blocks the vendor's records went through, not the whole file
+    assert man["registry_scope"] == ["acme", "openrouter"] and "registry_sha256" not in man
     readme = (bundle / "README.md").read_text()
     assert man["pack_version"] in readme and man["responses_chain_head"] in readme
 
@@ -257,3 +259,64 @@ def test_newest_pack_is_by_build_order_not_by_send_order(packed, capsys):
     assert _check(packed) == 0
     out = capsys.readouterr().out
     assert f"FRESH  {v2}  acme" in out and v1 not in out
+
+
+# ---- defect 2 (2026-09-23): the registry digest covers only what the vendor's pack depends on
+
+def _edit_registry(p, fn):
+    reg = json.loads(p["registry"].read_text())
+    fn(reg)
+    p["registry"].write_text(json.dumps(reg), encoding="utf-8")
+
+
+def test_registry_edits_outside_the_vendors_scope_leave_its_pack_fresh(packed, capsys):
+    """Regression: the manifest hashed the whole registry file, so any edit - a new
+    provider, another vendor's price on the shared aggregator block - staled every
+    pack for every vendor, and once packs are sent, turned the contract gate red."""
+    _edit_registry(packed, lambda r: r["openrouter"].update(pricing={"acme/model-1": [1.0, 2.0],
+                                                                      "other/model-9": [1.0, 2.0]}))
+    v = _build_from(packed, packed["stim"], "dist1")
+    _send(packed, v)
+    _edit_registry(packed, lambda r: r.update(zeta={"api": "openai-compat", "default_pricing": [9.0, 9.0]}))
+    _edit_registry(packed, lambda r: r["openrouter"]["pricing"].update({"other/model-9": [3.0, 4.0],
+                                                                         "third/model-2": [1.0, 1.0]}))
+    capsys.readouterr()
+    assert _check(packed) == 0
+    assert f"FRESH  {v}  acme" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("edit", [
+    pytest.param(lambda r: r["acme"].update(default_pricing=[2.0, 8.0]), id="own-block"),
+    pytest.param(lambda r: r["openrouter"]["pricing"].update({"acme/model-1": [5.0, 6.0]}), id="own-slug-price"),
+    pytest.param(lambda r: r["openrouter"].update(base_url="https://or2.example/v1"), id="route-field"),
+    pytest.param(lambda r: r.pop("acme"), id="block-removed"),
+])
+def test_registry_edits_inside_the_vendors_scope_stale_its_sent_pack(packed, capsys, edit):
+    _edit_registry(packed, lambda r: r["openrouter"].update(pricing={"acme/model-1": [1.0, 2.0]}))
+    v = _build_from(packed, packed["stim"], "dist1")
+    _send(packed, v)
+    _edit_registry(packed, edit)
+    capsys.readouterr()
+    assert _check(packed) == 2
+    out = capsys.readouterr().out
+    assert f"STALE  {v}  acme" in out and "registry_scope_sha256:" in out and "ESCALATION" in out
+
+
+def test_legacy_whole_file_entries_are_checked_by_their_own_definition(packed, capsys):
+    """Compatibility: log entries written before 2026-09-23 carry registry_sha256
+    (the whole file). --check keeps reading them by that definition, so any
+    registry edit still moves them; they are not silently re-based."""
+    v = _build_from(packed, packed["stim"], "dist1")
+    entry = _log(packed)[0]
+    man = entry["manifest"]
+    for k in ("registry_scope", "registry_scope_sha256"):
+        man.pop(k)
+    man["registry_sha256"] = ae._sha256_file(packed["registry"])
+    packed["log"].write_text(json.dumps(entry) + "\n", encoding="utf-8")
+    capsys.readouterr()
+    assert _check(packed) == 0
+    assert f"FRESH  {v}  acme" in capsys.readouterr().out
+    _edit_registry(packed, lambda r: r.update(zeta={"api": "manual_ui"}))
+    assert _check(packed) == 0  # stale but unsent: reported, not escalated
+    out = capsys.readouterr().out
+    assert f"STALE  {v}  acme" in out and "registry_sha256:" in out
