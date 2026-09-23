@@ -11,11 +11,15 @@ stamps `resolved_utc` (opening a 15-minute settle window) and frees the queue
 slot. It does **not** release a paid entry's `max_spend` from the daily ceiling:
 since 2026-09-23 a paid fire's commitment counts for the whole UTC day it was
 fired, resolved or not, because nothing else counts its cost until the ledger
-folds the sidecar (`fire_trigger.py`, `entry_holds_spend`). Resolving a run
-that has not fully landed re-opens the 2026-07-09 queue-eviction seam: the
-resolved run may still occupy the GitHub concurrency group, so a subsequent
-same-trigger fire can enter as a third run and silently supersede the
-still-pending run.
+folds the sidecar (`fire_trigger.py`, `entry_holds_spend`). That holds even for
+a run that never spent: skipped because its push created the branch, refused by
+the CI gate, or failed before any provider call. Nothing in this procedure
+releases such a hold before 00:00 UTC. Record it, and plan the day's remaining
+paid fires around it; do not look for a way to free it (docs/operators_handbook.md
+§6). Resolving a run that has not fully landed re-opens the 2026-07-09
+queue-eviction seam: the resolved run may still occupy the GitHub concurrency
+group, so a subsequent same-trigger fire can enter as a third run and silently
+supersede the still-pending run.
 
 ## Step 1 — Sync (outputs interleave by design)
 

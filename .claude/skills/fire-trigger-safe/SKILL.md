@@ -83,8 +83,11 @@ lane, and advance by chaining — resolve the landed run, then fire the next.
 - Daily operational ceiling: $2 (from `ops/dashboard.json` `spend.daily_ceiling_usd`,
   default 2.0). The guard counts committed spend = landed today + the `max_spend` held
   by every paid entry fired today, resolved or expired alike; only eviction releases one
-  (since 2026-09-23 — resolving no longer frees budget). Spend the ledger has already
-  folded into today is then counted twice; that is deliberate and fails closed.
+  (since 2026-09-23 — resolving no longer frees budget). That includes a fire whose
+  run never spent: skipped at ref creation, refused by the CI gate, or failed before
+  any call. So a corrected re-fire the same day needs room for both commitments
+  (docs/operators_handbook.md §6). Spend the ledger has already folded into today is
+  then counted twice; that is deliberate and fails closed.
 - A `circuit-trace` fire with `show_mitigation: true` is ALSO a paid path (translation
   calls): the guard imputes a flat $0.15 commitment per fire and applies the same ceiling.
 - Exit 4 ends the attempt. Record the refusal; do not retry, split, or override.
