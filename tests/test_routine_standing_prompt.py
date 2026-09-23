@@ -69,6 +69,16 @@ def test_the_fold_step_commits_both_outputs_together() -> None:
     assert "ONE commit" in body and "ops/dashboard.json" in body and "docs/*ledger*.md" in body, body
 
 
+def test_the_fold_step_names_every_dashboard_key_the_script_writes_beyond_spend() -> None:
+    """The first version of the step said the script folds sidecars "into the `spend` block", but a run also
+    stamps `updated_utc` and can write `tierb`. The Routine was told never to hand-edit what it wrote, so it
+    would have carried a 1703/1600 Tier B count as real (2026-09-23 review). The step names both keys and the
+    `note:` lines the script prints for a haiku batch it keeps out of the closed campaign."""
+    body = dict(_sections(PROMPT))["2b"]
+    for token in ("`updated_utc`", "`tierb`", "`note:`", "pairs_20260721T132205Z"):
+        assert token in body, token
+
+
 def test_the_dashboard_section_names_spend_and_its_only_writer() -> None:
     """§6 lists the dashboard sections the Routine rewrites. Without `spend`
     there, with its writer named, a Routine that rebuilds the file from an

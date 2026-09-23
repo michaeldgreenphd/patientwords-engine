@@ -71,6 +71,19 @@ finds nothing new to fold. Its `WARNING:` lines (a ceiling passed, a
 sidecar it could not read) go in the brief; they never block. Never edit
 spend numbers by hand.
 
+Beyond `spend`, the run stamps the dashboard's `updated_utc`. It writes
+`tierb` (accepted count, batch rows, and `spend.generation_spent_usd`) only
+for a Tier B batch that lands while the campaign is open, or one that
+already has a pre-registered row. The campaign closed at 1,600/1,600, so
+every other haiku `pairs` batch books to lifetime and `by_day` alone, and
+the script prints a `note:` line naming it. On `main` as of 2026-09-23,
+the first fold prints four: the 2026-07-21 batch `pairs_20260721T132205Z` (100
+pairs, fired as "tierB batch 17" but never booked) and three one-pair
+`scenario-generation` parks. Each later park of that lane prints one more.
+Put the notes in the brief as accounting, not as Tier B progress, and do
+not edit `tierb` to take them in. Whether batch 17 belongs to Tier B is the
+owner's decision.
+
 Commit what it wrote — the dashboard and the ledger file it appended to
 (`git status` shows which) — in ONE commit, before §3 fires anything.
 Never one without the other: the bullets and `entries_seen` are two
