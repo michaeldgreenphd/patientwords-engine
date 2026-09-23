@@ -63,6 +63,12 @@ without checking each active entry individually** — see §5, the
 **Re-park.** After a lane's real work lands and resolves:
 `python scripts/fire_trigger.py park --trigger <t> --ignore-settle`
 (terminality just confirmed). `park --all` exists for cold starts.
+A full day's ceiling does not refuse a park: the day's paid fires hold
+their commitments until 00:00 UTC, and a refused park would leave the paid
+config at rest. The waiver applies to the lane's exact park content only
+(`park_passes_ceiling`); an invalid `max_spend` still refuses. The CI gate
+has no waiver, so on that day it refuses the park's own run, which spends
+nothing. That red run is expected; resolve it like any other.
 
 **Publish site data.** Only the sanctioned exporter chain (site
 CLAUDE.md's data-contract table names every writer); then
@@ -199,7 +205,7 @@ say in any record which evidence was used.
   Every paid run writes a `.report.json` sidecar with its cost.
   `scripts/ledger_update.py` is the only spend writer.
 - No paid fire without the owner's explicit words. No `--override-budget`,
-  no `--force-evict`, ever. Ox Alpha never fires again (registry entry
+  no `--force-evict`, ever (a park needs neither; see §3, Re-park). Ox Alpha never fires again (registry entry
   removed; post-window calls would bill catch-all).
 - Both repos are PUBLIC: no secrets, keys, or tokens in any file, note, or
   commit message.

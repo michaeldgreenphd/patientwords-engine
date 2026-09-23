@@ -1130,6 +1130,32 @@ def is_park_params(trigger: str, params: dict) -> bool:
     return {k: v for k, v in params.items() if not k.startswith("_")} == PARK_DEFAULTS[trigger]
 
 
+def park_passes_ceiling(trigger: str, params: dict, kind: str) -> bool:
+    """Whether budget_check's verdict `kind` is a daily-ceiling refusal that is waived because this fire is the
+    lane's park.
+
+    Since 2026-09-23 a paid fire holds its commitment for its whole UTC day, resolved or not (entry_holds_spend).
+    The parks of scenario-generation, model-evaluation and advice-eval are paid fires of 0.01, so on a day whose
+    paid fires had reached the ceiling, the re-park docs/operators_handbook.md section 3 requires after every landed
+    fire was refused with exit 4. Nothing sanctioned got past that: `park` passes no --override-budget and section
+    6 forbids one. The paid config then stayed on the trigger file at rest until 00:00 UTC, when the day's holds
+    reset and a merge, rebase or cherry-pick that re-fired it would pass the CI gate on its params alone. The
+    resting-state rule exists to close exactly that hazard (review of the G1 change, 2026-09-23: 1.20 + 0.80 on a
+    $2 day, both resolved, then the scenario-generation park refused at "held today 2.00"). Before G1 the resolve
+    released the holds and the park went through.
+
+    The waiver is narrow on purpose:
+    - it applies only to a park recognised by content (is_park_params: the lane's PARK_DEFAULTS exactly, plus
+      `_parked`), never by flag, so nothing else can claim it;
+    - it waives only a "ceiling" verdict. An "invalid" commitment is never waived;
+    - the park's journal entry still records its max_spend and holds it for the rest of the day;
+    - the CI gate has no waiver. On a full day it refuses the park's own run (exit 6), so the park spends nothing.
+      Its work is done once its bytes are the trigger file at rest.
+    The day's actual spend therefore still cannot pass the ceiling.
+    """
+    return kind == "ceiling" and is_park_params(trigger, params)
+
+
 def refuse_reused_archive_tag(repo: Path, trigger: str, params: dict, *, reuse_tag: bool, parked: bool) -> int | None:
     """None when an archive-renders fire may proceed; else 8, with the refusal
     printed. A tag that already has a manifest on this branch, or on the branch's
@@ -1274,6 +1300,11 @@ def cmd_fire(args):
             print(reason)
         elif kind == "ceiling" and args.override_budget:
             print(f"warning: budget override in effect ({reason})", file=sys.stderr)
+        elif park_passes_ceiling(args.trigger, params, kind):
+            # the resting-state rule outranks a full day's ceiling for the park alone; the CI gate still refuses
+            # its run, so it spends nothing (see park_passes_ceiling)
+            print(f"park fired past the daily ceiling ({reason}): its bytes replace the paid config at rest, and "
+                  "the CI gate, which has no such waiver, refuses its own run while the day is full")
         else:
             print(f"refused: {reason}", file=sys.stderr)
             return 4
@@ -2081,6 +2112,11 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
             print(reason)
         elif kind == "ceiling" and args.override_budget:
             print(f"warning: budget override in effect ({reason})", file=sys.stderr)
+        elif park_passes_ceiling(trigger, params, kind):
+            # as in cmd_fire: a park whose push was rejected must still be publishable on a full day, or the lane
+            # stays unparked until 00:00 UTC (see park_passes_ceiling)
+            print(f"park published past the daily ceiling ({reason}): its bytes replace the paid config at rest, "
+                  "and the CI gate, which has no such waiver, refuses its own run while the day is full")
         else:
             print(f"refused: {reason}", file=sys.stderr)
             return 4, head
@@ -2092,7 +2128,10 @@ def cmd_park(args):
 
     Each park is a real fire: it runs the full guard chain and costs one cheap
     run in that trigger's lane. With --all, triggers park sequentially and the
-    first refusal stops the batch so the operator can read the guard's reason."""
+    first refusal stops the batch so the operator can read the guard's reason.
+    The one guard it passes that other fires do not is a full day's ceiling
+    (park_passes_ceiling): no --override-budget is involved, and the CI gate
+    still refuses the park's run on that day."""
     triggers = sorted(PARK_DEFAULTS) if args.all else [args.trigger]
     if not args.all and args.trigger not in PARK_DEFAULTS:
         print(f"refused: no park default for {args.trigger!r} (parkable: {sorted(PARK_DEFAULTS)})",

@@ -3014,3 +3014,79 @@ def test_the_paid_workflows_hand_the_gate_the_push_binding(trigger):
     assert checkout["with"]["fetch-depth"] == 0, f"{name}: a shallow clone cannot read the previous tip's journal"
     assert checkout["with"]["filter"] == "blob:none"
     assert job["if"] == "${{ !github.event.created }}", "the ref-creation guard is untouched"
+
+
+# ------------------------------------------------------------------ G1 review: a park on a day the ceiling is full
+
+def test_a_park_is_not_refused_by_a_ceiling_its_days_paid_fires_filled(repo, capsys, monkeypatch):
+    """Review of the G1 change (2026-09-23), finding R1. A paid fire now holds its commitment for its whole UTC day,
+    resolved or not, and the parks of the three non-petri paid lanes are paid fires of 0.01. So once the day's
+    fires had filled the ceiling, the re-park the handbook requires after each landed fire was refused (exit 4) with
+    no sanctioned way past it, and the paid config stayed on the trigger file at rest until 00:00 UTC - after which
+    a branch operation re-firing it passes the CI gate on its params alone. origin/main released the holds on
+    resolve, so the park went through. A park (by content, never by flag) now passes a ceiling refusal; its entry
+    still holds its 0.01, and the CI gate, which has no waiver, refuses the park's own run, so nothing is spent past
+    the ceiling."""
+    clock = [datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc)]
+    monkeypatch.setattr(ft, "utc_now", lambda: clock[0])
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    write_dashboard(repo, spent=0.0, date="2026-09-23", ceiling=2.0)
+    git = _git_repo(repo)
+    journal_path(repo).write_text("", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    paid = {"task": "pairs", "num": "5", "max_spend": "1.20"}
+    assert fire(repo, "scenario-generation", paid) == 0
+    assert fire(repo, "model-evaluation", {"model_selection": "claude-haiku-4-5", "max_spend": "0.80"}) == 0
+    for trigger in ("scenario-generation", "model-evaluation"):
+        assert ft.main(["resolve", "--repo", str(repo), "--trigger", trigger]) == 0
+    git("add", "-A")
+    git("commit", "-qm", "two paid fires, landed and resolved: the day is full")
+    before = git("rev-parse", "HEAD").stdout.strip()
+    capsys.readouterr()
+
+    # the waiver is for the park's exact content: an ordinary 0.01 fire, and a park lookalike with another
+    # max_spend, are refused as before
+    small = {"task": "pairs", "num": "1", "max_spend": "0.01"}
+    lookalike = {**ft.PARK_DEFAULTS["scenario-generation"], "max_spend": "0.02", "_parked": "true"}
+    for params in (small, lookalike):
+        assert fire(repo, "scenario-generation", params, extra=("--ignore-settle",)) == 4, params
+        assert "held today 2.00" in capsys.readouterr().err
+    assert json.loads(trigger_path(repo, "scenario-generation").read_text(encoding="utf-8")) == paid
+
+    # a later second than the paid fire: the journal keys an entry on (trigger, fired_utc)
+    clock[0] = datetime(2026, 9, 23, 12, 5, tzinfo=timezone.utc)
+    assert ft.main(["park", "--repo", str(repo), "--trigger", "scenario-generation", "--ignore-settle",
+                    "--no-git"]) == 0
+    out = capsys.readouterr().out
+    assert "park fired past the daily ceiling" in out and "held today 2.00" in out
+    at_rest = json.loads(trigger_path(repo, "scenario-generation").read_text(encoding="utf-8"))
+    assert ft.is_park_params("scenario-generation", at_rest), "the paid config is off the trigger file"
+    park = ft.load_journal(journal_path(repo))[-1]
+    assert park["max_spend"] == 0.01 and ft.entry_holds_spend(park, "2026-09-23"), "the park's 0.01 still holds"
+
+    # the CI gate has no waiver: with the park's own entry left out (attempt 1), 0.01 on a full day is refused, so
+    # the park's run spends nothing
+    git("add", "-A")
+    git("commit", "-qm", "Fire scenario-generation: park")
+    capsys.readouterr()
+    assert ft.main(["budget-gate", "--repo", str(repo), "--trigger", "scenario-generation", "--push-before", before,
+                    "--ref", "main", "--run-attempt", "1"]) == 6
+    captured = capsys.readouterr()
+    assert "this push's own scenario-generation journal entry" in captured.out
+    assert "max_spend 0.01 + today's committed 2.00 (landed 0.00 + held today 2.00)" in captured.err
+
+
+def test_publish_keeps_the_park_ceiling_waiver_when_the_park_push_was_rejected(tmp_path, capsys):
+    """The same waiver on the retry path: a park whose push was rejected is re-checked by `publish` against the
+    rebased dashboard, and a full day there must not leave the lane unparked either. An ordinary fire of the same
+    0.01 is still refused on that dashboard (test_publish_rechecks_the_budget_with_the_rebased_dashboard)."""
+    origin, clone = _publish_fixture(tmp_path)
+    park = {**ft.PARK_DEFAULTS["scenario-generation"], "_parked": "true", "_nonce": "2026-09-23T12:00:00Z"}
+    _fire_locally(clone, "scenario-generation", park, max_spend=0.01, lane="anthropic")
+    _advance_origin(origin, tmp_path, "routine", lambda r: write_dashboard(r, spent=2.0))
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    out = capsys.readouterr().out
+    assert "park published past the daily ceiling" in out and "landed 2.00" in out
+    published = _origin_main_files(origin, tmp_path)[(TRIGGER_SUBDIR / "scenario-generation.json").as_posix()]
+    assert json.loads(published) == park

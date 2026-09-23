@@ -88,6 +88,11 @@ lane, and advance by chaining — resolve the landed run, then fire the next.
 - A `circuit-trace` fire with `show_mitigation: true` is ALSO a paid path (translation
   calls): the guard imputes a flat $0.15 commitment per fire and applies the same ceiling.
 - Exit 4 ends the attempt. Record the refusal; do not retry, split, or override.
+- The one exception is a `park`. A full day's ceiling does not refuse the lane's
+  exact park content (`park_passes_ceiling`); an invalid `max_spend` still refuses.
+  The park's entry still holds its `max_spend`. The CI gate has no waiver, so on that
+  day it refuses the park's own run, which spends nothing. That red run is expected;
+  resolve it like any other.
 
 ## 6 · Dashboard single-writer + git hygiene
 
