@@ -189,9 +189,15 @@ say in any record which evidence was used.
 ## 6 · Money, seals, and boundaries (absolute)
 
 - $2/day Anthropic operational ceiling, enforced by `fire_trigger.py`
-  counting landed + in-flight `max_spend`. Every paid run writes a
-  `.report.json` sidecar with its cost. `scripts/ledger_update.py` is the
-  only spend writer.
+  (locally and in each paid workflow's `budget-gate`) counting landed spend
+  plus the `max_spend` held by every paid fire made that UTC day. A fire
+  holds its commitment for its whole UTC day, resolved or expired alike;
+  only eviction releases it (since 2026-09-23: resolve used to release it,
+  and on 2026-09-23 the guard reported $0 committed on a day two resolved
+  fires had committed $12.70). After the ledger folds a run's sidecar, that
+  run counts twice for the rest of its day — deliberate, it fails closed.
+  Every paid run writes a `.report.json` sidecar with its cost.
+  `scripts/ledger_update.py` is the only spend writer.
 - No paid fire without the owner's explicit words. No `--override-budget`,
   no `--force-evict`, ever. Ox Alpha never fires again (registry entry
   removed; post-window calls would bill catch-all).

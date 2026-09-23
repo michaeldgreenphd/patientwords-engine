@@ -81,8 +81,10 @@ lane, and advance by chaining — resolve the landed run, then fire the next.
   source of truth. Their params MUST include `max_spend` (finite number > 0); a
   missing/invalid `max_spend` is never overridable.
 - Daily operational ceiling: $2 (from `ops/dashboard.json` `spend.daily_ceiling_usd`,
-  default 2.0). The guard counts committed spend = landed today + in-flight `max_spend`
-  of active paid entries fired today.
+  default 2.0). The guard counts committed spend = landed today + the `max_spend` held
+  by every paid entry fired today, resolved or expired alike; only eviction releases one
+  (since 2026-09-23 — resolving no longer frees budget). Spend the ledger has already
+  folded into today is then counted twice; that is deliberate and fails closed.
 - A `circuit-trace` fire with `show_mitigation: true` is ALSO a paid path (translation
   calls): the guard imputes a flat $0.15 commitment per fire and applies the same ceiling.
 - Exit 4 ends the attempt. Record the refusal; do not retry, split, or override.

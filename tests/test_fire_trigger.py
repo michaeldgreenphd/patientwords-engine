@@ -407,22 +407,28 @@ def test_status_reports_counts(repo, capsys):
     assert "visible" in out
 
 
-# --- Finding 1: the daily ceiling counts landed + in-flight max_spend ---
+# --- Finding 1: the daily ceiling counts landed + every paid commitment held today ---
 
-def test_inflight_max_spend_blocks_second_paid_fire(repo, capsys):
+def test_inflight_max_spend_blocks_second_paid_fire(repo, capsys, monkeypatch):
     # Two consecutive 1.9 fires both used to pass the $2 ceiling because only
     # dashboard-landed spend was counted.
+    # the clock is pinned to mid-day so the fire, the resolve and the re-fire share one UTC date
+    monkeypatch.setattr(ft, "utc_now", lambda: datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc))
     params = {"task": "pairs", "max_spend": "1.9", "_nonce": "i1"}
     assert fire(repo, "scenario-generation", params) == 0
     entries = ft.load_journal(journal_path(repo))
     assert entries[-1]["max_spend"] == pytest.approx(1.9)  # journaled at fire time
     capsys.readouterr()
     params = {"task": "pairs", "max_spend": "1.9", "_nonce": "i2"}
-    assert fire(repo, "scenario-generation", params) == 4  # 1.9 already committed in flight
-    assert "in-flight" in capsys.readouterr().err
-    # resolving the landed run releases the in-flight hold (--ignore-settle acks its settle window)
+    assert fire(repo, "scenario-generation", params) == 4  # 1.9 already committed today
+    assert "held today 1.90" in capsys.readouterr().err
+    # Resolving the landed run frees its QUEUE slot and no longer releases the day's hold. This assertion used to
+    # read `== 0`: the resolve released the 1.9 and the second fire passed, which is exactly how 2026-09-23 reported
+    # "committed 0.00" with 12.70 committed that day - nothing else counts the cost until the ledger folds it.
     assert ft.main(["resolve", "--repo", str(repo), "--trigger", "scenario-generation"]) == 0
-    assert fire(repo, "scenario-generation", params, extra=["--ignore-settle"]) == 0
+    capsys.readouterr()
+    assert fire(repo, "scenario-generation", params, extra=["--ignore-settle"]) == 4
+    assert "held today 1.90" in capsys.readouterr().err
 
 
 def test_inflight_spend_counted_across_both_paid_triggers(repo):
@@ -432,8 +438,10 @@ def test_inflight_spend_counted_across_both_paid_triggers(repo):
                 params={"task": "pairs", "max_spend": "1.0", "_nonce": "s1"}) == 4
 
 
-def test_budget_check_inflight_counts_only_active_entries_fired_today():
-    now = datetime.now(timezone.utc)
+def test_budget_check_counts_paid_entries_fired_today_until_evicted():
+    # formerly test_budget_check_inflight_counts_only_active_entries_fired_today: the rule it pinned (only ACTIVE
+    # entries count) is the one that let a resolved fire's commitment drop out of the day (2026-09-23)
+    now = datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc)
     today = now.strftime("%Y-%m-%d")
 
     def entry(**overrides):
@@ -443,15 +451,95 @@ def test_budget_check_inflight_counts_only_active_entries_fired_today():
         return base
 
     kind, reason = ft.budget_check({"max_spend": "1.9"}, {}, today, entries=[entry()], now=now)
-    assert kind == "ceiling" and "in-flight 1.90" in reason
-    for released in (entry(resolved=True), entry(evicted=True),
-                     entry(trigger="circuit-trace", max_spend=None)):
+    assert kind == "ceiling" and "held today 1.90" in reason
+    # A resolved entry still holds its commitment for the day. This case used to sit in the loop below, asserting
+    # "ok": resolving released the hold while nothing else counted the cost.
+    kind, reason = ft.budget_check({"max_spend": "1.9"}, {}, today, entries=[entry(resolved=True)], now=now)
+    assert kind == "ceiling" and "held today 1.90" in reason
+    for released in (entry(evicted=True), entry(trigger="circuit-trace", max_spend=None)):
         assert ft.budget_check({"max_spend": "1.9"}, {}, today,
                                entries=[released], now=now)[0] == "ok"
     # active (expiry widened) but fired on a previous UTC date: not today's spend
     stale = entry(fired_utc=iso(now - timedelta(days=1)))
     assert ft.budget_check({"max_spend": "1.9"}, {}, today,
                            entries=[stale], now=now, expire_hours=100.0)[0] == "ok"
+
+
+def test_a_resolved_paid_fire_holds_its_commitment_for_the_rest_of_its_utc_day():
+    """G1 (2026-09-23), cases (i)-(iv): a paid entry counts for the whole UTC day it was fired, whether or not it
+    has been resolved or has passed the expiry window, and not on any other day; only eviction releases it."""
+    def entry(**overrides):
+        base = {"trigger": "scenario-generation", "fired_utc": "2026-09-23T00:16:36Z", "commit": "", "note": "",
+                "resolved": False, "evicted": False, "max_spend": 1.9, "lane": "anthropic"}
+        return {**base, **overrides}
+
+    noon = datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc)
+    # (i) resolved, empty dashboard: a second 1.9 fire would make 3.80 against the $2 ceiling
+    done = entry(resolved=True, resolved_utc="2026-09-23T00:27:42Z")
+    kind, reason = ft.budget_check({"max_spend": "1.9"}, {}, "2026-09-23", entries=[done], now=noon)
+    assert kind == "ceiling", reason
+    assert "today's committed 1.90 (landed 0.00 + held today 1.90)" in reason
+
+    # (ii) unresolved and past the 8-hour window at 11:10 (fired 00:16): the queue has let it go, the day has not
+    late = datetime(2026, 9, 23, 11, 10, tzinfo=timezone.utc)
+    assert not ft.entry_is_active(entry(), late, 8.0), "the scenario: expired for the queue"
+    assert ft.entry_holds_spend(entry(), "2026-09-23", "anthropic")
+    assert ft.inflight_max_spend([entry()], "2026-09-23", late, 8.0) == pytest.approx(1.9)
+    assert ft.budget_check({"max_spend": "1.9"}, {}, "2026-09-23", entries=[entry()], now=late,
+                           expire_hours=8.0)[0] == "ceiling"
+
+    # (iii) fired the previous UTC day: not today's, even while it is still ACTIVE for the queue (31 minutes old)
+    eve = entry(fired_utc="2026-09-22T23:59:00Z")
+    just_after = datetime(2026, 9, 23, 0, 30, tzinfo=timezone.utc)
+    assert ft.entry_is_active(eve, just_after, 8.0), "the scenario: live in the queue"
+    assert not ft.entry_holds_spend(eve, "2026-09-23", "anthropic")
+    assert ft.budget_check({"max_spend": "1.9"}, {}, "2026-09-23", entries=[eve], now=just_after)[0] == "ok"
+    assert ft.entry_holds_spend(eve, "2026-09-22", "anthropic"), "it held its own day"
+
+    # (iv) evicted: its run was superseded in the queue and never ran, so it holds nothing
+    assert not ft.entry_holds_spend(entry(evicted=True), "2026-09-23", "anthropic")
+    assert ft.budget_check({"max_spend": "1.9"}, {}, "2026-09-23", entries=[entry(evicted=True)],
+                           now=noon)[0] == "ok"
+    # ...and only a JSON true evicts: a flag hand-edited into a string must not stop a live commitment counting,
+    # though entry_is_active's truthiness would read "false" as released
+    assert ft.entry_holds_spend(entry(evicted="false"), "2026-09-23", "anthropic")
+
+    # the lane and a usable commitment still decide, exactly as before
+    assert not ft.entry_holds_spend(entry(lane="openrouter"), "2026-09-23", "anthropic")
+    assert not ft.entry_holds_spend(entry(max_spend=float("nan")), "2026-09-23", "anthropic")
+    assert not ft.entry_holds_spend(entry(fired_utc="not a time"), "2026-09-23", "anthropic")
+
+
+def test_the_2026_09_23_fixture_is_refused_with_both_resolved_fires_counted():
+    """G1 (v): the state the guard actually saw on 2026-09-23 at 11:10Z. Two resolved paid petri-audit fires had
+    committed 4.10 and 8.60 that UTC day; the dashboard's spend.today was dated 2026-08-28, so landed read 0.00;
+    the owner's override set the day's ceiling to 15. budget_check answered "committed 0.00 (landed 0.00 +
+    in-flight 0.00)" and "ok" for another 8.60. Rows copied from the journal (notes and refs trimmed); the four
+    free rows are the dry runs and parks, which carry no commitment."""
+    def row(fired, nonce, max_spend=None, resolved_utc=None):
+        e = {"trigger": "petri-audit", "fired_utc": fired, "commit": "", "note": "", "resolved": True,
+             "resolved_utc": resolved_utc or fired, "evicted": False, "nonce": nonce}
+        if max_spend is not None:
+            e.update(max_spend=max_spend, lane="anthropic")
+        return e
+
+    journal = [row("2026-09-22T13:13:11Z", "w2e1-dry"),
+               row("2026-09-23T00:16:36Z", "w2e1", 4.1, "2026-09-23T00:27:42Z"),
+               row("2026-09-23T00:43:03Z", "2026-09-23T00:43:03Z"),
+               row("2026-09-23T02:36:44Z", "w2e2-dry"),
+               row("2026-09-23T02:55:45Z", "w2e2", 8.6, "2026-09-23T03:16:16Z"),
+               row("2026-09-23T03:32:15Z", "2026-09-23T03:32:15Z")]
+    dashboard = {"spend": {"daily_ceiling_usd": 2.0, "today": {"date": "2026-08-28", "spent_usd": 0.0}}}
+    overrides = {"2026-09-23": {"ceiling_usd": 15.0, "reason": "owner, day 1 of 3"}}
+    params = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+              "mode": "run", "max_spend": "6.10", "judge": "true", "judge_model": "claude-haiku-4-5",
+              "judge_max_spend": "2.50", "commit_outputs": "true", "_nonce": "w2e3"}
+    now = datetime(2026, 9, 23, 11, 10, tzinfo=timezone.utc)
+    kind, reason = ft.budget_check(params, dashboard, "2026-09-23", entries=journal, now=now, expire_hours=8.0,
+                                   overrides=overrides, trigger="petri-audit")
+    assert kind == "ceiling", reason
+    assert "max_spend 8.60 + today's committed 12.70 (landed 0.00 + held today 12.70)" in reason
+    assert "daily ceiling 15.00 USD [anthropic lane]" in reason
 
 
 # --- Finding 2: max_spend must be a finite number > 0, never a bool ---
@@ -2310,13 +2398,13 @@ def test_budget_gate_requires_a_journal_reservation_for_a_paid_petri_run(repo, t
     journal.write_text(entry(), encoding="utf-8")
     assert gate() == 0, capsys.readouterr().err
     out = capsys.readouterr().out
-    assert "clear" in out and "in-flight 0.00" in out, out
+    assert "clear" in out and "held today 0.00" in out, out
 
     # another lane's active paid fire still counts against the day, so the exclusion is this fire's alone
     other = json.dumps({"trigger": "advice-eval", "fired_utc": ft.iso_utc(ft.utc_now()), "commit": "", "note": "x",
                         "resolved": False, "evicted": False, "max_spend": 0.9, "lane": "anthropic"}) + "\n"
     journal.write_text(entry() + other, encoding="utf-8")
-    assert gate() == 6 and "in-flight 0.90" in capsys.readouterr().err
+    assert gate() == 6 and "held today 0.90" in capsys.readouterr().err
 
     # a reservation already released, in either way, reserves nothing for this run
     journal.write_text(entry(resolved=True, resolved_utc=ft.iso_utc(ft.utc_now())), encoding="utf-8")
@@ -2394,7 +2482,54 @@ def test_budget_gate_refuses_a_reservation_that_is_no_longer_active(repo, tmp_pa
     # inside the window it is a live reservation, and is excluded from the aggregate exactly once
     journal.write_text(entry(ft.iso_utc(ft.utc_now() - timedelta(minutes=5))), encoding="utf-8")
     assert gate() == 0, capsys.readouterr().err
-    assert "in-flight 0.00" in capsys.readouterr().out
+    assert "held today 0.00" in capsys.readouterr().out
+
+
+def test_budget_gate_counts_a_petri_fire_resolved_earlier_today_and_its_own_entry_once(repo, capsys, monkeypatch):
+    """G1 (vi), the gate's half of the rule. Server-side, a paid petri fire resolved earlier the same UTC day used
+    to drop out of the sum exactly as it did locally, so the CI gate on 2026-09-23 would have agreed with the local
+    "committed 0.00". Now it counts; and the gate still removes THIS fire's own entry, once, because the params'
+    commitment stands in for it - removing it only when the day's sum counts it, so exactly what was counted is
+    what is removed."""
+    monkeypatch.setattr(ft, "utc_now", lambda: datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc))
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    paid = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+            "mode": "run", "max_spend": "1.00", "judge": "true", "judge_model": "claude-haiku-4-5",
+            "judge_max_spend": "0.50", "commit_outputs": "true", "_nonce": "w2e3"}
+    content = json.dumps(paid, separators=(",", ":")) + "\n"
+    (repo / TRIGGER_SUBDIR / "petri-audit.json").write_text(content, encoding="utf-8")
+    journal = repo / "ops" / "trigger_journal.jsonl"
+    overrides = repo / "ops" / "budget_overrides.json"
+
+    def entry(**over):
+        base = {"trigger": "petri-audit", "fired_utc": "2026-09-23T11:55:00Z", "commit": "", "note": "",
+                "resolved": False, "evicted": False, "nonce": "w2e3", "max_spend": 1.5, "lane": "anthropic",
+                "params_sha256": ft.params_digest(content), "ref": "main"}
+        return json.dumps({**base, **over}) + "\n"
+
+    earlier = entry(nonce="w2e1", fired_utc="2026-09-23T00:16:36Z", resolved=True,
+                    resolved_utc="2026-09-23T00:27:42Z", max_spend=0.9, params_sha256="0" * 64)
+
+    def gate():
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", "petri-audit"])
+
+    # $2 ceiling: 1.50 (this fire, from its params) + 0.90 (resolved this morning) = 2.40, refused
+    journal.write_text(earlier + entry(), encoding="utf-8")
+    assert gate() == 6
+    assert "(landed 0.00 + held today 0.90)" in capsys.readouterr().err
+
+    # $3 ceiling: 2.40 fits, so the gate clears - which it would not if this fire's own 1.50 were ALSO in the sum
+    # (1.50 + 0.90 + 1.50 = 3.90). Its own entry is left out exactly once; the resolved one is not
+    overrides.write_text(json.dumps({"2026-09-23": {"ceiling_usd": 3.0, "reason": "test"}}), encoding="utf-8")
+    assert gate() == 0, capsys.readouterr().err
+    assert "today's committed 0.90 (landed 0.00 + held today 0.90)" in capsys.readouterr().out
+
+    # the earlier fire on the previous UTC day is that day's spend, not this one's
+    journal.write_text(entry(nonce="w2e1", fired_utc="2026-09-22T23:40:00Z", resolved=True,
+                             resolved_utc="2026-09-22T23:55:00Z", max_spend=0.9, params_sha256="0" * 64)
+                       + entry(), encoding="utf-8")
+    assert gate() == 0, capsys.readouterr().err
+    assert "(landed 0.00 + held today 0.00)" in capsys.readouterr().out
 
 
 def test_budget_gate_refuses_a_replay_of_a_live_reservations_nonce(repo, tmp_path, capsys):

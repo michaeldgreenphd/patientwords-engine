@@ -22,8 +22,10 @@ Usage:
 A journal entry is ACTIVE while resolved and evicted are both false and it is
 younger than MEDLANG_TRIGGER_EXPIRE_HOURS (default 8; chunked workflow runs
 never exceed ~6h, so expiry is a safety valve for entries nobody resolved).
-Paid entries record their max_spend, and the daily ceiling counts committed
-spend = landed (dashboard) + in-flight (active paid entries fired today).
+Activity governs the QUEUE. Paid entries record their max_spend, and the daily
+ceiling counts committed spend = landed (dashboard) + held today: every paid
+entry fired on this UTC day and not evicted, resolved or expired alike (see
+entry_holds_spend; since 2026-09-23 a resolve no longer releases it).
 
 Resolving stamps resolved_utc. A fire of the SAME trigger within
 MEDLANG_TRIGGER_SETTLE_MINUTES (default 15) of that stamp is refused (exit 6):
@@ -701,26 +703,55 @@ def fire_commitment(params):
     return max_spend, None
 
 
-def inflight_max_spend(entries, today, now, expire_hours, lane="anthropic"):
-    """Sum of max_spend across ACTIVE journal entries of BOTH paid triggers
-    fired on `today` (YYYY-MM-DD UTC): spend already committed to CI but not
-    yet landed on the dashboard."""
+def entry_holds_spend(entry, today, lane="anthropic"):
+    """Whether this journal entry's commitment counts against `today`'s ceiling
+    (YYYY-MM-DD, UTC) on `lane`: a paid entry (a PAID_TRIGGERS fire, or a
+    mitigation circuit-trace fire with its imputed commitment) on that lane,
+    with a usable max_spend, not evicted, and fired on `today` in UTC.
+
+    Deliberately NOT a function of `resolved` or of the expiry window. Until
+    2026-09-23 the daily sum counted only ACTIVE entries, so a resolve or the
+    8-hour expiry released a paid fire's commitment - and nothing else counts
+    that cost the same day: landed spend is `spend.today`, which only
+    `ledger_update.py` writes and only the daily Routine commits. The ceiling
+    therefore bounded each fire-to-resolve cycle, not the day. On 2026-09-23
+    `budget_check` reported "today's committed 0.00" while two resolved
+    petri-audit fires had committed 12.70 that UTC day (4.10 + 8.60) and 3.81
+    had landed. A commitment now holds for the whole UTC day it was fired;
+    the next day it is spend the ledger books, not a hold.
+
+    Only a JSON `true` evicts. An evicted entry's run was superseded in the
+    queue and never ran, so it holds nothing; but reading a hand-edited string
+    such as "false" as eviction (the truthiness `entry_is_active` uses) would
+    stop counting a live commitment, which is the fail-open direction here.
+    An unparseable `fired_utc` names no day, so it is counted on none:
+    `cmd_fire` always writes a parseable stamp, and `publish` restamps an
+    entry whose stamp does not parse before it pushes it.
+    """
+    # paid triggers always record max_spend; mitigation circuit-trace entries record their imputed commitment
+    # the same way, and every other entry records none
+    if entry.get("trigger") not in PAID_TRIGGERS and entry.get("max_spend") is None:
+        return False
+    if entry.get("lane", "anthropic") != lane:
+        return False
+    if entry.get("evicted") is True:
+        return False
+    if parse_max_spend(entry.get("max_spend")) is None:
+        return False
+    fired = parse_utc(entry.get("fired_utc"))
+    return fired is not None and fired.astimezone(timezone.utc).strftime("%Y-%m-%d") == today
+
+
+def inflight_max_spend(entries, today, now=None, expire_hours=None, lane="anthropic"):
+    """Sum of max_spend across the journal entries that hold spend on `today`
+    (YYYY-MM-DD UTC) on `lane` - see entry_holds_spend. The name predates
+    2026-09-23, when the sum counted only ACTIVE entries and so released a fire
+    on resolve or expiry; `now` and `expire_hours` are still accepted so every
+    caller keeps its call shape, and no longer affect the sum."""
     total = 0.0
     for entry in entries:
-        # paid triggers always record max_spend; mitigation circuit-trace
-        # entries record their imputed commitment the same way
-        if entry.get("trigger") not in PAID_TRIGGERS and entry.get("max_spend") is None:
-            continue
-        if entry.get("lane", "anthropic") != lane:
-            continue
-        if not entry_is_active(entry, now, expire_hours):
-            continue
-        fired = parse_utc(entry.get("fired_utc"))
-        if fired is None or fired.astimezone(timezone.utc).strftime("%Y-%m-%d") != today:
-            continue
-        pending = parse_max_spend(entry.get("max_spend"))
-        if pending is not None:
-            total += pending
+        if entry_holds_spend(entry, today, lane):
+            total += parse_max_spend(entry.get("max_spend"))
     return total
 
 
@@ -731,9 +762,25 @@ def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DE
     kind is "ok", "ceiling" (over the daily ceiling - the only refusal
     --override-budget may bypass), or "invalid" (missing/unusable max_spend -
     never overridable). Committed spend = landed (spend.today.spent_usd when
-    spend.today.date equals `today`) + in-flight (active paid journal entries
-    fired today; see inflight_max_spend). Tolerates a missing/partial
-    dashboard: ceiling defaults to DEFAULT_DAILY_CEILING_USD.
+    spend.today.date equals `today`) + held today (every paid journal entry
+    fired on `today` and not evicted, resolved or not; see entry_holds_spend).
+    Tolerates a missing/partial dashboard: ceiling defaults to
+    DEFAULT_DAILY_CEILING_USD.
+
+    The two terms overlap, deliberately. Once `ledger_update.py` has folded a
+    run's cost sidecar into `spend.today`, that run is counted twice for the
+    rest of its UTC day: its landed cost, and the commitment its journal entry
+    still holds. That fails closed - the ceiling refuses early, never late -
+    and it is the price of counting each fire for the whole day without
+    joining every landed sidecar to the entry that reserved it, which only
+    petri-audit's `_nonce` makes possible. Before 2026-09-23 the overlap was
+    avoided by releasing the entry on resolve, on the assumption that the
+    ledger had folded the run's cost by then; a resolve comes as soon as the
+    run lands and the fold runs once per Routine at most, so the cost dropped
+    out of the day entirely in between.
+
+    `now` and `expire_hours` are accepted for call compatibility; the day's sum
+    no longer depends on them (a fire's expiry releases its queue slot only).
     """
     if "max_spend" not in params:
         return "invalid", "paid trigger params must include max_spend"
@@ -783,19 +830,19 @@ def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DE
             landed = float(raw)
         except (TypeError, ValueError):
             landed = 0.0
-    if now is None:
-        now = utc_now()
-    inflight = inflight_max_spend(entries, today, now, expire_hours, lane=lane)
-    committed = landed + inflight
+    # "held today", not "in-flight": the term counts resolved fires too, and a report that called them in flight
+    # would describe a rule this function no longer applies
+    held = inflight_max_spend(entries, today, lane=lane)
+    committed = landed + held
     if max_spend + committed > ceiling:
         return "ceiling", (
             f"max_spend {max_spend:.2f} + today's committed {committed:.2f} "
-            f"(landed {landed:.2f} + in-flight {inflight:.2f}) "
+            f"(landed {landed:.2f} + held today {held:.2f}) "
             f"would exceed the daily ceiling {ceiling:.2f} USD [{lane} lane]{override_note}"
         )
     return "ok", (
         f"max_spend {max_spend:.2f} + today's committed {committed:.2f} "
-        f"(landed {landed:.2f} + in-flight {inflight:.2f}) within the daily ceiling {ceiling:.2f} USD "
+        f"(landed {landed:.2f} + held today {held:.2f}) within the daily ceiling {ceiling:.2f} USD "
         f"[{lane} lane]{override_note}"
     )
 
@@ -1212,7 +1259,7 @@ def cmd_fire(args):
         print(f"refused: {reused}", file=sys.stderr)
         return 3
 
-    # 4. Budget guard for the paid triggers: committed = landed + in-flight max_spend.
+    # 4. Budget guard for the paid triggers: committed = landed + the max_spend every paid entry fired today holds.
     # Mitigation circuit-trace fires are paid too (Anthropic translation calls);
     # they carry no max_spend param, so a flat imputed commitment is used.
     max_spend = None
@@ -1231,7 +1278,7 @@ def cmd_fire(args):
             print(f"refused: {reason}", file=sys.stderr)
             return 4
         # full commitment (max_spend + judge_max_spend on judged fires) so the
-        # journal entry's in-flight figure matches what budget_check counted
+        # journal entry holds, for the rest of this UTC day, what budget_check counted
         max_spend, _ = fire_commitment(budget_params)  # valid here: budget_check vetted it
 
     # 5. Refuse a fire no workflow on THIS branch can answer. A key in TRIGGERS
@@ -1293,7 +1340,7 @@ def cmd_fire(args):
         "ref": fire_ref(repo),
     }
     if max_spend is not None:
-        entry["max_spend"] = max_spend  # in-flight commitment budget_check will count
+        entry["max_spend"] = max_spend  # the commitment budget_check counts for the whole UTC day of this fire
         entry["lane"] = fire_lane(args.trigger, params)  # which prepaid key the commitment holds
     if args.dry_run:
         print(f"[dry-run] would write {trigger_path}: {content.strip()}")
@@ -1910,12 +1957,12 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
     # Corrections to the fire's own record, applied in one journal-only commit
     # that publishes with the fire:
     # - a fire published long after it was made would carry a stale stamp into
-    #   the accounting (budget counts in-flight entries fired today, the queue
+    #   the accounting (budget counts paid entries fired today, the queue
     #   expires entries older than expire_hours): restamp to the publication
     #   time, the original kept alongside, when the entry is from another UTC
     #   day or older than an hour or than half the expiry window;
     # - a paid fire's max_spend and lane are what inflight_max_spend counts for
-    #   the running job: they must equal what cmd_fire computes from the final
+    #   the day of the fire: they must equal what cmd_fire computes from the final
     #   params, not what a hand edit during conflict recovery left.
     corrections = []
     fired = parse_utc(fire.get("fired_utc"))
@@ -2020,7 +2067,7 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
                   "terminal in GitHub, then `publish` again.", file=sys.stderr)
             return 6, head
     # 4. Budget guard, with the rebased dashboard and journal; the entry's own
-    # max_spend is excluded from in-flight exactly as when cmd_fire approved it.
+    # max_spend is excluded from the day's held sum exactly as when cmd_fire approved it.
     if paid:
         # Both from the commit to be pushed, like every other input above: a
         # dashboard or override written to the working tree after `head` was
@@ -2071,6 +2118,11 @@ def cmd_park(args):
 
 
 def cmd_resolve(args):
+    """Mark the oldest active entry (or every one, --all) resolved: it leaves the
+    queue and opens the settle window. It does NOT release a paid entry's
+    commitment from the daily ceiling - that holds for the whole UTC day the
+    fire was made (entry_holds_spend), because until the ledger folds the run's
+    sidecar nothing else counts its cost (2026-09-23)."""
     repo = Path(args.repo).resolve()
     expire_hours = expire_hours_from_env()
     now = utc_now()
@@ -2181,15 +2233,18 @@ def journal_reservation_problems(trigger, params, entries, now=None, expire_hour
                 "to one landed cost, so this run's spend cannot be attributed"]
     entry = mine[0]
     # ACTIVE, not merely unresolved. `entry_is_active` also releases an entry whose `fired_utc` does not parse and
-    # one older than the expiry window, and `inflight_max_spend` stops counting it at the same moment - so a stale
-    # entry is a reservation that no longer holds anything, and accepting it (then excluding it from the aggregate,
-    # where it was no longer counted anyway) let a merge or re-push start a second irreversible run under a dead
-    # hold. This is the gap my own round-7 check left by testing only two of the three conditions (Codex round 8).
+    # one older than the expiry window, so a stale entry is a reservation whose run has been and gone, and accepting
+    # it let a merge or re-push start a second irreversible run under a dead reservation. This is the gap my own
+    # round-7 check left by testing only two of the three conditions (Codex round 8).
+    # This is the QUEUE reservation, and it is a different invariant from the daily sum. Since 2026-09-23 a resolved
+    # or expired entry still counts against the ceiling for the whole UTC day it was fired (entry_holds_spend),
+    # because its cost has not necessarily landed on the dashboard; it no longer AUTHORISES a run, because the run it
+    # reserved has already happened. The two were one condition before, which is why this used to say "released".
     now = now or utc_now()
     expire_hours = expire_hours if expire_hours is not None else expire_hours_from_env()
     if entry.get("resolved"):
-        problems.append(f"the {trigger} journal entry for _nonce {nonce!r} is already resolved, which released "
-                        "its in-flight commitment: this run would spend outside any reservation")
+        problems.append(f"the {trigger} journal entry for _nonce {nonce!r} is already resolved: the run it reserved "
+                        "is over, so this run would spend outside any reservation")
     elif entry.get("evicted"):
         problems.append(f"the {trigger} journal entry for _nonce {nonce!r} is marked evicted, so the queue "
                         "released its commitment and nothing reserves this run's spend")
@@ -2198,7 +2253,7 @@ def journal_reservation_problems(trigger, params, entries, now=None, expire_hour
         why = ("its fired_utc does not parse" if parse_utc(fired) is None
                else f"it was fired at {fired}, more than {expire_hours:g}h ago")
         problems.append(f"the {trigger} journal entry for _nonce {nonce!r} is no longer active ({why}): the queue "
-                        "and the daily guard both stopped counting it, so nothing reserves this run's spend")
+                        "released it, so nothing reserves this run's spend")
     expected, error = fire_commitment(paid_budget_params(trigger, params))
     if error:
         problems.append(f"the params carry no usable commitment to check against the journal: {error}")
@@ -2298,15 +2353,20 @@ def cmd_budget_gate(args):
     # holds this fire's commitment and adding the params' commitment on top double-counts it. The pilot's $1.50
     # came to $3.00 against the $2.00 ceiling and would have been refused server-side - the first paid fire, by the
     # guard meant to protect it (found writing the round-7 reservation test, 2026-09-18). Only the entry this fire
-    # is bound to by nonce is removed, so nothing else's in-flight hold is lost.
+    # is bound to by nonce is removed, so nothing else's hold is lost.
+    today = now.strftime("%Y-%m-%d")
+    lane = fire_lane(args.trigger, budget_params)       # the lane budget_check will sum, so the test below matches it
     mine = reservation_entries(args.trigger, params, entries)
-    if mine and len(mine) == 1 and entry_is_active(mine[0], now, expire_hours_from_env()):
-        # only an ACTIVE entry is counted in the in-flight sum, so only an active one may be removed from it
+    if mine and len(mine) == 1 and entry_holds_spend(mine[0], today, lane):
+        # removed only when the day's sum counts it, so exactly what was counted is removed. That is no longer the
+        # same as ACTIVE (2026-09-23): the sum also holds entries resolved or expired earlier today, and an active
+        # entry fired before midnight UTC is not in today's sum at all. The reservation check above still demands
+        # an active one; this is only about not counting it twice.
         held = mine[0]
         entries = [e for e in entries if e is not held]
     dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
     overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
-    kind, reason = budget_check(budget_params, dashboard, now.strftime("%Y-%m-%d"),
+    kind, reason = budget_check(budget_params, dashboard, today,
                                 entries=entries, now=now,
                                 expire_hours=expire_hours_from_env(),
                                 overrides=overrides, trigger=args.trigger)

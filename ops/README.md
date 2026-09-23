@@ -75,11 +75,15 @@ stamps fall back to the run's `--date`), and every writing run refreshes
 never duplicated.
 
 The $2/day ceiling enforced by `scripts/fire_trigger.py` counts **committed**
-spend: landed spend from `spend.today` **plus** the in-flight `max_spend` of
-every ACTIVE trigger-journal entry for either paid trigger
-(`scenario-generation`, `model-evaluation`) fired on the same UTC day. Paid
-journal entries record their `max_spend` at fire time; `resolve` releases the
-in-flight hold once the run's real cost lands via the sidecar scan.
+spend: landed spend from `spend.today` **plus** the `max_spend` held by
+every paid trigger-journal entry (`PAID_TRIGGERS` in the script, and
+mitigation circuit-trace fires at their imputed commitment) fired on the same
+UTC day and not evicted. Paid journal entries record their `max_spend` at
+fire time, and the hold lasts the whole UTC day: `resolve` frees the queue
+slot, not the hold (since 2026-09-23 — releasing it on resolve let a
+resolved run's cost drop out of the day before the sidecar scan counted it).
+Once the scan folds a run's sidecar into `spend.today`, that run counts
+twice for the rest of its day, which fails closed.
 `--override-budget` can bypass only a ceiling refusal — a missing or invalid
 `max_spend` (non-numeric, boolean, non-finite, or not > 0) always refuses.
 

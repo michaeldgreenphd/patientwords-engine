@@ -7,11 +7,15 @@ description: Harvest landed push-to-run CI outputs and resolve ops/trigger_journ
 
 Resolving is a queue action, not bookkeeping. A journal entry is ACTIVE while
 `resolved` and `evicted` are both false and it is younger than 8h. `resolve`
-stamps `resolved_utc` (opening a 15-minute settle window) and, for paid entries,
-releases the in-flight `max_spend` hold. Resolving a run that has not fully
-landed re-opens the 2026-07-09 queue-eviction seam: the resolved run may still
-occupy the GitHub concurrency group, so a subsequent same-trigger fire can enter
-as a third run and silently supersede the still-pending run.
+stamps `resolved_utc` (opening a 15-minute settle window) and frees the queue
+slot. It does **not** release a paid entry's `max_spend` from the daily ceiling:
+since 2026-09-23 a paid fire's commitment counts for the whole UTC day it was
+fired, resolved or not, because nothing else counts its cost until the ledger
+folds the sidecar (`fire_trigger.py`, `entry_holds_spend`). Resolving a run
+that has not fully landed re-opens the 2026-07-09 queue-eviction seam: the
+resolved run may still occupy the GitHub concurrency group, so a subsequent
+same-trigger fire can enter as a third run and silently supersede the
+still-pending run.
 
 ## Step 1 — Sync (outputs interleave by design)
 
@@ -106,7 +110,8 @@ line the script names, exactly as its error message instructs; record the repair
 ## Never
 
 - Never resolve on partial landing — that is the eviction seam.
-- Never resolve to free a queue slot or to release an in-flight budget hold.
+- Never resolve to free a queue slot. (Resolving cannot free budget either: a paid
+  fire holds its commitment for its whole UTC day.)
 - Never hand-edit `ops/trigger_journal.jsonl`, anything under
   `.github/trigger/`, or spend numbers (`fire_trigger.py` and
   `ledger_update.py` are the only writers).

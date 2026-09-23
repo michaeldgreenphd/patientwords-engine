@@ -70,7 +70,8 @@ python scripts/fire_trigger.py pab-probe --params \
 
 `fire_trigger.py` is the required path: it journals the fire, enforces the
 one-running-plus-one-pending discipline, and refuses a paid fire that would breach
-the $2/day ceiling counting landed and in-flight `max_spend`.
+the $2/day ceiling counting landed spend and the `max_spend` every paid fire made
+that UTC day holds (resolved or not; since 2026-09-23).
 
 ## Before firing anything
 
