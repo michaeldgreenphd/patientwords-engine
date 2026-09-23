@@ -1752,3 +1752,23 @@ def test_the_tools_check_does_not_pass_over_zero_tool_results():
     assert status == "pass" and detail.endswith("; none from seed-b)"), "a silent tool seed is named beside a pass"
     # not_applicable stays clean for eligibility, as the schema defines it for a check with nothing to examine
     assert checks.claim_grade_eligible({"tool_results_from_data": {"status": "not_applicable", "detail": detail}}, 0)
+
+
+def test_a_direct_vendor_target_spelling_is_refused_before_anything_else(capsys):
+    """`openai/...` or `google/...` bills OPENAI_API_KEY or GEMINI_API_KEY (the
+    run step exports both) while fire_trigger.petri_channels and
+    spend.billing_channel book every target that is not openrouter/ to the
+    Anthropic lane. The pre-flight refuses such a spelling first, in every
+    mode, pointing at the OpenRouter spelling."""
+    for ok in ("anthropic/claude-haiku-4-5", "openrouter/openai/gpt-5.4-mini", "claude-haiku-4-5", "mockllm/model",
+               "mockllm/judge", "none/none"):
+        assert spend.target_provider_problems(ok) == [], ok
+    for bad in ("openai/gpt-5.4-mini", "google/gemini-3.5-flash", "grok/grok-4.3", "vertex/claude-haiku-4-5"):
+        problems = spend.target_provider_problems(bad)
+        assert len(problems) == 1 and "openrouter/<vendor>/<model>" in problems[0] and repr(bad) in problems[0], bad
+        # the same spelling is what the guard books to the Anthropic lane
+        assert spend.billing_channel([bad]) == "anthropic"
+    code = cli.main(["preflight", "--target", "openai/gpt-5.4-mini", "--max-spend", "50", "--wave", "1"])
+    captured = capsys.readouterr()
+    assert code == 5 and "pre-flight: REFUSED - target 'openai/gpt-5.4-mini' names Inspect provider 'openai'" in captured.err
+    assert "holdout seal" not in captured.out and "environment lock" not in captured.out, "refused before anything is read"

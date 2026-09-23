@@ -835,8 +835,13 @@ def test_the_start_marker_is_written_only_once_the_target_model_is_built(tmp_pat
     assert code == 11 and "could not be built (PrerequisiteError" in err and "OPENROUTER_API_KEY" in err
     assert not marker.exists() and not (tmp_path / "petri-run" / "logs").exists(), "no eval ran, nothing is booked"
     monkeypatch.delenv("OPENROUTER_API_KEY")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    assert cli.main(["run", "--target", "anthropic/claude-haiku-4-5", "--max-spend", "50", "--seed-id", H4,
+                     "--no-harness-commit", "--out-dir", str(tmp_path / "petri-run"), "--started-marker", str(marker)]) == 11
+    assert not marker.exists()
+    # a provider the lane cannot book is refused by the pre-flight, earlier still (exit 5)
     assert cli.main(["run", "--target", "nosuchprovider/x", "--max-spend", "50", "--seed-id", H4, "--no-harness-commit",
-                     "--out-dir", str(tmp_path / "petri-run"), "--started-marker", str(marker)]) == 11
+                     "--out-dir", str(tmp_path / "petri-run"), "--started-marker", str(marker)]) == 5
     assert not marker.exists()
     # a target that builds gets the marker before its eval runs
     code = cli.main(["run", "--target", "mockllm/model", "--max-spend", "0.01", "--seed-id", H4, "--no-harness-commit",

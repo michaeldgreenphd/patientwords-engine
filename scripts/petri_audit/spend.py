@@ -217,6 +217,30 @@ def billing_channel(models: list[str]) -> str:
     return "anthropic"
 
 
+TARGET_PROVIDERS = ("anthropic", "openrouter")
+"""The Inspect providers a target may name: the two whose spend the lane books to the account that pays it.
+`billing_channel` here and `fire_trigger.petri_channels` book every target that is not `openrouter/` to the
+Anthropic lane, while the workflow's run step also exports OPENAI_API_KEY and GEMINI_API_KEY, so `openai/...` or
+`google/...` would bill a direct vendor key against the Anthropic ceiling (2026-09-23)."""
+
+
+def target_provider_problems(target: str) -> list[str]:
+    """Why a target spelling cannot be run on this lane: empty when it names
+    Anthropic or OpenRouter, or a zero-price test sentinel (mockllm, none/none;
+    the workflow refuses those in mode run and dry_run exists for them).
+    Anything else is a direct-vendor spelling that bills its own key while the
+    guard books it to the Anthropic lane, refused with the OpenRouter spelling
+    to use instead. The bare-name convention (`split_inspect_name`) reads a
+    target with no provider as Anthropic."""
+    provider, _ = split_inspect_name(target.strip())
+    if provider in TARGET_PROVIDERS or provider in ("mockllm", "none"):
+        return []
+    return [f"target {target!r} names Inspect provider {provider!r}, which bills that vendor's own key, while the lane "
+            "books every target that is not openrouter/ to the Anthropic channel and its daily ceiling; route it "
+            "through OpenRouter as openrouter/<vendor>/<model> with OpenRouter's vendor slug (for example "
+            "openrouter/openai/gpt-5.4-mini)"]
+
+
 @dataclass(frozen=True)
 class PreflightBound:
     samples: int

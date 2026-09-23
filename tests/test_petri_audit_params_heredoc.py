@@ -113,3 +113,22 @@ def test_the_guard_does_not_reject_the_park_default(tmp_path):
     rc, out, err = _run(tmp_path, dict(ft.PARK_DEFAULTS["petri-audit"]))
     assert rc == 0, err
     assert "mode=preflight\n" in out
+
+
+@pytest.mark.parametrize("target", ["openai/gpt-5.4-mini", "google/gemini-3.5-flash", "grok/grok-4.3", "x-ai/grok-4.3",
+                                    "bedrock/anthropic.claude-haiku-4-5"])
+def test_mode_run_refuses_a_direct_vendor_target_that_the_guard_would_book_to_the_anthropic_lane(tmp_path, target):
+    # fire_trigger.petri_channels books every target that is not openrouter/ to the Anthropic lane, but the run step
+    # exports OPENAI_API_KEY and GEMINI_API_KEY too, so openai/... billed a direct vendor key against the Anthropic
+    # ceiling (2026-09-23); cli preflight refuses the same spellings in every mode
+    rc, out, err = _run(tmp_path, {**PAID, "target": target, "_nonce": "n1"})
+    assert rc != 0 and "books every target that is not openrouter/ to the Anthropic lane" in err
+    assert "openrouter/<vendor>/<model>" in err and out == ""
+
+
+@pytest.mark.parametrize("target", ["anthropic/claude-haiku-4-5", "openrouter/openai/gpt-5.4-mini",
+                                    "openrouter/google/gemini-3.5-flash"])
+def test_mode_run_admits_the_two_providers_the_lane_books_correctly(tmp_path, target):
+    rc, out, err = _run(tmp_path, {**PAID, "target": target, "_nonce": "n1"})
+    assert rc == 0, err
+    assert f"target={target}\n" in out

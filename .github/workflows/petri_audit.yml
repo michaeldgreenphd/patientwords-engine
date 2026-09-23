@@ -195,6 +195,13 @@ jobs:
           if p["mode"] == "run" and p["target"].split("/")[0] in ("mockllm", "none"):
               raise SystemExit(f"mode run needs a real target, not the test sentinel {p['target']!r}; "
                                "use dry_run for mockllm")
+          # every target that is not openrouter/ is booked to the Anthropic lane (fire_trigger.petri_channels), but the
+          # run step also exports the direct OpenAI and Gemini keys, so openai/... or google/... would bill a vendor key
+          # against the Anthropic ceiling; cli preflight refuses the same spellings (spend.target_provider_problems)
+          if p["mode"] == "run" and "/" in p["target"] and p["target"].split("/")[0] not in ("anthropic", "openrouter"):
+              raise SystemExit(f"mode run books every target that is not openrouter/ to the Anthropic lane, but "
+                               f"{p['target']!r} bills its own vendor key; route it through OpenRouter as "
+                               "openrouter/<vendor>/<model> (for example openrouter/openai/gpt-5.4-mini)")
           # a paid run is admitted only from a push-to-run fire on its first attempt: the fire path journals the
           # reservation the daily ceiling counts, and neither a workflow_dispatch nor an Actions-tab re-run has one
           # of its own (Codex round 8); preflight and dry_run cost nothing and may run from anywhere

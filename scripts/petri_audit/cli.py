@@ -39,6 +39,7 @@ from .spend import (
     preflight_bound,
     resolve_price,
     resolve_registry_price,
+    target_provider_problems,
     usage_from_samples,
     write_report_sidecar,
 )
@@ -76,8 +77,16 @@ def cmd_verify_lock(args: argparse.Namespace) -> int:
 
 
 def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
-    """Shared by preflight and run: seeds validate, lock matches, price resolves,
-    bound fits. Returns (exit code, facts)."""
+    """Shared by preflight and run: the target names a provider the lane books
+    correctly, seeds validate, lock matches, price resolves, bound fits.
+    Returns (exit code, facts)."""
+    # first, before anything is read: a direct-vendor spelling (openai/..., google/...) bills its own key while every
+    # spend guard books it to the Anthropic lane, so no amount of checking below makes it runnable (2026-09-23)
+    target_problems = target_provider_problems(args.target)
+    if target_problems:
+        for p in target_problems:
+            print(f"pre-flight: REFUSED - {p}", file=sys.stderr)
+        return 5, {}
     seed_set = load_seed_file(args.seeds)
     seeds = select_seeds(seed_set, args.seed_id or None, args.wave)
     problems = {s["seed_id"]: validate_seed(s, seed_set) for s in seeds}
