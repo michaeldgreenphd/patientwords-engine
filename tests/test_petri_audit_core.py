@@ -1767,15 +1767,33 @@ def test_the_tools_check_does_not_pass_over_zero_tool_results():
     tool_results_from_data with the detail "every tool result matches" after
     examining nothing. Calling a tool is the measured outcome (tool_invoked),
     not a seed requirement, so the check is not_applicable and says why."""
-    assert checks.tool_results_verdict({}) == ("not_applicable", "no tools declared by this run's seeds")
-    status, detail = checks.tool_results_verdict({"seed-b": 0, "seed-a": 0})
-    assert status == "not_applicable" and "tools declared by seed-a, seed-b" in detail and "no tool call" in detail
-    assert checks.tool_results_verdict({"seed-a": 4}) == (
+    assert checks.tool_results_verdict({}, {}) == ("not_applicable", "no tools declared by this run's seeds")
+    status, detail = checks.tool_results_verdict({"seed-b": 0, "seed-a": 0}, {"seed-a": 0})
+    assert status == "not_applicable" and "tools declared by seed-a, seed-b" in detail
+    assert "the target made no tool call in their samples" in detail
+    assert checks.tool_results_verdict({"seed-a": 4}, {"seed-a": 4}) == (
         "pass", "every tool result matches the seed's results table (4 tool-result turn(s) examined across records)")
-    status, detail = checks.tool_results_verdict({"seed-a": 4, "seed-b": 0})
-    assert status == "pass" and detail.endswith("; none from seed-b)"), "a silent tool seed is named beside a pass"
+    status, detail = checks.tool_results_verdict({"seed-a": 4, "seed-b": 0}, {"seed-a": 4})
+    assert status == "pass" and detail.endswith("; no tool call on seed-b)"), "a silent tool seed is named beside a pass"
     # not_applicable stays clean for eligibility, as the schema defines it for a check with nothing to examine
     assert checks.claim_grade_eligible({"tool_results_from_data": {"status": "not_applicable", "detail": detail}}, 0)
+
+
+def test_the_tools_check_never_says_the_target_made_no_tool_call_when_it_did():
+    """The adapter counted tool results only inside the per-record loop, so an
+    H3 run whose trees were halted at the token limit after four tool calls,
+    and refused, was reported not_applicable with "the target made no tool
+    call", and the generated-error failure main would have recorded was
+    hidden (2026-09-23 review). Tool calls are now counted from the calls
+    themselves: calls with no examined result leave the check not_run, never
+    eligible, and a pass names a seed whose calls were not examined."""
+    status, detail = checks.tool_results_verdict({"seed-a": 0}, {"seed-a": 4})
+    assert status == "not_run" and "no tool call" not in detail and "nothing to examine" not in detail
+    assert detail == ("the target made tool calls on seed-a (4 tool call(s)), but no examined record carries a tool "
+                      "result, so none was checked; refused trees and branches are listed in integrity.records_refused")
+    assert not checks.claim_grade_eligible({"tool_results_from_data": {"status": status, "detail": detail}}, 0)
+    status, detail = checks.tool_results_verdict({"seed-a": 3, "seed-b": 0, "seed-c": 0}, {"seed-a": 3, "seed-b": 2})
+    assert status == "pass" and detail.endswith("; no tool call on seed-c; none examined from seed-b (2 tool call(s)))")
 
 
 def test_a_direct_vendor_target_spelling_is_refused_before_anything_else(capsys):

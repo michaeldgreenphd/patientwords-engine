@@ -232,6 +232,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     seen_counts: dict[str, dict[str, int]] = {}
     any_tools = False
     tool_results_by_seed: dict[str, int] = {}     # tool-result turns examined per tool-declaring seed
+    tool_calls_by_seed: dict[str, int] = {}       # target calls that made a tool call, per tool-declaring seed
     prefill_seen = False
     cache_seen = False
     calls_missing = 0
@@ -324,6 +325,11 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         if seed.get("tools"):
             any_tools = True
             tool_results_by_seed.setdefault(seed_id, 0)
+            # counted from the calls before any tree or branch is refused, so the tools check can tell "the target made
+            # no tool call" from "its tool turns were never examined" (2026-09-23 review: a limit-halted H3 run was
+            # reported as having made no tool call)
+            tool_calls_by_seed[seed_id] = tool_calls_by_seed.get(seed_id, 0) + sum(
+                1 for e in model_events if e.output is not None and e.output.choices and e.output.choices[0].message.tool_calls)
         cond = next((c for c in conditions(seed) if c["condition_id"] == meta.get("condition_id")), None)
         if cond is None:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"unknown condition {meta.get('condition_id')!r}"})
@@ -523,7 +529,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     if cache_seen:
         checks["no_cache"].fail("a target generation was served from Inspect's cache")
     checks["no_cache"].ok("no cached generation")
-    tool_status, tool_detail = tool_results_verdict(tool_results_by_seed)
+    tool_status, tool_detail = tool_results_verdict(tool_results_by_seed, tool_calls_by_seed)
     if tool_status == "pass":
         checks["tool_results_from_data"].ok(tool_detail)
     elif checks["tool_results_from_data"].status == "not_run":

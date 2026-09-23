@@ -961,7 +961,7 @@
             "not_applicable",
             "not_run"
           ],
-          "description": "pass: examined and clean. fail: examined and violated (detail names where). not_applicable: nothing in this run for the check to examine (a tools check on seeds that declare none, or, since adapter 0.2, on tool seeds whose target made no tool call, named in the detail); counts as clean for claim-grade eligibility. not_run: the check did not execute; never eligible."
+          "description": "pass: examined and clean. fail: examined and violated (detail names where). not_applicable: nothing in this run for the check to examine (a tools check on seeds that declare none, or, since adapter 0.2, on tool seeds whose target made no tool call in their samples, counted from the calls themselves and named in the detail); counts as clean for claim-grade eligibility. not_run: the check did not execute, or, since adapter 0.2, the tools check found tool calls by the target but no examined record carrying a result (the detail names the seeds; refused trees and branches are listed in integrity.records_refused); never eligible."
         },
         "detail": {
           "type": [

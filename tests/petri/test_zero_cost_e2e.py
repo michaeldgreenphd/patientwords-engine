@@ -1038,11 +1038,38 @@ def test_a_tool_seed_whose_target_calls_no_tool_leaves_the_tools_check_not_appli
     result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("notool") / "run")
     assert result.refused == [] and len(result.records) == 2
     check = result.manifest["execution"]["contract_checks"]["tool_results_from_data"]
-    assert check["status"] == "not_applicable" and f"tools declared by {H3}" in check["detail"] and "no tool call" in check["detail"]
+    assert check["status"] == "not_applicable" and f"tools declared by {H3}" in check["detail"]
+    assert "the target made no tool call in their samples" in check["detail"]
     assert result.manifest["execution"]["target_tools_mode"] == "fixed", "the seed still declared its tools"
     assert all(r["outcomes"]["tool_invoked"] is False for r in result.rule_records)
     # the ordinary mock run, whose target did call tools, keeps its named failure (a generated error result)
     assert run["r1"].manifest["execution"]["contract_checks"]["tool_results_from_data"]["status"] == "fail"
+
+
+def test_a_tool_seed_whose_trees_were_halted_after_tool_calls_is_not_reported_as_making_none(run, tmp_path_factory):
+    """Tool results were counted only inside the per-record loop, which a tree
+    refused as a whole never reaches: an H3 run halted at the token limit
+    after the target's tool calls recorded tool_results_from_data
+    not_applicable, "the target made no tool call" (2026-09-23 review). The
+    calls are now counted from the calls themselves, and the check is not_run
+    with the calls named."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H3])
+    target = get_model("mockllm/model", custom_outputs=_MeteredTarget(seed_set), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("halted-tools-logs"), token_limit=2400, cost_limit=0.01)
+    assert [s.limit.type if s.limit else None for s in log.samples] == ["token", "token"]
+    tool_calls = sum(1 for s in log.samples for e in s.events if getattr(e, "event", None) == "model" and e.role == "target"
+                     and e.output.choices and e.output.choices[0].message.tool_calls)
+    assert tool_calls > 0, "the target did call its tools before the limit"
+    result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("halted-tools") / "run")
+    assert len(result.refused) == 2 and all("token limit" in r["reason"] for r in result.refused)
+    check = result.manifest["execution"]["contract_checks"]["tool_results_from_data"]
+    assert check == {"status": "not_run",
+                     "detail": f"the target made tool calls on {H3} ({tool_calls} tool call(s)), but no examined record "
+                               "carries a tool result, so none was checked; refused trees and branches are listed in "
+                               "integrity.records_refused"}
+    assert result.manifest["execution"]["claim_grade_eligible"] is False and manifest_problems(result.manifest) == []
 
 
 def test_manifest_target_labels_are_truthful_for_an_openrouter_target(run, tmp_path_factory, monkeypatch):

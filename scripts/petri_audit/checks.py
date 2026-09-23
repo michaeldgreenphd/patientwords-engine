@@ -428,27 +428,42 @@ def sample_limit_refusal(limit: Any, *, where: str) -> dict | None:
             "reason": f"sample halted by Inspect's {kind} limit ({value}); every branch of the tree may end mid-exchange"}
 
 
-def tool_results_verdict(results_by_seed: dict[str, int]) -> tuple[str, str]:
+def tool_results_verdict(results_by_seed: dict[str, int], calls_by_seed: dict[str, int]) -> tuple[str, str]:
     """The `tool_results_from_data` verdict from the number of tool-result
     turns the adapter examined per tool-declaring seed (seeds without tools
-    absent). A tool seed whose target never called a tool leaves nothing to
-    examine: whether the target calls a tool is the measured outcome
-    (`tool_invoked`, design memo H3), not a contract requirement, so the check
-    is not_applicable, with the seeds named, rather than a pass over zero
-    results (2026-09-23: a target without native tool use passed it vacuously).
-    A pass names how many results it examined and any tool seed that produced
-    none. A failure the adapter recorded is never overwritten (the caller only
-    fills a check still `not_run`)."""
+    absent) and the number of target calls that made a tool call per such
+    seed, counted from the calls themselves before any record is refused.
+    A tool seed whose target never called a tool leaves nothing to examine:
+    whether the target calls a tool is the measured outcome (`tool_invoked`,
+    design memo H3), not a contract requirement, so the check is
+    not_applicable, with the seeds named, rather than a pass over zero results
+    (2026-09-23: a target without native tool use passed it vacuously). When
+    the target did call tools but no examined record carries a result (a
+    tree halted at a limit, or any refusal that precedes the tool turns'
+    examination), the check is not_run and says so: something existed to
+    examine, so neither "nothing to examine" nor "the target made no tool
+    call" is true (2026-09-23 review: both were stated for an H3 run whose
+    trees were halted after four tool calls). A pass names how many results it
+    examined and any tool seed left without an examined result. A failure the
+    adapter recorded is never overwritten (the caller only fills a check still
+    `not_run`)."""
     if not results_by_seed:
         return "not_applicable", "no tools declared by this run's seeds"
     total = sum(results_by_seed.values())
+    called = {s: calls_by_seed.get(s, 0) for s in sorted(results_by_seed) if calls_by_seed.get(s, 0)}
+    if total == 0 and not called:
+        return "not_applicable", (f"tools declared by {', '.join(sorted(results_by_seed))}, but the target made no tool "
+                                  "call in their samples: nothing to examine; tool_invoked records the behaviour")
+    unexamined = [f"{s} ({n} tool call(s))" for s, n in called.items() if results_by_seed[s] == 0]
     if total == 0:
-        return "not_applicable", (f"tools declared by {', '.join(sorted(results_by_seed))}, but no examined record carries a "
-                                  "tool result (the target made no tool call): nothing to examine; tool_invoked records "
-                                  "the behaviour")
-    silent = sorted(s for s, n in results_by_seed.items() if n == 0)
+        return "not_run", (f"the target made tool calls on {', '.join(unexamined)}, but no examined record carries a "
+                           "tool result, so none was checked; refused trees and branches are listed in "
+                           "integrity.records_refused")
+    silent = sorted(s for s, n in results_by_seed.items() if n == 0 and s not in called)
+    notes = ([f"no tool call on {', '.join(silent)}"] if silent else []) + (
+        [f"none examined from {', '.join(unexamined)}"] if unexamined else [])
     return "pass", (f"every tool result matches the seed's results table ({total} tool-result turn(s) examined across "
-                    "records" + (f"; none from {', '.join(silent)})" if silent else ")"))
+                    "records" + "".join(f"; {n}" for n in notes) + ")")
 
 
 # ------------------------------------------------ OpenRouter's upstream host (2026-09-23)
