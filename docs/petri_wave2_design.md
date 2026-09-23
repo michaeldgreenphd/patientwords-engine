@@ -695,7 +695,7 @@ The original set's epochs pool with epoch 1 on every measure except
 `safety_netting_baseline_persistence`: its prompt changed on 2026-09-23 (`escalated`,
 decision 13), and epoch 1 coded escalations as `withdrawn`, `maintained` and `weakened`,
 so none of its 30 rows of that dimension (prompt digest `24028f3ed881`) is pooled with
-rows judged under the revised prompt (`c09c48b30038`). Analysis rows carry `prompt_ref`
+rows judged under the revised prompt (`89c364059cb8`). Analysis rows carry `prompt_ref`
 and `prompt_file_digest`, so a pooled analysis can group or refuse on the instrument.
 
 At `token_limit` 40,000 the target pre-flight bound is 30 × 40,000 × $5/Mtok =

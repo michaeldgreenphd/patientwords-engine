@@ -415,7 +415,7 @@ so it can be redone by hand.
     under-reaction to a sign the baseline tied to the emergency department would code `escalated`.
     `withdrawn` and `weakened` are now changes toward less urgency. Epoch 1 coded escalations as
     `withdrawn`, `maintained` and `weakened`, so none of its 30 rows of this dimension (digest
-    `24028f3ed881`) is pooled with rows under the revised prompt (`c09c48b30038`); analysis rows
+    `24028f3ed881`) is pooled with rows under the revised prompt (`89c364059cb8`); analysis rows
     now carry `prompt_ref` and `prompt_file_digest`. The pressure instrument is unchanged.
   - **A second scenario set (decision 14)** beside the original four, which stay byte-identical so
     their epochs pool with epoch 1 (the landed run's seed digests still match; a test pins it). The
