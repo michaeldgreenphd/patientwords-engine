@@ -29,19 +29,30 @@ docs/prereg_divergence_log.md):
 - ``.git`` directories, by path component (history is not an artifact this
   check can remediate; the owner decides on history).
 
+A root whose git checkout keeps tracked files off disk (a sparse checkout; the
+cloud containers' site clone excludes modes/) is a configuration error, exit 2:
+the sweep would not read those files and would still say CLEAN. Run
+``git -C <site> sparse-checkout disable`` first (scripts/sparse_guard.py).
+
 Allowlist (``--allowlist``, default data/seal_allowlist.json; owner rulings
 only). An entry names a sealed label, the published row and field that contain
 it, and the full sha256 of that containing field. The checker reads the field
 from the registry sources, confirms the hash, and masks occurrences of that
-exact field before matching the entry's sealed phrase, so any other occurrence
-of the phrase, bare or inside different text, still flags. An entry is inactive,
-and suppresses nothing, when its hash no longer matches, its label is not
-sealed, its field does not contain the phrase, or its field is itself sealed.
-The file stores no phrase text.
+exact field before matching the entry's sealed phrase. It masks only WHOLE-FIELD
+occurrences: the field's text (or an encoding of it) with a field delimiter on
+each side - a JSON/CSV string's or HTML attribute's quotes, an HTML element's
+``>`` and ``<``, or, in a CSV file, a cell's commas and line ends. Any other
+occurrence of the phrase still flags, bare, inside different text, or inside
+the field's text run on into more words (2026-09-23 review: substring masking
+let the phrase plus a space and any word starting with the field's last word
+pass). An entry is inactive, and suppresses nothing, when its hash no longer
+matches, its label is not sealed, its field does not contain the phrase, or
+its field is itself sealed - which includes a field that is nothing but the
+phrase once case and whitespace are normalized. The file stores no phrase text.
 
 Exit codes: 0 clean, 1 leak found, 2 configuration problem (the sealed set
-computes EMPTY - a checkout with a null tierb.start_utc does that - or the
-allowlist file is malformed).
+computes EMPTY - a checkout with a null tierb.start_utc does that - the
+allowlist file is malformed, or a root's checkout hides tracked files).
 
 Usage:
   python scripts/seal_check.py [--site ../patientwords] [--dashboard ops/dashboard.json]
@@ -59,10 +70,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 try:  # invoked from the repo root (CLI/cycle) vs loaded by path (tests)
+    from scripts.sparse_guard import hidden_tracked
     from scripts.tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from sparse_guard import hidden_tracked
     from tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp
 
 # .jsonl added 2026-09-16 (owner correction 9): the Petri lane publishes
@@ -78,6 +91,13 @@ _MASK = "\x00"  # not whitespace, so normalization cannot join text across a mas
 
 def norm(text: str) -> str:
     return re.sub(r"\s+", " ", text.lower()).strip()
+
+
+def norm_lines(text: str) -> str:
+    """``norm`` that keeps line breaks, so a CSV cell's line-end bound survives
+    normalization: a whitespace run becomes one newline if it holds one, else
+    one space. ``norm(norm_lines(t)) == norm(t)``."""
+    return re.sub(r"\s+", lambda m: "\n" if "\n" in m.group() else " ", text.lower())
 
 
 def sha256_hex(text: str) -> str:
@@ -203,10 +223,24 @@ def _containing_text(simulated_dir: str | Path, containing: str, field_name: str
     return value if isinstance(value, str) else None
 
 
+def _residue(text: str, phrase: str) -> str:
+    """What is left of a containing field once every occurrence of the phrase
+    is removed, compared as the matcher compares (case and whitespace
+    normalized; non-ASCII text exactly as well). Empty means the field is the
+    phrase itself (a case or spacing variant, or a repetition): masking it would
+    mask the bare phrase."""
+    left = norm(norm(text).replace(norm(phrase), " "))
+    if not phrase.isascii():
+        exact = text.replace(phrase, " ").strip()
+        left = left if left and exact else ""
+    return left
+
+
 def resolve_allowlist(entries: list[dict], registry: dict[str, str],
                       simulated_dir: str | Path) -> Allowlist:
     """Activate each entry whose containing field still hashes to its sha256,
-    contains its sealed phrase, and is not itself sealed."""
+    contains its sealed phrase, and is not itself sealed (nor the phrase up to
+    case and whitespace)."""
     by_label = {label: phrase for phrase, label in registry.items()}
     allow = Allowlist(entries=list(entries))
     for entry in entries:
@@ -219,7 +253,8 @@ def resolve_allowlist(entries: list[dict], registry: dict[str, str],
             reason = "containing field not found in the registry sources"
         elif sha256_hex(text) != entry["sha256"]:
             reason = "containing field no longer matches its sha256"
-        elif text in registry or text.strip() in registry or is_holdout(text):
+        elif (text in registry or text.strip() in registry or is_holdout(text)
+              or not _residue(text, phrase)):
             reason = "containing field is itself sealed"
         elif phrase not in text and norm(phrase) not in norm(text):
             reason = "containing field does not contain the sealed phrase"
@@ -243,10 +278,29 @@ def encoded_forms(text: str) -> list[str]:
     return sorted(forms, key=len, reverse=True)
 
 
-def _mask(text: str, needles: list[str]) -> str:
+# Delimiters an encoder writes around a whole value, as (left, right) pairs: a
+# JSON string's quotes (also a CSV quoted cell's and an HTML attribute's), an
+# HTML single-quoted attribute, and an HTML element's text. Whitespace between
+# the delimiter and the value is allowed; any other character is not, so the
+# field's text run on into more words is not a whole-field occurrence.
+_FIELD_BOUNDS = (('"', '"'), ("'", "'"), (">", "<"))
+
+
+def _field_pattern(needle: str, csv: bool) -> re.Pattern:
+    body = re.escape(needle)
+    alts = [rf"(?<={re.escape(left)})\s*{body}\s*(?={re.escape(right)})" for left, right in _FIELD_BOUNDS]
+    if csv:  # an unquoted CSV cell: bounded by commas, line breaks, or the text's ends
+        alts.append(rf"(?<![^,\n])[ \t]*{body}[ \t]*(?![^,\r\n])")
+    return re.compile("|".join(alts))
+
+
+def _mask(text: str, needles: list[str], csv: bool = False) -> str:
+    """Replace every WHOLE-FIELD occurrence of each needle (longest first) with
+    the mask; an occurrence without a field delimiter on each side is left in
+    place, so it still matches."""
     for needle in needles:
-        if needle:
-            text = text.replace(needle, _MASK)
+        if needle and needle in text:
+            text = _field_pattern(needle, csv).sub(_MASK, text)
     return text
 
 
@@ -264,20 +318,25 @@ def scan_text(text: str, registry: dict[str, str], allow: Allowlist | None = Non
     """(hit labels, allowlisted labels) for one text; never the phrase text.
 
     A label is allowlisted only when every occurrence of its phrase in the
-    text lies inside an active containing field of that same label."""
+    text lies inside a whole-field occurrence of an active containing field of
+    that same label (see ``_mask``)."""
     views = text_views(text, suffix)
     nviews = list(dict.fromkeys(norm(v) for v in views))
     hits: list[str] = []
     allowlisted: list[str] = []
+    csv = suffix == ".csv"
+    lviews: list[str] | None = None
     for phrase, label in registry.items():
         if not _found(phrase, views, nviews):
             continue
         containing = (allow.active.get(label) if allow else None) or []
         if containing:
+            if lviews is None:
+                lviews = list(dict.fromkeys(norm_lines(v) for v in views))
             forms = [f for c in containing for f in encoded_forms(c)]
-            nforms = sorted({norm(f) for f in forms}, key=len, reverse=True)
-            masked = [_mask(v, forms) for v in views]
-            nmasked = [_mask(v, nforms) for v in nviews]
+            lforms = sorted({norm_lines(f).strip() for f in forms}, key=len, reverse=True)
+            masked = [_mask(v, forms, csv) for v in views]
+            nmasked = [norm(_mask(v, lforms, csv)) for v in lviews]
             if not _found(phrase, masked, nmasked):
                 allowlisted.append(label)
                 continue
@@ -328,6 +387,24 @@ def _candidates(root: Path, excluded: list[Path]):
                 yield p
 
 
+def hidden_scannable(roots: list[Path], exclude_dirs: list[str | Path] | tuple = ()) -> list[str]:
+    """Scannable files that a root's git checkout tracks but keeps off disk
+    (sparse checkout or skip-worktree), outside the excluded directories. A
+    sweep cannot read them, so a non-empty result makes the check refuse.
+    Raises RuntimeError when git cannot answer."""
+    excluded = [Path(d).resolve() for d in exclude_dirs]
+    out: list[str] = []
+    for root in roots:
+        root = Path(root)
+        base, spec = (root.parent, root.name) if root.is_file() else (root, ".")
+        for rel in hidden_tracked(base, spec):
+            p = base / rel
+            if (p.suffix.lower() in SCAN_SUFFIXES and ".git" not in p.parts
+                    and not _excluded(p, excluded)):
+                out.append(str(p))
+    return out
+
+
 def scan_roots(roots: list[Path], registry: dict[str, str],
                exclude_dirs: list[str | Path] | tuple = (),
                allow: Allowlist | None = None) -> Sweep:
@@ -373,7 +450,18 @@ def main(argv: list[str] | None = None) -> int:
     allow = resolve_allowlist(entries, registry, args.simulated)
 
     roots = [Path(args.site)] + [Path(x.strip()) for x in args.extra.split(",") if x.strip()]
-    sweep = scan_roots(roots, registry, exclude_dirs=[args.simulated, args.trace_out], allow=allow)
+    exclude = [args.simulated, args.trace_out]
+    try:
+        hidden = hidden_scannable(roots, exclude)
+    except RuntimeError as exc:
+        print(f"seal check: CONFIG ERROR - cannot tell whether a root's checkout hides files ({exc})")
+        return 2
+    if hidden:
+        print(f"seal check: CONFIG ERROR - {len(hidden)} tracked file(s) under the swept roots are "
+              f"not on disk (sparse checkout or skip-worktree), e.g. {hidden[0]}; a sweep would not "
+              f"read them. Run `git -C <that checkout> sparse-checkout disable`, then re-run.")
+        return 2
+    sweep = scan_roots(roots, registry, exclude_dirs=exclude, allow=allow)
     if sweep.findings:
         print(f"seal check: LEAK - {sum(len(v) for v in sweep.findings.values())} sealed-phrase "
               f"hit(s) in {len(sweep.findings)} file(s):")

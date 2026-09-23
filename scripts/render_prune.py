@@ -20,12 +20,24 @@ The prune set is narrow by construction:
   data/advice_scenarios.json). The payload being replaced is not consulted:
   the export's own listing supersedes it.
 
+The candidates come from the working tree, so a site checkout that keeps
+tracked renders off disk (the cloud containers' sparse clone excludes modes/)
+would prune nothing and say so as if it were done. ``hidden_renders`` finds
+those files (sparse_guard.py) and the exporter refuses before writing anything.
+
 No medical vocabulary lives here.
 """
 
 import os
 import re
 from pathlib import Path
+
+try:
+    from scripts.sparse_guard import hidden_tracked
+except ImportError:  # loaded by path (tests) or run from scripts/
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from sparse_guard import hidden_tracked
 
 SIM_DIR = "modes/simulated"
 _RENDER = r"modes/simulated/pairs_\d{8}T\d{6}Z(?:__[A-Za-z0-9.\-]+)?/index_\d{2,}\.(?:html|png)"
@@ -51,6 +63,14 @@ def exporter_renders(frontend: Path) -> list[str]:
         if RENDER_RE.match(rel):
             out.append(rel)
     return out
+
+
+def hidden_renders(frontend: Path) -> list[str]:
+    """Site-relative exporter-named renders that the site's git checkout tracks
+    but keeps off disk (sparse checkout or skip-worktree). Non-empty means the
+    prune cannot see them; the exporter refuses. Raises RuntimeError when git
+    cannot answer."""
+    return [rel for rel in hidden_tracked(frontend, SIM_DIR) if RENDER_RE.match(rel)]
 
 
 def referenced_renders(frontend: Path, ignore: set[str] | frozenset[str] = frozenset()) -> set[str]:

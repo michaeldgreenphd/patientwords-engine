@@ -22,7 +22,10 @@ Deletes (since 2026-09-23, owner ruling 2): renders under modes/simulated/ that
 match the names above but that neither this export nor any other site file
 lists (scripts/render_prune.py). A render used to outlive its scenario: a
 withheld Tier B holdout row's render stayed served for ten weeks. --dry-run
-writes and deletes nothing and lists what the run would prune.
+writes and deletes nothing and lists what the run would prune. The run refuses,
+writing nothing, when the site's git checkout keeps tracked renders off disk (a
+sparse clone that excludes modes/): the prune could not see them. Run
+`git -C <site> sparse-checkout disable` first.
 
 Usage:
   python scripts/export_frontend_simulated.py --frontend ../patientwords \\
@@ -52,9 +55,9 @@ except ImportError:
     from payload_summary import build_summary
 
 try:
-    from scripts.render_prune import prune, prune_candidates
+    from scripts.render_prune import hidden_renders, prune, prune_candidates
 except ImportError:
-    from render_prune import prune, prune_candidates
+    from render_prune import hidden_renders, prune, prune_candidates
 
 # The circuit-tracer models, in registry order (gemma-2-2b is the base/default).
 # Only gemma-2-2b has a transcoder source set, so clinical-feature attribution
@@ -133,6 +136,19 @@ _unknown_steered = STEERED - set(STAMPS)
 if _unknown_steered:
     sys.exit(f"--steered-stamps names stamps absent from --stamps: {sorted(_unknown_steered)}")
 WANT_MODELS = [m.strip() for m in args.models.split(",") if m.strip()]
+
+# The render prune reads the working tree. A site checkout that keeps tracked
+# renders off disk (the cloud containers' sparse clone excludes modes/) would
+# prune nothing and report success, so refuse before writing anything.
+try:
+    _hidden = hidden_renders(FRONTEND)
+except RuntimeError as exc:
+    sys.exit(f"refusing: cannot tell whether the site checkout hides renders ({exc})")
+if _hidden:
+    sys.exit(f"refusing: the site checkout at {FRONTEND} tracks {len(_hidden)} render(s) under "
+             f"modes/simulated/ that are not on disk (sparse checkout or skip-worktree), e.g. "
+             f"{_hidden[0]}; the render prune cannot see them. Run "
+             f"`git -C {FRONTEND} sparse-checkout disable`, then re-run. Nothing was written.")
 
 
 def tok(label):

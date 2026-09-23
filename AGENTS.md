@@ -195,7 +195,10 @@ fetch` brings any one back by HTTP Range without downloading its zip, and
 **deletes** site renders under `modes/simulated/` that match its own naming but that
 neither the new payload nor any other site file lists (`scripts/render_prune.py`; a
 withheld holdout row's render had stayed served for ten weeks); `--dry-run` writes and
-deletes nothing and lists them.
+deletes nothing and lists them. It refuses, writing nothing, over a site checkout that
+keeps tracked renders off disk (the cloud containers' sparse clone excludes `modes/`),
+and `scripts/seal_check.py` exits 2 over one: `git -C ../patientwords sparse-checkout
+disable` first.
 
 ## Figure style (standing preference)
 

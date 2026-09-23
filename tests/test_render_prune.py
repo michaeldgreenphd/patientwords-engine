@@ -11,20 +11,32 @@ site trees with abstract phrases only:
 - a render the new payload lists, or any other site file names, is kept; the
   payload being replaced does not keep a render alive;
 - --dry-run writes, copies and deletes nothing and lists what would go;
-- the summary reports the count.
+- the summary reports the count;
+- a site checkout that keeps tracked renders off disk (a sparse clone that
+  excludes modes/) makes the exporter refuse before writing anything.
 """
 
 import hashlib
 import importlib.util
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 _ROOT = Path(__file__).resolve().parents[1]
-_SPEC = importlib.util.spec_from_file_location("render_prune", _ROOT / "scripts" / "render_prune.py")
-rp = importlib.util.module_from_spec(_SPEC)
-_SPEC.loader.exec_module(rp)
+
+
+def _load(name):
+    spec = importlib.util.spec_from_file_location(name, _ROOT / "scripts" / f"{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+rp = _load("render_prune")
 
 STAMP = "20260801T000000Z"
 STEM = f"pairs_{STAMP}"
@@ -158,3 +170,76 @@ def test_export_prunes_unlisted_renders_and_nothing_else(tmp_path):
     # a second run is a no-op for pruning
     again = export(engine, site)
     assert again.returncode == 0 and "0 unlisted render(s) pruned" in again.stdout
+
+
+# --- a site checkout that keeps renders off disk (2026-09-23 review) ---------- #
+# The cloud containers clone the site with a sparse checkout that excludes
+# modes/ (docs/fresh_session_bootstrap.md). The prune reads the working tree, so
+# it pruned nothing there and printed "0 unlisted render(s) pruned".
+
+needs_git = pytest.mark.skipif(shutil.which("git") is None, reason="git is not installed")
+
+
+def _git(cwd, *argv):
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+                    "-c", "commit.gpgsign=false", *argv],
+                   cwd=str(cwd), check=True, capture_output=True)
+
+
+def _commit_site(site):
+    _git(site, "init", "-q")
+    _git(site, "add", "-A")
+    _git(site, "commit", "-qm", "site")
+
+
+@needs_git
+def test_export_refuses_a_sparse_site_checkout_and_writes_nothing(tmp_path):
+    engine, site, files = build(tmp_path)
+    _commit_site(site)
+    _git(site, "sparse-checkout", "set", "--no-cone", "/*", "!/modes/")
+    assert not (site / "modes").exists()
+    assert rp.hidden_renders(site) == [f"modes/simulated/{OLD}/index_07.png",
+                                       f"modes/simulated/{OLD}/index_08.html",
+                                       f"modes/simulated/{STEM}/index_01.html",
+                                       f"modes/simulated/{STEM}/index_03.html",
+                                       f"modes/simulated/{STEM}__qwen3-4b/index_02.html"]
+    before = snapshot(site)
+    for extra in ((), ("--dry-run",)):
+        proc = export(engine, site, *extra)
+        assert proc.returncode != 0, extra
+        assert "5 render(s)" in proc.stderr and "sparse-checkout disable" in proc.stderr
+        assert "pruned" not in proc.stdout
+        assert snapshot(site) == before
+    _git(site, "sparse-checkout", "disable")
+    proc = export(engine, site)
+    assert proc.returncode == 0, proc.stderr
+    assert "3 unlisted render(s) pruned" in proc.stdout
+    assert not files["holdout_render"].exists()
+
+
+@needs_git
+def test_a_pruned_but_uncommitted_render_does_not_block_a_rerun(tmp_path):
+    # Deleted from disk without the skip-worktree bit is a pending deletion,
+    # not a hidden file: re-running the exporter before the commit must work.
+    engine, site, _ = build(tmp_path)
+    _commit_site(site)
+    assert export(engine, site).returncode == 0
+    again = export(engine, site)
+    assert again.returncode == 0, again.stderr
+    assert "0 unlisted render(s) pruned" in again.stdout
+
+
+@needs_git
+def test_hidden_tracked_reads_the_skip_worktree_bit(tmp_path):
+    sg = _load("sparse_guard")
+    site = tmp_path / "site"
+    _write(site / "modes" / "simulated" / STEM / "index_01.html", "x")
+    _write(site / "data" / "a.json", "{}")
+    assert sg.hidden_tracked(site) == []                   # not a git work tree
+    assert sg.hidden_tracked(tmp_path / "absent") == []
+    _commit_site(site)
+    assert sg.hidden_tracked(site) == []                   # full checkout
+    _git(site, "update-index", "--skip-worktree", "data/a.json")
+    assert sg.hidden_tracked(site) == ["data/a.json"]
+    assert sg.hidden_tracked(site, "modes/simulated") == []
+    assert rp.hidden_renders(site) == []

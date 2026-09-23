@@ -7,15 +7,23 @@ engine's registry sources and measurement store, matched by resolved path, and
 .git by path component (a substring test on the path skipped the site's
 data/simulated_*.json files, its whole modes/ render tree and .github/); HTML
 entities and JSON escapes are decoded before matching; and the owner-ruled
-allowlist suppresses a sealed phrase only inside the exact containing field
-whose sha256 it records. Uses abstract non-medical synthetic phrases only.
+allowlist suppresses a sealed phrase only inside a whole-field occurrence of
+the exact containing field whose sha256 it records, never inside that text run
+on into more words, and never for a field that is the phrase up to case and
+whitespace; and a root whose git checkout keeps tracked files off disk (a
+sparse checkout) is a configuration error, not a CLEAN sweep. Uses abstract
+non-medical synthetic phrases only.
 """
 
 import hashlib
 import html
 import importlib.util
 import json
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 _ROOT = Path(__file__).resolve().parents[1]
 _SPEC = importlib.util.spec_from_file_location("seal_check", _ROOT / "scripts" / "seal_check.py")
@@ -264,6 +272,113 @@ def test_a_different_container_is_not_suppressed(tmp_path, capsys):
     assert rc == 1
 
 
+def _short_word_case():
+    """A sealed phrase whose container is the phrase plus a space and a
+    one-letter word, hashing explore (the shape of the 2026-09-23 entry)."""
+    for i in range(5000):
+        p = f"zz test phrase {i}"
+        if _holdout(p) and not _holdout(f"{p} a"):
+            return p, f"{p} a"
+    raise AssertionError("no such pair found")
+
+
+def test_container_run_on_into_more_words_still_flags(tmp_path, capsys):
+    # 2026-09-23 review: substring masking masked "<phrase> a" inside
+    # "<phrase> also ...", so a bare leak followed by any word starting with the
+    # container's last letter was reported as allowlisted.
+    phrase, container = _short_word_case()
+    _, _, site = setup(tmp_path, phrase, explore_rows=[container])
+    leaks = {
+        "value.json": json.dumps([f"{phrase} also more"]),
+        "page.html": f"<p>quoted: {phrase} also more</p>",
+        "upper.html": f"<p>{phrase} Also</p>",
+        "brief.md": f"- the sealed prompt was {phrase} and it moved\n",
+        "cells.csv": f'k,v\nx,"{phrase} also"\ny,{phrase} and\n',
+    }
+    for name, body in leaks.items():
+        (site / name).write_text(body, encoding="utf-8")
+    allowlist = write_allowlist(tmp_path, [entry(container)])
+    rc, out = run(tmp_path, capsys, allowlist=allowlist)
+    assert rc == 1
+    leak_block = out.split("allowlist:")[0]
+    for name in leaks:
+        assert str(site / name) in leak_block, name
+    assert "1 of 1 entry active" in out and phrase not in out
+
+
+def test_run_on_leak_exits_1_with_the_allowlist_and_without_it(tmp_path, capsys):
+    phrase, container = _short_word_case()
+    _, _, site = setup(tmp_path, phrase, explore_rows=[container])
+    (site / "notes.md").write_text(f"{phrase} also appears here\n", encoding="utf-8")
+    rc_without, _ = run(tmp_path, capsys)
+    rc_with, out = run(tmp_path, capsys, allowlist=write_allowlist(tmp_path, [entry(container)]))
+    assert rc_without == 1 and rc_with == 1 and "CLEAN" not in out
+
+
+def test_whole_field_container_is_allowlisted_in_every_encoding(tmp_path, capsys):
+    phrase, container = _short_word_case()
+    _, _, site = setup(tmp_path, phrase, explore_rows=[container])
+    ok = {
+        "value.json": json.dumps({"clinical_prompt": container, "k": [container]}),
+        "cell_quoted.csv": f'a,b\nx,"{container}"\n',
+        "cell_bare.csv": f"a,b,c\n{container},y,z\nx,{container},z\nx,y,{container}\n",
+        "element.html": f"<td>\n  {html.escape(container)}\n</td><b>k:</b> {container}</p>",
+        "attribute.html": f'<a title="{html.escape(container)}" data-x=\'{container}\'>k</a>',
+        "upper.json": json.dumps([container.upper()]),
+    }
+    for name, body in ok.items():
+        (site / name).write_text(body, encoding="utf-8")
+    rc, out = run(tmp_path, capsys, allowlist=write_allowlist(tmp_path, [entry(container)]))
+    assert rc == 0 and "CLEAN" in out
+    assert f"{len(ok)} file(s) had only allowlisted occurrences" in out
+
+
+def test_csv_bounds_apply_only_to_csv_files(tmp_path, capsys):
+    # A comma is a field delimiter only in a CSV file; in prose it is not.
+    phrase, container = _short_word_case()
+    _, _, site = setup(tmp_path, phrase, explore_rows=[container])
+    (site / "prose.md").write_text(f"first, {container}, then more\n", encoding="utf-8")
+    rc, out = run(tmp_path, capsys, allowlist=write_allowlist(tmp_path, [entry(container)]))
+    assert rc == 1 and str(site / "prose.md") in out.split("allowlist:")[0]
+
+
+def _variant_case(make):
+    """A sealed phrase and a variant of it (made by `make`) that hashes explore."""
+    for i in range(5000):
+        p = f"zz test phrase {i}"
+        if _holdout(p) and not _holdout(make(p)):
+            return p, make(p)
+    raise AssertionError("no such pair found")
+
+
+def test_case_variant_container_is_inactive_and_a_bare_leak_flags(tmp_path, capsys):
+    # 2026-09-23 review: the "itself sealed" test compared exactly, while
+    # matching and masking are normalized, so a container differing from the
+    # phrase only by case activated and then masked every bare occurrence.
+    phrase, variant = _variant_case(str.upper)
+    _, _, site = setup(tmp_path, phrase, explore_rows=[variant])
+    (site / "bare.json").write_text(json.dumps([phrase]), encoding="utf-8")
+    rc, out = run(tmp_path, capsys, allowlist=write_allowlist(tmp_path, [entry(variant)]))
+    assert rc == 1 and "INACTIVE (containing field is itself sealed)" in out
+    assert "0 of 1 entry active" in out
+
+
+def test_whitespace_variant_container_is_inactive_and_a_bare_leak_flags(tmp_path, capsys):
+    phrase, variant = _variant_case(lambda p: p.replace(" ", "  ", 1))
+    _, _, site = setup(tmp_path, phrase, explore_rows=[variant])
+    (site / "bare.json").write_text(json.dumps([phrase]), encoding="utf-8")
+    rc, out = run(tmp_path, capsys, allowlist=write_allowlist(tmp_path, [entry(variant)]))
+    assert rc == 1 and "INACTIVE (containing field is itself sealed)" in out
+
+
+def test_residue_and_line_preserving_normalization():
+    phrase = sealed_phrase()
+    assert sc._residue(f"{phrase}  {phrase.upper()}", phrase) == ""   # a repetition is the phrase
+    assert sc._residue(f"{phrase} a", phrase) == "a"
+    assert sc.norm(sc.norm_lines("A\t b\r\n\n c")) == sc.norm("A\t b\r\n\n c")
+    assert sc.norm_lines("A\t b\r\n\n c") == "a b\nc"
+
+
 def test_allowlist_entry_with_a_stale_hash_suppresses_nothing(tmp_path, capsys):
     phrase = sealed_phrase()
     container = container_of(phrase)
@@ -302,3 +417,54 @@ def test_committed_allowlist_is_well_formed_and_hash_keyed():
     assert entries, "the 2026-09-23 ruling entry is present"
     for e in entries:
         assert len(e["sha256"]) == 64 and e["containing"] != e["label"]
+
+
+# --- a root whose checkout keeps tracked files off disk (2026-09-23 review) ---- #
+
+needs_git = pytest.mark.skipif(shutil.which("git") is None, reason="git is not installed")
+
+
+def _git(cwd, *argv):
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+                    "-c", "commit.gpgsign=false", *argv],
+                   cwd=str(cwd), check=True, capture_output=True)
+
+
+@needs_git
+def test_sparse_site_checkout_is_a_config_error_not_clean(tmp_path, capsys):
+    # The cloud containers' site clone excludes modes/; the sweep then read no
+    # render and still printed CLEAN.
+    phrase = sealed_phrase()
+    setup(tmp_path, phrase)
+    site_root = tmp_path / "site"
+    (site_root / "data" / "payload.json").write_text(json.dumps({"p": "harmless"}), encoding="utf-8")
+    render = site_root / "modes" / "simulated" / SEALED_BATCH / "index_01.html"
+    render.parent.mkdir(parents=True)
+    render.write_text(f"<p>{phrase}</p>", encoding="utf-8")
+    _git(site_root, "init", "-q")
+    _git(site_root, "add", "-A")
+    _git(site_root, "commit", "-qm", "site")
+    _git(site_root, "sparse-checkout", "set", "--no-cone", "/*", "!/modes/")
+    assert not render.exists()
+    rc, out = run(tmp_path, capsys)
+    assert rc == 2 and "CONFIG ERROR" in out and "sparse-checkout disable" in out
+    assert "CLEAN" not in out and phrase not in out
+    _git(site_root, "sparse-checkout", "disable")
+    rc, out = run(tmp_path, capsys)
+    assert rc == 1 and str(render) in out
+
+
+@needs_git
+def test_hidden_files_in_excluded_dirs_or_unscanned_suffixes_do_not_refuse(tmp_path):
+    root = tmp_path / "engine"
+    for rel in ("trace_out/a/batch_summary.part_01.json", "docs/fig.png", "docs/note.md"):
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_text("x", encoding="utf-8")
+    _git(root, "init", "-q")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "e")
+    _git(root, "update-index", "--skip-worktree", "trace_out/a/batch_summary.part_01.json", "docs/fig.png")
+    assert sc.hidden_scannable([root], [root / "trace_out"]) == []
+    _git(root, "update-index", "--skip-worktree", "docs/note.md")
+    assert sc.hidden_scannable([root], [root / "trace_out"]) == [str(root / "docs" / "note.md")]
+    assert sc.hidden_scannable([root / "docs" / "note.md"]) == [str(root / "docs" / "note.md")]

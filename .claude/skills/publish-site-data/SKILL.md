@@ -16,7 +16,13 @@ with theirs.
    `../patientwords`. If it is missing, stop — do not clone or improvise paths.
 2. `git pull --rebase origin main` in both repos first (everything lands on `main`
    since 2026-09-04).
-3. Only run if new results actually landed (new `trace_out/*/batch_summary.part_*.json`,
+3. The site must be a full checkout: `git -C ../patientwords sparse-checkout disable`
+   before step 1 (a no-op on a full checkout). The cloud containers clone the site
+   with `modes/` excluded (`docs/fresh_session_bootstrap.md`). Over that checkout the
+   exporter's render prune and the seal gate cannot see the renders, so both refuse:
+   the exporter stops with `refusing: the site checkout ... tracks N render(s) ...
+   that are not on disk`, and `seal_check.py` exits 2.
+4. Only run if new results actually landed (new `trace_out/*/batch_summary.part_*.json`,
    new lens parts, new txcorpus runs). No new results → no republish this cycle.
 
 ## The chain (run in this exact order)
@@ -39,6 +45,8 @@ python scripts/export_frontend_simulated.py --frontend ../patientwords \
   new payload nor any other site file lists, and prints the count. Run it once with
   `--dry-run` first (writes and deletes nothing, lists what would go) when the count
   could surprise you; the first publish after 2026-09-23 prunes about 235 orphans.
+  A `refusing:` line means nothing was written. Fix the cause it names (for a
+  sparse checkout, precondition 3) and re-run; it is not success-with-no-change.
 
 **2. Urgency collector.**
 ```
@@ -103,7 +111,9 @@ way, do not fix it here.
 **8b. Holdout-seal gate (mandatory — also before any ad-hoc export push).**
 `python scripts/seal_check.py --site ../patientwords` — exit 0 required to proceed.
 Exit 1: ABORT the publish, follow the holdout-seal-check skill's breach protocol.
-Exit 2 (empty sealed set): config error (wrong branch), never a pass.
+Exit 2: a config error, never a pass. The printed line names the cause: an empty
+sealed set (wrong branch), a malformed `data/seal_allowlist.json` (fix the entry;
+never delete the file to get past it), or a sparse site checkout (precondition 3).
 
 **9. Commit and push.**
 - Site: `git -C ../patientwords status` first. Only `data/*.json` and exporter-written
