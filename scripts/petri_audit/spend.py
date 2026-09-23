@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 from .framework import ROOT, load_json, sha256_text
@@ -164,7 +165,10 @@ def _openrouter_price(name: str, registry: dict, engine_pricing: dict) -> Price 
     registry price (its table or default, or the engine table for Anthropic
     models) and the OpenRouter catch-all, so a vendor whose list price exceeds
     the catch-all (Codex round 2: openai's 5.25/31.5 over 5/30) never
-    understates the ceiling and a cheap vendor never undercuts the floor."""
+    understates the ceiling and a cheap vendor never undercuts the floor.
+    A Petri target or judge that would reach the fallback is refused at
+    pre-flight (`openrouter_price_problems`); the fallback remains for
+    pricing whatever a log records."""
     ocfg = registry.get("openrouter") if isinstance(registry, dict) else None
     if isinstance(ocfg, dict) and name in (ocfg.get("pricing") or {}):
         entry = ocfg["pricing"][name]
@@ -182,6 +186,41 @@ def _openrouter_price(name: str, registry: dict, engine_pricing: dict) -> Price 
                      max(vendor_price.output_per_mtok, floor.output_per_mtok),
                      f"max({vendor_price.source}, {floor.source})")
     return vendor_price or floor
+
+
+UNREVIEWED_OPENROUTER_PRICE = "unreviewed_openrouter_price"
+
+
+def openrouter_price_problems(model: str, registry: dict | None = None) -> list[str]:
+    """Why an Inspect model name may not be priced for a Petri run: an
+    `openrouter/<vendor>/<model>` name with no entry of its own in the
+    registry's `openrouter.pricing` table. Any other name returns [].
+
+    Without an entry, `_openrouter_price` falls back to the higher of the
+    vendor's registry price and the 5/30 catch-all. That fallback suits the
+    advice lane's arbitrary slugs, where the registry documents it as a
+    deliberate over-estimate, but it is not a reviewed price: it understates
+    any model dearer than it (a vendor's `default_pricing` prices all its
+    unlisted models at one rate), and a mistyped slug or the `openrouter/auto`
+    router slug resolves to it without complaint. The Petri pre-flight bound,
+    Inspect's per-sample `cost_limit` and the cost sidecar all rest on this
+    one price, so a Petri run needs a reviewed, markup-inclusive entry for its
+    exact slug (no fuzzy match: a `:free` or `:nitro` variant is a different
+    slug). The advice lane keeps the fallback; the refusal is this lane's
+    alone (2026-09-23)."""
+    provider, name = split_inspect_name(model.strip())
+    if provider != "openrouter":
+        return []
+    registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
+    ocfg = registry.get("openrouter") if isinstance(registry, dict) else None
+    table = (ocfg.get("pricing") if isinstance(ocfg, dict) else None) or {}
+    if name in table:
+        return []
+    reviewed = ", ".join(sorted(table)) or "none"
+    return [f"{UNREVIEWED_OPENROUTER_PRICE}: {model!r} has no per-model entry in data/advice_providers.json "
+            f"openrouter.pricing (reviewed: {reviewed}); the catch-all default_pricing is the advice lane's fallback "
+            "for arbitrary slugs, and a Petri run must be bounded, limited and booked at a reviewed price, so add a "
+            "dated, sourced entry before running this model"]
 
 
 def resolve_price(model: str, registry: dict | None = None, engine_pricing: dict | None = None) -> Price:
@@ -469,3 +508,64 @@ def write_report_sidecar(path: Path, *, run_id: str, eval_id: str, model_usage: 
         report.update(extra)
     path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return report
+
+
+# The least the cost sidecar may book for one prompt-cache token of an `openrouter/` target, as a multiple of the
+# target's input rate. A read: the input rate, which bounds a read's discounted price (OpenRouter passes the
+# upstream's cache discount through; the archived grok-4.3 bills price reads at 0.2 against 1.25 USD/Mtok input). A write:
+# 1.25 times it, Anthropic's price for the 5-minute TTL of the ephemeral markers Inspect's OpenRouter provider puts
+# on every `openrouter/anthropic/*` request by default (inspect_ai 0.3.237 openrouter.py `_ephemeral`).
+CACHE_READ_FLOOR = 1.0
+CACHE_WRITE_FLOOR = 1.25
+CACHE_TOKENS_UNBOOKED = "cache_tokens_unbooked"
+_CACHE_PROBE_TOKENS = 1_000_000
+
+
+def cache_booking_problems(model: str, registry: dict | None = None) -> list[str]:
+    """Why the cost sidecar would book an `openrouter/` target's cached calls
+    below OpenRouter's bill. Any other name returns [].
+
+    Inspect counts prompt-cache tokens outside `input_tokens`: its
+    OpenAI-compatible mapping subtracts cached reads from the prompt count
+    (inspect_ai 0.3.237 `_openai.py` `model_output_from_openai`), and its
+    OpenRouter provider subtracts cache writes too (`openrouter.py`
+    `_apply_cache_creation_usage`). A sidecar that prices input and output
+    alone books every cache token at $0. While an OpenRouter target took the
+    5/30 catch-all that gap was covered several times over; a reviewed entry
+    ~5% above list does not cover it (review of 2026-09-23, through Inspect's
+    own mapping: a grok-4.3 target shaped like a landed sample booked 0.88 of
+    its list-price bill, a claude-haiku-4.5 target with one cache write 0.41).
+
+    The check runs the sidecar's own path, `usage_from_samples` then
+    `reprice_usage`, on a probe usage of cache-read tokens alone and another
+    of cache-write tokens alone, and requires each booked at no less than its
+    floor above. It tests what the sidecar books, not how it books it, so it
+    clears once cache tokens are carried and priced and refuses again if a
+    later change drops them. An Anthropic target is not checked: it prices at
+    list with no catch-all margin to lose, and every landed run recorded zero
+    cache tokens."""
+    model = model.strip()
+    provider, _ = split_inspect_name(model)
+    if provider != "openrouter":
+        return []
+    rate = resolve_price(model, registry).input_per_mtok
+    problems: list[str] = []
+    for field, floor in (("input_tokens_cache_read", CACHE_READ_FLOOR), ("input_tokens_cache_write", CACHE_WRITE_FLOOR)):
+        usage = SimpleNamespace(input_tokens=0, output_tokens=0, total_tokens=_CACHE_PROBE_TOKENS, reasoning_tokens=None,
+                                input_tokens_cache_read=None, input_tokens_cache_write=None)
+        setattr(usage, field, _CACHE_PROBE_TOKENS)
+        # a sample as the spend-report path reads it (`usage_from_samples`): an aggregate `model_usage` and the target's
+        # model event. The adapter carries cache counts with its own accumulator; both paths price by `reprice_usage`
+        sample = SimpleNamespace(model_usage={model: usage}, events=[
+            SimpleNamespace(event="model", role="target", model=model, output=SimpleNamespace(usage=usage))])
+        booked, _ = reprice_usage(usage_from_samples([sample]), registry, target=model)
+        need = _CACHE_PROBE_TOKENS * rate * floor / 1e6
+        if booked is None or booked < need - 1e-9:
+            booked_text = "no cost (usage missing)" if booked is None else f"${booked:.4f}"
+            problems.append(
+                f"{CACHE_TOKENS_UNBOOKED}: {model!r}: the cost sidecar books {_CACHE_PROBE_TOKENS} {field} tokens at "
+                f"{booked_text}, below the ${need:.4f} floor ({floor}x the {rate}/Mtok input "
+                "rate); Inspect counts prompt-cache tokens outside input_tokens, so every cached call would be booked "
+                "below OpenRouter's bill, which the reviewed near-list price no longer covers. An OpenRouter target "
+                "runs once usage_from_samples carries cache reads and writes and reprice_usage prices them")
+    return problems
