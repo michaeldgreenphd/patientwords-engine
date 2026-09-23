@@ -19,7 +19,7 @@ the same place as the scheduled Routine.
    Fires go through the fire-trigger-safe skill (with `--keep-dashboard`: this
    session is the dashboard's writer), harvests through harvest-resolve, the
    seal check through holdout-seal-check, and section 5 through
-   publish-site-data. The dashboard commits (section 2b's spend fold, then
+   publish-site-data. The dashboard commits (section 2a's spend fold, then
    section 6) succeed only in the Routine's environment (`PW_ROUTINE=1`);
    anywhere else the guard hook refuses them, which means this session is not
    the Routine — stop and say so.

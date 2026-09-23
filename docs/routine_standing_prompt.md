@@ -58,7 +58,7 @@ another session may have fired since the journal was last read (the
 2026-08-26 mis-resolve, handbook §incidents). An entry past the 8h expiry
 becomes a missed-harvest record in the dashboard, not a silent drop.
 
-## 2b · Account (restored 2026-09-23)
+## 2a · Account (restored 2026-09-23)
 
 After the harvest, run `python scripts/ledger_update.py` with no
 arguments. It folds every cost sidecar not yet in `spend.entries_seen` —
@@ -77,12 +77,12 @@ for a Tier B batch that lands while the campaign is open, or one that
 already has a pre-registered row. The campaign closed at 1,600/1,600, so
 every other haiku `pairs` batch books to lifetime and `by_day` alone, and
 the script prints a `note:` line naming it. On `main` as of 2026-09-23,
-the first fold prints four: the 2026-07-21 batch `pairs_20260721T132205Z` (100
-pairs, fired as "tierB batch 17" but never booked) and three one-pair
-`scenario-generation` parks. Each later park of that lane prints one more.
-Put the notes in the brief as accounting, not as Tier B progress, and do
-not edit `tierb` to take them in. Whether batch 17 belongs to Tier B is the
-owner's decision.
+the first fold prints four: the 2026-07-21 batch
+`pairs_20260721T132205Z` (100 pairs, fired as "tierB batch 17" but never
+booked) and three one-pair `scenario-generation` parks. Each later park of
+that lane prints one more. Put the notes in the brief as accounting, not
+as Tier B progress, and do not edit `tierb` to take them in. Whether batch
+17 belongs to Tier B is the owner's decision.
 
 Commit what it wrote — the dashboard and the ledger file it appended to
 (`git status` shows which) — in ONE commit, before §3 fires anything.
@@ -108,9 +108,15 @@ maintenance rewrite of this prompt (fd5304c9) dropped the old
 that fold's `spend` block unchanged: lifetime, `by_day` and alerts froze,
 and since `spend.today` stayed dated 2026-08-28 the guard's landed term
 read 0.00 on every later check. The fold runs on Routine days only, so it
-keeps the record true without being a same-day guard. Numbered 2b so the
-section numbers that the skills, the handbook and past briefs cite stay
-put.
+keeps the record true without being a same-day guard.
+
+Why "2a": a letter suffix leaves §3–§7, which the skills and the handbook
+cite, where they are. No version of this prompt has used "2a" before. "2b"
+is taken: in the prompt before the 2026-08-29 rewrite, §2b was the
+integrity checks. The doc-accuracy audits,
+`docs/audits/seal_incident_20260721.md`,
+`docs/decisions_20260815_owner.md` and the August decks cite §2b in that
+sense, and reusing the label would send those citations to this step.
 
 ## 3 · Drift sentinel (the one fire you own)
 
@@ -173,7 +179,7 @@ Rewrite the relevant sections of `ops/dashboard.json` (single writer):
 `updated_utc`, `updated_by: "routine"`, `queue` from the journal,
 `runs_recent`, `blockers`, `notes`, `decisions_pending` (add an entry ONLY
 when something genuinely needs the owner), and `spend`, whose only writer
-is `scripts/ledger_update.py` (§2b): carry the block through exactly as
+is `scripts/ledger_update.py` (§2a): carry the block through exactly as
 that run left it, and never recompute, retype or rebuild a figure in it —
 a rewrite from an earlier copy of the file undoes the fold.
 

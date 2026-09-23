@@ -34,7 +34,7 @@ FOLD_COMMAND = "python scripts/ledger_update.py"
 
 def _sections(text: str) -> list[tuple[str, str]]:
     """[(section number, body)] for every `## <number> · <title>` heading, in
-    order. The number is the token before the middle dot ("2", "2b", "6");
+    order. The number is the token before the middle dot ("2", "2a", "6");
     headings without one (e.g. "Boundaries (absolute)") are not cycle steps."""
     out: list[tuple[str, str]] = []
     parts = re.split(r"^## ", text, flags=re.M)
@@ -57,15 +57,28 @@ def test_exactly_one_cycle_step_runs_the_fold_and_it_sits_between_harvest_and_th
     sections = _sections(PROMPT)
     numbers = [n for n, _ in sections]
     running = [n for n, body in sections if FOLD_COMMAND in body]
-    assert running == ["2b"], running
-    assert numbers.index("2") < numbers.index("2b") < numbers.index("3"), numbers
+    assert running == ["2a"], running
+    assert numbers.index("2") < numbers.index("2a") < numbers.index("3"), numbers
+
+
+# Lettered step labels of the prompt before the 2026-08-29 maintenance rewrite (`git show fd5304c9^:
+# docs/routine_standing_prompt.md`), with what each named then. Committed documents still cite them in that
+# sense: §2b in the doc-accuracy audits, docs/audits/seal_incident_20260721.md, docs/decisions_20260815_owner.md
+# and the August decks. The restored fold first shipped as "2b", with a note claiming the label kept existing
+# citations valid; it sent every one of them to the spend fold instead (2026-09-23 review).
+RETIRED_LABELS = {"2b": "Integrity checks", "4b": "Endpoint guard", "6b": "Watchdog"}
+
+
+def test_no_step_reuses_a_label_that_meant_another_step() -> None:
+    reused = {n: RETIRED_LABELS[n] for n, _ in _sections(PROMPT) if n in RETIRED_LABELS}
+    assert not reused, f"retired labels reused (they meant: {reused})"
 
 
 def test_the_fold_step_commits_both_outputs_together() -> None:
     """The ledger bullets and spend.entries_seen are two halves of one record:
     a dashboard committed alone loses the trail, bullets committed alone are
     written again by the next fold."""
-    body = dict(_sections(PROMPT))["2b"]
+    body = dict(_sections(PROMPT))["2a"]
     assert "ONE commit" in body and "ops/dashboard.json" in body and "docs/*ledger*.md" in body, body
 
 
@@ -74,7 +87,7 @@ def test_the_fold_step_names_every_dashboard_key_the_script_writes_beyond_spend(
     stamps `updated_utc` and can write `tierb`. The Routine was told never to hand-edit what it wrote, so it
     would have carried a 1703/1600 Tier B count as real (2026-09-23 review). The step names both keys and the
     `note:` lines the script prints for a haiku batch it keeps out of the closed campaign."""
-    body = dict(_sections(PROMPT))["2b"]
+    body = dict(_sections(PROMPT))["2a"]
     for token in ("`updated_utc`", "`tierb`", "`note:`", "pairs_20260721T132205Z"):
         assert token in body, token
 
@@ -82,7 +95,7 @@ def test_the_fold_step_names_every_dashboard_key_the_script_writes_beyond_spend(
 def test_the_dashboard_section_names_spend_and_its_only_writer() -> None:
     """§6 lists the dashboard sections the Routine rewrites. Without `spend`
     there, with its writer named, a Routine that rebuilds the file from an
-    earlier copy undoes the fold it committed in §2b."""
+    earlier copy undoes the fold it committed in §2a."""
     body = dict(_sections(PROMPT))["6"]
     assert "`spend`" in body and "scripts/ledger_update.py" in body, body
 
