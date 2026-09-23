@@ -34,7 +34,11 @@ python scripts/export_frontend_simulated.py --frontend ../patientwords \
   restore rasters — owner-instruction only).
 - `--stamps`: every stamp already in `../patientwords/data/simulated_scenarios.json`
   plus newly landed ones. Omitting a published stamp silently drops its scenarios —
-  never shrink the list.
+  never shrink the list. Since 2026-09-23 it would also delete their renders: the
+  exporter prunes every `modes/simulated/pairs_*/index_NN.*` render that neither the
+  new payload nor any other site file lists, and prints the count. Run it once with
+  `--dry-run` first (writes and deletes nothing, lists what would go) when the count
+  could surprise you; the first publish after 2026-09-23 prunes about 235 orphans.
 
 **2. Urgency collector.**
 ```
@@ -103,10 +107,11 @@ Exit 2 (empty sealed set): config error (wrong branch), never a pass.
 
 **9. Commit and push.**
 - Site: `git -C ../patientwords status` first. Only `data/*.json` and exporter-written
-  `modes/simulated/` render files may have changed. Anything else changed → abort,
-  revert, investigate. Commit the data payloads and push `main`; GitHub Pages serves it,
-  so this push is the publish — the contract, claim and seal gates above are the last
-  check.
+  `modes/simulated/` render files may have changed (added, modified, or deleted by the
+  prune). Anything else changed → abort, revert, investigate. Stage render deletions
+  too (`git add -A data modes/simulated`), or the pruned files stay published. Commit
+  and push `main`; GitHub Pages serves it, so this push is the publish — the contract,
+  claim and seal gates above are the last check.
 - Engine: commit the chain's engine-side outputs (`ops/*.json`, `data/jlens_*.json`)
   to `main`; `git pull --rebase` before pushing.
 

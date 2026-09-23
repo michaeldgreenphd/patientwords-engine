@@ -18,6 +18,12 @@ Writes (frontend repo working tree; review before committing):
   modes/simulated/preview.html                              - first base render (stable path)
   data/simulated_scenarios.json
 
+Deletes (since 2026-09-23, owner ruling 2): renders under modes/simulated/ that
+match the names above but that neither this export nor any other site file
+lists (scripts/render_prune.py). A render used to outlive its scenario: a
+withheld Tier B holdout row's render stayed served for ten weeks. --dry-run
+writes and deletes nothing and lists what the run would prune.
+
 Usage:
   python scripts/export_frontend_simulated.py --frontend ../patientwords \\
       --stamps 20260706T201750Z[,<later-stamp>...] [--engine .] \\
@@ -44,6 +50,11 @@ try:
     from scripts.payload_summary import build_summary
 except ImportError:
     from payload_summary import build_summary
+
+try:
+    from scripts.render_prune import prune, prune_candidates
+except ImportError:
+    from render_prune import prune, prune_candidates
 
 # The circuit-tracer models, in registry order (gemma-2-2b is the base/default).
 # Only gemma-2-2b has a transcoder source set, so clinical-feature attribution
@@ -103,7 +114,11 @@ parser.add_argument("--archive-url", default="",
                          "repo). Recorded in the payload so data-only scenarios can point at "
                          "the full circuit render. See scripts/archive_run.py + the "
                          "archive_renders workflow.")
+parser.add_argument("--dry-run", action="store_true",
+                    help="compute the export but write, copy and delete nothing; list the "
+                         "renders a real run would prune from the site's modes/simulated/")
 args = parser.parse_args()
+DRY = args.dry_run
 
 ENGINE = Path(args.engine)
 FRONTEND = Path(args.frontend)
@@ -319,8 +334,9 @@ for e in demo:
                 continue
             src = base_dir / f"index_{index:02d}.{key}"
             if src.is_file():
-                out_modes.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src, out_modes / src.name)
+                if not DRY:
+                    out_modes.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, out_modes / src.name)
                 rel = f"modes/simulated/{stem}/{src.name}"
                 e[key] = rel
                 if BASE_MODEL in e["models"]:
@@ -339,8 +355,9 @@ for e in demo:
             src = mdir / f"index_{index:02d}.html"
             if mdir.is_dir() and src.is_file():
                 out_m = FRONTEND / "modes/simulated" / f"{stem}__{m}"
-                out_m.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src, out_m / src.name)
+                if not DRY:
+                    out_m.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, out_m / src.name)
                 e["models"][m]["html"] = f"modes/simulated/{stem}__{m}/{src.name}"
 
     if published:
@@ -348,7 +365,14 @@ for e in demo:
 for e in scenarios:
     e.pop("_render", None)  # drop the private marker from every entry
 
-if first_preview is not None:
+# Every render path this export lists; with every other site file's references
+# it is the keep-set for pruning (the payload being replaced is not consulted).
+listed_renders = {obj[k] for e in scenarios for obj in [e, *e.get("models", {}).values()]
+                  for k in ("html", "png") if isinstance(obj.get(k), str)}
+OUT_DATA_REL = "data/simulated_scenarios.json"
+prune_list = prune_candidates(FRONTEND, listed_renders, ignore={OUT_DATA_REL})
+
+if first_preview is not None and not DRY:
     shutil.copy2(first_preview, FRONTEND / "modes/simulated/preview.html")
     # one raster survives --no-pngs: the og:image for link unfurls
     for stamp in STAMPS:
@@ -402,8 +426,10 @@ if STEERED:
     }
 if args.archive_url:
     payload["archive"] = {"release_url": args.archive_url}
-out_data = FRONTEND / "data/simulated_scenarios.json"
-out_data.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+out_data = FRONTEND / OUT_DATA_REL
+if not DRY:
+    out_data.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+pruned = prune(FRONTEND, prune_list, dry_run=DRY)
 measured_n = sum(1 for s in scenarios
                  if not (s.get("screening") or {}).get("status") == "screened_out")
 data_only = len(scenarios) - copied
@@ -413,6 +439,12 @@ print(f"{len(scenarios)} scenarios ({measured_n} measured) across {len(batches)}
 print(f"  models: {model_line}")
 print(f"  {copied} interactive renders published (cap {args.max_renders or 'none'}); "
       f"{data_only} scenarios are data-only on the public site")
+print(f"  {pruned} unlisted render(s) {'would be pruned' if DRY else 'pruned'} from "
+      f"{FRONTEND / 'modes/simulated'}")
+if DRY:
+    print("  DRY RUN: nothing was written, copied or deleted")
+    for rel in prune_list:
+        print(f"    would prune {rel}")
 
 # Over ~100 scenarios the full render set is heavy enough that it belongs in a
 # back-end archive, not the site repo. Nudge the operator with a ready-to-fire
