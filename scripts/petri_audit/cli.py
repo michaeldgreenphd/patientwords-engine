@@ -199,7 +199,7 @@ def cmd_adapt(args: argparse.Namespace) -> int:
              else run_params.get("cost_limit_per_sample_usd"),
              "token_limit_per_sample": args.token_limit if args.token_limit is not None
              else run_params.get("token_limit_per_sample")}
-    result = adapt_run(args.eval, seed_set, args.out_dir, custody=args.custody, spend=spend, registry_spec=args.target,
+    result = adapt_run(args.eval, seed_set, args.out_dir, custody=args.custody, spend=spend,
                        engine_sha=engine_sha(), lock_path=args.lock)
     m = result.manifest
     print(f"adapted {len(result.records)} record(s) into {result.out_dir}; refused {len(result.refused)}; "
@@ -530,7 +530,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--eval", required=True)
     p.add_argument("--out-dir", required=True)
     p.add_argument("--custody", required=True, help="e.g. github_actions_artifact:90d")
-    p.add_argument("--target", default=None)
+    # no --target: the manifest's target, and the registry spec derived from it, come from the log itself (2026-09-23)
     p.add_argument("--max-spend", type=float, required=True)
     p.add_argument("--judge-max-spend", type=float, default=None)
     p.add_argument("--journal-nonce", default=None)

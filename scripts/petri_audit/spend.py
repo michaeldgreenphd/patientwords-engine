@@ -241,6 +241,23 @@ def target_provider_problems(target: str) -> list[str]:
             "openrouter/openai/gpt-5.4-mini)"]
 
 
+def inspect_to_registry_spec(model: str, registry: dict | None = None) -> str | None:
+    """The data/advice_providers.json spec an Inspect target string maps to,
+    in the resolver's canonical `provider:model` form (scripts/advice_eval.py
+    `_resolve_spec`), for the two providers a target may name: `anthropic/m`
+    is `anthropic:m` and `openrouter/vendor/m` is `openrouter:vendor/m`, the
+    same endpoint and key in both tools. None for anything else: a mock, or a
+    direct vendor route the registry does not describe (its `openai` entry
+    routes through OpenRouter, not the OPENAI_API_KEY Inspect's `openai/`
+    bills). The manifest recorded the Inspect string itself here until
+    2026-09-23."""
+    provider, name = split_inspect_name(model.strip())
+    if provider not in TARGET_PROVIDERS or not name:
+        return None
+    registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
+    return f"{provider}:{name}" if isinstance(registry, dict) and isinstance(registry.get(provider), dict) else None
+
+
 @dataclass(frozen=True)
 class PreflightBound:
     samples: int

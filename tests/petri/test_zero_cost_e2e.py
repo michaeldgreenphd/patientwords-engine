@@ -126,7 +126,7 @@ def run(tmp_path_factory) -> dict:
     for name in ("first", "second"):
         out = tmp_path_factory.mktemp(name) / "run"
         results.append(adapt_run(eval_path, seed_set, out, custody="github_actions_artifact:90d", spend=spend,
-                                 registry_spec="mockllm/model", engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52"))
+                                 engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52"))
         outs.append(out)
     return {"seed_set": seed_set, "log": log, "eval_path": eval_path, "r1": results[0], "r2": results[1],
             "out1": outs[0], "out2": outs[1]}
@@ -501,7 +501,7 @@ def test_adapting_over_an_existing_run_directory_is_refused(run):
         adapt_run(run["eval_path"], run["seed_set"], run["out1"], custody="github_actions_artifact:90d",
                   spend={"max_spend_usd": 0.01, "judge_max_spend_usd": None, "journal_nonce": None,
                          "cost_limit_per_sample_usd": 0.01, "token_limit_per_sample": 20000},
-                  registry_spec="mockllm/model", engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
+                  engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
     assert (run["out1"].parent / "manifests.chain").read_bytes() == chain_before
 
 
@@ -519,7 +519,7 @@ def test_a_seed_that_changed_since_the_run_is_refused_by_the_adapter_and_the_tas
     result = adapt_run(run["eval_path"], drifted, out, custody="github_actions_artifact:90d",
                        spend={"max_spend_usd": 0.01, "judge_max_spend_usd": None, "journal_nonce": None,
                               "cost_limit_per_sample_usd": 0.01, "token_limit_per_sample": 20000},
-                       registry_spec="mockllm/model", engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
+                       engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
     reasons = [r["reason"] for r in result.refused]
     assert sum("seed digest recorded by the run" in r for r in reasons) == 2, reasons        # both H4 conditions
     assert not any(t["seed_id"] == H4 for t in result.manifest["trees"])
@@ -576,7 +576,7 @@ def _adapt(eval_path, seed_set, out):
     return adapt_run(eval_path, seed_set, out, custody="github_actions_artifact:90d",
                      spend={"max_spend_usd": 0.01, "judge_max_spend_usd": None, "journal_nonce": None,
                             "cost_limit_per_sample_usd": 0.01, "token_limit_per_sample": 20000},
-                     registry_spec="mockllm/model", engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
+                     engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
 
 
 def test_a_target_that_never_stops_calling_tools_is_cut_off_and_its_branch_refused(run, tmp_path_factory):
@@ -628,7 +628,7 @@ def test_run_params_reach_the_manifest_and_a_spend_report_covers_a_run_without_o
     eval_path = next((out / "logs").glob("*.eval"))
     run_dir = tmp_path_factory.mktemp("cli-adapt") / "run_x"
     code = cli.main(["adapt", "--eval", str(eval_path), "--out-dir", str(run_dir), "--custody", "github_actions_artifact:90d",
-                     "--target", "mockllm/model", "--max-spend", "0.01", "--run-params", str(out / "run_params.json"),
+                     "--max-spend", "0.01", "--run-params", str(out / "run_params.json"),
                      "--no-harness-commit", "--report"])
     assert code == 0
     m = framework.load_json(run_dir / "manifest.json")
@@ -916,7 +916,7 @@ def test_an_openrouter_targets_cached_prompt_tokens_are_booked(run, tmp_path_fac
     without_cache = 4 * (464 * price.input_per_mtok + 100 * price.output_per_mtok) / 1e6
     assert expected > without_cache, "what the sidecar used to book"
     code = cli.main(["adapt", "--eval", str(Path(log.location)), "--out-dir", str(run_dir.parent / "run_or2"),
-                     "--custody", "github_actions_artifact:90d", "--target", OPENROUTER_TARGET, "--max-spend", "5",
+                     "--custody", "github_actions_artifact:90d", "--max-spend", "5",
                      "--no-harness-commit", "--report"])
     assert code == 0
     sidecar = framework.load_json(run_dir.parent / "run_or2" / "run_or2.report.json")
@@ -984,3 +984,29 @@ def test_a_tool_seed_whose_target_calls_no_tool_leaves_the_tools_check_not_appli
     assert all(r["outcomes"]["tool_invoked"] is False for r in result.rule_records)
     # the ordinary mock run, whose target did call tools, keeps its named failure (a generated error result)
     assert run["r1"].manifest["execution"]["contract_checks"]["tool_results_from_data"]["status"] == "fail"
+
+
+def test_manifest_target_labels_are_truthful_for_an_openrouter_target(run, tmp_path_factory, monkeypatch):
+    """registry_spec held the Inspect string the CLI passed, and
+    seed_forwarded_by_provider was True for every openrouter/ target although
+    only the request to OpenRouter carries the seed. The manifest now records
+    the registry's own spec and null for seed forwarding, while the raw-request
+    check still treats OpenRouter as a provider that sends the seed."""
+    from scripts.petri_audit.adapter import SEED_FORWARDING
+
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    counter = iter(range(1, 100))
+    target = _offline_openrouter(monkeypatch, lambda request: _completion(f"reply {next(counter)}", n=0))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("label-logs"), token_limit=40000, cost_limit=5.0)
+    result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("label") / "run")
+    t = result.manifest["models"]["target"]
+    assert (t["provider"], t["inspect_name"], t["registry_spec"]) == ("openrouter", OPENROUTER_TARGET, "openrouter:openai/gpt-5.4-mini")
+    assert t["seed_forwarded_by_provider"] is None and SEED_FORWARDING["openrouter"] is True
+    # the run is identified in the manifest already: Inspect's run id, and the run directory through every artifact path
+    assert result.manifest["run_id"] == log.eval.run_id
+    assert result.manifest["artifacts"]["transcripts_path"].startswith(f"{result.out_dir.name}/")
+    # a mock target is outside the registry
+    mock = run["r1"].manifest["models"]["target"]
+    assert mock["registry_spec"] is None and mock["seed_forwarded_by_provider"] is None

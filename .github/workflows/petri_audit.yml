@@ -370,7 +370,6 @@ jobs:
         if: ${{ needs.params.outputs.mode != 'preflight' }}
         env:
           SEEDS_FILE: ${{ needs.params.outputs.seeds_file }}
-          TARGET: ${{ needs.params.outputs.target }}
           MAX_SPEND: ${{ needs.params.outputs.max_spend }}
           JUDGE: ${{ needs.params.outputs.judge }}
           JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
@@ -382,7 +381,7 @@ jobs:
           if [ "$JUDGE" = "true" ]; then ARGS="--judge-max-spend $JUDGE_MAX_SPEND"; fi
           python -m scripts.petri_audit.cli adapt --seeds "$SEEDS_FILE" --eval "$EVAL" \
             --out-dir "data/petri/runs/$RUN_STEM" --custody "github_actions_artifact:90d" \
-            --target "$TARGET" --max-spend "$MAX_SPEND" --token-limit "$TOKEN_LIMIT" $ARGS --report \
+            --max-spend "$MAX_SPEND" --token-limit "$TOKEN_LIMIT" $ARGS --report \
             --run-params "$RUNNER_TEMP/petri-run/run_params.json"
 
       - name: Judge of record + analysis rows (paid; mode run only)

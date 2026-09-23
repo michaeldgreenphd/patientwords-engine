@@ -1772,3 +1772,21 @@ def test_a_direct_vendor_target_spelling_is_refused_before_anything_else(capsys)
     captured = capsys.readouterr()
     assert code == 5 and "pre-flight: REFUSED - target 'openai/gpt-5.4-mini' names Inspect provider 'openai'" in captured.err
     assert "holdout seal" not in captured.out and "environment lock" not in captured.out, "refused before anything is read"
+
+
+def test_the_manifest_registry_spec_is_the_registry_form_of_the_target_or_null():
+    """models.target.registry_spec is documented as the data/advice_providers.json
+    spec the target maps to, but the adapter recorded the Inspect string the
+    CLI was given (`openrouter/openai/gpt-5.4-mini`, a form no registry
+    resolver reads). It is now derived from the log's target in the
+    resolver's provider:model form, and null outside the registry."""
+    assert spend.inspect_to_registry_spec("anthropic/claude-haiku-4-5") == "anthropic:claude-haiku-4-5"
+    assert spend.inspect_to_registry_spec("openrouter/openai/gpt-5.4-mini") == "openrouter:openai/gpt-5.4-mini"
+    assert spend.inspect_to_registry_spec("claude-haiku-4-5") == "anthropic:claude-haiku-4-5", "the bare-name convention"
+    for outside in ("mockllm/model", "none/none", "openai/gpt-5.4-mini", "google/gemini-3.5-flash", "openrouter/"):
+        assert spend.inspect_to_registry_spec(outside) is None, outside
+    assert spend.inspect_to_registry_spec("openrouter/openai/gpt-5.4-mini", registry={"anthropic": {}}) is None, \
+        "a provider the registry in hand does not describe maps to nothing"
+    # the registry form resolves back to the same Inspect string, so the price the run used is the spec's price
+    for target in ("anthropic/claude-haiku-4-5", "openrouter/openai/gpt-5.4-mini", "openrouter/google/gemini-3.5-flash"):
+        assert spend.registry_spec_to_inspect(spend.inspect_to_registry_spec(target)) == target

@@ -69,14 +69,15 @@ from .rules import rule_record
 from .sanitizer import _project_eval, allowlist_digest, load_allowlist, sanitise_log
 from .seal import scan_strings, sealed_registry, seed_texts_against_registry
 from .seeds import SeedSet, conditions, seed_digest, target_visible_strings, text_of, tool_result_for
-from .spend import pricing_source_digest, reprice_usage
+from .spend import inspect_to_registry_spec, pricing_source_digest, reprice_usage
 from .transcripts import bind_manifest, build_record, conversation_id, record_problems
 
 ADAPTER_NAME = "petri_audit.adapter"
 # 0.2 (2026-09-23): each assistant turn's stop reason is recorded (per branch and counted per run) and a truncated,
 # filtered or empty reply refuses its branch; a sample Inspect halted at a limit refuses its tree; an openrouter/
 # target's upstream hosts are counted per call (models.target.upstream_providers); a tool seed whose target made no
-# tool call leaves tool_results_from_data not_applicable instead of a pass over nothing
+# tool call leaves tool_results_from_data not_applicable instead of a pass over nothing; models.target.registry_spec
+# is the registry's provider:model form derived from the log, and seed_forwarded_by_provider is null for openrouter/
 ADAPTER_VERSION = "0.2"
 # inspect-ai 0.3.237 forwards GenerateConfig.seed on these providers (design memo section 2); anthropic and
 # google never send it; mock and placeholder models have no provider behaviour to record.
@@ -86,6 +87,16 @@ SEED_FORWARDING: dict[str, bool | None] = {
     "vllm_completions": True, "anthropic": False, "google": False, "mockllm": None, "none": None,
 }
 _BRANCH_NAME = re.compile(r"^branch (\d+)$")
+
+
+def seed_reaches_serving_provider(provider: str) -> bool | None:
+    """The manifest's `seed_forwarded_by_provider`. SEED_FORWARDING says
+    whether Inspect puts the seed in its request, and the raw-request check
+    keeps requiring it there; OpenRouter is a router, and whether the upstream
+    host it picks receives or honours the seed depends on that host, so for an
+    openrouter/ target the manifest records null, not established, rather than
+    the True that described only the request to OpenRouter (2026-09-23)."""
+    return None if provider == "openrouter" else SEED_FORWARDING.get(provider)
 
 
 class AdapterError(RuntimeError):
@@ -184,7 +195,7 @@ def _target_model_events(sample: EvalSample) -> list[ModelEvent]:
 
 
 def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, custody: str, spend: dict,
-              registry_spec: str | None = None, engine_sha: str | None = None, lock_path: Path | str | None = None,
+              engine_sha: str | None = None, lock_path: Path | str | None = None,
               registry: dict | None = None, harness_commit: str | None = None) -> AdaptResult:
     eval_path, out_dir = Path(eval_path), Path(out_dir)
     if out_dir.exists() and any(out_dir.iterdir()):
@@ -560,7 +571,9 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                       # generation_config_pinned check, never inferred into this field
                       "log_model_api": getattr(spec.config, "log_model_api", None)},
         "models": {"target": {"provider": target_provider, "model": target_name.split("/", 1)[1] if "/" in target_name else target_name,
-                              "inspect_name": target_name, "registry_spec": registry_spec,
+                              # derived from the log's own target, never from a caller's string: the registry's
+                              # provider:model form, or null outside the registry (the Inspect string until 2026-09-23)
+                              "inspect_name": target_name, "registry_spec": inspect_to_registry_spec(target_name, registry),
                               "served_model_strings": sorted(served_all),
                               "stop_reasons": [{"stop_reason": r, "calls": n} for r, n in sorted(stop_counts.items())],
                               "upstream_providers": ({"by_provider": [{"provider": h, "calls": n}
@@ -569,7 +582,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                                                      if target_provider == "openrouter" else None),
                               "config": {k: v for k, v in (target_role.config.model_dump(mode="json") if target_role else {}).items() if v is not None},
                               "seed_requested": (seeds_used and next(iter(seeds_used.values()))["generation"]["seed_requested"]) or None,
-                              "seed_forwarded_by_provider": SEED_FORWARDING.get(target_provider),
+                              "seed_forwarded_by_provider": seed_reaches_serving_provider(target_provider),
                               "seed_honored": None},
                    "auditor": None, "judge_harness": None},
         "seeds": [{"seed_id": s["seed_id"], "seed_sha256": seed_digest(s), "file": repo_rel(seed_set.path),

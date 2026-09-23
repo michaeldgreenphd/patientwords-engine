@@ -1001,7 +1001,7 @@
             "string",
             "null"
           ],
-          "description": "The data/advice_providers.json spec this maps to, or null when the model is outside the registry."
+          "description": "The data/advice_providers.json spec this maps to, in the registry resolver's provider:model form (anthropic:<model>, openrouter:<vendor>/<model>), derived from inspect_name; null when the model is outside the registry (a mock, or a direct vendor route the registry does not describe). Manifests written by adapter 0.1 recorded the Inspect string here instead."
         },
         "served_model_strings": {
           "type": "array",
@@ -1025,7 +1025,7 @@
             "boolean",
             "null"
           ],
-          "description": "Whether this Inspect provider forwards GenerateConfig.seed (read from the provider source at adapter version time); null when not established."
+          "description": "Whether this Inspect provider forwards GenerateConfig.seed (read from the provider source at adapter version time); null when not established. Since adapter 0.2, null for an openrouter/ target: Inspect sends the seed to OpenRouter (generation_config_pinned still requires it in the raw request when a seed is requested), but whether the upstream host OpenRouter picks receives or honours it is not established. Adapter 0.1 recorded true there."
         },
         "seed_honored": {
           "type": [
@@ -1185,7 +1185,7 @@
             "string",
             "null"
           ],
-          "description": "The data/advice_providers.json spec this maps to, or null when the model is outside the registry."
+          "description": "The data/advice_providers.json spec this maps to, in the registry resolver's provider:model form (anthropic:<model>, openrouter:<vendor>/<model>), derived from inspect_name; null when the model is outside the registry (a mock, or a direct vendor route the registry does not describe). Manifests written by adapter 0.1 recorded the Inspect string here instead."
         },
         "served_model_strings": {
           "type": "array",
@@ -1209,7 +1209,7 @@
             "boolean",
             "null"
           ],
-          "description": "Whether this Inspect provider forwards GenerateConfig.seed (read from the provider source at adapter version time); null when not established."
+          "description": "Whether this Inspect provider forwards GenerateConfig.seed (read from the provider source at adapter version time); null when not established. Since adapter 0.2, null for an openrouter/ target: Inspect sends the seed to OpenRouter (generation_config_pinned still requires it in the raw request when a seed is requested), but whether the upstream host OpenRouter picks receives or honours it is not established. Adapter 0.1 recorded true there."
         },
         "seed_honored": {
           "type": [
