@@ -824,7 +824,13 @@ realises:
   entry in the registry's `openrouter.pricing` table
   (`spend.openrouter_price_problems`, named reason
   `unreviewed_openrouter_price`): the catch-all an OpenRouter slug would
-  otherwise take is the advice lane's fallback, not a reviewed price.
+  otherwise take is the advice lane's fallback, not a reviewed price. It
+  also refuses an `openrouter/` target while the cost sidecar books its
+  prompt-cache tokens below the input rate for a read or 1.25 times it for a
+  write (`spend.cache_booking_problems`, named reason
+  `cache_tokens_unbooked`): Inspect counts those tokens outside
+  `input_tokens`, and a reviewed price ~5% above list leaves no margin for
+  them to be booked at $0.
 - Paid, so it joins `PAID_TRIGGERS`, the `$2/day` ceiling, `budget-gate`,
   and the park rule. `docs/triggers.md` and the `AGENTS.md` lane table change
   in the same pull request, since `tests/test_trigger_docs.py` checks both.

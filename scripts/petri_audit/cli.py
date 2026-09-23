@@ -35,6 +35,7 @@ from .manifest import bind_judgments, reseal_problems, verify_chain, verify_run
 from .seal import sealed_registry, seed_texts_against_registry
 from .seeds import conditions, load_seed_file, select_seeds, target_visible_strings, validate_seed
 from .spend import (
+    cache_booking_problems,
     judge_billing_channel,
     openrouter_price_problems,
     preflight_bound,
@@ -148,6 +149,14 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
     target_unpriced = openrouter_price_problems(args.target)
     if target_unpriced:
         for p in target_unpriced:
+            print(f"pre-flight: REFUSED - target {p}", file=sys.stderr)
+        return 5, {}
+    # and only once the cost sidecar books its prompt-cache tokens: Inspect counts them outside input_tokens, and a
+    # reviewed price ~5% above list leaves no margin for them to be booked at $0 the way the catch-all did (review of
+    # 2026-09-23). Not the judge: its per-call ceiling books OpenRouter's prompt_tokens, cached ones included
+    target_cache = cache_booking_problems(args.target)
+    if target_cache:
+        for p in target_cache:
             print(f"pre-flight: REFUSED - target {p}", file=sys.stderr)
         return 5, {}
     price = resolve_price(args.target)
