@@ -74,6 +74,23 @@ def test_no_step_reuses_a_label_that_meant_another_step() -> None:
     assert not reused, f"retired labels reused (they meant: {reused})"
 
 
+def test_every_skill_that_describes_the_routines_dashboard_commit_names_the_fold_step() -> None:
+    """The fold step commits the dashboard before §3, so "the Routine commits the dashboard in step 6" is no
+    longer the whole story. The first version updated the daily-ops-cycle skill and missed the same sentence in
+    fire-trigger-safe (2026-09-23 review). The label comes from the prompt, so renumbering the step without
+    updating the skills fails here too."""
+    label = next(n for n, body in _sections(PROMPT) if FOLD_COMMAND in body)
+    describing = {}
+    for path in sorted((ROOT / ".claude" / "skills").glob("*/SKILL.md")):
+        text = path.read_text(encoding="utf-8")
+        if re.search(r"commits the dashboard|dashboard commits?\b", text, flags=re.I):
+            describing[path.parent.name] = f"§{label}" in text or f"section {label}" in text
+    # never vacuous: the two skills that carried the sentence when this test was written must still be found
+    assert {"daily-ops-cycle", "fire-trigger-safe"} <= set(describing), sorted(describing)
+    missing = sorted(name for name, names_it in describing.items() if not names_it)
+    assert not missing, f"skills describing the Routine's dashboard commit without naming §{label}: {missing}"
+
+
 def test_the_fold_step_commits_both_outputs_together() -> None:
     """The ledger bullets and spend.entries_seen are two halves of one record:
     a dashboard committed alone loses the trail, bullets committed alone are
