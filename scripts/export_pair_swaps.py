@@ -7,12 +7,27 @@ sentence for the on-hover contextual frame. Keyed "<batch_stem>#<index>" so the
 frontend joins the census blocks in data/jlens_depth.json; block ids are read
 from that payload so the swap map stays scoped to what the census shows.
 
-Reads only the committed pair batches under data/simulated. No medical
-vocabulary lives in this file (terms come from the data).
+Reads the committed pair batches under data/simulated, and the trace-time
+clinical prompts under trace_out for the holdout rule. No medical vocabulary
+lives in this file (terms come from the data).
+
+Tier B holdout rows are withheld (owner ruling 3, 2026-09-23). The file carries
+patient-side text only, which the registered seal (clinical phrases) does not
+cover, but from its first version (2026-07-19) it published holdout rows'
+verbatim patient sentences: 184 of the 194 holdout rows at site 0756f2a. The rule is the one the other
+exporters apply (export_frontend_simulated.py, export_archive.py): withhold a
+pair when its accepted clinical prompt is a registered holdout phrase anywhere
+(Amendment 3, phrase-keyed, so alias and re-run stems are covered), or when it
+is a Tier B pair whose accepted prompt, or any trace-time clinical prompt,
+hashes holdout (Amendment 1; the trace-time reading is the conservative union
+of divergence-log row 2026-07-17). The count is published as holdout_withheld.
+A dashboard with no tierb.start_utc makes the rule unenforceable, so the export
+refuses (exit 2) rather than publish unfiltered.
 
 Usage:
   python scripts/export_pair_swaps.py [--depth ../patientwords/data/jlens_depth.json] \
-      [--out data/jlens_swaps.json] [--site ../patientwords]
+      [--out data/jlens_swaps.json] [--site ../patientwords] \
+      [--dashboard ops/dashboard.json] [--trace-out trace_out]
 """
 
 import argparse
@@ -22,10 +37,53 @@ from pathlib import Path
 
 try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
     from scripts.provenance_stamp import provenance
+    from scripts.tierb_split import holdout_phrases, is_holdout, is_tierb_batch, tierb_start_stamp
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from provenance_stamp import provenance
+    from tierb_split import holdout_phrases, is_holdout, is_tierb_batch, tierb_start_stamp
+
+
+class HoldoutRule:
+    """The Tier B withholding rule as the publishing exporters apply it."""
+
+    def __init__(self, simulated_dir: str, dashboard_path: str, trace_root: str | None = None) -> None:
+        self.start: str | None = tierb_start_stamp(dashboard_path)
+        self.sealed: set[str] = holdout_phrases(simulated_dir, dashboard_path)
+        self.trace_root = Path(trace_root) if trace_root else None
+        self._traced: dict[str, dict[int, set[str]]] = {}
+
+    def traced_prompts(self, stem: str) -> dict[int, set[str]]:
+        """{index: trace-time clinical prompts} over every model's trace dir of a stem."""
+        if stem not in self._traced:
+            found: dict[int, set[str]] = {}
+            if self.trace_root is not None and self.trace_root.is_dir():
+                dirs = [self.trace_root / stem, *sorted(self.trace_root.glob(f"{stem}__*"))]
+                for d in dirs:
+                    for part in sorted(d.glob("batch_summary*.json")) if d.is_dir() else []:
+                        try:
+                            summary = json.loads(part.read_text(encoding="utf-8"))
+                        except (OSError, ValueError):
+                            continue
+                        for r in summary.get("results", []) if isinstance(summary, dict) else []:
+                            if not isinstance(r, dict):
+                                continue
+                            clinical = (r.get("prompts") or {}).get("clinical")
+                            if isinstance(r.get("index"), int) and clinical:
+                                found.setdefault(r["index"], set()).add(clinical)
+            self._traced[stem] = found
+        return self._traced[stem]
+
+    def withholds(self, stem: str, index: int, pair: dict) -> bool:
+        top = pair.get("top_prompt")
+        if top and (top in self.sealed or top.strip() in self.sealed):
+            return True
+        if not is_tierb_batch(stem, self.start):
+            return False
+        if is_holdout(top):
+            return True
+        return any(is_holdout(p) for p in self.traced_prompts(stem).get(index, ()))
 
 
 def patient_swap(top_prompt, bottom_prompt, width=44):
@@ -46,9 +104,11 @@ def patient_swap(top_prompt, bottom_prompt, width=44):
     return (cut.rsplit(" ", 1)[0] if " " in cut else cut) + "…"
 
 
-def build_swaps(block_stems, simulated_dir):
+def build_swaps(block_stems, simulated_dir, rule: HoldoutRule | None = None,
+                withheld: list[str] | None = None):
     """{ "<stem>#<index>": {target, swap, baseline} } for every pair in the
-    referenced batches that exists under simulated_dir."""
+    referenced batches that exists under simulated_dir. With a rule, pairs it
+    withholds are left out and their keys appended to ``withheld``."""
     out = {}
     for stem in block_stems:
         path = Path(simulated_dir) / f"{stem}.json"
@@ -60,6 +120,10 @@ def build_swaps(block_stems, simulated_dir):
             continue
         for index, pair in enumerate(pairs, start=1):
             if not isinstance(pair, dict):
+                continue
+            if rule is not None and rule.withholds(stem, index, pair):
+                if withheld is not None:
+                    withheld.append(f"{stem}#{index}")
                 continue
             out[f"{stem}#{index}"] = {
                 "target": (pair.get("target_clinical_token") or "").strip() or None,
@@ -100,6 +164,10 @@ def main(argv=None):
                              "so hijack/capture tooltips cover every track ('' to skip)")
     parser.add_argument("--out", default="data/jlens_swaps.json")
     parser.add_argument("--site", default="../patientwords", help="'' skips the site copy")
+    parser.add_argument("--dashboard", default="ops/dashboard.json",
+                        help="ops dashboard carrying tierb.start_utc (the holdout rule needs it)")
+    parser.add_argument("--trace-out", default="trace_out",
+                        help="engine trace store; trace-time clinical prompts join the holdout rule")
     args = parser.parse_args(argv)
 
     # Union the depth-census blocks with every dataset the capture/hijack census
@@ -109,21 +177,30 @@ def main(argv=None):
     if not stems:
         print(f"refused: no block ids in {args.depth} or datasets in {args.insights}")
         return 3
-    swaps = build_swaps(stems, args.simulated_dir)
+    rule = HoldoutRule(args.simulated_dir, args.dashboard, args.trace_out)
+    if not rule.start or not rule.sealed:
+        print(f"CONFIG ERROR: the Tier B holdout set computes empty from {args.dashboard} "
+              f"(null tierb.start_utc? wrong branch?); refusing to publish unfiltered swaps")
+        return 2
+    withheld: list[str] = []
+    swaps = build_swaps(stems, args.simulated_dir, rule, withheld)
     if not swaps:
         print(f"refused: no pairs resolved under {args.simulated_dir}")
         return 3
 
     payload = {
         "_": ("patient swap + baseline per (batch#index) for the depth-census table; "
-              "swap = differing patient-side span, baseline = verbatim patient sentence"),
+              "swap = differing patient-side span, baseline = verbatim patient sentence. "
+              "Tier B confirmatory-holdout pairs are withheld (count in holdout_withheld)."),
+        "holdout_withheld": len(withheld),
         "swaps": swaps,
     }
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     payload["_provenance"] = provenance("export_pair_swaps.py")
     out.write_text(json.dumps(payload, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"jlens swaps: {len(swaps)} pairs -> {out}")
+    print(f"jlens swaps: {len(swaps)} pairs -> {out} "
+          f"({len(withheld)} confirmatory-holdout pairs withheld)")
     if args.site:
         site_copy = Path(args.site) / "data" / "jlens_swaps.json"
         if site_copy.parent.is_dir():

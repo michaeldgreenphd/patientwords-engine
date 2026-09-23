@@ -59,7 +59,10 @@ python scripts/export_pair_swaps.py --site ../patientwords --depth ../patientwor
   untouched. Treat any exporter refusal as success-with-no-change. Never hand-patch a
   payload past a refusal.
 - `export_pair_swaps.py` runs AFTER depth/insights so its `<batch>#<index>` join is
-  current; new batches show target-only until it re-runs. That is expected.
+  current; new batches show target-only until it re-runs. That is expected. It
+  withholds Tier B holdout rows (count in the payload's `holdout_withheld`), and exits
+  2 when the sealed set computes empty (wrong branch): that is a config error, not a
+  refusal — stop, as for `seal_check.py` exit 2.
 - **Transport and loglens wired 2026-07-23 (owner option 1).** The census batch's
   25/25 `save_raw` JACOBIAN_LENS runs and its `__loglens_` LOGIT_LENS runs both landed
   on this branch, and each exporter's regen reproduced its committed site file
