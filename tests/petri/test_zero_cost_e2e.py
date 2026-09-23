@@ -822,6 +822,64 @@ def test_a_sample_inspect_halts_at_its_token_limit_is_refused_as_a_tree(run, tmp
     assert row["calls"] == 4 and row["input_tokens"] == 1600
 
 
+class _NoChoiceTarget(ScriptedTarget):
+    """On H1, answers the clinical arm's second turn with an output that has no choice at all."""
+
+    def __init__(self, seed_set: seeds.SeedSet) -> None:
+        super().__init__(seed_set)
+        self.clinical = seeds.text_of(seed_set.seeds[H1], "stimulus_clinical")
+
+    def __call__(self, input, tools, tool_choice, config) -> ModelOutput:
+        users = [m for m in input if isinstance(m, ChatMessageUser)]
+        if users[0].text == self.clinical and len(users) == 2:
+            return ModelOutput(model="mockllm", choices=[])
+        return super().__call__(input, tools, tool_choice, config)
+
+
+def test_a_call_that_returned_no_choice_is_counted_as_no_output(run, tmp_path_factory):
+    """The schema documents a `no_output` bucket in models.target.stop_reasons
+    for a call that returned no choice, and nothing tested that the adapter
+    fills it (2026-09-23 review). Petri's target fails the sample on such an
+    output, so the tree is refused as a sample error and the call still
+    counted."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    target = get_model("mockllm/model", custom_outputs=_NoChoiceTarget(seed_set), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("nochoice-logs"), token_limit=20000, cost_limit=0.01)
+    result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("nochoice") / "run")
+    assert [r["branch_id"] for r in result.refused] == [f"{H1}::clinical#1:root"]
+    assert result.refused[0]["reason"].startswith("sample error:")
+    stops = result.manifest["models"]["target"]["stop_reasons"]
+    assert stops == [{"stop_reason": "no_output", "calls": 1}, {"stop_reason": "stop", "calls": 3}]
+    assert manifest_problems(result.manifest) == []
+
+
+def test_inspects_cost_limit_prices_cache_tokens_at_the_sidecar_rates():
+    """register_prices gives Inspect the prices its per-sample cost_limit
+    counts. It registered cache writes and reads at the input rate, below
+    Anthropic's 2x one-hour write price, and reverting the change failed no
+    test (2026-09-23 review). The price is read back through Inspect's own
+    lookup and costed with its own function. A model name no other test uses
+    keeps the registration from leaking into another test's cost limit."""
+    from inspect_ai.model import ModelUsage, get_model_info
+    from inspect_ai.model._model import compute_model_cost
+
+    from scripts.petri_audit import spend
+    from scripts.petri_audit.task import register_prices
+
+    model = "anthropic/pw-cache-rate-probe"
+    registry = {"anthropic": {"pricing": {"pw-cache-rate-probe": [1.0, 5.0]}}}
+    prices = register_prices([model], registry)
+    assert prices[model] == spend.Price(1.0, 5.0, prices[model].source)
+    cost = get_model_info(model).cost
+    assert (cost.input, cost.output, cost.input_cache_read, cost.input_cache_write) == (1.0, 5.0, 1.0, 2.0)
+    usage = ModelUsage(input_tokens=1_000_000, output_tokens=0, total_tokens=4_000_000,
+                       input_tokens_cache_read=2_000_000, input_tokens_cache_write=1_000_000)
+    # 1 input + 2 read at 1x + 1 write at 2x: what the sidecar books for the same usage
+    assert compute_model_cost(cost, usage) == pytest.approx(5.0) == pytest.approx(prices[model].cost(1_000_000, 0, 2_000_000, 1_000_000))
+
+
 def test_the_start_marker_is_written_only_once_the_target_model_is_built(tmp_path, monkeypatch, capsys):
     """The workflow touched `target_started` before `cli run`, so a missing
     OPENROUTER_API_KEY (an absent Actions secret arrives empty) failed in

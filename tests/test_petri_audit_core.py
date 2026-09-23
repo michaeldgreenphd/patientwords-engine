@@ -1734,6 +1734,34 @@ def test_prompt_cache_tokens_are_priced_never_dropped(tmp_path):
                                  judge_reserve_usd=0.0, max_spend_usd=1.0).per_sample_usd == pytest.approx(0.1)
 
 
+def test_the_fallback_spend_report_books_cache_tokens_from_the_log_stats(tmp_path, monkeypatch, capsys):
+    """`cli spend-report` books a run that failed before adaptation. When the
+    retained log's samples carry no usage it reads `log.stats.model_usage`,
+    whose rows carried input and output only, so a cached run was booked
+    below its charge; reverting that path failed no test (2026-09-23 review).
+    The log is a stand-in with the attribute names of Inspect's EvalLog and
+    ModelUsage in the locked 0.3.237, so the 3.11 suite runs it."""
+    import types
+    from types import SimpleNamespace as NS
+
+    model = "anthropic/claude-haiku-4-5"
+    usage = NS(input_tokens=1000, output_tokens=100, total_tokens=3600, input_tokens_cache_read=2000,
+               input_tokens_cache_write=500)
+    log = NS(status="error", eval=NS(eval_id="e-1"), samples=[], stats=NS(model_usage={model: usage}))
+    monkeypatch.setitem(sys.modules, "inspect_ai.log", types.SimpleNamespace(read_eval_log=lambda path: log))
+    out = tmp_path / "run_c.report.json"
+    assert cli.main(["spend-report", "--out", str(out), "--run-id", "run_c", "--target", model, "--max-spend", "5",
+                     "--eval", str(tmp_path / "failed.eval")]) == 0
+    capsys.readouterr()
+    report = framework.load_json(out)
+    price = spend.resolve_price(model)
+    assert report["cost_basis"] == "engine_repriced_from_inspect_model_usage" and report["run_status"] == "error"
+    assert report["cost_usd"] == pytest.approx(price.cost(1000, 100, 2000, 500))
+    assert report["cost_usd"] > price.cost(1000, 100), "what the fallback booked before: input and output alone"
+    row = report["models"][0]
+    assert (row["model"], row["input_tokens_cache_read"], row["input_tokens_cache_write"]) == (model, 2000, 500)
+
+
 def test_only_a_plain_upstream_host_name_is_copied_out_of_a_raw_response():
     """OpenRouter routes one slug to several hosts (the advice archives show
     gpt-5.4-mini on OpenAI and Azure, DeepSeek on eighteen hosts), and its
