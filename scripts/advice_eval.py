@@ -136,6 +136,19 @@ def _resolve_spec(spec: str, registry: dict) -> dict:
     return {"spec": f"{provider}:{model}", "provider": provider, "model": model, "cfg": cfg}
 
 
+def _registry_rate(cfg: dict, model: str) -> tuple[object, str]:
+    """The rate elicit's spend ceiling uses for `model` (the part of the spec after
+    the provider prefix) in one registry block, and where it came from: the
+    block's per-model `pricing` entry when that entry is set, otherwise its
+    `default_pricing` (which may be absent: the ceiling then falls back to the
+    built-in table). One function for both elicit and the repro-pack registry
+    scope, so the scope hashes exactly the entries elicit resolves to."""
+    own = (cfg.get("pricing") or {}).get(model)
+    if own:
+        return own, "pricing"
+    return cfg.get("default_pricing"), "default_pricing"
+
+
 # --------------------------------------------------------------------------- utils
 
 
@@ -919,7 +932,7 @@ def elicit(args) -> Path:
     models = list(resolved)  # canonical provider:model spec strings
     custom_pricing = {}
     for r in resolved.values():
-        pricing = (r["cfg"].get("pricing") or {}).get(r["model"]) or r["cfg"].get("default_pricing")
+        pricing, _ = _registry_rate(r["cfg"], r["model"])
         if pricing:
             custom_pricing[r["spec"]] = (float(pricing[0]), float(pricing[1]))
 
@@ -1779,36 +1792,84 @@ def _vendor_match(spec: str, vendor: str) -> bool:
     return provider == vendor or model.startswith(vendor + "/")
 
 
+def _is_vendor_block(key: str, block: dict, vendor: str) -> bool:
+    """A registry block is the vendor's own when it is named for the vendor
+    (`google`, `xai`) or its consumer_default is the vendor's model (`moonshot`
+    serves moonshotai/...). Any other block the vendor's records went through is
+    shared with other vendors: today that is `openrouter`, which carries google's
+    records and also prices other vendors' models for the advice and Petri lanes."""
+    if key == vendor:
+        return True
+    default = block.get("consumer_default")
+    return isinstance(default, str) and bool(default) and _vendor_match(f"{key}:{default}", vendor)
+
+
+def _is_note_field(field: str) -> bool:
+    """Free-text documentation in a registry block, by the file's convention
+    (`pricing_note`, `consumer_proxy_note`, `fallback_note`, `_`-prefixed keys).
+    No code path reads these fields."""
+    return field.endswith("_note") or field.startswith("_")
+
+
+def _scope_block(key: str, block: object, vendor: str, models: set[str]) -> object:
+    """One registry block as a vendor's pack depends on it (`_registry_scope`)."""
+    if not isinstance(block, dict):
+        return block  # absent (null) or malformed: hashed as it stands
+    own = _is_vendor_block(key, block, vendor)
+    out = {f: v for f, v in block.items()
+           if f not in ("pricing", "default_pricing") and (own or not _is_note_field(f))}
+    pricing = block.get("pricing")
+    if isinstance(pricing, dict):
+        kept = {m: pricing[m] for m in sorted(models) if m in pricing}
+        if kept:
+            out["pricing"] = kept
+        falls_back = any(_registry_rate(block, m)[1] == "default_pricing" for m in models)
+    else:
+        if pricing is not None:
+            out["pricing"] = pricing  # malformed: kept whole, so any edit to it moves the digest
+        falls_back = True
+    if falls_back and "default_pricing" in block:
+        out["default_pricing"] = block["default_pricing"]
+    return out
+
+
 def _registry_scope(registry_path, vendor: str, rows: list[dict]) -> dict:
     """The part of the provider registry a vendor's pack depends on, and its digest.
 
     The scope is the registry block of every provider a vendor record was requested
     through (the `provider:` prefix of model_requested: `anthropic` for
     anthropic:claude-..., `moonshot` for moonshot:moonshotai/..., `openrouter` for
-    openrouter:google/...). A block's per-model `pricing` map is cut to the vendor's
-    own slugs (`<vendor>/...`), because a shared aggregator block prices every
-    vendor's models. Every other field of a scoped block stays in, notes included:
-    they describe the route the vendor's records took.
+    openrouter:google/...). Within each block:
+
+    - Prices: only the rates elicit resolves the vendor's records to
+      (`_registry_rate`, keyed by the model part of the spec: `claude-haiku-4-5`,
+      `x-ai/grok-4.3`, `google/gemini-3.5-flash`). The `pricing` map is cut to
+      those models' entries, and `default_pricing` is kept only when one of those
+      models has no entry of its own. Another model's price, or a default no
+      record of the vendor's falls back to, is out of scope.
+    - A block that is the vendor's own (`_is_vendor_block`) keeps every other
+      field, notes included: the whole block is about the vendor's route.
+    - A block shared with other vendors (`openrouter`) keeps every other field
+      except its free-text notes (`_is_note_field`). Those notes document every
+      vendor's models and the Petri lane's prices, and no code reads them; the
+      route fields (api, base_url, key_env, pacing) and any field added later stay.
 
     Before 2026-09-23 the manifest carried the sha256 of the WHOLE registry file,
     so any edit to any provider (another vendor's price, a Petri judge's price)
     staled every pack for every vendor. A block the registry lacks is hashed as
     null, so its appearing or disappearing still moves the digest. A missing
     registry file gives a null digest, as the whole-file hash did."""
-    keys = sorted({str(r.get("model_requested") or "").partition(":")[0] for r in rows
-                   if r.get("record_type") == "advice" and _vendor_match(r.get("model_requested"), vendor)})
+    models_by_key: dict[str, set[str]] = {}
+    for r in rows:
+        if r.get("record_type") == "advice" and _vendor_match(r.get("model_requested"), vendor):
+            key, _, model = str(r.get("model_requested") or "").partition(":")
+            models_by_key.setdefault(key, set()).add(model)
+    keys = sorted(models_by_key)
     reg_path = Path(registry_path)
     if not reg_path.is_file():
         return {"registry_scope": keys, "registry_scope_sha256": None}
     registry = json.loads(reg_path.read_text(encoding="utf-8"))
-    scoped: dict[str, object] = {}
-    for key in keys:
-        block = registry.get(key)
-        if isinstance(block, dict) and isinstance(block.get("pricing"), dict):
-            block = dict(block)
-            block["pricing"] = {slug: rate for slug, rate in block["pricing"].items()
-                                if str(slug).startswith(vendor + "/")}
-        scoped[key] = block
+    scoped = {key: _scope_block(key, registry.get(key), vendor, models_by_key[key]) for key in keys}
     return {"registry_scope": keys, "registry_scope_sha256": sha256_text(canonical_json(scoped))}
 
 

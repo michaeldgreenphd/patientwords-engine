@@ -290,6 +290,11 @@ def test_registry_edits_outside_the_vendors_scope_leave_its_pack_fresh(packed, c
     pytest.param(lambda r: r["openrouter"]["pricing"].update({"acme/model-1": [5.0, 6.0]}), id="own-slug-price"),
     pytest.param(lambda r: r["openrouter"].update(base_url="https://or2.example/v1"), id="route-field"),
     pytest.param(lambda r: r.pop("acme"), id="block-removed"),
+    # the vendor's own block is kept whole, notes included: the whole block is about its route
+    pytest.param(lambda r: r["acme"].update(consumer_proxy_note="route changed"), id="own-block-note"),
+    # a shared block keeps every non-note field, including one added later
+    pytest.param(lambda r: r["openrouter"].update(provider_order=["upstream-b"]), id="shared-block-new-field"),
+    pytest.param(lambda r: r["acme"].update(pricing={"model-1": [9.0, 9.0]}), id="own-price-entry-added"),
 ])
 def test_registry_edits_inside_the_vendors_scope_stale_its_sent_pack(packed, capsys, edit):
     _edit_registry(packed, lambda r: r["openrouter"].update(pricing={"acme/model-1": [1.0, 2.0]}))
@@ -300,6 +305,129 @@ def test_registry_edits_inside_the_vendors_scope_stale_its_sent_pack(packed, cap
     assert _check(packed) == 2
     out = capsys.readouterr().out
     assert f"STALE  {v}  acme" in out and "registry_scope_sha256:" in out and "ESCALATION" in out
+
+
+def _shared_block_base(r):
+    """A shared aggregator block as the real one stands: the vendor's own slug
+    priced, another vendor's slug priced, a catch-all default, and free-text
+    notes that document every vendor's models."""
+    r["openrouter"].update(pricing={"acme/model-1": [1.0, 2.0], "zeta/model-9": [0.0, 0.0]},
+                           pricing_note="catch-all default; per-model rates below",
+                           consumer_proxy_note="aggregator route")
+
+
+def _note_sentence(r, text):
+    r["openrouter"]["pricing_note"] += " || " + text
+
+
+@pytest.mark.parametrize("edit", [
+    # the 78d5beb1 shape: another vendor's slug added with the pricing_note sentence the file's convention asks for
+    pytest.param(lambda r: (r["openrouter"]["pricing"].update({"third/model-2": [0.0, 0.0]}),
+                            _note_sentence(r, "third/model-2 added for its free window")), id="slug-added-with-note"),
+    # the 8243a7e4 shape: another vendor's slug removed, with a note saying why
+    pytest.param(lambda r: (r["openrouter"]["pricing"].pop("zeta/model-9"),
+                            _note_sentence(r, "zeta/model-9 removed after its window")), id="slug-removed-with-note"),
+    pytest.param(lambda r: r["openrouter"]["pricing"].update({"zeta/model-9": [3.0, 4.0]}), id="other-price"),
+    pytest.param(lambda r: r["openrouter"].update(consumer_proxy_note="rewritten"), id="shared-proxy-note"),
+    # the vendor's slug has its own entry, so the catch-all default never priced its records
+    pytest.param(lambda r: r["openrouter"].update(default_pricing=[6.0, 36.0]), id="unused-default"),
+])
+def test_edits_for_other_vendors_on_a_shared_block_leave_the_vendors_sent_pack_fresh(packed, capsys, edit):
+    """Regression (review of 2026-09-23): the scoped digest kept every non-pricing
+    field of the shared `openrouter` block, notes included, so the two ox-alpha
+    registry edits (78d5beb1, 8243a7e4), which changed only another model's price
+    and the shared pricing_note, still moved google's digest; once google's pack
+    was sent, --check escalated (exit 2) and the contract gate failed."""
+    _edit_registry(packed, _shared_block_base)
+    v = _build_from(packed, packed["stim"], "dist1")
+    _send(packed, v)
+    _edit_registry(packed, edit)
+    capsys.readouterr()
+    assert _check(packed) == 0
+    out = capsys.readouterr().out
+    assert f"FRESH  {v}  acme" in out and "ESCALATION" not in out
+
+
+def test_a_shared_blocks_default_is_in_scope_only_while_it_prices_the_vendors_records(packed, capsys):
+    """The fixture's openrouter block has no per-model entry for acme's slug, so its
+    default_pricing prices acme's aggregator records. Giving another vendor the
+    block's first per-model entry leaves acme's pack fresh; changing the default
+    that prices acme stales it."""
+    v = _build_from(packed, packed["stim"], "dist1")
+    _send(packed, v)
+    _edit_registry(packed, lambda r: r["openrouter"].update(pricing={"zeta/model-9": [1.0, 1.0]}))
+    capsys.readouterr()
+    assert _check(packed) == 0
+    assert f"FRESH  {v}  acme" in capsys.readouterr().out
+    _edit_registry(packed, lambda r: r["openrouter"].update(default_pricing=[6.0, 36.0]))
+    assert _check(packed) == 2
+    assert f"STALE  {v}  acme" in capsys.readouterr().out
+
+
+def test_own_price_keyed_by_a_bare_model_id_is_in_scope(packed, capsys):
+    """Regression (review of 2026-09-23): the pricing cut kept only `<vendor>/`
+    keys, but elicit looks a rate up by the model part of the spec, which for a
+    direct block is a bare id (`claude-haiku-4-5`) or another prefix
+    (`x-ai/grok-4.3`). A tenfold change to such a rate left the pack FRESH."""
+    _edit_registry(packed, lambda r: r["acme"].update(pricing={"model-1": [1.0, 4.0]}))
+    v = _build_from(packed, packed["stim"], "dist1")
+    _send(packed, v)
+    _edit_registry(packed, lambda r: r["acme"].update(pricing={"model-1": [10.0, 40.0]}))
+    capsys.readouterr()
+    assert _check(packed) == 2
+    assert f"STALE  {v}  acme" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("block,spec,key", [
+    pytest.param("acme", "acme:model-1", "model-1", id="bare-id"),          # the anthropic block's shape
+    pytest.param("xco", "xco:x-co/model-2", "x-co/model-2", id="other-prefix"),  # the xai block's shape
+])
+def test_scope_hashes_the_rate_elicit_looks_up(tmp_path, block, spec, key):
+    vendor = spec.partition(":")[0]
+    rows = [{"record_type": "advice", "model_requested": spec}]
+    reg = tmp_path / "providers.json"
+
+    def digest(own_rate, other_rate=(2.0, 2.0), default=(1.0, 1.0)):
+        reg.write_text(json.dumps({block: {"api": "openai-compat", "default_pricing": list(default),
+                                           "pricing": {key: list(own_rate), "unrelated-model": list(other_rate)}}}),
+                       encoding="utf-8")
+        return ae._registry_scope(reg, vendor, rows)["registry_scope_sha256"]
+
+    base = digest((1.32, 2.63))
+    assert digest((13.2, 26.3)) != base
+    # another model's rate, and a default the vendor's model never falls back to, are out of scope
+    assert digest((1.32, 2.63), other_rate=(9.0, 9.0)) == base
+    assert digest((1.32, 2.63), default=(9.0, 9.0)) == base
+    cfg = json.loads(reg.read_text())[block]
+    assert ae._registry_rate(cfg, key) == ([1.32, 2.63], "pricing")
+
+
+def test_shared_block_scope_keeps_route_fields_and_the_vendors_rates_only():
+    block = {"api": "openai-compat", "base_url": "https://or.example/v1", "key_env": "OR_KEY",
+             "min_interval_seconds": 2, "consumer_product": "aggregator",
+             "consumer_proxy_note": "n1", "pricing_note": "n2", "_comment": "n3",
+             "default_pricing": [5.0, 30.0],
+             "pricing": {"acme/model-1": [1.0, 2.0], "zeta/model-9": [0.0, 0.0]}}
+    assert ae._scope_block("openrouter", block, "acme", {"acme/model-1"}) == {
+        "api": "openai-compat", "base_url": "https://or.example/v1", "key_env": "OR_KEY",
+        "min_interval_seconds": 2, "consumer_product": "aggregator",
+        "pricing": {"acme/model-1": [1.0, 2.0]}}
+    # a vendor model with no entry of its own is priced by the default, which then enters
+    two = ae._scope_block("openrouter", block, "acme", {"acme/model-1", "acme/model-2"})
+    assert two["default_pricing"] == [5.0, 30.0] and two["pricing"] == {"acme/model-1": [1.0, 2.0]}
+    # the vendor's own block keeps its notes
+    own = ae._scope_block("acme", dict(block, pricing={}), "acme", {"model-1"})
+    assert own["consumer_proxy_note"] == "n1" and own["pricing_note"] == "n2" and "pricing" not in own
+
+
+@pytest.mark.parametrize("key,block,vendor,expected", [
+    ("google", {}, "google", True),
+    ("moon", {"consumer_default": "moonco/k2"}, "moonco", True),   # named differently, serves the vendor's model
+    ("openrouter", {"consumer_proxy_note": "aggregator"}, "google", False),
+    ("moon", {"consumer_default": "moonco/k2"}, "google", False),
+])
+def test_is_vendor_block(key, block, vendor, expected):
+    assert ae._is_vendor_block(key, block, vendor) is expected
 
 
 def test_legacy_whole_file_entries_are_checked_by_their_own_definition(packed, capsys):
