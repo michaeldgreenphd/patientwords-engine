@@ -2295,6 +2295,66 @@ def journal_reservation_problems(trigger, params, entries, now=None, expire_hour
     return problems
 
 
+def pushed_fire_entry(repo: Path, trigger: str, entries: list[dict], *, digest: str | None, lane: str, today: str,
+                      before: str | None, ref: str | None) -> dict | None:
+    """The journal entry THIS push added for THIS fire of a paid lane with no nonce contract, or None.
+
+    `cmd_fire` runs budget_check before it appends its entry, then commits the trigger file and the entry
+    together, so by the time CI runs `budget-gate` the entry is on the branch, `inflight_max_spend` counts it, and
+    the gate adds the params' commitment on top. petri-audit removes its own entry by nonce; the other paid lanes
+    have no join key, so `reservation_entries` returns None for them and nothing was removed. A scenario-generation
+    fire of 1.50 under the $2 ceiling passed locally and was refused in CI as 3.00 - reproduced through the real
+    fire path for scenario-generation, model-evaluation and advice-eval (G4, 2026-09-23). No provider call was
+    made, so it failed safe, but the server-side check refused every fire the local one approved above half the
+    remaining ceiling.
+
+    An entry qualifies only when all of these hold, so anything not provably this push's own fire keeps counting:
+    - its trigger matches and its params_sha256 equals `digest`, the digest of the trigger file in the checkout
+      (the bytes CI runs; Codex round 9 on PR #28);
+    - it holds spend today on `lane`, the lane budget_check will sum (entry_holds_spend), so exactly what was
+      counted is what is removed;
+    - it records `ref`, the branch CI is running on: a fire commit merged or cherry-picked onto a second branch is a
+      second run there, and the entry belongs to the branch it was fired on (Codex round 11 on PR #28);
+    - it is absent from the journal at `before`, the push's previous tip. `cmd_fire` writes the entry and the
+      trigger file in ONE commit, so an entry already on the branch was taken by an earlier fire, and this push -
+      a merge or a revert restoring the same bytes while that run may still be spending - replays it (Codex round
+      10 on PR #28). Matching on the digest alone would count such a replay once too few.
+
+    Entries are keyed on (trigger, fired_utc), the journal's identity everywhere else (journal_entries_added, the
+    ORDERED UNION rule). None - nothing removed, the double count the gate applied before, which fails closed -
+    whenever that cannot be established: no `digest`, no `ref`, no `before` (a workflow_dispatch, whose run has no
+    journal entry of its own), the all-zero sha of a ref creation, a commit this clone does not have, or a journal
+    at `before` with a line that does not parse (that line could be the entry). The entry's max_spend is
+    deliberately NOT compared with the params' commitment: advice-eval's --params-file holds the resolved params
+    with the workflow's defaults filled in, so a genuine fire could fail that comparison. Several entries can
+    qualify only when one push carries several fires of the same bytes, which `publish` refuses; a push runs the
+    lane once, so the newest (journal order breaking ties) is removed and the rest keep counting.
+    """
+    if digest is None or not isinstance(ref, str) or not ref.strip():
+        return None
+    if not isinstance(before, str) or not before.strip() or set(before.strip()) == {"0"}:
+        return None
+    before = before.strip()
+    # confirmed to exist first, as journal_nonces_at does: _git_show cannot tell a commit this clone lacks (a
+    # shallow checkout) from one whose tree has no journal, and only the second may read as "no earlier entries"
+    if _git(repo, "cat-file", "-e", f"{before}^{{commit}}").returncode != 0:
+        return None
+    earlier, problems = journal_at(repo, before)
+    if problems:
+        return None
+    was_there = {(e.get("trigger"), e.get("fired_utc")) for e in (earlier or [])}
+    candidates = [e for e in entries
+                  if e.get("trigger") == trigger
+                  and e.get("params_sha256") == digest
+                  and e.get("ref") == ref.strip()
+                  and entry_holds_spend(e, today, lane)
+                  and (e.get("trigger"), e.get("fired_utc")) not in was_there]
+    if not candidates:
+        return None
+    # entry_holds_spend has parsed every stamp; sorted is stable, so the last of equal stamps is the later line
+    return sorted(candidates, key=lambda e: parse_utc(e["fired_utc"]))[-1]
+
+
 def cmd_budget_gate(args):
     """CI-side twin of cmd_fire's paid-path budget check (audit S2, owner-approved
     2026-08-19). fire_trigger's ceiling is client-side only: a direct push of a
@@ -2352,18 +2412,32 @@ def cmd_budget_gate(args):
     # writes the journal entry; by the time CI runs it the entry is on the branch, so `inflight_max_spend` already
     # holds this fire's commitment and adding the params' commitment on top double-counts it. The pilot's $1.50
     # came to $3.00 against the $2.00 ceiling and would have been refused server-side - the first paid fire, by the
-    # guard meant to protect it (found writing the round-7 reservation test, 2026-09-18). Only the entry this fire
-    # is bound to by nonce is removed, so nothing else's hold is lost.
+    # guard meant to protect it (found writing the round-7 reservation test, 2026-09-18). At most ONE entry is
+    # removed - on petri-audit the one this fire is bound to by nonce, on the other paid lanes the one this push
+    # provably added - so nothing else's hold is lost.
     today = now.strftime("%Y-%m-%d")
     lane = fire_lane(args.trigger, budget_params)       # the lane budget_check will sum, so the test below matches it
     mine = reservation_entries(args.trigger, params, entries)
-    if mine and len(mine) == 1 and entry_holds_spend(mine[0], today, lane):
-        # removed only when the day's sum counts it, so exactly what was counted is removed. That is no longer the
-        # same as ACTIVE (2026-09-23): the sum also holds entries resolved or expired earlier today, and an active
-        # entry fired before midnight UTC is not in today's sum at all. The reservation check above still demands
-        # an active one; this is only about not counting it twice.
-        held = mine[0]
-        entries = [e for e in entries if e is not held]
+    if mine is not None:
+        if len(mine) == 1 and entry_holds_spend(mine[0], today, lane):
+            # removed only when the day's sum counts it, so exactly what was counted is removed. That is no longer
+            # the same as ACTIVE (2026-09-23): the sum also holds entries resolved or expired earlier today, and an
+            # active entry fired before midnight UTC is not in today's sum at all. The reservation check above still
+            # demands an active one; this is only about not counting it twice.
+            held = mine[0]
+            entries = [e for e in entries if e is not held]
+    else:
+        # the other paid lanes have no nonce, so their own entry is found by what this push added (G4, 2026-09-23;
+        # see pushed_fire_entry). Whatever cannot be shown to be this push's fire keeps counting.
+        own = pushed_fire_entry(repo, args.trigger, entries, digest=digest, lane=lane, today=today,
+                                before=getattr(args, "push_before", None), ref=getattr(args, "ref", None))
+        if own is not None:
+            entries = [e for e in entries if e is not own]
+            print(f"budget-gate: this push's own {args.trigger} journal entry (fired {own.get('fired_utc')}) is left "
+                  "out of today's held sum; the params' commitment stands in for it")
+        else:
+            print(f"budget-gate: no {args.trigger} journal entry is shown to be this push's own fire (a dispatch, a "
+                  "replay, or no --push-before/--ref to bind one), so every held commitment is counted")
     dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
     overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
     kind, reason = budget_check(budget_params, dashboard, today,
@@ -2460,13 +2534,17 @@ def build_parser():
                       help="the ref CI is running on (GitHub's github.ref_name). A paid petri-audit fire is "
                            "refused when its journal entry was fired on a different branch: the same fire commit "
                            "reaching a second ref by merge or cherry-pick is a second run, and one reservation "
-                           "cannot cover both. Required when GITHUB_ACTIONS is set.")
+                           "cannot cover both. Required for petri-audit when GITHUB_ACTIONS is set. On the other "
+                           "paid lanes it is one of the facts that identify this push's own journal entry, which "
+                           "is then counted once instead of twice; without it nothing is left out.")
     gate.add_argument("--push-before",
                       help="the commit this ref pointed at before the push CI is running (GitHub's "
                            "github.event.before). A paid petri-audit fire is refused when its reservation was "
                            "already on the branch at that commit: fire_trigger writes the entry and the trigger "
                            "file in one commit, so an older reservation means this push replays it. Required "
-                           "when GITHUB_ACTIONS is set.")
+                           "for petri-audit when GITHUB_ACTIONS is set. On the other paid lanes an entry absent "
+                           "at that commit is this push's own, and is counted once instead of twice; without it "
+                           "(a workflow_dispatch passes an empty value) nothing is left out.")
     gate.set_defaults(func=cmd_budget_gate)
     return parser
 

@@ -2773,3 +2773,217 @@ def test_the_workflow_hands_the_gate_the_pushs_previous_tip():
     assert "fetch-depth: 0" in body
     # a reservation is for one ref as well as one push (Codex round 11 on PR #28)
     assert "--ref" in body and "REF_NAME: ${{ github.ref_name }}" in body
+
+
+# ------------------------------------------------------------------ G4: the gate counts a non-petri fire once
+
+# The paid lanes with no nonce contract, each with a fire that commits more than half of the $2 ceiling and the
+# params the workflow's params job hands the gate (--params-file): the trigger file's keys with the workflow's
+# defaults filled in, every value a string. advice-eval's resolved set is the one the finding singles out.
+G4_LANES = {
+    "scenario-generation": (
+        {"task": "pairs", "num": "5", "anthropic_model": "claude-haiku-4-5", "max_spend": "1.5"},
+        {"task": "pairs", "num": "5", "topics": "", "seed_pairs": "medlang_circuits/data/ci_pairs_2panel.json",
+         "feedback": "", "phrase": "", "term": "", "target_token": "", "num_baselines": "8", "dialects": "",
+         "anthropic_model": "claude-haiku-4-5", "max_spend": "1.5", "graph_models": "gemma-2-2b",
+         "trace_sample_size": "2"}),
+    "model-evaluation": (
+        {"model_selection": "claude-haiku-4-5", "sample_size": "8", "max_spend": "1.5"},
+        {"model_selection": "claude-haiku-4-5", "max_spend": "1.5", "sample_size": "8", "scenario": "all",
+         "pairs_file": "", "list": "claude-haiku-4-5"}),
+    "advice-eval": (
+        {"stimuli_file": "data/advice/stimuli_x.json", "models": "claude-haiku-4-5", "max_spend": "1.2",
+         "commit_outputs": "true"},
+        {"stimuli_file": "data/advice/stimuli_x.json", "gen_config": "", "models": "claude-haiku-4-5",
+         "arms": "clinical,patient", "samples": "3", "temperature": "1.0", "max_tokens": "1024",
+         "translator_model": "claude-haiku-4-5", "max_spend": "1.2", "judge": "false",
+         "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.50", "judge_max_tokens": "300",
+         "rubric": "data/advice_rubric.draft.json", "offset": "0", "limit": "0", "commit_outputs": "true",
+         "restore_artifact_run_id": "", "restore_merge_fork": "false"}),
+}
+
+
+def _g4_fired(repo, tmp_path, monkeypatch, trigger):
+    """A git repo holding one real fire of `trigger` through `ft.main(["fire", ...])`, committed the way cmd_fire's
+    publish commits it (trigger file and journal entry in one commit). Returns (git, commit before the push,
+    commit of the fire, a gate runner that passes the resolved params the workflow would)."""
+    monkeypatch.setattr(ft, "utc_now", lambda: datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc))
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    git = _git_repo(repo)
+    journal_path(repo).write_text("", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    before = git("rev-parse", "HEAD").stdout.strip()
+    fired_params, resolved = G4_LANES[trigger]
+    assert fire(repo, trigger, fired_params, note="g4") == 0
+    git("add", "-A")
+    git("commit", "-qm", f"Fire {trigger}: g4")
+    fired = git("rev-parse", "HEAD").stdout.strip()
+    pf = tmp_path / f"{trigger}-resolved.json"
+    pf.write_text(json.dumps(resolved), encoding="utf-8")
+
+    def gate(*extra):
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", trigger, "--params-file", str(pf), *extra])
+
+    return git, before, fired, gate
+
+
+@pytest.mark.parametrize("trigger", sorted(G4_LANES))
+def test_budget_gate_counts_a_non_petri_fire_once(repo, tmp_path, capsys, monkeypatch, trigger):
+    """G4 (2026-09-23), finding test 1, for each lane. cmd_fire checks the ceiling BEFORE it appends its entry; the
+    push carries the entry, so in CI inflight_max_spend holds the fire's commitment and the gate added the params'
+    commitment on top. Only petri-audit removed its own entry (by nonce), so a 1.5 fire under the $2 ceiling passed
+    locally and was refused in CI as 3.00. The entry this push added, for this trigger file's bytes, on this ref, is
+    now removed once."""
+    git, before, fired, gate = _g4_fired(repo, tmp_path, monkeypatch, trigger)
+    commitment = ft.fire_commitment(G4_LANES[trigger][0])[0]
+    entry = ft.load_journal(journal_path(repo))[-1]
+    assert entry["ref"] == "main" and entry["params_sha256"], "the fire path records both facts the gate binds on"
+    capsys.readouterr()
+
+    assert gate("--push-before", before, "--ref", "main") == 0, capsys.readouterr().err
+    out = capsys.readouterr().out
+    assert f"this push's own {trigger} journal entry (fired 2026-09-23T12:00:00Z)" in out
+    assert f"max_spend {commitment:.2f} + today's committed 0.00 (landed 0.00 + held today 0.00)" in out
+
+    # without the push binding - a workflow_dispatch passes an empty --push-before - nothing is left out, which is
+    # the double count the gate applied before: refused, never cleared on a guess
+    for extra in (("--push-before", "", "--ref", "main"), ("--ref", "main"), ("--push-before", before)):
+        assert gate(*extra) == 6, extra
+        captured = capsys.readouterr()
+        assert f"held today {commitment:.2f}" in captured.err, extra
+        assert "no " + trigger + " journal entry is shown to be this push's own fire" in captured.out, extra
+
+    # nor when the binding cannot be read: a ref creation's all-zero sha, a commit this clone does not have
+    for missing in ("0" * 40, "e" * 40):
+        assert gate("--push-before", missing, "--ref", "main") == 6, missing
+        assert f"held today {commitment:.2f}" in capsys.readouterr().err
+
+    # the same fire commit on another branch (a merge or a cherry-pick) is a second run there, and counts as one
+    assert gate("--push-before", before, "--ref", "feature-x") == 6
+    assert f"held today {commitment:.2f}" in capsys.readouterr().err
+
+
+def test_budget_gate_still_counts_other_fires_held_today(repo, tmp_path, capsys, monkeypatch):
+    """G4 finding test 2: the exclusion is this push's own entry and nothing else. Another session's paid fire on
+    the same lane (0.90) reaches the branch after this fire's local check approved 1.50 - here in the same push, as
+    a rebase integrates it - and keeps counting: 1.50 + 0.90 > 2.00. The local check could not have seen it, which
+    is what the server-side gate is for. (Already on the branch before the local check, it is refused there.)"""
+    git, before, fired, gate = _g4_fired(repo, tmp_path, monkeypatch, "scenario-generation")
+    other = {"trigger": "model-evaluation", "fired_utc": "2026-09-23T11:30:00Z", "commit": "", "note": "other",
+             "resolved": False, "evicted": False, "nonce": None, "max_spend": 0.9, "lane": "anthropic",
+             "params_sha256": "0" * 64, "ref": "main"}
+    rows = ft.load_journal(journal_path(repo))
+    ft.save_journal(journal_path(repo), [other] + rows)
+    git("commit", "-qam", "another session's fire, integrated by a rebase")
+    capsys.readouterr()
+
+    assert gate("--push-before", before, "--ref", "main") == 6
+    captured = capsys.readouterr()
+    assert "this push's own scenario-generation journal entry" in captured.out
+    assert "max_spend 1.50 + today's committed 0.90 (landed 0.00 + held today 0.90)" in captured.err
+
+    # ...and resolving it does not change that (G1): its commitment holds for its whole UTC day
+    rows = ft.load_journal(journal_path(repo))
+    rows[0].update(resolved=True, resolved_utc="2026-09-23T11:50:00Z")
+    ft.save_journal(journal_path(repo), rows)
+    assert gate("--push-before", before, "--ref", "main") == 6
+    assert "held today 0.90" in capsys.readouterr().err
+
+
+def test_budget_gate_leaves_out_nothing_when_no_entry_matches_the_trigger_file(repo, tmp_path, capsys, monkeypatch):
+    """G4 finding test 3: a trigger file that reached the branch with no journal entry for its bytes (a hand edit, a
+    merge) has no entry to leave out, so the gate counts exactly what it counted before this change. The push does
+    add a scenario-generation entry, for other bytes: it is not this run's reservation, and it keeps counting."""
+    git, before, fired, gate = _g4_fired(repo, tmp_path, monkeypatch, "scenario-generation")
+    edited = dict(G4_LANES["scenario-generation"][0], max_spend="1.2")
+    trigger_path(repo, "scenario-generation").write_text(json.dumps(edited) + "\n", encoding="utf-8")
+    git("commit", "-qam", "hand edit of the trigger file")
+    capsys.readouterr()
+    # the journal's 1.50 entry was reserved for the fire's bytes, not these: 1.50 held + 1.50 from the params
+    assert gate("--push-before", before, "--ref", "main") == 6
+    captured = capsys.readouterr()
+    assert "no scenario-generation journal entry is shown to be this push's own fire" in captured.out
+    assert "held today 1.50" in captured.err
+
+
+def test_budget_gate_does_not_leave_out_the_entry_of_a_replayed_fire(repo, tmp_path, capsys, monkeypatch):
+    """G4 replay case. Matching on the digest alone cannot tell a fire from a merge or revert that restores the same
+    bytes while the original run may still be spending: the replay is a second run under one entry, so the entry
+    must keep counting. cmd_fire writes the entry and the trigger file in ONE commit, so an entry already on the
+    branch at the push's previous tip was taken by an earlier push - the binding petri-audit uses (Codex round 10
+    on PR #28)."""
+    git, before, fired, gate = _g4_fired(repo, tmp_path, monkeypatch, "scenario-generation")
+    fire_bytes = trigger_path(repo, "scenario-generation").read_text(encoding="utf-8")
+    assert gate("--push-before", before, "--ref", "main") == 0, capsys.readouterr().err   # the genuine fire
+    capsys.readouterr()
+
+    # the park pushed behind it, then a commit restoring the fire's bytes while the fire's entry still holds today
+    assert ft.main(["park", "--repo", str(repo), "--trigger", "scenario-generation", "--no-git"]) == 0
+    git("add", "-A")
+    git("commit", "-qm", "Fire scenario-generation: park")
+    parked = git("rev-parse", "HEAD").stdout.strip()
+    trigger_path(repo, "scenario-generation").write_text(fire_bytes, encoding="utf-8")
+    git("commit", "-qam", "restore the paid bytes (a merge or revert)")
+    capsys.readouterr()
+
+    assert gate("--push-before", parked, "--ref", "main") == 6
+    captured = capsys.readouterr()
+    assert "no scenario-generation journal entry is shown to be this push's own fire" in captured.out
+    # 1.50 from the params, on top of the fire's 1.50 and the park's 0.01 still held today
+    assert "max_spend 1.50 + today's committed 1.51 (landed 0.00 + held today 1.51)" in captured.err
+
+
+def test_pushed_fire_entry_refuses_a_journal_it_cannot_read_at_the_previous_tip(repo, monkeypatch):
+    """A line at `before` that does not parse could be the very entry, so nothing is left out (fail closed)."""
+    monkeypatch.setattr(ft, "utc_now", lambda: datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc))
+    git = _git_repo(repo)
+    journal_path(repo).write_text("{not json\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "corrupt journal")
+    before = git("rev-parse", "HEAD").stdout.strip()
+    entry = {"trigger": "scenario-generation", "fired_utc": "2026-09-23T11:59:00Z", "resolved": False,
+             "evicted": False, "max_spend": 1.5, "lane": "anthropic", "params_sha256": "d" * 64, "ref": "main"}
+    found = ft.pushed_fire_entry(repo, "scenario-generation", [entry], digest="d" * 64, lane="anthropic",
+                                 today="2026-09-23", before=before, ref="main")
+    assert found is None
+    # the same inputs against a readable, empty journal at `before`: the entry is this push's
+    journal_path(repo).write_text("", encoding="utf-8")
+    git("commit", "-qam", "repaired")
+    repaired = git("rev-parse", "HEAD").stdout.strip()
+    assert ft.pushed_fire_entry(repo, "scenario-generation", [entry], digest="d" * 64, lane="anthropic",
+                                today="2026-09-23", before=repaired, ref="main") is entry
+    # ...but not for a digest, lane or day it was not reserved for
+    for over in ({"digest": "e" * 64}, {"lane": "openrouter"}, {"today": "2026-09-24"}, {"digest": None},
+                 {"ref": ""}, {"before": ""}):
+        kwargs = {"digest": "d" * 64, "lane": "anthropic", "today": "2026-09-23", "before": repaired, "ref": "main",
+                  **over}
+        assert ft.pushed_fire_entry(repo, "scenario-generation", [entry], **kwargs) is None, over
+
+
+G4_WORKFLOWS = {"scenario-generation": "scenario_generation.yml", "model-evaluation": "model_evaluation.yml",
+                "advice-eval": "advice_evaluation.yml"}
+
+
+@pytest.mark.parametrize("trigger", sorted(G4_WORKFLOWS))
+def test_the_paid_workflows_hand_the_gate_the_push_binding(trigger):
+    """G4: without --push-before and --ref the gate can identify no entry as this push's own, and counts the fire
+    twice. Read from the parsed YAML: the job that runs the gate passes both, from the push event, and checks out
+    enough history to read the journal at the previous tip (blobless, as petri_audit.yml does, so full history
+    costs commits and trees only)."""
+    import yaml
+
+    path = _MODULE_PATH.parents[1] / ".github" / "workflows" / G4_WORKFLOWS[trigger]
+    doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+    gates = [(name, job, step) for name, job in doc["jobs"].items() for step in job.get("steps", [])
+             if "budget-gate" in str(step.get("run", ""))]
+    assert len(gates) == 1, gates
+    name, job, step = gates[0]
+    assert f"budget-gate --trigger {trigger} " in step["run"]
+    assert '--push-before "$PUSH_BEFORE"' in step["run"] and '--ref "$REF_NAME"' in step["run"]
+    assert step["env"]["PUSH_BEFORE"] == "${{ github.event.before }}"
+    assert step["env"]["REF_NAME"] == "${{ github.ref_name }}"
+    checkout = next(s for s in job["steps"] if str(s.get("uses", "")).startswith("actions/checkout@"))
+    assert checkout["with"]["fetch-depth"] == 0, f"{name}: a shallow clone cannot read the previous tip's journal"
+    assert checkout["with"]["filter"] == "blob:none"
+    assert job["if"] == "${{ !github.event.created }}", "the ref-creation guard is untouched"
