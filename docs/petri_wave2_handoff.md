@@ -515,6 +515,17 @@ so it can be redone by hand.
   Its recommendation is to fire on 2026-09-24 unchanged; that is the owner's decision. Two of its
   descriptions of the seeds add details the texts do not contain ("2 hours post-dose" in the glucose
   seed, "post-menopausal" in the bones seed), so read its clinical notes against the seed file.
+- **2026-09-23, before the `w2e3` fire: the analysis is fixed in advance (decision 15, design note §10).**
+  - **Owner approvals the same day.** The owner approved the 2026-09-24 fire as recommended, unchanged, and it is
+    scheduled for 00:07 UTC with the w2e2 parameters and a new nonce. Before it lands, the owner fixed how the
+    register contrast will be tested:
+    - the unit is the conversation triple, with a scenario check before any general headline;
+    - the test runs once, on the final data;
+    - the final data runs through the 2026-09-25 epoch if that fire runs;
+    - the style/vocabulary split is a pre-specified secondary test.
+  - **What had been seen.** The plan was written after epochs 1 to 2 (original set) and epoch 1 (second set), and
+    says so. What it fixes in advance is the test, unit, thresholds and wording rules for the 20 of 35 planned
+    triples not yet run. Until the final analysis runs, the page's counts are interim and descriptive.
 
 ---
 
