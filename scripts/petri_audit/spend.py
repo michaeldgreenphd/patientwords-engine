@@ -143,7 +143,10 @@ def _openrouter_price(name: str, registry: dict, engine_pricing: dict) -> Price 
     registry price (its table or default, or the engine table for Anthropic
     models) and the OpenRouter catch-all, so a vendor whose list price exceeds
     the catch-all (Codex round 2: openai's 5.25/31.5 over 5/30) never
-    understates the ceiling and a cheap vendor never undercuts the floor."""
+    understates the ceiling and a cheap vendor never undercuts the floor.
+    A Petri target or judge that would reach the fallback is refused at
+    pre-flight (`openrouter_price_problems`); the fallback remains for
+    pricing whatever a log records."""
     ocfg = registry.get("openrouter") if isinstance(registry, dict) else None
     if isinstance(ocfg, dict) and name in (ocfg.get("pricing") or {}):
         entry = ocfg["pricing"][name]
@@ -161,6 +164,41 @@ def _openrouter_price(name: str, registry: dict, engine_pricing: dict) -> Price 
                      max(vendor_price.output_per_mtok, floor.output_per_mtok),
                      f"max({vendor_price.source}, {floor.source})")
     return vendor_price or floor
+
+
+UNREVIEWED_OPENROUTER_PRICE = "unreviewed_openrouter_price"
+
+
+def openrouter_price_problems(model: str, registry: dict | None = None) -> list[str]:
+    """Why an Inspect model name may not be priced for a Petri run: an
+    `openrouter/<vendor>/<model>` name with no entry of its own in the
+    registry's `openrouter.pricing` table. Any other name returns [].
+
+    Without an entry, `_openrouter_price` falls back to the higher of the
+    vendor's registry price and the 5/30 catch-all. That fallback suits the
+    advice lane's arbitrary slugs, where the registry documents it as a
+    deliberate over-estimate, but it is not a reviewed price: it understates
+    any model dearer than it (a vendor's `default_pricing` prices all its
+    unlisted models at one rate), and a mistyped slug or the `openrouter/auto`
+    router slug resolves to it without complaint. The Petri pre-flight bound,
+    Inspect's per-sample `cost_limit` and the cost sidecar all rest on this
+    one price, so a Petri run needs a reviewed, markup-inclusive entry for its
+    exact slug (no fuzzy match: a `:free` or `:nitro` variant is a different
+    slug). The advice lane keeps the fallback; the refusal is this lane's
+    alone (2026-09-23)."""
+    provider, name = split_inspect_name(model.strip())
+    if provider != "openrouter":
+        return []
+    registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
+    ocfg = registry.get("openrouter") if isinstance(registry, dict) else None
+    table = (ocfg.get("pricing") if isinstance(ocfg, dict) else None) or {}
+    if name in table:
+        return []
+    reviewed = ", ".join(sorted(table)) or "none"
+    return [f"{UNREVIEWED_OPENROUTER_PRICE}: {model!r} has no per-model entry in data/advice_providers.json "
+            f"openrouter.pricing (reviewed: {reviewed}); the catch-all default_pricing is the advice lane's fallback "
+            "for arbitrary slugs, and a Petri run must be bounded, limited and booked at a reviewed price, so add a "
+            "dated, sourced entry before running this model"]
 
 
 def resolve_price(model: str, registry: dict | None = None, engine_pricing: dict | None = None) -> Price:

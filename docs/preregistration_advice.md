@@ -105,6 +105,49 @@ margin; regression test `test_registry_prices_rerouted_gemini_slug`).
 Registry re-frozen at this revision:
 `84acef3606cb8afa10cabe5a0c72cc772a5838a8111a47f297e8cf6f7ae59fee`
 
+Metering correction (recorded 2026-09-23; no record rewritten, nothing
+re-run): the per-model rate that amendment added, [0.35, 2.75] USD/Mtok, was
+below the model's list price of [1.5, 9.0] (the OpenRouter catalogue captured
+2026-08-04, `data/pab/openrouter_catalogue_20260804T025116Z.json`, and the
+registry's own `google.default_pricing`). OpenRouter's bill for each call is
+archived in `response_raw.usage.cost`, and it equals the list rate on all 884
+archived `openrouter:google/gemini-3.5-flash` calls (two were errors billed
+$0). So from 2026-07-23 to 2026-09-23 the meter understated OpenRouter's bill
+for this slug 3.28-fold. The 864 calls it priced, sent 2026-07-23T00:19:53Z
+to 2026-08-23T11:43:02Z, booked $2.4307 against $7.9638 billed, $5.5331
+under:
+
+| Archive (`responses_…`) | Calls | Booked | Billed |
+|---|---|---|---|
+| `stimuli_20260721T235403Z` | 214 | $0.6016 | $1.9707 |
+| `stimuli_20260722T003502Z` | 74 | $0.2081 | $0.6818 |
+| `stimuli_20260722T112140Z` | 50 | $0.1407 | $0.4609 |
+| `stimuli_20260728T194624Z` | 234 | $0.6579 | $2.1553 |
+| `stimuli_20260807T153329Z` | 292 | $0.8224 | $2.6951 |
+
+By send date the shortfall falls on 2026-07-23 ($2.1630), 07-28 ($1.0745),
+07-29 ($0.3652), 08-07 ($1.8727), 08-22 ($0.0385) and 08-23 ($0.0192); the
+spend ledger folded the booked values (`responses_*.report.json`). Each
+elicit fire's `max_spend` check priced these calls at the same rate, so a fire
+that ran to its ceiling could be charged more than its `max_spend`: its Gemini
+calls cost 3.28 times what the check counted. The amendment
+above also overstates its own figure: the 18 calls of runs 1c and
+hedge-resume metered at the catch-all [5, 30] were over-booked 3.33-fold
+($0.5530 booked, $0.1659 billed), not ~12-fold, because ~12x was measured
+against the same wrong rate. The archives stand as recorded: each record's
+`cost_usd` keeps its metered value, and its token counts and
+`response_raw.usage.cost` are the measured truth from which the real cost is
+recomputable. From this revision the registry prices the slug at [1.6, 9.5]
+(list + ~5% markup + margin), adds reviewed OpenRouter entries for
+`openai/gpt-5.4-mini`, `x-ai/grok-4.3` and `anthropic/claude-haiku-4.5`, and
+`tests/test_petri_openrouter_prices.py` holds every OpenRouter entry to at
+least list x 1.05 and to at least every archived OpenRouter bill for its slug.
+The registry had also moved since the last re-freeze above, through four
+revisions recorded only in git history (a40ec2a2, b415416e, 78d5beb1,
+8243a7e4), to sha256 `29732b5db1bbda19c9a2b0e568ae2582ec69804dcfedc5fec7221aaafb711f3c`.
+Registry sha256 at this revision:
+`8879941bcdd63e2e99ca7d298db61c557207284c064ff34a597f46d84fb84a76`
+
 ## The consumer-proxy caveat (repeat in every writeup)
 
 API models are proxies for consumer products: no product system prompt, no

@@ -36,7 +36,9 @@ from .seal import sealed_registry, seed_texts_against_registry
 from .seeds import conditions, load_seed_file, select_seeds, target_visible_strings, validate_seed
 from .spend import (
     judge_billing_channel,
+    openrouter_price_problems,
     preflight_bound,
+    registry_spec_to_inspect,
     resolve_price,
     resolve_registry_price,
     usage_from_samples,
@@ -73,6 +75,16 @@ def cmd_verify_lock(args: argparse.Namespace) -> int:
     report = verify_lock(load_lock(args.lock), harness_commit_known=not args.no_harness_commit, lock_path=args.lock)
     print("\n".join(report_lines(report)))
     return 0 if report.ok else 3
+
+
+def _judge_price_problems(spec: str) -> list[str]:
+    """`spend.openrouter_price_problems` for a registry-form judge spec. A
+    spec that cannot be expanded to an Inspect name (a bare provider with no
+    consumer_default) cannot be priced either, so it is a problem, not a crash."""
+    try:
+        return openrouter_price_problems(registry_spec_to_inspect(spec))
+    except ValueError as exc:
+        return [str(exc)]
 
 
 def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
@@ -121,9 +133,23 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
             for p in judge_problems:
                 print(p, file=sys.stderr)
             return 5, {}
+        # an `openrouter:` judge needs a reviewed per-model price, as the target does below: the judge ceiling is
+        # enforced per call at this price, and the catch-all it would otherwise take is not a reviewed rate
+        judge_unpriced = _judge_price_problems(args.judge_model)
+        if judge_unpriced:
+            for p in judge_unpriced:
+                print(f"pre-flight: REFUSED - judge {args.judge_model}: {p}", file=sys.stderr)
+            return 5, {}
         judge_price = resolve_registry_price(args.judge_model)
         print(f"judge {args.judge_model}: {judge_billing_channel(args.judge_model)} channel, in {judge_price.input_per_mtok}/Mtok "
               f"out {judge_price.output_per_mtok}/Mtok ({judge_price.source})")
+    # an `openrouter/` target without a reviewed per-model price is refused before the bound is computed from the
+    # catch-all (2026-09-23): the bound, Inspect's cost_limit and the sidecar would all rest on an unreviewed rate
+    target_unpriced = openrouter_price_problems(args.target)
+    if target_unpriced:
+        for p in target_unpriced:
+            print(f"pre-flight: REFUSED - target {p}", file=sys.stderr)
+        return 5, {}
     price = resolve_price(args.target)
     samples = sum(len(conditions(s)) for s in seeds)
     bound = preflight_bound(samples=samples, epochs=args.epochs, token_limit=args.token_limit, price=price,
@@ -276,6 +302,15 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
 
 
 def cmd_judge(args: argparse.Namespace) -> int:
+    # the workflow's pre-flight already refused an unreviewed `openrouter:` judge before the target spent; a judge pass
+    # started on its own (a local re-judge of a landed run) never passed that pre-flight, so it is refused here too,
+    # first, since the check needs nothing from the run or the harness
+    unpriced = _judge_price_problems(args.judge_model)
+    if unpriced:
+        for p in unpriced:
+            print(f"refused before any judge call: {p}", file=sys.stderr)
+        return 5
+
     from .adapter import read_records
     from .judge_runner import (
         TIER_TEMPERATURE,
