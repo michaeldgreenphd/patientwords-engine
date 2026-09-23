@@ -399,13 +399,16 @@ def test_the_fallback_spend_report_waits_for_a_target_start_marker(workflow):
     sidecar, the ledger would fold a cost for a run that made no provider call and
     reconciliation would accept it as this fire's landed spend (Codex round 8)."""
     run_step = _step(workflow, "Run (mode dry_run or run")
-    assert 'touch "$RUNNER_TEMP/petri-run/target_started"' in run_step["run"], \
-        "the run step must leave the marker the spend report keys off"
+    # the CLI writes the marker once the target model is built, immediately before the eval (2026-09-23): touched by
+    # the shell before the CLI, a missing key or an unknown provider, which fail in get_model with no provider call,
+    # booked the whole max_spend through this report
+    body = "\n".join(ln for ln in run_step["run"].splitlines() if not ln.lstrip().startswith("#"))
+    assert '--started-marker "$RUNNER_TEMP/petri-run/target_started"' in body, \
+        "the run step must hand the CLI the marker the spend report keys off"
+    assert "touch" not in body and body.count("target_started") == 1, "the shell must not create the marker itself"
+    assert body.index("scripts.petri_audit.cli run") < body.index("--started-marker")
     spend = _step(workflow, "Spend report for an attempted run")
     assert '[ ! -f "$RUNNER_TEMP/petri-run/target_started" ]' in spend["run"], \
         "the target sidecar must not be imputed for a run that never started"
     # the judge's own marker is untouched: a judge that started and died is still booked at its ceiling
     assert '[ -f "$RUNNER_TEMP/petri-run/judge_started" ]' in spend["run"]
-    # and the marker is written before the paid call, not after it
-    body = run_step["run"]
-    assert body.index("target_started") < body.index("scripts.petri_audit.cli run")

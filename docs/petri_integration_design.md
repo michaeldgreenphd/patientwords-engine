@@ -1709,7 +1709,12 @@ re-parked. PR B carries what a paid fire still lacked:
     fix failed: the first attempt put the marker in **Validate seeds**, whose
     opening lines are identical to the Run step's, where it would have been
     touched before any call and guarded nothing. The test asserts the marker
-    precedes `cli run` and caught it.
+    precedes `cli run` and caught it. (2026-09-23: the Run step still wrote it
+    before `get_model`, so a missing or empty API key or an unknown provider,
+    which fail with no call made, booked the whole ceiling. `cli run
+    --started-marker` now writes it after the model is built and priced,
+    immediately before the eval, and exits 11 without it on a construction
+    failure.)
 
     In the reconciliation: a target sidecar carrying neither `eval_id` nor
     `run_id` is named, because every identity comparison was conditional on the

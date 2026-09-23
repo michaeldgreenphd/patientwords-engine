@@ -89,19 +89,40 @@ def generation_config(seed: dict) -> GenerateConfig:
     return GenerateConfig(**kwargs)
 
 
-def run_study(task: Task, *, target: str | Model, seeds: list[dict], epochs: int, log_dir: Path | str,
-              token_limit: int | None, cost_limit: float | None, log_model_api: bool = True,
-              fail_on_error: bool = False, max_retries: int = 2, registry: dict | None = None) -> EvalLog:
-    """Run the Task against the target under the seed's generation config with
-    every layer of the spend discipline that lives on this side: prices
-    registered, per-sample token and cost limits, raw calls logged, sample
-    errors recorded rather than aborting the run."""
+def build_target(target: str | Model, seeds: list[dict]) -> Model:
+    """The target Model under the seeds' one shared generation block, built
+    before anything is marked started. `get_model` raises here, before any
+    provider call, for an unknown provider (ValueError) and for an API key
+    variable that is unset or empty (PrerequisiteError: an Actions secret that
+    does not exist arrives as an empty string). A model name the provider
+    does not serve is NOT caught here: construction accepts any name, and the
+    first call fails. A Model passed in is returned as given."""
     configs = {seed["seed_id"]: seed["generation"] for seed in seeds}
     if len({(c["temperature"], c["max_tokens"], c["seed_requested"]) for c in configs.values()}) != 1:
         raise ValueError("every seed in one run must share the same generation block; split the run")
-    config = generation_config(seeds[0])
-    target_model = get_model(target, config=config) if isinstance(target, str) else target
+    return get_model(target, config=generation_config(seeds[0])) if isinstance(target, str) else target
+
+
+def run_study(task: Task, *, target: str | Model, seeds: list[dict], epochs: int, log_dir: Path | str,
+              token_limit: int | None, cost_limit: float | None, log_model_api: bool = True,
+              fail_on_error: bool = False, max_retries: int = 2, registry: dict | None = None,
+              started_marker: Path | str | None = None) -> EvalLog:
+    """Run the Task against the target under the seed's generation config with
+    every layer of the spend discipline that lives on this side: prices
+    registered, per-sample token and cost limits, raw calls logged, sample
+    errors recorded rather than aborting the run. `started_marker`, when
+    given, is created after the model is built and its price registered and
+    immediately before the eval, the first point at which a provider call can
+    spend."""
+    target_model = build_target(target, seeds)
     register_prices([str(target_model)], registry)
+    if started_marker is not None:
+        # the workflow's always()-gated fallback spend report imputes the full target ceiling when this marker exists
+        # and no adapted report does; written before get_model, it booked max_spend for a missing key or an unknown
+        # provider that never reached a provider (2026-09-23)
+        marker = Path(started_marker)
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.touch()
     [log] = inspect_eval(
         task,
         model_roles={"target": target_model},

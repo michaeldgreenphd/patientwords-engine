@@ -820,3 +820,27 @@ def test_a_sample_inspect_halts_at_its_token_limit_is_refused_as_a_tree(run, tmp
     # the halted samples' calls were made and are still booked
     row = next(r for r in result.manifest["usage"]["by_model"] if r["model"] == "mockllm/model")
     assert row["calls"] == 4 and row["input_tokens"] == 1600
+
+
+def test_the_start_marker_is_written_only_once_the_target_model_is_built(tmp_path, monkeypatch, capsys):
+    """The workflow touched `target_started` before `cli run`, so a missing
+    OPENROUTER_API_KEY (an absent Actions secret arrives empty) failed in
+    get_model with no provider call and the fallback spend report booked the
+    whole max_spend. The CLI now writes the marker after the model is built."""
+    marker = tmp_path / "petri-run" / "target_started"
+    monkeypatch.setenv("OPENROUTER_API_KEY", "")
+    code = cli.main(["run", "--target", "openrouter/openai/gpt-5.4-mini", "--max-spend", "50", "--seed-id", H4,
+                     "--no-harness-commit", "--out-dir", str(tmp_path / "petri-run"), "--started-marker", str(marker)])
+    err = capsys.readouterr().err
+    assert code == 11 and "could not be built (PrerequisiteError" in err and "OPENROUTER_API_KEY" in err
+    assert not marker.exists() and not (tmp_path / "petri-run" / "logs").exists(), "no eval ran, nothing is booked"
+    monkeypatch.delenv("OPENROUTER_API_KEY")
+    assert cli.main(["run", "--target", "nosuchprovider/x", "--max-spend", "50", "--seed-id", H4, "--no-harness-commit",
+                     "--out-dir", str(tmp_path / "petri-run"), "--started-marker", str(marker)]) == 11
+    assert not marker.exists()
+    # a target that builds gets the marker before its eval runs
+    code = cli.main(["run", "--target", "mockllm/model", "--max-spend", "0.01", "--seed-id", H4, "--no-harness-commit",
+                     "--out-dir", str(tmp_path / "petri-run"), "--started-marker", str(marker)])
+    assert code == 0 and marker.is_file() and next((tmp_path / "petri-run" / "logs").glob("*.eval"))
+    assert marker.stat().st_mtime <= next((tmp_path / "petri-run" / "logs").glob("*.eval")).stat().st_mtime
+    capsys.readouterr()

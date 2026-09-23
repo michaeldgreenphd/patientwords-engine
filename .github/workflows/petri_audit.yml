@@ -345,17 +345,19 @@ jobs:
           for s in $SEED_IDS; do ARGS="$ARGS --seed-id $s"; done
           if [ -z "$SEED_IDS" ]; then ARGS="--wave $WAVE"; fi
           if [ "$JUDGE" = "true" ]; then ARGS="$ARGS --judge-max-spend $JUDGE_MAX_SPEND --judge-model $JUDGE_MODEL"; fi
-          # The target-start marker, the twin of the judge's, written immediately before the call that can spend.
-          # The always()-gated spend report runs even when a step BEFORE this one failed - seed validation, the
+          # The target-start marker, the twin of the judge's, marks the point from which a provider call can spend.
+          # The always()-gated spend report runs even when a step BEFORE the call failed - seed validation, the
           # environment lock, preflight - and with no eval log it imputes the FULL target ceiling; since PR B binds
           # the journal nonce into that sidecar, the ledger would fold a cost for a run that made no provider call
-          # (Codex round 8 on PR #28). It must sit in THIS step: placed in "Validate seeds", whose first lines are
-          # identical, it would be touched before any call and guard nothing.
+          # (Codex round 8 on PR #28). `cli run` writes it (--started-marker) after the target model is built and
+          # priced, immediately before the eval: touched here, before the CLI, a missing or empty API key or an
+          # unknown provider, which fail in get_model with no call made, booked the whole max_spend (2026-09-23).
+          # Such a failure exits 11 with the marker absent; any failure after the marker is still booked.
           mkdir -p "$RUNNER_TEMP/petri-run"
-          touch "$RUNNER_TEMP/petri-run/target_started"
           python -m scripts.petri_audit.cli run --seeds "$SEEDS_FILE" $ARGS \
             --target "$TARGET" --max-spend "$MAX_SPEND" --epochs "$EPOCHS" --token-limit "$TOKEN_LIMIT" \
-            --log-model-api "$LOG_MODEL_API" --out-dir "$RUNNER_TEMP/petri-run" --journal-nonce "$JOURNAL_NONCE"
+            --log-model-api "$LOG_MODEL_API" --out-dir "$RUNNER_TEMP/petri-run" --journal-nonce "$JOURNAL_NONCE" \
+            --started-marker "$RUNNER_TEMP/petri-run/target_started"
 
       - name: Adapt (sanitised export, transcripts 0.2, rule outcomes, manifest, cost sidecar)
         if: ${{ needs.params.outputs.mode != 'preflight' }}

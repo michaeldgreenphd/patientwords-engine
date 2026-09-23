@@ -7,7 +7,7 @@ same checks and calls nothing.
     python -m scripts.petri_audit.cli validate-seeds [--seeds FILE] [--seed-id ID ...] [--wave N]
     python -m scripts.petri_audit.cli verify-lock [--lock FILE]
     python -m scripts.petri_audit.cli preflight --target SPEC --max-spend USD [--epochs N] [--token-limit N]
-    python -m scripts.petri_audit.cli run --target SPEC --max-spend USD --out-dir DIR [--log-model-api true|false] [...]
+    python -m scripts.petri_audit.cli run --target SPEC --max-spend USD --out-dir DIR [--started-marker FILE] [...]
     python -m scripts.petri_audit.cli adapt --eval FILE --out-dir DIR --custody STR --max-spend USD [--run-params FILE] [...]
     python -m scripts.petri_audit.cli spend-report --out FILE --run-id ID --target SPEC --max-spend USD [--eval FILE]
     python -m scripts.petri_audit.cli judge --run-dir DIR --judge-model SPEC --judge-max-spend USD [...]
@@ -148,7 +148,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     code, facts = _preflight(args)
     if code:
         return code
-    from .task import run_study, study_task  # 3.12 only
+    from .task import build_target, run_study, study_task  # 3.12 only
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -162,8 +162,18 @@ def cmd_run(args: argparse.Namespace) -> int:
         "epochs": args.epochs, "samples": facts["samples"], "log_model_api": args.log_model_api == "true",
         "journal_nonce": args.journal_nonce or None,
         "seed_ids": [s["seed_id"] for s in facts["seeds"]]})
-    log = run_study(task, target=args.target, seeds=facts["seeds"], epochs=args.epochs, log_dir=out_dir / "logs",
-                    token_limit=args.token_limit, cost_limit=per_sample_cost, log_model_api=args.log_model_api == "true")
+    try:
+        target_model = build_target(args.target, facts["seeds"])
+    except Exception as exc:  # noqa: BLE001 - every construction failure precedes the first provider call
+        # exit 11: nothing was called and the start marker was not written, so the workflow's fallback spend report
+        # books nothing for this fire (2026-09-23: the marker used to be written before the model was built)
+        reason = " ".join(str(exc).split())[:400]          # Inspect's messages span lines; the key variable is named late
+        print(f"target {args.target!r} could not be built ({type(exc).__name__}: {reason}); no provider call was made "
+              "and the start marker was not written", file=sys.stderr)
+        return 11
+    log = run_study(task, target=target_model, seeds=facts["seeds"], epochs=args.epochs, log_dir=out_dir / "logs",
+                    token_limit=args.token_limit, cost_limit=per_sample_cost, log_model_api=args.log_model_api == "true",
+                    started_marker=args.started_marker)
     print(f"eval {log.eval.eval_id} status {log.status}; log {log.location}")
     return 0 if log.status == "success" else 7
 
@@ -496,6 +506,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--log-model-api", choices=["true", "false"], default="true",
                    help="retain every raw provider request/response in the (never committed) .eval; "
                         "false leaves generation_config_pinned unprovable, so the run cannot be claim-grade")
+    p.add_argument("--started-marker", default=None,
+                   help="file created once the target model is built, immediately before the eval; the workflow's "
+                        "fallback spend report imputes the target ceiling only when it exists")
     p.set_defaults(func=cmd_run)
 
     p = sub.add_parser("adapt")
