@@ -916,3 +916,38 @@ def test_an_openrouter_targets_cached_prompt_tokens_are_booked(run, tmp_path_fac
     assert code == 0
     sidecar = framework.load_json(run_dir.parent / "run_or2" / "run_or2.report.json")
     assert sidecar["cost_usd"] == pytest.approx(expected) and sidecar["billing_channel"] == "openrouter"
+
+
+def test_an_openrouter_targets_upstream_hosts_are_counted_from_the_raw_response(run, tmp_path_factory, monkeypatch):
+    """OpenRouter can serve one slug from several hosts, and the host it chose
+    is named only in the raw response, which the sanitiser never publishes.
+    The adapter counts the hosts per call into models.target and copies
+    nothing else; a call whose response names no host is counted as such."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    hosts = iter(["OpenAI", "Azure", None, "OpenAI"])
+    counter = iter(range(1, 100))
+
+    def reply(request):
+        n = next(counter)
+        return _completion(f"reply {n}", n=n, provider=next(hosts))
+
+    log = run_study(study_task(seed_set, chosen), target=_offline_openrouter(monkeypatch, reply), seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("host-logs"), token_limit=40000, cost_limit=5.0)
+    assert log.status == "success", log.error
+    out = tmp_path_factory.mktemp("host") / "run_h"
+    result = adapt_run(Path(log.location), seed_set, out, custody="github_actions_artifact:90d",
+                       spend={"max_spend_usd": 5.0, "judge_max_spend_usd": None, "journal_nonce": None,
+                              "cost_limit_per_sample_usd": 5.0, "token_limit_per_sample": 40000},
+                       engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
+    target = result.manifest["models"]["target"]
+    assert target["upstream_providers"] == {"by_provider": [{"provider": "Azure", "calls": 1}, {"provider": "OpenAI", "calls": 2}],
+                                            "calls_unrecorded": 1}
+    assert target["served_model_strings"] == ["openai/gpt-5.4-mini"], "the served string alone cannot tell the hosts apart"
+    assert manifest_problems(result.manifest) == []
+    # the sanitiser was not relaxed: the raw call block is still absent from the published log, host name included
+    sanitised = (out / "sanitised_log.json").read_text(encoding="utf-8")
+    assert sanitizer.forbidden_key_paths(json.loads(sanitised), set(sanitizer.load_allowlist()["forbidden_keys"])) == []
+    assert "Azure" not in sanitised and result.manifest["artifacts"]["sanitiser"]["version"] == "0.2"
+    # a target not routed through OpenRouter records null
+    assert run["r1"].manifest["models"]["target"]["upstream_providers"] is None

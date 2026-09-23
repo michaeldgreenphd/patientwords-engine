@@ -1708,3 +1708,30 @@ def test_prompt_cache_tokens_are_priced_never_dropped(tmp_path):
     assert bound.per_sample_usd == pytest.approx(6.0) and not bound.within
     assert spend.preflight_bound(samples=1, epochs=1, token_limit=20000, price=spend.Price(1.0, 5.0, "x"),
                                  judge_reserve_usd=0.0, max_spend_usd=1.0).per_sample_usd == pytest.approx(0.1)
+
+
+def test_only_a_plain_upstream_host_name_is_copied_out_of_a_raw_response():
+    """OpenRouter routes one slug to several hosts (the advice archives show
+    gpt-5.4-mini on OpenAI and Azure, DeepSeek on eighteen hosts), and its
+    `provider` field survives only in the raw `call`, which the sanitiser
+    forbids. The adapter copies out the host's name alone, and only when it
+    is a short plain name."""
+    for name in ("OpenAI", "Azure", "Google", "xAI", "DeepInfra", "Moonshot AI", "Io Net", "Mancer 2", "Z.AI",
+                 "Google AI Studio", "Amazon Bedrock"):
+        assert checks.upstream_provider_name({"id": "gen-1", "provider": name, "choices": []}) == name, name
+    assert checks.upstream_provider_name({"provider": "  OpenAI "}) == "OpenAI"
+    for response in (None, "OpenAI", [], {}, {"provider": None}, {"provider": 7}, {"provider": ""},
+                     {"provider": {"name": "OpenAI"}}, {"provider": "x" * 65}, {"provider": "Open\nAI"},
+                     {"provider": "<script>"}, {"provider": "-leading"}):
+        assert checks.upstream_provider_name(response) is None, response
+    schema = framework.load_json(framework.MANIFEST_SCHEMA)
+    base = json.loads(json.dumps(schema["examples"][0]))
+    base["models"]["target"]["upstream_providers"] = {"by_provider": [{"provider": "Azure", "calls": 2},
+                                                                      {"provider": "OpenAI", "calls": 223}],
+                                                      "calls_unrecorded": 0}
+    assert framework.validate_with_refs(base, schema) == []
+    base["models"]["target"]["upstream_providers"] = None
+    assert framework.validate_with_refs(base, schema) == [], "null for a target not routed through OpenRouter"
+    base["models"]["target"]["upstream_providers"] = {"by_provider": [{"provider": "", "calls": 1}]}
+    problems = framework.validate_with_refs(base, schema)
+    assert any("missing 'calls_unrecorded'" in p for p in problems) and any("shorter than 1" in p for p in problems)

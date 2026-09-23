@@ -51,6 +51,7 @@ from .checks import (
     sample_limit_refusal,
     staging_problems,
     stimulus_problems,
+    upstream_provider_name,
 )
 from .controller import INFO_SOURCE
 from .envlock import installed_harness_commit, load_lock
@@ -72,7 +73,8 @@ from .transcripts import bind_manifest, build_record, conversation_id, record_pr
 
 ADAPTER_NAME = "petri_audit.adapter"
 # 0.2 (2026-09-23): each assistant turn's stop reason is recorded (per branch and counted per run) and a truncated,
-# filtered or empty reply refuses its branch; a sample Inspect halted at a limit refuses its tree
+# filtered or empty reply refuses its branch; a sample Inspect halted at a limit refuses its tree; an openrouter/
+# target's upstream hosts are counted per call (models.target.upstream_providers)
 ADAPTER_VERSION = "0.2"
 # inspect-ai 0.3.237 forwards GenerateConfig.seed on these providers (design memo section 2); anthropic and
 # google never send it; mock and placeholder models have no provider behaviour to record.
@@ -209,6 +211,8 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     dropped_empty = 0
     served_all: set[str] = set()
     stop_counts: dict[str, int] = {}          # every target call's stop reason, refused trees included
+    upstream_counts: dict[str, int] = {}      # openrouter/ targets: calls per upstream host OpenRouter named
+    upstream_unrecorded = 0                   # calls with no retained response, or one naming no plain host
     role_usage: dict[str, dict[str, Any]] = {}
     model_usage: dict[str, dict[str, Any]] = {}
     seen_counts: dict[str, dict[str, int]] = {}
@@ -276,6 +280,14 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             stop_counts[reason] = stop_counts.get(reason, 0) + 1
             if choice is not None and choice.message.id:
                 stop_by_message[choice.message.id] = reason
+            if target_provider == "openrouter":
+                # read from the raw response BEFORE sanitising: the `call` block never reaches a published file, and
+                # only the host's name is copied out of it (checks.upstream_provider_name)
+                host = upstream_provider_name(e.call.response if e.call is not None else None)
+                if host is None:
+                    upstream_unrecorded += 1
+                else:
+                    upstream_counts[host] = upstream_counts.get(host, 0) + 1
         if seed is None:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"sample metadata names no known seed ({seed_id!r})"})
             continue
@@ -545,6 +557,10 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                               "inspect_name": target_name, "registry_spec": registry_spec,
                               "served_model_strings": sorted(served_all),
                               "stop_reasons": [{"stop_reason": r, "calls": n} for r, n in sorted(stop_counts.items())],
+                              "upstream_providers": ({"by_provider": [{"provider": h, "calls": n}
+                                                                      for h, n in sorted(upstream_counts.items())],
+                                                      "calls_unrecorded": upstream_unrecorded}
+                                                     if target_provider == "openrouter" else None),
                               "config": {k: v for k, v in (target_role.config.model_dump(mode="json") if target_role else {}).items() if v is not None},
                               "seed_requested": (seeds_used and next(iter(seeds_used.values()))["generation"]["seed_requested"]) or None,
                               "seed_forwarded_by_provider": SEED_FORWARDING.get(target_provider),

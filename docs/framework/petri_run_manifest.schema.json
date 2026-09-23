@@ -1055,6 +1055,45 @@
             }
           },
           "description": "Adapter 0.2 (2026-09-23): the number of this role's calls per Inspect StopReason (stop, max_tokens, model_length, tool_calls, content_filter, unknown), one entry per reason seen, sorted by reason, over every call of the run, refused trees included; `no_output` counts calls that returned no choice (an error). Absent only in manifests written by adapter 0.1, which recorded no stop reason."
+        },
+        "upstream_providers": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "by_provider",
+            "calls_unrecorded"
+          ],
+          "properties": {
+            "by_provider": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "provider",
+                  "calls"
+                ],
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "calls": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              }
+            },
+            "calls_unrecorded": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "description": "Adapter 0.2 (2026-09-23): for an openrouter/ target, the upstream host OpenRouter named in each call's raw response (its top-level `provider` field), counted per host and sorted by name, over every call of the run, refused trees included. OpenRouter routes one model to several hosts, so served_model_strings and generation_config_pinned certify only what was sent to OpenRouter; this records who served it. Only the host's name is copied out of the raw response, which the sanitiser never publishes. calls_unrecorded counts calls whose raw response was not retained (log_model_api off, or an error) or named no plain host. null for a target not routed through OpenRouter. Absent only in manifests written by adapter 0.1."
         }
       }
     },
@@ -1200,6 +1239,45 @@
             }
           },
           "description": "Adapter 0.2 (2026-09-23): the number of this role's calls per Inspect StopReason (stop, max_tokens, model_length, tool_calls, content_filter, unknown), one entry per reason seen, sorted by reason, over every call of the run, refused trees included; `no_output` counts calls that returned no choice (an error). Absent only in manifests written by adapter 0.1, which recorded no stop reason."
+        },
+        "upstream_providers": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "by_provider",
+            "calls_unrecorded"
+          ],
+          "properties": {
+            "by_provider": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "provider",
+                  "calls"
+                ],
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "calls": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              }
+            },
+            "calls_unrecorded": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "description": "Adapter 0.2 (2026-09-23): for an openrouter/ target, the upstream host OpenRouter named in each call's raw response (its top-level `provider` field), counted per host and sorted by name, over every call of the run, refused trees included. OpenRouter routes one model to several hosts, so served_model_strings and generation_config_pinned certify only what was sent to OpenRouter; this records who served it. Only the host's name is copied out of the raw response, which the sanitiser never publishes. calls_unrecorded counts calls whose raw response was not retained (log_model_api off, or an error) or named no plain host. null for a target not routed through OpenRouter. Absent only in manifests written by adapter 0.1."
         }
       }
     },

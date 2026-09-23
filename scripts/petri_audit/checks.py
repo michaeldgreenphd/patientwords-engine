@@ -14,6 +14,7 @@ nothing to examine.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from .framework import sha256_text
@@ -387,6 +388,29 @@ def sample_limit_refusal(limit: Any, *, where: str) -> dict | None:
     value = getattr(limit, "limit", None) if not isinstance(limit, dict) else limit.get("limit")
     return {"branch_id": f"{where}:{ROOT_BRANCH}",
             "reason": f"sample halted by Inspect's {kind} limit ({value}); every branch of the tree may end mid-exchange"}
+
+
+# ------------------------------------------------ OpenRouter's upstream host (2026-09-23)
+
+_UPSTREAM_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._()+/-]{0,63}$")
+
+
+def upstream_provider_name(response: Any) -> str | None:
+    """The upstream host OpenRouter names in a retained raw response (its
+    top-level `provider` field: "OpenAI", "Azure", "DeepInfra", ...), or None
+    when no response was retained or it carries no short plain name. OpenRouter
+    routes one model slug to several hosts (the advice lane saw gpt-5.4-mini on
+    OpenAI and on Azure), and the field survives only inside the raw ModelEvent
+    `call`, which the sanitiser forbids in every published file. The adapter
+    copies this one string out before sanitising; nothing else of the raw
+    response leaves it, and a value that is not a plain name is not copied."""
+    if not isinstance(response, dict):
+        return None
+    name = response.get("provider")
+    if not isinstance(name, str):
+        return None
+    name = name.strip()
+    return name if _UPSTREAM_NAME.match(name) else None
 
 
 def exchange_limit_problems(seed: dict) -> list[str]:
