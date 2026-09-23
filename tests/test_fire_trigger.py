@@ -2841,14 +2841,16 @@ def test_budget_gate_counts_a_non_petri_fire_once(repo, tmp_path, capsys, monkey
     assert entry["ref"] == "main" and entry["params_sha256"], "the fire path records both facts the gate binds on"
     capsys.readouterr()
 
-    assert gate("--push-before", before, "--ref", "main") == 0, capsys.readouterr().err
+    assert gate("--push-before", before, "--ref", "main", "--run-attempt", "1") == 0, capsys.readouterr().err
     out = capsys.readouterr().out
     assert f"this push's own {trigger} journal entry (fired 2026-09-23T12:00:00Z)" in out
     assert f"max_spend {commitment:.2f} + today's committed 0.00 (landed 0.00 + held today 0.00)" in out
 
-    # without the push binding - a workflow_dispatch passes an empty --push-before - nothing is left out, which is
-    # the double count the gate applied before: refused, never cleared on a guess
-    for extra in (("--push-before", "", "--ref", "main"), ("--ref", "main"), ("--push-before", before)):
+    # without the push binding - a workflow_dispatch passes an empty --push-before; a workflow that stopped passing
+    # the ref or the attempt - nothing is left out, which is the double count the gate applied before: refused,
+    # never cleared on a guess
+    for extra in (("--push-before", "", "--ref", "main", "--run-attempt", "1"), ("--ref", "main", "--run-attempt", "1"),
+                  ("--push-before", before, "--run-attempt", "1"), ("--push-before", before, "--ref", "main")):
         assert gate(*extra) == 6, extra
         captured = capsys.readouterr()
         assert f"held today {commitment:.2f}" in captured.err, extra
@@ -2856,11 +2858,11 @@ def test_budget_gate_counts_a_non_petri_fire_once(repo, tmp_path, capsys, monkey
 
     # nor when the binding cannot be read: a ref creation's all-zero sha, a commit this clone does not have
     for missing in ("0" * 40, "e" * 40):
-        assert gate("--push-before", missing, "--ref", "main") == 6, missing
+        assert gate("--push-before", missing, "--ref", "main", "--run-attempt", "1") == 6, missing
         assert f"held today {commitment:.2f}" in capsys.readouterr().err
 
     # the same fire commit on another branch (a merge or a cherry-pick) is a second run there, and counts as one
-    assert gate("--push-before", before, "--ref", "feature-x") == 6
+    assert gate("--push-before", before, "--ref", "feature-x", "--run-attempt", "1") == 6
     assert f"held today {commitment:.2f}" in capsys.readouterr().err
 
 
@@ -2878,7 +2880,7 @@ def test_budget_gate_still_counts_other_fires_held_today(repo, tmp_path, capsys,
     git("commit", "-qam", "another session's fire, integrated by a rebase")
     capsys.readouterr()
 
-    assert gate("--push-before", before, "--ref", "main") == 6
+    assert gate("--push-before", before, "--ref", "main", "--run-attempt", "1") == 6
     captured = capsys.readouterr()
     assert "this push's own scenario-generation journal entry" in captured.out
     assert "max_spend 1.50 + today's committed 0.90 (landed 0.00 + held today 0.90)" in captured.err
@@ -2887,7 +2889,7 @@ def test_budget_gate_still_counts_other_fires_held_today(repo, tmp_path, capsys,
     rows = ft.load_journal(journal_path(repo))
     rows[0].update(resolved=True, resolved_utc="2026-09-23T11:50:00Z")
     ft.save_journal(journal_path(repo), rows)
-    assert gate("--push-before", before, "--ref", "main") == 6
+    assert gate("--push-before", before, "--ref", "main", "--run-attempt", "1") == 6
     assert "held today 0.90" in capsys.readouterr().err
 
 
@@ -2901,7 +2903,7 @@ def test_budget_gate_leaves_out_nothing_when_no_entry_matches_the_trigger_file(r
     git("commit", "-qam", "hand edit of the trigger file")
     capsys.readouterr()
     # the journal's 1.50 entry was reserved for the fire's bytes, not these: 1.50 held + 1.50 from the params
-    assert gate("--push-before", before, "--ref", "main") == 6
+    assert gate("--push-before", before, "--ref", "main", "--run-attempt", "1") == 6
     captured = capsys.readouterr()
     assert "no scenario-generation journal entry is shown to be this push's own fire" in captured.out
     assert "held today 1.50" in captured.err
@@ -2915,7 +2917,7 @@ def test_budget_gate_does_not_leave_out_the_entry_of_a_replayed_fire(repo, tmp_p
     on PR #28)."""
     git, before, fired, gate = _g4_fired(repo, tmp_path, monkeypatch, "scenario-generation")
     fire_bytes = trigger_path(repo, "scenario-generation").read_text(encoding="utf-8")
-    assert gate("--push-before", before, "--ref", "main") == 0, capsys.readouterr().err   # the genuine fire
+    assert gate("--push-before", before, "--ref", "main", "--run-attempt", "1") == 0, capsys.readouterr().err  # the fire
     capsys.readouterr()
 
     # the park pushed behind it, then a commit restoring the fire's bytes while the fire's entry still holds today
@@ -2927,11 +2929,32 @@ def test_budget_gate_does_not_leave_out_the_entry_of_a_replayed_fire(repo, tmp_p
     git("commit", "-qam", "restore the paid bytes (a merge or revert)")
     capsys.readouterr()
 
-    assert gate("--push-before", parked, "--ref", "main") == 6
+    assert gate("--push-before", parked, "--ref", "main", "--run-attempt", "1") == 6
     captured = capsys.readouterr()
     assert "no scenario-generation journal entry is shown to be this push's own fire" in captured.out
     # 1.50 from the params, on top of the fire's 1.50 and the park's 0.01 still held today
     assert "max_spend 1.50 + today's committed 1.51 (landed 0.00 + held today 1.51)" in captured.err
+
+
+@pytest.mark.parametrize("trigger", sorted(G4_LANES))
+def test_budget_gate_counts_an_actions_tab_rerun_of_a_non_petri_fire_beside_its_first_attempt(
+        repo, tmp_path, capsys, monkeypatch, trigger):
+    """Review of the G4 change (2026-09-23), finding R2. An Actions-tab re-run reuses the push event - the same
+    github.sha, github.event.before and github.ref_name - so every fact pushed_fire_entry binds on matches again and
+    the gate left the entry out on every attempt: a fire over half the ceiling cleared twice (2 x 1.50 against
+    2.00). origin/main refused both attempts, because it counted the entry and the params on each. The entry is now
+    left out on attempt 1 only; on attempt 2 it stands for the first attempt's commitment, beside this one's."""
+    git, before, fired, gate = _g4_fired(repo, tmp_path, monkeypatch, trigger)
+    commitment = ft.fire_commitment(G4_LANES[trigger][0])[0]
+    capsys.readouterr()
+    assert gate("--push-before", before, "--ref", "main", "--run-attempt", "1") == 0, capsys.readouterr().err
+    capsys.readouterr()
+
+    assert gate("--push-before", before, "--ref", "main", "--run-attempt", "2") == 6
+    captured = capsys.readouterr()
+    assert "a re-run" in captured.out and "every held commitment is counted" in captured.out
+    assert (f"max_spend {commitment:.2f} + today's committed {commitment:.2f} "
+            f"(landed 0.00 + held today {commitment:.2f})") in captured.err
 
 
 def test_pushed_fire_entry_refuses_a_journal_it_cannot_read_at_the_previous_tip(repo, monkeypatch):
@@ -2945,19 +2968,19 @@ def test_pushed_fire_entry_refuses_a_journal_it_cannot_read_at_the_previous_tip(
     entry = {"trigger": "scenario-generation", "fired_utc": "2026-09-23T11:59:00Z", "resolved": False,
              "evicted": False, "max_spend": 1.5, "lane": "anthropic", "params_sha256": "d" * 64, "ref": "main"}
     found = ft.pushed_fire_entry(repo, "scenario-generation", [entry], digest="d" * 64, lane="anthropic",
-                                 today="2026-09-23", before=before, ref="main")
+                                 today="2026-09-23", before=before, ref="main", attempt="1")
     assert found is None
     # the same inputs against a readable, empty journal at `before`: the entry is this push's
     journal_path(repo).write_text("", encoding="utf-8")
     git("commit", "-qam", "repaired")
     repaired = git("rev-parse", "HEAD").stdout.strip()
     assert ft.pushed_fire_entry(repo, "scenario-generation", [entry], digest="d" * 64, lane="anthropic",
-                                today="2026-09-23", before=repaired, ref="main") is entry
-    # ...but not for a digest, lane or day it was not reserved for
+                                today="2026-09-23", before=repaired, ref="main", attempt="1") is entry
+    # ...but not for a digest, lane or day it was not reserved for, nor on any attempt not known to be the first
     for over in ({"digest": "e" * 64}, {"lane": "openrouter"}, {"today": "2026-09-24"}, {"digest": None},
-                 {"ref": ""}, {"before": ""}):
+                 {"ref": ""}, {"before": ""}, {"attempt": "2"}, {"attempt": None}, {"attempt": ""}, {"attempt": "01"}):
         kwargs = {"digest": "d" * 64, "lane": "anthropic", "today": "2026-09-23", "before": repaired, "ref": "main",
-                  **over}
+                  "attempt": "1", **over}
         assert ft.pushed_fire_entry(repo, "scenario-generation", [entry], **kwargs) is None, over
 
 
@@ -2968,9 +2991,10 @@ G4_WORKFLOWS = {"scenario-generation": "scenario_generation.yml", "model-evaluat
 @pytest.mark.parametrize("trigger", sorted(G4_WORKFLOWS))
 def test_the_paid_workflows_hand_the_gate_the_push_binding(trigger):
     """G4: without --push-before and --ref the gate can identify no entry as this push's own, and counts the fire
-    twice. Read from the parsed YAML: the job that runs the gate passes both, from the push event, and checks out
-    enough history to read the journal at the previous tip (blobless, as petri_audit.yml does, so full history
-    costs commits and trees only)."""
+    twice; without --run-attempt it cannot tell a fire from an Actions-tab re-run of it, and counts it twice too.
+    Read from the parsed YAML: the job that runs the gate passes all three, from the push event and the run, and
+    checks out enough history to read the journal at the previous tip (blobless, as petri_audit.yml does, so full
+    history costs commits and trees only)."""
     import yaml
 
     path = _MODULE_PATH.parents[1] / ".github" / "workflows" / G4_WORKFLOWS[trigger]
@@ -2983,6 +3007,9 @@ def test_the_paid_workflows_hand_the_gate_the_push_binding(trigger):
     assert '--push-before "$PUSH_BEFORE"' in step["run"] and '--ref "$REF_NAME"' in step["run"]
     assert step["env"]["PUSH_BEFORE"] == "${{ github.event.before }}"
     assert step["env"]["REF_NAME"] == "${{ github.ref_name }}"
+    # a re-run reuses the push event, so the attempt is what tells the gate the entry already stood for a run
+    assert '--run-attempt "$RUN_ATTEMPT"' in step["run"]
+    assert step["env"]["RUN_ATTEMPT"] == "${{ github.run_attempt }}"
     checkout = next(s for s in job["steps"] if str(s.get("uses", "")).startswith("actions/checkout@"))
     assert checkout["with"]["fetch-depth"] == 0, f"{name}: a shallow clone cannot read the previous tip's journal"
     assert checkout["with"]["filter"] == "blob:none"

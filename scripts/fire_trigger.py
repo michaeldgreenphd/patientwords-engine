@@ -2296,7 +2296,7 @@ def journal_reservation_problems(trigger, params, entries, now=None, expire_hour
 
 
 def pushed_fire_entry(repo: Path, trigger: str, entries: list[dict], *, digest: str | None, lane: str, today: str,
-                      before: str | None, ref: str | None) -> dict | None:
+                      before: str | None, ref: str | None, attempt: str | None) -> dict | None:
     """The journal entry THIS push added for THIS fire of a paid lane with no nonce contract, or None.
 
     `cmd_fire` runs budget_check before it appends its entry, then commits the trigger file and the entry
@@ -2318,19 +2318,33 @@ def pushed_fire_entry(repo: Path, trigger: str, entries: list[dict], *, digest: 
     - it is absent from the journal at `before`, the push's previous tip. `cmd_fire` writes the entry and the
       trigger file in ONE commit, so an entry already on the branch was taken by an earlier fire, and this push -
       a merge or a revert restoring the same bytes while that run may still be spending - replays it (Codex round
-      10 on PR #28). Matching on the digest alone would count such a replay once too few.
+      10 on PR #28). Matching on the digest alone would count such a replay once too few;
+    - the run is the push's FIRST attempt (`attempt` is "1", GitHub's github.run_attempt). An Actions-tab re-run
+      reuses the original push event - the same github.sha, github.event.before and github.ref_name - so every
+      fact above matches again on attempt 2, and leaving the entry out there admits the re-run's spend with the
+      first attempt's commitment uncounted: a 1.20 fire under the $2 ceiling cleared on both attempts, 2.40
+      against 2.00 (review of this change, 2026-09-23). On a later attempt the entry keeps counting for the first
+      attempt and the params count for this one, the double count the gate applied before. petri_audit.yml
+      refuses a paid re-run outright in its params job (Codex round 8 on PR #28); these three lanes do not, so
+      this is where a re-run is caught. The residual is older than G4 and unchanged by it: attempt 3 and later
+      are still counted as two commitments, not three or more, because nothing records how many earlier attempts
+      spent. Refusing re-runs as petri does, or counting the attempt number, is the owner's decision.
 
     Entries are keyed on (trigger, fired_utc), the journal's identity everywhere else (journal_entries_added, the
     ORDERED UNION rule). None - nothing removed, the double count the gate applied before, which fails closed -
     whenever that cannot be established: no `digest`, no `ref`, no `before` (a workflow_dispatch, whose run has no
-    journal entry of its own), the all-zero sha of a ref creation, a commit this clone does not have, or a journal
-    at `before` with a line that does not parse (that line could be the entry). The entry's max_spend is
+    journal entry of its own), no `attempt` or any attempt but the first, the all-zero sha of a ref creation, a
+    commit this clone does not have, or a journal at `before` with a line that does not parse (that line could be
+    the entry). The entry's max_spend is
     deliberately NOT compared with the params' commitment: advice-eval's --params-file holds the resolved params
     with the workflow's defaults filled in, so a genuine fire could fail that comparison. Several entries can
     qualify only when one push carries several fires of the same bytes, which `publish` refuses; a push runs the
     lane once, so the newest (journal order breaking ties) is removed and the rest keep counting.
     """
     if digest is None or not isinstance(ref, str) or not ref.strip():
+        return None
+    # exact "1", not int(): a missing, empty or unparseable attempt is not known to be the first, so it counts twice
+    if not isinstance(attempt, str) or attempt.strip() != "1":
         return None
     if not isinstance(before, str) or not before.strip() or set(before.strip()) == {"0"}:
         return None
@@ -2430,14 +2444,16 @@ def cmd_budget_gate(args):
         # the other paid lanes have no nonce, so their own entry is found by what this push added (G4, 2026-09-23;
         # see pushed_fire_entry). Whatever cannot be shown to be this push's fire keeps counting.
         own = pushed_fire_entry(repo, args.trigger, entries, digest=digest, lane=lane, today=today,
-                                before=getattr(args, "push_before", None), ref=getattr(args, "ref", None))
+                                before=getattr(args, "push_before", None), ref=getattr(args, "ref", None),
+                                attempt=getattr(args, "run_attempt", None))
         if own is not None:
             entries = [e for e in entries if e is not own]
             print(f"budget-gate: this push's own {args.trigger} journal entry (fired {own.get('fired_utc')}) is left "
                   "out of today's held sum; the params' commitment stands in for it")
         else:
             print(f"budget-gate: no {args.trigger} journal entry is shown to be this push's own fire (a dispatch, a "
-                  "replay, or no --push-before/--ref to bind one), so every held commitment is counted")
+                  "replay, a re-run, or no --push-before/--ref/--run-attempt to bind one), so every held commitment "
+                  "is counted")
     dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
     overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
     kind, reason = budget_check(budget_params, dashboard, today,
@@ -2545,6 +2561,12 @@ def build_parser():
                            "for petri-audit when GITHUB_ACTIONS is set. On the other paid lanes an entry absent "
                            "at that commit is this push's own, and is counted once instead of twice; without it "
                            "(a workflow_dispatch passes an empty value) nothing is left out.")
+    gate.add_argument("--run-attempt",
+                      help="the run's attempt number (GitHub's github.run_attempt). On the paid lanes other than "
+                           "petri-audit, this push's own journal entry is left out of the day's held sum only on "
+                           "attempt 1: an Actions-tab re-run reuses the push event, so on a later attempt the entry "
+                           "stands for the first attempt's commitment and keeps counting. Without it nothing is "
+                           "left out. (petri-audit refuses a paid re-run in its params job instead.)")
     gate.set_defaults(func=cmd_budget_gate)
     return parser
 

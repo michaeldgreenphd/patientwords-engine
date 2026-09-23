@@ -187,9 +187,12 @@ jobs:
           # 2026-09-23). A workflow_dispatch has no previous tip; then nothing is left out, as before
           PUSH_BEFORE: ${{ github.event.before }}
           REF_NAME: ${{ github.ref_name }}
+          # ...and only on attempt 1: an Actions-tab re-run reuses the push event, so on a later attempt the
+          # entry stands for the first attempt's commitment and keeps counting beside this one's
+          RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           printf '%s' "$GATE_PARAMS" > "$RUNNER_TEMP/gate_params.json"
-          python3 scripts/fire_trigger.py budget-gate --trigger scenario-generation --params-file "$RUNNER_TEMP/gate_params.json" --push-before "$PUSH_BEFORE" --ref "$REF_NAME"
+          python3 scripts/fire_trigger.py budget-gate --trigger scenario-generation --params-file "$RUNNER_TEMP/gate_params.json" --push-before "$PUSH_BEFORE" --ref "$REF_NAME" --run-attempt "$RUN_ATTEMPT"
 
       - name: Generate scenarios
         id: gen
