@@ -951,3 +951,31 @@ def test_an_openrouter_targets_upstream_hosts_are_counted_from_the_raw_response(
     assert "Azure" not in sanitised and result.manifest["artifacts"]["sanitiser"]["version"] == "0.2"
     # a target not routed through OpenRouter records null
     assert run["r1"].manifest["models"]["target"]["upstream_providers"] is None
+
+
+class _NoToolTarget(ScriptedTarget):
+    """Answers every turn in plain text even when tools are offered."""
+
+    def __call__(self, input, tools, tool_choice, config) -> ModelOutput:
+        return super().__call__(input, [], tool_choice, config)
+
+
+def test_a_tool_seed_whose_target_calls_no_tool_leaves_the_tools_check_not_applicable(run, tmp_path_factory):
+    """With zero tool calls the tools check passed ("every tool result matches
+    the seed's results table") having examined nothing; it is now
+    not_applicable with the seed named, and the rule outcome records the
+    behaviour."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H3])
+    target = get_model("mockllm/model", custom_outputs=_NoToolTarget(seed_set), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("notool-logs"), token_limit=20000, cost_limit=0.01)
+    assert log.status == "success", log.error
+    result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("notool") / "run")
+    assert result.refused == [] and len(result.records) == 2
+    check = result.manifest["execution"]["contract_checks"]["tool_results_from_data"]
+    assert check["status"] == "not_applicable" and f"tools declared by {H3}" in check["detail"] and "no tool call" in check["detail"]
+    assert result.manifest["execution"]["target_tools_mode"] == "fixed", "the seed still declared its tools"
+    assert all(r["outcomes"]["tool_invoked"] is False for r in result.rule_records)
+    # the ordinary mock run, whose target did call tools, keeps its named failure (a generated error result)
+    assert run["r1"].manifest["execution"]["contract_checks"]["tool_results_from_data"]["status"] == "fail"

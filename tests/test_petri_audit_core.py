@@ -1735,3 +1735,20 @@ def test_only_a_plain_upstream_host_name_is_copied_out_of_a_raw_response():
     base["models"]["target"]["upstream_providers"] = {"by_provider": [{"provider": "", "calls": 1}]}
     problems = framework.validate_with_refs(base, schema)
     assert any("missing 'calls_unrecorded'" in p for p in problems) and any("shorter than 1" in p for p in problems)
+
+
+def test_the_tools_check_does_not_pass_over_zero_tool_results():
+    """A tool seed whose target never called a tool (a model or OpenRouter host
+    without native tool use answers in plain text) passed
+    tool_results_from_data with the detail "every tool result matches" after
+    examining nothing. Calling a tool is the measured outcome (tool_invoked),
+    not a seed requirement, so the check is not_applicable and says why."""
+    assert checks.tool_results_verdict({}) == ("not_applicable", "no tools declared by this run's seeds")
+    status, detail = checks.tool_results_verdict({"seed-b": 0, "seed-a": 0})
+    assert status == "not_applicable" and "tools declared by seed-a, seed-b" in detail and "no tool call" in detail
+    assert checks.tool_results_verdict({"seed-a": 4}) == (
+        "pass", "every tool result matches the seed's results table (4 tool-result turn(s) examined across records)")
+    status, detail = checks.tool_results_verdict({"seed-a": 4, "seed-b": 0})
+    assert status == "pass" and detail.endswith("; none from seed-b)"), "a silent tool seed is named beside a pass"
+    # not_applicable stays clean for eligibility, as the schema defines it for a check with nothing to examine
+    assert checks.claim_grade_eligible({"tool_results_from_data": {"status": "not_applicable", "detail": detail}}, 0)

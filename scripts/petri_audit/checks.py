@@ -390,6 +390,29 @@ def sample_limit_refusal(limit: Any, *, where: str) -> dict | None:
             "reason": f"sample halted by Inspect's {kind} limit ({value}); every branch of the tree may end mid-exchange"}
 
 
+def tool_results_verdict(results_by_seed: dict[str, int]) -> tuple[str, str]:
+    """The `tool_results_from_data` verdict from the number of tool-result
+    turns the adapter examined per tool-declaring seed (seeds without tools
+    absent). A tool seed whose target never called a tool leaves nothing to
+    examine: whether the target calls a tool is the measured outcome
+    (`tool_invoked`, design memo H3), not a contract requirement, so the check
+    is not_applicable, with the seeds named, rather than a pass over zero
+    results (2026-09-23: a target without native tool use passed it vacuously).
+    A pass names how many results it examined and any tool seed that produced
+    none. A failure the adapter recorded is never overwritten (the caller only
+    fills a check still `not_run`)."""
+    if not results_by_seed:
+        return "not_applicable", "no tools declared by this run's seeds"
+    total = sum(results_by_seed.values())
+    if total == 0:
+        return "not_applicable", (f"tools declared by {', '.join(sorted(results_by_seed))}, but no examined record carries a "
+                                  "tool result (the target made no tool call): nothing to examine; tool_invoked records "
+                                  "the behaviour")
+    silent = sorted(s for s, n in results_by_seed.items() if n == 0)
+    return "pass", (f"every tool result matches the seed's results table ({total} tool-result turn(s) examined across "
+                    "records" + (f"; none from {', '.join(silent)})" if silent else ")"))
+
+
 # ------------------------------------------------ OpenRouter's upstream host (2026-09-23)
 
 _UPSTREAM_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._()+/-]{0,63}$")

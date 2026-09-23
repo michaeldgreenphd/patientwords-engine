@@ -51,6 +51,7 @@ from .checks import (
     sample_limit_refusal,
     staging_problems,
     stimulus_problems,
+    tool_results_verdict,
     upstream_provider_name,
 )
 from .controller import INFO_SOURCE
@@ -74,7 +75,8 @@ from .transcripts import bind_manifest, build_record, conversation_id, record_pr
 ADAPTER_NAME = "petri_audit.adapter"
 # 0.2 (2026-09-23): each assistant turn's stop reason is recorded (per branch and counted per run) and a truncated,
 # filtered or empty reply refuses its branch; a sample Inspect halted at a limit refuses its tree; an openrouter/
-# target's upstream hosts are counted per call (models.target.upstream_providers)
+# target's upstream hosts are counted per call (models.target.upstream_providers); a tool seed whose target made no
+# tool call leaves tool_results_from_data not_applicable instead of a pass over nothing
 ADAPTER_VERSION = "0.2"
 # inspect-ai 0.3.237 forwards GenerateConfig.seed on these providers (design memo section 2); anthropic and
 # google never send it; mock and placeholder models have no provider behaviour to record.
@@ -217,6 +219,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     model_usage: dict[str, dict[str, Any]] = {}
     seen_counts: dict[str, dict[str, int]] = {}
     any_tools = False
+    tool_results_by_seed: dict[str, int] = {}     # tool-result turns examined per tool-declaring seed
     prefill_seen = False
     cache_seen = False
     calls_missing = 0
@@ -306,6 +309,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         max_turns = max(max_turns, seed["protocol"]["max_target_turns"])
         if seed.get("tools"):
             any_tools = True
+            tool_results_by_seed.setdefault(seed_id, 0)
         cond = next((c for c in conditions(seed) if c["condition_id"] == meta.get("condition_id")), None)
         if cond is None:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"unknown condition {meta.get('condition_id')!r}"})
@@ -408,6 +412,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                 checks["stimulus_digest_identity"].fail(problem)
             for turn in record["turns"]:
                 if turn["role"] == "tool":
+                    tool_results_by_seed[seed_id] = tool_results_by_seed.get(seed_id, 0) + 1
                     hit = next((s for s in staged if s.get("kind") == "tool_result" and s.get("tool_call_id") == turn["tool_call_id"]), None)
                     if hit is None:
                         checks["tool_results_from_data"].fail(f"{where} turn {turn['turn_id']}: tool result has no staging record")
@@ -496,10 +501,11 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     if cache_seen:
         checks["no_cache"].fail("a target generation was served from Inspect's cache")
     checks["no_cache"].ok("no cached generation")
-    if any_tools:
-        checks["tool_results_from_data"].ok("every tool result matches the seed's results table")
-    else:
-        checks["tool_results_from_data"] = Check("not_applicable", "no tools declared by this run's seeds")
+    tool_status, tool_detail = tool_results_verdict(tool_results_by_seed)
+    if tool_status == "pass":
+        checks["tool_results_from_data"].ok(tool_detail)
+    elif checks["tool_results_from_data"].status == "not_run":
+        checks["tool_results_from_data"] = Check(tool_status, tool_detail)
 
     # write the record families first (their digests enter the manifest), then the manifest
     transcripts_path = out_dir / "transcripts.jsonl"
