@@ -20,7 +20,9 @@ Runs under the dev environment; the one test that constructs Inspect models
 skips there and runs under the locked Petri environment."""
 from __future__ import annotations
 
+import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -162,6 +164,41 @@ def test_the_evidence_check_catches_the_gemini_entry_it_replaced(registry):
     assert _understated_bills([0.35, 2.75], bills) > 800 and 0.35 < listed[0]
     assert _understated_bills(registry["openrouter"]["pricing"]["google/gemini-3.5-flash"], bills) == 0
     assert _understated_bills(list(listed), bills) == 0, "OpenRouter bills Gemini at list, with no per-token markup"
+
+
+PREREGISTRATION = ROOT / "docs" / "preregistration_advice.md"
+# the registry digest the preregistration's 2026-07-22 metering amendment re-froze, the last one it recorded before
+# the 2026-09-23 metering correction
+REFROZEN_20260722 = "84acef3606cb8afa10cabe5a0c72cc772a5838a8111a47f297e8cf6f7ae59fee"
+
+
+def _git(*args: str) -> bytes | None:
+    try:
+        return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, check=True, timeout=60).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def test_the_preregistration_records_every_registry_revision_since_its_2026_07_22_refreeze():
+    """Regression for the metering correction's first draft, which counted
+    four registry revisions since that re-freeze where git holds five
+    (5e444ca1 was missed). Walks the registry's history back to the re-frozen
+    digest and requires the sha256 of every revision since, this change's
+    included, to appear in the preregistration. Needs the full history, so a
+    shallow clone skips it."""
+    if _git("rev-parse", "--is-shallow-repository") != b"false\n":
+        pytest.skip("needs a git checkout with the registry's full history")
+    text = PREREGISTRATION.read_text(encoding="utf-8")
+    unrecorded = []
+    for commit in (_git("log", "--format=%H", "--", "data/advice_providers.json") or b"").decode().split():
+        digest = hashlib.sha256(_git("show", f"{commit}:data/advice_providers.json") or b"").hexdigest()
+        if digest == REFROZEN_20260722:
+            break
+        if digest not in text:
+            unrecorded.append(f"{commit[:8]} {digest}")
+    else:
+        pytest.fail(f"the re-frozen digest {REFROZEN_20260722[:12]} is not in the registry's history")
+    assert not unrecorded, f"registry revisions whose sha256 docs/preregistration_advice.md does not record: {unrecorded}"
 
 
 # ------------------------------------------------------------------ pricing and the refusal rule

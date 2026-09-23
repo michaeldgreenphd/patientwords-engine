@@ -142,9 +142,23 @@ recomputable. From this revision the registry prices the slug at [1.6, 9.5]
 `openai/gpt-5.4-mini`, `x-ai/grok-4.3` and `anthropic/claude-haiku-4.5`, and
 `tests/test_petri_openrouter_prices.py` holds every OpenRouter entry to at
 least list x 1.05 and to at least every archived OpenRouter bill for its slug.
-The registry had also moved since the last re-freeze above, through four
-revisions recorded only in git history (a40ec2a2, b415416e, 78d5beb1,
-8243a7e4), to sha256 `29732b5db1bbda19c9a2b0e568ae2582ec69804dcfedc5fec7221aaafb711f3c`.
+The registry had also moved since the last re-freeze above, through five
+revisions whose sha256 this document did not record. Amendments 3 and 4
+below describe the changes of the first three; the registry's own
+`pricing_note` and the 2026-08-24 addendum of
+`docs/decisions_20260821_owner.md` describe the last two. The registry's
+sha256 after each:
+
+| Commit | Date | Change | Registry sha256 |
+|---|---|---|---|
+| 5e444ca1 | 2026-07-23 | `_alias_vs_snapshot` (Amendment 3) | `f8a9fa887fb32106ee655161eb5a4b25f08e4c74e6682d7a2a48a2a63d3ce55c` |
+| a40ec2a2 | 2026-07-23 | free-tier fidelity arms (Amendment 4) | `12de5cdfcd66dedab51d393b5931d20e5aa78d00c751db2bc294ed897efb25b2` |
+| b415416e | 2026-07-23 | mini slug correction (Amendment 4) | `0b58bbf643adfe0c9986d9a86cd42ec10033078ff7a098d05e58510a5f02ec54` |
+| 78d5beb1 | 2026-08-21 | ox-alpha priced 0/0 for its free window; file re-serialized (one-space indent, literal UTF-8) | `f48b4eb4d604e297b0d2288fda5f7f280d4520df833e9b20da21da08968ad143` |
+| 8243a7e4 | 2026-08-24 | ox-alpha removed | `29732b5db1bbda19c9a2b0e568ae2582ec69804dcfedc5fec7221aaafb711f3c` |
+
+The b415416e digest is also the `registry_sha256` of the six repro packs in
+`ops/disclosure_log.jsonl`.
 Registry sha256 at this revision:
 `8879941bcdd63e2e99ca7d298db61c557207284c064ff34a597f46d84fb84a76`
 
