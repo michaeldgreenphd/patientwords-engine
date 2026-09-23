@@ -371,22 +371,30 @@ Nothing recorded the breach until now. The critic pass of 2026-07-23
 (`docs/critic/critic_20260723.md`) reviewed Amendment 3's pack tooling and
 the page's new figures in the same pass without flagging the order. The six
 logged packs have read STALE since 2026-08-21, when a registry edit (eng
-78d5beb1) became the first of their inputs to move, and the critic passes of
-2026-08-23 to 2026-08-28 reported them as informational because none was
-sent.
+78d5beb1) became the first of their inputs to move. The critic passes of
+2026-08-23 to 2026-08-28 reported them as informational and not an error
+("expected, informational, still not an error", `critic_20260823.md` item 4;
+"STALE is informational, not an error", `critic_20260828.md` INFO-3), which
+is how the check treats a pack that was never sent: it escalates only sent
+packs.
 
 Remedy. The pack tooling was fixed before any send (engine PR
 `claude/repro-pack-check-fixes`): packs are keyed by (vendor, archive), the
-registry digest covers only the vendor's own registry blocks, a log entry the
-check cannot read fails the contract gate instead of passing it silently, and
-the pack README and note state request ids and judges as the records hold
-them. After that PR merges, packs are rebuilt from `main` for every
-(vendor, archive) whose records the page has shown: anthropic and openai for
+registry digest covers only what the vendor's records were routed and priced
+through (the vendor's own registry block whole; on the shared OpenRouter
+block, the route fields and the vendor's own rates, not its notes or other
+models' prices), a log entry the check cannot read fails the contract gate
+instead of passing it silently, and the pack README and note state request
+ids and judges as the records hold them. After that PR merges, packs are
+rebuilt from `main` for every (vendor, archive) whose records the page has
+shown: anthropic and openai for
 `stimuli_20260721T235403Z`, `stimuli_20260728T194624Z` and
 `stimuli_20260807T153329Z`; xai, deepseek and moonshotai for the first two;
 google for the first two (on the page 2026-07-22 to 2026-08-08). The owner
-sends them, using the note template's "already public" wording, and records
-each send with `repro-pack --record-sent`. To fill at send time:
+sends them with the note template's "already public" wording, except
+google's, which take its "formerly public" wording because the page has
+withheld every Gemini arm since 2026-08-08, and records each send with
+`repro-pack --record-sent`. To fill at send time:
 
 - rebuilt at engine commit: `<commit>`
 - pack versions: `<vendor, archive, pack_version for each>`
@@ -403,5 +411,6 @@ claim, whichever page carries it, including the planned Petri Multi-turn page.
 That page names one vendor's model and reports its replies graded by the
 same model, so an Anthropic pack for the Petri runs is sent before the page is
 public and the page cites its version. The Petri lane has no pre-registration
-of its own, so it adopts the rule by its own instrument: decision 16 in
-`docs/petri_wave2_design.md` records the same ruling.
+of its own, so it adopts the rule by its own instrument: decision 16 of the
+Petri wave-2 design note (`docs/petri_wave2_design.md`, added by engine PR
+#29, `claude/awesome-franklin-kj9jw7`) records the same ruling.

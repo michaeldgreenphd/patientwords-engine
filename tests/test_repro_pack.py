@@ -563,3 +563,10 @@ def test_templates_make_no_unconditional_request_id_or_single_judge_claim():
     assert "request ids for [K] of [M]" in note and "second judge" in note
     # a send after publication cannot claim to precede it (Deviation D2)
     assert "[Already public:" in note and "[Not yet public:" in note
+    # Regression (review of 2026-09-23): the page has withheld google's results since
+    # 2026-08-08, so "has shown ... since" is false for google's packs and "not yet
+    # public" is false too; a third version says the results were shown, then withheld
+    assert "[Formerly public:" in note and "from [first date] to [last date]" in note
+    d2 = (_DOCS / "preregistration_advice.md").read_text(encoding="utf-8").split("## Deviation D2", 1)[1]
+    remedy = " ".join(d2.split("Remedy.", 1)[1].split("To fill at send time", 1)[0].split())
+    assert "google's, which take its \"formerly public\" wording" in remedy
