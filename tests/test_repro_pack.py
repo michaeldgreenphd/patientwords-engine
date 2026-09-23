@@ -388,11 +388,22 @@ def test_request_id_text_counts_what_the_records_hold():
     """Regression: the README told every vendor it could correlate each call by
     request id, but the OpenRouter-routed vendors' records carry none, and records
     from before 2026-07-23 carry none either."""
-    assert ae._request_id_text([{"request_id": "a"}, {"request_id": "b"}]).startswith("All 2 records carry")
-    some = ae._request_id_text([{"request_id": "a"}, {"request_id": None}, {}])
-    assert some.startswith("1 of the 3 records carry") and "the other 2 carry none" in some
+    direct = {"endpoint": "https://api.acme.example/v1"}
+    assert ae._request_id_text([dict(direct, request_id="a"), dict(direct, request_id="b")]).startswith(
+        "All 2 records carry")
+    some = ae._request_id_text([dict(direct, request_id="a"), dict(direct, request_id=None), {}])
+    assert some.startswith("1 of the 3 records carry") and "the other 2 carry none of yours" in some
     none = ae._request_id_text([{"request_id": None}, {}])
     assert none.startswith("None of these records carries") and "correlate" not in none
+    assert "aggregator" not in none
+
+
+def test_request_id_text_never_offers_an_aggregators_id_as_the_vendors():
+    routed = {"endpoint": "https://openrouter.ai/api/v1"}
+    text = ae._request_id_text([dict(routed, request_id="gen-1"), dict(routed, request_id=None)])
+    assert text.startswith("None of these records carries a request id from your API")
+    assert "2 of the 2 calls were routed through an aggregator (openrouter.ai)" in text
+    assert "the request ids on 1 of them are the aggregator's, not yours" in text
 
 
 def test_judges_text_names_primary_second_and_failed_codings():

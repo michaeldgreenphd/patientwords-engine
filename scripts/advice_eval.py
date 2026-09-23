@@ -1926,22 +1926,42 @@ def _newest_by_key(entries: list[dict]) -> tuple[dict[PackKey, dict], dict[PackK
     return newest, sent_versions
 
 
+# Endpoint hosts that route a call to the vendor through a third party. A request id
+# captured on such a call (e.g. an openrouter-request-id header) is the
+# aggregator's, never the vendor's, so the pack README does not offer it as one.
+AGGREGATOR_HOSTS = ("openrouter.ai",)
+
+
+def _via_aggregator(record: dict) -> bool:
+    return any(host in str(record.get("endpoint") or "") for host in AGGREGATOR_HOSTS)
+
+
 def _request_id_text(rows: list[dict]) -> str:
-    """The pack README's request-id sentence, from the records themselves. Request
-    ids exist only where a provider's response headers carried one (capture began
-    2026-07-23; calls routed through an aggregator carry none), so the README says
-    how many records have one instead of promising one per call."""
+    """The pack README's request-id sentence, counted from the records. A vendor's
+    own request id exists only on direct calls whose response headers carried one
+    (capture began 2026-07-23); calls routed through an aggregator carry none of
+    the vendor's. So the README says how many records the vendor can correlate by
+    request id instead of promising one per call."""
     n = len(rows)
-    k = sum(1 for r in rows if r.get("request_id"))
-    if n and k == n:
-        return (f"All {n} records carry the request id your API returned, so your infrastructure "
+    own = sum(1 for r in rows if r.get("request_id") and not _via_aggregator(r))
+    if n and own == n:
+        text = (f"All {n} records carry the request id your API returned, so your infrastructure "
                 f"team can correlate each call by request id and timestamp.")
-    if k:
-        return (f"{k} of the {n} records carry the request id your API returned and can be "
-                f"correlated by request id and timestamp; the other {n - k} carry none and can be "
-                f"matched only by timestamp and the returned model string.")
-    return ("None of these records carries a request id from your API, so they can be matched "
-            "only by timestamp and the returned model string.")
+    elif own:
+        text = (f"{own} of the {n} records carry the request id your API returned and can be "
+                f"correlated by request id and timestamp; the other {n - own} carry none of yours and "
+                f"can be matched only by timestamp and the returned model string.")
+    else:
+        text = ("None of these records carries a request id from your API, so they can be matched "
+                "only by timestamp and the returned model string.")
+    via = [r for r in rows if _via_aggregator(r)]
+    if via:
+        agg_ids = sum(1 for r in via if r.get("request_id"))
+        text += (f" {len(via)} of the {n} calls were routed through an aggregator "
+                 f"({', '.join(AGGREGATOR_HOSTS)})"
+                 + (f"; the request ids on {agg_ids} of them are the aggregator's, not yours." if agg_ids
+                    else "."))
+    return text
 
 
 def _judges_text(judgments: list[dict]) -> str:
@@ -2046,7 +2066,7 @@ def repro_pack(args) -> Path:
     (bundle / "README.md").write_text(readme, encoding="utf-8")
     # disclosure log: one build event per NEW pack_version (idempotent rebuilds skip)
     entries = _log_entries(args.log)
-    if not any(e.get("pack_version") == manifest["pack_version"] for e in entries):
+    if not any(isinstance(e, dict) and e.get("pack_version") == manifest["pack_version"] for e in entries):
         # supersedes names the newest earlier pack for the SAME (vendor, archive):
         # a pack for another archive of this vendor's records is not replaced by this one
         newest, _ = _newest_by_key(_partition_log(entries)[0])
