@@ -1844,6 +1844,88 @@ def test_a_direct_vendor_target_spelling_is_refused_before_anything_else(capsys)
     assert "holdout seal" not in captured.out and "environment lock" not in captured.out, "refused before anything is read"
 
 
+def test_a_judge_spec_billing_a_third_key_is_refused_with_the_openrouter_spelling():
+    """A judge spec's billing channel comes from its registry provider's
+    key_env: OPENROUTER_API_KEY books to the OpenRouter lane and every other
+    key to the Anthropic lane (spend.judge_billing_channel,
+    fire_trigger.petri_channels). `google:` resolves to GEMINI_API_KEY, so it
+    billed the Gemini account while counting against the Anthropic ceiling.
+    Such a spec is refused, and the refusal names the OpenRouter spelling,
+    which the lane books to the account that pays it (2026-09-23)."""
+    live = spend.load_json(spend.PROVIDERS_PATH)
+    assert live["google"]["key_env"] == "GEMINI_API_KEY", "the live registry still routes google: to its own key"
+    for spec, expected in (("google:gemini-3.5-flash", "openrouter:google/gemini-3.5-flash"),
+                           (" google:gemini-2.5-flash ", "openrouter:google/gemini-2.5-flash"),
+                           ("google", f"openrouter:google/{live['google']['consumer_default']}")):
+        assert spend.judge_billing_channel(spec) == "anthropic", "the mismatch: booked Anthropic, billed Gemini"
+        problems = spend.judge_key_routing_problems(spec)
+        assert len(problems) == 1 and repr(spec.strip()) in problems[0], spec
+        assert "GEMINI_API_KEY" in problems[0] and "openrouter:<vendor>/<model>" in problems[0], problems
+        assert expected in problems[0], problems
+        # the spelling it names is one the lane books to OpenRouter and the resolver accepts
+        assert spend.judge_key_routing_problems(expected) == [] and spend.judge_billing_channel(expected) == "openrouter"
+        assert judge_runner.judge_spec_problems(expected) == []
+    # every spec that bills ANTHROPIC_API_KEY or OPENROUTER_API_KEY passes, including the vendors routed through
+    # OpenRouter under their own registry names
+    for ok in ("claude-haiku-4-5", "anthropic", "anthropic:claude-haiku-4-5", "openrouter:google/gemini-3.5-flash",
+               "openrouter:openai/gpt-5.4-mini", "openai", "openai:gpt-5.4-mini", "xai:grok-4.3", "deepseek", "moonshot"):
+        assert spend.judge_key_routing_problems(ok) == [], ok
+    # a spec the registry cannot resolve is left to judge_spec_problems, which refuses it by its own reason; the rule
+    # here is the channel mismatch only
+    for unresolved in ("nope:model", "copilot", "mockllm/judge"):
+        assert spend.judge_key_routing_problems(unresolved) == [], unresolved
+        assert judge_runner.judge_spec_problems(unresolved), unresolved
+    # the rule reads key_env, not the provider's name: any third key is refused, a key-less entry is not this rule's
+    registry = {"openai": {"key_env": "OPENAI_API_KEY"}, "vertex": {"key_env": "ANTHROPIC_API_KEY"}, "bare": {}}
+    problems = spend.judge_key_routing_problems("openai:gpt-5.4-mini", registry)
+    assert len(problems) == 1 and "OPENAI_API_KEY" in problems[0] and "openrouter:openai/gpt-5.4-mini" in problems[0]
+    assert spend.judge_key_routing_problems("vertex:claude-haiku-4-5", registry) == []
+    assert spend.judge_key_routing_problems("bare:model", registry) == []
+    assert spend.judge_key_routing_problems("bare", registry) == []
+
+
+def test_preflight_and_run_refuse_a_third_key_judge_before_anything_is_read(capsys, tmp_path):
+    """The refusal runs beside the target spelling check, before the seeds,
+    the seal or the lock are read, in `preflight` and in `run`, and `run`
+    writes nothing (no run_params.json)."""
+    common = ["--target", "anthropic/claude-haiku-4-5", "--max-spend", "50", "--wave", "1",
+              "--judge-model", "google:gemini-3.5-flash", "--judge-max-spend", "0.05"]
+    code = cli.main(["preflight", *common])
+    captured = capsys.readouterr()
+    assert code == 5 and "pre-flight: REFUSED - judge spec 'google:gemini-3.5-flash'" in captured.err
+    assert "holdout seal" not in captured.out and "environment lock" not in captured.out, "refused before anything is read"
+    out_dir = tmp_path / "run"
+    code = cli.main(["run", *common, "--out-dir", str(out_dir)])
+    captured = capsys.readouterr()
+    assert code == 5 and "judge spec 'google:gemini-3.5-flash'" in captured.err
+    assert not out_dir.exists(), "refused before the run directory or its params were written"
+    # a bad target and a bad judge are both named, not only the first
+    code = cli.main(["preflight", "--target", "openai/gpt-5.4-mini", "--max-spend", "50", "--wave", "1",
+                     "--judge-model", "google", "--judge-max-spend", "0.05"])
+    err = capsys.readouterr().err
+    assert code == 5 and "target 'openai/gpt-5.4-mini'" in err and "judge spec 'google'" in err
+    # without a judge the judge rule is not consulted, and an OpenRouter judge passes it (the run then stops later on
+    # the seal or the lock in this environment, never with this refusal)
+    for extra in ([], ["--judge-model", "openrouter:google/gemini-3.5-flash", "--judge-max-spend", "0.05"]):
+        cli.main(["preflight", "--target", "anthropic/claude-haiku-4-5", "--max-spend", "50", "--wave", "1", *extra])
+        assert "pre-flight: REFUSED - judge spec" not in capsys.readouterr().err
+
+
+def test_cli_judge_refuses_a_third_key_judge_before_anything_is_read(capsys, tmp_path):
+    """`cli judge` repeats the refusal first, before the harness is imported
+    or the run directory read, for a judge step reached without the
+    pre-flight. The run directory here does not exist, and the refusal comes
+    before anything notices; where the harness is not installed the import
+    that follows would raise, so an exit 5 there also shows the order."""
+    run_dir = tmp_path / "run_x"
+    code = cli.main(["judge", "--run-dir", str(run_dir), "--judge-model", "google:gemini-3.5-flash",
+                     "--judge-max-spend", "0.05"])
+    err = capsys.readouterr().err
+    assert code == 5 and "refused before any judge call: judge spec 'google:gemini-3.5-flash'" in err
+    assert "openrouter:google/gemini-3.5-flash" in err
+    assert not run_dir.exists(), "nothing was written"
+
+
 def test_the_manifest_registry_spec_is_the_registry_form_of_the_target_or_null():
     """models.target.registry_spec is documented as the data/advice_providers.json
     spec the target maps to, but the adapter recorded the Inspect string the

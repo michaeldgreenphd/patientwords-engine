@@ -130,7 +130,11 @@ def judge_billing_channel(spec: str, registry: dict | None = None) -> str:
     `deepseek:` and `moonshot:` route through OPENROUTER_API_KEY and bill the
     OpenRouter account (Codex round 3). Anything else, an unknown provider
     included, stays on the Anthropic channel, the one the daily ceiling bounds
-    (fail closed, as fire_trigger.petri_channels does with the same rule)."""
+    (fail closed, as fire_trigger.petri_channels does with the same rule). A
+    provider billed through a third key (`google`, GEMINI_API_KEY) is booked
+    here as Anthropic but bills its own vendor, so `cli preflight`, `cli run`
+    and `cli judge` refuse such a spec before any call
+    (`judge_key_routing_problems`, 2026-09-23)."""
     registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
     cfg = registry.get(registry_provider(spec, registry)) if isinstance(registry, dict) else None
     key_env = cfg.get("key_env") if isinstance(cfg, dict) else None
@@ -239,6 +243,47 @@ def target_provider_problems(target: str) -> list[str]:
             "books every target that is not openrouter/ to the Anthropic channel and its daily ceiling; route it "
             "through OpenRouter as openrouter/<vendor>/<model> with OpenRouter's vendor slug (for example "
             "openrouter/openai/gpt-5.4-mini)"]
+
+
+JUDGE_KEY_ENVS = ("ANTHROPIC_API_KEY", "OPENROUTER_API_KEY")
+"""The registry `key_env` values a judge spec may resolve to: the two whose spend the lane books to the account
+that pays it. `judge_billing_channel` here and `fire_trigger.petri_channels` book OPENROUTER_API_KEY to the OpenRouter
+lane and every other key to the Anthropic lane, so a provider billed through a third key (today `google`, whose
+registry entry calls the Gemini API directly with GEMINI_API_KEY) would bill that vendor while counting against the
+Anthropic ceiling (2026-09-23)."""
+
+
+def judge_key_routing_problems(spec: str, registry: dict | None = None) -> list[str]:
+    """Why a judge spec's key routing cannot run on this lane: empty when the
+    registry provider it resolves to (`registry_provider`, the advice
+    resolver's rule) bills ANTHROPIC_API_KEY or OPENROUTER_API_KEY. A provider
+    whose `key_env` names any other key bills that vendor's own account while
+    the guard books it to the Anthropic channel and its daily ceiling, and is
+    refused with the OpenRouter spelling to use instead.
+
+    The rule is the channel mismatch and nothing more. It does not refuse a
+    `key_env` naming a secret the repository does not hold: which Actions
+    secrets exist is not visible from the code (an absent secret reaches the
+    job as an empty string, which the provider client refuses before a call),
+    so no list of held secrets is kept here to go stale. A spec the registry
+    cannot resolve (an unknown provider, a manual-UI one with no `key_env`, the
+    MockJudge sentinel) is left to `judge_runner.judge_spec_problems` and
+    `RegistryJudge`, which refuse it by name."""
+    spec = spec.strip()
+    if spec in ZERO_PRICE_MODELS:
+        return []
+    registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
+    provider = registry_provider(spec, registry)
+    cfg = registry.get(provider) if isinstance(registry, dict) else None
+    key_env = cfg.get("key_env") if isinstance(cfg, dict) else None
+    if not key_env or key_env in JUDGE_KEY_ENVS:
+        return []
+    model = spec.split(":", 1)[1] if ":" in spec else (str(cfg.get("consumer_default") or "").strip() or "<model>")
+    return [f"judge spec {spec!r} resolves to registry provider {provider!r}, whose key_env {key_env} bills that "
+            "vendor's own account, while the lane books every judge not billed through OPENROUTER_API_KEY to the "
+            "Anthropic channel and its daily ceiling; route it through OpenRouter as openrouter:<vendor>/<model> with "
+            f"OpenRouter's vendor slug (for this spec, openrouter:{provider}/{model} if OpenRouter's slug for the "
+            f"vendor is {provider!r})"]
 
 
 def inspect_to_registry_spec(model: str, registry: dict | None = None) -> str | None:

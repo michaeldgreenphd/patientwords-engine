@@ -36,6 +36,7 @@ from .seal import sealed_registry, seed_texts_against_registry
 from .seeds import conditions, load_seed_file, select_seeds, target_visible_strings, validate_seed
 from .spend import (
     judge_billing_channel,
+    judge_key_routing_problems,
     preflight_bound,
     resolve_price,
     resolve_registry_price,
@@ -77,14 +78,17 @@ def cmd_verify_lock(args: argparse.Namespace) -> int:
 
 
 def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
-    """Shared by preflight and run: the target names a provider the lane books
-    correctly, seeds validate, lock matches, price resolves, bound fits.
-    Returns (exit code, facts)."""
-    # first, before anything is read: a direct-vendor spelling (openai/..., google/...) bills its own key while every
-    # spend guard books it to the Anthropic lane, so no amount of checking below makes it runnable (2026-09-23)
-    target_problems = target_provider_problems(args.target)
-    if target_problems:
-        for p in target_problems:
+    """Shared by preflight and run: the target and the judge each bill the
+    account the lane books them to, seeds validate, lock matches, price
+    resolves, bound fits. Returns (exit code, facts)."""
+    # first, before the seeds, the seal or the lock are read: a direct-vendor target spelling (openai/..., google/...),
+    # or a judge spec whose registry provider bills a third key (google:, GEMINI_API_KEY), bills its own vendor while
+    # every spend guard books it to the Anthropic lane, so no amount of checking below makes it runnable (2026-09-23)
+    routing_problems = target_provider_problems(args.target)
+    if args.judge_model:
+        routing_problems += judge_key_routing_problems(args.judge_model)
+    if routing_problems:
+        for p in routing_problems:
             print(f"pre-flight: REFUSED - {p}", file=sys.stderr)
         return 5, {}
     seed_set = load_seed_file(args.seeds)
@@ -299,6 +303,14 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
 
 
 def cmd_judge(args: argparse.Namespace) -> int:
+    # first, before the harness is imported or the run read: a judge spec whose registry provider bills a third key
+    # (google:, GEMINI_API_KEY) bills its own vendor while the guard books it to the Anthropic lane. Pre-flight refuses
+    # it before the target spends; this refuses it again for a judge step reached without that pre-flight (2026-09-23)
+    routing_problems = judge_key_routing_problems(args.judge_model)
+    if routing_problems:
+        for p in routing_problems:
+            print(f"refused before any judge call: {p}", file=sys.stderr)
+        return 5
     from .adapter import read_records
     from .judge_runner import (
         TIER_TEMPERATURE,
