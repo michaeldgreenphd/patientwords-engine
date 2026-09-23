@@ -339,6 +339,20 @@ def test_fire_lane_classifies_the_petri_target_and_judge_specs():
     with pytest.raises(ValueError, match="mixed-channel"):
         ft.validate_params(TRIGGER, dict(base, target="anthropic/claude-haiku-4-5", judge_model="openai"))
     assert ft.petri_channels({"target": orl, "judge": "true", "judge_model": "claude-haiku-4-5"})[1] == "anthropic"
+    # a judge billed through a third key (google:, GEMINI_API_KEY) is refused before the push: it would be booked to the
+    # anthropic lane while its vendor bills its own account (review of 2026-09-23, F-TH1). Every spec that bills
+    # ANTHROPIC_API_KEY or OPENROUTER_API_KEY still passes, and an unknown provider is left to the workflow's
+    # judge_spec_problems, as before
+    for google in ("google:gemini-2.5-flash", "google"):
+        with pytest.raises(ValueError, match="bills GEMINI_API_KEY"):
+            ft.validate_params(TRIGGER, dict(base, target="anthropic/claude-haiku-4-5", judge_model=google))
+    assert ft.petri_judge_key_env(dict(base, judge_model="google:x")) == "GEMINI_API_KEY"
+    assert ft.petri_judge_key_env(dict(base, judge_model="claude-haiku-4-5")) == "ANTHROPIC_API_KEY"
+    assert ft.petri_judge_key_env(dict(base, judge_model="openai:gpt-5.4-mini")) == "OPENROUTER_API_KEY"
+    assert ft.petri_judge_key_env(dict(base, judge_model="nosuch:model")) is None
+    assert ft.petri_judge_key_env(dict(base, judge="false", judge_model="google:x")) is None
+    ft.validate_params(TRIGGER, dict(base, target=orl, judge_model="openrouter:google/gemini-2.5-flash"))
+    ft.validate_params(TRIGGER, dict(base, target="anthropic/claude-haiku-4-5", judge_model="anthropic:claude-haiku-4-5"))
     # boolean keys must be spelled the one way the workflow compares against (Codex round 3)
     for bad in ("True", "yes", "1", ""):
         with pytest.raises(ValueError, match="must be true or false"):

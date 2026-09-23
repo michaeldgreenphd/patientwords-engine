@@ -253,6 +253,16 @@ def petri_channels(params: dict, registry: dict | None = None) -> tuple[str, str
     target_channel = "openrouter" if target.startswith("openrouter/") else "anthropic"
     if not judge_is_on(params):
         return target_channel, None
+    key_env = petri_judge_key_env(params, registry)
+    return target_channel, ("openrouter" if key_env == "OPENROUTER_API_KEY" else "anthropic")
+
+
+def petri_judge_key_env(params: dict, registry: dict | None = None) -> str | None:
+    """The provider registry's `key_env` for a petri-audit fire's judge spec:
+    None when the judge is off or its provider is not in the registry (the
+    workflow's `judge_spec_problems` refuses an unknown provider)."""
+    if not judge_is_on(params):
+        return None
     judge = str(params.get("judge_model") or "").strip()
     registry = providers_registry() if registry is None else registry
     # the advice resolver's own rule: provider:model, a bare provider the registry knows (its consumer default),
@@ -265,7 +275,7 @@ def petri_channels(params: dict, registry: dict | None = None) -> tuple[str, str
         provider = "anthropic"
     cfg = registry.get(provider) if isinstance(registry, dict) else None
     key_env = cfg.get("key_env") if isinstance(cfg, dict) else None
-    return target_channel, ("openrouter" if key_env == "OPENROUTER_API_KEY" else "anthropic")
+    return key_env if isinstance(key_env, str) else None
 
 
 def petri_params_problems(params: dict, registry: dict | None = None) -> list:
@@ -323,6 +333,17 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
             f"{params.get('judge_model')!r} bills the {judge_channel} lane: one fire carries one commitment on "
             "one account, so a mixed-channel fire is refused; judge on the target's channel or run the judge "
             "as its own fire")
+    # A judge billed through a third key (today `google:`, GEMINI_API_KEY) is booked to the anthropic lane above while
+    # its vendor bills its own account, so the ceiling would bound the wrong money. The workflow's pre-flight refuses it
+    # at $0 (scripts/petri_audit/spend.py judge_key_routing_problems), but by then the fire's journal entry holds its
+    # commitment for the rest of the UTC day, so it is refused here, before the push (review of 2026-09-23, F-TH1).
+    judge_key = petri_judge_key_env(params, registry)
+    if judge_key is not None and judge_key not in ("ANTHROPIC_API_KEY", "OPENROUTER_API_KEY"):
+        problems.append(
+            f"petri-audit judge {params.get('judge_model')!r} bills {judge_key}, but every judge not billed "
+            "through OPENROUTER_API_KEY is booked to the anthropic lane and its ceiling, so the ceiling would bound "
+            "the wrong account; judge through OpenRouter instead (openrouter:<vendor>/<model>, for example "
+            "openrouter:google/<model>)")
     return problems
 
 
