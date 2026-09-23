@@ -526,6 +526,19 @@ so it can be redone by hand.
   - **What had been seen.** The plan was written after epochs 1 to 2 (original set) and epoch 1 (second set), and
     says so. What it fixes in advance is the test, unit, thresholds and wording rules for the 20 of 35 planned
     triples not yet run. Until the final analysis runs, the page's counts are interim and descriptive.
+  - **Revised before the fire (§10.8).** An external statistical review (Antigravity) was run without computing any
+    contrast on the landed data. It found four problems:
+    - the 09-25 epoch was conditional, which is optional stopping;
+    - the 6-of-8 scenario count is weak (14% by chance), and the triple-level test is anti-conservative when scenarios
+      differ;
+    - the style/vocabulary rule relied on the vocabulary contrast failing to reach significance;
+    - there was no eligibility floor for the windowed analyses.
+  - **The owner's answers.** Commit to the 2026-09-25 fire now, which fixes the final data at 35 triples, and gate any
+    general headline with an exact scenario-level permutation test.
+  - **Design simulation.** Power at 35 triples is about 14%, 42% and 70% for net per-exchange shifts of 5, 10 and 15
+    points. A null result will therefore read as inconclusive. `scripts/petri_w2_power_sim.py`, seed 20260923,
+    reproduces the figures from design parameters alone.
+  - **The 2026-09-25 fire** (nonce `w2e4`, same parameters) is scheduled for 00:07 UTC on 2026-09-25.
 
 ---
 
