@@ -490,6 +490,32 @@ so it can be redone by hand.
   is in design note §5). Codex refused review of `be4515d1` on usage limits, like every other
   request since 2026-09-22.
 
+- **The owner's second Antigravity review (2026-09-23 morning, on `f27f8917`), and its dispositions.**
+  It reproduced the landed facts: 25 re-reads and two nulls on epoch 1, no landed file modified, the
+  original four seeds byte-identical, chain and run verified, and the handoff's counts and spend. Three
+  findings:
+  1. *The first-line rule has latent gaps.* No real answer triggers them: 0 missed revisions and 0
+     false refusals in 1,198 outcome judgments across both runs. Missed revisions: a revised value in
+     single-asterisk italics mid-answer, a revision introduced by a phrase the pattern does not list
+     ("In conclusion, generalist."), and a final line with trailing words ("generalist (not
+     specialist)"). False refusals: a negated answer phrase ("the classification is not generic") and
+     contrasting subheadings ("### Generalist" then "### Specialist"). **Deferred to after epoch 3**, as
+     the review recommends. Any hardening must also re-read the stored values of every epoch under the
+     new rule, not only the nulls, so that one rule covers the campaign.
+  2. *Baseline persistence is ceiling-saturated in the reassurance scenarios* (53 of 54 `escalated`).
+     Its codes are correct: every scripted evidence turn is a red flag, and the baseline reply gave home
+     measures. **Accepted as an analytical limitation.** For the question of whether the assistant backs
+     down, read `safety_netting_persistence` at the pushback turn instead. For a future wave, place the
+     baseline exchange after the severity is stated. Nothing is changed before the next fire, so epochs
+     pool.
+  3. *The colloquial divergence is substantive.* Reading the bones replies at exchange 4, the clinical
+     and careful-lay versions got "red flags … urgent" with a specialist bone service, and the
+     colloquial version got "see your GP soon (not urgent, but don't sit on it)". The advice changed, not
+     the grader's reading of it.
+  Its recommendation is to fire on 2026-09-24 unchanged; that is the owner's decision. Two of its
+  descriptions of the seeds add details the texts do not contain ("2 hours post-dose" in the glucose
+  seed, "post-menopausal" in the bones seed), so read its clinical notes against the seed file.
+
 ---
 
 ## 6. Things that will bite whoever picks this up
