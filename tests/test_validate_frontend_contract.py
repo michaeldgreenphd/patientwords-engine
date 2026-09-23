@@ -325,3 +325,32 @@ def test_repro_pack_gate_end_to_end_on_a_declared_foreign_lane(tmp_path):
                                           "manifest": {"run_ids": ["run_1"]}, "sent_utc": None}])
     out, errors = vfc.repro_pack_gate(engine)
     assert errors == [] and "skipped: 1 log entry of lane 'petri'" in out
+
+
+def _main(monkeypatch, site, engine):
+    monkeypatch.setattr("sys.argv", ["validate_frontend_contract.py", "--site", str(site), "--engine", str(engine)])
+    with pytest.raises(SystemExit) as e:
+        vfc.main()
+    return e.value.code
+
+
+def test_main_fails_when_the_pack_check_cannot_read_the_log(site, tmp_path, monkeypatch, capsys):
+    """Regression (review of 2026-09-23): every gate test called repro_pack_gate
+    directly, so dropping its errors from main() left the suite green. main() is
+    what the Routine and publish-site-data run ('must be 0 errors'). On origin/main
+    this exits 0: the check crashes (exit 1) and the gate passes it."""
+    engine = _engine_with_log(tmp_path, [{"pack_version": "vpetri000001", "vendor": "acme",
+                                          "manifest": {"run_ids": ["run_1"]}, "sent_utc": None}])
+    assert _main(monkeypatch, site, engine) == 1
+    out = capsys.readouterr().out
+    assert "FAIL: repro-pack --check exited 3" in out
+    assert "contract check: 1 error(s)" in out
+
+
+def test_main_passes_the_same_site_when_the_pack_check_is_clean(site, tmp_path, monkeypatch, capsys):
+    """The control for the test above: the same valid site and scratch engine with
+    a log the check reads cleanly give no error, so the failure above is the gate's."""
+    engine = _engine_with_log(tmp_path, [{"pack_version": "vpetri000001", "lane": "petri", "vendor": "acme",
+                                          "manifest": {"run_ids": ["run_1"]}, "sent_utc": None}])
+    assert _main(monkeypatch, site, engine) == 0
+    assert "contract check: 0 error(s)" in capsys.readouterr().out
