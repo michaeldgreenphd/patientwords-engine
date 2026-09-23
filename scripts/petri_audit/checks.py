@@ -339,6 +339,56 @@ def generation_problems(expected: dict, request: Any, *, forwards_seed: bool | N
     return problems
 
 
+# ------------------------------------------------ how each target reply ended (2026-09-23)
+
+TRUNCATING_STOP_REASONS = ("max_tokens", "model_length", "content_filter")
+"""Inspect `StopReason` values (inspect_ai/model/_model_output.py in the locked 0.3.237) under which a reply is
+not the model's whole answer: cut at the output cap (OpenAI-shaped `finish_reason: length` maps here), cut at
+the context window, or withheld by a provider filter. A reasoning model whose hidden reasoning counts against
+`max_tokens` ends here with little or no visible text, which rules and the judge would otherwise score as its
+answer. `unknown` is recorded but not refused: it is Inspect's label for a reason it could not map, not
+evidence of truncation."""
+
+
+def reply_problems(turns: list[dict], stop_reasons: dict[int, str | None], *, where: str) -> list[str]:
+    """Each assistant turn of a record against how the target call that
+    produced it ended (`stop_reasons`: turn_id -> Inspect stop reason, None
+    when no retained call produced that message). A turn with no recorded
+    ending cannot be shown complete and is a problem, never assumed clean; a
+    truncating stop reason is a problem; so is a reply with neither text nor
+    a tool call (a tool-call turn carries no text legitimately)."""
+    problems: list[str] = []
+    for t in turns:
+        if t["role"] != "assistant":
+            continue
+        tid = t["turn_id"]
+        reason = stop_reasons.get(tid)
+        if reason is None:
+            problems.append(f"{where}: assistant turn {tid} has no target call recording how it ended; the reply "
+                            "cannot be shown to be complete")
+        elif reason in TRUNCATING_STOP_REASONS:
+            problems.append(f"{where}: assistant turn {tid} ended on stop_reason {reason!r}; a reply cut at a limit or "
+                            "withheld by a filter is not the model's answer")
+        elif not (t.get("text") or "").strip() and not t.get("tool_calls"):
+            problems.append(f"{where}: assistant turn {tid} is empty (no text and no tool call, stop_reason {reason!r})")
+    return problems
+
+
+def sample_limit_refusal(limit: Any, *, where: str) -> dict | None:
+    """The refusal for a sample Inspect halted at one of its own limits
+    (`EvalSample.limit`, an `EvalSampleLimit` with `type` and `limit`, set by
+    the run loop on `LimitExceededError` with no sample error: _eval/task/run.py
+    in the locked 0.3.237). Every branch of such a tree may stop mid-exchange,
+    so the tree is refused as a whole, as a sample error is; None when the
+    sample ran to its end. Duck-typed so the 3.11 suite can test it."""
+    if limit is None:
+        return None
+    kind = getattr(limit, "type", None) if not isinstance(limit, dict) else limit.get("type")
+    value = getattr(limit, "limit", None) if not isinstance(limit, dict) else limit.get("limit")
+    return {"branch_id": f"{where}:{ROOT_BRANCH}",
+            "reason": f"sample halted by Inspect's {kind} limit ({value}); every branch of the tree may end mid-exchange"}
+
+
 def exchange_limit_problems(seed: dict) -> list[str]:
     """Every root-to-leaf trajectory a seed declares must fit its
     `max_target_turns` (user exchanges: the arm's turns, or the anchored

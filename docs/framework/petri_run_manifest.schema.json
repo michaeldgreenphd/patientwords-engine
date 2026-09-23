@@ -420,6 +420,29 @@
                 "creation_index": {
                   "type": "integer",
                   "minimum": 1
+                },
+                "assistant_stop_reasons": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "turn_id",
+                      "stop_reason"
+                    ],
+                    "properties": {
+                      "turn_id": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "stop_reason": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Inspect's StopReason for the target call that produced this turn (stop, tool_calls, unknown; max_tokens, model_length and content_filter never appear here because such a branch is refused)."
+                      }
+                    }
+                  },
+                  "description": "Adapter 0.2 (2026-09-23): one entry per assistant turn of this branch's record, replayed prefix included, in turn order, naming how the target call that produced it ended. Absent only in manifests written by adapter 0.1, which recorded no stop reason. A branch whose turn ended on max_tokens, model_length or content_filter, whose turn has no retained call, or whose turn is empty (no text and no tool call) is refused and listed under integrity.records_refused instead."
                 }
               }
             }
@@ -1010,6 +1033,28 @@
             "null"
           ],
           "description": "Whether two identical calls returned identical text in a separate determinism probe; null unless that probe ran. Never inferred."
+        },
+        "stop_reasons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "stop_reason",
+              "calls"
+            ],
+            "properties": {
+              "stop_reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "calls": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "description": "Adapter 0.2 (2026-09-23): the number of this role's calls per Inspect StopReason (stop, max_tokens, model_length, tool_calls, content_filter, unknown), one entry per reason seen, sorted by reason, over every call of the run, refused trees included; `no_output` counts calls that returned no choice (an error). Absent only in manifests written by adapter 0.1, which recorded no stop reason."
         }
       }
     },
@@ -1133,6 +1178,28 @@
             "null"
           ],
           "description": "Whether two identical calls returned identical text in a separate determinism probe; null unless that probe ran. Never inferred."
+        },
+        "stop_reasons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "stop_reason",
+              "calls"
+            ],
+            "properties": {
+              "stop_reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "calls": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "description": "Adapter 0.2 (2026-09-23): the number of this role's calls per Inspect StopReason (stop, max_tokens, model_length, tool_calls, content_filter, unknown), one entry per reason seen, sorted by reason, over every call of the run, refused trees included; `no_output` counts calls that returned no choice (an error). Absent only in manifests written by adapter 0.1, which recorded no stop reason."
         }
       }
     },

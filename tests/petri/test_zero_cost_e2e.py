@@ -728,3 +728,95 @@ def test_judge_refuses_a_resume_under_another_spec_before_any_call(run, tmp_path
     code = cli.main(["judge", "--run-dir", str(data_dir / "run_p"), "--judge-model", "claude-haiku-4-5", "--judge-max-spend", "0.05"])
     assert code == 10
     assert judgments.read_text(encoding="utf-8").count("\n") == 1, "no row was added"
+
+
+# ------------------------------------------ non-Anthropic targets: how each reply ended (2026-09-23)
+
+
+class _CutOffTarget(ScriptedTarget):
+    """On H1, ends the clinical arm's second reply at the output cap (what a
+    reasoning target does when hidden reasoning spends max_tokens) and answers
+    the colloquial arm's first turn with nothing at all."""
+
+    def __init__(self, seed_set: seeds.SeedSet) -> None:
+        super().__init__(seed_set)
+        self.clinical = seeds.text_of(seed_set.seeds[H1], "stimulus_clinical")
+
+    def __call__(self, input, tools, tool_choice, config) -> ModelOutput:
+        users = [m for m in input if isinstance(m, ChatMessageUser)]
+        if users[0].text != self.clinical and len(users) == 1:
+            return ModelOutput.from_content(model="mockllm", content="")
+        out = super().__call__(input, tools, tool_choice, config)
+        if users[0].text == self.clinical and len(users) == 2:
+            out.choices[0].stop_reason = "max_tokens"
+        return out
+
+
+def test_a_reply_cut_at_max_tokens_or_left_empty_refuses_its_branch_and_every_stop_reason_is_recorded(run, tmp_path_factory):
+    """Nothing in the lane read stop_reason: a reply cut at max_tokens, or an
+    empty one, was exported as the model's answer and judged. The branch is
+    now refused by name, and the manifest counts every call's stop reason."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    target = get_model("mockllm/model", custom_outputs=_CutOffTarget(seed_set), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("cut-logs"), token_limit=20000, cost_limit=0.01)
+    assert log.status == "success", log.error
+    result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("cut") / "run")
+    reasons = sorted(r["reason"] for r in result.refused)
+    assert len(reasons) == 2, reasons
+    assert any("assistant turn 4 ended on stop_reason 'max_tokens'" in r for r in reasons), reasons
+    assert any("assistant turn 2 is empty (no text and no tool call, stop_reason 'stop')" in r for r in reasons), reasons
+    m = result.manifest
+    assert m["trees"] == [] and m["execution"]["claim_grade_eligible"] is False
+    # every call is counted, the refused trees' included: 2 conditions x 2 user turns
+    assert m["models"]["target"]["stop_reasons"] == [{"stop_reason": "max_tokens", "calls": 1}, {"stop_reason": "stop", "calls": 3}]
+    assert manifest_problems(m) == [] and m["adapter"]["version"] == "0.2"
+
+
+def test_exported_branches_record_how_each_assistant_turn_ended(run):
+    """The survivors of the ordinary mock run carry one stop reason per
+    assistant turn, replayed prefix included, joinable to the transcript by
+    turn_id."""
+    m = run["r1"].manifest
+    for tree in m["trees"]:
+        for b in tree["branches"]:
+            rec = _record(run, b["conversation_id"])
+            assistant_ids = [t["turn_id"] for t in rec["turns"] if t["role"] == "assistant"]
+            assert [e["turn_id"] for e in b["assistant_stop_reasons"]] == assistant_ids
+            for e in b["assistant_stop_reasons"]:
+                turn = rec["turns"][e["turn_id"] - 1]
+                assert e["stop_reason"] == ("tool_calls" if turn.get("tool_calls") else "stop")
+    counted = {r["stop_reason"]: r["calls"] for r in m["models"]["target"]["stop_reasons"]}
+    assert sum(counted.values()) == next(r for r in m["usage"]["by_role"] if r["role"] == "target")["calls"]
+    assert set(counted) == {"stop", "tool_calls"}
+
+
+class _MeteredTarget(ScriptedTarget):
+    """Reports usage on every call, so Inspect's per-sample token limit can halt a sample."""
+
+    def __call__(self, input, tools, tool_choice, config) -> ModelOutput:
+        from inspect_ai.model import ModelUsage
+
+        out = super().__call__(input, tools, tool_choice, config)
+        out.usage = ModelUsage(input_tokens=400, output_tokens=400, total_tokens=800)
+        return out
+
+
+def test_a_sample_inspect_halts_at_its_token_limit_is_refused_as_a_tree(run, tmp_path_factory):
+    """Inspect ends a sample that reaches token_limit with `limit` set and no
+    error; the adapter checked only `error`, so the truncated tree was exported."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    target = get_model("mockllm/model", custom_outputs=_MeteredTarget(seed_set), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("limit-logs"), token_limit=1000, cost_limit=0.01)
+    halted = [s for s in log.samples if s.limit is not None]
+    assert len(halted) == 2 and all(s.error is None for s in halted), [(s.limit, s.error) for s in log.samples]
+    result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("limit") / "run")
+    reasons = [r["reason"] for r in result.refused]
+    assert reasons == ["sample halted by Inspect's token limit (1000.0); every branch of the tree may end mid-exchange"] * 2
+    assert result.manifest["trees"] == [] and result.manifest["execution"]["claim_grade_eligible"] is False
+    # the halted samples' calls were made and are still booked
+    row = next(r for r in result.manifest["usage"]["by_model"] if r["model"] == "mockllm/model")
+    assert row["calls"] == 4 and row["input_tokens"] == 1600

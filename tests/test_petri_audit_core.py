@@ -1589,3 +1589,72 @@ def test_the_mock_judge_is_zero_priced():
     # a real judge spec still expands by the registry's rule
     assert registry_spec_to_inspect("claude-haiku-4-5") == "anthropic/claude-haiku-4-5"
     assert registry_spec_to_inspect("openrouter:vendor/model") == "openrouter/vendor/model"
+
+
+# ------------------------------------------------ non-Anthropic targets: how each reply ended (2026-09-23)
+
+
+def test_a_truncated_filtered_empty_or_unrecorded_reply_is_a_named_problem():
+    """A reasoning target spends its max_tokens on hidden reasoning and returns
+    a reply cut at the cap (stop_reason max_tokens) with little or no text;
+    nothing read stop_reason, so the cut reply was exported and scored as the
+    model's answer. Every assistant turn is now checked against the call that
+    produced it."""
+    turns = [{"turn_id": 1, "role": "user", "text": "q"},
+             {"turn_id": 2, "role": "assistant", "text": "a full reply"},
+             {"turn_id": 3, "role": "user", "text": "q2"},
+             {"turn_id": 4, "role": "assistant", "text": "", "tool_calls": [{"call_id": "c", "name": "t"}]},
+             {"turn_id": 5, "role": "tool", "text": "result"},
+             {"turn_id": 6, "role": "assistant", "text": "after the tool"}]
+    clean = {2: "stop", 4: "tool_calls", 6: "stop"}
+    assert checks.reply_problems(turns, clean, where="t") == [], "a tool-call turn carries no text legitimately"
+    assert checks.reply_problems(turns, {**clean, 6: "unknown"}, where="t") == [], "unknown is recorded, not refused"
+    for reason in checks.TRUNCATING_STOP_REASONS:
+        problems = checks.reply_problems(turns, {**clean, 6: reason}, where="t")
+        assert problems == [f"t: assistant turn 6 ended on stop_reason {reason!r}; a reply cut at a limit or withheld by "
+                            "a filter is not the model's answer"], reason
+    assert set(checks.TRUNCATING_STOP_REASONS) == {"max_tokens", "model_length", "content_filter"}
+    # a turn no retained call produced cannot be shown complete: refused, never assumed clean
+    missing = checks.reply_problems(turns, {2: "stop", 4: "tool_calls"}, where="t")
+    assert len(missing) == 1 and "assistant turn 6 has no target call recording how it ended" in missing[0]
+    assert checks.reply_problems(turns, {**clean, 6: None}, where="t") == missing
+    # a reply that ended normally with no text and no tool call is empty, whatever its stop reason says
+    blank = [dict(t) for t in turns]
+    blank[5]["text"] = "  \n"
+    empty = checks.reply_problems(blank, clean, where="t")
+    assert empty == ["t: assistant turn 6 is empty (no text and no tool call, stop_reason 'stop')"]
+
+
+def test_a_sample_inspect_halted_at_a_limit_is_refused_as_a_tree():
+    """Inspect ends a sample that reaches token_limit or cost_limit with
+    `EvalSample.limit` set and no error, so the adapter's sample-error check
+    passed it and its possibly mid-exchange branches were exported."""
+    from types import SimpleNamespace as NS
+
+    assert checks.sample_limit_refusal(None, where="s#1") is None
+    refusal = checks.sample_limit_refusal(NS(type="token", limit=40000), where="s#1")
+    assert refusal == {"branch_id": f"s#1:{checks.ROOT_BRANCH}",
+                       "reason": "sample halted by Inspect's token limit (40000); every branch of the tree may end mid-exchange"}
+    assert "cost limit (0.19)" in checks.sample_limit_refusal({"type": "cost", "limit": 0.19}, where="s#1")["reason"]
+
+
+def test_the_manifest_schema_accepts_recorded_stop_reasons_and_refuses_malformed_ones():
+    """The stop-reason fields are additive and optional (a manifest written by
+    adapter 0.1 still validates), and closed where present."""
+    schema = framework.load_json(framework.MANIFEST_SCHEMA)
+    base = json.loads(json.dumps(schema["examples"][0]))
+    assert framework.validate_with_refs(base, schema) == [], "a manifest without the new fields stays valid"
+    rich = json.loads(json.dumps(base))
+    rich["models"]["target"]["stop_reasons"] = [{"stop_reason": "stop", "calls": 3}, {"stop_reason": "tool_calls", "calls": 1}]
+    for tree in rich["trees"]:
+        for b in tree["branches"]:
+            b["assistant_stop_reasons"] = [{"turn_id": 2, "stop_reason": "stop"}]
+    assert rich["trees"], "the example carries at least one branch to extend"
+    assert framework.validate_with_refs(rich, schema) == []
+    bad = json.loads(json.dumps(rich))
+    bad["models"]["target"]["stop_reasons"] = [{"stop_reason": "stop", "calls": 0, "extra": 1}]
+    problems = framework.validate_with_refs(bad, schema)
+    assert any("below 1" in p for p in problems) and any("unexpected key 'extra'" in p for p in problems)
+    bad = json.loads(json.dumps(rich))
+    bad["trees"][0]["branches"][0]["assistant_stop_reasons"] = [{"turn_id": 2}]
+    assert any("missing 'stop_reason'" in p for p in framework.validate_with_refs(bad, schema))

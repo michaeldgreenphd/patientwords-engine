@@ -45,8 +45,10 @@ from .checks import (
     expected_stimuli,
     generation_problems,
     missing_branch_refusals,
+    reply_problems,
     request_prefix_problems,
     request_stimuli,
+    sample_limit_refusal,
     staging_problems,
     stimulus_problems,
 )
@@ -69,7 +71,9 @@ from .spend import pricing_source_digest, reprice_usage
 from .transcripts import bind_manifest, build_record, conversation_id, record_problems
 
 ADAPTER_NAME = "petri_audit.adapter"
-ADAPTER_VERSION = "0.1"
+# 0.2 (2026-09-23): each assistant turn's stop reason is recorded (per branch and counted per run) and a truncated,
+# filtered or empty reply refuses its branch; a sample Inspect halted at a limit refuses its tree
+ADAPTER_VERSION = "0.2"
 # inspect-ai 0.3.237 forwards GenerateConfig.seed on these providers (design memo section 2); anthropic and
 # google never send it; mock and placeholder models have no provider behaviour to record.
 SEED_FORWARDING: dict[str, bool | None] = {
@@ -204,6 +208,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     trees: list[dict] = []
     dropped_empty = 0
     served_all: set[str] = set()
+    stop_counts: dict[str, int] = {}          # every target call's stop reason, refused trees included
     role_usage: dict[str, dict[str, Any]] = {}
     model_usage: dict[str, dict[str, Any]] = {}
     seen_counts: dict[str, dict[str, int]] = {}
@@ -262,6 +267,15 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                     accumulate(bucket, key, usage)
         served = {e.output.model for e in model_events if e.output and e.output.model}
         served_all |= served
+        # how each target call ended, keyed by the id of the assistant message it produced: the timeline's messages
+        # are those same objects (a replayed prefix included), so each record's assistant turn finds its own call
+        stop_by_message: dict[str, str] = {}
+        for e in model_events:
+            choice = e.output.choices[0] if e.output is not None and e.output.choices else None
+            reason = str(choice.stop_reason) if choice is not None else "no_output"
+            stop_counts[reason] = stop_counts.get(reason, 0) + 1
+            if choice is not None and choice.message.id:
+                stop_by_message[choice.message.id] = reason
         if seed is None:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"sample metadata names no known seed ({seed_id!r})"})
             continue
@@ -288,6 +302,12 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         counts[cond["condition_id"]] = counts.get(cond["condition_id"], 0) + 1
         if sample.error:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"sample error: {sample.error}"})
+            continue
+        # Inspect ends a sample that reaches its token, cost or other limit with `limit` set and NO error, so the
+        # error check above passes it; its branches may stop mid-exchange and are refused as a tree (2026-09-23)
+        halted = sample_limit_refusal(sample.limit, where=tree_id)
+        if halted is not None:
+            refused.append(halted)
             continue
         # config and raw-request checks read the retained raw request, never the merged config; the settings are
         # read per provider shape (nested for Google) and the requested seed is required where the provider
@@ -398,6 +418,15 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                                 "reason": f"trajectory truncated by the controller at the {hit[0].get('kind')} limit "
                                           f"({hit[0].get('limit', hit[0].get('reason'))})"})
                 continue
+            # every assistant turn must come from a call that ended on its own: a reply cut at max_tokens (a reasoning
+            # model spends its allowance before any text), the context window or a filter, or one with no text and no
+            # tool call, is not an answer the rules or the judge may score (2026-09-23)
+            turn_stops = {t["turn_id"]: stop_by_message.get(m["id"]) if m["id"] else None
+                          for t, m in zip(record["turns"], simple) if t["role"] == "assistant"}
+            incomplete = reply_problems(record["turns"], turn_stops, where=where)
+            if incomplete:
+                refused.append({"branch_id": f"{tree_id}:{branch_id}", "reason": "; ".join(incomplete[:5])})
+                continue
             overlong = exchange_problems(record["turns"], seed["protocol"]["max_target_turns"], where=where)
             if overlong:
                 refused.append({"branch_id": f"{tree_id}:{branch_id}", "reason": "; ".join(overlong)})
@@ -413,7 +442,8 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             branches_out.append({"branch_id": branch_id, "parent_branch_id": parent_id, "branched_from_message_id": anchor_msg,
                                  "branched_from_turn_id": anchor_turn, "condition_id": cond["condition_id"],
                                  "conversation_id": conv_id, "surviving": creation == survivor_creation,
-                                 "creation_index": creation})
+                                 "creation_index": creation,
+                                 "assistant_stop_reasons": [{"turn_id": tid, "stop_reason": r} for tid, r in turn_stops.items()]})
         # raw request bodies (per sample, every branch): each retained request's complete system/user sequence must be
         # a prefix of exactly the sequence one branch of this condition declares, never mere membership in a pool
         for e in model_events:
@@ -514,6 +544,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         "models": {"target": {"provider": target_provider, "model": target_name.split("/", 1)[1] if "/" in target_name else target_name,
                               "inspect_name": target_name, "registry_spec": registry_spec,
                               "served_model_strings": sorted(served_all),
+                              "stop_reasons": [{"stop_reason": r, "calls": n} for r, n in sorted(stop_counts.items())],
                               "config": {k: v for k, v in (target_role.config.model_dump(mode="json") if target_role else {}).items() if v is not None},
                               "seed_requested": (seeds_used and next(iter(seeds_used.values()))["generation"]["seed_requested"]) or None,
                               "seed_forwarded_by_provider": SEED_FORWARDING.get(target_provider),
