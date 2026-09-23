@@ -1833,7 +1833,7 @@ def _scope_block(key: str, block: object, vendor: str, models: set[str]) -> obje
     return out
 
 
-def _registry_scope(registry_path, vendor: str, rows: list[dict]) -> dict:
+def _registry_scope(registry_path: str | Path, vendor: str, rows: list[dict]) -> dict:
     """The part of the provider registry a vendor's pack depends on, and its digest.
 
     The scope is the registry block of every provider a vendor record was requested
