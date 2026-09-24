@@ -136,7 +136,10 @@ def is_paid_fire(trigger, params):
     exemption is petri-audit outside `mode: run`: preflight and dry_run make
     no paid call, and counting them paid refused the lane's park once the
     ceiling was reached, leaving the last paid configuration at rest where a
-    branch operation could re-fire it (Codex round 8 on PR #26)."""
+    branch operation could re-fire it (Codex round 8 on PR #26). Mode is
+    read trimmed and lower-cased so that a spelling like "RUN" counts as paid
+    (fail closed); validate_params refuses every spelling the params job
+    would refuse (petri_params_problems), so none reaches the journal."""
     if is_mitigation_fire(trigger, params):
         return True
     if trigger not in PAID_TRIGGERS:
@@ -225,7 +228,9 @@ def fire_lane(trigger: str, params: dict) -> str:
 
 PROVIDERS_RELPATH = Path("data") / "advice_providers.json"
 PETRI_BOOLEAN_KEYS = ("judge", "log_model_api", "commit_outputs")
-# The target rules of petri_audit.yml's "Resolve parameters" step, mirrored by `petri_target_problems`.
+# The mode and target rules of petri_audit.yml's "Resolve parameters" step, mirrored by `petri_params_problems`
+# (mode) and `petri_target_problems` (target).
+PETRI_MODES = ("preflight", "dry_run", "run")   # compared exactly by the params job; the first is its default
 PETRI_MOCK_TARGET = "mockllm/model"       # the params job's default target, and the only one dry_run admits
 PETRI_SENTINEL_PROVIDERS = ("mockllm", "none")
 PETRI_RUN_PROVIDERS = ("anthropic", "openrouter")
@@ -284,14 +289,25 @@ def petri_judge_key_env(params: dict, registry: dict | None = None) -> str | Non
     return key_env if isinstance(key_env, str) else None
 
 
-def petri_resolved_target(params: dict) -> str:
-    """The target petri_audit.yml's params job resolves from a trigger file:
-    the file's value `str()`-ed as the job does it (a JSON boolean
-    lower-cased, nothing trimmed), else the job's default."""
-    if "target" not in params:
-        return PETRI_MOCK_TARGET
-    value = params["target"]
+def _petri_job_value(params: dict, key: str, default: str) -> str:
+    """A key's value as petri_audit.yml's params job resolves it from a
+    trigger file: `str()`-ed as the job does it (a JSON boolean lower-cased,
+    nothing trimmed or case-folded), else the job's default."""
+    if key not in params:
+        return default
+    value = params[key]
     return str(value).lower() if isinstance(value, bool) else str(value)
+
+
+def petri_resolved_target(params: dict) -> str:
+    """The target petri_audit.yml's params job resolves from a trigger file."""
+    return _petri_job_value(params, "target", PETRI_MOCK_TARGET)
+
+
+def petri_resolved_mode(params: dict) -> str:
+    """The mode petri_audit.yml's params job resolves from a trigger file and
+    then compares exactly against PETRI_MODES."""
+    return _petri_job_value(params, "mode", PETRI_MODES[0])
 
 
 def petri_target_problems(params: dict) -> list[str]:
@@ -308,11 +324,13 @@ def petri_target_problems(params: dict) -> list[str]:
     its own key); and spelled exactly anthropic/<model> or
     openrouter/<vendor>/<model>. dry_run: the mock target only. preflight
     calls nothing, so the job checks no target there and neither does this.
-    Mode is read as the rest of this module reads it (trimmed, lower-cased):
-    a spelling the job would refuse outright is checked as the mode it names.
-    The sentinel test trims the target, so a padded sentinel is refused under
-    its own name; the job refuses it too, as a direct-vendor spelling."""
-    mode = str(params.get("mode", "preflight")).strip().lower()
+    Mode is read exactly, as the job reads it: the job refuses any mode not
+    spelled exactly as one of PETRI_MODES before it looks at the target, and
+    petri_params_problems refuses the same spellings, so no target rule is
+    applied to them here. The sentinel test trims the target, so a padded
+    sentinel is refused under its own name; the job refuses it too, as a
+    direct-vendor spelling."""
+    mode = petri_resolved_mode(params)
     target = petri_resolved_target(params)
     if mode == "dry_run":
         if target != PETRI_MOCK_TARGET:
@@ -341,6 +359,15 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
     workflow_dispatch reaches without it): one billing channel per fire, and
     boolean keys in the one spelling the workflow compares against."""
     problems = []
+    # The params job compares mode exactly and exits on any other spelling, but the rest of this module reads it
+    # trimmed and lower-cased (is_paid_fire), so "RUN" or " run" was priced as a paid fire, passed budget_check and
+    # journaled a reservation holding the queue slot and the day's ceiling for a run the job then refused; a free
+    # typo ("DRY_RUN", "bogus") journaled a queue-slot entry the same way (review of PR #37, 2026-09-24).
+    mode = petri_resolved_mode(params)
+    if mode not in PETRI_MODES:
+        problems.append(f"petri-audit mode must be exactly one of {', '.join(PETRI_MODES)}, got {params['mode']!r}: "
+                        "the params job compares it exactly and refuses any other spelling (case, padding), so "
+                        "the fire would journal a reservation for a run that never starts")
     for key in PETRI_BOOLEAN_KEYS:
         if key in params:
             value = params[key]

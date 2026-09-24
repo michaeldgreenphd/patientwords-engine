@@ -399,6 +399,34 @@ def test_a_target_the_params_job_refuses_is_refused_before_the_journal(repo, mod
     assert not trigger_path(repo, "petri-audit").exists(), "a refused fire writes no trigger file"
 
 
+@pytest.mark.parametrize("mode", ["RUN", "Run", " run", "run ", "DRY_RUN", "Preflight", "bogus", "", True, None])
+def test_a_mode_the_params_job_refuses_is_refused_before_the_journal(repo, mode):
+    # review of PR #37 (2026-09-24): the params job compares mode exactly, but the fire path read it trimmed and
+    # lower-cased, so "RUN" with a valid target was priced as paid, passed budget_check and journaled a reservation
+    # holding the queue slot and the day's ceiling for a run the job refused; a free typo journaled a queue slot
+    params = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+              "mode": mode, "max_spend": "1.00", "judge": "false", "commit_outputs": "true", "_nonce": "pilot-1"}
+    with pytest.raises(ValueError, match=re.escape("mode must be exactly one of preflight, dry_run, run")):
+        ft.validate_params("petri-audit", params)
+    assert fire(repo, "petri-audit", params) == 3
+    assert not journal_path(repo).exists(), "a refused fire journals nothing"
+    assert not trigger_path(repo, "petri-audit").exists(), "a refused fire writes no trigger file"
+    # a spelling that reaches the paid count some other way is still counted paid (fail closed)
+    if str(mode).strip().lower() == "run":
+        assert ft.is_paid_fire("petri-audit", params)
+
+
+def test_the_three_modes_and_an_absent_mode_pass_the_fire_guard():
+    base = {"seeds_file": "docs/framework/petri_seeds.draft.json", "max_spend": "1.00", "judge": "false",
+            "commit_outputs": "true", "_nonce": "pilot-1"}
+    assert ft.validate_params("petri-audit", {**base, "mode": "run", "target": "anthropic/claude-haiku-4-5"}) is None
+    assert ft.validate_params("petri-audit", {**base, "mode": "dry_run", "target": "mockllm/model"}) is None
+    assert ft.validate_params("petri-audit", {**base, "mode": "preflight"}) is None
+    # the params job's default is preflight, so a file that names no mode is admitted as a free fire
+    assert ft.validate_params("petri-audit", dict(base)) is None
+    assert not ft.is_paid_fire("petri-audit", dict(base))
+
+
 @pytest.mark.parametrize("target", ["anthropic/claude-haiku-4-5", "openrouter/openai/gpt-5.4-mini",
                                     "openrouter/google/gemini-3.5-flash"])
 def test_a_target_the_params_job_admits_passes_the_fire_guard(target):

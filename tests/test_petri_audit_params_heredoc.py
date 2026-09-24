@@ -157,9 +157,26 @@ def _fire_trigger_module():
 _ABSENT = object()
 
 
+def _guard_and_job_agree(tmp_path: Path, mode, target) -> None:
+    cfg = {**PAID, "mode": mode, "_nonce": "n1"}
+    for key, value in (("mode", mode), ("target", target)):
+        if value is _ABSENT:
+            del cfg[key]
+        else:
+            cfg[key] = value
+    rc, _, err = _run(tmp_path, cfg)
+    try:
+        _fire_trigger_module().validate_params("petri-audit", cfg)
+        guard_admits = True
+    except ValueError as exc:
+        guard_admits, guard_err = False, str(exc)
+    assert guard_admits == (rc == 0), (f"params job rc={rc} {err.strip()!r}; guard "
+                                       f"{'admits' if guard_admits else 'refuses: ' + guard_err}")
+
+
 @pytest.mark.parametrize("mode, target", [
     (mode, target)
-    for mode in ("run", "dry_run", "preflight")
+    for mode in ("run", "dry_run", "preflight", "RUN", " run", "bogus", _ABSENT)
     for target in ("anthropic/claude-haiku-4-5", "openrouter/openai/gpt-5.4-mini", "openai/gpt-5.4-mini",
                    "google/gemini-3.5-flash", " anthropic/claude-haiku-4-5", "anthropic/claude-haiku-4-5 ",
                    "claude-haiku-4-5", "", "anthropic/", "openrouter/", "openrouter/gpt-5.4-mini",
@@ -169,17 +186,18 @@ _ABSENT = object()
 def test_the_fire_guard_refuses_exactly_the_targets_the_params_job_refuses(tmp_path, mode, target):
     # Codex review of PR #37 (2026-09-24): the fire path journals a reservation before the params job runs, so a
     # target the params job refuses must be refused at the fire too, or the entry holds the queue slot and, in mode
-    # run, the day's ceiling for a run that never starts. Same trigger file, both checks, same verdict.
-    cfg = {**PAID, "mode": mode, "_nonce": "n1"}
-    if target is _ABSENT:
-        del cfg["target"]
-    else:
-        cfg["target"] = target
-    rc, _, err = _run(tmp_path, cfg)
-    try:
-        _fire_trigger_module().validate_params("petri-audit", cfg)
-        guard_admits = True
-    except ValueError as exc:
-        guard_admits, guard_err = False, str(exc)
-    assert guard_admits == (rc == 0), (f"params job rc={rc} {err.strip()!r}; guard "
-                                       f"{'admits' if guard_admits else 'refuses: ' + guard_err}")
+    # run, the day's ceiling for a run that never starts. Same trigger file, both checks, same verdict. The mode
+    # spellings the job refuses ("RUN", " run", "bogus") and an absent mode (the job's preflight default) are here
+    # too: the fire path read mode trimmed and lower-cased while the job compares it exactly (review of PR #37).
+    _guard_and_job_agree(tmp_path, mode, target)
+
+
+@pytest.mark.parametrize("mode, target", [
+    (mode, target)
+    for mode in ("Run", "run ", "DRY_RUN", "Dry_run", "Preflight", "PREFLIGHT", "", True, False, None, 1)
+    for target in ("anthropic/claude-haiku-4-5", "openrouter/openai/gpt-5.4-mini", "mockllm/model", _ABSENT)
+])
+def test_the_fire_guard_refuses_exactly_the_modes_the_params_job_refuses(tmp_path, mode, target):
+    # the remaining mode spellings, including JSON scalars the job str()-s (a boolean lower-cased), against the
+    # targets each canonical mode admits
+    _guard_and_job_agree(tmp_path, mode, target)
