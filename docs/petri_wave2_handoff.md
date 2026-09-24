@@ -148,6 +148,15 @@ The all-cells estimates, their intervals and the urgency comparison are unchange
 also records the rubric digest, every input archive with its sha256, and the one cell that has a
 clinical arm but no patient arm.
 
+**Second correction, 2026-09-24 (Codex review of PR #29).** Four of the 44 unmeasurable rows were null
+judgments whose own sample was retried to a valid tier later in the append-only archive, so each of
+those samples was counted as both measured and unmeasurable. They are now reported on their own line
+(`judge_of_record_null_rows_superseded_by_a_later_valid_judgment`: 4) and coverage reads
+6431/6471 = 0.9938 with 40 unmeasurable rows. The retry is matched on the sample (response digest,
+rubric, judge, stimulus, model, arm, `sample_k`), not the response digest alone: samples 1 and 2 of one
+cell in `advmc_selected_20260807#4` returned identical text, and both stay measurements. Every
+estimate, interval and tier-matching count is unchanged; a re-run compared them field by field.
+
 ---
 
 ## 5. What to do, by when

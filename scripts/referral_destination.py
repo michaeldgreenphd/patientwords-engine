@@ -20,6 +20,12 @@ an urgency difference. The bundle therefore counts the modal-equal cells whose m
 that cannot be measured is counted and reported by reason rather than dropped (AGENTS.md: no
 silent failures) — a coverage figure below 1.0 with no stated reason is a defect, not a result.
 
+A judgment the judge could not make (tier null) stays in the append-only archive when a later run
+retries it, and the retry appends a second row for the same sample. A null whose own sample has a later
+valid judgment is that retry's history, not an unmeasurable row, so it is reported on its own line
+outside the coverage count. The sample is the key, not the response digest alone: two samples of one
+cell can return identical text, and both are measurements.
+
 Judgments are read under one rubric. The advice archive keys a judgment by response, rubric
 digest and judge model, so the same judge can re-judge every response after a rubric change;
 pooling digests would mix classifications made under different rubrics and count a re-judged
@@ -164,6 +170,40 @@ def names_any(text: str, terms: Iterable[str]) -> bool:
     return any(term in lowered for term in terms)
 
 
+# The fields that identify one judged sample. advice_eval's judge dedupes on the first three (response digest,
+# rubric digest, judge), but two samples of one cell can return identical text and share a response digest (one
+# pair in the committed corpus, advmc_selected_20260807#4, samples 1 and 2), so a retry is matched on the sample.
+SAMPLE_KEY_FIELDS = ("response_sha256", "rubric_sha256", "judge_model", "stimulus_id", "model", "arm", "sample_k")
+SUPERSEDED_NULL = "_null_superseded_by_a_later_valid_judgment"
+
+
+def _sample_key(row: dict[str, Any]) -> tuple | None:
+    values = tuple(row.get(field) for field in SAMPLE_KEY_FIELDS)
+    return None if any(v is None or v == "" for v in values) else values
+
+
+def superseded_null_rows(judgments: list[dict[str, Any]], judge: str, rubric_digest: str,
+                         tier_rank: dict[str, int]) -> set[int]:
+    """Indices of the judge of record's null-tier rows under the selected rubric whose own sample has a valid
+    judgment later in the archive (files in name order, rows in file order, as `_read_jsonl` reads them).
+
+    advice_eval's judge leaves a failed judgment in the append-only archive and retries it on the next run, so the
+    sample then has two rows: the null is its history, and counting it as unmeasurable while its retry is
+    measured counts one sample on both sides of the coverage figure (Codex, PR #29). Only a null followed by a
+    valid row for the same sample is superseded; a row missing any key field, a null with no later valid row, and
+    an unrecognised (non-null) tier all stay unmeasurable under their own reasons."""
+    def in_scope(row: dict[str, Any]) -> bool:
+        return row.get("judge_model") == judge and row.get("rubric_sha256") == rubric_digest
+
+    last_valid: dict[tuple, int] = {}
+    for index, row in enumerate(judgments):
+        key = _sample_key(row)
+        if key is not None and in_scope(row) and row.get("tier") in tier_rank:
+            last_valid[key] = index
+    return {index for index, row in enumerate(judgments)
+            if in_scope(row) and row.get("tier") is None and last_valid.get(_sample_key(row) or (), -1) > index}
+
+
 def build_cells(
     by_sha: dict[str, dict[str, Any]],
     judgments: list[dict[str, Any]],
@@ -176,14 +216,17 @@ def build_cells(
     (tier rank, names a specialist, names an emergency service).
 
     Every judgment row the primary judge produced under the selected rubric digest is either
-    measured or counted in `skipped` under a named reason. Nothing is dropped silently.
+    measured or counted in `skipped` under a named reason. Nothing is dropped silently. A null row
+    whose own sample has a later valid judgment is counted under SUPERSEDED_NULL, which the caller
+    reports outside the coverage count (`superseded_null_rows`).
     """
     cells: dict[tuple[str, str], dict[str, list[tuple[int, bool, bool]]]] = defaultdict(lambda: defaultdict(list))
     skipped: Counter = Counter()
     specialist = vocab["specialist_services"]
     emergency = vocab["emergency_services"]
+    superseded = superseded_null_rows(judgments, judge, rubric_digest, tier_rank)
 
-    for row in judgments:
+    for index, row in enumerate(judgments):
         if row.get("judge_model") != judge:
             # Another judge's row is out of scope, not a measurement failure. Counting it as a
             # skip would drag the coverage rate down and hide a real extraction problem behind
@@ -196,6 +239,10 @@ def build_cells(
         if row["rubric_sha256"] != rubric_digest:
             # Same judge, another rubric: a different instrument, reported on its own line.
             skipped["_other_rubric_digest_out_of_scope"] += 1
+            continue
+        if index in superseded:
+            # the retry's history: the same sample's later valid row is measured below
+            skipped[SUPERSEDED_NULL] += 1
             continue
         tier = row.get("tier")
         if tier not in tier_rank:
@@ -432,6 +479,7 @@ def analyze(advice_dir: str, judge: str, boot: int, seed: int, vocab_path: str =
     measured = sum(len(samples) for arms in cells.values() for samples in arms.values())
     out_of_scope = skipped.pop("_other_judge_out_of_scope", 0)
     other_rubric = skipped.pop("_other_rubric_digest_out_of_scope", 0)
+    superseded = skipped.pop(SUPERSEDED_NULL, 0)
     unmeasurable = dict(sorted(skipped.items()))
     considered = measured + sum(unmeasurable.values())
     # Each estimate gets its own Random(seed): every stratum is then reproducible on its own,
@@ -481,6 +529,7 @@ def analyze(advice_dir: str, judge: str, boot: int, seed: int, vocab_path: str =
             "responses_indexed": len(by_sha),
             "rows_from_other_judges_out_of_scope": out_of_scope,
             "judge_of_record_rows_under_other_rubric_digests_out_of_scope": other_rubric,
+            "judge_of_record_null_rows_superseded_by_a_later_valid_judgment": superseded,
             "judge_of_record_rows_considered": considered,
             "judge_of_record_rows_measured": measured,
             "coverage_rate": round(measured / considered, 6) if considered else 0.0,
@@ -534,6 +583,8 @@ def format_summary(bundle: dict[str, Any]) -> str:
         f"   ({bundle['coverage']['rows_from_other_judges_out_of_scope']} rows from other judges and"
         f" {bundle['coverage']['judge_of_record_rows_under_other_rubric_digests_out_of_scope']} under other rubric"
         f" digests, out of scope)",
+        f"    retried  {bundle['coverage']['judge_of_record_null_rows_superseded_by_a_later_valid_judgment']:>6}"
+        f"  null judgments whose sample has a later valid judgment (the retry is measured; not counted)",
     ]
     for reason, count in bundle["coverage"]["unmeasurable_by_reason"].items():
         lines.append(f"    unmeasurable {count:>6}  {reason}")

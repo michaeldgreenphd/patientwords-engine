@@ -504,3 +504,54 @@ def test_a_corrupt_archive_line_is_refused_with_its_file_and_line(tmp_path):
     judgments.write_text(judgments.read_text(encoding="utf-8") + "{not json\n", encoding="utf-8")
     with pytest.raises(ValueError, match=r"judgments_stimuli_x\.jsonl:3: corrupt JSONL line"):
         _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
+
+
+def test_a_null_judgment_retried_to_a_valid_one_is_history_not_an_unmeasurable_row(tmp_path):
+    """Codex, PR #29: advice_eval's judge leaves a null judgment in the append-only archive and a later run retries
+    it, appending a valid row for the same sample. The null was counted as unmeasurable while its retry was measured,
+    so one sample sat on both sides of the coverage figure (four such rows in the committed primary-judge corpus:
+    44 unmeasurable and coverage 0.993205 instead of 40 and 0.993819). The null is now reported on its own line,
+    outside the coverage count. The key is the sample, not the response digest: two samples returning identical
+    text share a digest, and both are measurements; a null with no later valid row stays unmeasurable."""
+    _, digest = _rubric_file(tmp_path)
+    advice = tmp_path / "advice"
+    advice.mkdir()
+
+    def judgment(sha, stimulus, arm, k, tier, judge="primary"):
+        return {"response_sha256": sha, "rubric_sha256": digest, "judge_model": judge, "stimulus_id": stimulus,
+                "model": "m1", "arm": arm, "sample_k": k, "tier": tier}
+
+    responses = [{"response_sha256": "r1", "response_text": "reply naming term-a"},
+                 {"response_sha256": "r2", "response_text": "reply without it"},
+                 {"response_sha256": "r3", "response_text": "identical reply naming term-a"},
+                 {"response_sha256": "r4", "response_text": "reply without it either"},
+                 {"response_sha256": "r5", "response_text": "a reply the judge never tiered"}]
+    judgments = [judgment("r1", "s1", "clinical", 1, "routine"),
+                 judgment("r2", "s1", "patient", 1, None),            # failed ...
+                 judgment("r2", "s1", "patient", 1, "routine"),       # ... and retried: the null is history
+                 judgment("r3", "s2", "clinical", 1, "urgent"),       # two samples, identical text: both measured
+                 judgment("r3", "s2", "clinical", 2, "urgent"),
+                 judgment("r4", "s2", "patient", 1, "routine"),
+                 judgment("r5", "s2", "patient", 2, None),            # never retried: unmeasurable
+                 judgment("r5", "s2", "patient", 2, None)]            # retried and failed again: still unmeasurable
+    (advice / "responses_stimuli_x.jsonl").write_text("".join(json.dumps(r) + "\n" for r in responses), encoding="utf-8")
+    (advice / "judgments_stimuli_x.jsonl").write_text("".join(json.dumps(j) + "\n" for j in judgments), encoding="utf-8")
+    bundle = _analyze(tmp_path, str(advice), vocab_path=_vocab_file(tmp_path, specialist=["term-a"], emergency=["term-b"]))
+    cov = bundle["coverage"]
+    assert cov["judge_of_record_null_rows_superseded_by_a_later_valid_judgment"] == 1
+    assert cov["unmeasurable_by_reason"] == {"tier_absent_or_unrecognised": 2}
+    assert (cov["judge_of_record_rows_measured"], cov["judge_of_record_rows_considered"]) == (5, 7)
+    assert cov["coverage_rate"] == round(5 / 7, 6)
+    assert "retried       1  null judgments whose sample has a later valid judgment" in rd.format_summary(bundle)
+    # the identical-text samples are two measurements, not a retry of one
+    cells, _ = rd.build_cells(*rd.load_corpus(str(advice))[:2], rd.load_vocab(
+        _vocab_file(tmp_path, specialist=["term-a"], emergency=["term-b"])), "primary", digest,
+        {t: i for i, t in enumerate(TEST_TIERS)})
+    assert len(cells[("s2", "m1")]["clinical"]) == 2
+    # a valid row BEFORE a null (not what the judge writes) does not supersede it, and a row missing a key field
+    # cannot be matched to a sample at all: both stay unmeasurable
+    rows = [judgment("r2", "s1", "patient", 1, "routine"), judgment("r2", "s1", "patient", 1, None),
+            dict(judgment("r2", "s1", "patient", None, None)), judgment("r2", "s1", "patient", 1, "routine")]
+    superseded = rd.superseded_null_rows(rows, "primary", digest, {t: i for i, t in enumerate(TEST_TIERS)})
+    assert superseded == {1}, "the null at index 1 has a later valid row; the keyless null at index 2 does not match"
+    assert rd.superseded_null_rows(rows[:2], "primary", digest, {t: i for i, t in enumerate(TEST_TIERS)}) == set()
