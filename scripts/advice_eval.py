@@ -2029,17 +2029,36 @@ def _judges_text(judgments: list[dict]) -> str:
     """The pack README's judge breakdown: codings per judge model, which judge is
     primary and which a second judge (`is_secondary_judge`), and how many rows
     returned no usable tier. The pack carries every judge's rows for the vendor's
-    responses, so the README names them all rather than 'a judge'."""
+    responses, so the README names them all rather than 'a judge'.
+
+    A row records only its judge's name, never whether that judge is primary, so a
+    role is read from the name alone and never guessed past it:
+    - a provider-spec name (with ':') is a second judge;
+    - a bare name is 'the primary judge' only when it is the one recorded bare name
+      in the rows. Clinician re-grades also enter under bare labels, so with two or
+      more the README says the rows do not record which is primary instead of
+      calling each one primary;
+    - a row with no judge_model is counted under '(judge not recorded)' with its
+      role unknown, never assigned one."""
     if not judgments:
         return "none yet."
-    counts: dict[str, int] = {}
+    counts: dict[str | None, int] = {}
     for j in judgments:
-        name = j.get("judge_model") or "(judge not recorded)"
-        counts[name] = counts.get(name, 0) + 1
+        key = j.get("judge_model") or None  # None and "" both mean the row names no judge
+        counts[key] = counts.get(key, 0) + 1
+    n_bare = sum(1 for k in counts if k is not None and not is_secondary_judge(k))
     parts = []
-    for name, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])):
-        role = ("a second judge, whose codings measure inter-judge agreement and never replace "
-                "the primary coding") if is_secondary_judge(name) else "the primary judge"
+    for key, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0] or "")):
+        if key is None:
+            name, role = "(judge not recorded)", "role unknown: these rows do not name their judge"
+        elif is_secondary_judge(key):
+            name, role = key, ("a second judge, whose codings measure inter-judge agreement and never "
+                               "replace the primary coding")
+        elif n_bare == 1:
+            name, role = key, "the primary judge"
+        else:
+            name, role = key, (f"role not recorded: {n_bare} judges here are not marked as second judges, "
+                               f"and the rows do not say which of them is primary")
         parts.append(f"{n} by `{name}` ({role})")
     if len(parts) <= 2:
         text = " and ".join(parts) + "."

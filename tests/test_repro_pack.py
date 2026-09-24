@@ -547,6 +547,30 @@ def test_judges_text_names_primary_second_and_failed_codings():
     assert "(judge not recorded)" in ae._judges_text([{"tier": "routine"}])
 
 
+def test_judges_text_never_infers_a_primary_for_a_missing_or_second_bare_name():
+    """Regression (Codex, PR #33): every name without ':' was called 'the primary
+    judge', so a row with no judge_model read '(judge not recorded) (the primary
+    judge)', and a second bare label (a clinician re-grade enters under one) made
+    two judges 'the primary judge'. The rows carry no primary flag, so the README
+    names a primary only when exactly one recorded judge is not a second judge."""
+    missing = ae._judges_text([{"tier": "t1"}, {"judge_model": "", "tier": "t1"}])
+    assert missing == "2 by `(judge not recorded)` (role unknown: these rows do not name their judge)."
+    assert "primary" not in missing
+
+    two_bare = ae._judges_text([{"judge_model": "judge-p", "tier": "t1"}] * 2
+                               + [{"judge_model": "regrade-q", "tier": "t2"}])
+    assert "the primary judge" not in two_bare
+    role = ("role not recorded: 2 judges here are not marked as second judges, and the rows do not say "
+            "which of them is primary")
+    assert two_bare == f"2 by `judge-p` ({role}) and 1 by `regrade-q` ({role})."
+
+    mixed = ae._judges_text([{"judge_model": "judge-p", "tier": "t1"}] * 3
+                            + [{"judge_model": "prov:judge-s", "tier": "t1"}] * 2 + [{"tier": "t1"}])
+    assert mixed.startswith("3 by `judge-p` (the primary judge); 2 by `prov:judge-s` (a second judge")
+    assert mixed.endswith("; and 1 by `(judge not recorded)` (role unknown: these rows do not name their judge).")
+    assert mixed.count("the primary judge") == 1
+
+
 def test_pack_readme_carries_the_counted_sentences(packed):
     bundle = _build(packed)
     readme = (bundle / "README.md").read_text()
