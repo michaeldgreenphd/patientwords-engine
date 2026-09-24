@@ -210,7 +210,7 @@ def load_run_rows(
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Loads manifest and analysis rows from a run directory.
 
-    If analysis_rows.jsonl does not exist, judgments.jsonl is read.
+    analysis_rows.jsonl is required; raw judgments.jsonl rows are never read in its place.
     Validates that the run is eligible for three-arm analysis, cleanly refusing
     Wave 1 runs where exchange_index is null or only 2 arms are present,
     and verifying outcome registry and rubric digests against the manifest.
@@ -260,21 +260,21 @@ def load_run_rows(
             )
 
     analysis_rows_path = rdir / "analysis_rows.jsonl"
-    judgments_path = rdir / "judgments.jsonl"
 
+    # Raw judgments.jsonl rows are not a fallback: judge_runner writes them without `arm` (analysis_rows() adds it
+    # from the manifest tree) and without the analysis-time leading-line value read, so reading them unchanged
+    # left every Wave-2 run looking like Wave 1 (Codex F4 on PR #30). The derived rows are required.
+    if not analysis_rows_path.is_file():
+        raise InputRefusalError(
+            f"Run directory {rdir} has no analysis_rows.jsonl; derive it from the bound judgments with "
+            f"`python -m scripts.petri_audit.cli analyze --seeds <seed file of record> --run-dir {rdir}` "
+            "(raw judgments.jsonl rows carry no arm and are not analysed directly)"
+        )
     rows: list[dict[str, Any]] = []
-    if analysis_rows_path.is_file():
-        for line in analysis_rows_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line:
-                rows.append(json.loads(line))
-    elif judgments_path.is_file():
-        for line in judgments_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line:
-                rows.append(json.loads(line))
-    else:
-        raise FileNotFoundError(f"Run directory {rdir} has neither analysis_rows.jsonl nor judgments.jsonl")
+    for line in analysis_rows_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line:
+            rows.append(json.loads(line))
 
     if not rows:
         raise ValueError(f"Run directory {rdir} contains no rows")
@@ -950,7 +950,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--run-dir",
         nargs="+",
         required=True,
-        help="One or more Petri audit run directories (must contain manifest.json and analysis_rows.jsonl/judgments.jsonl)",
+        help="One or more Petri audit run directories (each must contain manifest.json and analysis_rows.jsonl)",
     )
     parser.add_argument(
         "--json",

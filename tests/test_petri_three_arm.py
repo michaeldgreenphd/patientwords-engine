@@ -644,6 +644,36 @@ def test_provenance_and_header_invariants(tmp_path):
     assert "colloquial_vs_clinical" in md
 
 
+def test_run_with_only_raw_judgments_is_refused_with_the_derivation_step(tmp_path, capsys):
+    """judge_runner writes judgments.jsonl without `arm` (analysis_rows() adds it from the manifest), so
+    reading raw judgments misreported every Wave-2 run as Wave 1. The fallback is gone: the run is refused
+    with the command that derives the rows (Codex F4 on PR #30)."""
+    run_dir = tmp_path / "run_raw_only"
+    run_dir.mkdir()
+    manifest = {
+        "run_id": "run-raw-only",
+        "framework": {"outcome_registry_sha256": sha256_file(DEFAULT_OUTCOME_REGISTRY)},
+        "seeds": [{"seed_id": "s1", "seed_sha256": "c" * 64}],
+        "artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5"}},
+    }
+    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    # the labels judge_runner.labels_from_manifest puts on a judgment: seed, condition, branch, tree, epoch; no arm
+    judgments = [{"conversation_id": f"conv-{c}", "turn_id": 2, "exchange_index": 1, "final_in_exchange": True,
+                  "kind": "tier", "key": "response_only", "value": "v", "seed_id": "s1", "condition_id": c,
+                  "branch_id": "root", "tree_id": f"tree-{c}", "epoch": 1}
+                 for c in ("colloquial", "clinical", "lay_careful")]
+    (run_dir / "judgments.jsonl").write_text("".join(json.dumps(j) + "\n" for j in judgments), encoding="utf-8")
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    msg = str(exc_info.value)
+    assert "has no analysis_rows.jsonl" in msg
+    assert "python -m scripts.petri_audit.cli analyze" in msg
+
+    assert main(["--run-dir", str(run_dir)]) == 2
+    assert "REFUSED: Run directory" in capsys.readouterr().err
+
+
 def test_conflicting_seed_digests_across_runs_are_refused(tmp_path, capsys):
     """Two runs that record different digests for one seed_id would be pooled under that id while the
     provenance kept only the last digest; the analysis refuses instead (Codex F9 on PR #30)."""
