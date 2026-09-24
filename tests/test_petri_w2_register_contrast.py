@@ -498,6 +498,20 @@ def test_the_decomposition_statement_rests_on_the_paired_difference():
         "no_prespecified_statement"
 
 
+def test_the_decomposition_statement_is_not_computable_when_no_triple_enters_the_paired_difference():
+    # 10.8 (2026-09-24): 'not_separated' presumes a test that ran; with no non-tied triple it is named, not worded
+    none = {"direction": "none", "non_tied": 0}
+    ran = {"direction": "none", "non_tied": 4}
+    assert rc.decomposition_statement(none, none, none, _holm_sig(False, False, False))["statement_id"] == \
+        "not_computable"
+    assert rc.decomposition_statement(ran, ran, ran, _holm_sig(False, False, False))["statement_id"] == \
+        "not_separated"
+    empty = rc.sign_test([])
+    assert empty["non_tied"] == 0
+    assert rc.decomposition_statement(empty, empty, empty, _holm_sig(False, False, False))["statement_id"] == \
+        "not_computable"
+
+
 # ------------------------------------------------------------------ the committed plan (structure only)
 
 

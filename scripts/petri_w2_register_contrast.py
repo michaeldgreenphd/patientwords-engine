@@ -1591,9 +1591,12 @@ def decomposition_statement(style: Mapping[str, Any], vocabulary: Mapping[str, A
     style contrast both significant after Holm and negative, and adds 'vocabulary_also_lowered' when the vocabulary
     contrast is too; 'not_separated' is a paired difference not significant after Holm. Any other result (a paired
     difference significant and positive, or significant and negative while style is not) has no pre-specified
-    statement, and is reported as such rather than worded here."""
+    statement, and is reported as such rather than worded here. When no non-tied triple enters the paired difference
+    the statement is 'not_computable' by name: 'not_separated' presumes a test that ran (10.8, 2026-09-24)."""
     sig = {k: adjusted[k]["significant_after_holm"] for k in adjusted}
-    if not sig["paired_difference"]:
+    if paired.get("non_tied") == 0:
+        sid = "not_computable"
+    elif not sig["paired_difference"]:
         sid = "not_separated"
     elif paired["direction"] == "negative" and sig["style"] and style["direction"] == "negative":
         sid = "style_larger"
