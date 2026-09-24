@@ -11,13 +11,17 @@ Covers:
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import shutil
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
 
 from scripts.petri_audit.framework import load_prompt, prompt_digest
 from scripts.petri_audit.judge_runner import parse_answer, rubric_digest
+from scripts.petri_audit.manifest import ARTIFACT_FILENAMES, JUDGE_REPORT_SUFFIX, identity_digest, seal_manifest
 from scripts.petri_three_arm import (
     DEFAULT_ADVICE_RUBRIC,
     DEFAULT_OUTCOME_REGISTRY,
@@ -49,6 +53,14 @@ def ordinal_scales() -> dict[str, list[str]]:
 JUDGE = "claude-haiku-4-5"
 TIERS = load_ordinal_scales()["response_only"]
 RUBRIC_DIGEST = rubric_digest(json.loads(DEFAULT_ADVICE_RUBRIC.read_text(encoding="utf-8")))
+# A landed manifest is the template for synthetic ones, so every synthetic run passes the schema, chain-digest and
+# artifact checks of manifest.verify_run that the loader applies; the fields the analysis reads are replaced per run.
+TEMPLATE_MANIFEST = json.loads((WAVE_1_RUN_DIR / "manifest.json").read_text(encoding="utf-8"))
+
+
+def _hex(label: str, length: int = 64) -> str:
+    """A deterministic hex id for a synthetic label (the manifest schema requires hex conversation ids and commits)."""
+    return hashlib.sha256(label.encode("utf-8")).hexdigest()[:length]
 
 
 def _write_run(
@@ -79,7 +91,7 @@ def _write_run(
              "judge_error": None, "shared_prefix": False, **r}
         a.setdefault("condition_id", a["arm"])
         a.setdefault("tree_id", f"{name}:{a['seed_id']}:{a['arm']}:{a['epoch']}")
-        a.setdefault("conversation_id", f"{a['tree_id']}:{a['branch_id']}")
+        a.setdefault("conversation_id", _hex(f"{a['tree_id']}:{a['branch_id']}"))
         a.setdefault("turn_id", 2 * a["exchange_index"])
         a.setdefault("assistant_turn_index", a["turn_id"] // 2)
         a.setdefault("row_eligible", a.get("value") is not None and a.get("value") != "not_applicable")
@@ -95,26 +107,37 @@ def _write_run(
     (run_dir / "judgments.jsonl").write_text("".join(json.dumps(j) + "\n" for j in judgments), encoding="utf-8")
     trees: dict[str, dict] = {}
     for a in full:
-        tree = trees.setdefault(a["tree_id"], {"tree_id": a["tree_id"], "seed_id": a["seed_id"], "arm": a["arm"],
-                                               "epoch": a["epoch"], "branches": []})
+        tree = trees.setdefault(a["tree_id"], {
+            "tree_id": a["tree_id"], "sample_uuid": _hex(a["tree_id"], 32), "sample_id": f"sample:{a['tree_id']}",
+            "epoch": a["epoch"], "seed_id": a["seed_id"], "arm": a["arm"], "system_prompt_variant": None,
+            "branches": [], "surviving_branch_id": None, "survivor_exported": False})
         if all(b["conversation_id"] != a["conversation_id"] for b in tree["branches"]):
-            tree["branches"].append({"branch_id": a["branch_id"], "condition_id": a["condition_id"],
-                                     "conversation_id": a["conversation_id"], "branched_from_turn_id": None})
-    manifest = {
-        "run_id": name,
-        "framework": {"outcome_registry_sha256": registry_sha or sha256_file(DEFAULT_OUTCOME_REGISTRY)},
-        "chain": {"identity_sha256": f"ident-{name}"},
-        "adapter": {"engine_sha": f"commit-{name}"},
-        "seeds": [{"seed_id": s, "seed_sha256": (seed_digests or {}).get(s, "5" * 64)}
-                  for s in sorted({a["seed_id"] for a in full})],
-        "trees": list(trees.values()),
-        "artifacts": {"judgments_path": f"{name}/judgments.jsonl",
-                      "judgments_sha256": sha256_file(run_dir / "judgments.jsonl"),
-                      "judge_of_record": {"judge_model": JUDGE}},
-    }
+            tree["branches"].append({"branch_id": a["branch_id"], "parent_branch_id": None,
+                                     "branched_from_message_id": None, "branched_from_turn_id": None,
+                                     "condition_id": a["condition_id"], "conversation_id": a["conversation_id"],
+                                     "surviving": True, "creation_index": len(tree["branches"]) + 1})
+    # the run's other artifacts, which the three-arm analysis never reads but the manifest binds by digest
+    for family in ("sanitised_log", "transcripts", "rule_outcomes"):
+        (run_dir / ARTIFACT_FILENAMES[family]).write_text(f"synthetic {family}\n", encoding="utf-8")
+    report_name = f"{name}{JUDGE_REPORT_SUFFIX}"
+    (run_dir / report_name).write_text("synthetic judge report\n", encoding="utf-8")
+    manifest = deepcopy(TEMPLATE_MANIFEST)
+    manifest["run_id"] = name
+    manifest["framework"]["outcome_registry_sha256"] = registry_sha or sha256_file(DEFAULT_OUTCOME_REGISTRY)
+    manifest["adapter"]["engine_sha"] = _hex(f"commit-{name}", 40)
+    manifest["seeds"] = [{**TEMPLATE_MANIFEST["seeds"][0], "seed_id": s,
+                          "seed_sha256": (seed_digests or {}).get(s, "5" * 64)}
+                         for s in sorted({a["seed_id"] for a in full})]
+    manifest["trees"] = list(trees.values())
+    for family, filename in ARTIFACT_FILENAMES.items():
+        manifest["artifacts"][f"{family}_path"] = f"{name}/{filename}"
+        manifest["artifacts"][f"{family}_sha256"] = sha256_file(run_dir / filename)
+    manifest["artifacts"]["judge_of_record"] = {
+        **TEMPLATE_MANIFEST["artifacts"]["judge_of_record"], "judge_model": JUDGE,
+        "report_path": f"{name}/{report_name}", "report_sha256": sha256_file(run_dir / report_name)}
     if manifest_update is not None:
         manifest_update(manifest)
-    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    (run_dir / "manifest.json").write_text(json.dumps(seal_manifest(manifest, None)), encoding="utf-8")
     if write_analysis_rows:
         (run_dir / "analysis_rows.jsonl").write_text("".join(json.dumps(a) + "\n" for a in full), encoding="utf-8")
     return run_dir
@@ -709,8 +732,9 @@ def test_provenance_and_header_invariants(tmp_path):
 
     prov = report.provenance
     assert prov.run_ids == ["run-synth-123"]
-    assert prov.manifest_identity_sha256 == ["ident-run-synth-123"]
-    assert prov.engine_commits == ["commit-run-synth-123"]
+    sealed = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert prov.manifest_identity_sha256 == [sealed["chain"]["identity_sha256"]] == [identity_digest(sealed)]
+    assert prov.engine_commits == [_hex("commit-run-synth-123", 40)]
     assert prov.judge_of_record == [JUDGE]
     assert prov.seed_digests == {"s1": "e" * 64}
     assert prov.outcome_registry_sha256 == registry_sha
@@ -872,10 +896,12 @@ def _append_judgment(run_dir: Path, *, rebind: bool) -> None:
     rows = [json.loads(line) for line in jpath.read_text(encoding="utf-8").splitlines()]
     extra = {**rows[-1], "turn_id": rows[-1]["turn_id"] + 2, "exchange_index": rows[-1]["exchange_index"] + 1}
     jpath.write_text(jpath.read_text(encoding="utf-8") + json.dumps(extra) + "\n", encoding="utf-8")
-    if rebind:
+    if rebind:  # as manifest.bind_judgments does: rebind the digest and reseal, keeping the identity digest
         manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
         manifest["artifacts"]["judgments_sha256"] = sha256_file(jpath)
-        (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        resealed = seal_manifest(manifest, manifest["chain"]["prev_sha256"])
+        assert resealed["chain"]["identity_sha256"] == manifest["chain"]["identity_sha256"]
+        (run_dir / "manifest.json").write_text(json.dumps(resealed), encoding="utf-8")
 
 
 def test_stale_analysis_rows_after_a_resumed_pass_are_refused(tmp_path):
@@ -898,13 +924,14 @@ def test_judgments_changed_after_binding_are_refused(tmp_path):
 
     with pytest.raises(InputRefusalError) as exc_info:
         analyze_run_directories([run_dir])
-    assert "judgments.jsonl digests to" in str(exc_info.value)
-    assert "not the bound" in str(exc_info.value)
+    # the manifest verification sees the unbound change first; the loader's own binding check is the second layer
+    assert "does not verify against its manifest.json" in str(exc_info.value)
+    assert "judgments: judgments.jsonl does not digest to its recorded value" in str(exc_info.value)
 
 
 def test_manifest_without_bound_judgments_is_refused(tmp_path):
     run_dir = _write_run(tmp_path, "run-no-binding", _three_arms(),
-                         manifest_update=lambda m: m["artifacts"].pop("judgments_sha256"))
+                         manifest_update=lambda m: m["artifacts"].update(judgments_path=None, judgments_sha256=None))
     with pytest.raises(InputRefusalError) as exc_info:
         analyze_run_directories([run_dir])
     assert "manifest binds no judgments" in str(exc_info.value)
@@ -1041,6 +1068,72 @@ def test_out_of_vocabulary_error_and_leading_line_rule_match_judge_runner():
             assert _leading_line(text) == value, text
 
 
+# ------------------------------- the manifest is verified before it is trusted (Codex review of the F2 fix)
+
+
+def _rewrite_jsonl(path: Path, edit) -> None:
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    edit(rows)
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+
+
+def _rebind_judgments_by_hand(run_dir: Path) -> None:
+    """Point the manifest's judgments binding at the file as it now stands, without resealing the manifest."""
+    manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+    manifest["artifacts"]["judgments_sha256"] = sha256_file(run_dir / "judgments.jsonl")
+    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+def test_judgment_edited_and_rebound_by_hand_is_refused(tmp_path, capsys):
+    """Editing a judgment, its derived row and the manifest's judgments_sha256 to match passed every check the loader
+    made, so the edited value was counted. The manifest's chain digest no longer matches its body, and the loader now
+    applies manifest.verify_run before trusting any binding (Codex review of the F2 fix on PR #30)."""
+    run_dir = _write_run(tmp_path, "run-rebound", _three_arms(value=TIERS[1]))
+
+    def edit(rows: list[dict]) -> None:
+        rows[1]["value"] = TIERS[2]  # the clinical arm's judgment and its derived row
+
+    _rewrite_jsonl(run_dir / "judgments.jsonl", edit)
+    _rewrite_jsonl(run_dir / "analysis_rows.jsonl", edit)
+    _rebind_judgments_by_hand(run_dir)
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    msg = str(exc_info.value)
+    assert "run-rebound does not verify against its manifest.json" in msg
+    assert "chain.manifest_sha256 does not match the manifest body" in msg
+
+    assert main(["--run-dir", str(run_dir)]) == 2
+    assert "does not verify against its manifest.json" in capsys.readouterr().err
+
+
+def test_artifact_the_analysis_does_not_read_is_still_verified(tmp_path):
+    """The manifest binds the whole run; a run whose transcripts changed after sealing is not the run it describes."""
+    run_dir = _write_run(tmp_path, "run-edited-transcripts", _three_arms())
+    (run_dir / "transcripts.jsonl").write_text("edited after sealing\n", encoding="utf-8")
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    assert "transcripts: transcripts.jsonl does not digest to its recorded value" in str(exc_info.value)
+
+
+def test_landed_run_verifies_and_a_hand_rebound_copy_does_not(tmp_path):
+    """On the landed wave-1 run the verification costs nothing: a copy verifies and reaches the Wave-1 refusal. The same
+    copy with its judgments binding re-pointed by hand is refused before any row is read."""
+    run_dir = tmp_path / WAVE_1_RUN_DIR.name
+    shutil.copytree(WAVE_1_RUN_DIR, run_dir)
+    with pytest.raises(Wave1RefusalError):
+        analyze_run_directories([run_dir])
+
+    with (run_dir / "judgments.jsonl").open("a", encoding="utf-8") as fh:
+        fh.write("\n")  # a blank line: the rows the loader parses are unchanged, only the bound bytes differ
+    _rebind_judgments_by_hand(run_dir)
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    assert "chain.manifest_sha256 does not match the manifest body" in str(exc_info.value)
+
+
 def test_retried_judgment_is_collapsed_to_its_latest_attempt_not_refused(tmp_path):
     """A resumed pass appends a replacement for a null judgment under the same judgment key, and
     analysis_rows() emits both attempts; the latest one is authoritative, so the exchange is compared,
@@ -1062,9 +1155,10 @@ def test_retried_judgment_is_collapsed_to_its_latest_attempt_not_refused(tmp_pat
 
 
 def test_manifest_lacking_judge_of_record_is_refused_by_name(tmp_path):
-    """A run directory whose manifest lacks artifacts.judge_of_record must be refused by name."""
+    """A run directory whose manifest records no artifacts.judge_of_record (null, which the schema allows before
+    judging) must be refused by name."""
     run_dir = _write_run(tmp_path, "run-synth-123", _three_arms(),
-                         manifest_update=lambda m: m["artifacts"].pop("judge_of_record"))
+                         manifest_update=lambda m: m["artifacts"].update(judge_of_record=None))
 
     with pytest.raises(ValueError) as exc_info:
         analyze_run_directories([run_dir])

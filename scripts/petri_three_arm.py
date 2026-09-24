@@ -28,10 +28,12 @@ from typing import Any
 try:
     from scripts.petri_audit.framework import load_prompt, prompt_canonical
     from scripts.petri_audit.judge_runner import dedupe_key, rubric_digest
+    from scripts.petri_audit.manifest import verify_run
 except ModuleNotFoundError:  # run as a file path: the repository root is not on sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from scripts.petri_audit.framework import load_prompt, prompt_canonical
     from scripts.petri_audit.judge_runner import dedupe_key, rubric_digest
+    from scripts.petri_audit.manifest import verify_run
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ADVICE_RUBRIC = REPO_ROOT / "data" / "advice_rubric.draft.json"
@@ -428,14 +430,27 @@ def load_run_rows(
     attempt per judgment key, and the number of superseded attempts.
 
     analysis_rows.jsonl is required; raw judgments.jsonl rows are never read in its place.
-    Validates that the run is eligible for three-arm analysis, cleanly refusing
-    Wave 1 runs where exchange_index is null or only 2 arms are present,
-    and verifying the outcome registry digest against the manifest.
+    Refuses a run whose manifest does not verify (manifest.verify_run). Validates that the run
+    is eligible for three-arm analysis, cleanly refusing Wave 1 runs where exchange_index is
+    null or only 2 arms are present, and verifying the outcome registry digest against the manifest.
     """
     rdir = Path(run_dir)
     manifest_path = rdir / "manifest.json"
     if not manifest_path.is_file():
         raise FileNotFoundError(f"Run directory {rdir} lacks manifest.json")
+
+    # Everything below trusts manifest.json: the registry digest, the judgments binding the derived rows are
+    # authenticated against, and the trees that supply each row's arm and cell. So the manifest is verified first, as
+    # the lane's own verifier does: it must validate against the schema, its chain block must digest to its body, and
+    # every artifact it names must sit beside it and digest to its recorded value. Otherwise an edited judgments.jsonl
+    # with a hand-edited binding would pass (Codex review of the F2 fix on PR #30). verify_run checks the run on its
+    # own; the link to the previous run's manifest is manifests.chain's to check (manifest.verify_chain).
+    manifest_problems = verify_run(rdir)
+    if manifest_problems:
+        raise InputRefusalError(
+            f"Run directory {rdir} does not verify against its manifest.json ({len(manifest_problems)} problem(s)): "
+            + "; ".join(manifest_problems[:5]) + (" ..." if len(manifest_problems) > 5 else "")
+        )
 
     manifest = load_json(manifest_path)
     run_id = manifest.get("run_id", str(rdir))
