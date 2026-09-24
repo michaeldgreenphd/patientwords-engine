@@ -8,15 +8,15 @@ to a response.
 
 ## What this pack contains
 
-- `records.jsonl` — all {n_records} archived calls to your model between
-  {window}: assembled prompt, request parameters, timestamp, latency,
-  request id where captured, the exact model string your API returned
-  ({builds}), and the full raw response body. Your infrastructure team can
-  correlate each call by request id and timestamp.
+- `records.jsonl` — all {n_records} archived calls to your model from
+  {window}: assembled prompt, request parameters, timestamp, latency, the
+  exact model string your API returned ({builds}), and the full raw response
+  body. {request_ids}
 - `records.csv` — the same calls, flat, for spreadsheets.
-- `judgments.jsonl` — {n_judgments} tier codings of those responses by a
-  blinded judge (response text only; no model name, no wording label), each
-  stamped with the rubric sha it was coded under.
+- `judgments.jsonl` — {n_judgments} tier codings of those responses: {judges}
+  Every judge is blinded the same way (response text only; no model name, no
+  wording label), and each coding is stamped with the rubric sha it was coded
+  under.
 - `rubric.json` — the coding rubric, version {rubric_version}.
 - `MANIFEST.json` — the exact archive state this pack was built from.
 

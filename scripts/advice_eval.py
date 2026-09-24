@@ -136,6 +136,19 @@ def _resolve_spec(spec: str, registry: dict) -> dict:
     return {"spec": f"{provider}:{model}", "provider": provider, "model": model, "cfg": cfg}
 
 
+def _registry_rate(cfg: dict, model: str) -> tuple[object, str]:
+    """The rate elicit's spend ceiling uses for `model` (the part of the spec after
+    the provider prefix) in one registry block, and where it came from: the
+    block's per-model `pricing` entry when that entry is set, otherwise its
+    `default_pricing` (which may be absent: the ceiling then falls back to the
+    built-in table). One function for both elicit and the repro-pack registry
+    scope, so the scope hashes exactly the entries elicit resolves to."""
+    own = (cfg.get("pricing") or {}).get(model)
+    if own:
+        return own, "pricing"
+    return cfg.get("default_pricing"), "default_pricing"
+
+
 # --------------------------------------------------------------------------- utils
 
 
@@ -919,7 +932,7 @@ def elicit(args) -> Path:
     models = list(resolved)  # canonical provider:model spec strings
     custom_pricing = {}
     for r in resolved.values():
-        pricing = (r["cfg"].get("pricing") or {}).get(r["model"]) or r["cfg"].get("default_pricing")
+        pricing, _ = _registry_rate(r["cfg"], r["model"])
         if pricing:
             custom_pricing[r["spec"]] = (float(pricing[0]), float(pricing[1]))
 
@@ -1779,8 +1792,94 @@ def _vendor_match(spec: str, vendor: str) -> bool:
     return provider == vendor or model.startswith(vendor + "/")
 
 
-def pack_state(stimuli_path, rubric_path, registry_path, seed) -> dict:
-    """Current value of every manifest input - the freshness basis for --check."""
+def _is_vendor_block(key: str, block: dict, vendor: str) -> bool:
+    """A registry block is the vendor's own when it is named for the vendor
+    (`google`, `xai`) or its consumer_default is the vendor's model (`moonshot`
+    serves moonshotai/...). Any other block the vendor's records went through is
+    shared with other vendors: today that is `openrouter`, which carries google's
+    records and also prices other vendors' models for the advice and Petri lanes."""
+    if key == vendor:
+        return True
+    default = block.get("consumer_default")
+    return isinstance(default, str) and bool(default) and _vendor_match(f"{key}:{default}", vendor)
+
+
+def _is_note_field(field: str) -> bool:
+    """Free-text documentation in a registry block, by the file's convention
+    (`pricing_note`, `consumer_proxy_note`, `fallback_note`, `_`-prefixed keys).
+    No code path reads these fields."""
+    return field.endswith("_note") or field.startswith("_")
+
+
+def _scope_block(key: str, block: object, vendor: str, models: set[str]) -> object:
+    """One registry block as a vendor's pack depends on it (`_registry_scope`)."""
+    if not isinstance(block, dict):
+        return block  # absent (null) or malformed: hashed as it stands
+    own = _is_vendor_block(key, block, vendor)
+    out = {f: v for f, v in block.items()
+           if f not in ("pricing", "default_pricing") and (own or not _is_note_field(f))}
+    pricing = block.get("pricing")
+    if isinstance(pricing, dict):
+        kept = {m: pricing[m] for m in sorted(models) if m in pricing}
+        if kept:
+            out["pricing"] = kept
+        falls_back = any(_registry_rate(block, m)[1] == "default_pricing" for m in models)
+    else:
+        if pricing is not None:
+            out["pricing"] = pricing  # malformed: kept whole, so any edit to it moves the digest
+        falls_back = True
+    if falls_back and "default_pricing" in block:
+        out["default_pricing"] = block["default_pricing"]
+    return out
+
+
+def _registry_scope(registry_path: str | Path, vendor: str, rows: list[dict]) -> dict:
+    """The part of the provider registry a vendor's pack depends on, and its digest.
+
+    The scope is the registry block of every provider a vendor record was requested
+    through (the `provider:` prefix of model_requested: `anthropic` for
+    anthropic:claude-..., `moonshot` for moonshot:moonshotai/..., `openrouter` for
+    openrouter:google/...). Within each block:
+
+    - Prices: only the rates elicit resolves the vendor's records to
+      (`_registry_rate`, keyed by the model part of the spec: `claude-haiku-4-5`,
+      `x-ai/grok-4.3`, `google/gemini-3.5-flash`). The `pricing` map is cut to
+      those models' entries, and `default_pricing` is kept only when one of those
+      models has no entry of its own. Another model's price, or a default no
+      record of the vendor's falls back to, is out of scope.
+    - A block that is the vendor's own (`_is_vendor_block`) keeps every other
+      field, notes included: the whole block is about the vendor's route.
+    - A block shared with other vendors (`openrouter`) keeps every other field
+      except its free-text notes (`_is_note_field`). Those notes document every
+      vendor's models and the Petri lane's prices, and no code reads them; the
+      route fields (api, base_url, key_env, pacing) and any field added later stay.
+
+    Before 2026-09-23 the manifest carried the sha256 of the WHOLE registry file,
+    so any edit to any provider (another vendor's price, a Petri judge's price)
+    staled every pack for every vendor. A block the registry lacks is hashed as
+    null, so its appearing or disappearing still moves the digest. A missing
+    registry file gives a null digest, as the whole-file hash did."""
+    models_by_key: dict[str, set[str]] = {}
+    for r in rows:
+        if r.get("record_type") == "advice" and _vendor_match(r.get("model_requested"), vendor):
+            key, _, model = str(r.get("model_requested") or "").partition(":")
+            models_by_key.setdefault(key, set()).add(model)
+    keys = sorted(models_by_key)
+    reg_path = Path(registry_path)
+    if not reg_path.is_file():
+        return {"registry_scope": keys, "registry_scope_sha256": None}
+    registry = json.loads(reg_path.read_text(encoding="utf-8"))
+    scoped = {key: _scope_block(key, registry.get(key), vendor, models_by_key[key]) for key in keys}
+    return {"registry_scope": keys, "registry_scope_sha256": sha256_text(canonical_json(scoped))}
+
+
+def pack_state(stimuli_path, rubric_path, registry_path, seed, vendor: str | None = None) -> dict:
+    """Current value of every manifest input - the freshness basis for --check.
+
+    With `vendor`, the registry enters as that vendor's scope (`_registry_scope`).
+    Without it, as the whole file's sha256 (`registry_sha256`): the basis of every
+    pack logged before 2026-09-23, kept so --check reads those entries by the
+    definition they were built under."""
     stem = Path(stimuli_path).stem
     adv_dir = Path(stimuli_path).parent
     responses = adv_dir / f"responses_{stem}.jsonl"
@@ -1790,20 +1889,199 @@ def pack_state(stimuli_path, rubric_path, registry_path, seed) -> dict:
     rubric = {}
     if Path(rubric_path).is_file():
         rubric = json.loads(Path(rubric_path).read_text(encoding="utf-8"))
-    return {
+    state = {
         "stimuli_file": str(stimuli_path), "stimuli_sha256": _sha256_file(stimuli_path),
         "responses_chain_head": rows[-1]["record_sha256"] if rows else None,
         "responses_count": len(rows),
         "rubric_sha256": _sha256_file(rubric_path), "rubric_version": rubric.get("version"),
         "judgments_sha256": _sha256_file(judgments), "judgments_count": len(jrows),
-        "registry_sha256": _sha256_file(registry_path),
         "analyze_seed": int(seed),
     }
+    if vendor is None:
+        state["registry_sha256"] = _sha256_file(registry_path)
+    else:
+        state.update(_registry_scope(registry_path, vendor, rows))
+    return state
 
 
 def _log_entries(log_path) -> list[dict]:
     p = Path(log_path)
     return _read_jsonl(p) if p.is_file() else []
+
+
+# The disclosure log is one public file; the lane field says which tooling owns an
+# entry. Entries written before 2026-09-23 carry no lane, and every one of them is
+# an advice-lane build or send, so an absent (or null) lane reads as advice.
+ADVICE_LANE = "advice"
+
+
+def _partition_log(entries: list) -> tuple[list[dict], dict[str, int], list[str]]:
+    """Split disclosure-log entries into readable advice-lane entries, a count of
+    entries per other lane (not this check's to judge), and one description per
+    advice-lane entry that lacks what a pack entry needs. Nothing is dropped
+    without being counted or named."""
+    advice: list[dict] = []
+    other_lanes: dict[str, int] = {}
+    unreadable: list[str] = []
+    for n, e in enumerate(entries, 1):
+        if not isinstance(e, dict):
+            unreadable.append(f"entry {n}: not a JSON object")
+            continue
+        lane = e.get("lane") or ADVICE_LANE
+        if lane != ADVICE_LANE:
+            other_lanes[str(lane)] = other_lanes.get(str(lane), 0) + 1
+            continue
+        man = e.get("manifest")
+        missing = [k for k in ("pack_version", "vendor") if not isinstance(e.get(k), str) or not e.get(k)]
+        if not isinstance(man, dict):
+            missing.append("manifest")
+        elif not isinstance(man.get("stimuli_file"), str) or not man.get("stimuli_file"):
+            missing.append("manifest.stimuli_file")
+        if missing:
+            unreadable.append(f"entry {n} ({e.get('pack_version') or 'no pack_version'}): "
+                              f"missing {', '.join(missing)}")
+            continue
+        advice.append(e)
+    return advice, other_lanes, unreadable
+
+
+def _archive_id(stimuli_file: str) -> str:
+    """The archive a pack is built from: the stimuli file's stem, which names the
+    archive's own files (responses_<stem>.jsonl, judgments_<stem>.jsonl). The stem,
+    not the path string, so 'data/advice/x.json', './data/advice/x.json' and an
+    absolute path to the same file are one archive."""
+    return Path(stimuli_file).stem
+
+
+PackKey = tuple[str, str]
+
+
+def _pack_key(entry: dict) -> PackKey:
+    """A pack's identity for supersession and freshness: (vendor, archive).
+
+    One vendor has records in several archives, and each archive gets its own pack.
+    Keying by vendor alone (as before 2026-09-23) made a pack for one archive look
+    like a replacement for another archive's pack: building archive B's pack after
+    archive A's pack was sent wrote `supersedes: <A's pack>` into the public log and
+    made --check demand a superseding send that was not owed (exit 2)."""
+    return (entry["vendor"], _archive_id(entry["manifest"]["stimuli_file"]))
+
+
+def _newest_by_key(entries: list[dict]) -> tuple[dict[PackKey, dict], dict[PackKey, set[str]]]:
+    """Per (vendor, archive): the newest pack by BUILD order, and the set of pack
+    versions with a recorded send. `entries` are readable advice-lane entries
+    (`_partition_log`).
+
+    A send entry is a copy of its build entry appended later, so it never makes its
+    pack "newer" than a pack built after it; it stands in for the build only when
+    the log holds no build entry for that (vendor, archive)."""
+    newest: dict[PackKey, dict] = {}
+    sent_versions: dict[PackKey, set[str]] = {}
+    for e in entries:
+        key = _pack_key(e)
+        if e.get("sent_utc"):
+            sent_versions.setdefault(key, set()).add(e["pack_version"])
+            newest.setdefault(key, e)
+        else:
+            newest[key] = e
+    return newest, sent_versions
+
+
+# Endpoint hosts that route a call to the vendor through a third party. A request id
+# captured on such a call (e.g. an openrouter-request-id header) is the
+# aggregator's, never the vendor's, so the pack README does not offer it as one.
+AGGREGATOR_HOSTS = ("openrouter.ai",)
+
+
+def _via_aggregator(record: dict) -> bool:
+    return any(host in str(record.get("endpoint") or "") for host in AGGREGATOR_HOSTS)
+
+
+def _request_id_text(rows: list[dict]) -> str:
+    """The pack README's request-id sentence, counted from the records. A vendor's
+    own request id exists only on direct calls whose response headers carried one
+    (capture began 2026-07-23); calls routed through an aggregator carry none of
+    the vendor's. So the README says how many records the vendor can correlate by
+    request id instead of promising one per call."""
+    n = len(rows)
+    own = sum(1 for r in rows if r.get("request_id") and not _via_aggregator(r))
+    if n and own == n:
+        text = (f"All {n} records carry the request id your API returned, so your infrastructure "
+                f"team can correlate each call by request id and timestamp.")
+    elif own:
+        text = (f"{own} of the {n} records carry the request id your API returned and can be "
+                f"correlated by request id and timestamp; the other {n - own} carry none of yours and "
+                f"can be matched only by timestamp and the returned model string.")
+    else:
+        text = ("None of these records carries a request id from your API, so they can be matched "
+                "only by timestamp and the returned model string.")
+    via = [r for r in rows if _via_aggregator(r)]
+    if via:
+        agg_ids = sum(1 for r in via if r.get("request_id"))
+        text += (f" {len(via)} of the {n} calls were routed through an aggregator "
+                 f"({', '.join(AGGREGATOR_HOSTS)})"
+                 + (f"; the request ids on {agg_ids} of them are the aggregator's, not yours." if agg_ids
+                    else "."))
+    return text
+
+
+def _judges_text(judgments: list[dict]) -> str:
+    """The pack README's judge breakdown: codings per judge model, which judge is
+    primary and which a second judge (`is_secondary_judge`), and how many rows
+    returned no usable tier. The pack carries every judge's rows for the vendor's
+    responses, so the README names them all rather than 'a judge'.
+
+    A row records only its judge's name, never whether that judge is primary, so a
+    role is read from the name alone and never guessed past it:
+    - a provider-spec name (with ':') is a second judge;
+    - a bare name is 'the primary judge' only when it is the one recorded bare name
+      in the rows. Clinician re-grades also enter under bare labels, so with two or
+      more each is described as not marked as a second judge, with the rows not
+      recording whether it is the study's primary judge;
+    - a row with no judge_model is counted under '(judge not recorded)'.
+
+    Every consumer decides a row's role with `is_secondary_judge` alone (':' in the
+    name; False for a missing name): `analyze` pools every other row into the modal
+    tier, the scenario exporter keeps the last such row per response, and the
+    judge-agreement exporter files it in the 'primary' slot. So whenever those rows
+    do not all come from the one named primary judge - a missing name, or two or
+    more bare names - the README adds a sentence saying they all enter the primary
+    coding, rather than implying that only one of them does."""
+    if not judgments:
+        return "none yet."
+    counts: dict[str | None, int] = {}
+    for j in judgments:
+        key = j.get("judge_model") or None  # None and "" both mean the row names no judge
+        counts[key] = counts.get(key, 0) + 1
+    n_bare = sum(1 for k in counts if k is not None and not is_secondary_judge(k))
+    parts = []
+    for key, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0] or "")):
+        if key is None:
+            name, role = "(judge not recorded)", "these rows name no judge, so none is marked as a second judge"
+        elif is_secondary_judge(key):
+            name, role = key, ("a second judge, whose codings measure inter-judge agreement and never "
+                               "replace the primary coding")
+        elif n_bare == 1:
+            name, role = key, "the primary judge"
+        else:
+            name, role = key, ("not marked as a second judge; the rows do not record whether it is the "
+                               "study's primary judge")
+        parts.append(f"{n} by `{name}` ({role})")
+    if len(parts) <= 2:
+        text = " and ".join(parts) + "."
+    else:
+        text = "; ".join(parts[:-1]) + "; and " + parts[-1] + "."
+    if None in counts or n_bare > 1:
+        # the pooled rows are not all one named primary judge's: say what the
+        # analysis does with them, since every consumer pools them all
+        text += (" Every coding whose judge is not marked as a second judge enters the primary coding: "
+                 "`analyze` pools them into one modal tier per stimulus, model and arm, and the exporter "
+                 "that builds the study's site data keeps the last one recorded for each response.")
+    failed = sum(1 for j in judgments if j.get("tier") is None)
+    if failed:
+        text += (f" {failed} of these rows returned no usable tier; they are kept as history and "
+                 f"count as no coding.")
+    return text
 
 
 def repro_pack(args) -> Path:
@@ -1814,7 +2092,7 @@ def repro_pack(args) -> Path:
     (a state timestamp), and pack_version is a content hash over the manifest inputs
     plus the engine commit. Wall-clock time appears only in the disclosure LOG entry
     (built_utc), which is not part of the bundle."""
-    state = pack_state(args.stimuli, args.rubric, args.providers, args.seed)
+    state = pack_state(args.stimuli, args.rubric, args.providers, args.seed, vendor=args.vendor)
     stem = Path(args.stimuli).stem
     adv_dir = Path(args.stimuli).parent
     rows_raw = [ln for ln in Path(adv_dir / f"responses_{stem}.jsonl").read_text(encoding="utf-8").splitlines() if ln]
@@ -1827,11 +2105,15 @@ def repro_pack(args) -> Path:
     if not vendor_rows:
         raise SystemExit(f"no advice records match vendor {args.vendor!r}")
     jpath = adv_dir / f"judgments_{stem}.jsonl"
-    j_lines = []
+    j_lines, j_rows = [], []
     if jpath.is_file():
         for ln in jpath.read_text(encoding="utf-8").splitlines():
-            if ln and _vendor_match(json.loads(ln).get("model"), args.vendor):
+            if not ln:
+                continue
+            j = json.loads(ln)
+            if _vendor_match(j.get("model"), args.vendor):
                 j_lines.append(ln)
+                j_rows.append(j)
     received = [r.get("received_utc") or r.get("sent_utc") or "" for r in vendor_rows]
     sents = sorted(r.get("sent_utc") or "" for r in vendor_rows)
     # None-safe: some providers return no build fingerprint (observed on the
@@ -1867,6 +2149,7 @@ def repro_pack(args) -> Path:
     tmpl = tmpl_path.read_text(encoding="utf-8")
     readme = tmpl.format(
         vendor=args.vendor, n_records=len(vendor_rows), n_judgments=len(j_lines),
+        request_ids=_request_id_text(vendor_rows), judges=_judges_text(j_rows),
         window=(sents[0][:10] + " to " + sents[-1][:10]) if sents and sents[0] else "-",
         builds=build_txt, rubric_version=state.get("rubric_version") or "none yet",
         chain_head=state.get("responses_chain_head"), pack_version=manifest["pack_version"],
@@ -1876,12 +2159,15 @@ def repro_pack(args) -> Path:
     (bundle / "README.md").write_text(readme, encoding="utf-8")
     # disclosure log: one build event per NEW pack_version (idempotent rebuilds skip)
     entries = _log_entries(args.log)
-    if not any(e.get("pack_version") == manifest["pack_version"] for e in entries):
-        prior = [e for e in entries if e.get("vendor") == args.vendor]
-        entry = {"pack_version": manifest["pack_version"], "vendor": args.vendor,
+    if not any(isinstance(e, dict) and e.get("pack_version") == manifest["pack_version"] for e in entries):
+        # supersedes names the newest earlier pack for the SAME (vendor, archive):
+        # a pack for another archive of this vendor's records is not replaced by this one
+        newest, _ = _newest_by_key(_partition_log(entries)[0])
+        prior = newest.get((args.vendor, _archive_id(state["stimuli_file"])))
+        entry = {"pack_version": manifest["pack_version"], "lane": ADVICE_LANE, "vendor": args.vendor,
                  "manifest": manifest, "built_utc": utc_now_iso(), "sent_utc": None,
                  "sent_to": None,
-                 "supersedes": prior[-1]["pack_version"] if prior else None,
+                 "supersedes": prior["pack_version"] if prior else None,
                  "note": args.note or "built"}
         Path(args.log).parent.mkdir(parents=True, exist_ok=True)
         with open(args.log, "a", encoding="utf-8") as f:
@@ -1891,47 +2177,75 @@ def repro_pack(args) -> Path:
 
 
 _CHECK_FIELDS = ("stimuli_sha256", "responses_chain_head", "responses_count", "rubric_sha256",
-                 "rubric_version", "judgments_sha256", "judgments_count", "registry_sha256")
+                 "rubric_version", "judgments_sha256", "judgments_count")
+_REGISTRY_FIELDS_SCOPED = ("registry_scope", "registry_scope_sha256")
+_REGISTRY_FIELDS_LEGACY = ("registry_sha256",)
+
+
+def _is_scoped_manifest(manifest: dict) -> bool:
+    """Packs built from 2026-09-23 carry the vendor-scoped registry digest; earlier
+    ones carry the whole-file digest and are checked by that definition."""
+    return "registry_scope_sha256" in manifest
 
 
 def repro_pack_check(args) -> int:
-    """FRESH/STALE per logged pack vs the archive's current state; exit 2 when a
-    vendor's latest SENT pack is stale (the vendor holds an outdated bundle)."""
+    """FRESH/STALE for the newest pack of every (vendor, archive) against the
+    archive's current state.
+
+    Exit 2 when a (vendor, archive)'s newest pack was sent and is now stale, or
+    when an earlier pack for that (vendor, archive) was sent and a newer one is
+    built but unsent: either way the vendor holds an outdated bundle. A stale
+    pack that was never sent is reported, not escalated.
+
+    Entries of another lane (a declared `lane` other than "advice") are counted
+    and skipped: this check cannot judge them. An advice-lane entry missing what
+    a pack entry needs is named as UNREADABLE and gives exit 3 when nothing
+    escalates, instead of the KeyError (exit 1) that the contract gate used to
+    pass silently while it hid every other line of the check."""
     entries = _log_entries(args.log)
     if not entries:
         print("disclosure log empty - no packs to check")
         return 0
+    advice, other_lanes, unreadable = _partition_log(entries)
+    for lane, n in sorted(other_lanes.items()):
+        print(f"skipped: {n} log entr{'y' if n == 1 else 'ies'} of lane {lane!r} "
+              f"(this check covers lane {ADVICE_LANE!r} only)")
+    for problem in unreadable:
+        print(f"UNREADABLE: {problem} - not checked")
     escalate = False
-    latest_by_vendor: dict[str, dict] = {}
-    latest_sent: dict[str, dict] = {}
-    for e in entries:
-        latest_by_vendor[e["vendor"]] = e
-        if e.get("sent_utc"):
-            latest_sent[e["vendor"]] = e
-    for vendor, e in sorted(latest_by_vendor.items()):
+    newest, sent_versions = _newest_by_key(advice)
+    for key in sorted(newest):
+        vendor, archive = key
+        e = newest[key]
         man = e["manifest"]
-        cur = pack_state(man["stimuli_file"], args.rubric, args.providers, man.get("analyze_seed", args.seed))
+        scoped = _is_scoped_manifest(man)
+        cur = pack_state(man["stimuli_file"], args.rubric, args.providers, man.get("analyze_seed", args.seed),
+                         vendor=vendor if scoped else None)
         moved = []
-        for f in _CHECK_FIELDS:
+        for f in _CHECK_FIELDS + (_REGISTRY_FIELDS_SCOPED if scoped else _REGISTRY_FIELDS_LEGACY):
             if man.get(f) != cur.get(f):
                 moved.append(f"{f}: {man.get(f)} -> {cur.get(f)}")
         status = "FRESH" if not moved else "STALE"
-        print(f"{status}  {e['pack_version']}  {vendor}" + ("" if not moved else "  | " + "; ".join(moved)))
-        sent = latest_sent.get(vendor)
-        if sent and status == "STALE" and sent["pack_version"] == e["pack_version"]:
-            print(f"ESCALATION: sent pack {e['pack_version']} ({vendor}, sent {sent['sent_utc']}) is stale - "
-                  f"an updated pack is owed")
+        print(f"{status}  {e['pack_version']}  {vendor}  {archive}"
+              + ("" if not moved else "  | " + "; ".join(moved)))
+        sent = sent_versions.get(key, set())
+        if e["pack_version"] in sent:
+            if status == "STALE":
+                print(f"ESCALATION: sent pack {e['pack_version']} ({vendor}, {archive}) is stale - "
+                      f"an updated pack is owed")
+                escalate = True
+        elif sent:
+            print(f"note: {vendor} {archive}: SENT pack(s) {', '.join(sorted(sent))}; newest built is "
+                  f"{e['pack_version']} (unsent) - send the superseding pack")
             escalate = True
-        elif sent and sent["pack_version"] != e["pack_version"]:
-            print(f"note: {vendor} last SENT pack is {sent['pack_version']}; latest built is {e['pack_version']} "
-                  f"(unsent) - send the superseding pack")
-            escalate = True
-    return 2 if escalate else 0
+    if escalate:
+        return 2
+    return 3 if unreadable else 0
 
 
 def repro_pack_record_sent(args) -> None:
     entries = _log_entries(args.log)
-    match = [e for e in entries if e.get("pack_version") == args.record_sent]
+    match = [e for e in entries if isinstance(e, dict) and e.get("pack_version") == args.record_sent]
     if not match:
         raise SystemExit(f"pack {args.record_sent!r} not in {args.log}")
     base = match[-1]
@@ -2064,8 +2378,9 @@ def build_parser() -> argparse.ArgumentParser:
     rp.add_argument("--log", default=DEFAULT_DISCLOSURE_LOG)
     rp.add_argument("--note", default="")
     rp.add_argument("--check", action="store_true",
-                    help="recompute every manifest input; FRESH/STALE per logged pack; exit 2 when a "
-                         "sent pack is stale or superseded-but-unsent")
+                    help="recompute every manifest input; FRESH/STALE for the newest pack of each "
+                         "(vendor, archive); exit 2 when a sent pack is stale or superseded-but-unsent, "
+                         "3 when an advice-lane log entry cannot be read (other lanes are skipped)")
     rp.add_argument("--record-sent", metavar="PACK_VERSION",
                     help="append a send event for an existing pack version")
     rp.add_argument("--sent-to", default="", help="role/channel reference only - never private contact details")

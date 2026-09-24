@@ -8,6 +8,8 @@ the validator names it. Abstract vocabulary only - no medical terms.
 
 import importlib.util
 import json
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -253,3 +255,102 @@ def test_two_default_models(site):
         p["models_meta"][1]["default"] = True
     rep = run(site, mutate)
     assert any("exactly one default" in e for e in rep.errors)
+
+
+# ---- repro-pack gate (2026-09-23): any non-zero exit of the check is an error
+
+_ADVICE_EVAL = _MODULE_PATH.parent / "advice_eval.py"
+
+
+def _engine_with_log(tmp_path, entries):
+    """A scratch engine root: the real advice_eval.py and a disclosure log holding
+    `entries` (never the repository's own log)."""
+    engine = tmp_path / "engine"
+    (engine / "scripts").mkdir(parents=True)
+    (engine / "ops").mkdir()
+    shutil.copy(_ADVICE_EVAL, engine / "scripts" / "advice_eval.py")
+    (engine / "ops" / "disclosure_log.jsonl").write_text(
+        "".join(json.dumps(e) + "\n" for e in entries), encoding="utf-8")
+    return engine
+
+
+def _fake_run(code, stdout="", stderr=""):
+    calls = []
+
+    def run(cmd, **kw):
+        calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, code, stdout, stderr)
+    return run, calls
+
+
+@pytest.mark.parametrize("code", [1, 3, 120])
+def test_repro_pack_gate_fails_on_any_nonzero_exit(tmp_path, code):
+    """Regression: only exit 2 was an error, so a crash of the check (exit 1)
+    passed the gate silently while hiding any escalation behind it."""
+    engine = _engine_with_log(tmp_path, [{"pack_version": "v1"}])
+    run_fn, calls = _fake_run(code, stderr="Traceback (most recent call last):\nKeyError: 'stimuli_file'")
+    out, errors = vfc.repro_pack_gate(engine, run=run_fn)
+    assert len(calls) == 1 and len(errors) == 1
+    assert f"exited {code}" in errors[0] and "unverified" in errors[0]
+    assert "KeyError: 'stimuli_file'" in errors[0]
+
+
+def test_repro_pack_gate_exit_codes_zero_and_two(tmp_path):
+    engine = _engine_with_log(tmp_path, [{"pack_version": "v1"}])
+    assert vfc.repro_pack_gate(engine, run=_fake_run(0, "FRESH  v1  acme  s")[0]) == ("FRESH  v1  acme  s", [])
+    out, errors = vfc.repro_pack_gate(engine, run=_fake_run(2, "ESCALATION: ...")[0])
+    assert errors == [vfc.REPRO_PACK_STALE_MSG] and out == "ESCALATION: ..."
+
+
+def test_repro_pack_gate_skips_without_a_log(tmp_path):
+    engine = tmp_path / "engine"
+    engine.mkdir()
+    run_fn, calls = _fake_run(1)
+    assert vfc.repro_pack_gate(engine, run=run_fn) == ("", []) and calls == []
+
+
+def test_repro_pack_gate_end_to_end_on_an_undeclared_foreign_entry(tmp_path):
+    """The reproduced case, through the real check: a pack entry with no
+    stimuli_file and no declared lane. Before 2026-09-23 the check exited 1 and the
+    gate reported nothing; now the check names the entry (exit 3) and the gate fails."""
+    engine = _engine_with_log(tmp_path, [{"pack_version": "vpetri000001", "vendor": "acme",
+                                          "manifest": {"run_ids": ["run_1"]}, "sent_utc": None}])
+    out, errors = vfc.repro_pack_gate(engine)
+    assert "UNREADABLE: entry 1 (vpetri000001): missing manifest.stimuli_file" in out
+    assert len(errors) == 1 and "exited 3" in errors[0]
+
+
+def test_repro_pack_gate_end_to_end_on_a_declared_foreign_lane(tmp_path):
+    engine = _engine_with_log(tmp_path, [{"pack_version": "vpetri000001", "lane": "petri", "vendor": "acme",
+                                          "manifest": {"run_ids": ["run_1"]}, "sent_utc": None}])
+    out, errors = vfc.repro_pack_gate(engine)
+    assert errors == [] and "skipped: 1 log entry of lane 'petri'" in out
+
+
+def _main(monkeypatch, site, engine):
+    monkeypatch.setattr("sys.argv", ["validate_frontend_contract.py", "--site", str(site), "--engine", str(engine)])
+    with pytest.raises(SystemExit) as e:
+        vfc.main()
+    return e.value.code
+
+
+def test_main_fails_when_the_pack_check_cannot_read_the_log(site, tmp_path, monkeypatch, capsys):
+    """Regression (review of 2026-09-23): every gate test called repro_pack_gate
+    directly, so dropping its errors from main() left the suite green. main() is
+    what the Routine and publish-site-data run ('must be 0 errors'). On origin/main
+    this exits 0: the check crashes (exit 1) and the gate passes it."""
+    engine = _engine_with_log(tmp_path, [{"pack_version": "vpetri000001", "vendor": "acme",
+                                          "manifest": {"run_ids": ["run_1"]}, "sent_utc": None}])
+    assert _main(monkeypatch, site, engine) == 1
+    out = capsys.readouterr().out
+    assert "FAIL: repro-pack --check exited 3" in out
+    assert "contract check: 1 error(s)" in out
+
+
+def test_main_passes_the_same_site_when_the_pack_check_is_clean(site, tmp_path, monkeypatch, capsys):
+    """The control for the test above: the same valid site and scratch engine with
+    a log the check reads cleanly give no error, so the failure above is the gate's."""
+    engine = _engine_with_log(tmp_path, [{"pack_version": "vpetri000001", "lane": "petri", "vendor": "acme",
+                                          "manifest": {"run_ids": ["run_1"]}, "sent_utc": None}])
+    assert _main(monkeypatch, site, engine) == 0
+    assert "contract check: 0 error(s)" in capsys.readouterr().out
