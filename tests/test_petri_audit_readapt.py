@@ -222,6 +222,11 @@ def test_a_readapt_plan_binds_the_source_run_artifact_sidecar_and_journal_entry(
         readapt.plan(params=_params(), listing=_listing(), runs_dir=runs, seed_ids=["x"],
                      journal_entries=_journal_entries(params_sha256=None), readapt_run_id="5555",
                      readapt_run_attempt="1", readapt_commit=COMMIT, now=NOW)
+    for attempt in ("2", "0", "x"):
+        with pytest.raises(readapt.ReadaptError, match="first attempt only"):
+            readapt.plan(params=_params(), listing=_listing(), runs_dir=runs, seed_ids=["x"],
+                         journal_entries=_journal_entries(), readapt_run_id="5555", readapt_run_attempt=attempt,
+                         readapt_commit=COMMIT, now=NOW)
     with pytest.raises(readapt.ReadaptError, match="40-hex commit"):
         readapt.plan(params=_params(), listing=_listing(), runs_dir=runs, seed_ids=["x"],
                      journal_entries=_journal_entries(), readapt_run_id="5555", readapt_run_attempt="1",

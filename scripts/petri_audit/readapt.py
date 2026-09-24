@@ -286,8 +286,12 @@ def plan(*, params: dict, listing: Any, runs_dir: Path | str, seed_ids: list[str
         attempt = int(str(readapt_run_attempt))
     except ValueError:
         attempt = 0
-    if attempt < 1:
-        raise ReadaptError(f"readapt_run_attempt must be a positive integer, got {readapt_run_attempt!r}")
+    if attempt != 1:
+        # The params job refuses a paid mode's re-run, but "re-run failed jobs" re-runs this job alone and reuses
+        # the params job's outputs, so the attempt is checked here too: a second attempt has no reservation of its
+        # own, and its judge would spend again against the same source directory (re-fire through fire_trigger.py).
+        raise ReadaptError(f"a readapt runs on its workflow run's first attempt only, got attempt {readapt_run_attempt!r}; "
+                           "a re-run has no journal reservation of its own, so re-fire through scripts/fire_trigger.py")
     expected = expected_from_params(params, seed_ids)
     expected["eval_id"] = report["eval_id"]
     return {"source_run_id": source_run_id, "run_stem": stem,
