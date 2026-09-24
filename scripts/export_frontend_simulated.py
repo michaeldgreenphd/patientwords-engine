@@ -25,8 +25,10 @@ withheld Tier B holdout row's render stayed served for ten weeks. --dry-run
 writes and deletes nothing and lists what the run would prune. The run refuses,
 writing nothing, when the site's git checkout keeps tracked renders off disk (a
 sparse clone that excludes modes/): the prune could not see them. Run
-`git -C <site> sparse-checkout disable` first. It also refuses, writing nothing,
-when a site file or directory it scans for render references cannot be read.
+`git -C <site> sparse-checkout disable` first. It refuses the same way when the
+checkout keeps off disk any tracked file the render-reference scan reads (a
+page or payload anywhere in the site), and when a site file or directory it
+scans for render references cannot be read.
 
 Usage:
   python scripts/export_frontend_simulated.py --frontend ../patientwords \\
@@ -56,11 +58,11 @@ except ImportError:
     from payload_summary import build_summary
 
 try:
-    from scripts.render_prune import (ReferenceScanError, hidden_renders, prune, prune_candidates,
-                                      referenced_renders)
+    from scripts.render_prune import (ReferenceScanError, hidden_references, hidden_renders, prune,
+                                      prune_candidates, referenced_renders)
 except ImportError:
-    from render_prune import (ReferenceScanError, hidden_renders, prune, prune_candidates,
-                              referenced_renders)
+    from render_prune import (ReferenceScanError, hidden_references, hidden_renders, prune,
+                              prune_candidates, referenced_renders)
 
 # The circuit-tracer models, in registry order (gemma-2-2b is the base/default).
 # Only gemma-2-2b has a transcoder source set, so clinical-feature attribution
@@ -157,6 +159,19 @@ if _hidden:
 # with nothing written. Everything this run writes before the prune is a render
 # named like RENDER_RE, which the scan skips, so scanning early reads the same set.
 OUT_DATA_REL = "data/simulated_scenarios.json"
+# A file the scan would read that the checkout keeps off disk (a sparse pattern
+# excluding start-here/, say) is a reference the scan cannot see: the render it
+# names would look unlisted and be pruned. Refuse before writing anything.
+try:
+    _hidden_refs = hidden_references(FRONTEND, ignore={OUT_DATA_REL})
+except RuntimeError as exc:
+    sys.exit(f"refusing: cannot tell whether the site checkout hides reference files ({exc})")
+if _hidden_refs:
+    sys.exit(f"refusing: the site checkout at {FRONTEND} tracks {len(_hidden_refs)} file(s) that the "
+             f"render-reference scan reads but that are not on disk (sparse checkout or skip-worktree), "
+             f"e.g. {_hidden_refs[0]}; a render named only there would be pruned. Run "
+             f"`git -C {FRONTEND} sparse-checkout disable` (and clear any skip-worktree bit), then "
+             f"re-run. Nothing was written.")
 try:
     _site_references = referenced_renders(FRONTEND, ignore={OUT_DATA_REL})
 except ReferenceScanError as exc:

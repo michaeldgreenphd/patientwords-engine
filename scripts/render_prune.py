@@ -24,6 +24,12 @@ The candidates come from the working tree, so a site checkout that keeps
 tracked renders off disk (the cloud containers' sparse clone excludes modes/)
 would prune nothing and say so as if it were done. ``hidden_renders`` finds
 those files (sparse_guard.py) and the exporter refuses before writing anything.
+The same holds for the files the reference scan reads: a checkout that keeps
+the renders but hides a page naming one (a sparse pattern excluding
+start-here/) would let the scan miss that page and the prune delete the render
+it names. ``hidden_references`` finds tracked files the scan would read that
+the checkout keeps off disk, anywhere in the site, and the exporter refuses on
+those too (Codex review of PR #32, 2026-09-24).
 
 The keep-set is only complete if every site file could be read. A reference
 file or directory that cannot be read (permissions, a transient I/O error)
@@ -36,7 +42,7 @@ No medical vocabulary lives here.
 
 import os
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 try:
     from scripts.sparse_guard import hidden_tracked
@@ -79,6 +85,22 @@ def hidden_renders(frontend: Path) -> list[str]:
     return [rel for rel in hidden_tracked(frontend, SIM_DIR) if RENDER_RE.match(rel)]
 
 
+def _scanned(rel: str, ignore: set[str] | frozenset[str]) -> bool:
+    """Whether the reference scan reads the site-relative file ``rel``: a text
+    suffix in REFERENCE_SUFFIXES, not a render, not in ``ignore``."""
+    return (rel not in ignore and not RENDER_RE.match(rel)
+            and PurePosixPath(rel).suffix.lower() in REFERENCE_SUFFIXES)
+
+
+def hidden_references(frontend: Path, ignore: set[str] | frozenset[str] = frozenset()) -> list[str]:
+    """Site-relative files the reference scan would read (``_scanned``) that the
+    site's git checkout tracks but keeps off disk (sparse checkout or
+    skip-worktree), anywhere in the site. Non-empty means the keep-set would
+    miss a render named only there; the exporter refuses. Raises RuntimeError
+    when git cannot answer."""
+    return [rel for rel in hidden_tracked(frontend) if _scanned(rel, ignore)]
+
+
 class ReferenceScanError(RuntimeError):
     """A site file or directory could not be read, so the keep-set is incomplete."""
 
@@ -102,7 +124,7 @@ def referenced_renders(frontend: Path, ignore: set[str] | frozenset[str] = froze
         for name in filenames:
             p = Path(dirpath) / name
             rel = p.relative_to(frontend).as_posix()
-            if rel in ignore or RENDER_RE.match(rel) or p.suffix.lower() not in REFERENCE_SUFFIXES:
+            if not _scanned(rel, ignore):
                 continue
             try:
                 text = p.read_text(encoding="utf-8", errors="ignore")

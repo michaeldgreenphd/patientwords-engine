@@ -197,8 +197,8 @@ neither the new payload nor any other site file lists (`scripts/render_prune.py`
 withheld holdout row's render had stayed served for ten weeks); `--dry-run` writes and
 deletes nothing and lists them. It refuses, writing nothing, over a site checkout that
 keeps tracked renders off disk (the cloud containers' sparse clone excludes `modes/`),
-and `scripts/seal_check.py` exits 2 over one: `git -C ../patientwords sparse-checkout
-disable` first.
+or any tracked file its render-reference scan reads, and `scripts/seal_check.py` exits
+2 over one: `git -C ../patientwords sparse-checkout disable` first.
 
 ## Figure style (standing preference)
 

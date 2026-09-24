@@ -21,7 +21,10 @@ with theirs.
    with `modes/` excluded (`docs/fresh_session_bootstrap.md`). Over that checkout the
    exporter's render prune and the seal gate cannot see the renders, so both refuse:
    the exporter stops with `refusing: the site checkout ... tracks N render(s) ...
-   that are not on disk`, and `seal_check.py` exits 2.
+   that are not on disk`, and `seal_check.py` exits 2. A sparse pattern that keeps
+   `modes/` but hides any page or payload the exporter scans for render references
+   refuses too (`... tracks N file(s) that the render-reference scan reads ...`): a
+   render named only there would otherwise be pruned.
 4. Only run if new results actually landed (new `trace_out/*/batch_summary.part_*.json`,
    new lens parts, new txcorpus runs). No new results → no republish this cycle.
 

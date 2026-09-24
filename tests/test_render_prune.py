@@ -304,3 +304,44 @@ def test_export_refuses_before_writing_when_a_reference_file_is_unreadable(tmp_p
     proc = export(engine, site)
     assert proc.returncode == 0, proc.stderr
     assert files["page_linked"].exists() and "3 unlisted render(s) pruned" in proc.stdout
+
+
+# --- a sparse checkout that hides a reference file (Codex review of PR #32, 2026-09-24) #
+# The sparse guard asked git only about modes/simulated/. A checkout that kept
+# the renders but excluded a page naming one (start-here/) let the scan miss the
+# page, and the render it names was pruned as unlisted.
+
+
+@needs_git
+def test_export_refuses_when_the_checkout_hides_a_reference_file(tmp_path):
+    engine, site, files = build(tmp_path)
+    _commit_site(site)
+    _git(site, "sparse-checkout", "set", "--no-cone", "/*", "!/start-here/")
+    assert not (site / "start-here").exists() and files["page_linked"].exists()
+    assert rp.hidden_renders(site) == []
+    before = snapshot(site)
+    for extra in ((), ("--dry-run",)):
+        proc = export(engine, site, *extra)
+        assert proc.returncode != 0, extra
+        assert "start-here/index.html" in proc.stderr and "sparse-checkout disable" in proc.stderr
+        assert "pruned" not in proc.stdout
+        assert snapshot(site) == before
+    _git(site, "sparse-checkout", "disable")
+    proc = export(engine, site)
+    assert proc.returncode == 0, proc.stderr
+    assert files["page_linked"].exists() and "3 unlisted render(s) pruned" in proc.stdout
+
+
+@needs_git
+def test_hidden_references_are_the_files_the_scan_would_read(tmp_path):
+    _, site, _ = build(tmp_path)
+    _write(site / "assets" / "logo.png", "png")
+    _commit_site(site)
+    for rel in ("start-here/index.html", "assets/logo.png", "data/simulated_scenarios.json",
+                f"modes/simulated/{OLD}/index_08.html", "modes/simulated/preview.html"):
+        _git(site, "update-index", "--skip-worktree", rel)
+    # a binary asset and a render are never scanned, and the ignored payload is not read
+    assert rp.hidden_references(site, {"data/simulated_scenarios.json"}) == [
+        "modes/simulated/preview.html", "start-here/index.html"]
+    assert rp.hidden_references(site) == [
+        "data/simulated_scenarios.json", "modes/simulated/preview.html", "start-here/index.html"]
