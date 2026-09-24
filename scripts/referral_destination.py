@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import hashlib
 import json
 import os
 import random
@@ -108,23 +109,37 @@ def load_rubric_tiers(path: str, digest: str) -> tuple[list[str], Any]:
     return tiers, rubric.get("version")
 
 
-def _read_jsonl(paths: Iterable[str]) -> list[dict[str, Any]]:
+def _file_sha256(path: str) -> str:
+    with open(path, "rb") as handle:
+        return hashlib.sha256(handle.read()).hexdigest()
+
+
+def _read_jsonl(paths: Iterable[str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """(records, one {path, sha256, rows} entry per file). The digest is taken over the same bytes
+    that are parsed, so it names exactly the input the records came from."""
     records: list[dict[str, Any]] = []
+    files: list[dict[str, Any]] = []
     for path in sorted(paths):
-        with open(path, encoding="utf-8") as handle:
-            for line in handle:
-                if line.strip():
-                    records.append(json.loads(line))
-    return records
+        with open(path, "rb") as handle:
+            raw = handle.read()
+        rows = [json.loads(line) for line in raw.decode("utf-8").splitlines() if line.strip()]
+        records.extend(rows)
+        files.append({"path": path, "sha256": hashlib.sha256(raw).hexdigest(), "rows": len(rows)})
+    return records, files
 
 
-def load_corpus(advice_dir: str) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
-    """Responses indexed by their own sha256, and every judgment row. Both families are
-    append-only archives, so a stem glob is the documented way to read them."""
-    responses = _read_jsonl(glob.glob(os.path.join(advice_dir, "responses_stimuli_*.jsonl")))
-    judgments = _read_jsonl(glob.glob(os.path.join(advice_dir, "judgments_stimuli_*.jsonl")))
+def load_corpus(advice_dir: str) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    """Responses indexed by their own sha256, every judgment row, and the input snapshot.
+
+    Both families are append-only archives read by stem glob, so the same command reads a larger
+    corpus after the next archive lands. The snapshot (every file read, with its sha256 and row
+    count) goes into the bundle so a reader can tell which rows produced its estimates (Codex,
+    PR #29; AGENTS.md: reproducible from its own output)."""
+    responses, response_files = _read_jsonl(glob.glob(os.path.join(advice_dir, "responses_stimuli_*.jsonl")))
+    judgments, judgment_files = _read_jsonl(glob.glob(os.path.join(advice_dir, "judgments_stimuli_*.jsonl")))
     by_sha = {r["response_sha256"]: r for r in responses if r.get("response_sha256")}
-    return by_sha, judgments
+    inputs = {"advice_dir": advice_dir, "responses": response_files, "judgments": judgment_files}
+    return by_sha, judgments, inputs
 
 
 def names_any(text: str, terms: Iterable[str]) -> bool:
@@ -337,7 +352,7 @@ def pairing_report(cells: dict[tuple[str, str], dict[str, list[tuple[int, bool, 
 def analyze(advice_dir: str, judge: str, boot: int, seed: int, vocab_path: str = VOCAB_PATH,
             rubric_path: str = RUBRIC_PATH, rubric_digest: str | None = None) -> dict[str, Any]:
     vocab = load_vocab(vocab_path)
-    by_sha, judgments = load_corpus(advice_dir)
+    by_sha, judgments, inputs = load_corpus(advice_dir)
     digest = select_rubric_digest(judgments, judge, rubric_digest)
     tiers, rubric_version = load_rubric_tiers(rubric_path, digest)
     cells, skipped = build_cells(by_sha, judgments, vocab, judge, digest, {tier: i for i, tier in enumerate(tiers)})
@@ -362,6 +377,7 @@ def analyze(advice_dir: str, judge: str, boot: int, seed: int, vocab_path: str =
         "seed": seed,
         "boot": boot,
         "judge_of_record": judge,
+        "inputs": inputs,
         "rubric": {
             "path": rubric_path,
             "sha256": digest,
@@ -370,6 +386,7 @@ def analyze(advice_dir: str, judge: str, boot: int, seed: int, vocab_path: str =
         },
         "vocabulary": {
             "path": vocab_path,
+            "sha256": _file_sha256(vocab_path),
             "status": vocab.get("status"),
             "version": vocab.get("version"),
             "specialist_terms": len(vocab["specialist_services"]),
@@ -432,6 +449,8 @@ def format_summary(bundle: dict[str, Any]) -> str:
     lines = [
         f"referral destination  seed={bundle['seed']}  boot={bundle['boot']}  judge={bundle['judge_of_record']}"
         f"  rubric={bundle['rubric']['sha256'][:12]}",
+        f"  inputs {len(bundle['inputs']['responses'])} response and {len(bundle['inputs']['judgments'])}"
+        f" judgment archives under {bundle['inputs']['advice_dir']}",
         f"  vocabulary {bundle['vocabulary']['path']} ({bundle['vocabulary']['status']})",
         f"  coverage {bundle['coverage']['judge_of_record_rows_measured']}"
         f"/{bundle['coverage']['judge_of_record_rows_considered']}"

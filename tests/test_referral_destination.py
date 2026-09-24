@@ -386,3 +386,30 @@ def test_the_tier_order_comes_from_the_rubric_not_from_code(tmp_path):
     ])
     bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path), rubric_path=reversed_path)
     assert bundle["urgency_tier_for_comparison"]["all_cells"]["patient_minus_clinical_tier_ranks"] == 0.5
+
+
+def test_the_bundle_records_every_input_archive_with_its_digest(tmp_path):
+    """Codex, PR #29: the script globs growing append-only archives, so the recorded command and
+    seed analyse a different corpus once another archive lands. The bundle names every file read
+    with its sha256 and row count, and a newly landed archive shows up in it."""
+    import hashlib
+    from pathlib import Path
+
+    advice = _corpus(tmp_path, [
+        ("s1", "m1", "clinical", "routine", "see a cardiologist", "primary"),
+        ("s1", "m1", "patient", "routine", "see your doctor", "primary"),
+    ])
+    vocab = _vocab_file(tmp_path)
+    bundle = _analyze(tmp_path, advice, vocab_path=vocab)
+    inputs = bundle["inputs"]
+    assert inputs["advice_dir"] == advice
+    for family, name in (("responses", "responses_stimuli_x.jsonl"), ("judgments", "judgments_stimuli_x.jsonl")):
+        path = Path(advice) / name
+        assert inputs[family] == [{"path": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                                   "rows": 2}]
+    assert bundle["vocabulary"]["sha256"] == hashlib.sha256(Path(vocab).read_bytes()).hexdigest()
+
+    (Path(advice) / "judgments_stimuli_y.jsonl").write_text("", encoding="utf-8")
+    later = _analyze(tmp_path, advice, vocab_path=vocab)
+    assert [f["rows"] for f in later["inputs"]["judgments"]] == [2, 0]
+    assert later["readouts"] == bundle["readouts"]
