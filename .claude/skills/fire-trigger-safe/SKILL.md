@@ -92,9 +92,9 @@ lane, and advance by chaining — resolve the landed run, then fire the next.
 `fire_trigger.py` writes the trigger file and the journal, commits and pushes exactly
 those two, and restores `ops/dashboard.json` afterwards — its queue-block update is a
 side effect that only the daily Routine keeps (`--keep-dashboard`, which the Routine's
-prompt passes; the Routine commits the dashboard itself in its step 6, and the guard
-hooks refuse that commit outside the Routine's environment). No other session commits
-the dashboard, and none needs to revert it any more.
+prompt passes; the Routine commits the dashboard itself, in its §2a spend fold and its
+step 6, and the guard hooks refuse those commits outside the Routine's environment). No
+other session commits the dashboard, and none needs to revert it any more.
 
 `--no-git` writes the files without committing; it is for inspection. A hand `git push`
 that carries a trigger-file change is refused by the guard hooks and by
