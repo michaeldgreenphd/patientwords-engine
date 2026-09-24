@@ -609,6 +609,35 @@ so it can be redone by hand.
        stay as they are.
     4. **Merge PR #29 by hand,** following §6.
   - **Codex.** The owner asked for no new Codex review requests before 01:00 EDT on 2026-09-24.
+- **2026-09-24, 09:08 UTC: w2e3 recovered (`w2e3r`).**
+  - **The fire.** Fired at 09:08 UTC as `e2c49b65`, with `mode: readapt`, `source_run_id` 35937014168 and
+    nonce `w2e3r`. It committed $2.50, the judge bound only.
+  - **The gates it passed first.** All 8 Codex threads on the recovery code had replies, with none held for the owner.
+    The suite was green at `43c82d86` (1383 passed). The lane was idle, and the run directory held only the landed
+    target sidecar. No $0 rehearsal was possible, because readapt requires `judge: true`.
+  - **The run.** Workflow run
+    [35979450123](https://github.com/michaeldgreenphd/patientwords-engine/actions/runs/35979450123) concluded
+    **success**. Outputs landed in `5c404194`: the sanitised export, transcripts, manifest, judgments and analysis
+    rows, beside the untouched target sidecar.
+  - **Provenance.** The manifest's `readapt` block names the source run, its artifact (id 10783770624), the source
+    nonce and params digest, and the re-adapting run and commit. Sanitiser version is 0.3.
+  - **Checks.**
+    - `verify-chain` is intact and `verify-run` passes.
+    - All 7 contract checks pass, and the run is claim-grade eligible.
+    - 30 trees and 301 target calls.
+  - **Spend.**
+    - Target: $0.93, booked once to w2e3.
+    - Judge: $1.63, booked once to w2e3r (sidecar `run_35937014168_1.readapt_35979450123.judge.report.json`).
+    - Epoch total: $2.56, against w2e2's $2.53.
+    - Neither sidecar is folded into the ledger yet; that waits on PR #34.
+  - **Judge.** Of 1,595 planned gradings, 1,370 were judged, 4 came back null ("answer names more than one declared
+    value") and 221 were not applicable; it was not truncated. w2e2 was 1,590 / 1,359 / 1 / 230.
+  - **Afterwards.** Resolved; re-parked (`2765f894`), and the park run resolved.
+  - **The results page** now covers 3 runs and 75 conversations. Its builder was made to accept a readapt's judge
+    sidecar name.
+  - **What is not reported here.** No register contrast from this epoch: §10 runs once, on the final data.
+  - **Next.** The final data is now w2e1, w2e2, the recovered w2e3 and the w2e4 fire at 00:07 UTC on 2026-09-25,
+    which is 35 triples as §10.1 fixed.
   - **2026-09-24: the re-adapt path for decision 2 is built and not yet fired.** It is petri-audit `mode: readapt`
     with the new key `source_run_id`, on the local branch `claude/petri-w2e3-readapt` (unpushed, unreviewed). The
     recovery fire (nonce `w2e3r`, $2.50 committed, the judge's ceiling alone) waits for review and the owner's
