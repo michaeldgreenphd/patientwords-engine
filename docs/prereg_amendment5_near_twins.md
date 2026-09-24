@@ -87,7 +87,10 @@ to compute it or to choose the threshold.
      on the site, that is, (i) the accepted `top_prompt` of every Tier B
      `pairs_<STAMP>` pair not in the sealed set, and (ii) every
      `clinical_prompt` in the site's `data/simulated_scenarios.json` and
-     `data/simulated_archive.json`, less the sealed phrases themselves.
+     `data/simulated_archive.json`, less the sealed phrases themselves (exact
+     strings, the site's compared as published: a copy that differs only in
+     case or spacing, leading or trailing spacing included, stays and scores
+     1.0 after normalization).
    - Normalization: `seal_check.norm()` on both sides (lowercase, whitespace
      runs to one space, stripped); the comparison set is deduplicated after it.
    - Metric: `difflib.SequenceMatcher(None, a, b).ratio()` with difflib's
@@ -104,7 +107,14 @@ to compute it or to choose the threshold.
      engine `6830d590`. It was recomputed on 2026-09-23 at engine `e1bc7646`,
      before unsealing, only to add the input hashes (Codex review of PR #32).
      The 29 batch files and the dashboard are byte-identical at both commits,
-     and the 38 labels and every count are unchanged.
+     and the 38 labels and every count are unchanged. It was recomputed again
+     on 2026-09-24 at engine `83abe96b`, before unsealing, after two
+     implementation fixes from the next Codex review of PR #32: the site
+     phrases are removed only when exactly equal to a sealed phrase (the code
+     had stripped them first, contrary to the rule above), and a malformed
+     `tierb.batches` is refused instead of counted as an empty campaign. Every
+     input hash, the 38 labels and every count are unchanged; only
+     `engine_head` and the `comparison_set` wording in the file changed.
 
 5. **No post-hoc pruning.** The list in `data/tierb_near_twins.json` is frozen
    by this registration. It is not recomputed, extended or re-thresholded after

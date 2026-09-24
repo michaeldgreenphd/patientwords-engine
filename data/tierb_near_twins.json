@@ -10,13 +10,13 @@
   "threshold": 0.9,
   "rule": "twin iff max ratio over the comparison set >= threshold",
   "sealed_set": "scripts/seal_check.py sealed_registry()",
-  "comparison_set": "explore split: accepted top_prompt of every Tier B pairs_<STAMP> pair not in the sealed set; plus every clinical_prompt in the site's data/simulated_scenarios.json and data/simulated_archive.json, less sealed phrases; deduplicated after normalization",
+  "comparison_set": "explore split: accepted top_prompt of every Tier B pairs_<STAMP> pair not in the sealed set; plus every clinical_prompt in the site's data/simulated_scenarios.json and data/simulated_archive.json, less any string exactly equal to a sealed phrase (compared before normalization, unstripped); deduplicated after normalization",
   "seed": null,
   "deterministic": true
  },
  "inputs": {
   "tierb_start_utc": "2026-07-10T01:14:38Z",
-  "engine_head": "e1bc76469dde2a99e32a6ae8c651cdda1a60e16a",
+  "engine_head": "83abe96bdf3d6303e481e5c8639813e9d86b6aa3",
   "dashboard_sha256": "d2370454983745c0a68678785db18fc3dd2b47845a51d1c0dbb57bb8179a1fe6",
   "dashboard_tierb_sha256": "90006c942164b9fc507cd195d27e024029093f4b76253476f41fbd9a6750cb38",
   "batch_files_sha256": {
