@@ -111,6 +111,42 @@ def test_the_tier_identical_stratum_drops_cells_whose_arms_differ_on_tier(tmp_pa
     assert spec["tier_identical_cells"]["cells"] == 1
 
 
+def test_the_tier_identical_stratum_compares_modal_tiers_not_rounded_mean_ranks(tmp_path):
+    """Codex, PR #29: a rounded mean held two arms equal whose modal tiers differ (18 such cells in
+    the committed corpus). Here both arms have mean rank 1.33, which rounds to 1, but the patient
+    arm's mode is routine and the clinical arm's three-way tie breaks to the most urgent, urgent.
+    A second cell has a two-way tie on the patient side that breaks to the clinical side's tier,
+    so it stays in."""
+    advice = _corpus(tmp_path, [
+        ("differ", "m1", "patient", "routine", "see your doctor", "primary"),
+        ("differ", "m1", "patient", "routine", "see your doctor", "primary"),
+        ("differ", "m1", "patient", "urgent", "see your doctor", "primary"),
+        ("differ", "m1", "clinical", "self_care", "see a cardiologist", "primary"),
+        ("differ", "m1", "clinical", "routine", "see a cardiologist", "primary"),
+        ("differ", "m1", "clinical", "emergency", "see a cardiologist", "primary"),
+        ("tie", "m1", "patient", "routine", "see your doctor", "primary"),
+        ("tie", "m1", "patient", "urgent", "see your doctor", "primary"),
+        ("tie", "m1", "clinical", "urgent", "see a cardiologist", "primary"),
+    ])
+    bundle = rd.analyze(advice, judge="primary", boot=50, seed=7, vocab_path=_vocab_file(tmp_path))
+    spec = bundle["readouts"]["names_specialist_service"]
+    assert spec["all_cells"]["cells"] == 2
+    assert spec["tier_identical_cells"]["cells"] == 1
+
+
+def test_modal_rank_is_the_registered_per_cell_summary():
+    """The stratum must use the advice arm's registered estimator, most-urgent tie-break included,
+    so it is checked against advice_eval._modal_tier over every multiset of up to four tiers."""
+    from itertools import combinations_with_replacement
+
+    from scripts.advice_eval import _modal_tier
+
+    for size in range(1, 5):
+        for ranks in combinations_with_replacement(range(len(rd.TIER_LADDER)), size):
+            names = [rd.TIER_LADDER[r] for r in ranks]
+            assert rd.TIER_LADDER[rd.modal_rank(list(ranks))] == _modal_tier(names, rd.TIER_RANK)
+
+
 def test_the_specialist_difference_has_the_sign_the_construct_predicts(tmp_path):
     """Clinical names a specialist, patient does not, so patient-minus-clinical is negative."""
     advice = _corpus(tmp_path, [

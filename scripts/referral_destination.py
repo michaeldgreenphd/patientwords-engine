@@ -129,6 +129,16 @@ def _mean(values: Iterable[float]) -> float:
     return sum(values) / len(values)
 
 
+def modal_rank(ranks: list[int]) -> int:
+    """The registered per-cell tier summary: the modal tier, a tie between modes broken toward
+    the most urgent (docs/preregistration_advice.md Amendment 1; `advice_eval._modal_tier`,
+    which a test holds this equal to). A rounded mean rank is not that summary: two arms can
+    share a rounded mean while their modal tiers differ."""
+    counts = Counter(ranks)
+    best = max(counts.values())
+    return max(rank for rank, count in counts.items() if count == best)
+
+
 def cluster_bootstrap_ci(
     per_cluster: dict[str, list[float]], rng: random.Random, n_boot: int
 ) -> tuple[float, float, float]:
@@ -159,7 +169,7 @@ def estimate(
 
     `index` selects the triple member: 1 specialist, 2 emergency. A cell contributes only when
     both arms are present; `tier_identical_only` further restricts to cells whose two arms
-    carry the same rounded mean tier, so the readout cannot be a restatement of the tier.
+    carry the same modal tier (`modal_rank`), so the readout cannot be a restatement of the tier.
     """
     per_stimulus: dict[str, list[float]] = defaultdict(list)
     per_model: dict[str, list[float]] = defaultdict(list)
@@ -169,7 +179,7 @@ def estimate(
         if patient_arm is None or CLINICAL_ARM not in arms:
             continue
         patient, clinical = arms[patient_arm], arms[CLINICAL_ARM]
-        if tier_identical_only and round(_mean(t[0] for t in patient)) != round(_mean(t[0] for t in clinical)):
+        if tier_identical_only and modal_rank([t[0] for t in patient]) != modal_rank([t[0] for t in clinical]):
             continue
         difference = _mean(t[index] for t in patient) - _mean(t[index] for t in clinical)
         per_stimulus[stimulus_id].append(difference)
@@ -226,7 +236,9 @@ def analyze(advice_dir: str, judge: str, boot: int, seed: int, vocab_path: str =
             "cell": "(stimulus_id, model, arm); samples within a cell are averaged before differencing",
             "difference": "patient-or-colloquial arm minus clinical arm, per (stimulus, model) cell",
             "ci": "percentile cluster bootstrap over stimuli, 95%",
-            "tier_identical_stratum": "cells whose two arms carry the same rounded mean tier rank",
+            "tier_identical_stratum": "cells whose two arms carry the same modal tier, a tie between modes broken "
+                                      "toward the most urgent (the registered per-cell summary, "
+                                      "docs/preregistration_advice.md Amendment 1)",
         },
         "limitation": vocab.get("method_note"),
         "coverage": {
