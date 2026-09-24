@@ -600,6 +600,7 @@ so it can be redone by hand.
        stay as they are.
     4. **Merge PR #29 by hand,** following §6.
   - **Codex.** The owner asked for no new Codex review requests before 01:00 EDT on 2026-09-24.
+  - **2026-09-24: the re-adapt path for decision 2 is built and not yet fired.** It is petri-audit `mode: readapt` with the new key `source_run_id`, on the local branch `claude/petri-w2e3-readapt` (unpushed, unreviewed); the recovery fire (nonce `w2e3r`, $2.50 committed, the judge's ceiling alone) waits for review and the owner's go-ahead.
 
 ---
 
