@@ -1202,3 +1202,90 @@ def test_a_stamp_in_the_future_is_named(tmp_path):
     # the writers' own shape, stamped after the fire and before now, stays silent
     framework.write_json(path, {**framework.load_json(path), "run_utc": "2026-09-18T10:05:00Z"})
     assert "is in the future" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+# ------------------------------------------------------------ mode readapt
+
+
+def _readapt_layout(tmp_path: Path, judge_overrides: dict | None = None):
+    """A source run whose adaptation failed (the workflow's fallback target sidecar, nonce `w2e3`) and the readapt
+    that recovered it (nonce `w2e3r`): the readapt made no target call, so its only sidecar is the judge's, in the
+    SOURCE run's directory, carrying its own fire's nonce and the log's eval id (cli._readapt_judge_identity)."""
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    journal, runs, dashboard = _layout(tmp_path)
+    entries = [_entry("2026-09-18T00:08:16Z", "w2e3", 8.6, resolved=True),
+               _entry("2026-09-18T02:30:00Z", "w2e3r", 2.5)]
+    journal.write_text("".join(json.dumps(e) + "\n" for e in entries), encoding="utf-8")
+    d = runs / "run_9_1"
+    d.mkdir()
+    framework.write_json(d / "run_9_1.report.json", {
+        "run_utc": "2026-09-18T00:10:41Z", "run_id": "run_9_1", "eval_id": "EvSrc", "task": "petri-audit",
+        "cost_usd": 0.93, "cost_basis": "engine_repriced_from_inspect_model_usage", "usage_missing_models": [],
+        "max_spend_usd": 6.1, "judge_max_spend_usd": 2.5, "billing_channel": "anthropic",
+        "models": [{"model": "anthropic/claude-haiku-4-5", "cost_usd": 0.93, "usage_missing": False, "calls": 301,
+                    "calls_without_usage": 0}],
+        "spend_report_reason": "run attempted; no adapted report exists (run or adaptation failed)",
+        "eval_log": "x.eval", "run_status": "success", "journal_nonce": "w2e3"})
+    judge = {"run_utc": "2026-09-18T02:40:00Z", "judge_model": "claude-haiku-4-5", "cost_usd": 1.6, "run_cost_usd": 1.6,
+             "prior_cost_usd": 0.0, "cost_basis": "cumulative_from_records", "max_spend_usd": 2.5,
+             "billing_channel": "anthropic", "task": "petri-audit-judge", "run_id": "InspectRunId", "eval_id": "EvSrc",
+             "journal_nonce": "w2e3r"}
+    judge.update(judge_overrides or {})
+    framework.write_json(d / "run_9_1.judge.report.json", judge)
+    return journal, runs, dashboard
+
+
+def test_a_readapt_judge_is_joined_to_its_own_fire_and_not_to_the_source_fire(tmp_path):
+    """Mode readapt (2026-09-24): the judge's sidecar sits beside the source run's target sidecar but was reserved
+    by the readapt fire. Joined through the directory it read as the source fire's judge (whose target sidecar
+    records the directory as run_id, so the identity check failed too) and the readapt fire read as unbooked."""
+    journal, runs, _dashboard = _readapt_layout(tmp_path)
+    result = reconcile.reconcile(journal, runs)
+    rows = {r["nonce"]: r for r in result["paid_fires"]}
+    assert result["problems"] == []
+    assert rows["w2e3"]["status"] == "landed" and rows["w2e3"]["judge_cost_usd"] is None
+    assert rows["w2e3"]["total_usd"] == 0.93, "the source fire's landed cost is its target spend alone"
+    assert rows["w2e3r"]["status"] == "landed (readapt judge)" and rows["w2e3r"]["run"] == "run_9_1"
+    assert (rows["w2e3r"]["cost_usd"], rows["w2e3r"]["judge_cost_usd"], rows["w2e3r"]["total_usd"]) == (None, 1.6, 1.6)
+    assert result["sidecars"] == {"target": 1, "judge": 1}
+
+
+def test_a_readapt_judge_is_held_to_its_fires_commitment_log_and_channel(tmp_path):
+    cases = [({"max_spend_usd": 2.0}, "a readapt fire reserves exactly the judge's ceiling"),
+             ({"cost_usd": 2.6, "run_cost_usd": 2.6}, "exceeds the judge ceiling 2.5000"),
+             ({"eval_id": "EvOther"}, "a readapt judges the log the source run priced"),
+             ({"billing_channel": "openrouter"}, "books the openrouter account but the fire reserved its commitment on anthropic"),
+             ({"run_utc": "2026-09-18T01:00:00Z"}, "precedes the fire that reserved it"),
+             ({"journal_nonce": "stray"}, "journal_nonce 'stray' matches no paid petri-audit journal entry")]
+    for i, (overrides, needle) in enumerate(cases):
+        journal, runs, _dashboard = _readapt_layout(tmp_path / str(i), overrides)
+        problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+        assert needle in problems, (overrides, problems)
+    # a stray nonce leaves the readapt fire itself unbooked, named as such
+    journal, runs, _dashboard = _readapt_layout(tmp_path / "stray", {"journal_nonce": "stray"})
+    assert "(nonce 'w2e3r'): no cost sidecar carries its nonce" in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_the_fallback_judge_sidecar_of_a_readapt_carries_its_fires_nonce(tmp_path, capsys):
+    """`judge-spend-report` books a judge that started and died; under a readapt it names the readapt fire, read
+    from the manifest's `readapt` block, so reconciliation joins the ceiling to the fire that reserved it."""
+    run_dir = tmp_path / "run_9_1"
+    run_dir.mkdir()
+    argv = ["judge-spend-report", "--run-dir", str(run_dir), "--judge-model", "claude-haiku-4-5", "--judge-max-spend", "2.5"]
+    framework.write_json(run_dir / "manifest.json", {"eval_id": "EvSrc", "readapt": {"readapt_journal_nonce": "w2e3r"}})
+    assert cli.main(argv) == 0
+    side = framework.load_json(run_dir / "run_9_1.judge.report.json")
+    assert side["journal_nonce"] == "w2e3r" and side["eval_id"] == "EvSrc" and side["cost_usd"] == 2.5
+    # an ordinary run's fallback sidecar is unchanged: no nonce, joined through its directory
+    (run_dir / "run_9_1.judge.report.json").unlink()
+    framework.write_json(run_dir / "manifest.json", {"eval_id": "EvSrc"})
+    assert cli.main(argv) == 0
+    side = framework.load_json(run_dir / "run_9_1.judge.report.json")
+    assert "journal_nonce" not in side and "eval_id" not in side
+    # a manifest that cannot be read still books the ceiling, and says why it carries no nonce
+    (run_dir / "run_9_1.judge.report.json").unlink()
+    (run_dir / "manifest.json").write_text("{not json", encoding="utf-8")
+    assert cli.main(argv) == 0
+    side = framework.load_json(run_dir / "run_9_1.judge.report.json")
+    assert side["cost_usd"] == 2.5 and "could not be read" in side["journal_nonce_unavailable"]
+    capsys.readouterr()

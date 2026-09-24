@@ -457,6 +457,135 @@ def _basis_problems(label: str, report: dict[str, Any], cost: float | None, judg
     return found
 
 
+def _stamp_problems(sp: Path, sr: dict[str, Any], e: dict[str, Any], now: datetime) -> list[str]:
+    """Why the day `ledger_update` books this sidecar under is not the day the fire that reserved it was counted
+    against: a stamp that does not parse, one in the future, or one before the fire."""
+    found: list[str] = []
+    if "unreadable" in sr:
+        return found
+    # `ledger_update` reads the stamp in TWO different orders: its first-fold loop takes
+    # `run_timestamp or run_utc` and its growth loop `run_utc or run_timestamp`. With both fields
+    # present and one of them malformed the two paths disagree, and whichever hits the bad value
+    # falls back to the scan date - so BOTH expressions must parse, not just the one a growth fold
+    # would use (Codex round 7 on PR #28).
+    for field_order, chosen in (("run_timestamp or run_utc", sr.get("run_timestamp") or sr.get("run_utc")),
+                                ("run_utc or run_timestamp", sr.get("run_utc") or sr.get("run_timestamp"))):
+        if _timestamp(chosen) is None:
+            found.append(f"{sp.parent.name}/{sp.name}: the stamp `{field_order}` resolves to "
+                         f"{chosen!r}, which does not parse, so the ledger books its cost to the day "
+                         "it happens to scan rather than the run's (run_utc "
+                         f"{sr.get('run_utc')!r}, run_timestamp {sr.get('run_timestamp')!r})")
+            break
+    # Parsing is not enough. `ledger_update` books the cost to the day the stamp NAMES, so a stamp
+    # that precedes the fire which reserved it books into an earlier day's bucket than the one the
+    # daily guard counted the commitment against - and each day then reads consistently on its own,
+    # which is exactly the alteration this command exists to surface (Codex round 10 on PR #28). A run
+    # cannot start before its own fire; the minute of grace is for skew between the machine that
+    # fired and the runner that ran.
+    stamp = _timestamp(sr.get("run_timestamp") or sr.get("run_utc"))
+    fired_at = _timestamp(e.get("fired_utc"))
+    # ...and the other end of the same interval. A stamp later than now books the cost into a future
+    # day's bucket, so `spend.today` never receives it: once the fire is resolved and its in-flight
+    # hold released, neither the landed cost nor the reservation counts against today's ceiling and
+    # another paid run is admitted on a day that reads as empty (Codex round 12 on PR #28).
+    if stamp is not None and stamp > now + timedelta(minutes=1):
+        found.append(f"{sp.parent.name}/{sp.name}: its stamp {stamp.isoformat()} is in the future "
+                     f"(now {now.isoformat()}), so the ledger books this cost to a day the daily "
+                     "guard will not read as today's spend")
+    elif stamp is not None and fired_at is not None and stamp < fired_at - timedelta(minutes=1):
+        found.append(f"{sp.parent.name}/{sp.name}: its stamp {stamp.isoformat()} precedes the fire "
+                     f"that reserved it ({e.get('fired_utc')}), so the ledger books this cost to a "
+                     "day the fire's commitment was never counted against")
+    return found
+
+
+def _readapt_judge_row(e: dict[str, Any], row: dict[str, Any], found: list[tuple[Path, dict[str, Any]]],
+                       targets_by_dir: dict[str, list[tuple[Path, dict[str, Any]]]], ledger: Ledger | None,
+                       duplicate_names: set[str], now: datetime, problems: list[str]) -> None:
+    """Fill the row of a readapt fire (petri-audit `mode: readapt`, scripts/petri_audit/readapt.py) from the judge
+    sidecar that carries its nonce.
+
+    A readapt makes no target call: its fire reserves exactly the judge's ceiling, and the only sidecar it lands is
+    the judge's, written into the SOURCE run's directory beside the target sidecar the source fire already booked.
+    The directory therefore names the wrong fire, and the judge is joined here, on its own nonce (`cli judge`
+    copies it from the manifest's `readapt` block). The checks are the ordinary judge's: basis, cost within the
+    ceiling it ran under, that ceiling equal to the commitment, one billing channel, a stamp inside the fire's
+    interval, and the ledger's fold; and it must price the same log as the target sidecar beside it (eval_id: the
+    source's fallback target sidecar records the run DIRECTORY as its run_id, so run_id cannot agree by design).
+    """
+    nonce = e.get("nonce")
+    if len(found) > 1:
+        row["status"] = "ambiguous"
+        names = ", ".join(f"{p.parent.name}/{p.name}" for p, _ in found)
+        problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}): {len(found)} readapt judge sidecars carry "
+                        f"its nonce ({names})")
+        return
+    jp, jr = found[0]
+    label = f"{jp.parent.name}/{jp.name}"
+    row["run"] = jp.parent.name
+    row["judge_cost_usd"] = _money(jr.get("cost_usd"))
+    row["cost_basis"] = jr.get("cost_basis") if isinstance(jr.get("cost_basis"), str) else None
+    if row["judge_cost_usd"] is None:
+        problems.append(f"{label}: judge cost_usd {jr.get('cost_usd')!r} is missing or not a finite non-negative number")
+    problems.extend(_basis_problems(label, jr, row["judge_cost_usd"], judge=True))
+    beside = targets_by_dir.get(jp.parent.name) or []
+    if len(beside) != 1 or "unreadable" in beside[0][1]:
+        problems.append(f"{label}: a readapt judge sidecar needs exactly one readable target sidecar beside it (the "
+                        f"source run's), found {len(beside)}, so the log it judged cannot be tied to a run")
+    else:
+        t_eval, j_eval = beside[0][1].get("eval_id"), jr.get("eval_id")
+        if not isinstance(t_eval, str) or not t_eval or t_eval != j_eval:
+            problems.append(f"{label}: the readapt judge records eval_id {j_eval!r} and the source run's target sidecar "
+                            f"{t_eval!r}; a readapt judges the log the source run priced, so this report belongs to "
+                            "another run")
+    ceiling = _money(jr.get("max_spend_usd"))
+    if ceiling is None or ceiling == 0.0:
+        problems.append(f"{label}: max_spend_usd {jr.get('max_spend_usd')!r} is not a positive number, so the ceiling "
+                        "the readapt judge ran under cannot be established")
+    else:
+        if row["max_spend"] is not None and abs(ceiling - row["max_spend"]) > 1e-9:
+            problems.append(f"{label}: the readapt judge ran under a ceiling of {ceiling:.4f} but its fire reserved "
+                            f"{row['max_spend']:.4f}; a readapt fire reserves exactly the judge's ceiling")
+        if row["judge_cost_usd"] is not None and row["judge_cost_usd"] > ceiling + 1e-9:
+            problems.append(f"{label}: judge cost {row['judge_cost_usd']:.4f} exceeds the judge ceiling {ceiling:.4f} "
+                            "it ran under")
+    if row["judge_cost_usd"] is not None:
+        row["total_usd"] = row["judge_cost_usd"]
+        if row["max_spend"] is not None and row["total_usd"] > row["max_spend"] + 1e-9:
+            problems.append(f"{jp.parent.name}: landed cost {row['total_usd']:.4f} exceeds the fire's commitment "
+                            f"{row['max_spend']:.4f}")
+    lane = e.get("lane")
+    channel = _channel(jr.get("billing_channel"), "")
+    if not isinstance(lane, str) or not lane:
+        problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}): the journal entry records no lane "
+                        f"({lane!r}), so which account the readapt judge's commitment was reserved against is "
+                        "assumed, not recorded")
+    elif _channel_unsupported(lane):
+        problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}): lane {lane!r} is not an account this "
+                        f"study bills ({' or '.join(CHANNELS)})")
+    if not channel:
+        problems.append(f"{label}: the judge sidecar states no billing_channel, so which account its cost lands on "
+                        "cannot be checked against the fire's lane")
+    elif _channel_unsupported(channel):
+        problems.append(f"{label}: the judge sidecar books billing_channel {channel!r}, which is neither "
+                        f"{' nor '.join(CHANNELS)}")
+    elif isinstance(lane, str) and lane and channel != lane:
+        problems.append(f"{label}: the judge sidecar books the {channel} account but the fire reserved its commitment "
+                        f"on {lane}, so the two ceilings disagree about this spend")
+    problems.extend(_stamp_problems(jp, jr, e, now))
+    if ledger is not None and jp.name not in duplicate_names:
+        row["judge_folded"] = ledger.state(jp.name, row["judge_cost_usd"])[0]
+        day_problem = ledger.day_problem(jp.name, _ledger_day(jr), _day_bookable(jr))
+        if day_problem:
+            problems.append(f"{label}: {day_problem}")
+        if row["judge_folded"] and not row["resolved"] and not row["evicted"]:
+            problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}) landed and is fully booked but the "
+                            "journal entry is still unresolved: its commitment keeps counting as in-flight beside "
+                            "the landed cost and it holds a queue slot until it expires. Run `fire_trigger.py "
+                            "resolve --trigger petri-audit`")
+    row["status"] = "landed (readapt judge)"
+
+
 def _judge_identity_problem(run_dir: str, target: dict[str, Any], judge: dict[str, Any]) -> str | None:
     """Why a judge sidecar does not belong to the target run it sits beside.
 
@@ -597,11 +726,26 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             by_nonce.setdefault(nonce, []).append((p, r))
         else:
             unbound.append(p)
+    # A readapt's judge (petri-audit `mode: readapt`) sits in the SOURCE run's directory but was reserved by its own
+    # fire, whose nonce it carries (`cli judge` copies it from the manifest's `readapt` block); the ordinary judge
+    # writers record no nonce. A judge sidecar whose nonce differs from its directory's target sidecar's is joined to
+    # that fire (`_readapt_judge_row`) and never to the source fire the directory names, which would book one fire's
+    # judge against another's commitment.
+    target_nonce = {p.parent.name: r.get("journal_nonce") for p, r in targets
+                    if "unreadable" not in r and p.parent.name not in ambiguous_dirs}
+    readapt_judges: dict[str, list[tuple[Path, dict[str, Any]]]] = {}
+    ordinary_judges: list[tuple[Path, dict[str, Any]]] = []
+    for p, r in judges:
+        jn = r.get("journal_nonce") if "unreadable" not in r else None
+        if isinstance(jn, str) and jn and jn != target_nonce.get(p.parent.name):
+            readapt_judges.setdefault(jn, []).append((p, r))
+        else:
+            ordinary_judges.append((p, r))
     # one judge sidecar per run directory is what the writers produce; keeping the last of several silently
     # dropped the others' cost from the reconciliation (Codex round 1 on PR #28), so an ambiguous directory
     # carries no judge cost at all and is named
     judges_by_dir: dict[str, list[tuple[Path, dict[str, Any]]]] = {}
-    for p, r in judges:
+    for p, r in ordinary_judges:
         judges_by_dir.setdefault(p.parent.name, []).append((p, r))
     judge_by_dir: dict[str, tuple[Path, dict[str, Any]]] = {}
     for run_dir, found in judges_by_dir.items():
@@ -649,7 +793,19 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             rows.append(row)
             continue
         matches = by_nonce.get(nonce, [])
-        if row["evicted"] and not matches:
+        readapt_found = readapt_judges.get(nonce, [])
+        if matches and readapt_found:
+            row["status"] = "ambiguous"
+            names = ", ".join(f"{p.parent.name}/{p.name}" for p, _ in matches + readapt_found)
+            problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}): both a target sidecar and a readapt "
+                            f"judge sidecar carry its nonce ({names}); one fire is one run or one readapt")
+        elif readapt_found:
+            # a readapt fire: its only landed spend is the judge's, beside the source run's target sidecar
+            if row["evicted"]:
+                problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}) is journaled evicted but its "
+                                "readapt judge landed: the queue released its commitment while the judge spent")
+            _readapt_judge_row(e, row, readapt_found, targets_by_dir, ledger, duplicate_names, now, problems)
+        elif row["evicted"] and not matches:
             row["status"] = "evicted before it ran"          # the queue superseded it; nothing was spent
         elif not matches:
             row["status"] = "no sidecar landed"
@@ -686,41 +842,7 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             # `ledger_update` books a sidecar to the day its `run_utc` names and falls back to the scan date when
             # that cannot be parsed, which puts the spend in the wrong daily bucket (Codex round 4 on PR #28)
             for sp, sr in ([(p, r)] + ([judge_by_dir[p.parent.name]] if p.parent.name in judge_by_dir else [])):
-                if "unreadable" in sr:
-                    continue
-                # `ledger_update` reads the stamp in TWO different orders: its first-fold loop takes
-                # `run_timestamp or run_utc` and its growth loop `run_utc or run_timestamp`. With both fields
-                # present and one of them malformed the two paths disagree, and whichever hits the bad value
-                # falls back to the scan date - so BOTH expressions must parse, not just the one a growth fold
-                # would use (Codex round 7 on PR #28).
-                for field_order, chosen in (("run_timestamp or run_utc", sr.get("run_timestamp") or sr.get("run_utc")),
-                                            ("run_utc or run_timestamp", sr.get("run_utc") or sr.get("run_timestamp"))):
-                    if _timestamp(chosen) is None:
-                        problems.append(f"{sp.parent.name}/{sp.name}: the stamp `{field_order}` resolves to "
-                                        f"{chosen!r}, which does not parse, so the ledger books its cost to the day "
-                                        "it happens to scan rather than the run's (run_utc "
-                                        f"{sr.get('run_utc')!r}, run_timestamp {sr.get('run_timestamp')!r})")
-                        break
-                # Parsing is not enough. `ledger_update` books the cost to the day the stamp NAMES, so a stamp
-                # that precedes the fire which reserved it books into an earlier day's bucket than the one the
-                # daily guard counted the commitment against - and each day then reads consistently on its own,
-                # which is exactly the alteration this command exists to surface (Codex round 10 on PR #28). A run
-                # cannot start before its own fire; the minute of grace is for skew between the machine that
-                # fired and the runner that ran.
-                stamp = _timestamp(sr.get("run_timestamp") or sr.get("run_utc"))
-                fired_at = _timestamp(e.get("fired_utc"))
-                # ...and the other end of the same interval. A stamp later than now books the cost into a future
-                # day's bucket, so `spend.today` never receives it: once the fire is resolved and its in-flight
-                # hold released, neither the landed cost nor the reservation counts against today's ceiling and
-                # another paid run is admitted on a day that reads as empty (Codex round 12 on PR #28).
-                if stamp is not None and stamp > now + timedelta(minutes=1):
-                    problems.append(f"{sp.parent.name}/{sp.name}: its stamp {stamp.isoformat()} is in the future "
-                                    f"(now {now.isoformat()}), so the ledger books this cost to a day the daily "
-                                    "guard will not read as today's spend")
-                elif stamp is not None and fired_at is not None and stamp < fired_at - timedelta(minutes=1):
-                    problems.append(f"{sp.parent.name}/{sp.name}: its stamp {stamp.isoformat()} precedes the fire "
-                                    f"that reserved it ({e.get('fired_utc')}), so the ledger books this cost to a "
-                                    "day the fire's commitment was never counted against")
+                problems.extend(_stamp_problems(sp, sr, e, now))
             judge = judge_by_dir.get(p.parent.name)
             # a target sidecar that records a judge ceiling says a judge pass was requested; no judge sidecar
             # beside it then hides up to that ceiling rather than a zero (Codex round 4 on PR #28). A ceiling
@@ -929,7 +1051,7 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
         if p.parent.name not in target_dirs:
             problems.append(f"{p.parent.name}/{p.name}: judge sidecar with no target sidecar in its run directory, "
                             "so no journal entry accounts for its cost")
-    for nonce, matches in by_nonce.items():
+    for nonce, matches in list(by_nonce.items()) + list(readapt_judges.items()):
         if nonce not in known:
             for p, _ in matches:
                 problems.append(f"{p.parent.name}/{p.name}: journal_nonce {nonce!r} matches no paid {LANE} journal entry")

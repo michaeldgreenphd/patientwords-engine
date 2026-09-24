@@ -825,3 +825,38 @@ def test_readapt_refuses_a_log_that_is_not_the_run_the_fire_names(tmp_path_facto
             cli.main(_readapt_argv(src))
         assert sorted(p.name for p in (src["runs"] / src["stem"]).iterdir()) == [src["sidecar"].name]
         assert not (src["runs"] / "manifests.chain").exists()
+
+
+def test_a_readapt_judge_sidecar_names_the_readapt_fire_and_reconciles_to_it(tmp_path_factory, capsys, monkeypatch):
+    """The judge of record runs over the re-adapted records as in mode run; its sidecar carries the readapt fire's
+    nonce and the log's eval id (read from the manifest's `readapt` block), binding keeps the provenance and the
+    landed sidecar's digest, and reconciliation joins the judge to the readapt fire, the target to the source fire."""
+    from scripts.petri_audit import reconcile
+
+    src = _readapt_source(tmp_path_factory, capsys)
+    assert cli.main(_readapt_argv(src)) == 0
+    run_dir = src["runs"] / src["stem"]
+    monkeypatch.setattr(judge_runner, "RegistryJudge", lambda spec: judge_runner.MockJudge(
+        lambda prompt: (TIER_ANSWER if "tier id" in prompt else "absent"), model_spec=spec))
+    assert cli.main(["judge", "--seeds", str(framework.SEED_FILE), "--run-dir", str(run_dir), "--judge-model",
+                     "claude-haiku-4-5", "--judge-max-spend", "5", "--judge-max-tokens", "300"]) == 0
+    m = framework.load_json(run_dir / "manifest.json")
+    side = framework.load_json(run_dir / f"{src['stem']}.judge.report.json")
+    assert side["journal_nonce"] == "re-n1" and side["eval_id"] == m["eval_id"] and side["cost_usd"] > 0
+    assert m["readapt"]["readapt_journal_nonce"] == "re-n1" and m["artifacts"]["judge_of_record"] is not None
+    assert verify_run(run_dir) == []
+    ok, msg = verify_chain(src["runs"])
+    assert ok, msg
+    journal = tmp_path_factory.mktemp("readapt-journal") / "trigger_journal.jsonl"
+    entries = [{"trigger": "petri-audit", "fired_utc": "2026-09-01T00:00:00Z", "commit": "", "note": "source",
+                "resolved": True, "resolved_utc": "2026-09-01T00:30:00Z", "evicted": False, "nonce": "src-n1",
+                "max_spend": 0.01, "lane": "anthropic"},
+               {"trigger": "petri-audit", "fired_utc": "2026-09-01T01:00:00Z", "commit": "", "note": "readapt",
+                "resolved": False, "evicted": False, "nonce": "re-n1", "max_spend": 5.0, "lane": "anthropic"}]
+    journal.write_text("".join(json.dumps(e) + "\n" for e in entries), encoding="utf-8")
+    result = reconcile.reconcile(journal, src["runs"])
+    rows = {r["nonce"]: r for r in result["paid_fires"]}
+    assert result["problems"] == [], result["problems"]
+    assert rows["src-n1"]["status"] == "landed" and rows["src-n1"]["judge_cost_usd"] is None
+    assert rows["re-n1"]["status"] == "landed (readapt judge)" and rows["re-n1"]["judge_cost_usd"] == side["cost_usd"]
+    capsys.readouterr()

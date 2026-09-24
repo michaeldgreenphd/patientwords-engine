@@ -326,6 +326,27 @@ def cmd_spend_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def _readapt_judge_identity(run_dir: Path) -> dict:
+    """The join key a readapt's judge sidecar carries: the readapt fire's nonce and the log's eval id, from the
+    manifest's `readapt` block (scripts/petri_audit/readapt.py). A readapt makes no target call, so its fire
+    reserved the judge's spend alone, and the judge writes into the SOURCE run's directory, whose target sidecar
+    names the source fire; without its own nonce the judge's cost would be joined to that fire. Empty for a run
+    adapted in the ordinary way (the judge sidecar is joined through its directory, as before), and for a run
+    directory with no manifest yet."""
+    path = Path(run_dir) / "manifest.json"
+    if not path.is_file():
+        return {}
+    manifest = load_json(path)
+    block = manifest.get("readapt") if isinstance(manifest, dict) else None
+    if block is None:
+        return {}
+    nonce = block.get("readapt_journal_nonce") if isinstance(block, dict) else None
+    if not isinstance(nonce, str) or not nonce:
+        raise ValueError(f"{path}: the readapt block records no readapt_journal_nonce, so the judge's spend cannot be "
+                         "joined to the fire that reserved it")
+    return {"journal_nonce": nonce, "eval_id": manifest.get("eval_id")}
+
+
 def cmd_judge_spend_report(args: argparse.Namespace) -> int:
     """The judge cost sidecar for a judge step that started and left none (the
     process died, or the client raised before run_judgments could write). A
@@ -363,6 +384,13 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
                "judge_max_tokens": args.judge_max_tokens, "temperature": TIER_TEMPERATURE,
                "task": "petri-audit-judge", "run_id": run_dir.name, "billing_channel": channel,
                "price_source": price.source, "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok}
+    # a readapt's judge was reserved by the readapt fire, not the source fire its directory names; the sidecar carries
+    # that fire's nonce and the log's eval id so reconciliation joins it to the right commitment (reconcile.py)
+    try:
+        sidecar.update(_readapt_judge_identity(run_dir))
+    except (OSError, ValueError) as exc:
+        # the ceiling is still booked; the missing join key is named in the record rather than guessed
+        sidecar["journal_nonce_unavailable"] = f"manifest.json could not be read ({type(exc).__name__}: {exc})"
     write_json(report_path, sidecar)
     print(f"judge spend report {report_path}: cost_usd {cost} ({basis}); {reason}")
     return 0
@@ -393,6 +421,11 @@ def cmd_judge(args: argparse.Namespace) -> int:
             print(f"refused before any judge call: {r}", file=sys.stderr)
         return 9
     manifest = load_json(run_dir / "manifest.json")
+    try:
+        readapt_identity = _readapt_judge_identity(run_dir)
+    except ValueError as exc:
+        print(f"refused before any judge call: {exc}", file=sys.stderr)
+        return 9
     # the judge of record is one spec under one generation setting: a bound judge or existing rows under another
     # spec or token allowance refuse the pass before any call, because dedupe_key carries the spec and a second
     # spec would re-judge every plan, and a second allowance would mix caps under one provenance (Codex rounds 7, 8)
@@ -419,7 +452,7 @@ def cmd_judge(args: argparse.Namespace) -> int:
                                 sidecar_extra={"task": "petri-audit-judge", "run_id": manifest["run_id"],
                                                "eval_id": manifest["eval_id"], "billing_channel": channel,
                                                "price_source": price.source, "input_per_mtok": price.input_per_mtok,
-                                               "output_per_mtok": price.output_per_mtok})
+                                               "output_per_mtok": price.output_per_mtok, **readapt_identity})
     except JudgeAborted as exc:
         # the sidecar was written before the exception reached here; the judgments are not bound (the manifest
         # keeps saying no judge of record ran) and the step fails, with the charged calls booked
