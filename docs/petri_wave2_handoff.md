@@ -127,6 +127,21 @@ Two things the committed version changed from the scratch run, both worth knowin
   buried a genuine extraction failure in that noise. It now reads 6431/6475 = 0.9932 with the
   44 unmeasurable rows named and the out-of-scope rows on their own line.
 
+**Correction, 2026-09-24 (Codex review of PR #29).** The table above was produced by a version with
+two defects, now fixed on this branch; a re-run gives these figures instead (seed 7, 2000 resamples):
+
+- The tier-identical row compared rounded mean tier ranks, not modal tiers. With modal tiers and the
+  registered most-urgent tie-break it reads **−0.0382** [−0.0644, −0.0140] over 693 cells and 158
+  stimuli, not −0.0367 over 681. It still excludes zero.
+- Sign agreement counted a model at exactly zero as agreeing, and one model whose mean is exactly
+  zero came out at −5.6e-18 in floating point. Counted strictly, the specialist all-cells row is
+  **8 of 9 non-tied models, 2 tied** (not 9 of 11), and the emergency row is 6 of 8 non-tied, 3 tied
+  (not 8 of 11).
+
+The all-cells estimates, their intervals and the urgency comparison are unchanged. The bundle now
+also records the rubric digest, every input archive with its sha256, and the one cell that has a
+clinical arm but no patient arm.
+
 ---
 
 ## 5. What to do, by when
