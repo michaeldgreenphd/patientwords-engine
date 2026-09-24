@@ -234,6 +234,39 @@ def estimate(
     }
 
 
+def pairing_report(cells: dict[tuple[str, str], dict[str, list[tuple[int, bool, bool]]]]) -> dict[str, Any]:
+    """Where every measured row goes relative to the patient-minus-clinical contrast.
+
+    A measured row is either in the contrast (one of the two compared arms of a cell that has
+    both) or outside it for a named reason: its cell lacks one of the two arms, or its arm is not
+    one the contrast compares (the advice lane's `translated` arm, or `colloquial` beside a
+    `patient` arm). The first reason was a silent `continue` in the estimators (Codex, PR #29);
+    each such cell is now listed by label with the arms it does have. The counts add up:
+    rows in the contrast plus rows outside it equal the rows measured."""
+    outside: Counter = Counter()
+    missing: list[dict[str, Any]] = []
+    in_contrast = paired = 0
+    for (stimulus_id, model), arms in sorted(cells.items()):
+        patient_arm = next((a for a in PATIENT_ARMS if a in arms), None)
+        if patient_arm is None or CLINICAL_ARM not in arms:
+            rows = sum(len(samples) for samples in arms.values())
+            outside["cell_lacks_the_patient_or_clinical_arm"] += rows
+            missing.append({"stimulus_id": stimulus_id, "model": model, "arms_present": sorted(arms), "rows": rows})
+            continue
+        paired += 1
+        for arm, samples in arms.items():
+            if arm in (patient_arm, CLINICAL_ARM):
+                in_contrast += len(samples)
+            else:
+                outside[f"arm_not_compared:{arm}"] += len(samples)
+    return {
+        "cells_with_both_arms": paired,
+        "cells_missing_an_arm": missing,
+        "judge_of_record_rows_in_the_contrast": in_contrast,
+        "measured_rows_outside_the_contrast": dict(sorted(outside.items())),
+    }
+
+
 def analyze(advice_dir: str, judge: str, boot: int, seed: int, vocab_path: str = VOCAB_PATH) -> dict[str, Any]:
     vocab = load_vocab(vocab_path)
     by_sha, judgments = load_corpus(advice_dir)
@@ -281,6 +314,7 @@ def analyze(advice_dir: str, judge: str, boot: int, seed: int, vocab_path: str =
             "judge_of_record_rows_measured": measured,
             "coverage_rate": round(measured / considered, 6) if considered else 0.0,
             "unmeasurable_by_reason": unmeasurable,
+            **pairing_report(cells),
         },
         "readouts": readouts,
         "urgency_tier_for_comparison": tier,
@@ -327,6 +361,11 @@ def format_summary(bundle: dict[str, Any]) -> str:
     ]
     for reason, count in bundle["coverage"]["unmeasurable_by_reason"].items():
         lines.append(f"    unmeasurable {count:>6}  {reason}")
+    for reason, count in bundle["coverage"]["measured_rows_outside_the_contrast"].items():
+        lines.append(f"    measured, outside the contrast {count:>6}  {reason}")
+    for cell in bundle["coverage"]["cells_missing_an_arm"]:
+        lines.append(f"    cell missing an arm: {cell['stimulus_id']} / {cell['model']}"
+                     f" has only {cell['arms_present']} ({cell['rows']} rows)")
     for name, strata in bundle["readouts"].items():
         lines.append(f"  {name}")
         for stratum, res in strata.items():

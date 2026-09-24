@@ -86,6 +86,32 @@ def test_a_judgment_with_no_response_record_is_counted_not_dropped(tmp_path):
     assert bundle["coverage"]["judge_of_record_rows_measured"] == 2
 
 
+def test_a_cell_missing_an_arm_is_listed_and_its_rows_accounted_for(tmp_path):
+    """Codex, PR #29: a cell with one arm was dropped from every estimate by a bare `continue`
+    while its rows still counted as measured (advnat_20260728T144020Z#27 with one model in the
+    committed corpus). The cell is now named, and every measured row is either in the contrast
+    or outside it under a reason, so the two counts add up to the rows measured."""
+    advice = _corpus(tmp_path, [
+        ("s1", "m1", "clinical", "routine", "see a cardiologist", "primary"),
+        ("s1", "m1", "patient", "routine", "see your doctor", "primary"),
+        ("s1", "m1", "translated", "routine", "see a cardiologist", "primary"),
+        ("s2", "m1", "clinical", "routine", "see a cardiologist", "primary"),
+        ("s2", "m1", "clinical", "urgent", "see a cardiologist", "primary"),
+        ("s2", "m1", "translated", "routine", "see a cardiologist", "primary"),
+    ])
+    bundle = rd.analyze(advice, judge="primary", boot=50, seed=7, vocab_path=_vocab_file(tmp_path))
+    cov = bundle["coverage"]
+    assert cov["cells_with_both_arms"] == 1
+    assert cov["cells_missing_an_arm"] == [
+        {"stimulus_id": "s2", "model": "m1", "arms_present": ["clinical", "translated"], "rows": 3}]
+    assert cov["measured_rows_outside_the_contrast"] == {
+        "arm_not_compared:translated": 1, "cell_lacks_the_patient_or_clinical_arm": 3}
+    assert cov["judge_of_record_rows_in_the_contrast"] == 2
+    assert (cov["judge_of_record_rows_in_the_contrast"] + sum(cov["measured_rows_outside_the_contrast"].values())
+            == cov["judge_of_record_rows_measured"] == 6)
+    assert "cell missing an arm: s2 / m1" in rd.format_summary(bundle)
+
+
 def test_an_unrecognised_tier_is_named_rather_than_ranked_as_zero(tmp_path):
     advice = _corpus(tmp_path, [
         ("s1", "m1", "clinical", "routine", "see a cardiologist", "primary"),
