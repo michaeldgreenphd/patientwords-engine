@@ -407,22 +407,28 @@ def test_status_reports_counts(repo, capsys):
     assert "visible" in out
 
 
-# --- Finding 1: the daily ceiling counts landed + in-flight max_spend ---
+# --- Finding 1: the daily ceiling counts landed + every paid commitment held today ---
 
-def test_inflight_max_spend_blocks_second_paid_fire(repo, capsys):
+def test_inflight_max_spend_blocks_second_paid_fire(repo, capsys, monkeypatch):
     # Two consecutive 1.9 fires both used to pass the $2 ceiling because only
     # dashboard-landed spend was counted.
+    # the clock is pinned to mid-day so the fire, the resolve and the re-fire share one UTC date
+    monkeypatch.setattr(ft, "utc_now", lambda: datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc))
     params = {"task": "pairs", "max_spend": "1.9", "_nonce": "i1"}
     assert fire(repo, "scenario-generation", params) == 0
     entries = ft.load_journal(journal_path(repo))
     assert entries[-1]["max_spend"] == pytest.approx(1.9)  # journaled at fire time
     capsys.readouterr()
     params = {"task": "pairs", "max_spend": "1.9", "_nonce": "i2"}
-    assert fire(repo, "scenario-generation", params) == 4  # 1.9 already committed in flight
-    assert "in-flight" in capsys.readouterr().err
-    # resolving the landed run releases the in-flight hold (--ignore-settle acks its settle window)
+    assert fire(repo, "scenario-generation", params) == 4  # 1.9 already committed today
+    assert "held today 1.90" in capsys.readouterr().err
+    # Resolving the landed run frees its QUEUE slot and no longer releases the day's hold. This assertion used to
+    # read `== 0`: the resolve released the 1.9 and the second fire passed, which is exactly how 2026-09-23 reported
+    # "committed 0.00" with 12.70 committed that day - nothing else counts the cost until the ledger folds it.
     assert ft.main(["resolve", "--repo", str(repo), "--trigger", "scenario-generation"]) == 0
-    assert fire(repo, "scenario-generation", params, extra=["--ignore-settle"]) == 0
+    capsys.readouterr()
+    assert fire(repo, "scenario-generation", params, extra=["--ignore-settle"]) == 4
+    assert "held today 1.90" in capsys.readouterr().err
 
 
 def test_inflight_spend_counted_across_both_paid_triggers(repo):
@@ -432,8 +438,10 @@ def test_inflight_spend_counted_across_both_paid_triggers(repo):
                 params={"task": "pairs", "max_spend": "1.0", "_nonce": "s1"}) == 4
 
 
-def test_budget_check_inflight_counts_only_active_entries_fired_today():
-    now = datetime.now(timezone.utc)
+def test_budget_check_counts_paid_entries_fired_today_until_evicted():
+    # formerly test_budget_check_inflight_counts_only_active_entries_fired_today: the rule it pinned (only ACTIVE
+    # entries count) is the one that let a resolved fire's commitment drop out of the day (2026-09-23)
+    now = datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc)
     today = now.strftime("%Y-%m-%d")
 
     def entry(**overrides):
@@ -443,15 +451,95 @@ def test_budget_check_inflight_counts_only_active_entries_fired_today():
         return base
 
     kind, reason = ft.budget_check({"max_spend": "1.9"}, {}, today, entries=[entry()], now=now)
-    assert kind == "ceiling" and "in-flight 1.90" in reason
-    for released in (entry(resolved=True), entry(evicted=True),
-                     entry(trigger="circuit-trace", max_spend=None)):
+    assert kind == "ceiling" and "held today 1.90" in reason
+    # A resolved entry still holds its commitment for the day. This case used to sit in the loop below, asserting
+    # "ok": resolving released the hold while nothing else counted the cost.
+    kind, reason = ft.budget_check({"max_spend": "1.9"}, {}, today, entries=[entry(resolved=True)], now=now)
+    assert kind == "ceiling" and "held today 1.90" in reason
+    for released in (entry(evicted=True), entry(trigger="circuit-trace", max_spend=None)):
         assert ft.budget_check({"max_spend": "1.9"}, {}, today,
                                entries=[released], now=now)[0] == "ok"
     # active (expiry widened) but fired on a previous UTC date: not today's spend
     stale = entry(fired_utc=iso(now - timedelta(days=1)))
     assert ft.budget_check({"max_spend": "1.9"}, {}, today,
                            entries=[stale], now=now, expire_hours=100.0)[0] == "ok"
+
+
+def test_a_resolved_paid_fire_holds_its_commitment_for_the_rest_of_its_utc_day():
+    """G1 (2026-09-23), cases (i)-(iv): a paid entry counts for the whole UTC day it was fired, whether or not it
+    has been resolved or has passed the expiry window, and not on any other day; only eviction releases it."""
+    def entry(**overrides):
+        base = {"trigger": "scenario-generation", "fired_utc": "2026-09-23T00:16:36Z", "commit": "", "note": "",
+                "resolved": False, "evicted": False, "max_spend": 1.9, "lane": "anthropic"}
+        return {**base, **overrides}
+
+    noon = datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc)
+    # (i) resolved, empty dashboard: a second 1.9 fire would make 3.80 against the $2 ceiling
+    done = entry(resolved=True, resolved_utc="2026-09-23T00:27:42Z")
+    kind, reason = ft.budget_check({"max_spend": "1.9"}, {}, "2026-09-23", entries=[done], now=noon)
+    assert kind == "ceiling", reason
+    assert "today's committed 1.90 (landed 0.00 + held today 1.90)" in reason
+
+    # (ii) unresolved and past the 8-hour window at 11:10 (fired 00:16): the queue has let it go, the day has not
+    late = datetime(2026, 9, 23, 11, 10, tzinfo=timezone.utc)
+    assert not ft.entry_is_active(entry(), late, 8.0), "the scenario: expired for the queue"
+    assert ft.entry_holds_spend(entry(), "2026-09-23", "anthropic")
+    assert ft.inflight_max_spend([entry()], "2026-09-23", late, 8.0) == pytest.approx(1.9)
+    assert ft.budget_check({"max_spend": "1.9"}, {}, "2026-09-23", entries=[entry()], now=late,
+                           expire_hours=8.0)[0] == "ceiling"
+
+    # (iii) fired the previous UTC day: not today's, even while it is still ACTIVE for the queue (31 minutes old)
+    eve = entry(fired_utc="2026-09-22T23:59:00Z")
+    just_after = datetime(2026, 9, 23, 0, 30, tzinfo=timezone.utc)
+    assert ft.entry_is_active(eve, just_after, 8.0), "the scenario: live in the queue"
+    assert not ft.entry_holds_spend(eve, "2026-09-23", "anthropic")
+    assert ft.budget_check({"max_spend": "1.9"}, {}, "2026-09-23", entries=[eve], now=just_after)[0] == "ok"
+    assert ft.entry_holds_spend(eve, "2026-09-22", "anthropic"), "it held its own day"
+
+    # (iv) evicted: its run was superseded in the queue and never ran, so it holds nothing
+    assert not ft.entry_holds_spend(entry(evicted=True), "2026-09-23", "anthropic")
+    assert ft.budget_check({"max_spend": "1.9"}, {}, "2026-09-23", entries=[entry(evicted=True)],
+                           now=noon)[0] == "ok"
+    # ...and only a JSON true evicts: a flag hand-edited into a string must not stop a live commitment counting,
+    # though entry_is_active's truthiness would read "false" as released
+    assert ft.entry_holds_spend(entry(evicted="false"), "2026-09-23", "anthropic")
+
+    # the lane and a usable commitment still decide, exactly as before
+    assert not ft.entry_holds_spend(entry(lane="openrouter"), "2026-09-23", "anthropic")
+    assert not ft.entry_holds_spend(entry(max_spend=float("nan")), "2026-09-23", "anthropic")
+    assert not ft.entry_holds_spend(entry(fired_utc="not a time"), "2026-09-23", "anthropic")
+
+
+def test_the_2026_09_23_fixture_is_refused_with_both_resolved_fires_counted():
+    """G1 (v): the state the guard actually saw on 2026-09-23 at 11:10Z. Two resolved paid petri-audit fires had
+    committed 4.10 and 8.60 that UTC day; the dashboard's spend.today was dated 2026-08-28, so landed read 0.00;
+    the owner's override set the day's ceiling to 15. budget_check answered "committed 0.00 (landed 0.00 +
+    in-flight 0.00)" and "ok" for another 8.60. Rows copied from the journal (notes and refs trimmed); the four
+    free rows are the dry runs and parks, which carry no commitment."""
+    def row(fired, nonce, max_spend=None, resolved_utc=None):
+        e = {"trigger": "petri-audit", "fired_utc": fired, "commit": "", "note": "", "resolved": True,
+             "resolved_utc": resolved_utc or fired, "evicted": False, "nonce": nonce}
+        if max_spend is not None:
+            e.update(max_spend=max_spend, lane="anthropic")
+        return e
+
+    journal = [row("2026-09-22T13:13:11Z", "w2e1-dry"),
+               row("2026-09-23T00:16:36Z", "w2e1", 4.1, "2026-09-23T00:27:42Z"),
+               row("2026-09-23T00:43:03Z", "2026-09-23T00:43:03Z"),
+               row("2026-09-23T02:36:44Z", "w2e2-dry"),
+               row("2026-09-23T02:55:45Z", "w2e2", 8.6, "2026-09-23T03:16:16Z"),
+               row("2026-09-23T03:32:15Z", "2026-09-23T03:32:15Z")]
+    dashboard = {"spend": {"daily_ceiling_usd": 2.0, "today": {"date": "2026-08-28", "spent_usd": 0.0}}}
+    overrides = {"2026-09-23": {"ceiling_usd": 15.0, "reason": "owner, day 1 of 3"}}
+    params = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+              "mode": "run", "max_spend": "6.10", "judge": "true", "judge_model": "claude-haiku-4-5",
+              "judge_max_spend": "2.50", "commit_outputs": "true", "_nonce": "w2e3"}
+    now = datetime(2026, 9, 23, 11, 10, tzinfo=timezone.utc)
+    kind, reason = ft.budget_check(params, dashboard, "2026-09-23", entries=journal, now=now, expire_hours=8.0,
+                                   overrides=overrides, trigger="petri-audit")
+    assert kind == "ceiling", reason
+    assert "max_spend 8.60 + today's committed 12.70 (landed 0.00 + held today 12.70)" in reason
+    assert "daily ceiling 15.00 USD [anthropic lane]" in reason
 
 
 # --- Finding 2: max_spend must be a finite number > 0, never a bool ---
@@ -665,7 +753,7 @@ def test_mitigation_fire_detection_and_inflight_counting():
     assert not ft.is_mitigation_fire("circuit-trace", {})
     assert not ft.is_mitigation_fire("logits-eval", {"show_mitigation": "true"})
     # a mitigation circuit-trace entry with a recorded imputed commitment
-    # counts toward today's in-flight spend
+    # counts toward the spend held today
     from datetime import datetime, timezone
     now = datetime(2026, 7, 13, 12, 0, tzinfo=timezone.utc)
     entry = {"trigger": "circuit-trace", "fired_utc": "2026-07-13T11:00:00Z",
@@ -750,7 +838,7 @@ def test_judged_fire_journal_entry_records_summed_commitment(repo):
     entry = json.loads(journal_path(repo).read_text().splitlines()[-1])
     assert entry["trigger"] == "advice-eval"
     assert entry["max_spend"] == pytest.approx(1.0)
-    # a second paid fire the same day sees the full 1.0 in-flight: 1.2 would
+    # a second paid fire the same day sees the full 1.0 held: 1.2 would
     # break the 2.0 ceiling (1.0 + 1.2), 0.9 fits
     assert fire(repo, "scenario-generation", {
         "task": "pairs", "num": "5", "max_spend": "1.2", "_nonce": "j6"}) == 4
@@ -811,7 +899,7 @@ def test_inflight_lane_filter_and_override_scope():
     today = now.strftime("%Y-%m-%d")
     entries = [{"trigger": "advice-eval", "fired_utc": ft.iso_utc(now), "resolved": False,
                 "evicted": False, "max_spend": 8.0, "lane": "openrouter"}]
-    # the openrouter in-flight hold does not block the anthropic lane
+    # the openrouter lane's hold does not block the anthropic lane
     assert ft.inflight_max_spend(entries, today, now, 8.0, lane="anthropic") == 0.0
     assert ft.inflight_max_spend(entries, today, now, 8.0, lane="openrouter") == 8.0
     # a dated owner override raises the ANTHROPIC ceiling only
@@ -1532,9 +1620,10 @@ def _resolve_taking_local_side(clone):
 
 
 def test_publish_restamps_a_fire_published_long_after_it_was_made(tmp_path, capsys):
-    """Budget counts in-flight entries fired today and the queue expires entries
-    older than expire_hours, so a fire published a day late must carry the
-    publication time as its fired_utc, with the original kept alongside."""
+    """Budget counts every paid entry fired today, for the whole UTC day, and the
+    queue expires entries older than expire_hours, so a fire published a day late
+    must carry the publication time as its fired_utc, with the original kept
+    alongside."""
     origin, clone = _publish_fixture(tmp_path)
     old = ft.iso_utc(ft.utc_now() - timedelta(hours=26))
     _fire_locally(clone, fired_utc=old)
@@ -1705,9 +1794,9 @@ def test_publish_refuses_when_a_later_commit_restored_the_trigger_file(tmp_path,
 
 
 def test_publish_recomputes_a_paid_fires_commitment_from_the_final_params(tmp_path, capsys):
-    """inflight_max_spend counts the entry's max_spend and lane for the running
-    job, so they must equal what cmd_fire derives from the trigger file that is
-    actually pushed - not what a hand edit during conflict recovery left."""
+    """inflight_max_spend counts the entry's max_spend and lane for the whole UTC
+    day of the fire, so they must equal what cmd_fire derives from the trigger file
+    that is actually pushed - not what a hand edit during conflict recovery left."""
     origin, clone = _publish_fixture(tmp_path)
     write_dashboard(clone, spent=0.0)
     _commit(clone, "dashboard")
@@ -2345,13 +2434,13 @@ def test_budget_gate_requires_a_journal_reservation_for_a_paid_petri_run(repo, t
     journal.write_text(entry(), encoding="utf-8")
     assert gate() == 0, capsys.readouterr().err
     out = capsys.readouterr().out
-    assert "clear" in out and "in-flight 0.00" in out, out
+    assert "clear" in out and "held today 0.00" in out, out
 
     # another lane's active paid fire still counts against the day, so the exclusion is this fire's alone
     other = json.dumps({"trigger": "advice-eval", "fired_utc": ft.iso_utc(ft.utc_now()), "commit": "", "note": "x",
                         "resolved": False, "evicted": False, "max_spend": 0.9, "lane": "anthropic"}) + "\n"
     journal.write_text(entry() + other, encoding="utf-8")
-    assert gate() == 6 and "in-flight 0.90" in capsys.readouterr().err
+    assert gate() == 6 and "held today 0.90" in capsys.readouterr().err
 
     # a reservation already released, in either way, reserves nothing for this run
     journal.write_text(entry(resolved=True, resolved_utc=ft.iso_utc(ft.utc_now())), encoding="utf-8")
@@ -2393,11 +2482,14 @@ def test_journal_reservation_problems_is_scoped_to_the_lane_with_a_nonce_contrac
 def test_budget_gate_refuses_a_reservation_that_is_no_longer_active(repo, tmp_path, capsys):
     """Round 7's check tested `resolved` and `evicted` and not the third condition.
 
-    `entry_is_active` also releases an entry whose `fired_utc` does not parse and
-    one older than the expiry window, and `inflight_max_spend` stops counting it
-    at the same moment - so a stale entry reserves nothing, and accepting it let
-    a merge or re-push of that trigger file start a second irreversible run under
-    a dead hold (Codex round 8 on PR #28).
+    `entry_is_active` also releases from the QUEUE an entry whose `fired_utc` does
+    not parse and one older than the expiry window: the run it reserved has been
+    and gone, so it reserves nothing, and accepting it let a merge or re-push of
+    that trigger file start a second irreversible run under a dead reservation
+    (Codex round 8 on PR #28). That release is the queue's alone. Since 2026-09-23
+    the daily sum still counts an expired entry for the rest of its UTC day
+    (entry_holds_spend); a stamp that does not parse names no day, so it counts on
+    none. The reservation check and the day's sum are two invariants.
     """
     pf = tmp_path / "petri-params.json"
     paid = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
@@ -2429,7 +2521,54 @@ def test_budget_gate_refuses_a_reservation_that_is_no_longer_active(repo, tmp_pa
     # inside the window it is a live reservation, and is excluded from the aggregate exactly once
     journal.write_text(entry(ft.iso_utc(ft.utc_now() - timedelta(minutes=5))), encoding="utf-8")
     assert gate() == 0, capsys.readouterr().err
-    assert "in-flight 0.00" in capsys.readouterr().out
+    assert "held today 0.00" in capsys.readouterr().out
+
+
+def test_budget_gate_counts_a_petri_fire_resolved_earlier_today_and_its_own_entry_once(repo, capsys, monkeypatch):
+    """G1 (vi), the gate's half of the rule. Server-side, a paid petri fire resolved earlier the same UTC day used
+    to drop out of the sum exactly as it did locally, so the CI gate on 2026-09-23 would have agreed with the local
+    "committed 0.00". Now it counts; and the gate still removes THIS fire's own entry, once, because the params'
+    commitment stands in for it - removing it only when the day's sum counts it, so exactly what was counted is
+    what is removed."""
+    monkeypatch.setattr(ft, "utc_now", lambda: datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc))
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    paid = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+            "mode": "run", "max_spend": "1.00", "judge": "true", "judge_model": "claude-haiku-4-5",
+            "judge_max_spend": "0.50", "commit_outputs": "true", "_nonce": "w2e3"}
+    content = json.dumps(paid, separators=(",", ":")) + "\n"
+    (repo / TRIGGER_SUBDIR / "petri-audit.json").write_text(content, encoding="utf-8")
+    journal = repo / "ops" / "trigger_journal.jsonl"
+    overrides = repo / "ops" / "budget_overrides.json"
+
+    def entry(**over):
+        base = {"trigger": "petri-audit", "fired_utc": "2026-09-23T11:55:00Z", "commit": "", "note": "",
+                "resolved": False, "evicted": False, "nonce": "w2e3", "max_spend": 1.5, "lane": "anthropic",
+                "params_sha256": ft.params_digest(content), "ref": "main"}
+        return json.dumps({**base, **over}) + "\n"
+
+    earlier = entry(nonce="w2e1", fired_utc="2026-09-23T00:16:36Z", resolved=True,
+                    resolved_utc="2026-09-23T00:27:42Z", max_spend=0.9, params_sha256="0" * 64)
+
+    def gate():
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", "petri-audit"])
+
+    # $2 ceiling: 1.50 (this fire, from its params) + 0.90 (resolved this morning) = 2.40, refused
+    journal.write_text(earlier + entry(), encoding="utf-8")
+    assert gate() == 6
+    assert "(landed 0.00 + held today 0.90)" in capsys.readouterr().err
+
+    # $3 ceiling: 2.40 fits, so the gate clears - which it would not if this fire's own 1.50 were ALSO in the sum
+    # (1.50 + 0.90 + 1.50 = 3.90). Its own entry is left out exactly once; the resolved one is not
+    overrides.write_text(json.dumps({"2026-09-23": {"ceiling_usd": 3.0, "reason": "test"}}), encoding="utf-8")
+    assert gate() == 0, capsys.readouterr().err
+    assert "today's committed 0.90 (landed 0.00 + held today 0.90)" in capsys.readouterr().out
+
+    # the earlier fire on the previous UTC day is that day's spend, not this one's
+    journal.write_text(entry(nonce="w2e1", fired_utc="2026-09-22T23:40:00Z", resolved=True,
+                             resolved_utc="2026-09-22T23:55:00Z", max_spend=0.9, params_sha256="0" * 64)
+                       + entry(), encoding="utf-8")
+    assert gate() == 0, capsys.readouterr().err
+    assert "(landed 0.00 + held today 0.00)" in capsys.readouterr().out
 
 
 def test_budget_gate_refuses_a_replay_of_a_live_reservations_nonce(repo, tmp_path, capsys):
@@ -2673,3 +2812,394 @@ def test_the_workflow_hands_the_gate_the_pushs_previous_tip():
     assert "fetch-depth: 0" in body
     # a reservation is for one ref as well as one push (Codex round 11 on PR #28)
     assert "--ref" in body and "REF_NAME: ${{ github.ref_name }}" in body
+
+
+# ------------------------------------------------------------------ G4: the gate counts a non-petri fire once
+
+# The paid lanes with no nonce contract, each with a fire that commits more than half of the $2 ceiling and the
+# params the workflow's params job hands the gate (--params-file): the trigger file's keys with the workflow's
+# defaults filled in, every value a string. advice-eval's resolved set is the one the finding singles out.
+G4_LANES = {
+    "scenario-generation": (
+        {"task": "pairs", "num": "5", "anthropic_model": "claude-haiku-4-5", "max_spend": "1.5"},
+        {"task": "pairs", "num": "5", "topics": "", "seed_pairs": "medlang_circuits/data/ci_pairs_2panel.json",
+         "feedback": "", "phrase": "", "term": "", "target_token": "", "num_baselines": "8", "dialects": "",
+         "anthropic_model": "claude-haiku-4-5", "max_spend": "1.5", "graph_models": "gemma-2-2b",
+         "trace_sample_size": "2"}),
+    "model-evaluation": (
+        {"model_selection": "claude-haiku-4-5", "sample_size": "8", "max_spend": "1.5"},
+        {"model_selection": "claude-haiku-4-5", "max_spend": "1.5", "sample_size": "8", "scenario": "all",
+         "pairs_file": "", "list": "claude-haiku-4-5"}),
+    "advice-eval": (
+        {"stimuli_file": "data/advice/stimuli_x.json", "models": "claude-haiku-4-5", "max_spend": "1.2",
+         "commit_outputs": "true"},
+        {"stimuli_file": "data/advice/stimuli_x.json", "gen_config": "", "models": "claude-haiku-4-5",
+         "arms": "clinical,patient", "samples": "3", "temperature": "1.0", "max_tokens": "1024",
+         "translator_model": "claude-haiku-4-5", "max_spend": "1.2", "judge": "false",
+         "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.50", "judge_max_tokens": "300",
+         "rubric": "data/advice_rubric.draft.json", "offset": "0", "limit": "0", "commit_outputs": "true",
+         "restore_artifact_run_id": "", "restore_merge_fork": "false"}),
+}
+
+
+def _g4_fired(repo, tmp_path, monkeypatch, trigger):
+    """A git repo holding one real fire of `trigger` through `ft.main(["fire", ...])`, committed the way cmd_fire's
+    publish commits it (trigger file and journal entry in one commit). Returns (git, commit before the push,
+    commit of the fire, a gate runner that passes the resolved params the workflow would)."""
+    monkeypatch.setattr(ft, "utc_now", lambda: datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc))
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    git = _git_repo(repo)
+    journal_path(repo).write_text("", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    before = git("rev-parse", "HEAD").stdout.strip()
+    fired_params, resolved = G4_LANES[trigger]
+    assert fire(repo, trigger, fired_params, note="g4") == 0
+    git("add", "-A")
+    git("commit", "-qm", f"Fire {trigger}: g4")
+    fired = git("rev-parse", "HEAD").stdout.strip()
+    pf = tmp_path / f"{trigger}-resolved.json"
+    pf.write_text(json.dumps(resolved), encoding="utf-8")
+
+    def gate(*extra):
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", trigger, "--params-file", str(pf), *extra])
+
+    return git, before, fired, gate
+
+
+@pytest.mark.parametrize("trigger", sorted(G4_LANES))
+def test_budget_gate_counts_a_non_petri_fire_once(repo, tmp_path, capsys, monkeypatch, trigger):
+    """G4 (2026-09-23), finding test 1, for each lane. cmd_fire checks the ceiling BEFORE it appends its entry; the
+    push carries the entry, so in CI inflight_max_spend holds the fire's commitment and the gate added the params'
+    commitment on top. Only petri-audit removed its own entry (by nonce), so a 1.5 fire under the $2 ceiling passed
+    locally and was refused in CI as 3.00. The entry this push added, for this trigger file's bytes, on this ref, is
+    now removed once."""
+    git, before, fired, gate = _g4_fired(repo, tmp_path, monkeypatch, trigger)
+    commitment = ft.fire_commitment(G4_LANES[trigger][0])[0]
+    entry = ft.load_journal(journal_path(repo))[-1]
+    assert entry["ref"] == "main" and entry["params_sha256"], "the fire path records both facts the gate binds on"
+    capsys.readouterr()
+
+    assert gate("--push-before", before, "--ref", "main", "--run-attempt", "1") == 0, capsys.readouterr().err
+    out = capsys.readouterr().out
+    assert f"this push's own {trigger} journal entry (fired 2026-09-23T12:00:00Z)" in out
+    assert f"max_spend {commitment:.2f} + today's committed 0.00 (landed 0.00 + held today 0.00)" in out
+
+    # without the push binding - a workflow_dispatch passes an empty --push-before; a workflow that stopped passing
+    # the ref or the attempt - nothing is left out, which is the double count the gate applied before: refused,
+    # never cleared on a guess
+    for extra in (("--push-before", "", "--ref", "main", "--run-attempt", "1"), ("--ref", "main", "--run-attempt", "1"),
+                  ("--push-before", before, "--run-attempt", "1"), ("--push-before", before, "--ref", "main")):
+        assert gate(*extra) == 6, extra
+        captured = capsys.readouterr()
+        assert f"held today {commitment:.2f}" in captured.err, extra
+        assert "no " + trigger + " journal entry is shown to be this push's own fire" in captured.out, extra
+
+    # nor when the binding cannot be read: a ref creation's all-zero sha, a commit this clone does not have
+    for missing in ("0" * 40, "e" * 40):
+        assert gate("--push-before", missing, "--ref", "main", "--run-attempt", "1") == 6, missing
+        assert f"held today {commitment:.2f}" in capsys.readouterr().err
+
+    # the same fire commit on another branch (a merge or a cherry-pick) is a second run there, and counts as one
+    assert gate("--push-before", before, "--ref", "feature-x", "--run-attempt", "1") == 6
+    assert f"held today {commitment:.2f}" in capsys.readouterr().err
+
+
+def test_budget_gate_still_counts_other_fires_held_today(repo, tmp_path, capsys, monkeypatch):
+    """G4 finding test 2: the exclusion is this push's own entry and nothing else. Another session's paid fire on
+    the same lane (0.90) reaches the branch after this fire's local check approved 1.50 - here in the same push, as
+    a rebase integrates it - and keeps counting: 1.50 + 0.90 > 2.00. The local check could not have seen it, which
+    is what the server-side gate is for. (Already on the branch before the local check, it is refused there.)"""
+    git, before, fired, gate = _g4_fired(repo, tmp_path, monkeypatch, "scenario-generation")
+    other = {"trigger": "model-evaluation", "fired_utc": "2026-09-23T11:30:00Z", "commit": "", "note": "other",
+             "resolved": False, "evicted": False, "nonce": None, "max_spend": 0.9, "lane": "anthropic",
+             "params_sha256": "0" * 64, "ref": "main"}
+    rows = ft.load_journal(journal_path(repo))
+    ft.save_journal(journal_path(repo), [other] + rows)
+    git("commit", "-qam", "another session's fire, integrated by a rebase")
+    capsys.readouterr()
+
+    assert gate("--push-before", before, "--ref", "main", "--run-attempt", "1") == 6
+    captured = capsys.readouterr()
+    assert "this push's own scenario-generation journal entry" in captured.out
+    assert "max_spend 1.50 + today's committed 0.90 (landed 0.00 + held today 0.90)" in captured.err
+
+    # ...and resolving it does not change that (G1): its commitment holds for its whole UTC day
+    rows = ft.load_journal(journal_path(repo))
+    rows[0].update(resolved=True, resolved_utc="2026-09-23T11:50:00Z")
+    ft.save_journal(journal_path(repo), rows)
+    assert gate("--push-before", before, "--ref", "main", "--run-attempt", "1") == 6
+    assert "held today 0.90" in capsys.readouterr().err
+
+
+def test_budget_gate_leaves_out_nothing_when_no_entry_matches_the_trigger_file(repo, tmp_path, capsys, monkeypatch):
+    """G4 finding test 3: a trigger file that reached the branch with no journal entry for its bytes (a hand edit, a
+    merge) has no entry to leave out, so the gate counts exactly what it counted before this change. The push does
+    add a scenario-generation entry, for other bytes: it is not this run's reservation, and it keeps counting."""
+    git, before, fired, gate = _g4_fired(repo, tmp_path, monkeypatch, "scenario-generation")
+    edited = dict(G4_LANES["scenario-generation"][0], max_spend="1.2")
+    trigger_path(repo, "scenario-generation").write_text(json.dumps(edited) + "\n", encoding="utf-8")
+    git("commit", "-qam", "hand edit of the trigger file")
+    capsys.readouterr()
+    # the journal's 1.50 entry was reserved for the fire's bytes, not these: 1.50 held + 1.50 from the params
+    assert gate("--push-before", before, "--ref", "main", "--run-attempt", "1") == 6
+    captured = capsys.readouterr()
+    assert "no scenario-generation journal entry is shown to be this push's own fire" in captured.out
+    assert "held today 1.50" in captured.err
+
+
+def test_budget_gate_does_not_leave_out_the_entry_of_a_replayed_fire(repo, tmp_path, capsys, monkeypatch):
+    """G4 replay case. Matching on the digest alone cannot tell a fire from a merge or revert that restores the same
+    bytes while the original run may still be spending: the replay is a second run under one entry, so the entry
+    must keep counting. cmd_fire writes the entry and the trigger file in ONE commit, so an entry already on the
+    branch at the push's previous tip was taken by an earlier push - the binding petri-audit uses (Codex round 10
+    on PR #28)."""
+    git, before, fired, gate = _g4_fired(repo, tmp_path, monkeypatch, "scenario-generation")
+    fire_bytes = trigger_path(repo, "scenario-generation").read_text(encoding="utf-8")
+    assert gate("--push-before", before, "--ref", "main", "--run-attempt", "1") == 0, capsys.readouterr().err  # the fire
+    capsys.readouterr()
+
+    # the park pushed behind it, then a commit restoring the fire's bytes while the fire's entry still holds today
+    assert ft.main(["park", "--repo", str(repo), "--trigger", "scenario-generation", "--no-git"]) == 0
+    git("add", "-A")
+    git("commit", "-qm", "Fire scenario-generation: park")
+    parked = git("rev-parse", "HEAD").stdout.strip()
+    trigger_path(repo, "scenario-generation").write_text(fire_bytes, encoding="utf-8")
+    git("commit", "-qam", "restore the paid bytes (a merge or revert)")
+    capsys.readouterr()
+
+    assert gate("--push-before", parked, "--ref", "main", "--run-attempt", "1") == 6
+    captured = capsys.readouterr()
+    assert "no scenario-generation journal entry is shown to be this push's own fire" in captured.out
+    # 1.50 from the params, on top of the fire's 1.50 and the park's 0.01 still held today
+    assert "max_spend 1.50 + today's committed 1.51 (landed 0.00 + held today 1.51)" in captured.err
+
+
+@pytest.mark.parametrize("trigger", sorted(G4_LANES))
+def test_budget_gate_counts_an_actions_tab_rerun_of_a_non_petri_fire_beside_its_first_attempt(
+        repo, tmp_path, capsys, monkeypatch, trigger):
+    """Review of the G4 change (2026-09-23), finding R2. An Actions-tab re-run reuses the push event - the same
+    github.sha, github.event.before and github.ref_name - so every fact pushed_fire_entry binds on matches again and
+    the gate left the entry out on every attempt: a fire over half the ceiling cleared twice (2 x 1.50 against
+    2.00). origin/main refused both attempts, because it counted the entry and the params on each. The entry is now
+    left out on attempt 1 only; on attempt 2 it stands for the first attempt's commitment, beside this one's."""
+    git, before, fired, gate = _g4_fired(repo, tmp_path, monkeypatch, trigger)
+    commitment = ft.fire_commitment(G4_LANES[trigger][0])[0]
+    capsys.readouterr()
+    assert gate("--push-before", before, "--ref", "main", "--run-attempt", "1") == 0, capsys.readouterr().err
+    capsys.readouterr()
+
+    assert gate("--push-before", before, "--ref", "main", "--run-attempt", "2") == 6
+    captured = capsys.readouterr()
+    assert "a re-run" in captured.out and "every held commitment is counted" in captured.out
+    assert (f"max_spend {commitment:.2f} + today's committed {commitment:.2f} "
+            f"(landed 0.00 + held today {commitment:.2f})") in captured.err
+
+
+def test_pushed_fire_entry_refuses_a_journal_it_cannot_read_at_the_previous_tip(repo, monkeypatch):
+    """A line at `before` that does not parse could be the very entry, so nothing is left out (fail closed)."""
+    monkeypatch.setattr(ft, "utc_now", lambda: datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc))
+    git = _git_repo(repo)
+    journal_path(repo).write_text("{not json\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "corrupt journal")
+    before = git("rev-parse", "HEAD").stdout.strip()
+    entry = {"trigger": "scenario-generation", "fired_utc": "2026-09-23T11:59:00Z", "resolved": False,
+             "evicted": False, "max_spend": 1.5, "lane": "anthropic", "params_sha256": "d" * 64, "ref": "main"}
+    found = ft.pushed_fire_entry(repo, "scenario-generation", [entry], digest="d" * 64, lane="anthropic",
+                                 today="2026-09-23", before=before, ref="main", attempt="1")
+    assert found is None
+    # the same inputs against a readable, empty journal at `before`: the entry is this push's
+    journal_path(repo).write_text("", encoding="utf-8")
+    git("commit", "-qam", "repaired")
+    repaired = git("rev-parse", "HEAD").stdout.strip()
+    assert ft.pushed_fire_entry(repo, "scenario-generation", [entry], digest="d" * 64, lane="anthropic",
+                                today="2026-09-23", before=repaired, ref="main", attempt="1") is entry
+    # ...but not for a digest, lane or day it was not reserved for, nor on any attempt not known to be the first
+    for over in ({"digest": "e" * 64}, {"lane": "openrouter"}, {"today": "2026-09-24"}, {"digest": None},
+                 {"ref": ""}, {"before": ""}, {"attempt": "2"}, {"attempt": None}, {"attempt": ""}, {"attempt": "01"}):
+        kwargs = {"digest": "d" * 64, "lane": "anthropic", "today": "2026-09-23", "before": repaired, "ref": "main",
+                  "attempt": "1", **over}
+        assert ft.pushed_fire_entry(repo, "scenario-generation", [entry], **kwargs) is None, over
+
+
+def _lose_blob(repo, git, commit, relpath="ops/trigger_journal.jsonl"):
+    """Delete the loose object holding `relpath` at `commit`. This is what a blobless clone whose lazy fetch failed
+    looks like to `git show`: the commit and its tree are present and name the blob, but the object store cannot
+    produce it. Returns the blob id."""
+    blob = git("rev-parse", f"{commit}:{relpath}").stdout.strip()
+    (repo / ".git" / "objects" / blob[:2] / blob[2:]).unlink()
+    return blob
+
+
+def test_budget_gate_does_not_leave_out_a_replayed_fire_when_the_previous_tips_journal_cannot_be_fetched(
+        repo, tmp_path, capsys, monkeypatch):
+    """Review of the G4 change (2026-09-23), finding R3. The gate jobs check out full history blobless, so the
+    journal blob at --push-before is fetched lazily whenever the push also changed the journal. `cat-file -e` checks
+    the commit alone, and a failed `git show` read as "no journal there", so the replay case below left the fire's
+    entry out after all: park 0.01 + params 1.50 was counted where fire 1.50 + park 0.01 + params 1.50 = 3.01 is
+    true. The journal is now confirmed absent from the tree (`git ls-tree`) before it may read as empty."""
+    git, before, fired, gate = _g4_fired(repo, tmp_path, monkeypatch, "scenario-generation")
+    fire_bytes = trigger_path(repo, "scenario-generation").read_text(encoding="utf-8")
+    assert ft.main(["park", "--repo", str(repo), "--trigger", "scenario-generation", "--no-git"]) == 0
+    git("add", "-A")
+    git("commit", "-qm", "Fire scenario-generation: park")
+    parked = git("rev-parse", "HEAD").stdout.strip()
+    # the replay push restores the paid bytes AND changes the journal (the fire is resolved; it still holds today),
+    # so the journal blob at `parked` is not HEAD's and is the one a blobless clone fetches on demand
+    trigger_path(repo, "scenario-generation").write_text(fire_bytes, encoding="utf-8")
+    rows = ft.load_journal(journal_path(repo))
+    rows[0].update(resolved=True, resolved_utc="2026-09-23T12:00:00Z")
+    ft.save_journal(journal_path(repo), rows)
+    git("commit", "-qam", "restore the paid bytes and resolve the fire")
+    lost = _lose_blob(repo, git, parked)
+    assert lost != git("rev-parse", "HEAD:ops/trigger_journal.jsonl").stdout.strip()
+    capsys.readouterr()
+
+    assert gate("--push-before", parked, "--ref", "main", "--run-attempt", "1") == 6
+    captured = capsys.readouterr()
+    assert "no scenario-generation journal entry is shown to be this push's own fire" in captured.out
+    assert "max_spend 1.50 + today's committed 1.51 (landed 0.00 + held today 1.51)" in captured.err
+
+
+def test_the_push_bindings_read_an_unfetchable_journal_as_unreadable_not_empty(repo, monkeypatch):
+    """journal_at_previous_tip serves both push bindings, so the same unfetchable blob must stop petri-audit's
+    too: journal_nonces_at read it as "no nonces" and push_reservation_problems then passed a replay of a nonce
+    already on the branch. Only a commit whose tree has no journal reads as empty."""
+    monkeypatch.setattr(ft, "utc_now", lambda: datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc))
+    git = _git_repo(repo)
+    (repo / "README.md").write_text("base\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "no journal yet")
+    bare = git("rev-parse", "HEAD").stdout.strip()
+    reservation = {"trigger": "petri-audit", "fired_utc": "2026-09-23T11:00:00Z", "resolved": False,
+                   "evicted": False, "nonce": "pilot-1", "max_spend": 1.0, "lane": "anthropic", "ref": "main"}
+    journal_path(repo).write_text(json.dumps(reservation) + "\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "the reservation")
+    reserved = git("rev-parse", "HEAD").stdout.strip()
+    journal_path(repo).write_text(json.dumps({**reservation, "resolved": True}) + "\n", encoding="utf-8")
+    git("commit", "-qam", "a later journal, so the blob at `reserved` is not HEAD's")
+
+    assert ft.journal_at_previous_tip(repo, bare) == ([], []), "a tree with no journal has no earlier entries"
+    assert ft.journal_at_previous_tip(repo, reserved) == ([reservation], [])
+    assert ft.journal_nonces_at(repo, reserved, "petri-audit") == {"pilot-1"}
+    for unreadable in (None, "", "  ", "0" * 40, "e" * 40):
+        assert ft.journal_at_previous_tip(repo, unreadable) == (None, []), unreadable
+
+    _lose_blob(repo, git, reserved)
+    assert ft.journal_at_previous_tip(repo, reserved) == (None, [])
+    assert ft.journal_nonces_at(repo, reserved, "petri-audit") is None
+    paid = {"target": "anthropic/claude-haiku-4-5", "mode": "run", "max_spend": "1.00", "_nonce": "pilot-1"}
+    problems = ft.push_reservation_problems(repo, "petri-audit", paid, reserved, required=True)
+    assert problems and "could not be read" in problems[0] and "blobless" in problems[0]
+    # the commit with no journal is untouched by the lost blob, and still reads as empty
+    assert ft.journal_at_previous_tip(repo, bare) == ([], [])
+
+
+G4_WORKFLOWS = {"scenario-generation": "scenario_generation.yml", "model-evaluation": "model_evaluation.yml",
+                "advice-eval": "advice_evaluation.yml"}
+
+
+@pytest.mark.parametrize("trigger", sorted(G4_WORKFLOWS))
+def test_the_paid_workflows_hand_the_gate_the_push_binding(trigger):
+    """G4: without --push-before and --ref the gate can identify no entry as this push's own, and counts the fire
+    twice; without --run-attempt it cannot tell a fire from an Actions-tab re-run of it, and counts it twice too.
+    Read from the parsed YAML: the job that runs the gate passes all three, from the push event and the run, and
+    checks out enough history to read the journal at the previous tip (blobless, as petri_audit.yml does, so full
+    history costs commits and trees only)."""
+    import yaml
+
+    path = _MODULE_PATH.parents[1] / ".github" / "workflows" / G4_WORKFLOWS[trigger]
+    doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+    gates = [(name, job, step) for name, job in doc["jobs"].items() for step in job.get("steps", [])
+             if "budget-gate" in str(step.get("run", ""))]
+    assert len(gates) == 1, gates
+    name, job, step = gates[0]
+    assert f"budget-gate --trigger {trigger} " in step["run"]
+    assert '--push-before "$PUSH_BEFORE"' in step["run"] and '--ref "$REF_NAME"' in step["run"]
+    assert step["env"]["PUSH_BEFORE"] == "${{ github.event.before }}"
+    assert step["env"]["REF_NAME"] == "${{ github.ref_name }}"
+    # a re-run reuses the push event, so the attempt is what tells the gate the entry already stood for a run
+    assert '--run-attempt "$RUN_ATTEMPT"' in step["run"]
+    assert step["env"]["RUN_ATTEMPT"] == "${{ github.run_attempt }}"
+    checkout = next(s for s in job["steps"] if str(s.get("uses", "")).startswith("actions/checkout@"))
+    assert checkout["with"]["fetch-depth"] == 0, f"{name}: a shallow clone cannot read the previous tip's journal"
+    assert checkout["with"]["filter"] == "blob:none"
+    assert job["if"] == "${{ !github.event.created }}", "the ref-creation guard is untouched"
+
+
+# ------------------------------------------------------------------ G1 review: a park on a day the ceiling is full
+
+def test_a_park_is_not_refused_by_a_ceiling_its_days_paid_fires_filled(repo, capsys, monkeypatch):
+    """Review of the G1 change (2026-09-23), finding R1. A paid fire now holds its commitment for its whole UTC day,
+    resolved or not, and the parks of the three non-petri paid lanes are paid fires of 0.01. So once the day's
+    fires had filled the ceiling, the re-park the handbook requires after each landed fire was refused (exit 4) with
+    no sanctioned way past it, and the paid config stayed on the trigger file at rest until 00:00 UTC - after which
+    a branch operation re-firing it passes the CI gate on its params alone. origin/main released the holds on
+    resolve, so the park went through. A park (by content, never by flag) now passes a ceiling refusal; its entry
+    still holds its 0.01, and the CI gate, which has no waiver, refuses the park's own run, so nothing is spent past
+    the ceiling."""
+    clock = [datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc)]
+    monkeypatch.setattr(ft, "utc_now", lambda: clock[0])
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    write_dashboard(repo, spent=0.0, date="2026-09-23", ceiling=2.0)
+    git = _git_repo(repo)
+    journal_path(repo).write_text("", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    paid = {"task": "pairs", "num": "5", "max_spend": "1.20"}
+    assert fire(repo, "scenario-generation", paid) == 0
+    assert fire(repo, "model-evaluation", {"model_selection": "claude-haiku-4-5", "max_spend": "0.80"}) == 0
+    for trigger in ("scenario-generation", "model-evaluation"):
+        assert ft.main(["resolve", "--repo", str(repo), "--trigger", trigger]) == 0
+    git("add", "-A")
+    git("commit", "-qm", "two paid fires, landed and resolved: the day is full")
+    before = git("rev-parse", "HEAD").stdout.strip()
+    capsys.readouterr()
+
+    # the waiver is for the park's exact content: an ordinary 0.01 fire, and a park lookalike with another
+    # max_spend, are refused as before
+    small = {"task": "pairs", "num": "1", "max_spend": "0.01"}
+    lookalike = {**ft.PARK_DEFAULTS["scenario-generation"], "max_spend": "0.02", "_parked": "true"}
+    for params in (small, lookalike):
+        assert fire(repo, "scenario-generation", params, extra=("--ignore-settle",)) == 4, params
+        assert "held today 2.00" in capsys.readouterr().err
+    assert json.loads(trigger_path(repo, "scenario-generation").read_text(encoding="utf-8")) == paid
+
+    # a later second than the paid fire: the journal keys an entry on (trigger, fired_utc)
+    clock[0] = datetime(2026, 9, 23, 12, 5, tzinfo=timezone.utc)
+    assert ft.main(["park", "--repo", str(repo), "--trigger", "scenario-generation", "--ignore-settle",
+                    "--no-git"]) == 0
+    out = capsys.readouterr().out
+    assert "park fired past the daily ceiling" in out and "held today 2.00" in out
+    at_rest = json.loads(trigger_path(repo, "scenario-generation").read_text(encoding="utf-8"))
+    assert ft.is_park_params("scenario-generation", at_rest), "the paid config is off the trigger file"
+    park = ft.load_journal(journal_path(repo))[-1]
+    assert park["max_spend"] == 0.01 and ft.entry_holds_spend(park, "2026-09-23"), "the park's 0.01 still holds"
+
+    # the CI gate has no waiver: with the park's own entry left out (attempt 1), 0.01 on a full day is refused, so
+    # the park's run spends nothing
+    git("add", "-A")
+    git("commit", "-qm", "Fire scenario-generation: park")
+    capsys.readouterr()
+    assert ft.main(["budget-gate", "--repo", str(repo), "--trigger", "scenario-generation", "--push-before", before,
+                    "--ref", "main", "--run-attempt", "1"]) == 6
+    captured = capsys.readouterr()
+    assert "this push's own scenario-generation journal entry" in captured.out
+    assert "max_spend 0.01 + today's committed 2.00 (landed 0.00 + held today 2.00)" in captured.err
+
+
+def test_publish_keeps_the_park_ceiling_waiver_when_the_park_push_was_rejected(tmp_path, capsys):
+    """The same waiver on the retry path: a park whose push was rejected is re-checked by `publish` against the
+    rebased dashboard, and a full day there must not leave the lane unparked either. An ordinary fire of the same
+    0.01 is still refused on that dashboard (test_publish_rechecks_the_budget_with_the_rebased_dashboard)."""
+    origin, clone = _publish_fixture(tmp_path)
+    park = {**ft.PARK_DEFAULTS["scenario-generation"], "_parked": "true", "_nonce": "2026-09-23T12:00:00Z"}
+    _fire_locally(clone, "scenario-generation", park, max_spend=0.01, lane="anthropic")
+    _advance_origin(origin, tmp_path, "routine", lambda r: write_dashboard(r, spent=2.0))
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    out = capsys.readouterr().out
+    assert "park published past the daily ceiling" in out and "landed 2.00" in out
+    published = _origin_main_files(origin, tmp_path)[(TRIGGER_SUBDIR / "scenario-generation.json").as_posix()]
+    assert json.loads(published) == park

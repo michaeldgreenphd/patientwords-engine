@@ -654,9 +654,10 @@ so it can be redone by hand.
       false, the re-adapted exports and judgments reach only the 30-day exports artifact, while the judge's spend
       is still booked.
     - **Fire from a branch that already exists on the remote.** A first push to a brand-new branch runs nothing,
-      because every job skips a ref's creation. `fire_trigger.py` still journals the $2.50 reservation, and it
-      counts against the day's ceiling until it is resolved or expires (8 hours by default). Push the branch first
-      (that push runs nothing), then fire from it.
+      because every job skips a ref's creation. `fire_trigger.py` still journals the $2.50 reservation. The entry
+      holds a queue slot until it is resolved or expires (8 hours by default), and its $2.50 counts against the
+      ceiling for the rest of the UTC day it was fired whether it is resolved or not (`entry_holds_spend`, since
+      2026-09-23). Push the branch first (that push runs nothing), then fire from it.
     - **The branch must carry the source run.** Its history must contain the w2e3 fire commit `aa0493bf` and its
       journal the `w2e3` entry. Its tree must hold the landed sidecar `run_35937014168_1.report.json` (`10020e52`),
       which records `run_status: success`, and nothing beside it but the judge sidecar of an earlier readapt of
@@ -683,9 +684,11 @@ so it can be redone by hand.
       `run_35937014168_1.readapt_<its workflow run id>.judge.report.json`. If the judge step fails, the workflow
       commits that sidecar (the spend it booked) and none of the outputs. The retry is admitted beside it, writes
       its own sidecar under its own run id, and leaves the earlier one byte-identical. Reconciliation books each
-      judge sidecar once, against the fire whose nonce it carries. The retry commits another judge ceiling, so it
-      needs the day's budget. Resolve the failed readapt first: no petri-audit fire of any mode enters the lane
-      while a readapt is active.
+      judge sidecar once, against the fire whose nonce it carries. The retry commits another judge ceiling, and
+      the failed readapt's commitment keeps counting for the rest of the UTC day it was fired, resolved or not, so
+      a retry on that same day needs room under the ceiling for both. Resolve the failed readapt first anyway:
+      resolving frees the lane, not the budget, and no petri-audit fire of any mode enters the lane while a
+      readapt is active.
 
 ---
 

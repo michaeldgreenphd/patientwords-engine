@@ -117,8 +117,13 @@ ledgers live in `docs/` when an overnight run is active.
 journals every fire (`ops/trigger_journal.jsonl`), mechanically enforces the
 one-running + one-pending discipline, hard-errors on unknown trigger keys (CI silently
 ignores them), and refuses paid fires that would breach the $2/day operational ceiling
-counting landed **and in-flight** `max_spend`. `scripts/ledger_update.py` is the only
-writer of spend numbers (`ops/dashboard.json` + the ledger); `scripts/daily_brief.py`
+counting landed spend **and** the `max_spend` every paid fire made that UTC day still
+holds — resolved or expired alike; only eviction releases it (`entry_holds_spend`,
+since 2026-09-23, when resolve-released holds let the guard report $0 committed on a
+day two resolved fires had committed $12.70). Once the ledger folds a run's cost into
+`spend.today`, that run counts twice for the rest of its day; that fails closed.
+`scripts/ledger_update.py` is the only writer of spend numbers
+(`ops/dashboard.json` + the ledger); `scripts/daily_brief.py`
 renders the 3-section brief and the push digest. `ops/dashboard.json` is **committed**
 only by the daily Routine session (`ops/README.md`, `docs/routine_standing_prompt.md`);
 `fire_trigger.py` rewrites its `queue` block as a side effect of every fire and resolve,

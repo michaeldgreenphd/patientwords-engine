@@ -63,6 +63,12 @@ without checking each active entry individually** — see §5, the
 **Re-park.** After a lane's real work lands and resolves:
 `python scripts/fire_trigger.py park --trigger <t> --ignore-settle`
 (terminality just confirmed). `park --all` exists for cold starts.
+A full day's ceiling does not refuse a park: the day's paid fires hold
+their commitments until 00:00 UTC, and a refused park would leave the paid
+config at rest. The waiver applies to the lane's exact park content only
+(`park_passes_ceiling`); an invalid `max_spend` still refuses. The CI gate
+has no waiver, so on that day it refuses the park's own run, which spends
+nothing. That red run is expected; resolve it like any other.
 
 **Publish site data.** Only the sanctioned exporter chain (site
 CLAUDE.md's data-contract table names every writer); then
@@ -189,11 +195,25 @@ say in any record which evidence was used.
 ## 6 · Money, seals, and boundaries (absolute)
 
 - $2/day Anthropic operational ceiling, enforced by `fire_trigger.py`
-  counting landed + in-flight `max_spend`. Every paid run writes a
-  `.report.json` sidecar with its cost. `scripts/ledger_update.py` is the
-  only spend writer.
+  (locally and in each paid workflow's `budget-gate`) counting landed spend
+  plus the `max_spend` held by every paid fire made that UTC day. A fire
+  holds its commitment for its whole UTC day, resolved or expired alike;
+  only eviction releases it (since 2026-09-23: resolve used to release it,
+  and on 2026-09-23 the guard reported $0 committed on a day two resolved
+  fires had committed $12.70). That includes a hold whose run never spent:
+  its push created the branch, so every job was skipped; the CI gate
+  refused it; or it failed before any provider call. Nothing sanctioned
+  releases such a hold before 00:00 UTC: eviction happens only through
+  `--force-evict`, and the journal is never hand-edited. A corrected
+  re-fire the same day therefore needs room for both commitments. A day
+  that cannot hold them waits for the next UTC day, or for a dated raise
+  in `ops/budget_overrides.json`, which only the owner authorizes. After
+  the ledger folds a run's sidecar, that run counts twice for the rest of
+  its day — deliberate, it fails closed.
+  Every paid run writes a `.report.json` sidecar with its cost.
+  `scripts/ledger_update.py` is the only spend writer.
 - No paid fire without the owner's explicit words. No `--override-budget`,
-  no `--force-evict`, ever. Ox Alpha never fires again (registry entry
+  no `--force-evict`, ever (a park needs neither; see §3, Re-park). Ox Alpha never fires again (registry entry
   removed; post-window calls would bill catch-all).
 - Both repos are PUBLIC: no secrets, keys, or tokens in any file, note, or
   commit message.

@@ -493,3 +493,55 @@ def test_a_readapt_is_refused_when_its_selected_seeds_changed_since_the_source_r
     # a seed file that cannot be read at either commit is a refusal, never a pass
     missing = dict(by_wave, seeds_file="docs/framework/no_such_seeds.json")
     assert "cannot be read at the source fire's commit" in ft._petri_seed_drift_problems(repo, "4242", commit, missing)[0]
+
+
+def test_a_readapt_on_its_source_fires_day_counts_the_resolved_source_commitment(tmp_path, capsys, monkeypatch):
+    """Where the readapt path (PR #29) meets the whole-day hold (PR #35). Since 2026-09-23 a paid fire's commitment
+    counts against the ceiling for the whole UTC day it was fired, resolved or not (fire_trigger.entry_holds_spend).
+    A readapt is fired after its source run landed and was resolved, usually the same UTC day, so the source's 7.60
+    (6.10 + judge 1.50) still holds and the readapt's judge ceiling of 1.50 is counted on top of it: at the fire
+    and again in the CI gate. The gate leaves the readapt's own entry out by nonce once, as it does for a mode-run
+    fire, so it is not counted twice. Under the old rule the resolve released the source's 7.60 and the readapt
+    was checked against 1.50 alone."""
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    repo, readapt = _readapt_repo(tmp_path)
+    now = ft.utc_now()
+    today = now.strftime("%Y-%m-%d")
+    journal = repo / "ops" / "trigger_journal.jsonl"
+    source = json.loads(journal.read_text(encoding="utf-8"))
+    # the source fire was made, landed and resolved earlier this UTC day
+    source.update(fired_utc=f"{today}T00:00:00Z", resolved=True, resolved_utc=f"{today}T00:00:01Z")
+    journal.write_text(json.dumps(source) + "\n", encoding="utf-8")
+    assert ft.inflight_max_spend([source], today) == pytest.approx(7.6), "resolved, and still held today"
+    overrides = repo / "ops" / "budget_overrides.json"
+
+    def ceiling(usd: float) -> None:
+        overrides.write_text(json.dumps({today: {"ceiling_usd": usd, "reason": "test"}}), encoding="utf-8")
+
+    # the fire path: 7.60 held + 1.50 is 9.10. --ignore-settle only because the source's resolve may sit inside the
+    # settle window when this runs just after 00:00 UTC; the settle guard is not what is under test
+    fire = ["fire", "--repo", str(repo), "--trigger", TRIGGER, "--note", "readapt", "--dry-run", "--no-git",
+            "--ignore-settle", "--params", json.dumps(readapt)]
+    ceiling(9.0)
+    assert ft.main(fire) == 4
+    assert "held today 7.60" in capsys.readouterr().err
+    ceiling(9.2)
+    assert ft.main(fire) == 0
+    assert "held today 7.60" in capsys.readouterr().out
+    # the CI gate, once the readapt is journaled and its trigger file is the one CI runs
+    trigger = repo / ".github" / "trigger" / f"{TRIGGER}.json"
+    content = json.dumps(readapt, separators=(",", ":")) + "\n"
+    trigger.write_text(content, encoding="utf-8")
+    mine = {"trigger": TRIGGER, "fired_utc": ft.iso_utc(now), "commit": "", "note": "readapt", "resolved": False,
+            "evicted": False, "nonce": "w2e3r", "params_sha256": ft.params_digest(content), "ref": "main",
+            "max_spend": 1.5, "lane": "anthropic"}
+    journal.write_text(json.dumps(source) + "\n" + json.dumps(mine) + "\n", encoding="utf-8")
+    params_file = tmp_path / "gate_params.json"
+    params_file.write_text(json.dumps(readapt), encoding="utf-8")
+    gate = type("Args", (), {"repo": str(repo), "trigger": TRIGGER, "params_file": str(params_file)})()
+    ceiling(9.0)
+    assert ft.cmd_budget_gate(gate) == 6
+    assert "held today 7.60" in capsys.readouterr().err, "the source holds; the readapt's own entry is not doubled"
+    ceiling(9.2)
+    assert ft.cmd_budget_gate(gate) == 0
+    assert "held today 7.60" in capsys.readouterr().out

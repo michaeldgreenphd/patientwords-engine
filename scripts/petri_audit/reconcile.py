@@ -485,9 +485,12 @@ def _stamp_problems(sp: Path, sr: dict[str, Any], e: dict[str, Any], now: dateti
     stamp = _timestamp(sr.get("run_timestamp") or sr.get("run_utc"))
     fired_at = _timestamp(e.get("fired_utc"))
     # ...and the other end of the same interval. A stamp later than now books the cost into a future
-    # day's bucket, so `spend.today` never receives it: once the fire is resolved and its in-flight
-    # hold released, neither the landed cost nor the reservation counts against today's ceiling and
-    # another paid run is admitted on a day that reads as empty (Codex round 12 on PR #28).
+    # day's bucket, so `spend.today` never receives it (Codex round 12 on PR #28). When this check was
+    # written a resolve released the fire's hold, so neither the landed cost nor the reservation then
+    # counted against today's ceiling, and another paid run was admitted on a day that read as empty.
+    # Since 2026-09-23 the commitment holds for the fire's whole UTC day, resolved or not
+    # (fire_trigger.entry_holds_spend), so today's ceiling still counts it. The stamp is still a
+    # problem, because the ledger books the cost to a day it was not spent in.
     if stamp is not None and stamp > now + timedelta(minutes=1):
         found.append(f"{sp.parent.name}/{sp.name}: its stamp {stamp.isoformat()} is in the future "
                      f"(now {now.isoformat()}), so the ledger books this cost to a day the daily "
@@ -582,10 +585,12 @@ def _readapt_judge_row(e: dict[str, Any], row: dict[str, Any], found: list[tuple
         if day_problem:
             problems.append(f"{label}: {day_problem}")
         if row["judge_folded"] and not row["resolved"] and not row["evicted"]:
+            # as for an ordinary paid fire below: a resolve frees the queue slot, not the day's hold
+            # (fire_trigger.entry_holds_spend, since 2026-09-23), so the queue slot is the reason to resolve
             problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}) landed and is fully booked but the "
-                            "journal entry is still unresolved: its commitment keeps counting as in-flight beside "
-                            "the landed cost and it holds a queue slot until it expires. Run `fire_trigger.py "
-                            "resolve --trigger petri-audit`")
+                            "journal entry is still unresolved, so it holds a queue slot until it expires (its "
+                            "commitment counts beside the landed cost for the rest of its UTC day whether it is "
+                            "resolved or not). Run `fire_trigger.py resolve --trigger petri-audit`")
     row["status"] = "landed (readapt judge)"
 
 
@@ -1031,15 +1036,17 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
                     if day_problem:
                         problems.append(f"{sp.parent.name}/{sp.name}: {day_problem}")
                 # Folded but unresolved is not a transient: the ledger folds in the daily cycle, long after
-                # `resolve` should have run. Until it does, `entry_is_active` keeps counting the fire's whole
-                # commitment as in-flight ON TOP of the landed cost, and it holds a queue slot until it expires
-                # (Codex round 5 on PR #28). Before the fold this is the ordinary gap between landing and
-                # resolving, so it is not reported.
+                # `resolve` should have run. Until it does, the entry holds a queue slot until it expires (Codex
+                # round 5 on PR #28). Its commitment counts beside the landed cost for the rest of its UTC day
+                # either way: since 2026-09-23 a resolve frees the queue slot, not the day's hold
+                # (fire_trigger.entry_holds_spend), so the message names the queue slot as the reason to resolve.
+                # Before the fold this is the ordinary gap between landing and resolving, so it is not reported.
                 if row["folded"] and row["judge_folded"] in (True, None) and not row["resolved"] \
                         and not row["evicted"]:
                     problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}) landed and is fully booked but "
-                                    "the journal entry is still unresolved: its commitment keeps counting as "
-                                    "in-flight beside the landed cost and it holds a queue slot until it expires. "
+                                    "the journal entry is still unresolved, so it holds a queue slot until it "
+                                    "expires (its commitment counts beside the landed cost for the rest of its UTC "
+                                    "day whether it is resolved or not). "
                                     "Run `fire_trigger.py resolve --trigger petri-audit`")
             row["status"] = "landed"
         rows.append(row)

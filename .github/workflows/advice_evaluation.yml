@@ -140,6 +140,10 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           filter: blob:none
+          # the daily-ceiling gate reads the journal at github.event.before to find the entry this push added for
+          # this fire, and a depth-1 clone has no commit to read it at; blobless keeps full history cheap
+          # (petri_audit.yml's pattern, G4 2026-09-23)
+          fetch-depth: 0
           sparse-checkout: |
             .github
             scripts
@@ -217,9 +221,17 @@ jobs:
       - name: Daily-ceiling gate (server-side; audit S2, owner-approved 2026-08-19)
         env:
           GATE_PARAMS: ${{ toJSON(steps.params.outputs) }}
+          # the ref's tip BEFORE this push, and the ref: the gate leaves out of the day's held sum the one journal
+          # entry this push added for this fire on this branch, so its commitment is counted once, not twice (G4,
+          # 2026-09-23). A workflow_dispatch has no previous tip; then nothing is left out, as before
+          PUSH_BEFORE: ${{ github.event.before }}
+          REF_NAME: ${{ github.ref_name }}
+          # ...and only on attempt 1: an Actions-tab re-run reuses the push event, so on a later attempt the
+          # entry stands for the first attempt's commitment and keeps counting beside this one's
+          RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           printf '%s' "$GATE_PARAMS" > "$RUNNER_TEMP/gate_params.json"
-          python3 scripts/fire_trigger.py budget-gate --trigger advice-eval --params-file "$RUNNER_TEMP/gate_params.json"
+          python3 scripts/fire_trigger.py budget-gate --trigger advice-eval --params-file "$RUNNER_TEMP/gate_params.json" --push-before "$PUSH_BEFORE" --ref "$REF_NAME" --run-attempt "$RUN_ATTEMPT"
 
   advice:
     if: ${{ !github.event.created }}

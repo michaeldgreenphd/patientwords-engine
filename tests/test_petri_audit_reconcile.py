@@ -505,8 +505,9 @@ def test_both_of_the_ledgers_stamp_precedences_must_parse(tmp_path):
 
 
 def test_a_landed_and_booked_fire_that_was_never_resolved_is_named(tmp_path):
-    # until `resolve` runs, entry_is_active keeps counting the whole commitment as in-flight ON TOP of the
-    # landed cost and the entry holds a queue slot until it expires (Codex round 5 on PR #28)
+    # until `resolve` runs the entry holds a queue slot until it expires (Codex round 5 on PR #28). Its commitment
+    # counts beside the landed cost for the rest of its UTC day whether it is resolved or not (fire_trigger's
+    # entry_holds_spend, since 2026-09-23), so the queue slot is the reason to resolve, and the message says so
     journal, runs, dashboard = _layout(tmp_path)
     journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
     _sidecar(runs, "run_1", 0.4, "n1")
@@ -515,6 +516,10 @@ def test_a_landed_and_booked_fire_that_was_never_resolved_is_named(tmp_path):
     problems = "\n".join(reconcile.reconcile(journal, runs, dashboard)["problems"])
     assert "landed and is fully booked but the journal entry is still unresolved" in problems
     assert "fire_trigger.py resolve --trigger petri-audit" in problems
+    # the reason given is the one resolving still has; it no longer claims resolving stops the commitment counting
+    assert "so it holds a queue slot until it expires" in problems
+    assert "for the rest of its UTC day whether it is resolved or not" in problems
+    assert "in-flight" not in problems and "keeps counting" not in problems
     # resolved: silent. And before the fold it is the ordinary gap between landing and resolving, not a problem.
     journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0, resolved=True)) + "\n", encoding="utf-8")
     assert reconcile.reconcile(journal, runs, dashboard)["problems"] == []
@@ -1189,8 +1194,9 @@ def test_a_resolved_entry_without_a_parseable_stamp_is_named(tmp_path):
 
 def test_a_stamp_in_the_future_is_named(tmp_path):
     # the ordering check rejected only stamps BEFORE the fire. A stamp after now books the cost into a future
-    # day's bucket, so spend.today never receives it: once the fire is resolved and its hold released, neither the
-    # landed cost nor the reservation counts against today's ceiling (Codex round 12 on PR #28)
+    # day's bucket, so spend.today never receives it (Codex round 12 on PR #28). Since 2026-09-23 the fire's
+    # commitment still holds for its whole UTC day, resolved or not, so today's ceiling counts it; the stamp is
+    # named because the ledger books the cost to a day it was not spent in
     journal, runs, _ = _layout(tmp_path)
     journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
     _sidecar(runs, "run_1", 0.2, "n1")
@@ -1264,6 +1270,28 @@ def test_a_readapt_judge_is_held_to_its_fires_commitment_log_and_channel(tmp_pat
     # a stray nonce leaves the readapt fire itself unbooked, named as such
     journal, runs, _dashboard = _readapt_layout(tmp_path / "stray", {"journal_nonce": "stray"})
     assert "(nonce 'w2e3r'): no cost sidecar carries its nonce" in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_a_folded_readapt_left_unresolved_names_the_queue_slot_not_an_in_flight_hold(tmp_path):
+    """The readapt row's "folded but unresolved" finding states the same rule as the ordinary row's (see
+    test_a_landed_and_booked_fire_that_was_never_resolved_is_named): since 2026-09-23 a resolve frees the queue
+    slot, not the day's hold (fire_trigger.entry_holds_spend), so the message gives the queue slot as the reason to
+    resolve and no longer says the commitment keeps counting as in-flight until then (the merge of PR #29's readapt
+    row with PR #35's whole-day hold)."""
+    journal, runs, dashboard = _readapt_layout(tmp_path)
+    framework.write_json(dashboard, {"schema_version": 1, "spend": {
+        "daily_ceiling_usd": 2.0, "today": {"date": "2026-09-18", "spent_usd": 2.53}, "by_day": {"2026-09-18": 2.53},
+        "entries_seen": ["run_9_1.report.json", "run_9_1.judge.report.json"],
+        "entries_folded": {"run_9_1.report.json": 0.93, "run_9_1.judge.report.json": 1.6}}})
+    result = reconcile.reconcile(journal, runs, dashboard)
+    rows = {r["nonce"]: r for r in result["paid_fires"]}
+    assert rows["w2e3r"]["status"] == "landed (readapt judge)" and rows["w2e3r"]["folded"] is True
+    unresolved = [pr for pr in result["problems"] if "still unresolved" in pr]
+    assert len(unresolved) == 1 and "(nonce 'w2e3r')" in unresolved[0], result["problems"]
+    assert "so it holds a queue slot until it expires" in unresolved[0]
+    assert "for the rest of its UTC day whether it is resolved or not" in unresolved[0]
+    assert "in-flight" not in unresolved[0] and "keeps counting" not in unresolved[0]
+    assert "fire_trigger.py resolve --trigger petri-audit" in unresolved[0]
 
 
 def test_the_fallback_judge_sidecar_of_a_readapt_carries_its_fires_nonce(tmp_path, capsys):

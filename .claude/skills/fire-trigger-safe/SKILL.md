@@ -81,11 +81,21 @@ lane, and advance by chaining — resolve the landed run, then fire the next.
   source of truth. Their params MUST include `max_spend` (finite number > 0); a
   missing/invalid `max_spend` is never overridable.
 - Daily operational ceiling: $2 (from `ops/dashboard.json` `spend.daily_ceiling_usd`,
-  default 2.0). The guard counts committed spend = landed today + in-flight `max_spend`
-  of active paid entries fired today.
+  default 2.0). The guard counts committed spend = landed today + the `max_spend` held
+  by every paid entry fired today, resolved or expired alike; only eviction releases one
+  (since 2026-09-23 — resolving no longer frees budget). That includes a fire whose
+  run never spent: skipped at ref creation, refused by the CI gate, or failed before
+  any call. So a corrected re-fire the same day needs room for both commitments
+  (docs/operators_handbook.md §6). Spend the ledger has already folded into today is
+  then counted twice; that is deliberate and fails closed.
 - A `circuit-trace` fire with `show_mitigation: true` is ALSO a paid path (translation
   calls): the guard imputes a flat $0.15 commitment per fire and applies the same ceiling.
 - Exit 4 ends the attempt. Record the refusal; do not retry, split, or override.
+- The one exception is a `park`. A full day's ceiling does not refuse the lane's
+  exact park content (`park_passes_ceiling`); an invalid `max_spend` still refuses.
+  The park's entry still holds its `max_spend`. The CI gate has no waiver, so on that
+  day it refuses the park's own run, which spends nothing. That red run is expected;
+  resolve it like any other.
 
 ## 6 · Dashboard single-writer + git hygiene
 
