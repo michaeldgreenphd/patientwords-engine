@@ -96,10 +96,15 @@ to compute it or to choose the threshold.
    - Rule: a sealed phrase is a near twin iff its highest ratio against the
      comparison set is **0.90 or more**.
    - Deterministic, no seed. The frozen file records the inputs it was
-     computed from: engine `6830d590`, `tierb.start_utc`
-     2026-07-10T01:14:38Z, and the sha256 of both site files (byte-identical
-     at site `main` `0756f2a` and at site PR #8's head, `f13d192`, from which
-     it was computed).
+     computed from: `tierb.start_utc` 2026-07-10T01:14:38Z; the sha256 of
+     every Tier B batch file it read (29), of `ops/dashboard.json` and of that
+     file's `tierb` block; the sha256 of both site files (byte-identical at
+     site `main` `0756f2a` and at site PR #8's head, `f13d192`, from which it
+     was computed); and the engine commit. The list was first computed at
+     engine `6830d590`. It was recomputed on 2026-09-23 at engine `e1bc7646`,
+     before unsealing, only to add the input hashes (Codex review of PR #32).
+     The 29 batch files and the dashboard are byte-identical at both commits,
+     and the 38 labels and every count are unchanged.
 
 5. **No post-hoc pruning.** The list in `data/tierb_near_twins.json` is frozen
    by this registration. It is not recomputed, extended or re-thresholded after

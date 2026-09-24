@@ -128,6 +128,10 @@ def test_committed_frozen_list_is_labels_only_and_consistent():
     assert c["remaining_after_pruning"] == c["sealed_phrases"] - c["twins"]
     assert all(lab.count("#") == 1 and lab.startswith("pairs_") for lab in labels)
     assert frozen["method"]["threshold"] == 0.90 and frozen["registered"] == "2026-09-23"
+    inputs = frozen["inputs"]                          # the engine inputs are fingerprinted, not only the commit
+    assert inputs["batch_files_sha256"] and all(
+        name.startswith("pairs_") and len(h) == 64 for name, h in inputs["batch_files_sha256"].items())
+    assert len(inputs["dashboard_sha256"]) == len(inputs["dashboard_tierb_sha256"]) == 64
 
 
 # --- malformed rows are refused, not dropped (Codex review of PR #32) --------- #
