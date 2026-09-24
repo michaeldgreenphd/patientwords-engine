@@ -354,3 +354,77 @@ def test_main_passes_the_same_site_when_the_pack_check_is_clean(site, tmp_path, 
                                           "manifest": {"run_ids": ["run_1"]}, "sent_utc": None}])
     assert _main(monkeypatch, site, engine) == 0
     assert "contract check: 0 error(s)" in capsys.readouterr().out
+
+
+# ---- owner-run files (2026-09-24): the Multi-turn pair is noted while absent, shape-checked once published
+
+def _multiturn_pair(sample=False):
+    """A minimal valid pair in the Multi-turn page's shapes; abstract vocabulary only."""
+    summary = {"seed": 1, "status": {"final": True, "clinician_review": "pending",
+                                     "vendor_pack": {"version": None, "sent": None}},
+               "headline": {"row_id": "row5", "text": "alpha"}, "style_sentence": {"row_id": "x", "text": None},
+               "primary": {"triples": 1, "negative": 1, "positive": 0, "tied": 0, "p_two_sided": 1.0,
+                           "gate_p": 1.0, "gate_passed": False},
+               "triples": [{"seed_id": "s1", "scenario_id": "sc1", "epoch": 1, "D": -0.5,
+                            "partition": "prospective", "eligible": True}],
+               "scenario_means": {"sc1": -0.5}, "repeats": [{"seed_id": "s1", "epochs": 1, "same_direction": 1}],
+               "provenance": {"runs": ["run_1"], "analysis_commit": "c" * 40, "verify": "verify"}}
+    conversations = {"seed": None,
+                     "measures": [{"id": "m1", "row": ["tier", "k"], "label": "M", "kind": "ordinal",
+                                   "values": ["lo", "hi"], "definition": None}],
+                     "mechanisms": {"mech": {"title": "T", "question": "Q"}},
+                     "seeds": [{"seed_id": "s1", "mechanism": "mech", "measures": ["m1"], "arms": ["a"],
+                                "roles": [None], "hypotheses": ["H1"]}],
+                     "conversations": [{"seed_id": "s1", "arm": "a", "epoch": 1, "identity": None, "rule": {},
+                                        "exchanges": [{"user": "u", "reply": None, "reply_is_graded": True,
+                                                       "interim": [], "vals": {"m1": {"v": "lo"}}}]}],
+                     "example": {"seed_id": "s1", "turn": 1, "colloquial": "a", "lay_careful": "b", "clinical": "c"}}
+    if sample:
+        summary = {"sample": True, "_note": "SYNTHETIC", **summary}
+        conversations = {"sample": True, "_note": "SYNTHETIC", **conversations}
+    return summary, conversations
+
+
+def _write_pair(site, pair, suffix=".json"):
+    for stem, doc in zip(vfc.MT_PAIR, pair):
+        (site / "data" / (stem + suffix)).write_text(json.dumps(doc), encoding="utf-8")
+
+
+def test_owner_run_multiturn_pair_absent_is_a_note_never_a_warning(site):
+    rep = run(site, strict=True)      # strict turns every warning into an error: none may name the pair
+    assert not any("petri_multiturn" in e for e in rep.errors + rep.warnings)
+    assert any("petri_multiturn_summary.json" in n and "owner-run" in n for n in rep.notes)
+
+
+def test_owner_run_multiturn_pair_published_valid(site):
+    _write_pair(site, _multiturn_pair())
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    rep = run(site, strict=True)
+    assert not any("petri_multiturn" in e for e in rep.errors + rep.warnings) and rep.notes == []
+
+
+def test_owner_run_multiturn_file_without_its_pair_is_an_error(site):
+    (site / "data" / "petri_multiturn_summary.json").write_text(json.dumps(_multiturn_pair()[0]), encoding="utf-8")
+    rep = run(site)
+    assert any("published without its pair" in e for e in rep.errors)
+
+
+def test_owner_run_multiturn_sample_flags_are_checked(site):
+    summary, conversations = _multiturn_pair()
+    _write_pair(site, ({"sample": True, **summary}, conversations))
+    _write_pair(site, _multiturn_pair(), ".sample.json")
+    rep = run(site)
+    assert any("petri_multiturn_summary.json :: $.sample" in e for e in rep.errors)
+    assert sum("must carry sample: true" in e for e in rep.errors) == 2
+
+
+def test_owner_run_multiturn_shapes_are_checked(site):
+    summary, conversations = _multiturn_pair()
+    summary["triples"][0]["partition"] = "elsewhere"
+    del summary["headline"]["text"]
+    conversations["conversations"][0]["exchanges"][0]["vals"]["m9"] = {"v": "lo"}
+    _write_pair(site, (summary, conversations))
+    rep = run(site)
+    assert any("$.triples[0].partition" in e for e in rep.errors)
+    assert any("$.headline.text" in e for e in rep.errors)
+    assert any("vals.m9" in e for e in rep.errors)

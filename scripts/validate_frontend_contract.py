@@ -42,6 +42,7 @@ class Report:
     def __init__(self):
         self.errors: list[str] = []
         self.warnings: list[str] = []
+        self.notes: list[str] = []      # expected states worth saying, never counted (owner-run files not yet out)
 
     def err(self, artifact: str, path: str, msg: str):
         self.errors.append(f"{artifact} :: {path} :: {msg}")
@@ -401,6 +402,154 @@ def check_shapes(rep: Report, site: Path, joins: dict):
                          "no timestamp under any known key (schema drift across entries)")
 
 
+# ------------------------------------------------------------------ owner-run files
+
+# Files an owner-run exporter writes outside the daily Routine's publish chain (the site's contract table marks them
+# "owner-run, not the daily Routine"). They are published once, after gates the Routine never sees (for the Multi-turn
+# page: the design note's section 10 analysis, the vendor pack, the owner's sign-off), so until then their absence is
+# the expected state: it is noted, never warned, because under --strict a warning would fail the Routine's gate over a
+# file it has no business publishing. Present, they are shape-checked like any payload.
+OWNER_RUN = {
+    "petri_multiturn_summary.json": "scripts/export_petri_multiturn.py",
+    "petri_multiturn_conversations.json": "scripts/export_petri_multiturn.py",
+}
+# the Multi-turn page reads these two as one unit (both real files, or both samples), in the shapes of
+# multi-turn/index.html's reads; the .sample.json fixtures carry the same keys plus sample/_note
+MT_PAIR = ("petri_multiturn_summary", "petri_multiturn_conversations")
+MT_SUMMARY_KEYS = {"seed", "status", "headline", "style_sentence", "primary", "triples", "scenario_means", "repeats",
+                   "provenance"}
+MT_CONVERSATIONS_KEYS = {"seed", "measures", "mechanisms", "seeds", "conversations", "example"}
+MT_SAMPLE_KEYS = {"sample", "_note"}
+MT_PARTITIONS = ("seen_before_plan", "prospective")
+
+
+def _sample_flag(rep: Report, a: str, obj: dict, sample: bool):
+    if sample and obj.get("sample") is not True:
+        rep.err(a, "$.sample", "a .sample.json fixture must carry sample: true (the page's sample notice keys on it)")
+    if not sample and (MT_SAMPLE_KEYS & set(obj)):
+        rep.err(a, "$.sample", "a published file must not carry the sample flag or note")
+
+
+def check_multiturn_summary(rep: Report, a: str, s: dict, sample: bool):
+    _sample_flag(rep, a, s, sample)
+    known_keys(rep, a, s, MT_SUMMARY_KEYS | (MT_SAMPLE_KEYS if sample else set()))
+    need(rep, a, s, "seed", int, "$", nullable=True)
+    status = need(rep, a, s, "status", dict, "$") or {}
+    need(rep, a, status, "final", bool, "$.status")
+    need(rep, a, status, "clinician_review", str, "$.status")
+    pack = need(rep, a, status, "vendor_pack", dict, "$.status") or {}
+    for key in ("version", "sent"):
+        need(rep, a, pack, key, str, "$.status.vendor_pack", nullable=True)
+    for block in ("headline", "style_sentence"):
+        b = need(rep, a, s, block, dict, "$") or {}
+        need(rep, a, b, "row_id", str, f"$.{block}")
+        need(rep, a, b, "text", str, f"$.{block}", nullable=True)
+    p = need(rep, a, s, "primary", dict, "$") or {}
+    for key in ("triples", "negative", "positive", "tied"):
+        need(rep, a, p, key, int, "$.primary")
+    for key in ("p_two_sided", "gate_p"):
+        need(rep, a, p, key, NUM, "$.primary", nullable=True)
+    need(rep, a, p, "gate_passed", bool, "$.primary", nullable=True)
+    for i, t in enumerate(need(rep, a, s, "triples", list, "$") or []):
+        path = f"$.triples[{i}]"
+        for key, kinds in (("seed_id", str), ("scenario_id", str), ("epoch", int), ("eligible", bool)):
+            need(rep, a, t, key, kinds, path)
+        need(rep, a, t, "D", NUM, path, nullable=True)
+        if isinstance(t, dict) and t.get("partition") not in MT_PARTITIONS:
+            rep.err(a, f"{path}.partition", f"must be one of {list(MT_PARTITIONS)} (the figure's two panels)")
+    for key, value in (need(rep, a, s, "scenario_means", dict, "$") or {}).items():
+        if not _is(value, NUM):
+            rep.err(a, f"$.scenario_means.{key}", "must be a number")
+    for i, r in enumerate(need(rep, a, s, "repeats", list, "$") or []):
+        need(rep, a, r, "seed_id", str, f"$.repeats[{i}]")
+        need(rep, a, r, "epochs", int, f"$.repeats[{i}]")
+        need(rep, a, r, "same_direction", int, f"$.repeats[{i}]", nullable=True)
+    prov = need(rep, a, s, "provenance", dict, "$") or {}
+    runs = need(rep, a, prov, "runs", list, "$.provenance") or []
+    if not all(isinstance(r, str) for r in runs):
+        rep.err(a, "$.provenance.runs", "must be a list of run ids")
+    need(rep, a, prov, "analysis_commit", str, "$.provenance")
+    need(rep, a, prov, "verify", str, "$.provenance")
+
+
+def check_multiturn_conversations(rep: Report, a: str, c: dict, sample: bool):
+    _sample_flag(rep, a, c, sample)
+    known_keys(rep, a, c, MT_CONVERSATIONS_KEYS | (MT_SAMPLE_KEYS if sample else set()))
+    measure_ids = set()
+    for i, m in enumerate(need(rep, a, c, "measures", list, "$") or []):
+        path = f"$.measures[{i}]"
+        mid = need(rep, a, m, "id", str, path)
+        for key, kinds in (("label", str), ("kind", str), ("values", list)):
+            need(rep, a, m, key, kinds, path)
+        need(rep, a, m, "definition", str, path, nullable=True)
+        need(rep, a, m, "row", list, path, nullable=True)
+        if mid:
+            measure_ids.add(mid)
+    mechanisms = need(rep, a, c, "mechanisms", dict, "$") or {}
+    for key, value in mechanisms.items():
+        need(rep, a, value, "title", str, f"$.mechanisms.{key}")
+        need(rep, a, value, "question", str, f"$.mechanisms.{key}")
+    seed_ids = set()
+    for i, sd in enumerate(need(rep, a, c, "seeds", list, "$") or []):
+        path = f"$.seeds[{i}]"
+        sid = need(rep, a, sd, "seed_id", str, path)
+        mech = need(rep, a, sd, "mechanism", str, path)
+        if mech and mech not in mechanisms:
+            rep.err(a, f"{path}.mechanism", f"{mech!r} is not in $.mechanisms (the seed header loses its question)")
+        for key in ("measures", "arms", "roles", "hypotheses"):
+            need(rep, a, sd, key, list, path)
+        if sid:
+            seed_ids.add(sid)
+    for i, cv in enumerate(need(rep, a, c, "conversations", list, "$") or []):
+        path = f"$.conversations[{i}]"
+        sid = need(rep, a, cv, "seed_id", str, path)
+        if sid and sid not in seed_ids:
+            rep.err(a, f"{path}.seed_id", f"{sid} is not in $.seeds")
+        need(rep, a, cv, "arm", str, path)
+        need(rep, a, cv, "epoch", int, path)
+        need(rep, a, cv, "identity", str, path, nullable=True)
+        need(rep, a, cv, "rule", dict, path)
+        for j, ex in enumerate(need(rep, a, cv, "exchanges", list, path) or []):
+            xp = f"{path}.exchanges[{j}]"
+            need(rep, a, ex, "user", str, xp)
+            need(rep, a, ex, "reply", str, xp, nullable=True)
+            need(rep, a, ex, "reply_is_graded", bool, xp)
+            need(rep, a, ex, "interim", list, xp)
+            for mid, cell in (need(rep, a, ex, "vals", dict, xp) or {}).items():
+                if mid not in measure_ids:
+                    rep.err(a, f"{xp}.vals.{mid}", "a grade for a measure $.measures does not define")
+                elif not isinstance(cell, dict) or not ({"v", "na"} & set(cell)):
+                    rep.err(a, f"{xp}.vals.{mid}", "a grade cell carries v (a value or null) or na (the reason)")
+    example = need(rep, a, c, "example", dict, "$", nullable=True)
+    for key in ("seed_id", "colloquial", "lay_careful", "clinical") if example else ():
+        need(rep, a, example, key, str, "$.example")
+
+
+def check_owner_run(rep: Report, site: Path):
+    """The owner-run Multi-turn pair: absent (the expected state until it is published) is a note; one file without
+    the other is an error; present files are shape-checked. The .sample.json fixtures are checked the same way,
+    because the page fetches them whenever the real pair is not published."""
+    for suffix, sample in ((".json", False), (".sample.json", True)):
+        names = [stem + suffix for stem in MT_PAIR]
+        present = [n for n in names if (site / "data" / n).is_file()]
+        if not present:
+            if not sample:
+                rep.notes.append(f"{' and '.join(names)} not published (owner-run: {OWNER_RUN[names[0]]}); the "
+                                 f"Multi-turn page renders its samples until they are")
+            continue
+        if len(present) == 1:
+            rep.err(present[0], "-", "published without its pair: the Multi-turn page reads the summary and the "
+                                     "conversations as one unit and falls back to both samples when either is missing")
+        for name, check in ((names[0], check_multiturn_summary), (names[1], check_multiturn_conversations)):
+            data = load(site, name, rep) if name in present else None
+            if data is None:
+                continue
+            if not isinstance(data, dict):
+                rep.err(name, "$", f"expected object, got {type(data).__name__}")
+                continue
+            check(rep, name, data, sample)
+
+
 # ------------------------------------------------------------------ cross-repo checks
 
 def check_engine_copies(rep: Report, site: Path, engine: Path):
@@ -454,6 +603,7 @@ def validate(site: Path, engine: Path | None, strict: bool = False) -> Report:
     if isinstance(urg, dict):
         check_urgency(rep, urg, joins)
     check_shapes(rep, site, joins)
+    check_owner_run(rep, site)
     if engine is not None and engine.is_dir():
         check_engine_copies(rep, site, engine)
     if strict:
@@ -519,6 +669,8 @@ def main():
     rep.errors.extend(pack_errors)
 
     if not args.quiet:
+        for n in rep.notes:
+            print("note:", n)
         for w in rep.warnings:
             print("warn:", w)
         for e in rep.errors:
