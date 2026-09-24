@@ -10,7 +10,10 @@ import hashlib
 import importlib.util
 import json
 import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 _ROOT = Path(__file__).resolve().parents[1]
 _SPEC = importlib.util.spec_from_file_location(
@@ -106,7 +109,24 @@ def _phrase(base, holdout):
     return next(f"{base} {i} so a" for i in range(500) if _hold(f"{base} {i} so a") == holdout)
 
 
-def _engine(tmp_path, with_start=True):
+def _git(repo, *argv):
+    subprocess.run(["git", "-C", str(repo), "-c", "user.email=t@x", "-c", "user.name=t",
+                    "-c", "commit.gpgsign=false", *argv], check=True, capture_output=True)
+
+
+def _commit(repo, *paths):
+    """git init ``repo`` if needed and commit ``paths`` (default: everything)."""
+    if not (repo / ".git").exists():
+        subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True, capture_output=True)
+    _git(repo, "add", "-A", "--", *(paths or (".",)))
+    _git(repo, "commit", "-q", "--allow-empty", "-m", "x")
+
+
+def _engine(tmp_path, with_start=True, probe_in="model", commit=True):
+    """Tier B batch TIERB traced into a base dir and a model dir, as on the live
+    store. Row 3's accepted prompt hashes explore; its trace-time prompt in the
+    ``probe_in`` dir ("base" or "model") hashes holdout, and the other dir traced
+    the accepted prompt. With ``commit`` the tree is a git repo at HEAD."""
     sim = tmp_path / "data" / "simulated"
     sim.mkdir(parents=True)
     ops = tmp_path / "ops"
@@ -126,10 +146,15 @@ def _engine(tmp_path, with_start=True):
                                        encoding="utf-8")
     (sim / f"{TIER_A}.json").write_text(json.dumps([row(tier_a)]), encoding="utf-8")
     (sim / f"{ALIAS}.json").write_text(json.dumps([row(sealed), row(explore)]), encoding="utf-8")
-    trace = tmp_path / "trace_out" / f"{TIERB}__some-model"
-    trace.mkdir(parents=True)
-    (trace / "batch_summary.part_01.json").write_text(json.dumps({"results": [
-        {"index": 3, "prompts": {"clinical": probed_trace, "patient": "x"}}]}), encoding="utf-8")
+    for where, name in (("base", TIERB), ("model", f"{TIERB}__some-model")):
+        trace = tmp_path / "trace_out" / name
+        trace.mkdir(parents=True)
+        third = probed_trace if where == probe_in else probed
+        (trace / "batch_summary.part_01.json").write_text(json.dumps({"results": [
+            {"index": i, "prompts": {"clinical": c, "patient": "x"}}
+            for i, c in ((1, sealed), (2, explore), (3, third))]}), encoding="utf-8")
+    if commit:
+        _commit(tmp_path)
     return sim, ops
 
 
@@ -145,9 +170,12 @@ def test_holdout_rows_are_withheld_by_every_reading_of_the_rule(tmp_path):
 # --- the trace-time reading fails closed (Codex review of PR #32, 2026-09-23) -- #
 # An absent or unreadable trace source used to read as "no trace-time prompts",
 # so a row whose accepted prompt hashes explore but whose trace-time prompt
-# hashes holdout (TIERB#3 above) published its patient sentence.
+# hashes holdout (TIERB#3 above) published its patient sentence. The first fix
+# refused only when no model's dir had any part, so a checkout missing the one
+# dir that carries the probe-extended prompt still published it (second review).
+# The parts HEAD tracks are now compared with the parts on disk.
 
-UNTRACED = "pairs_20260712T000000Z"      # a Tier B batch with no trace dir at all
+UNTRACED = "pairs_20260712T000000Z"      # a Tier B batch with no part at HEAD and none on disk
 
 
 def _refused(fn):
@@ -181,35 +209,92 @@ def test_main_refuses_a_missing_trace_store_and_writes_nothing(tmp_path, capsys)
     assert out.read_text() == '{"kept": 1}'
 
 
-def test_a_tierb_batch_with_no_trace_part_refuses_by_name(tmp_path, capsys):
+@pytest.mark.parametrize("probe_in", ["base", "model"])
+@pytest.mark.parametrize("gone", ["probe dir", "probe part", "other part", "every dir"])
+def test_a_trace_part_head_tracks_but_the_checkout_lacks_refuses(tmp_path, probe_in, gone):
+    sim, ops = _engine(tmp_path, probe_in=probe_in)
+    trace = tmp_path / "trace_out"
+    dirs = {"base": trace / TIERB, "model": trace / f"{TIERB}__some-model"}
+    rule = ext.HoldoutRule(str(sim), str(ops / "dashboard.json"), str(trace))
+    withheld = []
+    ext.build_swaps([TIERB], str(sim), rule, withheld)
+    assert withheld == [f"{TIERB}#1", f"{TIERB}#3"]       # full checkout: the trace-time prompt is read
+    other = "model" if probe_in == "base" else "base"
+    if gone == "probe dir":
+        shutil.rmtree(dirs[probe_in])
+    elif gone == "probe part":
+        (dirs[probe_in] / "batch_summary.part_01.json").unlink()
+    elif gone == "other part":
+        (dirs[other] / "batch_summary.part_01.json").unlink()
+    else:
+        shutil.rmtree(dirs["base"])
+        shutil.rmtree(dirs["model"])
+    rule = ext.HoldoutRule(str(sim), str(ops / "dashboard.json"), str(trace))
+    refusal = _refused(lambda: ext.build_swaps([TIERB], str(sim), rule, []))
+    assert TIERB in refusal and "not on disk" in refusal
+
+
+def test_main_refuses_when_the_base_dir_holding_the_probe_is_missing(tmp_path, capsys):
+    # The live case: the three rows withheld only by a trace-time prompt carry it
+    # in the base dir alone; a checkout without it still holds model dirs' parts.
+    sim, ops = _engine(tmp_path, probe_in="base")
+    shutil.rmtree(tmp_path / "trace_out" / TIERB)
+    depth = tmp_path / "jlens_depth.json"
+    depth.write_text(json.dumps({"blocks": [{"id": TIERB}]}), encoding="utf-8")
+    out = tmp_path / "jlens_swaps.json"
+    out.write_text('{"kept": 1}', encoding="utf-8")
+    rc = ext.main(_main_args(tmp_path, sim, ops, depth, out, tmp_path / "trace_out"))
+    printed = capsys.readouterr().out
+    assert rc == 2 and printed.startswith("CONFIG ERROR") and f"{TIERB}/batch_summary.part_01.json" in printed
+    assert out.read_text() == '{"kept": 1}'
+
+
+def test_a_tierb_batch_not_traced_on_this_branch_uses_its_accepted_prompt(tmp_path, capsys):
     sim, ops = _engine(tmp_path)
     (sim / f"{UNTRACED}.json").write_text(json.dumps([
-        {"top_prompt": _phrase("zq untraced words", False), "bottom_prompt": "b", "target_clinical_token": " t"}]),
+        {"top_prompt": _phrase("zq untraced words", False), "bottom_prompt": "b", "target_clinical_token": " t"},
+        {"top_prompt": _phrase("zq untraced sealed", True), "bottom_prompt": "c", "target_clinical_token": " t"}]),
         encoding="utf-8")
     rule = ext.HoldoutRule(str(sim), str(ops / "dashboard.json"), str(tmp_path / "trace_out"))
-    assert UNTRACED in _refused(lambda: ext.build_swaps([UNTRACED], str(sim), rule, []))
+    withheld = []
+    assert set(ext.build_swaps([UNTRACED], str(sim), rule, withheld)) == {f"{UNTRACED}#1"}
+    assert withheld == [f"{UNTRACED}#2"]
     # Tier A and alias stems never consult the trace store, so they need no trace dir
     assert set(ext.build_swaps([TIER_A, ALIAS], str(sim), rule, [])) == {f"{TIER_A}#1", f"{ALIAS}#2"}
     depth = tmp_path / "jlens_depth.json"
     depth.write_text(json.dumps({"blocks": [{"id": TIERB}, {"id": UNTRACED}]}), encoding="utf-8")
     out = tmp_path / "jlens_swaps.json"
-    out.write_text('{"kept": 1}', encoding="utf-8")
     rc = ext.main(_main_args(tmp_path, sim, ops, depth, out, tmp_path / "trace_out"))
-    printed = capsys.readouterr().out
-    assert rc == 2 and UNTRACED in printed and printed.startswith("CONFIG ERROR")   # a stop, not a refusal
-    assert out.read_text() == '{"kept": 1}'
+    assert rc == 0, capsys.readouterr().out
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["holdout_withheld"] == 3
+    assert set(payload["swaps"]) == {f"{TIERB}#2", f"{UNTRACED}#1"}
+
+
+def test_the_rule_refuses_when_git_cannot_say_which_parts_head_tracks(tmp_path):
+    no_git = tmp_path / "no_git"
+    _engine(no_git, commit=False)
+    no_commit = tmp_path / "no_commit"
+    _engine(no_commit, commit=False)
+    subprocess.run(["git", "init", "-q", "-b", "main", str(no_commit)], check=True, capture_output=True)
+    untracked = tmp_path / "untracked"
+    _engine(untracked, commit=False)
+    _commit(untracked, "data", "ops")                    # HEAD tracks nothing under trace_out/
+    for repo, expected in ((no_git, "cannot list"), (no_commit, "cannot list"), (untracked, "tracks no file")):
+        rule = ext.HoldoutRule(str(repo / "data" / "simulated"), str(repo / "ops" / "dashboard.json"),
+                               str(repo / "trace_out"))
+        refusal = _refused(lambda: ext.build_swaps([TIERB], str(repo / "data" / "simulated"), rule, []))
+        assert expected in refusal, (repo.name, refusal)
 
 
 def test_an_unreadable_or_malformed_trace_part_refuses(tmp_path):
-    part = tmp_path / "trace_out" / f"{TIERB}__some-model" / "batch_summary.part_01.json"
-    for bad in ("{not json", json.dumps([1, 2]), json.dumps({"results": [{"index": 3}]}),
-                json.dumps({"results": [{"index": "3", "prompts": {"clinical": "zq x"}}]})):
-        sim, ops = _engine(tmp_path)
-        part.write_text(bad, encoding="utf-8")
-        rule = ext.HoldoutRule(str(sim), str(ops / "dashboard.json"), str(tmp_path / "trace_out"))
+    for n, bad in enumerate(("{not json", json.dumps([1, 2]), json.dumps({"results": [{"index": 3}]}),
+                             json.dumps({"results": [{"index": "3", "prompts": {"clinical": "zq x"}}]}))):
+        case = tmp_path / f"case{n}"
+        sim, ops = _engine(case)
+        (case / "trace_out" / f"{TIERB}__some-model" / "batch_summary.part_01.json").write_text(bad, encoding="utf-8")
+        rule = ext.HoldoutRule(str(sim), str(ops / "dashboard.json"), str(case / "trace_out"))
         assert TIERB in _refused(lambda: ext.build_swaps([TIERB], str(sim), rule, [])), bad
-        for d in ("data", "ops", "trace_out"):
-            shutil.rmtree(tmp_path / d)
 
 
 def test_main_publishes_the_withheld_count_and_no_holdout_key(tmp_path, capsys):

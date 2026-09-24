@@ -23,12 +23,22 @@ hashes holdout (Amendment 1; the trace-time reading is the conservative union
 of divergence-log row 2026-07-17). The count is published as holdout_withheld.
 A dashboard with no tierb.start_utc makes the rule unenforceable, so the export
 refuses (exit 2) rather than publish unfiltered. So does a trace-time source it
-cannot read in full (Codex review of PR #32): no --trace-out directory, a Tier B
-batch with no batch_summary part in any model's trace dir, a part that does not
-parse or is not {"results": [...]}, or a result row without an integer index
-and a clinical prompt. An absent source is not an empty one: a trace-time prompt
-that hashes holdout would go unseen and the row would publish. Tier A and alias
-stems never consult the trace store.
+cannot read in full (Codex review of PR #32): no --trace-out directory; git
+unable to list the batch_summary parts HEAD tracks under it, or HEAD tracking
+none there; a part HEAD tracks for the batch (in its base dir or any
+<stem>__<model> dir) that is not on disk; a part that does not parse or is not
+{"results": [...]}; or a result row without an integer index and a clinical
+prompt. An absent source is not an empty one: a trace-time prompt that hashes
+holdout would go unseen and the row would publish. Probe extension depends on
+the traced model (batch_eval.py extends by that model's top token), so one
+model's dir cannot stand in for another's. The list of parts comes from HEAD's
+tree, not the index or the working tree: the broken cloud bootstrap
+(docs/fresh_session_bootstrap.md) empties the index and leaves trace_out/ partly
+on disk, and a sparse checkout keeps files off disk. A Tier B batch with no part
+at HEAD and none on disk has not been traced on this branch; it has no
+trace-time prompt, and only its accepted prompt applies. A later trace can add
+one, which the next export applies. Tier A and alias stems never consult the
+trace store.
 
 Usage:
   python scripts/export_pair_swaps.py [--depth ../patientwords/data/jlens_depth.json] \
@@ -38,7 +48,10 @@ Usage:
 
 import argparse
 import difflib
+import fnmatch
 import json
+import os
+import subprocess
 from pathlib import Path
 
 try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
@@ -55,6 +68,40 @@ class TraceStoreError(RuntimeError):
     """The trace-time half of the holdout rule cannot be evaluated; the export refuses."""
 
 
+PART_GLOB = "batch_summary*.json"
+
+
+def tracked_trace_parts(trace_root: Path) -> set[str]:
+    """Every batch_summary part git tracks at HEAD directly inside a run dir of
+    ``trace_root``, as "<run dir>/<file name>".
+
+    Read from HEAD's tree, because the index and the working tree can both be
+    incomplete (see the module docstring). Raises TraceStoreError when git
+    cannot list HEAD there (git missing, not a work tree, no commit, a timeout)
+    or when HEAD tracks no file under ``trace_root``: then a part missing from
+    disk cannot be told from a batch that was never traced."""
+    env = {**os.environ, "LC_ALL": "C"}
+    try:
+        proc = subprocess.run(["git", "-C", str(trace_root), "ls-tree", "-r", "-z", "--name-only", "HEAD"],
+                              capture_output=True, check=False, timeout=120, env=env)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise TraceStoreError(f"cannot list the trace parts git tracks at HEAD under {trace_root}: {exc}") from exc
+    if proc.returncode != 0:
+        err = proc.stderr.decode("utf-8", "replace").strip()
+        raise TraceStoreError(f"cannot list the trace parts git tracks at HEAD under {trace_root}: "
+                              f"{err.splitlines()[-1] if err else f'git exit {proc.returncode}'}")
+    entries = [e for e in proc.stdout.decode("utf-8", "surrogateescape").split("\0") if e]
+    if not entries:
+        raise TraceStoreError(f"git tracks no file under {trace_root} at HEAD, so a trace part missing from "
+                              f"disk cannot be told from a batch that was never traced")
+    parts = set()
+    for rel in entries:
+        segments = rel.split("/")
+        if len(segments) == 2 and fnmatch.fnmatchcase(segments[1], PART_GLOB):
+            parts.add(rel)
+    return parts
+
+
 class HoldoutRule:
     """The Tier B withholding rule as the publishing exporters apply it."""
 
@@ -63,13 +110,16 @@ class HoldoutRule:
         self.sealed: set[str] = holdout_phrases(simulated_dir, dashboard_path)
         self.trace_root = Path(trace_root) if trace_root else None
         self._traced: dict[str, dict[int, set[str]]] = {}
+        self._tracked: set[str] | None = None
 
     def traced_prompts(self, stem: str) -> dict[int, set[str]]:
         """{index: trace-time clinical prompts} over every model's trace dir of a stem.
 
-        Raises TraceStoreError when the trace store is absent, when the stem has
-        no batch_summary part in any model's dir, or when any part or result row
-        cannot be read as {"results": [{"index": int, "prompts": {"clinical": str}}]}.
+        Raises TraceStoreError when the trace store is absent, when git cannot
+        say which parts HEAD tracks under it, when a part HEAD tracks for the
+        stem is not on disk, or when any part or result row cannot be read as
+        {"results": [{"index": int, "prompts": {"clinical": str}}]}. A stem with
+        no part at HEAD and none on disk was not traced on this branch: {}.
         Only Tier B stems reach here (withholds)."""
         if stem in self._traced:
             return self._traced[stem]
@@ -77,11 +127,20 @@ class HoldoutRule:
         if root is None or not root.is_dir():
             raise TraceStoreError(f"no trace store at {root}; the trace-time prompts of Tier B batch "
                                   f"{stem} cannot be read")
+        if self._tracked is None:
+            self._tracked = tracked_trace_parts(root)
+        tracked = sorted(rel for rel in self._tracked
+                         if rel.split("/", 1)[0] == stem or rel.split("/", 1)[0].startswith(f"{stem}__"))
+        missing = [rel for rel in tracked if not (root / rel).is_file()]
+        if missing:
+            raise TraceStoreError(f"Tier B batch {stem}: {len(missing)} of the {len(tracked)} batch_summary "
+                                  f"part(s) git tracks at HEAD are not on disk under {root} "
+                                  f"(partial or sparse checkout), first {missing[:3]}")
         dirs = [d for d in (root / stem, *sorted(root.glob(f"{stem}__*"))) if d.is_dir()]
-        parts = [part for d in dirs for part in sorted(d.glob("batch_summary*.json"))]
-        if not parts:
-            raise TraceStoreError(f"Tier B batch {stem} has no batch_summary part under {root} "
-                                  f"(never traced, or missing from this checkout)")
+        parts = [part for d in dirs for part in sorted(d.glob(PART_GLOB))]
+        if not parts:              # none at HEAD (checked above) and none on disk: not traced here
+            self._traced[stem] = {}
+            return self._traced[stem]
         found: dict[int, set[str]] = {}
         bad_parts: list[str] = []
         bad_rows = 0
