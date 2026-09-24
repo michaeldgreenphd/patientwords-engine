@@ -74,9 +74,15 @@ and exits non-zero rather than reporting a number.
 
 | model | role | $/1M in | $/1M out | source |
 |---|---|---|---|---|
-| `openrouter:openai/gpt-5.4-mini` | assistant, sandbox | 0.80 | 4.75 | `data/advice_providers.json :: openai.pricing` |
-| `openrouter:x-ai/grok-4.3` | patient | 1.32 | 2.63 | `data/advice_providers.json :: xai.default_pricing` |
+| `openrouter:openai/gpt-5.4-mini` | assistant, sandbox | 0.80 | 4.75 | `data/advice_providers.json :: openrouter.pricing` |
+| `openrouter:x-ai/grok-4.3` | patient | 1.32 | 2.63 | `data/advice_providers.json :: openrouter.pricing` |
 | `claude-opus-4-8` | jury | 5.00 | 25.00 | `medlang_circuits/evaluate_models.py :: PRICING` |
+
+Since 2026-09-23 the registry's `openrouter.pricing` carries reviewed entries
+for both OpenRouter slugs, and `scripts/pab_probe_cost.py` lets them override
+the vendor entries (`openai.pricing`, `xai.default_pricing`) that supplied
+these rates before. The rates did not change, so no figure in this document moved; a
+change to either vendor entry no longer moves them.
 
 `data/advice_providers.json` is this repo's **reviewed** provider registry, verified
 against vendor docs on 2026-07-21 and carrying at least one correction from a live
