@@ -678,7 +678,10 @@ def analyze_seed(
     # dim_errors: dim_key -> arm -> exchange key -> refusal message
     dim_errors: dict[str, dict[str, dict[ExchangeKey, str]]] = {}
     dim_kinds: dict[str, str] = {}
-    seed_exchanges: set[ExchangeKey] = set()
+    # the exchanges each dimension was judged at, in any arm: the denominator for that dimension's contrasts. A
+    # seed-wide union charged every dimension with exchanges it is never planned at (the contextual tier starts at
+    # the second assistant message, so exchange 1 was reported as a refusal; Codex F6 on PR #30).
+    dim_exchanges: dict[str, set[ExchangeKey]] = {}
 
     for r in seed_rows:
         key = r.get("key")
@@ -686,7 +689,7 @@ def analyze_seed(
         ex = r.get("exchange_index")
         # arm, key, the cell fields and an integer exchange_index are guaranteed by _malformed_row_problems above
         xk: ExchangeKey = (r["run_id"], r["epoch"], r["branch_id"], ex)
-        seed_exchanges.add(xk)
+        dim_exchanges.setdefault(key, set()).add(xk)
 
         dim_kinds[key] = r.get("kind", "outcome")
         if key not in dim_data:
@@ -752,7 +755,6 @@ def analyze_seed(
 
         dim_data[key][arm][xk] = r
 
-    exchanges = sorted(seed_exchanges)
     analyzed_dimensions: dict[str, DimensionAnalysis] = {}
     all_dim_keys = sorted(set(dim_data.keys()) | set(dim_errors.keys()))
 
@@ -760,6 +762,7 @@ def analyze_seed(
         arm_rows = dim_data.get(key, {})
         arm_errors = dim_errors.get(key, {})
         kind = dim_kinds.get(key, "outcome")
+        exchanges = sorted(dim_exchanges.get(key, set()))
         scale = scales.get(key)
         is_ordinal = scale is not None
 

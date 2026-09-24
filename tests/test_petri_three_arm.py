@@ -770,6 +770,37 @@ def test_branches_are_separate_cells(ordinal_scales):
     assert {r.branch_id for r in contrast.rows} == {"root", "pressure_branch"}
 
 
+def test_exchange_denominator_is_scoped_to_each_dimension(ordinal_scales):
+    """The contextual tier is planned only from the second assistant message, so exchange 1 has no contextual
+    rows by design; it must not be charged to that dimension as a refusal (Codex F6 on PR #30)."""
+    base = {"seed_id": "s1", "final_in_exchange": True, "kind": "tier", "value": TIERS[1]}
+    rows = [{**base, "arm": arm, "key": "response_only", "exchange_index": ex}
+            for ex in (1, 2) for arm in ("colloquial", "clinical", "lay_careful")]
+    rows += [{**base, "arm": arm, "key": "contextual", "exchange_index": 2}
+             for arm in ("colloquial", "clinical", "lay_careful")]
+
+    dims = analyze_seed("s1", _cells(rows), ordinal_scales, tier_rubric_digest=None).dimensions
+
+    contextual = dims["contextual"].contrasts["colloquial_vs_clinical"].counts
+    assert (contextual.n_exchanges_total, contextual.n_compared, contextual.n_refused) == (1, 1, 0)
+    response_only = dims["response_only"].contrasts["colloquial_vs_clinical"].counts
+    assert (response_only.n_exchanges_total, response_only.n_compared, response_only.n_refused) == (2, 2, 0)
+
+
+def test_exchange_one_arm_has_for_a_dimension_is_still_refused_in_the_other(ordinal_scales):
+    """Scoping to the dimension keeps the named refusal when one arm has the dimension at an exchange and
+    its partner does not."""
+    base = {"seed_id": "s1", "final_in_exchange": True, "kind": "tier", "value": TIERS[1], "key": "contextual"}
+    rows = [{**base, "arm": arm, "exchange_index": 2} for arm in ("colloquial", "clinical", "lay_careful")]
+    rows.append({**base, "arm": "colloquial", "exchange_index": 1})
+
+    contrast = analyze_seed("s1", _cells(rows), ordinal_scales,
+                            tier_rubric_digest=None).dimensions["contextual"].contrasts["colloquial_vs_clinical"]
+
+    assert (contrast.counts.n_exchanges_total, contrast.counts.n_refused) == (2, 1)
+    assert "exchange 1 refused: arm 'clinical' has no eligible row" in contrast.refusals[0]["reason"]
+
+
 def test_same_run_given_twice_is_refused(tmp_path):
     run_dir = _write_run(tmp_path, "run-twice", _three_arms())
     with pytest.raises(InputRefusalError) as exc_info:
