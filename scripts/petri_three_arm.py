@@ -203,6 +203,93 @@ def load_ordinal_scales(
     return scales
 
 
+# Fields judge_runner.analysis_rows() copies from each judgment row unchanged.
+FIELDS_FROM_JUDGMENT = (
+    "conversation_id", "turn_id", "assistant_turn_index", "exchange_index", "final_in_exchange",
+    "kind", "key", "judge_model", "not_applicable_reason",
+)
+# Fields it takes from the manifest tree and branch the judgment's conversation belongs to.
+FIELDS_FROM_MANIFEST = ("seed_id", "tree_id", "epoch", "arm", "branch_id", "condition_id")
+LEADING_LINE_AT_ANALYSIS = "leading_line_at_analysis"
+
+
+def _bound_judgments(rdir: Path, manifest: Mapping[str, Any], run_id: str) -> list[dict[str, Any]]:
+    """The run's judgments.jsonl, refused unless it digests to the value the manifest binds.
+
+    A resumed judging pass appends rows and then rebinds, so a file that no longer matches the binding
+    holds rows no completed pass vouched for (or was edited)."""
+    bound = (manifest.get("artifacts") or {}).get("judgments_sha256")
+    jpath = rdir / "judgments.jsonl"
+    if not bound:
+        raise InputRefusalError(
+            f"Run '{run_id}' manifest binds no judgments (artifacts.judgments_sha256 is absent), so its "
+            "analysis_rows.jsonl cannot be authenticated"
+        )
+    if not jpath.is_file():
+        raise InputRefusalError(f"Run '{run_id}' manifest binds judgments but {jpath} is missing")
+    actual = sha256_file(jpath)
+    if actual != bound:
+        raise InputRefusalError(
+            f"Run '{run_id}' judgments.jsonl digests to {actual}, not the bound {bound}: rows were appended or "
+            "edited after the last completed judging pass bound it"
+        )
+    return [json.loads(line) for line in jpath.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def _derived_row_problems(
+    rows: Sequence[Mapping[str, Any]],
+    judgments: Sequence[Mapping[str, Any]],
+    manifest: Mapping[str, Any],
+) -> list[str]:
+    """Where analysis_rows.jsonl departs from what analysis_rows() derives from the bound judgments.
+
+    analysis_rows() emits exactly one row per judgment, in file order, so the two files align line for
+    line. A stale file (derived before a resumed pass appended judgments) fails the count; an edited one
+    fails the field comparison. Checked per line: every field copied from the judgment, the instrument
+    digest where the row carries it, the value (equal, or a leading-line re-read of a null judgment), the
+    judge error, the eligibility flags, and every field taken from the manifest tree.
+    """
+    if len(rows) != len(judgments):
+        return [f"analysis_rows.jsonl has {len(rows)} rows but the bound judgments.jsonl has {len(judgments)}; "
+                "the derived rows are stale or edited"]
+    by_conv: dict[str, dict[str, Any]] = {}
+    for tree in manifest.get("trees") or []:
+        for b in tree.get("branches") or []:
+            by_conv[b.get("conversation_id")] = {
+                "seed_id": tree.get("seed_id"), "tree_id": tree.get("tree_id"), "epoch": tree.get("epoch"),
+                "arm": tree.get("arm"), "branch_id": b.get("branch_id"), "condition_id": b.get("condition_id"),
+                "branched_from_turn_id": b.get("branched_from_turn_id"),
+            }
+    problems: list[str] = []
+    for line_no, (a, j) in enumerate(zip(rows, judgments), start=1):
+        bad = [f for f in FIELDS_FROM_JUDGMENT if a.get(f) != j.get(f)]
+        if "prompt_file_digest" in a and a["prompt_file_digest"] != j.get("prompt_file_digest"):
+            bad.append("prompt_file_digest")
+        re_read = a.get("value_source") == LEADING_LINE_AT_ANALYSIS
+        if re_read:
+            if j.get("value") is not None or a.get("value") is None:
+                bad.append("value")
+        elif a.get("value") != j.get("value"):
+            bad.append("value")
+        if a.get("judge_error") != (None if re_read else j.get("judge_error")):
+            bad.append("judge_error")
+        info = by_conv.get(a.get("conversation_id"))
+        if info is None:
+            bad.append("conversation_id not in the manifest's trees")
+        else:
+            bad.extend(f for f in FIELDS_FROM_MANIFEST if a.get(f) != info[f])
+            anchor = info["branched_from_turn_id"]
+            shared = anchor is not None and isinstance(a.get("turn_id"), int) and a["turn_id"] <= anchor
+            if a.get("shared_prefix", False) != shared:
+                bad.append("shared_prefix")
+            eligible = (not shared) and a.get("value") is not None and a.get("value") != NOT_APPLICABLE
+            if "row_eligible" in a and a["row_eligible"] != eligible:
+                bad.append("row_eligible")
+        if bad:
+            problems.append(f"line {line_no}: {', '.join(bad)}")
+    return problems
+
+
 def load_run_rows(
     run_dir: Path | str,
     outcome_registry_path: Path | str | None = None,
@@ -278,6 +365,23 @@ def load_run_rows(
 
     if not rows:
         raise ValueError(f"Run directory {rdir} contains no rows")
+
+    # analysis_rows.jsonl is derived and unbound: authenticate every row against the judgments the manifest binds and
+    # the manifest's own tree before any count is made from it (Codex F2 on PR #30)
+    judgments = _bound_judgments(rdir, manifest, run_id)
+    problems = _derived_row_problems(rows, judgments, manifest)
+    if problems:
+        raise InputRefusalError(
+            f"Run '{run_id}' analysis_rows.jsonl does not match its bound judgments.jsonl and manifest "
+            f"({len(problems)} problem(s)): " + "; ".join(problems[:5]) + (" ..." if len(problems) > 5 else "")
+            + f". Re-derive it with `python -m scripts.petri_audit.cli analyze --seeds <seed file of record> "
+            f"--run-dir {rdir}`"
+        )
+    for row, judgment in zip(rows, judgments):
+        # rows derived before analysis_rows() carried the instrument digest take it from the bound judgment they
+        # were derived from (checked equal above wherever the row does carry it)
+        if "prompt_file_digest" not in row:
+            row["prompt_file_digest"] = judgment.get("prompt_file_digest")
 
     # Check for Wave 1 runs
     arms_in_run = {r.get("arm") for r in rows if r.get("arm")}

@@ -40,6 +40,81 @@ def ordinal_scales() -> dict[str, list[str]]:
     return load_ordinal_scales()
 
 
+JUDGE = "claude-haiku-4-5"
+TIERS = load_ordinal_scales()["response_only"]
+
+
+def _write_run(
+    root: Path,
+    name: str,
+    rows: list[dict],
+    *,
+    seed_digests: dict[str, str] | None = None,
+    registry_sha: str | None = None,
+    manifest_update=None,
+    write_analysis_rows: bool = True,
+) -> Path:
+    """A synthetic run directory shaped like the lane's output: the analysis rows as
+    judge_runner.analysis_rows() derives them, the judgments they came from (bound in the
+    manifest by digest), and one manifest tree per (seed, arm, epoch). Synthetic rows only."""
+    run_dir = root / name
+    run_dir.mkdir()
+    full: list[dict] = []
+    for r in rows:
+        a = {"epoch": 1, "branch_id": "root", "judge_model": JUDGE, "not_applicable_reason": None,
+             "judge_error": None, "shared_prefix": False, **r}
+        a.setdefault("condition_id", a["arm"])
+        a.setdefault("tree_id", f"{name}:{a['seed_id']}:{a['arm']}:{a['epoch']}")
+        a.setdefault("conversation_id", f"{a['tree_id']}:{a['branch_id']}")
+        a.setdefault("turn_id", 2 * a["exchange_index"])
+        a.setdefault("assistant_turn_index", a["turn_id"] // 2)
+        a.setdefault("row_eligible", a.get("value") is not None and a.get("value") != "not_applicable")
+        a.setdefault("prompt_file_digest", "0123456789ab")
+        full.append(a)
+    judgments = []
+    for a in full:
+        j = {f: a.get(f) for f in ("conversation_id", "turn_id", "assistant_turn_index", "exchange_index",
+                                   "final_in_exchange", "kind", "key", "judge_model", "not_applicable_reason",
+                                   "prompt_file_digest", "seed_id", "condition_id", "branch_id", "tree_id", "epoch")}
+        re_read = a.get("value_source") == "leading_line_at_analysis"
+        j["value"] = None if re_read else a.get("value")
+        j["judge_error"] = "synthetic out-of-vocabulary answer" if re_read else a.get("judge_error")
+        judgments.append(j)
+    (run_dir / "judgments.jsonl").write_text("".join(json.dumps(j) + "\n" for j in judgments), encoding="utf-8")
+    trees: dict[str, dict] = {}
+    for a in full:
+        tree = trees.setdefault(a["tree_id"], {"tree_id": a["tree_id"], "seed_id": a["seed_id"], "arm": a["arm"],
+                                               "epoch": a["epoch"], "branches": []})
+        if all(b["conversation_id"] != a["conversation_id"] for b in tree["branches"]):
+            tree["branches"].append({"branch_id": a["branch_id"], "condition_id": a["condition_id"],
+                                     "conversation_id": a["conversation_id"], "branched_from_turn_id": None})
+    manifest = {
+        "run_id": name,
+        "framework": {"outcome_registry_sha256": registry_sha or sha256_file(DEFAULT_OUTCOME_REGISTRY)},
+        "chain": {"identity_sha256": f"ident-{name}"},
+        "adapter": {"engine_sha": f"commit-{name}"},
+        "seeds": [{"seed_id": s, "seed_sha256": (seed_digests or {}).get(s, "5" * 64)}
+                  for s in sorted({a["seed_id"] for a in full})],
+        "trees": list(trees.values()),
+        "artifacts": {"judgments_path": f"{name}/judgments.jsonl",
+                      "judgments_sha256": sha256_file(run_dir / "judgments.jsonl"),
+                      "judge_of_record": {"judge_model": JUDGE}},
+    }
+    if manifest_update is not None:
+        manifest_update(manifest)
+    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    if write_analysis_rows:
+        (run_dir / "analysis_rows.jsonl").write_text("".join(json.dumps(a) + "\n" for a in full), encoding="utf-8")
+    return run_dir
+
+
+def _three_arms(seed_id: str = "s1", exchanges=(1,), value=None, **extra) -> list[dict]:
+    """One final response_only tier row per arm and exchange."""
+    return [{"seed_id": seed_id, "arm": arm, "exchange_index": ex, "final_in_exchange": True, "kind": "tier",
+             "key": "response_only", "value": TIERS[1] if value is None else value, **extra}
+            for ex in exchanges for arm in ("colloquial", "clinical", "lay_careful")]
+
+
 # ------------------------------------------------------------------ Wave 1 Refusal
 
 
@@ -297,20 +372,9 @@ def test_partially_malformed_rows_are_refused_not_skipped(ordinal_scales, broken
 
 def test_rows_without_seed_id_are_refused_not_skipped(tmp_path, capsys):
     """A row with no seed_id used to be dropped before grouping; it is refused with a count."""
-    run_dir = tmp_path / "run_no_seed"
-    run_dir.mkdir()
-    manifest = {
-        "run_id": "run-no-seed",
-        "framework": {"outcome_registry_sha256": sha256_file(DEFAULT_OUTCOME_REGISTRY)},
-        "seeds": [{"seed_id": "s1", "seed_sha256": "seed-sha-1"}],
-        "artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5"}},
-    }
-    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
-    base = {"exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only",
-            "value": "v", "row_eligible": True}
-    rows = [{**base, "seed_id": "s1", "arm": arm} for arm in ("colloquial", "clinical", "lay_careful")]
-    rows.append({**base, "seed_id": None, "arm": "clinical", "turn_id": 9})
-    (run_dir / "analysis_rows.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    rows = _three_arms()
+    rows.append({**_three_arms(exchanges=(2,))[1], "seed_id": ""})
+    run_dir = _write_run(tmp_path, "run-no-seed", rows)
 
     with pytest.raises(InputRefusalError) as exc_info:
         analyze_run_directories([run_dir])
@@ -591,32 +655,8 @@ def test_dimensions_without_ordinal_declaration_default_to_nominal(ordinal_scale
 
 def test_provenance_and_header_invariants(tmp_path):
     """Analysis report carries the required header and provenance block."""
-    run_dir = tmp_path / "run_synthetic"
-    run_dir.mkdir()
-
     registry_sha = sha256_file(DEFAULT_OUTCOME_REGISTRY)
-    manifest = {
-        "run_id": "run-synth-123",
-        "framework": {"outcome_registry_sha256": registry_sha},
-        "chain": {"identity_sha256": "ident-sha-456"},
-        "adapter": {"engine_sha": "commit-789"},
-        "seeds": [{"seed_id": "s1", "seed_sha256": "seed-sha-s1"}],
-        "artifacts": {
-            "judge_of_record": {
-                "judge_model": "claude-haiku-4-5",
-            }
-        },
-    }
-    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
-
-    rows = [
-        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-    ]
-    (run_dir / "analysis_rows.jsonl").write_text(
-        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
-    )
+    run_dir = _write_run(tmp_path, "run-synth-123", _three_arms(), seed_digests={"s1": "e" * 64})
 
     report = analyze_run_directories([run_dir])
 
@@ -628,10 +668,10 @@ def test_provenance_and_header_invariants(tmp_path):
 
     prov = report.provenance
     assert prov.run_ids == ["run-synth-123"]
-    assert prov.manifest_identity_sha256 == ["ident-sha-456"]
-    assert prov.engine_commits == ["commit-789"]
-    assert prov.judge_of_record == ["claude-haiku-4-5"]
-    assert prov.seed_digests == {"s1": "seed-sha-s1"}
+    assert prov.manifest_identity_sha256 == ["ident-run-synth-123"]
+    assert prov.engine_commits == ["commit-run-synth-123"]
+    assert prov.judge_of_record == [JUDGE]
+    assert prov.seed_digests == {"s1": "e" * 64}
     assert prov.outcome_registry_sha256 == registry_sha
     assert prov.manifest_outcome_registry_sha256 == {"run-synth-123": registry_sha}
     assert prov.rubric_manifest_status == "not recorded in manifest"
@@ -639,7 +679,7 @@ def test_provenance_and_header_invariants(tmp_path):
     md = format_markdown_summary(report)
     assert "# " + HEADER_NOTE in md
     assert "run-synth-123" in md
-    assert "- **Judge of record**: claude-haiku-4-5" in md
+    assert f"- **Judge of record**: {JUDGE}" in md
     assert "- **Outcome registry**: `docs/framework/outcome_dimensions.draft.json`" in md
     assert "colloquial_vs_clinical" in md
 
@@ -648,21 +688,9 @@ def test_run_with_only_raw_judgments_is_refused_with_the_derivation_step(tmp_pat
     """judge_runner writes judgments.jsonl without `arm` (analysis_rows() adds it from the manifest), so
     reading raw judgments misreported every Wave-2 run as Wave 1. The fallback is gone: the run is refused
     with the command that derives the rows (Codex F4 on PR #30)."""
-    run_dir = tmp_path / "run_raw_only"
-    run_dir.mkdir()
-    manifest = {
-        "run_id": "run-raw-only",
-        "framework": {"outcome_registry_sha256": sha256_file(DEFAULT_OUTCOME_REGISTRY)},
-        "seeds": [{"seed_id": "s1", "seed_sha256": "c" * 64}],
-        "artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5"}},
-    }
-    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
-    # the labels judge_runner.labels_from_manifest puts on a judgment: seed, condition, branch, tree, epoch; no arm
-    judgments = [{"conversation_id": f"conv-{c}", "turn_id": 2, "exchange_index": 1, "final_in_exchange": True,
-                  "kind": "tier", "key": "response_only", "value": "v", "seed_id": "s1", "condition_id": c,
-                  "branch_id": "root", "tree_id": f"tree-{c}", "epoch": 1}
-                 for c in ("colloquial", "clinical", "lay_careful")]
-    (run_dir / "judgments.jsonl").write_text("".join(json.dumps(j) + "\n" for j in judgments), encoding="utf-8")
+    run_dir = _write_run(tmp_path, "run-raw-only", _three_arms(), write_analysis_rows=False)
+    judgments = (run_dir / "judgments.jsonl").read_text(encoding="utf-8")
+    assert '"arm"' not in judgments  # the labels judge_runner puts on a judgment carry no arm
 
     with pytest.raises(InputRefusalError) as exc_info:
         analyze_run_directories([run_dir])
@@ -677,22 +705,8 @@ def test_run_with_only_raw_judgments_is_refused_with_the_derivation_step(tmp_pat
 def test_conflicting_seed_digests_across_runs_are_refused(tmp_path, capsys):
     """Two runs that record different digests for one seed_id would be pooled under that id while the
     provenance kept only the last digest; the analysis refuses instead (Codex F9 on PR #30)."""
-    run_dirs = []
-    for name, seed_sha in (("run-a", "a" * 64), ("run-b", "b" * 64)):
-        run_dir = tmp_path / name
-        run_dir.mkdir()
-        manifest = {
-            "run_id": name,
-            "framework": {"outcome_registry_sha256": sha256_file(DEFAULT_OUTCOME_REGISTRY)},
-            "seeds": [{"seed_id": "s1", "seed_sha256": seed_sha}],
-            "artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5"}},
-        }
-        (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
-        rows = [{"seed_id": "s1", "arm": arm, "exchange_index": 1, "final_in_exchange": True, "kind": "tier",
-                 "key": "response_only", "value": "v", "row_eligible": True}
-                for arm in ("colloquial", "clinical", "lay_careful")]
-        (run_dir / "analysis_rows.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
-        run_dirs.append(run_dir)
+    run_dirs = [_write_run(tmp_path, name, _three_arms(), seed_digests={"s1": seed_sha})
+                for name, seed_sha in (("run-a", "a" * 64), ("run-b", "b" * 64))]
 
     with pytest.raises(InputRefusalError) as exc_info:
         analyze_run_directories(run_dirs)
@@ -703,28 +717,87 @@ def test_conflicting_seed_digests_across_runs_are_refused(tmp_path, capsys):
     assert "REFUSED: seed 's1' has digest" in capsys.readouterr().err
 
 
+# ------------------------------------------- derived rows authenticated (Codex F2)
+
+
+def _append_judgment(run_dir: Path, *, rebind: bool) -> None:
+    """What a resumed judging pass does: append a row to judgments.jsonl and, when it completes, rebind."""
+    jpath = run_dir / "judgments.jsonl"
+    rows = [json.loads(line) for line in jpath.read_text(encoding="utf-8").splitlines()]
+    extra = {**rows[-1], "turn_id": rows[-1]["turn_id"] + 2, "exchange_index": rows[-1]["exchange_index"] + 1}
+    jpath.write_text(jpath.read_text(encoding="utf-8") + json.dumps(extra) + "\n", encoding="utf-8")
+    if rebind:
+        manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+        manifest["artifacts"]["judgments_sha256"] = sha256_file(jpath)
+        (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+def test_stale_analysis_rows_after_a_resumed_pass_are_refused(tmp_path):
+    """A resumed pass appends and rebinds judgments; analysis_rows.jsonl derived before it would silently omit
+    the new judgments, so its row count is checked against the bound file (Codex F2 on PR #30)."""
+    run_dir = _write_run(tmp_path, "run-stale", _three_arms())
+    _append_judgment(run_dir, rebind=True)
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    msg = str(exc_info.value)
+    assert "analysis_rows.jsonl has 3 rows but the bound judgments.jsonl has 4" in msg
+    assert "petri_audit.cli analyze" in msg
+
+
+def test_judgments_changed_after_binding_are_refused(tmp_path):
+    """Rows appended to judgments.jsonl that no completed pass bound are not a basis for analysis."""
+    run_dir = _write_run(tmp_path, "run-unbound", _three_arms())
+    _append_judgment(run_dir, rebind=False)
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    assert "judgments.jsonl digests to" in str(exc_info.value)
+    assert "not the bound" in str(exc_info.value)
+
+
+def test_manifest_without_bound_judgments_is_refused(tmp_path):
+    run_dir = _write_run(tmp_path, "run-no-binding", _three_arms(),
+                         manifest_update=lambda m: m["artifacts"].pop("judgments_sha256"))
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    assert "manifest binds no judgments" in str(exc_info.value)
+
+
+@pytest.mark.parametrize("field, edit", [
+    ("value", lambda r: TIERS[0] if r["value"] != TIERS[0] else TIERS[1]),
+    ("arm", lambda r: "lay_careful" if r["arm"] != "lay_careful" else "clinical"),
+    ("exchange_index", lambda r: r["exchange_index"] + 1),
+    ("row_eligible", lambda r: not r["row_eligible"]),
+])
+def test_edited_analysis_row_is_refused_by_line_and_field(tmp_path, field, edit):
+    """A derived row edited after derivation no longer matches its judgment or the manifest tree."""
+    run_dir = _write_run(tmp_path, "run-edited", _three_arms())
+    apath = run_dir / "analysis_rows.jsonl"
+    rows = [json.loads(line) for line in apath.read_text(encoding="utf-8").splitlines()]
+    rows[1][field] = edit(rows[1])
+    apath.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    assert f"line 2: {field}" in str(exc_info.value)
+
+
+def test_leading_line_reread_of_a_null_judgment_is_accepted(tmp_path):
+    """analysis_rows() re-reads an out-of-vocabulary outcome answer's first line; that row's value differs from
+    its null judgment by design and is not a mismatch."""
+    rows = _three_arms()
+    rows[0] = {**rows[0], "value_source": "leading_line_at_analysis"}
+    run_dir = _write_run(tmp_path, "run-reread", rows)
+
+    report = analyze_run_directories([run_dir])
+    assert report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"].counts.n_compared == 1
+
+
 def test_manifest_lacking_judge_of_record_is_refused_by_name(tmp_path):
     """A run directory whose manifest lacks artifacts.judge_of_record must be refused by name."""
-    run_dir = tmp_path / "run_synthetic"
-    run_dir.mkdir()
-
-    manifest = {
-        "run_id": "run-synth-123",
-        "framework": {"outcome_registry_sha256": sha256_file(DEFAULT_OUTCOME_REGISTRY)},
-        "chain": {"identity_sha256": "ident-sha-456"},
-        "adapter": {"engine_sha": "commit-789"},
-        "seeds": [{"seed_id": "s1", "seed_sha256": "seed-sha-s1"}],
-    }
-    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
-
-    rows = [
-        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-    ]
-    (run_dir / "analysis_rows.jsonl").write_text(
-        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
-    )
+    run_dir = _write_run(tmp_path, "run-synth-123", _three_arms(),
+                         manifest_update=lambda m: m["artifacts"].pop("judge_of_record"))
 
     with pytest.raises(ValueError) as exc_info:
         analyze_run_directories([run_dir])
@@ -736,28 +809,8 @@ def test_manifest_lacking_judge_of_record_is_refused_by_name(tmp_path):
 
 def test_manifest_outcome_registry_digest_matching_proceeds(tmp_path):
     """A run whose manifest framework.outcome_registry_sha256 matches loaded registry proceeds."""
-    run_dir = tmp_path / "run_matching"
-    run_dir.mkdir()
-
     registry_sha = sha256_file(DEFAULT_OUTCOME_REGISTRY)
-    manifest = {
-        "run_id": "run-match-001",
-        "framework": {"outcome_registry_sha256": registry_sha},
-        "chain": {"identity_sha256": "ident-sha-1"},
-        "adapter": {"engine_sha": "commit-1"},
-        "seeds": [{"seed_id": "s1", "seed_sha256": "seed-sha-1"}],
-        "artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5"}},
-    }
-    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
-
-    rows = [
-        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-    ]
-    (run_dir / "analysis_rows.jsonl").write_text(
-        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
-    )
+    run_dir = _write_run(tmp_path, "run-match-001", _three_arms())
 
     report = analyze_run_directories([run_dir])
     assert report.provenance.outcome_registry_sha256 == registry_sha
@@ -766,28 +819,8 @@ def test_manifest_outcome_registry_digest_matching_proceeds(tmp_path):
 
 def test_manifest_outcome_registry_digest_mismatch_refused_by_name(tmp_path, capsys):
     """A run whose manifest outcome registry digest differs from loaded registry is refused by name with non-zero exit."""
-    run_dir = tmp_path / "run_mismatch"
-    run_dir.mkdir()
-
     bogus_sha = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-    manifest = {
-        "run_id": "run-mismatch-002",
-        "framework": {"outcome_registry_sha256": bogus_sha},
-        "chain": {"identity_sha256": "ident-sha-2"},
-        "adapter": {"engine_sha": "commit-2"},
-        "seeds": [{"seed_id": "s1", "seed_sha256": "seed-sha-2"}],
-        "artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5"}},
-    }
-    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
-
-    rows = [
-        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-    ]
-    (run_dir / "analysis_rows.jsonl").write_text(
-        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
-    )
+    run_dir = _write_run(tmp_path, "run-mismatch-002", _three_arms(), registry_sha=bogus_sha)
 
     # Direct call raises RegistryMismatchError naming run id, path, and both digests
     with pytest.raises(RegistryMismatchError) as exc_info:
@@ -833,35 +866,15 @@ def test_registry_without_ordinal_flags_reports_nominal_and_names_in_header(tmp_
         ],
     }
     custom_registry.write_text(json.dumps(registry_data), encoding="utf-8")
-    custom_reg_sha = sha256_file(custom_registry)
 
-    run_dir = tmp_path / "run_nominal"
-    run_dir.mkdir()
-
-    manifest = {
-        "run_id": "run-nominal-003",
-        "framework": {"outcome_registry_sha256": custom_reg_sha},
-        "chain": {"identity_sha256": "ident-sha-3"},
-        "adapter": {"engine_sha": "commit-3"},
-        "seeds": [{"seed_id": "s1", "seed_sha256": "seed-sha-3"}],
-        "artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5"}},
-    }
-    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
-
-    rows = [
-        # Arm colloquial
-        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "specific", "row_eligible": True},
-        # Arm clinical
-        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "generic_deferral", "row_eligible": True},
-        # Arm lay_careful
-        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "none", "row_eligible": True},
+    outcome = {"seed_id": "s1", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome",
+               "key": "recommendation_specificity"}
+    rows = _three_arms() + [
+        {**outcome, "arm": "colloquial", "value": "specific"},
+        {**outcome, "arm": "clinical", "value": "generic_deferral"},
+        {**outcome, "arm": "lay_careful", "value": "none"},
     ]
-    (run_dir / "analysis_rows.jsonl").write_text(
-        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
-    )
+    run_dir = _write_run(tmp_path, "run-nominal-003", rows, registry_sha=sha256_file(custom_registry))
 
     report = analyze_run_directories([run_dir], outcome_registry_path=custom_registry)
 
@@ -900,32 +913,9 @@ def test_registry_without_ordinal_flags_reports_nominal_and_names_in_header(tmp_
 
 def test_manifest_rubric_digest_mismatch_refused_by_name(tmp_path, capsys):
     """A run whose manifest records a rubric digest that mismatches loaded rubric is refused by name."""
-    run_dir = tmp_path / "run_rubric_mismatch"
-    run_dir.mkdir()
-
-    registry_sha = sha256_file(DEFAULT_OUTCOME_REGISTRY)
     bogus_rubric_sha = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
-    manifest = {
-        "run_id": "run-rubric-mismatch-004",
-        "framework": {
-            "outcome_registry_sha256": registry_sha,
-            "rubric_sha256": bogus_rubric_sha,
-        },
-        "chain": {"identity_sha256": "ident-sha-4"},
-        "adapter": {"engine_sha": "commit-4"},
-        "seeds": [{"seed_id": "s1", "seed_sha256": "seed-sha-4"}],
-        "artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5"}},
-    }
-    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
-
-    rows = [
-        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
-    ]
-    (run_dir / "analysis_rows.jsonl").write_text(
-        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
-    )
+    run_dir = _write_run(tmp_path, "run-rubric-mismatch-004", _three_arms(),
+                         manifest_update=lambda m: m["framework"].update(rubric_sha256=bogus_rubric_sha))
 
     with pytest.raises(RegistryMismatchError) as exc_info:
         analyze_run_directories([run_dir])
@@ -940,4 +930,3 @@ def test_manifest_rubric_digest_mismatch_refused_by_name(tmp_path, capsys):
     assert exit_code == 2
     captured = capsys.readouterr()
     assert "REFUSED: Run 'run-rubric-mismatch-004' manifest rubric digest" in captured.err
-
