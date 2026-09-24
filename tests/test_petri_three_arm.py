@@ -8,12 +8,15 @@ Covers:
 - Wave 1 refusal (asserts clean refusal on run_35351739969_1)
 - Ordinal direction mapping (upgrade, downgrade, same loaded from data files)
 - Provenance and header invariants (no CIs or p-values)
+- Runs under different outcome-registry versions (pooled per dimension; a differing dimension refused by name)
 """
 from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
+import subprocess
 from copy import deepcopy
 from pathlib import Path
 
@@ -1309,3 +1312,278 @@ def test_rubric_edited_after_the_run_refuses_every_tier_exchange(tmp_path):
     md = format_markdown_summary(report)
     assert f"canonical digest `{rubric_digest(edited)}`" in md
     assert f"tier rows by recorded rubric digest: `{RUBRIC_DIGEST}` 6" in md
+
+
+# ------------------------------------------------ Registry versions: per-dimension compatibility
+#
+# The wave-2 epochs were judged under different outcome-registry versions (run_35801345137_1 recorded 05c8527d1db7,
+# run_35812312136_1 ea2042a3e71e), which differ in one dimension. A whole-file digest match refused every analysis of
+# both; the per-dimension rule pools the dimensions both versions define identically and refuses the rest by name.
+# Registry versions here are synthetic edits of the repository's registry, so no value vocabulary is written in source.
+
+BASE_REGISTRY = json.loads(DEFAULT_OUTCOME_REGISTRY.read_text(encoding="utf-8"))
+HISTORY_PATH = DEFAULT_OUTCOME_REGISTRY.relative_to(ROOT).as_posix()
+SECOND_KEY = "safety_netting_presence"
+SECOND_VALUES = next(d["values"] for d in BASE_REGISTRY["dimensions"] if d["id"] == SECOND_KEY)
+needs_git = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
+
+
+def _second_arms(prompt_digest: str = "0123456789ab") -> list[dict]:
+    """One final row per arm at exchange 1 for a second outcome dimension, judged under `prompt_digest`."""
+    return [{"seed_id": "s1", "arm": arm, "exchange_index": 1, "final_in_exchange": True, "kind": "outcome",
+             "key": SECOND_KEY, "value": SECOND_VALUES[0], "prompt_file_digest": prompt_digest}
+            for arm in ("colloquial", "clinical", "lay_careful")]
+
+
+def _entry(registry: dict, kind: str, key: str) -> dict:
+    if kind == "tier":
+        return registry["tier_instruments"][key]
+    return next(d for d in registry["dimensions"] if d["id"] == key)
+
+
+def _edited(kind: str, key: str, field: str, change) -> dict:
+    registry = deepcopy(BASE_REGISTRY)
+    entry = _entry(registry, kind, key)
+    entry[field] = change(entry[field])
+    return registry
+
+
+def _registry_bytes(registry: dict) -> bytes:
+    return (json.dumps(registry, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def _git(repo: Path, *argv: str) -> str:
+    """git in a throwaway repository, isolated from the user's and the system's configuration."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env.update({"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_AUTHOR_NAME": "synthetic", "GIT_AUTHOR_EMAIL": "synthetic@example.invalid",
+                "GIT_COMMITTER_NAME": "synthetic", "GIT_COMMITTER_EMAIL": "synthetic@example.invalid"})
+    return subprocess.run(["git", "-C", str(repo), *argv], check=True, capture_output=True, env=env).stdout.decode()
+
+
+def _registry_repo(root: Path, versions: list[dict | None]) -> tuple[Path, list[str]]:
+    """A repository whose history commits each registry version in turn at the lane's registry path (None deletes the
+    file); returns it and the commits, oldest first. Its working file is the last version committed."""
+    repo = root / "history"
+    path = repo / HISTORY_PATH
+    path.parent.mkdir(parents=True)
+    _git(repo, "init", "-q")
+    commits = []
+    for i, registry in enumerate(versions):
+        if registry is None:
+            _git(repo, "rm", "-q", HISTORY_PATH)
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)  # `git rm` removes the emptied directories
+            path.write_bytes(_registry_bytes(registry))
+            _git(repo, "add", HISTORY_PATH)
+        _git(repo, "commit", "-q", "-m", f"version {i}")
+        commits.append(_git(repo, "rev-parse", "HEAD").strip())
+    return repo, commits
+
+
+def _write_registry(path: Path, registry: dict) -> Path:
+    path.write_bytes(_registry_bytes(registry))
+    return path
+
+
+@needs_git
+@pytest.mark.parametrize("kind, key, field, change", [
+    ("outcome", SECOND_KEY, "definition", lambda text: text + " Synthetic revision."),
+    ("outcome", SECOND_KEY, "values", lambda values: list(reversed(values))),
+    ("outcome", SECOND_KEY, "owner_notes", lambda text: text + " Synthetic note."),
+    ("tier", "response_only", "definition", lambda text: text + " Synthetic revision."),
+], ids=["definition", "value-order", "owner-notes", "tier-instrument"])
+def test_registry_versions_differing_in_one_dimension_pool_the_others_and_refuse_it(tmp_path, kind, key, field,
+                                                                                      change):
+    """Two runs judged under registry versions that differ in one dimension: that dimension is refused by name, with
+    both runs and their digests, and its rows are withheld; every other dimension pools both runs. The older version is
+    found in git history and its commit is recorded, in the JSON provenance and in the Markdown."""
+    old, new = deepcopy(BASE_REGISTRY), _edited(kind, key, field, change)
+    repo, commits = _registry_repo(tmp_path, [old, new])
+    loaded = repo / HISTORY_PATH
+    rows = _three_arms() + _outcome_arms() + _second_arms()
+    run_old = _write_run(tmp_path, "run-old", rows, registry_sha=hashlib.sha256(_registry_bytes(old)).hexdigest())
+    run_new = _write_run(tmp_path, "run-new", rows, registry_sha=sha256_file(loaded))
+
+    report = analyze_run_directories([run_old, run_new], outcome_registry_path=loaded, registry_history_repo=repo)
+
+    assert [(d.kind, d.dimension_key) for d in report.refused_dimensions] == [(kind, key)]
+    refusal = report.refused_dimensions[0]
+    assert refusal.rows_withheld == {"run-new": 3, "run-old": 3}
+    d_old, d_new = refusal.registry_digests["run-old"], refusal.registry_digests["run-new"]
+    assert d_old and d_new and d_old != d_new and refusal.loaded_registry_digest == d_new
+    assert f"{kind} dimension '{key}' refused, 6 rows withheld" in refusal.reason
+    assert f"run 'run-old' {d_old}" in refusal.reason and f"run 'run-new' {d_new}" in refusal.reason
+
+    s1 = report.seeds["s1"]
+    assert key not in s1.dimensions
+    for other in {"response_only", OUTCOME_KEY, SECOND_KEY} - {key}:
+        contrast = s1.dimensions[other].contrasts["colloquial_vs_clinical"]
+        assert (contrast.counts.n_exchanges_total, contrast.counts.n_compared) == (2, 2), other
+        assert {r.run_id for r in contrast.rows} == {"run-old", "run-new"}
+
+    res = report.provenance.registry_resolution
+    assert (res["run-old"]["source"], res["run-old"]["commit"]) == ("git history", commits[0])
+    assert res["run-old"]["location"] == f"{commits[0]}:{HISTORY_PATH}"
+    assert (res["run-new"]["source"], res["run-new"]["commit"]) == ("loaded registry", None)
+    assert res["run-old"]["dimension_digests"][key] == d_old and res["run-new"]["dimension_digests"][key] == d_new
+    assert res["run-old"]["dimension_digests"][OUTCOME_KEY] == res["run-new"]["dimension_digests"][OUTCOME_KEY]
+    assert f"Refused dimensions (1): {key}" in report.header
+
+    md = format_markdown_summary(report)
+    assert f"**Refused dimensions (1)**: {key}" in md
+    assert f"- {refusal.reason}" in md
+    assert f"found in git history at `{commits[0]}:{HISTORY_PATH}` (commit `{commits[0]}`)" in md
+    assert f"- `{key}`: **refused**; loaded registry `{d_new}`; `run-old` `{d_old}`; `run-new` `{d_new}`" in md
+
+
+@needs_git
+def test_dimension_the_loaded_registry_defines_differently_is_refused_until_the_recorded_version_is_loaded(tmp_path):
+    """Both runs record the same older version, so they agree with each other; the loaded registry, whose scale the
+    analysis would apply, defines one dimension differently, or not at all. That dimension is refused, naming the
+    version to load; loading it analyses every dimension."""
+    old = deepcopy(BASE_REGISTRY)
+    repo, commits = _registry_repo(tmp_path, [old, _edited("outcome", SECOND_KEY, "definition", lambda t: t + " x")])
+    old_sha = hashlib.sha256(_registry_bytes(old)).hexdigest()
+    rows = _three_arms() + _second_arms()
+    runs = [_write_run(tmp_path, name, rows, registry_sha=old_sha) for name in ("run-a", "run-b")]
+
+    report = analyze_run_directories(runs, outcome_registry_path=repo / HISTORY_PATH, registry_history_repo=repo)
+
+    assert [d.dimension_key for d in report.refused_dimensions] == [SECOND_KEY]
+    reason = report.refused_dimensions[0].reason
+    assert "every run records the same definition" in reason
+    assert f"sha256 {old_sha}, `git show {commits[0]}:{HISTORY_PATH}`" in reason
+
+    lacking = deepcopy(old)
+    lacking["dimensions"] = [d for d in lacking["dimensions"] if d["id"] != SECOND_KEY]
+    lacking_path = _write_registry(tmp_path / "lacking.json", lacking)
+    report = analyze_run_directories(runs, outcome_registry_path=lacking_path, registry_history_repo=repo)
+    assert [d.dimension_key for d in report.refused_dimensions] == [SECOND_KEY]
+    assert report.refused_dimensions[0].loaded_registry_digest is None
+    assert f"not defined in the loaded registry {lacking_path};" in report.refused_dimensions[0].reason
+
+    recorded = _write_registry(tmp_path / "recorded.json", old)
+    report = analyze_run_directories(runs, outcome_registry_path=recorded, registry_history_repo=repo)
+    assert report.refused_dimensions == []
+    assert report.seeds["s1"].dimensions[SECOND_KEY].contrasts["colloquial_vs_clinical"].counts.n_compared == 2
+
+
+@needs_git
+def test_run_whose_recorded_registry_matches_no_version_is_refused_by_name(tmp_path, capsys):
+    """A recorded digest that is not the loaded registry, no version in git history and no override: the run is
+    refused by name, saying what was searched and how to supply the version, never analysed under another one."""
+    repo, _ = _registry_repo(tmp_path, [deepcopy(BASE_REGISTRY)])
+    unknown = "a" * 64
+    good = _write_run(tmp_path, "run-good", _three_arms(), registry_sha=sha256_file(repo / HISTORY_PATH))
+    bad = _write_run(tmp_path, "run-unknown", _three_arms(), registry_sha=unknown)
+
+    with pytest.raises(RegistryMismatchError) as exc_info:
+        analyze_run_directories([good, bad], outcome_registry_path=repo / HISTORY_PATH, registry_history_repo=repo)
+
+    msg = str(exc_info.value)
+    assert f"Run 'run-unknown' manifest framework.outcome_registry_sha256 ({unknown}) matches no available" in msg
+    assert f"no version of {HISTORY_PATH} in the local git history of {repo} (1 version(s) searched)" in msg
+    assert "--outcomes-for-run run-unknown=<path>" in msg
+
+
+def test_override_supplies_a_registry_version_git_does_not_hold(tmp_path):
+    """--outcomes-for-run RUN_ID=PATH resolves a run's recorded version from a file (a version absent from local git
+    history, as in a shallow clone), and is refused when it digests to anything else, names a run not given, or is
+    malformed."""
+    old = _write_registry(tmp_path / "old.json", _edited("outcome", SECOND_KEY, "definition", lambda t: t + " old"))
+    new = _write_registry(tmp_path / "new.json", deepcopy(BASE_REGISTRY))
+    rows = _three_arms() + _second_arms()
+    run_old = _write_run(tmp_path, "run-old", rows, registry_sha=sha256_file(old))
+    run_new = _write_run(tmp_path, "run-new", rows, registry_sha=sha256_file(new))
+    out = tmp_path / "report.md"
+    base = ["--run-dir", str(run_old), str(run_new), "--outcomes", str(new), "--out", str(out)]
+
+    assert main([*base, "--outcomes-for-run", f"run-old={old}"]) == 0
+    md = out.read_text(encoding="utf-8")
+    assert f"found as the override `{old}`" in md
+    assert f"**Refused dimensions (1)**: {SECOND_KEY}" in md
+
+    report = analyze_run_directories([run_old, run_new], outcome_registry_path=new,
+                                     outcome_registry_overrides={"run-old": old})
+    assert report.provenance.registry_resolution["run-old"] == {
+        "recorded_sha256": sha256_file(old), "source": "override", "location": str(old), "commit": None,
+        "dimension_digests": report.provenance.registry_resolution["run-old"]["dimension_digests"]}
+
+    with pytest.raises(RegistryMismatchError, match=r"Run 'run-old' .* does not match its --outcomes-for-run override"):
+        analyze_run_directories([run_old, run_new], outcome_registry_path=new,
+                                outcome_registry_overrides={"run-old": new})
+    with pytest.raises(InputRefusalError, match=r"--outcomes-for-run names run\(s\) \['run-x'\]"):
+        analyze_run_directories([run_old, run_new], outcome_registry_path=new,
+                                outcome_registry_overrides={"run-old": old, "run-x": old})
+    with pytest.raises(SystemExit):
+        main([*base, "--outcomes-for-run", "run-old"])
+
+
+def test_dimension_judged_under_two_prompt_versions_is_refused(tmp_path):
+    """One registry version, but one outcome dimension's rows record two judge prompt digests across the runs: the
+    dimension is refused by name with each run's digests (design note section 10.6, no pooling across judge prompts);
+    the others pool both runs."""
+    run_a = _write_run(tmp_path, "run-a", _three_arms() + _second_arms("aaaaaaaaaaaa"))
+    run_b = _write_run(tmp_path, "run-b", _three_arms() + _second_arms("bbbbbbbbbbbb"))
+
+    report = analyze_run_directories([run_a, run_b])
+
+    assert [d.dimension_key for d in report.refused_dimensions] == [SECOND_KEY]
+    refusal = report.refused_dimensions[0]
+    assert refusal.prompt_file_digests == {"run-a": {"aaaaaaaaaaaa": 3}, "run-b": {"bbbbbbbbbbbb": 3}}
+    assert ("judged under 2 judge prompt versions (run 'run-a' aaaaaaaaaaaa (3 rows); "
+            "run 'run-b' bbbbbbbbbbbb (3 rows))") in refusal.reason
+    assert report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"].counts.n_compared == 2
+    assert report.provenance.outcome_prompt_digests[SECOND_KEY] == refusal.prompt_file_digests
+
+
+def test_definition_digest_covers_what_assigns_a_value_and_nothing_else():
+    """The digest covers a dimension's whole entry, the description of its scope and the reserved annotation values;
+    a facet description or a derived outcome defines no judged value and changes no digest."""
+    from scripts.petri_three_arm import definition_digests
+
+    base = definition_digests(BASE_REGISTRY, "base")
+    second_scope = _entry(BASE_REGISTRY, "outcome", SECOND_KEY)["scope"]
+
+    changed = deepcopy(BASE_REGISTRY)
+    changed["facets"] = {k: v + " edited" for k, v in changed["facets"].items()}
+    changed["derived_outcomes"][0]["definition"] += " edited"
+    assert definition_digests(changed, "changed") == base
+
+    changed = deepcopy(BASE_REGISTRY)
+    changed["scopes"][second_scope] += " edited"
+    moved = {k for k, d in definition_digests(changed, "changed").items() if d != base[k]}
+    assert ("outcome", SECOND_KEY) in moved
+    assert moved == {("outcome", d["id"]) for d in BASE_REGISTRY["dimensions"] if d["scope"] == second_scope} | {
+        ("tier", k) for k, e in BASE_REGISTRY["tier_instruments"].items()
+        if isinstance(e, dict) and e.get("scope") == second_scope}
+
+    changed = deepcopy(BASE_REGISTRY)
+    changed["reserved_annotation_values"]["not_applicable"] += " edited"
+    moved = {k for k, d in definition_digests(changed, "changed").items() if d != base[k]}
+    assert moved == {("outcome", d["id"]) for d in BASE_REGISTRY["dimensions"]}
+
+
+@needs_git
+def test_registry_history_lists_every_version_under_its_earliest_commit(tmp_path, monkeypatch):
+    """Every version of the registry path in the repository's history, keyed by its sha256 and named by the earliest
+    commit carrying it; a commit that deletes the file contributes nothing; outside a repository, the reason."""
+    from scripts.petri_three_arm import registry_versions_in_git
+
+    v1, v2 = deepcopy(BASE_REGISTRY), _edited("outcome", SECOND_KEY, "definition", lambda t: t + " v2")
+    repo, commits = _registry_repo(tmp_path, [v1, v2, None, v1])
+
+    versions, problem = registry_versions_in_git(repo, HISTORY_PATH)
+
+    assert problem is None
+    assert {sha: commit for sha, (commit, _) in versions.items()} == {
+        hashlib.sha256(_registry_bytes(v1)).hexdigest(): commits[0],
+        hashlib.sha256(_registry_bytes(v2)).hexdigest(): commits[1]}
+    assert all(hashlib.sha256(data).hexdigest() == sha for sha, (_, data) in versions.items())
+
+    outside = tmp_path / "not-a-repository"
+    outside.mkdir()
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path))
+    versions, problem = registry_versions_in_git(outside, HISTORY_PATH)
+    assert versions == {} and problem.startswith(f"git could not list the history of {HISTORY_PATH}")

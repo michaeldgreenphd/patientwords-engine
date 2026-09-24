@@ -8,6 +8,15 @@ experimental cell, (run_id, epoch, branch_id): two arms are paired only when the
 answered the same scripted exchange in the same run, epoch and branch. Any
 exchange where an arm has no eligible row or is not_applicable is refused by name.
 
+Runs judged under different outcome-registry versions are pooled per dimension, never per file:
+each run's recorded version is resolved to its bytes (the loaded registry, local git history,
+or --outcomes-for-run), and a dimension is analysed only when every pooled run's version and the
+loaded registry define it identically and its rows record one judge prompt digest. Any other
+dimension is refused by name, with the digests, and its rows are withheld.
+
+This script is exploratory and descriptive. The pre-specified confirmatory analysis of design
+note section 10 is a separate, dedicated script (section 10.7).
+
 Per Section 5 of docs/petri_wave2_design.md:
 One epoch is structure, not an estimate. No confidence intervals or p-values are emitted.
 Ordinal scales (e.g. rubric tiers or dimensions declared ordinal in registries) are loaded
@@ -18,6 +27,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import subprocess
 import sys
 from collections import Counter
 from collections.abc import Mapping, Sequence
@@ -39,6 +49,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ADVICE_RUBRIC = REPO_ROOT / "data" / "advice_rubric.draft.json"
 DEFAULT_URGENCY_TIERS = REPO_ROOT / "data" / "urgency_tiers.draft.json"
 DEFAULT_OUTCOME_REGISTRY = REPO_ROOT / "docs" / "framework" / "outcome_dimensions.draft.json"
+# the lane digests this file into every manifest (adapter.py), so a run's recorded registry version is looked up in
+# this path's git history
+REGISTRY_HISTORY_PATH = DEFAULT_OUTCOME_REGISTRY.relative_to(REPO_ROOT).as_posix()
 NOT_APPLICABLE = "not_applicable"
 
 # One experimental cell, (run_id, epoch, branch_id), and one scripted exchange within it. Arms are paired only inside
@@ -58,7 +71,8 @@ class Wave1RefusalError(ValueError):
 
 
 class RegistryMismatchError(ValueError):
-    """Raised when the loaded outcome registry's digest mismatches the run manifest."""
+    """Raised when the outcome registry version a run's manifest records cannot be found (not the loaded registry, no
+    version in local git history, no matching override), or an override does not digest to the recorded value."""
 
 
 class InputRefusalError(ValueError):
@@ -181,6 +195,29 @@ class RunProvenance:
     # per run: the bound judgments.jsonl (verified equal to the manifest's binding) and the analysis_rows.jsonl read
     judgments_sha256: dict[str, str]
     analysis_rows_sha256: dict[str, str]
+    # per run: the outcome registry version its manifest records and where those bytes were found (`RegistryVersion`:
+    # source, location, commit), plus the definition digest (`definition_digests`) of every dimension the run's rows
+    # hold, read from that version (null: the version does not define it)
+    registry_resolution: dict[str, dict[str, Any]]
+    # the same digests read from the loaded registry, which supplies the scales
+    loaded_dimension_digests: dict[str, str | None]
+    # per outcome dimension, per run: the judge prompt digest (prompt_file_digest) its rows record -> row count
+    outcome_prompt_digests: dict[str, dict[str, dict[str, int]]]
+
+
+@dataclass(frozen=True)
+class DimensionRefusal:
+    """A dimension withheld from every seed's analysis because its pooled rows were not judged under one definition."""
+    dimension_key: str
+    kind: str
+    reason: str
+    # run id -> the dimension's definition digest in the registry version that run recorded (null: not defined there)
+    registry_digests: dict[str, str | None]
+    loaded_registry_digest: str | None
+    # run id -> recorded judge prompt digest -> rows (outcome dimensions; tier rows are checked against the rubric)
+    prompt_file_digests: dict[str, dict[str, int]]
+    # run id -> rows of this dimension not analysed
+    rows_withheld: dict[str, int]
 
 
 @dataclass(frozen=True)
@@ -190,6 +227,7 @@ class ThreeArmReport:
     ordinal_dimensions: list[str]
     nominal_dimensions: list[str]
     seeds: dict[str, SeedAnalysis]
+    refused_dimensions: list[DimensionRefusal]
 
 
 def load_json(path: Path | str) -> dict[str, Any]:
@@ -420,19 +458,252 @@ def collapse_retries(rows: Sequence[dict[str, Any]]) -> tuple[list[dict[str, Any
     return [rows[i] for i in keep], len(rows) - len(keep)
 
 
-def load_run_rows(
-    run_dir: Path | str,
-    outcome_registry_path: Path | str | None = None,
-) -> tuple[dict[str, Any], list[dict[str, Any]], int]:
+# ------------------------------------------------------------------ registry versions and dimension compatibility
+#
+# A run records the sha256 of the outcome registry it was judged under (manifest framework.outcome_registry_sha256),
+# and the owner edits that draft registry between epochs. Wave 2 epoch 1 (run_35801345137_1) recorded 05c8527d1db7 and
+# epoch 2 (run_35812312136_1) ea2042a3e71e; the two differ only in safety_netting_baseline_persistence, which gained a
+# value. Requiring one registry file across every run refused any analysis of more than one epoch, and dropping the
+# requirement would pool that dimension across two value sets. So each run's recorded version is resolved to its bytes,
+# and compatibility is decided per dimension: a dimension is analysed only when every pooled run's version and the loaded
+# registry (which supplies the scales) define it identically and its rows record one judge prompt version; otherwise it
+# is refused by name and its rows are withheld, while the other dimensions are analysed.
+
+
+@dataclass(frozen=True)
+class RegistryVersion:
+    """The outcome registry version one run's manifest records, and where bytes with that sha256 were found."""
+    sha256: str
+    # "loaded registry" (the --outcomes file), "override" (--outcomes-for-run) or "git history"
+    source: str
+    # the file read, or <commit>:<path> for a version found in git history
+    location: str
+    # the earliest local commit carrying these bytes, for a version found in git history; null for a file given on the
+    # command line, which its path and sha256 identify
+    commit: str | None
+    registry: dict[str, Any]
+
+
+def registry_versions_in_git(repo_root: Path | str, rel_path: str) -> tuple[dict[str, tuple[str, bytes]], str | None]:
+    """Every version of `rel_path` in the history of any local ref (`git log --all`), keyed by the sha256 of its bytes:
+    sha256 -> (the earliest commit carrying that version, the bytes).
+
+    Returns the versions and None, or no versions and the reason when git cannot say (git missing, not a repository).
+    A shallow clone (CI's default checkout) holds only the versions its history reaches; a version it lacks is refused
+    by the caller, never guessed, and can be supplied with --outcomes-for-run.
+    """
+    root = str(repo_root)
+    try:
+        log = subprocess.run(["git", "-C", root, "log", "--all", "--format=%H", "--", rel_path],
+                             capture_output=True, check=True)
+        commits = log.stdout.decode("ascii").split()
+        if not commits:
+            return {}, None
+        # one process for every commit's copy: `git cat-file --batch` answers "<commit>:<path>" with a header line
+        # "<oid> <type> <size>" and the object's bytes, or "<name> missing" where the commit deleted the path
+        batch = subprocess.run(["git", "-C", root, "cat-file", "--batch"], capture_output=True, check=True,
+                               input="".join(f"{c}:{rel_path}\n" for c in commits).encode("utf-8"))
+    except (OSError, UnicodeDecodeError, subprocess.CalledProcessError) as exc:
+        detail = exc.stderr.decode("utf-8", "replace").strip() if isinstance(exc, subprocess.CalledProcessError) else ""
+        return {}, f"git could not list the history of {rel_path} in {root}: {detail or exc}"
+    out, pos = batch.stdout, 0
+    versions: dict[str, tuple[str, bytes]] = {}
+    for commit in commits:  # newest first, so an older commit carrying the same bytes overwrites a newer one
+        end = out.find(b"\n", pos)
+        if end < 0:
+            return {}, f"git cat-file answered {len(versions)} of {len(commits)} history entries of {rel_path}"
+        header = out[pos:end].decode("utf-8", "replace").split()
+        pos = end + 1
+        if len(header) == 3 and header[2].isdigit():
+            size = int(header[2])
+            if header[1] == "blob":
+                data = out[pos:pos + size]
+                versions[hashlib.sha256(data).hexdigest()] = (commit, data)
+            pos += size + 1
+    return versions, None
+
+
+class RegistryResolver:
+    """Finds, for each run, the outcome registry bytes whose sha256 its manifest records.
+
+    In order: an explicit --outcomes-for-run override for that run (refused if it digests to anything else), the loaded
+    registry file, then every version of REGISTRY_HISTORY_PATH in `history_repo`'s local git history (searched once,
+    only when a run needs it). A run none of them matches is refused by name.
+    """
+
+    def __init__(
+        self,
+        loaded_path: Path,
+        overrides: Mapping[str, Path | str] | None = None,
+        history_repo: Path | str | None = None,
+        history_path: str = REGISTRY_HISTORY_PATH,
+    ) -> None:
+        self.loaded_path = loaded_path
+        self.loaded_sha = sha256_file(loaded_path)
+        self.overrides = {rid: Path(p) for rid, p in (overrides or {}).items()}
+        self.history_repo = Path(history_repo) if history_repo is not None else REPO_ROOT
+        self.history_path = history_path
+        self._history: tuple[dict[str, tuple[str, bytes]], str | None] | None = None
+
+    def resolve(self, run_id: str, recorded: str) -> RegistryVersion:
+        if run_id in self.overrides:
+            path = self.overrides[run_id]
+            if not path.is_file():
+                raise FileNotFoundError(f"--outcomes-for-run file for run '{run_id}' not found: {path}")
+            actual = sha256_file(path)
+            if actual != recorded:
+                raise RegistryMismatchError(
+                    f"Run '{run_id}' manifest framework.outcome_registry_sha256 ({recorded}) does not match its "
+                    f"--outcomes-for-run override {_display_path(path)} ({actual})"
+                )
+            return RegistryVersion(recorded, "override", _display_path(path), None, load_json(path))
+        if recorded == self.loaded_sha:
+            return RegistryVersion(recorded, "loaded registry", _display_path(self.loaded_path), None,
+                                   load_json(self.loaded_path))
+        if self._history is None:
+            self._history = registry_versions_in_git(self.history_repo, self.history_path)
+        versions, git_problem = self._history
+        if recorded in versions:
+            commit, data = versions[recorded]
+            return RegistryVersion(recorded, "git history", f"{commit}:{self.history_path}", commit,
+                                   json.loads(data.decode("utf-8")))
+        searched = git_problem or f"{len(versions)} version(s) searched"
+        raise RegistryMismatchError(
+            f"Run '{run_id}' manifest framework.outcome_registry_sha256 ({recorded}) matches no available registry "
+            f"version: not the loaded outcome registry {_display_path(self.loaded_path)} ({self.loaded_sha}), no "
+            f"version of {self.history_path} in the local git history of {self.history_repo} ({searched}), and no "
+            f"--outcomes-for-run override for this run. Supply the version it recorded with "
+            f"--outcomes-for-run {run_id}=<path>"
+        )
+
+
+def _canonical_sha256(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def definition_digests(registry: Mapping[str, Any], where: str) -> dict[tuple[str, str], str]:
+    """(kind, key) -> the sha256 of what this registry version says the dimension is.
+
+    An outcome dimension's digest covers its whole `dimensions` entry: definition, values in their listed order, the
+    ordinal flag, scope, judge_prompt_ref, and owner_notes and status too. The registry marks no field as a pure note,
+    and its owner_notes record coding rules (the baseline-persistence notes carry the precedence of `escalated`), so no
+    field is left out. The digest also covers the two shared sections that bear on how the dimension's values are
+    assigned: the description of the scope it names (what the judge sees) and reserved_annotation_values (the
+    not_applicable rule every dimension takes). Facet descriptions, derived and rule outcomes, and the readme do not
+    define any judged value and are excluded, so an edit there refuses nothing. A tier instrument's digest covers its
+    `tier_instruments` entry and its scope's description; the rubric itself is checked per row by digest (analyze_seed).
+    """
+    scopes = registry.get("scopes") or {}
+    reserved = registry.get("reserved_annotation_values")
+
+    def scope_text(entry: Mapping[str, Any]) -> Any:
+        scope = entry.get("scope")
+        return scopes.get(scope) if isinstance(scope, str) and isinstance(scopes, Mapping) else None
+
+    out: dict[tuple[str, str], str] = {}
+    for entry in registry.get("dimensions") or []:
+        if not isinstance(entry, Mapping) or not isinstance(entry.get("id"), str):
+            continue
+        if ("outcome", entry["id"]) in out:
+            raise InputRefusalError(f"{where} defines outcome dimension '{entry['id']}' twice")
+        out[("outcome", entry["id"])] = _canonical_sha256(
+            {"entry": entry, "scope": scope_text(entry), "reserved_annotation_values": reserved})
+    tiers = registry.get("tier_instruments") or {}
+    for key, entry in (tiers.items() if isinstance(tiers, Mapping) else ()):
+        if isinstance(entry, Mapping) and not key.startswith("_"):
+            out[("tier", key)] = _canonical_sha256({"entry": entry, "scope": scope_text(entry)})
+    return out
+
+
+def _dimension_kind(row: Mapping[str, Any]) -> str:
+    """Tier rows are the rubric's instruments; every other judged row is an outcome dimension (analyze_seed's default)."""
+    return "tier" if row.get("kind") == "tier" else "outcome"
+
+
+def check_dimension_compatibility(
+    rows: Sequence[Mapping[str, Any]],
+    run_definitions: Mapping[str, Mapping[tuple[str, str], str]],
+    loaded_definitions: Mapping[tuple[str, str], str],
+    loaded_label: str,
+    run_versions: Mapping[str, RegistryVersion] | None = None,
+) -> tuple[list[DimensionRefusal], dict[str, dict[str, dict[str, int]]]]:
+    """Refuses, by name, every dimension whose pooled rows were not judged under one definition.
+
+    For each dimension the rows hold, the runs compared are those contributing rows of it. The dimension is refused when
+    - its definition digest differs between any two of those runs' recorded registry versions, or between them and the
+      loaded registry, whose scale the analysis applies;
+    - it is an outcome dimension that one of those versions, or the loaded registry, does not define (a tier instrument
+      absent from every version is left to the rubric check, as before);
+    - its outcome rows record more than one judge prompt digest (prompt_file_digest), counting a missing digest as a
+      version of its own (design note section 10.6: no pooling across judge prompts).
+    Returns the refusals and, for provenance, every outcome dimension's recorded prompt digests per run.
+    """
+    by_dim: dict[tuple[str, str], dict[str, list[Mapping[str, Any]]]] = {}
+    for r in rows:
+        key = r.get("key")
+        if isinstance(key, str) and key:  # a row without a key is refused by name in analyze_seed
+            by_dim.setdefault((_dimension_kind(r), key), {}).setdefault(r["run_id"], []).append(r)
+
+    refusals: list[DimensionRefusal] = []
+    prompt_digests: dict[str, dict[str, dict[str, int]]] = {}
+    for (kind, key), per_run in sorted(by_dim.items()):
+        run_ids = sorted(per_run)
+        registry_digests = {rid: run_definitions[rid].get((kind, key)) for rid in run_ids}
+        loaded = loaded_definitions.get((kind, key))
+        prompts: dict[str, dict[str, int]] = {}
+        if kind == "outcome":
+            prompts = {rid: dict(sorted(Counter(
+                str(r.get("prompt_file_digest")) if r.get("prompt_file_digest") is not None else "none recorded"
+                for r in per_run[rid]).items())) for rid in run_ids}
+            prompt_digests[key] = prompts
+
+        problems: list[str] = []
+        if kind == "outcome":
+            undefined = [f"the registry version run '{rid}' recorded" for rid, d in registry_digests.items() if d is None]
+            undefined += [f"the loaded registry {loaded_label}"] if loaded is None else []
+            if undefined:
+                problems.append(f"not defined in {', '.join(undefined)}")
+        if len(set(registry_digests.values()) | {loaded}) > 1:
+            listed = "; ".join(f"run '{rid}' {d or 'undefined'}" for rid, d in registry_digests.items())
+            problems.append(f"its registry definition differs ({listed}; loaded registry {loaded_label} "
+                            f"{loaded or 'undefined'})")
+            runs_agree = len(set(registry_digests.values())) == 1 and None not in registry_digests.values()
+            if runs_agree and run_versions:
+                version = run_versions[run_ids[0]]
+                where = f"`git show {version.location}`" if version.commit else version.location
+                problems.append(f"every run records the same definition, so it can be analysed by passing the registry "
+                                f"version they were judged under (sha256 {version.sha256}, {where}) as --outcomes")
+        distinct_prompts = {d for counts in prompts.values() for d in counts}
+        if len(distinct_prompts) > 1:
+            listed = "; ".join(f"run '{rid}' " + ", ".join(f"{d} ({n} rows)" for d, n in counts.items())
+                               for rid, counts in prompts.items())
+            problems.append(f"its rows were judged under {len(distinct_prompts)} judge prompt versions ({listed})")
+        if problems:
+            withheld = {rid: len(per_run[rid]) for rid in run_ids}
+            refusals.append(DimensionRefusal(
+                dimension_key=key, kind=kind,
+                reason=(f"{kind} dimension '{key}' refused, {sum(withheld.values())} rows withheld: "
+                        + "; ".join(problems)),
+                registry_digests=registry_digests, loaded_registry_digest=loaded,
+                prompt_file_digests=prompts, rows_withheld=withheld,
+            ))
+    return refusals, prompt_digests
+
+
+def load_run_rows(run_dir: Path | str) -> tuple[dict[str, Any], list[dict[str, Any]], int]:
     """Loads manifest and analysis rows from a run directory.
 
     Returns the manifest, the authenticated rows with retried judgments collapsed to the latest
     attempt per judgment key, and the number of superseded attempts.
 
     analysis_rows.jsonl is required; raw judgments.jsonl rows are never read in its place.
-    Refuses a run whose manifest does not verify (manifest.verify_run). Validates that the run
-    is eligible for three-arm analysis, cleanly refusing Wave 1 runs where exchange_index is
-    null or only 2 arms are present, and verifying the outcome registry digest against the manifest.
+    Refuses a run whose manifest does not verify (manifest.verify_run) or records no outcome
+    registry digest. Validates that the run is eligible for three-arm analysis, cleanly refusing
+    Wave 1 runs where exchange_index is null or only 2 arms are present. The registry version the
+    manifest records is resolved, and compared per dimension, by the caller (RegistryResolver,
+    check_dimension_compatibility).
     """
     rdir = Path(run_dir)
     manifest_path = rdir / "manifest.json"
@@ -455,20 +726,11 @@ def load_run_rows(
     manifest = load_json(manifest_path)
     run_id = manifest.get("run_id", str(rdir))
 
-    # Invariant: manifest outcome_registry_sha256 must match loaded outcome registry
-    outcomes_file = Path(outcome_registry_path or DEFAULT_OUTCOME_REGISTRY)
-    if not outcomes_file.is_file():
-        raise FileNotFoundError(f"Outcome registry file not found: {outcomes_file}")
-    loaded_outcome_sha = sha256_file(outcomes_file)
-    manifest_outcome_sha = manifest.get("framework", {}).get("outcome_registry_sha256")
-    if not manifest_outcome_sha:
+    # The run must say which outcome registry version it was judged under; which version that is, and whether each
+    # dimension's definition in it matches the other runs' and the loaded registry's, is decided by the caller
+    if not manifest.get("framework", {}).get("outcome_registry_sha256"):
         raise RegistryMismatchError(
             f"Run '{run_id}' manifest.json lacks framework.outcome_registry_sha256"
-        )
-    if loaded_outcome_sha != manifest_outcome_sha:
-        raise RegistryMismatchError(
-            f"Run '{run_id}' manifest framework.outcome_registry_sha256 ({manifest_outcome_sha}) "
-            f"does not match loaded outcome registry {_display_path(outcomes_file)} ({loaded_outcome_sha})"
         )
 
     # The rubric is verified against the digest every tier judgment records (prompt_file_digest), in
@@ -1011,8 +1273,18 @@ def analyze_run_directories(
     scales: Mapping[str, list[str]] | None = None,
     rubric_path: Path | str | None = None,
     outcome_registry_path: Path | str | None = None,
+    *,
+    outcome_registry_overrides: Mapping[str, Path | str] | None = None,
+    registry_history_repo: Path | str | None = None,
 ) -> ThreeArmReport:
-    """Performs three-arm analysis across one or more run directories."""
+    """Performs three-arm analysis across one or more run directories.
+
+    Each run's recorded outcome registry version is resolved (RegistryResolver: `outcome_registry_overrides` maps a
+    run id to a file holding that version; `registry_history_repo`, default this repository, is where its git history
+    is searched), and every dimension is checked for one definition across the pooled runs and the loaded registry
+    (check_dimension_compatibility). A dimension that fails is refused by name in `refused_dimensions` and its rows are
+    withheld; the others are analysed.
+    """
     if not run_dirs:
         raise ValueError("No run directories provided")
 
@@ -1021,7 +1293,10 @@ def analyze_run_directories(
 
     if not rubric_file.is_file():
         raise FileNotFoundError(f"Advice rubric file not found: {rubric_file}")
+    if not outcomes_file.is_file():
+        raise FileNotFoundError(f"Outcome registry file not found: {outcomes_file}")
     loaded_rubric_digest = rubric_digest(load_json(rubric_file))
+    resolver = RegistryResolver(outcomes_file, outcome_registry_overrides, registry_history_repo)
 
     active_scales = (
         scales
@@ -1043,9 +1318,10 @@ def analyze_run_directories(
     superseded_retry_rows: dict[str, int] = {}
     judgments_digests: dict[str, str] = {}
     analysis_rows_digests: dict[str, str] = {}
+    run_versions: dict[str, RegistryVersion] = {}
 
     for rdir in run_dirs:
-        manifest, rows, n_superseded = load_run_rows(rdir, outcome_registry_path=outcomes_file)
+        manifest, rows, n_superseded = load_run_rows(rdir)
         run_id = manifest.get("run_id") or str(rdir)
         if run_id in manifest_outcome_digests:
             raise InputRefusalError(
@@ -1054,7 +1330,8 @@ def analyze_run_directories(
         if manifest.get("run_id"):
             run_ids.append(manifest["run_id"])
 
-        manifest_outcome_digests[run_id] = manifest.get("framework", {}).get("outcome_registry_sha256", "")
+        manifest_outcome_digests[run_id] = manifest["framework"]["outcome_registry_sha256"]
+        run_versions[run_id] = resolver.resolve(run_id, manifest_outcome_digests[run_id])
         tier_rubric_digests[run_id] = dict(sorted(Counter(
             str(r.get("prompt_file_digest")) for r in rows if r.get("kind") == "tier"
         ).items()))
@@ -1090,6 +1367,33 @@ def analyze_run_directories(
         analysis_rows_digests[run_id] = sha256_file(Path(rdir) / "analysis_rows.jsonl")
         all_rows.extend(rows)
 
+    unused = sorted(set(resolver.overrides) - set(run_versions))
+    if unused:
+        raise InputRefusalError(f"--outcomes-for-run names run(s) {unused} that are not among the runs given")
+
+    # One definition per pooled dimension: a dimension whose definition differs between the registry versions the runs
+    # recorded (or the loaded one), or whose rows record more than one judge prompt, is refused by name and its rows
+    # withheld; every other dimension is analysed
+    loaded_label = _display_path(outcomes_file)
+    loaded_definitions = definition_digests(load_json(outcomes_file), f"loaded registry {loaded_label}")
+    run_definitions = {rid: definition_digests(v.registry, f"run '{rid}' registry version {v.location}")
+                       for rid, v in run_versions.items()}
+    refused_dimensions, outcome_prompt_digests = check_dimension_compatibility(
+        all_rows, run_definitions, loaded_definitions, loaded_label, run_versions)
+    held: dict[str, set[tuple[str, str]]] = {rid: set() for rid in run_versions}
+    for r in all_rows:
+        if isinstance(r.get("key"), str) and r["key"]:
+            held[r["run_id"]].add((_dimension_kind(r), r["key"]))
+    registry_resolution = {
+        rid: {"recorded_sha256": v.sha256, "source": v.source, "location": v.location, "commit": v.commit,
+              "dimension_digests": {key: run_definitions[rid].get((kind, key)) for kind, key in sorted(held[rid])}}
+        for rid, v in run_versions.items()
+    }
+    loaded_dimension_digests = {key: loaded_definitions.get((kind, key))
+                                for kind, key in sorted(set().union(*held.values()))}
+    refused_keys = {(d.kind, d.dimension_key) for d in refused_dimensions}
+    all_rows = [r for r in all_rows if (_dimension_kind(r), r.get("key")) not in refused_keys]
+
     # Group rows by seed_id
     rows_by_seed: dict[str, list[dict[str, Any]]] = {}
     no_seed = [r for r in all_rows if not r.get("seed_id")]
@@ -1105,7 +1409,7 @@ def analyze_run_directories(
     for sid, srows in sorted(rows_by_seed.items()):
         analyzed_seeds[sid] = analyze_seed(sid, srows, active_scales, tier_rubric_digest=loaded_rubric_digest)
 
-    loaded_outcome_sha = sha256_file(outcomes_file) if outcomes_file.is_file() else ""
+    loaded_outcome_sha = resolver.loaded_sha
     loaded_rubric_sha = sha256_file(rubric_file)
 
     ordinal_dims: list[str] = sorted({
@@ -1121,10 +1425,12 @@ def analyze_run_directories(
         if not d_analysis.is_ordinal
     })
 
+    refused_names = [d.dimension_key for d in refused_dimensions]
     header = (
         f"{HEADER_NOTE}\n"
         f"Ordinal dimensions ({len(ordinal_dims)}): {', '.join(ordinal_dims) if ordinal_dims else 'none'}\n"
-        f"Nominal dimensions ({len(nominal_dims)}): {', '.join(nominal_dims) if nominal_dims else 'none'}"
+        f"Nominal dimensions ({len(nominal_dims)}): {', '.join(nominal_dims) if nominal_dims else 'none'}\n"
+        f"Refused dimensions ({len(refused_names)}): {', '.join(refused_names) if refused_names else 'none'}"
     )
 
     provenance = RunProvenance(
@@ -1143,6 +1449,9 @@ def analyze_run_directories(
         superseded_retry_rows=superseded_retry_rows,
         judgments_sha256=judgments_digests,
         analysis_rows_sha256=analysis_rows_digests,
+        registry_resolution=registry_resolution,
+        loaded_dimension_digests=loaded_dimension_digests,
+        outcome_prompt_digests=outcome_prompt_digests,
     )
 
     return ThreeArmReport(
@@ -1151,6 +1460,7 @@ def analyze_run_directories(
         ordinal_dimensions=ordinal_dims,
         nominal_dimensions=nominal_dims,
         seeds=analyzed_seeds,
+        refused_dimensions=refused_dimensions,
     )
 
 
@@ -1162,6 +1472,8 @@ def format_markdown_summary(report: ThreeArmReport) -> str:
         "",
         f"**Ordinal dimensions ({len(report.ordinal_dimensions)})**: {', '.join(report.ordinal_dimensions) if report.ordinal_dimensions else 'none'}",
         f"**Nominal dimensions ({len(report.nominal_dimensions)})**: {', '.join(report.nominal_dimensions) if report.nominal_dimensions else 'none'}",
+        f"**Refused dimensions ({len(report.refused_dimensions)})**: "
+        f"{', '.join(d.dimension_key for d in report.refused_dimensions) or 'none'}",
         "",
         "## Provenance",
         # Every digest is printed in full: the default output must identify the exact inputs by itself
@@ -1179,8 +1491,11 @@ def format_markdown_summary(report: ThreeArmReport) -> str:
     ]
     for rid in prov.manifest_outcome_registry_sha256:
         tiers = ", ".join(f"`{d}` {n}" for d, n in prov.tier_rubric_digests.get(rid, {}).items()) or "none"
+        res = prov.registry_resolution.get(rid, {})
+        found = (f"found in git history at `{res.get('location')}` (commit `{res.get('commit')}`)"
+                 if res.get("commit") else f"found as the {res.get('source')} `{res.get('location')}`")
         lines.append(
-            f"- `{rid}`: manifest outcome registry sha256 `{prov.manifest_outcome_registry_sha256[rid]}`; "
+            f"- `{rid}`: manifest outcome registry sha256 `{prov.manifest_outcome_registry_sha256[rid]}` ({found}); "
             f"judgments.jsonl sha256 `{prov.judgments_sha256.get(rid)}` (bound); "
             f"analysis_rows.jsonl sha256 `{prov.analysis_rows_sha256.get(rid)}`; "
             f"tier rows by recorded rubric digest: {tiers}; "
@@ -1189,6 +1504,26 @@ def format_markdown_summary(report: ThreeArmReport) -> str:
         )
     lines += ["", "### Seed digests"]
     lines += [f"- `{sid}`: `{sha}`" for sid, sha in sorted(prov.seed_digests.items())] or ["- None recorded"]
+    lines += [
+        "",
+        "### Dimension definitions",
+        "Each dimension's definition digest (its registry entry with its scope's description and the reserved "
+        "annotation values; for a tier instrument, its tier_instruments entry and scope) in the loaded registry and in "
+        "the registry version each run recorded, and each outcome dimension's recorded judge prompt digests. A "
+        "dimension is analysed only when every digest agrees and its rows carry one prompt digest.",
+    ]
+    refused = {d.dimension_key for d in report.refused_dimensions}
+    for key, loaded in prov.loaded_dimension_digests.items():
+        per_run = "; ".join(f"`{rid}` `{res['dimension_digests'][key] or 'undefined'}`"
+                            for rid, res in prov.registry_resolution.items() if key in res["dimension_digests"])
+        prompts = prov.outcome_prompt_digests.get(key)
+        prompt_text = ("; judge prompt digests: " + "; ".join(
+            f"`{rid}` " + ", ".join(f"`{d}` {n}" for d, n in counts.items()) for rid, counts in prompts.items())
+            if prompts else "")
+        lines.append(f"- `{key}`: {'**refused**' if key in refused else 'analysed'}; loaded registry "
+                     f"`{loaded or 'undefined'}`; {per_run}{prompt_text}")
+    lines += ["", "## Refused dimensions"]
+    lines += [f"- {d.reason}" for d in report.refused_dimensions] or ["- None"]
     lines.append("")
 
     for seed_id, seed_analysis in sorted(report.seeds.items()):
@@ -1265,10 +1600,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--outcomes",
         type=Path,
         default=None,
-        help="Optional path to outcome dimensions data file",
+        help="Optional path to outcome dimensions data file (supplies the scales; every analysed dimension must be "
+             "defined in it as in the registry version each run recorded)",
+    )
+    parser.add_argument(
+        "--outcomes-for-run",
+        action="append",
+        default=[],
+        metavar="RUN_ID=PATH",
+        help="The outcome registry version a run recorded, as a file, for a version the loaded registry and local git "
+             "history do not hold (e.g. a shallow clone). The file must digest to the run's recorded "
+             "framework.outcome_registry_sha256. Repeatable.",
     )
 
     args = parser.parse_args(argv)
+
+    overrides: dict[str, Path] = {}
+    for item in args.outcomes_for_run:
+        run_id, sep, path = item.partition("=")
+        if not sep or not run_id or not path:
+            parser.error(f"--outcomes-for-run expects RUN_ID=PATH, got {item!r}")
+        if run_id in overrides:
+            parser.error(f"--outcomes-for-run names run {run_id!r} twice")
+        overrides[run_id] = Path(path)
 
     rubric_path = args.rubric or DEFAULT_ADVICE_RUBRIC
     outcome_registry_path = args.outcomes or DEFAULT_OUTCOME_REGISTRY
@@ -1284,6 +1638,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             scales=scales,
             rubric_path=rubric_path,
             outcome_registry_path=outcome_registry_path,
+            outcome_registry_overrides=overrides,
         )
     except (Wave1RefusalError, RegistryMismatchError, InputRefusalError) as exc:
         print(f"REFUSED: {exc}", file=sys.stderr)
