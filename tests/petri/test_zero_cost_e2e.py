@@ -728,3 +728,100 @@ def test_judge_refuses_a_resume_under_another_spec_before_any_call(run, tmp_path
     code = cli.main(["judge", "--run-dir", str(data_dir / "run_p"), "--judge-model", "claude-haiku-4-5", "--judge-max-spend", "0.05"])
     assert code == 10
     assert judgments.read_text(encoding="utf-8").count("\n") == 1, "no row was added"
+
+
+# ------------------------------------------------------------ mode readapt
+
+
+def _readapt_source(tmp_path_factory, capsys) -> dict:
+    """What a paid run whose adaptation failed leaves behind, rebuilt at $0: the run step's raw log (outside the
+    checkout, as the artifact carries it) and the workflow's fallback sidecar in the run directory, nothing else."""
+    out = tmp_path_factory.mktemp("readapt-run")
+    assert cli.main(["run", "--target", "mockllm/model", "--max-spend", "0.01", "--seed-id", H4, "--no-harness-commit",
+                     "--out-dir", str(out), "--journal-nonce", "src-n1"]) == 0
+    eval_path = next((out / "logs").glob("*.eval"))
+    runs = tmp_path_factory.mktemp("readapt-runs")
+    stem = "run_777_1"
+    (runs / stem).mkdir()
+    sidecar = runs / stem / f"{stem}.report.json"
+    assert cli.main(["spend-report", "--out", str(sidecar), "--run-id", stem, "--target", "mockllm/model",
+                     "--max-spend", "0.01", "--eval", str(eval_path), "--journal-nonce", "src-n1",
+                     "--reason", "run attempted; no adapted report exists (run or adaptation failed)"]) == 0
+    downloads = tmp_path_factory.mktemp("readapt-download")
+    downloaded = downloads / eval_path.name
+    downloaded.write_bytes(eval_path.read_bytes())
+    work = tmp_path_factory.mktemp("readapt-work")
+    params = {"seeds_file": str(framework.SEED_FILE), "seed_ids": H4, "wave": "1", "target": "mockllm/model",
+              "mode": "readapt", "epochs": "1", "token_limit": "20000", "max_spend": "0.01", "judge": "true",
+              "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "judge_max_tokens": "300",
+              "log_model_api": "true", "commit_outputs": "true", "source_run_id": "777", "_nonce": "re-n1"}
+    framework.write_json(work / "params.json", params)
+    framework.write_json(work / "listing.json", {"total_count": 1, "artifacts": [
+        {"id": 31, "name": "petri-audit-raw-eval-777-1", "size_in_bytes": downloaded.stat().st_size, "expired": False,
+         "digest": "sha256:" + "d" * 64, "created_at": "2026-09-24T00:10:40Z", "expires_at": "2099-01-01T00:00:00Z",
+         "workflow_run": {"id": 777}}]})
+    (work / "journal.jsonl").write_text(json.dumps({"trigger": "petri-audit", "nonce": "src-n1", "params_sha256": "a" * 64,
+                                                    "fired_utc": "2026-09-24T00:08:16Z", "resolved": True}) + "\n",
+                                        encoding="utf-8")
+    assert cli.main(["readapt-plan", "--params-file", str(work / "params.json"), "--listing", str(work / "listing.json"),
+                     "--runs-dir", str(runs), "--journal", str(work / "journal.jsonl"), "--readapt-run-id", "888",
+                     "--readapt-run-attempt", "1", "--readapt-commit", "c" * 40, "--out", str(work / "plan.json")]) == 0
+    capsys.readouterr()
+    return {"runs": runs, "stem": stem, "sidecar": sidecar, "eval": downloaded, "plan": work / "plan.json",
+            "raw_sha": framework.sha256_file(eval_path)}
+
+
+def _readapt_argv(src: dict) -> list[str]:
+    return ["adapt", "--eval", str(src["eval"]), "--out-dir", str(src["runs"] / src["stem"]), "--custody",
+            "github_actions_artifact:90d", "--target", "mockllm/model", "--max-spend", "0.01", "--judge-max-spend",
+            "0.01", "--token-limit", "20000", "--no-harness-commit", "--report", "--readapt", str(src["plan"])]
+
+
+def test_readapt_recovers_a_failed_adaptation_beside_its_landed_sidecar(tmp_path_factory, capsys):
+    """Mode readapt (2026-09-24, the w2e3 recovery): the raw log of a run whose adaptation failed is adapted into
+    the run's own directory under the current sanitiser; the landed target sidecar is left byte-identical, the
+    manifest records the provenance and the source fire's spend, and verify-run and verify-chain pass."""
+    src = _readapt_source(tmp_path_factory, capsys)
+    before = src["sidecar"].read_bytes()
+    assert cli.main(_readapt_argv(src)) == 0
+    assert "left unchanged" in capsys.readouterr().out
+    run_dir = src["runs"] / src["stem"]
+    assert src["sidecar"].read_bytes() == before, "the target spend was booked when the run failed; never again"
+    m = framework.load_json(run_dir / "manifest.json")
+    assert manifest_problems(m) == []
+    plan = framework.load_json(src["plan"])
+    assert m["readapt"]["source_workflow_run_id"] == "777" and m["readapt"]["readapt_journal_nonce"] == "re-n1"
+    assert m["readapt"]["target_report"] == {"path": f"{src['stem']}/{src['sidecar'].name}",
+                                             "sha256": framework.sha256_file(src["sidecar"])}
+    assert m["readapt"]["source_artifact"] == plan["artifact"]
+    # the spend block is the source run's: its ceiling, its fire's nonce, and the per-sample limits its own log
+    # config records (the run step's run_params.json is not in the artifact)
+    assert m["spend"]["journal_nonce"] == "src-n1" and m["spend"]["max_spend_usd"] == 0.01
+    assert m["spend"]["cost_limit_per_sample_usd"] == pytest.approx(0.005) and m["spend"]["token_limit_per_sample"] == 20000
+    assert m["artifacts"]["raw_eval_log_sha256"] == src["raw_sha"] and m["eval_id"] == plan["target_report"]["eval_id"]
+    assert verify_run(run_dir) == []
+    ok, msg = verify_chain(src["runs"])
+    assert ok, msg
+    assert sorted(p.name for p in run_dir.iterdir()) == ["manifest.json", "rule_outcomes.jsonl", "run_777_1.report.json",
+                                                         "sanitised_log.json", "transcripts.jsonl"]
+    # a second readapt of the same run is refused before the harness writes anything
+    chain = (src["runs"] / "manifests.chain").read_bytes()
+    assert cli.main(_readapt_argv(src)) == 11
+    assert "already holds adapted outputs" in capsys.readouterr().err
+    assert (src["runs"] / "manifests.chain").read_bytes() == chain and src["sidecar"].read_bytes() == before
+
+
+def test_readapt_refuses_a_log_that_is_not_the_run_the_fire_names(tmp_path_factory, capsys):
+    """The log records what ran; a readapt stating another target, selection or limit is refused after the log is
+    read and before anything is written."""
+    src = _readapt_source(tmp_path_factory, capsys)
+    plan = framework.load_json(src["plan"])
+    for key, value in (("target", "anthropic/claude-haiku-4-5"), ("token_limit", 40000), ("epochs", 2),
+                       ("seed_ids", [H1])):
+        wrong = json.loads(json.dumps(plan))
+        wrong["expected"][key] = value
+        framework.write_json(src["plan"], wrong)
+        with pytest.raises(AdapterError, match=f"the log is not the run this readapt names: {key}"):
+            cli.main(_readapt_argv(src))
+        assert sorted(p.name for p in (src["runs"] / src["stem"]).iterdir()) == [src["sidecar"].name]
+        assert not (src["runs"] / "manifests.chain").exists()
