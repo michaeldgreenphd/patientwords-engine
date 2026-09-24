@@ -626,8 +626,9 @@ so it can be redone by hand.
       chain forks, the eventual merge conflicts in that file, and `verify-chain` fails. If one is queued behind the
       other in the lane, the queued run checks out its own trigger commit and chains against a head that predates
       the first run's outputs. Its outputs then fail to commit after it has spent, and only its cost sidecars
-      land. `fire_trigger.py` refuses a readapt into a busy lane, but it will queue a mode-run fire behind
-      a running readapt. So fire w2e4 only after w2e3r has landed, been pulled and been resolved. Every wave-2
+      land. `fire_trigger.py` refuses a readapt into a busy lane and, since `13c48cdc` (Codex, PR #29), any
+      petri-audit fire of any mode behind an active readapt, the park included. So fire w2e4 only after w2e3r
+      has landed, been pulled and been resolved. Every wave-2
       fire so far ran from PR #29's branch (the journal's `ref`). Either move this
       branch's commits there first, or fire w2e4 from this branch too. As of this writing, this branch is a
       fast-forward of #29's head `74aeb447`.
