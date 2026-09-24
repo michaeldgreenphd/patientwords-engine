@@ -22,6 +22,8 @@ ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "petri_audit.yml"
 LOCK = ROOT / "docs" / "framework" / "petri_environment.lock.json"
 TRIGGER = "petri-audit"
+RUN_STEM_EXPR = ("${{ needs.params.outputs.mode == 'readapt' && format('run_{0}_1', needs.params.outputs.source_run_id) "
+                 "|| format('run_{0}_{1}', github.run_id, github.run_attempt) }}")
 
 
 def _load(name: str):
@@ -96,9 +98,12 @@ def test_fire_path_refuses_a_bad_judge_token_allowance(capsys):
 def test_every_attempt_gets_its_own_run_directory_and_the_judge_fallback_records_its_tokens(workflow):
     """Codex round 7: a re-run keeps github.run_id, so the paid attempt reused
     the previous attempt's run directory and sidecar names."""
+    # one definition, on the audit job, so no step can drift from it; every mode but readapt keeps a directory per
+    # attempt, and a readapt writes into its source run's (mode readapt, 2026-09-24)
     stems = [step["env"]["RUN_STEM"] for job in workflow["jobs"].values() for step in job.get("steps", [])
              if "RUN_STEM" in (step.get("env") or {})]
-    assert len(stems) >= 6 and all(s == "run_${{ github.run_id }}_${{ github.run_attempt }}" for s in stems), stems
+    assert stems == [], "RUN_STEM is defined once, on the audit job"
+    assert workflow["jobs"]["audit"]["env"]["RUN_STEM"] == RUN_STEM_EXPR
     upload = _step(workflow, "Upload the raw .eval")
     assert "github.run_attempt" in upload["with"]["name"]
     report = _step(workflow, "Spend report")
@@ -125,8 +130,8 @@ def test_a_paid_run_is_admitted_from_a_push_fire_on_its_first_attempt_only(raw, 
     """Codex round 8: a workflow_dispatch and an Actions-tab re-run carry no
     journal reservation, so the daily ceiling could be passed twice."""
     block = raw[raw.index("Resolve parameters"):raw.index("Daily-ceiling gate")]
-    assert 'if p["mode"] == "run" and os.environ["EVENT_NAME"] != "push":' in block
-    assert 'if p["mode"] == "run" and os.environ.get("RUN_ATTEMPT", "1") != "1":' in block
+    assert 'if p["mode"] in ("run", "readapt") and os.environ["EVENT_NAME"] != "push":' in block
+    assert 'if p["mode"] in ("run", "readapt") and os.environ.get("RUN_ATTEMPT", "1") != "1":' in block
     params = _step(workflow, "Resolve parameters", job="params")
     assert params["env"]["RUN_ATTEMPT"] == "${{ github.run_attempt }}" and params["env"]["EVENT_NAME"] == "${{ github.event_name }}"
 
@@ -135,7 +140,11 @@ def test_defaults_cover_every_trigger_key_and_dispatch_input(workflow, defaults)
     on = workflow.get("on") or workflow.get(True)
     inputs = set(on["workflow_dispatch"]["inputs"])
     assert set(defaults) == set(ft.KNOWN_KEYS[TRIGGER]) == inputs
-    assert defaults == ft.PARK_DEFAULTS[TRIGGER], "the heredoc defaults are the park: a bare re-fire is a no-op"
+    # the park is unchanged by mode readapt: source_run_id is read by that mode only, empty by default, and not a
+    # key of the park, so the committed park file still equals PARK_DEFAULTS exactly
+    assert defaults["source_run_id"] == "" and "source_run_id" not in ft.PARK_DEFAULTS[TRIGGER]
+    assert {k: v for k, v in defaults.items() if k != "source_run_id"} == ft.PARK_DEFAULTS[TRIGGER], \
+        "the heredoc defaults are the park: a bare re-fire is a no-op"
     assert defaults["mode"] == "preflight" and defaults["commit_outputs"] == "false" and defaults["judge"] == "false"
     assert defaults["target"] == "mockllm/model"
     assert TRIGGER in ft.PAID_TRIGGERS and TRIGGER in ft.TRIGGERS
@@ -175,7 +184,8 @@ def test_interpreter_and_harness_are_the_locked_ones(workflow, raw):
 
 def test_paid_steps_are_gated_on_mode_and_the_raw_log_stays_outside_the_checkout(workflow):
     run = _step(workflow, "Run (mode dry_run or run")
-    assert "mode != 'preflight'" in run["if"] and "$RUNNER_TEMP/petri-run" in run["run"]
+    assert run["if"] == "${{ needs.params.outputs.mode == 'dry_run' || needs.params.outputs.mode == 'run' }}"
+    assert "$RUNNER_TEMP/petri-run" in run["run"]
     assert "LOG_MODEL_API" in run["env"] and '--log-model-api "$LOG_MODEL_API"' in run["run"], (
         "the log_model_api input must reach the CLI (Codex round 1: it was accepted and ignored)")
     judge = _step(workflow, "Judge of record")
@@ -200,7 +210,7 @@ def test_paid_steps_are_gated_on_mode_and_the_raw_log_stays_outside_the_checkout
     assert unconditional == ["Refuse to publish a raw log (belt and braces)",
                              "Spend report for an attempted run that produced no adapted report",
                              "Upload the raw .eval as a workflow artifact (90-day custody; never committed)",
-                             "Commit cost sidecars of a paid run (mode run; independent of commit_outputs)",
+                             "Commit cost sidecars of a paid run (mode run or readapt; independent of commit_outputs)",
                              "Job summary"]
     # the cost sidecars of a paid run are booked whatever happened to the outputs (Codex round 2); nothing else
     # is staged by that step, and it runs after the gated outputs commit
@@ -212,7 +222,7 @@ def test_paid_steps_are_gated_on_mode_and_the_raw_log_stays_outside_the_checkout
     # the judge step sees the same provider keys as the run step, and preflight resolves the judge spec first
     judge_env = set(judge["env"])
     assert {"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"} <= judge_env
-    assert judge_env == set(run["env"]) & judge_env | {"JUDGE_MODEL", "JUDGE_MAX_SPEND", "JUDGE_MAX_TOKENS", "SEEDS_FILE", "RUN_STEM"}
+    assert judge_env == set(run["env"]) & judge_env | {"JUDGE_MODEL", "JUDGE_MAX_SPEND", "JUDGE_MAX_TOKENS", "SEEDS_FILE"}
     preflight = _step(workflow, "Preflight")
     assert "--judge-model $JUDGE_MODEL" in preflight["run"] and "--judge-model $JUDGE_MODEL" in run["run"]
     # round 3: the limits the run passed reach the manifest, an attempted run without an adapted report still gets a
@@ -247,24 +257,24 @@ def test_a_dry_run_uploads_its_seal_cleared_exports_and_the_summary_reads_the_ru
     # fails after the spend leaves a recoverable copy; preflight has nothing to upload
     assert exports["if"] == "${{ needs.params.outputs.mode != 'preflight' }}"
     assert exports["with"]["name"] == "petri-audit-exports-${{ github.run_id }}-${{ github.run_attempt }}"
-    assert names.index(exports["name"]) < names.index("Commit sanitised outputs to the branch (mode run only; requires every prior step green)")
+    assert names.index(exports["name"]) < names.index("Commit sanitised outputs to the branch (mode run or readapt; requires every prior step green)")
     assert "always()" not in exports["if"], "must depend on every prior step, the seal check and verify-chain included"
     # Non-blocking only where a committed copy follows it. Codex round 1 (PR #28): on a paid run that commits,
     # the recovery upload's OWN failure must not skip the commit step behind it (default success gating), or the
     # measurement is neither committed nor recoverable while the always()-gated sidecar step books the spend.
     # Codex rounds 3 and 5: where nothing is committed - a dry run, or a paid run with commit_outputs false -
     # this artifact is the only seal-cleared copy, so its failure stays fatal.
-    assert exports["continue-on-error"] == \
-        "${{ needs.params.outputs.mode == 'run' && needs.params.outputs.commit_outputs == 'true' }}"
+    assert exports["continue-on-error"] == ("${{ (needs.params.outputs.mode == 'run' || needs.params.outputs.mode == "
+                                           "'readapt') && needs.params.outputs.commit_outputs == 'true' }}")
     commit = _step(workflow, "Commit sanitised outputs to the branch")
     assert "continue-on-error" not in commit, "only the recovery upload is non-blocking"
     assert str(exports["uses"]).startswith("actions/upload-artifact")
-    assert "data/petri/runs/run_${{ github.run_id }}_${{ github.run_attempt }}/" in exports["with"]["path"]
+    assert "data/petri/runs/${{ env.RUN_STEM }}/" in exports["with"]["path"]
     # Codex (PR #27): the cumulative chain file references every earlier committed run, which the artifact does not
     # carry, so the run directory is uploaded alone and must verify on its own (verify-run runs before the upload)
     assert "manifests.chain" not in exports["with"]["path"]
     seal = _step(workflow, "Holdout seal check")
-    assert 'verify-run --run-dir "data/petri/runs/$RUN_STEM"' in seal["run"] and seal["env"]["RUN_STEM"].startswith("run_${{")
+    assert 'verify-run --run-dir "data/petri/runs/$RUN_STEM"' in seal["run"] and "env" not in seal
     assert names.index(seal["name"]) < names.index(exports["name"])
     assert "petri-run/logs" not in exports["with"]["path"], "the raw .eval is never in this artifact"
     assert exports["with"]["if-no-files-found"] == "error" and exports["with"]["retention-days"] == 30
