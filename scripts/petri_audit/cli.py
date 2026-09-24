@@ -7,7 +7,7 @@ same checks and calls nothing.
     python -m scripts.petri_audit.cli validate-seeds [--seeds FILE] [--seed-id ID ...] [--wave N]
     python -m scripts.petri_audit.cli verify-lock [--lock FILE]
     python -m scripts.petri_audit.cli preflight --target SPEC --max-spend USD [--epochs N] [--token-limit N]
-    python -m scripts.petri_audit.cli run --target SPEC --max-spend USD --out-dir DIR [--log-model-api true|false] [...]
+    python -m scripts.petri_audit.cli run --target SPEC --max-spend USD --out-dir DIR [--started-marker FILE] [...]
     python -m scripts.petri_audit.cli adapt --eval FILE --out-dir DIR --custody STR --max-spend USD [--run-params FILE] [...]
     python -m scripts.petri_audit.cli readapt-plan --params-file FILE --listing FILE --readapt-run-id ID [...] --out FILE
     python -m scripts.petri_audit.cli adapt --readapt PLAN --eval FILE --out-dir DIR [...]   (mode readapt)
@@ -40,11 +40,13 @@ from .seeds import conditions, load_seed_file, seed_digest, select_seeds, target
 from .spend import (
     cache_booking_problems,
     judge_billing_channel,
+    judge_key_routing_problems,
     openrouter_price_problems,
     preflight_bound,
     registry_spec_to_inspect,
     resolve_price,
     resolve_registry_price,
+    target_provider_problems,
     usage_from_samples,
     write_report_sidecar,
 )
@@ -92,8 +94,19 @@ def _judge_price_problems(spec: str) -> list[str]:
 
 
 def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
-    """Shared by preflight and run: seeds validate, lock matches, price resolves,
-    bound fits. Returns (exit code, facts)."""
+    """Shared by preflight and run: the target and the judge each bill the
+    account the lane books them to, seeds validate, lock matches, price
+    resolves, bound fits. Returns (exit code, facts)."""
+    # first, before the seeds, the seal or the lock are read: a direct-vendor target spelling (openai/..., google/...),
+    # or a judge spec whose registry provider bills a third key (google:, GEMINI_API_KEY), bills its own vendor while
+    # every spend guard books it to the Anthropic lane, so no amount of checking below makes it runnable (2026-09-23)
+    routing_problems = target_provider_problems(args.target)
+    if args.judge_model:
+        routing_problems += judge_key_routing_problems(args.judge_model)
+    if routing_problems:
+        for p in routing_problems:
+            print(f"pre-flight: REFUSED - {p}", file=sys.stderr)
+        return 5, {}
     seed_set = load_seed_file(args.seeds)
     seeds = select_seeds(seed_set, args.seed_id or None, args.wave)
     problems = {s["seed_id"]: validate_seed(s, seed_set) for s in seeds}
@@ -186,7 +199,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     code, facts = _preflight(args)
     if code:
         return code
-    from .task import run_study, study_task  # 3.12 only
+    from .task import build_target, run_study, study_task  # 3.12 only
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -200,8 +213,18 @@ def cmd_run(args: argparse.Namespace) -> int:
         "epochs": args.epochs, "samples": facts["samples"], "log_model_api": args.log_model_api == "true",
         "journal_nonce": args.journal_nonce or None,
         "seed_ids": [s["seed_id"] for s in facts["seeds"]]})
-    log = run_study(task, target=args.target, seeds=facts["seeds"], epochs=args.epochs, log_dir=out_dir / "logs",
-                    token_limit=args.token_limit, cost_limit=per_sample_cost, log_model_api=args.log_model_api == "true")
+    try:
+        target_model = build_target(args.target, facts["seeds"])
+    except Exception as exc:  # noqa: BLE001 - every construction failure precedes the first provider call
+        # exit 11: nothing was called and the start marker was not written, so the workflow's fallback spend report
+        # books nothing for this fire (2026-09-23: the marker used to be written before the model was built)
+        reason = " ".join(str(exc).split())[:400]          # Inspect's messages span lines; the key variable is named late
+        print(f"target {args.target!r} could not be built ({type(exc).__name__}: {reason}); no provider call was made "
+              "and the start marker was not written", file=sys.stderr)
+        return 11
+    log = run_study(task, target=target_model, seeds=facts["seeds"], epochs=args.epochs, log_dir=out_dir / "logs",
+                    token_limit=args.token_limit, cost_limit=per_sample_cost, log_model_api=args.log_model_api == "true",
+                    started_marker=args.started_marker)
     print(f"eval {log.eval.eval_id} status {log.status}; log {log.location}")
     return 0 if log.status == "success" else 7
 
@@ -285,7 +308,7 @@ def cmd_adapt(args: argparse.Namespace) -> int:
              else run_params.get("cost_limit_per_sample_usd"),
              "token_limit_per_sample": args.token_limit if args.token_limit is not None
              else run_params.get("token_limit_per_sample")}
-    result = adapt_run(args.eval, seed_set, args.out_dir, custody=args.custody, spend=spend, registry_spec=args.target,
+    result = adapt_run(args.eval, seed_set, args.out_dir, custody=args.custody, spend=spend,
                        engine_sha=engine_sha(), lock_path=args.lock,
                        readapt=({"expected": plan["expected"], "provenance": readapt.provenance_block(plan)}
                                 if plan is not None else None))
@@ -352,7 +375,11 @@ def cmd_spend_report(args: argparse.Namespace) -> int:
         if not model_usage and log.stats and log.stats.model_usage:
             for model, usage in log.stats.model_usage.items():
                 model_usage[model] = {"input_tokens": int(usage.input_tokens or 0), "output_tokens": int(usage.output_tokens or 0),
-                                      "total_tokens": int(usage.total_tokens or 0), "calls": 0, "calls_without_usage": 0}
+                                      "total_tokens": int(usage.total_tokens or 0),
+                                      # Inspect counts cached tokens outside input_tokens; reprice_usage prices them
+                                      "input_tokens_cache_read": usage.input_tokens_cache_read,
+                                      "input_tokens_cache_write": usage.input_tokens_cache_write,
+                                      "calls": 0, "calls_without_usage": 0}
     if not model_usage:
         # no evidence of what was spent: the target's usage is recorded as missing, which prices a paid target at the
         # ceiling and a zero-price target at zero
@@ -468,9 +495,17 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
 
 
 def cmd_judge(args: argparse.Namespace) -> int:
+    # first, before the harness is imported or the run read: a judge spec whose registry provider bills a third key
+    # (google:, GEMINI_API_KEY) bills its own vendor while the guard books it to the Anthropic lane. Pre-flight refuses
+    # it before the target spends; this refuses it again for a judge step reached without that pre-flight (2026-09-23)
+    routing_problems = judge_key_routing_problems(args.judge_model)
+    if routing_problems:
+        for p in routing_problems:
+            print(f"refused before any judge call: {p}", file=sys.stderr)
+        return 5
     # the workflow's pre-flight already refused an unreviewed `openrouter:` judge before the target spent; a judge pass
     # started on its own (a local re-judge of a landed run) never passed that pre-flight, so it is refused here too,
-    # first, since the check needs nothing from the run or the harness
+    # before the run is read, since the check needs nothing from the run or the harness
     unpriced = _judge_price_problems(args.judge_model)
     if unpriced:
         for p in unpriced:
@@ -703,6 +738,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--log-model-api", choices=["true", "false"], default="true",
                    help="retain every raw provider request/response in the (never committed) .eval; "
                         "false leaves generation_config_pinned unprovable, so the run cannot be claim-grade")
+    p.add_argument("--started-marker", default=None,
+                   help="file created once the target model is built, immediately before the eval; the workflow's "
+                        "fallback spend report imputes the target ceiling only when it exists")
     p.set_defaults(func=cmd_run)
 
     p = sub.add_parser("adapt")
@@ -711,7 +749,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--eval", required=True)
     p.add_argument("--out-dir", required=True)
     p.add_argument("--custody", required=True, help="e.g. github_actions_artifact:90d")
-    p.add_argument("--target", default=None)
+    # no --target: the manifest's target, and the registry spec derived from it, come from the log itself (2026-09-23)
     p.add_argument("--max-spend", type=float, required=True)
     p.add_argument("--judge-max-spend", type=float, default=None)
     p.add_argument("--journal-nonce", default=None)

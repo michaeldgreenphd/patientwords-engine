@@ -22,6 +22,14 @@ from .framework import ROOT, load_json, sha256_text
 PROVIDERS_PATH = ROOT / "data" / "advice_providers.json"
 FALLBACK_PRICING = (10.0, 50.0)          # scripts/advice_eval.py _FALLBACK_PRICING, USD per million tokens
 ZERO_PRICE_MODELS = ("mockllm/model", "mockllm/judge", "none/none")      # mockllm/judge: the local tests' judge (PR B)
+# Prompt-cache tokens, which Inspect reports apart from `input_tokens` (it subtracts cached reads from an OpenAI-shaped
+# prompt count, _openai.py model_output_from_openai; Anthropic reports reads and writes apart natively). Neither price
+# table carries a cache rate (data/advice_providers.json prices "worst-case, cache-miss rates"), so each is bounded
+# from the input rate, never priced at zero: a cache read costs at most the input rate (Anthropic ~0.1x, OpenAI below
+# 1x), and a cache write at most twice it (Anthropic: 1.25x for the 5-minute TTL, 2x for the 1-hour TTL). Fail-closed
+# upper bounds, not list prices; a registry cache-rate column would be the place to lower them (2026-09-23).
+CACHE_READ_INPUT_MULTIPLIER = 1.0
+CACHE_WRITE_INPUT_MULTIPLIER = 2.0
 
 
 @dataclass(frozen=True)
@@ -30,8 +38,17 @@ class Price:
     output_per_mtok: float
     source: str
 
-    def cost(self, input_tokens: int, output_tokens: int) -> float:
-        return input_tokens * self.input_per_mtok / 1e6 + output_tokens * self.output_per_mtok / 1e6
+    @property
+    def cache_read_per_mtok(self) -> float:
+        return self.input_per_mtok * CACHE_READ_INPUT_MULTIPLIER
+
+    @property
+    def cache_write_per_mtok(self) -> float:
+        return self.input_per_mtok * CACHE_WRITE_INPUT_MULTIPLIER
+
+    def cost(self, input_tokens: int, output_tokens: int, cache_read_tokens: int = 0, cache_write_tokens: int = 0) -> float:
+        return (input_tokens * self.input_per_mtok / 1e6 + output_tokens * self.output_per_mtok / 1e6
+                + cache_read_tokens * self.cache_read_per_mtok / 1e6 + cache_write_tokens * self.cache_write_per_mtok / 1e6)
 
 
 def _engine_pricing() -> dict[str, tuple[float, float]]:
@@ -114,7 +131,11 @@ def judge_billing_channel(spec: str, registry: dict | None = None) -> str:
     `deepseek:` and `moonshot:` route through OPENROUTER_API_KEY and bill the
     OpenRouter account (Codex round 3). Anything else, an unknown provider
     included, stays on the Anthropic channel, the one the daily ceiling bounds
-    (fail closed, as fire_trigger.petri_channels does with the same rule)."""
+    (fail closed, as fire_trigger.petri_channels does with the same rule). A
+    provider billed through a third key (`google`, GEMINI_API_KEY) is booked
+    here as Anthropic but bills its own vendor, so `cli preflight`, `cli run`
+    and `cli judge` refuse such a spec before any call
+    (`judge_key_routing_problems`, 2026-09-23)."""
     registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
     cfg = registry.get(registry_provider(spec, registry)) if isinstance(registry, dict) else None
     key_env = cfg.get("key_env") if isinstance(cfg, dict) else None
@@ -224,8 +245,17 @@ def resolve_price(model: str, registry: dict | None = None, engine_pricing: dict
 
 
 def pricing_source_digest(registry: dict | None = None) -> str:
+    """sha256 of every rate assumption `Price.cost` prices a run with: the
+    provider registry, the engine's Anthropic table, the fallback rate and the
+    two cache multipliers. The adapter pins it in the manifest
+    (usage.pricing_source_sha256) and the summary labels prices only while the
+    current digest equals that pin. The multipliers joined the digest after
+    the Codex review of 2026-09-23: without them a run priced under other
+    multipliers carried the same pin."""
     registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
-    return sha256_text(json.dumps({"registry": registry, "engine": _engine_pricing(), "fallback": FALLBACK_PRICING},
+    return sha256_text(json.dumps({"registry": registry, "engine": _engine_pricing(), "fallback": FALLBACK_PRICING,
+                                   "cache_input_multipliers": {"read": CACHE_READ_INPUT_MULTIPLIER,
+                                                               "write": CACHE_WRITE_INPUT_MULTIPLIER}},
                                   sort_keys=True, separators=(",", ":"), ensure_ascii=False))
 
 
@@ -237,6 +267,88 @@ def billing_channel(models: list[str]) -> str:
     if named and all(split_inspect_name(m)[0] == "openrouter" for m in named):
         return "openrouter"
     return "anthropic"
+
+
+TARGET_PROVIDERS = ("anthropic", "openrouter")
+"""The Inspect providers a target may name: the two whose spend the lane books to the account that pays it.
+`billing_channel` here and `fire_trigger.petri_channels` book every target that is not `openrouter/` to the
+Anthropic lane, while the workflow's run step also exports OPENAI_API_KEY and GEMINI_API_KEY, so `openai/...` or
+`google/...` would bill a direct vendor key against the Anthropic ceiling (2026-09-23)."""
+
+
+def target_provider_problems(target: str) -> list[str]:
+    """Why a target spelling cannot be run on this lane: empty when it names
+    Anthropic or OpenRouter, or a zero-price test sentinel (mockllm, none/none;
+    the workflow refuses those in mode run and dry_run exists for them).
+    Anything else is a direct-vendor spelling that bills its own key while the
+    guard books it to the Anthropic lane, refused with the OpenRouter spelling
+    to use instead. The bare-name convention (`split_inspect_name`) reads a
+    target with no provider as Anthropic."""
+    provider, _ = split_inspect_name(target.strip())
+    if provider in TARGET_PROVIDERS or provider in ("mockllm", "none"):
+        return []
+    return [f"target {target!r} names Inspect provider {provider!r}, which bills that vendor's own key, while the lane "
+            "books every target that is not openrouter/ to the Anthropic channel and its daily ceiling; route it "
+            "through OpenRouter as openrouter/<vendor>/<model> with OpenRouter's vendor slug (for example "
+            "openrouter/openai/gpt-5.4-mini)"]
+
+
+JUDGE_KEY_ENVS = ("ANTHROPIC_API_KEY", "OPENROUTER_API_KEY")
+"""The registry `key_env` values a judge spec may resolve to: the two whose spend the lane books to the account
+that pays it. `judge_billing_channel` here and `fire_trigger.petri_channels` book OPENROUTER_API_KEY to the OpenRouter
+lane and every other key to the Anthropic lane, so a provider billed through a third key (today `google`, whose
+registry entry calls the Gemini API directly with GEMINI_API_KEY) would bill that vendor while counting against the
+Anthropic ceiling (2026-09-23)."""
+
+
+def judge_key_routing_problems(spec: str, registry: dict | None = None) -> list[str]:
+    """Why a judge spec's key routing cannot run on this lane: empty when the
+    registry provider it resolves to (`registry_provider`, the advice
+    resolver's rule) bills ANTHROPIC_API_KEY or OPENROUTER_API_KEY. A provider
+    whose `key_env` names any other key bills that vendor's own account while
+    the guard books it to the Anthropic channel and its daily ceiling, and is
+    refused with the OpenRouter spelling to use instead.
+
+    The rule is the channel mismatch and nothing more. It does not refuse a
+    `key_env` naming a secret the repository does not hold: which Actions
+    secrets exist is not visible from the code (an absent secret reaches the
+    job as an empty string, which the provider client refuses before a call),
+    so no list of held secrets is kept here to go stale. A spec the registry
+    cannot resolve (an unknown provider, a manual-UI one with no `key_env`, the
+    MockJudge sentinel) is left to `judge_runner.judge_spec_problems` and
+    `RegistryJudge`, which refuse it by name."""
+    spec = spec.strip()
+    if spec in ZERO_PRICE_MODELS:
+        return []
+    registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
+    provider = registry_provider(spec, registry)
+    cfg = registry.get(provider) if isinstance(registry, dict) else None
+    key_env = cfg.get("key_env") if isinstance(cfg, dict) else None
+    if not key_env or key_env in JUDGE_KEY_ENVS:
+        return []
+    model = spec.split(":", 1)[1] if ":" in spec else (str(cfg.get("consumer_default") or "").strip() or "<model>")
+    return [f"judge spec {spec!r} resolves to registry provider {provider!r}, whose key_env {key_env} bills that "
+            "vendor's own account, while the lane books every judge not billed through OPENROUTER_API_KEY to the "
+            "Anthropic channel and its daily ceiling; route it through OpenRouter as openrouter:<vendor>/<model> with "
+            f"OpenRouter's vendor slug (for this spec, openrouter:{provider}/{model} if OpenRouter's slug for the "
+            f"vendor is {provider!r})"]
+
+
+def inspect_to_registry_spec(model: str, registry: dict | None = None) -> str | None:
+    """The data/advice_providers.json spec an Inspect target string maps to,
+    in the resolver's canonical `provider:model` form (scripts/advice_eval.py
+    `_resolve_spec`), for the two providers a target may name: `anthropic/m`
+    is `anthropic:m` and `openrouter/vendor/m` is `openrouter:vendor/m`, the
+    same endpoint and key in both tools. None for anything else: a mock, or a
+    direct vendor route the registry does not describe (its `openai` entry
+    routes through OpenRouter, not the OPENAI_API_KEY Inspect's `openai/`
+    bills). The manifest recorded the Inspect string itself here until
+    2026-09-23."""
+    provider, name = split_inspect_name(model.strip())
+    if provider not in TARGET_PROVIDERS or not name:
+        return None
+    registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
+    return f"{provider}:{name}" if isinstance(registry, dict) and isinstance(registry.get(provider), dict) else None
 
 
 @dataclass(frozen=True)
@@ -265,8 +377,10 @@ def preflight_bound(*, samples: int, epochs: int, token_limit: int, price: Price
     a second commitment; it is carried here for the report only and never
     added to the target bound, or the guard would count it twice. Derived
     from the limits the run passes, not from turn counts, which undercount
-    (design memo section 13)."""
-    per_sample = token_limit * max(price.input_per_mtok, price.output_per_mtok) / 1e6
+    (design memo section 13). Inspect's token limit counts prompt-cache
+    tokens too, so the dearest rate includes the cache rates (2026-09-23)."""
+    per_sample = token_limit * max(price.input_per_mtok, price.output_per_mtok, price.cache_read_per_mtok,
+                                   price.cache_write_per_mtok) / 1e6
     total = samples * epochs * per_sample
     return PreflightBound(samples=samples, epochs=epochs, token_limit=token_limit, per_sample_usd=per_sample,
                           judge_reserve_usd=judge_reserve_usd, total_usd=total, max_spend_usd=max_spend_usd)
@@ -279,17 +393,25 @@ def usage_from_samples(samples: Any, role: str = "target") -> dict[str, dict[str
     round 7: a failed eval can retain events with usage but no aggregate, and
     a row with calls and zero tokens priced a paid call at zero); calls
     counted from the events of the given role; an event without a usage block
-    counted in `calls_without_usage`, never priced as zero."""
+    counted in `calls_without_usage`, never priced as zero. Prompt-cache
+    tokens are carried as the adapter carries them (None until a usage
+    reports the field), because Inspect counts them outside `input_tokens`
+    and `reprice_usage` prices them (2026-09-23)."""
     rows: dict[str, dict[str, Any]] = {}
 
     def row(model: str) -> dict[str, Any]:
         return rows.setdefault(model, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0,
+                                       "input_tokens_cache_read": None, "input_tokens_cache_write": None,
                                        "calls": 0, "calls_without_usage": 0})
 
     def add(r: dict[str, Any], usage: Any) -> None:
         r["input_tokens"] += int(getattr(usage, "input_tokens", 0) or 0)
         r["output_tokens"] += int(getattr(usage, "output_tokens", 0) or 0)
         r["total_tokens"] += int(getattr(usage, "total_tokens", 0) or 0)
+        for attr in ("input_tokens_cache_read", "input_tokens_cache_write"):
+            value = getattr(usage, attr, None)
+            if value is not None:
+                r[attr] = (r[attr] or 0) + int(value)
 
     for sample in samples:
         aggregate = dict(getattr(sample, "model_usage", None) or {})
@@ -328,7 +450,11 @@ def reprice_usage(model_usage: dict[str, dict[str, Any]], registry: dict | None 
     charge. A zero-price model (mockllm, the placeholder) with missing usage
     costs exactly 0 whatever its token counts were, so its cost is 0 and the
     missing usage is still recorded on the row (the locked inspect-ai's mockllm
-    returns no usage block at all)."""
+    returns no usage block at all). Prompt-cache reads and writes are priced
+    beside input and output at the bounded cache rates (CACHE_*_MULTIPLIER):
+    Inspect subtracts them from `input_tokens`, so pricing input and output
+    alone under-booked every cached call (2026-09-23). A null cache count is
+    no cached tokens: Inspect subtracts only what the provider reported."""
     rows: list[dict] = []
     total = 0.0
     any_missing = False
@@ -343,21 +469,25 @@ def reprice_usage(model_usage: dict[str, dict[str, Any]], registry: dict | None 
         zero_priced = price.input_per_mtok == 0 and price.output_per_mtok == 0
         in_tok = None if usage.get("input_tokens") is None else int(usage["input_tokens"])
         out_tok = None if usage.get("output_tokens") is None else int(usage["output_tokens"])
+        cache_read = None if usage.get("input_tokens_cache_read") is None else int(usage["input_tokens_cache_read"])
+        cache_write = None if usage.get("input_tokens_cache_write") is None else int(usage["input_tokens_cache_write"])
         if missing and not zero_priced:
             cost = None
             any_missing = True
         elif missing:
             cost = 0.0
         else:
-            cost = price.cost(in_tok, out_tok)
+            cost = price.cost(in_tok, out_tok, cache_read or 0, cache_write or 0)
             total += cost
         rows.append({"model": model, "input_tokens": in_tok, "output_tokens": out_tok,
                      "total_tokens": None if usage.get("total_tokens") is None and missing
                      else int(usage.get("total_tokens") or (in_tok or 0) + (out_tok or 0)),
+                     "input_tokens_cache_read": cache_read, "input_tokens_cache_write": cache_write,
                      "calls": int(usage.get("calls") or 0),
                      "calls_without_usage": int(usage.get("calls_without_usage") or 0), "usage_missing": missing,
                      "cost_usd": None if cost is None else round(cost, 8), "price_source": price.source,
-                     "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok})
+                     "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok,
+                     "cache_read_per_mtok": price.cache_read_per_mtok, "cache_write_per_mtok": price.cache_write_per_mtok})
     return (None if any_missing else round(total, 8)), rows
 
 

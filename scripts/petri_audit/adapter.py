@@ -45,10 +45,15 @@ from .checks import (
     expected_stimuli,
     generation_problems,
     missing_branch_refusals,
+    reply_problems,
     request_prefix_problems,
     request_stimuli,
+    sample_limit_refusal,
     staging_problems,
     stimulus_problems,
+    tool_results_verdict,
+    uncarried_ending_refusal,
+    upstream_provider_name,
 )
 from .controller import INFO_SOURCE
 from .envlock import installed_harness_commit, load_lock
@@ -66,11 +71,16 @@ from .rules import rule_record
 from .sanitizer import _project_eval, allowlist_digest, load_allowlist, sanitise_log
 from .seal import scan_strings, sealed_registry, seed_texts_against_registry
 from .seeds import SeedSet, conditions, seed_digest, target_visible_strings, text_of, tool_result_for
-from .spend import pricing_source_digest, reprice_usage
+from .spend import inspect_to_registry_spec, pricing_source_digest, reprice_usage
 from .transcripts import bind_manifest, build_record, conversation_id, record_problems
 
 ADAPTER_NAME = "petri_audit.adapter"
-ADAPTER_VERSION = "0.1"
+# 0.2 (2026-09-23): each assistant turn's stop reason is recorded (per branch and counted per run) and a truncated,
+# filtered or empty reply refuses its branch; a sample Inspect halted at a limit refuses its tree; an openrouter/
+# target's upstream hosts are counted per call (models.target.upstream_providers); a tool seed whose target made no
+# tool call leaves tool_results_from_data not_applicable instead of a pass over nothing; models.target.registry_spec
+# is the registry's provider:model form derived from the log, and seed_forwarded_by_provider is null for openrouter/
+ADAPTER_VERSION = "0.2"
 # inspect-ai 0.3.237 forwards GenerateConfig.seed on these providers (design memo section 2); anthropic and
 # google never send it; mock and placeholder models have no provider behaviour to record.
 SEED_FORWARDING: dict[str, bool | None] = {
@@ -79,6 +89,16 @@ SEED_FORWARDING: dict[str, bool | None] = {
     "vllm_completions": True, "anthropic": False, "google": False, "mockllm": None, "none": None,
 }
 _BRANCH_NAME = re.compile(r"^branch (\d+)$")
+
+
+def seed_reaches_serving_provider(provider: str) -> bool | None:
+    """The manifest's `seed_forwarded_by_provider`. SEED_FORWARDING says
+    whether Inspect puts the seed in its request, and the raw-request check
+    keeps requiring it there; OpenRouter is a router, and whether the upstream
+    host it picks receives or honours the seed depends on that host, so for an
+    openrouter/ target the manifest records null, not established, rather than
+    the True that described only the request to OpenRouter (2026-09-23)."""
+    return None if provider == "openrouter" else SEED_FORWARDING.get(provider)
 
 
 class AdapterError(RuntimeError):
@@ -177,7 +197,7 @@ def _target_model_events(sample: EvalSample) -> list[ModelEvent]:
 
 
 def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, custody: str, spend: dict,
-              registry_spec: str | None = None, engine_sha: str | None = None, lock_path: Path | str | None = None,
+              engine_sha: str | None = None, lock_path: Path | str | None = None,
               registry: dict | None = None, harness_commit: str | None = None,
               readapt: dict | None = None) -> AdaptResult:
     """`readapt` (mode readapt, scripts/petri_audit/readapt.py): {"expected": what the log must record,
@@ -236,10 +256,15 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     trees: list[dict] = []
     dropped_empty = 0
     served_all: set[str] = set()
+    stop_counts: dict[str, int] = {}          # every target call's stop reason, refused trees included
+    upstream_counts: dict[str, int] = {}      # openrouter/ targets: calls per upstream host OpenRouter named
+    upstream_unrecorded = 0                   # calls with no retained response, or one naming no plain host
     role_usage: dict[str, dict[str, Any]] = {}
     model_usage: dict[str, dict[str, Any]] = {}
     seen_counts: dict[str, dict[str, int]] = {}
     any_tools = False
+    tool_results_by_seed: dict[str, int] = {}     # tool-result turns examined per tool-declaring seed
+    tool_calls_by_seed: dict[str, int] = {}       # target calls that made a tool call, per tool-declaring seed
     prefill_seen = False
     cache_seen = False
     calls_missing = 0
@@ -294,6 +319,33 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                     accumulate(bucket, key, usage)
         served = {e.output.model for e in model_events if e.output and e.output.model}
         served_all |= served
+        # how each target call ended, keyed by the id of the assistant message it produced: the timeline's messages
+        # are those same objects (a replayed prefix included), so each record's assistant turn finds its own call
+        stop_by_message: dict[str, str] = {}
+        endings: list[tuple[str | None, str]] = []     # (reply message id, stop reason) per call, for the tree guard
+        for e in model_events:
+            choice = e.output.choices[0] if e.output is not None and e.output.choices else None
+            reason = str(choice.stop_reason) if choice is not None else "no_output"
+            stop_counts[reason] = stop_counts.get(reason, 0) + 1
+            endings.append((choice.message.id if choice is not None else None, reason))
+            if choice is not None and choice.message.id:
+                stop_by_message[choice.message.id] = reason
+            if target_provider == "openrouter":
+                # read from the raw response BEFORE sanitising: the `call` block never reaches a published file, and
+                # only the host's name is copied out of it (checks.upstream_provider_name)
+                host = upstream_provider_name(e.call.response if e.call is not None else None)
+                if host is None:
+                    upstream_unrecorded += 1
+                else:
+                    upstream_counts[host] = upstream_counts.get(host, 0) + 1
+        # cache use and raw-request retention need no seed, so they are read from every call BEFORE any refusal, as
+        # usage is: a refused sample (unknown seed, error, halted at a limit) still made its calls, and a check that
+        # skipped them passed over calls it never examined (Codex review of PR #37, 2026-09-23)
+        for e in model_events:
+            if e.cache:
+                cache_seen = True
+            if e.call is None or not isinstance(e.call.request, dict):
+                calls_missing += 1
         if seed is None:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"sample metadata names no known seed ({seed_id!r})"})
             continue
@@ -310,35 +362,58 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             continue
         seeds_used[seed_id] = seed
         max_turns = max(max_turns, seed["protocol"]["max_target_turns"])
+        # the sampling settings are checked as soon as the seed is bound, before the condition, error and limit
+        # refusals (the same review). They read the retained raw request, never the merged config; the settings are
+        # read per provider shape (nested for Google) and the requested seed is required where the provider forwards
+        # it (Codex round 3). A call without a retained request is counted above
+        for e in model_events:
+            if e.call is not None and isinstance(e.call.request, dict):
+                config_detail.extend(generation_problems(seed["generation"], e.call.request,
+                                                         forwards_seed=SEED_FORWARDING.get(target_provider)))
         if seed.get("tools"):
             any_tools = True
+            tool_results_by_seed.setdefault(seed_id, 0)
+            # counted from the calls before any tree or branch is refused, so the tools check can tell "the target made
+            # no tool call" from "its tool turns were never examined" (2026-09-23 review: a limit-halted H3 run was
+            # reported as having made no tool call)
+            tool_calls_by_seed[seed_id] = tool_calls_by_seed.get(seed_id, 0) + sum(
+                1 for e in model_events if e.output is not None and e.output.choices and e.output.choices[0].message.tool_calls)
         cond = next((c for c in conditions(seed) if c["condition_id"] == meta.get("condition_id")), None)
         if cond is None:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"unknown condition {meta.get('condition_id')!r}"})
             continue
         counts = seen_counts.setdefault(seed_id, {})
         counts[cond["condition_id"]] = counts.get(cond["condition_id"], 0) + 1
+        # raw request bodies (per sample, every branch): each retained request's complete system/user sequence must be
+        # a prefix of exactly the sequence one branch of this condition declares, never mere membership in a pool.
+        # Checked as soon as the condition is bound, before the error, limit and stray-ending refusals (the same review)
+        for e in model_events:
+            if e.call is None or not isinstance(e.call.request, dict):
+                continue
+            for problem in request_prefix_problems(request_stimuli(e.call.request), seed, cond, where=tree_id):
+                checks["stimulus_digest_identity"].fail(problem)
         if sample.error:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"sample error: {sample.error}"})
             continue
-        # config and raw-request checks read the retained raw request, never the merged config; the settings are
-        # read per provider shape (nested for Google) and the requested seed is required where the provider
-        # forwards it (Codex round 3)
-        expected_gen = seed["generation"]
-        for e in model_events:
-            if e.cache:
-                cache_seen = True
-            if e.call is None or not isinstance(e.call.request, dict):
-                calls_missing += 1
-                continue
-            config_detail.extend(generation_problems(expected_gen, e.call.request,
-                                                     forwards_seed=SEED_FORWARDING.get(target_provider)))
+        # Inspect ends a sample that reaches its token, cost or other limit with `limit` set and NO error, so the
+        # error check above passes it; its branches may stop mid-exchange and are refused as a tree (2026-09-23)
+        halted = sample_limit_refusal(sample.limit, where=tree_id)
+        if halted is not None:
+            refused.append(halted)
+            continue
         pw = _pw_events(sample)
         staged = [d for d in pw if d.get("pw") == "staged"]
         branch_infos = [d for d in pw if d.get("pw") == "branch"]
         limits = [d for d in pw if d.get("pw") == "limit"]
         timeline = select_timeline(sample.timelines or [], "target")
         nodes = _walk_nodes(timeline.root)
+        # a call that did not end cleanly is refused through the branch carrying its reply (reply_problems below); one
+        # whose reply no branch carries would be counted and refuse nothing, so the tree is refused (2026-09-23 review)
+        stray = uncarried_ending_refusal(endings, {m.id for span, _, _ in nodes for m in span_messages(span) if m.id},
+                                         where=tree_id)
+        if stray is not None:
+            refused.append(stray)
+            continue
         # the surviving trajectory is the last one the harness created, decided on the timeline before any refusal
         # (Codex round 8: marking the last exported branch promoted an earlier branch when the real survivor was refused)
         survivor_creation = max((c for _, _, c in nodes), default=None)
@@ -408,6 +483,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                 checks["stimulus_digest_identity"].fail(problem)
             for turn in record["turns"]:
                 if turn["role"] == "tool":
+                    tool_results_by_seed[seed_id] = tool_results_by_seed.get(seed_id, 0) + 1
                     hit = next((s for s in staged if s.get("kind") == "tool_result" and s.get("tool_call_id") == turn["tool_call_id"]), None)
                     if hit is None:
                         checks["tool_results_from_data"].fail(f"{where} turn {turn['turn_id']}: tool result has no staging record")
@@ -430,6 +506,16 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                                 "reason": f"trajectory truncated by the controller at the {hit[0].get('kind')} limit "
                                           f"({hit[0].get('limit', hit[0].get('reason'))})"})
                 continue
+            # every assistant turn must come from a call that ended on its own: a reply cut at max_tokens (a reasoning
+            # model spends its allowance before any text), rejected for length or withheld by a filter, one whose
+            # ending Inspect could not map (`unknown`: OpenRouter's finish_reason error, 2026-09-23 review), or one with
+            # no text and no tool call, is not an answer the rules or the judge may score (2026-09-23)
+            turn_stops = {t["turn_id"]: stop_by_message.get(m["id"]) if m["id"] else None
+                          for t, m in zip(record["turns"], simple) if t["role"] == "assistant"}
+            incomplete = reply_problems(record["turns"], turn_stops, where=where)
+            if incomplete:
+                refused.append({"branch_id": f"{tree_id}:{branch_id}", "reason": "; ".join(incomplete[:5])})
+                continue
             overlong = exchange_problems(record["turns"], seed["protocol"]["max_target_turns"], where=where)
             if overlong:
                 refused.append({"branch_id": f"{tree_id}:{branch_id}", "reason": "; ".join(overlong)})
@@ -445,14 +531,8 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             branches_out.append({"branch_id": branch_id, "parent_branch_id": parent_id, "branched_from_message_id": anchor_msg,
                                  "branched_from_turn_id": anchor_turn, "condition_id": cond["condition_id"],
                                  "conversation_id": conv_id, "surviving": creation == survivor_creation,
-                                 "creation_index": creation})
-        # raw request bodies (per sample, every branch): each retained request's complete system/user sequence must be
-        # a prefix of exactly the sequence one branch of this condition declares, never mere membership in a pool
-        for e in model_events:
-            if e.call is None or not isinstance(e.call.request, dict):
-                continue
-            for problem in request_prefix_problems(request_stimuli(e.call.request), seed, cond, where=tree_id):
-                checks["stimulus_digest_identity"].fail(problem)
+                                 "creation_index": creation,
+                                 "assistant_stop_reasons": [{"turn_id": tid, "stop_reason": r} for tid, r in turn_stops.items()]})
         # every declared branch must appear in this tree's timeline; one the timeline never carried is refused here,
         # one it carried but the adapter refused above is already recorded once
         refused.extend(missing_branch_refusals(seed, branch_ids_seen, where=tree_id))
@@ -486,10 +566,11 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     if cache_seen:
         checks["no_cache"].fail("a target generation was served from Inspect's cache")
     checks["no_cache"].ok("no cached generation")
-    if any_tools:
-        checks["tool_results_from_data"].ok("every tool result matches the seed's results table")
-    else:
-        checks["tool_results_from_data"] = Check("not_applicable", "no tools declared by this run's seeds")
+    tool_status, tool_detail = tool_results_verdict(tool_results_by_seed, tool_calls_by_seed)
+    if tool_status == "pass":
+        checks["tool_results_from_data"].ok(tool_detail)
+    elif checks["tool_results_from_data"].status == "not_run":
+        checks["tool_results_from_data"] = Check(tool_status, tool_detail)
 
     # write the record families first (their digests enter the manifest), then the manifest
     transcripts_path = out_dir / "transcripts.jsonl"
@@ -544,11 +625,18 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                       # generation_config_pinned check, never inferred into this field
                       "log_model_api": getattr(spec.config, "log_model_api", None)},
         "models": {"target": {"provider": target_provider, "model": target_name.split("/", 1)[1] if "/" in target_name else target_name,
-                              "inspect_name": target_name, "registry_spec": registry_spec,
+                              # derived from the log's own target, never from a caller's string: the registry's
+                              # provider:model form, or null outside the registry (the Inspect string until 2026-09-23)
+                              "inspect_name": target_name, "registry_spec": inspect_to_registry_spec(target_name, registry),
                               "served_model_strings": sorted(served_all),
+                              "stop_reasons": [{"stop_reason": r, "calls": n} for r, n in sorted(stop_counts.items())],
+                              "upstream_providers": ({"by_provider": [{"provider": h, "calls": n}
+                                                                      for h, n in sorted(upstream_counts.items())],
+                                                      "calls_unrecorded": upstream_unrecorded}
+                                                     if target_provider == "openrouter" else None),
                               "config": {k: v for k, v in (target_role.config.model_dump(mode="json") if target_role else {}).items() if v is not None},
                               "seed_requested": (seeds_used and next(iter(seeds_used.values()))["generation"]["seed_requested"]) or None,
-                              "seed_forwarded_by_provider": SEED_FORWARDING.get(target_provider),
+                              "seed_forwarded_by_provider": seed_reaches_serving_provider(target_provider),
                               "seed_honored": None},
                    "auditor": None, "judge_harness": None},
         "seeds": [{"seed_id": s["seed_id"], "seed_sha256": seed_digest(s), "file": repo_rel(seed_set.path),
@@ -557,7 +645,8 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         "usage": {"by_role": [{"role": r, **u} for r, u in sorted(role_usage.items())],
                   "by_model": [{"model": m, **u} for m, u in sorted(model_usage.items())],
                   "engine_priced_cost_usd": priced_cost, "usage_missing_models": usage_missing_models,
-                  "pricing_source": "data/advice_providers.json + medlang_circuits.evaluate_models.PRICING + fallback",
+                  "pricing_source": ("data/advice_providers.json + medlang_circuits.evaluate_models.PRICING + fallback"
+                                     " + cache multipliers"),
                   "pricing_source_sha256": pricing_source_digest(registry)},
         "spend": {"lane": "petri-audit", "max_spend_usd": spend["max_spend_usd"], "judge_max_spend_usd": spend.get("judge_max_spend_usd"),
                   "journal_nonce": spend.get("journal_nonce"), "cost_limit_per_sample_usd": spend.get("cost_limit_per_sample_usd"),

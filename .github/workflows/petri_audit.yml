@@ -167,7 +167,7 @@ jobs:
           IN_SOURCE_RUN_ID: ${{ inputs.source_run_id }}
         run: |
           python - <<'EOF'
-          import json, os
+          import json, os, re
           # The push-path defaults dict MUST contain every trigger key (unknown
           # keys in the trigger file are silently ignored by design; the fire
           # guard's KNOWN_KEYS mirrors this set).
@@ -212,6 +212,25 @@ jobs:
           if p["mode"] in ("run", "readapt") and p["target"].split("/")[0] in ("mockllm", "none"):
               raise SystemExit(f"mode {p['mode']} needs a real target, not the test sentinel {p['target']!r}; "
                                "use dry_run for mockllm")
+          # every target that is not openrouter/ is booked to the Anthropic lane (fire_trigger.petri_channels), but the
+          # run step also exports the direct OpenAI and Gemini keys, so openai/... or google/... would bill a vendor key
+          # against the Anthropic ceiling; cli preflight refuses the same spellings (spend.target_provider_problems).
+          # A readapt calls no target, but it states its source run's target, which the preflight step below prices
+          # and refuses in every mode, after the fire has reserved the judge's ceiling; so the paid-target rules here
+          # hold for it too and the fire guard refuses the same spellings (fire_trigger.petri_target_problems)
+          if (p["mode"] in ("run", "readapt") and "/" in p["target"]
+                  and p["target"].split("/")[0] not in ("anthropic", "openrouter")):
+              raise SystemExit(f"mode {p['mode']} books every target that is not openrouter/ to the Anthropic lane, "
+                               f"but {p['target']!r} bills its own vendor key; route it through OpenRouter as "
+                               "openrouter/<vendor>/<model> (for example openrouter/openai/gpt-5.4-mini)")
+          # the test above runs only on a spelling with a slash, so a bare model name (which cli preflight reads as
+          # Anthropic), an empty target, a provider with no model and OpenRouter with no vendor all passed it into
+          # the paid steps (Codex review of PR #37, 2026-09-23). A paid target names its provider and model exactly;
+          # preflight and dry_run keep their mock targets (the checks above)
+          if (p["mode"] in ("run", "readapt")
+                  and not re.fullmatch(r"anthropic/[^/\s]+|openrouter/[^/\s]+/[^/\s]+", p["target"])):
+              raise SystemExit(f"mode {p['mode']} needs a target spelled anthropic/<model> or "
+                               f"openrouter/<vendor>/<model>, got {p['target']!r}; a bare model name names no provider")
           # a paid run is admitted only from a push-to-run fire on its first attempt: the fire path journals the
           # reservation the daily ceiling counts, and neither a workflow_dispatch nor an Actions-tab re-run has one
           # of its own (Codex round 8); preflight and dry_run cost nothing and may run from anywhere. A readapt is
@@ -431,17 +450,19 @@ jobs:
           for s in $SEED_IDS; do ARGS="$ARGS --seed-id $s"; done
           if [ -z "$SEED_IDS" ]; then ARGS="--wave $WAVE"; fi
           if [ "$JUDGE" = "true" ]; then ARGS="$ARGS --judge-max-spend $JUDGE_MAX_SPEND --judge-model $JUDGE_MODEL"; fi
-          # The target-start marker, the twin of the judge's, written immediately before the call that can spend.
-          # The always()-gated spend report runs even when a step BEFORE this one failed - seed validation, the
+          # The target-start marker, the twin of the judge's, marks the point from which a provider call can spend.
+          # The always()-gated spend report runs even when a step BEFORE the call failed - seed validation, the
           # environment lock, preflight - and with no eval log it imputes the FULL target ceiling; since PR B binds
           # the journal nonce into that sidecar, the ledger would fold a cost for a run that made no provider call
-          # (Codex round 8 on PR #28). It must sit in THIS step: placed in "Validate seeds", whose first lines are
-          # identical, it would be touched before any call and guard nothing.
+          # (Codex round 8 on PR #28). `cli run` writes it (--started-marker) after the target model is built and
+          # priced, immediately before the eval: touched here, before the CLI, a missing or empty API key or an
+          # unknown provider, which fail in get_model with no call made, booked the whole max_spend (2026-09-23).
+          # Such a failure exits 11 with the marker absent; any failure after the marker is still booked.
           mkdir -p "$RUNNER_TEMP/petri-run"
-          touch "$RUNNER_TEMP/petri-run/target_started"
           python -m scripts.petri_audit.cli run --seeds "$SEEDS_FILE" $ARGS \
             --target "$TARGET" --max-spend "$MAX_SPEND" --epochs "$EPOCHS" --token-limit "$TOKEN_LIMIT" \
-            --log-model-api "$LOG_MODEL_API" --out-dir "$RUNNER_TEMP/petri-run" --journal-nonce "$JOURNAL_NONCE"
+            --log-model-api "$LOG_MODEL_API" --out-dir "$RUNNER_TEMP/petri-run" --journal-nonce "$JOURNAL_NONCE" \
+            --started-marker "$RUNNER_TEMP/petri-run/target_started"
 
       # Under readapt the out dir is the SOURCE run's, which holds its landed target sidecar; `--readapt` checks the
       # log is the one that sidecar priced, records the provenance in the manifest, and leaves the sidecar
@@ -452,7 +473,6 @@ jobs:
         env:
           MODE: ${{ needs.params.outputs.mode }}
           SEEDS_FILE: ${{ needs.params.outputs.seeds_file }}
-          TARGET: ${{ needs.params.outputs.target }}
           MAX_SPEND: ${{ needs.params.outputs.max_spend }}
           JUDGE: ${{ needs.params.outputs.judge }}
           JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
@@ -468,7 +488,7 @@ jobs:
           fi
           python -m scripts.petri_audit.cli adapt --seeds "$SEEDS_FILE" --eval "$EVAL" \
             --out-dir "data/petri/runs/$RUN_STEM" --custody "github_actions_artifact:90d" \
-            --target "$TARGET" --max-spend "$MAX_SPEND" --token-limit "$TOKEN_LIMIT" $ARGS --report "${SOURCE[@]}"
+            --max-spend "$MAX_SPEND" --token-limit "$TOKEN_LIMIT" $ARGS --report "${SOURCE[@]}"
 
       # A readapt's judge runs exactly as a run's; its sidecar carries the readapt fire's nonce, which `cli judge`
       # reads from the manifest's `readapt` block, so reconciliation joins it to the fire that reserved it, and is

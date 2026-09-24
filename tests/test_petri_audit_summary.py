@@ -975,6 +975,20 @@ def test_usage_provenance_is_bound_to_the_run_s_pricing_pin(run_dir, tmp_path):
     assert summary.run_summary(bare, mode="run")["usage"] == {"unavailable": "run_x.report.json models #0 lacks 'price_source'"}
 
 
+def test_a_run_pinned_under_other_cache_multipliers_is_not_attributable(run_dir, monkeypatch):
+    """Codex review of PR #37 (2026-09-23): the summary compares the run's
+    pricing pin with the current digest before it labels a price. The digest
+    left out the cache multipliers, so a run priced under other multipliers
+    matched and kept its labels; now the pin mismatches and the labels are
+    withheld, the counts kept."""
+    assert summary.run_summary(run_dir, mode="run")["usage"][0]["status"] == summary.USAGE_MOCK
+    monkeypatch.setattr(spend, "CACHE_WRITE_INPUT_MULTIPLIER", 1.25)
+    u = summary.run_summary(run_dir, mode="run")["usage"]
+    assert u[0]["model"] == "mockllm/model" and u[0]["calls"] == 3, "the counts are measured"
+    assert u[0]["status"] == summary.USAGE_UNAVAILABLE and u[0]["price_source"] is None
+    assert u[0]["note"].startswith("price source not attributable: the pricing registry differs from the run's pin")
+
+
 def test_judge_rows_survive_a_target_pricing_pin_mismatch(run_dir):
     """Codex (PR #27, fifteenth round): a target pricing-pin mismatch replaced
     the whole usage section, judge rows included, although the judge sidecar

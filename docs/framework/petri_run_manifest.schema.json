@@ -420,6 +420,29 @@
                 "creation_index": {
                   "type": "integer",
                   "minimum": 1
+                },
+                "assistant_stop_reasons": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "turn_id",
+                      "stop_reason"
+                    ],
+                    "properties": {
+                      "turn_id": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "stop_reason": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Inspect's StopReason for the target call that produced this turn: stop or tool_calls. Any other value, unknown included, refuses the branch, so none appears here."
+                      }
+                    }
+                  },
+                  "description": "Adapter 0.2 (2026-09-23): one entry per assistant turn of this branch's record, replayed prefix included, in turn order, naming how the target call that produced it ended. Absent only in manifests written by adapter 0.1, which recorded no stop reason. A branch whose turn ended on anything but stop or tool_calls (max_tokens: cut at the output cap; model_length: the prompt was rejected as longer than the context window; content_filter; unknown: an ending Inspect could not map, such as OpenRouter's finish_reason error or null, or the direct Anthropic provider's context-window stop), whose turn has no retained call, or whose turn is empty (no text and no tool call) is refused and listed under integrity.records_refused instead; so is a whole tree in which a call that did not end on stop or tool_calls produced a reply no branch carries."
                 }
               }
             }
@@ -1074,7 +1097,7 @@
             "not_applicable",
             "not_run"
           ],
-          "description": "pass: examined and clean. fail: examined and violated (detail names where). not_applicable: nothing in this run for the check to examine (a tools check on seeds that declare none); counts as clean for claim-grade eligibility. not_run: the check did not execute; never eligible."
+          "description": "pass: examined and clean. fail: examined and violated (detail names where). not_applicable: nothing in this run for the check to examine (a tools check on seeds that declare none, or, since adapter 0.2, on tool seeds whose target made no tool call in their samples, counted from the calls themselves and named in the detail); counts as clean for claim-grade eligibility. not_run: the check did not execute, or, since adapter 0.2, the tools check found tool calls by the target but no examined record carrying a result (the detail names the seeds; refused trees and branches are listed in integrity.records_refused); never eligible."
         },
         "detail": {
           "type": [
@@ -1114,7 +1137,7 @@
             "string",
             "null"
           ],
-          "description": "The data/advice_providers.json spec this maps to, or null when the model is outside the registry."
+          "description": "The data/advice_providers.json spec this maps to, in the registry resolver's provider:model form (anthropic:<model>, openrouter:<vendor>/<model>), derived from inspect_name; null when the model is outside the registry (a mock, or a direct vendor route the registry does not describe). Manifests written by adapter 0.1 recorded the Inspect string here instead."
         },
         "served_model_strings": {
           "type": "array",
@@ -1138,7 +1161,7 @@
             "boolean",
             "null"
           ],
-          "description": "Whether this Inspect provider forwards GenerateConfig.seed (read from the provider source at adapter version time); null when not established."
+          "description": "Whether this Inspect provider forwards GenerateConfig.seed (read from the provider source at adapter version time); null when not established. Since adapter 0.2, null for an openrouter/ target: Inspect sends the seed to OpenRouter (generation_config_pinned still requires it in the raw request when a seed is requested), but whether the upstream host OpenRouter picks receives or honours it is not established. Adapter 0.1 recorded true there."
         },
         "seed_honored": {
           "type": [
@@ -1146,6 +1169,67 @@
             "null"
           ],
           "description": "Whether two identical calls returned identical text in a separate determinism probe; null unless that probe ran. Never inferred."
+        },
+        "stop_reasons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "stop_reason",
+              "calls"
+            ],
+            "properties": {
+              "stop_reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "calls": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "description": "Adapter 0.2 (2026-09-23): the number of this role's calls per Inspect StopReason (stop, max_tokens, model_length, tool_calls, content_filter, unknown), one entry per reason seen, sorted by reason, over every call of the run, refused trees included; `no_output` counts calls that returned no choice (an error). Absent only in manifests written by adapter 0.1, which recorded no stop reason."
+        },
+        "upstream_providers": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "by_provider",
+            "calls_unrecorded"
+          ],
+          "properties": {
+            "by_provider": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "provider",
+                  "calls"
+                ],
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "calls": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              }
+            },
+            "calls_unrecorded": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "description": "Adapter 0.2 (2026-09-23): for an openrouter/ target, the upstream host OpenRouter named in each call's raw response (its top-level `provider` field), counted per host and sorted by name, over every call of the run, refused trees included. OpenRouter routes one model to several hosts, so served_model_strings and generation_config_pinned certify only what was sent to OpenRouter; this records who served it. Only the host's name is copied out of the raw response, which the sanitiser never publishes. calls_unrecorded counts calls whose raw response was not retained (log_model_api off, or an error) or named no plain host. null for a target not routed through OpenRouter. Absent only in manifests written by adapter 0.1."
         }
       }
     },
@@ -1237,7 +1321,7 @@
             "string",
             "null"
           ],
-          "description": "The data/advice_providers.json spec this maps to, or null when the model is outside the registry."
+          "description": "The data/advice_providers.json spec this maps to, in the registry resolver's provider:model form (anthropic:<model>, openrouter:<vendor>/<model>), derived from inspect_name; null when the model is outside the registry (a mock, or a direct vendor route the registry does not describe). Manifests written by adapter 0.1 recorded the Inspect string here instead."
         },
         "served_model_strings": {
           "type": "array",
@@ -1261,7 +1345,7 @@
             "boolean",
             "null"
           ],
-          "description": "Whether this Inspect provider forwards GenerateConfig.seed (read from the provider source at adapter version time); null when not established."
+          "description": "Whether this Inspect provider forwards GenerateConfig.seed (read from the provider source at adapter version time); null when not established. Since adapter 0.2, null for an openrouter/ target: Inspect sends the seed to OpenRouter (generation_config_pinned still requires it in the raw request when a seed is requested), but whether the upstream host OpenRouter picks receives or honours it is not established. Adapter 0.1 recorded true there."
         },
         "seed_honored": {
           "type": [
@@ -1269,6 +1353,67 @@
             "null"
           ],
           "description": "Whether two identical calls returned identical text in a separate determinism probe; null unless that probe ran. Never inferred."
+        },
+        "stop_reasons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "stop_reason",
+              "calls"
+            ],
+            "properties": {
+              "stop_reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "calls": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "description": "Adapter 0.2 (2026-09-23): the number of this role's calls per Inspect StopReason (stop, max_tokens, model_length, tool_calls, content_filter, unknown), one entry per reason seen, sorted by reason, over every call of the run, refused trees included; `no_output` counts calls that returned no choice (an error). Absent only in manifests written by adapter 0.1, which recorded no stop reason."
+        },
+        "upstream_providers": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "by_provider",
+            "calls_unrecorded"
+          ],
+          "properties": {
+            "by_provider": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "provider",
+                  "calls"
+                ],
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "calls": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              }
+            },
+            "calls_unrecorded": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "description": "Adapter 0.2 (2026-09-23): for an openrouter/ target, the upstream host OpenRouter named in each call's raw response (its top-level `provider` field), counted per host and sorted by name, over every call of the run, refused trees included. OpenRouter routes one model to several hosts, so served_model_strings and generation_config_pinned certify only what was sent to OpenRouter; this records who served it. Only the host's name is copied out of the raw response, which the sanitiser never publishes. calls_unrecorded counts calls whose raw response was not retained (log_model_api off, or an error) or named no plain host. null for a target not routed through OpenRouter. Absent only in manifests written by adapter 0.1."
         }
       }
     },

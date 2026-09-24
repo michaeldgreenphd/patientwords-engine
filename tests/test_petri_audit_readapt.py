@@ -328,7 +328,7 @@ def _staged(tmp_path: Path) -> tuple[Path, Path, Path, dict]:
 
 def _adapt_argv(runs: Path, eval_path: Path, plan_path: Path, out_dir: Path | None = None) -> list[str]:
     return ["adapt", "--eval", str(eval_path), "--out-dir", str(out_dir or runs / STEM), "--custody",
-            "github_actions_artifact:90d", "--target", "anthropic/claude-haiku-4-5", "--max-spend", "6.10",
+            "github_actions_artifact:90d", "--max-spend", "6.10",
             "--judge-max-spend", "2.50", "--token-limit", "40000", "--report", "--readapt", str(plan_path)]
 
 

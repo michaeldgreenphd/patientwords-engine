@@ -63,7 +63,7 @@ version `0.1.dev62`, which does not identify the commit. VERIFIED.
 | Mechanic | Status | Evidence | What it means for the study |
 |---|---|---|---|
 | A seed is a free-text instruction to the auditor, never shown to the target. It is `Sample.input`, read into `AuditState.seed_instructions`, substituted as `{seed_instructions}`, and persisted as `sample.input`, two InfoEvents and `eval.task_args`. No digest is recorded. | VERIFIED (code + mock log) | `_task/audit.py` `audit` L20-97; `_auditor/auditor.py` L67-76, L236-238; `_auditor/agent.py` L173-188 | The study's seed is a data record (section 5), and the adapter computes and stores its digest itself. "Seed" in this memo means that record; a random-number seed is always called "RNG seed" or "provider seed". |
-| Petri has no RNG seed. The only route is Inspect's `GenerateConfig.seed` on a model role, which in inspect-ai 0.3.237 is forwarded by the OpenAI chat-completions path and every `OpenAICompatibleAPI` provider (openrouter, `openai-api/<service>`, together, ollama, vllm and others), by azureai, grok, groq, hf, mistral, sagemaker and vllm_completions; not by the anthropic or google providers; dropped with a warning on the responses path that gpt-5 and o-series models use by default. | VERIFIED | grep of `src/`; `inspect_ai/model/_generate_config.py`; `inspect_ai/model/_providers/*.py` | A requested seed is recorded as requested, whether the provider forwards it is recorded from the provider table, and whether it was honoured stays null until a two-call probe exists (section 11). |
+| Petri has no RNG seed. The only route is Inspect's `GenerateConfig.seed` on a model role, which in inspect-ai 0.3.237 is forwarded by the OpenAI chat-completions path and every `OpenAICompatibleAPI` provider (openrouter, `openai-api/<service>`, together, ollama, vllm and others), by azureai, grok, groq, hf, mistral, sagemaker and vllm_completions; not by the anthropic or google providers; dropped with a warning on the responses path that gpt-5 and o-series models use by default. | VERIFIED | grep of `src/`; `inspect_ai/model/_generate_config.py`; `inspect_ai/model/_providers/*.py` | A requested seed is recorded as requested, whether the provider forwards it is recorded from the provider table, and whether it was honoured stays null until a two-call probe exists (section 11). (2026-09-23: since adapter 0.2 an `openrouter/` target records `seed_forwarded_by_provider` as null, because which upstream host OpenRouter picks, and whether that host receives the seed, is not established; the raw-request check still uses the table and requires the seed in the request to OpenRouter.) |
 | Auditor tools: `set_system_message`, `send_message`, `resume` (optional prefill), `end_conversation`; with rollback, `rollback_conversation` and `restart_conversation`; with synthetic tools, `create_tool`, `remove_tool`, `send_tool_call_result`; `extra_tools` adds, `exclude` removes. `audit()` exposes neither `exclude` nor `user_message`. | VERIFIED | `_auditor/tools.py` `auditor_tools` L19-60; `_task/audit.py` L20-38 | Any custom tool surface needs a custom Task built from `audit_solver`, `auditor_agent` and `target_agent`, which is Petri's documented custom-task path. |
 | The tool docstrings the auditor model sees carry elicitation bias: `send_message` asks for typos and informal language, `rollback_conversation` says "use at least once", `end_conversation` says to keep pursuing the seed. `audit(system_message=...)` replaces only the system message constant, not these. | VERIFIED | `_auditor/agent.py` `AUDITOR_SYSTEM_MESSAGE`; `tools/_messages.py`; `tools/_conversation.py` | An LLM auditor as shipped is unfit for a neutral register measurement (section 12). The scripted controller has no such text. |
 | The system prompt can be set before the first assistant message and not after: `set_system_message` raises `ToolError` once any assistant message exists; `restart_conversation` wipes history; `target_agent(system_required=False)` allows none. | VERIFIED | `tools/_messages.py` L108-117; `tools/_conversation.py` L136-148; `target/_agent.py` L33-49 | An audience manipulation carried by the system prompt is a root-level condition. Two system prompts are two trees that share nothing realised. A rollback to the first message followed by `set_system_message` would overwrite the replayed slot: INFERRED, no test exercises it, and the design does not use it. |
@@ -175,6 +175,19 @@ manifest records each as a named check with status pass, fail or not_run
    scans only `.json`, `.html`, `.md`, `.csv`, `.txt` and `.yml` today and is
    extended to the sanitised export and `.jsonl` families before the lane
    commits anything.
+
+The raw-request parts of checks 1, 3 and 4 read the calls of a refused tree
+too. Adapter 0.2 examines a sample's calls before it refuses the tree for a
+sample error, a limit halt or a stray reply ending; until the Codex review
+of 2026-09-23 those refusals came first, so a run whose trees were all
+halted reported `generation_config_pinned` and `no_cache` as passes over
+calls never examined. A sample refused before its seed is bound (no known
+seed, a seed digest that differs from the seed file in hand, or a mode with
+no execution path) still counts toward `no_cache` and the retained-request
+count, which need no seed, but its sampling keys and request prefixes are
+not checked against a seed it cannot be bound to; one refused for an unknown
+condition has its sampling keys checked and its request prefixes not. Every
+such refusal is listed in `integrity.records_refused`.
 
 Three conditions are checked before any model call, by the seed validator
 (`seed_problems` in `tests/test_petri_framework_data.py`), so a seed that
@@ -776,8 +789,10 @@ Seed policy for the pilot: request no provider seed on any role. Whether a
 seed was sent is read from the retained raw request, never from the config:
 the Anthropic provider has no seed handling at all, so for it the answer is
 always not sent. For every provider the manifest records `seed_requested`
-(null), `seed_forwarded_by_provider` (from the provider table in section 2)
-and `seed_honored` (null, meaning not measured). A determinism check, if
+(null), `seed_forwarded_by_provider` (from the provider table in section 2;
+since adapter 0.2, 2026-09-23, null for an `openrouter/` target, whose
+upstream host is not established, while the raw-request check still uses the
+table) and `seed_honored` (null, meaning not measured). A determinism check, if
 wanted later, is a separate two-call probe per provider, not part of the
 variance pilot. The engine's Anthropic temperature fallback
 (`advice_eval.py` L268-296, disclosed only in a CI log line) has no analogue
@@ -1762,7 +1777,12 @@ re-parked. PR B carries what a paid fire still lacked:
     fix failed: the first attempt put the marker in **Validate seeds**, whose
     opening lines are identical to the Run step's, where it would have been
     touched before any call and guarded nothing. The test asserts the marker
-    precedes `cli run` and caught it.
+    precedes `cli run` and caught it. (2026-09-23: the Run step still wrote it
+    before `get_model`, so a missing or empty API key or an unknown provider,
+    which fail with no call made, booked the whole ceiling. `cli run
+    --started-marker` now writes it after the model is built and priced,
+    immediately before the eval, and exits 11 without it on a construction
+    failure.)
 
     In the reconciliation: a target sidecar carrying neither `eval_id` nor
     `run_id` is named, because every identity comparison was conditional on the

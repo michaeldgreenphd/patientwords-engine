@@ -2076,9 +2076,13 @@ def test_usage_rows_take_token_counts_from_retained_events_when_the_aggregate_la
                                               NS(event="info", role="target", model="m", output=None)])
     with_aggregate = NS(model_usage={"m": usage}, events=[ev("m", usage)])
     rows = spend.usage_from_samples([no_aggregate, with_aggregate])
-    assert rows == {"m": {"input_tokens": 20, "output_tokens": 10, "total_tokens": 30, "calls": 3, "calls_without_usage": 1}}
+    # the cache counts stay None: no usage here reports the field (priced as no cached tokens, 2026-09-23)
+    uncached = {"input_tokens_cache_read": None, "input_tokens_cache_write": None}
+    assert rows == {"m": {"input_tokens": 20, "output_tokens": 10, "total_tokens": 30, **uncached, "calls": 3,
+                          "calls_without_usage": 1}}
     priced = spend.usage_from_samples([with_aggregate, NS(model_usage={}, events=[ev("n", usage)])])
-    assert priced["n"] == {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15, "calls": 1, "calls_without_usage": 0}
+    assert priced["n"] == {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15, **uncached, "calls": 1,
+                           "calls_without_usage": 0}
     assert not spend.usage_is_missing(priced["n"]) and spend.usage_is_missing(rows["m"])
 
 
@@ -2330,3 +2334,370 @@ def test_the_mock_judge_is_zero_priced():
     # a real judge spec still expands by the registry's rule
     assert registry_spec_to_inspect("claude-haiku-4-5") == "anthropic/claude-haiku-4-5"
     assert registry_spec_to_inspect("openrouter:vendor/model") == "openrouter/vendor/model"
+
+
+# ------------------------------------------------ non-Anthropic targets: how each reply ended (2026-09-23)
+
+
+def test_a_truncated_filtered_empty_or_unrecorded_reply_is_a_named_problem():
+    """A reasoning target spends its max_tokens on hidden reasoning and returns
+    a reply cut at the cap (stop_reason max_tokens) with little or no text;
+    nothing read stop_reason, so the cut reply was exported and scored as the
+    model's answer. Every assistant turn is now checked against the call that
+    produced it."""
+    turns = [{"turn_id": 1, "role": "user", "text": "q"},
+             {"turn_id": 2, "role": "assistant", "text": "a full reply"},
+             {"turn_id": 3, "role": "user", "text": "q2"},
+             {"turn_id": 4, "role": "assistant", "text": "", "tool_calls": [{"call_id": "c", "name": "t"}]},
+             {"turn_id": 5, "role": "tool", "text": "result"},
+             {"turn_id": 6, "role": "assistant", "text": "after the tool"}]
+    clean = {2: "stop", 4: "tool_calls", 6: "stop"}
+    assert checks.reply_problems(turns, clean, where="t") == [], "a tool-call turn carries no text legitimately"
+    for reason in checks.TRUNCATING_STOP_REASONS:
+        problems = checks.reply_problems(turns, {**clean, 6: reason}, where="t")
+        assert problems == [f"t: assistant turn 6 ended on stop_reason {reason!r}; a reply cut at a limit or withheld by "
+                            "a filter is not the model's answer"], reason
+    assert set(checks.TRUNCATING_STOP_REASONS) == {"max_tokens", "model_length", "content_filter"}
+    # 2026-09-23 review: `unknown` was recorded and admitted, but Inspect maps OpenRouter's finish_reason error (a
+    # generation that failed upstream, possibly after partial text) and a null finish_reason there, so it is refused
+    assert checks.CLEAN_STOP_REASONS == ("stop", "tool_calls")
+    for reason in ("unknown", "a_value_a_later_inspect_adds"):         # fail closed on anything outside the clean pair
+        problems = checks.reply_problems(turns, {**clean, 6: reason}, where="t")
+        assert problems == [f"t: assistant turn 6 ended on stop_reason {reason!r}, an ending Inspect could not map "
+                            "(OpenRouter's finish_reason error or null, Anthropic's context-window stop); the reply "
+                            "cannot be shown to be complete"], reason
+    # a turn no retained call produced cannot be shown complete: refused, never assumed clean
+    missing = checks.reply_problems(turns, {2: "stop", 4: "tool_calls"}, where="t")
+    assert len(missing) == 1 and "assistant turn 6 has no target call recording how it ended" in missing[0]
+    assert checks.reply_problems(turns, {**clean, 6: None}, where="t") == missing
+    # a reply that ended normally with no text and no tool call is empty, whatever its stop reason says
+    blank = [dict(t) for t in turns]
+    blank[5]["text"] = "  \n"
+    empty = checks.reply_problems(blank, clean, where="t")
+    assert empty == ["t: assistant turn 6 is empty (no text and no tool call, stop_reason 'stop')"]
+
+
+def test_a_call_that_did_not_end_cleanly_refuses_its_tree_when_no_branch_carries_its_reply():
+    """reply_problems refuses a branch carrying a reply that did not end on
+    stop or tool_calls; a call whose reply no branch carries would be counted
+    in models.target.stop_reasons and refuse nothing, leaving that ending
+    under a claim-grade manifest (2026-09-23 review). The tree is refused."""
+    carried = {"m1", "m2", "m3"}
+    clean = [("m1", "stop"), ("m2", "tool_calls"), ("m3", "unknown")]
+    assert checks.uncarried_ending_refusal(clean, carried, where="s#1") is None, "carried: its branch is refused instead"
+    assert checks.uncarried_ending_refusal([("mx", "stop"), ("my", "tool_calls")], carried, where="s#1") is None, \
+        "a clean call is never a reason to refuse"
+    refusal = checks.uncarried_ending_refusal(clean + [("m9", "unknown"), (None, "no_output"), ("m8", "max_tokens")],
+                                              carried, where="s#1")
+    assert refusal == {"branch_id": f"s#1:{checks.ROOT_BRANCH}",
+                       "reason": "3 target call(s) ended on stop_reason ['max_tokens', 'no_output', 'unknown'] with a "
+                                 "reply no branch of the tree carries, so no branch can be checked against that ending"}
+
+
+def test_a_sample_inspect_halted_at_a_limit_is_refused_as_a_tree():
+    """Inspect ends a sample that reaches token_limit or cost_limit with
+    `EvalSample.limit` set and no error, so the adapter's sample-error check
+    passed it and its possibly mid-exchange branches were exported."""
+    from types import SimpleNamespace as NS
+
+    assert checks.sample_limit_refusal(None, where="s#1") is None
+    refusal = checks.sample_limit_refusal(NS(type="token", limit=40000), where="s#1")
+    assert refusal == {"branch_id": f"s#1:{checks.ROOT_BRANCH}",
+                       "reason": "sample halted by Inspect's token limit (40000); every branch of the tree may end mid-exchange"}
+    assert "cost limit (0.19)" in checks.sample_limit_refusal({"type": "cost", "limit": 0.19}, where="s#1")["reason"]
+
+
+def test_the_manifest_schema_accepts_recorded_stop_reasons_and_refuses_malformed_ones():
+    """The stop-reason fields are additive and optional (a manifest written by
+    adapter 0.1 still validates), and closed where present."""
+    schema = framework.load_json(framework.MANIFEST_SCHEMA)
+    base = json.loads(json.dumps(schema["examples"][0]))
+    assert framework.validate_with_refs(base, schema) == [], "a manifest without the new fields stays valid"
+    rich = json.loads(json.dumps(base))
+    rich["models"]["target"]["stop_reasons"] = [{"stop_reason": "stop", "calls": 3}, {"stop_reason": "tool_calls", "calls": 1}]
+    for tree in rich["trees"]:
+        for b in tree["branches"]:
+            b["assistant_stop_reasons"] = [{"turn_id": 2, "stop_reason": "stop"}]
+    assert rich["trees"], "the example carries at least one branch to extend"
+    assert framework.validate_with_refs(rich, schema) == []
+    bad = json.loads(json.dumps(rich))
+    bad["models"]["target"]["stop_reasons"] = [{"stop_reason": "stop", "calls": 0, "extra": 1}]
+    problems = framework.validate_with_refs(bad, schema)
+    assert any("below 1" in p for p in problems) and any("unexpected key 'extra'" in p for p in problems)
+    bad = json.loads(json.dumps(rich))
+    bad["trees"][0]["branches"][0]["assistant_stop_reasons"] = [{"turn_id": 2}]
+    assert any("missing 'stop_reason'" in p for p in framework.validate_with_refs(bad, schema))
+
+
+def test_prompt_cache_tokens_are_priced_never_dropped(tmp_path):
+    """Inspect subtracts cached prompt tokens from `input_tokens` for
+    OpenAI-shaped providers (OpenRouter included) and Anthropic reports cache
+    reads and writes apart; the sidecar priced input and output only, so every
+    cached call was booked below its charge. Reads are priced at the input rate
+    and writes at twice it, the fail-closed bounds (no price table carries a
+    cache rate), in the repricing, the fallback usage path and the bound."""
+    from types import SimpleNamespace as NS
+
+    registry = {"anthropic": {"pricing": {"claude-haiku-4-5": [1.0, 5.0]}}}
+    usage = {"anthropic/claude-haiku-4-5": {"input_tokens": 464_000, "output_tokens": 100_000, "total_tokens": 2_100_000,
+                                            "input_tokens_cache_read": 1_024_000, "input_tokens_cache_write": 512_000,
+                                            "calls": 4, "calls_without_usage": 0}}
+    cost, rows = spend.reprice_usage(usage, registry)
+    # 0.464 input + 0.5 output + 1.024 read at 1x input + 0.512 write at 2x input
+    assert cost == pytest.approx(0.464 + 0.5 + 1.024 + 1.024)
+    assert rows[0]["cost_usd"] == pytest.approx(cost), "reconcile checks that the rows sum to cost_usd"
+    assert (rows[0]["input_tokens_cache_read"], rows[0]["input_tokens_cache_write"]) == (1_024_000, 512_000)
+    assert (rows[0]["cache_read_per_mtok"], rows[0]["cache_write_per_mtok"]) == (1.0, 2.0)
+    uncached_cost, _ = spend.reprice_usage({m: {k: v for k, v in u.items() if "cache" not in k} for m, u in usage.items()}, registry)
+    assert uncached_cost == pytest.approx(0.964), "the pre-fix figure, under-booked by the cached tokens"
+    # a null cache count is no cached tokens (Inspect subtracts only what the provider reported), never missing usage
+    cost, rows = spend.reprice_usage({"anthropic/claude-haiku-4-5": {**usage["anthropic/claude-haiku-4-5"],
+                                                                     "input_tokens_cache_read": None,
+                                                                     "input_tokens_cache_write": None}}, registry)
+    assert cost == pytest.approx(0.964) and rows[0]["usage_missing"] is False
+    report = spend.write_report_sidecar(tmp_path / "c.report.json", run_id="r", eval_id="e", model_usage=usage,
+                                        max_spend_usd=5.0, judge_max_spend_usd=None, run_utc="2026-09-23T00:00:00Z",
+                                        registry=registry)
+    assert report["cost_usd"] == pytest.approx(3.012) and report["cost_basis"] == "engine_repriced_from_inspect_model_usage"
+    # the fallback spend report's usage path carries the cache counts from the aggregate and from retained events
+    cached = NS(input_tokens=464, output_tokens=100, total_tokens=2100, input_tokens_cache_read=1024,
+                input_tokens_cache_write=512)
+    ev = NS(event="model", role="target", model="n", output=NS(usage=cached))
+    rows = spend.usage_from_samples([NS(model_usage={"m": cached}, events=[]), NS(model_usage={}, events=[ev, ev])])
+    assert (rows["m"]["input_tokens_cache_read"], rows["m"]["input_tokens_cache_write"]) == (1024, 512)
+    assert (rows["n"]["input_tokens_cache_read"], rows["n"]["input_tokens_cache_write"]) == (2048, 1024)
+    # the pre-flight bound prices every token at the dearest rate, a cache write included (Inspect's token limit
+    # counts cache tokens): at 3/5 the write rate 6 is the dearest
+    bound = spend.preflight_bound(samples=1, epochs=1, token_limit=1_000_000, price=spend.Price(3.0, 5.0, "x"),
+                                  judge_reserve_usd=0.0, max_spend_usd=5.5)
+    assert bound.per_sample_usd == pytest.approx(6.0) and not bound.within
+    assert spend.preflight_bound(samples=1, epochs=1, token_limit=20000, price=spend.Price(1.0, 5.0, "x"),
+                                 judge_reserve_usd=0.0, max_spend_usd=1.0).per_sample_usd == pytest.approx(0.1)
+
+
+def test_the_pricing_digest_pins_the_cache_multipliers(monkeypatch):
+    """Codex review of PR #37 (2026-09-23): `Price.cost` prices cache reads and
+    writes from the input rate by two multipliers, but the pricing digest a
+    manifest pins hashed only the registry, the engine table and the fallback
+    rate. A run priced under other multipliers carried the same digest, and
+    the summary labelled prices it could not reproduce. Each multiplier now
+    changes the digest exactly when it changes the cost."""
+    registry = {"anthropic": {"pricing": {"claude-haiku-4-5": [1.0, 5.0]}}}
+    base_digest = spend.pricing_source_digest(registry)
+    base_cost = spend.Price(1.0, 5.0, "x").cost(0, 0, 1_000_000, 1_000_000)
+    for name, changed in (("CACHE_READ_INPUT_MULTIPLIER", 0.1), ("CACHE_WRITE_INPUT_MULTIPLIER", 1.25)):
+        with monkeypatch.context() as m:
+            m.setattr(spend, name, changed)
+            assert spend.Price(1.0, 5.0, "x").cost(0, 0, 1_000_000, 1_000_000) != pytest.approx(base_cost), name
+            assert spend.pricing_source_digest(registry) != base_digest, f"{name} changes the cost but not the digest"
+    assert spend.pricing_source_digest(registry) == base_digest, "the digest is a function of its inputs"
+
+
+def test_the_fallback_spend_report_books_cache_tokens_from_the_log_stats(tmp_path, monkeypatch, capsys):
+    """`cli spend-report` books a run that failed before adaptation. When the
+    retained log's samples carry no usage it reads `log.stats.model_usage`,
+    whose rows carried input and output only, so a cached run was booked
+    below its charge; reverting that path failed no test (2026-09-23 review).
+    The log is a stand-in with the attribute names of Inspect's EvalLog and
+    ModelUsage in the locked 0.3.237, so the 3.11 suite runs it."""
+    import types
+    from types import SimpleNamespace as NS
+
+    model = "anthropic/claude-haiku-4-5"
+    usage = NS(input_tokens=1000, output_tokens=100, total_tokens=3600, input_tokens_cache_read=2000,
+               input_tokens_cache_write=500)
+    log = NS(status="error", eval=NS(eval_id="e-1"), samples=[], stats=NS(model_usage={model: usage}))
+    monkeypatch.setitem(sys.modules, "inspect_ai.log", types.SimpleNamespace(read_eval_log=lambda path: log))
+    out = tmp_path / "run_c.report.json"
+    assert cli.main(["spend-report", "--out", str(out), "--run-id", "run_c", "--target", model, "--max-spend", "5",
+                     "--eval", str(tmp_path / "failed.eval")]) == 0
+    capsys.readouterr()
+    report = framework.load_json(out)
+    price = spend.resolve_price(model)
+    assert report["cost_basis"] == "engine_repriced_from_inspect_model_usage" and report["run_status"] == "error"
+    assert report["cost_usd"] == pytest.approx(price.cost(1000, 100, 2000, 500))
+    assert report["cost_usd"] > price.cost(1000, 100), "what the fallback booked before: input and output alone"
+    row = report["models"][0]
+    assert (row["model"], row["input_tokens_cache_read"], row["input_tokens_cache_write"]) == (model, 2000, 500)
+
+
+def test_only_a_plain_upstream_host_name_is_copied_out_of_a_raw_response():
+    """OpenRouter routes one slug to several hosts (the advice archives show
+    gpt-5.4-mini on OpenAI and Azure, DeepSeek on eighteen hosts), and its
+    `provider` field survives only in the raw `call`, which the sanitiser
+    forbids. The adapter copies out the host's name alone, and only when it
+    is a short plain name."""
+    for name in ("OpenAI", "Azure", "Google", "xAI", "DeepInfra", "Moonshot AI", "Io Net", "Mancer 2", "Z.AI",
+                 "Google AI Studio", "Amazon Bedrock"):
+        assert checks.upstream_provider_name({"id": "gen-1", "provider": name, "choices": []}) == name, name
+    assert checks.upstream_provider_name({"provider": "  OpenAI "}) == "OpenAI"
+    for response in (None, "OpenAI", [], {}, {"provider": None}, {"provider": 7}, {"provider": ""},
+                     {"provider": {"name": "OpenAI"}}, {"provider": "x" * 65}, {"provider": "Open\nAI"},
+                     {"provider": "<script>"}, {"provider": "-leading"}):
+        assert checks.upstream_provider_name(response) is None, response
+    schema = framework.load_json(framework.MANIFEST_SCHEMA)
+    base = json.loads(json.dumps(schema["examples"][0]))
+    base["models"]["target"]["upstream_providers"] = {"by_provider": [{"provider": "Azure", "calls": 2},
+                                                                      {"provider": "OpenAI", "calls": 223}],
+                                                      "calls_unrecorded": 0}
+    assert framework.validate_with_refs(base, schema) == []
+    base["models"]["target"]["upstream_providers"] = None
+    assert framework.validate_with_refs(base, schema) == [], "null for a target not routed through OpenRouter"
+    base["models"]["target"]["upstream_providers"] = {"by_provider": [{"provider": "", "calls": 1}]}
+    problems = framework.validate_with_refs(base, schema)
+    assert any("missing 'calls_unrecorded'" in p for p in problems) and any("shorter than 1" in p for p in problems)
+
+
+def test_the_tools_check_does_not_pass_over_zero_tool_results():
+    """A tool seed whose target never called a tool (a model or OpenRouter host
+    without native tool use answers in plain text) passed
+    tool_results_from_data with the detail "every tool result matches" after
+    examining nothing. Calling a tool is the measured outcome (tool_invoked),
+    not a seed requirement, so the check is not_applicable and says why."""
+    assert checks.tool_results_verdict({}, {}) == ("not_applicable", "no tools declared by this run's seeds")
+    status, detail = checks.tool_results_verdict({"seed-b": 0, "seed-a": 0}, {"seed-a": 0})
+    assert status == "not_applicable" and "tools declared by seed-a, seed-b" in detail
+    assert "the target made no tool call in their samples" in detail
+    assert checks.tool_results_verdict({"seed-a": 4}, {"seed-a": 4}) == (
+        "pass", "every tool result matches the seed's results table (4 tool-result turn(s) examined across records)")
+    status, detail = checks.tool_results_verdict({"seed-a": 4, "seed-b": 0}, {"seed-a": 4})
+    assert status == "pass" and detail.endswith("; no tool call on seed-b)"), "a silent tool seed is named beside a pass"
+    # not_applicable stays clean for eligibility, as the schema defines it for a check with nothing to examine
+    assert checks.claim_grade_eligible({"tool_results_from_data": {"status": "not_applicable", "detail": detail}}, 0)
+
+
+def test_the_tools_check_never_says_the_target_made_no_tool_call_when_it_did():
+    """The adapter counted tool results only inside the per-record loop, so an
+    H3 run whose trees were halted at the token limit after four tool calls,
+    and refused, was reported not_applicable with "the target made no tool
+    call", and the generated-error failure main would have recorded was
+    hidden (2026-09-23 review). Tool calls are now counted from the calls
+    themselves: calls with no examined result leave the check not_run, never
+    eligible, and a pass names a seed whose calls were not examined."""
+    status, detail = checks.tool_results_verdict({"seed-a": 0}, {"seed-a": 4})
+    assert status == "not_run" and "no tool call" not in detail and "nothing to examine" not in detail
+    assert detail == ("the target made tool calls on seed-a (4 tool call(s)), but no examined record carries a tool "
+                      "result, so none was checked; refused trees and branches are listed in integrity.records_refused")
+    assert not checks.claim_grade_eligible({"tool_results_from_data": {"status": status, "detail": detail}}, 0)
+    status, detail = checks.tool_results_verdict({"seed-a": 3, "seed-b": 0, "seed-c": 0}, {"seed-a": 3, "seed-b": 2})
+    assert status == "pass" and detail.endswith("; no tool call on seed-c; none examined from seed-b (2 tool call(s)))")
+
+
+def test_a_direct_vendor_target_spelling_is_refused_before_anything_else(capsys):
+    """`openai/...` or `google/...` bills OPENAI_API_KEY or GEMINI_API_KEY (the
+    run step exports both) while fire_trigger.petri_channels and
+    spend.billing_channel book every target that is not openrouter/ to the
+    Anthropic lane. The pre-flight refuses such a spelling first, in every
+    mode, pointing at the OpenRouter spelling."""
+    for ok in ("anthropic/claude-haiku-4-5", "openrouter/openai/gpt-5.4-mini", "claude-haiku-4-5", "mockllm/model",
+               "mockllm/judge", "none/none"):
+        assert spend.target_provider_problems(ok) == [], ok
+    for bad in ("openai/gpt-5.4-mini", "google/gemini-3.5-flash", "grok/grok-4.3", "vertex/claude-haiku-4-5"):
+        problems = spend.target_provider_problems(bad)
+        assert len(problems) == 1 and "openrouter/<vendor>/<model>" in problems[0] and repr(bad) in problems[0], bad
+        # the same spelling is what the guard books to the Anthropic lane
+        assert spend.billing_channel([bad]) == "anthropic"
+    code = cli.main(["preflight", "--target", "openai/gpt-5.4-mini", "--max-spend", "50", "--wave", "1"])
+    captured = capsys.readouterr()
+    assert code == 5 and "pre-flight: REFUSED - target 'openai/gpt-5.4-mini' names Inspect provider 'openai'" in captured.err
+    assert "holdout seal" not in captured.out and "environment lock" not in captured.out, "refused before anything is read"
+
+
+def test_a_judge_spec_billing_a_third_key_is_refused_with_the_openrouter_spelling():
+    """A judge spec's billing channel comes from its registry provider's
+    key_env: OPENROUTER_API_KEY books to the OpenRouter lane and every other
+    key to the Anthropic lane (spend.judge_billing_channel,
+    fire_trigger.petri_channels). `google:` resolves to GEMINI_API_KEY, so it
+    billed the Gemini account while counting against the Anthropic ceiling.
+    Such a spec is refused, and the refusal names the OpenRouter spelling,
+    which the lane books to the account that pays it (2026-09-23)."""
+    live = spend.load_json(spend.PROVIDERS_PATH)
+    assert live["google"]["key_env"] == "GEMINI_API_KEY", "the live registry still routes google: to its own key"
+    for spec, expected in (("google:gemini-3.5-flash", "openrouter:google/gemini-3.5-flash"),
+                           (" google:gemini-2.5-flash ", "openrouter:google/gemini-2.5-flash"),
+                           ("google", f"openrouter:google/{live['google']['consumer_default']}")):
+        assert spend.judge_billing_channel(spec) == "anthropic", "the mismatch: booked Anthropic, billed Gemini"
+        problems = spend.judge_key_routing_problems(spec)
+        assert len(problems) == 1 and repr(spec.strip()) in problems[0], spec
+        assert "GEMINI_API_KEY" in problems[0] and "openrouter:<vendor>/<model>" in problems[0], problems
+        assert expected in problems[0], problems
+        # the spelling it names is one the lane books to OpenRouter and the resolver accepts
+        assert spend.judge_key_routing_problems(expected) == [] and spend.judge_billing_channel(expected) == "openrouter"
+        assert judge_runner.judge_spec_problems(expected) == []
+    # every spec that bills ANTHROPIC_API_KEY or OPENROUTER_API_KEY passes, including the vendors routed through
+    # OpenRouter under their own registry names
+    for ok in ("claude-haiku-4-5", "anthropic", "anthropic:claude-haiku-4-5", "openrouter:google/gemini-3.5-flash",
+               "openrouter:openai/gpt-5.4-mini", "openai", "openai:gpt-5.4-mini", "xai:grok-4.3", "deepseek", "moonshot"):
+        assert spend.judge_key_routing_problems(ok) == [], ok
+    # a spec the registry cannot resolve is left to judge_spec_problems, which refuses it by its own reason; the rule
+    # here is the channel mismatch only
+    for unresolved in ("nope:model", "copilot", "mockllm/judge"):
+        assert spend.judge_key_routing_problems(unresolved) == [], unresolved
+        assert judge_runner.judge_spec_problems(unresolved), unresolved
+    # the rule reads key_env, not the provider's name: any third key is refused, a key-less entry is not this rule's
+    registry = {"openai": {"key_env": "OPENAI_API_KEY"}, "vertex": {"key_env": "ANTHROPIC_API_KEY"}, "bare": {}}
+    problems = spend.judge_key_routing_problems("openai:gpt-5.4-mini", registry)
+    assert len(problems) == 1 and "OPENAI_API_KEY" in problems[0] and "openrouter:openai/gpt-5.4-mini" in problems[0]
+    assert spend.judge_key_routing_problems("vertex:claude-haiku-4-5", registry) == []
+    assert spend.judge_key_routing_problems("bare:model", registry) == []
+    assert spend.judge_key_routing_problems("bare", registry) == []
+
+
+def test_preflight_and_run_refuse_a_third_key_judge_before_anything_is_read(capsys, tmp_path):
+    """The refusal runs beside the target spelling check, before the seeds,
+    the seal or the lock are read, in `preflight` and in `run`, and `run`
+    writes nothing (no run_params.json)."""
+    common = ["--target", "anthropic/claude-haiku-4-5", "--max-spend", "50", "--wave", "1",
+              "--judge-model", "google:gemini-3.5-flash", "--judge-max-spend", "0.05"]
+    code = cli.main(["preflight", *common])
+    captured = capsys.readouterr()
+    assert code == 5 and "pre-flight: REFUSED - judge spec 'google:gemini-3.5-flash'" in captured.err
+    assert "holdout seal" not in captured.out and "environment lock" not in captured.out, "refused before anything is read"
+    out_dir = tmp_path / "run"
+    code = cli.main(["run", *common, "--out-dir", str(out_dir)])
+    captured = capsys.readouterr()
+    assert code == 5 and "judge spec 'google:gemini-3.5-flash'" in captured.err
+    assert not out_dir.exists(), "refused before the run directory or its params were written"
+    # a bad target and a bad judge are both named, not only the first
+    code = cli.main(["preflight", "--target", "openai/gpt-5.4-mini", "--max-spend", "50", "--wave", "1",
+                     "--judge-model", "google", "--judge-max-spend", "0.05"])
+    err = capsys.readouterr().err
+    assert code == 5 and "target 'openai/gpt-5.4-mini'" in err and "judge spec 'google'" in err
+    # without a judge the judge rule is not consulted, and an OpenRouter judge passes it (the run then stops later on
+    # the seal or the lock in this environment, never with this refusal)
+    for extra in ([], ["--judge-model", "openrouter:google/gemini-3.5-flash", "--judge-max-spend", "0.05"]):
+        cli.main(["preflight", "--target", "anthropic/claude-haiku-4-5", "--max-spend", "50", "--wave", "1", *extra])
+        assert "pre-flight: REFUSED - judge spec" not in capsys.readouterr().err
+
+
+def test_cli_judge_refuses_a_third_key_judge_before_anything_is_read(capsys, tmp_path):
+    """`cli judge` repeats the refusal first, before the harness is imported
+    or the run directory read, for a judge step reached without the
+    pre-flight. The run directory here does not exist, and the refusal comes
+    before anything notices; where the harness is not installed the import
+    that follows would raise, so an exit 5 there also shows the order."""
+    run_dir = tmp_path / "run_x"
+    code = cli.main(["judge", "--run-dir", str(run_dir), "--judge-model", "google:gemini-3.5-flash",
+                     "--judge-max-spend", "0.05"])
+    err = capsys.readouterr().err
+    assert code == 5 and "refused before any judge call: judge spec 'google:gemini-3.5-flash'" in err
+    assert "openrouter:google/gemini-3.5-flash" in err
+    assert not run_dir.exists(), "nothing was written"
+
+
+def test_the_manifest_registry_spec_is_the_registry_form_of_the_target_or_null():
+    """models.target.registry_spec is documented as the data/advice_providers.json
+    spec the target maps to, but the adapter recorded the Inspect string the
+    CLI was given (`openrouter/openai/gpt-5.4-mini`, a form no registry
+    resolver reads). It is now derived from the log's target in the
+    resolver's provider:model form, and null outside the registry."""
+    assert spend.inspect_to_registry_spec("anthropic/claude-haiku-4-5") == "anthropic:claude-haiku-4-5"
+    assert spend.inspect_to_registry_spec("openrouter/openai/gpt-5.4-mini") == "openrouter:openai/gpt-5.4-mini"
+    assert spend.inspect_to_registry_spec("claude-haiku-4-5") == "anthropic:claude-haiku-4-5", "the bare-name convention"
+    for outside in ("mockllm/model", "none/none", "openai/gpt-5.4-mini", "google/gemini-3.5-flash", "openrouter/"):
+        assert spend.inspect_to_registry_spec(outside) is None, outside
+    assert spend.inspect_to_registry_spec("openrouter/openai/gpt-5.4-mini", registry={"anthropic": {}}) is None, \
+        "a provider the registry in hand does not describe maps to nothing"
+    # the registry form resolves back to the same Inspect string, so the price the run used is the spec's price
+    for target in ("anthropic/claude-haiku-4-5", "openrouter/openai/gpt-5.4-mini", "openrouter/google/gemini-3.5-flash"):
+        assert spend.registry_spec_to_inspect(spend.inspect_to_registry_spec(target)) == target

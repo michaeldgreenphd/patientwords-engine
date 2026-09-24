@@ -162,7 +162,10 @@ def is_paid_fire(trigger, params):
     whose judge spends): preflight and dry_run make no paid call, and counting
     them paid refused the lane's park once the ceiling was reached, leaving the
     last paid configuration at rest where a branch operation could re-fire it
-    (Codex round 8 on PR #26)."""
+    (Codex round 8 on PR #26). Mode is read trimmed and lower-cased so that a
+    spelling like "RUN" or "READAPT" counts as paid (fail closed);
+    validate_params refuses every spelling the params job would refuse
+    (petri_params_problems), so none reaches the journal."""
     if is_mitigation_fire(trigger, params):
         return True
     if trigger not in PAID_TRIGGERS:
@@ -251,6 +254,14 @@ def fire_lane(trigger: str, params: dict) -> str:
 
 PROVIDERS_RELPATH = Path("data") / "advice_providers.json"
 PETRI_BOOLEAN_KEYS = ("judge", "log_model_api", "commit_outputs")
+# The mode and target rules of petri_audit.yml's "Resolve parameters" step, mirrored by `petri_params_problems`
+# (mode) and `petri_target_problems` (target).
+# Compared exactly by the params job, the first being its default; the fourth is PR #29's mode readapt.
+PETRI_MODES = ("preflight", "dry_run", "run", PETRI_READAPT_MODE)
+PETRI_MOCK_TARGET = "mockllm/model"       # the params job's default target, and the only one dry_run admits
+PETRI_SENTINEL_PROVIDERS = ("mockllm", "none")
+PETRI_RUN_PROVIDERS = ("anthropic", "openrouter")
+PETRI_RUN_TARGET_RE = re.compile(r"anthropic/[^/\s]+|openrouter/[^/\s]+/[^/\s]+")
 
 
 def providers_registry(repo: str | Path | None = None) -> dict:
@@ -280,6 +291,16 @@ def petri_channels(params: dict, registry: dict | None = None) -> tuple[str, str
     target_channel = "openrouter" if target.startswith("openrouter/") else "anthropic"
     if not judge_is_on(params):
         return target_channel, None
+    key_env = petri_judge_key_env(params, registry)
+    return target_channel, ("openrouter" if key_env == "OPENROUTER_API_KEY" else "anthropic")
+
+
+def petri_judge_key_env(params: dict, registry: dict | None = None) -> str | None:
+    """The provider registry's `key_env` for a petri-audit fire's judge spec:
+    None when the judge is off or its provider is not in the registry (the
+    workflow's `judge_spec_problems` refuses an unknown provider)."""
+    if not judge_is_on(params):
+        return None
     judge = str(params.get("judge_model") or "").strip()
     registry = providers_registry() if registry is None else registry
     # the advice resolver's own rule: provider:model, a bare provider the registry knows (its consumer default),
@@ -292,7 +313,77 @@ def petri_channels(params: dict, registry: dict | None = None) -> tuple[str, str
         provider = "anthropic"
     cfg = registry.get(provider) if isinstance(registry, dict) else None
     key_env = cfg.get("key_env") if isinstance(cfg, dict) else None
-    return target_channel, ("openrouter" if key_env == "OPENROUTER_API_KEY" else "anthropic")
+    return key_env if isinstance(key_env, str) else None
+
+
+def _petri_job_value(params: dict, key: str, default: str) -> str:
+    """A key's value as petri_audit.yml's params job resolves it from a
+    trigger file: `str()`-ed as the job does it (a JSON boolean lower-cased,
+    nothing trimmed or case-folded), else the job's default."""
+    if key not in params:
+        return default
+    value = params[key]
+    return str(value).lower() if isinstance(value, bool) else str(value)
+
+
+def petri_resolved_target(params: dict) -> str:
+    """The target petri_audit.yml's params job resolves from a trigger file."""
+    return _petri_job_value(params, "target", PETRI_MOCK_TARGET)
+
+
+def petri_resolved_mode(params: dict) -> str:
+    """The mode petri_audit.yml's params job resolves from a trigger file and
+    then compares exactly against PETRI_MODES."""
+    return _petri_job_value(params, "mode", PETRI_MODES[0])
+
+
+def petri_target_problems(params: dict) -> list[str]:
+    """The params job's target refusals, in its order and stopping at the
+    first, as the job does. The fire path journals its reservation before the
+    job runs, so a target only the job refuses left an entry holding the queue
+    slot and, in mode run, the day's ceiling for a run that never started,
+    until it was resolved or expired (Codex review of PR #37, 2026-09-24).
+
+    The paid modes, run and readapt (PETRI_PAID_MODES): not a mock sentinel
+    (it prices at zero, so the paid pre-flight bound admits it for free and the
+    run commits mock output as a measurement; Codex round 5 on PR #28); not a
+    direct-vendor spelling (every target that is not openrouter/ is booked to
+    the Anthropic lane, while openai/... bills its own key); and spelled exactly
+    anthropic/<model> or openrouter/<vendor>/<model>. A readapt makes no target
+    call, but it states the target its source run called (PR #29,
+    petri_readapt_source_problems holds it equal to the source fire's), the
+    audit job's preflight step prices that target and refuses a direct-vendor
+    spelling in every mode, and a readapt's reservation holds the queue slot and
+    the judge's ceiling as a run's does, so the job applies the same three rules
+    to it and so does this. dry_run: the mock target only. preflight calls
+    nothing, so the job checks no target there and neither does this.
+    Mode is read exactly, as the job reads it: the job refuses any mode not
+    spelled exactly as one of PETRI_MODES before it looks at the target, and
+    petri_params_problems refuses the same spellings, so no target rule is
+    applied to them here. The sentinel test trims the target, so a padded
+    sentinel is refused under its own name; the job refuses it too, as a
+    direct-vendor spelling."""
+    mode = petri_resolved_mode(params)
+    target = petri_resolved_target(params)
+    if mode == "dry_run":
+        if target != PETRI_MOCK_TARGET:
+            return [f"petri-audit dry_run runs against {PETRI_MOCK_TARGET!r} only, got {target!r}"]
+        return []
+    if mode not in PETRI_PAID_MODES:
+        return []
+    if target.strip().split("/")[0] in PETRI_SENTINEL_PROVIDERS:
+        named = "" if "target" in params else " (no target is named, and the workflow's default is the sentinel)"
+        return [f"petri-audit mode {mode} must not target the test sentinel {target.strip()!r}{named}: it prices at "
+                "zero, so the paid pre-flight bound admits it for free and the run commits mock output as a "
+                "measurement; use mode dry_run for mockllm"]
+    if "/" in target and target.split("/")[0] not in PETRI_RUN_PROVIDERS:
+        return [f"petri-audit mode {mode} target {target!r} bills its own vendor key, while every target that is not "
+                "openrouter/ is booked to the Anthropic lane and its ceiling; route it through OpenRouter as "
+                "openrouter/<vendor>/<model> (for example openrouter/openai/gpt-5.4-mini)"]
+    if not PETRI_RUN_TARGET_RE.fullmatch(target):
+        return [f"petri-audit mode {mode} needs a target spelled anthropic/<model> or openrouter/<vendor>/<model>, "
+                f"got {target!r}; a bare model name names no provider"]
+    return []
 
 
 def petri_params_problems(params: dict, registry: dict | None = None) -> list:
@@ -301,6 +392,15 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
     workflow_dispatch reaches without it): one billing channel per fire, and
     boolean keys in the one spelling the workflow compares against."""
     problems = []
+    # The params job compares mode exactly and exits on any other spelling, but the rest of this module reads it
+    # trimmed and lower-cased (is_paid_fire), so "RUN" or " run" was priced as a paid fire, passed budget_check and
+    # journaled a reservation holding the queue slot and the day's ceiling for a run the job then refused; a free
+    # typo ("DRY_RUN", "bogus") journaled a queue-slot entry the same way (review of PR #37, 2026-09-24).
+    mode = petri_resolved_mode(params)
+    if mode not in PETRI_MODES:
+        problems.append(f"petri-audit mode must be exactly one of {', '.join(PETRI_MODES)}, got {params['mode']!r}: "
+                        "the params job compares it exactly and refuses any other spelling (case, padding), so "
+                        "the fire would journal a reservation for a run that never starts")
     for key in PETRI_BOOLEAN_KEYS:
         if key in params:
             value = params[key]
@@ -322,6 +422,8 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
     # and the omission is easy: any other changed key already makes the trigger file differ, so the fire is not
     # refused as a no-op (Codex round 1 on PR #28). Free modes need none - the park default carries none.
     # A readapt's nonce joins its judge sidecar to it the same way (manifest `readapt` block -> judge sidecar).
+    # From here the mode is read trimmed and lower-cased, as is_paid_fire reads it, so a spelling the exact check
+    # above already refused still gets the paid-mode checks below (fail closed; merge of PR #29 into PR #37)
     mode = petri_mode(params)
     source_run_id = params.get("source_run_id", "")
     if mode == PETRI_READAPT_MODE:
@@ -349,14 +451,7 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
                 f"petri-audit mode {mode} must carry a non-empty _nonce: it is the only join key between the "
                 "journal entry that reserves the spend and the cost sidecar the run lands, so a paid fire "
                 f"without one can never be reconciled, got {nonce!r}")
-        # A mock/test sentinel prices at zero in the engine's table, so naming one as a paid run's TARGET buys a
-        # free pre-flight bound and commits mock output through the production path. The workflow refuses these
-        # too; this refuses them before the fire (Codex round 5 on PR #28).
-        target = str(params.get("target") or "").strip()
-        if target.split("/")[0] in ("mockllm", "none"):
-            problems.append(f"petri-audit mode {mode} must not target the test sentinel {target!r}: it prices at "
-                            "zero, so the paid pre-flight bound admits it for free and the run commits mock "
-                            "output as a measurement; use mode dry_run for mockllm")
+    problems.extend(petri_target_problems(params))
     target_channel, judge_channel = petri_channels(params, registry)
     if judge_channel is not None and judge_channel != target_channel:
         problems.append(
@@ -364,6 +459,17 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
             f"{params.get('judge_model')!r} bills the {judge_channel} lane: one fire carries one commitment on "
             "one account, so a mixed-channel fire is refused; judge on the target's channel or run the judge "
             "as its own fire")
+    # A judge billed through a third key (today `google:`, GEMINI_API_KEY) is booked to the anthropic lane above while
+    # its vendor bills its own account, so the ceiling would bound the wrong money. The workflow's pre-flight refuses it
+    # at $0 (scripts/petri_audit/spend.py judge_key_routing_problems), but by then the fire's journal entry holds its
+    # commitment for the rest of the UTC day, so it is refused here, before the push (review of 2026-09-23, F-TH1).
+    judge_key = petri_judge_key_env(params, registry)
+    if judge_key is not None and judge_key not in ("ANTHROPIC_API_KEY", "OPENROUTER_API_KEY"):
+        problems.append(
+            f"petri-audit judge {params.get('judge_model')!r} bills {judge_key}, but every judge not billed "
+            "through OPENROUTER_API_KEY is booked to the anthropic lane and its ceiling, so the ceiling would bound "
+            "the wrong account; judge through OpenRouter instead (openrouter:<vendor>/<model>, for example "
+            "openrouter:google/<model>)")
     return problems
 
 

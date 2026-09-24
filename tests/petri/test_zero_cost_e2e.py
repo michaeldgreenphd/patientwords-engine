@@ -126,7 +126,7 @@ def run(tmp_path_factory) -> dict:
     for name in ("first", "second"):
         out = tmp_path_factory.mktemp(name) / "run"
         results.append(adapt_run(eval_path, seed_set, out, custody="github_actions_artifact:90d", spend=spend,
-                                 registry_spec="mockllm/model", engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52"))
+                                 engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52"))
         outs.append(out)
     return {"seed_set": seed_set, "log": log, "eval_path": eval_path, "r1": results[0], "r2": results[1],
             "out1": outs[0], "out2": outs[1]}
@@ -501,7 +501,7 @@ def test_adapting_over_an_existing_run_directory_is_refused(run):
         adapt_run(run["eval_path"], run["seed_set"], run["out1"], custody="github_actions_artifact:90d",
                   spend={"max_spend_usd": 0.01, "judge_max_spend_usd": None, "journal_nonce": None,
                          "cost_limit_per_sample_usd": 0.01, "token_limit_per_sample": 20000},
-                  registry_spec="mockllm/model", engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
+                  engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
     assert (run["out1"].parent / "manifests.chain").read_bytes() == chain_before
 
 
@@ -519,7 +519,7 @@ def test_a_seed_that_changed_since_the_run_is_refused_by_the_adapter_and_the_tas
     result = adapt_run(run["eval_path"], drifted, out, custody="github_actions_artifact:90d",
                        spend={"max_spend_usd": 0.01, "judge_max_spend_usd": None, "journal_nonce": None,
                               "cost_limit_per_sample_usd": 0.01, "token_limit_per_sample": 20000},
-                       registry_spec="mockllm/model", engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
+                       engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
     reasons = [r["reason"] for r in result.refused]
     assert sum("seed digest recorded by the run" in r for r in reasons) == 2, reasons        # both H4 conditions
     assert not any(t["seed_id"] == H4 for t in result.manifest["trees"])
@@ -576,7 +576,7 @@ def _adapt(eval_path, seed_set, out):
     return adapt_run(eval_path, seed_set, out, custody="github_actions_artifact:90d",
                      spend={"max_spend_usd": 0.01, "judge_max_spend_usd": None, "journal_nonce": None,
                             "cost_limit_per_sample_usd": 0.01, "token_limit_per_sample": 20000},
-                     registry_spec="mockllm/model", engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
+                     engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
 
 
 def test_a_target_that_never_stops_calling_tools_is_cut_off_and_its_branch_refused(run, tmp_path_factory):
@@ -628,7 +628,7 @@ def test_run_params_reach_the_manifest_and_a_spend_report_covers_a_run_without_o
     eval_path = next((out / "logs").glob("*.eval"))
     run_dir = tmp_path_factory.mktemp("cli-adapt") / "run_x"
     code = cli.main(["adapt", "--eval", str(eval_path), "--out-dir", str(run_dir), "--custody", "github_actions_artifact:90d",
-                     "--target", "mockllm/model", "--max-spend", "0.01", "--run-params", str(out / "run_params.json"),
+                     "--max-spend", "0.01", "--run-params", str(out / "run_params.json"),
                      "--no-harness-commit", "--report"])
     assert code == 0
     m = framework.load_json(run_dir / "manifest.json")
@@ -730,6 +730,533 @@ def test_judge_refuses_a_resume_under_another_spec_before_any_call(run, tmp_path
     assert judgments.read_text(encoding="utf-8").count("\n") == 1, "no row was added"
 
 
+# ------------------------------------------ non-Anthropic targets: how each reply ended (2026-09-23)
+
+
+class _CutOffTarget(ScriptedTarget):
+    """On H1, ends the clinical arm's second reply at the output cap (what a
+    reasoning target does when hidden reasoning spends max_tokens) and answers
+    the colloquial arm's first turn with nothing at all."""
+
+    def __init__(self, seed_set: seeds.SeedSet) -> None:
+        super().__init__(seed_set)
+        self.clinical = seeds.text_of(seed_set.seeds[H1], "stimulus_clinical")
+
+    def __call__(self, input, tools, tool_choice, config) -> ModelOutput:
+        users = [m for m in input if isinstance(m, ChatMessageUser)]
+        if users[0].text != self.clinical and len(users) == 1:
+            return ModelOutput.from_content(model="mockllm", content="")
+        out = super().__call__(input, tools, tool_choice, config)
+        if users[0].text == self.clinical and len(users) == 2:
+            out.choices[0].stop_reason = "max_tokens"
+        return out
+
+
+def test_a_reply_cut_at_max_tokens_or_left_empty_refuses_its_branch_and_every_stop_reason_is_recorded(run, tmp_path_factory):
+    """Nothing in the lane read stop_reason: a reply cut at max_tokens, or an
+    empty one, was exported as the model's answer and judged. The branch is
+    now refused by name, and the manifest counts every call's stop reason."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    target = get_model("mockllm/model", custom_outputs=_CutOffTarget(seed_set), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("cut-logs"), token_limit=20000, cost_limit=0.01)
+    assert log.status == "success", log.error
+    result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("cut") / "run")
+    reasons = sorted(r["reason"] for r in result.refused)
+    assert len(reasons) == 2, reasons
+    assert any("assistant turn 4 ended on stop_reason 'max_tokens'" in r for r in reasons), reasons
+    assert any("assistant turn 2 is empty (no text and no tool call, stop_reason 'stop')" in r for r in reasons), reasons
+    m = result.manifest
+    assert m["trees"] == [] and m["execution"]["claim_grade_eligible"] is False
+    # every call is counted, the refused trees' included: 2 conditions x 2 user turns
+    assert m["models"]["target"]["stop_reasons"] == [{"stop_reason": "max_tokens", "calls": 1}, {"stop_reason": "stop", "calls": 3}]
+    assert manifest_problems(m) == [] and m["adapter"]["version"] == "0.2"
+
+
+def test_exported_branches_record_how_each_assistant_turn_ended(run):
+    """The survivors of the ordinary mock run carry one stop reason per
+    assistant turn, replayed prefix included, joinable to the transcript by
+    turn_id."""
+    m = run["r1"].manifest
+    for tree in m["trees"]:
+        for b in tree["branches"]:
+            rec = _record(run, b["conversation_id"])
+            assistant_ids = [t["turn_id"] for t in rec["turns"] if t["role"] == "assistant"]
+            assert [e["turn_id"] for e in b["assistant_stop_reasons"]] == assistant_ids
+            for e in b["assistant_stop_reasons"]:
+                turn = rec["turns"][e["turn_id"] - 1]
+                assert e["stop_reason"] == ("tool_calls" if turn.get("tool_calls") else "stop")
+    counted = {r["stop_reason"]: r["calls"] for r in m["models"]["target"]["stop_reasons"]}
+    assert sum(counted.values()) == next(r for r in m["usage"]["by_role"] if r["role"] == "target")["calls"]
+    assert set(counted) == {"stop", "tool_calls"}
+
+
+class _MeteredTarget(ScriptedTarget):
+    """Reports usage on every call, so Inspect's per-sample token limit can halt a sample."""
+
+    def __call__(self, input, tools, tool_choice, config) -> ModelOutput:
+        from inspect_ai.model import ModelUsage
+
+        out = super().__call__(input, tools, tool_choice, config)
+        out.usage = ModelUsage(input_tokens=400, output_tokens=400, total_tokens=800)
+        return out
+
+
+def test_a_sample_inspect_halts_at_its_token_limit_is_refused_as_a_tree(run, tmp_path_factory):
+    """Inspect ends a sample that reaches token_limit with `limit` set and no
+    error; the adapter checked only `error`, so the truncated tree was exported."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    target = get_model("mockllm/model", custom_outputs=_MeteredTarget(seed_set), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("limit-logs"), token_limit=1000, cost_limit=0.01)
+    halted = [s for s in log.samples if s.limit is not None]
+    assert len(halted) == 2 and all(s.error is None for s in halted), [(s.limit, s.error) for s in log.samples]
+    result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("limit") / "run")
+    reasons = [r["reason"] for r in result.refused]
+    assert reasons == ["sample halted by Inspect's token limit (1000.0); every branch of the tree may end mid-exchange"] * 2
+    assert result.manifest["trees"] == [] and result.manifest["execution"]["claim_grade_eligible"] is False
+    # the halted samples' calls were made and are still booked
+    row = next(r for r in result.manifest["usage"]["by_model"] if r["model"] == "mockllm/model")
+    assert row["calls"] == 4 and row["input_tokens"] == 1600
+
+
+def _target_calls(sample) -> list:
+    from inspect_ai.event import ModelEvent
+
+    return [e for e in sample.events if isinstance(e, ModelEvent) and e.role == "target"]
+
+
+def _rewritten_log(src: Path, dest_dir: Path, mutate) -> Path:
+    """A copy of the stored eval log at `src` with `mutate(samples)` applied,
+    for call-level evidence the mock provider cannot produce (a generation
+    served from Inspect's cache, a call whose raw request was not retained)."""
+    from inspect_ai.log import read_eval_log, write_eval_log
+
+    log = read_eval_log(str(src))
+    mutate(sorted(log.samples, key=lambda s: (str(s.id), s.epoch)))
+    dest = dest_dir / src.name
+    write_eval_log(log, str(dest))
+    return dest
+
+
+def _contract_checks(eval_path: Path, seed_set, out: Path, refusal_prefix: str) -> dict:
+    result = _adapt(eval_path, seed_set, out)
+    assert result.refused and all(r["reason"].startswith(refusal_prefix) for r in result.refused), result.refused
+    return result.manifest["execution"]["contract_checks"]
+
+
+def _cached(samples) -> None:
+    _target_calls(samples[0])[0].cache = "read"
+
+
+def _unlogged(samples) -> None:
+    _target_calls(samples[0])[0].call = None
+
+
+def _crossed(samples) -> None:
+    # the first sample's first request now carries the other condition's opening text, a prefix of no branch declared
+    # for its own condition
+    first, other = (_target_calls(s)[0] for s in samples[:2])
+    first.call.request = json.loads(json.dumps(other.call.request))
+
+
+def test_a_halted_sample_s_calls_still_reach_the_call_level_checks(run, tmp_path_factory):
+    """Codex review of PR #37 (2026-09-23): the limit refusal ran before the
+    raw-request, sampling-config and cache checks and the request-prefix
+    check, so a halted sample's calls reached none of them. A run whose trees
+    were all halted reported generation_config_pinned and no_cache as passes
+    over calls never examined, and a halted sample's cached generation,
+    unretained raw request or off-condition request passed unseen. The tree
+    is still refused; its calls are examined first."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    target = get_model("mockllm/model", custom_outputs=_MeteredTarget(seed_set), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("halted-checks-logs"), token_limit=1000, cost_limit=0.01)
+    assert [s.limit is not None and s.error is None for s in log.samples] == [True, True]
+    src, halted = Path(log.location), "sample halted by Inspect's token limit"
+    got = _contract_checks(src, seed_set, tmp_path_factory.mktemp("halted-checks") / "run", halted)
+    # the mock provider's raw request carries no sampling keys (test_contract_verdicts_are_honest_under_a_mock_provider),
+    # so the halted calls, once examined, fail the config check by name; skipped, the check passed over nothing
+    assert got["generation_config_pinned"]["status"] == "fail" and "not_sent" in got["generation_config_pinned"]["detail"]
+    assert got["no_cache"]["status"] == "pass" and got["stimulus_digest_identity"]["status"] == "pass"
+    for name, mutate, check, detail in (
+            ("cached", _cached, "no_cache", "served from Inspect's cache"),
+            ("unlogged", _unlogged, "generation_config_pinned", "1 target call(s) have no retained raw request"),
+            ("crossed", _crossed, "stimulus_digest_identity", "are not a prefix of any branch declared for this condition")):
+        path = _rewritten_log(src, tmp_path_factory.mktemp(f"halted-{name}-log"), mutate)
+        got = _contract_checks(path, seed_set, tmp_path_factory.mktemp(f"halted-{name}") / "run", halted)
+        assert got[check]["status"] == "fail" and detail in got[check]["detail"], (name, got[check])
+
+
+def test_an_errored_or_unbound_sample_s_calls_still_reach_the_cache_check(run, tmp_path_factory):
+    """The same review's rule for the refusals that come before the limit
+    refusal: a sample that errored after a paid call, and one whose metadata
+    names no known seed, are refused, but a generation either served from
+    Inspect's cache is reported (no_cache and the retained-request count need
+    no seed)."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    target = get_model("mockllm/model", custom_outputs=_RaisingTarget(seed_set), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("errored-checks-logs"), token_limit=20000, cost_limit=0.01)
+    src = Path(log.location)
+
+    def errored_first(samples):
+        samples.sort(key=lambda s: s.error is None)
+
+    def errored_cached(samples):
+        errored_first(samples)
+        _cached(samples)
+
+    def unbound_cached(samples):
+        samples[0].metadata["seed_id"] = "pw-petri-no-such-seed"
+        _cached(samples)
+
+    for name, mutate, refusal in (("errored", errored_cached, "sample error:"),
+                                  ("unbound", unbound_cached, "sample metadata names no known seed")):
+        path = _rewritten_log(src, tmp_path_factory.mktemp(f"{name}-cache-log"), mutate)
+        got = _contract_checks(path, seed_set, tmp_path_factory.mktemp(f"{name}-cache") / "run", refusal)
+        assert got["no_cache"]["status"] == "fail", (name, got["no_cache"])
+
+
+class _NoChoiceTarget(ScriptedTarget):
+    """On H1, answers the clinical arm's second turn with an output that has no choice at all."""
+
+    def __init__(self, seed_set: seeds.SeedSet) -> None:
+        super().__init__(seed_set)
+        self.clinical = seeds.text_of(seed_set.seeds[H1], "stimulus_clinical")
+
+    def __call__(self, input, tools, tool_choice, config) -> ModelOutput:
+        users = [m for m in input if isinstance(m, ChatMessageUser)]
+        if users[0].text == self.clinical and len(users) == 2:
+            return ModelOutput(model="mockllm", choices=[])
+        return super().__call__(input, tools, tool_choice, config)
+
+
+def test_a_call_that_returned_no_choice_is_counted_as_no_output(run, tmp_path_factory):
+    """The schema documents a `no_output` bucket in models.target.stop_reasons
+    for a call that returned no choice, and nothing tested that the adapter
+    fills it (2026-09-23 review). Petri's target fails the sample on such an
+    output, so the tree is refused as a sample error and the call still
+    counted."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    target = get_model("mockllm/model", custom_outputs=_NoChoiceTarget(seed_set), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("nochoice-logs"), token_limit=20000, cost_limit=0.01)
+    result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("nochoice") / "run")
+    assert [r["branch_id"] for r in result.refused] == [f"{H1}::clinical#1:root"]
+    assert result.refused[0]["reason"].startswith("sample error:")
+    stops = result.manifest["models"]["target"]["stop_reasons"]
+    assert stops == [{"stop_reason": "no_output", "calls": 1}, {"stop_reason": "stop", "calls": 3}]
+    assert manifest_problems(result.manifest) == []
+
+
+def test_inspects_cost_limit_prices_cache_tokens_at_the_sidecar_rates():
+    """register_prices gives Inspect the prices its per-sample cost_limit
+    counts. It registered cache writes and reads at the input rate, below
+    Anthropic's 2x one-hour write price, and reverting the change failed no
+    test (2026-09-23 review). The price is read back through Inspect's own
+    lookup and costed with its own function. A model name no other test uses
+    keeps the registration from leaking into another test's cost limit."""
+    from inspect_ai.model import ModelUsage, get_model_info
+    from inspect_ai.model._model import compute_model_cost
+
+    from scripts.petri_audit import spend
+    from scripts.petri_audit.task import register_prices
+
+    model = "anthropic/pw-cache-rate-probe"
+    registry = {"anthropic": {"pricing": {"pw-cache-rate-probe": [1.0, 5.0]}}}
+    prices = register_prices([model], registry)
+    assert prices[model] == spend.Price(1.0, 5.0, prices[model].source)
+    cost = get_model_info(model).cost
+    assert (cost.input, cost.output, cost.input_cache_read, cost.input_cache_write) == (1.0, 5.0, 1.0, 2.0)
+    usage = ModelUsage(input_tokens=1_000_000, output_tokens=0, total_tokens=4_000_000,
+                       input_tokens_cache_read=2_000_000, input_tokens_cache_write=1_000_000)
+    # 1 input + 2 read at 1x + 1 write at 2x: what the sidecar books for the same usage
+    assert compute_model_cost(cost, usage) == pytest.approx(5.0) == pytest.approx(prices[model].cost(1_000_000, 0, 2_000_000, 1_000_000))
+
+
+def test_the_start_marker_is_written_only_once_the_target_model_is_built(tmp_path, monkeypatch, capsys):
+    """The workflow touched `target_started` before `cli run`, so a missing
+    OPENROUTER_API_KEY (an absent Actions secret arrives empty) failed in
+    get_model with no provider call and the fallback spend report booked the
+    whole max_spend. The CLI now writes the marker after the model is built."""
+    marker = tmp_path / "petri-run" / "target_started"
+    monkeypatch.setenv("OPENROUTER_API_KEY", "")
+    code = cli.main(["run", "--target", "openrouter/openai/gpt-5.4-mini", "--max-spend", "50", "--seed-id", H4,
+                     "--no-harness-commit", "--out-dir", str(tmp_path / "petri-run"), "--started-marker", str(marker)])
+    err = capsys.readouterr().err
+    assert code == 11 and "could not be built (PrerequisiteError" in err and "OPENROUTER_API_KEY" in err
+    assert not marker.exists() and not (tmp_path / "petri-run" / "logs").exists(), "no eval ran, nothing is booked"
+    monkeypatch.delenv("OPENROUTER_API_KEY")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    assert cli.main(["run", "--target", "anthropic/claude-haiku-4-5", "--max-spend", "50", "--seed-id", H4,
+                     "--no-harness-commit", "--out-dir", str(tmp_path / "petri-run"), "--started-marker", str(marker)]) == 11
+    assert not marker.exists()
+    # a provider the lane cannot book is refused by the pre-flight, earlier still (exit 5)
+    assert cli.main(["run", "--target", "nosuchprovider/x", "--max-spend", "50", "--seed-id", H4, "--no-harness-commit",
+                     "--out-dir", str(tmp_path / "petri-run"), "--started-marker", str(marker)]) == 5
+    assert not marker.exists()
+    # a target that builds gets the marker before its eval runs
+    code = cli.main(["run", "--target", "mockllm/model", "--max-spend", "0.01", "--seed-id", H4, "--no-harness-commit",
+                     "--out-dir", str(tmp_path / "petri-run"), "--started-marker", str(marker)])
+    assert code == 0 and marker.is_file() and next((tmp_path / "petri-run" / "logs").glob("*.eval"))
+    assert marker.stat().st_mtime <= next((tmp_path / "petri-run" / "logs").glob("*.eval")).stat().st_mtime
+    capsys.readouterr()
+
+
+# --------------------------------------- an openrouter/ target, built offline (2026-09-23)
+
+OPENROUTER_TARGET = "openrouter/openai/gpt-5.4-mini"
+
+
+def _offline_openrouter(monkeypatch, reply):
+    """The production OpenRouter provider built with a dummy key, with only its
+    HTTP call replaced: `reply(request)` returns the ChatCompletion JSON the
+    endpoint would. Everything Inspect does between the request and the
+    ModelOutput (usage parsing and its cached-token subtraction, stop-reason
+    mapping, the retained ModelCall) runs as in a paid run; nothing leaves the
+    machine. The JSON is parsed with the SDK's own lenient `construct_type`,
+    as the real client parses a response (`_strict_response_validation` is
+    off by default): `model_validate` rejects a finish_reason outside OpenAI's
+    enum, such as OpenRouter's documented `error`, which the real client
+    passes through (2026-09-23 review)."""
+    from inspect_ai.model._providers.openai_compatible import OpenAICompatibleAPI
+    from openai._models import construct_type
+    from openai.types.chat import ChatCompletion
+
+    async def fake_completion(self, request, config):
+        return construct_type(type_=ChatCompletion, value=reply(request))
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "offline-dummy-key")
+    monkeypatch.setattr(OpenAICompatibleAPI, "_generate_completion", fake_completion)
+    return get_model(OPENROUTER_TARGET, config=GenerateConfig(temperature=1.0, max_tokens=1024))
+
+
+def _completion(text: str, *, n: int, finish: str = "stop", provider: str | None = "OpenAI", cached: int = 1024,
+                written: int = 512) -> dict:
+    out = {"id": f"gen-{n}", "object": "chat.completion", "created": 0, "model": "openai/gpt-5.4-mini",
+           "choices": [{"index": 0, "finish_reason": finish, "message": {"role": "assistant", "content": text}}],
+           "usage": {"prompt_tokens": 2000, "completion_tokens": 100, "total_tokens": 2100,
+                     "prompt_tokens_details": {"cached_tokens": cached, "cache_write_tokens": written}}}
+    if provider is not None:
+        out["provider"] = provider                 # OpenRouter's upstream host, a top-level field of the response
+    return out
+
+
+def test_an_openrouter_targets_cached_prompt_tokens_are_booked(run, tmp_path_factory, monkeypatch):
+    """Inspect subtracts cached prompt tokens from input_tokens for an
+    OpenAI-shaped response (and OpenRouter's cache writes too); the sidecar
+    priced input and output only, so a cached call was booked below its
+    charge. The manifest and the sidecar now price both cache counts."""
+    from scripts.petri_audit import spend
+
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    calls = iter(range(1, 100))
+    target = _offline_openrouter(monkeypatch, lambda request: _completion(f"reply {next(calls)}", n=0))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("or-logs"), token_limit=40000, cost_limit=5.0)
+    assert log.status == "success", log.error
+    run_dir = tmp_path_factory.mktemp("or-run") / "run_or"
+    result = adapt_run(Path(log.location), seed_set, run_dir, custody="github_actions_artifact:90d",
+                       spend={"max_spend_usd": 5.0, "judge_max_spend_usd": None, "journal_nonce": "or-1",
+                              "cost_limit_per_sample_usd": 5.0, "token_limit_per_sample": 40000},
+                       engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
+    assert result.refused == [] and len(result.records) == 2
+    row = next(r for r in result.manifest["usage"]["by_model"] if r["model"] == OPENROUTER_TARGET)
+    # four calls of 2000 prompt tokens: Inspect reports 1024 cached reads and 512 cache writes apart from input
+    assert (row["calls"], row["input_tokens"], row["input_tokens_cache_read"], row["input_tokens_cache_write"]) == (
+        4, 4 * 464, 4 * 1024, 4 * 512)
+    price = spend.resolve_price(OPENROUTER_TARGET)
+    expected = 4 * (464 * price.input_per_mtok + 100 * price.output_per_mtok + 1024 * price.input_per_mtok
+                    + 512 * 2 * price.input_per_mtok) / 1e6
+    assert result.manifest["usage"]["engine_priced_cost_usd"] == pytest.approx(expected)
+    without_cache = 4 * (464 * price.input_per_mtok + 100 * price.output_per_mtok) / 1e6
+    assert expected > without_cache, "what the sidecar used to book"
+    code = cli.main(["adapt", "--eval", str(Path(log.location)), "--out-dir", str(run_dir.parent / "run_or2"),
+                     "--custody", "github_actions_artifact:90d", "--max-spend", "5",
+                     "--no-harness-commit", "--report"])
+    assert code == 0
+    sidecar = framework.load_json(run_dir.parent / "run_or2" / "run_or2.report.json")
+    assert sidecar["cost_usd"] == pytest.approx(expected) and sidecar["billing_channel"] == "openrouter"
+
+
+def test_an_openrouter_targets_upstream_hosts_are_counted_from_the_raw_response(run, tmp_path_factory, monkeypatch):
+    """OpenRouter can serve one slug from several hosts, and the host it chose
+    is named only in the raw response, which the sanitiser never publishes.
+    The adapter counts the hosts per call into models.target and copies
+    nothing else; a call whose response names no host is counted as such."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    hosts = iter(["OpenAI", "Azure", None, "OpenAI"])
+    counter = iter(range(1, 100))
+
+    def reply(request):
+        n = next(counter)
+        return _completion(f"reply {n}", n=n, provider=next(hosts))
+
+    log = run_study(study_task(seed_set, chosen), target=_offline_openrouter(monkeypatch, reply), seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("host-logs"), token_limit=40000, cost_limit=5.0)
+    assert log.status == "success", log.error
+    out = tmp_path_factory.mktemp("host") / "run_h"
+    result = adapt_run(Path(log.location), seed_set, out, custody="github_actions_artifact:90d",
+                       spend={"max_spend_usd": 5.0, "judge_max_spend_usd": None, "journal_nonce": None,
+                              "cost_limit_per_sample_usd": 5.0, "token_limit_per_sample": 40000},
+                       engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
+    target = result.manifest["models"]["target"]
+    assert target["upstream_providers"] == {"by_provider": [{"provider": "Azure", "calls": 1}, {"provider": "OpenAI", "calls": 2}],
+                                            "calls_unrecorded": 1}
+    assert target["served_model_strings"] == ["openai/gpt-5.4-mini"], "the served string alone cannot tell the hosts apart"
+    assert manifest_problems(result.manifest) == []
+    # the sanitiser was not relaxed: the raw call block is still absent from the published log, host name included
+    sanitised = (out / "sanitised_log.json").read_text(encoding="utf-8")
+    assert sanitizer.forbidden_key_paths(json.loads(sanitised), set(sanitizer.load_allowlist()["forbidden_keys"])) == []
+    # (sanitiser 0.3 since PR #29, which drops forbidden keys inside provider-filled values; the host is still absent)
+    assert "Azure" not in sanitised and result.manifest["artifacts"]["sanitiser"]["version"] == "0.3"
+    # a target not routed through OpenRouter records null
+    assert run["r1"].manifest["models"]["target"]["upstream_providers"] is None
+
+
+def _user_texts(request: dict) -> list[str]:
+    """The user texts of an OpenAI-shaped request, in order (string or text-part content)."""
+    out: list[str] = []
+    for m in request.get("messages", []):
+        if m.get("role") == "user":
+            c = m.get("content")
+            out.append(c if isinstance(c, str) else "".join(p.get("text", "") for p in c or [] if isinstance(p, dict)))
+    return out
+
+
+def test_an_openrouter_reply_that_ended_in_error_or_with_no_finish_reason_refuses_its_branch(run, tmp_path_factory,
+                                                                                          monkeypatch):
+    """OpenRouter documents finish_reason `error` for a generation that failed
+    upstream, possibly after partial text, and a response may carry none.
+    Inspect maps both to stop_reason `unknown` (its provider raises only on a
+    top-level error), and the adapter recorded `unknown` and admitted it: the
+    partial reply was exported as the model's answer in a claim-grade run
+    (2026-09-23 review). Both now refuse their branch."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    clinical = seeds.text_of(seed_set.seeds[H1], "stimulus_clinical")
+    counter = iter(range(1, 100))
+
+    def reply(request):
+        n = next(counter)
+        users = _user_texts(request)
+        out = _completion(f"partial reply {n} cut mid-sent", n=n)
+        choice = out["choices"][0]
+        if users[0] != clinical and len(users) == 1:
+            choice["finish_reason"] = "error"
+            choice["error"] = {"code": 502, "message": "upstream provider disconnected mid-generation"}
+        elif users[0] == clinical and len(users) == 2:
+            choice["finish_reason"] = None
+        return out
+
+    log = run_study(study_task(seed_set, chosen), target=_offline_openrouter(monkeypatch, reply), seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("or-error-logs"), token_limit=40000, cost_limit=5.0)
+    assert log.status == "success" and all(s.error is None and s.limit is None for s in log.samples)
+    # what Inspect did with the two endings: no error, no retry, stop_reason unknown
+    endings = sorted(str(e.output.choices[0].stop_reason) for s in log.samples for e in s.events
+                     if getattr(e, "event", None) == "model" and e.role == "target")
+    assert endings == ["stop", "stop", "unknown", "unknown"]
+    result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("or-error") / "run")
+    reasons = sorted(r["reason"] for r in result.refused)
+    assert len(reasons) == 2, reasons
+    assert reasons[0].startswith(f"{H1}::clinical#1:root: assistant turn 4 ended on stop_reason 'unknown', an ending "
+                                 "Inspect could not map"), reasons
+    assert reasons[1].startswith(f"{H1}::colloquial#1:root: assistant turn 2 ended on stop_reason 'unknown'"), reasons
+    m = result.manifest
+    assert result.records == [] and m["trees"] == [] and m["execution"]["claim_grade_eligible"] is False
+    assert m["models"]["target"]["stop_reasons"] == [{"stop_reason": "stop", "calls": 2}, {"stop_reason": "unknown", "calls": 2}]
+    assert manifest_problems(m) == []
+
+
+class _NoToolTarget(ScriptedTarget):
+    """Answers every turn in plain text even when tools are offered."""
+
+    def __call__(self, input, tools, tool_choice, config) -> ModelOutput:
+        return super().__call__(input, [], tool_choice, config)
+
+
+def test_a_tool_seed_whose_target_calls_no_tool_leaves_the_tools_check_not_applicable(run, tmp_path_factory):
+    """With zero tool calls the tools check passed ("every tool result matches
+    the seed's results table") having examined nothing; it is now
+    not_applicable with the seed named, and the rule outcome records the
+    behaviour."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H3])
+    target = get_model("mockllm/model", custom_outputs=_NoToolTarget(seed_set), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("notool-logs"), token_limit=20000, cost_limit=0.01)
+    assert log.status == "success", log.error
+    result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("notool") / "run")
+    assert result.refused == [] and len(result.records) == 2
+    check = result.manifest["execution"]["contract_checks"]["tool_results_from_data"]
+    assert check["status"] == "not_applicable" and f"tools declared by {H3}" in check["detail"]
+    assert "the target made no tool call in their samples" in check["detail"]
+    assert result.manifest["execution"]["target_tools_mode"] == "fixed", "the seed still declared its tools"
+    assert all(r["outcomes"]["tool_invoked"] is False for r in result.rule_records)
+    # the ordinary mock run, whose target did call tools, keeps its named failure (a generated error result)
+    assert run["r1"].manifest["execution"]["contract_checks"]["tool_results_from_data"]["status"] == "fail"
+
+
+def test_a_tool_seed_whose_trees_were_halted_after_tool_calls_is_not_reported_as_making_none(run, tmp_path_factory):
+    """Tool results were counted only inside the per-record loop, which a tree
+    refused as a whole never reaches: an H3 run halted at the token limit
+    after the target's tool calls recorded tool_results_from_data
+    not_applicable, "the target made no tool call" (2026-09-23 review). The
+    calls are now counted from the calls themselves, and the check is not_run
+    with the calls named."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H3])
+    target = get_model("mockllm/model", custom_outputs=_MeteredTarget(seed_set), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("halted-tools-logs"), token_limit=2400, cost_limit=0.01)
+    assert [s.limit.type if s.limit else None for s in log.samples] == ["token", "token"]
+    tool_calls = sum(1 for s in log.samples for e in s.events if getattr(e, "event", None) == "model" and e.role == "target"
+                     and e.output.choices and e.output.choices[0].message.tool_calls)
+    assert tool_calls > 0, "the target did call its tools before the limit"
+    result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("halted-tools") / "run")
+    assert len(result.refused) == 2 and all("token limit" in r["reason"] for r in result.refused)
+    check = result.manifest["execution"]["contract_checks"]["tool_results_from_data"]
+    assert check == {"status": "not_run",
+                     "detail": f"the target made tool calls on {H3} ({tool_calls} tool call(s)), but no examined record "
+                               "carries a tool result, so none was checked; refused trees and branches are listed in "
+                               "integrity.records_refused"}
+    assert result.manifest["execution"]["claim_grade_eligible"] is False and manifest_problems(result.manifest) == []
+
+
+def test_manifest_target_labels_are_truthful_for_an_openrouter_target(run, tmp_path_factory, monkeypatch):
+    """registry_spec held the Inspect string the CLI passed, and
+    seed_forwarded_by_provider was True for every openrouter/ target although
+    only the request to OpenRouter carries the seed. The manifest now records
+    the registry's own spec and null for seed forwarding, while the raw-request
+    check still treats OpenRouter as a provider that sends the seed."""
+    from scripts.petri_audit.adapter import SEED_FORWARDING
+
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    counter = iter(range(1, 100))
+    target = _offline_openrouter(monkeypatch, lambda request: _completion(f"reply {next(counter)}", n=0))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("label-logs"), token_limit=40000, cost_limit=5.0)
+    result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("label") / "run")
+    t = result.manifest["models"]["target"]
+    assert (t["provider"], t["inspect_name"], t["registry_spec"]) == ("openrouter", OPENROUTER_TARGET, "openrouter:openai/gpt-5.4-mini")
+    assert t["seed_forwarded_by_provider"] is None and SEED_FORWARDING["openrouter"] is True
+    # the run is identified in the manifest already: Inspect's run id, and the run directory through every artifact path
+    assert result.manifest["run_id"] == log.eval.run_id
+    assert result.manifest["artifacts"]["transcripts_path"].startswith(f"{result.out_dir.name}/")
+    # a mock target is outside the registry
+    mock = run["r1"].manifest["models"]["target"]
+    assert mock["registry_spec"] is None and mock["seed_forwarded_by_provider"] is None
+
+
 # ------------------------------------------------------------ mode readapt
 
 
@@ -773,7 +1300,7 @@ def _readapt_source(tmp_path_factory, capsys) -> dict:
 
 def _readapt_argv(src: dict) -> list[str]:
     return ["adapt", "--eval", str(src["eval"]), "--out-dir", str(src["runs"] / src["stem"]), "--custody",
-            "github_actions_artifact:90d", "--target", "mockllm/model", "--max-spend", "0.01", "--judge-max-spend",
+            "github_actions_artifact:90d", "--max-spend", "0.01", "--judge-max-spend",
             "0.01", "--token-limit", "20000", "--no-harness-commit", "--report", "--readapt", str(src["plan"])]
 
 

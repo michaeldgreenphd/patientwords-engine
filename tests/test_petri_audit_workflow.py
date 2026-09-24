@@ -149,7 +149,11 @@ def _run_the_run_step(workflow: dict, tmp_path: Path, *, mode: str, attempt: str
     runner_temp.mkdir()
     calls = case / "python_calls.txt"
     stub = bindir / "python"
-    stub.write_text(f'#!/bin/sh\necho "$@" >> "{calls}"\nexit 0\n', encoding="utf-8")
+    # the stub writes the marker it is handed, as `cli run --started-marker FILE` does once the target model is built
+    # (PR #37 moved the marker from the shell into the CLI; merged here with PR #29's attempt check)
+    stub.write_text(f'#!/bin/sh\necho "$@" >> "{calls}"\nprev=""\n'
+                    'for a in "$@"; do if [ "$prev" = "--started-marker" ]; then : > "$a"; fi; prev="$a"; done\n'
+                    'exit 0\n', encoding="utf-8")
     stub.chmod(0o755)
     env = {"PATH": os.pathsep.join([str(bindir), "/usr/bin", "/bin"]), "RUNNER_TEMP": str(runner_temp),
            "MODE": mode, "RUN_ATTEMPT": attempt, "SEEDS_FILE": "seeds.json", "SEED_IDS": "", "WAVE": "2",
@@ -169,8 +173,10 @@ def test_a_re_run_of_the_audit_job_alone_cannot_call_the_target_again(workflow, 
     step = _step(workflow, "Run (mode dry_run or run")
     assert step["env"]["MODE"] == "${{ needs.params.outputs.mode }}"
     assert step["env"]["RUN_ATTEMPT"] == "${{ github.run_attempt }}"
-    body = step["run"]
-    assert body.index('"$RUN_ATTEMPT" != "1"') < body.index("target_started") < body.index("scripts.petri_audit.cli run")
+    # the refusal precedes the CLI, which writes the target-start marker itself (--started-marker, PR #37), so a
+    # refused re-run leaves no marker for the spend report to impute from
+    body = "\n".join(ln for ln in step["run"].splitlines() if not ln.lstrip().startswith("#"))
+    assert body.index('"$RUN_ATTEMPT" != "1"') < body.index("scripts.petri_audit.cli run") < body.index("target_started")
     for attempt in ("2", "3", ""):
         proc, marker, calls = _run_the_run_step(workflow, tmp_path, mode="run", attempt=attempt)
         assert proc.returncode != 0 and "mode run cannot be re-run from the Actions tab" in proc.stderr, proc.stderr
@@ -397,6 +403,20 @@ def test_fire_lane_classifies_the_petri_target_and_judge_specs():
     with pytest.raises(ValueError, match="mixed-channel"):
         ft.validate_params(TRIGGER, dict(base, target="anthropic/claude-haiku-4-5", judge_model="openai"))
     assert ft.petri_channels({"target": orl, "judge": "true", "judge_model": "claude-haiku-4-5"})[1] == "anthropic"
+    # a judge billed through a third key (google:, GEMINI_API_KEY) is refused before the push: it would be booked to the
+    # anthropic lane while its vendor bills its own account (review of 2026-09-23, F-TH1). Every spec that bills
+    # ANTHROPIC_API_KEY or OPENROUTER_API_KEY still passes, and an unknown provider is left to the workflow's
+    # judge_spec_problems, as before
+    for google in ("google:gemini-2.5-flash", "google"):
+        with pytest.raises(ValueError, match="bills GEMINI_API_KEY"):
+            ft.validate_params(TRIGGER, dict(base, target="anthropic/claude-haiku-4-5", judge_model=google))
+    assert ft.petri_judge_key_env(dict(base, judge_model="google:x")) == "GEMINI_API_KEY"
+    assert ft.petri_judge_key_env(dict(base, judge_model="claude-haiku-4-5")) == "ANTHROPIC_API_KEY"
+    assert ft.petri_judge_key_env(dict(base, judge_model="openai:gpt-5.4-mini")) == "OPENROUTER_API_KEY"
+    assert ft.petri_judge_key_env(dict(base, judge_model="nosuch:model")) is None
+    assert ft.petri_judge_key_env(dict(base, judge="false", judge_model="google:x")) is None
+    ft.validate_params(TRIGGER, dict(base, target=orl, judge_model="openrouter:google/gemini-2.5-flash"))
+    ft.validate_params(TRIGGER, dict(base, target="anthropic/claude-haiku-4-5", judge_model="anthropic:claude-haiku-4-5"))
     # boolean keys must be spelled the one way the workflow compares against (Codex round 3)
     for bad in ("True", "yes", "1", ""):
         with pytest.raises(ValueError, match="must be true or false"):
@@ -457,13 +477,16 @@ def test_the_fallback_spend_report_waits_for_a_target_start_marker(workflow):
     sidecar, the ledger would fold a cost for a run that made no provider call and
     reconciliation would accept it as this fire's landed spend (Codex round 8)."""
     run_step = _step(workflow, "Run (mode dry_run or run")
-    assert 'touch "$RUNNER_TEMP/petri-run/target_started"' in run_step["run"], \
-        "the run step must leave the marker the spend report keys off"
+    # the CLI writes the marker once the target model is built, immediately before the eval (2026-09-23): touched by
+    # the shell before the CLI, a missing key or an unknown provider, which fail in get_model with no provider call,
+    # booked the whole max_spend through this report
+    body = "\n".join(ln for ln in run_step["run"].splitlines() if not ln.lstrip().startswith("#"))
+    assert '--started-marker "$RUNNER_TEMP/petri-run/target_started"' in body, \
+        "the run step must hand the CLI the marker the spend report keys off"
+    assert "touch" not in body and body.count("target_started") == 1, "the shell must not create the marker itself"
+    assert body.index("scripts.petri_audit.cli run") < body.index("--started-marker")
     spend = _step(workflow, "Spend report for an attempted run")
     assert '[ ! -f "$RUNNER_TEMP/petri-run/target_started" ]' in spend["run"], \
         "the target sidecar must not be imputed for a run that never started"
     # the judge's own marker is untouched: a judge that started and died is still booked at its ceiling
     assert '[ -f "$RUNNER_TEMP/petri-run/judge_started" ]' in spend["run"]
-    # and the marker is written before the paid call, not after it
-    body = run_step["run"]
-    assert body.index("target_started") < body.index("scripts.petri_audit.cli run")

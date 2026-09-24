@@ -14,6 +14,7 @@ nothing to examine.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from .framework import sha256_text
@@ -337,6 +338,155 @@ def generation_problems(expected: dict, request: Any, *, forwards_seed: bool | N
         elif got["seed"] != want_seed:
             problems.append(f"seed: sent {got['seed']!r}, seed {want_seed!r}")
     return problems
+
+
+# ------------------------------------------------ how each target reply ended (2026-09-23)
+
+TRUNCATING_STOP_REASONS = ("max_tokens", "model_length", "content_filter")
+"""Inspect `StopReason` values (inspect_ai/model/_model_output.py in the locked 0.3.237) under which a reply is
+not the model's whole answer: cut at the output cap (OpenAI-shaped `finish_reason: length` maps to max_tokens),
+a prompt the provider rejected as longer than its context window (model_length: Inspect substitutes the
+provider's error text for the reply, `handle_bad_request` in anthropic.py and openai_compatible.py), or withheld
+by a provider filter. A reasoning model whose hidden reasoning counts against `max_tokens` ends here with little
+or no visible text, which rules and the judge would otherwise score as its answer."""
+
+CLEAN_STOP_REASONS = ("stop", "tool_calls")
+"""The only endings under which a reply is admitted: the model ended its turn, or ended it on a tool call. Every
+other value is refused, `unknown` included (2026-09-23 review: it was recorded and admitted, and a partial reply
+was exported as a claim-grade answer). Inspect's `as_stop_reason` maps any finish_reason it does not know to
+`unknown`, which covers OpenRouter's documented `error` (a generation that failed upstream, possibly after
+partial text; OpenRouter's `on_response` raises only on a top-level error, and the openai SDK builds a response
+without validating it) and a null finish_reason. The direct Anthropic provider maps
+`model_context_window_exceeded`, a reply cut at the context window, to `unknown` too (`message_stop_reason`;
+`pause_turn` is resumed by the provider and never returned). No landed run recorded one: the three Anthropic
+runs' logs hold only stop and tool_calls."""
+
+
+def reply_problems(turns: list[dict], stop_reasons: dict[int, str | None], *, where: str) -> list[str]:
+    """Each assistant turn of a record against how the target call that
+    produced it ended (`stop_reasons`: turn_id -> Inspect stop reason, None
+    when no retained call produced that message). A turn with no recorded
+    ending cannot be shown complete and is a problem, never assumed clean; so
+    is any ending outside CLEAN_STOP_REASONS, a truncating one named as such
+    and any other (`unknown`) as an ending Inspect could not map; so is a
+    reply with neither text nor a tool call (a tool-call turn carries no text
+    legitimately)."""
+    problems: list[str] = []
+    for t in turns:
+        if t["role"] != "assistant":
+            continue
+        tid = t["turn_id"]
+        reason = stop_reasons.get(tid)
+        if reason is None:
+            problems.append(f"{where}: assistant turn {tid} has no target call recording how it ended; the reply "
+                            "cannot be shown to be complete")
+        elif reason in TRUNCATING_STOP_REASONS:
+            problems.append(f"{where}: assistant turn {tid} ended on stop_reason {reason!r}; a reply cut at a limit or "
+                            "withheld by a filter is not the model's answer")
+        elif reason not in CLEAN_STOP_REASONS:
+            problems.append(f"{where}: assistant turn {tid} ended on stop_reason {reason!r}, an ending Inspect could not "
+                            "map (OpenRouter's finish_reason error or null, Anthropic's context-window stop); the reply "
+                            "cannot be shown to be complete")
+        elif not (t.get("text") or "").strip() and not t.get("tool_calls"):
+            problems.append(f"{where}: assistant turn {tid} is empty (no text and no tool call, stop_reason {reason!r})")
+    return problems
+
+
+def uncarried_ending_refusal(endings: list[tuple[str | None, str]], carried: set[str], *, where: str) -> dict | None:
+    """The refusal for a tree in which a target call ended outside
+    CLEAN_STOP_REASONS with a reply no branch of the tree carries (`endings`:
+    one (id of the assistant message the call produced, or None when it
+    produced none; stop reason) per call; `carried`: every message id on the
+    tree's timeline). reply_problems refuses a branch that carries such a
+    reply; one that no branch carries would be counted in
+    models.target.stop_reasons and refuse nothing, so a claim-grade manifest
+    could sit over it (2026-09-23 review). In the offline mock runs, tool
+    loops and replayed prefixes included, every call's reply is on the
+    timeline, so this guards an invariant of the controller rather than a
+    case seen; the tree is refused as a whole, as a sample error is. None
+    when no such call exists."""
+    stray = [reason for mid, reason in endings if reason not in CLEAN_STOP_REASONS and (mid is None or mid not in carried)]
+    if not stray:
+        return None
+    return {"branch_id": f"{where}:{ROOT_BRANCH}",
+            "reason": f"{len(stray)} target call(s) ended on stop_reason {sorted(set(stray))} with a reply no branch of "
+                      "the tree carries, so no branch can be checked against that ending"}
+
+
+def sample_limit_refusal(limit: Any, *, where: str) -> dict | None:
+    """The refusal for a sample Inspect halted at one of its own limits
+    (`EvalSample.limit`, an `EvalSampleLimit` with `type` and `limit`, set by
+    the run loop on `LimitExceededError` with no sample error: _eval/task/run.py
+    in the locked 0.3.237). Every branch of such a tree may stop mid-exchange,
+    so the tree is refused as a whole, as a sample error is; None when the
+    sample ran to its end. Duck-typed so the 3.11 suite can test it."""
+    if limit is None:
+        return None
+    kind = getattr(limit, "type", None) if not isinstance(limit, dict) else limit.get("type")
+    value = getattr(limit, "limit", None) if not isinstance(limit, dict) else limit.get("limit")
+    return {"branch_id": f"{where}:{ROOT_BRANCH}",
+            "reason": f"sample halted by Inspect's {kind} limit ({value}); every branch of the tree may end mid-exchange"}
+
+
+def tool_results_verdict(results_by_seed: dict[str, int], calls_by_seed: dict[str, int]) -> tuple[str, str]:
+    """The `tool_results_from_data` verdict from the number of tool-result
+    turns the adapter examined per tool-declaring seed (seeds without tools
+    absent) and the number of target calls that made a tool call per such
+    seed, counted from the calls themselves before any record is refused.
+    A tool seed whose target never called a tool leaves nothing to examine:
+    whether the target calls a tool is the measured outcome (`tool_invoked`,
+    design memo H3), not a contract requirement, so the check is
+    not_applicable, with the seeds named, rather than a pass over zero results
+    (2026-09-23: a target without native tool use passed it vacuously). When
+    the target did call tools but no examined record carries a result (a
+    tree halted at a limit, or any refusal that precedes the tool turns'
+    examination), the check is not_run and says so: something existed to
+    examine, so neither "nothing to examine" nor "the target made no tool
+    call" is true (2026-09-23 review: both were stated for an H3 run whose
+    trees were halted after four tool calls). A pass names how many results it
+    examined and any tool seed left without an examined result. A failure the
+    adapter recorded is never overwritten (the caller only fills a check still
+    `not_run`)."""
+    if not results_by_seed:
+        return "not_applicable", "no tools declared by this run's seeds"
+    total = sum(results_by_seed.values())
+    called = {s: calls_by_seed.get(s, 0) for s in sorted(results_by_seed) if calls_by_seed.get(s, 0)}
+    if total == 0 and not called:
+        return "not_applicable", (f"tools declared by {', '.join(sorted(results_by_seed))}, but the target made no tool "
+                                  "call in their samples: nothing to examine; tool_invoked records the behaviour")
+    unexamined = [f"{s} ({n} tool call(s))" for s, n in called.items() if results_by_seed[s] == 0]
+    if total == 0:
+        return "not_run", (f"the target made tool calls on {', '.join(unexamined)}, but no examined record carries a "
+                           "tool result, so none was checked; refused trees and branches are listed in "
+                           "integrity.records_refused")
+    silent = sorted(s for s, n in results_by_seed.items() if n == 0 and s not in called)
+    notes = ([f"no tool call on {', '.join(silent)}"] if silent else []) + (
+        [f"none examined from {', '.join(unexamined)}"] if unexamined else [])
+    return "pass", (f"every tool result matches the seed's results table ({total} tool-result turn(s) examined across "
+                    "records" + "".join(f"; {n}" for n in notes) + ")")
+
+
+# ------------------------------------------------ OpenRouter's upstream host (2026-09-23)
+
+_UPSTREAM_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._()+/-]{0,63}$")
+
+
+def upstream_provider_name(response: Any) -> str | None:
+    """The upstream host OpenRouter names in a retained raw response (its
+    top-level `provider` field: "OpenAI", "Azure", "DeepInfra", ...), or None
+    when no response was retained or it carries no short plain name. OpenRouter
+    routes one model slug to several hosts (the advice lane saw gpt-5.4-mini on
+    OpenAI and on Azure), and the field survives only inside the raw ModelEvent
+    `call`, which the sanitiser forbids in every published file. The adapter
+    copies this one string out before sanitising; nothing else of the raw
+    response leaves it, and a value that is not a plain name is not copied."""
+    if not isinstance(response, dict):
+        return None
+    name = response.get("provider")
+    if not isinstance(name, str):
+        return None
+    name = name.strip()
+    return name if _UPSTREAM_NAME.match(name) else None
 
 
 def exchange_limit_problems(seed: dict) -> list[str]:

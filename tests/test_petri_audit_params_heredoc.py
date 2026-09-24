@@ -116,6 +116,94 @@ def test_the_guard_does_not_reject_the_park_default(tmp_path):
     assert "source_run_id=\n" in out, "the park carries no source_run_id and resolves it empty"
 
 
+@pytest.mark.parametrize("target", ["openai/gpt-5.4-mini", "google/gemini-3.5-flash", "grok/grok-4.3", "x-ai/grok-4.3",
+                                    "bedrock/anthropic.claude-haiku-4-5"])
+def test_mode_run_refuses_a_direct_vendor_target_that_the_guard_would_book_to_the_anthropic_lane(tmp_path, target):
+    # fire_trigger.petri_channels books every target that is not openrouter/ to the Anthropic lane, but the run step
+    # exports OPENAI_API_KEY and GEMINI_API_KEY too, so openai/... billed a direct vendor key against the Anthropic
+    # ceiling (2026-09-23); cli preflight refuses the same spellings in every mode
+    rc, out, err = _run(tmp_path, {**PAID, "target": target, "_nonce": "n1"})
+    assert rc != 0 and "books every target that is not openrouter/ to the Anthropic lane" in err
+    assert "openrouter/<vendor>/<model>" in err and out == ""
+
+
+@pytest.mark.parametrize("target", ["claude-haiku-4-5", "", "anthropic/", "openrouter/", "openrouter/gpt-5.4-mini",
+                                    "openrouter/openai/"])
+def test_mode_run_refuses_a_target_that_names_no_provider_or_no_model(tmp_path, target):
+    # Codex review of PR #37 (2026-09-23): the provider test above ran only when the target held a slash, so a bare
+    # model name (which cli preflight reads as Anthropic) or an empty target passed the params job in mode run, and
+    # so did an Inspect spelling with no model, or an OpenRouter one with no vendor
+    rc, out, err = _run(tmp_path, {**PAID, "target": target, "_nonce": "n1"})
+    assert rc != 0 and "mode run needs a target spelled anthropic/<model> or openrouter/<vendor>/<model>" in err, err
+    assert out == ""
+
+
+@pytest.mark.parametrize("target", ["anthropic/claude-haiku-4-5", "openrouter/openai/gpt-5.4-mini",
+                                    "openrouter/google/gemini-3.5-flash"])
+def test_mode_run_admits_the_two_providers_the_lane_books_correctly(tmp_path, target):
+    rc, out, err = _run(tmp_path, {**PAID, "target": target, "_nonce": "n1"})
+    assert rc == 0, err
+    assert f"target={target}\n" in out
+
+
+def _fire_trigger_module():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("fire_trigger_parity", ROOT / "scripts" / "fire_trigger.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_ABSENT = object()
+
+
+def _guard_and_job_agree(tmp_path: Path, mode, target, base: dict | None = None) -> None:
+    cfg = {**(PAID if base is None else base), "mode": mode, "_nonce": "n1"}
+    for key, value in (("mode", mode), ("target", target)):
+        if value is _ABSENT:
+            del cfg[key]
+        else:
+            cfg[key] = value
+    rc, _, err = _run(tmp_path, cfg)
+    try:
+        _fire_trigger_module().validate_params("petri-audit", cfg)
+        guard_admits = True
+    except ValueError as exc:
+        guard_admits, guard_err = False, str(exc)
+    assert guard_admits == (rc == 0), (f"params job rc={rc} {err.strip()!r}; guard "
+                                       f"{'admits' if guard_admits else 'refuses: ' + guard_err}")
+
+
+@pytest.mark.parametrize("mode, target", [
+    (mode, target)
+    for mode in ("run", "dry_run", "preflight", "RUN", " run", "bogus", _ABSENT)
+    for target in ("anthropic/claude-haiku-4-5", "openrouter/openai/gpt-5.4-mini", "openai/gpt-5.4-mini",
+                   "google/gemini-3.5-flash", " anthropic/claude-haiku-4-5", "anthropic/claude-haiku-4-5 ",
+                   "claude-haiku-4-5", "", "anthropic/", "openrouter/", "openrouter/gpt-5.4-mini",
+                   "openrouter/openai/", "anthropic/claude-haiku-4-5/x", "anthropic/claude haiku",
+                   "mockllm/model", "mockllm/judge", "none/none", " mockllm/model", _ABSENT)
+])
+def test_the_fire_guard_refuses_exactly_the_targets_the_params_job_refuses(tmp_path, mode, target):
+    # Codex review of PR #37 (2026-09-24): the fire path journals a reservation before the params job runs, so a
+    # target the params job refuses must be refused at the fire too, or the entry holds the queue slot and, in mode
+    # run, the day's ceiling for a run that never starts. Same trigger file, both checks, same verdict. The mode
+    # spellings the job refuses ("RUN", " run", "bogus") and an absent mode (the job's preflight default) are here
+    # too: the fire path read mode trimmed and lower-cased while the job compares it exactly (review of PR #37).
+    _guard_and_job_agree(tmp_path, mode, target)
+
+
+@pytest.mark.parametrize("mode, target", [
+    (mode, target)
+    for mode in ("Run", "run ", "DRY_RUN", "Dry_run", "Preflight", "PREFLIGHT", "", True, False, None, 1)
+    for target in ("anthropic/claude-haiku-4-5", "openrouter/openai/gpt-5.4-mini", "mockllm/model", _ABSENT)
+])
+def test_the_fire_guard_refuses_exactly_the_modes_the_params_job_refuses(tmp_path, mode, target):
+    # the remaining mode spellings, including JSON scalars the job str()-s (a boolean lower-cased), against the
+    # targets each canonical mode admits
+    _guard_and_job_agree(tmp_path, mode, target)
+
+
 READAPT = {**PAID, "mode": "readapt", "judge": "true", "judge_max_spend": "2.50", "source_run_id": "35937014168"}
 
 
@@ -143,3 +231,45 @@ def test_a_readapt_the_workflow_cannot_run_is_refused_before_any_output(tmp_path
 def test_a_readapt_is_admitted_from_a_first_attempt_push_only(tmp_path):
     rc, out, err = _run(tmp_path, {**READAPT, "_nonce": "n"}, attempt="2")
     assert rc != 0 and "mode readapt cannot be re-run from the Actions tab" in err and out == ""
+
+
+# ------------------------------------------- the readapt mode under the paid-target rules (merge of #29 into #37)
+
+
+@pytest.mark.parametrize("target, needle", [
+    ("openai/gpt-5.4-mini", "mode readapt books every target that is not openrouter/ to the Anthropic lane"),
+    ("google/gemini-3.5-flash", "mode readapt books every target that is not openrouter/ to the Anthropic lane"),
+    ("claude-haiku-4-5", "mode readapt needs a target spelled anthropic/<model> or openrouter/<vendor>/<model>"),
+    ("", "mode readapt needs a target spelled anthropic/<model> or openrouter/<vendor>/<model>"),
+    ("openrouter/gpt-5.4-mini", "mode readapt needs a target spelled anthropic/<model> or openrouter/<vendor>/<model>"),
+])
+def test_a_readapt_target_is_held_to_the_paid_target_rules(tmp_path, target, needle):
+    # a readapt calls no target, but it states its source run's target, which the audit job's preflight step prices
+    # and refuses in every mode after the fire has reserved the judge's ceiling; the params job applies mode run's
+    # target rules to it, so the refusal comes before the budget gate and the fire guard can mirror it
+    rc, out, err = _run(tmp_path, {**READAPT, "target": target, "_nonce": "n"})
+    assert rc != 0 and needle in err, err
+    assert out == ""
+
+
+@pytest.mark.parametrize("target", ["anthropic/claude-haiku-4-5", "openrouter/openai/gpt-5.4-mini"])
+def test_a_readapt_target_the_paid_rules_admit_resolves(tmp_path, target):
+    rc, out, err = _run(tmp_path, {**READAPT, "target": target, "_nonce": "n"})
+    assert rc == 0, err
+    assert f"target={target}\n" in out and "mode=readapt\n" in out
+
+
+@pytest.mark.parametrize("mode, target", [
+    (mode, target)
+    for mode in ("readapt", "READAPT", "Readapt", " readapt", "readapt ", "re-adapt")
+    for target in ("anthropic/claude-haiku-4-5", "openai/gpt-5.4-mini", "google/gemini-3.5-flash",
+                   " anthropic/claude-haiku-4-5", "claude-haiku-4-5", "", "anthropic/", "openrouter/gpt-5.4-mini",
+                   "anthropic/claude-haiku-4-5/x", "mockllm/model", "none/none", _ABSENT)
+])
+def test_the_fire_guard_refuses_exactly_the_readapts_the_params_job_refuses(tmp_path, mode, target):
+    # the parity grid above, for the fourth mode: a readapt that names its source run and runs the judge, so the
+    # verdict turns on the mode spelling and the target alone. A readapt always judges, and READAPT's judge bills
+    # the Anthropic lane, so an openrouter/ target is left out here: the guard refuses that pair as a mixed-channel
+    # fire, a rule the budget gate enforces and the params job does not. The fire path also checks the source run
+    # itself (petri_readapt_source_problems), which needs a repository and is not a params-job rule
+    _guard_and_job_agree(tmp_path, mode, target, base=READAPT)

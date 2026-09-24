@@ -46,9 +46,21 @@ Console entry points (see `[tool.poetry.scripts]`): `medlang-compare`, `medlang-
 
 ## Execution model: nothing paid or networked runs locally
 
-API keys (`ANTHROPIC_API_KEY`, `NEURONPEDIA_API_KEY`, optional `HF_TOKEN`) exist **only as
-GitHub Actions secrets** — dev containers have none, and the sandbox egress proxy blocks
-huggingface.co and most model hosts. All generation, tracing, and CPU inference therefore
+API keys exist **only as GitHub Actions secrets**, and the repository holds exactly five
+(`gh secret list`, 2026-09-23): `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`,
+`NEURONPEDIA_API_KEY` and optional `HF_TOKEN`. The models the study traces and measures are
+reached through Neuronpedia (`NEURONPEDIA_API_KEY`) or loaded from Hugging Face for CPU
+inference (`HF_TOKEN`). Every non-Anthropic model called through a chat API (the advice and
+Petri lanes) goes through OpenRouter on `OPENROUTER_API_KEY` (`data/advice_providers.json`
+routes `openai:`, `xai:`, `deepseek:`, `moonshot:` and `openrouter:` there), except the
+registry's direct `google:` entry, which uses `GEMINI_API_KEY`. There is no `OPENAI_API_KEY`,
+`XAI_API_KEY`, `DEEPSEEK_API_KEY` or `MOONSHOT_API_KEY`: the workflows' references to them
+resolve to empty strings. A Petri target in `mode: run` (or `mode: readapt`, which states
+its source run's target) must be `anthropic/<model>` or `openrouter/<vendor>/<model>`;
+`mockllm/model`, the lane's park default and the only `dry_run` target, calls nothing and
+is refused in both paid modes (`docs/triggers.md` has the full rule). Dev containers have
+none of these keys, and the sandbox egress proxy blocks huggingface.co and most model
+hosts. All generation, tracing, and CPU inference therefore
 runs through **push-to-run CI**: each workflow fires when its file under `.github/trigger/`
 changes on any pushed branch. A machine that *can* run inference locally (yours, with a
 GPU) still commits no locally produced measurement: every committed summary records
