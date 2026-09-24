@@ -25,7 +25,8 @@ withheld Tier B holdout row's render stayed served for ten weeks. --dry-run
 writes and deletes nothing and lists what the run would prune. The run refuses,
 writing nothing, when the site's git checkout keeps tracked renders off disk (a
 sparse clone that excludes modes/): the prune could not see them. Run
-`git -C <site> sparse-checkout disable` first.
+`git -C <site> sparse-checkout disable` first. It also refuses, writing nothing,
+when a site file or directory it scans for render references cannot be read.
 
 Usage:
   python scripts/export_frontend_simulated.py --frontend ../patientwords \\
@@ -55,9 +56,11 @@ except ImportError:
     from payload_summary import build_summary
 
 try:
-    from scripts.render_prune import hidden_renders, prune, prune_candidates
+    from scripts.render_prune import (ReferenceScanError, hidden_renders, prune, prune_candidates,
+                                      referenced_renders)
 except ImportError:
-    from render_prune import hidden_renders, prune, prune_candidates
+    from render_prune import (ReferenceScanError, hidden_renders, prune, prune_candidates,
+                              referenced_renders)
 
 # The circuit-tracer models, in registry order (gemma-2-2b is the base/default).
 # Only gemma-2-2b has a transcoder source set, so clinical-feature attribution
@@ -149,6 +152,15 @@ if _hidden:
              f"modes/simulated/ that are not on disk (sparse checkout or skip-worktree), e.g. "
              f"{_hidden[0]}; the render prune cannot see them. Run "
              f"`git -C {FRONTEND} sparse-checkout disable`, then re-run. Nothing was written.")
+# The renders other site files name are part of the prune keep-set. Scan them
+# now, before anything is copied, so a file the scan cannot read refuses the run
+# with nothing written. Everything this run writes before the prune is a render
+# named like RENDER_RE, which the scan skips, so scanning early reads the same set.
+OUT_DATA_REL = "data/simulated_scenarios.json"
+try:
+    _site_references = referenced_renders(FRONTEND, ignore={OUT_DATA_REL})
+except ReferenceScanError as exc:
+    sys.exit(f"refusing: {exc}. Fix the permissions or re-run; nothing was written or pruned.")
 
 
 def tok(label):
@@ -385,8 +397,7 @@ for e in scenarios:
 # it is the keep-set for pruning (the payload being replaced is not consulted).
 listed_renders = {obj[k] for e in scenarios for obj in [e, *e.get("models", {}).values()]
                   for k in ("html", "png") if isinstance(obj.get(k), str)}
-OUT_DATA_REL = "data/simulated_scenarios.json"
-prune_list = prune_candidates(FRONTEND, listed_renders, ignore={OUT_DATA_REL})
+prune_list = prune_candidates(FRONTEND, listed_renders, referenced=_site_references)
 
 if first_preview is not None and not DRY:
     shutil.copy2(first_preview, FRONTEND / "modes/simulated/preview.html")

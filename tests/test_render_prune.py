@@ -243,3 +243,64 @@ def test_hidden_tracked_reads_the_skip_worktree_bit(tmp_path):
     assert sg.hidden_tracked(site) == ["data/a.json"]
     assert sg.hidden_tracked(site, "modes/simulated") == []
     assert rp.hidden_renders(site) == []
+
+
+# --- an unreadable reference file (Codex review of PR #32, 2026-09-23) -------- #
+# referenced_renders skipped a file it could not read, so a render named only
+# there looked unlisted and was pruned: a committed link broken by the export.
+
+
+def _unreadable(path):
+    """chmod 000 and confirm it took (root, or a filesystem that ignores modes, reads anyway)."""
+    path.chmod(0)
+    try:
+        if path.is_dir():
+            list(path.iterdir())
+        else:
+            path.read_bytes()
+    except PermissionError:
+        return True
+    path.chmod(0o755 if path.is_dir() else 0o644)
+    return False
+
+
+def test_an_unreadable_reference_file_or_dir_refuses_the_scan(tmp_path):
+    _, site, _ = build(tmp_path)
+    page = site / "start-here" / "index.html"
+    if not _unreadable(page):
+        pytest.skip("permissions are not enforced here")
+    try:
+        for fn in (lambda: rp.referenced_renders(site),
+                   lambda: rp.prune_candidates(site, set(), ignore={"data/simulated_scenarios.json"})):
+            with pytest.raises(rp.ReferenceScanError, match="start-here/index.html"):
+                fn()
+    finally:
+        page.chmod(0o644)
+    assert f"modes/simulated/{OLD}/index_08.html" in rp.referenced_renders(site)
+    locked = site / "start-here"
+    assert _unreadable(locked)
+    try:
+        with pytest.raises(rp.ReferenceScanError, match="start-here"):
+            rp.referenced_renders(site)
+    finally:
+        locked.chmod(0o755)
+
+
+def test_export_refuses_before_writing_when_a_reference_file_is_unreadable(tmp_path):
+    engine, site, files = build(tmp_path)
+    page = site / "start-here" / "index.html"
+    before = snapshot(site)
+    if not _unreadable(page):
+        pytest.skip("permissions are not enforced here")
+    try:
+        for extra in ((), ("--dry-run",)):
+            proc = export(engine, site, *extra)
+            assert proc.returncode != 0, extra
+            assert "start-here/index.html" in proc.stderr and "pruned" not in proc.stdout
+    finally:
+        page.chmod(0o644)
+    assert snapshot(site) == before                  # nothing copied, written or pruned
+    assert files["page_linked"].exists()
+    proc = export(engine, site)
+    assert proc.returncode == 0, proc.stderr
+    assert files["page_linked"].exists() and "3 unlisted render(s) pruned" in proc.stdout

@@ -25,6 +25,12 @@ tracked renders off disk (the cloud containers' sparse clone excludes modes/)
 would prune nothing and say so as if it were done. ``hidden_renders`` finds
 those files (sparse_guard.py) and the exporter refuses before writing anything.
 
+The keep-set is only complete if every site file could be read. A reference
+file or directory that cannot be read (permissions, a transient I/O error)
+raises ``ReferenceScanError`` instead of being skipped: skipped, a render named
+only there would look unlisted and be deleted (Codex review of PR #32). The
+exporter runs the scan before it writes anything and refuses on that error.
+
 No medical vocabulary lives here.
 """
 
@@ -73,12 +79,25 @@ def hidden_renders(frontend: Path) -> list[str]:
     return [rel for rel in hidden_tracked(frontend, SIM_DIR) if RENDER_RE.match(rel)]
 
 
+class ReferenceScanError(RuntimeError):
+    """A site file or directory could not be read, so the keep-set is incomplete."""
+
+
 def referenced_renders(frontend: Path, ignore: set[str] | frozenset[str] = frozenset()) -> set[str]:
     """Render paths named by any text file of the site other than the renders
-    themselves, .git, and the site-relative paths in ``ignore``."""
+    themselves, .git, and the site-relative paths in ``ignore``. Raises
+    ReferenceScanError, naming the count and the first paths, when any file or
+    directory it would read cannot be read."""
     frontend = Path(frontend)
     found: set[str] = set()
-    for dirpath, dirnames, filenames in os.walk(frontend):
+    unreadable: list[str] = []
+
+    def _walk_error(exc: OSError) -> None:
+        where = Path(exc.filename) if exc.filename else None
+        unreadable.append(where.relative_to(frontend).as_posix()
+                          if where is not None and where.is_relative_to(frontend) else str(exc))
+
+    for dirpath, dirnames, filenames in os.walk(frontend, onerror=_walk_error):
         dirnames[:] = [d for d in dirnames if d != ".git"]
         for name in filenames:
             p = Path(dirpath) / name
@@ -88,16 +107,28 @@ def referenced_renders(frontend: Path, ignore: set[str] | frozenset[str] = froze
             try:
                 text = p.read_text(encoding="utf-8", errors="ignore")
             except OSError:
+                unreadable.append(rel)
                 continue
             if "modes/simulated/" in text:
                 found.update(REFERENCE_RE.findall(text))
+    if unreadable:
+        raise ReferenceScanError(
+            f"{len(unreadable)} site path(s) could not be read while collecting the renders other "
+            f"files reference, e.g. {sorted(unreadable)[:3]}; the prune keep-set would be incomplete")
     return found
 
 
 def prune_candidates(frontend: Path, listed: set[str],
-                     ignore: set[str] | frozenset[str] = frozenset()) -> list[str]:
-    """Exporter-named renders on the site that neither the export nor any other site file lists."""
-    keep = set(listed) | referenced_renders(frontend, ignore)
+                     ignore: set[str] | frozenset[str] = frozenset(),
+                     referenced: set[str] | None = None) -> list[str]:
+    """Exporter-named renders on the site that neither the export nor any other site file lists.
+
+    ``referenced`` is a scan already made with ``referenced_renders`` (the
+    exporter scans before it writes, so it can refuse with nothing written);
+    without it the scan runs here, with ``ignore``."""
+    if referenced is None:
+        referenced = referenced_renders(frontend, ignore)
+    keep = set(listed) | referenced
     return [rel for rel in exporter_renders(frontend) if rel not in keep]
 
 
