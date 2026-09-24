@@ -623,3 +623,40 @@ def test_a_readapt_plan_refuses_without_the_seed_digests(tmp_path):
         readapt.plan(params=_params(), listing=_listing(), runs_dir=runs, seed_ids=_wave2_ids(),
                      journal_entries=_journal_entries(), readapt_run_id="5555", readapt_run_attempt="1",
                      readapt_commit=COMMIT, now=NOW)
+
+
+def test_a_judge_sidecar_named_for_the_readapt_binds_and_verifies(tmp_path):
+    """The readapt's judge sidecar name (`judge_report_name`) is what `cli judge` hands `bind_judgments`: the
+    manifest must bind it, reseal, and pass verify-run and verify-chain, or the judge would spend and then fail to
+    bind. A landed judged run, copied and re-adapted in place, is bound to a readapt-named copy of its sidecar."""
+    source = _landed_manifests()[-1].parent
+    runs = tmp_path / "runs"
+    shutil.copytree(source, runs / source.name)
+    run_dir = runs / source.name
+    m = framework.load_json(run_dir / "manifest.json")
+    bound = (m["artifacts"].get("judge_of_record") or {}).get("report_path")
+    assert bound and (runs / bound).is_file(), "the last landed run is judged"
+    sidecar = run_dir / f"{source.name}.report.json"
+    m["readapt"] = {"source_workflow_run_id": source.name.split("_")[1], "source_run_stem": source.name,
+                    "source_journal_nonce": "n", "source_params_sha256": PARAMS_SHA, "source_eval_log": EVAL_NAME,
+                    "source_artifact": {"id": 1, "name": f"petri-audit-raw-eval-{source.name.split('_')[1]}-1",
+                                        "digest": None, "size_in_bytes": None, "created_at": None, "expires_at": None},
+                    "target_report": {"path": f"{source.name}/{sidecar.name}", "sha256": framework.sha256_file(sidecar)},
+                    "readapt_workflow_run_id": "5555", "readapt_workflow_run_attempt": 1, "readapt_commit": COMMIT,
+                    "readapt_journal_nonce": "r"}
+    sealed = manifest_mod.seal_manifest(m, None)
+    manifest_mod.write_manifest(run_dir / "manifest.json", sealed)
+    (runs / manifest_mod.CHAIN_FILE).write_text(f"{source.name}/manifest.json {sealed['chain']['manifest_sha256']}\n",
+                                                encoding="utf-8")
+    renamed = run_dir / readapt.judge_report_name(source.name, "5555")
+    assert cli._judge_report_path(run_dir) == renamed
+    (runs / bound).rename(renamed)
+    judge = dict(sealed["artifacts"]["judge_of_record"])
+    for key in ("report_path", "report_sha256"):
+        judge.pop(key)
+    rebound = manifest_mod.bind_judgments(run_dir, judgments_path=run_dir / "judgments.jsonl", report_path=renamed,
+                                          judge_of_record=judge)
+    assert rebound["artifacts"]["judge_of_record"]["report_path"] == f"{source.name}/{renamed.name}"
+    assert manifest_mod.verify_run(run_dir) == []
+    ok, msg = manifest_mod.verify_chain(runs)
+    assert ok, msg
