@@ -1272,12 +1272,15 @@ def test_the_fallback_judge_sidecar_of_a_readapt_carries_its_fires_nonce(tmp_pat
     run_dir = tmp_path / "run_9_1"
     run_dir.mkdir()
     argv = ["judge-spend-report", "--run-dir", str(run_dir), "--judge-model", "claude-haiku-4-5", "--judge-max-spend", "2.5"]
-    framework.write_json(run_dir / "manifest.json", {"eval_id": "EvSrc", "readapt": {"readapt_journal_nonce": "w2e3r"}})
+    framework.write_json(run_dir / "manifest.json", {"eval_id": "EvSrc", "readapt": {
+        "readapt_journal_nonce": "w2e3r", "readapt_workflow_run_id": "5555", "source_run_stem": "run_9_1"}})
     assert cli.main(argv) == 0
-    side = framework.load_json(run_dir / "run_9_1.judge.report.json")
+    # named for the re-adapting workflow run, so a retry's writer never takes an earlier readapt's for its own
+    side = framework.load_json(run_dir / "run_9_1.readapt_5555.judge.report.json")
     assert side["journal_nonce"] == "w2e3r" and side["eval_id"] == "EvSrc" and side["cost_usd"] == 2.5
+    assert not (run_dir / "run_9_1.judge.report.json").exists()
     # an ordinary run's fallback sidecar is unchanged: no nonce, joined through its directory
-    (run_dir / "run_9_1.judge.report.json").unlink()
+    (run_dir / "run_9_1.readapt_5555.judge.report.json").unlink()
     framework.write_json(run_dir / "manifest.json", {"eval_id": "EvSrc"})
     assert cli.main(argv) == 0
     side = framework.load_json(run_dir / "run_9_1.judge.report.json")
@@ -1322,3 +1325,28 @@ def test_a_readapt_rows_folded_state_is_its_judge_sidecars(tmp_path):
     # no dashboard: unknown, a dash, never False
     rows = {r["nonce"]: r for r in reconcile.reconcile(journal, runs)["paid_fires"]}
     assert rows["w2e3r"]["folded"] is None and rows["w2e3r"]["judge_folded"] is None
+
+
+def test_a_retried_readapt_books_each_judge_once_against_its_own_fire(tmp_path):
+    """Codex, PR #29: a readapt whose paid judge failed commits its judge sidecar and nothing else; the retry is
+    another fire with its own nonce and writes its own judge sidecar beside the first, never over it. Each lands
+    against its own fire and the source fire keeps its target spend alone, so no landed spend is booked twice
+    and none is lost."""
+    journal, runs, _dashboard = _readapt_layout(tmp_path)
+    d = runs / "run_9_1"
+    (d / "run_9_1.judge.report.json").rename(d / "run_9_1.readapt_7002.judge.report.json")
+    framework.write_json(d / "run_9_1.readapt_7001.judge.report.json", {
+        "run_utc": "2026-09-18T02:20:00Z", "judgments_file": "judgments.jsonl", "judge_model": "claude-haiku-4-5",
+        "cost_usd": 2.5, "run_cost_usd": 2.5, "prior_cost_usd": 0.0, "rows_cost_usd": 0.81,
+        "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar", "max_spend_usd": 2.5, "aborted": True,
+        "run_id": "run_9_1", "billing_channel": "anthropic", "journal_nonce": "w2e3r-a", "eval_id": "EvSrc"})
+    entries = [json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines()]
+    entries.insert(1, _entry("2026-09-18T02:10:00Z", "w2e3r-a", 2.5, resolved=True))
+    journal.write_text("".join(json.dumps(e) + "\n" for e in entries), encoding="utf-8")
+    result = reconcile.reconcile(journal, runs)
+    assert result["problems"] == [], result["problems"]
+    rows = {r["nonce"]: r for r in result["paid_fires"]}
+    assert rows["w2e3"]["total_usd"] == 0.93 and rows["w2e3"]["judge_cost_usd"] is None
+    assert rows["w2e3r-a"]["status"] == rows["w2e3r"]["status"] == "landed (readapt judge)"
+    assert (rows["w2e3r-a"]["total_usd"], rows["w2e3r"]["total_usd"]) == (2.5, 1.6)
+    assert result["sidecars"] == {"target": 1, "judge": 2}

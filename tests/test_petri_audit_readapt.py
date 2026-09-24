@@ -142,7 +142,8 @@ def test_the_source_run_directory_must_hold_its_landed_sidecar_and_nothing_else(
     assert any("already holds adapted outputs (transcripts.jsonl)" in p for p in readapt.run_dir_problems(runs, STEM))
     (runs / STEM / "transcripts.jsonl").unlink()
     (runs / STEM / "notes.txt").write_text("x", encoding="utf-8")
-    assert any("files other than the landed target sidecar (notes.txt)" in p for p in readapt.run_dir_problems(runs, STEM))
+    assert any("files other than the landed target sidecar and earlier readapts' judge sidecars (notes.txt)" in p
+               for p in readapt.run_dir_problems(runs, STEM))
     (runs / STEM / "notes.txt").unlink()
     # a manifest removed after it was chained is a rewrite too
     (runs / manifest_mod.CHAIN_FILE).write_text(f"{STEM}/manifest.json {'e' * 64}\n", encoding="utf-8")
@@ -452,3 +453,129 @@ def test_verify_run_and_verify_chain_bind_the_landed_sidecar_of_a_readapted_run(
     assert not ok and "readapt.target_report" in msg
     sidecar.unlink()
     assert any("is missing" in p for p in manifest_mod.verify_run(runs / source.name))
+
+
+# ------------------------------------------------------------ a retry after a readapt whose judge failed
+
+PRIOR_RUN = "5000"
+PRIOR_NONCE = "re-nonce-1"
+
+
+def _prior_judge_sidecar(runs: Path, **overrides) -> Path:
+    """What a readapt whose paid judge failed after Adapt leaves committed (Codex, PR #29): the source directory's
+    landed target sidecar plus that readapt's judge sidecar, written by `cli judge` (JudgeAborted) or the workflow's
+    fallback `judge-spend-report`, named for its workflow run and carrying its fire's nonce and the log's eval id.
+    The outputs themselves never commit (default success gating)."""
+    report = {"run_utc": "2026-09-24T09:20:00Z", "judgments_file": "judgments.jsonl", "judge_model": "claude-haiku-4-5",
+              "cost_usd": 2.5, "run_cost_usd": 2.5, "prior_cost_usd": 0.0, "rows_cost_usd": 0.81,
+              "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar", "max_spend_usd": 2.5, "aborted": True,
+              "run_id": STEM, "billing_channel": "anthropic", "journal_nonce": PRIOR_NONCE, "eval_id": EVAL_ID}
+    report.update(overrides)
+    path = runs / STEM / readapt.judge_report_name(STEM, PRIOR_RUN)
+    path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def _retry_journal() -> list[dict]:
+    return _journal_entries() + _journal_entries(PRIOR_NONCE, fired_utc="2026-09-24T09:07:00Z", max_spend=2.5,
+                                                 params_sha256="b" * 64)
+
+
+def _retry_plan(runs: Path, **param_overrides) -> dict:
+    return readapt.plan(params=_params(**param_overrides), listing=_listing(), runs_dir=runs, seed_ids=_wave2_ids(),
+                        journal_entries=_retry_journal(), readapt_run_id="5555", readapt_run_attempt="1",
+                        readapt_commit=COMMIT, now=NOW)
+
+
+def test_a_readapt_whose_judge_failed_can_be_retried_beside_the_judge_sidecar_it_committed(tmp_path):
+    """The failed readapt's judge sidecar is its spend record, already committed: a retry is admitted beside it
+    and binds it by digest, and every way that sidecar could be anything else is refused by name."""
+    runs = tmp_path / "runs"
+    _landed_sidecar(runs)
+    prior = _prior_judge_sidecar(runs)
+    assert readapt.run_dir_problems(runs, STEM) == [], "the state a readapt whose judge failed leaves is re-adaptable"
+    plan = _retry_plan(runs)
+    assert plan["prior_judge_reports"] == [{"path": f"{STEM}/{prior.name}", "sha256": framework.sha256_file(prior),
+                                            "journal_nonce": PRIOR_NONCE}]
+    assert readapt.judge_report_name(STEM, "5555") == f"{STEM}.readapt_5555.judge.report.json" != prior.name
+    for overrides, needle in (({"journal_nonce": SOURCE_NONCE}, "which is the source fire's or this readapt's"),
+                              ({"journal_nonce": "re-nonce"}, "which is the source fire's or this readapt's"),
+                              ({"journal_nonce": None}, "records no journal_nonce"),
+                              ({"journal_nonce": "unknown"}, "0 petri-audit journal entries carry the nonce 'unknown'"),
+                              ({"eval_id": "EvOther"}, "not the source log's")):
+        _prior_judge_sidecar(runs, **overrides)
+        with pytest.raises(readapt.ReadaptError, match=needle):
+            _retry_plan(runs)
+    prior.write_text("{not json", encoding="utf-8")
+    with pytest.raises(readapt.ReadaptError, match="does not parse"):
+        _retry_plan(runs)
+    prior.unlink()
+    # a sidecar under this workflow run's own name cannot predate its judge
+    (runs / STEM / readapt.judge_report_name(STEM, "5555")).write_text("{}", encoding="utf-8")
+    with pytest.raises(readapt.ReadaptError, match="is this readapt's own judge sidecar"):
+        _retry_plan(runs)
+    (runs / STEM / readapt.judge_report_name(STEM, "5555")).unlink()
+    # the ordinary judge name is no readapt's and stays refused, as does anything else
+    (runs / STEM / f"{STEM}.judge.report.json").write_text("{}", encoding="utf-8")
+    assert any("files other than the landed target sidecar and earlier readapts' judge sidecars" in p
+               for p in readapt.run_dir_problems(runs, STEM))
+
+
+def test_the_retry_leaves_the_earlier_readapts_judge_sidecar_byte_identical(tmp_path, capsys):
+    runs = tmp_path / "runs"
+    _landed_sidecar(runs)
+    prior = _prior_judge_sidecar(runs)
+    before = prior.read_bytes()
+    logs = tmp_path / "petri-run" / "logs"
+    logs.mkdir(parents=True)
+    (logs / EVAL_NAME).write_bytes(b"the raw log")
+    plan = _retry_plan(runs)
+    plan_path = tmp_path / "plan.json"
+    framework.write_json(plan_path, plan)
+    args = cli.build_parser().parse_args(_adapt_argv(runs, logs / EVAL_NAME, plan_path))
+    assert cli.readapt_pre_problems(args, plan) == []
+    assert readapt.kept_prior_problems(runs / STEM, plan["prior_judge_reports"]) == []
+    prior.write_text(before.decode("utf-8").replace('"cost_usd": 2.5', '"cost_usd": 0.1'), encoding="utf-8")
+    assert cli.main(_adapt_argv(runs, logs / EVAL_NAME, plan_path)) == 11
+    assert "changed after the readapt bound it" in capsys.readouterr().err
+    prior.unlink()
+    assert any("is gone" in p for p in readapt.kept_prior_problems(runs / STEM, plan["prior_judge_reports"]))
+    prior.write_bytes(before)
+    stray = runs / STEM / readapt.judge_report_name(STEM, "6000")
+    stray.write_bytes(before)
+    assert any("appeared after the readapt was planned" in p
+               for p in readapt.kept_prior_problems(runs / STEM, plan["prior_judge_reports"]))
+
+
+def test_a_readapt_judge_names_its_sidecar_for_its_own_workflow_run(tmp_path, capsys):
+    """Before this, a readapt's judge wrote `<stem>.judge.report.json`: a retry's judge would have rewritten the
+    sidecar the failed readapt committed (a spend record another fire's reservation is booked against), and the
+    fallback writer would have found it and imputed nothing for a retry judge that spent. Both writers now name
+    the sidecar for the re-adapting workflow run, from the manifest's `readapt` block."""
+    run_dir = tmp_path / "runs" / STEM
+    run_dir.mkdir(parents=True)
+    prior = run_dir / readapt.judge_report_name(STEM, PRIOR_RUN)
+    prior.write_text('{"cost_usd": 2.5, "journal_nonce": "re-nonce-1"}\n', encoding="utf-8")
+    before = prior.read_bytes()
+    framework.write_json(run_dir / "manifest.json", {"eval_id": EVAL_ID, "readapt": {
+        "readapt_journal_nonce": "re-nonce", "readapt_workflow_run_id": "5555", "source_run_stem": STEM}})
+    assert cli._judge_report_path(run_dir) == run_dir / f"{STEM}.readapt_5555.judge.report.json"
+    argv = ["judge-spend-report", "--run-dir", str(run_dir), "--judge-model", "claude-haiku-4-5", "--judge-max-spend", "2.5"]
+    assert cli.main(argv) == 0
+    side = framework.load_json(run_dir / f"{STEM}.readapt_5555.judge.report.json")
+    assert side["journal_nonce"] == "re-nonce" and side["eval_id"] == EVAL_ID and side["cost_usd"] == 2.5
+    assert prior.read_bytes() == before and not (run_dir / f"{STEM}.judge.report.json").exists()
+    assert cli.main(argv) == 0 and "exists; nothing to impute" in capsys.readouterr().out
+    # an ordinary run keeps the ordinary name
+    framework.write_json(run_dir / "manifest.json", {"eval_id": EVAL_ID})
+    assert cli._judge_report_path(run_dir) == run_dir / f"{STEM}.judge.report.json"
+    # a readapt block naming no usable workflow run: the judge refuses before any call; the fallback books the
+    # ceiling under the ordinary name (no readapt writes it) and records why
+    framework.write_json(run_dir / "manifest.json", {"eval_id": EVAL_ID, "readapt": {
+        "readapt_journal_nonce": "re-nonce", "readapt_workflow_run_id": "x"}})
+    with pytest.raises(ValueError, match="no usable readapt_workflow_run_id"):
+        cli._judge_report_path(run_dir)
+    assert cli.main(argv) == 0
+    side = framework.load_json(run_dir / f"{STEM}.judge.report.json")
+    assert side["journal_nonce"] == "re-nonce" and "readapt_run_id" in side["judge_report_name_unavailable"]
+    capsys.readouterr()

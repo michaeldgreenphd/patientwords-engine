@@ -394,3 +394,38 @@ def test_no_fire_of_any_mode_enters_the_lane_behind_an_active_readapt(tmp_path, 
     assert ft.main(fire + ["--params", json.dumps(dict(ft.PARK_DEFAULTS[TRIGGER], _nonce="p"))]) == 0
     capsys.readouterr()
     assert ft.petri_active_readapt_problems(repo, "advice-eval", [active]) == []
+
+
+def test_the_fire_path_admits_a_retry_beside_an_earlier_readapts_judge_sidecar_and_nothing_else(tmp_path):
+    """The fire path's directory rule is the plan step's (scripts/petri_audit/readapt.py run_dir_problems): the
+    judge sidecar a failed readapt committed is admitted, so its retry is not refused at the fire only to be
+    admitted in CI; every adapted output, and any other file, is refused before the reservation."""
+    from scripts.petri_audit import readapt as lane
+
+    assert ft.PETRI_ADAPTED_FILES == lane.ADAPTED_FILES
+    assert ft.PETRI_READAPT_JUDGE_SUFFIX == lane.JUDGE_REPORT_SUFFIX_PATTERN
+    repo, readapt = _readapt_repo(tmp_path)
+    run_dir = repo / "data" / "petri" / "runs" / "run_4242_1"
+    prior = run_dir / lane.judge_report_name("run_4242_1", "7001")
+    prior.write_text("{}", encoding="utf-8")
+    assert ft.petri_readapt_source_problems(repo, TRIGGER, readapt) == []
+    for name, needle in (("rule_outcomes.jsonl", "already holds adapted outputs (rule_outcomes.jsonl)"),
+                         ("judgments.jsonl", "already holds adapted outputs (judgments.jsonl)"),
+                         ("run_4242_1.judge.report.json", "holds files other than the landed target sidecar"),
+                         ("notes.txt", "holds files other than the landed target sidecar")):
+        (run_dir / name).write_text("x", encoding="utf-8")
+        problems = ft.petri_readapt_source_problems(repo, TRIGGER, readapt)
+        assert len(problems) == 1 and needle in problems[0], (name, problems)
+        (run_dir / name).unlink()
+
+
+def test_the_fallback_judge_report_under_readapt_is_the_readapts_own(workflow):
+    """The spend-report step books a judge that started and left no sidecar; under a readapt it looks for the
+    sidecar named for this workflow run, so an earlier readapt's sidecar in the same directory is never taken for
+    this judge's (which would book nothing for a judge that spent)."""
+    step = _step(workflow, "Spend report for an attempted run")
+    body = step["run"]
+    assert 'JUDGE_REPORT="data/petri/runs/$RUN_STEM/$RUN_STEM.judge.report.json"' in body
+    assert ('if [ "$MODE" = "readapt" ]; then JUDGE_REPORT="data/petri/runs/$RUN_STEM/$RUN_STEM.readapt_${GITHUB_RUN_ID}'
+            '.judge.report.json"; fi') in body
+    assert '[ ! -f "$JUDGE_REPORT" ]' in body and step["env"]["MODE"] == "${{ needs.params.outputs.mode }}"

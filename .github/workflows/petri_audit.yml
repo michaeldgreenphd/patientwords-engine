@@ -471,7 +471,10 @@ jobs:
             --target "$TARGET" --max-spend "$MAX_SPEND" --token-limit "$TOKEN_LIMIT" $ARGS --report "${SOURCE[@]}"
 
       # A readapt's judge runs exactly as a run's; its sidecar carries the readapt fire's nonce, which `cli judge`
-      # reads from the manifest's `readapt` block, so reconciliation joins it to the fire that reserved it.
+      # reads from the manifest's `readapt` block, so reconciliation joins it to the fire that reserved it, and is
+      # named for this workflow run (`<stem>.readapt_<run id>.judge.report.json`). If this step fails, the sidecar
+      # step below still commits that sidecar and nothing else, and a re-fired readapt is admitted beside it, writes
+      # its own, and leaves the earlier one (whose spend is booked) byte-identical.
       - name: Judge of record + analysis rows (paid; mode run or readapt)
         if: ${{ (needs.params.outputs.mode == 'run' || needs.params.outputs.mode == 'readapt') && needs.params.outputs.judge == 'true' }}
         env:
@@ -583,8 +586,12 @@ jobs:
               --reason "run attempted; no adapted report exists (run or adaptation failed)"
           fi
           # a judge that started (marker) and left no sidecar (the process died mid-call) is booked at its ceiling with
-          # the surviving rows recorded beside it; a judge that never started books nothing
-          if [ -f "$RUNNER_TEMP/petri-run/judge_started" ] && [ ! -f "data/petri/runs/$RUN_STEM/$RUN_STEM.judge.report.json" ]; then
+          # the surviving rows recorded beside it; a judge that never started books nothing. A readapt's judge names
+          # its sidecar for this workflow run (scripts/petri_audit/readapt.py judge_report_name), so an earlier
+          # readapt's sidecar in the same directory is never taken for this judge's
+          JUDGE_REPORT="data/petri/runs/$RUN_STEM/$RUN_STEM.judge.report.json"
+          if [ "$MODE" = "readapt" ]; then JUDGE_REPORT="data/petri/runs/$RUN_STEM/$RUN_STEM.readapt_${GITHUB_RUN_ID}.judge.report.json"; fi
+          if [ -f "$RUNNER_TEMP/petri-run/judge_started" ] && [ ! -f "$JUDGE_REPORT" ]; then
             python -m scripts.petri_audit.cli judge-spend-report --run-dir "data/petri/runs/$RUN_STEM" \
               --judge-model "$JUDGE_MODEL" --judge-max-spend "$JUDGE_MAX_SPEND" --judge-max-tokens "$JUDGE_MAX_TOKENS"
           fi
@@ -631,8 +638,8 @@ jobs:
       # the ledger is the only consumer of landed spend, so a paid run books its sidecars whether or not its
       # measurement outputs are committed and whether or not a later step failed (Codex round 2: with
       # commit_outputs=false the runner destroyed them and the spend was never booked). Nothing else is staged.
-      # Under readapt the only new sidecar is the judge's; the source run's landed target sidecar is unchanged, so
-      # adding it stages nothing.
+      # Under readapt the only new sidecar is the judge's; the source run's landed target sidecar, and the judge
+      # sidecar of any earlier readapt of the same run, are unchanged, so adding them stages nothing.
       - name: Commit cost sidecars of a paid run (mode run or readapt; independent of commit_outputs)
         if: ${{ always() && (needs.params.outputs.mode == 'run' || needs.params.outputs.mode == 'readapt') }}
         env:

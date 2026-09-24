@@ -133,6 +133,11 @@ PETRI_PAID_MODES = ("run", PETRI_READAPT_MODE)
 PETRI_READAPT_MATCH_KEYS = ("seeds_file", "seed_ids", "wave", "target", "epochs", "token_limit", "max_spend",
                             "judge", "judge_model", "judge_max_spend", "judge_max_tokens", "log_model_api")
 PETRI_RUNS_RELPATH = Path("data") / "petri" / "runs"
+# mirrors of scripts/petri_audit/readapt.py (this script imports nothing from the lane; tests hold them equal): the
+# files adaptation writes, and the name after `<stem>` of an earlier readapt's judge sidecar in the source directory
+PETRI_ADAPTED_FILES = ("manifest.json", "transcripts.jsonl", "rule_outcomes.jsonl", "sanitised_log.json",
+                       "judgments.jsonl", "analysis_rows.jsonl")
+PETRI_READAPT_JUDGE_SUFFIX = r"\.readapt_[0-9]+\.judge\.report\.json"
 PARK_NOTE = ("PARK (resting-state rule): cheapest no-op default committed so branch operations "
              "that touch this trigger file re-run a $0/negligible stage instead of the last "
              "expensive fire; commit_outputs false where the workflow supports it. "
@@ -2435,10 +2440,20 @@ def petri_readapt_source_problems(repo, trigger, params):
     if not sidecar.is_file():
         return [f"petri-audit readapt of run {source}: {where} holds no landed target sidecar {sidecar.name}; a "
                 "readapt recovers a paid run whose target spend already landed, and books none itself"]
-    adapted = sorted(p.name for p in run_dir.iterdir() if p.name in ("manifest.json", "transcripts.jsonl"))
+    adapted = sorted(p.name for p in run_dir.iterdir() if p.name in PETRI_ADAPTED_FILES)
     if adapted:
         return [f"petri-audit readapt of run {source}: {where} already holds adapted outputs ({', '.join(adapted)}); "
                 "a landed run is never rewritten"]
+    # the same directory rule the workflow's plan step applies (scripts/petri_audit/readapt.py run_dir_problems):
+    # besides the target sidecar, only the judge sidecars of earlier readapts of this run, which a readapt whose
+    # paid judge failed commits and which a retry leaves as they are; anything else is refused here, before the
+    # reservation, rather than by the plan step after it
+    other = sorted(p.name for p in run_dir.iterdir()
+                   if p.name != sidecar.name and not re.fullmatch(re.escape(stem) + PETRI_READAPT_JUDGE_SUFFIX, p.name))
+    if other:
+        return [f"petri-audit readapt of run {source}: {where} holds files other than the landed target sidecar and "
+                f"earlier readapts' judge sidecars ({', '.join(other)}); a readapt writes only into the state a failed "
+                "adaptation, or a readapt whose judge failed, leaves"]
     try:
         report = json.loads(sidecar.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:

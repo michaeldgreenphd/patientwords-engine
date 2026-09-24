@@ -617,7 +617,8 @@ so it can be redone by hand.
       (that push runs nothing), then fire from it.
     - **The branch must carry the source run.** Its history must contain the w2e3 fire commit `aa0493bf` and its
       journal the `w2e3` entry. Its tree must hold the landed sidecar `run_35937014168_1.report.json` (`10020e52`),
-      which records `run_status: success`, and nothing beside it. PR #29's branch and this branch both
+      which records `run_status: success`, and nothing beside it but the judge sidecar of an earlier readapt of
+      the same run (see the retry point below). PR #29's branch and this branch both
       qualify. `main` qualifies only after the #29 hand merge and once it carries this code. Since `9ca69dd1` the
       history search sees `aa0493bf` through a merge that kept `main`'s trigger file.
     - **Fire w2e3r and w2e4 on the same branch, one after the other.** Each run appends a line to
@@ -635,6 +636,13 @@ so it can be redone by hand.
       commit $11.10. Any later day needs a new owner-authorised override.
     - **Never re-run it from the Actions tab.** The plan step refuses any attempt but the first; re-fire through
       `fire_trigger.py`. The raw artifact `petri-audit-raw-eval-35937014168-1` expires on 2026-12-23.
+    - **If the judge fails, re-fire the readapt with a new nonce (Codex, PR #29).** A readapt's judge writes
+      `run_35937014168_1.readapt_<its workflow run id>.judge.report.json`. If the judge step fails, the workflow
+      commits that sidecar (the spend it booked) and none of the outputs. The retry is admitted beside it, writes
+      its own sidecar under its own run id, and leaves the earlier one byte-identical. Reconciliation books each
+      judge sidecar once, against the fire whose nonce it carries. The retry commits another judge ceiling, so it
+      needs the day's budget. Resolve the failed readapt first: no petri-audit fire of any mode enters the lane
+      while a readapt is active.
 
 ---
 

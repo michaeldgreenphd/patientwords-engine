@@ -15,8 +15,14 @@ ordinary 3.11 environment. Every check refuses by name:
 - the source artifact must be exactly the one named for the source run, not
   expired, and listed under that run (`select_source_artifact`);
 - the source run directory must hold the landed target cost sidecar and
-  nothing else, and the manifest chain must not name it (`run_dir_problems`):
-  a landed run is never rewritten, and its sidecar is never rewritten either;
+  nothing else but the judge sidecars of earlier readapts of the same run,
+  and the manifest chain must not name it (`run_dir_problems`): a landed run
+  is never rewritten, and no landed sidecar is rewritten either;
+- each earlier readapt's judge sidecar must carry its own fire's nonce and
+  the source log's eval id (`prior_judge_reports`): a readapt whose paid judge
+  failed commits that sidecar (its spend) and nothing else, so a retry is
+  admitted beside it, writes its own judge sidecar under its own workflow run
+  id (`judge_report_name`) and leaves the earlier one byte-identical;
 - the sidecar must be the fallback writer's (`spend_report_reason`), carry the
   source fire's nonce, name the `.eval` and eval id it priced, and record the
   eval's `run_status` as `success` (`source_report`), so the downloaded file
@@ -87,6 +93,22 @@ def target_report_name(stem: str) -> str:
     return f"{stem}.report.json"
 
 
+def judge_report_name(stem: str, readapt_run_id: Any) -> str:
+    """The judge cost sidecar a readapt writes into the source run's directory: named for the re-adapting
+    workflow run, so a retry after a readapt whose paid judge failed never rewrites the sidecar that failure
+    committed (the ledger keys sidecars by filename, and that one's spend is already booked to its own fire)."""
+    return f"{stem}.readapt_{check_run_id(readapt_run_id, 'readapt_run_id')}.judge.report.json"
+
+
+# what follows `<stem>` in the name of a readapt's judge sidecar (`judge_report_name`); scripts/fire_trigger.py holds
+# a copy (PETRI_READAPT_JUDGE_SUFFIX), which tests/test_petri_audit_readapt_fire.py keeps equal to this one
+JUDGE_REPORT_SUFFIX_PATTERN = r"\.readapt_[0-9]+\.judge\.report\.json"
+
+
+def _is_prior_judge_report(name: str, stem: str) -> bool:
+    return re.fullmatch(re.escape(stem) + JUDGE_REPORT_SUFFIX_PATTERN, name) is not None
+
+
 def _parse_utc(value: Any) -> datetime | None:
     if not isinstance(value, str) or not value:
         return None
@@ -146,10 +168,13 @@ def select_source_artifact(listing: Any, source_run_id: Any, now: datetime | Non
 
 def run_dir_problems(runs_dir: Path | str, stem: str) -> list[str]:
     """Why `<runs_dir>/<stem>` cannot receive a re-adaptation: it must exist and
-    hold exactly the landed target cost sidecar, and the chain file must not
-    name its manifest (a manifest removed after it was chained is a rewrite
-    too). Empty when the directory is the state a run whose adaptation failed
-    leaves behind."""
+    hold the landed target cost sidecar and nothing else but judge sidecars of
+    earlier readapts (`judge_report_name`; their content is checked by
+    `prior_judge_reports`), and the chain file must not name its manifest (a
+    manifest removed after it was chained is a rewrite too). Empty when the
+    directory is the state a run whose adaptation failed leaves behind, or the
+    state a readapt whose judge then failed leaves: the workflow commits the
+    judge's cost sidecar whatever happened and the outputs only on success."""
     runs_dir = Path(runs_dir)
     run_dir = runs_dir / stem
     if not run_dir.is_dir():
@@ -164,10 +189,11 @@ def run_dir_problems(runs_dir: Path | str, stem: str) -> list[str]:
     adapted = [n for n in names if n in ADAPTED_FILES]
     if adapted:
         problems.append(f"{stem}: already holds adapted outputs ({', '.join(adapted)}); a landed run is never rewritten")
-    other = [n for n in names if n != report and n not in ADAPTED_FILES]
+    other = [n for n in names if n != report and n not in ADAPTED_FILES and not _is_prior_judge_report(n, stem)]
     if other:
-        problems.append(f"{stem}: holds files other than the landed target sidecar ({', '.join(other)}); a readapt "
-                        "writes only into the state a failed adaptation leaves")
+        problems.append(f"{stem}: holds files other than the landed target sidecar and earlier readapts' judge "
+                        f"sidecars ({', '.join(other)}); a readapt writes only into the state a failed adaptation "
+                        "leaves")
     chain = runs_dir / CHAIN_FILE
     if chain.is_file():
         rel = f"{stem}/manifest.json"
@@ -208,6 +234,65 @@ def source_report(runs_dir: Path | str, stem: str) -> dict:
                            "that mode run never would")
     return {"path": f"{stem}/{path.name}", "sha256": sha256_file(path), "journal_nonce": report["journal_nonce"],
             "eval_id": report["eval_id"], "eval_log": report["eval_log"]}
+
+
+def prior_judge_reports(runs_dir: Path | str, stem: str, *, source: dict, readapt_nonce: str, readapt_run_id: Any,
+                        journal_entries: list[dict]) -> list[dict]:
+    """The judge sidecars earlier readapts of this run left in its directory, as the plan binds them: path,
+    digest and the fire's nonce. A readapt whose judge failed after Adapt commits its judge's cost sidecar (the
+    always() sidecar step) and none of its outputs, so the retry starts from the source state plus that sidecar.
+    Each must be what a readapt judge writes for THIS log: it carries a nonce that is neither the source fire's
+    nor this readapt's and that exactly one petri-audit journal entry carries (its own fire, which it books
+    against), and the source log's eval id. The retry leaves every one byte-identical (`kept_prior_problems`):
+    rewriting one would change a spend record the ledger has already folded. Raises ReadaptError otherwise."""
+    run_dir = Path(runs_dir) / stem
+    own = judge_report_name(stem, readapt_run_id)
+    found: list[dict] = []
+    for path in sorted(p for p in run_dir.iterdir() if _is_prior_judge_report(p.name, stem)):
+        if path.name == own:
+            raise ReadaptError(f"{stem}: {path.name} is this readapt's own judge sidecar and exists before it ran; a "
+                               "workflow run's judge writes it once")
+        try:
+            report = load_json(path)
+        except (OSError, ValueError) as exc:
+            raise ReadaptError(f"{stem}: the earlier readapt judge sidecar {path.name} does not parse ({exc})") from None
+        if not isinstance(report, dict):
+            raise ReadaptError(f"{stem}: the earlier readapt judge sidecar {path.name} holds a "
+                               f"{type(report).__name__}, not an object")
+        nonce = report.get("journal_nonce")
+        if not isinstance(nonce, str) or not nonce:
+            raise ReadaptError(f"{stem}: the earlier readapt judge sidecar {path.name} records no journal_nonce, so the "
+                               "fire whose spend it booked cannot be identified")
+        if nonce in (source["journal_nonce"], readapt_nonce):
+            raise ReadaptError(f"{stem}: the earlier readapt judge sidecar {path.name} carries nonce {nonce!r}, which is "
+                               "the source fire's or this readapt's; each readapt fire books its own judge")
+        entries = [e for e in journal_entries if e.get("trigger") == "petri-audit" and e.get("nonce") == nonce]
+        if len(entries) != 1:
+            raise ReadaptError(f"{stem}: {len(entries)} petri-audit journal entries carry the nonce {nonce!r} of the "
+                               f"earlier readapt judge sidecar {path.name}; exactly one fire must account for it")
+        if report.get("eval_id") != source["eval_id"]:
+            raise ReadaptError(f"{stem}: the earlier readapt judge sidecar {path.name} records eval_id "
+                               f"{report.get('eval_id')!r}, not the source log's {source['eval_id']!r}")
+        found.append({"path": f"{stem}/{path.name}", "sha256": sha256_file(path), "journal_nonce": nonce})
+    return found
+
+
+def kept_prior_problems(run_dir: Path | str, prior: list[dict]) -> list[str]:
+    """The earlier readapts' judge sidecars are still exactly the ones the plan bound: the same set of files,
+    each the same bytes. A retry books its own judge under its own name and rewrites none of them."""
+    run_dir = Path(run_dir)
+    bound = {Path(p["path"]).name: p["sha256"] for p in prior}
+    present = sorted(p.name for p in run_dir.iterdir() if _is_prior_judge_report(p.name, run_dir.name)) \
+        if run_dir.is_dir() else []
+    problems: list[str] = []
+    for name in present:
+        if name not in bound:
+            problems.append(f"{name} appeared after the readapt was planned; the plan bound {sorted(bound) or 'none'}")
+        elif sha256_file(run_dir / name) != bound[name]:
+            problems.append(f"{name} changed after the readapt bound it; a landed judge sidecar is never rewritten")
+    problems += [f"{name}, bound by the plan, is gone; its fire's judge spend is unbooked"
+                 for name in sorted(set(bound) - set(present))]
+    return problems
 
 
 def eval_file_problems(eval_path: Path | str, expected_name: str) -> list[str]:
@@ -324,9 +409,12 @@ def plan(*, params: dict, listing: Any, runs_dir: Path | str, seed_ids: list[str
                            "a re-run has no journal reservation of its own, so re-fire through scripts/fire_trigger.py")
     expected = expected_from_params(params, seed_ids)
     expected["eval_id"] = report["eval_id"]
+    prior = prior_judge_reports(runs_dir, stem, source=report, readapt_nonce=nonce, readapt_run_id=readapt_run_id,
+                                journal_entries=journal_entries)
     return {"source_run_id": source_run_id, "run_stem": stem,
             "artifact": select_source_artifact(listing, source_run_id, now=now),
-            "target_report": report, "source_params_sha256": params_sha, "expected": expected,
+            "target_report": report, "prior_judge_reports": prior, "source_params_sha256": params_sha,
+            "expected": expected,
             "readapt": {"workflow_run_id": check_run_id(readapt_run_id, "readapt_run_id"),
                         "workflow_run_attempt": attempt, "commit": commit, "journal_nonce": nonce}}
 

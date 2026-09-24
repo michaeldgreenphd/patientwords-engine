@@ -185,6 +185,9 @@ def readapt_pre_problems(args: argparse.Namespace, plan: dict) -> list[str]:
     problems += readapt.eval_file_problems(args.eval, report["eval_log"])
     problems += readapt.kept_report_problems(out_dir / readapt.target_report_name(out_dir.name),
                                              expected_sha256=report["sha256"], eval_id=report["eval_id"])
+    # the judge sidecars earlier readapts of this run committed are spend records already booked to their own fires:
+    # still the set and the bytes the plan bound (a plan written before they were admitted binds none)
+    problems += readapt.kept_prior_problems(out_dir, plan.get("prior_judge_reports") or [])
     if args.run_params:
         problems.append("--run-params is the run step's record; a readapt ran no run step and takes the per-sample "
                         "limits from the log's own config")
@@ -347,6 +350,28 @@ def _readapt_judge_identity(run_dir: Path) -> dict:
     return {"journal_nonce": nonce, "eval_id": manifest.get("eval_id")}
 
 
+def _judge_report_path(run_dir: Path) -> Path:
+    """The judge cost sidecar of the judge pass about to run in `run_dir`: `<dir>.judge.report.json` for a run
+    adapted in the ordinary way; for a readapt, the name `readapt.judge_report_name` gives it from the manifest's
+    `readapt` block, so a retry after a readapt whose judge failed writes beside the sidecar that failure
+    committed instead of over it. Raises ValueError for a readapt block that names no usable workflow run."""
+    run_dir = Path(run_dir)
+    ordinary = run_dir / f"{run_dir.name}.judge.report.json"
+    path = run_dir / "manifest.json"
+    if not path.is_file():
+        return ordinary
+    manifest = load_json(path)
+    block = manifest.get("readapt") if isinstance(manifest, dict) else None
+    if block is None:
+        return ordinary
+    run_id = block.get("readapt_workflow_run_id") if isinstance(block, dict) else None
+    try:
+        return run_dir / readapt.judge_report_name(run_dir.name, run_id)
+    except readapt.ReadaptError as exc:
+        raise ValueError(f"{path}: the readapt block names no usable readapt_workflow_run_id ({exc}), so the judge's "
+                         "sidecar cannot be named apart from an earlier readapt's") from None
+
+
 def cmd_judge_spend_report(args: argparse.Namespace) -> int:
     """The judge cost sidecar for a judge step that started and left none (the
     process died, or the client raised before run_judgments could write). A
@@ -359,7 +384,22 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
     from .judge_runner import TIER_TEMPERATURE, cumulative_counts, read_jsonl
 
     run_dir = Path(args.run_dir)
-    report_path = run_dir / f"{run_dir.name}.judge.report.json"
+    # a readapt's judge was reserved by the readapt fire, not the source fire its directory names; the sidecar carries
+    # that fire's nonce and the log's eval id so reconciliation joins it to the right commitment (reconcile.py), and
+    # it is named for the readapt's own workflow run, so an earlier readapt's sidecar in the same directory is never
+    # read as this judge's (which would impute nothing for a judge that spent) and never rewritten
+    try:
+        identity: dict = _readapt_judge_identity(run_dir)
+    except (OSError, ValueError) as exc:
+        # the ceiling is still booked; the missing join key is named in the record rather than guessed
+        identity = {"journal_nonce_unavailable": f"manifest.json could not be read ({type(exc).__name__}: {exc})"}
+    try:
+        report_path = _judge_report_path(run_dir)
+    except (OSError, ValueError) as exc:
+        # the ordinary name, which no readapt writes, so no earlier readapt's sidecar is taken for this one; the
+        # reason the readapt name could not be formed is recorded beside the booked ceiling
+        report_path = run_dir / f"{run_dir.name}.judge.report.json"
+        identity["judge_report_name_unavailable"] = f"{type(exc).__name__}: {exc}"
     if report_path.is_file():
         print(f"{report_path} exists; nothing to impute")
         return 0
@@ -384,13 +424,7 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
                "judge_max_tokens": args.judge_max_tokens, "temperature": TIER_TEMPERATURE,
                "task": "petri-audit-judge", "run_id": run_dir.name, "billing_channel": channel,
                "price_source": price.source, "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok}
-    # a readapt's judge was reserved by the readapt fire, not the source fire its directory names; the sidecar carries
-    # that fire's nonce and the log's eval id so reconciliation joins it to the right commitment (reconcile.py)
-    try:
-        sidecar.update(_readapt_judge_identity(run_dir))
-    except (OSError, ValueError) as exc:
-        # the ceiling is still booked; the missing join key is named in the record rather than guessed
-        sidecar["journal_nonce_unavailable"] = f"manifest.json could not be read ({type(exc).__name__}: {exc})"
+    sidecar.update(identity)
     write_json(report_path, sidecar)
     print(f"judge spend report {report_path}: cost_usd {cost} ({basis}); {reason}")
     return 0
@@ -423,6 +457,9 @@ def cmd_judge(args: argparse.Namespace) -> int:
     manifest = load_json(run_dir / "manifest.json")
     try:
         readapt_identity = _readapt_judge_identity(run_dir)
+        # the sidecar's basename is run-unique (the ledger keys sidecars by filename, Codex round 2) and, under a
+        # readapt, unique to the re-adapting workflow run, so a retry never rewrites an earlier readapt's sidecar
+        report_path = _judge_report_path(run_dir)
     except ValueError as exc:
         print(f"refused before any judge call: {exc}", file=sys.stderr)
         return 9
@@ -443,8 +480,6 @@ def cmd_judge(args: argparse.Namespace) -> int:
     ceiling = SpendCeiling(args.judge_max_spend, price.input_per_mtok, price.output_per_mtok, args.judge_max_tokens)
     client = RegistryJudge(args.judge_model)
     judgments_path = run_dir / "judgments.jsonl"
-    # the sidecar's basename is run-unique: the ledger keys sidecars by filename (Codex round 2)
-    report_path = run_dir / f"{run_dir.name}.judge.report.json"
     try:
         sidecar = run_judgments(plans, client, out_path=judgments_path, ceiling=ceiling,
                                 judge_max_tokens=args.judge_max_tokens, labels=labels_from_manifest(manifest),

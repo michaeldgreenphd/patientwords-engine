@@ -182,11 +182,12 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
               readapt: dict | None = None) -> AdaptResult:
     """`readapt` (mode readapt, scripts/petri_audit/readapt.py): {"expected": what the log must record,
     "provenance": the manifest's `readapt` block}. The run directory may then hold the landed target cost sidecar
-    and nothing else, the log must record what the fire states, and the per-sample limits are the ones the log's
+    and nothing else but earlier readapts' judge sidecars, the log must record what the fire states, and the per-sample limits are the ones the log's
     own config records (the source run's run_params.json is not in its artifact)."""
     eval_path, out_dir = Path(eval_path), Path(out_dir)
     if readapt is not None:
-        # the source run's directory holds its landed target sidecar and must hold nothing else (readapt.py)
+        # the source run's directory holds its landed target sidecar and nothing else but the judge sidecars of
+        # earlier readapts whose judge failed (readapt.py run_dir_problems)
         problems = readapt_checks.run_dir_problems(out_dir.parent, out_dir.name)
         if problems:
             raise AdapterError("; ".join(problems))
