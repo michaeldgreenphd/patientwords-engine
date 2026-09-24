@@ -3,8 +3,10 @@
 Conducts cross-arm comparisons across three arms (colloquial, clinical, lay_careful)
 and 2x3 crossed factorial arms (patient/clinician x 3 registers).
 
-Cross-arm comparisons join on (exchange_index, final_in_exchange), refusing
-by name any exchange where an arm has no eligible row or is not_applicable.
+Cross-arm comparisons join on (exchange_index, final_in_exchange) within one
+experimental cell, (run_id, epoch, branch_id): two arms are paired only when they
+answered the same scripted exchange in the same run, epoch and branch. Any
+exchange where an arm has no eligible row or is not_applicable is refused by name.
 
 Per Section 5 of docs/petri_wave2_design.md:
 One epoch is structure, not an estimate. No confidence intervals or p-values are emitted.
@@ -35,6 +37,12 @@ DEFAULT_URGENCY_TIERS = REPO_ROOT / "data" / "urgency_tiers.draft.json"
 DEFAULT_OUTCOME_REGISTRY = REPO_ROOT / "docs" / "framework" / "outcome_dimensions.draft.json"
 NOT_APPLICABLE = "not_applicable"
 
+# One experimental cell, (run_id, epoch, branch_id), and one scripted exchange within it. Arms are paired only inside
+# a cell: a run holds one tree per (seed, arm, epoch), the tree epoch restarts at 1 in every run, and branch_id names
+# the same branch in every arm's tree (condition_id carries the arm, so it cannot pair anything).
+CellKey = tuple[str, int, str]
+ExchangeKey = tuple[str, int, str, int]
+
 HEADER_NOTE = (
     "Three-Arm Petri Audit Analysis "
     "(one epoch is structure, not an estimate; no confidence intervals or p-values emitted)"
@@ -61,17 +69,17 @@ def _row_label(r: Mapping[str, Any]) -> str:
 
 
 def _malformed_row_problems(rows: Sequence[Mapping[str, Any]]) -> list[str]:
-    """Every row that cannot be placed in the join: no arm, no key, or no integer exchange_index.
+    """Every row that cannot be placed in the join: no arm, key, run_id or branch_id, or a
+    non-integer epoch or exchange_index.
 
     Such a row used to be skipped silently, so a partially malformed file still produced a
     report with reduced coverage and no sign of the loss (Codex F5 on PR #30).
     """
     problems: list[str] = []
     for r in rows:
-        missing = [f for f in ("arm", "key") if not r.get(f)]
-        ex = r.get("exchange_index")
-        if ex is None or isinstance(ex, bool) or not isinstance(ex, int):
-            missing.append("exchange_index")
+        missing = [f for f in ("arm", "key", "run_id", "branch_id") if not isinstance(r.get(f), str) or not r.get(f)]
+        missing += [f for f in ("epoch", "exchange_index")
+                    if isinstance(r.get(f), bool) or not isinstance(r.get(f), int)]
         if missing:
             problems.append(f"{_row_label(r)} lacks {', '.join(missing)}")
     return problems
@@ -97,6 +105,9 @@ def _display_path(p: Path | str) -> str:
 
 @dataclass(frozen=True)
 class ExchangeComparisonRow:
+    run_id: str
+    epoch: int
+    branch_id: str
     exchange_index: int
     arm_A_value: str | None
     arm_B_value: str | None
@@ -396,6 +407,13 @@ def load_run_rows(
         # were derived from (checked equal above wherever the row does carry it)
         if "prompt_file_digest" not in row:
             row["prompt_file_digest"] = judgment.get("prompt_file_digest")
+    # the run is part of the experimental cell (tree epochs restart at 1 in every run); analysis rows do not carry
+    # it, so it is taken from the manifest, and a row that carries a different one is refused
+    foreign = sum(1 for row in rows if row.get("run_id") not in (None, run_id))
+    if foreign:
+        raise InputRefusalError(f"Run '{run_id}' analysis_rows.jsonl has {foreign} rows naming another run_id")
+    for row in rows:
+        row["run_id"] = run_id
 
     # Check for Wave 1 runs
     arms_in_run = {r.get("arm") for r in rows if r.get("arm")}
@@ -488,14 +506,14 @@ def analyze_contrast(
     contrast_name: str,
     arm_A: str,
     arm_B: str,
-    rows_by_arm: Mapping[str, Mapping[int, dict[str, Any]]],
-    exchanges: Sequence[int],
+    rows_by_arm: Mapping[str, Mapping[ExchangeKey, dict[str, Any]]],
+    exchanges: Sequence[ExchangeKey],
     scale: list[str] | None,
-    errors_by_arm: Mapping[str, Mapping[int, str]] | None = None,
+    errors_by_arm: Mapping[str, Mapping[ExchangeKey, str]] | None = None,
 ) -> ContrastResult:
-    """Analyzes a single pairwise contrast (arm_A vs arm_B) across all exchanges.
+    """Analyzes a single pairwise contrast (arm_A vs arm_B) across all exchanges of all cells.
 
-    Joins on (exchange_index, final_in_exchange=True).
+    Joins on (run_id, epoch, branch_id, exchange_index) with final_in_exchange=True.
     Refuses by name any exchange where an arm is missing, ineligible, not_applicable,
     missing final_in_exchange, or has duplicate final rows.
     """
@@ -513,26 +531,28 @@ def analyze_contrast(
     n_downgrade = 0 if is_ordinal else None
     n_refused = 0
 
-    for ex in sorted(exchanges):
-        row_A = rows_A.get(ex)
-        row_B = rows_B.get(ex)
+    for xk in sorted(exchanges):
+        run_id, epoch, branch_id, ex = xk
+        row_A = rows_A.get(xk)
+        row_B = rows_B.get(xk)
+        where = f"run '{run_id}' epoch {epoch} branch '{branch_id}': exchange {ex} refused"
 
         refusal_reason: str | None = None
         val_A: str | None = None
         val_B: str | None = None
 
-        err_A = errors_by_arm.get(arm_A, {}).get(ex) if errors_by_arm else None
-        err_B = errors_by_arm.get(arm_B, {}).get(ex) if errors_by_arm else None
+        err_A = errors_by_arm.get(arm_A, {}).get(xk) if errors_by_arm else None
+        err_B = errors_by_arm.get(arm_B, {}).get(xk) if errors_by_arm else None
 
         if err_A or err_B:
             err_parts = [e for e in (err_A, err_B) if e]
-            refusal_reason = f"exchange {ex} refused: {'; '.join(err_parts)}"
+            refusal_reason = f"{where}: {'; '.join(err_parts)}"
         elif row_A is None and row_B is None:
-            refusal_reason = f"exchange {ex} refused: neither arm '{arm_A}' nor '{arm_B}' has an eligible row"
+            refusal_reason = f"{where}: neither arm '{arm_A}' nor '{arm_B}' has an eligible row"
         elif row_A is None:
-            refusal_reason = f"exchange {ex} refused: arm '{arm_A}' has no eligible row"
+            refusal_reason = f"{where}: arm '{arm_A}' has no eligible row"
         elif row_B is None:
-            refusal_reason = f"exchange {ex} refused: arm '{arm_B}' has no eligible row"
+            refusal_reason = f"{where}: arm '{arm_B}' has no eligible row"
         else:
             problems = [p for p in (_row_problem(arm_A, row_A), _row_problem(arm_B, row_B)) if p]
             if not problems and scale is not None:
@@ -542,16 +562,20 @@ def analyze_contrast(
                     if str(row["value"]) not in scale
                 ]
             if problems:
-                refusal_reason = f"exchange {ex} refused: {', '.join(problems)}"
+                refusal_reason = f"{where}: {', '.join(problems)}"
             else:
                 val_A = str(row_A["value"])
                 val_B = str(row_B["value"])
 
         if refusal_reason is not None:
             n_refused += 1
-            refusals.append({"exchange_index": ex, "reason": refusal_reason})
+            refusals.append({"run_id": run_id, "epoch": epoch, "branch_id": branch_id, "exchange_index": ex,
+                             "reason": refusal_reason})
             comparison_rows.append(
                 ExchangeComparisonRow(
+                    run_id=run_id,
+                    epoch=epoch,
+                    branch_id=branch_id,
                     exchange_index=ex,
                     arm_A_value=val_A,
                     arm_B_value=val_B,
@@ -575,6 +599,9 @@ def analyze_contrast(
 
             comparison_rows.append(
                 ExchangeComparisonRow(
+                    run_id=run_id,
+                    epoch=epoch,
+                    branch_id=branch_id,
                     exchange_index=ex,
                     arm_A_value=val_A,
                     arm_B_value=val_B,
@@ -644,21 +671,22 @@ def analyze_seed(
         or any(arm.startswith(("patient_", "clinician_")) for arm in arms_present)
     )
 
-    # Group rows: dim_key -> arm -> exchange_index -> row
-    # dim_data: dim_key -> arm -> exchange_index -> row (only final_in_exchange=True rows)
-    dim_data: dict[str, dict[str, dict[int, dict[str, Any]]]] = {}
-    # dim_errors: dim_key -> arm -> exchange_index -> refusal message
-    dim_errors: dict[str, dict[str, dict[int, str]]] = {}
+    # Group rows by (run_id, epoch, branch_id, exchange_index): each arm has at most one final row per exchange
+    # within one cell, while several epochs, runs or branches legitimately give it one each (Codex F1 on PR #30).
+    # dim_data: dim_key -> arm -> exchange key -> row (only final_in_exchange=True rows)
+    dim_data: dict[str, dict[str, dict[ExchangeKey, dict[str, Any]]]] = {}
+    # dim_errors: dim_key -> arm -> exchange key -> refusal message
+    dim_errors: dict[str, dict[str, dict[ExchangeKey, str]]] = {}
     dim_kinds: dict[str, str] = {}
-    seed_exchanges: set[int] = set()
+    seed_exchanges: set[ExchangeKey] = set()
 
     for r in seed_rows:
         key = r.get("key")
         arm = r.get("arm")
         ex = r.get("exchange_index")
-
-        # arm, key and an integer exchange_index are guaranteed by _malformed_row_problems above
-        seed_exchanges.add(ex)
+        # arm, key, the cell fields and an integer exchange_index are guaranteed by _malformed_row_problems above
+        xk: ExchangeKey = (r["run_id"], r["epoch"], r["branch_id"], ex)
+        seed_exchanges.add(xk)
 
         dim_kinds[key] = r.get("kind", "outcome")
         if key not in dim_data:
@@ -676,16 +704,16 @@ def analyze_seed(
         # Invariant 1: Missing or non-boolean final_in_exchange must be refused by name, not defaulted to True.
         if "final_in_exchange" not in r or r.get("final_in_exchange") is None:
             err = f"arm '{arm}' row (turn {turn_id}) in exchange {ex} missing 'final_in_exchange'"
-            dim_errors[key][arm][ex] = err
-            dim_data[key][arm].pop(ex, None)
+            dim_errors[key][arm][xk] = err
+            dim_data[key][arm].pop(xk, None)
             continue
         elif not isinstance(r["final_in_exchange"], bool):
             err = (
                 f"arm '{arm}' row (turn {turn_id}) in exchange {ex} has non-boolean 'final_in_exchange': "
                 f"{r['final_in_exchange']!r}"
             )
-            dim_errors[key][arm][ex] = err
-            dim_data[key][arm].pop(ex, None)
+            dim_errors[key][arm][xk] = err
+            dim_data[key][arm].pop(xk, None)
             continue
 
         # Invariant 2: Intermediate assistant turns (final_in_exchange=False) are excluded from exchange outcomes.
@@ -693,22 +721,22 @@ def analyze_seed(
             continue
 
         # Invariant 3: Two final rows in one exchange for one arm must be refused by name, not resolved to latest turn.
-        if ex in dim_errors[key][arm]:
+        if xk in dim_errors[key][arm]:
             continue
 
         # Invariant 4: a tier row graded under another rubric is not on the loaded scale; a later edit to the draft
         # rubric would otherwise reinterpret historical rows under the new tiers (Codex F3 on PR #30).
         if (tier_rubric_digest is not None and r.get("kind") == "tier"
                 and r.get("prompt_file_digest") != tier_rubric_digest):
-            dim_errors[key][arm][ex] = (
+            dim_errors[key][arm][xk] = (
                 f"arm '{arm}' tier row (turn {turn_id}) in exchange {ex} was judged under rubric digest "
                 f"{r.get('prompt_file_digest')!r}, not the loaded rubric's {tier_rubric_digest!r}"
             )
-            dim_data[key][arm].pop(ex, None)
+            dim_data[key][arm].pop(xk, None)
             continue
 
-        if ex in dim_data[key][arm]:
-            existing = dim_data[key][arm][ex]
+        if xk in dim_data[key][arm]:
+            existing = dim_data[key][arm][xk]
             prev_turn = (
                 existing.get("turn_id")
                 if existing.get("turn_id") is not None
@@ -718,11 +746,11 @@ def analyze_seed(
                 f"arm '{arm}' has multiple rows with final_in_exchange=True in exchange {ex} "
                 f"(turns {prev_turn} and {turn_id})"
             )
-            dim_errors[key][arm][ex] = err
-            dim_data[key][arm].pop(ex, None)
+            dim_errors[key][arm][xk] = err
+            dim_data[key][arm].pop(xk, None)
             continue
 
-        dim_data[key][arm][ex] = r
+        dim_data[key][arm][xk] = r
 
     exchanges = sorted(seed_exchanges)
     analyzed_dimensions: dict[str, DimensionAnalysis] = {}
@@ -911,6 +939,10 @@ def analyze_run_directories(
     for rdir in run_dirs:
         manifest, rows, n_superseded = load_run_rows(rdir, outcome_registry_path=outcomes_file)
         run_id = manifest.get("run_id") or str(rdir)
+        if run_id in manifest_outcome_digests:
+            raise InputRefusalError(
+                f"run '{run_id}' is given twice; its rows would be paired against themselves as a second cell"
+            )
         if manifest.get("run_id"):
             run_ids.append(manifest["run_id"])
 
@@ -1062,18 +1094,18 @@ def format_markdown_summary(report: ThreeArmReport) -> str:
                 if contrast.refusals:
                     lines.append("**Named Refusals:**")
                     for ref in contrast.refusals:
-                        lines.append(f"- Exchange {ref['exchange_index']}: {ref['reason']}")
+                        lines.append(f"- {ref['reason']}")
                     lines.append("")
 
-                lines.append(f"| Exchange | `{contrast.arm_A}` | `{contrast.arm_B}` | Comparison |")
-                lines.append("|---|---|---|---|")
+                lines.append(f"| Run | Epoch | Branch | Exchange | `{contrast.arm_A}` | `{contrast.arm_B}` | Comparison |")
+                lines.append("|---|---|---|---|---|---|---|")
                 for r in contrast.rows:
                     val_a = r.arm_A_value or "—"
                     val_b = r.arm_B_value or "—"
-                    comp = r.comparison
-                    if r.refusal_reason:
-                        comp = f"refused ({r.refusal_reason})"
-                    lines.append(f"| {r.exchange_index} | {val_a} | {val_b} | {comp} |")
+                    comp = "refused" if r.refusal_reason else r.comparison
+                    lines.append(
+                        f"| {r.run_id} | {r.epoch} | {r.branch_id} | {r.exchange_index} | {val_a} | {val_b} | {comp} |"
+                    )
                 lines.append("")
 
     return "\n".join(lines)
