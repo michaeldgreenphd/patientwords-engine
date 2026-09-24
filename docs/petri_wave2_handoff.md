@@ -604,10 +604,34 @@ so it can be redone by hand.
 - **Trigger files fire on push.** Any branch operation that touches `.github/trigger/` fires
   that lane, including merges and cherry-picks. Five lanes spend money. This is the sharpest
   edge in the repo.
-- **At merge, restore `main`'s copy of every file under `.github/trigger/`** before committing the
-  merge. The petri-audit fires and parks ran from this branch, so its `petri-audit.json` differs from
-  `main`'s even when both are parked (the nonce alone), and landing it unrestored enqueues a preflight
-  that can evict a pending real run (AGENTS.md, merge danger; Codex, PR #29).
+- **Merge PR #29 by hand in a terminal, not with GitHub's merge button.** The petri-audit fires and
+  parks ran from this branch, so its `petri-audit.json` differs from `main`'s even when both are
+  parked (the nonce alone). Landing it on `main` fires a preflight there that `fire_trigger.py` never
+  journals, and it can evict a pending real run in `main`'s group (AGENTS.md, merge danger; Codex,
+  PR #29). The button, which merged #26, #27 and #28, has no step for restoring a file, so it would
+  carry the branch's copy onto `main`. As of 2026-09-24 01:25 UTC the button is also unavailable:
+  against `main` at `6830d590` the branch conflicts in `ops/trigger_journal.jsonl`. Do not resolve
+  that in GitHub's web editor either. The editor commits `main` into this branch, which brings
+  `main`'s changed `archive-renders.json` and `circuit-trace.json` onto the branch and fires both
+  lanes there. Run the merge yourself, not from a Claude session, whose guard refuses any write
+  under `.github/trigger/`:
+
+  ```bash
+  git fetch origin
+  git switch main && git merge --ff-only origin/main
+  git merge --no-ff --no-commit origin/claude/awesome-franklin-kj9jw7
+  git restore --source=HEAD --staged --worktree -- .github/trigger/   # main's copy of every trigger file
+  # ops/trigger_journal.jsonl: the ordered-union rule, docs/operators_handbook.md §4 "Journal
+  # conflict", with main's side (git show :2:ops/trigger_journal.jsonl) as the remote copy and
+  # the branch's (:3:) as the other; then recheck for revived-but-terminal entries as it says
+  git add ops/trigger_journal.jsonl
+  git diff --cached --name-only -- .github/trigger/   # must print nothing
+  git commit      # .githooks/pre-commit refuses this if a trigger file is still staged
+  git push origin main   # GitHub marks PR #29 merged once main contains its head commit
+  ```
+
+  With nothing under `.github/trigger/` changed against `main`, the push fires no lane, and
+  `.githooks/pre-push` lets it through.
 - **A standing ops Routine fires Tuesdays and Fridays at 12:00 UTC** (next: 2026-09-22). It is
   the owner's, not this session's, and was left running. If usage is still constrained on
   Tuesday, consider pausing it.
