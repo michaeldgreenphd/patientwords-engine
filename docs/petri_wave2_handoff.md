@@ -539,6 +539,32 @@ so it can be redone by hand.
     points. A null result will therefore read as inconclusive. `scripts/petri_w2_power_sim.py`, seed 20260923,
     reproduces the figures from design parameters alone.
   - **The 2026-09-25 fire** (nonce `w2e4`, same parameters) is scheduled for 00:07 UTC on 2026-09-25.
+- **2026-09-24, the `w2e3` fire: the eval ran, the export refused, and nothing was published.**
+  - **The fire.** Fired at 00:08 UTC as `aa0493bf`, with the w2e2 parameters and nonce `w2e3`. It committed $8.60
+    against the $15 override for 2026-09-24. Workflow run
+    [35937014168](https://github.com/michaeldgreenphd/patientwords-engine/actions/runs/35937014168) concluded
+    **failure**.
+  - **What ran.** The eval completed: the cost sidecar (`10020e52`) records `run_status: success`, 301 Haiku calls
+    and **$0.93**, about the same as w2e2's $0.927. The judge did not run, so the day's spend is $0.93 of $8.60.
+  - **Where it stopped.** At Adapt. `sanitise_log` raised `SanitiserError: forbidden keys survived sanitisation`
+    at `$.samples[0].events[13].output.metadata.extra_body` and every fourth event after it, meaning every
+    model-output event.
+    - The projection keeps `output.metadata` whole, and that now carries `extra_body`, which
+      `data/petri/sanitizer_allowlist.json` forbids. The fail-closed check worked as designed.
+    - The environment lock verified clean, and w2e2 (09-23 02:57 UTC) had no such key, so the key most likely comes
+      from the API responses. That is inferred; the raw log has not been read.
+    - Adapt, the judge, the seal check and the commit of outputs were all skipped. No transcript, judgment or
+      analysis row exists for this epoch.
+  - **Kept.** The raw `.eval` is the 90-day artifact `petri-audit-raw-eval-35937014168-1` (433 KB, expires
+    2026-12-23). It is never committed.
+  - **Afterwards.** Resolved. Re-parked with `--ignore-settle` after confirming the run terminal in GitHub
+    (`e6fa5915`). `verify-chain`: intact.
+  - **Consequences for the owner.**
+    - The w2e4 fire will fail the same way until the projection strips `extra_body` from event output metadata,
+      with a regression test. The scheduled w2e4 job is now gated on that fix and on a fresh go-ahead.
+    - §10.1's 35 triples assumed this epoch. §10 needs a decision: recover it from the artifact through a CI
+      re-adapt path, or record the analysis as administratively truncated.
+    - The results page is unchanged, since nothing new landed.
 
 ---
 
