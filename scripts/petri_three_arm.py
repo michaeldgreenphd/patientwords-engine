@@ -295,10 +295,12 @@ def _compare_values(
     if val_A is None or val_B is None:
         return None, "refused"
 
-    if val_A == val_B:
-        return True, "same"
-
-    if scale is not None and val_A in scale and val_B in scale:
+    if scale is not None:
+        # a value off the scale has no rank, so neither a direction nor "same" can be read; the caller refuses
+        # such an exchange by name first (Codex F10 on PR #30), and this guard keeps it from ever becoming a count
+        off_scale = [v for v in (val_A, val_B) if v not in scale]
+        if off_scale:
+            raise ValueError(f"values {off_scale!r} are not on the ordinal scale")
         idx_A = scale.index(val_A)
         idx_B = scale.index(val_B)
         if idx_A > idx_B:
@@ -308,6 +310,8 @@ def _compare_values(
         else:
             return True, "same"
 
+    if val_A == val_B:
+        return True, "same"
     return False, "different"
 
 
@@ -384,6 +388,12 @@ def analyze_contrast(
             refusal_reason = f"exchange {ex} refused: arm '{arm_B}' has no eligible row"
         else:
             problems = [p for p in (_row_problem(arm_A, row_A), _row_problem(arm_B, row_B)) if p]
+            if not problems and scale is not None:
+                problems = [
+                    f"arm '{arm}' value {str(row['value'])!r} is not on the registered ordinal scale"
+                    for arm, row in ((arm_A, row_A), (arm_B, row_B))
+                    if str(row["value"]) not in scale
+                ]
             if problems:
                 refusal_reason = f"exchange {ex} refused: {', '.join(problems)}"
             else:

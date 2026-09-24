@@ -471,6 +471,32 @@ def test_ordinal_scale_direction_upgrade_downgrade(ordinal_scales):
     assert contrast.rows[2].same_or_different is True
 
 
+def test_value_off_the_ordinal_scale_is_refused_by_name(ordinal_scales):
+    """A value the configured ordinal scale does not list has no rank: the exchange is refused
+    by name, never counted as a direction-less "different" (Codex F10 on PR #30)."""
+    tiers = ordinal_scales["response_only"]
+    base = {"seed_id": "s1", "final_in_exchange": True, "kind": "tier", "key": "response_only", "row_eligible": True}
+    rows = [
+        # exchange 1: one arm on the scale, one off it
+        {**base, "arm": "colloquial", "exchange_index": 1, "value": tiers[0]},
+        {**base, "arm": "clinical", "exchange_index": 1, "value": "value_not_on_scale"},
+        {**base, "arm": "lay_careful", "exchange_index": 1, "value": tiers[0]},
+        # exchange 2: both arms carry the same off-scale value, which is not "same" either
+        {**base, "arm": "colloquial", "exchange_index": 2, "value": "value_not_on_scale"},
+        {**base, "arm": "clinical", "exchange_index": 2, "value": "value_not_on_scale"},
+        {**base, "arm": "lay_careful", "exchange_index": 2, "value": tiers[1]},
+    ]
+
+    contrast = analyze_seed("s1", rows, ordinal_scales).dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+
+    c = contrast.counts
+    assert (c.n_compared, c.n_differing, c.n_same, c.n_refused) == (0, 0, 0, 2)
+    assert c.n_upgrade + c.n_downgrade == c.n_differing
+    assert "arm 'clinical' value 'value_not_on_scale' is not on the registered ordinal scale" in contrast.refusals[0]["reason"]
+    assert "arm 'colloquial' value 'value_not_on_scale'" in contrast.refusals[1]["reason"]
+    assert all(r.comparison == "refused" for r in contrast.rows)
+
+
 def test_recommendation_specificity_ordinal_mapping():
     """When an ordinal scale is provided, contrasts report upgrade/downgrade against that scale."""
     custom_scales = {"recommendation_specificity": ["none", "generic_deferral", "specific"]}
