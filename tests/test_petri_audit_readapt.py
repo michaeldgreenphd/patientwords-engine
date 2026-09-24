@@ -88,10 +88,14 @@ def _wave2_ids() -> list[str]:
     return [s["seed_id"] for s in seeds.select_seeds(seeds.load_seed_file(), None, 2)]
 
 
+def _wave2_digests() -> dict[str, str]:
+    return {s["seed_id"]: seeds.seed_digest(s) for s in seeds.select_seeds(seeds.load_seed_file(), None, 2)}
+
+
 def _plan(runs: Path, **param_overrides) -> dict:
     return readapt.plan(params=_params(**param_overrides), listing=_listing(), runs_dir=runs, seed_ids=_wave2_ids(),
                         journal_entries=_journal_entries(), readapt_run_id="5555", readapt_run_attempt="1",
-                        readapt_commit=COMMIT, now=NOW)
+                        readapt_commit=COMMIT, now=NOW, seed_digests=_wave2_digests())
 
 
 # ------------------------------------------------------------ source artifact
@@ -246,7 +250,8 @@ def test_a_readapt_plan_binds_the_source_run_artifact_sidecar_and_journal_entry(
     assert plan["artifact"]["id"] == 9001 and plan["source_params_sha256"] == PARAMS_SHA
     assert plan["target_report"]["sha256"] == framework.sha256_file(sidecar)
     assert plan["expected"] == {"target": "anthropic/claude-haiku-4-5", "seed_ids": _wave2_ids(), "epochs": 1,
-                                "token_limit": 40000, "log_model_api": True, "eval_id": EVAL_ID}
+                                "token_limit": 40000, "log_model_api": True, "eval_id": EVAL_ID,
+                                "seed_sha256": _wave2_digests()}
     assert plan["readapt"] == {"workflow_run_id": "5555", "workflow_run_attempt": 1, "commit": COMMIT,
                                "journal_nonce": "re-nonce"}
     block = readapt.provenance_block(plan)
@@ -295,6 +300,7 @@ def test_cli_readapt_plan_writes_the_plan_or_refuses_by_name_and_writes_nothing(
     assert cli.main(argv) == 0
     plan = framework.load_json(out)
     assert plan["run_stem"] == STEM and plan["expected"]["seed_ids"] == _wave2_ids()
+    assert plan["expected"]["seed_sha256"] == _wave2_digests(), "each selected seed's digest in hand, for the adapter"
     assert f"artifact petri-audit-raw-eval-{SRC}-1 id 9001" in capsys.readouterr().out
     out.unlink()
     framework.write_json(listing, _listing(_artifact(expired=True)))
@@ -484,7 +490,7 @@ def _retry_journal() -> list[dict]:
 def _retry_plan(runs: Path, **param_overrides) -> dict:
     return readapt.plan(params=_params(**param_overrides), listing=_listing(), runs_dir=runs, seed_ids=_wave2_ids(),
                         journal_entries=_retry_journal(), readapt_run_id="5555", readapt_run_attempt="1",
-                        readapt_commit=COMMIT, now=NOW)
+                        readapt_commit=COMMIT, now=NOW, seed_digests=_wave2_digests())
 
 
 def test_a_readapt_whose_judge_failed_can_be_retried_beside_the_judge_sidecar_it_committed(tmp_path):
@@ -579,3 +585,41 @@ def test_a_readapt_judge_names_its_sidecar_for_its_own_workflow_run(tmp_path, ca
     side = framework.load_json(run_dir / f"{STEM}.judge.report.json")
     assert side["journal_nonce"] == "re-nonce" and "readapt_run_id" in side["judge_report_name_unavailable"]
     capsys.readouterr()
+
+
+
+# ------------------------------------------------------------ the seed content the source run executed
+
+
+def test_the_seed_content_in_hand_must_be_what_the_source_runs_samples_recorded():
+    """Codex, PR #29: the plan resolves the selection against the seed file in the checkout, and the adapter refused
+    a sample whose recorded seed digest differed from it one sample at a time, writing whatever remained into the
+    source run's directory as its measurement. The log's per-sample digests are now compared, per seed, with the
+    seed in hand before anything is written, and any drift refuses by name."""
+    digests = {"a": "1" * 64, "b": "2" * 64}
+    expected = {"eval_id": EVAL_ID, "target": "anthropic/claude-haiku-4-5", "seed_ids": ["a", "b"], "epochs": 1,
+                "token_limit": 40000, "log_model_api": True, "seed_sha256": digests}
+    observed = dict(expected, status="success", seed_sha256={"a": ["1" * 64] * 3, "b": ["2" * 64] * 3})
+    assert readapt.log_problems(expected, observed) == []
+    cases = [({"a": ["1" * 64] * 3, "b": ["3" * 64] * 3}, "seed b: the source run executed seed content 333333333333, "
+                                                        "and the seed file in hand holds 222222222222"),
+             ({"a": ["1" * 64, "4" * 64], "b": ["2" * 64]}, "seed a: the log's samples record 2 different seed digests"),
+             ({"a": ["1" * 64]}, "seed b: the log's samples record no usable seed digest (None)"),
+             ({"a": [None], "b": ["2" * 64]}, "seed a: the log's samples record no usable seed digest ([None])"),
+             (None, "the log records no per-sample seed digests")]
+    for recorded, needle in cases:
+        problems = readapt.log_problems(expected, dict(observed, seed_sha256=recorded))
+        assert len(problems) == 1 and needle in problems[0], (recorded, problems)
+    # the plan cannot be made without the digest of every selected seed
+    for bad in (None, {"a": "1" * 64}, {"a": "1" * 64, "b": "short"}):
+        with pytest.raises(readapt.ReadaptError, match="needs the digest of every selected seed"):
+            readapt.expected_from_params(_params(), ["a", "b"], bad)
+
+
+def test_a_readapt_plan_refuses_without_the_seed_digests(tmp_path):
+    runs = tmp_path / "runs"
+    _landed_sidecar(runs)
+    with pytest.raises(readapt.ReadaptError, match="needs the digest of every selected seed"):
+        readapt.plan(params=_params(), listing=_listing(), runs_dir=runs, seed_ids=_wave2_ids(),
+                     journal_entries=_journal_entries(), readapt_run_id="5555", readapt_run_attempt="1",
+                     readapt_commit=COMMIT, now=NOW)

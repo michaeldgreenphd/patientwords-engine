@@ -607,7 +607,11 @@ so it can be redone by hand.
     - **The parameters.** The w2e3 fire's trigger file (`aa0493bf`) plus `mode: readapt`,
       `source_run_id: "35937014168"`, `commit_outputs: true` and `_nonce: w2e3r`. The fire path and the budget
       gate refuse a readapt whose target, seeds, epochs, token limit, ceilings, judge model, judge tokens or
-      `log_model_api` differ from the source fire's.
+      `log_model_api` differ from the source fire's. Since Codex's PR #29 review they also resolve the seed
+      selection against the seed file at the source fire's commit and refuse if any selected seed's content
+      differs at the firing commit; the adapter compares each seed with the digest the log's samples recorded
+      before it writes anything. For w2e3 only the file's `seed_schema` block changed after `aa0493bf` and all
+      eight selected seeds are identical, so the check passes.
     - **Set `commit_outputs: true`.** That key is not among the ones matched, and it defaults to false. With
       false, the re-adapted exports and judgments reach only the 30-day exports artifact, while the judge's spend
       is still booked.

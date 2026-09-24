@@ -2495,6 +2495,82 @@ def petri_readapt_source_problems(repo, trigger, params):
     if differ:
         return [f"petri-audit readapt of run {source}: the parameters differ from those the source fire {nonce!r} "
                 f"ran under (its trigger file at {commit[:12]}): " + "; ".join(differ)]
+    return _petri_seed_drift_problems(repo, source, commit, mine)
+
+
+def _git_show_utf8(repo, ref, relpath):
+    """The file's content at `ref` decoded as UTF-8 whatever the locale, or None when git has no such blob."""
+    proc = subprocess.run(["git", "-C", str(repo), "show", f"{ref}:{relpath}"], capture_output=True)
+    if proc.returncode != 0:
+        return None
+    try:
+        return proc.stdout.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+
+
+def _petri_seed_selection(text, resolved):
+    """{seed_id: canonical JSON of the seed} for the selection a petri-audit run makes from a seed file's text, as
+    `seeds.select_seeds` makes it from the workflow's resolved params: the listed seed ids when there are any,
+    else every seed of the wave. The canonical form is `framework.canonical_json`, so two seeds are equal here
+    exactly when their `seeds.seed_digest` is. Raises ValueError naming what does not resolve."""
+    doc = json.loads(text)
+    seeds = doc.get("seeds") if isinstance(doc, dict) else None
+    if not isinstance(seeds, list) or not all(isinstance(s, dict) and isinstance(s.get("seed_id"), str) for s in seeds):
+        raise ValueError("it holds no `seeds` list of objects with a seed_id")
+    by_id = {s["seed_id"]: s for s in seeds}
+    if len(by_id) != len(seeds):
+        raise ValueError("it lists a seed id twice")
+    ids = resolved["seed_ids"].split()
+    if ids:
+        missing = [i for i in ids if i not in by_id]
+        if missing:
+            raise ValueError(f"it has no seed {missing}")
+    else:
+        ids = [i for i, s in by_id.items() if str(s.get("pilot_wave")) == str(int(resolved["wave"]))]
+        if not ids:
+            raise ValueError(f"it has no seed in wave {resolved['wave']}")
+    return {i: json.dumps(by_id[i], sort_keys=True, ensure_ascii=False, separators=(",", ":")) for i in ids}
+
+
+def _petri_seed_drift_problems(repo, source, commit, resolved):
+    """Why the seeds a readapt would adapt against are not the seeds the source run executed. The source run
+    checked out its fire commit (the one holding the journaled trigger content), so the seed file there is the
+    content it ran; the readapt's adapter, judge and analysis read the seed file at this checkout's HEAD. The
+    selection the params make is resolved against both and must name the same seeds with identical content (the
+    per-seed digest, which the adapter checks again against the log's own per-sample record). A change elsewhere
+    in the file (another wave's seeds, the file's schema block) is not drift. Refused here, before the
+    reservation, and in the budget gate before the audit job; the file being unreadable is a refusal too."""
+    rel = resolved["seeds_file"]
+    where = f"petri-audit readapt of run {source}"
+    texts = {}
+    for label, ref in (("the source fire's commit", commit), ("this checkout's HEAD", "HEAD")):
+        text = _git_show_utf8(repo, ref, rel)
+        if text is None:
+            return [f"{where}: the seed file {rel} cannot be read at {label} ({ref[:12]}), so the seeds the source "
+                    "run executed cannot be compared with the ones the readapt would adapt against"]
+        texts[label] = text
+    selections = {}
+    for label, text in texts.items():
+        try:
+            selections[label] = _petri_seed_selection(text, resolved)
+        except (ValueError, KeyError) as exc:
+            return [f"{where}: the seed file {rel} at {label} does not resolve the source run's selection ({exc})"]
+    then, now = selections["the source fire's commit"], selections["this checkout's HEAD"]
+    problems = []
+    if sorted(then) != sorted(now):
+        added, removed = sorted(set(now) - set(then)), sorted(set(then) - set(now))
+        problems.append(f"the selection resolves to other seeds at HEAD than at the source fire's commit {commit[:12]} "
+                        f"(added {added or 'none'}, removed {removed or 'none'})")
+    for sid in sorted(set(then) & set(now)):
+        if then[sid] != now[sid]:
+            old = hashlib.sha256(then[sid].encode("utf-8")).hexdigest()[:12]
+            new = hashlib.sha256(now[sid].encode("utf-8")).hexdigest()[:12]
+            problems.append(f"seed {sid} changed since the source run (digest {old} at {commit[:12]}, {new} at HEAD)")
+    if problems:
+        return [f"{where}: the seeds in {rel} are not the ones the source run executed: " + "; ".join(problems)
+                + ". The adapter, the judge and the analysis read the seed file in the checkout, so the log cannot "
+                "be re-adapted against it; fire from a commit whose selected seeds are the source run's"]
     return []
 
 

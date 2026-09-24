@@ -204,11 +204,17 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         # the log's own record of what ran must be what the readapt fire states, checked before anything is written
         roles = spec.model_roles or {}
         meta = (spec.metadata or {}).get("patientwords") if isinstance(spec.metadata, dict) else None
+        # the digest each sample recorded for the seed it executed (task.samples_for), per seed id: the seed content
+        # the source run ran, which the seed file in hand must match before anything is written (readapt.log_problems)
+        recorded_seeds: dict[str, list] = {}
+        for recorded_sample in log.samples:
+            smeta = recorded_sample.metadata if isinstance(recorded_sample.metadata, dict) else {}
+            recorded_seeds.setdefault(str(smeta.get("seed_id")), []).append(smeta.get("seed_sha256"))
         observed = {"status": log.status, "eval_id": spec.eval_id,
                     "target": roles["target"].model if roles.get("target") else spec.model,
                     "seed_ids": list(meta["seed_ids"]) if isinstance(meta, dict) and isinstance(meta.get("seed_ids"), list) else None,
                     "epochs": getattr(spec.config, "epochs", None), "token_limit": getattr(spec.config, "token_limit", None),
-                    "log_model_api": getattr(spec.config, "log_model_api", None)}
+                    "log_model_api": getattr(spec.config, "log_model_api", None), "seed_sha256": recorded_seeds}
         problems = readapt_checks.log_problems(readapt["expected"], observed)
         if problems:
             raise AdapterError("the log is not the run this readapt names: " + "; ".join(problems))

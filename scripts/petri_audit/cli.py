@@ -36,7 +36,7 @@ from .envlock import load_lock, report_lines, verify_lock
 from .framework import ENV_LOCK, OUTCOME_REGISTRY, ROOT, SEED_FILE, load_json, sha256_file, write_json
 from .manifest import bind_judgments, reseal_problems, verify_chain, verify_run
 from .seal import sealed_registry, seed_texts_against_registry
-from .seeds import conditions, load_seed_file, select_seeds, target_visible_strings, validate_seed
+from .seeds import conditions, load_seed_file, seed_digest, select_seeds, target_visible_strings, validate_seed
 from .spend import (
     judge_billing_channel,
     preflight_bound,
@@ -281,7 +281,9 @@ def cmd_readapt_plan(args: argparse.Namespace) -> int:
         plan = readapt.plan(params=params, listing=load_json(args.listing), runs_dir=Path(args.runs_dir),
                             seed_ids=[s["seed_id"] for s in seeds], journal_entries=read_journal(args.journal),
                             readapt_run_id=args.readapt_run_id, readapt_run_attempt=args.readapt_run_attempt,
-                            readapt_commit=args.readapt_commit)
+                            readapt_commit=args.readapt_commit,
+                            # the adapt step compares these with the digests the source run's samples recorded
+                            seed_digests={s["seed_id"]: seed_digest(s) for s in seeds})
     except (readapt.ReadaptError, ValueError, KeyError, OSError) as exc:
         print(f"readapt refused before the download: {exc}", file=sys.stderr)
         return 12

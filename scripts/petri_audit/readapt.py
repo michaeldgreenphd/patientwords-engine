@@ -28,8 +28,12 @@ ordinary 3.11 environment. Every check refuses by name:
   eval's `run_status` as `success` (`source_report`), so the downloaded file
   is bound to the spend it booked and is a run mode run would have adapted;
 - the log's own record of what ran (its status, target, seeds, epochs, token
-  limit, log_model_api) must equal what the readapt fire states
-  (`log_problems`).
+  limit, log_model_api) must equal what the readapt fire states, and every
+  selected seed's content in hand must digest to what the source run's
+  samples recorded for it (`log_problems`): the adapter, the judge and the
+  analysis read the seed file in the checkout, so a seed edited since the
+  source run is refused by name before anything is written, never adapted
+  into a partial run.
 
 Only a run whose eval completed is recovered. Mode run reaches Adapt only when
 `cli run` exits 0, which needs the log's status to be `success`; an `error`
@@ -313,10 +317,13 @@ def eval_file_problems(eval_path: Path | str, expected_name: str) -> list[str]:
     return problems
 
 
-def expected_from_params(params: dict, seed_ids: list[str]) -> dict:
+def expected_from_params(params: dict, seed_ids: list[str], seed_digests: dict[str, str] | None = None) -> dict:
     """What the readapt fire states the source run executed, in the form the
     log records it. `params` are the params job's resolved outputs (strings);
-    `seed_ids` the selection those params make from the seed file."""
+    `seed_ids` the selection those params make from the seed file in hand, and
+    `seed_digests` each selected seed's digest there (`seeds.seed_digest`),
+    which the log's per-sample `seed_sha256` must equal: the seed content the
+    source run recorded, not the seed file's current state, decides."""
     try:
         epochs, token_limit = int(str(params["epochs"])), int(str(params["token_limit"]))
     except (KeyError, TypeError, ValueError) as exc:
@@ -327,8 +334,14 @@ def expected_from_params(params: dict, seed_ids: list[str]) -> dict:
     target = params.get("target")
     if not isinstance(target, str) or not target:
         raise ReadaptError("the readapt params name no target")
+    if not isinstance(seed_digests, dict) or sorted(seed_digests) != sorted(seed_ids) \
+            or not all(isinstance(d, str) and re.fullmatch(r"[0-9a-f]{64}", d) for d in seed_digests.values()):
+        raise ReadaptError("the readapt plan needs the digest of every selected seed in hand (seeds.seed_digest), "
+                           "so the log's record of the seed content the source run executed can be compared; got "
+                           f"{sorted(seed_digests) if isinstance(seed_digests, dict) else seed_digests!r} for "
+                           f"{sorted(seed_ids)}")
     return {"target": target, "seed_ids": list(seed_ids), "epochs": epochs, "token_limit": token_limit,
-            "log_model_api": log_model_api == "true"}
+            "log_model_api": log_model_api == "true", "seed_sha256": dict(seed_digests)}
 
 
 def log_problems(expected: dict, observed: dict) -> list[str]:
@@ -362,11 +375,31 @@ def log_problems(expected: dict, observed: dict) -> list[str]:
             problems.append("the log records no seed selection; it cannot be shown to be the run this readapt names")
         elif sorted(theirs) != sorted(expected["seed_ids"]):
             problems.append(f"seed_ids: the log records {sorted(theirs)}, the readapt selects {sorted(expected['seed_ids'])}")
+    if "seed_sha256" in expected:
+        # each sample records the digest of the seed it executed (task.samples_for); the seed in hand must be that
+        # seed, or the adapter would refuse its samples one by one and write a partial run into the source directory
+        recorded = observed.get("seed_sha256")
+        if not isinstance(recorded, dict):
+            problems.append("the log records no per-sample seed digests; the seed content the source run executed "
+                            "cannot be compared with the seed file in hand")
+        else:
+            for sid, mine in sorted(expected["seed_sha256"].items()):
+                theirs = recorded.get(sid)
+                if not isinstance(theirs, list) or not theirs or not all(isinstance(d, str) and d for d in theirs):
+                    problems.append(f"seed {sid}: the log's samples record no usable seed digest ({theirs!r})")
+                elif len(set(theirs)) > 1:
+                    problems.append(f"seed {sid}: the log's samples record {len(set(theirs))} different seed digests "
+                                    f"({', '.join(sorted(d[:12] for d in set(theirs)))})")
+                elif theirs[0] != mine:
+                    problems.append(f"seed {sid}: the source run executed seed content {theirs[0][:12]}, and the seed "
+                                    f"file in hand holds {mine[:12]}; the seed changed since the source run, so its "
+                                    "log cannot be re-adapted against this seed file")
     return problems
 
 
 def plan(*, params: dict, listing: Any, runs_dir: Path | str, seed_ids: list[str], journal_entries: list[dict],
-         readapt_run_id: Any, readapt_run_attempt: Any, readapt_commit: str, now: datetime | None = None) -> dict:
+         readapt_run_id: Any, readapt_run_attempt: Any, readapt_commit: str, now: datetime | None = None,
+         seed_digests: dict[str, str] | None = None) -> dict:
     """Everything the adapt step needs to re-adapt the source run, established
     before the download: the source run and stem, the artifact, the landed
     sidecar (digest, nonce, log name), the digest of the trigger content the
@@ -407,7 +440,7 @@ def plan(*, params: dict, listing: Any, runs_dir: Path | str, seed_ids: list[str
         # own, and its judge would spend again against the same source directory (re-fire through fire_trigger.py).
         raise ReadaptError(f"a readapt runs on its workflow run's first attempt only, got attempt {readapt_run_attempt!r}; "
                            "a re-run has no journal reservation of its own, so re-fire through scripts/fire_trigger.py")
-    expected = expected_from_params(params, seed_ids)
+    expected = expected_from_params(params, seed_ids, seed_digests)
     expected["eval_id"] = report["eval_id"]
     prior = prior_judge_reports(runs_dir, stem, source=report, readapt_nonce=nonce, readapt_run_id=readapt_run_id,
                                 journal_entries=journal_entries)

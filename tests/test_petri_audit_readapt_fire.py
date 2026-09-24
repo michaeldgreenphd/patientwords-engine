@@ -174,6 +174,26 @@ SOURCE_PARAMS = {"mode": "run", "target": "anthropic/claude-haiku-4-5",
                  "judge_max_spend": "1.50", "commit_outputs": "true", "_nonce": "w2e3", "_note": "the source fire"}
 
 
+SEEDS_REL = "docs/framework/petri_seeds.draft.json"
+
+
+def _seed(seed_id: str, wave: int = 2, text: str = "placeholder") -> dict:
+    """A seed reduced to what the selection and the per-seed digest read: its id, its wave and its content
+    (abstract placeholder text; the lane's real seeds are data under docs/framework)."""
+    return {"seed_id": seed_id, "pilot_wave": wave, "texts": [{"key": "opening", "text": text}]}
+
+
+def _write_seeds(repo: Path, seeds: list[dict], schema_note: str = "v1") -> None:
+    path = repo / SEEDS_REL
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"schema_version": "0", "seed_schema": {"note": schema_note}, "seeds": seeds}, indent=2)
+                    + "\n", encoding="utf-8")
+
+
+SOURCE_SEEDS = [_seed("pw-petri-w2-tool-clarify"), _seed("pw-petri-w2-referral-specificity"),
+                _seed("pw-petri-w1-other", wave=1)]
+
+
 def _readapt_repo(tmp_path: Path) -> tuple[Path, dict]:
     """A branch that carries a source fire (its trigger file and journal entry, committed together as
     fire_trigger commits them), the park after it, and the source run's landed fallback sidecar; and readapt
@@ -193,6 +213,7 @@ def _readapt_repo(tmp_path: Path) -> tuple[Path, dict]:
              "resolved_utc": "2026-09-20T00:13:10Z", "evicted": False, "nonce": "w2e3",
              "params_sha256": ft.params_digest(content), "ref": "main", "max_spend": 7.6, "lane": "anthropic"}
     (repo / "ops" / "trigger_journal.jsonl").write_text(json.dumps(entry) + "\n", encoding="utf-8")
+    _write_seeds(repo, SOURCE_SEEDS)                 # the seed content the source run checked out and executed
     _git(repo, "add", "-A")
     _git(repo, "commit", "-q", "-m", "fire the source run")
     trigger.write_text(json.dumps(dict(ft.PARK_DEFAULTS[TRIGGER], _parked="true"), separators=(",", ":")) + "\n",
@@ -258,6 +279,7 @@ def test_the_source_fire_is_found_through_a_merge_that_kept_the_other_sides_trig
                        encoding="utf-8")
     journal = repo / "ops" / "trigger_journal.jsonl"
     journal.write_text("", encoding="utf-8")
+    _write_seeds(repo, SOURCE_SEEDS)
     _git(repo, "add", "-A")
     _git(repo, "commit", "-q", "-m", "main, parked")
     _git(repo, "switch", "-q", "-c", "side")
@@ -429,3 +451,45 @@ def test_the_fallback_judge_report_under_readapt_is_the_readapts_own(workflow):
     assert ('if [ "$MODE" = "readapt" ]; then JUDGE_REPORT="data/petri/runs/$RUN_STEM/$RUN_STEM.readapt_${GITHUB_RUN_ID}'
             '.judge.report.json"; fi') in body
     assert '[ ! -f "$JUDGE_REPORT" ]' in body and step["env"]["MODE"] == "${{ needs.params.outputs.mode }}"
+
+
+def test_a_readapt_is_refused_when_its_selected_seeds_changed_since_the_source_run(tmp_path, capsys):
+    """Codex, PR #29: the readapt resolved the source run's selection against the seed file in the current checkout.
+    The selection is now resolved against the seed file at the source fire's commit, which the source run
+    executed, and against HEAD's, and the two must name the same seeds with identical content (the per-seed
+    digest). Drift is refused at the fire, before the reservation, and in the budget gate, before the audit job; a
+    change elsewhere in the file is not drift."""
+    repo, readapt = _readapt_repo(tmp_path)
+    assert ft.petri_readapt_source_problems(repo, TRIGGER, readapt) == []
+    params_file = tmp_path / "gate_params.json"
+    params_file.write_text(json.dumps(readapt), encoding="utf-8")
+    gate = type("Args", (), {"repo": str(repo), "trigger": TRIGGER, "params_file": str(params_file)})()
+    fire = ["fire", "--repo", str(repo), "--trigger", TRIGGER, "--note", "readapt", "--dry-run", "--no-git",
+            "--params", json.dumps(readapt)]
+    # a selected seed edited after the source run: refused, naming the seed and both digests
+    _write_seeds(repo, [_seed("pw-petri-w2-tool-clarify", text="placeholder, edited")] + SOURCE_SEEDS[1:])
+    _git(repo, "commit", "-q", "-am", "edit a selected seed")
+    problems = ft.petri_readapt_source_problems(repo, TRIGGER, readapt)
+    assert len(problems) == 1 and "seed pw-petri-w2-tool-clarify changed since the source run" in problems[0], problems
+    assert "the seeds in docs/framework/petri_seeds.draft.json are not the ones the source run executed" in problems[0]
+    assert ft.cmd_budget_gate(gate) == 6 and "changed since the source run" in capsys.readouterr().err
+    assert ft.main(fire) == 3 and "changed since the source run" in capsys.readouterr().err
+    # the file's schema block and another wave's seeds changing are not drift of the seeds the run executed (the
+    # w2e3 case: the seed file's seed_schema changed after aa0493bf, and no selected seed did)
+    _write_seeds(repo, SOURCE_SEEDS + [_seed("pw-petri-w3-new", wave=3)], schema_note="v2")
+    _git(repo, "commit", "-q", "-am", "schema block and a wave-3 seed")
+    assert ft.petri_readapt_source_problems(repo, TRIGGER, readapt) == []
+    assert ft.main(fire) == 0
+    capsys.readouterr()
+    # a wave selection that has gained a seed since the source run names other seeds: refused
+    commit = subprocess.run(["git", "-C", str(repo), "rev-list", "--max-parents=0", "HEAD"], check=True,
+                            capture_output=True, text=True).stdout.split()[0]
+    by_wave = dict(ft._petri_resolved(readapt), seed_ids="", wave="2")
+    assert ft._petri_seed_drift_problems(repo, "4242", commit, by_wave) == []
+    _write_seeds(repo, SOURCE_SEEDS + [_seed("pw-petri-w2-added")])
+    _git(repo, "commit", "-q", "-am", "a wave-2 seed added")
+    problems = ft._petri_seed_drift_problems(repo, "4242", commit, by_wave)
+    assert len(problems) == 1 and "added ['pw-petri-w2-added'], removed none" in problems[0], problems
+    # a seed file that cannot be read at either commit is a refusal, never a pass
+    missing = dict(by_wave, seeds_file="docs/framework/no_such_seeds.json")
+    assert "cannot be read at the source fire's commit" in ft._petri_seed_drift_problems(repo, "4242", commit, missing)[0]

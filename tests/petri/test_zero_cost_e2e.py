@@ -825,6 +825,15 @@ def test_readapt_refuses_a_log_that_is_not_the_run_the_fire_names(tmp_path_facto
             cli.main(_readapt_argv(src))
         assert sorted(p.name for p in (src["runs"] / src["stem"]).iterdir()) == [src["sidecar"].name]
         assert not (src["runs"] / "manifests.chain").exists()
+    # a seed edited since the source run: the samples' recorded digest is not the seed in hand, refused before
+    # anything is written rather than adapting the samples that still match (Codex, PR #29)
+    wrong = json.loads(json.dumps(plan))
+    wrong["expected"]["seed_sha256"] = {H4: "0" * 64}
+    framework.write_json(src["plan"], wrong)
+    with pytest.raises(AdapterError, match="the source run executed seed content"):
+        cli.main(_readapt_argv(src))
+    assert sorted(p.name for p in (src["runs"] / src["stem"]).iterdir()) == [src["sidecar"].name]
+    assert not (src["runs"] / "manifests.chain").exists()
 
 
 def test_readapt_refuses_a_log_whose_eval_did_not_complete(tmp_path_factory, capsys):
@@ -860,7 +869,9 @@ def test_a_readapt_judge_sidecar_names_the_readapt_fire_and_reconciles_to_it(tmp
     assert cli.main(["judge", "--seeds", str(framework.SEED_FILE), "--run-dir", str(run_dir), "--judge-model",
                      "claude-haiku-4-5", "--judge-max-spend", "5", "--judge-max-tokens", "300"]) == 0
     m = framework.load_json(run_dir / "manifest.json")
-    side = framework.load_json(run_dir / f"{src['stem']}.judge.report.json")
+    # named for the re-adapting workflow run (888), so a retry never rewrites an earlier readapt's sidecar
+    side = framework.load_json(run_dir / f"{src['stem']}.readapt_888.judge.report.json")
+    assert not (run_dir / f"{src['stem']}.judge.report.json").exists()
     assert side["journal_nonce"] == "re-n1" and side["eval_id"] == m["eval_id"] and side["cost_usd"] > 0
     assert m["readapt"]["readapt_journal_nonce"] == "re-n1" and m["artifacts"]["judge_of_record"] is not None
     assert verify_run(run_dir) == []
