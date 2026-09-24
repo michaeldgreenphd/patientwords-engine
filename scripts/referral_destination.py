@@ -11,10 +11,14 @@ counts as naming one. The judged dimension `referral_specificity` is the instrum
 on recommendation; this is the cheap observational proxy over data that already exists.
 
 Two guards matter for reading the output. The tier-identical stratum re-runs the same estimate
-over only those cells where both arms received the same modal tier, so a difference there
-cannot be a restatement of an urgency difference. And every row that cannot be measured is
-counted and reported by reason rather than dropped (AGENTS.md: no silent failures) — a coverage
-figure below 1.0 with no stated reason is a defect, not a result.
+over only those cells where both arms received the same modal tier, the registered per-cell tier
+summary. That holds the modal tier fixed, not the whole tier distribution: two arms with the same
+mode can still differ in mean tier rank, so a difference in that stratum can still carry part of
+an urgency difference. The bundle therefore counts the modal-equal cells whose mean ranks differ
+(`tier_matching`) and re-runs the estimate over the cells whose mean ranks are also exactly equal
+(`tier_and_mean_rank_identical_cells`), a sensitivity check on the modal stratum. And every row
+that cannot be measured is counted and reported by reason rather than dropped (AGENTS.md: no
+silent failures) — a coverage figure below 1.0 with no stated reason is a defect, not a result.
 
 Judgments are read under one rubric. The advice archive keys a judgment by response, rubric
 digest and judge model, so the same judge can re-judge every response after a rubric change;
@@ -281,18 +285,72 @@ def cluster_bootstrap_ci(
     return point, lo, hi
 
 
+STRATA = ("all_cells", "tier_identical_cells", "tier_and_mean_rank_identical_cells")
+# A sensitivity stratum with no cells is recorded as not estimated, by name, instead of refusing
+# the whole analysis: the registered strata above it still have an estimate to report.
+SENSITIVITY_STRATA = ("tier_and_mean_rank_identical_cells",)
+
+
+def in_stratum(stratum: str, patient_ranks: list[int], clinical_ranks: list[int]) -> bool:
+    """Whether a cell whose arms have these tier ranks belongs to `stratum`.
+
+    `tier_identical_cells`: the two arms share the modal tier (`modal_rank`). That holds the
+    registered summary fixed, not the distribution: arms with ranks (1, 1, 2) and (0, 1, 1) share
+    mode 1 but differ by 2/3 of a rank in mean. `tier_and_mean_rank_identical_cells` further
+    requires exactly equal mean ranks, compared as exact fractions so floating-point residue never
+    separates two equal means. It is the sensitivity check on the modal stratum, not a registered
+    summary."""
+    if stratum == "all_cells":
+        return True
+    if stratum not in STRATA:
+        raise ValueError(f"unknown stratum {stratum!r}; expected one of {STRATA}")
+    if modal_rank(patient_ranks) != modal_rank(clinical_ranks):
+        return False
+    return stratum == "tier_identical_cells" or _exact_mean(patient_ranks) == _exact_mean(clinical_ranks)
+
+
+def tier_matching(cells: dict[tuple[str, str], dict[str, list[tuple[int, bool, bool]]]]) -> dict[str, Any]:
+    """How far the modal-tier stratum is from holding urgency fixed: of the cells whose two arms
+    share the modal tier, how many differ in mean tier rank, and by how much. Codex raised this on
+    PR #29 against the rounded-mean rule; the modal rule answers the registered summary, and these
+    counts state what it still admits rather than leaving it to a reader to rediscover."""
+    modal_equal = unequal = at_least_half = 0
+    largest = Fraction(0)
+    for arms in cells.values():
+        patient_arm = next((a for a in PATIENT_ARMS if a in arms), None)
+        if patient_arm is None or CLINICAL_ARM not in arms:
+            continue
+        patient = [t[0] for t in arms[patient_arm]]
+        clinical = [t[0] for t in arms[CLINICAL_ARM]]
+        if modal_rank(patient) != modal_rank(clinical):
+            continue
+        modal_equal += 1
+        gap = abs(_exact_mean(patient) - _exact_mean(clinical))
+        if gap:
+            unequal += 1
+            if gap >= Fraction(1, 2):
+                at_least_half += 1
+            largest = max(largest, gap)
+    return {
+        "modal_tier_equal_cells": modal_equal,
+        "of_which_mean_rank_unequal": unequal,
+        "of_which_mean_rank_gap_at_least_half_a_rank": at_least_half,
+        "largest_mean_rank_gap": round(float(largest), 6),
+    }
+
+
 def estimate(
     cells: dict[tuple[str, str], dict[str, list[tuple[int, bool, bool]]]],
     index: int,
     rng: random.Random,
     n_boot: int,
-    tier_identical_only: bool,
+    stratum: str,
 ) -> dict[str, Any]:
     """Patient-minus-clinical difference on one binary readout, clustered on stimulus.
 
     `index` selects the triple member: 1 specialist, 2 emergency. A cell contributes only when
-    both arms are present; `tier_identical_only` further restricts to cells whose two arms
-    carry the same modal tier (`modal_rank`), so the readout cannot be a restatement of the tier.
+    both arms are present, and only when it belongs to `stratum` (`in_stratum`): every such cell,
+    the cells whose arms share the modal tier, or those that also share the exact mean tier rank.
 
     Per-model signs are counted on exact rational means, not floats: a model whose cells cancel
     exactly can come out at -5.6e-18 in floating point and would otherwise be counted as
@@ -306,13 +364,15 @@ def estimate(
         if patient_arm is None or CLINICAL_ARM not in arms:
             continue
         patient, clinical = arms[patient_arm], arms[CLINICAL_ARM]
-        if tier_identical_only and modal_rank([t[0] for t in patient]) != modal_rank([t[0] for t in clinical]):
+        if not in_stratum(stratum, [t[0] for t in patient], [t[0] for t in clinical]):
             continue
         difference = _mean(t[index] for t in patient) - _mean(t[index] for t in clinical)
         per_stimulus[stimulus_id].append(difference)
         per_model[model].append(_exact_mean(t[index] for t in patient) - _exact_mean(t[index] for t in clinical))
         used += 1
     if used == 0:
+        if stratum in SENSITIVITY_STRATA:
+            return {"cells": 0, "stimuli": 0, "models": 0, "not_estimated": "no comparable cells in this stratum"}
         raise ValueError("no comparable cells; refusing to report an estimate over an empty set")
     point, lo, hi = cluster_bootstrap_ci(per_stimulus, rng, n_boot)
     model_means = {m: sum(v) / len(v) for m, v in per_model.items()}
@@ -378,10 +438,7 @@ def analyze(advice_dir: str, judge: str, boot: int, seed: int, vocab_path: str =
     # rather than depending on how many draws an earlier stratum happened to consume.
     readouts = {}
     for name, index in (("names_specialist_service", 1), ("names_emergency_service", 2)):
-        readouts[name] = {
-            "all_cells": estimate(cells, index, random.Random(seed), boot, False),
-            "tier_identical_cells": estimate(cells, index, random.Random(seed), boot, True),
-        }
+        readouts[name] = {stratum: estimate(cells, index, random.Random(seed), boot, stratum) for stratum in STRATA}
     tier = {
         "all_cells": estimate_tier(cells, random.Random(seed), boot),
     }
@@ -411,8 +468,14 @@ def analyze(advice_dir: str, judge: str, boot: int, seed: int, vocab_path: str =
             "ci": "percentile cluster bootstrap over stimuli, 95%",
             "tier_identical_stratum": "cells whose two arms carry the same modal tier, a tie between modes broken "
                                       "toward the most urgent (the registered per-cell summary, "
-                                      "docs/preregistration_advice.md Amendment 1)",
+                                      "docs/preregistration_advice.md Amendment 1). This holds the modal tier "
+                                      "fixed, not the mean tier rank: `tier_matching` counts the cells it admits "
+                                      "whose mean ranks differ",
+            "tier_and_mean_rank_identical_stratum": "the tier-identical cells whose two arms also have exactly "
+                                                    "equal mean tier ranks (rational arithmetic); a sensitivity "
+                                                    "check on the tier-identical stratum, not a registered summary",
         },
+        "tier_matching": tier_matching(cells),
         "limitation": vocab.get("method_note"),
         "coverage": {
             "responses_indexed": len(by_sha),
@@ -432,8 +495,8 @@ def analyze(advice_dir: str, judge: str, boot: int, seed: int, vocab_path: str =
 def estimate_tier(
     cells: dict[tuple[str, str], dict[str, list[tuple[int, bool, bool]]]], rng: random.Random, n_boot: int
 ) -> dict[str, Any]:
-    """The same estimator on the modal tier rank, so the destination result can be read beside
-    the urgency result it is NOT a restatement of."""
+    """The same estimator on the mean tier rank, over the same cells, so the destination readout
+    can be read beside the urgency readout."""
     per_stimulus: dict[str, list[float]] = defaultdict(list)
     per_model: dict[str, list[float]] = defaultdict(list)
     used = 0
@@ -479,12 +542,20 @@ def format_summary(bundle: dict[str, Any]) -> str:
     for cell in bundle["coverage"]["cells_missing_an_arm"]:
         lines.append(f"    cell missing an arm: {cell['stimulus_id']} / {cell['model']}"
                      f" has only {cell['arms_present']} ({cell['rows']} rows)")
+    match = bundle["tier_matching"]
+    lines.append(f"  tier matching  {match['modal_tier_equal_cells']} cells share the modal tier; of those"
+                 f" {match['of_which_mean_rank_unequal']} differ in mean tier rank"
+                 f" ({match['of_which_mean_rank_gap_at_least_half_a_rank']} by half a rank or more,"
+                 f" largest {match['largest_mean_rank_gap']:.2f})")
     for name, strata in bundle["readouts"].items():
         lines.append(f"  {name}")
         for stratum, res in strata.items():
+            if "not_estimated" in res:
+                lines.append(f"    {stratum:<34} not estimated: {res['not_estimated']}")
+                continue
             mark = "excludes 0" if res["ci95_excludes_zero"] else "includes 0"
             lines.append(
-                f"    {stratum:<22} {res['patient_minus_clinical']:+.4f}"
+                f"    {stratum:<34} {res['patient_minus_clinical']:+.4f}"
                 f"  ci95 [{res['ci95'][0]:+.4f}, {res['ci95'][1]:+.4f}]  {mark}"
                 f"  {res['cells']} cells / {res['stimuli']} stimuli"
                 f"  {_agreement_text(res)}"

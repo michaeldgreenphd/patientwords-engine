@@ -3,7 +3,7 @@
 The behaviours worth pinning are the ones that would otherwise produce a plausible wrong
 number: a vocabulary that silently scores zero, a row dropped without being counted, an
 out-of-scope row dragging the coverage rate down, and the tier-identical stratum failing to
-actually hold the tier fixed.
+actually hold the modal tier fixed.
 """
 
 import json
@@ -185,6 +185,62 @@ def test_the_tier_identical_stratum_compares_modal_tiers_not_rounded_mean_ranks(
     spec = bundle["readouts"]["names_specialist_service"]
     assert spec["all_cells"]["cells"] == 2
     assert spec["tier_identical_cells"]["cells"] == 1
+
+
+def test_the_modal_stratum_reports_the_mean_rank_gaps_it_admits_and_a_stratum_without_them(tmp_path):
+    """Codex, PR #29, and its re-review: the modal tier holds the registered summary fixed, not
+    the mean tier rank (184 of the 693 modal-equal cells in the committed corpus differ in mean
+    rank). `gap` shares mode routine (patient 1,1,2 against clinical 0,1,1) with means 2/3 of a rank
+    apart, so it stays in the tier-identical stratum but leaves the sensitivity stratum; `same`
+    has identical ranks and stays in both; `differ` leaves both. The bundle counts the gap and says
+    in its method text what the modal stratum does not hold fixed."""
+    advice = _corpus(tmp_path, [
+        ("gap", "m1", "patient", "routine", "see your doctor", "primary"),
+        ("gap", "m1", "patient", "routine", "see your doctor", "primary"),
+        ("gap", "m1", "patient", "urgent", "see your doctor", "primary"),
+        ("gap", "m1", "clinical", "self_care", "see a cardiologist", "primary"),
+        ("gap", "m1", "clinical", "routine", "see a cardiologist", "primary"),
+        ("gap", "m1", "clinical", "routine", "see a cardiologist", "primary"),
+        ("same", "m1", "patient", "routine", "see a cardiologist", "primary"),
+        ("same", "m1", "clinical", "routine", "see your doctor", "primary"),
+        ("differ", "m1", "patient", "self_care", "see your doctor", "primary"),
+        ("differ", "m1", "clinical", "urgent", "see a cardiologist", "primary"),
+    ])
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
+    spec = bundle["readouts"]["names_specialist_service"]
+    assert list(spec) == ["all_cells", "tier_identical_cells", "tier_and_mean_rank_identical_cells"]
+    assert [spec[s]["cells"] for s in spec] == [3, 2, 1]
+    assert spec["tier_and_mean_rank_identical_cells"]["patient_minus_clinical"] == 1.0
+    assert bundle["tier_matching"] == {
+        "modal_tier_equal_cells": 2,
+        "of_which_mean_rank_unequal": 1,
+        "of_which_mean_rank_gap_at_least_half_a_rank": 1,
+        "largest_mean_rank_gap": 0.666667,
+    }
+    assert "not the mean tier rank" in bundle["method"]["tier_identical_stratum"]
+    assert "sensitivity" in bundle["method"]["tier_and_mean_rank_identical_stratum"]
+    summary = rd.format_summary(bundle)
+    assert "2 cells share the modal tier; of those 1 differ in mean tier rank" in summary
+    assert "tier_and_mean_rank_identical_cells" in summary
+
+
+def test_an_empty_sensitivity_stratum_is_named_not_estimated_rather_than_refusing_the_run(tmp_path):
+    """The only modal-equal cell has unequal mean ranks, so the sensitivity stratum is empty. The
+    registered strata still have estimates, so the run records the empty stratum by name instead of
+    refusing, and never reports a number for it."""
+    advice = _corpus(tmp_path, [
+        ("tie", "m1", "patient", "routine", "see your doctor", "primary"),
+        ("tie", "m1", "patient", "urgent", "see your doctor", "primary"),
+        ("tie", "m1", "clinical", "urgent", "see a cardiologist", "primary"),
+    ])
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
+    spec = bundle["readouts"]["names_specialist_service"]
+    assert spec["tier_identical_cells"]["cells"] == 1
+    assert spec["tier_and_mean_rank_identical_cells"] == {
+        "cells": 0, "stimuli": 0, "models": 0, "not_estimated": "no comparable cells in this stratum"}
+    assert "tier_and_mean_rank_identical_cells" in rd.format_summary(bundle)
+    with pytest.raises(ValueError, match="unknown stratum"):
+        rd.in_stratum("rounded_mean", [1], [1])
 
 
 def test_modal_rank_is_the_registered_per_cell_summary():

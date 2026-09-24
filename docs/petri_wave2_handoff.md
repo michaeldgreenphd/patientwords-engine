@@ -133,6 +133,12 @@ two defects, now fixed on this branch; a re-run gives these figures instead (see
 - The tier-identical row compared rounded mean tier ranks, not modal tiers. With modal tiers and the
   registered most-urgent tie-break it reads **−0.0382** [−0.0644, −0.0140] over 693 cells and 158
   stimuli, not −0.0367 over 681. It still excludes zero.
+- The modal tier holds the registered per-cell summary fixed, not the mean tier rank, so that
+  stratum does not hold urgency fixed in full: 184 of its 693 cells have arms whose mean ranks
+  differ (32 by half a rank or more, the largest by 1.33). The bundle now reports those counts
+  (`tier_matching`) and a sensitivity stratum of the 509 cells whose mean ranks are also exactly
+  equal: names a specialist **−0.0401** [−0.0735, −0.0095] over 154 stimuli, still excluding zero;
+  names an emergency service +0.0072 [−0.0114, +0.0258].
 - Sign agreement counted a model at exactly zero as agreeing, and one model whose mean is exactly
   zero came out at −5.6e-18 in floating point. Counted strictly, the specialist all-cells row is
   **8 of 9 non-tied models, 2 tied** (not 9 of 11), and the emergency row is 6 of 8 non-tied, 3 tied
