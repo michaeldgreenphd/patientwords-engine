@@ -65,6 +65,7 @@ from .framework import (
     sha256_text,
     write_json,
 )
+from . import readapt as readapt_checks
 from .manifest import MANIFEST_VERSION, append_chain, chain_head, manifest_problems, seal_manifest, write_manifest
 from .rules import rule_record
 from .sanitizer import _project_eval, allowlist_digest, load_allowlist, sanitise_log
@@ -197,9 +198,20 @@ def _target_model_events(sample: EvalSample) -> list[ModelEvent]:
 
 def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, custody: str, spend: dict,
               engine_sha: str | None = None, lock_path: Path | str | None = None,
-              registry: dict | None = None, harness_commit: str | None = None) -> AdaptResult:
+              registry: dict | None = None, harness_commit: str | None = None,
+              readapt: dict | None = None) -> AdaptResult:
+    """`readapt` (mode readapt, scripts/petri_audit/readapt.py): {"expected": what the log must record,
+    "provenance": the manifest's `readapt` block}. The run directory may then hold the landed target cost sidecar
+    and nothing else but earlier readapts' judge sidecars, the log must record what the fire states, and the per-sample limits are the ones the log's
+    own config records (the source run's run_params.json is not in its artifact)."""
     eval_path, out_dir = Path(eval_path), Path(out_dir)
-    if out_dir.exists() and any(out_dir.iterdir()):
+    if readapt is not None:
+        # the source run's directory holds its landed target sidecar and nothing else but the judge sidecars of
+        # earlier readapts whose judge failed (readapt.py run_dir_problems)
+        problems = readapt_checks.run_dir_problems(out_dir.parent, out_dir.name)
+        if problems:
+            raise AdapterError("; ".join(problems))
+    elif out_dir.exists() and any(out_dir.iterdir()):
         # never adapt over a run that exists: the chain would gain a second line for the same path while the first
         # still names the old digest, and the stored measurement would be replaced (Codex round 2)
         raise AdapterError(f"{out_dir}: run directory exists and is not empty; adapt into a new directory")
@@ -208,6 +220,26 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     if log.samples is None:
         raise AdapterError(f"{eval_path}: log has no samples")
     spec = log.eval
+    if readapt is not None:
+        # the log's own record of what ran must be what the readapt fire states, checked before anything is written
+        roles = spec.model_roles or {}
+        meta = (spec.metadata or {}).get("patientwords") if isinstance(spec.metadata, dict) else None
+        # the digest each sample recorded for the seed it executed (task.samples_for), per seed id: the seed content
+        # the source run ran, which the seed file in hand must match before anything is written (readapt.log_problems)
+        recorded_seeds: dict[str, list] = {}
+        for recorded_sample in log.samples:
+            smeta = recorded_sample.metadata if isinstance(recorded_sample.metadata, dict) else {}
+            recorded_seeds.setdefault(str(smeta.get("seed_id")), []).append(smeta.get("seed_sha256"))
+        observed = {"status": log.status, "eval_id": spec.eval_id,
+                    "target": roles["target"].model if roles.get("target") else spec.model,
+                    "seed_ids": list(meta["seed_ids"]) if isinstance(meta, dict) and isinstance(meta.get("seed_ids"), list) else None,
+                    "epochs": getattr(spec.config, "epochs", None), "token_limit": getattr(spec.config, "token_limit", None),
+                    "log_model_api": getattr(spec.config, "log_model_api", None), "seed_sha256": recorded_seeds}
+        problems = readapt_checks.log_problems(readapt["expected"], observed)
+        if problems:
+            raise AdapterError("the log is not the run this readapt names: " + "; ".join(problems))
+        spend = {**spend, "cost_limit_per_sample_usd": getattr(spec.config, "cost_limit", None),
+                 "token_limit_per_sample": getattr(spec.config, "token_limit", None)}
     raw_sha = sha256_file(eval_path)
     allowlist = load_allowlist()
     created_utc = utc_seconds(spec.created) or spec.created
@@ -634,6 +666,12 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         "eval_spec_dump": spec_dump,
         "chain": {"prev_sha256": None, "identity_sha256": "", "manifest_sha256": ""},
     }
+    if readapt is not None:
+        # present only on a re-adapted run, so every manifest written before mode readapt existed keeps its digests;
+        # placed before the chain block, which stays last
+        chain_block = manifest.pop("chain")
+        manifest["readapt"] = dict(readapt["provenance"])
+        manifest["chain"] = chain_block
     # the seal verdict and the eligibility flag are settled over the in-memory texts BEFORE the identity digest,
     # because binding the records to that digest must change nothing the digest covers
     if sealed_hits:

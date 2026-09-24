@@ -55,11 +55,12 @@ Petri lanes) goes through OpenRouter on `OPENROUTER_API_KEY` (`data/advice_provi
 routes `openai:`, `xai:`, `deepseek:`, `moonshot:` and `openrouter:` there), except the
 registry's direct `google:` entry, which uses `GEMINI_API_KEY`. There is no `OPENAI_API_KEY`,
 `XAI_API_KEY`, `DEEPSEEK_API_KEY` or `MOONSHOT_API_KEY`: the workflows' references to them
-resolve to empty strings. A Petri target in `mode: run` must be `anthropic/<model>` or
-`openrouter/<vendor>/<model>`; `mockllm/model`, the lane's park default and the only
-`dry_run` target, calls nothing and is refused in `mode: run` (`docs/triggers.md` has the
-full rule). Dev containers have none of these keys, and the sandbox egress proxy blocks huggingface.co and
-most model hosts. All generation, tracing, and CPU inference therefore
+resolve to empty strings. A Petri target in `mode: run` (or `mode: readapt`, which states
+its source run's target) must be `anthropic/<model>` or `openrouter/<vendor>/<model>`;
+`mockllm/model`, the lane's park default and the only `dry_run` target, calls nothing and
+is refused in both paid modes (`docs/triggers.md` has the full rule). Dev containers have
+none of these keys, and the sandbox egress proxy blocks huggingface.co and most model
+hosts. All generation, tracing, and CPU inference therefore
 runs through **push-to-run CI**: each workflow fires when its file under `.github/trigger/`
 changes on any pushed branch. A machine that *can* run inference locally (yours, with a
 GPU) still commits no locally produced measurement: every committed summary records
@@ -75,7 +76,7 @@ GPU) still commits no locally produced measurement: every committed summary reco
 | `activation-patching.json` | `activation_patching.yml` | CPU residual-stream patching grid ($0) |
 | `jlens-readout.json` | `jlens_readout.yml` | hosted Jacobian-lens depth readouts ($0) |
 | `advice-eval.json` | `advice_evaluation.yml` | deployed-assistant advice elicitation + judging (paid) |
-| `petri-audit.json` | `petri_audit.yml` | Petri-hosted multi-turn register experiments (paid when `mode: run`; park default `preflight` calls nothing) |
+| `petri-audit.json` | `petri_audit.yml` | Petri-hosted multi-turn register experiments (paid when `mode: run`, and `mode: readapt` for its judge; park default `preflight` calls nothing) |
 
 Nine lanes. `scripts/fire_trigger.py` also knows `pab-probe`, whose
 workflow exists only on the PAB branch. The fact-check of 2026-09-04 found this table
@@ -114,7 +115,7 @@ after any real fire lands, re-park that lane (`docs/operators_handbook.md` §3).
 
 **Cost discipline:** Neuronpedia tracing, CPU logits, and all analysis are $0. Five
 lanes spend provider credits — `scenario-generation`, `model-evaluation`, `advice-eval`,
-`petri-audit` when `mode: run`, and `circuit-trace` when `show_mitigation: true` (a flat $0.15 imputed per fire);
+`petri-audit` when `mode: run` (or `mode: readapt`, whose judge alone spends), and `circuit-trace` when `show_mitigation: true` (a flat $0.15 imputed per fire);
 `fire_trigger.py`'s `PAID_TRIGGERS` is the source of truth. Measured per accepted pair
 across the landed `.report.json` sidecars (2026-09-04): opus **$0.020**, haiku $0.0017,
 sonnet $0.060. Every paid generation run writes `<batch>.report.json` (one archived
@@ -202,7 +203,14 @@ back with `--archive-url`. **PNG renders live in those Releases, not in git** (p
 from `main` from 2026-09-08; the tree carried ~15 GB of them and the repository had
 grown past what the cloud containers and Codex can clone): `scripts/render_archive.py
 fetch` brings any one back by HTTP Range without downloading its zip, and
-`coverage` says which PNGs are archived where.
+`coverage` says which PNGs are archived where. Since 2026-09-23 the exporter also
+**deletes** site renders under `modes/simulated/` that match its own naming but that
+neither the new payload nor any other site file lists (`scripts/render_prune.py`; a
+withheld holdout row's render had stayed served for ten weeks); `--dry-run` writes and
+deletes nothing and lists them. It refuses, writing nothing, over a site checkout that
+keeps tracked renders off disk (the cloud containers' sparse clone excludes `modes/`),
+or any tracked file its render-reference scan reads, and `scripts/seal_check.py` exits
+2 over one: `git -C ../patientwords sparse-checkout disable` first.
 
 ## Figure style (standing preference)
 

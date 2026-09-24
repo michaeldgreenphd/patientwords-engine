@@ -1621,3 +1621,26 @@ def test_rows_beside_an_unreadable_judge_sidecar_get_no_label(run_dir):
     # the same sidecar with no rows is the same verdict from the other path
     (run_dir / "judgments.jsonl").unlink()
     assert judge()["model"] == "(judge of record)" and "the judge sidecar is unavailable" in judge()["note"]
+
+
+def test_a_retried_readapts_summary_reports_its_own_judge_sidecar(tmp_path):
+    """A retry after a readapt whose judge failed shares the source directory with the judge sidecar that failure
+    committed. The job summary reports the retry's own (named for its workflow run in the manifest's `readapt`
+    block) rather than calling both unavailable; without a readapt block, several stay unavailable, by name."""
+    run_dir = tmp_path / "run_9_1"
+    run_dir.mkdir()
+
+    def judge_side(name: str, cost: float) -> None:
+        framework.write_json(run_dir / name, {
+            "judge_model": "claude-haiku-4-5", "cost_usd": cost, "cost_basis": "cumulative_from_records",
+            "billing_channel": "anthropic", "max_spend_usd": 2.5, "price_source": "registry", "input_per_mtok": 1.0,
+            "output_per_mtok": 5.0, "judgments_sha256": None})
+
+    judge_side("run_9_1.readapt_7001.judge.report.json", 2.5)
+    judge_side("run_9_1.readapt_7002.judge.report.json", 1.6)
+    framework.write_json(run_dir / "manifest.json", {"readapt": {"source_run_stem": "run_9_1",
+                                                                 "readapt_workflow_run_id": "7002"}})
+    side = summary._judge_sidecar(run_dir)
+    assert side["path"] == "run_9_1.readapt_7002.judge.report.json" and side["cost_usd"] == 1.6
+    (run_dir / "manifest.json").unlink()
+    assert "2 judge cost sidecars" in summary._judge_sidecar(run_dir)["unavailable"]

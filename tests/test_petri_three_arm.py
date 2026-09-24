@@ -1,0 +1,1758 @@
+"""Tests for three-arm analysis (scripts/petri_three_arm.py).
+
+Covers:
+- Tool-calling arm with intermediate tool turns (asserts only final_in_exchange is compared)
+- Arm missing an exchange (asserts clean refusal of that exchange by name)
+- not_applicable rows (asserts counted as not compared rather than dropped or treated as a category level)
+- pw-petri-w2-identity-register (2x3 arms, asserts within-identity and within-register contrasts)
+- Wave 1 refusal (asserts clean refusal on run_35351739969_1)
+- Ordinal direction mapping (upgrade, downgrade, same loaded from data files)
+- Provenance and header invariants (no CIs or p-values)
+- Runs under different outcome-registry versions (pooled per dimension; a differing dimension refused by name)
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+from copy import deepcopy
+from pathlib import Path
+
+import pytest
+
+from scripts.petri_audit.framework import load_prompt, prompt_digest
+from scripts.petri_audit.judge_runner import parse_answer, rubric_digest
+from scripts.petri_audit.manifest import ARTIFACT_FILENAMES, JUDGE_REPORT_SUFFIX, identity_digest, seal_manifest
+from scripts.petri_three_arm import (
+    DEFAULT_ADVICE_RUBRIC,
+    DEFAULT_OUTCOME_REGISTRY,
+    CONFLICTING_VALUES,
+    HEADER_NOTE,
+    OUT_OF_VOCABULARY,
+    REREAD_REFUSAL_ERRORS,
+    InputRefusalError,
+    RegistryMismatchError,
+    Wave1RefusalError,
+    _leading_line,
+    analyze_run_directories,
+    analyze_seed,
+    format_markdown_summary,
+    load_declared_values,
+    load_ordinal_scales,
+    main,
+    sha256_file,
+)
+
+ROOT = Path(__file__).resolve().parents[1]
+WAVE_1_RUN_DIR = ROOT / "data" / "petri" / "runs" / "run_35351739969_1"
+
+
+@pytest.fixture(scope="module")
+def ordinal_scales() -> dict[str, list[str]]:
+    return load_ordinal_scales()
+
+
+JUDGE = "claude-haiku-4-5"
+TIERS = load_ordinal_scales()["response_only"]
+RUBRIC_DIGEST = rubric_digest(json.loads(DEFAULT_ADVICE_RUBRIC.read_text(encoding="utf-8")))
+# A landed manifest is the template for synthetic ones, so every synthetic run passes the schema, chain-digest and
+# artifact checks of manifest.verify_run that the loader applies; the fields the analysis reads are replaced per run.
+TEMPLATE_MANIFEST = json.loads((WAVE_1_RUN_DIR / "manifest.json").read_text(encoding="utf-8"))
+
+
+def _hex(label: str, length: int = 64) -> str:
+    """A deterministic hex id for a synthetic label (the manifest schema requires hex conversation ids and commits)."""
+    return hashlib.sha256(label.encode("utf-8")).hexdigest()[:length]
+
+
+def _write_run(
+    root: Path,
+    name: str,
+    rows: list[dict],
+    *,
+    seed_digests: dict[str, str] | None = None,
+    registry_sha: str | None = None,
+    manifest_update=None,
+    write_analysis_rows: bool = True,
+) -> Path:
+    """A synthetic run directory shaped like the lane's output: the analysis rows as
+    judge_runner.analysis_rows() derives them, the judgments they came from (bound in the
+    manifest by digest), and one manifest tree per (seed, arm, epoch). Synthetic rows only.
+
+    A row's judgment copies the row's value and error; a row may state where its judgment
+    differs (an analysis-time re-read) under the key `judgment`, which is not written to the
+    analysis row."""
+    run_dir = root / name
+    run_dir.mkdir()
+    full: list[dict] = []
+    judgment_overrides: list[dict] = []
+    for r in rows:
+        r = dict(r)
+        judgment_overrides.append(r.pop("judgment", {}))
+        a = {"epoch": 1, "system_prompt_variant": None, "branch_id": "root", "judge_model": JUDGE,
+             "not_applicable_reason": None, "judge_error": None, "shared_prefix": False, **r}
+        # one tree per (seed, arm, system-prompt variant, epoch), and a condition per (arm, variant), as seeds.conditions
+        # expands a seed whose system_prompt policy is "variants"
+        variant = a["system_prompt_variant"]
+        a.setdefault("condition_id", a["arm"] if variant is None else f"{a['arm']}__{variant}")
+        a.setdefault("tree_id", f"{name}:{a['seed_id']}:{a['condition_id']}:{a['epoch']}")
+        a.setdefault("conversation_id", _hex(f"{a['tree_id']}:{a['branch_id']}"))
+        a.setdefault("turn_id", 2 * a["exchange_index"])
+        a.setdefault("assistant_turn_index", a["turn_id"] // 2)
+        a.setdefault("row_eligible", a.get("value") is not None and a.get("value") != "not_applicable")
+        a.setdefault("prompt_file_digest", RUBRIC_DIGEST if a.get("kind") == "tier" else "0123456789ab")
+        full.append(a)
+    judgments = []
+    for a, override in zip(full, judgment_overrides):
+        j = {f: a.get(f) for f in ("conversation_id", "turn_id", "assistant_turn_index", "exchange_index",
+                                   "final_in_exchange", "kind", "key", "judge_model", "not_applicable_reason",
+                                   "prompt_ref", "prompt_file_digest", "seed_id", "condition_id", "branch_id",
+                                   "tree_id", "epoch", "value", "judge_error")}
+        judgments.append({**j, **override})
+    (run_dir / "judgments.jsonl").write_text("".join(json.dumps(j) + "\n" for j in judgments), encoding="utf-8")
+    trees: dict[str, dict] = {}
+    for a in full:
+        tree = trees.setdefault(a["tree_id"], {
+            "tree_id": a["tree_id"], "sample_uuid": _hex(a["tree_id"], 32), "sample_id": f"sample:{a['tree_id']}",
+            "epoch": a["epoch"], "seed_id": a["seed_id"], "arm": a["arm"],
+            "system_prompt_variant": a["system_prompt_variant"],
+            "branches": [], "surviving_branch_id": None, "survivor_exported": False})
+        if all(b["conversation_id"] != a["conversation_id"] for b in tree["branches"]):
+            tree["branches"].append({"branch_id": a["branch_id"], "parent_branch_id": None,
+                                     "branched_from_message_id": None, "branched_from_turn_id": None,
+                                     "condition_id": a["condition_id"], "conversation_id": a["conversation_id"],
+                                     "surviving": True, "creation_index": len(tree["branches"]) + 1})
+    # the run's other artifacts, which the three-arm analysis never reads but the manifest binds by digest
+    for family in ("sanitised_log", "transcripts", "rule_outcomes"):
+        (run_dir / ARTIFACT_FILENAMES[family]).write_text(f"synthetic {family}\n", encoding="utf-8")
+    report_name = f"{name}{JUDGE_REPORT_SUFFIX}"
+    (run_dir / report_name).write_text("synthetic judge report\n", encoding="utf-8")
+    manifest = deepcopy(TEMPLATE_MANIFEST)
+    manifest["run_id"] = name
+    manifest["framework"]["outcome_registry_sha256"] = registry_sha or sha256_file(DEFAULT_OUTCOME_REGISTRY)
+    manifest["adapter"]["engine_sha"] = _hex(f"commit-{name}", 40)
+    manifest["seeds"] = [{**TEMPLATE_MANIFEST["seeds"][0], "seed_id": s,
+                          "seed_sha256": (seed_digests or {}).get(s, "5" * 64)}
+                         for s in sorted({a["seed_id"] for a in full})]
+    manifest["trees"] = list(trees.values())
+    for family, filename in ARTIFACT_FILENAMES.items():
+        manifest["artifacts"][f"{family}_path"] = f"{name}/{filename}"
+        manifest["artifacts"][f"{family}_sha256"] = sha256_file(run_dir / filename)
+    manifest["artifacts"]["judge_of_record"] = {
+        **TEMPLATE_MANIFEST["artifacts"]["judge_of_record"], "judge_model": JUDGE,
+        "report_path": f"{name}/{report_name}", "report_sha256": sha256_file(run_dir / report_name)}
+    if manifest_update is not None:
+        manifest_update(manifest)
+    (run_dir / "manifest.json").write_text(json.dumps(seal_manifest(manifest, None)), encoding="utf-8")
+    if write_analysis_rows:
+        (run_dir / "analysis_rows.jsonl").write_text("".join(json.dumps(a) + "\n" for a in full), encoding="utf-8")
+    return run_dir
+
+
+def _cells(rows: list[dict]) -> list[dict]:
+    """Direct analyze_seed callers state each row's experimental cell; these tests use one cell unless
+    a row names its own."""
+    return [{"run_id": "run-1", "epoch": 1, "system_prompt_variant": None, "branch_id": "root", **r} for r in rows]
+
+
+def _three_arms(seed_id: str = "s1", exchanges=(1,), value=None, **extra) -> list[dict]:
+    """One final response_only tier row per arm and exchange."""
+    return [{"seed_id": seed_id, "arm": arm, "exchange_index": ex, "final_in_exchange": True, "kind": "tier",
+             "key": "response_only", "value": TIERS[1] if value is None else value, **extra}
+            for ex in exchanges for arm in ("colloquial", "clinical", "lay_careful")]
+
+
+# An outcome dimension whose judge prompt is in the repository: the re-read checks resolve the prompt the judge was
+# shown from its prompt_ref and digest, and the values come from that data file, never from this source.
+OUTCOME_KEY = "recommendation_specificity"
+OUTCOME_PROMPT_REF = f"docs/framework/judge_prompts/outcomes/{OUTCOME_KEY}.draft.json"
+OUTCOME_VALUES = list(load_prompt(OUTCOME_PROMPT_REF)["values"])  # the value ids, in the order the judge is shown
+OUTCOME_PROMPT_DIGEST = prompt_digest(OUTCOME_PROMPT_REF)
+
+
+def _outcome_arms(value: str | None = None) -> list[dict]:
+    """One final outcome row per arm at exchange 1, judged under the repository's prompt for OUTCOME_KEY."""
+    return [{"seed_id": "s1", "arm": arm, "exchange_index": 1, "final_in_exchange": True, "kind": "outcome",
+             "key": OUTCOME_KEY, "value": OUTCOME_VALUES[0] if value is None else value,
+             "prompt_ref": OUTCOME_PROMPT_REF, "prompt_file_digest": OUTCOME_PROMPT_DIGEST}
+            for arm in ("colloquial", "clinical", "lay_careful")]
+
+
+def _reread(row: dict, raw: str, derived_value: str | None, **judgment) -> dict:
+    """The row analysis_rows() derives by re-reading the leading line of a null out-of-vocabulary outcome judgment
+    whose recorded answer is `raw`; keyword arguments change that judgment."""
+    return {**row, "value": derived_value, "value_source": "leading_line_at_analysis", "judge_error": None,
+            "judgment": {"value": None, "judge_error": OUT_OF_VOCABULARY, "judge_raw": raw, **judgment}}
+
+
+# ------------------------------------------------------------------ Wave 1 Refusal
+
+
+def test_wave_1_run_cleanly_refuses_because_two_arm_and_null_exchange():
+    """Wave 1 runs had only two arms and exchange_index is null on those rows.
+
+    Quotes docs/petri_wave2_handoff.md section 6 on exchange_index.
+    """
+    assert WAVE_1_RUN_DIR.is_dir(), f"Expected wave 1 run directory at {WAVE_1_RUN_DIR}"
+
+    with pytest.raises(Wave1RefusalError) as exc_info:
+        analyze_run_directories([WAVE_1_RUN_DIR])
+
+    msg = str(exc_info.value)
+    assert "Wave-1 rows cannot be re-keyed from themselves" in msg
+    assert "docs/petri_wave2_handoff.md section 6" in msg
+    assert "exchange_index does not appear in data/petri/runs/run_35351739969_1/analysis_rows.jsonl" in msg
+    assert "missing lay_careful" in msg
+
+
+def test_wave_1_run_cli_returns_refusal_exit_code(capsys):
+    """CLI returns exit code 2 when refusing a Wave 1 run."""
+    code = main(["--run-dir", str(WAVE_1_RUN_DIR)])
+    assert code == 2
+
+    captured = capsys.readouterr()
+    assert "REFUSED: Wave-1 rows cannot be re-keyed from themselves" in captured.err
+
+
+# ------------------------------------------------- Tool-calling & final_in_exchange
+
+
+def test_tool_calling_arm_compares_only_final_in_exchange(ordinal_scales):
+    """When a tool-calling arm has multiple assistant rows sharing an exchange_index,
+
+    only final_in_exchange=True is compared to avoid one-to-many pairing.
+    """
+    rows = [
+        # Arm: colloquial has 2 assistant rows in exchange 1 (turn 2 is tool call, turn 4 is final)
+        {
+            "seed_id": "pw-petri-w2-tool-clarify",
+            "arm": "colloquial",
+            "exchange_index": 1,
+            "turn_id": 2,
+            "final_in_exchange": False,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "self_care",
+            "row_eligible": True,
+        },
+        {
+            "seed_id": "pw-petri-w2-tool-clarify",
+            "arm": "colloquial",
+            "exchange_index": 1,
+            "turn_id": 4,
+            "final_in_exchange": True,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "urgent",
+            "row_eligible": True,
+        },
+        # Arm: clinical has 1 final row in exchange 1
+        {
+            "seed_id": "pw-petri-w2-tool-clarify",
+            "arm": "clinical",
+            "exchange_index": 1,
+            "turn_id": 2,
+            "final_in_exchange": True,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "urgent",
+            "row_eligible": True,
+        },
+        # Arm: lay_careful has 1 final row in exchange 1
+        {
+            "seed_id": "pw-petri-w2-tool-clarify",
+            "arm": "lay_careful",
+            "exchange_index": 1,
+            "turn_id": 2,
+            "final_in_exchange": True,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "routine",
+            "row_eligible": True,
+        },
+    ]
+
+    analysis = analyze_seed("pw-petri-w2-tool-clarify", _cells(rows), ordinal_scales, tier_rubric_digest=None, declared_values=None)
+    contrast = analysis.dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+
+    # Exactly 1 comparison row for exchange 1
+    assert len(contrast.rows) == 1
+    row = contrast.rows[0]
+    assert row.exchange_index == 1
+    # arm A (colloquial) should be "urgent" (turn 4, final_in_exchange=True), NOT "self_care" (turn 2)
+    assert row.arm_A_value == "urgent"
+    assert row.arm_B_value == "urgent"
+    assert row.same_or_different is True
+    assert row.comparison == "same"
+
+    assert contrast.counts.n_compared == 1
+    assert contrast.counts.n_same == 1
+    assert contrast.counts.n_differing == 0
+    assert contrast.counts.n_refused == 0
+
+
+def test_row_missing_final_in_exchange_is_refused_by_name(ordinal_scales):
+    """A row missing final_in_exchange must be refused by name, not defaulted to True."""
+    rows = [
+        # Arm colloquial is MISSING final_in_exchange
+        {
+            "seed_id": "pw-petri-w2-test",
+            "arm": "colloquial",
+            "exchange_index": 1,
+            "turn_id": 2,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "urgent",
+            "row_eligible": True,
+        },
+        {
+            "seed_id": "pw-petri-w2-test",
+            "arm": "clinical",
+            "exchange_index": 1,
+            "turn_id": 2,
+            "final_in_exchange": True,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "urgent",
+            "row_eligible": True,
+        },
+        {
+            "seed_id": "pw-petri-w2-test",
+            "arm": "lay_careful",
+            "exchange_index": 1,
+            "turn_id": 2,
+            "final_in_exchange": True,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "urgent",
+            "row_eligible": True,
+        },
+    ]
+
+    analysis = analyze_seed("pw-petri-w2-test", _cells(rows), ordinal_scales, tier_rubric_digest=None, declared_values=None)
+    contrast = analysis.dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+
+    assert contrast.counts.n_exchanges_total == 1
+    assert contrast.counts.n_compared == 0
+    assert contrast.counts.n_refused == 1
+
+    assert len(contrast.refusals) == 1
+    refusal = contrast.refusals[0]
+    assert refusal["exchange_index"] == 1
+    assert "arm 'colloquial' row (turn 2) in exchange 1 missing 'final_in_exchange'" in refusal["reason"]
+
+    row_0 = contrast.rows[0]
+    assert row_0.comparison == "refused"
+    assert row_0.same_or_different is None
+    assert row_0.refusal_reason == refusal["reason"]
+
+
+def test_two_final_rows_in_one_exchange_for_one_arm_refused_by_name(ordinal_scales):
+    """Two final rows in one exchange for one arm must be refused by name, not resolved to latest turn."""
+    rows = [
+        # Arm colloquial has TWO rows with final_in_exchange=True in exchange 1
+        {
+            "seed_id": "pw-petri-w2-test",
+            "arm": "colloquial",
+            "exchange_index": 1,
+            "turn_id": 2,
+            "final_in_exchange": True,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "routine",
+            "row_eligible": True,
+        },
+        {
+            "seed_id": "pw-petri-w2-test",
+            "arm": "colloquial",
+            "exchange_index": 1,
+            "turn_id": 4,
+            "final_in_exchange": True,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "urgent",
+            "row_eligible": True,
+        },
+        {
+            "seed_id": "pw-petri-w2-test",
+            "arm": "clinical",
+            "exchange_index": 1,
+            "turn_id": 2,
+            "final_in_exchange": True,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "urgent",
+            "row_eligible": True,
+        },
+        {
+            "seed_id": "pw-petri-w2-test",
+            "arm": "lay_careful",
+            "exchange_index": 1,
+            "turn_id": 2,
+            "final_in_exchange": True,
+            "kind": "tier",
+            "key": "response_only",
+            "value": "urgent",
+            "row_eligible": True,
+        },
+    ]
+
+    analysis = analyze_seed("pw-petri-w2-test", _cells(rows), ordinal_scales, tier_rubric_digest=None, declared_values=None)
+    contrast = analysis.dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+
+    assert contrast.counts.n_exchanges_total == 1
+    assert contrast.counts.n_compared == 0
+    assert contrast.counts.n_refused == 1
+
+    assert len(contrast.refusals) == 1
+    refusal = contrast.refusals[0]
+    assert refusal["exchange_index"] == 1
+    assert "arm 'colloquial' has multiple rows with final_in_exchange=True in exchange 1 (turns 2 and 4)" in refusal["reason"]
+
+    row_0 = contrast.rows[0]
+    assert row_0.comparison == "refused"
+    assert row_0.same_or_different is None
+    assert row_0.refusal_reason == refusal["reason"]
+
+
+@pytest.mark.parametrize("broken", [
+    {"exchange_index": None},
+    {"exchange_index": "2"},
+    {"arm": None},
+    {"key": ""},
+])
+def test_partially_malformed_rows_are_refused_not_skipped(ordinal_scales, broken):
+    """One malformed row among valid ones used to be skipped silently (only an all-null file was
+    refused), so the report completed with reduced coverage. It is now refused by name with a
+    count (Codex F5 on PR #30)."""
+    base = {"seed_id": "s1", "final_in_exchange": True, "kind": "tier", "key": "response_only",
+            "value": "v", "row_eligible": True}
+    rows = [{**base, "arm": arm, "exchange_index": 1, "turn_id": 2}
+            for arm in ("colloquial", "clinical", "lay_careful")]
+    rows.append({**base, "arm": "clinical", "exchange_index": 2, "turn_id": 4, **broken})
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_seed("s1", _cells(rows), ordinal_scales, tier_rubric_digest=None, declared_values=None)
+
+    msg = str(exc_info.value)
+    assert "1 of 4 rows cannot be joined and are refused, not skipped" in msg
+    assert "turn 4" in msg
+    assert f"lacks {next(iter(broken))}" in msg
+
+
+def test_rows_without_seed_id_are_refused_not_skipped(tmp_path, capsys):
+    """A row with no seed_id used to be dropped before grouping; it is refused with a count."""
+    rows = _three_arms()
+    rows.append({**_three_arms(exchanges=(2,))[1], "seed_id": ""})
+    run_dir = _write_run(tmp_path, "run-no-seed", rows)
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    assert "1 of 4 rows carry no seed_id and are refused, not skipped" in str(exc_info.value)
+
+    assert main(["--run-dir", str(run_dir)]) == 2
+    assert "REFUSED: 1 of 4 rows carry no seed_id" in capsys.readouterr().err
+
+
+# --------------------------------------------------------- Missing Exchange Refusal
+
+
+def test_missing_exchange_refused_by_name(ordinal_scales):
+    """An arm missing an exchange must be refused by name, never silently dropped."""
+    rows = [
+        # Exchange 1 present in all 3 arms
+        {"seed_id": "pw-petri-w2-reassurance-decay", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+        {"seed_id": "pw-petri-w2-reassurance-decay", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+        {"seed_id": "pw-petri-w2-reassurance-decay", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+        # Exchange 2 present in colloquial and clinical, but MISSING in lay_careful
+        {"seed_id": "pw-petri-w2-reassurance-decay", "arm": "colloquial", "exchange_index": 2, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "self_care", "row_eligible": True},
+        {"seed_id": "pw-petri-w2-reassurance-decay", "arm": "clinical", "exchange_index": 2, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "self_care", "row_eligible": True},
+    ]
+
+    analysis = analyze_seed("pw-petri-w2-reassurance-decay", _cells(rows), ordinal_scales, tier_rubric_digest=None, declared_values=None)
+    dim = analysis.dimensions["response_only"]
+
+    # colloquial_vs_clinical has both exchanges present
+    c_estimand = dim.contrasts["colloquial_vs_clinical"]
+    assert c_estimand.counts.n_compared == 2
+    assert c_estimand.counts.n_refused == 0
+
+    # lay_careful_vs_colloquial is missing exchange 2 in lay_careful
+    c_orth = dim.contrasts["lay_careful_vs_colloquial"]
+    assert c_orth.counts.n_exchanges_total == 2
+    assert c_orth.counts.n_compared == 1
+    assert c_orth.counts.n_refused == 1
+
+    assert len(c_orth.refusals) == 1
+    refusal = c_orth.refusals[0]
+    assert refusal["exchange_index"] == 2
+    assert "exchange 2 refused: arm 'lay_careful' has no eligible row" in refusal["reason"]
+
+    # In the table, exchange 2 is explicitly recorded as refused
+    row_2 = next(r for r in c_orth.rows if r.exchange_index == 2)
+    assert row_2.comparison == "refused"
+    assert row_2.same_or_different is None
+    assert row_2.refusal_reason == refusal["reason"]
+
+
+# ------------------------------------------------------------- not_applicable rows
+
+
+def test_not_applicable_rows_counted_as_uncompared_never_dropped_or_compared_as_level(ordinal_scales):
+    """not_applicable rows must be counted as not compared / refused,
+
+    never dropped silently and never matched as an agreement level.
+    """
+    rows = [
+        # Exchange 1: both valid
+        {"seed_id": "pw-petri-w2-referral-specificity", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "assertion_handling", "value": "qualified_or_uncertain", "row_eligible": True},
+        {"seed_id": "pw-petri-w2-referral-specificity", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "assertion_handling", "value": "qualified_or_uncertain", "row_eligible": True},
+        {"seed_id": "pw-petri-w2-referral-specificity", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "assertion_handling", "value": "corrected_or_rejected", "row_eligible": True},
+        # Exchange 2: colloquial has not_applicable, clinical has not_applicable
+        {"seed_id": "pw-petri-w2-referral-specificity", "arm": "colloquial", "exchange_index": 2, "final_in_exchange": True, "kind": "outcome", "key": "assertion_handling", "value": "not_applicable", "not_applicable_reason": "before assertion turn", "row_eligible": True},
+        {"seed_id": "pw-petri-w2-referral-specificity", "arm": "clinical", "exchange_index": 2, "final_in_exchange": True, "kind": "outcome", "key": "assertion_handling", "value": "not_applicable", "not_applicable_reason": "before assertion turn", "row_eligible": True},
+        {"seed_id": "pw-petri-w2-referral-specificity", "arm": "lay_careful", "exchange_index": 2, "final_in_exchange": True, "kind": "outcome", "key": "assertion_handling", "value": "accepted", "row_eligible": True},
+    ]
+
+    analysis = analyze_seed("pw-petri-w2-referral-specificity", _cells(rows), ordinal_scales, tier_rubric_digest=None, declared_values=None)
+    contrast = analysis.dimensions["assertion_handling"].contrasts["colloquial_vs_clinical"]
+
+    assert contrast.counts.n_exchanges_total == 2
+    assert contrast.counts.n_compared == 1
+    assert contrast.counts.n_same == 1
+    assert contrast.counts.n_differing == 0
+    assert contrast.counts.n_refused == 1
+
+    # Exchange 2 must NOT be counted as same (even though both arms are not_applicable)
+    row_2 = next(r for r in contrast.rows if r.exchange_index == 2)
+    assert row_2.same_or_different is None
+    assert row_2.comparison == "refused"
+    assert "not_applicable" in str(row_2.refusal_reason)
+    assert "before assertion turn" in str(row_2.refusal_reason)
+
+
+def test_repository_shaped_not_applicable_rows_keep_their_reason(ordinal_scales):
+    """judge_runner.analysis_rows sets row_eligible False on every not_applicable row, so
+    the not_applicable test must run before the generic ineligibility test or the reason is lost
+    (Codex F7 on PR #30)."""
+    base = {"seed_id": "s1", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome",
+            "key": "assertion_handling"}
+    rows = [
+        {**base, "arm": "colloquial", "value": "not_applicable", "not_applicable_reason": "gate reason A",
+         "row_eligible": False},
+        {**base, "arm": "clinical", "value": None, "judge_error": "synthetic parse error", "row_eligible": False},
+        {**base, "arm": "lay_careful", "value": "not_applicable", "not_applicable_reason": "gate reason A",
+         "row_eligible": False},
+    ]
+
+    dim = analyze_seed("s1", _cells(rows), ordinal_scales, tier_rubric_digest=None, declared_values=None).dimensions["assertion_handling"]
+
+    mixed = dim.contrasts["colloquial_vs_clinical"].refusals[0]["reason"]
+    assert "arm 'colloquial' is not_applicable (gate reason A)" in mixed
+    assert "arm 'clinical' ineligible (synthetic parse error)" in mixed
+
+    both_na = dim.contrasts["lay_careful_vs_colloquial"].refusals[0]["reason"]
+    assert "arm 'lay_careful' is not_applicable (gate reason A)" in both_na
+    assert "arm 'colloquial' is not_applicable (gate reason A)" in both_na
+    assert "ineligible" not in both_na
+
+
+# ------------------------------------------------- 2x3 Identity Crossed Contrasts
+
+
+def test_identity_seed_emits_within_identity_and_within_register_contrasts(ordinal_scales):
+    """pw-petri-w2-identity-register (2x3 arms) must emit both:
+
+    - 3 pairwise contrasts within each identity (patient, clinician)
+    - the identity contrast within each register (colloquial, clinical, lay_careful)
+    Total: 6 + 3 = 9 contrasts.
+    """
+    rows = []
+    # 6 arms, 2 exchanges each
+    arms = [
+        "patient_colloquial", "patient_clinical", "patient_lay_careful",
+        "clinician_colloquial", "clinician_clinical", "clinician_lay_careful",
+    ]
+    for arm in arms:
+        for ex in (1, 2):
+            val = "urgent" if "clinical" in arm else "routine"
+            rows.append({
+                "seed_id": "pw-petri-w2-identity-register",
+                "arm": arm,
+                "exchange_index": ex,
+                "final_in_exchange": True,
+                "kind": "tier",
+                "key": "response_only",
+                "value": val,
+                "row_eligible": True,
+            })
+
+    analysis = analyze_seed("pw-petri-w2-identity-register", _cells(rows), ordinal_scales, tier_rubric_digest=None, declared_values=None)
+    assert analysis.is_identity_seed is True
+    assert set(analysis.arms_present) == set(arms)
+
+    dim = analysis.dimensions["response_only"]
+    contrasts = dim.contrasts
+
+    expected_contrasts = [
+        # Within patient
+        "patient:colloquial_vs_clinical",
+        "patient:lay_careful_vs_colloquial",
+        "patient:lay_careful_vs_clinical",
+        # Within clinician
+        "clinician:colloquial_vs_clinical",
+        "clinician:lay_careful_vs_colloquial",
+        "clinician:lay_careful_vs_clinical",
+        # Identity contrast within each register
+        "colloquial:patient_vs_clinician",
+        "clinical:patient_vs_clinician",
+        "lay_careful:patient_vs_clinician",
+    ]
+
+    for ec in expected_contrasts:
+        assert ec in contrasts, f"Missing expected contrast {ec}"
+        c = contrasts[ec]
+        assert c.counts.n_compared == 2
+        assert c.counts.n_refused == 0
+
+
+# ---------------------------------------------------- Ordinal Scales and Direction
+
+
+def test_ordinal_scale_direction_upgrade_downgrade(ordinal_scales):
+    """Ordinal dimensions report upgrade/downgrade against registered order."""
+    # Scale from rubric: self_care < routine < urgent < emergency
+    rows = [
+        # Exchange 1: colloquial urgent vs clinical routine -> upgrade (urgent > routine)
+        {"seed_id": "pw-petri-w2-tool-clarify", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "urgent", "row_eligible": True},
+        {"seed_id": "pw-petri-w2-tool-clarify", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "routine", "row_eligible": True},
+        {"seed_id": "pw-petri-w2-tool-clarify", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "self_care", "row_eligible": True},
+        # Exchange 2: colloquial self_care vs clinical emergency -> downgrade (self_care < emergency)
+        {"seed_id": "pw-petri-w2-tool-clarify", "arm": "colloquial", "exchange_index": 2, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "self_care", "row_eligible": True},
+        {"seed_id": "pw-petri-w2-tool-clarify", "arm": "clinical", "exchange_index": 2, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "emergency", "row_eligible": True},
+        {"seed_id": "pw-petri-w2-tool-clarify", "arm": "lay_careful", "exchange_index": 2, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "self_care", "row_eligible": True},
+        # Exchange 3: colloquial routine vs clinical routine -> same
+        {"seed_id": "pw-petri-w2-tool-clarify", "arm": "colloquial", "exchange_index": 3, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "routine", "row_eligible": True},
+        {"seed_id": "pw-petri-w2-tool-clarify", "arm": "clinical", "exchange_index": 3, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "routine", "row_eligible": True},
+        {"seed_id": "pw-petri-w2-tool-clarify", "arm": "lay_careful", "exchange_index": 3, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "routine", "row_eligible": True},
+    ]
+
+    analysis = analyze_seed("pw-petri-w2-tool-clarify", _cells(rows), ordinal_scales, tier_rubric_digest=None, declared_values=None)
+    contrast = analysis.dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+
+    assert contrast.is_ordinal is True
+    assert contrast.counts.n_compared == 3
+    assert contrast.counts.n_same == 1
+    assert contrast.counts.n_differing == 2
+    assert contrast.counts.n_upgrade == 1    # Exchange 1: urgent > routine
+    assert contrast.counts.n_downgrade == 1  # Exchange 2: self_care < emergency
+    assert contrast.counts.n_refused == 0
+
+    assert contrast.rows[0].comparison == "upgrade"
+    assert contrast.rows[0].same_or_different is False
+    assert contrast.rows[1].comparison == "downgrade"
+    assert contrast.rows[1].same_or_different is False
+    assert contrast.rows[2].comparison == "same"
+    assert contrast.rows[2].same_or_different is True
+
+
+def test_value_off_the_ordinal_scale_is_refused_by_name(ordinal_scales):
+    """A value the configured ordinal scale does not list has no rank: the exchange is refused
+    by name, never counted as a direction-less "different" (Codex F10 on PR #30)."""
+    tiers = ordinal_scales["response_only"]
+    base = {"seed_id": "s1", "final_in_exchange": True, "kind": "tier", "key": "response_only", "row_eligible": True}
+    rows = [
+        # exchange 1: one arm on the scale, one off it
+        {**base, "arm": "colloquial", "exchange_index": 1, "value": tiers[0]},
+        {**base, "arm": "clinical", "exchange_index": 1, "value": "value_not_on_scale"},
+        {**base, "arm": "lay_careful", "exchange_index": 1, "value": tiers[0]},
+        # exchange 2: both arms carry the same off-scale value, which is not "same" either
+        {**base, "arm": "colloquial", "exchange_index": 2, "value": "value_not_on_scale"},
+        {**base, "arm": "clinical", "exchange_index": 2, "value": "value_not_on_scale"},
+        {**base, "arm": "lay_careful", "exchange_index": 2, "value": tiers[1]},
+    ]
+
+    contrast = analyze_seed("s1", _cells(rows), ordinal_scales, tier_rubric_digest=None, declared_values=None).dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+
+    c = contrast.counts
+    assert (c.n_compared, c.n_differing, c.n_same, c.n_refused) == (0, 0, 0, 2)
+    assert c.n_upgrade + c.n_downgrade == c.n_differing
+    assert "arm 'clinical' value 'value_not_on_scale' is not on the registered ordinal scale" in contrast.refusals[0]["reason"]
+    assert "arm 'colloquial' value 'value_not_on_scale'" in contrast.refusals[1]["reason"]
+    assert all(r.comparison == "refused" for r in contrast.rows)
+
+
+def test_recommendation_specificity_ordinal_mapping():
+    """When an ordinal scale is provided, contrasts report upgrade/downgrade against that scale."""
+    custom_scales = {"recommendation_specificity": ["none", "generic_deferral", "specific"]}
+    rows = [
+        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "specific", "row_eligible": True},
+        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "generic_deferral", "row_eligible": True},
+        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "none", "row_eligible": True},
+    ]
+
+    analysis = analyze_seed("s1", _cells(rows), custom_scales, tier_rubric_digest=None, declared_values=None)
+    contrast = analysis.dimensions["recommendation_specificity"].contrasts["colloquial_vs_clinical"]
+
+    assert contrast.is_ordinal is True
+    assert contrast.counts.n_upgrade == 1
+    assert contrast.counts.n_downgrade == 0
+    assert contrast.rows[0].comparison == "upgrade"
+
+
+def test_dimensions_without_ordinal_declaration_default_to_nominal(ordinal_scales):
+    """Dimensions not declared ordinal in data files are treated as nominal (same/different only)."""
+    assert "recommendation_specificity" not in ordinal_scales
+
+    rows = [
+        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "specific", "row_eligible": True},
+        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "generic_deferral", "row_eligible": True},
+        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "none", "row_eligible": True},
+    ]
+
+    analysis = analyze_seed("s1", _cells(rows), ordinal_scales, tier_rubric_digest=None, declared_values=None)
+    contrast = analysis.dimensions["recommendation_specificity"].contrasts["colloquial_vs_clinical"]
+
+    assert contrast.is_ordinal is False
+    assert contrast.counts.n_upgrade is None
+    assert contrast.counts.n_downgrade is None
+    assert contrast.counts.n_differing == 1
+    assert contrast.rows[0].comparison == "different"
+
+
+UNDECLARED = "value_not_declared"  # a synthetic value id no registry declares
+
+
+def test_nominal_value_the_registry_does_not_declare_is_refused_by_name(tmp_path):
+    """The off-vocabulary check ran only for ordinal dimensions, so an authenticated nominal judgment carrying a value
+    outside the registry's declared values was counted as "different", or as "same" when both arms carried it (Codex
+    review of 41c864ca on PR #30). Such an exchange is now refused by name; a declared value is still compared."""
+    assert OUTCOME_KEY not in load_ordinal_scales()  # nominal in the loaded registry
+    exchange_1 = _outcome_arms()
+    exchange_1[1] = {**exchange_1[1], "value": UNDECLARED}  # clinical
+    exchange_2 = [{**r, "exchange_index": 2, "turn_id": 4, "value": UNDECLARED} for r in _outcome_arms()]
+    exchange_3 = [{**r, "exchange_index": 3, "turn_id": 6} for r in _outcome_arms()]
+    run_dir = _write_run(tmp_path, "run-undeclared", exchange_1 + exchange_2 + exchange_3)
+
+    report = analyze_run_directories([run_dir])
+
+    contrast = report.seeds["s1"].dimensions[OUTCOME_KEY].contrasts["colloquial_vs_clinical"]
+    c = contrast.counts
+    assert (c.n_exchanges_total, c.n_compared, c.n_same, c.n_differing, c.n_refused) == (3, 1, 1, 0, 2)
+    assert [r.comparison for r in contrast.rows] == ["refused", "refused", "same"]
+    assert contrast.refusals[0]["reason"].endswith(
+        f"exchange 1 refused: arm 'clinical' value '{UNDECLARED}' is not a declared value of the registered dimension")
+    assert (f"arm 'colloquial' value '{UNDECLARED}' is not a declared value of the registered dimension, "
+            f"arm 'clinical' value '{UNDECLARED}' is not a declared value") in contrast.refusals[1]["reason"]
+
+
+def test_nominal_dimension_with_no_declared_values_refuses_every_exchange(ordinal_scales):
+    """A nominal dimension the declared values do not list has nothing to check against, so none of its exchanges is
+    counted; a not_applicable row is still reported as not_applicable, and ordinal dimensions keep their scale check."""
+    declared = load_declared_values()
+    assert declared[OUTCOME_KEY] == OUTCOME_VALUES == next(
+        d["values"] for d in json.loads(DEFAULT_OUTCOME_REGISTRY.read_text(encoding="utf-8"))["dimensions"]
+        if d["id"] == OUTCOME_KEY)
+    assert declared["response_only"] == TIERS
+    rows = _outcome_arms() + [{**r, "exchange_index": 2, "turn_id": 4, "value": "not_applicable",
+                               "not_applicable_reason": "synthetic reason"} for r in _outcome_arms()] + _three_arms()
+
+    lacking = {k: v for k, v in declared.items() if k != OUTCOME_KEY}
+    dims = analyze_seed("s1", _cells(rows), ordinal_scales, tier_rubric_digest=None, declared_values=lacking).dimensions
+
+    contrast = dims[OUTCOME_KEY].contrasts["colloquial_vs_clinical"]
+    assert (contrast.counts.n_compared, contrast.counts.n_refused) == (0, 2)
+    assert contrast.refusals[0]["reason"].endswith(
+        f"value '{OUTCOME_VALUES[0]}' is not a declared value of the registered dimension (the loaded registry "
+        "declares no values for it)")
+    assert "is not_applicable (synthetic reason)" in contrast.refusals[1]["reason"]
+    assert dims["response_only"].contrasts["colloquial_vs_clinical"].counts.n_compared == 1
+
+    full = analyze_seed("s1", _cells(rows), ordinal_scales, tier_rubric_digest=None, declared_values=declared)
+    assert full.dimensions[OUTCOME_KEY].contrasts["colloquial_vs_clinical"].counts.n_compared == 1
+
+
+# ------------------------------------------------ Provenance & Markdown Output
+
+
+def test_provenance_and_header_invariants(tmp_path):
+    """Analysis report carries the required header and provenance block."""
+    registry_sha = sha256_file(DEFAULT_OUTCOME_REGISTRY)
+    run_dir = _write_run(tmp_path, "run-synth-123", _three_arms(), seed_digests={"s1": "e" * 64})
+
+    report = analyze_run_directories([run_dir])
+
+    assert report.header.startswith(HEADER_NOTE)
+    assert "one epoch is structure, not an estimate" in report.header
+    assert "no confidence intervals or p-values emitted" in report.header
+    assert "Ordinal dimensions" in report.header
+    assert "Nominal dimensions" in report.header
+
+    prov = report.provenance
+    assert prov.run_ids == ["run-synth-123"]
+    sealed = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert prov.manifest_identity_sha256 == [sealed["chain"]["identity_sha256"]] == [identity_digest(sealed)]
+    assert prov.engine_commits == [_hex("commit-run-synth-123", 40)]
+    assert prov.judge_of_record == [JUDGE]
+    assert prov.seed_digests == {"s1": "e" * 64}
+    assert prov.outcome_registry_sha256 == registry_sha
+    assert prov.manifest_outcome_registry_sha256 == {"run-synth-123": registry_sha}
+    assert prov.rubric_sha256 == sha256_file(DEFAULT_ADVICE_RUBRIC)
+    assert prov.rubric_canonical_digest == RUBRIC_DIGEST
+    assert prov.tier_rubric_digests == {"run-synth-123": {RUBRIC_DIGEST: 3}}
+
+    md = format_markdown_summary(report)
+    assert "# " + HEADER_NOTE in md
+    assert "run-synth-123" in md
+    assert f"- **Judge of record**: {JUDGE}" in md
+    assert "- **Outcome registry**: `docs/framework/outcome_dimensions.draft.json`" in md
+    assert "colloquial_vs_clinical" in md
+
+
+def test_markdown_output_carries_complete_provenance(tmp_path):
+    """The default output is Markdown, so it must identify the exact inputs on its own: full digests for the
+    registry, the rubric file, every seed and every run's manifest, bound judgments and analysis rows
+    (Codex F11 on PR #30)."""
+    run_dirs = [_write_run(tmp_path, "run-a", _three_arms(), seed_digests={"s1": "a" * 64}),
+                _write_run(tmp_path, "run-b", _three_arms(seed_id="s2"), seed_digests={"s2": "b" * 64})]
+
+    report = analyze_run_directories(run_dirs)
+    md = format_markdown_summary(report)
+    prov = report.provenance
+
+    assert f"sha256 `{sha256_file(DEFAULT_OUTCOME_REGISTRY)}`" in md
+    assert f"sha256 `{sha256_file(DEFAULT_ADVICE_RUBRIC)}`" in md
+    assert f"canonical digest `{RUBRIC_DIGEST}`" in md
+    assert f"- `s1`: `{'a' * 64}`" in md and f"- `s2`: `{'b' * 64}`" in md
+    for run_dir in run_dirs:
+        rid = run_dir.name
+        assert f"- `{rid}`: manifest outcome registry sha256 `{prov.manifest_outcome_registry_sha256[rid]}`" in md
+        assert f"judgments.jsonl sha256 `{sha256_file(run_dir / 'judgments.jsonl')}` (bound)" in md
+        assert f"analysis_rows.jsonl sha256 `{sha256_file(run_dir / 'analysis_rows.jsonl')}`" in md
+
+
+def test_run_with_only_raw_judgments_is_refused_with_the_derivation_step(tmp_path, capsys):
+    """judge_runner writes judgments.jsonl without `arm` (analysis_rows() adds it from the manifest), so
+    reading raw judgments misreported every Wave-2 run as Wave 1. The fallback is gone: the run is refused
+    with the command that derives the rows (Codex F4 on PR #30)."""
+    run_dir = _write_run(tmp_path, "run-raw-only", _three_arms(), write_analysis_rows=False)
+    judgments = (run_dir / "judgments.jsonl").read_text(encoding="utf-8")
+    assert '"arm"' not in judgments  # the labels judge_runner puts on a judgment carry no arm
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    msg = str(exc_info.value)
+    assert "has no analysis_rows.jsonl" in msg
+    assert "python -m scripts.petri_audit.cli analyze" in msg
+
+    assert main(["--run-dir", str(run_dir)]) == 2
+    assert "REFUSED: Run directory" in capsys.readouterr().err
+
+
+def test_conflicting_seed_digests_across_runs_are_refused(tmp_path, capsys):
+    """Two runs that record different digests for one seed_id would be pooled under that id while the
+    provenance kept only the last digest; the analysis refuses instead (Codex F9 on PR #30)."""
+    run_dirs = [_write_run(tmp_path, name, _three_arms(), seed_digests={"s1": seed_sha})
+                for name, seed_sha in (("run-a", "a" * 64), ("run-b", "b" * 64))]
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories(run_dirs)
+    msg = str(exc_info.value)
+    assert "seed 's1'" in msg and "a" * 64 in msg and "b" * 64 in msg and "run-b" in msg
+
+    assert main(["--run-dir", *map(str, run_dirs)]) == 2
+    assert "REFUSED: seed 's1' has digest" in capsys.readouterr().err
+
+
+# ------------------------------------------------ experimental cells (Codex F1)
+
+
+def test_two_epochs_in_one_run_are_two_cells_not_duplicate_final_rows(tmp_path):
+    """Codex's reproduction: epoch-1 and epoch-2 rows for each arm at exchange 1 used to collide on the
+    arm/dimension/exchange key and be refused as duplicate final rows, yielding zero comparisons."""
+    rows = [*_three_arms(epoch=1, value=TIERS[1]), *_three_arms(epoch=2, value=TIERS[2])]
+    run_dir = _write_run(tmp_path, "run-two-epochs", rows)
+
+    report = analyze_run_directories([run_dir])
+
+    contrast = report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+    assert (contrast.counts.n_exchanges_total, contrast.counts.n_compared, contrast.counts.n_refused) == (2, 2, 0)
+    assert [(r.run_id, r.epoch, r.branch_id, r.exchange_index) for r in contrast.rows] == [
+        ("run-two-epochs", 1, "root", 1), ("run-two-epochs", 2, "root", 1)]
+    assert [r.arm_A_value for r in contrast.rows] == [TIERS[1], TIERS[2]]
+
+
+def test_same_seed_in_two_runs_is_two_cells(tmp_path):
+    """Every run's trees restart at epoch 1, so combining run directories needs the run in the cell key."""
+    run_dirs = [_write_run(tmp_path, name, _three_arms()) for name in ("run-a", "run-b")]
+
+    report = analyze_run_directories(run_dirs)
+
+    contrast = report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+    assert (contrast.counts.n_compared, contrast.counts.n_refused) == (2, 0)
+    assert sorted(r.run_id for r in contrast.rows) == ["run-a", "run-b"]
+
+
+def test_branches_are_separate_cells(ordinal_scales):
+    """A branch shares its root's exchange ordinals; its rows pair only with the same branch of the other arm."""
+    base = {"seed_id": "s1", "final_in_exchange": True, "kind": "tier", "key": "response_only", "exchange_index": 3}
+    rows = [{**base, "arm": arm, "branch_id": branch, "value": TIERS[i]}
+            for i, branch in enumerate(("root", "pressure_branch"))
+            for arm in ("colloquial", "clinical", "lay_careful")]
+
+    analysis = analyze_seed("s1", _cells(rows), ordinal_scales, tier_rubric_digest=None, declared_values=None)
+
+    contrast = analysis.dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+    assert (contrast.counts.n_compared, contrast.counts.n_same, contrast.counts.n_refused) == (2, 2, 0)
+    assert {r.branch_id for r in contrast.rows} == {"root", "pressure_branch"}
+
+
+VARIANTS = ("variant_a", "variant_b")  # synthetic system-prompt variant ids
+
+
+def test_system_prompt_variants_are_separate_cells(tmp_path):
+    """A seed whose system_prompt policy is "variants" runs one sample per (arm, variant), and every variant has the
+    same run, epoch, branch and exchange ordinals. Keyed without the variant, each arm's second final row collided with
+    its first and the exchange was refused as a duplicate, so no comparison survived (Codex review of 41c864ca on PR
+    #30). Each variant is now its own cell: arms pair within a variant, never across variants."""
+    rows = [{**r, "system_prompt_variant": variant, "value": TIERS[i]}
+            for i, variant in enumerate(VARIANTS) for r in _three_arms()]
+    run_dir = _write_run(tmp_path, "run-variants", rows)
+
+    report = analyze_run_directories([run_dir])
+
+    contrast = report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+    c = contrast.counts
+    assert (c.n_exchanges_total, c.n_compared, c.n_same, c.n_refused) == (2, 2, 2, 0)
+    assert [(r.system_prompt_variant, r.arm_A_value, r.arm_B_value) for r in contrast.rows] == [
+        (VARIANTS[0], TIERS[0], TIERS[0]), (VARIANTS[1], TIERS[1], TIERS[1])]
+    md = format_markdown_summary(report)
+    assert f"| run-variants | 1 | {VARIANTS[0]} | root | 1 | {TIERS[0]} | {TIERS[0]} | same |" in md
+
+    # one arm lacks a variant's row: that exchange is refused by name within its variant, the other is compared
+    rows = [r for r in rows if not (r["arm"] == "clinical" and r["system_prompt_variant"] == VARIANTS[1])]
+    report = analyze_run_directories([_write_run(tmp_path, "run-variant-missing", rows)])
+    contrast = report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+    assert (contrast.counts.n_compared, contrast.counts.n_refused) == (1, 1)
+    assert contrast.refusals[0]["system_prompt_variant"] == VARIANTS[1]
+    assert (f"epoch 1 system prompt variant '{VARIANTS[1]}' branch 'root': exchange 1 refused: arm 'clinical' has no "
+            "eligible row") in contrast.refusals[0]["reason"]
+
+
+@pytest.mark.parametrize("variant", ["absent", "", 7], ids=["absent", "empty", "not-a-string"])
+def test_row_without_a_usable_system_prompt_variant_is_refused_not_placed(ordinal_scales, variant):
+    """The variant is part of the cell, so a row must carry it: null for a seed without variants, else its id."""
+    rows = _cells(_three_arms())
+    if variant == "absent":
+        del rows[1]["system_prompt_variant"]
+    else:
+        rows[1]["system_prompt_variant"] = variant
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_seed("s1", rows, ordinal_scales, tier_rubric_digest=None, declared_values=None)
+    assert "1 of 3 rows cannot be joined" in str(exc_info.value)
+    assert "lacks system_prompt_variant" in str(exc_info.value)
+
+
+def test_exchange_denominator_is_scoped_to_each_dimension(ordinal_scales):
+    """The contextual tier is planned only from the second assistant message, so exchange 1 has no contextual
+    rows by design; it must not be charged to that dimension as a refusal (Codex F6 on PR #30)."""
+    base = {"seed_id": "s1", "final_in_exchange": True, "kind": "tier", "value": TIERS[1]}
+    rows = [{**base, "arm": arm, "key": "response_only", "exchange_index": ex}
+            for ex in (1, 2) for arm in ("colloquial", "clinical", "lay_careful")]
+    rows += [{**base, "arm": arm, "key": "contextual", "exchange_index": 2}
+             for arm in ("colloquial", "clinical", "lay_careful")]
+
+    dims = analyze_seed("s1", _cells(rows), ordinal_scales, tier_rubric_digest=None, declared_values=None).dimensions
+
+    contextual = dims["contextual"].contrasts["colloquial_vs_clinical"].counts
+    assert (contextual.n_exchanges_total, contextual.n_compared, contextual.n_refused) == (1, 1, 0)
+    response_only = dims["response_only"].contrasts["colloquial_vs_clinical"].counts
+    assert (response_only.n_exchanges_total, response_only.n_compared, response_only.n_refused) == (2, 2, 0)
+
+
+def test_exchange_one_arm_has_for_a_dimension_is_still_refused_in_the_other(ordinal_scales):
+    """Scoping to the dimension keeps the named refusal when one arm has the dimension at an exchange and
+    its partner does not."""
+    base = {"seed_id": "s1", "final_in_exchange": True, "kind": "tier", "value": TIERS[1], "key": "contextual"}
+    rows = [{**base, "arm": arm, "exchange_index": 2} for arm in ("colloquial", "clinical", "lay_careful")]
+    rows.append({**base, "arm": "colloquial", "exchange_index": 1})
+
+    contrast = analyze_seed("s1", _cells(rows), ordinal_scales,
+                            tier_rubric_digest=None, declared_values=None).dimensions["contextual"].contrasts["colloquial_vs_clinical"]
+
+    assert (contrast.counts.n_exchanges_total, contrast.counts.n_refused) == (2, 1)
+    assert "exchange 1 refused: arm 'clinical' has no eligible row" in contrast.refusals[0]["reason"]
+
+
+def test_same_run_given_twice_is_refused(tmp_path):
+    run_dir = _write_run(tmp_path, "run-twice", _three_arms())
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir, run_dir])
+    assert "run 'run-twice' is given twice" in str(exc_info.value)
+
+
+# ------------------------------------------- derived rows authenticated (Codex F2)
+
+
+def _append_judgment(run_dir: Path, *, rebind: bool) -> None:
+    """What a resumed judging pass does: append a row to judgments.jsonl and, when it completes, rebind."""
+    jpath = run_dir / "judgments.jsonl"
+    rows = [json.loads(line) for line in jpath.read_text(encoding="utf-8").splitlines()]
+    extra = {**rows[-1], "turn_id": rows[-1]["turn_id"] + 2, "exchange_index": rows[-1]["exchange_index"] + 1}
+    jpath.write_text(jpath.read_text(encoding="utf-8") + json.dumps(extra) + "\n", encoding="utf-8")
+    if rebind:  # as manifest.bind_judgments does: rebind the digest and reseal, keeping the identity digest
+        manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+        manifest["artifacts"]["judgments_sha256"] = sha256_file(jpath)
+        resealed = seal_manifest(manifest, manifest["chain"]["prev_sha256"])
+        assert resealed["chain"]["identity_sha256"] == manifest["chain"]["identity_sha256"]
+        (run_dir / "manifest.json").write_text(json.dumps(resealed), encoding="utf-8")
+
+
+def test_stale_analysis_rows_after_a_resumed_pass_are_refused(tmp_path):
+    """A resumed pass appends and rebinds judgments; analysis_rows.jsonl derived before it would silently omit
+    the new judgments, so its row count is checked against the bound file (Codex F2 on PR #30)."""
+    run_dir = _write_run(tmp_path, "run-stale", _three_arms())
+    _append_judgment(run_dir, rebind=True)
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    msg = str(exc_info.value)
+    assert "analysis_rows.jsonl has 3 rows but the bound judgments.jsonl has 4" in msg
+    assert "petri_audit.cli analyze" in msg
+
+
+def test_judgments_changed_after_binding_are_refused(tmp_path):
+    """Rows appended to judgments.jsonl that no completed pass bound are not a basis for analysis."""
+    run_dir = _write_run(tmp_path, "run-unbound", _three_arms())
+    _append_judgment(run_dir, rebind=False)
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    # the manifest verification sees the unbound change first; the loader's own binding check is the second layer
+    assert "does not verify against its manifest.json" in str(exc_info.value)
+    assert "judgments: judgments.jsonl does not digest to its recorded value" in str(exc_info.value)
+
+
+def test_manifest_without_bound_judgments_is_refused(tmp_path):
+    run_dir = _write_run(tmp_path, "run-no-binding", _three_arms(),
+                         manifest_update=lambda m: m["artifacts"].update(judgments_path=None, judgments_sha256=None))
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    assert "manifest binds no judgments" in str(exc_info.value)
+
+
+@pytest.mark.parametrize("field, edit", [
+    ("value", lambda r: TIERS[0] if r["value"] != TIERS[0] else TIERS[1]),
+    ("arm", lambda r: "lay_careful" if r["arm"] != "lay_careful" else "clinical"),
+    ("exchange_index", lambda r: r["exchange_index"] + 1),
+    ("row_eligible", lambda r: not r["row_eligible"]),
+    ("system_prompt_variant", lambda r: "variant_edited"),  # part of the cell, so authenticated against the tree
+])
+def test_edited_analysis_row_is_refused_by_line_and_field(tmp_path, field, edit):
+    """A derived row edited after derivation no longer matches its judgment or the manifest tree."""
+    run_dir = _write_run(tmp_path, "run-edited", _three_arms())
+    apath = run_dir / "analysis_rows.jsonl"
+    rows = [json.loads(line) for line in apath.read_text(encoding="utf-8").splitlines()]
+    rows[1][field] = edit(rows[1])
+    apath.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    assert f"line 2: {field}" in str(exc_info.value)
+
+
+def test_leading_line_reread_of_an_out_of_vocabulary_outcome_answer_is_accepted(tmp_path):
+    """analysis_rows() re-reads a null out-of-vocabulary outcome answer whose first line is a declared value; that
+    row's value differs from its null judgment by design and is not a mismatch."""
+    rows = _outcome_arms()
+    rows[0] = _reread(rows[0], f"**{OUTCOME_VALUES[0]}**\n\nA synthetic justification.", OUTCOME_VALUES[0])
+    run_dir = _write_run(tmp_path, "run-reread", rows)
+
+    report = analyze_run_directories([run_dir])
+    counts = report.seeds["s1"].dimensions[OUTCOME_KEY].contrasts["colloquial_vs_clinical"].counts
+    assert (counts.n_compared, counts.n_same, counts.n_refused) == (1, 1, 0)
+
+
+@pytest.mark.parametrize("make_row, field", [
+    # the shape the earlier fix accepted: a tier judgment is never re-read, so a re-read claim on one is refused
+    (lambda: _reread(_three_arms(value=TIERS[0])[0], TIERS[0], TIERS[0]), "value_source"),
+    # an outcome judgment recorded with another error is copied unchanged, never re-read
+    (lambda: _reread(_outcome_arms()[0], OUTCOME_VALUES[0], OUTCOME_VALUES[0], judge_error="synthetic parse error"),
+     "value_source"),
+    # no recorded answer, nothing to re-read
+    (lambda: _reread(_outcome_arms()[0], OUTCOME_VALUES[0], OUTCOME_VALUES[0], judge_raw=None), "value_source"),
+    # a judgment that already carries a value is copied, not re-read
+    (lambda: _reread(_outcome_arms()[0], OUTCOME_VALUES[0], OUTCOME_VALUES[0], value=OUTCOME_VALUES[0]),
+     "value_source"),
+    # the claimed value is not what the answer's first line says
+    (lambda: _reread(_outcome_arms()[0], f"{OUTCOME_VALUES[0]}\n\nprose", OUTCOME_VALUES[1]), "value"),
+    # the first line is not a declared value of the prompt, so the reader leaves the judgment null
+    (lambda: _reread(_outcome_arms()[0], "synthetic prose line\n\nmore", "synthetic prose line"), "value"),
+    # the prompt at the recorded digest is not the one in hand, so the value list cannot be confirmed
+    (lambda: _reread({**_outcome_arms()[0], "prompt_file_digest": "ffffffffffff"}, OUTCOME_VALUES[0],
+                     OUTCOME_VALUES[0]), "value"),
+    # a successful re-read carries no error
+    (lambda: {**_reread(_outcome_arms()[0], OUTCOME_VALUES[0], OUTCOME_VALUES[0]), "judge_error": "synthetic"},
+     "judge_error"),
+])
+def test_reread_claim_the_reader_cannot_produce_is_refused(tmp_path, make_row, field):
+    """A derived row marked leading_line_at_analysis is accepted only when judge_runner._read_value could have
+    produced it: a null outcome judgment recorded out of vocabulary with a raw answer, whose leading line is a
+    declared value of the prompt the judge was shown. Anything else is an edited row, and would otherwise enter
+    the counts with any value (Codex review of the F2 fix on PR #30)."""
+    rows = [*_three_arms(value=TIERS[0]), *_outcome_arms()]
+    target = make_row()
+    index = next(i for i, r in enumerate(rows) if (r["kind"], r["arm"]) == (target["kind"], target["arm"]))
+    rows[index] = target
+    run_dir = _write_run(tmp_path, "run-bad-reread", rows)
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    assert f"line {index + 1}: {field}" in str(exc_info.value)
+
+
+def _failed_reread(row: dict, raw: str, error: str = CONFLICTING_VALUES, **judgment) -> dict:
+    """The row analysis_rows() derives when re-reading a null out-of-vocabulary outcome judgment yields no value: the
+    value stays null and the re-read's own reason replaces the recorded error."""
+    return {**row, "value": None, "judge_error": error, "row_eligible": False,
+            "judgment": {"value": None, "judge_error": OUT_OF_VOCABULARY, "judge_raw": raw, **judgment}}
+
+
+def test_failed_reread_naming_a_revised_answer_is_accepted_and_refused_by_exchange(tmp_path):
+    """PR #29's reader re-reads an out-of-vocabulary answer and, when a later line revises the leading-line value,
+    records CONFLICTING_VALUES instead of the vocabulary miss. The earlier validator refused the whole run over that
+    one row (run_35801345137_1 line 509, re-derived). The row is what analysis_rows() writes, so the run is analysed
+    and the exchange is refused by name for that arm (Codex review of the F2 fix on PR #30)."""
+    rows = _outcome_arms()
+    rows[1] = _failed_reread(rows[1], f"{OUTCOME_VALUES[0]}\n\nOn reflection:\n\n**{OUTCOME_VALUES[1]}**")
+    run_dir = _write_run(tmp_path, "run-failed-reread", rows)
+
+    report = analyze_run_directories([run_dir])
+
+    contrast = report.seeds["s1"].dimensions[OUTCOME_KEY].contrasts["colloquial_vs_clinical"]
+    assert (contrast.counts.n_compared, contrast.counts.n_refused) == (0, 1)
+    assert f"arm 'clinical' ineligible ({CONFLICTING_VALUES})" in contrast.refusals[0]["reason"]
+
+
+@pytest.mark.parametrize("make_row", [
+    # the judgment recorded another error, so the reader copies it unchanged
+    lambda: _failed_reread(_outcome_arms()[1], "prose", judge_error="synthetic parse error"),
+    # no recorded answer, so there was nothing to re-read
+    lambda: _failed_reread(_outcome_arms()[1], "prose", judge_raw=None),
+    # a tier judgment is never re-read
+    lambda: _failed_reread(_three_arms(value=TIERS[0])[1], "prose"),
+    # not an error a re-read can record
+    lambda: _failed_reread(_outcome_arms()[1], "prose", error="synthetic edited error"),
+    # a failed re-read carries no value_source
+    lambda: {**_failed_reread(_outcome_arms()[1], "prose"), "value_source": "value_only"},
+])
+def test_changed_error_the_reader_cannot_produce_is_refused(tmp_path, make_row):
+    """Only a re-read the reader performs can change a row's error; any other change is an edit."""
+    rows = [*_three_arms(value=TIERS[0]), *_outcome_arms()]
+    target = make_row()
+    index = next(i for i, r in enumerate(rows) if (r["kind"], r["arm"]) == (target["kind"], target["arm"]))
+    rows[index] = target
+    run_dir = _write_run(tmp_path, "run-changed-error", rows)
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    assert f"line {index + 1}: judge_error" in str(exc_info.value)
+
+
+def test_out_of_vocabulary_error_and_leading_line_rule_match_judge_runner():
+    """The validator restates judge_runner's parsing facts; these tie them to the parser in the tree, so a change
+    there fails here rather than turning every re-read into a refusal or every refusal into a re-read."""
+    allowed = ["alpha", "beta"]
+    assert parse_answer("gamma", allowed, "outcome")[2] == OUT_OF_VOCABULARY
+    # a revised answer: CONFLICTING_VALUES under PR #29's parser, a vocabulary miss under the value-only parser before it
+    assert parse_answer("alpha\n\n**beta**", allowed, "outcome")[2] in REREAD_REFUSAL_ERRORS
+    assert set(REREAD_REFUSAL_ERRORS) == {OUT_OF_VOCABULARY, CONFLICTING_VALUES}
+    for text in ("alpha", "`alpha`", "'alpha'", "alpha.", "**alpha**", "alpha\n\nA justification."):
+        value = parse_answer(text, allowed, "outcome")[0]
+        if value is not None:
+            assert _leading_line(text) == value, text
+
+
+# ------------------------------- the manifest is verified before it is trusted (Codex review of the F2 fix)
+
+
+def _rewrite_jsonl(path: Path, edit) -> None:
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    edit(rows)
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+
+
+def _rebind_judgments_by_hand(run_dir: Path) -> None:
+    """Point the manifest's judgments binding at the file as it now stands, without resealing the manifest."""
+    manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+    manifest["artifacts"]["judgments_sha256"] = sha256_file(run_dir / "judgments.jsonl")
+    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+def test_judgment_edited_and_rebound_by_hand_is_refused(tmp_path, capsys):
+    """Editing a judgment, its derived row and the manifest's judgments_sha256 to match passed every check the loader
+    made, so the edited value was counted. The manifest's chain digest no longer matches its body, and the loader now
+    applies manifest.verify_run before trusting any binding (Codex review of the F2 fix on PR #30)."""
+    run_dir = _write_run(tmp_path, "run-rebound", _three_arms(value=TIERS[1]))
+
+    def edit(rows: list[dict]) -> None:
+        rows[1]["value"] = TIERS[2]  # the clinical arm's judgment and its derived row
+
+    _rewrite_jsonl(run_dir / "judgments.jsonl", edit)
+    _rewrite_jsonl(run_dir / "analysis_rows.jsonl", edit)
+    _rebind_judgments_by_hand(run_dir)
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    msg = str(exc_info.value)
+    assert "run-rebound does not verify against its manifest.json" in msg
+    assert "chain.manifest_sha256 does not match the manifest body" in msg
+
+    assert main(["--run-dir", str(run_dir)]) == 2
+    assert "does not verify against its manifest.json" in capsys.readouterr().err
+
+
+def test_artifact_the_analysis_does_not_read_is_still_verified(tmp_path):
+    """The manifest binds the whole run; a run whose transcripts changed after sealing is not the run it describes."""
+    run_dir = _write_run(tmp_path, "run-edited-transcripts", _three_arms())
+    (run_dir / "transcripts.jsonl").write_text("edited after sealing\n", encoding="utf-8")
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    assert "transcripts: transcripts.jsonl does not digest to its recorded value" in str(exc_info.value)
+
+
+def test_landed_run_verifies_and_a_hand_rebound_copy_does_not(tmp_path):
+    """On the landed wave-1 run the verification costs nothing: a copy verifies and reaches the Wave-1 refusal. The same
+    copy with its judgments binding re-pointed by hand is refused before any row is read."""
+    run_dir = tmp_path / WAVE_1_RUN_DIR.name
+    shutil.copytree(WAVE_1_RUN_DIR, run_dir)
+    with pytest.raises(Wave1RefusalError):
+        analyze_run_directories([run_dir])
+
+    with (run_dir / "judgments.jsonl").open("a", encoding="utf-8") as fh:
+        fh.write("\n")  # a blank line: the rows the loader parses are unchanged, only the bound bytes differ
+    _rebind_judgments_by_hand(run_dir)
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    assert "chain.manifest_sha256 does not match the manifest body" in str(exc_info.value)
+
+
+def test_retried_judgment_is_collapsed_to_its_latest_attempt_not_refused(tmp_path):
+    """A resumed pass appends a replacement for a null judgment under the same judgment key, and
+    analysis_rows() emits both attempts; the latest one is authoritative, so the exchange is compared,
+    not refused as having two final rows, and the superseded attempt is counted (Codex F8 on PR #30)."""
+    rows = _three_arms(value=TIERS[1])
+    failed = {**rows[1], "value": None, "judge_error": "synthetic parse error", "row_eligible": False}
+    rows.insert(1, failed)  # the clinical arm's first attempt failed; its retry follows later in the file
+    run_dir = _write_run(tmp_path, "run-retry", rows)
+
+    report = analyze_run_directories([run_dir])
+
+    contrast = report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+    assert contrast.counts.n_compared == 1
+    assert contrast.counts.n_refused == 0
+    assert contrast.rows[0].arm_B_value == TIERS[1]
+    assert report.provenance.superseded_retry_rows == {"run-retry": 1}
+    assert "superseded retry attempts (a null judgment replaced by a later attempt under the same key): 1" in (
+        format_markdown_summary(report))
+
+
+def test_manifest_lacking_judge_of_record_is_refused_by_name(tmp_path):
+    """A run directory whose manifest records no artifacts.judge_of_record (null, which the schema allows before
+    judging) must be refused by name."""
+    run_dir = _write_run(tmp_path, "run-synth-123", _three_arms(),
+                         manifest_update=lambda m: m["artifacts"].update(judge_of_record=None))
+
+    with pytest.raises(ValueError) as exc_info:
+        analyze_run_directories([run_dir])
+
+    msg = str(exc_info.value)
+    assert "lacks artifacts.judge_of_record" in msg
+    assert str(run_dir) in msg
+
+
+def _judge_record(**change):
+    """A manifest_update that changes the bound judge_of_record's fields."""
+    return lambda m: m["artifacts"]["judge_of_record"].update(change)
+
+
+def test_truncated_judging_pass_is_refused_not_analysed_on_the_rows_it_wrote(tmp_path, capsys):
+    """judge_runner stops at the first plan the spend ceiling cannot afford and writes nothing after it, in any arm, yet
+    cmd_judge binds the partial file with judge_of_record.truncated true. The rows written looked like a complete run:
+    an exchange planned only after the stop (here exchange 2, in every arm) left n_exchanges_total with no refusal
+    (Codex review of 41c864ca on PR #30). Such a run is now refused by name."""
+    written = _three_arms(exchanges=(1,))  # exchange 2 was planned for every arm but never judged
+    template = TEMPLATE_MANIFEST["artifacts"]["judge_of_record"]
+    run_dir = _write_run(tmp_path, "run-truncated", written, manifest_update=_judge_record(truncated=True))
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    msg = str(exc_info.value)
+    assert "Run 'run-truncated' judging pass of record did not reach every planned judgment" in msg
+    assert "artifacts.judge_of_record.truncated is True (the judge spend ceiling stopped the pass" in msg
+    assert f"planned {template['planned']}" in msg
+
+    assert main(["--run-dir", str(run_dir)]) == 2
+    assert "REFUSED: Run 'run-truncated' judging pass of record" in capsys.readouterr().err
+
+
+def test_judging_pass_recording_fewer_judgments_than_plans_is_refused(tmp_path):
+    """The bound counts are a second check on the same gap: judged, null and not_applicable are counted per judgment
+    key over the whole bound file, so they reach `planned` whenever every plan has a row."""
+    template = TEMPLATE_MANIFEST["artifacts"]["judge_of_record"]
+    assert template["judged"] + template["null"] + template["not_applicable"] == template["planned"]
+    short = _write_run(tmp_path, "run-short", _three_arms(),
+                       manifest_update=_judge_record(planned=template["planned"] + 1))
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([short])
+    assert (f"records {template['planned']} judgments (judged {template['judged']}, null {template['null']}, "
+            f"not_applicable {template['not_applicable']}) for {template['planned'] + 1} planned") in str(exc_info.value)
+
+    complete = _write_run(tmp_path, "run-complete", _three_arms(), manifest_update=_judge_record(truncated=False))
+    assert analyze_run_directories([complete]).seeds["s1"].dimensions["response_only"].contrasts[
+        "colloquial_vs_clinical"].counts.n_compared == 1
+
+
+def test_manifest_outcome_registry_digest_matching_proceeds(tmp_path):
+    """A run whose manifest framework.outcome_registry_sha256 matches loaded registry proceeds."""
+    registry_sha = sha256_file(DEFAULT_OUTCOME_REGISTRY)
+    run_dir = _write_run(tmp_path, "run-match-001", _three_arms())
+
+    report = analyze_run_directories([run_dir])
+    assert report.provenance.outcome_registry_sha256 == registry_sha
+    assert report.provenance.manifest_outcome_registry_sha256["run-match-001"] == registry_sha
+
+
+def test_manifest_outcome_registry_digest_mismatch_refused_by_name(tmp_path, capsys):
+    """A run whose manifest outcome registry digest differs from loaded registry is refused by name with non-zero exit."""
+    bogus_sha = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    run_dir = _write_run(tmp_path, "run-mismatch-002", _three_arms(), registry_sha=bogus_sha)
+
+    # Direct call raises RegistryMismatchError naming run id, path, and both digests
+    with pytest.raises(RegistryMismatchError) as exc_info:
+        analyze_run_directories([run_dir])
+
+    msg = str(exc_info.value)
+    assert "run-mismatch-002" in msg
+    assert "outcome_dimensions.draft.json" in msg
+    assert bogus_sha in msg
+    assert sha256_file(DEFAULT_OUTCOME_REGISTRY) in msg
+
+    # CLI returns non-zero exit code (2) and prints REFUSED naming the details
+    exit_code = main(["--run-dir", str(run_dir)])
+    assert exit_code == 2
+    captured = capsys.readouterr()
+    assert "REFUSED: Run 'run-mismatch-002' manifest framework.outcome_registry_sha256" in captured.err
+    assert bogus_sha in captured.err
+
+
+def test_registry_without_ordinal_flags_reports_nominal_and_names_in_header(tmp_path):
+    """When a registry without ordinal flags is intentionally loaded, dimensions report as nominal
+
+    and the output header explicitly names which dimensions were treated as ordinal and which as nominal.
+    """
+    # Create an intentional registry without ordinal flags
+    custom_registry = tmp_path / "custom_outcome_dimensions.json"
+    registry_data = {
+        "schema_version": "0.1",
+        "dimensions": [
+            {
+                "id": "recommendation_specificity",
+                "name": "Specificity of the recommendation",
+                "values": ["none", "generic_deferral", "specific"],
+                # ordinal flag intentionally omitted / false
+                "ordinal": False,
+            },
+            {
+                "id": "safety_netting_presence",
+                "name": "Safety-netting presence",
+                "values": ["absent", "generic", "specific"],
+                "ordinal": False,
+            },
+        ],
+    }
+    custom_registry.write_text(json.dumps(registry_data), encoding="utf-8")
+
+    outcome = {"seed_id": "s1", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome",
+               "key": "recommendation_specificity"}
+    rows = _three_arms() + [
+        {**outcome, "arm": "colloquial", "value": "specific"},
+        {**outcome, "arm": "clinical", "value": "generic_deferral"},
+        {**outcome, "arm": "lay_careful", "value": "none"},
+    ]
+    run_dir = _write_run(tmp_path, "run-nominal-003", rows, registry_sha=sha256_file(custom_registry))
+
+    report = analyze_run_directories([run_dir], outcome_registry_path=custom_registry)
+
+    # In the seed analysis, recommendation_specificity is nominal
+    s1 = report.seeds["s1"]
+    rec_spec = s1.dimensions["recommendation_specificity"]
+    assert rec_spec.is_ordinal is False
+    assert rec_spec.scale is None
+
+    contrast = rec_spec.contrasts["colloquial_vs_clinical"]
+    assert contrast.is_ordinal is False
+    assert contrast.scale is None
+    assert contrast.counts.n_upgrade is None
+    assert contrast.counts.n_downgrade is None
+    assert contrast.counts.n_differing == 1
+    assert contrast.rows[0].comparison == "different"
+
+    # response_only from rubric is ordinal
+    assert s1.dimensions["response_only"].is_ordinal is True
+
+    # Output report lists them in ordinal_dimensions and nominal_dimensions
+    assert "response_only" in report.ordinal_dimensions
+    assert "recommendation_specificity" not in report.ordinal_dimensions
+    assert "recommendation_specificity" in report.nominal_dimensions
+    assert "response_only" not in report.nominal_dimensions
+
+    # Output header explicitly names which dimensions were treated as ordinal and which as nominal
+    assert "Ordinal dimensions (1): response_only" in report.header
+    assert "Nominal dimensions (1): recommendation_specificity" in report.header
+
+    # Markdown rendering also explicitly names both in its header
+    md = format_markdown_summary(report)
+    assert "**Ordinal dimensions (1)**: response_only" in md
+    assert "**Nominal dimensions (1)**: recommendation_specificity" in md
+
+
+def test_tier_row_judged_under_another_rubric_is_refused_by_exchange(tmp_path):
+    """The manifest schema has no rubric field, so the rubric is verified against the canonical digest each
+    tier judgment records: a row graded under another rubric is refused by name, and the provenance
+    counts tier rows by recorded digest (Codex F3 on PR #30)."""
+    rows = _three_arms(exchanges=(1, 2))
+    rows[1] = {**rows[1], "prompt_file_digest": "ffffffffffff"}  # clinical, exchange 1
+    run_dir = _write_run(tmp_path, "run-other-rubric", rows)
+
+    report = analyze_run_directories([run_dir])
+
+    contrast = report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+    assert (contrast.counts.n_compared, contrast.counts.n_refused) == (1, 1)
+    reason = contrast.refusals[0]["reason"]
+    assert "arm 'clinical' tier row (turn 2) in exchange 1 was judged under rubric digest 'ffffffffffff'" in reason
+    assert f"not the loaded rubric's '{RUBRIC_DIGEST}'" in reason
+    assert report.provenance.tier_rubric_digests == {"run-other-rubric": {RUBRIC_DIGEST: 5, "ffffffffffff": 1}}
+
+
+def test_rubric_edited_after_the_run_refuses_every_tier_exchange(tmp_path):
+    """A later edit to the draft rubric would otherwise reinterpret historical tier rows under the new scale while
+    the report said only that the rubric was not recorded (Codex F3 on PR #30)."""
+    edited = json.loads(DEFAULT_ADVICE_RUBRIC.read_text(encoding="utf-8"))
+    edited["synthetic_edit"] = "changes the canonical digest, not the tier list"
+    edited_path = tmp_path / "edited_rubric.json"
+    edited_path.write_text(json.dumps(edited), encoding="utf-8")
+    run_dir = _write_run(tmp_path, "run-old-rubric", _three_arms(exchanges=(1, 2)))
+
+    report = analyze_run_directories([run_dir], rubric_path=edited_path)
+
+    assert report.provenance.rubric_canonical_digest == rubric_digest(edited)
+    for contrast in report.seeds["s1"].dimensions["response_only"].contrasts.values():
+        assert contrast.counts.n_compared == 0
+        assert contrast.counts.n_refused == 2
+        assert all("was judged under rubric digest" in r["reason"] for r in contrast.refusals)
+    md = format_markdown_summary(report)
+    assert f"canonical digest `{rubric_digest(edited)}`" in md
+    assert f"tier rows by recorded rubric digest: `{RUBRIC_DIGEST}` 6" in md
+
+
+# ------------------------------------------------ Registry versions: per-dimension compatibility
+#
+# The wave-2 epochs were judged under different outcome-registry versions (run_35801345137_1 recorded 05c8527d1db7,
+# run_35812312136_1 ea2042a3e71e), which differ in one dimension. A whole-file digest match refused every analysis of
+# both; the per-dimension rule pools the dimensions both versions define identically and refuses the rest by name.
+# Registry versions here are synthetic edits of the repository's registry, so no value vocabulary is written in source.
+
+BASE_REGISTRY = json.loads(DEFAULT_OUTCOME_REGISTRY.read_text(encoding="utf-8"))
+HISTORY_PATH = DEFAULT_OUTCOME_REGISTRY.relative_to(ROOT).as_posix()
+SECOND_KEY = "safety_netting_presence"
+SECOND_VALUES = next(d["values"] for d in BASE_REGISTRY["dimensions"] if d["id"] == SECOND_KEY)
+needs_git = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
+
+
+def _second_arms(prompt_digest: str | None = "0123456789ab") -> list[dict]:
+    """One final row per arm at exchange 1 for a second outcome dimension, judged under `prompt_digest`."""
+    return [{"seed_id": "s1", "arm": arm, "exchange_index": 1, "final_in_exchange": True, "kind": "outcome",
+             "key": SECOND_KEY, "value": SECOND_VALUES[0], "prompt_file_digest": prompt_digest}
+            for arm in ("colloquial", "clinical", "lay_careful")]
+
+
+def _entry(registry: dict, kind: str, key: str) -> dict:
+    if kind == "tier":
+        return registry["tier_instruments"][key]
+    return next(d for d in registry["dimensions"] if d["id"] == key)
+
+
+def _edited(kind: str, key: str, field: str, change) -> dict:
+    registry = deepcopy(BASE_REGISTRY)
+    entry = _entry(registry, kind, key)
+    entry[field] = change(entry[field])
+    return registry
+
+
+def _registry_bytes(registry: dict) -> bytes:
+    return (json.dumps(registry, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def _git(repo: Path, *argv: str) -> str:
+    """git in a throwaway repository, isolated from the user's and the system's configuration."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env.update({"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_AUTHOR_NAME": "synthetic", "GIT_AUTHOR_EMAIL": "synthetic@example.invalid",
+                "GIT_COMMITTER_NAME": "synthetic", "GIT_COMMITTER_EMAIL": "synthetic@example.invalid"})
+    return subprocess.run(["git", "-C", str(repo), *argv], check=True, capture_output=True, env=env).stdout.decode()
+
+
+def _registry_repo(root: Path, versions: list[dict | None]) -> tuple[Path, list[str]]:
+    """A repository whose history commits each registry version in turn at the lane's registry path (None deletes the
+    file); returns it and the commits, oldest first. Its working file is the last version committed."""
+    repo = root / "history"
+    path = repo / HISTORY_PATH
+    path.parent.mkdir(parents=True)
+    _git(repo, "init", "-q")
+    commits = []
+    for i, registry in enumerate(versions):
+        if registry is None:
+            _git(repo, "rm", "-q", HISTORY_PATH)
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)  # `git rm` removes the emptied directories
+            path.write_bytes(_registry_bytes(registry))
+            _git(repo, "add", HISTORY_PATH)
+        _git(repo, "commit", "-q", "-m", f"version {i}")
+        commits.append(_git(repo, "rev-parse", "HEAD").strip())
+    return repo, commits
+
+
+def _write_registry(path: Path, registry: dict) -> Path:
+    path.write_bytes(_registry_bytes(registry))
+    return path
+
+
+@needs_git
+@pytest.mark.parametrize("kind, key, field, change", [
+    ("outcome", SECOND_KEY, "definition", lambda text: text + " Synthetic revision."),
+    ("outcome", SECOND_KEY, "values", lambda values: list(reversed(values))),
+    ("outcome", SECOND_KEY, "owner_notes", lambda text: text + " Synthetic note."),
+    ("tier", "response_only", "definition", lambda text: text + " Synthetic revision."),
+], ids=["definition", "value-order", "owner-notes", "tier-instrument"])
+def test_registry_versions_differing_in_one_dimension_pool_the_others_and_refuse_it(tmp_path, kind, key, field,
+                                                                                      change):
+    """Two runs judged under registry versions that differ in one dimension: that dimension is refused by name, with
+    both runs and their digests, and its rows are withheld; every other dimension pools both runs. The older version is
+    found in git history and its commit is recorded, in the JSON provenance and in the Markdown."""
+    old, new = deepcopy(BASE_REGISTRY), _edited(kind, key, field, change)
+    repo, commits = _registry_repo(tmp_path, [old, new])
+    loaded = repo / HISTORY_PATH
+    rows = _three_arms() + _outcome_arms() + _second_arms()
+    run_old = _write_run(tmp_path, "run-old", rows, registry_sha=hashlib.sha256(_registry_bytes(old)).hexdigest())
+    run_new = _write_run(tmp_path, "run-new", rows, registry_sha=sha256_file(loaded))
+
+    report = analyze_run_directories([run_old, run_new], outcome_registry_path=loaded, registry_history_repo=repo)
+
+    assert [(d.kind, d.dimension_key) for d in report.refused_dimensions] == [(kind, key)]
+    refusal = report.refused_dimensions[0]
+    assert refusal.rows_withheld == {"run-new": 3, "run-old": 3}
+    d_old, d_new = refusal.registry_digests["run-old"], refusal.registry_digests["run-new"]
+    assert d_old and d_new and d_old != d_new and refusal.loaded_registry_digest == d_new
+    assert f"{kind} dimension '{key}' refused, 6 rows withheld" in refusal.reason
+    assert f"run 'run-old' {d_old}" in refusal.reason and f"run 'run-new' {d_new}" in refusal.reason
+
+    s1 = report.seeds["s1"]
+    assert key not in s1.dimensions
+    for other in {"response_only", OUTCOME_KEY, SECOND_KEY} - {key}:
+        contrast = s1.dimensions[other].contrasts["colloquial_vs_clinical"]
+        assert (contrast.counts.n_exchanges_total, contrast.counts.n_compared) == (2, 2), other
+        assert {r.run_id for r in contrast.rows} == {"run-old", "run-new"}
+
+    res = report.provenance.registry_resolution
+    assert (res["run-old"]["source"], res["run-old"]["commit"]) == ("git history", commits[0])
+    assert res["run-old"]["location"] == f"{commits[0]}:{HISTORY_PATH}"
+    assert (res["run-new"]["source"], res["run-new"]["commit"]) == ("loaded registry", None)
+    assert res["run-old"]["dimension_digests"][key] == d_old and res["run-new"]["dimension_digests"][key] == d_new
+    assert res["run-old"]["dimension_digests"][OUTCOME_KEY] == res["run-new"]["dimension_digests"][OUTCOME_KEY]
+    assert f"Refused dimensions (1): {key}" in report.header
+
+    md = format_markdown_summary(report)
+    assert f"**Refused dimensions (1)**: {key}" in md
+    assert f"- {refusal.reason}" in md
+    assert f"found in git history at `{commits[0]}:{HISTORY_PATH}` (commit `{commits[0]}`)" in md
+    assert f"- `{key}`: **refused**; loaded registry `{d_new}`; `run-old` `{d_old}`; `run-new` `{d_new}`" in md
+
+
+@needs_git
+def test_dimension_the_loaded_registry_defines_differently_is_refused_until_the_recorded_version_is_loaded(tmp_path):
+    """Both runs record the same older version, so they agree with each other; the loaded registry, whose scale the
+    analysis would apply, defines one dimension differently, or not at all. That dimension is refused, naming the
+    version to load; loading it analyses every dimension."""
+    old = deepcopy(BASE_REGISTRY)
+    repo, commits = _registry_repo(tmp_path, [old, _edited("outcome", SECOND_KEY, "definition", lambda t: t + " x")])
+    old_sha = hashlib.sha256(_registry_bytes(old)).hexdigest()
+    rows = _three_arms() + _second_arms()
+    runs = [_write_run(tmp_path, name, rows, registry_sha=old_sha) for name in ("run-a", "run-b")]
+
+    report = analyze_run_directories(runs, outcome_registry_path=repo / HISTORY_PATH, registry_history_repo=repo)
+
+    assert [d.dimension_key for d in report.refused_dimensions] == [SECOND_KEY]
+    reason = report.refused_dimensions[0].reason
+    assert "every run records the same definition" in reason
+    assert f"sha256 {old_sha}, `git show {commits[0]}:{HISTORY_PATH}`" in reason
+
+    lacking = deepcopy(old)
+    lacking["dimensions"] = [d for d in lacking["dimensions"] if d["id"] != SECOND_KEY]
+    lacking_path = _write_registry(tmp_path / "lacking.json", lacking)
+    report = analyze_run_directories(runs, outcome_registry_path=lacking_path, registry_history_repo=repo)
+    assert [d.dimension_key for d in report.refused_dimensions] == [SECOND_KEY]
+    assert report.refused_dimensions[0].loaded_registry_digest is None
+    assert f"not defined in the loaded registry {lacking_path};" in report.refused_dimensions[0].reason
+
+    recorded = _write_registry(tmp_path / "recorded.json", old)
+    report = analyze_run_directories(runs, outcome_registry_path=recorded, registry_history_repo=repo)
+    assert report.refused_dimensions == []
+    assert report.seeds["s1"].dimensions[SECOND_KEY].contrasts["colloquial_vs_clinical"].counts.n_compared == 2
+
+
+@needs_git
+def test_run_whose_recorded_registry_matches_no_version_is_refused_by_name(tmp_path, capsys):
+    """A recorded digest that is not the loaded registry, no version in git history and no override: the run is
+    refused by name, saying what was searched and how to supply the version, never analysed under another one."""
+    repo, _ = _registry_repo(tmp_path, [deepcopy(BASE_REGISTRY)])
+    unknown = "a" * 64
+    good = _write_run(tmp_path, "run-good", _three_arms(), registry_sha=sha256_file(repo / HISTORY_PATH))
+    bad = _write_run(tmp_path, "run-unknown", _three_arms(), registry_sha=unknown)
+
+    with pytest.raises(RegistryMismatchError) as exc_info:
+        analyze_run_directories([good, bad], outcome_registry_path=repo / HISTORY_PATH, registry_history_repo=repo)
+
+    msg = str(exc_info.value)
+    assert f"Run 'run-unknown' manifest framework.outcome_registry_sha256 ({unknown}) matches no available" in msg
+    assert f"no version of {HISTORY_PATH} in the local git history of {repo} (1 version(s) searched)" in msg
+    assert "--outcomes-for-run run-unknown=<path>" in msg
+
+
+def test_override_supplies_a_registry_version_git_does_not_hold(tmp_path):
+    """--outcomes-for-run RUN_ID=PATH resolves a run's recorded version from a file (a version absent from local git
+    history, as in a shallow clone), and is refused when it digests to anything else, names a run not given, or is
+    malformed."""
+    old = _write_registry(tmp_path / "old.json", _edited("outcome", SECOND_KEY, "definition", lambda t: t + " old"))
+    new = _write_registry(tmp_path / "new.json", deepcopy(BASE_REGISTRY))
+    rows = _three_arms() + _second_arms()
+    run_old = _write_run(tmp_path, "run-old", rows, registry_sha=sha256_file(old))
+    run_new = _write_run(tmp_path, "run-new", rows, registry_sha=sha256_file(new))
+    out = tmp_path / "report.md"
+    base = ["--run-dir", str(run_old), str(run_new), "--outcomes", str(new), "--out", str(out)]
+
+    assert main([*base, "--outcomes-for-run", f"run-old={old}"]) == 0
+    md = out.read_text(encoding="utf-8")
+    assert f"found as the override `{old}`" in md
+    assert f"**Refused dimensions (1)**: {SECOND_KEY}" in md
+
+    report = analyze_run_directories([run_old, run_new], outcome_registry_path=new,
+                                     outcome_registry_overrides={"run-old": old})
+    assert report.provenance.registry_resolution["run-old"] == {
+        "recorded_sha256": sha256_file(old), "source": "override", "location": str(old), "commit": None,
+        "dimension_digests": report.provenance.registry_resolution["run-old"]["dimension_digests"]}
+
+    with pytest.raises(RegistryMismatchError, match=r"Run 'run-old' .* does not match its --outcomes-for-run override"):
+        analyze_run_directories([run_old, run_new], outcome_registry_path=new,
+                                outcome_registry_overrides={"run-old": new})
+    with pytest.raises(InputRefusalError, match=r"--outcomes-for-run names run\(s\) \['run-x'\]"):
+        analyze_run_directories([run_old, run_new], outcome_registry_path=new,
+                                outcome_registry_overrides={"run-old": old, "run-x": old})
+    with pytest.raises(SystemExit):
+        main([*base, "--outcomes-for-run", "run-old"])
+
+
+def test_dimension_judged_under_two_prompt_versions_is_refused(tmp_path):
+    """One registry version, but one outcome dimension's rows record two judge prompt digests across the runs: the
+    dimension is refused by name with each run's digests (design note section 10.6, no pooling across judge prompts);
+    the others pool both runs."""
+    run_a = _write_run(tmp_path, "run-a", _three_arms() + _second_arms("aaaaaaaaaaaa"))
+    run_b = _write_run(tmp_path, "run-b", _three_arms() + _second_arms("bbbbbbbbbbbb"))
+
+    report = analyze_run_directories([run_a, run_b])
+
+    assert [d.dimension_key for d in report.refused_dimensions] == [SECOND_KEY]
+    refusal = report.refused_dimensions[0]
+    assert refusal.prompt_file_digests == {"run-a": {"aaaaaaaaaaaa": 3}, "run-b": {"bbbbbbbbbbbb": 3}}
+    assert ("judged under 2 judge prompt versions (run 'run-a' aaaaaaaaaaaa (3 rows); "
+            "run 'run-b' bbbbbbbbbbbb (3 rows))") in refusal.reason
+    assert report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"].counts.n_compared == 2
+    assert report.provenance.outcome_prompt_digests[SECOND_KEY] == refusal.prompt_file_digests
+
+
+@pytest.mark.parametrize("recorded", [None, ""], ids=["null", "empty"])
+def test_dimension_whose_rows_record_no_prompt_digest_is_refused(tmp_path, recorded):
+    """Every row of an outcome dimension records no judge prompt digest: the prompt version cannot be established.
+    The missing digest was counted as one shared version, "none recorded", so the dimension was analysed (Codex review
+    of 41c864ca on PR #30); it is now refused by name with the count per run, and the other dimensions are analysed."""
+    run_a = _write_run(tmp_path, "run-a", _three_arms() + _second_arms(recorded))
+    run_b = _write_run(tmp_path, "run-b", _three_arms() + _second_arms(recorded))
+
+    report = analyze_run_directories([run_a, run_b])
+
+    assert [d.dimension_key for d in report.refused_dimensions] == [SECOND_KEY]
+    refusal = report.refused_dimensions[0]
+    assert refusal.rows_withheld == {"run-a": 3, "run-b": 3}
+    assert refusal.prompt_file_digests == {"run-a": {"none recorded": 3}, "run-b": {"none recorded": 3}}
+    assert ("6 of its rows record no judge prompt digest (prompt_file_digest; run 'run-a' 3 rows; run 'run-b' 3 rows), "
+            "so the judge prompt version they were judged under cannot be established") in refusal.reason
+    assert "judge prompt versions" not in refusal.reason  # a missing digest is not counted as a version
+    assert SECOND_KEY not in report.seeds["s1"].dimensions
+    assert report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"].counts.n_compared == 2
+
+
+def test_definition_digest_covers_what_assigns_a_value_and_nothing_else():
+    """The digest covers a dimension's whole entry, the description of its scope and the reserved annotation values;
+    a facet description or a derived outcome defines no judged value and changes no digest."""
+    from scripts.petri_three_arm import definition_digests
+
+    base = definition_digests(BASE_REGISTRY, "base")
+    second_scope = _entry(BASE_REGISTRY, "outcome", SECOND_KEY)["scope"]
+
+    changed = deepcopy(BASE_REGISTRY)
+    changed["facets"] = {k: v + " edited" for k, v in changed["facets"].items()}
+    changed["derived_outcomes"][0]["definition"] += " edited"
+    assert definition_digests(changed, "changed") == base
+
+    changed = deepcopy(BASE_REGISTRY)
+    changed["scopes"][second_scope] += " edited"
+    moved = {k for k, d in definition_digests(changed, "changed").items() if d != base[k]}
+    assert ("outcome", SECOND_KEY) in moved
+    assert moved == {("outcome", d["id"]) for d in BASE_REGISTRY["dimensions"] if d["scope"] == second_scope} | {
+        ("tier", k) for k, e in BASE_REGISTRY["tier_instruments"].items()
+        if isinstance(e, dict) and e.get("scope") == second_scope}
+
+    changed = deepcopy(BASE_REGISTRY)
+    changed["reserved_annotation_values"]["not_applicable"] += " edited"
+    moved = {k for k, d in definition_digests(changed, "changed").items() if d != base[k]}
+    assert moved == {("outcome", d["id"]) for d in BASE_REGISTRY["dimensions"]}
+
+
+@needs_git
+def test_registry_history_lists_every_version_under_its_earliest_commit(tmp_path, monkeypatch):
+    """Every version of the registry path in the repository's history, keyed by its sha256 and named by the earliest
+    commit carrying it; a commit that deletes the file contributes nothing; outside a repository, the reason."""
+    from scripts.petri_three_arm import registry_versions_in_git
+
+    v1, v2 = deepcopy(BASE_REGISTRY), _edited("outcome", SECOND_KEY, "definition", lambda t: t + " v2")
+    repo, commits = _registry_repo(tmp_path, [v1, v2, None, v1])
+
+    versions, problem = registry_versions_in_git(repo, HISTORY_PATH)
+
+    assert problem is None
+    assert {sha: commit for sha, (commit, _) in versions.items()} == {
+        hashlib.sha256(_registry_bytes(v1)).hexdigest(): commits[0],
+        hashlib.sha256(_registry_bytes(v2)).hexdigest(): commits[1]}
+    assert all(hashlib.sha256(data).hexdigest() == sha for sha, (_, data) in versions.items())
+
+    outside = tmp_path / "not-a-repository"
+    outside.mkdir()
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path))
+    versions, problem = registry_versions_in_git(outside, HISTORY_PATH)
+    assert versions == {} and problem.startswith(f"git could not list the history of {HISTORY_PATH}")

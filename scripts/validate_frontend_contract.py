@@ -22,8 +22,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
+from typing import Callable
 
 # The four circuit-traced models the exporter can emit, and the mirror fields it
 # copies from the base model to each scenario's top level for older readers.
@@ -460,6 +462,40 @@ def validate(site: Path, engine: Path | None, strict: bool = False) -> Report:
     return rep
 
 
+REPRO_PACK_STALE_MSG = ("repro-pack --check: a SENT vendor pack is stale or superseded-unsent "
+                        "(see lines above) - an updated pack is owed before any per-model publication")
+
+
+def repro_pack_gate(engine_root: Path,
+                    run: Callable[..., subprocess.CompletedProcess] = subprocess.run) -> tuple[str, list[str]]:
+    """repro-pack currency (owner directive 2026-07-23): a sent vendor pack that has
+    gone stale against the archive must surface within a daily cycle, not wait for
+    someone to remember. The disclosure log lives in the engine checkout.
+
+    Returns (the check's stdout, errors). EVERY non-zero exit is an error. Until
+    2026-09-23 only exit 2 was: a crash (exit 1, e.g. a KeyError on a log entry
+    without stimuli_file) passed the gate with nothing printed, while it also hid
+    any real escalation behind it. Exit 3 is the check naming log entries it
+    could not read; anything else is the check failing to run. Either way pack
+    currency is unverified, and the gate says so with the check's stderr tail."""
+    log = engine_root / "ops" / "disclosure_log.jsonl"
+    if not (log.is_file() and log.stat().st_size > 0):
+        return "", []
+    r = run([sys.executable, str(engine_root / "scripts" / "advice_eval.py"), "repro-pack", "--check",
+             "--log", str(log)],
+            capture_output=True, text=True, cwd=str(engine_root))
+    out = (r.stdout or "").strip()
+    if r.returncode == 0:
+        return out, []
+    if r.returncode == 2:
+        return out, [REPRO_PACK_STALE_MSG]
+    what = ("found disclosure-log entries it could not read (see lines above)" if r.returncode == 3
+            else "did not complete")
+    tail = " | ".join((r.stderr or "").strip().splitlines()[-3:]) or "no stderr"
+    return out, [f"repro-pack --check exited {r.returncode}: it {what}, so vendor-pack currency is "
+                 f"unverified; stderr: {tail}"]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--site", default="../patientwords", help="frontend repo root")
@@ -475,22 +511,12 @@ def main():
         sys.exit(2)
     rep = validate(site, Path(args.engine) if args.engine else None, strict=args.strict)
 
-    # repro-pack currency (owner directive 2026-07-23): a sent vendor pack that has
-    # gone stale against the archive must surface within a daily cycle, not wait for
-    # someone to remember. The disclosure log lives in the engine checkout.
+    # repro-pack currency: see repro_pack_gate
     engine_root = Path(args.engine) if args.engine else Path(__file__).resolve().parents[1]
-    log = engine_root / "ops" / "disclosure_log.jsonl"
-    if log.is_file() and log.stat().st_size > 0:
-        import subprocess
-        r = subprocess.run(
-            [sys.executable, str(engine_root / "scripts" / "advice_eval.py"), "repro-pack", "--check",
-             "--log", str(log)],
-            capture_output=True, text=True, cwd=str(engine_root))
-        if not args.quiet and r.stdout.strip():
-            print(r.stdout.strip())
-        if r.returncode == 2:
-            rep.errors.append("repro-pack --check: a SENT vendor pack is stale or superseded-unsent "
-                              "(see lines above) - an updated pack is owed before any per-model publication")
+    pack_out, pack_errors = repro_pack_gate(engine_root)
+    if not args.quiet and pack_out:
+        print(pack_out)
+    rep.errors.extend(pack_errors)
 
     if not args.quiet:
         for w in rep.warnings:

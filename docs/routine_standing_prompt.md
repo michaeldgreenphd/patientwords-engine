@@ -58,6 +58,66 @@ another session may have fired since the journal was last read (the
 2026-08-26 mis-resolve, handbook §incidents). An entry past the 8h expiry
 becomes a missed-harvest record in the dashboard, not a silent drop.
 
+## 2a · Account (restored 2026-09-23)
+
+After the harvest, run `python scripts/ledger_update.py` with no
+arguments. It folds every cost sidecar not yet in `spend.entries_seen` —
+generation and model-eval (`data/simulated/`), advice (`data/advice/`),
+PAB (`data/pab/`), Petri (`data/petri/runs/<run>/`, run and judge
+sidecars) and circuit-trace mitigation (`trace_out/*/mitigation*`) — into
+the `spend` block of `ops/dashboard.json`, and appends one bullet per
+sidecar to the newest `docs/*ledger*.md`. It is idempotent: a second run
+finds nothing new to fold. Its `WARNING:` lines (a ceiling passed, a
+sidecar it could not read) go in the brief; they never block. Never edit
+spend numbers by hand.
+
+Beyond `spend`, the run stamps the dashboard's `updated_utc`. It writes
+`tierb` (accepted count, batch rows, and `spend.generation_spent_usd`) only
+for a Tier B batch that lands while the campaign is open, or one that
+already has a pre-registered row. The campaign closed at 1,600/1,600, so
+every other haiku `pairs` batch books to lifetime and `by_day` alone, and
+the script prints a `note:` line naming it. On `main` as of 2026-09-23,
+the first fold prints four: the 2026-07-21 batch
+`pairs_20260721T132205Z` (100 pairs, fired as "tierB batch 17" but never
+booked) and three one-pair `scenario-generation` parks. Each later park of
+that lane prints one more. Put the notes in the brief as accounting, not
+as Tier B progress, and do not edit `tierb` to take them in. Whether batch
+17 belongs to Tier B is the owner's decision.
+
+Commit what it wrote — the dashboard and the ledger file it appended to
+(`git status` shows which) — in ONE commit, before §3 fires anything.
+Never one without the other: the bullets and `entries_seen` are two
+halves of one record, so a dashboard committed alone loses the fold's
+trail and bullets committed alone are written again by the next fold.
+Before §3 rather than with §6, because `fire_trigger.py publish` (the
+recovery for a rejected fire push) refuses a checkout holding any
+modified tracked file besides the dashboard and one fire, and because
+this cycle already commits the dashboard mid-cycle: a ledger file left
+uncommitted until §6 would either block that recovery or be split from
+its dashboard by a mid-cycle commit. If the dashboard guard refuses the
+commit, this session is not the Routine: `git checkout --` both files and
+stop. The raw diff reflows the whole dashboard (the script writes
+one-space indentation, `fire_trigger.py` two); read it with `git diff -w`
+and leave the formatting as written.
+
+Why the step exists: `fire_trigger.py`'s daily ceiling counts landed spend
+as `spend.today`, and this script is its only writer. The 2026-08-29
+maintenance rewrite of this prompt (fd5304c9) dropped the old
+"§3 · Account" step. Every dashboard commit from the last fold
+(2026-08-28T12:50:56Z) through the 2026-09-22 cycle, 57 of them, carries
+that fold's `spend` block unchanged: lifetime, `by_day` and alerts froze,
+and since `spend.today` stayed dated 2026-08-28 the guard's landed term
+read 0.00 on every later check. The fold runs on Routine days only, so it
+keeps the record true without being a same-day guard.
+
+Why "2a": a letter suffix leaves §3–§7, which the skills and the handbook
+cite, where they are. No version of this prompt has used "2a" before. "2b"
+is taken: in the prompt before the 2026-08-29 rewrite, §2b was the
+integrity checks. The doc-accuracy audits,
+`docs/audits/seal_incident_20260721.md`,
+`docs/decisions_20260815_owner.md` and the August decks cite §2b in that
+sense, and reusing the label would send those citations to this step.
+
 ## 3 · Drift sentinel (the one fire you own)
 
 3a. Commit the dated 3-pair alias `data/simulated/drift_sentinel_<today>.json`
@@ -118,7 +178,10 @@ a separate site branch to merge.)
 Rewrite the relevant sections of `ops/dashboard.json` (single writer):
 `updated_utc`, `updated_by: "routine"`, `queue` from the journal,
 `runs_recent`, `blockers`, `notes`, `decisions_pending` (add an entry ONLY
-when something genuinely needs the owner).
+when something genuinely needs the owner), and `spend`, whose only writer
+is `scripts/ledger_update.py` (§2a): carry the block through exactly as
+that run left it, and never recompute, retype or rebuild a figure in it —
+a rewrite from an earlier copy of the file undoes the fold.
 
 ## 7 · Brief, digest, commit
 

@@ -15,6 +15,9 @@ declares the freeze.
 3. **Holdout confirmatory analysis** (Amendment 1: analyzed exactly once) —
    REQUIRES Amendment 2 and Amendment 4 confirmatory definitions to be
    authored and committed FIRST (docs/preregistration_amendments.md flags).
+   Includes Amendment 5's twin-pruned consistency readout (registered
+   2026-09-23): run `python scripts/tierb_near_twins.py --site ../patientwords
+   --check` first and report its result; the frozen list governs either way.
 4. **Ratings quarantine release** — the 8 quarantined packet rows
    (docs/review/ratings_quarantine.json) become usable in the confirmatory
    pass only.

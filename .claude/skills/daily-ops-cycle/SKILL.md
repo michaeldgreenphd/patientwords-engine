@@ -12,6 +12,8 @@ the same place as the scheduled Routine.
 
 1. **Bootstrap** per `docs/fresh_session_bootstrap.md`: both repos on `main`,
    clean `git status`, `ops/dashboard.json` identical to `origin/main`,
+   `git -C ../patientwords sparse-checkout disable` (the site's `modes/` must be
+   on disk; a no-op on a full checkout),
    `python scripts/seal_check.py --site ../patientwords --extra docs,ops` not
    exiting 2, `git push --dry-run origin main` succeeding. Any of those failing:
    stop and say which.
@@ -19,8 +21,9 @@ the same place as the scheduled Routine.
    Fires go through the fire-trigger-safe skill (with `--keep-dashboard`: this
    session is the dashboard's writer), harvests through harvest-resolve, the
    seal check through holdout-seal-check, and section 5 through
-   publish-site-data. The dashboard commit in section 6 succeeds only in the
-   Routine's environment (`PW_ROUTINE=1`); anywhere else the guard hook refuses
-   it, which means this session is not the Routine — stop and say so.
+   publish-site-data. The dashboard commits (section 2a's spend fold, then
+   section 6) succeed only in the Routine's environment (`PW_ROUTINE=1`);
+   anywhere else the guard hook refuses them, which means this session is not
+   the Routine — stop and say so.
 3. **Stop.** One cycle. No second cycle, no Routines, no reminders, no crons.
    End with the digest line from `python scripts/daily_brief.py --digest`.

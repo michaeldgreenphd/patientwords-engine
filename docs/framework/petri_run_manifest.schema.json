@@ -738,6 +738,14 @@
                     "minimum": 0
                   },
                   "description": "Timeline content items dropped by type (an item type the sanitiser allowlist does not name)."
+                },
+                "forbidden_keys_dropped": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "description": "Forbidden keys dropped from inside provider-filled values the projection keeps whole (a model event's output apart from its choices' messages, every value a projected message keeps, a tool event's arguments and internal), counted by path with list indices elided, for example $.samples[].events[].output.metadata.extra_body. Counted here, not in fields_removed. A forbidden key anywhere else still refuses the export. Written from sanitiser allowlist 0.3 on, always present there (empty when nothing was dropped); absent from manifests written under 0.2 and earlier, whose sanitiser refused such a log instead, so it is not required."
                 }
               }
             }
@@ -914,6 +922,134 @@
     "eval_spec_dump": {
       "type": "object",
       "description": "EvalLog.eval serialized verbatim (model_dump), so nothing the harness recorded is lost even if this schema names it nowhere. Open by necessity; it is a copy, not a contract."
+    },
+    "readapt": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Present only on a run re-adapted by the petri-audit lane's mode readapt (scripts/petri_audit/readapt.py, 2026-09-24): the source run's raw .eval was downloaded from its workflow artifact and adapted under the current sanitiser into the source run's own directory, beside the target cost sidecar that had already booked its target spend; no target call was made. Optional, so every manifest written before the mode existed validates and keeps its digests. The spend block describes the source run (its ceilings and its fire's nonce), and its per-sample limits are the ones the log's own config records; this block names the re-adapting run.",
+      "required": [
+        "source_workflow_run_id",
+        "source_run_stem",
+        "source_journal_nonce",
+        "source_params_sha256",
+        "source_eval_log",
+        "source_artifact",
+        "target_report",
+        "readapt_workflow_run_id",
+        "readapt_workflow_run_attempt",
+        "readapt_commit",
+        "readapt_journal_nonce"
+      ],
+      "properties": {
+        "source_workflow_run_id": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "The GitHub Actions run id of the paid run whose log this is."
+        },
+        "source_run_stem": {
+          "type": "string",
+          "pattern": "^run_[0-9]+_1$",
+          "description": "The source run's directory, which this manifest's artifacts are written into."
+        },
+        "source_journal_nonce": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The nonce of the fire that ran the target calls, as its landed sidecar records it; spend.journal_nonce carries the same value."
+        },
+        "source_params_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "The trigger-file digest the source fire's journal entry records; fire_trigger.py and the workflow's budget gate refused the readapt unless its parameters matched the content with this digest."
+        },
+        "source_eval_log": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The .eval file name the landed sidecar priced; the downloaded log carried exactly this name."
+        },
+        "source_artifact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "name",
+            "digest",
+            "size_in_bytes",
+            "created_at",
+            "expires_at"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "name": {
+              "type": "string",
+              "pattern": "^petri-audit-raw-eval-[0-9]+-1$"
+            },
+            "digest": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The artifact digest the GitHub API reported (of the archive, not of the .eval; artifacts.raw_eval_log_sha256 is the .eval's own); null when the API reported none."
+            },
+            "size_in_bytes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "created_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "expires_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "target_report": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "description": "The landed target cost sidecar the readapt left untouched, bound by digest: verify-run and verify-chain check it, so a later rewrite of it is detected.",
+          "properties": {
+            "path": {
+              "type": "string",
+              "pattern": "^run_[0-9]+_1/run_[0-9]+_1\\.report\\.json$"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        },
+        "readapt_workflow_run_id": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "readapt_workflow_run_attempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "readapt_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "readapt_journal_nonce": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The nonce of the readapt fire, which reserved the judge's spend; its judge sidecar carries it as journal_nonce."
+        }
+      }
     },
     "chain": {
       "type": "object",

@@ -198,14 +198,53 @@ def today_record(date, by_day, by_day_by_channel):
     return rec
 
 
+def tierb_closed_reason(tierb: dict) -> str | None:
+    """Why the Tier B campaign takes no new batches, or None while it is open.
+
+    The campaign is closed once tierb.accepted_pairs has reached
+    tierb.target_pairs, which is the pre-registered size and the stopping
+    condition. The check reads the dashboard as it stands, so the first fold
+    honours it without anyone adding a field first. A dashboard without
+    target_pairs has no stopping condition to read and stays open (the
+    pre-campaign shape the tests seed).
+    """
+    target = tierb.get("target_pairs")
+    if target is None:
+        return None
+    accepted = int(tierb.get("accepted_pairs") or 0)
+    if accepted >= int(target):
+        return f"the campaign closed at {accepted}/{int(target)} accepted"
+    return None
+
+
 def attribute_tierb(dashboard, spend, report, filename, cost):
     """Count a sidecar toward the Tier B campaign when it belongs to it.
 
-    Gate: tierb.start_utc set, task == 'pairs', model == tierb.generator, and
-    run_timestamp at or after start_utc. Everything else is background spend.
-    Rows key on the batch archive name (<batch>.json) and UPSERT: a row the
-    Routine pre-registered for the batch is updated in place
+    Gate: tierb.start_utc set, task == 'pairs', model == tierb.generator,
+    run_timestamp at or after start_utc, and the campaign still open
+    (tierb_closed_reason). Everything else is background spend: main() still
+    books it to lifetime, by_day and a ledger bullet, but not to tierb or
+    generation_spent_usd. Rows key on the batch archive name (<batch>.json) and
+    UPSERT: a row the Routine pre-registered for the batch is updated in place
     (accepted/cost_usd/status='landed'), never duplicated.
+
+    Why the closed gate exists (review of the restored Routine fold,
+    2026-09-23): the gate had a start and no end, so every haiku 'pairs'
+    sidecar after start_utc counted as Tier B for good. The campaign closed
+    at 1,600/1,600 on 2026-08-06 ($2.7678, 20 rows), and the fold stopped
+    running after 2026-08-28. Its first run against main's dashboard would
+    have credited four more batches to that closed record: the never-booked
+    2026-07-21 "batch 17" and the three one-pair scenario-generation park
+    fires. That run would have written 1703/1600, 24 rows and $2.92, and each
+    later park, which generates one haiku pair, would have added another.
+
+    A closed campaign now takes a new batch only when the batch already has a
+    row. The Routine pre-registers a row to say that a batch belongs to the
+    campaign. So a batch fired while the campaign was open still books when
+    another batch reaches the target first, and its row does not stay at
+    'generating'. Each refusal prints a note that names the batch, so the
+    question of whether batch 17 belongs to Tier B stays in front of the owner.
+    This script does not decide it silently in either direction.
     """
     tierb = dashboard.get("tierb")
     if not isinstance(tierb, dict) or not tierb.get("start_utc"):
@@ -219,17 +258,23 @@ def attribute_tierb(dashboard, spend, report, filename, cost):
     run_ts = parse_ts(report.get("run_timestamp"))
     if start is None or run_ts is None or run_ts < start:
         return False
+    batch_file = batch_file_name(filename)
+    # .get, not setdefault: a refused sidecar must leave tierb byte-identical
+    existing = [row for row in tierb.get("batches") or []
+                if isinstance(row, dict) and row.get("file") == batch_file]
+    closed = tierb_closed_reason(tierb)
+    if closed and not existing:
+        print(f"note: {filename} ({model}, accepted {report.get('accepted')}) not attributed to Tier B: "
+              f"{closed}; booked to lifetime and by_day only")
+        return False
     accepted = int(report.get("accepted") or 0)
     tierb["accepted_pairs"] = int(tierb.get("accepted_pairs") or 0) + accepted
     spend["generation_spent_usd"] = round(float(spend.get("generation_spent_usd") or 0.0) + cost, 4)
-    batch_file = batch_file_name(filename)
-    batches = tierb.setdefault("batches", [])
-    for row in batches:
-        if isinstance(row, dict) and row.get("file") == batch_file:
-            row.update({"accepted": accepted, "cost_usd": cost, "status": "landed"})
-            break
+    if existing:
+        existing[0].update({"accepted": accepted, "cost_usd": cost, "status": "landed"})
     else:
-        batches.append({"file": batch_file, "accepted": accepted, "cost_usd": cost, "status": "landed"})
+        tierb.setdefault("batches", []).append(
+            {"file": batch_file, "accepted": accepted, "cost_usd": cost, "status": "landed"})
     return True
 
 

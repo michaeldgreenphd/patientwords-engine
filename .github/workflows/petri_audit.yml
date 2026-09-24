@@ -7,6 +7,15 @@ name: Petri Audit (medlang-circuits)
 # environment lock, prices the run and bounds it, and calls nothing;
 # `dry_run` executes the whole pipeline against mockllm at $0.
 #
+# `readapt` (2026-09-24; scripts/petri_audit/readapt.py) recovers a paid run
+# whose target calls completed but whose adaptation failed: it makes NO target
+# call, downloads the raw .eval that run uploaded (`source_run_id` names the
+# workflow run), adapts it under the current sanitiser into that run's own
+# directory beside the target cost sidecar that already booked its spend, and
+# runs the judge of record as `run` does. Paid (the judge); its commitment is
+# judge_max_spend alone, and fire_trigger.py and the budget gate below refuse
+# it unless its parameters are the ones the source fire ran under.
+#
 # The raw Inspect .eval log is NEVER committed: it is written outside the
 # checkout, uploaded as a workflow artifact with 90-day retention, and bound
 # to the committed manifest by sha256. Only the sanitised allowlist
@@ -40,7 +49,7 @@ on:
         type: string
         default: "mockllm/model"
       mode:
-        description: "preflight (no calls), dry_run (mockllm, $0), run (paid)"
+        description: "preflight (no calls), dry_run (mockllm, $0), run (paid), readapt (judge paid; push-to-run fires only)"
         type: string
         default: "preflight"
       epochs:
@@ -76,9 +85,13 @@ on:
         type: boolean
         default: true
       commit_outputs:
-        description: "Commit the sanitised exports, transcripts, judgments and manifest back to the branch (mode run only)"
+        description: "Commit the sanitised exports, transcripts, judgments and manifest back to the branch (mode run or readapt)"
         type: boolean
         default: false
+      source_run_id:
+        description: "Mode readapt only: the workflow run id whose raw-eval artifact is re-adapted (empty otherwise)"
+        type: string
+        default: ""
   push:
     paths:
       - ".github/trigger/petri-audit.json"
@@ -113,6 +126,7 @@ jobs:
       judge_max_tokens: ${{ steps.params.outputs.judge_max_tokens }}
       log_model_api: ${{ steps.params.outputs.log_model_api }}
       commit_outputs: ${{ steps.params.outputs.commit_outputs }}
+      source_run_id: ${{ steps.params.outputs.source_run_id }}
       # the fire's `_nonce` (pass-through metadata, never a trigger key): the run records it so its cost sidecar can be
       # reconciled with the journal entry that reserved the spend (PR B, 2026-09-18)
       _nonce: ${{ steps.params.outputs._nonce }}
@@ -150,6 +164,7 @@ jobs:
           IN_JUDGE_MAX_TOKENS: ${{ inputs.judge_max_tokens }}
           IN_LOG_MODEL_API: ${{ inputs.log_model_api }}
           IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
+          IN_SOURCE_RUN_ID: ${{ inputs.source_run_id }}
         run: |
           python - <<'EOF'
           import json, os, re
@@ -169,7 +184,8 @@ jobs:
                       "judge_max_spend": "0.01",
                       "judge_max_tokens": "300",
                       "log_model_api": "true",
-                      "commit_outputs": "false"}
+                      "commit_outputs": "false",
+                      "source_run_id": ""}
           p = dict(defaults)
           nonce = ""                        # the fire's _nonce, metadata beside the trigger keys (empty on dispatch)
           if os.environ["EVENT_NAME"] == "push":
@@ -185,38 +201,45 @@ jobs:
                   v = os.environ.get("IN_" + k.upper(), "")
                   if v:
                       p[k] = v
-          if p["mode"] not in ("preflight", "dry_run", "run"):
-              raise SystemExit("mode must be preflight, dry_run or run")
+          if p["mode"] not in ("preflight", "dry_run", "run", "readapt"):
+              raise SystemExit("mode must be preflight, dry_run, run or readapt")
           if p["mode"] == "dry_run" and p["target"] != "mockllm/model":
               raise SystemExit("dry_run runs against mockllm/model only")
           # every mock/test sentinel, not just the one dry_run uses: `mockllm/judge` and `none/none` price at
           # zero in the engine's table, so naming one as a run target passed the paid pre-flight bound for free
-          # and could commit mock output through the production path (Codex round 5)
-          if p["mode"] == "run" and p["target"].split("/")[0] in ("mockllm", "none"):
-              raise SystemExit(f"mode run needs a real target, not the test sentinel {p['target']!r}; "
+          # and could commit mock output through the production path (Codex round 5); a readapt states the
+          # target its source run called, which was never a sentinel
+          if p["mode"] in ("run", "readapt") and p["target"].split("/")[0] in ("mockllm", "none"):
+              raise SystemExit(f"mode {p['mode']} needs a real target, not the test sentinel {p['target']!r}; "
                                "use dry_run for mockllm")
           # every target that is not openrouter/ is booked to the Anthropic lane (fire_trigger.petri_channels), but the
           # run step also exports the direct OpenAI and Gemini keys, so openai/... or google/... would bill a vendor key
-          # against the Anthropic ceiling; cli preflight refuses the same spellings (spend.target_provider_problems)
-          if p["mode"] == "run" and "/" in p["target"] and p["target"].split("/")[0] not in ("anthropic", "openrouter"):
-              raise SystemExit(f"mode run books every target that is not openrouter/ to the Anthropic lane, but "
-                               f"{p['target']!r} bills its own vendor key; route it through OpenRouter as "
+          # against the Anthropic ceiling; cli preflight refuses the same spellings (spend.target_provider_problems).
+          # A readapt calls no target, but it states its source run's target, which the preflight step below prices
+          # and refuses in every mode, after the fire has reserved the judge's ceiling; so the paid-target rules here
+          # hold for it too and the fire guard refuses the same spellings (fire_trigger.petri_target_problems)
+          if (p["mode"] in ("run", "readapt") and "/" in p["target"]
+                  and p["target"].split("/")[0] not in ("anthropic", "openrouter")):
+              raise SystemExit(f"mode {p['mode']} books every target that is not openrouter/ to the Anthropic lane, "
+                               f"but {p['target']!r} bills its own vendor key; route it through OpenRouter as "
                                "openrouter/<vendor>/<model> (for example openrouter/openai/gpt-5.4-mini)")
           # the test above runs only on a spelling with a slash, so a bare model name (which cli preflight reads as
           # Anthropic), an empty target, a provider with no model and OpenRouter with no vendor all passed it into
           # the paid steps (Codex review of PR #37, 2026-09-23). A paid target names its provider and model exactly;
           # preflight and dry_run keep their mock targets (the checks above)
-          if p["mode"] == "run" and not re.fullmatch(r"anthropic/[^/\s]+|openrouter/[^/\s]+/[^/\s]+", p["target"]):
-              raise SystemExit(f"mode run needs a target spelled anthropic/<model> or openrouter/<vendor>/<model>, "
-                               f"got {p['target']!r}; a bare model name names no provider")
+          if (p["mode"] in ("run", "readapt")
+                  and not re.fullmatch(r"anthropic/[^/\s]+|openrouter/[^/\s]+/[^/\s]+", p["target"])):
+              raise SystemExit(f"mode {p['mode']} needs a target spelled anthropic/<model> or "
+                               f"openrouter/<vendor>/<model>, got {p['target']!r}; a bare model name names no provider")
           # a paid run is admitted only from a push-to-run fire on its first attempt: the fire path journals the
           # reservation the daily ceiling counts, and neither a workflow_dispatch nor an Actions-tab re-run has one
-          # of its own (Codex round 8); preflight and dry_run cost nothing and may run from anywhere
-          if p["mode"] == "run" and os.environ["EVENT_NAME"] != "push":
-              raise SystemExit("mode run is fired through scripts/fire_trigger.py only (its journal entry is the "
-                               "reservation the daily ceiling counts); a workflow_dispatch may run preflight or dry_run")
-          if p["mode"] == "run" and os.environ.get("RUN_ATTEMPT", "1") != "1":
-              raise SystemExit("mode run cannot be re-run from the Actions tab (attempt "
+          # of its own (Codex round 8); preflight and dry_run cost nothing and may run from anywhere. A readapt is
+          # paid too (its judge), so the same holds for it
+          if p["mode"] in ("run", "readapt") and os.environ["EVENT_NAME"] != "push":
+              raise SystemExit(f"mode {p['mode']} is fired through scripts/fire_trigger.py only (its journal entry is "
+                               "the reservation the daily ceiling counts); a workflow_dispatch may run preflight or dry_run")
+          if p["mode"] in ("run", "readapt") and os.environ.get("RUN_ATTEMPT", "1") != "1":
+              raise SystemExit(f"mode {p['mode']} cannot be re-run from the Actions tab (attempt "
                                f"{os.environ.get('RUN_ATTEMPT')} has no reservation of its own); re-fire through "
                                "scripts/fire_trigger.py")
           float(p["max_spend"]); float(p["judge_max_spend"]); int(p["epochs"]); int(p["token_limit"])
@@ -231,6 +254,19 @@ jobs:
               if v not in ("true", "false"):
                   raise SystemExit(f"{k} must be true or false, got {p[k]!r}")
               p[k] = v
+          # mode readapt re-adapts one named run's raw log and runs the judge of record over it; the judge is its only
+          # spend (fire_trigger.py commits judge_max_spend alone), so a readapt without one is refused, and the run id
+          # is ASCII digits only (it becomes the run directory and the artifact name). Any other mode ignores
+          # source_run_id, so a value there is refused rather than carried
+          if p["mode"] == "readapt":
+              if not (p["source_run_id"].isascii() and p["source_run_id"].isdigit()):
+                  raise SystemExit(f"mode readapt needs source_run_id, the numeric workflow run id whose raw-eval "
+                                   f"artifact it re-adapts, got {p['source_run_id']!r}")
+              if p["judge"] != "true":
+                  raise SystemExit("mode readapt runs the judge of record (judge true): the judge is its only spend")
+          elif p["source_run_id"]:
+              raise SystemExit(f"source_run_id is read by mode readapt only, got {p['source_run_id']!r} with mode "
+                               f"{p['mode']!r}")
           # Every value below is written as one `key=value` line, and a later duplicate key wins, so a value
           # carrying a newline writes further key=value lines of its own: a trigger file whose `target` or
           # `_nonce` held one could rewrite mode, a ceiling or commit_outputs AFTER the checks above passed.
@@ -267,6 +303,12 @@ jobs:
     needs: params
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    env:
+      # The run directory every step writes and reads. Each attempt of a run or dry run gets its own (Codex round
+      # 7: a re-run keeps github.run_id). A readapt writes into the SOURCE run's directory, beside the target cost
+      # sidecar that booked its spend; mode run refuses re-runs (the params job refuses a whole-run re-run, and the
+      # Run step a re-run of this job alone), so a paid run's only directory is attempt 1's.
+      RUN_STEM: ${{ needs.params.outputs.mode == 'readapt' && format('run_{0}_1', needs.params.outputs.source_run_id) || format('run_{0}_{1}', github.run_id, github.run_attempt) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -334,9 +376,47 @@ jobs:
           python -m scripts.petri_audit.cli preflight --seeds "$SEEDS_FILE" $ARGS \
             --target "$TARGET" --max-spend "$MAX_SPEND" --epochs "$EPOCHS" --token-limit "$TOKEN_LIMIT"
 
-      - name: Run (mode dry_run or run; the raw .eval is written OUTSIDE the checkout)
-        if: ${{ needs.params.outputs.mode != 'preflight' }}
+      # Mode readapt, before anything is downloaded: the source run's artifacts are listed through the REST API and
+      # `readapt-plan` refuses by name an artifact that is missing, ambiguous, expired or listed under another run,
+      # a source directory that holds anything but its landed target sidecar (a landed run is never rewritten), and
+      # a sidecar or journal entry that does not identify the source fire. It writes the plan the adapt step reads.
+      # No model call. The listing needs `actions: read` (the workflow's permissions grant it).
+      - name: Plan the readapt (mode readapt; locate the source run's raw-eval artifact; no model call)
+        if: ${{ needs.params.outputs.mode == 'readapt' }}
         env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ needs.params.outputs.source_run_id }}
+          RESOLVED_PARAMS: ${{ toJSON(needs.params.outputs) }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/petri-readapt" "$RUNNER_TEMP/petri-run/logs"
+          printf '%s' "$RESOLVED_PARAMS" > "$RUNNER_TEMP/petri-readapt/params.json"
+          if ! gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID/artifacts?per_page=100" \
+              > "$RUNNER_TEMP/petri-readapt/artifacts.json"; then
+            echo "readapt refused: the artifact listing of workflow run $SOURCE_RUN_ID could not be read (no such run in this repository, or the token lacks actions: read)" >&2
+            exit 1
+          fi
+          python -m scripts.petri_audit.cli readapt-plan --params-file "$RUNNER_TEMP/petri-readapt/params.json" \
+            --listing "$RUNNER_TEMP/petri-readapt/artifacts.json" --runs-dir data/petri/runs \
+            --readapt-run-id "$GITHUB_RUN_ID" --readapt-run-attempt "$GITHUB_RUN_ATTEMPT" --readapt-commit "$GITHUB_SHA" \
+            --out "$RUNNER_TEMP/petri-readapt/plan.json"
+
+      # The source run's raw log, into the directory the run step would have written it to, so every later step
+      # (the raw-log refusal, the re-upload below under this run's own id, the summary) reads it where it always
+      # does. Outside the checkout; never committed. The adapt step checks it is the file the landed sidecar priced.
+      - name: Download the source run's raw .eval (mode readapt; outside the checkout)
+        if: ${{ needs.params.outputs.mode == 'readapt' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: petri-audit-raw-eval-${{ needs.params.outputs.source_run_id }}-1
+          run-id: ${{ needs.params.outputs.source_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/petri-run/logs
+
+      - name: Run (mode dry_run or run; the raw .eval is written OUTSIDE the checkout)
+        if: ${{ needs.params.outputs.mode == 'dry_run' || needs.params.outputs.mode == 'run' }}
+        env:
+          MODE: ${{ needs.params.outputs.mode }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
           JOURNAL_NONCE: ${{ needs.params.outputs._nonce }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -355,6 +435,17 @@ jobs:
           TOKEN_LIMIT: ${{ needs.params.outputs.token_limit }}
           LOG_MODEL_API: ${{ needs.params.outputs.log_model_api }}
         run: |
+          # A paid run on its first attempt only, checked HERE as well as in the params job. "Re-run failed jobs"
+          # and "Re-run this job" re-run this job alone, at the next github.run_attempt, and reuse the params job's
+          # outputs, so the params job's attempt refusal and the budget gate never run for the re-run: it would call
+          # the target again into run_<id>_2 with no journal reservation of its own (w2e3's failed run 35937014168
+          # was one click from spending ~$0.93 again). Refused before the marker, so the always()-gated spend report
+          # imputes nothing for it. A dry run costs nothing and may re-run; a readapt never reaches this step, and
+          # its plan step refuses any attempt but the first (scripts/petri_audit/readapt.py).
+          if [ "$MODE" = "run" ] && [ "$RUN_ATTEMPT" != "1" ]; then
+            echo "mode run cannot be re-run from the Actions tab (attempt ${RUN_ATTEMPT:-unknown}): a re-run of this job skips the params job's attempt check and the budget gate and has no journal reservation of its own; re-fire through scripts/fire_trigger.py" >&2
+            exit 1
+          fi
           ARGS=""
           for s in $SEED_IDS; do ARGS="$ARGS --seed-id $s"; done
           if [ -z "$SEED_IDS" ]; then ARGS="--wave $WAVE"; fi
@@ -373,26 +464,39 @@ jobs:
             --log-model-api "$LOG_MODEL_API" --out-dir "$RUNNER_TEMP/petri-run" --journal-nonce "$JOURNAL_NONCE" \
             --started-marker "$RUNNER_TEMP/petri-run/target_started"
 
+      # Under readapt the out dir is the SOURCE run's, which holds its landed target sidecar; `--readapt` checks the
+      # log is the one that sidecar priced, records the provenance in the manifest, and leaves the sidecar
+      # byte-identical (`--report` books no target spend twice). A run's limits come from run_params.json; a
+      # readapt's from the log's own config, since the source run's run_params.json is not in its artifact.
       - name: Adapt (sanitised export, transcripts 0.2, rule outcomes, manifest, cost sidecar)
         if: ${{ needs.params.outputs.mode != 'preflight' }}
         env:
+          MODE: ${{ needs.params.outputs.mode }}
           SEEDS_FILE: ${{ needs.params.outputs.seeds_file }}
           MAX_SPEND: ${{ needs.params.outputs.max_spend }}
           JUDGE: ${{ needs.params.outputs.judge }}
           JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
           TOKEN_LIMIT: ${{ needs.params.outputs.token_limit }}
-          RUN_STEM: run_${{ github.run_id }}_${{ github.run_attempt }}
         run: |
           EVAL=$(ls "$RUNNER_TEMP"/petri-run/logs/*.eval | head -n 1)
           ARGS=""
           if [ "$JUDGE" = "true" ]; then ARGS="--judge-max-spend $JUDGE_MAX_SPEND"; fi
+          if [ "$MODE" = "readapt" ]; then
+            SOURCE=(--readapt "$RUNNER_TEMP/petri-readapt/plan.json")
+          else
+            SOURCE=(--run-params "$RUNNER_TEMP/petri-run/run_params.json")
+          fi
           python -m scripts.petri_audit.cli adapt --seeds "$SEEDS_FILE" --eval "$EVAL" \
             --out-dir "data/petri/runs/$RUN_STEM" --custody "github_actions_artifact:90d" \
-            --max-spend "$MAX_SPEND" --token-limit "$TOKEN_LIMIT" $ARGS --report \
-            --run-params "$RUNNER_TEMP/petri-run/run_params.json"
+            --max-spend "$MAX_SPEND" --token-limit "$TOKEN_LIMIT" $ARGS --report "${SOURCE[@]}"
 
-      - name: Judge of record + analysis rows (paid; mode run only)
-        if: ${{ needs.params.outputs.mode == 'run' && needs.params.outputs.judge == 'true' }}
+      # A readapt's judge runs exactly as a run's; its sidecar carries the readapt fire's nonce, which `cli judge`
+      # reads from the manifest's `readapt` block, so reconciliation joins it to the fire that reserved it, and is
+      # named for this workflow run (`<stem>.readapt_<run id>.judge.report.json`). If this step fails, the sidecar
+      # step below still commits that sidecar and nothing else, and a re-fired readapt is admitted beside it, writes
+      # its own, and leaves the earlier one (whose spend is booked) byte-identical.
+      - name: Judge of record + analysis rows (paid; mode run or readapt)
+        if: ${{ (needs.params.outputs.mode == 'run' || needs.params.outputs.mode == 'readapt') && needs.params.outputs.judge == 'true' }}
         env:
           # the same key set as the run step: the registry resolves a judge spec to whichever provider's key_env it
           # names (Codex round 2: a google: judge used to fail here, after the target had already spent)
@@ -405,7 +509,6 @@ jobs:
           JUDGE_MODEL: ${{ needs.params.outputs.judge_model }}
           JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
           JUDGE_MAX_TOKENS: ${{ needs.params.outputs.judge_max_tokens }}
-          RUN_STEM: run_${{ github.run_id }}_${{ github.run_attempt }}
         run: |
           # the marker lets the spend-report step tell a judge that started and died from one that never ran
           touch "$RUNNER_TEMP/petri-run/judge_started"
@@ -415,8 +518,6 @@ jobs:
 
       - name: Holdout seal check over every publishable Petri output (fails closed)
         if: ${{ needs.params.outputs.mode != 'preflight' }}
-        env:
-          RUN_STEM: run_${{ github.run_id }}_${{ github.run_attempt }}
         run: |
           python scripts/seal_check.py --site "$RUNNER_TEMP/no-site" --extra data/petri/runs
           python -m scripts.petri_audit.cli verify-chain --data-dir data/petri/runs
@@ -454,13 +555,14 @@ jobs:
         # books the spend (Codex round 1 on PR #28). Where nothing is committed - a dry run (Codex round 3), or
         # a paid run with commit_outputs false (Codex round 5) - this artifact is the only seal-cleared copy of
         # the run, so its failure stays fatal rather than reporting success with nothing preserved. The security
-        # gates above stay prerequisites in every mode.
-        continue-on-error: ${{ needs.params.outputs.mode == 'run' && needs.params.outputs.commit_outputs == 'true' }}
+        # gates above stay prerequisites in every mode. A readapt is a paid run here (its judge spent).
+        continue-on-error: ${{ (needs.params.outputs.mode == 'run' || needs.params.outputs.mode == 'readapt') && needs.params.outputs.commit_outputs == 'true' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
+          # named for THIS workflow run; under readapt the directory is the source run's (the job's RUN_STEM)
           name: petri-audit-exports-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            data/petri/runs/run_${{ github.run_id }}_${{ github.run_attempt }}/
+            data/petri/runs/${{ env.RUN_STEM }}/
             !data/petri/runs/**/*.eval
           retention-days: 30
           if-no-files-found: error
@@ -472,6 +574,7 @@ jobs:
       - name: Spend report for an attempted run that produced no adapted report
         if: ${{ always() && needs.params.outputs.mode != 'preflight' }}
         env:
+          MODE: ${{ needs.params.outputs.mode }}
           JOURNAL_NONCE: ${{ needs.params.outputs._nonce }}
           TARGET: ${{ needs.params.outputs.target }}
           MAX_SPEND: ${{ needs.params.outputs.max_spend }}
@@ -479,10 +582,13 @@ jobs:
           JUDGE_MODEL: ${{ needs.params.outputs.judge_model }}
           JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
           JUDGE_MAX_TOKENS: ${{ needs.params.outputs.judge_max_tokens }}
-          RUN_STEM: run_${{ github.run_id }}_${{ github.run_attempt }}
         run: |
           REPORT="data/petri/runs/$RUN_STEM/$RUN_STEM.report.json"
-          if [ -f "$REPORT" ]; then
+          if [ "$MODE" = "readapt" ]; then
+            # a readapt made no target call; the source run's target spend is booked by its landed sidecar, which
+            # this run must never rewrite or duplicate
+            echo "readapt: no target call was made; the source run's target spend stays booked by its landed sidecar"
+          elif [ -f "$REPORT" ]; then
             echo "adapted report present; nothing to impute for the target"
           elif [ ! -f "$RUNNER_TEMP/petri-run/target_started" ]; then
             # the Run step never began, so no provider call was made and there is nothing to impute. Writing the
@@ -500,12 +606,18 @@ jobs:
               --reason "run attempted; no adapted report exists (run or adaptation failed)"
           fi
           # a judge that started (marker) and left no sidecar (the process died mid-call) is booked at its ceiling with
-          # the surviving rows recorded beside it; a judge that never started books nothing
-          if [ -f "$RUNNER_TEMP/petri-run/judge_started" ] && [ ! -f "data/petri/runs/$RUN_STEM/$RUN_STEM.judge.report.json" ]; then
+          # the surviving rows recorded beside it; a judge that never started books nothing. A readapt's judge names
+          # its sidecar for this workflow run (scripts/petri_audit/readapt.py judge_report_name), so an earlier
+          # readapt's sidecar in the same directory is never taken for this judge's
+          JUDGE_REPORT="data/petri/runs/$RUN_STEM/$RUN_STEM.judge.report.json"
+          if [ "$MODE" = "readapt" ]; then JUDGE_REPORT="data/petri/runs/$RUN_STEM/$RUN_STEM.readapt_${GITHUB_RUN_ID}.judge.report.json"; fi
+          if [ -f "$RUNNER_TEMP/petri-run/judge_started" ] && [ ! -f "$JUDGE_REPORT" ]; then
             python -m scripts.petri_audit.cli judge-spend-report --run-dir "data/petri/runs/$RUN_STEM" \
               --judge-model "$JUDGE_MODEL" --judge-max-spend "$JUDGE_MAX_SPEND" --judge-max-tokens "$JUDGE_MAX_TOKENS"
           fi
 
+      # Under readapt this re-uploads the downloaded source log under this run's own id: the same bytes (the manifest
+      # binds them by raw_eval_log_sha256) with a fresh 90-day custody window.
       - name: Upload the raw .eval as a workflow artifact (90-day custody; never committed)
         if: ${{ always() && needs.params.outputs.mode != 'preflight' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -518,11 +630,11 @@ jobs:
       # Deliberately NOT always(): this step runs only when every step before it succeeded, so an output the
       # holdout seal check or verify-chain rejected, or a half-written export after an adapt or judge failure,
       # can never be committed. Only the raw-log refusal, the artifact upload and the summary are unconditional.
-      - name: Commit sanitised outputs to the branch (mode run only; requires every prior step green)
-        if: ${{ needs.params.outputs.mode == 'run' && needs.params.outputs.commit_outputs == 'true' }}
+      - name: Commit sanitised outputs to the branch (mode run or readapt; requires every prior step green)
+        if: ${{ (needs.params.outputs.mode == 'run' || needs.params.outputs.mode == 'readapt') && needs.params.outputs.commit_outputs == 'true' }}
         env:
           BRANCH: ${{ github.ref_name }}
-          RUN_STEM: run_${{ github.run_id }}_${{ github.run_attempt }}
+          MODE: ${{ needs.params.outputs.mode }}
         run: |
           set -euo pipefail
           if find data/petri -name '*.eval' | grep -q .; then echo "raw log present; refusing" >&2; exit 1; fi
@@ -530,7 +642,9 @@ jobs:
           if git diff --cached --quiet; then echo "No outputs to commit"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Petri audit: $RUN_STEM (sanitised export, transcripts, manifest)"
+          WHAT="sanitised export, transcripts, manifest"
+          if [ "$MODE" = "readapt" ]; then WHAT="$WHAT; re-adapted by workflow run $GITHUB_RUN_ID"; fi
+          git commit -m "Petri audit: $RUN_STEM ($WHAT)"
           for i in 1 2 3 4 5; do
             if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
               exit 0
@@ -544,11 +658,12 @@ jobs:
       # the ledger is the only consumer of landed spend, so a paid run books its sidecars whether or not its
       # measurement outputs are committed and whether or not a later step failed (Codex round 2: with
       # commit_outputs=false the runner destroyed them and the spend was never booked). Nothing else is staged.
-      - name: Commit cost sidecars of a paid run (mode run; independent of commit_outputs)
-        if: ${{ always() && needs.params.outputs.mode == 'run' }}
+      # Under readapt the only new sidecar is the judge's; the source run's landed target sidecar, and the judge
+      # sidecar of any earlier readapt of the same run, are unchanged, so adding them stages nothing.
+      - name: Commit cost sidecars of a paid run (mode run or readapt; independent of commit_outputs)
+        if: ${{ always() && (needs.params.outputs.mode == 'run' || needs.params.outputs.mode == 'readapt') }}
         env:
           BRANCH: ${{ github.ref_name }}
-          RUN_STEM: run_${{ github.run_id }}_${{ github.run_attempt }}
         run: |
           set -euo pipefail
           if find data/petri -name '*.eval' | grep -q .; then echo "raw log present; refusing" >&2; exit 1; fi
@@ -588,7 +703,6 @@ jobs:
       - name: Job summary
         if: ${{ always() }}
         env:
-          RUN_STEM: run_${{ github.run_id }}_${{ github.run_attempt }}
           MODE: ${{ needs.params.outputs.mode }}
           SEEDS_FILE: ${{ needs.params.outputs.seeds_file }}
           RESOLVED_PARAMS: ${{ toJSON(needs.params.outputs) }}
