@@ -583,6 +583,10 @@ so it can be redone by hand.
 - **Trigger files fire on push.** Any branch operation that touches `.github/trigger/` fires
   that lane, including merges and cherry-picks. Five lanes spend money. This is the sharpest
   edge in the repo.
+- **At merge, restore `main`'s copy of every file under `.github/trigger/`** before committing the
+  merge. The petri-audit fires and parks ran from this branch, so its `petri-audit.json` differs from
+  `main`'s even when both are parked (the nonce alone), and landing it unrestored enqueues a preflight
+  that can evict a pending real run (AGENTS.md, merge danger; Codex, PR #29).
 - **A standing ops Routine fires Tuesdays and Fridays at 12:00 UTC** (next: 2026-09-22). It is
   the owner's, not this session's, and was left running. If usage is still constrained on
   Tuesday, consider pausing it.
