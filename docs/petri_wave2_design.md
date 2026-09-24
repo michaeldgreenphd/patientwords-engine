@@ -404,7 +404,8 @@ colloquial arm's lay terms in the clinical arm's orthography and formality, at
 the same `context_role` positions — declared through
 `framing.decomposition_registers` and admitted by the validator only beside the
 registered contrast, never as a pole of it. `lay_careful` against `colloquial`
-isolates orthography; `lay_careful` against `clinical` isolates terminology. As built,
+isolates writing style (orthography and formality together); `lay_careful` against `clinical`
+isolates terminology. As built,
 the two scenario sets realise that differently (§2, *The second scenario set*). In the
 second set `lay_careful` against `clinical` isolates terminology and `lay_careful`
 against `colloquial` carries orthography and formality together. In the original four

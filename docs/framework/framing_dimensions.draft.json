@@ -16,7 +16,7 @@
       "value_definitions": {
         "colloquial": "everyday lay wording in casual orthography: lower case, contractions, no clinical terms",
         "clinical": "clinical terminology in careful orthography: capitalised, punctuated, formal",
-        "lay_careful": "the decomposition register (owner decision 2026-09-22, docs/petri_wave2_design.md section 3): the colloquial arm's LAY TERMS carried in the clinical arm's CAREFUL ORTHOGRAPHY AND FORMALITY. It holds terminology at lay and orthography at careful, so that against colloquial it isolates orthography and against clinical it isolates terminology. Never a contrast pole on its own: it is declared through a seed's framing.decomposition_registers beside the primary contrast, and the seed's registered estimand stays the primary pair.",
+        "lay_careful": "the decomposition register (owner decision 2026-09-22, docs/petri_wave2_design.md section 3): the colloquial arm's LAY TERMS carried in the clinical arm's CAREFUL ORTHOGRAPHY AND FORMALITY. It holds terminology at lay and writing style at careful, orthography and formality moving together, so that against colloquial it isolates writing style (orthography and formality combined, not orthography alone) and against clinical it isolates terminology. The second scenario set realises this exactly and the original four only approximately (docs/petri_wave2_design.md section 2). Never a contrast pole on its own: it is declared through a seed's framing.decomposition_registers beside the primary contrast, and the seed's registered estimand stays the primary pair.",
         "mixed": "both registers in one turn; no single counterpart"
       },
       "detection": {
@@ -44,7 +44,7 @@
           "lay_careful",
           "mixed"
         ],
-        "note": "A mixed turn has no single counterpart, so it is classified and judged but not re-elicited until the owner defines its contrast (candidate: rewrite to both poles, reported as two keys). lay_careful is never a contrast source either: it is a decomposition register, admitted into a seed only beside a declared contrast through framing.decomposition_registers (docs/framework/petri_seeds.draft.json seed_schema; scripts/petri_audit/seeds.py refuses it as a pole or outside the registry). Its arm is compared with each pole of that contrast under the seed's registered estimand - against colloquial it isolates orthography, against clinical it isolates terminology - and is never measured as a contrast of its own."
+        "note": "A mixed turn has no single counterpart, so it is classified and judged but not re-elicited until the owner defines its contrast (candidate: rewrite to both poles, reported as two keys). lay_careful is never a contrast source either: it is a decomposition register, admitted into a seed only beside a declared contrast through framing.decomposition_registers (docs/framework/petri_seeds.draft.json seed_schema; scripts/petri_audit/seeds.py refuses it as a pole or outside the registry). Its arm is compared with each pole of that contrast under the seed's registered estimand - against colloquial it isolates writing style (orthography and formality together), against clinical it isolates terminology - and is never measured as a contrast of its own."
       },
       "probes": [
         "advice_tier",

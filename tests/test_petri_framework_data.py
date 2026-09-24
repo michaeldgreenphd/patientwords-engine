@@ -378,9 +378,25 @@ def test_register_never_changes_who_is_speaking(seeds_doc, framing, outcomes):
             assert seed["speaker_identity"]["note"], seed["seed_id"]
 
 
+
+def test_the_registry_and_seed_schema_read_the_colloquial_decomposition_contrast_as_writing_style(seeds_doc, framing):
+    """Codex, PR #29: lay_careful takes the clinical arm's orthography AND its formality, so against colloquial both
+    change together and the contrast identifies writing style, not orthography alone. The registry's definition, its
+    counterfactual note and the seed schema's description each said it "isolates orthography"; the plan's secondary
+    test (§10.3) already reads it as style. The seeds' own notes are left as run, since editing them would move the
+    seed digests the runs recorded."""
+    register = next(d for d in framing["dimensions"] if d["id"] == "register")
+    schema = seeds_doc["seed_schema"]["properties"]["framing"]["properties"]["decomposition_registers"]
+    for where, text in (("value_definitions.lay_careful", register["value_definitions"]["lay_careful"]),
+                        ("counterfactual.note", register["counterfactual"]["note"]),
+                        ("seed_schema decomposition_registers", schema["description"])):
+        assert "isolates orthography" not in text, where
+        assert "isolates writing style" in text and "formality" in text, where
+        assert "isolates terminology" in text, where
+
 def test_a_decomposition_register_is_admitted_beside_the_contrast_and_refused_as_a_pole(seeds_doc, framing, outcomes):
     """Owner decision 2026-09-22: a third arm carrying lay terminology in careful orthography, declared through
-    framing.decomposition_registers, so a register effect can be split into terminology and orthography. The
+    framing.decomposition_registers, so a register effect can be split into terminology and writing style. The
     registered estimand stays the contrast pair; the validator admits the register beside it and nothing else."""
     three = _seed(seeds_doc, "pw-petri-w2-tool-clarify")
     assert three["framing"]["decomposition_registers"] == ["lay_careful"]
