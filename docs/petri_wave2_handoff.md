@@ -586,6 +586,20 @@ so it can be redone by hand.
     - §10.1's 35 triples assumed this epoch. §10 needs a decision: recover it from the artifact through a CI
       re-adapt path, or record the analysis as administratively truncated.
     - The results page is unchanged, since nothing new landed.
+- **2026-09-24, 01:45 UTC: the owner's decisions after the w2e3 failure.**
+  - **The context.** The Codex round of 2026-09-23 was answered and pushed (`955820ea..e48dbe7e`). That includes the
+    sanitiser fix (`56c5b9e9`), which replays the saved w2e3 log cleanly.
+  - **The owner's words, in chat:** "I am comfortable with all of those decisions." That covers four decisions:
+    1. **Fire w2e4** on 2026-09-25 UTC. The scheduled job's gate is now met: the fix is pushed and the owner has
+       given a fresh go-ahead.
+    2. **Recover w2e3** by re-running Adapt on its 90-day raw artifact (`petri-audit-raw-eval-35937014168-1`) in CI,
+       under the fixed sanitiser, followed by the paid judge of record. This keeps §10.1's final data at 35 triples.
+       The recovery path is new workflow code, so it is built and reviewed first. It is fired before the §10
+       analysis runs, and the analysis waits for it.
+    3. **Accept the persistence-judge limitation** recorded in §10.5, with no re-judge. The prompt and its digest
+       stay as they are.
+    4. **Merge PR #29 by hand,** following §6.
+  - **Codex.** The owner asked for no new Codex review requests before 01:00 EDT on 2026-09-24.
 
 ---
 
