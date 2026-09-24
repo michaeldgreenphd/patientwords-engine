@@ -2355,7 +2355,8 @@ def petri_readapt_source_problems(repo, trigger, params):
     for every other fire.
 
     The source run is `data/petri/runs/run_<source_run_id>_1`, which must hold its landed target sidecar and no
-    adapted output (a landed run is never rewritten). That sidecar names the source fire's nonce; the journal entry
+    adapted output (a landed run is never rewritten), and that sidecar must record `run_status` success (mode run
+    adapts nothing from an error or cancelled run). That sidecar names the source fire's nonce; the journal entry
     carrying it records the digest of the trigger file the source fire wrote; this branch's history of that file
     holds the content with that digest; and the readapt must state the same value for every key in
     PETRI_READAPT_MATCH_KEYS, which are the parameters the log and the judge of record ran under. Run at the fire
@@ -2387,6 +2388,14 @@ def petri_readapt_source_problems(repo, trigger, params):
     if not isinstance(nonce, str) or not nonce:
         return [f"petri-audit readapt of run {source}: {sidecar.name} records no journal_nonce, so the fire that "
                 "ran the source run cannot be found"]
+    # the fallback sidecar is written for an error or cancelled run too (it spent), but mode run adapts only a run
+    # whose eval completed (`cli run` exits 0 on status success alone), so a readapt recovers only that; the plan
+    # step and the adapter refuse it again (scripts/petri_audit/readapt.py), this refuses it before any reservation
+    status = report.get("run_status")
+    if status != "success":
+        return [f"petri-audit readapt of run {source}: {sidecar.name} records run_status {status!r}, not 'success'; "
+                "a readapt recovers only a run whose eval completed, since mode run publishes nothing from an error "
+                "or cancelled run"]
     entries = [e for e in load_journal(repo / JOURNAL_RELPATH)
                if e.get("trigger") == "petri-audit" and e.get("nonce") == nonce]
     if len(entries) != 1:

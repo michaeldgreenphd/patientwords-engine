@@ -827,6 +827,25 @@ def test_readapt_refuses_a_log_that_is_not_the_run_the_fire_names(tmp_path_facto
         assert not (src["runs"] / "manifests.chain").exists()
 
 
+def test_readapt_refuses_a_log_whose_eval_did_not_complete(tmp_path_factory, capsys):
+    """Mode run adapts only a log whose status is `success` (`cli run` exits 7 on any other), so the adapter compares
+    the log's own status too. The sidecar check before the download reads the status the sidecar recorded; this
+    reads the log itself: the downloaded copy is rewritten as an `error` run under the same name, and adapt refuses
+    it after reading it and before writing anything."""
+    from inspect_ai.log import read_eval_log, write_eval_log
+
+    src = _readapt_source(tmp_path_factory, capsys)
+    log = read_eval_log(str(src["eval"]))
+    assert log.status == "success"
+    log.status = "error"
+    write_eval_log(log, str(src["eval"]))
+    assert read_eval_log(str(src["eval"]), header_only=True).status == "error"
+    with pytest.raises(AdapterError, match="the log is not the run this readapt names: status: the log records 'error'"):
+        cli.main(_readapt_argv(src))
+    assert sorted(p.name for p in (src["runs"] / src["stem"]).iterdir()) == [src["sidecar"].name]
+    assert not (src["runs"] / "manifests.chain").exists()
+
+
 def test_a_readapt_judge_sidecar_names_the_readapt_fire_and_reconciles_to_it(tmp_path_factory, capsys, monkeypatch):
     """The judge of record runs over the re-adapted records as in mode run; its sidecar carries the readapt fire's
     nonce and the log's eval id (read from the manifest's `readapt` block), binding keeps the provenance and the

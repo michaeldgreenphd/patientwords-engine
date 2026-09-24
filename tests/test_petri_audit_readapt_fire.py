@@ -200,7 +200,7 @@ def _readapt_repo(tmp_path: Path) -> tuple[Path, dict]:
     run_dir = repo / "data" / "petri" / "runs" / "run_4242_1"
     run_dir.mkdir(parents=True)
     (run_dir / "run_4242_1.report.json").write_text(json.dumps(
-        {"run_id": "run_4242_1", "eval_id": "E1", "journal_nonce": "w2e3", "eval_log": "x.eval",
+        {"run_id": "run_4242_1", "eval_id": "E1", "journal_nonce": "w2e3", "eval_log": "x.eval", "run_status": "success",
          "spend_report_reason": "run attempted; no adapted report exists (run or adaptation failed)"}), encoding="utf-8")
     _git(repo, "add", "-A")
     _git(repo, "commit", "-q", "-m", "park, and the source run's sidecar")
@@ -238,6 +238,32 @@ def test_a_readapt_must_state_the_parameters_its_source_fire_ran_under(tmp_path)
     assert "is not in this branch's history" in ft.petri_readapt_source_problems(repo, TRIGGER, readapt)[0]
     journal.write_text("", encoding="utf-8")
     assert "0 journal entries carry the source nonce" in ft.petri_readapt_source_problems(repo, TRIGGER, readapt)[0]
+
+
+def test_a_readapt_of_a_run_whose_eval_did_not_complete_is_refused_at_the_fire_and_the_gate(tmp_path, capsys):
+    """The fallback sidecar is written for an error or cancelled run too, and records the eval's status; mode run
+    adapts only a `success` run, so the fire path refuses any other before it journals a reservation, and the
+    budget gate refuses it again before the audit job starts."""
+    repo, readapt = _readapt_repo(tmp_path)
+    sidecar = repo / "data" / "petri" / "runs" / "run_4242_1" / "run_4242_1.report.json"
+    report = json.loads(sidecar.read_text(encoding="utf-8"))
+    params_file = tmp_path / "gate_params.json"
+    params_file.write_text(json.dumps(readapt), encoding="utf-8")
+    args = type("Args", (), {"repo": str(repo), "trigger": TRIGGER, "params_file": str(params_file)})()
+    fire = ["fire", "--repo", str(repo), "--trigger", TRIGGER, "--note", "readapt", "--dry-run", "--no-git",
+            "--params", json.dumps(readapt)]
+    for status in ("error", "cancelled", None):
+        sidecar.write_text(json.dumps(dict(report, run_status=status)), encoding="utf-8")
+        problems = ft.petri_readapt_source_problems(repo, TRIGGER, readapt)
+        assert len(problems) == 1 and f"records run_status {status!r}, not 'success'" in problems[0], problems
+        assert ft.cmd_budget_gate(args) == 6
+        assert "a readapt recovers only a run whose eval completed" in capsys.readouterr().err
+        assert ft.main(fire) == 3
+        assert f"records run_status {status!r}" in capsys.readouterr().err
+    sidecar.write_text(json.dumps(report), encoding="utf-8")
+    assert ft.petri_readapt_source_problems(repo, TRIGGER, readapt) == []
+    assert ft.main(fire) == 0, "the same fire with the success sidecar reaches the dry run"
+    capsys.readouterr()
 
 
 def test_the_budget_gate_and_the_fire_path_refuse_a_readapt_that_is_not_its_source(tmp_path, capsys):

@@ -203,7 +203,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         # the log's own record of what ran must be what the readapt fire states, checked before anything is written
         roles = spec.model_roles or {}
         meta = (spec.metadata or {}).get("patientwords") if isinstance(spec.metadata, dict) else None
-        observed = {"eval_id": spec.eval_id,
+        observed = {"status": log.status, "eval_id": spec.eval_id,
                     "target": roles["target"].model if roles.get("target") else spec.model,
                     "seed_ids": list(meta["seed_ids"]) if isinstance(meta, dict) and isinstance(meta.get("seed_ids"), list) else None,
                     "epochs": getattr(spec.config, "epochs", None), "token_limit": getattr(spec.config, "token_limit", None),

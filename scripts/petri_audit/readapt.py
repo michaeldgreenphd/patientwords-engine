@@ -18,10 +18,20 @@ ordinary 3.11 environment. Every check refuses by name:
   nothing else, and the manifest chain must not name it (`run_dir_problems`):
   a landed run is never rewritten, and its sidecar is never rewritten either;
 - the sidecar must be the fallback writer's (`spend_report_reason`), carry the
-  source fire's nonce, and name the `.eval` and eval id it priced
-  (`source_report`), so the downloaded file is bound to the spend it booked;
-- the log's own record of what ran (target, seeds, epochs, token limit,
-  log_model_api) must equal what the readapt fire states (`log_problems`).
+  source fire's nonce, name the `.eval` and eval id it priced, and record the
+  eval's `run_status` as `success` (`source_report`), so the downloaded file
+  is bound to the spend it booked and is a run mode run would have adapted;
+- the log's own record of what ran (its status, target, seeds, epochs, token
+  limit, log_model_api) must equal what the readapt fire states
+  (`log_problems`).
+
+Only a run whose eval completed is recovered. Mode run reaches Adapt only when
+`cli run` exits 0, which needs the log's status to be `success`; an `error`
+or `cancelled` run (a cost limit, a provider failure, a cancellation) still
+gets the fallback sidecar, because it spent, but mode run publishes nothing
+from it, so neither does a readapt. The sidecar's `run_status` refuses it
+before the download, and the log's own `status` refuses it again before
+anything is written.
 
 `provenance_block` is what the manifest records as `readapt`
 (docs/framework/petri_run_manifest.schema.json): the source workflow run, the
@@ -45,6 +55,8 @@ _RUN_ID = re.compile(r"^[0-9]+$")
 # the files adaptation writes; any of them in the source directory means it was adapted already
 ADAPTED_FILES = ("manifest.json", "transcripts.jsonl", "rule_outcomes.jsonl", "sanitised_log.json", "judgments.jsonl",
                  "analysis_rows.jsonl")
+# the Inspect log status of a run whose eval completed; `cli run` exits 0 (and mode run adapts) on this status only
+SOURCE_RUN_STATUS = "success"
 
 
 class ReadaptError(ValueError):
@@ -170,8 +182,10 @@ def source_report(runs_dir: Path | str, stem: str) -> dict:
     its path (relative to the runs directory, as manifests record paths),
     digest, the source fire's nonce and the log it priced. Refuses a sidecar
     that is not the fallback writer's (an adapted run wrote its own report and
-    is refused by `run_dir_problems` too), carries no nonce, or does not name
-    the `.eval` and the eval id."""
+    is refused by `run_dir_problems` too), carries no nonce, does not name
+    the `.eval` and the eval id, or records a `run_status` other than
+    `success`: the fallback sidecar is written for an error or cancelled run
+    too, and mode run never adapts one."""
     path = Path(runs_dir) / stem / target_report_name(stem)
     if not path.is_file():
         raise ReadaptError(f"{stem}: the landed target cost sidecar {path.name} is missing")
@@ -186,6 +200,12 @@ def source_report(runs_dir: Path | str, stem: str) -> dict:
     if missing:
         raise ReadaptError(f"{stem}: {path.name} records no {', '.join(missing)}; a readapt needs the fallback sidecar "
                            "of an attempted run, which records the fire's nonce, the eval id and the .eval it priced")
+    status = report.get("run_status")
+    if status != SOURCE_RUN_STATUS:
+        raise ReadaptError(f"{stem}: {path.name} records run_status {status!r}, not {SOURCE_RUN_STATUS!r}; a readapt "
+                           "recovers only a run whose eval completed. Mode run adapts nothing from an error or "
+                           "cancelled run (its run step exits non-zero), so a readapt would publish a partial log "
+                           "that mode run never would")
     return {"path": f"{stem}/{path.name}", "sha256": sha256_file(path), "journal_nonce": report["journal_nonce"],
             "eval_id": report["eval_id"], "eval_log": report["eval_log"]}
 
@@ -231,8 +251,18 @@ def log_problems(expected: dict, observed: dict) -> list[str]:
     fire states: the eval id the landed sidecar priced, the target, the seed
     selection (as a set: the run records it in the file's order), the epochs,
     the per-sample token limit and log_model_api. A value the log does not
-    record is a problem, never a match."""
+    record is a problem, never a match.
+
+    The log's `status` is checked whatever `expected` holds: it must be
+    `success`, the only status mode run adapts, so a partial log is refused
+    here even when the sidecar check before the download did not see it."""
     problems: list[str] = []
+    status = observed.get("status")
+    if status is None:
+        problems.append("the log records no status; it cannot be shown to be a run whose eval completed")
+    elif status != SOURCE_RUN_STATUS:
+        problems.append(f"status: the log records {status!r}, and a readapt recovers only a {SOURCE_RUN_STATUS!r} "
+                        "run (mode run adapts nothing from an error or cancelled one)")
     for key in ("eval_id", "target", "epochs", "token_limit", "log_model_api"):
         if key not in expected:
             continue

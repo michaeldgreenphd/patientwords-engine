@@ -164,6 +164,35 @@ def test_the_landed_sidecar_must_be_the_fallback_writers_with_nonce_eval_and_log
         readapt.source_report(runs, STEM)
 
 
+def test_a_source_run_whose_eval_did_not_complete_is_refused_before_the_download(tmp_path):
+    """The fallback sidecar is written for any attempted run with no adapted report, an error or cancelled one
+    included (it spent), and records the eval's status. Mode run adapts only a `success` log (`cli run` exits 0 on
+    nothing else), so a readapt of any other status would publish a partial log mode run never would: refused by
+    the sidecar before the plan is written, and by the log's own status before anything is adapted."""
+    runs = tmp_path / "runs"
+    for status in ("error", "cancelled", "started", None, "Success"):
+        _landed_sidecar(runs, run_status=status)
+        with pytest.raises(readapt.ReadaptError, match=f"records run_status {status!r}, not 'success'"):
+            readapt.source_report(runs, STEM)
+        with pytest.raises(readapt.ReadaptError, match="recovers only a run whose eval completed"):
+            _plan(runs)
+    _landed_sidecar(runs)
+    assert _plan(runs)["target_report"]["journal_nonce"] == SOURCE_NONCE, "a success run still plans"
+
+
+def test_cli_readapt_plan_refuses_an_error_run_and_writes_no_plan(tmp_path, capsys):
+    runs = tmp_path / "runs"
+    _landed_sidecar(runs, run_status="error")
+    params, listing, journal, out = (tmp_path / n for n in ("params.json", "listing.json", "journal.jsonl", "plan.json"))
+    framework.write_json(params, _params())
+    framework.write_json(listing, _listing())
+    journal.write_text("".join(json.dumps(e) + "\n" for e in _journal_entries()), encoding="utf-8")
+    assert cli.main(["readapt-plan", "--params-file", str(params), "--listing", str(listing), "--runs-dir", str(runs),
+                     "--journal", str(journal), "--readapt-run-id", "5555", "--readapt-run-attempt", "1",
+                     "--readapt-commit", COMMIT, "--out", str(out)]) == 12
+    assert "records run_status 'error'" in capsys.readouterr().err and not out.exists()
+
+
 def test_the_downloaded_log_must_be_the_one_the_sidecar_priced(tmp_path):
     logs = tmp_path / "logs"
     logs.mkdir()
@@ -178,7 +207,7 @@ def test_the_downloaded_log_must_be_the_one_the_sidecar_priced(tmp_path):
 def test_the_log_must_record_what_the_readapt_fire_states():
     expected = {"eval_id": EVAL_ID, "target": "anthropic/claude-haiku-4-5", "seed_ids": ["a", "b"], "epochs": 1,
                 "token_limit": 40000, "log_model_api": True}
-    observed = dict(expected, seed_ids=["b", "a"])          # the run records the selection in file order
+    observed = dict(expected, seed_ids=["b", "a"], status="success")   # the run records the selection in file order
     assert readapt.log_problems(expected, observed) == []
     for key, value in (("target", "anthropic/claude-sonnet-4-5"), ("epochs", 2), ("token_limit", 20000),
                        ("log_model_api", False), ("eval_id", "other"), ("seed_ids", ["a"])):
@@ -187,6 +216,22 @@ def test_the_log_must_record_what_the_readapt_fire_states():
     # a value the log does not record is a problem, never a match
     assert any("records no token_limit" in p for p in readapt.log_problems(expected, dict(observed, token_limit=None)))
     assert any("no seed selection" in p for p in readapt.log_problems(expected, dict(observed, seed_ids=None)))
+
+
+def test_the_log_must_record_a_completed_eval_whatever_the_plan_states():
+    """The log's own status is compared as well as the sidecar's record of it: `success` only, checked even when
+    the expected values name no status, and a log that records none is refused rather than matched."""
+    expected = {"eval_id": EVAL_ID, "target": "anthropic/claude-haiku-4-5", "seed_ids": ["a"], "epochs": 1,
+                "token_limit": 40000, "log_model_api": True}
+    observed = dict(expected, status="success")
+    assert readapt.log_problems(expected, observed) == []
+    for status in ("error", "cancelled", "started"):
+        problems = readapt.log_problems(expected, dict(observed, status=status))
+        assert problems == [f"status: the log records {status!r}, and a readapt recovers only a 'success' run "
+                            "(mode run adapts nothing from an error or cancelled one)"], problems
+        assert readapt.log_problems({}, dict(observed, status=status)), "checked with no expected values at all"
+    assert readapt.log_problems(expected, {k: v for k, v in observed.items() if k != "status"}) == [
+        "the log records no status; it cannot be shown to be a run whose eval completed"]
 
 
 # ------------------------------------------------------------ the plan
