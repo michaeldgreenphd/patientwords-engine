@@ -165,11 +165,34 @@ def _three_arms(seed_id: str = "s1", exchanges=(1,), value=None, **extra) -> lis
 
 
 # An outcome dimension whose judge prompt is in the repository: the re-read checks resolve the prompt the judge was
-# shown from its prompt_ref and digest, and the values come from that data file, never from this source.
-OUTCOME_KEY = "recommendation_specificity"
-OUTCOME_PROMPT_REF = f"docs/framework/judge_prompts/outcomes/{OUTCOME_KEY}.draft.json"
+# shown from its prompt_ref and digest, and the values come from that data file, never from this source. The nominal
+# tests need it nominal, and the registry decides that: the dimension these tests first named was declared ordinal on
+# 2026-09-22 (b105ecda), after which three tests of the nominal path failed on their fixture, not on the analysis. So
+# the dimension is read from the registry, not named here.
+OUTCOME_REGISTRY = json.loads(DEFAULT_OUTCOME_REGISTRY.read_text(encoding="utf-8"))
+
+
+def _registry_outcome_dimension(*, ordinal: bool) -> dict:
+    """The first outcome dimension, in registry order, that the registry declares ordinal (`ordinal: true`) or leaves
+    nominal (the flag omitted), has at least three values (the tests use three distinct ones), and whose judge prompt
+    (detection.judge_prompt_ref) is in the repository and shows the judge the registry's values in the registry's
+    order. A registry with no such dimension fails collection here by name, rather than moving a test onto the other
+    path."""
+    for dim in OUTCOME_REGISTRY["dimensions"]:
+        ref = (dim.get("detection") or {}).get("judge_prompt_ref")
+        if ((dim.get("ordinal") is True) is ordinal and ref and (ROOT / ref).is_file() and len(dim["values"]) >= 3
+                and list(load_prompt(ref)["values"]) == dim["values"]):
+            return dim
+    raise AssertionError(f"{DEFAULT_OUTCOME_REGISTRY.name} declares no {'ordinal' if ordinal else 'nominal'} outcome "
+                         "dimension with three or more values whose judge prompt is in the repository and lists them")
+
+
+_NOMINAL_OUTCOME = _registry_outcome_dimension(ordinal=False)
+OUTCOME_KEY = _NOMINAL_OUTCOME["id"]
+OUTCOME_PROMPT_REF = _NOMINAL_OUTCOME["detection"]["judge_prompt_ref"]
 OUTCOME_VALUES = list(load_prompt(OUTCOME_PROMPT_REF)["values"])  # the value ids, in the order the judge is shown
 OUTCOME_PROMPT_DIGEST = prompt_digest(OUTCOME_PROMPT_REF)
+ORDINAL_OUTCOME_KEY = _registry_outcome_dimension(ordinal=True)["id"]
 
 
 def _outcome_arms(value: str | None = None) -> list[dict]:
@@ -704,22 +727,45 @@ def test_recommendation_specificity_ordinal_mapping():
 
 def test_dimensions_without_ordinal_declaration_default_to_nominal(ordinal_scales):
     """Dimensions not declared ordinal in data files are treated as nominal (same/different only)."""
-    assert "recommendation_specificity" not in ordinal_scales
+    assert OUTCOME_KEY not in ordinal_scales
 
     rows = [
-        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "specific", "row_eligible": True},
-        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "generic_deferral", "row_eligible": True},
-        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "none", "row_eligible": True},
+        {"seed_id": "s1", "arm": "colloquial", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": OUTCOME_KEY, "value": OUTCOME_VALUES[0], "row_eligible": True},
+        {"seed_id": "s1", "arm": "clinical", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": OUTCOME_KEY, "value": OUTCOME_VALUES[1], "row_eligible": True},
+        {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": OUTCOME_KEY, "value": OUTCOME_VALUES[2], "row_eligible": True},
     ]
 
     analysis = analyze_seed("s1", _cells(rows), ordinal_scales, tier_rubric_digest=None, declared_values=None)
-    contrast = analysis.dimensions["recommendation_specificity"].contrasts["colloquial_vs_clinical"]
+    contrast = analysis.dimensions[OUTCOME_KEY].contrasts["colloquial_vs_clinical"]
 
     assert contrast.is_ordinal is False
     assert contrast.counts.n_upgrade is None
     assert contrast.counts.n_downgrade is None
     assert contrast.counts.n_differing == 1
     assert contrast.rows[0].comparison == "different"
+
+
+def test_dimension_declared_ordinal_in_the_registry_reports_direction(ordinal_scales):
+    """The counterpart of the test above, for a dimension the loaded registry declares ordinal: it is compared on the
+    registry's order (values listed low to high), so a differing pair reports upgrade or downgrade. The nominal tests'
+    fixture was itself such a dimension from 2026-09-22 until it was read from the registry; this keeps the
+    registry-declared ordinal path under test now that those tests use a nominal one."""
+    values = next(d["values"] for d in OUTCOME_REGISTRY["dimensions"] if d["id"] == ORDINAL_OUTCOME_KEY)
+    assert ordinal_scales[ORDINAL_OUTCOME_KEY] == values
+    base = {"seed_id": "s1", "final_in_exchange": True, "kind": "outcome", "key": ORDINAL_OUTCOME_KEY,
+            "row_eligible": True}
+    rows = [{**base, "arm": arm, "exchange_index": ex, "value": value}
+            for ex, pair in ((1, (values[-1], values[0])), (2, (values[0], values[-1])))
+            for arm, value in zip(("colloquial", "clinical", "lay_careful"), (*pair, values[0]))]
+
+    analysis = analyze_seed("s1", _cells(rows), ordinal_scales, tier_rubric_digest=None,
+                            declared_values=load_declared_values())
+    contrast = analysis.dimensions[ORDINAL_OUTCOME_KEY].contrasts["colloquial_vs_clinical"]
+
+    assert contrast.is_ordinal is True
+    assert contrast.scale == values
+    assert [r.comparison for r in contrast.rows] == ["upgrade", "downgrade"]
+    assert (contrast.counts.n_upgrade, contrast.counts.n_downgrade, contrast.counts.n_refused) == (1, 1, 0)
 
 
 UNDECLARED = "value_not_declared"  # a synthetic value id no registry declares
