@@ -16,14 +16,17 @@ from pathlib import Path
 
 import pytest
 
-from scripts.petri_audit.judge_runner import rubric_digest
+from scripts.petri_audit.framework import load_prompt, prompt_digest
+from scripts.petri_audit.judge_runner import parse_answer, rubric_digest
 from scripts.petri_three_arm import (
     DEFAULT_ADVICE_RUBRIC,
     DEFAULT_OUTCOME_REGISTRY,
     HEADER_NOTE,
+    OUT_OF_VOCABULARY,
     InputRefusalError,
     RegistryMismatchError,
     Wave1RefusalError,
+    _leading_line,
     analyze_run_directories,
     analyze_seed,
     format_markdown_summary,
@@ -58,11 +61,18 @@ def _write_run(
 ) -> Path:
     """A synthetic run directory shaped like the lane's output: the analysis rows as
     judge_runner.analysis_rows() derives them, the judgments they came from (bound in the
-    manifest by digest), and one manifest tree per (seed, arm, epoch). Synthetic rows only."""
+    manifest by digest), and one manifest tree per (seed, arm, epoch). Synthetic rows only.
+
+    A row's judgment copies the row's value and error; a row may state where its judgment
+    differs (an analysis-time re-read) under the key `judgment`, which is not written to the
+    analysis row."""
     run_dir = root / name
     run_dir.mkdir()
     full: list[dict] = []
+    judgment_overrides: list[dict] = []
     for r in rows:
+        r = dict(r)
+        judgment_overrides.append(r.pop("judgment", {}))
         a = {"epoch": 1, "branch_id": "root", "judge_model": JUDGE, "not_applicable_reason": None,
              "judge_error": None, "shared_prefix": False, **r}
         a.setdefault("condition_id", a["arm"])
@@ -74,14 +84,12 @@ def _write_run(
         a.setdefault("prompt_file_digest", RUBRIC_DIGEST if a.get("kind") == "tier" else "0123456789ab")
         full.append(a)
     judgments = []
-    for a in full:
+    for a, override in zip(full, judgment_overrides):
         j = {f: a.get(f) for f in ("conversation_id", "turn_id", "assistant_turn_index", "exchange_index",
                                    "final_in_exchange", "kind", "key", "judge_model", "not_applicable_reason",
-                                   "prompt_file_digest", "seed_id", "condition_id", "branch_id", "tree_id", "epoch")}
-        re_read = a.get("value_source") == "leading_line_at_analysis"
-        j["value"] = None if re_read else a.get("value")
-        j["judge_error"] = "synthetic out-of-vocabulary answer" if re_read else a.get("judge_error")
-        judgments.append(j)
+                                   "prompt_ref", "prompt_file_digest", "seed_id", "condition_id", "branch_id",
+                                   "tree_id", "epoch", "value", "judge_error")}
+        judgments.append({**j, **override})
     (run_dir / "judgments.jsonl").write_text("".join(json.dumps(j) + "\n" for j in judgments), encoding="utf-8")
     trees: dict[str, dict] = {}
     for a in full:
@@ -121,6 +129,29 @@ def _three_arms(seed_id: str = "s1", exchanges=(1,), value=None, **extra) -> lis
     return [{"seed_id": seed_id, "arm": arm, "exchange_index": ex, "final_in_exchange": True, "kind": "tier",
              "key": "response_only", "value": TIERS[1] if value is None else value, **extra}
             for ex in exchanges for arm in ("colloquial", "clinical", "lay_careful")]
+
+
+# An outcome dimension whose judge prompt is in the repository: the re-read checks resolve the prompt the judge was
+# shown from its prompt_ref and digest, and the values come from that data file, never from this source.
+OUTCOME_KEY = "recommendation_specificity"
+OUTCOME_PROMPT_REF = f"docs/framework/judge_prompts/outcomes/{OUTCOME_KEY}.draft.json"
+OUTCOME_VALUES = list(load_prompt(OUTCOME_PROMPT_REF)["values"])  # the value ids, in the order the judge is shown
+OUTCOME_PROMPT_DIGEST = prompt_digest(OUTCOME_PROMPT_REF)
+
+
+def _outcome_arms(value: str | None = None) -> list[dict]:
+    """One final outcome row per arm at exchange 1, judged under the repository's prompt for OUTCOME_KEY."""
+    return [{"seed_id": "s1", "arm": arm, "exchange_index": 1, "final_in_exchange": True, "kind": "outcome",
+             "key": OUTCOME_KEY, "value": OUTCOME_VALUES[0] if value is None else value,
+             "prompt_ref": OUTCOME_PROMPT_REF, "prompt_file_digest": OUTCOME_PROMPT_DIGEST}
+            for arm in ("colloquial", "clinical", "lay_careful")]
+
+
+def _reread(row: dict, raw: str, derived_value: str | None, **judgment) -> dict:
+    """The row analysis_rows() derives by re-reading the leading line of a null out-of-vocabulary outcome judgment
+    whose recorded answer is `raw`; keyword arguments change that judgment."""
+    return {**row, "value": derived_value, "value_source": "leading_line_at_analysis", "judge_error": None,
+            "judgment": {"value": None, "judge_error": OUT_OF_VOCABULARY, "judge_raw": raw, **judgment}}
 
 
 # ------------------------------------------------------------------ Wave 1 Refusal
@@ -896,15 +927,65 @@ def test_edited_analysis_row_is_refused_by_line_and_field(tmp_path, field, edit)
     assert f"line 2: {field}" in str(exc_info.value)
 
 
-def test_leading_line_reread_of_a_null_judgment_is_accepted(tmp_path):
-    """analysis_rows() re-reads an out-of-vocabulary outcome answer's first line; that row's value differs from
-    its null judgment by design and is not a mismatch."""
-    rows = _three_arms()
-    rows[0] = {**rows[0], "value_source": "leading_line_at_analysis"}
+def test_leading_line_reread_of_an_out_of_vocabulary_outcome_answer_is_accepted(tmp_path):
+    """analysis_rows() re-reads a null out-of-vocabulary outcome answer whose first line is a declared value; that
+    row's value differs from its null judgment by design and is not a mismatch."""
+    rows = _outcome_arms()
+    rows[0] = _reread(rows[0], f"**{OUTCOME_VALUES[0]}**\n\nA synthetic justification.", OUTCOME_VALUES[0])
     run_dir = _write_run(tmp_path, "run-reread", rows)
 
     report = analyze_run_directories([run_dir])
-    assert report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"].counts.n_compared == 1
+    counts = report.seeds["s1"].dimensions[OUTCOME_KEY].contrasts["colloquial_vs_clinical"].counts
+    assert (counts.n_compared, counts.n_same, counts.n_refused) == (1, 1, 0)
+
+
+@pytest.mark.parametrize("make_row, field", [
+    # the shape the earlier fix accepted: a tier judgment is never re-read, so a re-read claim on one is refused
+    (lambda: _reread(_three_arms(value=TIERS[0])[0], TIERS[0], TIERS[0]), "value_source"),
+    # an outcome judgment recorded with another error is copied unchanged, never re-read
+    (lambda: _reread(_outcome_arms()[0], OUTCOME_VALUES[0], OUTCOME_VALUES[0], judge_error="synthetic parse error"),
+     "value_source"),
+    # no recorded answer, nothing to re-read
+    (lambda: _reread(_outcome_arms()[0], OUTCOME_VALUES[0], OUTCOME_VALUES[0], judge_raw=None), "value_source"),
+    # a judgment that already carries a value is copied, not re-read
+    (lambda: _reread(_outcome_arms()[0], OUTCOME_VALUES[0], OUTCOME_VALUES[0], value=OUTCOME_VALUES[0]),
+     "value_source"),
+    # the claimed value is not what the answer's first line says
+    (lambda: _reread(_outcome_arms()[0], f"{OUTCOME_VALUES[0]}\n\nprose", OUTCOME_VALUES[1]), "value"),
+    # the first line is not a declared value of the prompt, so the reader leaves the judgment null
+    (lambda: _reread(_outcome_arms()[0], "synthetic prose line\n\nmore", "synthetic prose line"), "value"),
+    # the prompt at the recorded digest is not the one in hand, so the value list cannot be confirmed
+    (lambda: _reread({**_outcome_arms()[0], "prompt_file_digest": "ffffffffffff"}, OUTCOME_VALUES[0],
+                     OUTCOME_VALUES[0]), "value"),
+    # a successful re-read carries no error
+    (lambda: {**_reread(_outcome_arms()[0], OUTCOME_VALUES[0], OUTCOME_VALUES[0]), "judge_error": "synthetic"},
+     "judge_error"),
+])
+def test_reread_claim_the_reader_cannot_produce_is_refused(tmp_path, make_row, field):
+    """A derived row marked leading_line_at_analysis is accepted only when judge_runner._read_value could have
+    produced it: a null outcome judgment recorded out of vocabulary with a raw answer, whose leading line is a
+    declared value of the prompt the judge was shown. Anything else is an edited row, and would otherwise enter
+    the counts with any value (Codex review of the F2 fix on PR #30)."""
+    rows = [*_three_arms(value=TIERS[0]), *_outcome_arms()]
+    target = make_row()
+    index = next(i for i, r in enumerate(rows) if (r["kind"], r["arm"]) == (target["kind"], target["arm"]))
+    rows[index] = target
+    run_dir = _write_run(tmp_path, "run-bad-reread", rows)
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    assert f"line {index + 1}: {field}" in str(exc_info.value)
+
+
+def test_out_of_vocabulary_error_and_leading_line_rule_match_judge_runner():
+    """The validator restates two of judge_runner's parsing facts; these tie them to the parser in the tree, so a
+    change there fails here rather than turning every re-read into a refusal or every refusal into a re-read."""
+    allowed = ["alpha", "beta"]
+    assert parse_answer("gamma", allowed, "outcome")[2] == OUT_OF_VOCABULARY
+    for text in ("alpha", "`alpha`", "'alpha'", "alpha.", "**alpha**", "alpha\n\nA justification."):
+        value = parse_answer(text, allowed, "outcome")[0]
+        if value is not None:
+            assert _leading_line(text) == value, text
 
 
 def test_retried_judgment_is_collapsed_to_its_latest_attempt_not_refused(tmp_path):

@@ -26,9 +26,11 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from scripts.petri_audit.framework import load_prompt, prompt_canonical
     from scripts.petri_audit.judge_runner import dedupe_key, rubric_digest
 except ModuleNotFoundError:  # run as a file path: the repository root is not on sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from scripts.petri_audit.framework import load_prompt, prompt_canonical
     from scripts.petri_audit.judge_runner import dedupe_key, rubric_digest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -237,6 +239,80 @@ FIELDS_FROM_JUDGMENT = (
 # Fields it takes from the manifest tree and branch the judgment's conversation belongs to.
 FIELDS_FROM_MANIFEST = ("seed_id", "tree_id", "epoch", "arm", "branch_id", "condition_id")
 LEADING_LINE_AT_ANALYSIS = "leading_line_at_analysis"
+# judge_runner's error for an outcome answer that is not one of the prompt's declared values (parse_answer). A null
+# outcome judgment recorded with it, and carrying the judge's raw answer, is the one judgment analysis_rows() re-reads
+# at analysis time (judge_runner._read_value, PR #29); tests/test_petri_three_arm.py ties the string to parse_answer.
+OUT_OF_VOCABULARY = "answer is not one of the declared values"
+# the characters judge_runner.parse_outcome_answer (PR #29) trims from both ends of a candidate answer line
+_ANSWER_TRIM = "`'\"* .:;,"
+
+
+def _rereadable(j: Mapping[str, Any]) -> bool:
+    """Whether analysis_rows() may re-read this judgment's answer at analysis time: a null outcome judgment (not a
+    planner not_applicable) recorded as out of vocabulary, with the judge's raw answer. judge_runner._read_value copies
+    every other judgment's value and error unchanged."""
+    return (j.get("kind") == "outcome" and j.get("value") is None and not j.get("not_applicable_reason")
+            and j.get("judge_error") == OUT_OF_VOCABULARY and isinstance(j.get("judge_raw"), str)
+            and bool(j["judge_raw"]))
+
+
+def _leading_line(text: str) -> str:
+    """The answer's first non-empty line, trimmed and lower-cased: the only value a leading-line re-read can take
+    (an answer that is the value alone is one line, so the same rule covers it)."""
+    for line in text.splitlines():
+        if line.strip():
+            return line.strip().strip(_ANSWER_TRIM).lower()
+    return ""
+
+
+def _declared_values(j: Mapping[str, Any], cache: dict[tuple[str, str], list[str] | None]) -> list[str] | None:
+    """The value list of the prompt the judge was shown: the file at the judgment's prompt_ref, used only when it
+    digests to the judgment's prompt_file_digest, as judge_runner._read_value requires. None when the file cannot be
+    read or has changed since, in which case that reader leaves the judgment null."""
+    ref, digest = j.get("prompt_ref"), j.get("prompt_file_digest")
+    if not isinstance(ref, str) or not ref or not isinstance(digest, str):
+        return None
+    if (ref, digest) not in cache:
+        try:
+            prompt = load_prompt(ref)
+            same = hashlib.sha256(prompt_canonical(prompt).encode("utf-8")).hexdigest()[:12] == digest
+            cache[(ref, digest)] = list(prompt["values"]) if same else None
+        except (OSError, ValueError, KeyError, TypeError):
+            cache[(ref, digest)] = None
+    return cache[(ref, digest)]
+
+
+def _value_problems(
+    a: Mapping[str, Any],
+    j: Mapping[str, Any],
+    prompt_values: dict[tuple[str, str], list[str] | None],
+) -> list[str]:
+    """Where a derived row's value and judge_error depart from what analysis_rows() can derive from its judgment.
+
+    Value and error are copied unchanged, except for a judgment `_rereadable` admits. For that judgment, a row marked
+    value_source leading_line_at_analysis carries the answer's leading line with no error, and that line must be a
+    declared value of the prompt the judge was shown, at the recorded digest. Any other judgment marked as re-read is
+    refused (Codex review of the F2 fix on PR #30: a tier row, or an outcome row with another error, was accepted with
+    any value). The later-line revision check (a CONFLICTING_VALUES answer) lives in PR #29's parse_outcome_answer and
+    is not repeated here.
+    """
+    if a.get("value_source") != LEADING_LINE_AT_ANALYSIS:
+        return [f for f in ("value", "judge_error") if a.get(f) != j.get(f)]
+    if not _rereadable(j):
+        return ["value_source (marked as re-read, but the judgment is not a null out-of-vocabulary outcome answer "
+                "with a recorded answer)"]
+    bad: list[str] = []
+    value = a.get("value")
+    allowed = _declared_values(j, prompt_values)
+    if value is None or value != _leading_line(j["judge_raw"]):
+        bad.append("value (not the leading line of the judge's recorded answer)")
+    elif allowed is None:
+        bad.append("value (the prompt at the recorded prompt_ref and digest is not available to confirm it)")
+    elif value not in allowed and value != NOT_APPLICABLE:
+        bad.append("value (not a declared value of the prompt the judge was shown)")
+    if a.get("judge_error") is not None:
+        bad.append("judge_error")
+    return bad
 
 
 def _bound_judgments(rdir: Path, manifest: Mapping[str, Any], run_id: str) -> list[dict[str, Any]]:
@@ -272,8 +348,8 @@ def _derived_row_problems(
     analysis_rows() emits exactly one row per judgment, in file order, so the two files align line for
     line. A stale file (derived before a resumed pass appended judgments) fails the count; an edited one
     fails the field comparison. Checked per line: every field copied from the judgment, the instrument
-    digest where the row carries it, the value (equal, or a leading-line re-read of a null judgment), the
-    judge error, the eligibility flags, and every field taken from the manifest tree.
+    digest where the row carries it, the value and judge error (equal, or the one re-read `_value_problems`
+    admits), the eligibility flags, and every field taken from the manifest tree.
     """
     if len(rows) != len(judgments):
         return [f"analysis_rows.jsonl has {len(rows)} rows but the bound judgments.jsonl has {len(judgments)}; "
@@ -287,18 +363,12 @@ def _derived_row_problems(
                 "branched_from_turn_id": b.get("branched_from_turn_id"),
             }
     problems: list[str] = []
+    prompt_values: dict[tuple[str, str], list[str] | None] = {}
     for line_no, (a, j) in enumerate(zip(rows, judgments), start=1):
         bad = [f for f in FIELDS_FROM_JUDGMENT if a.get(f) != j.get(f)]
         if "prompt_file_digest" in a and a["prompt_file_digest"] != j.get("prompt_file_digest"):
             bad.append("prompt_file_digest")
-        re_read = a.get("value_source") == LEADING_LINE_AT_ANALYSIS
-        if re_read:
-            if j.get("value") is not None or a.get("value") is None:
-                bad.append("value")
-        elif a.get("value") != j.get("value"):
-            bad.append("value")
-        if a.get("judge_error") != (None if re_read else j.get("judge_error")):
-            bad.append("judge_error")
+        bad.extend(_value_problems(a, j, prompt_values))
         info = by_conv.get(a.get("conversation_id"))
         if info is None:
             bad.append("conversation_id not in the manifest's trees")
