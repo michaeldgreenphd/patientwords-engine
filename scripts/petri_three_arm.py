@@ -271,6 +271,38 @@ def load_ordinal_scales(
     return scales
 
 
+def load_declared_values(
+    rubric_path: Path | str | None = None,
+    outcome_registry_path: Path | str | None = None,
+) -> dict[str, list[str]]:
+    """Every value each dimension declares, from the same data files as the scales, ordinal or not: the rubric's tier
+    ids for the two tier instruments, and each outcome dimension's `values` (or its `scale`) in the outcome registry.
+
+    A nominal dimension has no scale to check a value against, so its exchanges are checked against this list instead
+    (analyze_seed); a value outside it is refused by name, never counted as "same" or "different". The registry version
+    loaded is the one whose definitions every analysed dimension was checked against (check_dimension_compatibility).
+    """
+    rubric_file = Path(rubric_path or DEFAULT_ADVICE_RUBRIC)
+    outcomes_file = Path(outcome_registry_path or DEFAULT_OUTCOME_REGISTRY)
+
+    declared: dict[str, list[str]] = {}
+    if rubric_file.is_file():
+        tier_ids = [t["id"] for t in load_json(rubric_file).get("tiers", [])]
+        if tier_ids:
+            declared["response_only"] = tier_ids
+            declared["contextual"] = tier_ids
+    if outcomes_file.is_file():
+        for dim in load_json(outcomes_file).get("dimensions", []):
+            dim_id = dim.get("id")
+            if not dim_id:
+                continue
+            if isinstance(dim.get("values"), list):
+                declared[dim_id] = list(dim["values"])
+            elif isinstance(dim.get("scale"), list):
+                declared[dim_id] = list(dim["scale"])
+    return declared
+
+
 # Fields judge_runner.analysis_rows() copies from each judgment row unchanged.
 FIELDS_FROM_JUDGMENT = (
     "conversation_id", "turn_id", "assistant_turn_index", "exchange_index", "final_in_exchange",
@@ -925,12 +957,15 @@ def analyze_contrast(
     exchanges: Sequence[ExchangeKey],
     scale: list[str] | None,
     errors_by_arm: Mapping[str, Mapping[ExchangeKey, str]] | None = None,
+    vocabulary: Sequence[str] | None = None,
 ) -> ContrastResult:
     """Analyzes a single pairwise contrast (arm_A vs arm_B) across all exchanges of all cells.
 
     Joins on (run_id, epoch, branch_id, exchange_index) with final_in_exchange=True.
     Refuses by name any exchange where an arm is missing, ineligible, not_applicable,
-    missing final_in_exchange, or has duplicate final rows.
+    missing final_in_exchange, or has duplicate final rows, or where an arm's value is not
+    on the ordinal `scale` or, for a nominal dimension, not in its declared `vocabulary`
+    (None: the caller has checked the values itself).
     """
     is_ordinal = scale is not None
     rows_A = rows_by_arm.get(arm_A, {})
@@ -975,6 +1010,16 @@ def analyze_contrast(
                     f"arm '{arm}' value {str(row['value'])!r} is not on the registered ordinal scale"
                     for arm, row in ((arm_A, row_A), (arm_B, row_B))
                     if str(row["value"]) not in scale
+                ]
+            elif not problems and vocabulary is not None:
+                # a nominal value the registered definition does not declare is not a measurement of that dimension:
+                # counting it as same or different would turn a malformed judgment into a plausible comparison
+                # (Codex review of 41c864ca on PR #30)
+                problems = [
+                    f"arm '{arm}' value {str(row['value'])!r} is not a declared value of the registered dimension"
+                    + ("" if vocabulary else " (the loaded registry declares no values for it)")
+                    for arm, row in ((arm_A, row_A), (arm_B, row_B))
+                    if str(row["value"]) not in vocabulary
                 ]
             if problems:
                 refusal_reason = f"{where}: {', '.join(problems)}"
@@ -1054,12 +1099,19 @@ def analyze_seed(
     scales: Mapping[str, list[str]],
     *,
     tier_rubric_digest: str | None,
+    declared_values: Mapping[str, Sequence[str]] | None,
 ) -> SeedAnalysis:
     """Analyzes all judged dimensions and tier instruments for one seed.
 
     `tier_rubric_digest` is the loaded rubric's canonical digest (`judge_runner.rubric_digest`): a final
     tier row that recorded any other digest was graded on a different scale and its exchange is refused by
     name. It must be passed explicitly; None is only for a caller that has verified the digest itself.
+
+    `declared_values` maps each dimension to the values its registered definition declares
+    (`load_declared_values`). An exchange where a nominal dimension's value is not among them is refused by
+    name; a nominal dimension the mapping lacks declares nothing, so every one of its exchanges is refused.
+    Ordinal dimensions are checked against their scale. It must be passed explicitly; None is only for a
+    caller that has verified the values itself.
 
     Identifies standard 3-arm seeds vs 2x3 identity seeds and builds the required contrasts:
     - Standard 3-arm:
@@ -1180,6 +1232,8 @@ def analyze_seed(
         exchanges = sorted(dim_exchanges.get(key, set()))
         scale = scales.get(key)
         is_ordinal = scale is not None
+        # a nominal dimension's values are checked against its declared values (the ordinal check uses the scale)
+        vocabulary = None if is_ordinal or declared_values is None else list(declared_values.get(key) or [])
 
         contrasts: dict[str, ContrastResult] = {}
 
@@ -1194,6 +1248,7 @@ def analyze_seed(
                 exchanges=exchanges,
                 scale=scale,
                 errors_by_arm=arm_errors,
+                vocabulary=vocabulary,
             )
             # 2. Orthography decomposition: lay_careful vs colloquial
             contrasts["lay_careful_vs_colloquial"] = analyze_contrast(
@@ -1204,6 +1259,7 @@ def analyze_seed(
                 exchanges=exchanges,
                 scale=scale,
                 errors_by_arm=arm_errors,
+                vocabulary=vocabulary,
             )
             # 3. Terminology decomposition: lay_careful vs clinical
             contrasts["lay_careful_vs_clinical"] = analyze_contrast(
@@ -1214,6 +1270,7 @@ def analyze_seed(
                 exchanges=exchanges,
                 scale=scale,
                 errors_by_arm=arm_errors,
+                vocabulary=vocabulary,
             )
         else:
             # 2x3 identity crossed contrasts
@@ -1226,6 +1283,7 @@ def analyze_seed(
                 exchanges=exchanges,
                 scale=scale,
                 errors_by_arm=arm_errors,
+                vocabulary=vocabulary,
             )
             contrasts["patient:lay_careful_vs_colloquial"] = analyze_contrast(
                 contrast_name="patient:lay_careful_vs_colloquial",
@@ -1235,6 +1293,7 @@ def analyze_seed(
                 scale=scale,
                 exchanges=exchanges,
                 errors_by_arm=arm_errors,
+                vocabulary=vocabulary,
             )
             contrasts["patient:lay_careful_vs_clinical"] = analyze_contrast(
                 contrast_name="patient:lay_careful_vs_clinical",
@@ -1244,6 +1303,7 @@ def analyze_seed(
                 scale=scale,
                 exchanges=exchanges,
                 errors_by_arm=arm_errors,
+                vocabulary=vocabulary,
             )
             # (b) Within clinician:
             contrasts["clinician:colloquial_vs_clinical"] = analyze_contrast(
@@ -1254,6 +1314,7 @@ def analyze_seed(
                 scale=scale,
                 exchanges=exchanges,
                 errors_by_arm=arm_errors,
+                vocabulary=vocabulary,
             )
             contrasts["clinician:lay_careful_vs_colloquial"] = analyze_contrast(
                 contrast_name="clinician:lay_careful_vs_colloquial",
@@ -1263,6 +1324,7 @@ def analyze_seed(
                 scale=scale,
                 exchanges=exchanges,
                 errors_by_arm=arm_errors,
+                vocabulary=vocabulary,
             )
             contrasts["clinician:lay_careful_vs_clinical"] = analyze_contrast(
                 contrast_name="clinician:lay_careful_vs_clinical",
@@ -1272,6 +1334,7 @@ def analyze_seed(
                 scale=scale,
                 exchanges=exchanges,
                 errors_by_arm=arm_errors,
+                vocabulary=vocabulary,
             )
             # (c) Identity contrasts within each register:
             contrasts["colloquial:patient_vs_clinician"] = analyze_contrast(
@@ -1282,6 +1345,7 @@ def analyze_seed(
                 scale=scale,
                 exchanges=exchanges,
                 errors_by_arm=arm_errors,
+                vocabulary=vocabulary,
             )
             contrasts["clinical:patient_vs_clinician"] = analyze_contrast(
                 contrast_name="clinical:patient_vs_clinician",
@@ -1291,6 +1355,7 @@ def analyze_seed(
                 scale=scale,
                 exchanges=exchanges,
                 errors_by_arm=arm_errors,
+                vocabulary=vocabulary,
             )
             contrasts["lay_careful:patient_vs_clinician"] = analyze_contrast(
                 contrast_name="lay_careful:patient_vs_clinician",
@@ -1300,6 +1365,7 @@ def analyze_seed(
                 scale=scale,
                 exchanges=exchanges,
                 errors_by_arm=arm_errors,
+                vocabulary=vocabulary,
             )
 
         analyzed_dimensions[key] = DimensionAnalysis(
@@ -1356,6 +1422,10 @@ def analyze_run_directories(
             outcome_registry_path=outcomes_file,
         )
     )
+    # the values each dimension's loaded definition declares; an analysed outcome dimension is defined identically in
+    # every pooled run's recorded registry version (check_dimension_compatibility), so these are the values it was
+    # judged under
+    declared_values = load_declared_values(rubric_path=rubric_file, outcome_registry_path=outcomes_file)
 
     all_rows: list[dict[str, Any]] = []
     run_ids: list[str] = []
@@ -1457,7 +1527,8 @@ def analyze_run_directories(
 
     analyzed_seeds: dict[str, SeedAnalysis] = {}
     for sid, srows in sorted(rows_by_seed.items()):
-        analyzed_seeds[sid] = analyze_seed(sid, srows, active_scales, tier_rubric_digest=loaded_rubric_digest)
+        analyzed_seeds[sid] = analyze_seed(sid, srows, active_scales, tier_rubric_digest=loaded_rubric_digest,
+                                           declared_values=declared_values)
 
     loaded_outcome_sha = resolver.loaded_sha
     loaded_rubric_sha = sha256_file(rubric_file)
