@@ -22,6 +22,12 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+try:
+    from scripts.petri_audit.judge_runner import dedupe_key
+except ModuleNotFoundError:  # run as a file path: the repository root is not on sys.path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from scripts.petri_audit.judge_runner import dedupe_key
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ADVICE_RUBRIC = REPO_ROOT / "data" / "advice_rubric.draft.json"
 DEFAULT_URGENCY_TIERS = REPO_ROOT / "data" / "urgency_tiers.draft.json"
@@ -151,6 +157,7 @@ class RunProvenance:
     rubric_path: str
     rubric_sha256: str
     rubric_manifest_status: str
+    superseded_retry_rows: dict[str, int]
 
 
 @dataclass(frozen=True)
@@ -290,12 +297,32 @@ def _derived_row_problems(
     return problems
 
 
+def collapse_retries(rows: Sequence[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
+    """The latest row per judgment key, and how many earlier attempts it superseded.
+
+    A resumed judging pass appends a replacement for a null judgment under the same key
+    (`judge_runner.dedupe_key`), and the pipeline treats the latest row per key as authoritative
+    (`judge_runner.cumulative_counts`); `analysis_rows()` still emits every attempt. Collapsing
+    here, before the one-final-row-per-exchange check, keeps a recovered retry from being refused
+    as a duplicate final row (Codex F8 on PR #30). A non-null judgment is never retried, so the
+    latest row is the one the pipeline counts. The superseded count is reported, not hidden.
+    """
+    latest: dict[tuple, int] = {}
+    for i, r in enumerate(rows):
+        latest[dedupe_key(r)] = i
+    keep = sorted(latest.values())
+    return [rows[i] for i in keep], len(rows) - len(keep)
+
+
 def load_run_rows(
     run_dir: Path | str,
     outcome_registry_path: Path | str | None = None,
     rubric_path: Path | str | None = None,
-) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+) -> tuple[dict[str, Any], list[dict[str, Any]], int]:
     """Loads manifest and analysis rows from a run directory.
+
+    Returns the manifest, the authenticated rows with retried judgments collapsed to the latest
+    attempt per judgment key, and the number of superseded attempts.
 
     analysis_rows.jsonl is required; raw judgments.jsonl rows are never read in its place.
     Validates that the run is eligible for three-arm analysis, cleanly refusing
@@ -409,7 +436,8 @@ def load_run_rows(
     elif not isinstance(judge_rec, str):
         raise TypeError(f"Run {rdir} manifest.json artifacts.judge_of_record is {type(judge_rec).__name__}")
 
-    return manifest, rows
+    rows, n_superseded = collapse_retries(rows)
+    return manifest, rows, n_superseded
 
 
 def _compare_values(
@@ -870,9 +898,10 @@ def analyze_run_directories(
     judges_of_record: list[str] = []
     manifest_outcome_digests: dict[str, str] = {}
     manifest_rubric_digests: dict[str, str | None] = {}
+    superseded_retry_rows: dict[str, int] = {}
 
     for rdir in run_dirs:
-        manifest, rows = load_run_rows(
+        manifest, rows, n_superseded = load_run_rows(
             rdir,
             outcome_registry_path=outcomes_file,
             rubric_path=rubric_file,
@@ -915,6 +944,7 @@ def analyze_run_directories(
         if judge_name not in judges_of_record:
             judges_of_record.append(judge_name)
 
+        superseded_retry_rows[run_id] = n_superseded
         all_rows.extend(rows)
 
     # Group rows by seed_id
@@ -973,6 +1003,7 @@ def analyze_run_directories(
         rubric_path=_display_path(rubric_file),
         rubric_sha256=loaded_rubric_sha,
         rubric_manifest_status=rubric_status,
+        superseded_retry_rows=superseded_retry_rows,
     )
 
     return ThreeArmReport(
@@ -1000,6 +1031,8 @@ def format_markdown_summary(report: ThreeArmReport) -> str:
         f"- **Outcome registry**: `{report.provenance.outcome_registry_path}` (`{report.provenance.outcome_registry_sha256[:12]}`)",
         f"- **Rubric**: `{report.provenance.rubric_path}` ({report.provenance.rubric_manifest_status})",
         f"- **Seeds analyzed**: {len(report.seeds)}",
+        "- **Superseded retry attempts** (a null judgment replaced by a later attempt under the same key): "
+        + (", ".join(f"{rid}: {n}" for rid, n in report.provenance.superseded_retry_rows.items()) or "None"),
         "",
     ]
 

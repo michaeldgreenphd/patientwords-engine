@@ -794,6 +794,25 @@ def test_leading_line_reread_of_a_null_judgment_is_accepted(tmp_path):
     assert report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"].counts.n_compared == 1
 
 
+def test_retried_judgment_is_collapsed_to_its_latest_attempt_not_refused(tmp_path):
+    """A resumed pass appends a replacement for a null judgment under the same judgment key, and
+    analysis_rows() emits both attempts; the latest one is authoritative, so the exchange is compared,
+    not refused as having two final rows, and the superseded attempt is counted (Codex F8 on PR #30)."""
+    rows = _three_arms(value=TIERS[1])
+    failed = {**rows[1], "value": None, "judge_error": "synthetic parse error", "row_eligible": False}
+    rows.insert(1, failed)  # the clinical arm's first attempt failed; its retry follows later in the file
+    run_dir = _write_run(tmp_path, "run-retry", rows)
+
+    report = analyze_run_directories([run_dir])
+
+    contrast = report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+    assert contrast.counts.n_compared == 1
+    assert contrast.counts.n_refused == 0
+    assert contrast.rows[0].arm_B_value == TIERS[1]
+    assert report.provenance.superseded_retry_rows == {"run-retry": 1}
+    assert "run-retry: 1" in format_markdown_summary(report)
+
+
 def test_manifest_lacking_judge_of_record_is_refused_by_name(tmp_path):
     """A run directory whose manifest lacks artifacts.judge_of_record must be refused by name."""
     run_dir = _write_run(tmp_path, "run-synth-123", _three_arms(),
