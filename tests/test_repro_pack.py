@@ -554,21 +554,62 @@ def test_judges_text_never_infers_a_primary_for_a_missing_or_second_bare_name():
     two judges 'the primary judge'. The rows carry no primary flag, so the README
     names a primary only when exactly one recorded judge is not a second judge."""
     missing = ae._judges_text([{"tier": "t1"}, {"judge_model": "", "tier": "t1"}])
-    assert missing == "2 by `(judge not recorded)` (role unknown: these rows do not name their judge)."
-    assert "primary" not in missing
+    assert missing.startswith(
+        "2 by `(judge not recorded)` (these rows name no judge, so none is marked as a second judge).")
+    assert "the primary judge" not in missing
 
     two_bare = ae._judges_text([{"judge_model": "judge-p", "tier": "t1"}] * 2
                                + [{"judge_model": "regrade-q", "tier": "t2"}])
     assert "the primary judge" not in two_bare
-    role = ("role not recorded: 2 judges here are not marked as second judges, and the rows do not say "
-            "which of them is primary")
-    assert two_bare == f"2 by `judge-p` ({role}) and 1 by `regrade-q` ({role})."
+    role = "not marked as a second judge; the rows do not record whether it is the study's primary judge"
+    assert two_bare.startswith(f"2 by `judge-p` ({role}) and 1 by `regrade-q` ({role}).")
 
     mixed = ae._judges_text([{"judge_model": "judge-p", "tier": "t1"}] * 3
                             + [{"judge_model": "prov:judge-s", "tier": "t1"}] * 2 + [{"tier": "t1"}])
     assert mixed.startswith("3 by `judge-p` (the primary judge); 2 by `prov:judge-s` (a second judge")
-    assert mixed.endswith("; and 1 by `(judge not recorded)` (role unknown: these rows do not name their judge).")
+    assert ("; and 1 by `(judge not recorded)` (these rows name no judge, so none is marked as a second "
+            "judge).") in mixed
     assert mixed.count("the primary judge") == 1
+
+
+_POOLED = ("Every coding whose judge is not marked as a second judge enters the primary coding: `analyze` "
+           "pools them into one modal tier per stimulus, model and arm, and the exporter that builds the "
+           "study's site data keeps the last one recorded for each response.")
+
+
+def test_judges_text_says_unmarked_codings_enter_the_primary_coding():
+    """Regression (review of the PR #33 fix, 2026-09-23): the README called a row with
+    no judge_model 'role unknown' and, with two bare judges, said 'the rows do not say
+    which of them is primary', which implies one of them is. Every consumer decides
+    role with is_secondary_judge alone, which is False for a missing name, so analyze
+    pools all those codings into the modal tier and the exporters treat them as
+    primary. The README must say so wherever the pooled rows are not one named
+    judge's, and add nothing when they are."""
+    # the premise the sentence rests on: a missing name is never a second judge
+    assert not ae.is_secondary_judge(None) and not ae.is_secondary_judge("")
+    assert not ae.is_secondary_judge("regrade-q") and ae.is_secondary_judge("prov:judge-s")
+
+    missing = ae._judges_text([{"tier": "t1"}, {"judge_model": "", "tier": "t1"}])
+    two_bare = ae._judges_text([{"judge_model": "judge-p", "tier": "t1"}] * 2
+                               + [{"judge_model": "regrade-q", "tier": "t2"}])
+    mixed = ae._judges_text([{"judge_model": "judge-p", "tier": "t1"}] * 3
+                            + [{"judge_model": "prov:judge-s", "tier": "t1"}] * 2 + [{"tier": None}])
+    for text in (missing, two_bare, mixed):
+        assert text.count(_POOLED) == 1
+        assert "role unknown" not in text and "which of them is primary" not in text
+    assert missing.endswith(_POOLED)
+    assert two_bare.endswith(_POOLED)
+    # the no-usable-tier count still follows, so a vendor sees the failed rows count as no coding
+    assert mixed.endswith(_POOLED + " 1 of these rows returned no usable tier; they are kept as history and "
+                          "count as no coding.")
+
+    # one named bare judge (every archive today): the primary coding is that judge's alone,
+    # so the text is unchanged and carries no pooling sentence
+    single = ae._judges_text([{"judge_model": "judge-p", "tier": "t1"}] * 3
+                             + [{"judge_model": "prov:judge-s", "tier": "t1"}] * 2)
+    assert single == ("3 by `judge-p` (the primary judge) and 2 by `prov:judge-s` (a second judge, whose "
+                      "codings measure inter-judge agreement and never replace the primary coding).")
+    assert "enters the primary coding" not in ae._judges_text([{"judge_model": "prov:judge-s", "tier": "t1"}])
 
 
 def test_pack_readme_carries_the_counted_sentences(packed):

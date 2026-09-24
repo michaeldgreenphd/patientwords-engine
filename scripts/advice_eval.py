@@ -2036,10 +2036,17 @@ def _judges_text(judgments: list[dict]) -> str:
     - a provider-spec name (with ':') is a second judge;
     - a bare name is 'the primary judge' only when it is the one recorded bare name
       in the rows. Clinician re-grades also enter under bare labels, so with two or
-      more the README says the rows do not record which is primary instead of
-      calling each one primary;
-    - a row with no judge_model is counted under '(judge not recorded)' with its
-      role unknown, never assigned one."""
+      more each is described as not marked as a second judge, with the rows not
+      recording whether it is the study's primary judge;
+    - a row with no judge_model is counted under '(judge not recorded)'.
+
+    Every consumer decides a row's role with `is_secondary_judge` alone (':' in the
+    name; False for a missing name): `analyze` pools every other row into the modal
+    tier, the scenario exporter keeps the last such row per response, and the
+    judge-agreement exporter files it in the 'primary' slot. So whenever those rows
+    do not all come from the one named primary judge - a missing name, or two or
+    more bare names - the README adds a sentence saying they all enter the primary
+    coding, rather than implying that only one of them does."""
     if not judgments:
         return "none yet."
     counts: dict[str | None, int] = {}
@@ -2050,20 +2057,26 @@ def _judges_text(judgments: list[dict]) -> str:
     parts = []
     for key, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0] or "")):
         if key is None:
-            name, role = "(judge not recorded)", "role unknown: these rows do not name their judge"
+            name, role = "(judge not recorded)", "these rows name no judge, so none is marked as a second judge"
         elif is_secondary_judge(key):
             name, role = key, ("a second judge, whose codings measure inter-judge agreement and never "
                                "replace the primary coding")
         elif n_bare == 1:
             name, role = key, "the primary judge"
         else:
-            name, role = key, (f"role not recorded: {n_bare} judges here are not marked as second judges, "
-                               f"and the rows do not say which of them is primary")
+            name, role = key, ("not marked as a second judge; the rows do not record whether it is the "
+                               "study's primary judge")
         parts.append(f"{n} by `{name}` ({role})")
     if len(parts) <= 2:
         text = " and ".join(parts) + "."
     else:
         text = "; ".join(parts[:-1]) + "; and " + parts[-1] + "."
+    if None in counts or n_bare > 1:
+        # the pooled rows are not all one named primary judge's: say what the
+        # analysis does with them, since every consumer pools them all
+        text += (" Every coding whose judge is not marked as a second judge enters the primary coding: "
+                 "`analyze` pools them into one modal tier per stimulus, model and arm, and the exporter "
+                 "that builds the study's site data keeps the last one recorded for each response.")
     failed = sum(1 for j in judgments if j.get("tier") is None)
     if failed:
         text += (f" {failed} of these rows returned no usable tier; they are kept as history and "
