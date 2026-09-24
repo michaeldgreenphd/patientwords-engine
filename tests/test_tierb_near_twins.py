@@ -227,3 +227,23 @@ def test_different_engine_inputs_never_share_provenance(tmp_path):
     third = nt.compute(str(sim), str(dash), site)["inputs"]
     assert third["dashboard_sha256"] != second["dashboard_sha256"]
     assert third["dashboard_tierb_sha256"] == second["dashboard_tierb_sha256"]
+
+
+# --- a site copy padded with outer whitespace (Codex review of PR #32, 2026-09-24) #
+# compute() removed a site phrase when its stripped form was sealed, so a copy
+# that differed from a sealed phrase only by leading or trailing spacing left the
+# comparison set, although the registered removal is of exact sealed strings and
+# near_twins() scores every spacing variant 1.0.
+
+def test_a_site_copy_differing_only_by_outer_spacing_is_a_twin(tmp_path):
+    sim, ops, site, (_, _, sealed_c) = _tree(tmp_path)
+    archive = site / "data" / "simulated_archive.json"
+    rows = json.loads(archive.read_text(encoding="utf-8"))
+    rows.append({"clinical_prompt": f"  {sealed_c} "})
+    archive.write_text(json.dumps(rows), encoding="utf-8")
+    result = nt.compute(str(sim), str(ops / "dashboard.json"), site)
+    assert result["twin_labels"] == [f"{BATCH}#1", f"{BATCH}#2", f"{BATCH}#3"]
+    assert result["counts"]["site_published_phrases"] == 3       # tea1 variant, explore_far, padded copy
+    # the exact sealed string on the site is still not a comparison phrase
+    assert result["counts"]["comparison_phrases"] == 4           # explore_twin, explore_far, tea1, padded
+

@@ -18,7 +18,12 @@ Definition, exactly as registered:
   the sealed set; and (b) the phrases published on the site: every
   ``clinical_prompt`` string in the site's ``data/simulated_scenarios.json``
   (``scenarios[]``) and ``data/simulated_archive.json`` (the array), less any
-  that is itself a sealed phrase (exact string, as the seal is defined).
+  that is itself a sealed phrase (exact string, as the seal is defined). The
+  site string is compared as published, unstripped: a copy that differs from a
+  sealed phrase only by case or spacing, leading and trailing spacing included,
+  is a different string, stays, and scores 1.0 after normalization (Codex
+  review of PR #32, 2026-09-24). Explore-split phrases are the stripped
+  ``top_prompt``, the same string the seal hashes, so they are compared as that.
 - Normalization: ``seal_check.norm`` (lowercase, whitespace runs to one space,
   stripped), applied to both sides; the comparison set is deduplicated after it.
 - Metric: ``difflib.SequenceMatcher(None, a, b).ratio()`` with difflib's
@@ -189,7 +194,9 @@ def compute(simulated_dir: str, dashboard_path: str, site: str | Path) -> dict:
         raise SystemExit("CONFIG ERROR: the sealed set computes empty (null tierb.start_utc? wrong branch?)")
     sealed = set(registry)
     explore = [top for top in tierb_phrases if top not in sealed]
-    published = [p for p in site_phrases(site) if p.strip() not in sealed]
+    # Exact string, unstripped: an outer-spacing variant of a sealed phrase is a
+    # different string and stays (near_twins scores it 1.0 after norm).
+    published = [p for p in site_phrases(site) if p not in sealed]
     comparison = explore + published
     twins = near_twins(registry, comparison)
 
@@ -214,7 +221,8 @@ def compute(simulated_dir: str, dashboard_path: str, site: str | Path) -> dict:
             "sealed_set": "scripts/seal_check.py sealed_registry()",
             "comparison_set": ("explore split: accepted top_prompt of every Tier B pairs_<STAMP> pair not in "
                                "the sealed set; plus every clinical_prompt in the site's "
-                               + " and ".join(SITE_FILES) + ", less sealed phrases; deduplicated after "
+                               + " and ".join(SITE_FILES) + ", less any string exactly equal to a sealed "
+                               "phrase (compared before normalization, unstripped); deduplicated after "
                                "normalization"),
             "seed": None, "deterministic": True,
         },
