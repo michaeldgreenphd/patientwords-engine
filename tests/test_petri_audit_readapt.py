@@ -403,11 +403,13 @@ def test_the_schema_takes_the_readapt_block_and_every_manifest_written_before_it
     landed = _landed_manifests()
     assert landed, "the landed runs are the compatibility evidence"
     for path in landed:
-        m = framework.load_json(path)
-        assert "readapt" not in m
-        assert manifest_mod.manifest_problems(m) == [], path
+        assert manifest_mod.manifest_problems(framework.load_json(path)) == [], path
+    # Every landed manifest validates, a readapted one (w2e3r, 2026-09-24) included; the ones written before the
+    # block existed are the backward-compatibility evidence, so at least one must remain.
+    before = [p for p in landed if "readapt" not in framework.load_json(p)]
+    assert before, "a landed manifest written before the readapt block"
     runs, _sidecar, _plan_path, plan = _staged(tmp_path)
-    m = framework.load_json(landed[-1])
+    m = framework.load_json(before[-1])
     m["readapt"] = readapt.provenance_block(plan)
     sealed = manifest_mod.seal_manifest(m, m["chain"]["prev_sha256"])
     assert manifest_mod.manifest_problems(sealed) == []
