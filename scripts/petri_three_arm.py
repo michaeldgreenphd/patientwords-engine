@@ -646,6 +646,10 @@ def definition_digests(registry: Mapping[str, Any], where: str) -> dict[tuple[st
     return out
 
 
+# the label, in the per-run prompt digest counts, for outcome rows that record no judge prompt digest; never a digest
+NO_PROMPT_DIGEST = "none recorded"
+
+
 def _dimension_kind(row: Mapping[str, Any]) -> str:
     """Tier rows are the rubric's instruments; every other judged row is an outcome dimension (analyze_seed's default)."""
     return "tier" if row.get("kind") == "tier" else "outcome"
@@ -665,9 +669,13 @@ def check_dimension_compatibility(
       loaded registry, whose scale the analysis applies;
     - it is an outcome dimension that one of those versions, or the loaded registry, does not define (a tier instrument
       absent from every version is left to the rubric check, as before);
-    - its outcome rows record more than one judge prompt digest (prompt_file_digest), counting a missing digest as a
-      version of its own (design note section 10.6: no pooling across judge prompts).
-    Returns the refusals and, for provenance, every outcome dimension's recorded prompt digests per run.
+    - any of its outcome rows records no judge prompt digest (prompt_file_digest absent, null, empty or not a string):
+      the prompt version those rows were judged under cannot be established, so they are not a measurement of it
+      (Codex review of 41c864ca on PR #30: a dimension whose every row lacked it counted as one shared version);
+    - its outcome rows record more than one judge prompt digest (design note section 10.6: no pooling across judge
+      prompts).
+    Returns the refusals and, for provenance, every outcome dimension's recorded prompt digests per run, with rows that
+    record none counted under NO_PROMPT_DIGEST.
     """
     by_dim: dict[tuple[str, str], dict[str, list[Mapping[str, Any]]]] = {}
     for r in rows:
@@ -684,8 +692,8 @@ def check_dimension_compatibility(
         prompts: dict[str, dict[str, int]] = {}
         if kind == "outcome":
             prompts = {rid: dict(sorted(Counter(
-                str(r.get("prompt_file_digest")) if r.get("prompt_file_digest") is not None else "none recorded"
-                for r in per_run[rid]).items())) for rid in run_ids}
+                r["prompt_file_digest"] if isinstance(r.get("prompt_file_digest"), str) and r["prompt_file_digest"]
+                else NO_PROMPT_DIGEST for r in per_run[rid]).items())) for rid in run_ids}
             prompt_digests[key] = prompts
 
         problems: list[str] = []
@@ -704,7 +712,12 @@ def check_dimension_compatibility(
                 where = f"`git show {version.location}`" if version.commit else version.location
                 problems.append(f"every run records the same definition, so it can be analysed by passing the registry "
                                 f"version they were judged under (sha256 {version.sha256}, {where}) as --outcomes")
-        distinct_prompts = {d for counts in prompts.values() for d in counts}
+        undigested = {rid: counts[NO_PROMPT_DIGEST] for rid, counts in prompts.items() if NO_PROMPT_DIGEST in counts}
+        if undigested:
+            listed = "; ".join(f"run '{rid}' {n} rows" for rid, n in undigested.items())
+            problems.append(f"{sum(undigested.values())} of its rows record no judge prompt digest (prompt_file_digest; "
+                            f"{listed}), so the judge prompt version they were judged under cannot be established")
+        distinct_prompts = {d for counts in prompts.values() for d in counts if d != NO_PROMPT_DIGEST}
         if len(distinct_prompts) > 1:
             listed = "; ".join(f"run '{rid}' " + ", ".join(f"{d} ({n} rows)" for d, n in counts.items())
                                for rid, counts in prompts.items())

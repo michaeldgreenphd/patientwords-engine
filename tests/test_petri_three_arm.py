@@ -1371,7 +1371,7 @@ SECOND_VALUES = next(d["values"] for d in BASE_REGISTRY["dimensions"] if d["id"]
 needs_git = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
 
 
-def _second_arms(prompt_digest: str = "0123456789ab") -> list[dict]:
+def _second_arms(prompt_digest: str | None = "0123456789ab") -> list[dict]:
     """One final row per arm at exchange 1 for a second outcome dimension, judged under `prompt_digest`."""
     return [{"seed_id": "s1", "arm": arm, "exchange_index": 1, "final_in_exchange": True, "kind": "outcome",
              "key": SECOND_KEY, "value": SECOND_VALUES[0], "prompt_file_digest": prompt_digest}
@@ -1579,6 +1579,27 @@ def test_dimension_judged_under_two_prompt_versions_is_refused(tmp_path):
             "run 'run-b' bbbbbbbbbbbb (3 rows))") in refusal.reason
     assert report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"].counts.n_compared == 2
     assert report.provenance.outcome_prompt_digests[SECOND_KEY] == refusal.prompt_file_digests
+
+
+@pytest.mark.parametrize("recorded", [None, ""], ids=["null", "empty"])
+def test_dimension_whose_rows_record_no_prompt_digest_is_refused(tmp_path, recorded):
+    """Every row of an outcome dimension records no judge prompt digest: the prompt version cannot be established.
+    The missing digest was counted as one shared version, "none recorded", so the dimension was analysed (Codex review
+    of 41c864ca on PR #30); it is now refused by name with the count per run, and the other dimensions are analysed."""
+    run_a = _write_run(tmp_path, "run-a", _three_arms() + _second_arms(recorded))
+    run_b = _write_run(tmp_path, "run-b", _three_arms() + _second_arms(recorded))
+
+    report = analyze_run_directories([run_a, run_b])
+
+    assert [d.dimension_key for d in report.refused_dimensions] == [SECOND_KEY]
+    refusal = report.refused_dimensions[0]
+    assert refusal.rows_withheld == {"run-a": 3, "run-b": 3}
+    assert refusal.prompt_file_digests == {"run-a": {"none recorded": 3}, "run-b": {"none recorded": 3}}
+    assert ("6 of its rows record no judge prompt digest (prompt_file_digest; run 'run-a' 3 rows; run 'run-b' 3 rows), "
+            "so the judge prompt version they were judged under cannot be established") in refusal.reason
+    assert "judge prompt versions" not in refusal.reason  # a missing digest is not counted as a version
+    assert SECOND_KEY not in report.seeds["s1"].dimensions
+    assert report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"].counts.n_compared == 2
 
 
 def test_definition_digest_covers_what_assigns_a_value_and_nothing_else():
