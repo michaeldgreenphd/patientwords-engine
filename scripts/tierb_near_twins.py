@@ -28,6 +28,12 @@ Definition, exactly as registered:
   ``ratio`` and are used only to skip pairs that cannot reach the threshold.
 - Threshold: a sealed phrase is a twin iff its best ratio is >= 0.90.
 
+Every input row must carry its phrase. A batch pair that is not an object or
+has no non-empty ``top_prompt`` string, a site row that is not an object or has
+no non-empty ``clinical_prompt`` string, or a file of the wrong shape, stops the
+run with ``MalformedInputError`` and a per-file count (exit 2, nothing
+written): dropping such rows would shrink the comparison set without a word.
+
 There is no randomness and no seed: the output depends only on the inputs,
 whose fingerprints the output records. The output carries labels and counts
 only, never phrase text, and not the partner of each twin (naming it would
@@ -59,35 +65,71 @@ SITE_FILES = ("data/simulated_scenarios.json", "data/simulated_archive.json")
 REGISTERED = "2026-09-23"
 
 
+class MalformedInputError(ValueError):
+    """An input file or row lacks the phrase the registered definition reads."""
+
+
+def _phrases(rows: object, key: str, where: str, bad: dict[str, int]) -> list[str]:
+    """``rows[i][key]`` for every row; a row that is not an object with a
+    non-empty string there is counted against ``where`` in ``bad``, not skipped."""
+    out: list[str] = []
+    if not isinstance(rows, list):
+        raise MalformedInputError(f"{where}: expected an array of rows, found {type(rows).__name__}")
+    for row in rows:
+        value = row.get(key) if isinstance(row, dict) else None
+        if isinstance(value, str) and value.strip():
+            out.append(value)
+        else:
+            bad[where] = bad.get(where, 0) + 1
+    return out
+
+
+def _refuse_bad(bad: dict[str, int], key: str) -> None:
+    if bad:
+        detail = "; ".join(f"{where}: {n} row(s)" for where, n in sorted(bad.items()))
+        raise MalformedInputError(f"rows that are not objects with a non-empty {key} string: {detail}. "
+                                  f"Refusing: skipping them would shrink the comparison set")
+
+
+def tierb_batch_files(simulated_dir: str, start: str | None) -> list[Path]:
+    """The Tier B ``pairs_<STAMP>`` batch files, the engine inputs both sets are drawn from."""
+    if not start:
+        return []
+    return [bp for bp in sorted(Path(simulated_dir).glob("pairs_*.json"))
+            if not bp.name.endswith(".report.json") and is_tierb_batch(bp.stem, start)]
+
+
+def batch_phrases(simulated_dir: str, dashboard_path: str) -> list[str]:
+    """The stripped accepted clinical prompt of every Tier B pairs_<STAMP> pair.
+    Raises MalformedInputError on a batch pair without a top_prompt string."""
+    out: list[str] = []
+    bad: dict[str, int] = {}
+    for bp in tierb_batch_files(simulated_dir, tierb_start_stamp(dashboard_path)):
+        rows = json.loads(bp.read_text(encoding="utf-8"))
+        out.extend(top.strip() for top in _phrases(rows, "top_prompt", bp.name, bad))
+    _refuse_bad(bad, "top_prompt")
+    return out
+
+
 def explore_phrases(simulated_dir: str, dashboard_path: str, sealed: set[str]) -> list[str]:
     """Accepted clinical prompts of every Tier B pairs_<STAMP> pair outside the sealed set."""
-    start = tierb_start_stamp(dashboard_path)
-    out: list[str] = []
-    if not start:
-        return out
-    for bp in sorted(Path(simulated_dir).glob("pairs_*.json")):
-        if bp.name.endswith(".report.json") or not is_tierb_batch(bp.stem, start):
-            continue
-        rows = json.loads(bp.read_text(encoding="utf-8"))
-        for pair in rows:
-            top = (pair.get("top_prompt") or "").strip() if isinstance(pair, dict) else ""
-            if top and top not in sealed:
-                out.append(top)
-    return out
+    return [top for top in batch_phrases(simulated_dir, dashboard_path) if top not in sealed]
 
 
 def site_phrases(site: str | Path) -> list[str]:
     """Every clinical_prompt string in the site's per-row payloads (SITE_FILES).
 
     A missing file is an error, not an empty list: the comparison set would
-    silently shrink and the twin count with it."""
-    out: list[str] = []
+    silently shrink and the twin count with it. So is a payload of the wrong
+    shape or a row without a clinical_prompt string (MalformedInputError)."""
     scenarios = json.loads((Path(site) / SITE_FILES[0]).read_text(encoding="utf-8"))
     archive = json.loads((Path(site) / SITE_FILES[1]).read_text(encoding="utf-8"))
-    for row in [*scenarios.get("scenarios", []), *archive]:
-        value = row.get("clinical_prompt") if isinstance(row, dict) else None
-        if isinstance(value, str) and value.strip():
-            out.append(value)
+    if not isinstance(scenarios, dict):
+        raise MalformedInputError(f"{SITE_FILES[0]}: expected an object with a scenarios array")
+    bad: dict[str, int] = {}
+    out = [*_phrases(scenarios.get("scenarios"), "clinical_prompt", SITE_FILES[0], bad),
+           *_phrases(archive, "clinical_prompt", SITE_FILES[1], bad)]
+    _refuse_bad(bad, "clinical_prompt")
     return out
 
 
@@ -129,11 +171,12 @@ def _git_head(repo: str | Path) -> str | None:
 
 
 def compute(simulated_dir: str, dashboard_path: str, site: str | Path) -> dict:
+    tierb_phrases = batch_phrases(simulated_dir, dashboard_path)   # validates every row first
     registry = sealed_registry(simulated_dir, dashboard_path)
     if not registry:
         raise SystemExit("CONFIG ERROR: the sealed set computes empty (null tierb.start_utc? wrong branch?)")
     sealed = set(registry)
-    explore = explore_phrases(simulated_dir, dashboard_path, sealed)
+    explore = [top for top in tierb_phrases if top not in sealed]
     published = [p for p in site_phrases(site) if p.strip() not in sealed]
     comparison = explore + published
     twins = near_twins(registry, comparison)
@@ -193,7 +236,11 @@ def main(argv: list[str] | None = None) -> int:
                         help="recompute and compare the twin labels with --out; write nothing")
     args = parser.parse_args(argv)
 
-    result = compute(args.simulated, args.dashboard, args.site)
+    try:
+        result = compute(args.simulated, args.dashboard, args.site)
+    except MalformedInputError as exc:
+        print(f"refused: {exc}; nothing was written or compared")
+        return 2
     c = result["counts"]
     print(f"near twins: {c['twins']} of {c['sealed_phrases']} sealed phrases "
           f"({c['remaining_after_pruning']} remain); campaign {c['campaign_twins']} of "

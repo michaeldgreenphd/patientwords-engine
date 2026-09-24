@@ -15,6 +15,8 @@ import importlib.util
 import json
 from pathlib import Path
 
+import pytest
+
 _ROOT = Path(__file__).resolve().parents[1]
 _SPEC = importlib.util.spec_from_file_location("tierb_near_twins", _ROOT / "scripts" / "tierb_near_twins.py")
 nt = importlib.util.module_from_spec(_SPEC)
@@ -126,3 +128,57 @@ def test_committed_frozen_list_is_labels_only_and_consistent():
     assert c["remaining_after_pruning"] == c["sealed_phrases"] - c["twins"]
     assert all(lab.count("#") == 1 and lab.startswith("pairs_") for lab in labels)
     assert frozen["method"]["threshold"] == 0.90 and frozen["registered"] == "2026-09-23"
+
+
+# --- malformed rows are refused, not dropped (Codex review of PR #32) --------- #
+# site_phrases and explore_phrases dropped a non-object row or one without a
+# phrase string, shrinking the registered comparison set without a word.
+
+_BAD_ROWS = ["not an object", {"other": 1}, {"clinical_prompt": None}, {"clinical_prompt": 7},
+             {"clinical_prompt": "   "}]
+
+
+def _refuses(sim, ops, site, needle):
+    with pytest.raises(nt.MalformedInputError, match=needle):
+        nt.compute(str(sim), str(ops / "dashboard.json"), site)
+
+
+def test_a_malformed_site_row_is_refused_with_a_count(tmp_path, capsys):
+    for bad in _BAD_ROWS:
+        for name in ("simulated_scenarios.json", "simulated_archive.json"):
+            case = tmp_path / f"{_BAD_ROWS.index(bad)}_{name}"
+            sim, ops, site, _ = _tree(case)
+            path = site / "data" / name
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            rows = payload["scenarios"] if isinstance(payload, dict) else payload
+            rows.extend([bad, bad])
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            _refuses(sim, ops, site, f"data/{name}: 2 row")
+    out = case / "twins.json"
+    sim, ops, site = case / "data" / "simulated", case / "ops", case / "site"
+    out.write_text(json.dumps({"twin_labels": [f"{BATCH}#1", f"{BATCH}#2"]}), encoding="utf-8")
+    argv = ["--site", str(site), "--simulated", str(sim), "--dashboard", str(ops / "dashboard.json"),
+            "--out", str(out)]
+    assert nt.main([*argv, "--check"]) == 2 and "refused" in capsys.readouterr().out
+    assert nt.main(argv) == 2
+    assert json.loads(out.read_text(encoding="utf-8")) == {"twin_labels": [f"{BATCH}#1", f"{BATCH}#2"]}
+
+
+def test_a_site_payload_of_the_wrong_shape_is_refused(tmp_path):
+    sim, ops, site, _ = _tree(tmp_path)
+    (site / "data" / "simulated_archive.json").write_text(json.dumps({"rows": []}), encoding="utf-8")
+    _refuses(sim, ops, site, "simulated_archive.json")
+    sim, ops, site, _ = _tree(tmp_path / "b")
+    (site / "data" / "simulated_scenarios.json").write_text(json.dumps({"batches": []}), encoding="utf-8")
+    _refuses(sim, ops, site, "simulated_scenarios.json")
+
+
+def test_a_malformed_explore_row_is_refused_with_a_count(tmp_path):
+    for i, bad in enumerate(["not an object", {"bottom_prompt": "p"}, {"top_prompt": 3}, {"top_prompt": " "}]):
+        sim, ops, site, _ = _tree(tmp_path / str(i))
+        path = sim / f"{LATER}.json"
+        path.write_text(json.dumps([*json.loads(path.read_text(encoding="utf-8")), bad]), encoding="utf-8")
+        _refuses(sim, ops, site, f"{LATER}.json: 1 row")
+    sim, ops, site, _ = _tree(tmp_path / "shape")
+    (sim / f"{LATER}.json").write_text(json.dumps({"pairs": []}), encoding="utf-8")
+    _refuses(sim, ops, site, f"{LATER}.json")
