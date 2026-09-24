@@ -6,6 +6,7 @@ import Inspect or Petri; the 3.12 end-to-end proof lives in tests/petri/."""
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -482,6 +483,140 @@ def test_sanitiser_refuses_its_own_output_when_a_forbidden_key_survives():
     leaky["events"]["keys"]["model"].append("call")               # a defective allowlist
     with pytest.raises(sanitizer.SanitiserError):
         sanitizer.sanitise_log(_raw_log(), leaky)
+
+
+def _provider_log(forbidden: bool) -> dict:
+    """`_raw_log` with provider-filled values in every place the sanitiser
+    scrubs, carrying forbidden keys when `forbidden` is set and the same log
+    minus exactly those keys otherwise. The first case is the shape that
+    refused w2e3 (run 35937014168) at Adapt: every model event's
+    output.metadata held extra_body, which inspect_ai 0.3.237 fills with the
+    response fields the SDK does not declare (there, a null `diagnostics`).
+    Key names and structure only; nothing from the run."""
+    def extra(**keys):
+        return keys if forbidden else {}
+
+    log = _raw_log()
+    sample = log["samples"][0]
+    events = sample["events"]
+    model = events[0]
+    model["input"][0]["content"] = [{"type": "text", "text": "hi", **extra(internal={"base_url": "https://example.invalid"})}]
+    if not forbidden:
+        model["input"][0]["content"][0]["internal"] = {}
+    model["output"] = {
+        "model": "mockllm", "usage": {"input_tokens": 3, "output_tokens": 1},
+        "metadata": {**extra(extra_body={"diagnostics": None}), "kept": 1},
+        "choices": [{"message": {"role": "assistant", "content": "ok", "id": "m2",
+                                 "metadata": {"provider": [{**extra(authorization="Bearer x"), "kept": 2}]}},
+                     "stop_reason": "stop", "stop_details": {"raw": {**extra(extra_headers={"x": 1})}, "reason": "end_turn"}}]}
+    nested_model = {"event": "model", "uuid": "6", "timestamp": "t", "span_id": "s", "model": "m", "role": "target",
+                    "input": [], "tools": [], "config": {},
+                    "output": {"model": "m", "choices": [], "metadata": {**extra(extra_body={"diagnostics": None})}}}
+    events.append({"event": "tool", "uuid": "5", "timestamp": "t", "span_id": "s", "id": "c1", "function": "lookup",
+                   "arguments": {"query": "q", **extra(headers={"h": 1})}, "result": "r", "events": [nested_model]})
+    sample["messages"] = [{"role": "assistant", "content": "ok", "id": "m3", "metadata": {**extra(api_key="SECRET3")}}]
+    tl_event = sample["timelines"][0]["root"]["content"][0]["event"]
+    tl_event["output"] = {"model": "m", "choices": [], "metadata": {**extra(extra_body={"diagnostics": None})}}
+    return log
+
+
+def test_sanitiser_drops_forbidden_keys_inside_provider_values_and_counts_them_by_path():
+    """w2e3 (run 35937014168) failed at Adapt: output.metadata passed through
+    whole, so the extra_body Inspect records there reached the backstop and
+    refused the run. Inside provider-filled values a forbidden key is now
+    dropped at any depth and counted by index-free path; everything beside it
+    is kept exactly, and fields_removed counts only the allowlist projection."""
+    out, report = sanitizer.sanitise_log(_provider_log(forbidden=True))
+    forbidden = set(sanitizer.load_allowlist()["forbidden_keys"])
+    assert sanitizer.forbidden_key_paths(out, forbidden) == []
+    text = json.dumps(out)
+    assert "Bearer" not in text and "example.invalid" not in text and "SECRET" not in text
+    expected = {
+        "$.samples[].events[].output.metadata.extra_body": 1,
+        "$.samples[].events[].output.choices[].message.metadata.provider[].authorization": 1,
+        "$.samples[].events[].output.choices[].stop_details.raw.extra_headers": 1,
+        "$.samples[].events[].input[].content[].internal.base_url": 1,
+        "$.samples[].events[].arguments.headers": 1,
+        "$.samples[].events[].events[].output.metadata.extra_body": 1,
+        "$.samples[].messages[].metadata.api_key": 1,
+        "$.samples[].timelines[].root.content[].event.output.metadata.extra_body": 1,
+    }
+    assert report.forbidden_keys_dropped == expected
+    assert report.as_dict()["forbidden_keys_dropped"] == dict(sorted(expected.items()))
+    ev = out["samples"][0]["events"][0]
+    assert ev["output"]["metadata"] == {"kept": 1} and ev["output"]["usage"] == {"input_tokens": 3, "output_tokens": 1}
+    assert ev["output"]["choices"][0]["stop_details"] == {"raw": {}, "reason": "end_turn"}
+    assert ev["output"]["choices"][0]["message"]["metadata"] == {"provider": [{"kept": 2}]}
+    tool = out["samples"][0]["events"][-1]
+    assert tool["event"] == "tool" and tool["arguments"] == {"query": "q"} and tool["result"] == "r"
+    # dropping a key during the projection is exactly the key never having been there: the same export, and the
+    # same counts apart from the new one
+    clean_out, clean_report = sanitizer.sanitise_log(_provider_log(forbidden=False))
+    assert out == clean_out
+    assert clean_report.forbidden_keys_dropped == {} and clean_report.as_dict()["forbidden_keys_dropped"] == {}
+    dirty, clean = report.as_dict(), clean_report.as_dict()
+    del dirty["forbidden_keys_dropped"], clean["forbidden_keys_dropped"]
+    assert dirty == clean
+
+
+def test_sanitiser_keeps_provider_values_exactly_when_they_carry_no_forbidden_key():
+    """A log the previous allowlist (0.2) accepted projects to the same content:
+    provider-filled values without a forbidden key are copied unchanged, key
+    order included, and the model output keeps every key it had."""
+    raw = _provider_log(forbidden=False)
+    out, report = sanitizer.sanitise_log(json.loads(json.dumps(raw)))
+    raw_out, got = raw["samples"][0]["events"][0]["output"], out["samples"][0]["events"][0]["output"]
+    assert list(got) == list(raw_out) and got["metadata"] == raw_out["metadata"] and got["usage"] == raw_out["usage"]
+    assert list(got["choices"][0]) == list(raw_out["choices"][0])
+    assert got["choices"][0]["stop_details"] == raw_out["choices"][0]["stop_details"]
+    assert out["samples"][0]["events"][-1]["arguments"] == {"query": "q"}
+    assert report.forbidden_keys_dropped == {}
+
+
+@pytest.mark.parametrize("where, plant", [
+    ("$.samples[0].metadata.args", lambda log: log["samples"][0].update(metadata={"args": [1]})),
+    # the info event is raw index 2 and output index 1: the unknown event type before it is dropped
+    ("$.samples[0].events[1].data.pw.api_key", lambda log: log["samples"][0]["events"][2].update(data={"pw": {"api_key": "x"}})),
+    ("$.eval.task_args.model_args", lambda log: log["eval"].update(task_args={"model_args": {}})),
+    ("$.stats.headers", lambda log: log["stats"].update(headers={})),
+])
+def test_sanitiser_backstop_still_refuses_a_forbidden_key_outside_provider_values(where, plant):
+    """Only provider-filled values are scrubbed. A forbidden key in our own
+    seed, harness or task data, or in the log's stats, is a defect on our
+    side and still refuses the whole output, as does one the allowlist itself
+    keeps (the defective-allowlist test above)."""
+    log = _provider_log(forbidden=True)
+    plant(log)
+    with pytest.raises(sanitizer.SanitiserError, match=re.escape(where)):
+        sanitizer.sanitise_log(log)
+
+
+def test_the_manifest_schema_takes_the_new_redaction_count_and_still_takes_manifests_without_it():
+    """The report field is optional in the closed schema: manifests written
+    under allowlist 0.2 (w2e1, w2e2) carry no forbidden_keys_dropped and still
+    validate; a report written now validates with it, and a malformed count
+    is refused by the schema and by the run summary's closed-set reader."""
+    from scripts.petri_audit import summary
+
+    schema = framework.load_json(framework.MANIFEST_SCHEMA)
+    spec = schema["properties"]["artifacts"]["properties"]["sanitiser"]["properties"]["redaction_report"]
+    written = sanitizer.RedactionReport(forbidden_keys_dropped={"$.samples[].events[].output.metadata.extra_body": 301}).as_dict()
+    assert set(written) <= set(spec["properties"]) and set(spec["required"]) <= set(written)
+    assert "forbidden_keys_dropped" not in spec["required"]
+    base = schema["examples"][0]
+    assert "forbidden_keys_dropped" not in base["artifacts"]["sanitiser"]["redaction_report"]
+    assert framework.validate_with_refs(base, schema) == []
+    current = json.loads(json.dumps(base))
+    current["artifacts"]["sanitiser"]["redaction_report"] = written
+    assert framework.validate_with_refs(current, schema) == []
+    assert summary._redaction(current) == written and summary._redaction(base) == base["artifacts"]["sanitiser"]["redaction_report"]
+    # the in-house validator does not apply schema-valued additionalProperties (events_dropped_by_type has the same
+    # gap), so a malformed count is refused by the summary's closed-set reader, which does
+    broken = json.loads(json.dumps(current))
+    broken["artifacts"]["sanitiser"]["redaction_report"]["forbidden_keys_dropped"]["$.x"] = -1
+    assert "unavailable" in summary._redaction(broken)
+    broken["artifacts"]["sanitiser"]["redaction_report"]["forbidden_keys_dropped"] = ["$.x"]
+    assert "unavailable" in summary._redaction(broken)
 
 
 # ---------------------------------------------------------------- manifest

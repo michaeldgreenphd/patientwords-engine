@@ -648,7 +648,13 @@ a public repository. The pipeline is:
    their text, usage, timeline structure, and an allowlisted set of config
    keys; provider headers, base URLs and non-allowlisted request fields are
    removed and counted (`sanitiser.redaction_report`); `headers_kept` and
-   `base_urls_kept` are `false` by schema.
+   `base_urls_kept` are `false` by schema. Since allowlist 0.3, a forbidden key
+   inside a provider-filled value that the projection keeps whole is dropped
+   and counted by path in `forbidden_keys_dropped`. Those values are a model
+   event's output, a projected message's values, and a tool event's
+   arguments. A forbidden key anywhere else still refuses the export. The
+   w2e3 fire (run 35937014168) failed at Adapt on
+   `output.metadata.extra_body`, a record of an undeclared API response field.
 3. The seal check runs over the sanitised log, the transcripts and the
    judgments. A sealed phrase whose content would be published is either
    excluded before the run (the pilot's rule: seeds come from the explore

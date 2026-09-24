@@ -715,6 +715,14 @@
                     "minimum": 0
                   },
                   "description": "Timeline content items dropped by type (an item type the sanitiser allowlist does not name)."
+                },
+                "forbidden_keys_dropped": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "description": "Forbidden keys dropped from inside provider-filled values the projection keeps whole (a model event's output apart from its choices' messages, every value a projected message keeps, a tool event's arguments and internal), counted by path with list indices elided, for example $.samples[].events[].output.metadata.extra_body. Counted here, not in fields_removed. A forbidden key anywhere else still refuses the export. Written from sanitiser allowlist 0.3 on, always present there (empty when nothing was dropped); absent from manifests written under 0.2 and earlier, whose sanitiser refused such a log instead, so it is not required."
                 }
               }
             }
