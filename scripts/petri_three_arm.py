@@ -4,8 +4,9 @@ Conducts cross-arm comparisons across three arms (colloquial, clinical, lay_care
 and 2x3 crossed factorial arms (patient/clinician x 3 registers).
 
 Cross-arm comparisons join on (exchange_index, final_in_exchange) within one
-experimental cell, (run_id, epoch, branch_id): two arms are paired only when they
-answered the same scripted exchange in the same run, epoch and branch. Any
+experimental cell, (run_id, epoch, system_prompt_variant, branch_id): two arms are paired
+only when they answered the same scripted exchange in the same run, epoch, system-prompt
+variant and branch. Any
 exchange where an arm has no eligible row or is not_applicable is refused by name.
 
 Runs judged under different outcome-registry versions are pooled per dimension, never per file:
@@ -54,11 +55,19 @@ DEFAULT_OUTCOME_REGISTRY = REPO_ROOT / "docs" / "framework" / "outcome_dimension
 REGISTRY_HISTORY_PATH = DEFAULT_OUTCOME_REGISTRY.relative_to(REPO_ROOT).as_posix()
 NOT_APPLICABLE = "not_applicable"
 
-# One experimental cell, (run_id, epoch, branch_id), and one scripted exchange within it. Arms are paired only inside
-# a cell: a run holds one tree per (seed, arm, epoch), the tree epoch restarts at 1 in every run, and branch_id names
-# the same branch in every arm's tree (condition_id carries the arm, so it cannot pair anything).
-CellKey = tuple[str, int, str]
-ExchangeKey = tuple[str, int, str, int]
+# One experimental cell, (run_id, epoch, system_prompt_variant, branch_id), and one scripted exchange within it. Arms
+# are paired only inside a cell: a run holds one tree per (seed, arm, system-prompt variant, epoch) (seeds.conditions
+# expands a seed whose system_prompt policy is "variants" into one sample per arm and variant), the tree epoch restarts
+# at 1 in every run, and branch_id names the same branch in every arm's tree (condition_id carries the arm, and the
+# variant with it, so it cannot pair anything). The variant is null for a seed without variants.
+CellKey = tuple[str, int, str | None, str]
+ExchangeKey = tuple[str, int, str | None, str, int]
+
+
+def _exchange_order(xk: ExchangeKey) -> tuple[Any, ...]:
+    """Sort order for exchange keys: a null variant sorts before any named one (None and str do not compare)."""
+    run_id, epoch, variant, branch_id, ex = xk
+    return run_id, epoch, variant is not None, variant or "", branch_id, ex
 
 HEADER_NOTE = (
     "Three-Arm Petri Audit Analysis "
@@ -87,8 +96,9 @@ def _row_label(r: Mapping[str, Any]) -> str:
 
 
 def _malformed_row_problems(rows: Sequence[Mapping[str, Any]]) -> list[str]:
-    """Every row that cannot be placed in the join: no arm, key, run_id or branch_id, or a
-    non-integer epoch or exchange_index.
+    """Every row that cannot be placed in the join: no arm, key, run_id or branch_id, a
+    non-integer epoch or exchange_index, or no system_prompt_variant (the key must be present,
+    null for a seed without variants or a non-empty string).
 
     Such a row used to be skipped silently, so a partially malformed file still produced a
     report with reduced coverage and no sign of the loss (Codex F5 on PR #30).
@@ -98,6 +108,9 @@ def _malformed_row_problems(rows: Sequence[Mapping[str, Any]]) -> list[str]:
         missing = [f for f in ("arm", "key", "run_id", "branch_id") if not isinstance(r.get(f), str) or not r.get(f)]
         missing += [f for f in ("epoch", "exchange_index")
                     if isinstance(r.get(f), bool) or not isinstance(r.get(f), int)]
+        variant = r.get("system_prompt_variant")
+        if "system_prompt_variant" not in r or not (variant is None or (isinstance(variant, str) and variant)):
+            missing.append("system_prompt_variant")
         if missing:
             problems.append(f"{_row_label(r)} lacks {', '.join(missing)}")
     return problems
@@ -125,6 +138,7 @@ def _display_path(p: Path | str) -> str:
 class ExchangeComparisonRow:
     run_id: str
     epoch: int
+    system_prompt_variant: str | None
     branch_id: str
     exchange_index: int
     arm_A_value: str | None
@@ -308,8 +322,9 @@ FIELDS_FROM_JUDGMENT = (
     "conversation_id", "turn_id", "assistant_turn_index", "exchange_index", "final_in_exchange",
     "kind", "key", "judge_model", "not_applicable_reason",
 )
-# Fields it takes from the manifest tree and branch the judgment's conversation belongs to.
-FIELDS_FROM_MANIFEST = ("seed_id", "tree_id", "epoch", "arm", "branch_id", "condition_id")
+# Fields it takes from the manifest tree and branch the judgment's conversation belongs to. system_prompt_variant is
+# part of the experimental cell, so it is authenticated like the other cell fields.
+FIELDS_FROM_MANIFEST = ("seed_id", "tree_id", "epoch", "arm", "system_prompt_variant", "branch_id", "condition_id")
 LEADING_LINE_AT_ANALYSIS = "leading_line_at_analysis"
 # judge_runner's error for an outcome answer that is not one of the prompt's declared values (parse_answer). A null
 # outcome judgment recorded with it, and carrying the judge's raw answer, is the one judgment analysis_rows() re-reads
@@ -446,7 +461,8 @@ def _derived_row_problems(
         for b in tree.get("branches") or []:
             by_conv[b.get("conversation_id")] = {
                 "seed_id": tree.get("seed_id"), "tree_id": tree.get("tree_id"), "epoch": tree.get("epoch"),
-                "arm": tree.get("arm"), "branch_id": b.get("branch_id"), "condition_id": b.get("condition_id"),
+                "arm": tree.get("arm"), "system_prompt_variant": tree.get("system_prompt_variant"),
+                "branch_id": b.get("branch_id"), "condition_id": b.get("condition_id"),
                 "branched_from_turn_id": b.get("branched_from_turn_id"),
             }
     problems: list[str] = []
@@ -961,7 +977,7 @@ def analyze_contrast(
 ) -> ContrastResult:
     """Analyzes a single pairwise contrast (arm_A vs arm_B) across all exchanges of all cells.
 
-    Joins on (run_id, epoch, branch_id, exchange_index) with final_in_exchange=True.
+    Joins on (run_id, epoch, system_prompt_variant, branch_id, exchange_index) with final_in_exchange=True.
     Refuses by name any exchange where an arm is missing, ineligible, not_applicable,
     missing final_in_exchange, or has duplicate final rows, or where an arm's value is not
     on the ordinal `scale` or, for a nominal dimension, not in its declared `vocabulary`
@@ -981,11 +997,12 @@ def analyze_contrast(
     n_downgrade = 0 if is_ordinal else None
     n_refused = 0
 
-    for xk in sorted(exchanges):
-        run_id, epoch, branch_id, ex = xk
+    for xk in sorted(exchanges, key=_exchange_order):
+        run_id, epoch, variant, branch_id, ex = xk
         row_A = rows_A.get(xk)
         row_B = rows_B.get(xk)
-        where = f"run '{run_id}' epoch {epoch} branch '{branch_id}': exchange {ex} refused"
+        in_variant = "" if variant is None else f" system prompt variant '{variant}'"
+        where = f"run '{run_id}' epoch {epoch}{in_variant} branch '{branch_id}': exchange {ex} refused"
 
         refusal_reason: str | None = None
         val_A: str | None = None
@@ -1029,12 +1046,13 @@ def analyze_contrast(
 
         if refusal_reason is not None:
             n_refused += 1
-            refusals.append({"run_id": run_id, "epoch": epoch, "branch_id": branch_id, "exchange_index": ex,
-                             "reason": refusal_reason})
+            refusals.append({"run_id": run_id, "epoch": epoch, "system_prompt_variant": variant,
+                             "branch_id": branch_id, "exchange_index": ex, "reason": refusal_reason})
             comparison_rows.append(
                 ExchangeComparisonRow(
                     run_id=run_id,
                     epoch=epoch,
+                    system_prompt_variant=variant,
                     branch_id=branch_id,
                     exchange_index=ex,
                     arm_A_value=val_A,
@@ -1061,6 +1079,7 @@ def analyze_contrast(
                 ExchangeComparisonRow(
                     run_id=run_id,
                     epoch=epoch,
+                    system_prompt_variant=variant,
                     branch_id=branch_id,
                     exchange_index=ex,
                     arm_A_value=val_A,
@@ -1138,8 +1157,9 @@ def analyze_seed(
         or any(arm.startswith(("patient_", "clinician_")) for arm in arms_present)
     )
 
-    # Group rows by (run_id, epoch, branch_id, exchange_index): each arm has at most one final row per exchange
-    # within one cell, while several epochs, runs or branches legitimately give it one each (Codex F1 on PR #30).
+    # Group rows by (run_id, epoch, system_prompt_variant, branch_id, exchange_index): each arm has at most one final
+    # row per exchange within one cell, while several epochs, runs, system-prompt variants or branches legitimately
+    # give it one each (Codex F1 on PR #30; the variant, Codex review of 41c864ca on PR #30).
     # dim_data: dim_key -> arm -> exchange key -> row (only final_in_exchange=True rows)
     dim_data: dict[str, dict[str, dict[ExchangeKey, dict[str, Any]]]] = {}
     # dim_errors: dim_key -> arm -> exchange key -> refusal message
@@ -1155,7 +1175,7 @@ def analyze_seed(
         arm = r.get("arm")
         ex = r.get("exchange_index")
         # arm, key, the cell fields and an integer exchange_index are guaranteed by _malformed_row_problems above
-        xk: ExchangeKey = (r["run_id"], r["epoch"], r["branch_id"], ex)
+        xk: ExchangeKey = (r["run_id"], r["epoch"], r["system_prompt_variant"], r["branch_id"], ex)
         dim_exchanges.setdefault(key, set()).add(xk)
 
         dim_kinds[key] = r.get("kind", "outcome")
@@ -1229,7 +1249,7 @@ def analyze_seed(
         arm_rows = dim_data.get(key, {})
         arm_errors = dim_errors.get(key, {})
         kind = dim_kinds.get(key, "outcome")
-        exchanges = sorted(dim_exchanges.get(key, set()))
+        exchanges = sorted(dim_exchanges.get(key, set()), key=_exchange_order)
         scale = scales.get(key)
         is_ordinal = scale is not None
         # a nominal dimension's values are checked against its declared values (the ordinal check uses the scale)
@@ -1676,14 +1696,17 @@ def format_markdown_summary(report: ThreeArmReport) -> str:
                         lines.append(f"- {ref['reason']}")
                     lines.append("")
 
-                lines.append(f"| Run | Epoch | Branch | Exchange | `{contrast.arm_A}` | `{contrast.arm_B}` | Comparison |")
-                lines.append("|---|---|---|---|---|---|---|")
+                lines.append(f"| Run | Epoch | Variant | Branch | Exchange | `{contrast.arm_A}` | `{contrast.arm_B}` "
+                             "| Comparison |")
+                lines.append("|---|---|---|---|---|---|---|---|")
                 for r in contrast.rows:
                     val_a = r.arm_A_value or "—"
                     val_b = r.arm_B_value or "—"
                     comp = "refused" if r.refusal_reason else r.comparison
+                    variant = r.system_prompt_variant if r.system_prompt_variant is not None else "—"
                     lines.append(
-                        f"| {r.run_id} | {r.epoch} | {r.branch_id} | {r.exchange_index} | {val_a} | {val_b} | {comp} |"
+                        f"| {r.run_id} | {r.epoch} | {variant} | {r.branch_id} | {r.exchange_index} | {val_a} | "
+                        f"{val_b} | {comp} |"
                     )
                 lines.append("")
 

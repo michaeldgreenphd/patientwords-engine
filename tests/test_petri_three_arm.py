@@ -91,10 +91,13 @@ def _write_run(
     for r in rows:
         r = dict(r)
         judgment_overrides.append(r.pop("judgment", {}))
-        a = {"epoch": 1, "branch_id": "root", "judge_model": JUDGE, "not_applicable_reason": None,
-             "judge_error": None, "shared_prefix": False, **r}
-        a.setdefault("condition_id", a["arm"])
-        a.setdefault("tree_id", f"{name}:{a['seed_id']}:{a['arm']}:{a['epoch']}")
+        a = {"epoch": 1, "system_prompt_variant": None, "branch_id": "root", "judge_model": JUDGE,
+             "not_applicable_reason": None, "judge_error": None, "shared_prefix": False, **r}
+        # one tree per (seed, arm, system-prompt variant, epoch), and a condition per (arm, variant), as seeds.conditions
+        # expands a seed whose system_prompt policy is "variants"
+        variant = a["system_prompt_variant"]
+        a.setdefault("condition_id", a["arm"] if variant is None else f"{a['arm']}__{variant}")
+        a.setdefault("tree_id", f"{name}:{a['seed_id']}:{a['condition_id']}:{a['epoch']}")
         a.setdefault("conversation_id", _hex(f"{a['tree_id']}:{a['branch_id']}"))
         a.setdefault("turn_id", 2 * a["exchange_index"])
         a.setdefault("assistant_turn_index", a["turn_id"] // 2)
@@ -113,7 +116,8 @@ def _write_run(
     for a in full:
         tree = trees.setdefault(a["tree_id"], {
             "tree_id": a["tree_id"], "sample_uuid": _hex(a["tree_id"], 32), "sample_id": f"sample:{a['tree_id']}",
-            "epoch": a["epoch"], "seed_id": a["seed_id"], "arm": a["arm"], "system_prompt_variant": None,
+            "epoch": a["epoch"], "seed_id": a["seed_id"], "arm": a["arm"],
+            "system_prompt_variant": a["system_prompt_variant"],
             "branches": [], "surviving_branch_id": None, "survivor_exported": False})
         if all(b["conversation_id"] != a["conversation_id"] for b in tree["branches"]):
             tree["branches"].append({"branch_id": a["branch_id"], "parent_branch_id": None,
@@ -150,7 +154,7 @@ def _write_run(
 def _cells(rows: list[dict]) -> list[dict]:
     """Direct analyze_seed callers state each row's experimental cell; these tests use one cell unless
     a row names its own."""
-    return [{"run_id": "run-1", "epoch": 1, "branch_id": "root", **r} for r in rows]
+    return [{"run_id": "run-1", "epoch": 1, "system_prompt_variant": None, "branch_id": "root", **r} for r in rows]
 
 
 def _three_arms(seed_id: str = "s1", exchanges=(1,), value=None, **extra) -> list[dict]:
@@ -905,6 +909,53 @@ def test_branches_are_separate_cells(ordinal_scales):
     assert {r.branch_id for r in contrast.rows} == {"root", "pressure_branch"}
 
 
+VARIANTS = ("variant_a", "variant_b")  # synthetic system-prompt variant ids
+
+
+def test_system_prompt_variants_are_separate_cells(tmp_path):
+    """A seed whose system_prompt policy is "variants" runs one sample per (arm, variant), and every variant has the
+    same run, epoch, branch and exchange ordinals. Keyed without the variant, each arm's second final row collided with
+    its first and the exchange was refused as a duplicate, so no comparison survived (Codex review of 41c864ca on PR
+    #30). Each variant is now its own cell: arms pair within a variant, never across variants."""
+    rows = [{**r, "system_prompt_variant": variant, "value": TIERS[i]}
+            for i, variant in enumerate(VARIANTS) for r in _three_arms()]
+    run_dir = _write_run(tmp_path, "run-variants", rows)
+
+    report = analyze_run_directories([run_dir])
+
+    contrast = report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+    c = contrast.counts
+    assert (c.n_exchanges_total, c.n_compared, c.n_same, c.n_refused) == (2, 2, 2, 0)
+    assert [(r.system_prompt_variant, r.arm_A_value, r.arm_B_value) for r in contrast.rows] == [
+        (VARIANTS[0], TIERS[0], TIERS[0]), (VARIANTS[1], TIERS[1], TIERS[1])]
+    md = format_markdown_summary(report)
+    assert f"| run-variants | 1 | {VARIANTS[0]} | root | 1 | {TIERS[0]} | {TIERS[0]} | same |" in md
+
+    # one arm lacks a variant's row: that exchange is refused by name within its variant, the other is compared
+    rows = [r for r in rows if not (r["arm"] == "clinical" and r["system_prompt_variant"] == VARIANTS[1])]
+    report = analyze_run_directories([_write_run(tmp_path, "run-variant-missing", rows)])
+    contrast = report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+    assert (contrast.counts.n_compared, contrast.counts.n_refused) == (1, 1)
+    assert contrast.refusals[0]["system_prompt_variant"] == VARIANTS[1]
+    assert (f"epoch 1 system prompt variant '{VARIANTS[1]}' branch 'root': exchange 1 refused: arm 'clinical' has no "
+            "eligible row") in contrast.refusals[0]["reason"]
+
+
+@pytest.mark.parametrize("variant", ["absent", "", 7], ids=["absent", "empty", "not-a-string"])
+def test_row_without_a_usable_system_prompt_variant_is_refused_not_placed(ordinal_scales, variant):
+    """The variant is part of the cell, so a row must carry it: null for a seed without variants, else its id."""
+    rows = _cells(_three_arms())
+    if variant == "absent":
+        del rows[1]["system_prompt_variant"]
+    else:
+        rows[1]["system_prompt_variant"] = variant
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_seed("s1", rows, ordinal_scales, tier_rubric_digest=None, declared_values=None)
+    assert "1 of 3 rows cannot be joined" in str(exc_info.value)
+    assert "lacks system_prompt_variant" in str(exc_info.value)
+
+
 def test_exchange_denominator_is_scoped_to_each_dimension(ordinal_scales):
     """The contextual tier is planned only from the second assistant message, so exchange 1 has no contextual
     rows by design; it must not be charged to that dimension as a refusal (Codex F6 on PR #30)."""
@@ -998,6 +1049,7 @@ def test_manifest_without_bound_judgments_is_refused(tmp_path):
     ("arm", lambda r: "lay_careful" if r["arm"] != "lay_careful" else "clinical"),
     ("exchange_index", lambda r: r["exchange_index"] + 1),
     ("row_eligible", lambda r: not r["row_eligible"]),
+    ("system_prompt_variant", lambda r: "variant_edited"),  # part of the cell, so authenticated against the tree
 ])
 def test_edited_analysis_row_is_refused_by_line_and_field(tmp_path, field, edit):
     """A derived row edited after derivation no longer matches its judgment or the manifest tree."""
