@@ -22,7 +22,13 @@ is a Tier B pair whose accepted prompt, or any trace-time clinical prompt,
 hashes holdout (Amendment 1; the trace-time reading is the conservative union
 of divergence-log row 2026-07-17). The count is published as holdout_withheld.
 A dashboard with no tierb.start_utc makes the rule unenforceable, so the export
-refuses (exit 2) rather than publish unfiltered.
+refuses (exit 2) rather than publish unfiltered. So does a trace-time source it
+cannot read in full (Codex review of PR #32): no --trace-out directory, a Tier B
+batch with no batch_summary part in any model's trace dir, a part that does not
+parse or is not {"results": [...]}, or a result row without an integer index
+and a clinical prompt. An absent source is not an empty one: a trace-time prompt
+that hashes holdout would go unseen and the row would publish. Tier A and alias
+stems never consult the trace store.
 
 Usage:
   python scripts/export_pair_swaps.py [--depth ../patientwords/data/jlens_depth.json] \
@@ -45,6 +51,10 @@ except ImportError:
     from tierb_split import holdout_phrases, is_holdout, is_tierb_batch, tierb_start_stamp
 
 
+class TraceStoreError(RuntimeError):
+    """The trace-time half of the holdout rule cannot be evaluated; the export refuses."""
+
+
 class HoldoutRule:
     """The Tier B withholding rule as the publishing exporters apply it."""
 
@@ -55,25 +65,50 @@ class HoldoutRule:
         self._traced: dict[str, dict[int, set[str]]] = {}
 
     def traced_prompts(self, stem: str) -> dict[int, set[str]]:
-        """{index: trace-time clinical prompts} over every model's trace dir of a stem."""
-        if stem not in self._traced:
-            found: dict[int, set[str]] = {}
-            if self.trace_root is not None and self.trace_root.is_dir():
-                dirs = [self.trace_root / stem, *sorted(self.trace_root.glob(f"{stem}__*"))]
-                for d in dirs:
-                    for part in sorted(d.glob("batch_summary*.json")) if d.is_dir() else []:
-                        try:
-                            summary = json.loads(part.read_text(encoding="utf-8"))
-                        except (OSError, ValueError):
-                            continue
-                        for r in summary.get("results", []) if isinstance(summary, dict) else []:
-                            if not isinstance(r, dict):
-                                continue
-                            clinical = (r.get("prompts") or {}).get("clinical")
-                            if isinstance(r.get("index"), int) and clinical:
-                                found.setdefault(r["index"], set()).add(clinical)
-            self._traced[stem] = found
-        return self._traced[stem]
+        """{index: trace-time clinical prompts} over every model's trace dir of a stem.
+
+        Raises TraceStoreError when the trace store is absent, when the stem has
+        no batch_summary part in any model's dir, or when any part or result row
+        cannot be read as {"results": [{"index": int, "prompts": {"clinical": str}}]}.
+        Only Tier B stems reach here (withholds)."""
+        if stem in self._traced:
+            return self._traced[stem]
+        root = self.trace_root
+        if root is None or not root.is_dir():
+            raise TraceStoreError(f"no trace store at {root}; the trace-time prompts of Tier B batch "
+                                  f"{stem} cannot be read")
+        dirs = [d for d in (root / stem, *sorted(root.glob(f"{stem}__*"))) if d.is_dir()]
+        parts = [part for d in dirs for part in sorted(d.glob("batch_summary*.json"))]
+        if not parts:
+            raise TraceStoreError(f"Tier B batch {stem} has no batch_summary part under {root} "
+                                  f"(never traced, or missing from this checkout)")
+        found: dict[int, set[str]] = {}
+        bad_parts: list[str] = []
+        bad_rows = 0
+        for part in parts:
+            try:
+                summary = json.loads(part.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                bad_parts.append(part.name)
+                continue
+            results = summary.get("results") if isinstance(summary, dict) else None
+            if not isinstance(results, list):
+                bad_parts.append(part.name)
+                continue
+            for r in results:
+                prompts = r.get("prompts") if isinstance(r, dict) else None
+                clinical = prompts.get("clinical") if isinstance(prompts, dict) else None
+                index = r.get("index") if isinstance(r, dict) else None
+                if type(index) is not int or not isinstance(clinical, str) or not clinical:
+                    bad_rows += 1
+                    continue
+                found.setdefault(index, set()).add(clinical)
+        if bad_parts or bad_rows:
+            raise TraceStoreError(f"Tier B batch {stem}: {len(bad_parts)} unreadable or malformed "
+                                  f"batch_summary part(s) {sorted(set(bad_parts))[:3]} and {bad_rows} "
+                                  f"result row(s) without an integer index and a clinical prompt")
+        self._traced[stem] = found
+        return found
 
     def withholds(self, stem: str, index: int, pair: dict) -> bool:
         top = pair.get("top_prompt")
@@ -182,8 +217,16 @@ def main(argv=None):
         print(f"CONFIG ERROR: the Tier B holdout set computes empty from {args.dashboard} "
               f"(null tierb.start_utc? wrong branch?); refusing to publish unfiltered swaps")
         return 2
+    if not args.trace_out or not Path(args.trace_out).is_dir():
+        print(f"CONFIG ERROR: no trace store at --trace-out {args.trace_out!r}; the holdout rule "
+              f"reads trace-time clinical prompts from it. Refusing to publish unfiltered swaps")
+        return 2
     withheld: list[str] = []
-    swaps = build_swaps(stems, args.simulated_dir, rule, withheld)
+    try:
+        swaps = build_swaps(stems, args.simulated_dir, rule, withheld)
+    except TraceStoreError as exc:
+        print(f"refused: {exc}. Nothing was written")
+        return 2
     if not swaps:
         print(f"refused: no pairs resolved under {args.simulated_dir}")
         return 3

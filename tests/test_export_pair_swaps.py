@@ -9,6 +9,7 @@ and its refusal when the holdout set cannot be computed. No network.
 import hashlib
 import importlib.util
 import json
+import shutil
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -141,12 +142,73 @@ def test_holdout_rows_are_withheld_by_every_reading_of_the_rule(tmp_path):
     assert set(swaps) == {f"{TIERB}#2", f"{TIER_A}#1", f"{ALIAS}#2"}
 
 
-def test_without_a_trace_store_only_the_accepted_prompt_counts(tmp_path):
+# --- the trace-time reading fails closed (Codex review of PR #32, 2026-09-23) -- #
+# An absent or unreadable trace source used to read as "no trace-time prompts",
+# so a row whose accepted prompt hashes explore but whose trace-time prompt
+# hashes holdout (TIERB#3 above) published its patient sentence.
+
+UNTRACED = "pairs_20260712T000000Z"      # a Tier B batch with no trace dir at all
+
+
+def _refused(fn):
+    try:
+        fn()
+    except ext.TraceStoreError as exc:
+        return str(exc)
+    raise AssertionError("the rule read an absent trace source as empty")
+
+
+def _main_args(tmp_path, sim, ops, depth, out, trace):
+    return ["--simulated-dir", str(sim), "--depth", str(depth), "--insights", "", "--out", str(out),
+            "--site", "", "--dashboard", str(ops / "dashboard.json"), "--trace-out", str(trace)]
+
+
+def test_without_a_trace_store_the_rule_refuses(tmp_path):
     sim, ops = _engine(tmp_path)
-    rule = ext.HoldoutRule(str(sim), str(ops / "dashboard.json"), None)
-    withheld = []
-    ext.build_swaps([TIERB], str(sim), rule, withheld)
-    assert withheld == [f"{TIERB}#1"]
+    for root in (None, str(tmp_path / "no_such_trace_out")):
+        rule = ext.HoldoutRule(str(sim), str(ops / "dashboard.json"), root)
+        assert "trace store" in _refused(lambda: ext.build_swaps([TIERB], str(sim), rule, []))
+
+
+def test_main_refuses_a_missing_trace_store_and_writes_nothing(tmp_path, capsys):
+    sim, ops = _engine(tmp_path)
+    depth = tmp_path / "jlens_depth.json"
+    depth.write_text(json.dumps({"blocks": [{"id": TIERB}]}), encoding="utf-8")
+    out = tmp_path / "jlens_swaps.json"
+    out.write_text('{"kept": 1}', encoding="utf-8")
+    rc = ext.main(_main_args(tmp_path, sim, ops, depth, out, tmp_path / "trace_outs"))   # misspelled
+    assert rc == 2 and "trace store" in capsys.readouterr().out
+    assert out.read_text() == '{"kept": 1}'
+
+
+def test_a_tierb_batch_with_no_trace_part_refuses_by_name(tmp_path, capsys):
+    sim, ops = _engine(tmp_path)
+    (sim / f"{UNTRACED}.json").write_text(json.dumps([
+        {"top_prompt": _phrase("zq untraced words", False), "bottom_prompt": "b", "target_clinical_token": " t"}]),
+        encoding="utf-8")
+    rule = ext.HoldoutRule(str(sim), str(ops / "dashboard.json"), str(tmp_path / "trace_out"))
+    assert UNTRACED in _refused(lambda: ext.build_swaps([UNTRACED], str(sim), rule, []))
+    # Tier A and alias stems never consult the trace store, so they need no trace dir
+    assert set(ext.build_swaps([TIER_A, ALIAS], str(sim), rule, [])) == {f"{TIER_A}#1", f"{ALIAS}#2"}
+    depth = tmp_path / "jlens_depth.json"
+    depth.write_text(json.dumps({"blocks": [{"id": TIERB}, {"id": UNTRACED}]}), encoding="utf-8")
+    out = tmp_path / "jlens_swaps.json"
+    out.write_text('{"kept": 1}', encoding="utf-8")
+    rc = ext.main(_main_args(tmp_path, sim, ops, depth, out, tmp_path / "trace_out"))
+    assert rc == 2 and UNTRACED in capsys.readouterr().out
+    assert out.read_text() == '{"kept": 1}'
+
+
+def test_an_unreadable_or_malformed_trace_part_refuses(tmp_path):
+    part = tmp_path / "trace_out" / f"{TIERB}__some-model" / "batch_summary.part_01.json"
+    for bad in ("{not json", json.dumps([1, 2]), json.dumps({"results": [{"index": 3}]}),
+                json.dumps({"results": [{"index": "3", "prompts": {"clinical": "zq x"}}]})):
+        sim, ops = _engine(tmp_path)
+        part.write_text(bad, encoding="utf-8")
+        rule = ext.HoldoutRule(str(sim), str(ops / "dashboard.json"), str(tmp_path / "trace_out"))
+        assert TIERB in _refused(lambda: ext.build_swaps([TIERB], str(sim), rule, [])), bad
+        for d in ("data", "ops", "trace_out"):
+            shutil.rmtree(tmp_path / d)
 
 
 def test_main_publishes_the_withheld_count_and_no_holdout_key(tmp_path, capsys):
