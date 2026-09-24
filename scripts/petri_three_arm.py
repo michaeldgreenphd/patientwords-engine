@@ -797,6 +797,13 @@ def analyze_run_directories(
             sid = s.get("seed_id")
             s_sha = s.get("seed_sha256")
             if sid and s_sha:
+                # rows are pooled by seed_id across runs, so one id with two digests would pool two different
+                # stimuli under one name while the provenance kept only the last digest (Codex F9 on PR #30)
+                if sid in seed_digests and seed_digests[sid] != s_sha:
+                    raise InputRefusalError(
+                        f"seed '{sid}' has digest {seed_digests[sid]} in an earlier run but {s_sha} in run "
+                        f"'{run_id}'; runs with different stimuli under one seed_id are not pooled"
+                    )
                 seed_digests[sid] = s_sha
 
         judge_rec = manifest.get("artifacts", {}).get("judge_of_record")

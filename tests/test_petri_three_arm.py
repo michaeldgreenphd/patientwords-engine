@@ -644,6 +644,35 @@ def test_provenance_and_header_invariants(tmp_path):
     assert "colloquial_vs_clinical" in md
 
 
+def test_conflicting_seed_digests_across_runs_are_refused(tmp_path, capsys):
+    """Two runs that record different digests for one seed_id would be pooled under that id while the
+    provenance kept only the last digest; the analysis refuses instead (Codex F9 on PR #30)."""
+    run_dirs = []
+    for name, seed_sha in (("run-a", "a" * 64), ("run-b", "b" * 64)):
+        run_dir = tmp_path / name
+        run_dir.mkdir()
+        manifest = {
+            "run_id": name,
+            "framework": {"outcome_registry_sha256": sha256_file(DEFAULT_OUTCOME_REGISTRY)},
+            "seeds": [{"seed_id": "s1", "seed_sha256": seed_sha}],
+            "artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5"}},
+        }
+        (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        rows = [{"seed_id": "s1", "arm": arm, "exchange_index": 1, "final_in_exchange": True, "kind": "tier",
+                 "key": "response_only", "value": "v", "row_eligible": True}
+                for arm in ("colloquial", "clinical", "lay_careful")]
+        (run_dir / "analysis_rows.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+        run_dirs.append(run_dir)
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories(run_dirs)
+    msg = str(exc_info.value)
+    assert "seed 's1'" in msg and "a" * 64 in msg and "b" * 64 in msg and "run-b" in msg
+
+    assert main(["--run-dir", *map(str, run_dirs)]) == 2
+    assert "REFUSED: seed 's1' has digest" in capsys.readouterr().err
+
+
 def test_manifest_lacking_judge_of_record_is_refused_by_name(tmp_path):
     """A run directory whose manifest lacks artifacts.judge_of_record must be refused by name."""
     run_dir = tmp_path / "run_synthetic"
