@@ -287,7 +287,8 @@ jobs:
     env:
       # The run directory every step writes and reads. Each attempt of a run or dry run gets its own (Codex round
       # 7: a re-run keeps github.run_id). A readapt writes into the SOURCE run's directory, beside the target cost
-      # sidecar that booked its spend; mode run refuses re-runs, so a paid run's only directory is attempt 1's.
+      # sidecar that booked its spend; mode run refuses re-runs (the params job refuses a whole-run re-run, and the
+      # Run step a re-run of this job alone), so a paid run's only directory is attempt 1's.
       RUN_STEM: ${{ needs.params.outputs.mode == 'readapt' && format('run_{0}_1', needs.params.outputs.source_run_id) || format('run_{0}_{1}', github.run_id, github.run_attempt) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -395,6 +396,8 @@ jobs:
       - name: Run (mode dry_run or run; the raw .eval is written OUTSIDE the checkout)
         if: ${{ needs.params.outputs.mode == 'dry_run' || needs.params.outputs.mode == 'run' }}
         env:
+          MODE: ${{ needs.params.outputs.mode }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
           JOURNAL_NONCE: ${{ needs.params.outputs._nonce }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -413,6 +416,17 @@ jobs:
           TOKEN_LIMIT: ${{ needs.params.outputs.token_limit }}
           LOG_MODEL_API: ${{ needs.params.outputs.log_model_api }}
         run: |
+          # A paid run on its first attempt only, checked HERE as well as in the params job. "Re-run failed jobs"
+          # and "Re-run this job" re-run this job alone, at the next github.run_attempt, and reuse the params job's
+          # outputs, so the params job's attempt refusal and the budget gate never run for the re-run: it would call
+          # the target again into run_<id>_2 with no journal reservation of its own (w2e3's failed run 35937014168
+          # was one click from spending ~$0.93 again). Refused before the marker, so the always()-gated spend report
+          # imputes nothing for it. A dry run costs nothing and may re-run; a readapt never reaches this step, and
+          # its plan step refuses any attempt but the first (scripts/petri_audit/readapt.py).
+          if [ "$MODE" = "run" ] && [ "$RUN_ATTEMPT" != "1" ]; then
+            echo "mode run cannot be re-run from the Actions tab (attempt ${RUN_ATTEMPT:-unknown}): a re-run of this job skips the params job's attempt check and the budget gate and has no journal reservation of its own; re-fire through scripts/fire_trigger.py" >&2
+            exit 1
+          fi
           ARGS=""
           for s in $SEED_IDS; do ARGS="$ARGS --seed-id $s"; done
           if [ -z "$SEED_IDS" ]; then ARGS="--wave $WAVE"; fi

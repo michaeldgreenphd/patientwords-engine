@@ -10,7 +10,9 @@ from __future__ import annotations
 import ast
 import importlib.util
 import json
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -134,6 +136,52 @@ def test_a_paid_run_is_admitted_from_a_push_fire_on_its_first_attempt_only(raw, 
     assert 'if p["mode"] in ("run", "readapt") and os.environ.get("RUN_ATTEMPT", "1") != "1":' in block
     params = _step(workflow, "Resolve parameters", job="params")
     assert params["env"]["RUN_ATTEMPT"] == "${{ github.run_attempt }}" and params["env"]["EVENT_NAME"] == "${{ github.event_name }}"
+
+
+def _run_the_run_step(workflow: dict, tmp_path: Path, *, mode: str, attempt: str) -> tuple:
+    """The Run step's shell body, executed as the runner executes it (`bash -e`), with `python` stubbed to record
+    its arguments and exit 0: the step's own gating runs for real and no model is called. Returns the process, the
+    target-start marker path and the file the stub records calls in."""
+    step = _step(workflow, "Run (mode dry_run or run")
+    case = tmp_path / f"{mode}-{attempt or 'none'}"
+    bindir, runner_temp = case / "bin", case / "runner-temp"
+    bindir.mkdir(parents=True)
+    runner_temp.mkdir()
+    calls = case / "python_calls.txt"
+    stub = bindir / "python"
+    stub.write_text(f'#!/bin/sh\necho "$@" >> "{calls}"\nexit 0\n', encoding="utf-8")
+    stub.chmod(0o755)
+    env = {"PATH": os.pathsep.join([str(bindir), "/usr/bin", "/bin"]), "RUNNER_TEMP": str(runner_temp),
+           "MODE": mode, "RUN_ATTEMPT": attempt, "SEEDS_FILE": "seeds.json", "SEED_IDS": "", "WAVE": "2",
+           "TARGET": "anthropic/claude-haiku-4-5", "MAX_SPEND": "6.10", "JUDGE": "true", "JUDGE_MODEL": "claude-haiku-4-5",
+           "JUDGE_MAX_SPEND": "2.50", "EPOCHS": "1", "TOKEN_LIMIT": "40000", "LOG_MODEL_API": "true",
+           "JOURNAL_NONCE": "n1"}
+    proc = subprocess.run(["bash", "-e", "-c", step["run"]], env=env, capture_output=True, text=True, timeout=60)
+    return proc, runner_temp / "petri-run" / "target_started", calls
+
+
+def test_a_re_run_of_the_audit_job_alone_cannot_call_the_target_again(workflow, tmp_path):
+    """The Actions tab's "Re-run failed jobs" and "Re-run this job" re-run the audit job alone, at the next attempt,
+    reusing the params job's outputs, so the params job's attempt refusal and the budget gate never run for it. Before this
+    check the Run step called the target again into run_<id>_2 with no journal reservation of its own (w2e3's
+    failed run 35937014168 was one click from it). The Run step now refuses mode run on any attempt but the first,
+    before the target-start marker, so the always()-gated spend report imputes nothing either."""
+    step = _step(workflow, "Run (mode dry_run or run")
+    assert step["env"]["MODE"] == "${{ needs.params.outputs.mode }}"
+    assert step["env"]["RUN_ATTEMPT"] == "${{ github.run_attempt }}"
+    body = step["run"]
+    assert body.index('"$RUN_ATTEMPT" != "1"') < body.index("target_started") < body.index("scripts.petri_audit.cli run")
+    for attempt in ("2", "3", ""):
+        proc, marker, calls = _run_the_run_step(workflow, tmp_path, mode="run", attempt=attempt)
+        assert proc.returncode != 0 and "mode run cannot be re-run from the Actions tab" in proc.stderr, proc.stderr
+        assert not marker.exists(), "no marker: the spend report must impute nothing for a refused re-run"
+        assert not calls.exists(), "the target was called"
+    proc, marker, calls = _run_the_run_step(workflow, tmp_path, mode="run", attempt="1")
+    assert proc.returncode == 0, proc.stderr
+    assert marker.exists() and calls.read_text(encoding="utf-8").startswith("-m scripts.petri_audit.cli run ")
+    # a dry run costs nothing and may re-run
+    proc, marker, calls = _run_the_run_step(workflow, tmp_path, mode="dry_run", attempt="2")
+    assert proc.returncode == 0 and marker.exists() and calls.exists(), proc.stderr
 
 
 def test_defaults_cover_every_trigger_key_and_dispatch_input(workflow, defaults):
