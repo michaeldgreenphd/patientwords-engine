@@ -464,6 +464,25 @@ def validate(site: Path, engine: Path | None, strict: bool = False) -> Report:
 
 REPRO_PACK_STALE_MSG = ("repro-pack --check: a SENT vendor pack is stale or superseded-unsent "
                         "(see lines above) - an updated pack is owed before any per-model publication")
+PETRI_REPRO_PACK_STALE_MSG = ("petri repro-pack --check: a SENT Petri vendor pack is stale or superseded-unsent "
+                              "(see lines above) - an updated pack is owed before any public per-model Multi-turn "
+                              "claim")
+
+
+def _pack_check(run: Callable[..., subprocess.CompletedProcess], cmd: list[str], engine_root: Path,
+                stale_msg: str, name: str, what_currency: str) -> tuple[str, list[str]]:
+    """One lane's pack check: (its stdout, errors). EVERY non-zero exit is an error (repro_pack_gate)."""
+    r = run(cmd, capture_output=True, text=True, cwd=str(engine_root))
+    out = (r.stdout or "").strip()
+    if r.returncode == 0:
+        return out, []
+    if r.returncode == 2:
+        return out, [stale_msg]
+    what = ("found disclosure-log entries it could not read (see lines above)" if r.returncode == 3
+            else "did not complete")
+    tail = " | ".join((r.stderr or "").strip().splitlines()[-3:]) or "no stderr"
+    return out, [f"{name} exited {r.returncode}: it {what}, so {what_currency} currency is "
+                 f"unverified; stderr: {tail}"]
 
 
 def repro_pack_gate(engine_root: Path,
@@ -472,7 +491,14 @@ def repro_pack_gate(engine_root: Path,
     gone stale against the archive must surface within a daily cycle, not wait for
     someone to remember. The disclosure log lives in the engine checkout.
 
-    Returns (the check's stdout, errors). EVERY non-zero exit is an error. Until
+    Two checks read the one log, each owning its lane's entries and counting and
+    skipping the other's: the advice lane's (`advice_eval.py repro-pack --check`)
+    and, since 2026-09-24, the Petri lane's (`python -m scripts.petri_audit.cli
+    repro-pack --check`), whose packs gate the Multi-turn page (design note
+    decision 16). Each check's errors carry its own message, so a failure names
+    its lane.
+
+    Returns (both checks' stdout, errors). EVERY non-zero exit is an error. Until
     2026-09-23 only exit 2 was: a crash (exit 1, e.g. a KeyError on a log entry
     without stimuli_file) passed the gate with nothing printed, while it also hid
     any real escalation behind it. Exit 3 is the check naming log entries it
@@ -481,19 +507,14 @@ def repro_pack_gate(engine_root: Path,
     log = engine_root / "ops" / "disclosure_log.jsonl"
     if not (log.is_file() and log.stat().st_size > 0):
         return "", []
-    r = run([sys.executable, str(engine_root / "scripts" / "advice_eval.py"), "repro-pack", "--check",
-             "--log", str(log)],
-            capture_output=True, text=True, cwd=str(engine_root))
-    out = (r.stdout or "").strip()
-    if r.returncode == 0:
-        return out, []
-    if r.returncode == 2:
-        return out, [REPRO_PACK_STALE_MSG]
-    what = ("found disclosure-log entries it could not read (see lines above)" if r.returncode == 3
-            else "did not complete")
-    tail = " | ".join((r.stderr or "").strip().splitlines()[-3:]) or "no stderr"
-    return out, [f"repro-pack --check exited {r.returncode}: it {what}, so vendor-pack currency is "
-                 f"unverified; stderr: {tail}"]
+    advice_out, advice_errors = _pack_check(
+        run, [sys.executable, str(engine_root / "scripts" / "advice_eval.py"), "repro-pack", "--check",
+              "--log", str(log)],
+        engine_root, REPRO_PACK_STALE_MSG, "repro-pack --check", "vendor-pack")
+    petri_out, petri_errors = _pack_check(
+        run, [sys.executable, "-m", "scripts.petri_audit.cli", "repro-pack", "--check", "--log", str(log)],
+        engine_root, PETRI_REPRO_PACK_STALE_MSG, "petri repro-pack --check", "Petri vendor-pack")
+    return "\n".join(o for o in (advice_out, petri_out) if o), advice_errors + petri_errors
 
 
 def main():
