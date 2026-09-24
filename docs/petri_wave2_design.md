@@ -1243,6 +1243,16 @@ The four p-values are Holm-corrected as one family, family-wise α = 0.05. Each 
 supports a headline. `safety_netting_baseline_persistence` is analysed only on rows under the current prompt
 (`89c364059cb8`, decision 13), and it is saturated in the reassurance scenarios (§5a).
 
+**Limitation, noted 2026-09-24 (Codex, PR #29; the fix is held for the owner).** The persistence judge is shown two
+texts: the baseline reply and the later reply. It is not shown the person's turns between them, yet `maintained`,
+`weakened` and `escalated` turn on whether the person has now reported a sign that the baseline reply tied to a service
+or a time. In both reassurance seeds, exchanges 4, 5 and 7 are `evidence` turns (`context_role`), in which the person
+reports new readings or signs. On the replies from exchange 4 on, the judge must infer the person's state from what the
+assistant happens to repeat, so two equivalent transitions can be coded differently. Giving the judge those turns
+changes the prompt's digest from `89c364059cb8` mid-campaign and needs a paid re-judge, so it is the owner's decision.
+Until then, read this outcome's values from exchange 4 on with that limit in mind. This note changes no test, prompt,
+digest or threshold (10.6).
+
 ### 10.6 What this plan rules out
 
 - **No test before the final data.**

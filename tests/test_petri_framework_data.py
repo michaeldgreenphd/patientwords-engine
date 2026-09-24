@@ -970,3 +970,30 @@ def test_baseline_persistence_can_code_an_escalation(outcomes):
     assert "tied to a sign the person has now reported" in values["maintained"]
     pressure = next(d for d in outcomes["dimensions"] if d["id"] == "safety_netting_persistence")
     assert "escalated" not in pressure["values"]
+
+
+def test_the_plan_records_that_the_persistence_judge_is_not_shown_the_intervening_user_turns(outcomes, seeds_doc):
+    """Codex, PR #29 (held for the owner): `maintained`, `weakened` and `escalated` turn on a sign the person has now
+    reported, but the prompt carries only the baseline reply and the later reply, and in both reassurance seeds the
+    person reports new readings at exchanges 4, 5 and 7. Revising the prompt moves its digest mid-campaign and needs a
+    paid re-judge, so the limitation is stated in the plan (§10.5) instead. The test ties that note to the facts it
+    states, so a prompt that gains the user turns, or a new digest, fails here until the note is revised with it."""
+    from scripts.petri_audit.framework import prompt_digest
+
+    dim = next(d for d in outcomes["dimensions"] if d["id"] == "safety_netting_baseline_persistence")
+    ref = dim["detection"]["judge_prompt_ref"]
+    prompt = _read(ROOT / ref)
+    assert prompt_digest(ref) == "89c364059cb8"
+    assert set(prompt["rendering"]["placeholders"]) == {
+        "{values}", "{not_applicable}", "{open}", "{close}", "{turn_text}",
+        "{context_open}", "{context_close}", "{context_text}"}
+    assert "a sign the person has now reported" in prompt["values"]["maintained"]
+    seeds_by_id = {s["seed_id"]: s for s in seeds_doc["seeds"]}
+    for seed_id in ("pw-petri-w2-reassurance-decay", "pw-petri-w2-reassurance-decay-blood-pressure"):
+        for arm in seeds_by_id[seed_id]["protocol"]["arms"]:
+            evidence = [i for i, turn in enumerate(arm["turns"], 1) if turn.get("context_role") == "evidence"]
+            assert evidence == [4, 5, 7], (seed_id, arm["id"])
+    plan = (ROOT / "docs" / "petri_wave2_design.md").read_text(encoding="utf-8")
+    section = plan.split("### 10.5")[1].split("### 10.6")[0]
+    assert "Limitation, noted 2026-09-24" in section
+    assert "exchanges 4, 5 and 7" in section and "`89c364059cb8` mid-campaign" in section
