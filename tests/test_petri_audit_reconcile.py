@@ -1289,3 +1289,36 @@ def test_the_fallback_judge_sidecar_of_a_readapt_carries_its_fires_nonce(tmp_pat
     side = framework.load_json(run_dir / "run_9_1.judge.report.json")
     assert side["cost_usd"] == 2.5 and "could not be read" in side["journal_nonce_unavailable"]
     capsys.readouterr()
+
+
+def test_a_readapt_rows_folded_state_is_its_judge_sidecars(tmp_path):
+    """Codex, PR #29: a readapt fire's only landed sidecar is its judge's, and the ledger state was established
+    into `judge_folded` alone, so `folded` stayed None and the report printed a dash for a readapt whose spend
+    was booked (or not). The row's folded state is its judge sidecar's."""
+    journal, runs, dashboard = _readapt_layout(tmp_path)
+    entries = [json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines()]
+    journal.write_text("".join(json.dumps(dict(e, resolved=True, resolved_utc="2026-09-18T03:00:00Z")) + "\n"
+                               for e in entries), encoding="utf-8")
+    ledger = {"entries_seen": ["run_9_1.report.json", "run_9_1.judge.report.json"],
+              "entries_folded": {"run_9_1.report.json": 0.93, "run_9_1.judge.report.json": 1.6}}
+    framework.write_json(dashboard, {"schema_version": 1, "spend": {
+        "daily_ceiling_usd": 2.0, "today": {"date": "2026-09-18", "spent_usd": 2.53}, "by_day": {"2026-09-18": 2.53},
+        **ledger}})
+    result = reconcile.reconcile(journal, runs, dashboard)
+    assert result["problems"] == [], result["problems"]
+    rows = {r["nonce"]: r for r in result["paid_fires"]}
+    assert rows["w2e3r"]["judge_folded"] is True and rows["w2e3r"]["folded"] is True
+    text = reconcile.render_markdown(result)
+    assert "| w2e3r | 2.5000 | run_9_1 | — | 1.6000 | 1.6000 | cumulative_from_records | yes | landed (readapt judge) |" \
+        in text, text
+    # not yet folded: "no", never a dash
+    framework.write_json(dashboard, {"schema_version": 1, "spend": {
+        "daily_ceiling_usd": 2.0, "today": {"date": "2026-09-18", "spent_usd": 0.93}, "by_day": {"2026-09-18": 0.93},
+        "entries_seen": ["run_9_1.report.json"], "entries_folded": {"run_9_1.report.json": 0.93}}})
+    result = reconcile.reconcile(journal, runs, dashboard)
+    rows = {r["nonce"]: r for r in result["paid_fires"]}
+    assert rows["w2e3r"]["judge_folded"] is False and rows["w2e3r"]["folded"] is False
+    assert "| cumulative_from_records | no | landed (readapt judge) |" in reconcile.render_markdown(result)
+    # no dashboard: unknown, a dash, never False
+    rows = {r["nonce"]: r for r in reconcile.reconcile(journal, runs)["paid_fires"]}
+    assert rows["w2e3r"]["folded"] is None and rows["w2e3r"]["judge_folded"] is None

@@ -575,6 +575,9 @@ def _readapt_judge_row(e: dict[str, Any], row: dict[str, Any], found: list[tuple
     problems.extend(_stamp_problems(jp, jr, e, now))
     if ledger is not None and jp.name not in duplicate_names:
         row["judge_folded"] = ledger.state(jp.name, row["judge_cost_usd"])[0]
+        # the judge sidecar is this fire's only landed spend, so its state is the row's: `render_markdown` reads
+        # `folded` first and printed a dash for every readapt while it stayed None (Codex, PR #29)
+        row["folded"] = row["judge_folded"]
         day_problem = ledger.day_problem(jp.name, _ledger_day(jr), _day_bookable(jr))
         if day_problem:
             problems.append(f"{label}: {day_problem}")
