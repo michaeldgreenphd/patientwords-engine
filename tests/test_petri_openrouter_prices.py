@@ -24,6 +24,7 @@ import hashlib
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -172,11 +173,49 @@ PREREGISTRATION = ROOT / "docs" / "preregistration_advice.md"
 REFROZEN_20260722 = "84acef3606cb8afa10cabe5a0c72cc772a5838a8111a47f297e8cf6f7ae59fee"
 
 
+REGISTRY_IN_GIT = "data/advice_providers.json"
+
+
 def _git(*args: str) -> bytes | None:
+    """stdout of a git command run in this checkout, or None when it fails."""
     try:
         return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, check=True, timeout=60).stdout
     except (OSError, subprocess.SubprocessError):
         return None
+
+
+def _unrecorded_registry_revisions(git: Callable[..., bytes | None], text: str,
+                                   refrozen: str = REFROZEN_20260722) -> list[str]:
+    """The registry revisions, newest first, from HEAD back to the one whose
+    sha256 is `refrozen`, that `text` does not record by sha256. Fails when
+    the history never reaches `refrozen`.
+
+    Skips, with a reason, when the checkout cannot supply that history: a
+    shallow clone, or a partial clone whose missing objects git cannot fetch
+    offline. A partial clone is not shallow, but `git log -- <path>` needs
+    every commit's tree (absent from a treeless clone) and `git show` needs
+    every revision's blob (absent from a blobless one). Until the review of
+    2026-09-23 a failed call became empty output here, so a partial clone
+    failed the test with "not in the registry's history" instead of skipping
+    it."""
+    if git("rev-parse", "--is-shallow-repository") != b"false\n":
+        pytest.skip("needs a git checkout with the registry's full history")
+    # --diff-filter=ACMRT leaves out a commit that deletes the registry (git holds none), so every listed commit has the
+    # file and a failed `git show` below is an object this checkout lacks, never a revision without the registry
+    log = git("log", "--format=%H", "--diff-filter=ACMRT", "--", REGISTRY_IN_GIT)
+    if log is None:
+        pytest.skip(f"git could not walk the history of {REGISTRY_IN_GIT} (a partial clone without its trees?)")
+    unrecorded = []
+    for commit in log.decode().split():
+        blob = git("show", f"{commit}:{REGISTRY_IN_GIT}")
+        if blob is None:
+            pytest.skip(f"git could not read {REGISTRY_IN_GIT} at {commit[:8]} (a partial clone without its blobs?)")
+        digest = hashlib.sha256(blob).hexdigest()
+        if digest == refrozen:
+            return unrecorded
+        if digest not in text:
+            unrecorded.append(f"{commit[:8]} {digest}")
+    pytest.fail(f"the re-frozen digest {refrozen[:12]} is not in the registry's history")
 
 
 def test_the_preregistration_records_every_registry_revision_since_its_2026_07_22_refreeze():
@@ -185,20 +224,50 @@ def test_the_preregistration_records_every_registry_revision_since_its_2026_07_2
     (5e444ca1 was missed). Walks the registry's history back to the re-frozen
     digest and requires the sha256 of every revision since, this change's
     included, to appear in the preregistration. Needs the full history, so a
-    shallow clone skips it."""
-    if _git("rev-parse", "--is-shallow-repository") != b"false\n":
-        pytest.skip("needs a git checkout with the registry's full history")
-    text = PREREGISTRATION.read_text(encoding="utf-8")
-    unrecorded = []
-    for commit in (_git("log", "--format=%H", "--", "data/advice_providers.json") or b"").decode().split():
-        digest = hashlib.sha256(_git("show", f"{commit}:data/advice_providers.json") or b"").hexdigest()
-        if digest == REFROZEN_20260722:
-            break
-        if digest not in text:
-            unrecorded.append(f"{commit[:8]} {digest}")
-    else:
-        pytest.fail(f"the re-frozen digest {REFROZEN_20260722[:12]} is not in the registry's history")
+    shallow or partial clone skips it."""
+    unrecorded = _unrecorded_registry_revisions(_git, PREREGISTRATION.read_text(encoding="utf-8"))
     assert not unrecorded, f"registry revisions whose sha256 docs/preregistration_advice.md does not record: {unrecorded}"
+
+
+def _fake_git(blobs: dict[str, bytes | None], *, log_ok: bool = True) -> Callable[..., bytes | None]:
+    """A git with a full, non-shallow history of the registry: `blobs` maps
+    commit -> the registry's bytes there, newest first, None where the object
+    store lacks the blob; `log_ok=False` is a store that lacks the trees."""
+    def git(*args: str) -> bytes | None:
+        if args[:1] == ("rev-parse",):
+            return b"false\n"
+        if args[:1] == ("log",):
+            return "".join(f"{c}\n" for c in blobs).encode() if log_ok else None
+        if args[:1] == ("show",):
+            return blobs[args[1].partition(":")[0]]
+        raise AssertionError(f"unexpected git call {args}")
+    return git
+
+
+def test_the_revision_check_skips_a_partial_clone_instead_of_failing():
+    """Regression for the review of 2026-09-23: a treeless partial clone fails
+    `git log -- <path>` and a blobless one fails `git show`; both skip, where
+    they failed with "not in the registry's history"."""
+    old, new = b"old registry", b"new registry"
+    with pytest.raises(pytest.skip.Exception, match="without its trees"):
+        _unrecorded_registry_revisions(_fake_git({"b" * 40: new, "a" * 40: old}, log_ok=False), "",
+                                       refrozen=hashlib.sha256(old).hexdigest())
+    with pytest.raises(pytest.skip.Exception, match=f"at {'b' * 8} .*without its blobs"):
+        _unrecorded_registry_revisions(_fake_git({"b" * 40: None, "a" * 40: old}), "",
+                                       refrozen=hashlib.sha256(old).hexdigest())
+
+
+def test_the_revision_check_still_reports_what_a_full_history_shows():
+    """The skips above do not weaken the check on a full clone: an unrecorded
+    revision is reported, a recorded one is not, and a history that never
+    reaches the re-frozen digest fails."""
+    old, new, newer = b"old registry", b"new registry", b"newer registry"
+    blobs = {"c" * 40: newer, "b" * 40: new, "a" * 40: old}
+    refrozen, h_new, h_newer = (hashlib.sha256(x).hexdigest() for x in (old, new, newer))
+    assert _unrecorded_registry_revisions(_fake_git(blobs), h_newer, refrozen=refrozen) == [f"{'b' * 8} {h_new}"]
+    assert _unrecorded_registry_revisions(_fake_git(blobs), h_new + h_newer, refrozen=refrozen) == []
+    with pytest.raises(pytest.fail.Exception, match="not in the registry's history"):
+        _unrecorded_registry_revisions(_fake_git(blobs), h_new + h_newer, refrozen="0" * 64)
 
 
 # ------------------------------------------------------------------ pricing and the refusal rule
