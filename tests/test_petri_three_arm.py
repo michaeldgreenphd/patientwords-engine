@@ -694,6 +694,28 @@ def test_provenance_and_header_invariants(tmp_path):
     assert "colloquial_vs_clinical" in md
 
 
+def test_markdown_output_carries_complete_provenance(tmp_path):
+    """The default output is Markdown, so it must identify the exact inputs on its own: full digests for the
+    registry, the rubric file, every seed and every run's manifest, bound judgments and analysis rows
+    (Codex F11 on PR #30)."""
+    run_dirs = [_write_run(tmp_path, "run-a", _three_arms(), seed_digests={"s1": "a" * 64}),
+                _write_run(tmp_path, "run-b", _three_arms(seed_id="s2"), seed_digests={"s2": "b" * 64})]
+
+    report = analyze_run_directories(run_dirs)
+    md = format_markdown_summary(report)
+    prov = report.provenance
+
+    assert f"sha256 `{sha256_file(DEFAULT_OUTCOME_REGISTRY)}`" in md
+    assert f"sha256 `{sha256_file(DEFAULT_ADVICE_RUBRIC)}`" in md
+    assert f"canonical digest `{RUBRIC_DIGEST}`" in md
+    assert f"- `s1`: `{'a' * 64}`" in md and f"- `s2`: `{'b' * 64}`" in md
+    for run_dir in run_dirs:
+        rid = run_dir.name
+        assert f"- `{rid}`: manifest outcome registry sha256 `{prov.manifest_outcome_registry_sha256[rid]}`" in md
+        assert f"judgments.jsonl sha256 `{sha256_file(run_dir / 'judgments.jsonl')}` (bound)" in md
+        assert f"analysis_rows.jsonl sha256 `{sha256_file(run_dir / 'analysis_rows.jsonl')}`" in md
+
+
 def test_run_with_only_raw_judgments_is_refused_with_the_derivation_step(tmp_path, capsys):
     """judge_runner writes judgments.jsonl without `arm` (analysis_rows() adds it from the manifest), so
     reading raw judgments misreported every Wave-2 run as Wave 1. The fallback is gone: the run is refused
@@ -901,7 +923,8 @@ def test_retried_judgment_is_collapsed_to_its_latest_attempt_not_refused(tmp_pat
     assert contrast.counts.n_refused == 0
     assert contrast.rows[0].arm_B_value == TIERS[1]
     assert report.provenance.superseded_retry_rows == {"run-retry": 1}
-    assert "run-retry: 1" in format_markdown_summary(report)
+    assert "superseded retry attempts (a null judgment replaced by a later attempt under the same key): 1" in (
+        format_markdown_summary(report))
 
 
 def test_manifest_lacking_judge_of_record_is_refused_by_name(tmp_path):
@@ -1057,4 +1080,4 @@ def test_rubric_edited_after_the_run_refuses_every_tier_exchange(tmp_path):
         assert all("was judged under rubric digest" in r["reason"] for r in contrast.refusals)
     md = format_markdown_summary(report)
     assert f"canonical digest `{rubric_digest(edited)}`" in md
-    assert f"run-old-rubric: `{RUBRIC_DIGEST}` 6" in md
+    assert f"tier rows by recorded rubric digest: `{RUBRIC_DIGEST}` 6" in md

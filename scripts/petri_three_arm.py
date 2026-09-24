@@ -174,6 +174,9 @@ class RunProvenance:
     # per run: tier judgment digest -> count of tier rows recording it
     tier_rubric_digests: dict[str, dict[str, int]]
     superseded_retry_rows: dict[str, int]
+    # per run: the bound judgments.jsonl (verified equal to the manifest's binding) and the analysis_rows.jsonl read
+    judgments_sha256: dict[str, str]
+    analysis_rows_sha256: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -938,6 +941,8 @@ def analyze_run_directories(
     manifest_outcome_digests: dict[str, str] = {}
     tier_rubric_digests: dict[str, dict[str, int]] = {}
     superseded_retry_rows: dict[str, int] = {}
+    judgments_digests: dict[str, str] = {}
+    analysis_rows_digests: dict[str, str] = {}
 
     for rdir in run_dirs:
         manifest, rows, n_superseded = load_run_rows(rdir, outcome_registry_path=outcomes_file)
@@ -981,6 +986,8 @@ def analyze_run_directories(
             judges_of_record.append(judge_name)
 
         superseded_retry_rows[run_id] = n_superseded
+        judgments_digests[run_id] = manifest["artifacts"]["judgments_sha256"]
+        analysis_rows_digests[run_id] = sha256_file(Path(rdir) / "analysis_rows.jsonl")
         all_rows.extend(rows)
 
     # Group rows by seed_id
@@ -1034,6 +1041,8 @@ def analyze_run_directories(
         rubric_canonical_digest=loaded_rubric_digest,
         tier_rubric_digests=tier_rubric_digests,
         superseded_retry_rows=superseded_retry_rows,
+        judgments_sha256=judgments_digests,
+        analysis_rows_sha256=analysis_rows_digests,
     )
 
     return ThreeArmReport(
@@ -1047,6 +1056,7 @@ def analyze_run_directories(
 
 def format_markdown_summary(report: ThreeArmReport) -> str:
     """Renders human-readable markdown summary tables of the analysis report."""
+    prov = report.provenance
     lines: list[str] = [
         f"# {HEADER_NOTE}",
         "",
@@ -1054,22 +1064,32 @@ def format_markdown_summary(report: ThreeArmReport) -> str:
         f"**Nominal dimensions ({len(report.nominal_dimensions)})**: {', '.join(report.nominal_dimensions) if report.nominal_dimensions else 'none'}",
         "",
         "## Provenance",
-        f"- **Run IDs**: {', '.join(report.provenance.run_ids) or 'None'}",
-        f"- **Manifest identities**: {', '.join(report.provenance.manifest_identity_sha256) or 'None'}",
-        f"- **Engine commits**: {', '.join(report.provenance.engine_commits) or 'None'}",
-        f"- **Judge of record**: {', '.join(report.provenance.judge_of_record) or 'None'}",
-        f"- **Outcome registry**: `{report.provenance.outcome_registry_path}` (`{report.provenance.outcome_registry_sha256[:12]}`)",
-        f"- **Rubric**: `{report.provenance.rubric_path}` (canonical digest "
-        f"`{report.provenance.rubric_canonical_digest}`, checked against every tier judgment's recorded digest; "
-        "tier rows by recorded digest: "
-        + "; ".join(f"{rid}: " + ", ".join(f"`{d}` {n}" for d, n in counts.items())
-                    for rid, counts in report.provenance.tier_rubric_digests.items())
-        + ")",
+        # Every digest is printed in full: the default output must identify the exact inputs by itself
+        # (Codex F11 on PR #30); the --json output carries the same fields.
+        f"- **Run IDs**: {', '.join(prov.run_ids) or 'None'}",
+        f"- **Manifest identities**: {', '.join(prov.manifest_identity_sha256) or 'None'}",
+        f"- **Engine commits**: {', '.join(prov.engine_commits) or 'None'}",
+        f"- **Judge of record**: {', '.join(prov.judge_of_record) or 'None'}",
+        f"- **Outcome registry**: `{prov.outcome_registry_path}` (sha256 `{prov.outcome_registry_sha256}`)",
+        f"- **Rubric**: `{prov.rubric_path}` (sha256 `{prov.rubric_sha256}`; canonical digest "
+        f"`{prov.rubric_canonical_digest}`, checked against every tier judgment's recorded digest)",
         f"- **Seeds analyzed**: {len(report.seeds)}",
-        "- **Superseded retry attempts** (a null judgment replaced by a later attempt under the same key): "
-        + (", ".join(f"{rid}: {n}" for rid, n in report.provenance.superseded_retry_rows.items()) or "None"),
         "",
+        "### Per run",
     ]
+    for rid in prov.manifest_outcome_registry_sha256:
+        tiers = ", ".join(f"`{d}` {n}" for d, n in prov.tier_rubric_digests.get(rid, {}).items()) or "none"
+        lines.append(
+            f"- `{rid}`: manifest outcome registry sha256 `{prov.manifest_outcome_registry_sha256[rid]}`; "
+            f"judgments.jsonl sha256 `{prov.judgments_sha256.get(rid)}` (bound); "
+            f"analysis_rows.jsonl sha256 `{prov.analysis_rows_sha256.get(rid)}`; "
+            f"tier rows by recorded rubric digest: {tiers}; "
+            f"superseded retry attempts (a null judgment replaced by a later attempt under the same key): "
+            f"{prov.superseded_retry_rows.get(rid, 0)}"
+        )
+    lines += ["", "### Seed digests"]
+    lines += [f"- `{sid}`: `{sha}`" for sid, sha in sorted(prov.seed_digests.items())] or ["- None recorded"]
+    lines.append("")
 
     for seed_id, seed_analysis in sorted(report.seeds.items()):
         lines.append(f"## Seed: `{seed_id}` (arms: {', '.join(seed_analysis.arms_present)})")
