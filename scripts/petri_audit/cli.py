@@ -18,6 +18,8 @@ same checks and calls nothing.
     python -m scripts.petri_audit.cli verify-chain --data-dir DIR
     python -m scripts.petri_audit.cli verify-run --run-dir DIR
     python -m scripts.petri_audit.cli run-summary --run-dir DIR --mode MODE [--raw-eval-dir DIR] [--seeds FILE] [...]
+    python -m scripts.petri_audit.cli repro-pack --vendor V --publication-state S --run-dir DIR [...]
+    python -m scripts.petri_audit.cli repro-pack --check | --record-sent VERSION --sent-to ROLE   (repro_pack.py)
 
 Python 3.11 can run everything except `run` and `adapt`, which import the
 harness and are 3.12 only.
@@ -31,7 +33,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import readapt
+from . import readapt, repro_pack
 from .envlock import load_lock, report_lines, verify_lock
 from .framework import ENV_LOCK, OUTCOME_REGISTRY, ROOT, SEED_FILE, load_json, sha256_file, write_json
 from .manifest import bind_judgments, reseal_problems, verify_chain, verify_run
@@ -841,6 +843,12 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("digest")
     p.add_argument("paths", nargs="+")
     p.set_defaults(func=cmd_digest)
+
+    p = sub.add_parser("repro-pack",
+                       help="a deterministic vendor reproduction pack over landed runs (dist/, never committed); "
+                            "--check audits pack freshness, --record-sent logs a send (scripts/petri_audit/repro_pack.py)")
+    repro_pack.add_arguments(p)
+    p.set_defaults(func=repro_pack.cmd_repro_pack)
     return parser
 
 
