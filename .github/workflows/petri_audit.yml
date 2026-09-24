@@ -152,7 +152,7 @@ jobs:
           IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
         run: |
           python - <<'EOF'
-          import json, os
+          import json, os, re
           # The push-path defaults dict MUST contain every trigger key (unknown
           # keys in the trigger file are silently ignored by design; the fire
           # guard's KNOWN_KEYS mirrors this set).
@@ -202,6 +202,13 @@ jobs:
               raise SystemExit(f"mode run books every target that is not openrouter/ to the Anthropic lane, but "
                                f"{p['target']!r} bills its own vendor key; route it through OpenRouter as "
                                "openrouter/<vendor>/<model> (for example openrouter/openai/gpt-5.4-mini)")
+          # the test above runs only on a spelling with a slash, so a bare model name (which cli preflight reads as
+          # Anthropic), an empty target, a provider with no model and OpenRouter with no vendor all passed it into
+          # the paid steps (Codex review of PR #37, 2026-09-23). A paid target names its provider and model exactly;
+          # preflight and dry_run keep their mock targets (the checks above)
+          if p["mode"] == "run" and not re.fullmatch(r"anthropic/[^/\s]+|openrouter/[^/\s]+/[^/\s]+", p["target"]):
+              raise SystemExit(f"mode run needs a target spelled anthropic/<model> or openrouter/<vendor>/<model>, "
+                               f"got {p['target']!r}; a bare model name names no provider")
           # a paid run is admitted only from a push-to-run fire on its first attempt: the fire path journals the
           # reservation the daily ceiling counts, and neither a workflow_dispatch nor an Actions-tab re-run has one
           # of its own (Codex round 8); preflight and dry_run cost nothing and may run from anywhere

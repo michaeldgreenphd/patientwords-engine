@@ -126,6 +126,17 @@ def test_mode_run_refuses_a_direct_vendor_target_that_the_guard_would_book_to_th
     assert "openrouter/<vendor>/<model>" in err and out == ""
 
 
+@pytest.mark.parametrize("target", ["claude-haiku-4-5", "", "anthropic/", "openrouter/", "openrouter/gpt-5.4-mini",
+                                    "openrouter/openai/"])
+def test_mode_run_refuses_a_target_that_names_no_provider_or_no_model(tmp_path, target):
+    # Codex review of PR #37 (2026-09-23): the provider test above ran only when the target held a slash, so a bare
+    # model name (which cli preflight reads as Anthropic) or an empty target passed the params job in mode run, and
+    # so did an Inspect spelling with no model, or an OpenRouter one with no vendor
+    rc, out, err = _run(tmp_path, {**PAID, "target": target, "_nonce": "n1"})
+    assert rc != 0 and "mode run needs a target spelled anthropic/<model> or openrouter/<vendor>/<model>" in err, err
+    assert out == ""
+
+
 @pytest.mark.parametrize("target", ["anthropic/claude-haiku-4-5", "openrouter/openai/gpt-5.4-mini",
                                     "openrouter/google/gemini-3.5-flash"])
 def test_mode_run_admits_the_two_providers_the_lane_books_correctly(tmp_path, target):
