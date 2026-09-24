@@ -1,8 +1,10 @@
 """Design-only power and error-rate simulation for the wave-2 register contrast (docs/petri_wave2_design.md §10).
 
 No outcome data is read: every quantity is a stated parameter. Per exchange, the colloquial reply's tier is one lower
-than the clinical reply's with probability `pd` (drawn per scenario as max(0, pd + N(0, tau))), one higher with
-probability `pu`, and otherwise the same. With probability `rho` an exchange repeats the previous exchange's
+than the clinical reply's with probability `pd_s`, one higher with probability `pu`, and otherwise the same. `pd_s` is
+drawn per scenario as pd + clip(N(0, tau), -m, m) with m = min(pd, 1 - pu - pd): the clip keeps pd_s in [0, 1 - pu],
+and because it is symmetric E[pd_s] = pd exactly, so a row with pd = pu is a zero-mean null however large tau is
+(`scenario_pd`). `tau` is the deviation's sd before the clip; where the clip binds the realised sd is smaller. With probability `rho` an exchange repeats the previous exchange's
 difference, which models persistence within one conversation. A triple's D is the mean of its ten differences. The
 design has 8 scenarios contributing 4, 4, 4, 8, 3, 3, 3 and 6 triples: 35 in all, the planned final data, where the
 two identity seeds count twice for their two speakers.
@@ -42,6 +44,19 @@ def sign_flip_p(means: list[float]) -> float:
     return sum(1 for f in flips if abs(sum(a * b for a, b in zip(f, means))) >= observed - 1e-12) / len(flips)
 
 
+def scenario_pd(rng: random.Random, pd: float, pu: float, tau: float) -> float:
+    """One scenario's downgrade probability: pd plus a N(0, tau) deviation clipped to [-m, m], m = min(pd, 1 - pu - pd).
+
+    The clip is symmetric about pd, so E[pd_s] = pd and the scenario effects stay centred on the stated mean. The first
+    version clipped at zero only, min(max(0, pd + N(0, tau)), 1 - pu), which at pd = tau = 0.10 raised E[pd_s] to
+    about 0.108 against pu = 0.10: the row labelled a null simulated a real downgrade shift (Codex, PR #29). One gauss
+    draw is taken whatever tau is, as before, so the other rows see the same random stream."""
+    if pd < 0 or pu < 0 or pd + pu > 1:
+        raise ValueError(f"need pd >= 0, pu >= 0 and pd + pu <= 1, got pd={pd}, pu={pu}")
+    bound = min(pd, 1 - pu - pd)
+    return pd + max(-bound, min(bound, rng.gauss(0, tau)))
+
+
 def conversation_d(rng: random.Random, pd: float, pu: float, rho: float, exchanges: int = 10) -> float:
     """Mean per-exchange tier difference (colloquial minus clinical) of one simulated triple."""
     previous: int | None = None
@@ -65,7 +80,7 @@ def rejection_rates(rng: random.Random, *, pd: float, pu: float, rho: float, tau
         triples: list[float] = []
         means: list[float] = []
         for c in counts:
-            pd_s = min(max(0.0, pd + rng.gauss(0, tau)), 1 - pu)
+            pd_s = scenario_pd(rng, pd, pu, tau)
             ds = [conversation_d(rng, pd_s, pu, rho) for _ in range(c)]
             triples += ds
             means.append(sum(ds) / c)
@@ -75,6 +90,9 @@ def rejection_rates(rng: random.Random, *, pd: float, pu: float, rho: float, tau
         perm_hits += sign_flip_p(means) < 0.05
     return {"triple_sign_test": sign_hits / sims, "scenario_sign_flip": perm_hits / sims}
 
+
+HETEROGENEITY = ("pd_s = pd + clip(N(0, tau), -m, m), m = min(pd, 1 - pu - pd); symmetric, so E[pd_s] = pd; "
+                 "tau is the sd before the clip")
 
 GRID = (
     # (label, pd, pu, rho, tau)
@@ -96,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
              **rejection_rates(rng, pd=pd, pu=pu, rho=rho, tau=tau, sims=args.sims)}
             for label, pd, pu, rho, tau in GRID]
     print(json.dumps({"seed": args.seed, "sims": args.sims, "triples_per_scenario": list(TRIPLES_PER_SCENARIO),
-                      "alpha": 0.05, "results": rows}, indent=1))
+                      "alpha": 0.05, "scenario_heterogeneity": HETEROGENEITY, "results": rows}, indent=1))
     return 0
 
 

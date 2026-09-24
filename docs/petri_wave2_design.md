@@ -1083,7 +1083,9 @@ any write-up to say. It was written before the data it governs exist. Decision 1
 
 The first version was committed at 2026-09-23T15:20Z (d5ccb40d). It was revised the same day, before the 2026-09-24
 fire (nonce `w2e3`), after an external statistical review; §10.8 lists what changed. Both versions precede every epoch
-from epoch 3 of the original set and epoch 2 of the second set onward.
+from epoch 3 of the original set and epoch 2 of the second set onward. It was amended on 2026-09-24, after the `w2e3`
+fire published nothing and before any contrast was computed on landed data; §10.8 records each amendment with its
+reason.
 
 **Status: an analysis plan on partially observed data.** When this was written, 15 of the 35 planned triples had
 already landed and been read: epochs 1 and 2 of the original set, and epoch 1 of the second set. Their counts are on
@@ -1152,7 +1154,8 @@ replication (10.2).
 
   This test asks whether the shift holds across scenarios. It treats the scenario as the unit. The design simulation
   (10.7) shows why it is needed for any claim beyond these scenarios: when the average effect is zero but scenarios
-  differ, the triple-level test rejects about 7.5% of the time, while this test holds at about 4.7%.
+  differ, the triple-level test rejects about 7.3% of the time, while this test holds at about 4.8% (corrected
+  2026-09-24, §10.8).
 - **Leave-one-scenario-out.** The primary test is rerun eight times, dropping each scenario in turn. The output
   reports each rerun's direction and p.
 - **Planned replication.** The same sign test on the 20 triples of the prospective partition alone. At 20 non-tied
@@ -1289,3 +1292,12 @@ adopted as proposed or adapted.
 | Power | not stated | stated from a committed design simulation; a null is reported as inconclusive |
 | Secondary outcomes | Holm correction "within each family", which was ambiguous | one Holm family of four |
 | Wording | the table of 10.2 | revised to name the model and grader and to report a null as inconclusive |
+
+**Amendments of 2026-09-24, after the `w2e3` fire and before any contrast was computed on landed data.** The `w2e3`
+epoch published nothing (the export refused; handoff §5a), so no data landed between the revisions above and these.
+Each came from Codex's review of PR #29 and is a dated amendment under 10.6; none changes the test, the unit, the
+final data or a threshold.
+
+| Area | Before | After |
+|---|---|---|
+| Design simulation's heterogeneous null (10.2, 10.7) | each scenario's downgrade probability drawn as max(0, 0.10 + N(0, 0.10)); the clip at zero raised its mean to about 0.108 against an upgrade probability of 0.10, so the row labelled a null carried a real downgrade shift, and its 7.5% (triple test) and 4.7% (scenario gate) were not error rates under a null | the deviation is clipped symmetrically about the stated mean, so the mean stays at 0.10 (`scenario_pd`); re-run with the same seed 20260923 and 3,000 simulations: 7.3% and 4.8%. The conclusion is unchanged: when scenarios differ, the triple-level test rejects above its nominal 5% and the scenario gate holds it. The other four rows of the grid, including every power figure in 10.2, are unchanged to the digit |
