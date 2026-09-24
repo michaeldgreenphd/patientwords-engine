@@ -58,5 +58,6 @@ def test_every_known_table_id_is_watched():
     unchecked. The list is the frontend's, so this asserts the shape rather than
     reaching across repos in an offline test."""
     assert "sim-sum-body" in cp.JS_TABLE_BODIES
+    assert "rep-body" in cp.JS_TABLE_BODIES      # multi-turn/'s "Does it repeat?" table (site PR #9)
     assert len(cp.JS_TABLE_BODIES) == len(set(cp.JS_TABLE_BODIES)), "duplicate id"
     assert all(t.endswith("-body") for t in cp.JS_TABLE_BODIES)
