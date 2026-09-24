@@ -346,3 +346,51 @@ def test_the_budget_gate_and_the_fire_path_refuse_a_readapt_that_is_not_its_sour
     journal.write_text(journal.read_text(encoding="utf-8") + json.dumps(active) + "\n", encoding="utf-8")
     assert ft.main(fire + ["--params", json.dumps(readapt)]) == 2
     assert "a readapt fires only when the lane is idle" in capsys.readouterr().err
+
+
+def test_no_fire_of_any_mode_enters_the_lane_behind_an_active_readapt(tmp_path, capsys):
+    """Codex, PR #29: the idle-lane rule refused a readapt behind an active fire but admitted a mode-run fire behind
+    an active readapt. That run checks out its own trigger commit, whose manifest chain predates the readapt's
+    appended head, so its outputs could not commit after its target and judge had spent. Every mode is refused now,
+    the park included; the active entry's mode is read from the trigger content its digest names."""
+    repo, readapt = _readapt_repo(tmp_path)
+    trigger = repo / ".github" / "trigger" / f"{TRIGGER}.json"
+    journal = repo / "ops" / "trigger_journal.jsonl"
+    source_journal = journal.read_text(encoding="utf-8")
+    readapt_content = json.dumps(readapt, separators=(",", ":")) + "\n"
+    active = {"trigger": TRIGGER, "fired_utc": ft.iso_utc(ft.utc_now()), "commit": "", "note": "w2e3r running",
+              "resolved": False, "evicted": False, "nonce": "w2e3r", "max_spend": 2.5, "lane": "anthropic",
+              "params_sha256": ft.params_digest(readapt_content), "ref": "main"}
+    trigger.write_text(readapt_content, encoding="utf-8")
+    journal.write_text(source_journal + json.dumps(active) + "\n", encoding="utf-8")
+    run = dict(SOURCE_PARAMS, _nonce="w2e4")
+    fire = ["fire", "--repo", str(repo), "--trigger", TRIGGER, "--note", "next", "--dry-run", "--no-git"]
+    for params in (run, dict(run, mode="preflight", judge="false", commit_outputs="false"),
+                   dict(run, mode="dry_run", target="mockllm/model", judge="false", commit_outputs="false")):
+        assert ft.main(fire + ["--params", json.dumps(params)]) == 2, params["mode"]
+        err = capsys.readouterr().err
+        assert "is a readapt (source_run_id '4242')" in err and "No petri-audit fire of any mode" in err, err
+    park = ["park", "--repo", str(repo), "--trigger", TRIGGER, "--dry-run", "--no-git"]
+    assert ft.main(park) == 2
+    assert "is a readapt" in capsys.readouterr().err
+    # the readapt's trigger commit is in the history rather than on disk (a later edit replaced the file): still found
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "fire the readapt")
+    trigger.write_text(json.dumps(dict(ft.PARK_DEFAULTS[TRIGGER], _parked="true", _nonce="later")) + "\n",
+                       encoding="utf-8")
+    assert ft.petri_active_readapt_problems(repo, TRIGGER, [active]) == [
+        f"the active {TRIGGER} entry fired {active['fired_utc']} (nonce 'w2e3r') is a readapt (source_run_id '4242')"]
+    # an active entry whose content cannot be recovered cannot be shown not to be a readapt: refused, by name
+    for broken, needle in (({"params_sha256": None}, "records no params_sha256"),
+                           ({"params_sha256": "f" * 64}, "neither on disk nor in this branch's history")):
+        problems = ft.petri_active_readapt_problems(repo, TRIGGER, [dict(active, **broken)])
+        assert len(problems) == 1 and needle in problems[0], problems
+    # an active mode-run entry is not a readapt: the ordinary one-running + one-pending queue applies
+    run_content = json.dumps(dict(SOURCE_PARAMS, _nonce="w2e4"), separators=(",", ":")) + "\n"
+    trigger.write_text(run_content, encoding="utf-8")
+    running = dict(active, nonce="w2e4", params_sha256=ft.params_digest(run_content), max_spend=8.6)
+    journal.write_text(source_journal + json.dumps(running) + "\n", encoding="utf-8")
+    assert ft.petri_active_readapt_problems(repo, TRIGGER, [running]) == []
+    assert ft.main(fire + ["--params", json.dumps(dict(ft.PARK_DEFAULTS[TRIGGER], _nonce="p"))]) == 0
+    capsys.readouterr()
+    assert ft.petri_active_readapt_problems(repo, "advice-eval", [active]) == []

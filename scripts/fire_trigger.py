@@ -1231,6 +1231,16 @@ def cmd_fire(args):
               "would adapt against outputs that predate the running fire's. Wait for it to land, pull, `resolve`, "
               "and fire again", file=sys.stderr)
         return 2
+    # ...and the rule is symmetric: nothing enters the lane behind an active readapt, whatever its mode. A mode-run
+    # fire queued behind it checks out its own trigger commit, whose manifest chain predates the readapt's appended
+    # head, so its outputs cannot commit after its target and judge have spent (Codex, PR #29); the park and the
+    # free modes are refused too, so the lane holds the readapt alone until it lands and is resolved.
+    readapt_ahead = petri_active_readapt_problems(repo, args.trigger, actives)
+    if readapt_ahead:
+        print("refused: " + "; ".join(readapt_ahead) + ". No petri-audit fire of any mode enters the lane while a "
+              "readapt is active: a run queued behind it checks out a commit whose manifest chain predates the "
+              "readapt's. Wait for it to land, pull, `resolve`, and fire again", file=sys.stderr)
+        return 2
     to_evict = None
     if len(actives) >= 2:
         if not args.force_evict:
@@ -2354,6 +2364,49 @@ def _trigger_content_by_digest(repo, trigger, digest):
         if text is not None and params_digest(text) == digest:
             return commit, text
     return None
+
+
+def petri_active_readapt_problems(repo, trigger, actives):
+    """Why a petri-audit fire may not enter the lane behind the active entries `actives`: each one that is a
+    readapt, and each one whose mode cannot be established. Empty for every other trigger and for an idle lane.
+
+    A journal entry records the digest of the trigger file its fire wrote (`params_sha256`), not its parameters,
+    so the mode is read from that content: the trigger file on disk when it carries the digest (the latest fire),
+    else the version in this branch's history that does. An entry with no digest, or content that cannot be found
+    or parsed, cannot be shown not to be a readapt, so it refuses rather than admitting a fire behind a readapt
+    it failed to see (AGENTS.md, no silent failures)."""
+    if trigger != "petri-audit" or not actives:
+        return []
+    try:
+        on_disk = (Path(repo) / TRIGGER_DIR_RELPATH / f"{trigger}.json").read_text(encoding="utf-8")
+    except OSError:
+        on_disk = None
+    problems = []
+    for entry in actives:
+        label = f"the active {trigger} entry fired {entry.get('fired_utc', '?')} (nonce {entry.get('nonce')!r})"
+        digest = entry.get("params_sha256")
+        if not isinstance(digest, str) or not digest:
+            problems.append(f"{label} records no params_sha256, so whether it is a readapt cannot be established")
+            continue
+        if on_disk is not None and params_digest(on_disk) == digest:
+            text = on_disk
+        else:
+            found = _trigger_content_by_digest(repo, trigger, digest)
+            text = found[1] if found is not None else None
+        if text is None:
+            problems.append(f"{label}: the trigger content it journaled ({digest[:12]}) is neither on disk nor in this "
+                            "branch's history, so whether it is a readapt cannot be established")
+            continue
+        try:
+            fired = json.loads(text)
+        except ValueError:
+            fired = None
+        if not isinstance(fired, dict):
+            problems.append(f"{label}: the trigger content it journaled ({digest[:12]}) is not a JSON object, so "
+                            "whether it is a readapt cannot be established")
+        elif petri_mode(fired) == PETRI_READAPT_MODE:
+            problems.append(f"{label} is a readapt (source_run_id {fired.get('source_run_id')!r})")
+    return problems
 
 
 def petri_readapt_source_problems(repo, trigger, params):
