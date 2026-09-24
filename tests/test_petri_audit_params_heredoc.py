@@ -113,3 +113,33 @@ def test_the_guard_does_not_reject_the_park_default(tmp_path):
     rc, out, err = _run(tmp_path, dict(ft.PARK_DEFAULTS["petri-audit"]))
     assert rc == 0, err
     assert "mode=preflight\n" in out
+    assert "source_run_id=\n" in out, "the park carries no source_run_id and resolves it empty"
+
+
+READAPT = {**PAID, "mode": "readapt", "judge": "true", "judge_max_spend": "2.50", "source_run_id": "35937014168"}
+
+
+def test_a_readapt_resolves_with_its_source_run_and_nonce(tmp_path):
+    rc, out, err = _run(tmp_path, {**READAPT, "_nonce": "w2e3r"})
+    assert rc == 0, err
+    assert "mode=readapt\n" in out and "source_run_id=35937014168\n" in out and "_nonce=w2e3r\n" in out
+
+
+@pytest.mark.parametrize("cfg, needle", [
+    ({**READAPT, "source_run_id": ""}, "mode readapt needs source_run_id"),
+    ({**READAPT, "source_run_id": "3593abc"}, "mode readapt needs source_run_id"),
+    ({**READAPT, "source_run_id": "１２"}, "mode readapt needs source_run_id"),     # fullwidth digits
+    ({**READAPT, "judge": "false"}, "mode readapt runs the judge of record"),
+    ({**READAPT, "target": "mockllm/model"}, "mode readapt needs a real target"),
+    ({**PAID, "source_run_id": "35937014168"}, "source_run_id is read by mode readapt only"),
+    ({**READAPT, "mode": "re-adapt"}, "mode must be preflight, dry_run, run or readapt"),
+])
+def test_a_readapt_the_workflow_cannot_run_is_refused_before_any_output(tmp_path, cfg, needle):
+    rc, out, err = _run(tmp_path, {**cfg, "_nonce": "n"})
+    assert rc != 0 and needle in err, err
+    assert out == ""
+
+
+def test_a_readapt_is_admitted_from_a_first_attempt_push_only(tmp_path):
+    rc, out, err = _run(tmp_path, {**READAPT, "_nonce": "n"}, attempt="2")
+    assert rc != 0 and "mode readapt cannot be re-run from the Actions tab" in err and out == ""

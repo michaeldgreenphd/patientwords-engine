@@ -9,6 +9,8 @@ same checks and calls nothing.
     python -m scripts.petri_audit.cli preflight --target SPEC --max-spend USD [--epochs N] [--token-limit N]
     python -m scripts.petri_audit.cli run --target SPEC --max-spend USD --out-dir DIR [--log-model-api true|false] [...]
     python -m scripts.petri_audit.cli adapt --eval FILE --out-dir DIR --custody STR --max-spend USD [--run-params FILE] [...]
+    python -m scripts.petri_audit.cli readapt-plan --params-file FILE --listing FILE --readapt-run-id ID [...] --out FILE
+    python -m scripts.petri_audit.cli adapt --readapt PLAN --eval FILE --out-dir DIR [...]   (mode readapt)
     python -m scripts.petri_audit.cli spend-report --out FILE --run-id ID --target SPEC --max-spend USD [--eval FILE]
     python -m scripts.petri_audit.cli judge --run-dir DIR --judge-model SPEC --judge-max-spend USD [...]
     python -m scripts.petri_audit.cli judge-spend-report --run-dir DIR --judge-model SPEC --judge-max-spend USD
@@ -29,11 +31,12 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import readapt
 from .envlock import load_lock, report_lines, verify_lock
 from .framework import ENV_LOCK, OUTCOME_REGISTRY, ROOT, SEED_FILE, load_json, sha256_file, write_json
 from .manifest import bind_judgments, reseal_problems, verify_chain, verify_run
 from .seal import sealed_registry, seed_texts_against_registry
-from .seeds import conditions, load_seed_file, select_seeds, target_visible_strings, validate_seed
+from .seeds import conditions, load_seed_file, seed_digest, select_seeds, target_visible_strings, validate_seed
 from .spend import (
     cache_booking_problems,
     judge_billing_channel,
@@ -203,33 +206,128 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0 if log.status == "success" else 7
 
 
+def readapt_pre_problems(args: argparse.Namespace, plan: dict) -> list[str]:
+    """Mode readapt's refusals before the harness is imported and before anything is written: the output directory
+    is the source run's own and holds only its landed target sidecar, still the bytes the plan bound; the log is
+    the one that sidecar priced; and nothing names another fire's nonce."""
+    out_dir = Path(args.out_dir)
+    problems: list[str] = []
+    if out_dir.name != plan.get("run_stem"):
+        problems.append(f"--out-dir {out_dir.name} is not the source run's directory {plan.get('run_stem')!r}; a readapt "
+                        "writes beside the sidecar that booked the source run's target spend")
+    problems += readapt.run_dir_problems(out_dir.parent, out_dir.name)
+    report = plan["target_report"]
+    problems += readapt.eval_file_problems(args.eval, report["eval_log"])
+    problems += readapt.kept_report_problems(out_dir / readapt.target_report_name(out_dir.name),
+                                             expected_sha256=report["sha256"], eval_id=report["eval_id"])
+    # the judge sidecars earlier readapts of this run committed are spend records already booked to their own fires:
+    # still the set and the bytes the plan bound (a plan written before they were admitted binds none)
+    problems += readapt.kept_prior_problems(out_dir, plan.get("prior_judge_reports") or [])
+    if args.run_params:
+        problems.append("--run-params is the run step's record; a readapt ran no run step and takes the per-sample "
+                        "limits from the log's own config")
+    if args.journal_nonce and args.journal_nonce != report["journal_nonce"]:
+        problems.append(f"--journal-nonce {args.journal_nonce!r} is not the source fire's {report['journal_nonce']!r}; "
+                        "the manifest's spend block describes the run that spent on the target")
+    return problems
+
+
+def write_target_report(out_dir: Path, manifest: dict, *, max_spend: float, judge_max_spend: float | None,
+                        plan: dict | None = None) -> int:
+    """`adapt --report`: the target cost sidecar, written once and never rewritten. A readapt (`plan`) leaves the
+    source run's landed sidecar exactly as it is, after checking it is still the bytes the plan bound and prices the
+    log just adapted: the target spend was booked when the source run failed, and booking it again, or changing
+    the file the ledger already folded, would count it twice. Returns the exit code."""
+    out_dir = Path(out_dir)
+    path = out_dir / readapt.target_report_name(out_dir.name)
+    if plan is not None:
+        problems = readapt.kept_report_problems(path, expected_sha256=plan["target_report"]["sha256"],
+                                                eval_id=manifest["eval_id"])
+        for p in problems:
+            print(f"refused: {p}", file=sys.stderr)
+        if problems:
+            return 11
+        print(f"{path.name}: the source run's landed target cost sidecar, left unchanged (a readapt makes no target "
+              "call and books no target spend)")
+        return 0
+    if path.exists():
+        print(f"refused: {path.name} exists; a cost sidecar is never rewritten", file=sys.stderr)
+        return 11
+    usage = {r["model"]: r for r in manifest["usage"]["by_model"]}
+    write_report_sidecar(path, run_id=manifest["run_id"], eval_id=manifest["eval_id"], model_usage=usage,
+                         max_spend_usd=max_spend, judge_max_spend_usd=judge_max_spend, run_utc=manifest["created_utc"],
+                         extra={"raw_eval_log_sha256": manifest["artifacts"]["raw_eval_log_sha256"],
+                                "journal_nonce": manifest["spend"]["journal_nonce"]},
+                         target=manifest["models"]["target"]["inspect_name"])
+    return 0
+
+
 def cmd_adapt(args: argparse.Namespace) -> int:
+    plan = None
+    if args.readapt:
+        plan = load_json(args.readapt)
+        problems = readapt_pre_problems(args, plan)
+        for p in problems:
+            print(f"refused before adapting: {p}", file=sys.stderr)
+        if problems:
+            return 11
+
     from .adapter import adapt_run  # 3.12 only
 
     seed_set = load_seed_file(args.seeds)
     run_params = load_json(args.run_params) if args.run_params else {}
     spend = {"max_spend_usd": args.max_spend, "judge_max_spend_usd": args.judge_max_spend,
-             # the fire's nonce: given to adapt directly, else the one `run` recorded (PR B, 2026-09-18)
-             "journal_nonce": args.journal_nonce or run_params.get("journal_nonce") or None,
+             # the fire's nonce: given to adapt directly, else the one `run` recorded (PR B, 2026-09-18); a readapt
+             # records the SOURCE fire's, the one whose target spend this log is
+             "journal_nonce": (plan["target_report"]["journal_nonce"] if plan is not None
+                               else args.journal_nonce or run_params.get("journal_nonce") or None),
              "cost_limit_per_sample_usd": args.cost_limit if args.cost_limit is not None
              else run_params.get("cost_limit_per_sample_usd"),
              "token_limit_per_sample": args.token_limit if args.token_limit is not None
              else run_params.get("token_limit_per_sample")}
     result = adapt_run(args.eval, seed_set, args.out_dir, custody=args.custody, spend=spend, registry_spec=args.target,
-                       engine_sha=engine_sha(), lock_path=args.lock)
+                       engine_sha=engine_sha(), lock_path=args.lock,
+                       readapt=({"expected": plan["expected"], "provenance": readapt.provenance_block(plan)}
+                                if plan is not None else None))
     m = result.manifest
     print(f"adapted {len(result.records)} record(s) into {result.out_dir}; refused {len(result.refused)}; "
           f"claim_grade_eligible={m['execution']['claim_grade_eligible']}")
     for k, v in m["execution"]["contract_checks"].items():
         print(f"  {k}: {v['status']}" + (f" ({v['detail']})" if v["detail"] else ""))
     if args.report:
-        usage = {r["model"]: r for r in m["usage"]["by_model"]}
-        write_report_sidecar(Path(args.out_dir) / f"{Path(args.out_dir).name}.report.json", run_id=m["run_id"],
-                             eval_id=m["eval_id"], model_usage=usage, max_spend_usd=args.max_spend,
-                             judge_max_spend_usd=args.judge_max_spend, run_utc=m["created_utc"],
-                             extra={"raw_eval_log_sha256": m["artifacts"]["raw_eval_log_sha256"],
-                                    "journal_nonce": m["spend"]["journal_nonce"]},
-                             target=m["models"]["target"]["inspect_name"])
+        return write_target_report(Path(args.out_dir), m, max_spend=args.max_spend,
+                                   judge_max_spend=args.judge_max_spend, plan=plan)
+    return 0
+
+
+def cmd_readapt_plan(args: argparse.Namespace) -> int:
+    """Mode readapt, before the download: locate the source run's raw-log artifact in the REST listing, check the
+    source run directory and its landed sidecar, find the source fire in the journal, and state what the log must
+    record (scripts/petri_audit/readapt.py). Writes the plan the adapt step reads; makes no model call."""
+    from .reconcile import read_journal
+
+    try:
+        params = load_json(args.params_file)
+        if not isinstance(params, dict):
+            raise readapt.ReadaptError(f"{args.params_file} holds a {type(params).__name__}, not the resolved params")
+        seed_set = load_seed_file(params.get("seeds_file") or SEED_FILE)
+        ids = str(params.get("seed_ids") or "").split()
+        seeds = select_seeds(seed_set, ids or None, None if ids else int(str(params.get("wave"))))
+        plan = readapt.plan(params=params, listing=load_json(args.listing), runs_dir=Path(args.runs_dir),
+                            seed_ids=[s["seed_id"] for s in seeds], journal_entries=read_journal(args.journal),
+                            readapt_run_id=args.readapt_run_id, readapt_run_attempt=args.readapt_run_attempt,
+                            readapt_commit=args.readapt_commit,
+                            # the adapt step compares these with the digests the source run's samples recorded
+                            seed_digests={s["seed_id"]: seed_digest(s) for s in seeds})
+    except (readapt.ReadaptError, ValueError, KeyError, OSError) as exc:
+        print(f"readapt refused before the download: {exc}", file=sys.stderr)
+        return 12
+    write_json(Path(args.out), plan)
+    art = plan["artifact"]
+    print(f"readapt plan: source run {plan['source_run_id']} ({plan['run_stem']}, nonce "
+          f"{plan['target_report']['journal_nonce']}), artifact {art['name']} id {art['id']} digest {art['digest']}, "
+          f"expires {art['expires_at']}; log {plan['target_report']['eval_log']}; readapt nonce "
+          f"{plan['readapt']['journal_nonce']}")
     return 0
 
 
@@ -268,6 +366,49 @@ def cmd_spend_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def _readapt_judge_identity(run_dir: Path) -> dict:
+    """The join key a readapt's judge sidecar carries: the readapt fire's nonce and the log's eval id, from the
+    manifest's `readapt` block (scripts/petri_audit/readapt.py). A readapt makes no target call, so its fire
+    reserved the judge's spend alone, and the judge writes into the SOURCE run's directory, whose target sidecar
+    names the source fire; without its own nonce the judge's cost would be joined to that fire. Empty for a run
+    adapted in the ordinary way (the judge sidecar is joined through its directory, as before), and for a run
+    directory with no manifest yet."""
+    path = Path(run_dir) / "manifest.json"
+    if not path.is_file():
+        return {}
+    manifest = load_json(path)
+    block = manifest.get("readapt") if isinstance(manifest, dict) else None
+    if block is None:
+        return {}
+    nonce = block.get("readapt_journal_nonce") if isinstance(block, dict) else None
+    if not isinstance(nonce, str) or not nonce:
+        raise ValueError(f"{path}: the readapt block records no readapt_journal_nonce, so the judge's spend cannot be "
+                         "joined to the fire that reserved it")
+    return {"journal_nonce": nonce, "eval_id": manifest.get("eval_id")}
+
+
+def _judge_report_path(run_dir: Path) -> Path:
+    """The judge cost sidecar of the judge pass about to run in `run_dir`: `<dir>.judge.report.json` for a run
+    adapted in the ordinary way; for a readapt, the name `readapt.judge_report_name` gives it from the manifest's
+    `readapt` block, so a retry after a readapt whose judge failed writes beside the sidecar that failure
+    committed instead of over it. Raises ValueError for a readapt block that names no usable workflow run."""
+    run_dir = Path(run_dir)
+    ordinary = run_dir / f"{run_dir.name}.judge.report.json"
+    path = run_dir / "manifest.json"
+    if not path.is_file():
+        return ordinary
+    manifest = load_json(path)
+    block = manifest.get("readapt") if isinstance(manifest, dict) else None
+    if block is None:
+        return ordinary
+    run_id = block.get("readapt_workflow_run_id") if isinstance(block, dict) else None
+    try:
+        return run_dir / readapt.judge_report_name(run_dir.name, run_id)
+    except readapt.ReadaptError as exc:
+        raise ValueError(f"{path}: the readapt block names no usable readapt_workflow_run_id ({exc}), so the judge's "
+                         "sidecar cannot be named apart from an earlier readapt's") from None
+
+
 def cmd_judge_spend_report(args: argparse.Namespace) -> int:
     """The judge cost sidecar for a judge step that started and left none (the
     process died, or the client raised before run_judgments could write). A
@@ -280,7 +421,22 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
     from .judge_runner import TIER_TEMPERATURE, cumulative_counts, read_jsonl
 
     run_dir = Path(args.run_dir)
-    report_path = run_dir / f"{run_dir.name}.judge.report.json"
+    # a readapt's judge was reserved by the readapt fire, not the source fire its directory names; the sidecar carries
+    # that fire's nonce and the log's eval id so reconciliation joins it to the right commitment (reconcile.py), and
+    # it is named for the readapt's own workflow run, so an earlier readapt's sidecar in the same directory is never
+    # read as this judge's (which would impute nothing for a judge that spent) and never rewritten
+    try:
+        identity: dict = _readapt_judge_identity(run_dir)
+    except (OSError, ValueError) as exc:
+        # the ceiling is still booked; the missing join key is named in the record rather than guessed
+        identity = {"journal_nonce_unavailable": f"manifest.json could not be read ({type(exc).__name__}: {exc})"}
+    try:
+        report_path = _judge_report_path(run_dir)
+    except (OSError, ValueError) as exc:
+        # the ordinary name, which no readapt writes, so no earlier readapt's sidecar is taken for this one; the
+        # reason the readapt name could not be formed is recorded beside the booked ceiling
+        report_path = run_dir / f"{run_dir.name}.judge.report.json"
+        identity["judge_report_name_unavailable"] = f"{type(exc).__name__}: {exc}"
     if report_path.is_file():
         print(f"{report_path} exists; nothing to impute")
         return 0
@@ -305,6 +461,7 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
                "judge_max_tokens": args.judge_max_tokens, "temperature": TIER_TEMPERATURE,
                "task": "petri-audit-judge", "run_id": run_dir.name, "billing_channel": channel,
                "price_source": price.source, "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok}
+    sidecar.update(identity)
     write_json(report_path, sidecar)
     print(f"judge spend report {report_path}: cost_usd {cost} ({basis}); {reason}")
     return 0
@@ -344,6 +501,14 @@ def cmd_judge(args: argparse.Namespace) -> int:
             print(f"refused before any judge call: {r}", file=sys.stderr)
         return 9
     manifest = load_json(run_dir / "manifest.json")
+    try:
+        readapt_identity = _readapt_judge_identity(run_dir)
+        # the sidecar's basename is run-unique (the ledger keys sidecars by filename, Codex round 2) and, under a
+        # readapt, unique to the re-adapting workflow run, so a retry never rewrites an earlier readapt's sidecar
+        report_path = _judge_report_path(run_dir)
+    except ValueError as exc:
+        print(f"refused before any judge call: {exc}", file=sys.stderr)
+        return 9
     # the judge of record is one spec under one generation setting: a bound judge or existing rows under another
     # spec or token allowance refuse the pass before any call, because dedupe_key carries the spec and a second
     # spec would re-judge every plan, and a second allowance would mix caps under one provenance (Codex rounds 7, 8)
@@ -361,8 +526,6 @@ def cmd_judge(args: argparse.Namespace) -> int:
     ceiling = SpendCeiling(args.judge_max_spend, price.input_per_mtok, price.output_per_mtok, args.judge_max_tokens)
     client = RegistryJudge(args.judge_model)
     judgments_path = run_dir / "judgments.jsonl"
-    # the sidecar's basename is run-unique: the ledger keys sidecars by filename (Codex round 2)
-    report_path = run_dir / f"{run_dir.name}.judge.report.json"
     try:
         sidecar = run_judgments(plans, client, out_path=judgments_path, ceiling=ceiling,
                                 judge_max_tokens=args.judge_max_tokens, labels=labels_from_manifest(manifest),
@@ -370,7 +533,7 @@ def cmd_judge(args: argparse.Namespace) -> int:
                                 sidecar_extra={"task": "petri-audit-judge", "run_id": manifest["run_id"],
                                                "eval_id": manifest["eval_id"], "billing_channel": channel,
                                                "price_source": price.source, "input_per_mtok": price.input_per_mtok,
-                                               "output_per_mtok": price.output_per_mtok})
+                                               "output_per_mtok": price.output_per_mtok, **readapt_identity})
     except JudgeAborted as exc:
         # the sidecar was written before the exception reached here; the judgments are not bound (the manifest
         # keeps saying no judge of record ran) and the step fails, with the charged calls booked
@@ -556,8 +719,24 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--token-limit", type=int, default=None)
     p.add_argument("--run-params", default=None,
                    help="the run_params.json `run` wrote beside its logs; supplies cost_limit and token_limit when not given")
-    p.add_argument("--report", action="store_true", help="also write the <dir>.report.json cost sidecar")
+    p.add_argument("--report", action="store_true",
+                   help="also write the <dir>.report.json cost sidecar (under --readapt: check the landed one and leave it)")
+    p.add_argument("--readapt", default=None,
+                   help="mode readapt: the plan `readapt-plan` wrote; adapt the source run's log into its own directory, "
+                        "beside its landed target sidecar, and record the provenance in the manifest")
     p.set_defaults(func=cmd_adapt)
+
+    p = sub.add_parser("readapt-plan")
+    p.add_argument("--params-file", required=True, help="the params job's resolved outputs, as JSON (mode readapt)")
+    p.add_argument("--listing", required=True,
+                   help="the REST listing of the source run's artifacts (GET .../actions/runs/{id}/artifacts), as JSON")
+    p.add_argument("--runs-dir", default=str(DEFAULT_RUNS_DIR))
+    p.add_argument("--journal", default=str(ROOT / "ops" / "trigger_journal.jsonl"))
+    p.add_argument("--readapt-run-id", required=True, help="this workflow run's id (GITHUB_RUN_ID)")
+    p.add_argument("--readapt-run-attempt", required=True, help="this workflow run's attempt (GITHUB_RUN_ATTEMPT)")
+    p.add_argument("--readapt-commit", required=True, help="the commit this workflow run checked out (GITHUB_SHA)")
+    p.add_argument("--out", required=True)
+    p.set_defaults(func=cmd_readapt_plan)
 
     p = sub.add_parser("spend-report")
     p.add_argument("--out", required=True)
@@ -609,7 +788,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("run-summary")
     p.add_argument("--run-dir", default=None, help="the adapted run directory (absent under preflight)")
-    p.add_argument("--mode", required=True, choices=["preflight", "dry_run", "run"])
+    p.add_argument("--mode", required=True, choices=["preflight", "dry_run", "run", readapt.MODE])
     p.add_argument("--raw-eval-dir", default=None, help="where the run step wrote the raw .eval (outside the checkout)")
     p.add_argument("--seeds", default=None, help="seed file, for the planned judge prompt sizes (no call is made)")
     p.add_argument("--params-file", default=None, help="the parameters the params job resolved, as JSON")

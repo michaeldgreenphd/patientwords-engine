@@ -64,7 +64,7 @@ GPU) still commits no locally produced measurement: every committed summary reco
 | `activation-patching.json` | `activation_patching.yml` | CPU residual-stream patching grid ($0) |
 | `jlens-readout.json` | `jlens_readout.yml` | hosted Jacobian-lens depth readouts ($0) |
 | `advice-eval.json` | `advice_evaluation.yml` | deployed-assistant advice elicitation + judging (paid) |
-| `petri-audit.json` | `petri_audit.yml` | Petri-hosted multi-turn register experiments (paid when `mode: run`; park default `preflight` calls nothing) |
+| `petri-audit.json` | `petri_audit.yml` | Petri-hosted multi-turn register experiments (paid when `mode: run`, and `mode: readapt` for its judge; park default `preflight` calls nothing) |
 
 Nine lanes. `scripts/fire_trigger.py` also knows `pab-probe`, whose
 workflow exists only on the PAB branch. The fact-check of 2026-09-04 found this table
@@ -103,7 +103,7 @@ after any real fire lands, re-park that lane (`docs/operators_handbook.md` §3).
 
 **Cost discipline:** Neuronpedia tracing, CPU logits, and all analysis are $0. Five
 lanes spend provider credits — `scenario-generation`, `model-evaluation`, `advice-eval`,
-`petri-audit` when `mode: run`, and `circuit-trace` when `show_mitigation: true` (a flat $0.15 imputed per fire);
+`petri-audit` when `mode: run` (or `mode: readapt`, whose judge alone spends), and `circuit-trace` when `show_mitigation: true` (a flat $0.15 imputed per fire);
 `fire_trigger.py`'s `PAID_TRIGGERS` is the source of truth. Measured per accepted pair
 across the landed `.report.json` sidecars (2026-09-04): opus **$0.020**, haiku $0.0017,
 sonnet $0.060. Every paid generation run writes `<batch>.report.json` (one archived
