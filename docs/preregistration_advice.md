@@ -471,3 +471,13 @@ public and the page cites its version. The Petri lane has no pre-registration
 of its own, so it adopts the rule by its own instrument: decision 16 of the
 Petri wave-2 design note (`docs/petri_wave2_design.md`, added by engine PR
 #29, `claude/awesome-franklin-kj9jw7`) records the same ruling.
+
+**The Petri pack (2026-09-24).** The Petri lane's builder is
+`python -m scripts.petri_audit.cli repro-pack` (`scripts/petri_audit/repro_pack.py`),
+the counterpart of `advice_eval.py repro-pack` under the same three rules. It
+builds one vendor's pack over an explicit list of landed Petri runs and the
+section 10 analysis artifact, keyed by (vendor, analysis), with its own
+`--check` and `--record-sent`. Its log entries carry `"lane": "petri"`, which
+the advice check counts and skips, and the frontend contract gate runs both
+checks and fails on a non-zero exit of either. The module docstring states
+what the pack holds and what makes it STALE.
