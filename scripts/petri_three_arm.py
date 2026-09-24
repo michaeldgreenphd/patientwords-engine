@@ -42,6 +42,34 @@ class RegistryMismatchError(ValueError):
     """Raised when loaded registry or rubric digest mismatches the run manifest."""
 
 
+class InputRefusalError(ValueError):
+    """Raised when the input rows cannot be analysed as they stand (malformed rows,
+    conflicting provenance); the message names what was refused and how many rows."""
+
+
+def _row_label(r: Mapping[str, Any]) -> str:
+    """A row's identity for a refusal message: ids and ordinals only, never text."""
+    return (f"(seed {r.get('seed_id')!r}, arm {r.get('arm')!r}, key {r.get('key')!r}, "
+            f"conversation {str(r.get('conversation_id'))[:12]!r}, turn {r.get('turn_id')!r})")
+
+
+def _malformed_row_problems(rows: Sequence[Mapping[str, Any]]) -> list[str]:
+    """Every row that cannot be placed in the join: no arm, no key, or no integer exchange_index.
+
+    Such a row used to be skipped silently, so a partially malformed file still produced a
+    report with reduced coverage and no sign of the loss (Codex F5 on PR #30).
+    """
+    problems: list[str] = []
+    for r in rows:
+        missing = [f for f in ("arm", "key") if not r.get(f)]
+        ex = r.get("exchange_index")
+        if ex is None or isinstance(ex, bool) or not isinstance(ex, int):
+            missing.append("exchange_index")
+        if missing:
+            problems.append(f"{_row_label(r)} lacks {', '.join(missing)}")
+    return problems
+
+
 def sha256_file(path: Path | str) -> str:
     """Computes SHA-256 hex digest of a file."""
     digest = hashlib.sha256()
@@ -478,6 +506,13 @@ def analyze_seed(
         Within clinical: patient vs clinician
         Within lay_careful: patient vs clinician
     """
+    malformed = _malformed_row_problems(seed_rows)
+    if malformed:
+        raise InputRefusalError(
+            f"seed '{seed_id}': {len(malformed)} of {len(seed_rows)} rows cannot be joined and are refused, "
+            f"not skipped: " + "; ".join(malformed[:5]) + (" ..." if len(malformed) > 5 else "")
+        )
+
     arms_present = sorted({r["arm"] for r in seed_rows if r.get("arm")})
     is_identity_seed = (
         seed_id == "pw-petri-w2-identity-register"
@@ -497,11 +532,8 @@ def analyze_seed(
         arm = r.get("arm")
         ex = r.get("exchange_index")
 
-        if ex is not None:
-            seed_exchanges.add(ex)
-
-        if not key or not arm:
-            continue
+        # arm, key and an integer exchange_index are guaranteed by _malformed_row_problems above
+        seed_exchanges.add(ex)
 
         dim_kinds[key] = r.get("kind", "outcome")
         if key not in dim_data:
@@ -513,9 +545,6 @@ def analyze_seed(
             dim_errors[key] = {}
         if arm not in dim_errors[key]:
             dim_errors[key][arm] = {}
-
-        if ex is None:
-            continue
 
         turn_id = r.get("turn_id") if r.get("turn_id") is not None else r.get("assistant_turn_index", "unknown")
 
@@ -779,10 +808,14 @@ def analyze_run_directories(
 
     # Group rows by seed_id
     rows_by_seed: dict[str, list[dict[str, Any]]] = {}
+    no_seed = [r for r in all_rows if not r.get("seed_id")]
+    if no_seed:
+        raise InputRefusalError(
+            f"{len(no_seed)} of {len(all_rows)} rows carry no seed_id and are refused, not skipped: "
+            + "; ".join(_row_label(r) for r in no_seed[:5])
+        )
     for r in all_rows:
-        sid = r.get("seed_id")
-        if sid:
-            rows_by_seed.setdefault(sid, []).append(r)
+        rows_by_seed.setdefault(r["seed_id"], []).append(r)
 
     analyzed_seeds: dict[str, SeedAnalysis] = {}
     for sid, srows in sorted(rows_by_seed.items()):
@@ -953,7 +986,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             rubric_path=rubric_path,
             outcome_registry_path=outcome_registry_path,
         )
-    except (Wave1RefusalError, RegistryMismatchError) as exc:
+    except (Wave1RefusalError, RegistryMismatchError, InputRefusalError) as exc:
         print(f"REFUSED: {exc}", file=sys.stderr)
         return 2
     except (KeyError, ValueError, TypeError, OSError) as exc:

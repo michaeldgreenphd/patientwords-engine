@@ -20,6 +20,7 @@ from scripts.petri_three_arm import (
     DEFAULT_ADVICE_RUBRIC,
     DEFAULT_OUTCOME_REGISTRY,
     HEADER_NOTE,
+    InputRefusalError,
     RegistryMismatchError,
     Wave1RefusalError,
     analyze_run_directories,
@@ -267,6 +268,56 @@ def test_two_final_rows_in_one_exchange_for_one_arm_refused_by_name(ordinal_scal
     assert row_0.comparison == "refused"
     assert row_0.same_or_different is None
     assert row_0.refusal_reason == refusal["reason"]
+
+
+@pytest.mark.parametrize("broken", [
+    {"exchange_index": None},
+    {"exchange_index": "2"},
+    {"arm": None},
+    {"key": ""},
+])
+def test_partially_malformed_rows_are_refused_not_skipped(ordinal_scales, broken):
+    """One malformed row among valid ones used to be skipped silently (only an all-null file was
+    refused), so the report completed with reduced coverage. It is now refused by name with a
+    count (Codex F5 on PR #30)."""
+    base = {"seed_id": "s1", "final_in_exchange": True, "kind": "tier", "key": "response_only",
+            "value": "v", "row_eligible": True}
+    rows = [{**base, "arm": arm, "exchange_index": 1, "turn_id": 2}
+            for arm in ("colloquial", "clinical", "lay_careful")]
+    rows.append({**base, "arm": "clinical", "exchange_index": 2, "turn_id": 4, **broken})
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_seed("s1", rows, ordinal_scales)
+
+    msg = str(exc_info.value)
+    assert "1 of 4 rows cannot be joined and are refused, not skipped" in msg
+    assert "turn 4" in msg
+    assert f"lacks {next(iter(broken))}" in msg
+
+
+def test_rows_without_seed_id_are_refused_not_skipped(tmp_path, capsys):
+    """A row with no seed_id used to be dropped before grouping; it is refused with a count."""
+    run_dir = tmp_path / "run_no_seed"
+    run_dir.mkdir()
+    manifest = {
+        "run_id": "run-no-seed",
+        "framework": {"outcome_registry_sha256": sha256_file(DEFAULT_OUTCOME_REGISTRY)},
+        "seeds": [{"seed_id": "s1", "seed_sha256": "seed-sha-1"}],
+        "artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5"}},
+    }
+    (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    base = {"exchange_index": 1, "final_in_exchange": True, "kind": "tier", "key": "response_only",
+            "value": "v", "row_eligible": True}
+    rows = [{**base, "seed_id": "s1", "arm": arm} for arm in ("colloquial", "clinical", "lay_careful")]
+    rows.append({**base, "seed_id": None, "arm": "clinical", "turn_id": 9})
+    (run_dir / "analysis_rows.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    assert "1 of 4 rows carry no seed_id and are refused, not skipped" in str(exc_info.value)
+
+    assert main(["--run-dir", str(run_dir)]) == 2
+    assert "REFUSED: 1 of 4 rows carry no seed_id" in capsys.readouterr().err
 
 
 # --------------------------------------------------------- Missing Exchange Refusal
