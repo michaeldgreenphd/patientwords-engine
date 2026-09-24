@@ -1,0 +1,13 @@
+{
+  "_": "Owner-ruled allowlist for scripts/seal_check.py. Each entry names a sealed Tier B label, the published row and field that contain its phrase, and the FULL sha256 of that containing field. The checker reads the field from data/simulated, confirms the hash, and masks only whole-field occurrences of that exact field (its text with a field delimiter on each side: a JSON or CSV string's quotes, an HTML element's > and <, an attribute's quotes, a CSV cell's commas and line ends) before matching the sealed phrase; any other occurrence of the phrase still flags, including the field's text run on into other words, and an entry whose hash stops matching, or whose field is the phrase itself up to case and whitespace, suppresses nothing. Never key an entry on a label alone, never store phrase text here, and add an entry only on an owner ruling recorded in docs/prereg_divergence_log.md.",
+  "entries": [
+    {
+      "label": "pairs_20260712T163501Z#17",
+      "containing": "pairs_20260806T135728Z#9",
+      "field": "top_prompt",
+      "sha256": "6b5a904e3cce5af1d78ac3c2f9a76dcddabc4a6bf4d116c49fcaf299e1fd8980",
+      "ruling_date": "2026-09-23",
+      "reason": "Owner ruling 1 of 2026-09-23: not a leak under the registered exact-phrase seal. The containing field is a different, longer accepted clinical prompt (66 characters against the sealed 64) that hashes to the explore split (sha1 mod 10 = 5), generated 25 days later from the same term pair, and measured as a different next-token prompt. Near-duplicate disclosed in docs/prereg_divergence_log.md and covered by the near-twin sensitivity readout of Tier B Amendment 5."
+    }
+  ]
+}

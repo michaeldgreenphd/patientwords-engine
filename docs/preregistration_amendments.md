@@ -68,6 +68,26 @@ gap is flagged rather than filled.
   batches count as post-adoption, the endpoint, the success criterion) before
   any confirmatory steering claim.
 
+## Amendment 5 — near-twin sensitivity readout for the holdout endpoint
+
+- **Registered:** 2026-09-23, before unsealing (owner ruling 4 of 2026-09-23).
+  Full text: `docs/prereg_amendment5_near_twins.md`. Tier B numbering; the
+  advice pre-registration's own "Amendment 5" is unrelated.
+- **Rule:** the primary endpoint is unchanged. At the endpoint run, Amendment
+  3's consistency readout is also reported without the sealed phrases that have
+  a near twin (difflib `SequenceMatcher(None, sealed, other).ratio() >= 0.90`
+  on `seal_check.norm` text) among the explore split's accepted prompts and the
+  site's published clinical prompts. The twin list is frozen (38 of 183 sealed
+  phrases) and is never recomputed or re-thresholded after unsealing. Within
+  the endpoint population as it stands on 2026-09-23 (Amendment 3 item 1 with
+  the option-B exclusions, traced batches only), 35 of 163 are twins and 128
+  remain. The other 20 sealed phrases are 10 option-B supplementary phrases
+  and 10 in the never-traced `pairs_20260721T132205Z`.
+- **Implementation:** `scripts/tierb_near_twins.py` (deterministic, no seed;
+  `--check` recomputes and compares), frozen output `data/tierb_near_twins.json`
+  (labels and counts only), `tests/test_tierb_near_twins.py`.
+- **Status:** registered; applies at the endpoint run.
+
 ---
 
 ## Bookkeeping

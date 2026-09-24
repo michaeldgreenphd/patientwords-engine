@@ -224,8 +224,11 @@ A seed declares:
 
 - `hypotheses` and `pilot_wave`: wave 1 seeds prove the three Petri-specific
   capabilities the first pilot exists for (scripted multi-turn continuation,
-  true shared-prefix branching, fixed simulated tools); wave 2 seeds are draft
-  protocol shapes (H2, H5) that do not block validating the integration.
+  true shared-prefix branching, fixed simulated tools); wave 2 is the second
+  pilot's set - the H2 and H5 protocol shapes wave 1 deferred, plus the
+  ten-turn sustained seeds drafted from what wave 1 observed
+  (`docs/petri_wave2_design.md`, 2026-09-19). A wave is a run selector
+  (`--wave`), not a hypothesis grouping.
 - `framing`: the registry dimension and contrast it realises
   (`docs/framework/framing_dimensions.draft.json`; today `register` with
   `clinical_to_colloquial` or `colloquial_to_clinical`).
@@ -292,6 +295,34 @@ The six example seeds, by wave:
   incorrect proposition inside two declared spans; the proposition is supplied
   to the judge as a register-free data string.
 
+Wave 2 gained four ten-turn sustained seeds on 2026-09-19, each grounded in a
+failure mode wave 1 or a published single-turn arm actually produced;
+`docs/petri_wave2_design.md` holds the selection rationale, the citation for
+each, the costing and the two design questions the set raises (an autonomous
+auditor path, and a second judge family). In summary:
+
+- Wave 2, `pw-petri-w2-tool-clarify` (H1, H3): sustained, ten turns, two
+  register arms, the wave-1 tool definitions and results; the antibiotic the
+  answer depends on is never named in any user turn.
+- Wave 2, `pw-petri-w2-referral-specificity` (H1): sustained, ten turns, two
+  arms; carries the published specialist-to-generalist referral shift from the
+  next-token arm into conversational advice, read on `referral_specificity` —
+  a dimension added for it on 2026-09-19, because `recommendation_specificity`
+  codes both a specialist referral and a concrete generalist recommendation
+  `specific` and so cannot see that contrast (Codex round 2 on PR #29).
+- Wave 2, `pw-petri-w2-reassurance-decay` (H1, H4): sustained, ten turns,
+  two arms; three neutral closes against a worsening course, read on
+  `safety_netting_persistence`.
+- Wave 2, `pw-petri-w2-identity-register` (H1, H5): sustained, ten
+  turns, four arms; the first seed to declare `speaker_identity.policy`
+  `factor`, crossing patient against clinician with register so the two are
+  not confounded.
+
+`speaker_identity: factor` gained a crossing check the same day
+(`scripts/petri_audit/seeds.py`): until then a note was the whole of the
+check, so a seed whose clinical arm was a clinician and whose colloquial arm
+was a patient passed by declaring the confound rather than removing it.
+
 Execution mapping (INFERRED from the verified mechanics; exercised only
 against mock models in Petri's own tests, not with a study seed):
 
@@ -347,8 +378,13 @@ no-claim texts. `assertion_handling` codes epistemic handling only:
 `not_addressed`. Safety-netting and escalation on the same turn are judged
 separately (`safety_netting_presence`, the advice tier) and never enter this
 code, so safe escalation cannot make an accepted incorrect proposition look
-less sycophantic. `speaker_roles.user_is` is held constant across cells; the
-claimed authority is a condition, not a speaker. Petri's own sycophancy
+less sycophantic. `speaker_roles.user_is` was held constant across cells on the
+reading that the claimed authority is a condition and not a speaker; since
+2026-09-22 it is declared as a speaker-identity factor crossed with register,
+because the claimed arms' assertion turn says "as a nurse practitioner" and the
+manipulation check reads that as a clinician clause. The person does not change:
+every arm is the same 36-year-old describing the same symptoms in the first
+person, and what varies is the asserted source of the proposition. Petri's own sycophancy
 machinery does not map (two-sentence rubric, one integer axis, escalation
 seeds), and its judge is told the auditor is adversarial and that
 instruction-following is good, an arm-correlated bias. The register span
@@ -612,7 +648,13 @@ a public repository. The pipeline is:
    their text, usage, timeline structure, and an allowlisted set of config
    keys; provider headers, base URLs and non-allowlisted request fields are
    removed and counted (`sanitiser.redaction_report`); `headers_kept` and
-   `base_urls_kept` are `false` by schema.
+   `base_urls_kept` are `false` by schema. Since allowlist 0.3, a forbidden key
+   inside a provider-filled value that the projection keeps whole is dropped
+   and counted by path in `forbidden_keys_dropped`. Those values are a model
+   event's output, a projected message's values, and a tool event's
+   arguments. A forbidden key anywhere else still refuses the export. The
+   w2e3 fire (run 35937014168) failed at Adapt on
+   `output.metadata.extra_body`, a record of an undeclared API response field.
 3. The seal check runs over the sanitised log, the transcripts and the
    judgments. A sealed phrase whose content would be published is either
    excluded before the run (the pilot's rule: seeds come from the explore
@@ -819,7 +861,18 @@ realises:
   fallback when no auditor role is registered. Models without a registry
   price take the engine's conservative fallback rate
   (`advice_eval.py` `_FALLBACK_PRICING`), and the manifest records the
-  pricing source per model.
+  pricing source per model. Since 2026-09-23 the pre-flight refuses an
+  `openrouter/` target or an `openrouter:` judge whose exact slug has no
+  entry in the registry's `openrouter.pricing` table
+  (`spend.openrouter_price_problems`, named reason
+  `unreviewed_openrouter_price`): the catch-all an OpenRouter slug would
+  otherwise take is the advice lane's fallback, not a reviewed price. It
+  also refuses an `openrouter/` target while the cost sidecar books its
+  prompt-cache tokens below the input rate for a read or 1.25 times it for a
+  write (`spend.cache_booking_problems`, named reason
+  `cache_tokens_unbooked`): Inspect counts those tokens outside
+  `input_tokens`, and a reviewed price ~5% above list leaves no margin for
+  them to be booked at $0.
 - Paid, so it joins `PAID_TRIGGERS`, the `$2/day` ceiling, `budget-gate`,
   and the park rule. `docs/triggers.md` and the `AGENTS.md` lane table change
   in the same pull request, since `tests/test_trigger_docs.py` checks both.

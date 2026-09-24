@@ -18,6 +18,22 @@ Writes (frontend repo working tree; review before committing):
   modes/simulated/preview.html                              - first base render (stable path)
   data/simulated_scenarios.json
 
+Deletes (since 2026-09-23, owner ruling 2): renders under modes/simulated/ that
+match the names above but that neither this export nor any other site file
+lists (scripts/render_prune.py). A render used to outlive its scenario: a
+withheld Tier B holdout row's render stayed served for ten weeks. --dry-run
+writes and deletes nothing and lists what the run would prune. The run refuses,
+writing nothing, when the site's git checkout keeps tracked renders off disk (a
+sparse clone that excludes modes/): the prune could not see them. Run
+`git -C <site> sparse-checkout disable` first. It refuses the same way when the
+checkout keeps off disk any tracked file the render-reference scan reads (a
+page or payload anywhere in the site), and when a site file or directory it
+scans for render references cannot be read. And it refuses, writing nothing,
+when a render it would publish is not on disk in the engine checkout while the
+site already has a copy (a partial engine checkout that restored only the
+batch_summary files, or --with-pngs with the PNGs in Releases): unlisted, the
+copy would be pruned.
+
 Usage:
   python scripts/export_frontend_simulated.py --frontend ../patientwords \\
       --stamps 20260706T201750Z[,<later-stamp>...] [--engine .] \\
@@ -44,6 +60,13 @@ try:
     from scripts.payload_summary import build_summary
 except ImportError:
     from payload_summary import build_summary
+
+try:
+    from scripts.render_prune import (ReferenceScanError, hidden_references, hidden_renders, prune,
+                                      prune_candidates, referenced_renders)
+except ImportError:
+    from render_prune import (ReferenceScanError, hidden_references, hidden_renders, prune,
+                              prune_candidates, referenced_renders)
 
 # The circuit-tracer models, in registry order (gemma-2-2b is the base/default).
 # Only gemma-2-2b has a transcoder source set, so clinical-feature attribution
@@ -103,7 +126,11 @@ parser.add_argument("--archive-url", default="",
                          "repo). Recorded in the payload so data-only scenarios can point at "
                          "the full circuit render. See scripts/archive_run.py + the "
                          "archive_renders workflow.")
+parser.add_argument("--dry-run", action="store_true",
+                    help="compute the export but write, copy and delete nothing; list the "
+                         "renders a real run would prune from the site's modes/simulated/")
 args = parser.parse_args()
+DRY = args.dry_run
 
 ENGINE = Path(args.engine)
 FRONTEND = Path(args.frontend)
@@ -118,6 +145,41 @@ _unknown_steered = STEERED - set(STAMPS)
 if _unknown_steered:
     sys.exit(f"--steered-stamps names stamps absent from --stamps: {sorted(_unknown_steered)}")
 WANT_MODELS = [m.strip() for m in args.models.split(",") if m.strip()]
+
+# The render prune reads the working tree. A site checkout that keeps tracked
+# renders off disk (the cloud containers' sparse clone excludes modes/) would
+# prune nothing and report success, so refuse before writing anything.
+try:
+    _hidden = hidden_renders(FRONTEND)
+except RuntimeError as exc:
+    sys.exit(f"refusing: cannot tell whether the site checkout hides renders ({exc})")
+if _hidden:
+    sys.exit(f"refusing: the site checkout at {FRONTEND} tracks {len(_hidden)} render(s) under "
+             f"modes/simulated/ that are not on disk (sparse checkout or skip-worktree), e.g. "
+             f"{_hidden[0]}; the render prune cannot see them. Run "
+             f"`git -C {FRONTEND} sparse-checkout disable`, then re-run. Nothing was written.")
+# The renders other site files name are part of the prune keep-set. Scan them
+# now, before anything is copied, so a file the scan cannot read refuses the run
+# with nothing written. Everything this run writes before the prune is a render
+# named like RENDER_RE, which the scan skips, so scanning early reads the same set.
+OUT_DATA_REL = "data/simulated_scenarios.json"
+# A file the scan would read that the checkout keeps off disk (a sparse pattern
+# excluding start-here/, say) is a reference the scan cannot see: the render it
+# names would look unlisted and be pruned. Refuse before writing anything.
+try:
+    _hidden_refs = hidden_references(FRONTEND, ignore={OUT_DATA_REL})
+except RuntimeError as exc:
+    sys.exit(f"refusing: cannot tell whether the site checkout hides reference files ({exc})")
+if _hidden_refs:
+    sys.exit(f"refusing: the site checkout at {FRONTEND} tracks {len(_hidden_refs)} file(s) that the "
+             f"render-reference scan reads but that are not on disk (sparse checkout or skip-worktree), "
+             f"e.g. {_hidden_refs[0]}; a render named only there would be pruned. Run "
+             f"`git -C {FRONTEND} sparse-checkout disable` (and clear any skip-worktree bit), then "
+             f"re-run. Nothing was written.")
+try:
+    _site_references = referenced_renders(FRONTEND, ignore={OUT_DATA_REL})
+except ReferenceScanError as exc:
+    sys.exit(f"refusing: {exc}. Fix the permissions or re-run; nothing was written or pruned.")
 
 
 def tok(label):
@@ -302,6 +364,27 @@ def _consequence(e):
 
 ranked = sorted(scenarios, key=_consequence, reverse=True)
 demo = ranked if args.max_renders <= 0 else ranked[:args.max_renders]
+
+# Plan every copy first, copy only after the check below. A render this export
+# would publish whose engine source is not on disk, while the site already has
+# a copy at its destination, would go unlisted, and the prune would delete that
+# copy: the fresh-session repair restores only the batch_summary files under
+# trace_out/ (docs/fresh_session_bootstrap.md), and PNGs live in Releases, not
+# in git (Codex review of PR #32, 2026-09-24). A render missing from both sides
+# was never published, so the scenario stays data-only, as before.
+copies = []       # (engine source, site-relative destination)
+stranded = []     # (site-relative destination, engine source): site copy, no engine source
+
+
+def _plan_copy(src, rel):
+    if src.is_file():
+        copies.append((src, rel))
+        return True
+    if (FRONTEND / rel).is_file():
+        stranded.append((rel, src))
+    return False
+
+
 copied = 0
 for e in demo:
     meta = e.get("_render")
@@ -312,43 +395,55 @@ for e in demo:
     # Base (gemma) render is the public preview.
     base_dir = Path(dirs[BASE_MODEL]) if BASE_MODEL in dirs else None
     published = False
-    if base_dir and base_dir.is_dir():
-        out_modes = FRONTEND / "modes/simulated" / stem
+    if base_dir:
         for key in ("html", "png"):
             if args.no_pngs and key == "png":
                 continue
             src = base_dir / f"index_{index:02d}.{key}"
-            if src.is_file():
-                out_modes.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src, out_modes / src.name)
-                rel = f"modes/simulated/{stem}/{src.name}"
+            rel = f"modes/simulated/{stem}/{src.name}"
+            if _plan_copy(src, rel):
                 e[key] = rel
                 if BASE_MODEL in e["models"]:
                     e["models"][BASE_MODEL][key] = rel
                 if key == "html":
                     published = True
                     if first_preview is None:
-                        first_preview = out_modes / src.name
+                        first_preview = FRONTEND / rel
 
     # Optionally publish each other model's render for the same scenario.
     if args.preview_models == "all":
         for m in e["models"]:
             if m == BASE_MODEL or m not in dirs:
                 continue
-            mdir = Path(dirs[m])
-            src = mdir / f"index_{index:02d}.html"
-            if mdir.is_dir() and src.is_file():
-                out_m = FRONTEND / "modes/simulated" / f"{stem}__{m}"
-                out_m.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src, out_m / src.name)
-                e["models"][m]["html"] = f"modes/simulated/{stem}__{m}/{src.name}"
+            src = Path(dirs[m]) / f"index_{index:02d}.html"
+            rel = f"modes/simulated/{stem}__{m}/{src.name}"
+            if _plan_copy(src, rel):
+                e["models"][m]["html"] = rel
 
     if published:
         copied += 1
 for e in scenarios:
     e.pop("_render", None)  # drop the private marker from every entry
 
-if first_preview is not None:
+if stranded:
+    rel0, src0 = sorted(stranded)[0]
+    sys.exit(f"refusing: {len(stranded)} render(s) this export would publish are not on disk in the "
+             f"engine checkout, but the site already has a copy, e.g. {rel0} (engine source "
+             f"{src0}); the prune would delete that copy. Materialize the engine renders (HTML: "
+             f"`git -C {ENGINE} restore --source=HEAD -- 'trace_out/*/*.html'`; PNGs: "
+             f"scripts/render_archive.py fetch), then re-run. Nothing was written or pruned.")
+if not DRY:
+    for src, rel in copies:
+        (FRONTEND / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, FRONTEND / rel)
+
+# Every render path this export lists; with every other site file's references
+# it is the keep-set for pruning (the payload being replaced is not consulted).
+listed_renders = {obj[k] for e in scenarios for obj in [e, *e.get("models", {}).values()]
+                  for k in ("html", "png") if isinstance(obj.get(k), str)}
+prune_list = prune_candidates(FRONTEND, listed_renders, referenced=_site_references)
+
+if first_preview is not None and not DRY:
     shutil.copy2(first_preview, FRONTEND / "modes/simulated/preview.html")
     # one raster survives --no-pngs: the og:image for link unfurls
     for stamp in STAMPS:
@@ -402,8 +497,10 @@ if STEERED:
     }
 if args.archive_url:
     payload["archive"] = {"release_url": args.archive_url}
-out_data = FRONTEND / "data/simulated_scenarios.json"
-out_data.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+out_data = FRONTEND / OUT_DATA_REL
+if not DRY:
+    out_data.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+pruned = prune(FRONTEND, prune_list, dry_run=DRY)
 measured_n = sum(1 for s in scenarios
                  if not (s.get("screening") or {}).get("status") == "screened_out")
 data_only = len(scenarios) - copied
@@ -413,6 +510,12 @@ print(f"{len(scenarios)} scenarios ({measured_n} measured) across {len(batches)}
 print(f"  models: {model_line}")
 print(f"  {copied} interactive renders published (cap {args.max_renders or 'none'}); "
       f"{data_only} scenarios are data-only on the public site")
+print(f"  {pruned} unlisted render(s) {'would be pruned' if DRY else 'pruned'} from "
+      f"{FRONTEND / 'modes/simulated'}")
+if DRY:
+    print("  DRY RUN: nothing was written, copied or deleted")
+    for rel in prune_list:
+        print(f"    would prune {rel}")
 
 # Over ~100 scenarios the full render set is heavy enough that it belongs in a
 # back-end archive, not the site repo. Nudge the operator with a ready-to-fire

@@ -29,7 +29,12 @@ assume the same state until the environment itself is fixed.
   Variant C.
 - Do not restore all of `trace_out/` — ~12k render files through the blobless
   proxy wastes the session; analysis needs only the `batch_summary*.json`
-  files.
+  files. Publishing needs the HTML renders as well: before
+  `export_frontend_simulated.py`, run `git restore --source=HEAD --worktree --
+  'trace_out/*/*.html'` (Variant B's sparse patterns already include them).
+  Without them the exporter refuses, writing nothing, when a render it would
+  publish is missing here but the site has a copy; before 2026-09-24 it
+  published without the render and its prune deleted the site's copy.
 
 ## Repair (engine repo)
 
@@ -196,15 +201,22 @@ git sparse-checkout set --no-cone '/*' '!/modes/'
 git checkout main
 ```
 
-**But re-materialize `modes/` before running the contract gate** (2026-08-16).
+**Then re-materialize `modes/` at bootstrap: `git -C ../patientwords
+sparse-checkout disable`** (2026-09-23). Since the seal PR of 2026-09-23 the
+bootstrap seal check and the exporter both need the renders on disk, and both
+refuse over this sparse checkout: `seal_check.py` exits 2, and
+`export_frontend_simulated.py` stops before writing anything. Without that
+refusal, the seal check reported CLEAN without reading `modes/`, and the
+exporter's render prune pruned nothing. The contract gate needed it first
+(2026-08-16):
 `validate_frontend_contract.py` resolves every scenario's `html` field against the
 site working tree, so with `modes/` excluded it emits one
 `render path missing on disk: modes/simulated/<batch>/index_NN.html` FAIL per
 published render — 153 of them on the 08-16 cycle, every one a checkout artifact
 (each path was present in `git ls-tree HEAD`). A session that trusts that output
 reads a healthy contract as broken, and "repairing" the payload from it would
-corrupt a good file. Run `git -C ../patientwords sparse-checkout disable` (925M,
-under a minute) before the gate; the true reading that cycle was 0 errors and the
+corrupt a good file. `git -C ../patientwords sparse-checkout disable` (925M,
+under a minute) fixes that too; the true reading that cycle was 0 errors and the
 single known orphan-row warning. Verify a suspected FAIL against
 `git ls-tree -r HEAD <path>` before believing it.
 
@@ -215,6 +227,7 @@ cd /home/user/patientwords-engine
 git status --porcelain | head -3        # must be empty (or a few ' D trace_out/…' renders only)
 find trace_out -name 'batch_summary*.json' | wc -l   # 933 on 2026-09-08; grows with landed runs
 test -f ../patientwords/data/model_stats.json && echo site OK
+git -C ../patientwords ls-files -t | grep -c '^S '   # 0: no tracked site file is off disk (sparse)
 git config --get core.hooksPath          # .githooks — the commit/push guards are installed
 ```
 

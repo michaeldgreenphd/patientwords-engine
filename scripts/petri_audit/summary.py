@@ -797,10 +797,24 @@ def _sidecar(run_dir: Path) -> dict | None:
         return {"path": path.name, "unavailable": _reason(exc)}
 
 
+def _own_readapt_judge_sidecar(run_dir: Path, found: list[Path]) -> list[Path]:
+    """Of several judge sidecars, the one this run's judge wrote when the run is a readapt: the directory may also
+    hold the judge sidecar of an earlier readapt whose judge failed (a spend record of another fire), and the
+    readapt's own is named for its workflow run (`readapt.judge_report_name`). Every other case keeps them all."""
+    try:
+        block = load_json(run_dir / "manifest.json").get("readapt")
+        own = f"{block['source_run_stem']}.readapt_{block['readapt_workflow_run_id']}.judge.report.json"
+    except (OSError, ValueError, TypeError, KeyError, AttributeError):
+        return found
+    return [p for p in found if p.name == own] or found
+
+
 def _judge_sidecar(run_dir: Path) -> dict | None:
     found = _sidecar_files(run_dir, judge=True)
     if not found:
         return None
+    if len(found) > 1:
+        found = _own_readapt_judge_sidecar(run_dir, found)
     if len(found) > 1:
         return {"path": ", ".join(p.name for p in found), "unavailable": f"{len(found)} judge cost sidecars in the run directory"}
     path = found[0]

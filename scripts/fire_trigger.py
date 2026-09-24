@@ -49,6 +49,7 @@ import json
 import math
 import os
 import contextlib
+import re
 import secrets
 import subprocess
 import sys
@@ -72,8 +73,9 @@ TRIGGERS = (
 # pab-probe: patient/assistant/sandbox legs bill the prepaid OpenRouter key and
 # the evaluate stage bills Anthropic (2026-08-04, exploratory arm).
 # petri-audit: the target model and the optional judge of record spend provider
-# tokens when mode is `run` (2026-09-16); preflight and dry_run cost nothing but
-# the lane is counted paid so every fire goes through the ceiling.
+# tokens when mode is `run` (2026-09-16), and the judge alone when mode is
+# `readapt` (2026-09-24); preflight and dry_run cost nothing but the lane is
+# counted paid so every fire goes through the ceiling.
 PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval", "petri-audit", "pab-probe"})
 # A circuit-trace fire with show_mitigation=true makes Anthropic translation
 # calls (the only paid path outside PAID_TRIGGERS). Its cost has no max_spend
@@ -121,6 +123,23 @@ PARK_DEFAULTS = {
                     "judge_max_tokens": "300", "log_model_api": "true", "commit_outputs": "false"},
     # pab-probe: not parked - its workflow lives on the PAB branch only.
 }
+# petri-audit mode readapt (2026-09-24, owner decision after the w2e3 failure): re-adapt a paid run whose target
+# calls completed but whose adaptation failed, from its 90-day raw-eval artifact, into the run's own directory, then
+# run the judge of record. No target call is made, so its commitment is judge_max_spend alone (fire_commitment),
+# and it is paid because the judge spends. `source_run_id` names the workflow run whose log it recovers; it is read
+# by this mode only and is empty in the park. A readapt must state the parameters the source fire ran under
+# (PETRI_READAPT_MATCH_KEYS), which petri_readapt_source_problems recovers from the journal and the trigger file's
+# history and compares, at the fire and again in the workflow's budget gate.
+PETRI_READAPT_MODE = "readapt"
+PETRI_PAID_MODES = ("run", PETRI_READAPT_MODE)
+PETRI_READAPT_MATCH_KEYS = ("seeds_file", "seed_ids", "wave", "target", "epochs", "token_limit", "max_spend",
+                            "judge", "judge_model", "judge_max_spend", "judge_max_tokens", "log_model_api")
+PETRI_RUNS_RELPATH = Path("data") / "petri" / "runs"
+# mirrors of scripts/petri_audit/readapt.py (this script imports nothing from the lane; tests hold them equal): the
+# files adaptation writes, and the name after `<stem>` of an earlier readapt's judge sidecar in the source directory
+PETRI_ADAPTED_FILES = ("manifest.json", "transcripts.jsonl", "rule_outcomes.jsonl", "sanitised_log.json",
+                       "judgments.jsonl", "analysis_rows.jsonl")
+PETRI_READAPT_JUDGE_SUFFIX = r"\.readapt_[0-9]+\.judge\.report\.json"
 PARK_NOTE = ("PARK (resting-state rule): cheapest no-op default committed so branch operations "
              "that touch this trigger file re-run a $0/negligible stage instead of the last "
              "expensive fire; commit_outputs false where the workflow supports it. "
@@ -131,18 +150,24 @@ def is_mitigation_fire(trigger, params):
     return trigger == "circuit-trace" and str(params.get("show_mitigation", "")).lower() in ("true", "1")
 
 
+def petri_mode(params):
+    """A petri-audit fire's mode as the workflow reads it (absent is its preflight default)."""
+    return str(params.get("mode", "preflight")).strip().lower()
+
+
 def is_paid_fire(trigger, params):
     """Whether this fire can spend, so the daily ceiling must count it: a
     PAID_TRIGGERS lane, or a circuit-trace fire with show_mitigation. The one
-    exemption is petri-audit outside `mode: run`: preflight and dry_run make
-    no paid call, and counting them paid refused the lane's park once the
-    ceiling was reached, leaving the last paid configuration at rest where a
-    branch operation could re-fire it (Codex round 8 on PR #26)."""
+    exemption is petri-audit outside its paid modes (`run`, and `readapt`,
+    whose judge spends): preflight and dry_run make no paid call, and counting
+    them paid refused the lane's park once the ceiling was reached, leaving the
+    last paid configuration at rest where a branch operation could re-fire it
+    (Codex round 8 on PR #26)."""
     if is_mitigation_fire(trigger, params):
         return True
     if trigger not in PAID_TRIGGERS:
         return False
-    if trigger == "petri-audit" and str(params.get("mode", "preflight")).strip().lower() != "run":
+    if trigger == "petri-audit" and petri_mode(params) not in PETRI_PAID_MODES:
         return False
     return True
 
@@ -296,7 +321,21 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
     # Without one, `cli reconcile-spend` reports the fire as unbooked and the sidecar as unaccounted, for good,
     # and the omission is easy: any other changed key already makes the trigger file differ, so the fire is not
     # refused as a no-op (Codex round 1 on PR #28). Free modes need none - the park default carries none.
-    if str(params.get("mode", "preflight")).strip().lower() == "run":
+    # A readapt's nonce joins its judge sidecar to it the same way (manifest `readapt` block -> judge sidecar).
+    mode = petri_mode(params)
+    source_run_id = params.get("source_run_id", "")
+    if mode == PETRI_READAPT_MODE:
+        if isinstance(source_run_id, bool) or not re.fullmatch(r"[0-9]+", str(source_run_id)):
+            problems.append(f"petri-audit mode readapt needs source_run_id, the numeric workflow run id whose raw-eval "
+                            f"artifact it re-adapts, got {source_run_id!r}")
+        if not judge_is_on(params):
+            problems.append("petri-audit mode readapt must run the judge of record (judge true): a readapt makes no "
+                            "target call, so the judge is its only spend and judge_max_spend its whole commitment; "
+                            "the lane has no free re-adapt path")
+    elif source_run_id not in ("", None):
+        problems.append(f"petri-audit source_run_id is read by mode readapt only, got {source_run_id!r} with mode "
+                        f"{mode!r}: a value the workflow would ignore is refused rather than carried")
+    if mode in PETRI_PAID_MODES:
         nonce = params.get("_nonce")
         # The workflow resolves the trigger value as `str(cfg.get("_nonce") or "")`, so any FALSY scalar - 0,
         # false, "" - reaches the run as an empty nonce while this entry journals "0" or "False" and the two
@@ -307,7 +346,7 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
         if (isinstance(nonce, bool) or not isinstance(nonce, (str, int)) or not nonce
                 or not str(nonce).strip() or str(nonce) != str(nonce).strip()):
             problems.append(
-                "petri-audit mode run must carry a non-empty _nonce: it is the only join key between the "
+                f"petri-audit mode {mode} must carry a non-empty _nonce: it is the only join key between the "
                 "journal entry that reserves the spend and the cost sidecar the run lands, so a paid fire "
                 f"without one can never be reconciled, got {nonce!r}")
         # A mock/test sentinel prices at zero in the engine's table, so naming one as a paid run's TARGET buys a
@@ -315,7 +354,7 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
         # too; this refuses them before the fire (Codex round 5 on PR #28).
         target = str(params.get("target") or "").strip()
         if target.split("/")[0] in ("mockllm", "none"):
-            problems.append(f"petri-audit mode run must not target the test sentinel {target!r}: it prices at "
+            problems.append(f"petri-audit mode {mode} must not target the test sentinel {target!r}: it prices at "
                             "zero, so the paid pre-flight bound admits it for free and the run commits mock "
                             "output as a measurement; use mode dry_run for mockllm")
     target_channel, judge_channel = petri_channels(params, registry)
@@ -422,11 +461,12 @@ KNOWN_KEYS = {
     # petri_audit.yml `defaults` dict (2026-09-16; tests/test_petri_audit_workflow.py
     # checks it against the heredoc): seeds_file, seed_ids, wave, target, mode,
     # epochs, token_limit, max_spend, judge, judge_model, judge_max_spend,
-    # judge_max_tokens, log_model_api, commit_outputs.
+    # judge_max_tokens, log_model_api, commit_outputs, source_run_id (mode
+    # readapt only, 2026-09-24; empty by default and absent from the park).
     "petri-audit": frozenset({
         "seeds_file", "seed_ids", "wave", "target", "mode", "epochs", "token_limit",
         "max_spend", "judge", "judge_model", "judge_max_spend", "judge_max_tokens",
-        "log_model_api", "commit_outputs",
+        "log_model_api", "commit_outputs", "source_run_id",
     }),
     # pab_probe.yml `defaults` dict (verified 2026-08-04 against the params
     # heredoc by tests/test_pab_ci_staged.py): stage, fork_ref, cases_file,
@@ -686,7 +726,21 @@ def fire_commitment(params):
     (advice-eval's judge pass has its own ceiling CI enforces separately; the
     guard would otherwise never see it — handoff rev 2 accounting gap). A
     judged fire without a usable judge_max_spend is invalid: CI would fall
-    back to the workflow default, invisible to this guard."""
+    back to the workflow default, invisible to this guard.
+
+    A petri-audit `mode: readapt` fire makes no target call: its max_spend is
+    the SOURCE run's ceiling, recorded in the manifest and already reserved
+    by the source fire, so its commitment is judge_max_spend alone. No other
+    lane has a mode of that name."""
+    if str(params.get("mode", "")).strip().lower() == PETRI_READAPT_MODE:
+        judge = parse_max_spend(params.get("judge_max_spend")) if judge_is_on(params) else None
+        if judge is None:
+            return None, (
+                "mode readapt commits the judge's ceiling alone, so it needs judge=true and a usable "
+                f"judge_max_spend (finite number > 0), got judge={params.get('judge')!r}, "
+                f"judge_max_spend={params.get('judge_max_spend')!r}"
+            )
+        return judge, None
     max_spend = parse_max_spend(params.get("max_spend"))
     if max_spend is None:
         return None, (
@@ -1235,11 +1289,36 @@ def cmd_fire(args):
     except ValueError as exc:
         print(f"refused: {exc}", file=sys.stderr)
         return 3
+    # 2b. A petri-audit readapt must recover the run it names, under the parameters that run's fire recorded.
+    readapt_problems = petri_readapt_source_problems(repo, args.trigger, params)
+    if readapt_problems:
+        print("refused: " + "; ".join(readapt_problems), file=sys.stderr)
+        return 3
 
     # 3. Queue guard: one running + one pending; a third push evicts the pending run.
     journal_path = repo / JOURNAL_RELPATH
     entries = load_journal(journal_path)
     actives = active_entries(entries, args.trigger, now, expire_hours)
+    if actives and args.trigger == "petri-audit" and petri_mode(params) == PETRI_READAPT_MODE:
+        # A queued run starts from its own trigger commit, not the branch tip: a readapt queued behind a run, or
+        # behind another readapt of the same source, adapts against a chain file and a run directory that predate
+        # the first run's commit, and its own commit then conflicts after the judge has spent. So a readapt fires
+        # only into an idle lane; chain it after the running fire lands and is resolved.
+        print(f"refused: {len(actives)} active {args.trigger} journal entr{'y' if len(actives) == 1 else 'ies'}; a "
+              "readapt fires only when the lane is idle, because a queued run checks out its own trigger commit and "
+              "would adapt against outputs that predate the running fire's. Wait for it to land, pull, `resolve`, "
+              "and fire again", file=sys.stderr)
+        return 2
+    # ...and the rule is symmetric: nothing enters the lane behind an active readapt, whatever its mode. A mode-run
+    # fire queued behind it checks out its own trigger commit, whose manifest chain predates the readapt's appended
+    # head, so its outputs cannot commit after its target and judge have spent (Codex, PR #29); the park and the
+    # free modes are refused too, so the lane holds the readapt alone until it lands and is resolved.
+    readapt_ahead = petri_active_readapt_problems(repo, args.trigger, actives)
+    if readapt_ahead:
+        print("refused: " + "; ".join(readapt_ahead) + ". No petri-audit fire of any mode enters the lane while a "
+              "readapt is active: a run queued behind it checks out a commit whose manifest chain predates the "
+              "readapt's. Wait for it to land, pull, `resolve`, and fire again", file=sys.stderr)
+        return 2
     to_evict = None
     if len(actives) >= 2:
         if not args.force_evict:
@@ -2431,6 +2510,261 @@ def pushed_fire_entry(repo: Path, trigger: str, entries: list[dict], *, digest: 
     return sorted(candidates, key=lambda e: parse_utc(e["fired_utc"]))[-1]
 
 
+def _petri_resolved(params):
+    """A petri-audit trigger file's parameters as the workflow's params job resolves them: the heredoc defaults
+    (the park, which tests/test_petri_audit_workflow.py pins to them) overlaid with the file's values, a list of
+    seed ids joined with spaces, a JSON boolean lower-cased, everything a string."""
+    resolved = dict(PARK_DEFAULTS["petri-audit"])
+    for key, value in params.items():
+        if key not in resolved:
+            continue
+        if key == "seed_ids" and isinstance(value, list):
+            value = " ".join(str(s) for s in value)
+        resolved[key] = str(value).lower() if isinstance(value, bool) else str(value)
+    return resolved
+
+
+def _petri_values_differ(key, mine, theirs):
+    """Whether two resolved values of `key` would make the workflow do different things: numbers compared as
+    numbers ("6.10" is 6.1), seed ids as whitespace-separated sequences, booleans canonically; a value that does
+    not parse is compared as text, so it can only differ."""
+    try:
+        if key in ("max_spend", "judge_max_spend"):
+            return abs(float(mine) - float(theirs)) > 1e-9
+        if key in ("epochs", "token_limit", "judge_max_tokens", "wave"):
+            return int(mine) != int(theirs)
+    except ValueError:
+        return mine != theirs
+    if key == "seed_ids":
+        return mine.split() != theirs.split()
+    if key in PETRI_BOOLEAN_KEYS:
+        return mine.strip().lower() != theirs.strip().lower()
+    return mine != theirs
+
+
+def _trigger_content_by_digest(repo, trigger, digest):
+    """(commit, content) of the most recent version of the trigger file on this branch's history whose bytes
+    digest to `digest` (what `cmd_fire` journals as params_sha256), or None when no version does.
+
+    `--full-history`, because a merge that keeps one side's trigger file hides the other side's versions from
+    git's default path simplification. The hand merge of a firing branch into main restores main's trigger files
+    (AGENTS.md, merge danger), so on main afterwards the source fire's commit is an ancestor but its version of
+    the file was not listed, and a readapt fired from main was refused as unrecoverable. The digest still binds
+    the content to the journal entry, so searching every ancestor's version admits nothing the digest does not."""
+    rel = (TRIGGER_DIR_RELPATH / f"{trigger}.json").as_posix()
+    log = _git(repo, "log", "--full-history", "--format=%H", "--", rel)
+    if log.returncode != 0:
+        return None
+    for commit in log.stdout.split():
+        text = _git_show(repo, commit, rel)
+        if text is not None and params_digest(text) == digest:
+            return commit, text
+    return None
+
+
+def petri_active_readapt_problems(repo, trigger, actives):
+    """Why a petri-audit fire may not enter the lane behind the active entries `actives`: each one that is a
+    readapt, and each one whose mode cannot be established. Empty for every other trigger and for an idle lane.
+
+    A journal entry records the digest of the trigger file its fire wrote (`params_sha256`), not its parameters,
+    so the mode is read from that content: the trigger file on disk when it carries the digest (the latest fire),
+    else the version in this branch's history that does. An entry with no digest, or content that cannot be found
+    or parsed, cannot be shown not to be a readapt, so it refuses rather than admitting a fire behind a readapt
+    it failed to see (AGENTS.md, no silent failures)."""
+    if trigger != "petri-audit" or not actives:
+        return []
+    try:
+        on_disk = (Path(repo) / TRIGGER_DIR_RELPATH / f"{trigger}.json").read_text(encoding="utf-8")
+    except OSError:
+        on_disk = None
+    problems = []
+    for entry in actives:
+        label = f"the active {trigger} entry fired {entry.get('fired_utc', '?')} (nonce {entry.get('nonce')!r})"
+        digest = entry.get("params_sha256")
+        if not isinstance(digest, str) or not digest:
+            problems.append(f"{label} records no params_sha256, so whether it is a readapt cannot be established")
+            continue
+        if on_disk is not None and params_digest(on_disk) == digest:
+            text = on_disk
+        else:
+            found = _trigger_content_by_digest(repo, trigger, digest)
+            text = found[1] if found is not None else None
+        if text is None:
+            problems.append(f"{label}: the trigger content it journaled ({digest[:12]}) is neither on disk nor in this "
+                            "branch's history, so whether it is a readapt cannot be established")
+            continue
+        try:
+            fired = json.loads(text)
+        except ValueError:
+            fired = None
+        if not isinstance(fired, dict):
+            problems.append(f"{label}: the trigger content it journaled ({digest[:12]}) is not a JSON object, so "
+                            "whether it is a readapt cannot be established")
+        elif petri_mode(fired) == PETRI_READAPT_MODE:
+            problems.append(f"{label} is a readapt (source_run_id {fired.get('source_run_id')!r})")
+    return problems
+
+
+def petri_readapt_source_problems(repo, trigger, params):
+    """Why a petri-audit `mode: readapt` fire does not recover the run it names, as a list of refusals; empty
+    for every other fire.
+
+    The source run is `data/petri/runs/run_<source_run_id>_1`, which must hold its landed target sidecar and no
+    adapted output (a landed run is never rewritten), and that sidecar must record `run_status` success (mode run
+    adapts nothing from an error or cancelled run). That sidecar names the source fire's nonce; the journal entry
+    carrying it records the digest of the trigger file the source fire wrote; this branch's history of that file
+    holds the content with that digest; and the readapt must state the same value for every key in
+    PETRI_READAPT_MATCH_KEYS, which are the parameters the log and the judge of record ran under. Run at the fire
+    and again in the workflow's budget gate (whose checkout has the full history), before any spend. Content that
+    cannot be recovered is a refusal, not a pass: a readapt whose parameters cannot be shown to be the source's is
+    not a recovery of it."""
+    if trigger != "petri-audit" or petri_mode(params) != PETRI_READAPT_MODE:
+        return []
+    source = params.get("source_run_id")
+    if isinstance(source, bool) or not re.fullmatch(r"[0-9]+", str(source or "")):
+        return []                          # petri_params_problems names it
+    repo = Path(repo)
+    stem = f"run_{source}_1"
+    run_dir = repo / PETRI_RUNS_RELPATH / stem
+    sidecar = run_dir / f"{stem}.report.json"
+    where = f"{PETRI_RUNS_RELPATH.as_posix()}/{stem}"
+    if not sidecar.is_file():
+        return [f"petri-audit readapt of run {source}: {where} holds no landed target sidecar {sidecar.name}; a "
+                "readapt recovers a paid run whose target spend already landed, and books none itself"]
+    adapted = sorted(p.name for p in run_dir.iterdir() if p.name in PETRI_ADAPTED_FILES)
+    if adapted:
+        return [f"petri-audit readapt of run {source}: {where} already holds adapted outputs ({', '.join(adapted)}); "
+                "a landed run is never rewritten"]
+    # the same directory rule the workflow's plan step applies (scripts/petri_audit/readapt.py run_dir_problems):
+    # besides the target sidecar, only the judge sidecars of earlier readapts of this run, which a readapt whose
+    # paid judge failed commits and which a retry leaves as they are; anything else is refused here, before the
+    # reservation, rather than by the plan step after it
+    other = sorted(p.name for p in run_dir.iterdir()
+                   if p.name != sidecar.name and not re.fullmatch(re.escape(stem) + PETRI_READAPT_JUDGE_SUFFIX, p.name))
+    if other:
+        return [f"petri-audit readapt of run {source}: {where} holds files other than the landed target sidecar and "
+                f"earlier readapts' judge sidecars ({', '.join(other)}); a readapt writes only into the state a failed "
+                "adaptation, or a readapt whose judge failed, leaves"]
+    try:
+        report = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return [f"petri-audit readapt of run {source}: {sidecar.name} does not parse ({exc})"]
+    nonce = report.get("journal_nonce") if isinstance(report, dict) else None
+    if not isinstance(nonce, str) or not nonce:
+        return [f"petri-audit readapt of run {source}: {sidecar.name} records no journal_nonce, so the fire that "
+                "ran the source run cannot be found"]
+    # the fallback sidecar is written for an error or cancelled run too (it spent), but mode run adapts only a run
+    # whose eval completed (`cli run` exits 0 on status success alone), so a readapt recovers only that; the plan
+    # step and the adapter refuse it again (scripts/petri_audit/readapt.py), this refuses it before any reservation
+    status = report.get("run_status")
+    if status != "success":
+        return [f"petri-audit readapt of run {source}: {sidecar.name} records run_status {status!r}, not 'success'; "
+                "a readapt recovers only a run whose eval completed, since mode run publishes nothing from an error "
+                "or cancelled run"]
+    entries = [e for e in load_journal(repo / JOURNAL_RELPATH)
+               if e.get("trigger") == "petri-audit" and e.get("nonce") == nonce]
+    if len(entries) != 1:
+        return [f"petri-audit readapt of run {source}: {len(entries)} journal entries carry the source nonce "
+                f"{nonce!r}; exactly one fire must account for the source run"]
+    digest = entries[0].get("params_sha256")
+    found = _trigger_content_by_digest(repo, trigger, digest) if isinstance(digest, str) and digest else None
+    if found is None:
+        return [f"petri-audit readapt of run {source}: the trigger content the source fire {nonce!r} journaled "
+                f"(params_sha256 {str(digest)[:12]}) is not in this branch's history of "
+                f"{TRIGGER_DIR_RELPATH.as_posix()}/{trigger}.json, so the parameters it ran under cannot be "
+                "recovered and the readapt cannot be shown to match them; fire from a branch that carries the "
+                "source fire's commit"]
+    commit, text = found
+    try:
+        source_params = json.loads(text)
+    except ValueError as exc:
+        return [f"petri-audit readapt of run {source}: the source fire's trigger file at {commit[:12]} does not "
+                f"parse ({exc})"]
+    mine, theirs = _petri_resolved(params), _petri_resolved(source_params)
+    differ = [f"{k} {mine[k]!r} (source {theirs[k]!r})" for k in PETRI_READAPT_MATCH_KEYS
+              if _petri_values_differ(k, mine[k], theirs[k])]
+    if differ:
+        return [f"petri-audit readapt of run {source}: the parameters differ from those the source fire {nonce!r} "
+                f"ran under (its trigger file at {commit[:12]}): " + "; ".join(differ)]
+    return _petri_seed_drift_problems(repo, source, commit, mine)
+
+
+def _git_show_utf8(repo, ref, relpath):
+    """The file's content at `ref` decoded as UTF-8 whatever the locale, or None when git has no such blob."""
+    proc = subprocess.run(["git", "-C", str(repo), "show", f"{ref}:{relpath}"], capture_output=True)
+    if proc.returncode != 0:
+        return None
+    try:
+        return proc.stdout.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+
+
+def _petri_seed_selection(text, resolved):
+    """{seed_id: canonical JSON of the seed} for the selection a petri-audit run makes from a seed file's text, as
+    `seeds.select_seeds` makes it from the workflow's resolved params: the listed seed ids when there are any,
+    else every seed of the wave. The canonical form is `framework.canonical_json`, so two seeds are equal here
+    exactly when their `seeds.seed_digest` is. Raises ValueError naming what does not resolve."""
+    doc = json.loads(text)
+    seeds = doc.get("seeds") if isinstance(doc, dict) else None
+    if not isinstance(seeds, list) or not all(isinstance(s, dict) and isinstance(s.get("seed_id"), str) for s in seeds):
+        raise ValueError("it holds no `seeds` list of objects with a seed_id")
+    by_id = {s["seed_id"]: s for s in seeds}
+    if len(by_id) != len(seeds):
+        raise ValueError("it lists a seed id twice")
+    ids = resolved["seed_ids"].split()
+    if ids:
+        missing = [i for i in ids if i not in by_id]
+        if missing:
+            raise ValueError(f"it has no seed {missing}")
+    else:
+        ids = [i for i, s in by_id.items() if str(s.get("pilot_wave")) == str(int(resolved["wave"]))]
+        if not ids:
+            raise ValueError(f"it has no seed in wave {resolved['wave']}")
+    return {i: json.dumps(by_id[i], sort_keys=True, ensure_ascii=False, separators=(",", ":")) for i in ids}
+
+
+def _petri_seed_drift_problems(repo, source, commit, resolved):
+    """Why the seeds a readapt would adapt against are not the seeds the source run executed. The source run
+    checked out its fire commit (the one holding the journaled trigger content), so the seed file there is the
+    content it ran; the readapt's adapter, judge and analysis read the seed file at this checkout's HEAD. The
+    selection the params make is resolved against both and must name the same seeds with identical content (the
+    per-seed digest, which the adapter checks again against the log's own per-sample record). A change elsewhere
+    in the file (another wave's seeds, the file's schema block) is not drift. Refused here, before the
+    reservation, and in the budget gate before the audit job; the file being unreadable is a refusal too."""
+    rel = resolved["seeds_file"]
+    where = f"petri-audit readapt of run {source}"
+    texts = {}
+    for label, ref in (("the source fire's commit", commit), ("this checkout's HEAD", "HEAD")):
+        text = _git_show_utf8(repo, ref, rel)
+        if text is None:
+            return [f"{where}: the seed file {rel} cannot be read at {label} ({ref[:12]}), so the seeds the source "
+                    "run executed cannot be compared with the ones the readapt would adapt against"]
+        texts[label] = text
+    selections = {}
+    for label, text in texts.items():
+        try:
+            selections[label] = _petri_seed_selection(text, resolved)
+        except (ValueError, KeyError) as exc:
+            return [f"{where}: the seed file {rel} at {label} does not resolve the source run's selection ({exc})"]
+    then, now = selections["the source fire's commit"], selections["this checkout's HEAD"]
+    problems = []
+    if sorted(then) != sorted(now):
+        added, removed = sorted(set(now) - set(then)), sorted(set(then) - set(now))
+        problems.append(f"the selection resolves to other seeds at HEAD than at the source fire's commit {commit[:12]} "
+                        f"(added {added or 'none'}, removed {removed or 'none'})")
+    for sid in sorted(set(then) & set(now)):
+        if then[sid] != now[sid]:
+            old = hashlib.sha256(then[sid].encode("utf-8")).hexdigest()[:12]
+            new = hashlib.sha256(now[sid].encode("utf-8")).hexdigest()[:12]
+            problems.append(f"seed {sid} changed since the source run (digest {old} at {commit[:12]}, {new} at HEAD)")
+    if problems:
+        return [f"{where}: the seeds in {rel} are not the ones the source run executed: " + "; ".join(problems)
+                + ". The adapter, the judge and the analysis read the seed file in the checkout, so the log cannot "
+                "be re-adapted against it; fire from a commit whose selected seeds are the source run's"]
+    return []
+
+
 def cmd_budget_gate(args):
     """CI-side twin of cmd_fire's paid-path budget check (audit S2, owner-approved
     2026-08-19). fire_trigger's ceiling is client-side only: a direct push of a
@@ -2452,6 +2786,9 @@ def cmd_budget_gate(args):
     # lane invariants the fire path enforces in validate_params run here too, because a workflow_dispatch never
     # passes through fire_trigger (Codex round 3)
     problems = lane_params_problems(args.trigger, params, providers_registry(repo))
+    # a readapt must be the recovery of the run it names, with that run's parameters, checked here against this
+    # checkout's runs, journal and history as the fire path checked it against the operator's (mode readapt)
+    problems = problems or petri_readapt_source_problems(repo, args.trigger, params)
     if problems:
         for problem in problems:
             print(f"budget-gate: REFUSED - {problem}", file=sys.stderr)

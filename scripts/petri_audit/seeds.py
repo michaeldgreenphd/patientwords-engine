@@ -10,6 +10,7 @@ pre-flight refuse the same seeds the tests refuse.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,7 @@ from typing import Any
 from .framework import (
     FRAMING_REGISTRY,
     OUTCOME_REGISTRY,
+    ROOT,
     SEED_FILE,
     canonical_json,
     load_json,
@@ -25,6 +27,83 @@ from .framework import (
 )
 
 QUERY_PLACEHOLDER = "<query>"
+# The speaker-identity manipulation check's vocabulary: identity clause patterns and waivers, data never Python
+# (AGENTS.md hard conventions; owner decision 2026-09-22).
+IDENTITY_MARKERS = ROOT / "data" / "petri" / "speaker_identity_markers.draft.json"
+
+
+def load_identity_markers(path: Path | str = IDENTITY_MARKERS) -> dict:
+    """The identity clause patterns and waivers `seed_problems` checks arm texts against."""
+    return load_json(path)
+
+
+def _identity_clauses(text: str, markers: dict) -> set[str]:
+    """The identities with at least one clause pattern matching `text`, before the default is dropped."""
+    return {identity for identity, spec in markers["identities"].items()
+            if any(re.search(pattern, text, re.IGNORECASE) for pattern in spec["patterns"])}
+
+
+def _without_unmarked_default(found: set[str]) -> set[str]:
+    """First-person reference is the unmarked default in English and a clinician or a carer uses it too ('I expect
+    this is simply the result of their standing all day'), so `patient` is dropped whenever a clinician or caregiver
+    clause is present. Applied to one text, or to the union over an arm's turns: one speaker per arm."""
+    return found - {"patient"} if found & {"clinician", "caregiver"} else set(found)
+
+
+def marked_identities(text: str, markers: dict) -> set[str]:
+    """The identities whose clauses `text` carries, per the markers file, with the unmarked default dropped."""
+    return _without_unmarked_default(_identity_clauses(text, markers))
+
+
+def _speaker_identity_text_problems(seed: dict, arms: dict[str, dict], texts: dict[str, dict], policy: str,
+                                    by_register: dict[str, str], expected: set[str] | None,
+                                    markers: dict | None = None) -> list[str]:
+    """The manipulation check on speaker identity (owner decision 2026-09-22, docs/petri_wave2_design.md section 8
+    decision 5). `user_is` never reaches the target - the identity cue is whatever the text says - so a declaration
+    the wording does not realise is a label, and a declaration the wording contradicts is wave 1's h3-tools
+    confound: both arms declared `unknown` while one wrote as a clinician about someone else and the other as the
+    patient, and the validator compared only the declarations. Three rules, all on an arm's OWN turn texts (branch
+    turns are declared once per seed and carry no identity of their own): an arm declaring a specific identity
+    carries no other identity's clause; under the factor policy an arm's text carries the identity it declares; and
+    whatever the arms declare, every identity the texts carry appears in every register of the contrast (and of its
+    decomposition registers), so identity is crossed with register in the wording, never nested inside it. A waiver
+    in the markers file skips one landed seed by name, with its reason."""
+    markers = markers if markers is not None else load_identity_markers()
+    waived = {w["seed_id"]: w for w in markers.get("waivers", [])}
+    if seed["seed_id"] in waived:
+        if not waived[seed["seed_id"]].get("reason"):
+            return [f"speaker-identity check waived for {seed['seed_id']!r} without a reason"]
+        return []
+    problems: list[str] = []
+    carried: dict[str, set[str]] = {}
+    for arm, spec in arms.items():
+        clauses: set[str] = set()
+        for turn in spec["turns"]:
+            entry = texts.get(turn["text_ref"])
+            if entry is not None:
+                clauses |= _identity_clauses(entry["text"], markers)
+        found = _without_unmarked_default(clauses)       # one speaker per arm: a later 'I' is the clinician's
+        carried[arm] = found
+        declared = spec["user_is"]
+        if declared != "unknown" and found - {declared}:
+            problems.append(f"arm {arm!r} declares user_is {declared!r} but its text carries "
+                            f"{sorted(found - {declared})} identity clauses: the wording contradicts the declaration")
+        if policy == "factor" and declared not in found:
+            problems.append(f"arm {arm!r} declares user_is {declared!r} as a level of the speaker-identity factor but "
+                            f"no turn of its text carries a {declared} clause: a declared identity the wording does "
+                            f"not realise is a label the target never sees")
+    if expected is not None:
+        registers_of: dict[frozenset[str], set[str]] = {}
+        for arm, found in carried.items():
+            if arm in by_register:
+                registers_of.setdefault(frozenset(found), set()).add(by_register[arm])
+        for found, regs in sorted(registers_of.items(), key=lambda kv: sorted(kv[0])):
+            if regs != expected:
+                label = sorted(found) or "no identity clause"
+                problems.append(f"the texts carrying {label} appear only in register(s) {sorted(regs)}, not "
+                                f"{sorted(expected)}: identity is nested inside register in the wording, whatever "
+                                f"the arms declare (the wave-1 h3-tools confound)")
+    return problems
 
 
 @dataclass(frozen=True)
@@ -170,7 +249,8 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
     text, the framing contrast and the outcome dimensions are declared in the
     registries, arm texts carry the registers the contrast declares, register
     exposure follows its declared protocol, speaker identity is constant unless
-    declared a factor, branch structure is coherent, supplied contexts exist
+    declared a factor and crossed with register, branch structure is coherent,
+    supplied contexts exist
     for the dimensions that need them, and a seed is claim-grade eligible only
     when scripted."""
     problems: list[str] = []
@@ -214,9 +294,15 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
                         f"change who is speaking")
     if policy == "factor" and not seed["speaker_identity"].get("note"):
         problems.append("speaker_identity declared a factor without a note justifying it")
+    if policy == "factor" and len(speakers) < 2:
+        # a note plus one identity is a declaration with nothing behind it, and it reads downstream as a crossed
+        # design that was never run
+        problems.append(f"speaker_identity is declared a factor but every arm declares user_is {sorted(speakers)[0]!r}: "
+                        f"a factor that does not vary is not a factor")
 
     dim = next((d for d in framing["dimensions"] if d["id"] == seed["framing"]["dimension_id"]), None)
     expected: set[str] | None = None
+    by_register: dict[str, str] = {}              # arm id -> its turn-1 register, for the identity check below
     if dim is None:
         problems.append(f"framing dimension {seed['framing']['dimension_id']!r} not in the registry")
     else:
@@ -224,18 +310,50 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
         if contrast is None:
             problems.append(f"contrast {seed['framing']['contrast_id']!r} not declared for {dim['id']!r}")
         else:
-            expected = {contrast["from"], contrast["to"]}
+            poles = {contrast["from"], contrast["to"]}
+            # A decomposition register (owner decision 2026-09-22; docs/petri_wave2_design.md section 3) is an extra
+            # arm beside the contrast pair - lay terminology in careful orthography - so that a register effect can
+            # be split into terminology and orthography. It must be a value of the same dimension and never a pole
+            # of the contrast (an arm repeating a pole is a duplicate, not a decomposition). The registered estimand
+            # stays the contrast pair; every check below that asked the arms for the poles now asks for the poles
+            # and the decomposition registers together, so a declared third arm that is missing is refused.
+            decomposition = list(seed["framing"].get("decomposition_registers") or [])
+            if len(decomposition) != len(set(decomposition)):
+                problems.append("duplicate decomposition registers")
+            for reg in decomposition:
+                if reg not in dim["values"]:
+                    problems.append(f"decomposition register {reg!r} is not a value of dimension {dim['id']!r}")
+                elif reg in poles:
+                    problems.append(f"decomposition register {reg!r} is a pole of contrast {contrast['id']!r}, not a "
+                                    f"decomposition of it")
+            expected = poles | {reg for reg in decomposition if reg in dim["values"] and reg not in poles}
+            realised = f" with decomposition registers {sorted(set(decomposition))}" if decomposition else ""
             first_turn_registers = set()
+            by_speaker: dict[str, set[str]] = {}
             for arm, spec in arms.items():
                 entry = ref(spec["turns"][0]["text_ref"], f"arm {arm!r} turn 1")
                 if entry is not None:
                     first_turn_registers.add(entry["register"])
+                    by_register[arm] = entry["register"]
+                    by_speaker.setdefault(spec["user_is"], set()).add(entry["register"])
             if first_turn_registers != expected:
                 problems.append(f"arm turn-1 registers {sorted(first_turn_registers)} do not realise the contrast "
-                                f"{sorted(expected)}")
+                                f"{sorted(poles)}{realised}")
+            if policy == "factor":
+                # A declared factor is not a licence to confound. `constant` refuses a seed whose clinical arm is a
+                # clinician and whose colloquial arm is a patient; `factor` with a note would have re-admitted exactly
+                # that seed, with the confound written down instead of removed. Crossing is what makes both contrasts
+                # estimable: every identity must appear in every register of the contrast, decomposition included.
+                for speaker in sorted(by_speaker):
+                    if by_speaker[speaker] != expected:
+                        problems.append(f"speaker_identity is a declared factor but user_is {speaker!r} appears only "
+                                        f"in register(s) {sorted(by_speaker[speaker])}, not {sorted(expected)}: an "
+                                        f"identity nested inside one register is the confound the factor exists to "
+                                        f"avoid, not a crossed design")
     for arm, spec in arms.items():
         for i, turn in enumerate(spec["turns"], 1):
             ref(turn["text_ref"], f"arm {arm!r} turn {i}")
+    problems.extend(_speaker_identity_text_problems(seed, arms, texts, policy, by_register, expected))
 
     exposure = proto["register_exposure"]
     lengths = {len(a["turns"]) for a in proto["arms"]}
@@ -335,8 +453,86 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
     warning_ref = seed["scenario"]["reference"].get("warning_signs_text_ref")
     if warning_ref:
         ref(warning_ref, "scenario.reference.warning_signs_text_ref")
+    for i, grounding in enumerate(seed["scenario"].get("grounded_in") or []):
+        # provenance as data (owner decision 4, 2026-09-22): an in-repository file must exist; a sibling-checkout
+        # path (../patientwords/...) is recorded and not checked, because the workflow checks out this repository alone
+        if not grounding["file"].startswith("../") and not (ROOT / grounding["file"]).is_file():
+            problems.append(f"scenario.grounded_in[{i}]: file {grounding['file']!r} not found in the repository")
     if "assertion_handling" in judged and "assertion_handling" not in supplied:
         problems.append("assertion_handling is judged but no proposition is supplied as context")
+    # A dimension the planner gates on a marked context role measures nothing in a trajectory that marks none.
+    # Three things can go wrong and they are different (Codex rounds 2-4 on PR #29):
+    #   * the seed marks the role NOWHERE - every reply is not_applicable, so the run clears preflight, spends the
+    #     target budget and finishes with no measurement for its declared outcome;
+    #   * the arms are not parallel - one arm marks it in a branch and its counterpart does not, so one side of the
+    #     register contrast has rows and the other has none;
+    #   * the arms mark it at DIFFERENT POSITIONS - both sides have rows, but at different exchanges, so the
+    #     cross-arm comparison pairs replies to different stimuli. Presence alone does not catch this.
+    # Requiring every trajectory to mark it is wrong: pw-petri-example-h4-persistence marks `pressure` on its
+    # pressure branch and deliberately not on its neutral control, which is the design.
+    from .judge_runner import CONTEXT_ROLE_GATED
+
+    gated = {d: role for d, (role, _shape) in CONTEXT_ROLE_GATED.items() if d in judged}
+    if gated:
+        by_branch: dict[str, dict[str, list[dict]]] = {ROOT_BRANCH: {a["id"]: a["turns"] for a in proto["arms"]}}
+        if anchor is not None:
+            for branch in proto["branches"]:
+                by_branch[branch["id"]] = {
+                    arm: spec["turns"][: anchor["after_arm_turn"]] + branch["turns"] for arm, spec in arms.items()}
+        for dim_id, role in sorted(gated.items()):
+            # the 1-based positions of the marked turns in each trajectory, which is what the planner keys on
+            positions = {branch: {arm: tuple(i for i, t in enumerate(turns, 1) if t.get("context_role") == role)
+                                  for arm, turns in per_arm.items()}
+                         for branch, per_arm in by_branch.items()}
+            if not any(any(p) for per_arm in positions.values() for p in per_arm.values()):
+                problems.append(f"{dim_id} is judged but no turn anywhere in the seed is marked context_role "
+                                f"{role!r}: every reply would be recorded not_applicable, so the run would spend "
+                                f"the target budget and measure nothing for that dimension")
+                continue
+            # An immediate gate judges the reply that ANSWERS the marked turn, against the reply before it. Marked
+            # on a trajectory's FIRST user turn there is no reply before it, so that trajectory measures nothing -
+            # the same zero-measurement failure the check above refuses, reached a different way.
+            if CONTEXT_ROLE_GATED[dim_id][1] == "immediate":
+                for branch, per_arm in sorted(positions.items()):
+                    barren = sorted(arm for arm, p in per_arm.items() if p and set(p) == {1})
+                    if barren:
+                        problems.append(f"{dim_id} is judged and branch {branch!r} marks context_role {role!r} only "
+                                        f"on the first user turn of {barren}: an immediate gate compares the reply "
+                                        f"answering that turn against the reply before it, and there is none, so "
+                                        f"those arms would measure nothing for that dimension")
+            # An after gate judges every reply that FOLLOWS the baseline exchange against that exchange's reply, so
+            # the mark has two shape requirements the other gates do not: one baseline per trajectory (two marks
+            # would leave the planner to pick one, while the prompt describes a single named reply), and not on the
+            # trajectory's last user turn, after which nothing follows to be compared.
+            if CONTEXT_ROLE_GATED[dim_id][1] == "after":
+                for branch, per_arm in sorted(positions.items()):
+                    lengths_here = {arm: len(turns) for arm, turns in by_branch[branch].items()}
+                    for arm, p in sorted(per_arm.items()):
+                        if len(p) > 1:
+                            problems.append(f"{dim_id} is judged and branch {branch!r} marks context_role {role!r} "
+                                            f"on {len(p)} user turns of arm {arm!r} ({list(p)}): a baseline is one "
+                                            f"reply, so exactly one turn per trajectory is marked")
+                    barren = sorted(arm for arm, p in per_arm.items() if p and max(p) == lengths_here[arm])
+                    if barren:
+                        problems.append(f"{dim_id} is judged and branch {branch!r} marks context_role {role!r} on "
+                                        f"the last user turn of {barren}: an after gate compares the replies that "
+                                        f"follow the baseline exchange with its reply, and none follow, so those "
+                                        f"arms would measure nothing for that dimension")
+            for branch, per_arm in sorted(positions.items()):
+                distinct = sorted({p for p in per_arm.values()})
+                if len(distinct) == 1:
+                    continue                                  # every arm marks it in the same places, or none does
+                bare = sorted(arm for arm, p in per_arm.items() if not p)
+                if bare:
+                    problems.append(f"{dim_id} is judged and branch {branch!r} marks context_role {role!r} on "
+                                    f"{sorted(arm for arm, p in per_arm.items() if p)} but not on {bare}: the arms "
+                                    f"are not parallel, so one side of the contrast would carry rows the other "
+                                    f"cannot")
+                else:
+                    problems.append(f"{dim_id} is judged and branch {branch!r} marks context_role {role!r} at "
+                                    f"different user turns per arm ({dict(sorted(per_arm.items()))}): the planner "
+                                    f"keys eligibility on position, so the arms would be judged at different "
+                                    f"exchanges and the comparison would pair different stimuli")
     if seed["judge"]["advice_tier"]["contextual"] and exposure == "single_turn":
         problems.append("the contextual tier instrument applies to turns after the first; a single_turn seed has none")
     if seed["mode"] == "autonomous":

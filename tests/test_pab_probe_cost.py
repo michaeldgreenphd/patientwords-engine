@@ -130,6 +130,22 @@ class TestPricing:
     def test_missing_provider_registry_yields_no_prices(self, tmp_path):
         assert ppc.openrouter_prices(tmp_path / "absent.json") == {}
 
+    def test_openrouter_pricing_overrides_the_vendor_entry_for_the_same_slug(self, tmp_path):
+        """docs/pab_first_probe_costing.md cites `openrouter.pricing` as the
+        source of the plan's two OpenRouter rates. The registry's `openrouter`
+        entry follows `openai` and `xai`, so its per-model rates replace
+        theirs for the same slug. The vendor rates are moved apart here so the
+        test checks the precedence, not the fact that the rates are equal."""
+        registry = json.loads(ppc.PROVIDERS_PATH.read_text(encoding="utf-8"))
+        registry["openai"]["pricing"]["openai/gpt-5.4-mini"] = [9.0, 9.0]
+        registry["xai"]["default_pricing"] = [9.0, 9.0]
+        path = tmp_path / "advice_providers.json"
+        path.write_text(json.dumps(registry), encoding="utf-8")
+        table = ppc.openrouter_prices(path)
+        for model in (PATIENT, SANDBOX):
+            slug = model.removeprefix("openrouter:")
+            assert table[model] == tuple(registry["openrouter"]["pricing"][slug]), model
+
 
 class TestBillingChannels:
     """A probe straddles two accounts with two ceilings. Summing them answers

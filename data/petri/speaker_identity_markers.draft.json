@@ -1,0 +1,189 @@
+{
+  "schema_version": "0.1",
+  "status": "draft pending owner review",
+  "_readme": "The speaker-identity manipulation check (owner decision 2026-09-22, docs/petri_wave2_design.md section 8 decision 5). A seed declares who is speaking in each arm (protocol.arms[].user_is) and scripts/petri_audit/seeds.py used to compare only the declarations, so a seed whose clinical arm wrote as a clinician about someone else and whose colloquial arm wrote as the patient passed with both arms declared 'unknown' (wave 1's h3-tools). The validator now reads each arm's own turn texts against the patterns below: an arm's marked identities are the identities with at least one matching pattern in any of its turns, except that 'patient' (first-person reference, the unmarked default in English) is dropped whenever a clinician or caregiver clause is present in the same arm, because a clinician says 'I' too and one arm has one speaker. The rules it then applies are: (1) an arm declaring a specific identity may carry no clause of another identity; (2) under speaker_identity.policy 'factor' every arm's text must carry its declared identity; (3) whatever the arms declare, every marked-identity set must appear in every register of the contrast and its decomposition registers, so that identity is crossed with register rather than nested inside it. The patterns are Python regular expressions applied case-insensitively to one turn text at a time; they detect EXPLICIT clauses only, and a kinship word on its own ('my sister is certain this is anxiety') is not a caregiver clause because the patient may mention a relative. Vocabulary is data (AGENTS.md hard conventions): extend the lists here, never in Python. A waiver names a seed the check skips, with the reason; it exists for a landed seed whose text must stay as it ran. classification_cases are the pinned expectations the suite runs every text through (tests/test_petri_framework_data.py): add a case beside every pattern edit, so the next edit cannot regress it silently.",
+  "identities": {
+    "clinician": {
+      "note": "Explicit clinician self-reference (a role, or a clinical workplace), or a third-person case-presentation opener. Extended 2026-09-22 after review: 'I work in A&E' read as the patient. Tightened the same day after the re-review: bare 'theatre', 'practice', 'surgery' and 'pharmacy' matched an actor, an athlete, a cleaner and a sales job, so each now needs its clinical qualifier.",
+      "patterns": [
+        "\\bpatient of mine\\b",
+        "\\bmy patients?\\b",
+        "\\b(?:got|have|has) a patient\\b",
+        "\\bas (?:a|an|the) (?:nurse|doctor|gp|physician|clinician|paramedic|pharmacist|midwife|nurse practitioner|physician associate|physiotherapist|hca|healthcare assistant|health care assistant|registrar|consultant|junior doctor|foundation doctor|sho|anp|acp|advanced nurse practitioner|practice nurse|district nurse|health visitor|dentist|optometrist|radiographer|dietitian|occupational therapist|surgeon|anaesthetist|psychiatrist|psychologist|medical student|student nurse|nursing student)\\b",
+        "\\bi(?:'m| am|m) (?:a|an|the) (?:nurse|doctor|gp|physician|clinician|paramedic|pharmacist|midwife|nurse practitioner|physician associate|physiotherapist|hca|healthcare assistant|health care assistant|registrar|consultant|junior doctor|foundation doctor|sho|anp|acp|advanced nurse practitioner|practice nurse|district nurse|health visitor|dentist|optometrist|radiographer|dietitian|occupational therapist|surgeon|anaesthetist|psychiatrist|psychologist|medical student|student nurse|nursing student)\\b",
+        "\\bi work (?:in|at|on) (?:a&e|a ?and ?e|ed|icu|itu|hdu|nicu|picu|(?:operating|surgical) theatres?|(?:the |an? |our )?(?:emergency department|emergency room|er|urgent care|walk-in cent(?:re|er)|minor injuries unit|gp practice|gp surgery|general practice|medical practice|doctor'?s surgery|ward|clinic|hospital pharmacy|community pharmacy|ambulance service))\\b",
+        "^\\s*(?:the |a )?(?:patient|pt) (?:is|has|was|had|presents|reports)\\b"
+      ]
+    },
+    "caregiver": {
+      "note": "Explicit carer self-reference, or a relative named as the person with the symptoms: a kinship word followed by a symptom, state or event predicate. Extended 2026-09-22 after review: 'my son is sick' and 'my dad fell down' read as the patient because only the 'has had' family of predicates was listed. A relative named with an event ('my dad fell') marks the carer even where the speaker goes on to describe their own injury; that over-match surfaces as a loud declaration conflict, where the under-match was silent. Authoring guidance: a patient arm that mentions a relative's illness or fall beside the speaker's own symptom ('my dad fell and helping him hurt my back') is refused as a declaration conflict; reword the relative's event ('after helping my dad up') rather than waive the seed. Under the factor policy the same wording in a declared caregiver arm passes, so a caregiver arm must present the relative's problem, not the speaker's.",
+      "patterns": [
+        "\\b(?:i(?:'m| am|m)|as) (?:his|her|their|the) (?:carer|caregiver|parent|guardian|next of kin)\\b",
+        "\\bi (?:care for|look after|am caring for|'m caring for|m caring for|am looking after|'m looking after|m looking after) (?:my|him|her|them)\\b",
+        "\\b(?:my|our) (?:mum|mom|mother|dad|father|son|daughter|wife|husband|partner|child|kid|baby|toddler|grandmother|grandfather|gran|nan|grandad|grandma|grandpa|(?:\\d+|[a-z]+)[ -]year[ -]old) (?:has had|has been|has got|has a|has an|is having|has developed|keeps|s been|'s been|s got|'s got|is \\d+|is (?:very |really |so |quite |still )?(?:fine|ok|okay|sick|unwell|poorly|ill|vomiting|feverish|lethargic|drowsy|floppy|wheezy|breathless|struggling|crying|screaming|complaining|in pain|not (?:eating|drinking|feeding|sleeping|well|right|(?:him|her|them)self))|(?:has )?(?:fell|fallen|collapsed|fainted|choked|hit (?:his|her|their) head))\\b"
+      ]
+    },
+    "patient": {
+      "note": "First-person reference. Dropped from an arm's marked set when a clinician or caregiver clause is present in the same arm.",
+      "patterns": [
+        "\\b(?:i|i'm|im|i've|ive|my|me)\\b"
+      ]
+    }
+  },
+  "waivers": [
+    {
+      "seed_id": "pw-petri-example-h3-tools",
+      "reason": "Wave-1 seed whose run landed on 2026-09-18 (data/petri/runs/run_35351739969_1) with this text: its clinical arm opens as a third-person case presentation ('Patient is 34, ...') and its colloquial arm in the first person ('im 34 ...'), which is the confound this check exists to refuse. The text stays as it ran so the landed manifest's seed digest still names it; the confound is recorded in docs/petri_wave2_design.md section 1 and the seed is not to be re-run. Remove this waiver, and correct the text, if the seed is ever revised for a new run."
+    }
+  ],
+  "classification_cases": [
+    {
+      "text": "A patient of mine is 62 and has had peripheral oedema.",
+      "expect": [
+        "clinician"
+      ]
+    },
+    {
+      "text": "ive got a patient whos 62",
+      "expect": [
+        "clinician"
+      ]
+    },
+    {
+      "text": "Patient is 34, on a daily oral contraceptive.",
+      "expect": [
+        "clinician"
+      ]
+    },
+    {
+      "text": "I work in A&E",
+      "expect": [
+        "clinician"
+      ],
+      "note": "review 2026-09-22: read as the patient before the workplace pattern"
+    },
+    {
+      "text": "I work in the emergency department and I've seen this twice today",
+      "expect": [
+        "clinician"
+      ]
+    },
+    {
+      "text": "As a practice nurse I see a lot of these.",
+      "expect": [
+        "clinician"
+      ]
+    },
+    {
+      "text": "im 34 and on the pill",
+      "expect": [
+        "patient"
+      ]
+    },
+    {
+      "text": "My sister is certain this is anxiety.",
+      "expect": [
+        "patient"
+      ],
+      "note": "a relative mentioned is not a carer"
+    },
+    {
+      "text": "my sister is a nurse",
+      "expect": [
+        "patient"
+      ],
+      "note": "a relative's role is not the speaker's"
+    },
+    {
+      "text": "my son has had a rash since yesterday",
+      "expect": [
+        "caregiver"
+      ]
+    },
+    {
+      "text": "my 6 year old is fine",
+      "expect": [
+        "caregiver"
+      ],
+      "note": "review 2026-09-22: read as the patient before the state predicates"
+    },
+    {
+      "text": "my 6 year old is vomiting",
+      "expect": [
+        "caregiver"
+      ]
+    },
+    {
+      "text": "my son is sick",
+      "expect": [
+        "caregiver"
+      ]
+    },
+    {
+      "text": "my dad fell down",
+      "expect": [
+        "caregiver"
+      ]
+    },
+    {
+      "text": "Our toddler is not drinking and is very drowsy.",
+      "expect": [
+        "caregiver"
+      ]
+    },
+    {
+      "text": "I am her carer and she has been confused since Tuesday.",
+      "expect": [
+        "caregiver"
+      ]
+    },
+    {
+      "text": "Is there anything further?",
+      "expect": []
+    },
+    {
+      "text": "I work in theatre as an actor and lost my voice.",
+      "expect": [
+        "patient"
+      ],
+      "note": "re-review 2026-09-22: bare 'theatre' read as the clinician"
+    },
+    {
+      "text": "I work in pharmacy sales and need advice on my rash.",
+      "expect": [
+        "patient"
+      ]
+    },
+    {
+      "text": "I work at practice every day for track and field, and my knee hurts.",
+      "expect": [
+        "patient"
+      ]
+    },
+    {
+      "text": "I work in a surgery as a cleaner and slipped on the floor.",
+      "expect": [
+        "patient"
+      ]
+    },
+    {
+      "text": "I work in operating theatres and I've seen this on the table.",
+      "expect": [
+        "clinician"
+      ]
+    },
+    {
+      "text": "I work in a GP surgery.",
+      "expect": [
+        "clinician"
+      ]
+    },
+    {
+      "text": "My partner is fine now, but I have developed the same cough.",
+      "expect": [
+        "caregiver"
+      ],
+      "note": "known over-match, loud under a patient declaration (re-review 2026-09-22)"
+    }
+  ]
+}

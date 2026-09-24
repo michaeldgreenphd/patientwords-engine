@@ -1835,7 +1835,14 @@ def test_publish_recomputes_a_paid_fires_commitment_from_the_final_params(tmp_pa
 def test_publish_restamp_threshold_follows_the_expiry_window(tmp_path, capsys, monkeypatch):
     """The queue guard expires entries older than MEDLANG_TRIGGER_EXPIRE_HOURS, so
     a fire published later than half that window (not only an hour) would land
-    already expired: with a 0.5-hour window a 20-minute-old stamp is restamped."""
+    already expired: with a 0.5-hour window a 20-minute-old stamp is restamped.
+
+    The clock is pinned to mid-day: publish also restamps a fire from another
+    UTC day, so a 20-minute-old stamp taken in the first twenty minutes after
+    midnight UTC would be restamped for the date and not the window (seen live
+    at 00:11 UTC on 2026-09-23)."""
+    frozen = datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(ft, "utc_now", lambda: frozen)
     monkeypatch.setenv("MEDLANG_TRIGGER_EXPIRE_HOURS", "0.5")
     origin, clone = _publish_fixture(tmp_path)
     old = ft.iso_utc(ft.utc_now() - timedelta(minutes=20))

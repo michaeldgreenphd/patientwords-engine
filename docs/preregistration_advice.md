@@ -105,6 +105,63 @@ margin; regression test `test_registry_prices_rerouted_gemini_slug`).
 Registry re-frozen at this revision:
 `84acef3606cb8afa10cabe5a0c72cc772a5838a8111a47f297e8cf6f7ae59fee`
 
+Metering correction (recorded 2026-09-23; no record rewritten, nothing
+re-run): the per-model rate that amendment added, [0.35, 2.75] USD/Mtok, was
+below the model's list price of [1.5, 9.0] (the OpenRouter catalogue captured
+2026-08-04, `data/pab/openrouter_catalogue_20260804T025116Z.json`, and the
+registry's own `google.default_pricing`). OpenRouter's bill for each call is
+archived in `response_raw.usage.cost`, and it equals the list rate on all 884
+archived `openrouter:google/gemini-3.5-flash` calls (two were errors billed
+$0). So from 2026-07-23 to 2026-09-23 the meter understated OpenRouter's bill
+for this slug 3.28-fold. The 864 calls it priced, sent 2026-07-23T00:19:53Z
+to 2026-08-23T11:43:02Z, booked $2.4307 against $7.9638 billed, $5.5331
+under:
+
+| Archive (`responses_…`) | Calls | Booked | Billed |
+|---|---|---|---|
+| `stimuli_20260721T235403Z` | 214 | $0.6016 | $1.9707 |
+| `stimuli_20260722T003502Z` | 74 | $0.2081 | $0.6818 |
+| `stimuli_20260722T112140Z` | 50 | $0.1407 | $0.4609 |
+| `stimuli_20260728T194624Z` | 234 | $0.6579 | $2.1553 |
+| `stimuli_20260807T153329Z` | 292 | $0.8224 | $2.6951 |
+
+By send date the shortfall falls on 2026-07-23 ($2.1630), 07-28 ($1.0745),
+07-29 ($0.3652), 08-07 ($1.8727), 08-22 ($0.0385) and 08-23 ($0.0192); the
+spend ledger folded the booked values (`responses_*.report.json`). Each
+elicit fire's `max_spend` check priced these calls at the same rate, so a fire
+that ran to its ceiling could be charged more than its `max_spend`: its Gemini
+calls cost 3.28 times what the check counted. The amendment
+above also overstates its own figure: the 18 calls of runs 1c and
+hedge-resume metered at the catch-all [5, 30] were over-booked 3.33-fold
+($0.5530 booked, $0.1659 billed), not ~12-fold, because ~12x was measured
+against the same wrong rate. The archives stand as recorded: each record's
+`cost_usd` keeps its metered value, and its token counts and
+`response_raw.usage.cost` are the measured truth from which the real cost is
+recomputable. From this revision the registry prices the slug at [1.6, 9.5]
+(list + ~5% markup + margin), adds reviewed OpenRouter entries for
+`openai/gpt-5.4-mini`, `x-ai/grok-4.3` and `anthropic/claude-haiku-4.5`, and
+`tests/test_petri_openrouter_prices.py` holds every OpenRouter entry to at
+least list x 1.05 and to at least every archived OpenRouter bill for its slug.
+The registry had also moved since the last re-freeze above, through five
+revisions whose sha256 this document did not record. Amendments 3 and 4
+below describe the changes of the first three; the registry's own
+`pricing_note` and the 2026-08-24 addendum of
+`docs/decisions_20260821_owner.md` describe the last two. The registry's
+sha256 after each:
+
+| Commit | Date | Change | Registry sha256 |
+|---|---|---|---|
+| 5e444ca1 | 2026-07-23 | `_alias_vs_snapshot` (Amendment 3) | `f8a9fa887fb32106ee655161eb5a4b25f08e4c74e6682d7a2a48a2a63d3ce55c` |
+| a40ec2a2 | 2026-07-23 | free-tier fidelity arms (Amendment 4) | `12de5cdfcd66dedab51d393b5931d20e5aa78d00c751db2bc294ed897efb25b2` |
+| b415416e | 2026-07-23 | mini slug correction (Amendment 4) | `0b58bbf643adfe0c9986d9a86cd42ec10033078ff7a098d05e58510a5f02ec54` |
+| 78d5beb1 | 2026-08-21 | ox-alpha priced 0/0 for its free window; file re-serialized (one-space indent, literal UTF-8) | `f48b4eb4d604e297b0d2288fda5f7f280d4520df833e9b20da21da08968ad143` |
+| 8243a7e4 | 2026-08-24 | ox-alpha removed | `29732b5db1bbda19c9a2b0e568ae2582ec69804dcfedc5fec7221aaafb711f3c` |
+
+The b415416e digest is also the `registry_sha256` of the six repro packs in
+`ops/disclosure_log.jsonl`.
+Registry sha256 at this revision:
+`8879941bcdd63e2e99ca7d298db61c557207284c064ff34a597f46d84fb84a76`
+
 ## The consumer-proxy caveat (repeat in every writeup)
 
 API models are proxies for consumer products: no product system prompt, no
@@ -326,3 +383,91 @@ Consequences, stated in advance of analysis:
 **D1 owner confirmation (2026-07-29):** the owner confirmed the n=25 stop by
 decision reply ("advice-nat-remainder: stay-25"). Stimuli 26-75 remain
 registered and inert.
+
+## Deviation D2 (2026-09-23, owner-directed): per-model results published before vendor packs were sent
+
+Amendment 3 of this pre-registration (not the Tier B pre-registration's
+Amendment 3, `docs/prereg_amendment3_holdout.md`) requires that (1) a
+reproduction pack reach each affected vendor BEFORE any public per-model
+comparison is published, and (2) every public per-model claim cite a pack
+version that is FRESH at publication time. Neither happened for the
+LLM-responses page (`llm/` on the site). No pack has been sent to any vendor,
+and the page cites no pack version.
+
+What was published, and when. Times are frontend commit times (UTC); the site
+deploys from `main`, so each went public at or shortly after that time.
+Commits marked "fe" are in the frontend repository, "eng" in this one.
+
+- 2026-07-22 20:31Z, fe b51d2cf: the page goes live with verbatim responses
+  per model, both wordings, for five models (anthropic, google, xai, deepseek,
+  moonshotai), archive `stimuli_20260721T235403Z`.
+- 2026-07-23 04:59Z, fe 3f0e533: provisional machine-coded grades for six
+  models (openai added): coded tiers, flag rates and a per-model downgrade
+  map. The first graded per-model comparison.
+- **2026-07-23 11:03Z, eng 5e444ca1: Amendment 3 is written**, about six
+  hours after graded per-model results went live. Everything published
+  above predates the rule; everything published below came after it, with
+  no pack sent.
+- 2026-07-23 17:04Z, fe 00b6ad2: two arms added (claude-sonnet-5,
+  gpt-5.4-mini), eight in all.
+- 2026-07-29 14:52Z, fe 62c7c2c: the natural-question family merged in
+  (archive `stimuli_20260728T194624Z`), fully judged.
+- 2026-07-29 15:36Z, fe 32e23ed: the grok-4.3 featured example (scenario 29,
+  owner-directed), the page's most pointed single-model claim.
+- 2026-07-30 14:53Z, eng bb8b22fb: packs built for six vendors, all from
+  `stimuli_20260728T194624Z`, and logged in `ops/disclosure_log.jsonl` with
+  `sent_utc: null`. They were never sent. The page by then also showed
+  `stimuli_20260721T235403Z`, which no pack covered.
+- 2026-08-08 04:09Z, fe 095123a: the August wave appended (archive
+  `stimuli_20260807T153329Z`); every Gemini arm withheld from then on, so
+  google's records were on the page from 2026-07-22 to 2026-08-08.
+- 2026-08-24 22:55Z, fe 0dc0d9c: the anonymous `stealth/ox-alpha` arm and the
+  judge-agreement matrix added.
+
+Nothing recorded the breach until now. The critic pass of 2026-07-23
+(`docs/critic/critic_20260723.md`) reviewed Amendment 3's pack tooling and
+the page's new figures in the same pass without flagging the order. The six
+logged packs have read STALE since 2026-08-21, when a registry edit (eng
+78d5beb1) became the first of their inputs to move. The critic passes of
+2026-08-23 to 2026-08-28 reported them as informational and not an error
+("expected, informational, still not an error", `critic_20260823.md` item 4;
+"STALE is informational, not an error", `critic_20260828.md` INFO-3), which
+is how the check treats a pack that was never sent: it escalates only sent
+packs.
+
+Remedy. The pack tooling was fixed before any send (engine PR
+`claude/repro-pack-check-fixes`): packs are keyed by (vendor, archive), the
+registry digest covers only what the vendor's records were routed and priced
+through (the vendor's own registry block whole; on the shared OpenRouter
+block, the route fields and the vendor's own rates, not its notes or other
+models' prices), a log entry the check cannot read fails the contract gate
+instead of passing it silently, and the pack README and note state request
+ids and judges as the records hold them. After that PR merges, packs are
+rebuilt from `main` for every (vendor, archive) whose records the page has
+shown: anthropic and openai for
+`stimuli_20260721T235403Z`, `stimuli_20260728T194624Z` and
+`stimuli_20260807T153329Z`; xai, deepseek and moonshotai for the first two;
+google for the first two (on the page 2026-07-22 to 2026-08-08). The owner
+sends them with the note template's "already public" wording, except
+google's, which take its "formerly public" wording because the page has
+withheld every Gemini arm since 2026-08-08, and records each send with
+`repro-pack --record-sent`. To fill at send time:
+
+- rebuilt at engine commit: `<commit>`
+- pack versions: `<vendor, archive, pack_version for each>`
+- sent: `<date>` (each `--record-sent` entry's `sent_utc` is when the command
+  ran, so record the send the same day)
+- cited on the page from: `<date, frontend commit>`
+- `stealth/ox-alpha` has no identifiable vendor, so rule (1) cannot be met for
+  it: `<kept on the page with this exception / withdrawn>`
+
+No measurement or published number changes.
+
+**Scope ruling (2026-09-23, owner).** The rule binds any public per-model
+claim, whichever page carries it, including the planned Petri Multi-turn page.
+That page names one vendor's model and reports its replies graded by the
+same model, so an Anthropic pack for the Petri runs is sent before the page is
+public and the page cites its version. The Petri lane has no pre-registration
+of its own, so it adopts the rule by its own instrument: decision 16 of the
+Petri wave-2 design note (`docs/petri_wave2_design.md`, added by engine PR
+#29, `claude/awesome-franklin-kj9jw7`) records the same ruling.

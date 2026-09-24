@@ -154,12 +154,42 @@ def append_chain(data_dir: Path, manifest: dict, manifest_path: Path) -> None:
         fh.write(f"{manifest_path.relative_to(data_dir).as_posix()} {manifest['chain']['manifest_sha256']}\n")
 
 
+def readapt_report_problems(manifest: dict, run_dir: Path, recorded_name: str | None = None) -> list[str]:
+    """A re-adapted run's manifest binds the source run's landed target cost
+    sidecar by digest (`readapt.target_report`, scripts/petri_audit/readapt.py):
+    it must sit in this run's own directory, under the name the ledger keys it
+    by, and still digest to what was bound, so a sidecar rewritten after the
+    readapt is detected. `recorded_name` is the run directory's name as the
+    manifest records it, for a downloaded directory extracted under another
+    folder name (default: `run_dir`'s own name). Empty for a manifest with no
+    `readapt` block (every run adapted in the ordinary way)."""
+    block = manifest.get("readapt")
+    if block is None:
+        return []
+    report = block.get("target_report") if isinstance(block, dict) else None
+    if not isinstance(report, dict) or not isinstance(report.get("path"), str):
+        return ["readapt.target_report records no path; the landed target sidecar cannot be verified"]
+    run_dir = Path(run_dir)
+    name = recorded_name or run_dir.name
+    expected = f"{name}/{name}.report.json"
+    if report["path"] != expected:
+        return [f"readapt.target_report: {report['path']} is not this run's target sidecar ({expected})"]
+    fpath = run_dir / f"{name}.report.json"
+    if not fpath.is_file():
+        return [f"readapt.target_report: {fpath.name} is missing; the source run's target spend is no longer recorded"]
+    if sha256_file(fpath) != report.get("sha256"):
+        return [f"readapt.target_report: {fpath.name} does not digest to the value the readapt bound; a landed "
+                "sidecar is never rewritten"]
+    return []
+
+
 def artifact_problems(manifest: dict, data_dir: Path, manifest_dir: str | None = None) -> list[str]:
     """Every artifact the manifest names (relative to the runs directory)
     exists and digests to its recorded value; a null path is one not yet
     written (judgments before judging). `manifest_dir` is the manifest's own
     run directory (its name under `data_dir`); when given, every artifact
-    must be recorded inside it."""
+    must be recorded inside it, and a re-adapted run's landed target sidecar
+    must still be the bytes the readapt bound (`readapt_report_problems`)."""
     problems: list[str] = []
     artifacts = manifest.get("artifacts") or {}
     pairs = [(artifacts.get(f"{fam}_path"), artifacts.get(f"{fam}_sha256"), fam) for fam in ARTIFACT_FAMILIES]
@@ -175,6 +205,8 @@ def artifact_problems(manifest: dict, data_dir: Path, manifest_dir: str | None =
             problems.append(f"{fam}: {rel} is missing")
         elif sha256_file(fpath) != digest:
             problems.append(f"{fam}: {rel} does not digest to its recorded value")
+    if manifest_dir is not None:
+        problems.extend(readapt_report_problems(manifest, data_dir / manifest_dir))
     return problems
 
 
@@ -261,6 +293,11 @@ def verify_run(run_dir: Path) -> list[str]:
             problems.append(f"{fam}: {parts[1]} does not digest to its recorded value")
     if len(recorded_dirs) > 1:
         problems.append(f"artifacts are recorded under more than one run directory: {sorted(recorded_dirs)}")
+    # a re-adapted run binds its landed target sidecar too; checked under the recorded directory name, since a
+    # downloaded artifact may be extracted under any folder name (the other artifacts are looked up by basename)
+    if manifest.get("readapt") is not None:
+        recorded = next(iter(recorded_dirs)) if len(recorded_dirs) == 1 else run_dir.name
+        problems.extend(readapt_report_problems(manifest, run_dir, recorded_name=recorded))
     return problems
 
 
