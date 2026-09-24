@@ -48,25 +48,58 @@ From the engine repo root, with the site as a sibling checkout:
 
 ```bash
 python scripts/seal_check.py --site ../patientwords
-# defaults: --dashboard ops/dashboard.json --simulated data/simulated --extra docs,ops
+# defaults: --dashboard ops/dashboard.json --simulated data/simulated --trace-out trace_out
+#           --extra docs,ops --allowlist data/seal_allowlist.json
 ```
+
+The site must be a full checkout. The cloud containers clone it with a sparse
+checkout that leaves `modes/` off disk (`docs/fresh_session_bootstrap.md`); run
+`git -C ../patientwords sparse-checkout disable` first. A root whose checkout
+keeps tracked files off disk makes the script exit 2, because a sweep over it
+would not read those files and would still print CLEAN.
 
 It recomputes the sealed registry via `tierb_split` and scans the site checkout
 plus engine `docs/` and `ops/` (briefs, ledgers, decks under `ops/decks/`,
-audits) for every sealed phrase, exact and whitespace/case-normalized. Scanned
-suffixes: `.json .html .md .csv .txt .yml`; `modes/`, `.git`, `trace_out/`, and
-`data/simulated/` are excluded (the registry's own sources are not leaks). If
-you produced any artifact OUTSIDE those roots this session (a reviewer packet,
-a scratch export, a release staging dir), add it: `--extra docs,ops,<dir>`.
+audits) for every sealed phrase, whitespace/case-normalized, in each file's text
+and its decoded views (HTML entities, JSON escapes, CSV quote doubling). Scanned
+suffixes: `.json .jsonl .html .md .csv .txt .yml`. Only three things are skipped:
+the engine's own `data/simulated/` and `trace_out/` (by RESOLVED path: the
+registry's sources and the measurement store are not leaks) and `.git`
+directories. The site's `modes/` renders, its `data/simulated_*.json` files and
+`.github/` ARE scanned; until 2026-09-23 a substring exclusion skipped all of
+them (`docs/prereg_divergence_log.md`). A full sweep takes about two minutes.
+If you produced any artifact OUTSIDE those roots this session (a reviewer
+packet, a scratch export, a release staging dir), add it:
+`--extra docs,ops,<dir>`.
+
+The only exceptions are owner rulings in `data/seal_allowlist.json`: each entry
+names a sealed label, the published row and field that contain it, and that
+field's full sha256. The check masks only whole-field occurrences of that exact
+field: the field's text with a field delimiter on each side (a JSON or CSV
+string's quotes, an HTML element's `>` and `<`, an attribute's quotes, a CSV
+cell's commas and line ends). A bare occurrence of the phrase, or the field's
+text run on into other words, still fails. An entry whose hash stops matching,
+or whose field is the phrase itself up to case and whitespace, is reported
+INACTIVE and suppresses nothing. The script prints each
+file it cleared under a ruling (`allowlisted: <path> :: <label> inside ...`);
+report those lines with the verdict. Never add an entry yourself: an entry
+needs an owner ruling recorded in the divergence log, and it is never keyed on a
+label alone.
 
 ## Step 3 — Act on the exit code
 
 - **Exit 0 (CLEAN):** report the printed line (N sealed phrases, no hits across
   M roots). Done.
-- **Exit 2 (CONFIG ERROR):** the sealed set computed empty — null
-  `tierb.start_utc`, wrong branch, or wrong `--simulated` dir. This is NOT a
-  clean result and must never be reported as one. Fix the config (Step 1) and
-  re-run before doing anything else this cycle.
+- **Exit 2 (CONFIG ERROR):** NOT a clean result, and never reported as one.
+  The printed line says which of three causes it is:
+  - the sealed set computed empty (null `tierb.start_utc`, wrong branch, or
+    wrong `--simulated` dir): fix it as in Step 1;
+  - `data/seal_allowlist.json` is malformed: fix the entry (owner-ruled entries
+    only). Never delete the file or an entry to get past the error;
+  - a swept root's checkout keeps tracked files off disk (a sparse checkout):
+    `git -C <that checkout> sparse-checkout disable`.
+
+  Re-run before doing anything else this cycle.
 - **Exit 1 (LEAK):** breach. Go to Step 4 immediately.
 
 ## Step 4 — Breach response (2026-07-14 remediation precedent)

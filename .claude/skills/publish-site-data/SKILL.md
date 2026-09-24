@@ -16,7 +16,19 @@ with theirs.
    `../patientwords`. If it is missing, stop — do not clone or improvise paths.
 2. `git pull --rebase origin main` in both repos first (everything lands on `main`
    since 2026-09-04).
-3. Only run if new results actually landed (new `trace_out/*/batch_summary.part_*.json`,
+3. The site must be a full checkout: `git -C ../patientwords sparse-checkout disable`
+   before step 1 (a no-op on a full checkout). The cloud containers clone the site
+   with `modes/` excluded (`docs/fresh_session_bootstrap.md`). Over that checkout the
+   exporter's render prune and the seal gate cannot see the renders, so both refuse:
+   the exporter stops with `refusing: the site checkout ... tracks N render(s) ...
+   that are not on disk`, and `seal_check.py` exits 2. A sparse pattern that keeps
+   `modes/` but hides any page or payload the exporter scans for render references
+   refuses too (`... tracks N file(s) that the render-reference scan reads ...`): a
+   render named only there would otherwise be pruned. The engine side needs its
+   `trace_out/*/*.html` renders on disk: over a checkout that restored only the
+   summaries, the exporter refuses (`... render(s) this export would publish are not
+   on disk in the engine checkout ...`) rather than prune the site's copies.
+4. Only run if new results actually landed (new `trace_out/*/batch_summary.part_*.json`,
    new lens parts, new txcorpus runs). No new results → no republish this cycle.
 
 ## The chain (run in this exact order)
@@ -34,7 +46,13 @@ python scripts/export_frontend_simulated.py --frontend ../patientwords \
   restore rasters — owner-instruction only).
 - `--stamps`: every stamp already in `../patientwords/data/simulated_scenarios.json`
   plus newly landed ones. Omitting a published stamp silently drops its scenarios —
-  never shrink the list.
+  never shrink the list. Since 2026-09-23 it would also delete their renders: the
+  exporter prunes every `modes/simulated/pairs_*/index_NN.*` render that neither the
+  new payload nor any other site file lists, and prints the count. Run it once with
+  `--dry-run` first (writes and deletes nothing, lists what would go) when the count
+  could surprise you; the first publish after 2026-09-23 prunes about 235 orphans.
+  A `refusing:` line means nothing was written. Fix the cause it names (for a
+  sparse checkout, precondition 3) and re-run; it is not success-with-no-change.
 
 **2. Urgency collector.**
 ```
@@ -59,7 +77,16 @@ python scripts/export_pair_swaps.py --site ../patientwords --depth ../patientwor
   untouched. Treat any exporter refusal as success-with-no-change. Never hand-patch a
   payload past a refusal.
 - `export_pair_swaps.py` runs AFTER depth/insights so its `<batch>#<index>` join is
-  current; new batches show target-only until it re-runs. That is expected.
+  current; new batches show target-only until it re-runs. That is expected. It
+  withholds Tier B holdout rows (count in the payload's `holdout_withheld`), and exits
+  2 (`CONFIG ERROR`) when the sealed set computes empty (wrong branch), or when it
+  cannot read the trace-time prompts in full: no `trace_out/`; git unable to list the
+  `batch_summary` parts HEAD tracks there; a part HEAD tracks for a Tier B batch that
+  is not on disk (a partial or sparse checkout: restore the parts as
+  `docs/fresh_session_bootstrap.md` shows, then re-run); or an unreadable part.
+  Either is a config error, not a refusal — stop, as for `seal_check.py` exit 2: the
+  holdout rule could not be applied. A Tier B batch with no part at HEAD and none on
+  disk has not been traced on this branch, and only its accepted prompt applies.
 - **Transport and loglens wired 2026-07-23 (owner option 1).** The census batch's
   25/25 `save_raw` JACOBIAN_LENS runs and its `__loglens_` LOGIT_LENS runs both landed
   on this branch, and each exporter's regen reproduced its committed site file
@@ -96,14 +123,17 @@ way, do not fix it here.
 **8b. Holdout-seal gate (mandatory — also before any ad-hoc export push).**
 `python scripts/seal_check.py --site ../patientwords` — exit 0 required to proceed.
 Exit 1: ABORT the publish, follow the holdout-seal-check skill's breach protocol.
-Exit 2 (empty sealed set): config error (wrong branch), never a pass.
+Exit 2: a config error, never a pass. The printed line names the cause: an empty
+sealed set (wrong branch), a malformed `data/seal_allowlist.json` (fix the entry;
+never delete the file to get past it), or a sparse site checkout (precondition 3).
 
 **9. Commit and push.**
 - Site: `git -C ../patientwords status` first. Only `data/*.json` and exporter-written
-  `modes/simulated/` render files may have changed. Anything else changed → abort,
-  revert, investigate. Commit the data payloads and push `main`; GitHub Pages serves it,
-  so this push is the publish — the contract, claim and seal gates above are the last
-  check.
+  `modes/simulated/` render files may have changed (added, modified, or deleted by the
+  prune). Anything else changed → abort, revert, investigate. Stage render deletions
+  too (`git add -A data modes/simulated`), or the pruned files stay published. Commit
+  and push `main`; GitHub Pages serves it, so this push is the publish — the contract,
+  claim and seal gates above are the last check.
 - Engine: commit the chain's engine-side outputs (`ops/*.json`, `data/jlens_*.json`)
   to `main`; `git pull --rebase` before pushing.
 

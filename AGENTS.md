@@ -191,7 +191,14 @@ back with `--archive-url`. **PNG renders live in those Releases, not in git** (p
 from `main` from 2026-09-08; the tree carried ~15 GB of them and the repository had
 grown past what the cloud containers and Codex can clone): `scripts/render_archive.py
 fetch` brings any one back by HTTP Range without downloading its zip, and
-`coverage` says which PNGs are archived where.
+`coverage` says which PNGs are archived where. Since 2026-09-23 the exporter also
+**deletes** site renders under `modes/simulated/` that match its own naming but that
+neither the new payload nor any other site file lists (`scripts/render_prune.py`; a
+withheld holdout row's render had stayed served for ten weeks); `--dry-run` writes and
+deletes nothing and lists them. It refuses, writing nothing, over a site checkout that
+keeps tracked renders off disk (the cloud containers' sparse clone excludes `modes/`),
+or any tracked file its render-reference scan reads, and `scripts/seal_check.py` exits
+2 over one: `git -C ../patientwords sparse-checkout disable` first.
 
 ## Figure style (standing preference)
 

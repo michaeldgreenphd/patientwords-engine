@@ -12,6 +12,8 @@ the same place as the scheduled Routine.
 
 1. **Bootstrap** per `docs/fresh_session_bootstrap.md`: both repos on `main`,
    clean `git status`, `ops/dashboard.json` identical to `origin/main`,
+   `git -C ../patientwords sparse-checkout disable` (the site's `modes/` must be
+   on disk; a no-op on a full checkout),
    `python scripts/seal_check.py --site ../patientwords --extra docs,ops` not
    exiting 2, `git push --dry-run origin main` succeeding. Any of those failing:
    stop and say which.
