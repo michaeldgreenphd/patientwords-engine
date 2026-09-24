@@ -28,7 +28,11 @@ sparse clone that excludes modes/): the prune could not see them. Run
 `git -C <site> sparse-checkout disable` first. It refuses the same way when the
 checkout keeps off disk any tracked file the render-reference scan reads (a
 page or payload anywhere in the site), and when a site file or directory it
-scans for render references cannot be read.
+scans for render references cannot be read. And it refuses, writing nothing,
+when a render it would publish is not on disk in the engine checkout while the
+site already has a copy (a partial engine checkout that restored only the
+batch_summary files, or --with-pngs with the PNGs in Releases): unlisted, the
+copy would be pruned.
 
 Usage:
   python scripts/export_frontend_simulated.py --frontend ../patientwords \\
@@ -360,6 +364,27 @@ def _consequence(e):
 
 ranked = sorted(scenarios, key=_consequence, reverse=True)
 demo = ranked if args.max_renders <= 0 else ranked[:args.max_renders]
+
+# Plan every copy first, copy only after the check below. A render this export
+# would publish whose engine source is not on disk, while the site already has
+# a copy at its destination, would go unlisted, and the prune would delete that
+# copy: the fresh-session repair restores only the batch_summary files under
+# trace_out/ (docs/fresh_session_bootstrap.md), and PNGs live in Releases, not
+# in git (Codex review of PR #32, 2026-09-24). A render missing from both sides
+# was never published, so the scenario stays data-only, as before.
+copies = []       # (engine source, site-relative destination)
+stranded = []     # (site-relative destination, engine source): site copy, no engine source
+
+
+def _plan_copy(src, rel):
+    if src.is_file():
+        copies.append((src, rel))
+        return True
+    if (FRONTEND / rel).is_file():
+        stranded.append((rel, src))
+    return False
+
+
 copied = 0
 for e in demo:
     meta = e.get("_render")
@@ -370,43 +395,47 @@ for e in demo:
     # Base (gemma) render is the public preview.
     base_dir = Path(dirs[BASE_MODEL]) if BASE_MODEL in dirs else None
     published = False
-    if base_dir and base_dir.is_dir():
-        out_modes = FRONTEND / "modes/simulated" / stem
+    if base_dir:
         for key in ("html", "png"):
             if args.no_pngs and key == "png":
                 continue
             src = base_dir / f"index_{index:02d}.{key}"
-            if src.is_file():
-                if not DRY:
-                    out_modes.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(src, out_modes / src.name)
-                rel = f"modes/simulated/{stem}/{src.name}"
+            rel = f"modes/simulated/{stem}/{src.name}"
+            if _plan_copy(src, rel):
                 e[key] = rel
                 if BASE_MODEL in e["models"]:
                     e["models"][BASE_MODEL][key] = rel
                 if key == "html":
                     published = True
                     if first_preview is None:
-                        first_preview = out_modes / src.name
+                        first_preview = FRONTEND / rel
 
     # Optionally publish each other model's render for the same scenario.
     if args.preview_models == "all":
         for m in e["models"]:
             if m == BASE_MODEL or m not in dirs:
                 continue
-            mdir = Path(dirs[m])
-            src = mdir / f"index_{index:02d}.html"
-            if mdir.is_dir() and src.is_file():
-                out_m = FRONTEND / "modes/simulated" / f"{stem}__{m}"
-                if not DRY:
-                    out_m.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(src, out_m / src.name)
-                e["models"][m]["html"] = f"modes/simulated/{stem}__{m}/{src.name}"
+            src = Path(dirs[m]) / f"index_{index:02d}.html"
+            rel = f"modes/simulated/{stem}__{m}/{src.name}"
+            if _plan_copy(src, rel):
+                e["models"][m]["html"] = rel
 
     if published:
         copied += 1
 for e in scenarios:
     e.pop("_render", None)  # drop the private marker from every entry
+
+if stranded:
+    rel0, src0 = sorted(stranded)[0]
+    sys.exit(f"refusing: {len(stranded)} render(s) this export would publish are not on disk in the "
+             f"engine checkout, but the site already has a copy, e.g. {rel0} (engine source "
+             f"{src0}); the prune would delete that copy. Materialize the engine renders (HTML: "
+             f"`git -C {ENGINE} restore --source=HEAD -- 'trace_out/*/*.html'`; PNGs: "
+             f"scripts/render_archive.py fetch), then re-run. Nothing was written or pruned.")
+if not DRY:
+    for src, rel in copies:
+        (FRONTEND / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, FRONTEND / rel)
 
 # Every render path this export lists; with every other site file's references
 # it is the keep-set for pruning (the payload being replaced is not consulted).

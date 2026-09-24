@@ -306,6 +306,66 @@ def test_export_refuses_before_writing_when_a_reference_file_is_unreadable(tmp_p
     assert files["page_linked"].exists() and "3 unlisted render(s) pruned" in proc.stdout
 
 
+# --- an engine render source missing from disk (Codex review of PR #32, 2026-09-24) #
+# The fresh-session repair (docs/fresh_session_bootstrap.md) restores only the
+# batch_summary*.json files under trace_out/. With the summaries present and a
+# render off disk, the export listed no render for that scenario, and the prune
+# then deleted the site's valid copy as unlisted: exit 0, a published render gone.
+
+
+def test_export_refuses_when_an_engine_render_is_missing_but_the_site_has_a_copy(tmp_path):
+    engine, site, files = build(tmp_path)
+    source = engine / "trace_out" / STEM / "index_01.html"
+    source.unlink()                                  # a partial engine checkout: summaries only
+    before = snapshot(site)
+    for extra in ((), ("--dry-run",)):
+        proc = export(engine, site, *extra)
+        assert proc.returncode != 0, extra
+        assert f"modes/simulated/{STEM}/index_01.html" in proc.stderr and "1 render(s)" in proc.stderr
+        assert "pruned" not in proc.stdout
+        assert snapshot(site) == before              # nothing copied, written or pruned
+    _write(source, "<html>render 1</html>")
+    proc = export(engine, site)
+    assert proc.returncode == 0, proc.stderr
+    assert files["listed_stale_copy"].read_text() == "<html>render 1</html>"
+
+
+def test_a_missing_png_source_with_a_site_copy_refuses_only_when_pngs_are_published(tmp_path):
+    engine, site, _ = build(tmp_path)
+    png = _write(site / "modes" / "simulated" / STEM / "index_01.png", "png")
+    proc = export(engine, site, "--with-pngs")       # the engine has no PNGs (they live in Releases)
+    assert proc.returncode != 0 and f"modes/simulated/{STEM}/index_01.png" in proc.stderr
+    assert png.exists()
+    proc = export(engine, site)                      # HTML-only: the PNG is not a render this export lists
+    assert proc.returncode == 0, proc.stderr
+    assert not png.exists()
+
+
+def test_a_missing_engine_render_with_no_site_copy_still_exports_data_only(tmp_path):
+    engine, site, _ = build(tmp_path)
+    (engine / "trace_out" / STEM / "index_02.html").unlink()     # never published: nothing to lose
+    proc = export(engine, site)
+    assert proc.returncode == 0, proc.stderr
+    payload = json.loads((site / "data" / "simulated_scenarios.json").read_text())
+    assert [s.get("html") for s in payload["scenarios"]] == [f"modes/simulated/{STEM}/index_01.html", None]
+
+
+def test_a_missing_model_render_with_a_site_copy_refuses_under_preview_models_all(tmp_path):
+    engine, site, files = build(tmp_path)
+    mdir = engine / "trace_out" / f"{STEM}__qwen3-4b"
+    _write(mdir / "batch_summary.part_01.json", json.dumps(
+        {"graph_model": "qwen3-4b", "results": [_result(2, json.loads(
+            (engine / "trace_out" / STEM / "batch_summary.part_01.json").read_text())["results"][1]["prompts"]
+            ["clinical"])]}))
+    proc = export(engine, site, "--models", "gemma-2-2b,qwen3-4b", "--preview-models", "all")
+    assert proc.returncode != 0 and f"modes/simulated/{STEM}__qwen3-4b/index_02.html" in proc.stderr
+    assert files["model_render"].exists()
+    _write(mdir / "index_02.html", "<html>m2</html>")
+    proc = export(engine, site, "--models", "gemma-2-2b,qwen3-4b", "--preview-models", "all")
+    assert proc.returncode == 0, proc.stderr
+    assert files["model_render"].read_text() == "<html>m2</html>"
+
+
 # --- a sparse checkout that hides a reference file (Codex review of PR #32, 2026-09-24) #
 # The sparse guard asked git only about modes/simulated/. A checkout that kept
 # the renders but excluded a page naming one (start-here/) let the scan miss the

@@ -29,7 +29,12 @@ assume the same state until the environment itself is fixed.
   Variant C.
 - Do not restore all of `trace_out/` — ~12k render files through the blobless
   proxy wastes the session; analysis needs only the `batch_summary*.json`
-  files.
+  files. Publishing needs the HTML renders as well: before
+  `export_frontend_simulated.py`, run `git restore --source=HEAD --worktree --
+  'trace_out/*/*.html'` (Variant B's sparse patterns already include them).
+  Without them the exporter refuses, writing nothing, when a render it would
+  publish is missing here but the site has a copy; before 2026-09-24 it
+  published without the render and its prune deleted the site's copy.
 
 ## Repair (engine repo)
 

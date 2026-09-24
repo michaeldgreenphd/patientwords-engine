@@ -24,7 +24,10 @@ with theirs.
    that are not on disk`, and `seal_check.py` exits 2. A sparse pattern that keeps
    `modes/` but hides any page or payload the exporter scans for render references
    refuses too (`... tracks N file(s) that the render-reference scan reads ...`): a
-   render named only there would otherwise be pruned.
+   render named only there would otherwise be pruned. The engine side needs its
+   `trace_out/*/*.html` renders on disk: over a checkout that restored only the
+   summaries, the exporter refuses (`... render(s) this export would publish are not
+   on disk in the engine checkout ...`) rather than prune the site's copies.
 4. Only run if new results actually landed (new `trace_out/*/batch_summary.part_*.json`,
    new lens parts, new txcorpus runs). No new results → no republish this cycle.
 
