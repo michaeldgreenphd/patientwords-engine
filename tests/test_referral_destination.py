@@ -150,8 +150,8 @@ def test_an_unrecognised_tier_is_named_rather_than_ranked_as_zero(tmp_path):
 
 
 def test_the_tier_identical_stratum_drops_cells_whose_arms_differ_on_tier(tmp_path):
-    """The whole point of the stratum: a destination difference inside it cannot be a
-    restatement of an urgency difference. One cell agrees on tier, one does not."""
+    """The stratum holds the modal tier fixed, so a destination difference inside it is not a
+    difference in modal tier. One cell agrees on tier, one does not."""
     advice = _corpus(tmp_path, [
         ("same", "m1", "clinical", "routine", "see a cardiologist", "primary"),
         ("same", "m1", "patient", "routine", "see your doctor", "primary"),
