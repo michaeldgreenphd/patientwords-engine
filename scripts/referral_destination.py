@@ -116,13 +116,26 @@ def _file_sha256(path: str) -> str:
 
 def _read_jsonl(paths: Iterable[str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """(records, one {path, sha256, rows} entry per file). The digest is taken over the same bytes
-    that are parsed, so it names exactly the input the records came from."""
+    that are parsed, so it names exactly the input the records came from.
+
+    Records are split on "\\n" only. `str.splitlines` also splits on U+2028, U+2029, U+0085 and
+    other separators, which advice_eval's `json.dumps(..., ensure_ascii=False)` leaves raw inside a
+    string, so a reply containing one would be cut mid-record. A newline inside a string is always
+    escaped by the writer, so "\\n" is the only record boundary. A line that does not parse is
+    refused with its file and line number."""
     records: list[dict[str, Any]] = []
     files: list[dict[str, Any]] = []
     for path in sorted(paths):
         with open(path, "rb") as handle:
             raw = handle.read()
-        rows = [json.loads(line) for line in raw.decode("utf-8").splitlines() if line.strip()]
+        rows = []
+        for line_no, line in enumerate(raw.decode("utf-8").split("\n"), 1):
+            if not line.strip():
+                continue
+            try:
+                rows.append(json.loads(line))
+            except ValueError as exc:
+                raise ValueError(f"{path}:{line_no}: corrupt JSONL line ({exc}); refusing to continue") from exc
         records.extend(rows)
         files.append({"path": path, "sha256": hashlib.sha256(raw).hexdigest(), "rows": len(rows)})
     return records, files

@@ -413,3 +413,38 @@ def test_the_bundle_records_every_input_archive_with_its_digest(tmp_path):
     later = _analyze(tmp_path, advice, vocab_path=vocab)
     assert [f["rows"] for f in later["inputs"]["judgments"]] == [2, 0]
     assert later["readouts"] == bundle["readouts"]
+
+
+def test_a_reply_containing_a_unicode_line_separator_is_one_record(tmp_path):
+    """advice_eval writes both archive families with ensure_ascii=False, which leaves U+2028,
+    U+2029 and U+0085 raw inside a string. `str.splitlines` splits on all three, so the reader cut
+    such a reply into pieces and failed with a JSONDecodeError. Records are split on "\\n" only."""
+    from pathlib import Path
+
+    advice = _corpus(tmp_path, [
+        ("s1", "m1", "clinical", "routine", "see a cardiologist", "primary"),
+        ("s1", "m1", "patient", "routine", "see your doctor", "primary"),
+    ])
+    responses = Path(advice) / "responses_stimuli_x.jsonl"
+    rows = [json.loads(line) for line in responses.read_text(encoding="utf-8").split("\n") if line]
+    rows[0]["response_text"] = "first see a cardiologist\u0085then rest"
+    responses.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
+    assert " " in responses.read_text(encoding="utf-8")
+
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
+    assert bundle["inputs"]["responses"][0]["rows"] == 2
+    assert bundle["coverage"]["judge_of_record_rows_measured"] == 2
+    assert bundle["readouts"]["names_specialist_service"]["all_cells"]["patient_minus_clinical"] == -1.0
+
+
+def test_a_corrupt_archive_line_is_refused_with_its_file_and_line(tmp_path):
+    from pathlib import Path
+
+    advice = _corpus(tmp_path, [
+        ("s1", "m1", "clinical", "routine", "see a cardiologist", "primary"),
+        ("s1", "m1", "patient", "routine", "see your doctor", "primary"),
+    ])
+    judgments = Path(advice) / "judgments_stimuli_x.jsonl"
+    judgments.write_text(judgments.read_text(encoding="utf-8") + "{not json\n", encoding="utf-8")
+    with pytest.raises(ValueError, match=r"judgments_stimuli_x\.jsonl:3: corrupt JSONL line"):
+        _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
