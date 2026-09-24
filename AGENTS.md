@@ -97,9 +97,11 @@ existing branch. Cherry-picks and rebases onto an existing branch still fire; an
 any branch operation can pull, so its committed content should be the cheapest stage that
 exists with `commit_outputs`/`commit_sidecar` false, never the last expensive thing that
 ran. Implemented 2026-08-29: `scripts/fire_trigger.py park --trigger <t>` (or `--all`)
-fires each lane's no-op default from `PARK_DEFAULTS`; all eight original lanes are parked (`petri-audit`, added 2026-09-16, has no
-trigger file until the owner parks it after the lane merges), and
-after any real fire lands, re-park that lane (`docs/operators_handbook.md` §3).
+fires each lane's no-op default from `PARK_DEFAULTS`. All nine lanes are parked at rest,
+`petri-audit` (added 2026-09-16) since its first park on 2026-09-18, except
+`archive-renders` from the cycle that fires its $0 PNG sweep until the next cycle re-parks
+it (`docs/routine_standing_prompt.md` §3d); after any real fire lands, re-park that lane
+(`docs/operators_handbook.md` §3).
 
 **Cost discipline:** Neuronpedia tracing, CPU logits, and all analysis are $0. Five
 lanes spend provider credits — `scenario-generation`, `model-evaluation`, `advice-eval`,

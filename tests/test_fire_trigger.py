@@ -2223,15 +2223,43 @@ def test_publish_does_not_retry_a_non_fast_forward_rejection(tmp_path, capsys, m
     assert json.loads(_origin_main_files(origin, tmp_path)[".github/trigger/circuit-trace.json"]) == PUBLISH_PARAMS
 
 
-def test_publish_restamp_day_test_uses_the_utc_date(tmp_path, capsys):
+def _fresh_stamp_on_another_local_date(now):
+    """A fire stamped minutes before `now` on the same UTC day, written with a
+    twelve-hour offset that puts its local date on another day: -12 h before UTC
+    noon, +12 h from it. The offset follows the fire's own hour, not `now`'s
+    (they differ from 12:00 to 12:04:59 UTC, where the unpinned test failed), and
+    the fire is five minutes old but never earlier than UTC midnight: a fire from
+    the previous UTC day is restamped by design, which is not this case (the
+    unpinned test built one from 00:00 to 00:04:59 UTC)."""
+    fired = max(now - timedelta(minutes=5), now.replace(hour=0, minute=0, second=0, microsecond=0))
+    offset = timezone(timedelta(hours=12 if fired.hour >= 12 else -12))
+    return fired.astimezone(offset).isoformat(timespec="seconds")
+
+
+@pytest.mark.parametrize("pinned", [
+    datetime(2026, 9, 24, 0, 0, 0, tzinfo=timezone.utc),
+    datetime(2026, 9, 24, 0, 3, 0, tzinfo=timezone.utc),
+    datetime(2026, 9, 24, 11, 59, 0, tzinfo=timezone.utc),
+    datetime(2026, 9, 24, 12, 0, 0, tzinfo=timezone.utc),
+    datetime(2026, 9, 24, 12, 3, 0, tzinfo=timezone.utc),
+    datetime(2026, 9, 24, 23, 59, 59, tzinfo=timezone.utc),
+], ids=lambda moment: moment.strftime("%H%M%SZ"))
+def test_publish_restamp_day_test_uses_the_utc_date(tmp_path, capsys, monkeypatch, pinned):
     """inflight_max_spend counts by UTC date; a hand-repaired stamp with an offset
     whose local date differs from the UTC date must be judged on the UTC date,
-    or a fresh fire is restamped (or a stale one is not)."""
+    or a fresh fire is restamped (or a stale one is not).
+
+    The clock publish reads is pinned, so the result does not depend on when the
+    suite runs; the instants are the edges of UTC noon and midnight, where the
+    unpinned version failed (12:03 UTC, observed on 2026-09-24) or could."""
+    monkeypatch.setattr(ft, "utc_now", lambda: pinned)
+    monkeypatch.delenv("MEDLANG_TRIGGER_EXPIRE_HOURS", raising=False)  # the default window: minutes old is fresh
     origin, clone = _publish_fixture(tmp_path)
-    now = ft.utc_now()
-    offset = timezone(timedelta(hours=12)) if now.hour >= 12 else timezone(timedelta(hours=-12))
-    fresh_local = (now - timedelta(minutes=5)).astimezone(offset).isoformat(timespec="seconds")
-    assert datetime.fromisoformat(fresh_local).date() != now.date(), "the scenario: local date differs"
+    fresh_local = _fresh_stamp_on_another_local_date(pinned)
+    stamp = datetime.fromisoformat(fresh_local)
+    assert stamp.astimezone(timezone.utc).date() == pinned.date(), "the scenario: same UTC day"
+    assert timedelta(0) <= pinned - stamp <= timedelta(minutes=5), "the scenario: minutes old"
+    assert stamp.date() != pinned.date(), "the scenario: local date differs"
     _fire_locally(clone, fired_utc=fresh_local)
     assert ft.main(["publish", "--repo", str(clone)]) == 0
     assert "fired_utc_original" not in capsys.readouterr().out                # fresh: same UTC day, minutes old

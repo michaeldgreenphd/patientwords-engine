@@ -55,8 +55,11 @@ def parse_args(argv=None):
                         help="PatientAgentBench probe sidecars (exploratory arm); "
                              "their cost_usd folds into the same spend totals")
     parser.add_argument("--petri-dir", default="data/petri/runs",
-                        help="Petri lane run directories; each <run>/<run>.report.json cost sidecar "
-                             "(engine re-priced from Inspect usage, explicit billing_channel) folds into the same totals")
+                        help="Petri lane run directories; every <run>/*.report.json cost sidecar folds into the "
+                             "same totals: the run's <run>.report.json (engine re-priced from Inspect usage) and the "
+                             "judge sidecars, <run>.judge.report.json and a re-adapt's "
+                             "<run>.readapt_<workflow run id>.judge.report.json (cumulative, so growth folds as a "
+                             "delta); each carries an explicit billing_channel")
     parser.add_argument("--dashboard", default="ops/dashboard.json")
     parser.add_argument("--ledger", default=None,
                         help="ledger markdown file (default: lexicographically newest docs/*ledger*.md, "
@@ -394,7 +397,9 @@ def main(argv=None):
     # see it at all -- the same accounting gap the advice arm hit in July.
     # attribute_tierb's task gate ("pairs") keeps them out of Tier B rows.
     # Petri lane sidecars (data/petri/runs/<run>/<run>.report.json, 2026-09-16) join
-    # the same fold; they carry an explicit billing_channel because Inspect names
+    # the same fold, and the glob takes the judge sidecars beside them too
+    # (<run>.judge.report.json, and a re-adapt's <run>.readapt_<id>.judge.report.json);
+    # they carry an explicit billing_channel because Inspect names
     # OpenRouter models `openrouter/...`, which the derivation above would not see.
     scan_specs = [(Path(args.simulated_dir), "*.report.json"),
                   (Path(args.advice_dir), "*.report.json"),
