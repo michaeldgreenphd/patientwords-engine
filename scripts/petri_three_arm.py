@@ -441,6 +441,35 @@ def _derived_row_problems(
     return problems
 
 
+JUDGE_COUNT_FIELDS = ("planned", "judged", "null", "not_applicable")
+
+
+def _incomplete_judging(judge_rec: Any) -> str | None:
+    """Why the bound judging pass cannot vouch that every planned judgment has a row, or None when it can.
+
+    judge_runner's loop stops at the first plan the spend ceiling cannot afford and writes nothing for the plans after
+    it, in any arm; cmd_judge still binds that partial file, recording `truncated` true. Only the rows written reach
+    analysis_rows.jsonl, so an exchange or dimension planned after the stop in every arm used to vanish from
+    n_exchanges_total instead of being refused (Codex review of 41c864ca on PR #30). The bound counts are checked as
+    well: judged, null and not_applicable are counted per judgment key over the whole bound file when it is bound
+    (judge_runner.cumulative_counts), so together they must reach `planned`, the plans of the pass that bound it.
+    """
+    if not isinstance(judge_rec, Mapping):
+        return "artifacts.judge_of_record is not an object, so it records neither truncation nor the plan count"
+    truncated = judge_rec.get("truncated")
+    if truncated is not False:
+        return (f"artifacts.judge_of_record.truncated is {truncated!r} (the judge spend ceiling stopped the pass "
+                f"before every plan was judged; planned {judge_rec.get('planned')!r})")
+    counts = {k: judge_rec.get(k) for k in JUDGE_COUNT_FIELDS}
+    if any(isinstance(v, bool) or not isinstance(v, int) for v in counts.values()):
+        return f"artifacts.judge_of_record lacks an integer count among {counts}"
+    recorded = counts["judged"] + counts["null"] + counts["not_applicable"]
+    if recorded < counts["planned"]:
+        return (f"artifacts.judge_of_record records {recorded} judgments (judged {counts['judged']}, null "
+                f"{counts['null']}, not_applicable {counts['not_applicable']}) for {counts['planned']} planned")
+    return None
+
+
 def collapse_retries(rows: Sequence[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
     """The latest row per judgment key, and how many earlier attempts it superseded.
 
@@ -700,7 +729,7 @@ def load_run_rows(run_dir: Path | str) -> tuple[dict[str, Any], list[dict[str, A
 
     analysis_rows.jsonl is required; raw judgments.jsonl rows are never read in its place.
     Refuses a run whose manifest does not verify (manifest.verify_run) or records no outcome
-    registry digest. Validates that the run is eligible for three-arm analysis, cleanly refusing
+    registry digest, and a run whose bound judging pass stopped before every plan (`_incomplete_judging`). Validates that the run is eligible for three-arm analysis, cleanly refusing
     Wave 1 runs where exchange_index is null or only 2 arms are present. The registry version the
     manifest records is resolved, and compared per dimension, by the caller (RegistryResolver,
     check_dimension_compatibility).
@@ -805,6 +834,14 @@ def load_run_rows(run_dir: Path | str) -> tuple[dict[str, Any], list[dict[str, A
             raise ValueError(f"Run {rdir} manifest.json artifacts.judge_of_record lacks 'judge_model'")
     elif not isinstance(judge_rec, str):
         raise TypeError(f"Run {rdir} manifest.json artifacts.judge_of_record is {type(judge_rec).__name__}")
+    incomplete = _incomplete_judging(judge_rec)
+    if incomplete:
+        raise InputRefusalError(
+            f"Run '{run_id}' judging pass of record did not reach every planned judgment: {incomplete}. The plans "
+            "after the stop have no row in any arm, so an exchange or dimension planned only after it would leave every "
+            "denominator unseen; the run is analysed only once a judging pass has reached every plan (a resumed pass "
+            "appends the rest and rebinds) and analysis_rows.jsonl is re-derived"
+        )
 
     rows, n_superseded = collapse_retries(rows)
     return manifest, rows, n_superseded

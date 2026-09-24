@@ -1171,6 +1171,49 @@ def test_manifest_lacking_judge_of_record_is_refused_by_name(tmp_path):
     assert str(run_dir) in msg
 
 
+def _judge_record(**change):
+    """A manifest_update that changes the bound judge_of_record's fields."""
+    return lambda m: m["artifacts"]["judge_of_record"].update(change)
+
+
+def test_truncated_judging_pass_is_refused_not_analysed_on_the_rows_it_wrote(tmp_path, capsys):
+    """judge_runner stops at the first plan the spend ceiling cannot afford and writes nothing after it, in any arm, yet
+    cmd_judge binds the partial file with judge_of_record.truncated true. The rows written looked like a complete run:
+    an exchange planned only after the stop (here exchange 2, in every arm) left n_exchanges_total with no refusal
+    (Codex review of 41c864ca on PR #30). Such a run is now refused by name."""
+    written = _three_arms(exchanges=(1,))  # exchange 2 was planned for every arm but never judged
+    template = TEMPLATE_MANIFEST["artifacts"]["judge_of_record"]
+    run_dir = _write_run(tmp_path, "run-truncated", written, manifest_update=_judge_record(truncated=True))
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    msg = str(exc_info.value)
+    assert "Run 'run-truncated' judging pass of record did not reach every planned judgment" in msg
+    assert "artifacts.judge_of_record.truncated is True (the judge spend ceiling stopped the pass" in msg
+    assert f"planned {template['planned']}" in msg
+
+    assert main(["--run-dir", str(run_dir)]) == 2
+    assert "REFUSED: Run 'run-truncated' judging pass of record" in capsys.readouterr().err
+
+
+def test_judging_pass_recording_fewer_judgments_than_plans_is_refused(tmp_path):
+    """The bound counts are a second check on the same gap: judged, null and not_applicable are counted per judgment
+    key over the whole bound file, so they reach `planned` whenever every plan has a row."""
+    template = TEMPLATE_MANIFEST["artifacts"]["judge_of_record"]
+    assert template["judged"] + template["null"] + template["not_applicable"] == template["planned"]
+    short = _write_run(tmp_path, "run-short", _three_arms(),
+                       manifest_update=_judge_record(planned=template["planned"] + 1))
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([short])
+    assert (f"records {template['planned']} judgments (judged {template['judged']}, null {template['null']}, "
+            f"not_applicable {template['not_applicable']}) for {template['planned'] + 1} planned") in str(exc_info.value)
+
+    complete = _write_run(tmp_path, "run-complete", _three_arms(), manifest_update=_judge_record(truncated=False))
+    assert analyze_run_directories([complete]).seeds["s1"].dimensions["response_only"].contrasts[
+        "colloquial_vs_clinical"].counts.n_compared == 1
+
+
 def test_manifest_outcome_registry_digest_matching_proceeds(tmp_path):
     """A run whose manifest framework.outcome_registry_sha256 matches loaded registry proceeds."""
     registry_sha = sha256_file(DEFAULT_OUTCOME_REGISTRY)
