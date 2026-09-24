@@ -2338,9 +2338,15 @@ def _petri_values_differ(key, mine, theirs):
 
 def _trigger_content_by_digest(repo, trigger, digest):
     """(commit, content) of the most recent version of the trigger file on this branch's history whose bytes
-    digest to `digest` (what `cmd_fire` journals as params_sha256), or None when no version does."""
+    digest to `digest` (what `cmd_fire` journals as params_sha256), or None when no version does.
+
+    `--full-history`, because a merge that keeps one side's trigger file hides the other side's versions from
+    git's default path simplification. The hand merge of a firing branch into main restores main's trigger files
+    (AGENTS.md, merge danger), so on main afterwards the source fire's commit is an ancestor but its version of
+    the file was not listed, and a readapt fired from main was refused as unrecoverable. The digest still binds
+    the content to the journal entry, so searching every ancestor's version admits nothing the digest does not."""
     rel = (TRIGGER_DIR_RELPATH / f"{trigger}.json").as_posix()
-    log = _git(repo, "log", "--format=%H", "--", rel)
+    log = _git(repo, "log", "--full-history", "--format=%H", "--", rel)
     if log.returncode != 0:
         return None
     for commit in log.stdout.split():

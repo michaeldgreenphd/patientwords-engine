@@ -240,6 +240,65 @@ def test_a_readapt_must_state_the_parameters_its_source_fire_ran_under(tmp_path)
     assert "0 journal entries carry the source nonce" in ft.petri_readapt_source_problems(repo, TRIGGER, readapt)[0]
 
 
+def test_the_source_fire_is_found_through_a_merge_that_kept_the_other_sides_trigger_file(tmp_path):
+    """The hand merge of a firing branch into main restores main's trigger files (AGENTS.md, merge danger), so the
+    merge commit's trigger file is main's and git's default path simplification drops the fired side: the source
+    fire's commit is an ancestor of main, but `git log -- <trigger file>` did not list it, and a readapt fired from
+    main was refused as unrecoverable. The search follows full history; the digest still binds the content."""
+    repo = tmp_path / "repo"
+    trigger_dir = repo / ".github" / "trigger"
+    trigger_dir.mkdir(parents=True)
+    (repo / ".github" / "workflows").mkdir(parents=True)
+    (repo / "ops").mkdir()
+    _git(tmp_path, "init", "-q", "-b", "main", str(repo))
+    (repo / ".github" / "workflows" / "petri_audit.yml").write_text(
+        "on:\n  push:\n    paths:\n      - \".github/trigger/petri-audit.json\"\n", encoding="utf-8")
+    trigger = trigger_dir / f"{TRIGGER}.json"
+    trigger.write_text(json.dumps(dict(ft.PARK_DEFAULTS[TRIGGER], _parked="true"), separators=(",", ":")) + "\n",
+                       encoding="utf-8")
+    journal = repo / "ops" / "trigger_journal.jsonl"
+    journal.write_text("", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "main, parked")
+    _git(repo, "switch", "-q", "-c", "side")
+    content = json.dumps(SOURCE_PARAMS, separators=(",", ":")) + "\n"
+    trigger.write_text(content, encoding="utf-8")
+    journal.write_text(json.dumps({"trigger": TRIGGER, "fired_utc": "2026-09-20T00:08:16Z", "commit": "",
+                                   "note": "source", "resolved": True, "evicted": False, "nonce": "w2e3",
+                                   "params_sha256": ft.params_digest(content), "ref": "side", "max_spend": 7.6,
+                                   "lane": "anthropic"}) + "\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "fire the source run")
+    fire_commit = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], check=True, capture_output=True,
+                                 text=True).stdout.strip()
+    trigger.write_text(json.dumps(dict(ft.PARK_DEFAULTS[TRIGGER], _parked="true", _nonce="side-park"),
+                                  separators=(",", ":")) + "\n", encoding="utf-8")
+    run_dir = repo / "data" / "petri" / "runs" / "run_4242_1"
+    run_dir.mkdir(parents=True)
+    (run_dir / "run_4242_1.report.json").write_text(json.dumps(
+        {"run_id": "run_4242_1", "eval_id": "E1", "journal_nonce": "w2e3", "eval_log": "x.eval", "run_status": "success",
+         "spend_report_reason": "run attempted; no adapted report exists (run or adaptation failed)"}), encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "park, and the source run's sidecar")
+    # the hand merge: main's copy of every trigger file is restored before the merge is committed
+    _git(repo, "switch", "-q", "main")
+    _git(repo, "merge", "-q", "--no-ff", "--no-commit", "side")
+    _git(repo, "restore", "--source=HEAD", "--staged", "--worktree", "--", ".github/trigger/")
+    _git(repo, "commit", "-q", "-m", "merge side, keeping main's trigger files")
+
+    def git_out(*argv: str) -> subprocess.CompletedProcess:
+        return subprocess.run(["git", "-C", str(repo), *argv], capture_output=True, text=True)
+
+    assert git_out("merge-base", "--is-ancestor", fire_commit, "HEAD").returncode == 0
+    assert fire_commit not in git_out("log", "--format=%H", "--", f".github/trigger/{TRIGGER}.json").stdout, \
+        "the case under test: default simplification hides the fired side's versions of the file"
+    readapt = {k: v for k, v in SOURCE_PARAMS.items() if not k.startswith("_")}
+    readapt.update(mode="readapt", source_run_id="4242", max_spend="6.1", _nonce="w2e3r")
+    assert ft.petri_readapt_source_problems(repo, TRIGGER, readapt) == []
+    problems = ft.petri_readapt_source_problems(repo, TRIGGER, dict(readapt, epochs="2"))
+    assert len(problems) == 1 and f"its trigger file at {fire_commit[:12]}" in problems[0], problems
+
+
 def test_a_readapt_of_a_run_whose_eval_did_not_complete_is_refused_at_the_fire_and_the_gate(tmp_path, capsys):
     """The fallback sidecar is written for an error or cancelled run too, and records the eval's status; mode run
     adapts only a `success` run, so the fire path refuses any other before it journals a reservation, and the
