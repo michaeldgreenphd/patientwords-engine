@@ -16,9 +16,17 @@ cannot be a restatement of an urgency difference. And every row that cannot be m
 counted and reported by reason rather than dropped (AGENTS.md: no silent failures) — a coverage
 figure below 1.0 with no stated reason is a defect, not a result.
 
+Judgments are read under one rubric. The advice archive keys a judgment by response, rubric
+digest and judge model, so the same judge can re-judge every response after a rubric change;
+pooling digests would mix classifications made under different rubrics and count a re-judged
+response twice. The judge of record's rows must therefore carry a single `rubric_sha256`, or
+one is chosen with --rubric-digest, and the tier order is read from the rubric file whose
+canonical digest equals it (--rubric), never assumed.
+
 Usage:
     python scripts/referral_destination.py [--advice-dir data/advice] [--boot 2000] [--seed 7]
-        [--judge claude-haiku-4-5] [--out referral_destination.json]
+        [--judge claude-haiku-4-5] [--rubric data/advice_rubric.draft.json]
+        [--rubric-digest <12 or more hex characters>] [--out referral_destination.json]
 """
 
 from __future__ import annotations
@@ -32,9 +40,16 @@ from collections import Counter, defaultdict
 from fractions import Fraction
 from typing import Any, Iterable
 
+try:  # imported as scripts.referral_destination (tests) vs run as a file from the repo root
+    from scripts.advice_eval import canonical_json, sha256_text
+except ImportError:
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from advice_eval import canonical_json, sha256_text
+
 VOCAB_PATH = "data/referral_destination_vocab.draft.json"
-TIER_LADDER = ["self_care", "routine", "urgent", "emergency"]
-TIER_RANK = {name: i for i, name in enumerate(TIER_LADDER)}
+RUBRIC_PATH = "data/advice_rubric.draft.json"
+MIN_DIGEST_PREFIX = 12
 PATIENT_ARMS = ("patient", "colloquial")
 CLINICAL_ARM = "clinical"
 
@@ -48,6 +63,49 @@ def load_vocab(path: str = VOCAB_PATH) -> dict[str, Any]:
         if not isinstance(terms, list) or not terms:
             raise ValueError(f"{path}: '{key}' must be a non-empty list; refusing to score an empty vocabulary")
     return vocab
+
+
+def select_rubric_digest(judgments: list[dict[str, Any]], judge: str, declared: str | None = None) -> str:
+    """The one rubric digest whose judgments are analysed.
+
+    With nothing declared, the judge of record's rows must all carry the same digest; two or more
+    is refused, naming each with its row count, rather than pooled. A declared digest may be a
+    prefix of at least MIN_DIGEST_PREFIX hex characters and must match exactly one digest present."""
+    present = Counter(row["rubric_sha256"] for row in judgments
+                      if row.get("judge_model") == judge and row.get("rubric_sha256"))
+    listing = ", ".join(f"{digest[:12]} ({n} rows)" for digest, n in sorted(present.items()))
+    if not present:
+        raise ValueError(f"no row from judge {judge!r} carries a rubric_sha256; refusing to pool rows of unknown rubric")
+    if declared is not None:
+        if len(declared) < MIN_DIGEST_PREFIX:
+            raise ValueError(f"--rubric-digest needs at least {MIN_DIGEST_PREFIX} hex characters, got {declared!r}")
+        matches = [digest for digest in present if digest.startswith(declared)]
+        if len(matches) != 1:
+            raise ValueError(f"--rubric-digest {declared!r} matches {len(matches)} of the digests judge {judge!r} "
+                             f"used: {listing}")
+        return matches[0]
+    if len(present) > 1:
+        raise ValueError(f"judge {judge!r} judged under {len(present)} rubric digests ({listing}); pooling them "
+                         "mixes classifications made under different rubrics and counts a re-judged response "
+                         "twice. Pass --rubric-digest to choose one.")
+    return next(iter(present))
+
+
+def load_rubric_tiers(path: str, digest: str) -> tuple[list[str], Any]:
+    """(tier ids least to most urgent, rubric version) from the rubric the judge was shown.
+
+    The file's canonical digest (advice_eval's canonical_json, the one written into every
+    judgment) must equal the selected digest; another rubric's tier order is refused, not used."""
+    with open(path, encoding="utf-8") as handle:
+        rubric = json.load(handle)
+    found = sha256_text(canonical_json(rubric))
+    if found != digest:
+        raise ValueError(f"{path} has canonical digest {found[:12]}, but the judgments analysed were made under "
+                         f"{digest[:12]}; the tier order must come from that rubric. Pass --rubric with its file.")
+    tiers = [tier.get("id") if isinstance(tier, dict) else None for tier in rubric.get("tiers") or []]
+    if not tiers or not all(isinstance(t, str) and t for t in tiers) or len(set(tiers)) != len(tiers):
+        raise ValueError(f"{path}: 'tiers' must be a non-empty list of distinct ids; refusing to rank by it")
+    return tiers, rubric.get("version")
 
 
 def _read_jsonl(paths: Iterable[str]) -> list[dict[str, Any]]:
@@ -79,12 +137,14 @@ def build_cells(
     judgments: list[dict[str, Any]],
     vocab: dict[str, Any],
     judge: str,
+    rubric_digest: str,
+    tier_rank: dict[str, int],
 ) -> tuple[dict[tuple[str, str], dict[str, list[tuple[int, bool, bool]]]], Counter]:
     """One entry per (stimulus, model, arm), each holding the per-sample triples
     (tier rank, names a specialist, names an emergency service).
 
-    Every judgment row the primary judge produced is either measured or counted in `skipped`
-    under a named reason. Nothing is dropped silently.
+    Every judgment row the primary judge produced under the selected rubric digest is either
+    measured or counted in `skipped` under a named reason. Nothing is dropped silently.
     """
     cells: dict[tuple[str, str], dict[str, list[tuple[int, bool, bool]]]] = defaultdict(lambda: defaultdict(list))
     skipped: Counter = Counter()
@@ -98,8 +158,15 @@ def build_cells(
             # it, so it is reported on its own line instead.
             skipped["_other_judge_out_of_scope"] += 1
             continue
+        if not row.get("rubric_sha256"):
+            skipped["judgment_missing_rubric_sha256"] += 1
+            continue
+        if row["rubric_sha256"] != rubric_digest:
+            # Same judge, another rubric: a different instrument, reported on its own line.
+            skipped["_other_rubric_digest_out_of_scope"] += 1
+            continue
         tier = row.get("tier")
-        if tier not in TIER_RANK:
+        if tier not in tier_rank:
             skipped["tier_absent_or_unrecognised"] += 1
             continue
         sha = row.get("response_sha256")
@@ -120,7 +187,7 @@ def build_cells(
                 break
         else:
             cells[(row["stimulus_id"], row["model"])][row["arm"]].append(
-                (TIER_RANK[tier], names_any(text, specialist), names_any(text, emergency))
+                (tier_rank[tier], names_any(text, specialist), names_any(text, emergency))
             )
     return cells, skipped
 
@@ -267,12 +334,16 @@ def pairing_report(cells: dict[tuple[str, str], dict[str, list[tuple[int, bool, 
     }
 
 
-def analyze(advice_dir: str, judge: str, boot: int, seed: int, vocab_path: str = VOCAB_PATH) -> dict[str, Any]:
+def analyze(advice_dir: str, judge: str, boot: int, seed: int, vocab_path: str = VOCAB_PATH,
+            rubric_path: str = RUBRIC_PATH, rubric_digest: str | None = None) -> dict[str, Any]:
     vocab = load_vocab(vocab_path)
     by_sha, judgments = load_corpus(advice_dir)
-    cells, skipped = build_cells(by_sha, judgments, vocab, judge)
+    digest = select_rubric_digest(judgments, judge, rubric_digest)
+    tiers, rubric_version = load_rubric_tiers(rubric_path, digest)
+    cells, skipped = build_cells(by_sha, judgments, vocab, judge, digest, {tier: i for i, tier in enumerate(tiers)})
     measured = sum(len(samples) for arms in cells.values() for samples in arms.values())
     out_of_scope = skipped.pop("_other_judge_out_of_scope", 0)
+    other_rubric = skipped.pop("_other_rubric_digest_out_of_scope", 0)
     unmeasurable = dict(sorted(skipped.items()))
     considered = measured + sum(unmeasurable.values())
     # Each estimate gets its own Random(seed): every stratum is then reproducible on its own,
@@ -291,6 +362,12 @@ def analyze(advice_dir: str, judge: str, boot: int, seed: int, vocab_path: str =
         "seed": seed,
         "boot": boot,
         "judge_of_record": judge,
+        "rubric": {
+            "path": rubric_path,
+            "sha256": digest,
+            "version": rubric_version,
+            "tier_order_least_to_most_urgent": tiers,
+        },
         "vocabulary": {
             "path": vocab_path,
             "status": vocab.get("status"),
@@ -310,6 +387,7 @@ def analyze(advice_dir: str, judge: str, boot: int, seed: int, vocab_path: str =
         "coverage": {
             "responses_indexed": len(by_sha),
             "rows_from_other_judges_out_of_scope": out_of_scope,
+            "judge_of_record_rows_under_other_rubric_digests_out_of_scope": other_rubric,
             "judge_of_record_rows_considered": considered,
             "judge_of_record_rows_measured": measured,
             "coverage_rate": round(measured / considered, 6) if considered else 0.0,
@@ -352,12 +430,15 @@ def estimate_tier(
 
 def format_summary(bundle: dict[str, Any]) -> str:
     lines = [
-        f"referral destination  seed={bundle['seed']}  boot={bundle['boot']}  judge={bundle['judge_of_record']}",
+        f"referral destination  seed={bundle['seed']}  boot={bundle['boot']}  judge={bundle['judge_of_record']}"
+        f"  rubric={bundle['rubric']['sha256'][:12]}",
         f"  vocabulary {bundle['vocabulary']['path']} ({bundle['vocabulary']['status']})",
         f"  coverage {bundle['coverage']['judge_of_record_rows_measured']}"
         f"/{bundle['coverage']['judge_of_record_rows_considered']}"
         f" = {bundle['coverage']['coverage_rate']:.4f}"
-        f"   ({bundle['coverage']['rows_from_other_judges_out_of_scope']} rows from other judges, out of scope)",
+        f"   ({bundle['coverage']['rows_from_other_judges_out_of_scope']} rows from other judges and"
+        f" {bundle['coverage']['judge_of_record_rows_under_other_rubric_digests_out_of_scope']} under other rubric"
+        f" digests, out of scope)",
     ]
     for reason, count in bundle["coverage"]["unmeasurable_by_reason"].items():
         lines.append(f"    unmeasurable {count:>6}  {reason}")
@@ -401,6 +482,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=7,
                         help="fixed RNG seed (deterministic; not system entropy), recorded in the output")
     parser.add_argument("--vocab", default=VOCAB_PATH, help="term list, as data")
+    parser.add_argument("--rubric", default=RUBRIC_PATH,
+                        help="the rubric the judgments were made under; its canonical digest must match, and its "
+                             "tier order ranks the tiers")
+    parser.add_argument("--rubric-digest", default=None,
+                        help="the rubric digest to analyse (a prefix of 12 or more hex characters); required when "
+                             "the judge of record's rows carry more than one")
     parser.add_argument("--out", default="referral_destination.json", help="write the bundle here")
     parser.add_argument("--quiet", action="store_true", help="suppress the text summary")
     return parser.parse_args(argv)
@@ -408,7 +495,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    bundle = analyze(args.advice_dir, args.judge, args.boot, args.seed, args.vocab)
+    bundle = analyze(args.advice_dir, args.judge, args.boot, args.seed, args.vocab, args.rubric, args.rubric_digest)
     with open(args.out, "w", encoding="utf-8") as handle:
         json.dump(bundle, handle, indent=2, sort_keys=False)
         handle.write("\n")

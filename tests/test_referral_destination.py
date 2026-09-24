@@ -11,6 +11,7 @@ import json
 import pytest
 
 from scripts import referral_destination as rd
+from scripts.advice_eval import canonical_json, sha256_text
 
 
 def _vocab_file(tmp_path, specialist=None, emergency=None):
@@ -26,25 +27,51 @@ def _vocab_file(tmp_path, specialist=None, emergency=None):
     return str(path)
 
 
+TEST_TIERS = ["self_care", "routine", "urgent", "emergency"]
+
+
+def _rubric_file(tmp_path, tiers=None, name="rubric.json", version="test"):
+    """A rubric file and its canonical digest, computed the way advice_eval's judge stamps it."""
+    rubric = {"version": version, "tiers": [{"id": t} for t in (tiers or TEST_TIERS)]}
+    path = tmp_path / name
+    path.write_text(json.dumps(rubric), encoding="utf-8")
+    return str(path), sha256_text(canonical_json(rubric))
+
+
 def _corpus(tmp_path, rows):
-    """rows: (stimulus, model, arm, tier, text, judge). Writes the two JSONL families the
-    script reads and returns the directory."""
+    """rows: (stimulus, model, arm, tier, text, judge[, rubric digest]). Writes the two JSONL
+    families the script reads and returns the directory. A row without a seventh member carries
+    the digest of the default test rubric; a seventh member of None omits the field."""
     advice = tmp_path / "advice"
     advice.mkdir()
+    _, default_digest = _rubric_file(tmp_path)
     responses, judgments = [], []
-    for i, (stimulus, model, arm, tier, text, judge) in enumerate(rows):
+    for i, row in enumerate(rows):
+        stimulus, model, arm, tier, text, judge = row[:6]
+        digest = row[6] if len(row) > 6 else default_digest
         sha = f"sha{i:03d}"
         if text is not None:
             responses.append({"response_sha256": sha, "response_text": text})
-        judgments.append({
+        judgment = {
             "response_sha256": sha, "stimulus_id": stimulus, "model": model,
             "arm": arm, "tier": tier, "judge_model": judge,
-        })
+        }
+        if digest is not None:
+            judgment["rubric_sha256"] = digest
+        judgments.append(judgment)
     (advice / "responses_stimuli_x.jsonl").write_text(
         "".join(json.dumps(r) + "\n" for r in responses), encoding="utf-8")
     (advice / "judgments_stimuli_x.jsonl").write_text(
         "".join(json.dumps(j) + "\n" for j in judgments), encoding="utf-8")
     return str(advice)
+
+
+def _analyze(tmp_path, advice, **kwargs):
+    kwargs.setdefault("judge", "primary")
+    kwargs.setdefault("boot", 50)
+    kwargs.setdefault("seed", 7)
+    kwargs.setdefault("rubric_path", str(tmp_path / "rubric.json"))
+    return rd.analyze(advice, **kwargs)
 
 
 def test_an_empty_vocabulary_is_refused_rather_than_scoring_zero(tmp_path):
@@ -64,7 +91,7 @@ def test_rows_from_another_judge_do_not_count_against_coverage(tmp_path):
         ("s1", "m1", "clinical", "routine", "see a cardiologist", "secondary"),
         ("s1", "m1", "patient", "routine", "see your doctor", "secondary"),
     ])
-    bundle = rd.analyze(advice, judge="primary", boot=50, seed=7, vocab_path=_vocab_file(tmp_path))
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
     cov = bundle["coverage"]
     assert cov["rows_from_other_judges_out_of_scope"] == 2
     assert cov["judge_of_record_rows_considered"] == 2
@@ -79,7 +106,7 @@ def test_a_judgment_with_no_response_record_is_counted_not_dropped(tmp_path):
         ("s1", "m1", "patient", "routine", "see your doctor", "primary"),
         ("s2", "m1", "clinical", "routine", None, "primary"),
     ])
-    bundle = rd.analyze(advice, judge="primary", boot=50, seed=7, vocab_path=_vocab_file(tmp_path))
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
     reasons = bundle["coverage"]["unmeasurable_by_reason"]
     assert reasons.get("no_response_record_for_this_judgment") == 1
     assert bundle["coverage"]["judge_of_record_rows_considered"] == 3
@@ -99,7 +126,7 @@ def test_a_cell_missing_an_arm_is_listed_and_its_rows_accounted_for(tmp_path):
         ("s2", "m1", "clinical", "urgent", "see a cardiologist", "primary"),
         ("s2", "m1", "translated", "routine", "see a cardiologist", "primary"),
     ])
-    bundle = rd.analyze(advice, judge="primary", boot=50, seed=7, vocab_path=_vocab_file(tmp_path))
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
     cov = bundle["coverage"]
     assert cov["cells_with_both_arms"] == 1
     assert cov["cells_missing_an_arm"] == [
@@ -118,7 +145,7 @@ def test_an_unrecognised_tier_is_named_rather_than_ranked_as_zero(tmp_path):
         ("s1", "m1", "patient", "routine", "see your doctor", "primary"),
         ("s2", "m1", "clinical", "not_applicable", "no advice", "primary"),
     ])
-    bundle = rd.analyze(advice, judge="primary", boot=50, seed=7, vocab_path=_vocab_file(tmp_path))
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
     assert bundle["coverage"]["unmeasurable_by_reason"].get("tier_absent_or_unrecognised") == 1
 
 
@@ -131,7 +158,7 @@ def test_the_tier_identical_stratum_drops_cells_whose_arms_differ_on_tier(tmp_pa
         ("diff", "m1", "clinical", "urgent", "see a cardiologist", "primary"),
         ("diff", "m1", "patient", "self_care", "see your doctor", "primary"),
     ])
-    bundle = rd.analyze(advice, judge="primary", boot=50, seed=7, vocab_path=_vocab_file(tmp_path))
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
     spec = bundle["readouts"]["names_specialist_service"]
     assert spec["all_cells"]["cells"] == 2
     assert spec["tier_identical_cells"]["cells"] == 1
@@ -154,7 +181,7 @@ def test_the_tier_identical_stratum_compares_modal_tiers_not_rounded_mean_ranks(
         ("tie", "m1", "patient", "urgent", "see your doctor", "primary"),
         ("tie", "m1", "clinical", "urgent", "see a cardiologist", "primary"),
     ])
-    bundle = rd.analyze(advice, judge="primary", boot=50, seed=7, vocab_path=_vocab_file(tmp_path))
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
     spec = bundle["readouts"]["names_specialist_service"]
     assert spec["all_cells"]["cells"] == 2
     assert spec["tier_identical_cells"]["cells"] == 1
@@ -168,9 +195,10 @@ def test_modal_rank_is_the_registered_per_cell_summary():
     from scripts.advice_eval import _modal_tier
 
     for size in range(1, 5):
-        for ranks in combinations_with_replacement(range(len(rd.TIER_LADDER)), size):
-            names = [rd.TIER_LADDER[r] for r in ranks]
-            assert rd.TIER_LADDER[rd.modal_rank(list(ranks))] == _modal_tier(names, rd.TIER_RANK)
+        for ranks in combinations_with_replacement(range(len(TEST_TIERS)), size):
+            names = [TEST_TIERS[r] for r in ranks]
+            rank = {tier: i for i, tier in enumerate(TEST_TIERS)}
+            assert TEST_TIERS[rd.modal_rank(list(ranks))] == _modal_tier(names, rank)
 
 
 def test_the_specialist_difference_has_the_sign_the_construct_predicts(tmp_path):
@@ -179,7 +207,7 @@ def test_the_specialist_difference_has_the_sign_the_construct_predicts(tmp_path)
         ("s1", "m1", "clinical", "routine", "see a cardiologist", "primary"),
         ("s1", "m1", "patient", "routine", "see your doctor", "primary"),
     ])
-    bundle = rd.analyze(advice, judge="primary", boot=50, seed=7, vocab_path=_vocab_file(tmp_path))
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
     assert bundle["readouts"]["names_specialist_service"]["all_cells"]["patient_minus_clinical"] == -1.0
 
 
@@ -202,7 +230,7 @@ def test_a_model_at_zero_is_tied_not_agreeing_even_through_float_noise(tmp_path)
         ("s4", "noise", "clinical", "routine", "see a cardiologist", "primary"),
         ("s4", "noise", "clinical", "routine", "see your doctor", "primary"),
     ])
-    bundle = rd.analyze(advice, judge="primary", boot=50, seed=7, vocab_path=_vocab_file(tmp_path))
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
     res = bundle["readouts"]["names_specialist_service"]["all_cells"]
     assert res["patient_minus_clinical"] > 0
     assert res["models_agreeing_in_sign"] == 1
@@ -218,7 +246,7 @@ def test_an_estimate_of_exactly_zero_has_no_direction_to_agree_with(tmp_path):
         ("s1", "m1", "patient", "routine", "see your doctor", "primary"),
         ("s1", "m1", "clinical", "routine", "see your doctor", "primary"),
     ])
-    bundle = rd.analyze(advice, judge="primary", boot=50, seed=7, vocab_path=_vocab_file(tmp_path))
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
     res = bundle["readouts"]["names_specialist_service"]["all_cells"]
     assert res["models_agreeing_in_sign"] is None and res["models_opposing_sign"] is None
     assert res["models_tied_at_zero"] == 1
@@ -231,7 +259,7 @@ def test_the_colloquial_arm_name_is_accepted_as_the_patient_side(tmp_path):
         ("s1", "m1", "clinical", "routine", "see a cardiologist", "primary"),
         ("s1", "m1", "colloquial", "routine", "see your doctor", "primary"),
     ])
-    bundle = rd.analyze(advice, judge="primary", boot=50, seed=7, vocab_path=_vocab_file(tmp_path))
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
     assert bundle["readouts"]["names_specialist_service"]["all_cells"]["cells"] == 1
 
 
@@ -240,7 +268,7 @@ def test_an_empty_comparable_set_refuses_rather_than_reporting_a_number(tmp_path
     fabricated null."""
     advice = _corpus(tmp_path, [("s1", "m1", "clinical", "routine", "see a cardiologist", "primary")])
     with pytest.raises(ValueError, match="no comparable cells"):
-        rd.analyze(advice, judge="primary", boot=50, seed=7, vocab_path=_vocab_file(tmp_path))
+        _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
 
 
 def test_the_seed_is_recorded_and_the_run_is_reproducible(tmp_path):
@@ -253,11 +281,11 @@ def test_the_seed_is_recorded_and_the_run_is_reproducible(tmp_path):
         ("s2", "m2", "patient", "urgent", "rest at home", "primary"),
     ])
     vocab = _vocab_file(tmp_path)
-    first = rd.analyze(advice, judge="primary", boot=200, seed=7, vocab_path=vocab)
-    second = rd.analyze(advice, judge="primary", boot=200, seed=7, vocab_path=vocab)
+    first = _analyze(tmp_path, advice, boot=200, seed=7, vocab_path=vocab)
+    second = _analyze(tmp_path, advice, boot=200, seed=7, vocab_path=vocab)
     assert first["seed"] == 7
     assert first["readouts"] == second["readouts"]
-    other = rd.analyze(advice, judge="primary", boot=200, seed=8, vocab_path=vocab)
+    other = _analyze(tmp_path, advice, boot=200, seed=8, vocab_path=vocab)
     assert other["seed"] == 8
 
 
@@ -268,6 +296,93 @@ def test_the_vocabulary_status_rides_the_output(tmp_path):
         ("s1", "m1", "clinical", "routine", "see a cardiologist", "primary"),
         ("s1", "m1", "patient", "routine", "see your doctor", "primary"),
     ])
-    bundle = rd.analyze(advice, judge="primary", boot=50, seed=7, vocab_path=_vocab_file(tmp_path))
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
     assert bundle["vocabulary"]["status"] == "test"
     assert bundle["limitation"] == "test note"
+
+
+def _two_rubric_corpus(tmp_path):
+    """The same responses judged by the same judge under rubric A and again under rubric B, which
+    is what a rubric revision followed by a re-judge leaves in the append-only archive. Rubric B
+    splits s1's arms by two tiers; s2 agrees under both, so the tier-identical stratum is never
+    empty."""
+    _, digest_b = _rubric_file(tmp_path, name="rubric_b.json", version="b")
+    advice = _corpus(tmp_path, [
+        ("s1", "m1", "clinical", "routine", "see a cardiologist", "primary"),
+        ("s1", "m1", "patient", "routine", "see your doctor", "primary"),
+        ("s2", "m1", "clinical", "routine", "see a cardiologist", "primary"),
+        ("s2", "m1", "patient", "routine", "see your doctor", "primary"),
+        ("s1", "m1", "clinical", "urgent", "see a cardiologist", "primary", digest_b),
+        ("s1", "m1", "patient", "self_care", "see your doctor", "primary", digest_b),
+        ("s2", "m1", "clinical", "routine", "see a cardiologist", "primary", digest_b),
+        ("s2", "m1", "patient", "routine", "see your doctor", "primary", digest_b),
+    ])
+    return advice, digest_b
+
+
+def test_two_rubric_digests_from_the_judge_of_record_are_refused_not_pooled(tmp_path):
+    """Codex, PR #29: filtering on the judge alone pooled every rubric that judge was run under,
+    mixing classifications and counting each re-judged response twice."""
+    advice, _ = _two_rubric_corpus(tmp_path)
+    with pytest.raises(ValueError, match=r"2 rubric digests .*\(4 rows\).*--rubric-digest"):
+        _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
+
+
+def test_a_declared_rubric_digest_selects_its_rows_and_reports_the_rest(tmp_path):
+    advice, digest_b = _two_rubric_corpus(tmp_path)
+    _, digest_a = _rubric_file(tmp_path)
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path), rubric_digest=digest_a[:12])
+    cov = bundle["coverage"]
+    assert bundle["rubric"]["sha256"] == digest_a
+    assert bundle["rubric"]["tier_order_least_to_most_urgent"] == TEST_TIERS
+    assert cov["judge_of_record_rows_under_other_rubric_digests_out_of_scope"] == 4
+    assert cov["judge_of_record_rows_considered"] == cov["judge_of_record_rows_measured"] == 4
+    assert bundle["urgency_tier_for_comparison"]["all_cells"]["patient_minus_clinical_tier_ranks"] == 0.0
+
+    rubric_b = str(tmp_path / "rubric_b.json")
+    other = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path), rubric_digest=digest_b, rubric_path=rubric_b)
+    assert other["urgency_tier_for_comparison"]["all_cells"]["patient_minus_clinical_tier_ranks"] == -1.0
+
+
+def test_a_short_or_unmatched_rubric_digest_is_refused(tmp_path):
+    advice, _ = _two_rubric_corpus(tmp_path)
+    with pytest.raises(ValueError, match="at least 12"):
+        _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path), rubric_digest="abc")
+    with pytest.raises(ValueError, match="matches 0"):
+        _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path), rubric_digest="0" * 12)
+
+
+def test_a_judgment_without_a_rubric_digest_is_counted_not_pooled(tmp_path):
+    advice = _corpus(tmp_path, [
+        ("s1", "m1", "clinical", "routine", "see a cardiologist", "primary"),
+        ("s1", "m1", "patient", "routine", "see your doctor", "primary"),
+        ("s2", "m1", "clinical", "routine", "see a cardiologist", "primary", None),
+    ])
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path))
+    assert bundle["coverage"]["unmeasurable_by_reason"] == {"judgment_missing_rubric_sha256": 1}
+
+
+def test_the_rubric_in_hand_must_be_the_one_the_judge_was_shown(tmp_path):
+    """The tier order is read from the rubric whose canonical digest the judgments carry; a
+    different rubric file is refused rather than used to rank the tiers."""
+    advice = _corpus(tmp_path, [
+        ("s1", "m1", "clinical", "routine", "see a cardiologist", "primary"),
+        ("s1", "m1", "patient", "routine", "see your doctor", "primary"),
+    ])
+    other_path, _ = _rubric_file(tmp_path, name="other.json", version="other")
+    with pytest.raises(ValueError, match="canonical digest"):
+        _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path), rubric_path=other_path)
+
+
+def test_the_tier_order_comes_from_the_rubric_not_from_code(tmp_path):
+    """A rubric listing the same tiers in the opposite order reverses the tier comparison: the
+    ranking is data, read from the rubric the judge used."""
+    reversed_path, reversed_digest = _rubric_file(tmp_path, tiers=TEST_TIERS[::-1], name="reversed.json")
+    advice = _corpus(tmp_path, [
+        ("s1", "m1", "clinical", "urgent", "see a cardiologist", "primary", reversed_digest),
+        ("s1", "m1", "patient", "routine", "see your doctor", "primary", reversed_digest),
+        ("s2", "m1", "clinical", "routine", "see a cardiologist", "primary", reversed_digest),
+        ("s2", "m1", "patient", "routine", "see your doctor", "primary", reversed_digest),
+    ])
+    bundle = _analyze(tmp_path, advice, vocab_path=_vocab_file(tmp_path), rubric_path=reversed_path)
+    assert bundle["urgency_tier_for_comparison"]["all_cells"]["patient_minus_clinical_tier_ranks"] == 0.5
