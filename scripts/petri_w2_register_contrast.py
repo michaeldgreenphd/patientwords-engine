@@ -21,7 +21,12 @@ What it computes, clause by clause:
   identity seed pooled into one scenario); leave-one-scenario-out reruns of the primary test; the planned replication
   on the prospective partition; the proportion of triples with D < 0, the median and mean of D; the 95% t interval
   across scenario means (df = k - 1); a percentile bootstrap over triples labelled unclustered, seeded with
-  random.Random(seed); and the row of 10.2's wording table the results select.
+  random.Random(seed); and the row of 10.2's wording table the results select. Three readings are recorded in 10.8
+  (2026-09-24, owner decisions): no non-tied triple in the primary contrast selects "not_computable", never row 5; a
+  scenario gate significant in the direction opposite to the primary test selects "no_prespecified_row", as 10.3's gap
+  is handled; and a gate that ran on fewer scenarios than the plan's eight lists each missing scenario with its reason,
+  marks the t interval's df as departing from the plan's 7, and marks the row not selectable as registered. A t
+  interval over equal scenario means, and a bootstrap over one value or equal values, are flagged degenerate.
 - 10.3 On the second set only: sign tests on D(colloquial, careful lay) (style), D(careful lay, clinical) (vocabulary)
   and the paired difference D(style) - D(vocabulary), all on three-way complete exchanges, Holm-corrected together.
 - 10.4 Sensitivity analyses of the primary contrast: without clinician-speaker triples; exchange 1 only; exchanges 6 to
@@ -29,22 +34,37 @@ What it computes, clause by clause:
   the scenario gate reported as the equal-weight-per-scenario test.
 - 10.5 Exploratory secondary outcomes, each D(colloquial, clinical) with an exact sign test, Holm-corrected as one
   family of four: referral_specificity on the referral seeds, recommendation_specificity, safety_netting_presence and
-  the rubric's clarifying-question flag (read from the response-only tier rows). safety_netting_baseline_persistence is
-  checked and pooled only under its current prompt digest (89c364059cb8, decision 13); section 10 names no statistic
-  for that nominal dimension, so its coverage is reported and no contrast of it is computed.
+  the rubric's clarifying-question flag (read from the response-only tier rows; the artifact names that instrument).
+  safety_netting_baseline_persistence is checked and pooled only under its current prompt digest (89c364059cb8,
+  decision 13); it has seven unordered values and section 10 names no statistic for it, so its coverage is reported
+  and no contrast of it is computed.
 - 10.6 No peeking. Register contrasts are computed ONLY under --final. Without it the script validates every input and
   prints coverage alone (runs, triples found, exclusions with reasons, digests); no D, sign, tie count or test is
-  computed, printed or written.
-- 10.7 Inputs. Each run's analysis rows are rebuilt from its judgments.jsonl and manifest.json through the current
-  `judge_runner.analysis_rows` (the function `analyze` calls), with the seed file of record; a committed
-  analysis_rows.jsonl is never opened and is refused as an input. Every run must pass `manifest.verify_run`, so its
-  judgments are the bytes its manifest bound. Each run's recorded outcome registry is resolved by sha256 (a file given
-  with --registry-version, the loaded registry, or this repository's git history), and every analysed dimension is
-  pooled only where the registry versions of the runs contributing rows define it identically and its rows carry one
-  prompt digest; otherwise the dimension is refused by name (10.6: no pooling across judge prompts or rubric digests).
+  computed, printed or written, and the exclusion counts of the 10.5 outcomes are given without their register label.
+  Under --final the script refuses: a plan other than the committed default plan file, or that file with uncommitted
+  changes; a rubric whose digest is not the one the plan pins (10.1's bd4aa5596b81); a bootstrap seed other than
+  20260923; an --out file that exists; a missing fire without --declare-truncated; --declare-truncated when no fire is
+  missing, or when ops/trigger_journal.jsonl (read, never written) does not show every missing fire fired and resolved.
+  The analysis as first written (10.6, 10.8) is reported beside the amended one, labelled secondary: the same triples,
+  tests and wording selection on each run's committed analysis_rows.jsonl as it landed. A row without the digest the
+  first-written 10.1 requires is not comparable there, so wave-2 epoch 1's triples drop out of that block by name.
+- 10.7 Inputs. The amended analysis rebuilds each run's rows from its judgments.jsonl and manifest.json through the
+  current `judge_runner.analysis_rows` (the function `analyze` calls), with the seed file of record, after collapsing
+  retried judgments to the latest per key (the count is recorded); it never reads a committed analysis_rows.jsonl,
+  which only the as-first-written block opens, and which is refused as an input path. Every run must pass
+  `manifest.verify_run`, so its judgments are the bytes its manifest bound. Each run's recorded outcome registry is
+  resolved by sha256 (a file given with --registry-version, the loaded registry, or this repository's git history). An
+  outcome dimension is pooled only where the registry versions of the runs contributing rows agree on the fields that
+  define its measurement (values, ordinal, scope, detection.judge_prompt_ref) and its rows carry one prompt digest;
+  otherwise it is refused by name (10.6: no pooling across judge prompts or rubric digests). A registry version that
+  cannot be resolved refuses only the outcome dimensions that run contributes rows to. The two tier instruments'
+  registry entries are compared and recorded, never refused on: tier rows are held to the rubric digest instead.
 
 Nothing is dropped silently (AGENTS.md): a missing input, a malformed row, an absent conversation, an exchange that is
 not comparable and a triple below its floor are each refused by name or counted with the reason.
+
+Provenance: the artifact records the commit it ran from and, for the script, the plan, judge_runner.py, the seed file,
+the rubric and the loaded outcome registry, each file's sha256 and any uncommitted change git reports for it.
 
 Run: python scripts/petri_w2_register_contrast.py                   # coverage only, every run under data/petri/runs
      python scripts/petri_w2_register_contrast.py --final --out X.json   # the once-only final analysis
@@ -99,9 +119,14 @@ except ModuleNotFoundError:  # run as a file path: the repository root is not on
     from scripts.petri_audit.manifest import verify_run
     from scripts.petri_audit.seeds import load_seed_file, texts_by_key
 
-SCRIPT_VERSION = "1.0"
+SCRIPT_VERSION = "1.1"
+# the one plan --final reads (10.6): the committed default; the repository whose git status decides "committed"
 PLAN_FILE = ROOT / "data" / "petri" / "w2_register_contrast_plan.json"
+REPO_ROOT = ROOT
 RUNS_DIR = ROOT / "data" / "petri" / "runs"
+# read only, to show that a fire missing from a declared-truncated final analysis was fired and resolved (10.1)
+JOURNAL_FILE = ROOT / "ops" / "trigger_journal.jsonl"
+JOURNAL_TRIGGER = "petri-audit"
 # the lane digests this file into every manifest (framework.outcome_registry_sha256), so a run's recorded version is
 # looked up in this path's git history
 REGISTRY_HISTORY_PATH = OUTCOME_REGISTRY.relative_to(ROOT).as_posix()
@@ -122,6 +147,11 @@ REGISTERS = (COLLOQUIAL, CAREFUL_LAY, CLINICAL)
 EXCLUDED_SPEAKER = "clinician"
 NOT_APPLICABLE = judge_runner.NA
 PARTITIONS = ("discovery", "prospective")
+NO_DIGEST = "none recorded"
+# the fields of an outcome dimension's registry entry that define its measurement (owner decision 2026-09-24, 10.8):
+# the declared values in their listed order, whether that order is a scale, what the judge is shown, and the prompt
+# file that asks. Names, definitions, notes and status are prose, so an edit there never refuses a measure.
+OUTCOME_DEFINING_FIELDS = ("values", "ordinal", "scope", "detection.judge_prompt_ref")
 
 
 class AnalysisRefusal(Exception):
@@ -167,10 +197,11 @@ SECONDARY_MEASURES = (                                                          
     Measure("recommendation_specificity", "outcome", "recommendation_specificity"),
     Measure("safety_netting_presence", "outcome", "safety_netting_presence"),
     # the advice rubric's flag rides every tier judgment (design note section 8, decision 9); the response-only row is
-    # the one 10.1's outcome reads, so the flag is taken from it
+    # the one 10.1's outcome reads, so the flag is taken from it, and the artifact names that instrument (10.8)
     Measure("clarifying_question_flag", "tier", "response_only", flag="clarifying_question"),
 )
-# 10.5: analysed only under the current prompt; no statistic is named for it (it is nominal: no `ordinal` flag)
+# 10.5: analysed only under the current prompt; no statistic is named for it, and none exists: its seven values carry no
+# `ordinal` flag, so they have no order, and D is defined only on ranks (10.8)
 COVERAGE_ONLY_MEASURES = (
     Measure("safety_netting_baseline_persistence", "outcome", "safety_netting_baseline_persistence"),
 )
@@ -229,13 +260,26 @@ class Plan:
     partition_triples: dict[str, int]
     decomposition_set: str
     secondary_outcome_seeds: dict[str, tuple[str, ...]]
+    rubric_digest: str                    # 10.1's rubric digest, pinned; --final refuses a rubric with another
 
-    def set_of(self, seed_id: str) -> str:
-        return next(name for name, seeds in self.sets.items() if seed_id in seeds)
+    @property
+    def scenarios(self) -> list[str]:
+        """Every plan scenario (one per seed, 10.1), in plan order: the k of 10.2's gate is len(scenarios)."""
+        return [s for seeds in self.sets.values() for s in seeds]
+
+
+def _count(value: Any) -> bool:
+    """A JSON integer that is not a boolean."""
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _seed_list(value: Any) -> bool:
+    return isinstance(value, list) and all(isinstance(s, str) and s for s in value)
 
 
 def load_plan(path: Path | str = PLAN_FILE) -> Plan:
-    """The plan's fixed structure, refused by name when a field is absent or malformed."""
+    """The plan's fixed structure, refused by name when a field is absent or malformed: every malformed entry is
+    reported as a named problem, never raised as a KeyError, TypeError or ValueError from deep inside."""
     path = Path(path)
     if not path.is_file():
         raise AnalysisRefusal(f"plan file {path} not found")
@@ -243,50 +287,81 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
         doc = load_json(path)
     except ValueError as exc:
         raise AnalysisRefusal(f"plan file {path} does not parse: {exc}") from exc
+    if not isinstance(doc, dict):
+        raise AnalysisRefusal(f"plan file {path} is not a JSON object")
     problems: list[str] = []
     for key in ("scenario_sets", "fires", "final_triples", "partition_triples", "decomposition_set",
-                "secondary_outcome_seeds"):
+                "secondary_outcome_seeds", "rubric_digest"):
         if key not in doc:
             problems.append(f"missing {key!r}")
     if problems:
         raise AnalysisRefusal(f"plan file {path}: " + "; ".join(problems))
-    sets = {name: tuple(seeds) for name, seeds in doc["scenario_sets"].items()}
+    raw_sets = doc["scenario_sets"]
+    if not isinstance(raw_sets, dict) or not raw_sets or not all(_seed_list(v) and v for v in raw_sets.values()):
+        raise AnalysisRefusal(f"plan file {path}: scenario_sets must map each set name to a non-empty list of seed ids")
+    sets = {name: tuple(seeds) for name, seeds in raw_sets.items()}
     every = [s for seeds in sets.values() for s in seeds]
     if len(every) != len(set(every)):
         problems.append("a seed is listed in more than one scenario set, or twice")
     fires: dict[str, Fire] = {}
-    for f in doc["fires"]:
+    raw_fires = doc["fires"]
+    if not isinstance(raw_fires, list) or not raw_fires:
+        problems.append("fires must be a non-empty list of fire objects")
+        raw_fires = []
+    for i, f in enumerate(raw_fires, 1):
+        if not isinstance(f, dict):
+            problems.append(f"fire entry {i} is a JSON {type(f).__name__}, not an object")
+            continue
         nonce = f.get("journal_nonce")
         if not isinstance(nonce, str) or not nonce or nonce in fires:
-            problems.append(f"fire {f!r}: journal_nonce missing or repeated")
+            problems.append(f"fire entry {i}: journal_nonce {nonce!r} missing, not a string, or repeated")
             continue
         if f.get("partition") not in PARTITIONS:
             problems.append(f"fire {nonce}: partition {f.get('partition')!r} is not one of {list(PARTITIONS)}")
-        epochs = f.get("campaign_epochs") or {}
+        epochs = f.get("campaign_epochs")
+        if not isinstance(epochs, dict) or not epochs:
+            problems.append(f"fire {nonce}: campaign_epochs must be a non-empty object of scenario set -> epoch")
+            continue
         unknown = sorted(set(epochs) - set(sets))
-        if unknown or not epochs:
-            problems.append(f"fire {nonce}: campaign_epochs names unknown or no scenario sets ({unknown})")
-        fires[nonce] = Fire(nonce, {k: int(v) for k, v in epochs.items()}, f.get("partition"))
+        if unknown:
+            problems.append(f"fire {nonce}: campaign_epochs names unknown scenario sets {unknown}")
+        bad = {k: v for k, v in epochs.items() if not _count(v) or v < 1}
+        if bad:
+            problems.append(f"fire {nonce}: campaign epochs {bad} are not positive integers")
+            continue
+        fires[nonce] = Fire(nonce, dict(epochs), f.get("partition"))
     for name in sets:
-        epochs = sorted(f.campaign_epochs[name] for f in fires.values() if name in f.campaign_epochs)
-        if epochs != list(range(1, len(epochs) + 1)):
-            problems.append(f"scenario set {name!r}: campaign epochs {epochs} are not 1..n, each once")
-    if doc["decomposition_set"] not in sets:
+        epochs_of = sorted(f.campaign_epochs[name] for f in fires.values() if name in f.campaign_epochs)
+        if epochs_of != list(range(1, len(epochs_of) + 1)):
+            problems.append(f"scenario set {name!r}: campaign epochs {epochs_of} are not 1..n, each once")
+    if not isinstance(doc["decomposition_set"], str) or doc["decomposition_set"] not in sets:
         problems.append(f"decomposition_set {doc['decomposition_set']!r} is not a scenario set")
-    restricted = {k: tuple(v) for k, v in doc["secondary_outcome_seeds"].items()}
+    raw_restricted = doc["secondary_outcome_seeds"]
+    if not isinstance(raw_restricted, dict) or not all(_seed_list(v) for v in raw_restricted.values()):
+        problems.append("secondary_outcome_seeds must map each outcome to a list of seed ids")
+        raw_restricted = {}
+    restricted = {k: tuple(v) for k, v in raw_restricted.items()}
     for name, seeds in restricted.items():
         if name not in {m.name for m in SECONDARY_MEASURES}:
             problems.append(f"secondary_outcome_seeds names {name!r}, which is not a 10.5 outcome")
         stray = sorted(set(seeds) - set(every))
         if stray:
             problems.append(f"secondary_outcome_seeds[{name!r}] names seeds outside the scenario sets: {stray}")
-    if set(doc["partition_triples"]) != set(PARTITIONS):
-        problems.append(f"partition_triples must name exactly {list(PARTITIONS)}")
+    partition_triples = doc["partition_triples"]
+    if not isinstance(partition_triples, dict) or set(partition_triples) != set(PARTITIONS) \
+            or not all(_count(v) for v in partition_triples.values()):
+        problems.append(f"partition_triples must map exactly {list(PARTITIONS)} to integers")
+    if not _count(doc["final_triples"]):
+        problems.append(f"final_triples {doc['final_triples']!r} is not an integer")
+    digest = doc["rubric_digest"]
+    if not (isinstance(digest, str) and len(digest) == 12 and all(c in "0123456789abcdef" for c in digest)):
+        problems.append(f"rubric_digest {digest!r} is not a 12-character lowercase hex digest "
+                        f"(judge_runner.rubric_digest's form)")
     if problems:
         raise AnalysisRefusal(f"plan file {path}: " + "; ".join(problems))
-    return Plan(path=path, sha256=sha256_file(path), sets=sets, fires=fires, final_triples=int(doc["final_triples"]),
-                partition_triples={k: int(v) for k, v in doc["partition_triples"].items()},
-                decomposition_set=doc["decomposition_set"], secondary_outcome_seeds=restricted)
+    return Plan(path=path, sha256=sha256_file(path), sets=sets, fires=fires, final_triples=doc["final_triples"],
+                partition_triples=dict(partition_triples), decomposition_set=doc["decomposition_set"],
+                secondary_outcome_seeds=restricted, rubric_digest=digest)
 
 
 @dataclass(frozen=True)
@@ -437,45 +512,94 @@ class RegistryResolver:
                               f"({len(versions)} version(s) searched{'; ' + note if note else ''})")
 
 
-def definition_digest(registry: Mapping[str, Any], kind: str, key: str) -> str | None:
-    """sha256 of what one registry version says a dimension is; None when it does not define it.
+def registry_definition(registry: Mapping[str, Any], kind: str, key: str) -> dict[str, Any] | None:
+    """What one registry version says a dimension is, or None when it does not define it.
 
-    An outcome dimension's digest covers its whole `dimensions` entry (definition, values in their listed order, the
-    ordinal flag, scope, prompt reference, notes and status: the registry marks no field as a pure note), the
-    description of the scope it names, and `reserved_annotation_values` (the not_applicable rule). A tier instrument's
-    covers its `tier_instruments` entry and its scope's description; the rubric itself is checked row by row through
-    its digest (10.1). Sections that define no judged value (facets, derived and rule outcomes, the readme) are left
-    out, so an edit there refuses nothing."""
-    scopes = registry.get("scopes") or {}
+    An outcome dimension: only the fields that define its measurement (OUTCOME_DEFINING_FIELDS; owner decision
+    2026-09-24): `values` in their listed order, `ordinal` (absent reads as false: the registry says a dimension
+    without the flag is nominal), `scope` by name, and `detection.judge_prompt_ref`. Its name, definition text, notes
+    and status are left out, so an edit there never refuses a measure; the prompt the judge was shown is checked row by
+    row through its digest. Raises ValueError when the version defines the dimension more than once.
+
+    A tier instrument: its whole `tier_instruments` entry. That comparison is report-only (the caller records it and
+    never refuses on it): tier rows are held to the rubric digest instead (10.1)."""
     if kind == "outcome":
-        entries = [d for d in registry.get("dimensions") or [] if isinstance(d, Mapping) and d.get("id") == key]
+        dims = registry.get("dimensions")
+        entries = [d for d in dims if isinstance(d, Mapping) and d.get("id") == key] if isinstance(dims, list) else []
         if not entries:
             return None
         if len(entries) > 1:
-            raise AnalysisRefusal(f"an outcome registry version defines {key} {len(entries)} times")
+            raise ValueError(f"the registry version defines {key} {len(entries)} times")
         entry = entries[0]
-        payload: dict[str, Any] = {"entry": entry, "scope": scopes.get(entry.get("scope")),
-                                   "reserved_annotation_values": registry.get("reserved_annotation_values")}
-    else:
-        entry = (registry.get("tier_instruments") or {}).get(key)
-        if not isinstance(entry, Mapping):
-            return None
-        payload = {"entry": entry, "scope": scopes.get(entry.get("scope"))}
-    return sha256_text(canonical_json(payload))
+        detection = entry.get("detection")
+        return {"values": entry.get("values"), "ordinal": entry.get("ordinal") is True, "scope": entry.get("scope"),
+                "detection.judge_prompt_ref": detection.get("judge_prompt_ref") if isinstance(detection, Mapping)
+                else None}
+    instruments = registry.get("tier_instruments")
+    entry = instruments.get(key) if isinstance(instruments, Mapping) else None
+    return dict(entry) if isinstance(entry, Mapping) else None
+
+
+def definition_digest(registry: Mapping[str, Any], kind: str, key: str) -> str | None:
+    """sha256 of `registry_definition`, or None when the version does not define the dimension."""
+    definition = registry_definition(registry, kind, key)
+    return None if definition is None else sha256_text(canonical_json(definition))
 
 
 # ------------------------------------------------------------------ runs
 
 
+@dataclass(frozen=True)
+class CommittedRows:
+    """A run's committed analysis_rows.jsonl, read as it landed and used only by the analysis as first written (10.6,
+    owner decision 2026-09-24). `status` is "read", "absent" or "unparseable"; `reason` names why rows are unavailable.
+    The manifest does not bind this file, so its sha256 is recorded here."""
+    status: str
+    path: str
+    reason: str | None
+    sha256: str | None
+    rows: list[dict] | None
+
+    def record(self) -> dict[str, Any]:
+        rows = self.rows or []
+        return {"status": self.status, "path": self.path, "reason": self.reason, "sha256": self.sha256,
+                "bound_by_manifest": False, "rows": None if self.rows is None else len(rows),
+                "rows_without_prompt_file_digest": None if self.rows is None else
+                sum(1 for r in rows if not r.get("prompt_file_digest"))}
+
+
+def read_committed_rows(run_dir: Path) -> CommittedRows:
+    """The committed rows of one run, or the named reason there are none. Never raises: a missing or unreadable file
+    takes that run's triples out of the as-first-written block by name, and never touches the amended analysis."""
+    path = Path(run_dir) / COMMITTED_ROWS_NAME
+    where = _display(path)
+    if not path.is_file():
+        return CommittedRows("absent", where, f"run {Path(run_dir).name} has no committed {COMMITTED_ROWS_NAME}",
+                             None, None)
+    sha = sha256_file(path)
+    try:
+        rows = judge_runner.read_jsonl(path)
+    except ValueError as exc:
+        return CommittedRows("unparseable", where, f"{where} does not parse ({exc})", sha, None)
+    not_objects = [i for i, r in enumerate(rows, 1) if not isinstance(r, dict)]
+    if not_objects:
+        return CommittedRows("unparseable", where, f"{where}: row(s) {not_objects[:5]} are not JSON objects", sha,
+                             None)
+    return CommittedRows("read", where, None, sha, rows)
+
+
 @dataclass
 class RunInput:
-    """One landed run: its manifest, its rebuilt analysis rows and its provenance."""
+    """One landed run: its manifest, its rebuilt analysis rows, its committed rows (for the as-first-written block
+    only), its outcome registry version (None, with the reason, when it cannot be resolved) and its provenance."""
     run_dir: Path
     stem: str
     manifest: dict
     fire: Fire
     rows: list[dict]
-    registry: RegistryVersion
+    registry: RegistryVersion | None
+    registry_problem: str | None
+    committed: CommittedRows
     provenance: dict[str, Any]
 
 
@@ -529,7 +653,9 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: Regist
     committed analysis_rows.jsonl above all); a directory without manifest.json or judgments.jsonl; a run that fails
     `manifest.verify_run` (its judgments are not the bytes its manifest bound); a manifest that binds no judgments; a
     fire outside the plan (NotAPlanFire); a run of more than one epoch; and whatever `judge_runner.analysis_rows`
-    refuses (a seed file that differs from the seeds the run recorded, a judgment for an unknown conversation)."""
+    refuses (a seed file that differs from the seeds the run recorded, a judgment for an unknown conversation). An
+    outcome registry version that cannot be resolved does not refuse the run: it is recorded, and refuses only the
+    outcome dimensions this run contributes rows to (check_dimension)."""
     path = Path(path)
     where = _display(path)
     if path.is_file():
@@ -571,7 +697,13 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: Regist
     except (ValueError, KeyError) as exc:
         raise AnalysisRefusal(f"{where}: judge_runner.analysis_rows refused the run: {exc}") from exc
     recorded = (manifest.get("framework") or {}).get("outcome_registry_sha256")
-    registry = resolver.resolve(path.name, recorded)
+    registry: RegistryVersion | None = None
+    registry_problem: str | None = None
+    try:
+        registry = resolver.resolve(path.name, recorded)
+    except AnalysisRefusal as exc:
+        registry_problem = str(exc)
+    committed = read_committed_rows(path)
     readapt = manifest.get("readapt")
     judge = artifacts.get("judge_of_record") or {}
     provenance = {
@@ -588,15 +720,18 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: Regist
                     "adapter_engine_sha": (manifest.get("adapter") or {}).get("engine_sha"),
                     "eval_revision": ((manifest.get("eval_spec_dump") or {}).get("revision") or {}).get("commit"),
                     "readapt_commit": None if readapt is None else readapt.get("readapt_commit")},
-        "outcome_registry": {"sha256": registry.sha256, "source": registry.source, "location": registry.location,
-                             "commit": registry.commit},
+        "outcome_registry": ({"sha256": registry.sha256, "source": registry.source, "location": registry.location,
+                              "commit": registry.commit, "unresolved": None} if registry is not None else
+                             {"sha256": recorded, "source": None, "location": None, "commit": None,
+                              "unresolved": registry_problem}),
         "judge_model": judge.get("judge_model"), "judge_truncated": judge.get("truncated"),
         "target_model": ((manifest.get("models") or {}).get("target") or {}).get("model"),
         "run_claim_grade_eligible": bool((manifest.get("execution") or {}).get("claim_grade_eligible", False)),
         "judgment_rows": len(judgments), "superseded_by_retry": superseded, "rows_rebuilt": len(rows),
         "records_refused_by_adapter": len((manifest.get("integrity") or {}).get("records_refused") or []),
+        "committed_analysis_rows": committed.record(),
     }
-    return RunInput(path, path.name, manifest, fire, rows, registry, provenance)
+    return RunInput(path, path.name, manifest, fire, rows, registry, registry_problem, committed, provenance)
 
 
 def load_runs(paths: Sequence[Path] | None, runs_dir: Path, plan: Plan, seeds: Mapping[str, dict],
@@ -718,33 +853,48 @@ def build_triples(plan: Plan, layouts: Mapping[str, SeedLayout], runs: Sequence[
 
 @dataclass
 class RowIndex:
-    """The final rows of every plan conversation: (conversation, kind, key) -> exchange -> rows (more than one is a
-    duplicate, never resolved by picking one), the run each plan conversation came from, and the counts of rows the
-    analysis does not read, with the reason."""
+    """The final rows of every plan conversation: (conversation, kind, key) -> exchange -> rows (more than one under
+    the measure's digest is a duplicate, never resolved by picking one), the run each plan conversation came from, and
+    the counts of rows the analysis does not read, with the reason, in total and per run."""
     final: dict[tuple[str, str, str], dict[int, list[dict]]]
     run_of: dict[str, str]
     not_read: dict[str, int]
+    not_read_by_run: dict[str, dict[str, int]] = field(default_factory=dict)
 
 
-def index_rows(runs: Sequence[RunInput], triples: Sequence[Triple]) -> RowIndex:
+def index_rows(runs: Sequence[RunInput], triples: Sequence[Triple],
+               rows_by_run: Mapping[str, Sequence[Any]] | None = None) -> RowIndex:
+    """Index each run's rows: the rebuilt rows by default, or the rows `rows_by_run` gives per run stem (the committed
+    rows of the as-first-written block). A row that cannot be keyed is counted with its reason, never guessed."""
     run_of = {c: t.run_stem for t in triples for c in t.conversations.values() if c and t.run_stem}
-    plan_conversations = set(run_of)
     final: dict[tuple[str, str, str], dict[int, list[dict]]] = {}
-    not_read: Counter[str] = Counter()
+    by_run: dict[str, dict[str, int]] = {}
     for run in runs:
-        for r in run.rows:
-            if r["conversation_id"] not in plan_conversations:
+        not_read: Counter[str] = Counter()
+        for r in (run.rows if rows_by_run is None else rows_by_run.get(run.stem, ())):
+            if not isinstance(r, Mapping) or not all(isinstance(r.get(k), str) for k in ("conversation_id", "kind",
+                                                                                         "key")):
+                not_read["row without a conversation_id, kind or key"] += 1
+            elif r["conversation_id"] not in run_of:
                 not_read["row of a conversation outside the plan's triples"] += 1
+            elif run_of[r["conversation_id"]] != run.stem:
+                not_read["row of a conversation another run carries"] += 1
             elif r.get("final_in_exchange") is None or r.get("exchange_index") is None:
                 not_read["row without exchange_index or final_in_exchange (cannot be keyed to a scripted exchange)"] += 1
+            elif not _count(r["exchange_index"]):
+                not_read["exchange_index is not an integer"] += 1
             elif r["final_in_exchange"] is not True:
                 not_read["interim reply of an exchange (10.1 reads the final reply)"] += 1
             elif r.get("shared_prefix"):
                 not_read["shared-prefix row"] += 1
             else:
                 cell = final.setdefault((r["conversation_id"], r["kind"], r["key"]), {})
-                cell.setdefault(int(r["exchange_index"]), []).append(r)
-    return RowIndex(final, run_of, dict(sorted(not_read.items())))
+                cell.setdefault(r["exchange_index"], []).append(dict(r))
+        by_run[run.stem] = dict(sorted(not_read.items()))
+    totals: Counter[str] = Counter()
+    for counts in by_run.values():
+        totals.update(counts)
+    return RowIndex(final, run_of, dict(sorted(totals.items())), by_run)
 
 
 @dataclass(frozen=True)
@@ -754,6 +904,10 @@ class Scale:
     values: tuple[Any, ...]
     digest: str
 
+    def current(self, rows: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
+        """The rows judged under this measure's digest; rows under any other digest are another instrument."""
+        return [r for r in rows if r.get("prompt_file_digest") == self.digest]
+
     def rank(self, row: Mapping[str, Any]) -> int:
         value = row["flags"][self.measure.flag] if self.measure.flag else row["value"]
         return self.values.index(value)
@@ -761,16 +915,20 @@ class Scale:
 
 def side_problem(rows: Sequence[dict] | None, scale: Scale) -> str | None:
     """Why one conversation's row at one exchange cannot be compared, or None. Reads no rank: whether a value exists
-    and is admissible is decided here, and nothing about its level. A value outside the measure's scale is refused
-    rather than counted, because it means the scale in hand is not the one the judge answered on."""
+    and is admissible is decided here, and nothing about its level. The rows are first filtered to the measure's
+    digest, so a row under another digest beside the current one is a different instrument, not a duplicate (10.8);
+    two rows under the current digest are a duplicate and the exchange is not comparable. A value outside the
+    measure's scale is refused rather than counted, because it means the scale in hand is not the one the judge
+    answered on."""
     if not rows:
         return "no final row"
-    if len(rows) > 1:
-        return f"{len(rows)} final rows for one exchange"
-    row = rows[0]
-    digest = row.get("prompt_file_digest")
-    if digest != scale.digest:
-        return f"judged under digest {digest or 'none recorded'}, not {scale.digest}"
+    current = scale.current(rows)
+    if not current:
+        seen = sorted({r.get("prompt_file_digest") or NO_DIGEST for r in rows})
+        return f"judged under digest {', '.join(seen)}, not {scale.digest}"
+    if len(current) > 1:
+        return f"{len(current)} final rows under digest {scale.digest} for one exchange"
+    row = current[0]
     if row.get("not_applicable_reason") or row.get("value") == NOT_APPLICABLE:
         return f"not applicable ({row.get('not_applicable_reason') or 'the judge answered not_applicable'})"
     if row.get("value") is None:
@@ -792,12 +950,20 @@ def side_problem(rows: Sequence[dict] | None, scale: Scale) -> str | None:
 
 @dataclass
 class Standing:
-    """A triple's standing in one contrast, decided by comparability alone: no value is ranked to decide it."""
+    """A triple's standing in one contrast, decided by comparability alone: no value is ranked to decide it.
+    `exclusions` maps each excluded exchange to (register, problem) pairs; `missing_register` names the register whose
+    conversation is absent when that is why the triple does not enter."""
     triple: Triple
     enters: bool
     reason: str | None
     comparable: tuple[int, ...]
-    excluded_exchanges: dict[int, list[str]]
+    exclusions: dict[int, list[tuple[str, str]]]
+    missing_register: str | None = None
+
+    @property
+    def excluded_exchanges(self) -> dict[int, list[str]]:
+        return {ex: [f"{register}: {problem}" for register, problem in pairs]
+                for ex, pairs in self.exclusions.items()}
 
     def record(self) -> dict[str, Any]:
         return {"enters": self.enters, "reason": self.reason, "comparable_exchanges": list(self.comparable),
@@ -810,9 +976,10 @@ def standing(triple: Triple, registers: Sequence[str], scale: Scale, window: Win
     completeness); the triple enters when at least `window.floor` exchanges are comparable."""
     for register in registers:
         if triple.conversations.get(register) is None:
-            return Standing(triple, False, f"no {register} conversation: {triple.missing.get(register)}", (), {})
+            return Standing(triple, False, f"no {register} conversation: {triple.missing.get(register)}", (), {},
+                            missing_register=register)
     comparable: list[int] = []
-    excluded: dict[int, list[str]] = {}
+    excluded: dict[int, list[tuple[str, str]]] = {}
     m = scale.measure
     for ex in window.exchanges:
         reasons = []
@@ -820,7 +987,7 @@ def standing(triple: Triple, registers: Sequence[str], scale: Scale, window: Win
             cell = index.final.get((triple.conversations[register], m.kind, m.key), {})
             problem = side_problem(cell.get(ex), scale)
             if problem:
-                reasons.append(f"{register}: {problem}")
+                reasons.append((register, problem))
         if reasons:
             excluded[ex] = reasons
         else:
@@ -847,17 +1014,24 @@ class DimensionCheck:
     rows_outside_pooling_digest: dict[str, int]
     pooled_digest: str | None
     scale: tuple[Any, ...] | None
+    registry_unresolved: dict[str, str] = field(default_factory=dict)
+    registry_notes: list[str] = field(default_factory=list)
 
     def record(self) -> dict[str, Any]:
+        agree = len(set(self.registry_definitions.values())) <= 1 if self.registry_definitions else None
         return {"kind": self.kind, "key": self.key, "status": "pooled" if self.pooled else "refused",
-                "reasons": self.reasons, "registry_definition_sha256_by_run": self.registry_definitions,
+                "reasons": self.reasons,
+                "registry_check": ("refusing, on the fields " + ", ".join(OUTCOME_DEFINING_FIELDS)
+                                   if self.kind == "outcome" else
+                                   "report-only: the tier instrument's registry entry is recorded and never refused "
+                                   "on; tier rows are held to the rubric digest (10.1)"),
+                "registry_definition_sha256_by_run": self.registry_definitions,
+                "registry_definitions_agree": agree, "registry_unresolved_by_run": self.registry_unresolved,
+                "registry_notes": self.registry_notes,
                 "prompt_file_digests_by_run": self.prompt_digests, "pooling_digest_named_by_plan": self.pooling_digest,
                 "rows_outside_pooling_digest_by_run": self.rows_outside_pooling_digest,
                 "pooled_prompt_digest": self.pooled_digest,
                 "scale_low_to_high": list(self.scale) if self.scale is not None else None}
-
-
-NO_DIGEST = "none recorded"
 
 
 def check_dimension(kind: str, key: str, runs: Sequence[RunInput], index: RowIndex, rubric_digest: str,
@@ -867,8 +1041,12 @@ def check_dimension(kind: str, key: str, runs: Sequence[RunInput], index: RowInd
 
     - A dimension with a pooling digest named by the plan (POOLING_PROMPT_DIGESTS) keeps only its rows under that
       digest; the rest are counted per run with that reason.
-    - The runs compared are those contributing rows after that step. The dimension is refused when the registry
-      versions those runs recorded define it differently (definition_digest), or one of them does not define it.
+    - The runs compared are those contributing rows after that step. An outcome dimension is refused when the registry
+      versions those runs recorded disagree on the fields that define its measurement (registry_definition: values,
+      ordinal, scope, detection.judge_prompt_ref; owner decision 2026-09-24), when one of them does not define it, or
+      when one contributing run's registry version cannot be resolved (only the dimensions that run contributes rows
+      to are refused, never the run).
+    - A tier instrument's registry entries are compared and recorded, and never refuse it (owner decision 2026-09-24).
     - An outcome dimension is refused when its rows carry more than one prompt digest, or a row carries none. Tier rows
       are held to the current rubric digest exchange by exchange instead (10.1), so a tier row under another rubric is
       not comparable, and is counted where it falls, rather than refusing the instrument.
@@ -891,18 +1069,41 @@ def check_dimension(kind: str, key: str, runs: Sequence[RunInput], index: RowInd
                 del by_run[stem]
     prompts = {stem: dict(sorted(Counter(r.get("prompt_file_digest") or NO_DIGEST for r in rows).items()))
                for stem, rows in sorted(by_run.items())}
-    versions = {r.stem: r.registry for r in runs if r.stem in by_run}
-    definitions = {stem: definition_digest(v.registry, kind, key) for stem, v in sorted(versions.items())}
+    contributing = sorted((r for r in runs if r.stem in by_run), key=lambda r: r.stem)
+    unresolved = {r.stem: r.registry_problem or "unresolved" for r in contributing if r.registry is None}
+    versions = {r.stem: r.registry for r in contributing if r.registry is not None}
+    definitions: dict[str, dict[str, Any] | None] = {}
+    malformed: list[str] = []
+    for stem, v in versions.items():
+        try:
+            definitions[stem] = registry_definition(v.registry, kind, key)
+        except ValueError as exc:
+            malformed.append(f"{stem} (registry {v.sha256[:12]}): {exc}")
+    digests_by_run = {stem: None if d is None else sha256_text(canonical_json(d)) for stem, d in definitions.items()}
+    defined = {stem: d for stem, d in definitions.items() if d is not None}
+    differing = sorted({f for a, b in itertools.combinations(defined.values(), 2) for f in set(a) | set(b)
+                        if a.get(f) != b.get(f)})
+    listed = "; ".join(f"{s} (registry {versions[s].sha256[:12]}): {d}" for s, d in digests_by_run.items())
+    undefined = sorted(s for s, d in definitions.items() if d is None)
     reasons: list[str] = []
+    notes: list[str] = []
     if not by_run:
         reasons.append("no final row of this dimension in any plan conversation"
                        + (f" under the pooling digest {pooling}" if pooling else ""))
-    undefined = sorted(s for s, d in definitions.items() if d is None)
+    registry_findings: list[str] = []
+    if unresolved:
+        registry_findings.append(f"the outcome registry version recorded by {sorted(unresolved)} cannot be resolved, so "
+                                 f"what those runs' rows were judged as is unknown")
+    if malformed:
+        registry_findings.append("a registry version defines it more than once: " + "; ".join(malformed))
     if undefined:
-        reasons.append(f"not defined in the registry version(s) recorded by {undefined}")
-    if len({d for d in definitions.values() if d is not None}) > 1:
-        listed = "; ".join(f"{s} (registry {versions[s].sha256[:12]}): {d}" for s, d in definitions.items())
-        reasons.append(f"its registry definition differs across the pooled runs ({listed})")
+        registry_findings.append(f"not defined in the registry version(s) recorded by {undefined}")
+    if differing:
+        registry_findings.append(f"its registry definition differs across the pooled runs in {differing} ({listed})")
+    if kind == "outcome":
+        reasons.extend(registry_findings)
+    else:
+        notes.extend(f"report-only: {f}" for f in registry_findings)
     pooled_digest: str | None = None
     scale: tuple[Any, ...] | None = None
     if kind == "outcome":
@@ -911,15 +1112,18 @@ def check_dimension(kind: str, key: str, runs: Sequence[RunInput], index: RowInd
             reasons.append("a row records no prompt_file_digest, so its prompt version cannot be established")
         if len(digests - {NO_DIGEST}) > 1:
             reasons.append(f"its rows were judged under more than one prompt digest {sorted(digests - {NO_DIGEST})}")
-        if not reasons:
+        definition = next(iter(defined.values()), None)
+        if not reasons and definition is not None and not (isinstance(definition["values"], list)
+                                                           and definition["values"]):
+            reasons.append("its registry entry declares no list of values")
+        if not reasons and definition is not None:
             pooled_digest = next(iter(digests))
-            entry = next(d for d in next(iter(versions.values())).registry["dimensions"] if d.get("id") == key)
-            scale = tuple(entry["values"]) if entry.get("ordinal") is True else None
+            scale = tuple(definition["values"]) if definition["ordinal"] else None
     else:
         pooled_digest = rubric_digest
         scale = rubric_tiers
-    return DimensionCheck(kind, key, not reasons, reasons, definitions, prompts, pooling, outside, pooled_digest,
-                          scale)
+    return DimensionCheck(kind, key, not reasons, reasons, digests_by_run, prompts, pooling, outside, pooled_digest,
+                          scale, unresolved, notes)
 
 
 def measure_scales(dims: Mapping[tuple[str, str], DimensionCheck],
@@ -1010,31 +1214,56 @@ def prepare(run_paths: Sequence[Path] | None = None, *, runs_dir: Path = RUNS_DI
                     runs, skipped, layouts, triples, index, dims, scales, refused, specs, standings, refused_specs)
 
 
+def instrument(m: Measure) -> dict[str, Any]:
+    """The rows a measure is read from: kind, key and, for a flag, the flag (10.8: the clarifying-question flag is read
+    from the response-only tier instrument)."""
+    return {"kind": m.kind, "key": m.key, "flag": m.flag}
+
+
+# 10.6 as read on 2026-09-24 (10.8): coverage gives the exclusion counts of the exploratory outcomes without their
+# register label, since for those outcomes a null or not-applicable answer can itself carry the contrast
+WITHHOLD_REGISTER_IN_COVERAGE = ("10.5",)
+
+
 def coverage(prep: Prepared) -> dict[str, Any]:
-    """Coverage alone (10.6): runs, triples found, exclusions with reasons, digests. Nothing here ranks a value."""
+    """Coverage alone (10.6): runs, triples found, exclusions with reasons, digests. Nothing here ranks a value. For the
+    10.5 outcomes the exclusions are totals without the register label: a triple missing a conversation is pointed to
+    the triples block, and an exchange's reasons are counted by problem alone."""
     expected = prep.triples
     landed = [t for t in expected if t.landed]
     contrasts: dict[str, Any] = {}
     for spec in prep.specs:
-        head = {"section": spec.section, "measure": spec.measure.name, "registers": list(spec.registers),
-                "window": spec.window.name, "floor": spec.window.floor, "scope": spec.scope}
+        head = {"section": spec.section, "measure": spec.measure.name, "instrument": instrument(spec.measure),
+                "registers": list(spec.registers), "window": spec.window.name, "floor": spec.window.floor,
+                "scope": spec.scope}
         if spec.name in prep.refused_specs:
             contrasts[spec.name] = {**head, "status": "refused", "reason": prep.refused_specs[spec.name]}
             continue
         sts = prep.standings[spec.name]
-        reasons = Counter(r for s in sts for rs in s.excluded_exchanges.values() for r in rs)
+        withhold = spec.section in WITHHOLD_REGISTER_IN_COVERAGE
+        if withhold:
+            reasons = Counter(problem for s in sts for pairs in s.exclusions.values() for _reg, problem in pairs)
+            excluded = [{"triple": s.triple.triple_id,
+                         "reason": ("a conversation of the triple is missing (triples.landed_with_missing_conversations "
+                                    "names it)") if s.missing_register else s.reason} for s in sts if not s.enters]
+        else:
+            reasons = Counter(r for s in sts for rs in s.excluded_exchanges.values() for r in rs)
+            excluded = [{"triple": s.triple.triple_id, "reason": s.reason} for s in sts if not s.enters]
         contrasts[spec.name] = {
             **head, "status": "computable", "triples_in_scope": len(sts),
-            "triples_entering": sum(s.enters for s in sts),
-            "triples_excluded": [{"triple": s.triple.triple_id, "reason": s.reason} for s in sts if not s.enters],
+            "triples_entering": sum(s.enters for s in sts), "triples_excluded": excluded,
             "exchange_exclusion_reasons": dict(sorted(reasons.items())),
+            "register_labels_withheld": withhold,
         }
+    rubric_matches = prep.rubric_digest == prep.plan.rubric_digest
     return {
         "plan": {"path": _display(prep.plan.path), "sha256": prep.plan.sha256,
                  "fires": {n: {"campaign_epochs": f.campaign_epochs, "partition": f.partition}
                            for n, f in prep.plan.fires.items()}},
         "seed_file": {"path": _display(prep.seeds_path), "sha256": prep.seeds_sha256},
-        "rubric": {"path": _display(prep.rubric_path), "digest": prep.rubric_digest},
+        "rubric": {"path": _display(prep.rubric_path), "digest": prep.rubric_digest,
+                   "digest_pinned_by_plan": prep.plan.rubric_digest, "matches_plan": rubric_matches,
+                   **({} if rubric_matches else {"note": "--final refuses a rubric whose digest is not the plan's"})},
         "loaded_outcome_registry": {"path": _display(prep.loaded_registry),
                                     "sha256": sha256_file(prep.loaded_registry)},
         "runs": [r.provenance for r in prep.runs],
@@ -1042,6 +1271,10 @@ def coverage(prep: Prepared) -> dict[str, Any]:
         "fires_not_landed": sorted(set(prep.plan.fires) - {r.fire.journal_nonce for r in prep.runs}),
         "rows_not_read": prep.index.not_read,
         "dimensions": {f"{k}:{key}": d.record() for (k, key), d in prep.dimensions.items()},
+        "as_first_written_inputs": {
+            "note": ("the analysis as first written (10.6, 10.8) reads each run's committed analysis_rows.jsonl; it is "
+                     "computed only under --final, beside the amended analysis, and labelled secondary"),
+            "committed_analysis_rows_by_run": {r.stem: r.committed.record() for r in prep.runs}},
         "triples": {
             "fixed_by_plan": prep.plan.final_triples, "landed": len(landed),
             "by_partition": {p: {"fixed": prep.plan.partition_triples[p],
@@ -1129,8 +1362,13 @@ def sign_flip_test(means: Mapping[str, Fraction], alpha: float = ALPHA) -> dict[
     """10.2's general-headline gate: an exact two-sided sign-flip permutation test on the k scenario means. Every one
     of the 2^k sign assignments is enumerated and p is the share whose |sum| is at least the observed |sum|, compared
     exactly in rationals (the design simulation's float comparison needs a tolerance; this does not). Under the null
-    each scenario's mean is symmetric about zero, so every assignment is equally likely. The smallest attainable p is
-    2 / 2^k (2/256 = 0.0078 at k = 8). The direction is the sign of the sum of the means."""
+    each scenario's mean is symmetric about zero, so every assignment is equally likely. The direction is the sign of
+    the sum of the means.
+
+    The smallest attainable p, given these magnitudes, is 2^(z+1) / 2^k with z the scenario means exactly zero (2/256 =
+    0.0078 at k = 8 and z = 0): flipping a zero mean leaves the sum unchanged, so every assignment reaching the largest
+    |sum| comes with its 2^z zero-flips, and with its global negation. With every mean zero, p is 1. `can_reject_at_alpha`
+    says whether that floor is below alpha: at k = 5 (2/32 = 0.0625) the gate cannot reject whatever the data show."""
     vals = list(means.values())
     k = len(vals)
     observed = abs(sum(vals, Fraction(0)))
@@ -1138,10 +1376,15 @@ def sign_flip_test(means: Mapping[str, Fraction], alpha: float = ALPHA) -> dict[
                if abs(sum((s * v for s, v in zip(signs, vals)), Fraction(0))) >= observed)
     p = Fraction(hits, 2 ** k)
     total = sum(vals, Fraction(0))
+    zeros = sum(1 for v in vals if v == 0)
+    floor = min(Fraction(1), Fraction(2 ** (zeros + 1), 2 ** k)) if k else None
     return {"scenarios": k, "scenario_means": {s: float(m) for s, m in means.items()},
             "scenario_means_exact": {s: str(m) for s, m in means.items()}, "assignments": 2 ** k,
             "assignments_at_least_as_extreme": hits, "p": float(p), "p_exact": str(p),
-            "smallest_attainable_p": float(Fraction(2, 2 ** k)) if k else None, "alpha": alpha,
+            "zero_scenario_means": zeros,
+            "smallest_attainable_p": float(floor) if floor is not None else None,
+            "smallest_attainable_p_exact": str(floor) if floor is not None else None,
+            "can_reject_at_alpha": floor is not None and float(floor) < alpha, "alpha": alpha,
             "significant": float(p) < alpha,
             "direction": "negative" if total < 0 else "positive" if total > 0 else "none"}
 
@@ -1209,19 +1452,36 @@ def student_t_quantile(p: float, df: int) -> float:
     return (lo + hi) / 2.0
 
 
-def scenario_t_interval(means: Sequence[Fraction], level: float = INTERVAL_LEVEL) -> dict[str, Any]:
+def scenario_t_interval(means: Sequence[Fraction], level: float = INTERVAL_LEVEL, *,
+                        planned_scenarios: int | None = None) -> dict[str, Any]:
     """10.2's interval to quote: the mean of the k scenario means +/- t((1 + level) / 2, k - 1) * their standard error,
     the sample standard deviation (k - 1 denominator) over sqrt(k). It treats the scenario as the unit, as the gate
-    does, and assumes the scenario means are a sample from a roughly normal population of scenarios."""
+    does, and assumes the scenario means are a sample from a roughly normal population of scenarios.
+
+    With `planned_scenarios` given, the plan's df (planned - 1: 7 for eight scenarios) is recorded, and a df that
+    departs from it is marked. Equal scenario means give a zero standard error and a single-point interval, which is
+    marked degenerate: it states no uncertainty, not certainty."""
     k = len(means)
+    plan_df = planned_scenarios - 1 if planned_scenarios is not None else None
+    marks: dict[str, Any] = {"plan_df": plan_df}
+    if plan_df is not None:
+        departs = k - 1 != plan_df
+        marks.update({"df_departs_from_plan": departs,
+                      "departure": (f"df {k - 1} from {k} scenario means, not the plan's {plan_df} from its "
+                                    f"{planned_scenarios} scenarios") if departs else None})
     if k < 2:
-        return {"computable": False, "reason": f"{k} scenario mean(s); a t interval needs at least 2", "scenarios": k}
+        return {"computable": False, "reason": f"{k} scenario mean(s); a t interval needs at least 2", "scenarios": k,
+                **marks}
     mean = sum(means, Fraction(0)) / k
     var = sum(((m - mean) ** 2 for m in means), Fraction(0)) / (k - 1)
     se = math.sqrt(float(var)) / math.sqrt(k)
     t = student_t_quantile((1.0 + level) / 2.0, k - 1)
-    return {"computable": True, "scenarios": k, "df": k - 1, "t": t, "level": level, "mean_of_scenario_means":
-            float(mean), "standard_error": se, "lower": float(mean) - t * se, "upper": float(mean) + t * se}
+    degenerate = var == 0
+    return {"computable": True, "scenarios": k, "df": k - 1, **marks, "t": t, "level": level,
+            "mean_of_scenario_means": float(mean), "standard_error": se, "lower": float(mean) - t * se,
+            "upper": float(mean) + t * se, "degenerate": degenerate,
+            "degenerate_reason": (f"all {k} scenario means are equal ({mean}), so their standard error is 0 and the "
+                                  f"interval is a single point") if degenerate else None}
 
 
 def quantile_type7(sorted_values: Sequence[float], q: float) -> float:
@@ -1247,10 +1507,17 @@ def bootstrap_mean_interval(values: Sequence[float], *, seed: int, resamples: in
     means = sorted(sum(values[rng.randrange(n)] for _ in range(n)) / n for _ in range(resamples))
     # rounded so a 0.95 level reads the 0.025 and 0.975 quantiles exactly ((1 - 0.95) / 2 is 0.025000000000000022)
     alpha = round((1.0 - level) / 2.0, 12)
+    # one value, or equal values: every resample mean is that value, so the interval is a point and states no
+    # uncertainty (the draws still run, so the generator's state is what the seed says)
+    degenerate_reason = ("one triple: every resample is that triple" if n == 1 else
+                         f"all {n} values of D are equal: every resample mean is that value"
+                         if len(set(values)) == 1 else None)
     return {"computable": True, "label": "unclustered percentile bootstrap over triples; within these scenarios only",
             "statistic": "mean of D", "seed": seed, "generator": "random.Random(seed).randrange", "resamples": resamples,
             "triples": n, "level": level, "quantile_method": "type 7 (linear interpolation)",
-            "lower": quantile_type7(means, alpha), "upper": quantile_type7(means, 1.0 - alpha)}
+            "lower": quantile_type7(means, alpha), "upper": quantile_type7(means, 1.0 - alpha),
+            "degenerate": degenerate_reason is not None,
+            "degenerate_reason": None if degenerate_reason is None else degenerate_reason + ", so the interval is a point"}
 
 
 def holm(pvalues: Mapping[str, float | None], alpha: float = ALPHA) -> dict[str, dict[str, Any]]:
@@ -1272,24 +1539,49 @@ def holm(pvalues: Mapping[str, float | None], alpha: float = ALPHA) -> dict[str,
 
 
 def wording_row(primary: Mapping[str, Any], gate: Mapping[str, Any], replication: Mapping[str, Any],
-                scenario_means_: Mapping[str, float]) -> dict[str, Any]:
+                scenario_means_: Mapping[str, float], *, planned_scenarios: int | None = None) -> dict[str, Any]:
     """The row of 10.2's table ('What each outcome permits') the results select. Rows 1-3 need the primary test
     significant with D mostly negative; row 4 is the reverse direction under rows 1-3's rules (reported as row4/rowN);
     row 5 is a primary p >= 0.05. 'General gate p < 0.05, same direction' requires the gate significant with the sum of
-    scenario means in the primary's direction; a gate significant in the other direction does not pass it."""
+    scenario means in the primary's direction.
+
+    Three readings recorded in 10.8 (2026-09-24, owner decisions):
+    - no non-tied triple in the primary contrast selects "not_computable": row 5 says the pilot did not detect a
+      difference, which presumes a test that ran;
+    - a gate significant in the direction opposite to the primary test selects "no_prespecified_row", as 10.3's gap is
+      reported ("no_prespecified_statement"): the table has no row for it;
+    - a gate that ran on fewer scenarios than the plan's (`planned_scenarios`) leaves the row computed by the table's
+      rules but marks it not selectable as registered, since the table was fixed for all of them.
+    `selectable_as_registered` is false, with the reasons, whenever the row cannot be used as the table fixes it."""
     direction = primary["direction"]
     gate_same = bool(gate["significant"]) and gate["direction"] == direction
-    if not primary["significant"]:
+    gate_opposite = bool(gate["significant"]) and gate["direction"] != direction and gate["direction"] != "none"
+    not_selectable: list[str] = []
+    if primary["non_tied"] == 0:
+        row = "not_computable"
+        not_selectable.append("no non-tied triple entered the primary contrast, so no sign test ran")
+    elif not primary["significant"]:
         row = "row5"
+    elif gate_opposite:
+        row = "no_prespecified_row"
+        not_selectable.append(f"the scenario gate is significant in the {gate['direction']} direction, opposite to "
+                              f"the primary test's {direction}; 10.2's table has no row for that")
     else:
         base = ("row1" if replication["same_direction"] else "row2") if gate_same else "row3"
         row = base if direction == "negative" else f"row4/{base}"
+    if planned_scenarios is not None and gate["scenarios"] < planned_scenarios:
+        not_selectable.append(f"the scenario gate ran on {gate['scenarios']} of the plan's {planned_scenarios} "
+                              f"scenarios; the table was fixed for all {planned_scenarios}")
     sign = -1 if direction == "negative" else 1 if direction == "positive" else 0
     carrying = sorted(s for s, m in scenario_means_.items() if sign and (m > 0) - (m < 0) == sign)
     return {"row_id": row, "table": "docs/petri_wave2_design.md section 10.2, 'What each outcome permits'",
+            "selectable_as_registered": not not_selectable, "not_selectable_reasons": not_selectable,
             "primary_significant": primary["significant"], "primary_direction": direction,
+            "primary_non_tied": primary["non_tied"],
             "gate_significant": gate["significant"], "gate_direction": gate["direction"],
-            "gate_same_direction": gate_same, "prospective_same_direction": replication["same_direction"],
+            "gate_same_direction": gate_same, "gate_scenarios": gate["scenarios"],
+            "planned_scenarios": planned_scenarios,
+            "prospective_same_direction": replication["same_direction"],
             "scenarios_with_mean_in_primary_direction": carrying}
 
 
@@ -1317,13 +1609,15 @@ def decomposition_statement(style: Mapping[str, Any], vocabulary: Mapping[str, A
 
 
 def pairwise_d(st: Standing, a: str, b: str, scale: Scale, index: RowIndex) -> TripleD:
-    """D(a, b) for one entering triple: rank(a) - rank(b) summed over its comparable exchanges."""
+    """D(a, b) for one entering triple: rank(a) - rank(b) summed over its comparable exchanges, each read from the one
+    row under the measure's digest (side_problem established that there is exactly one)."""
     t = st.triple
     m = scale.measure
     total = lower = higher = 0
     for ex in st.comparable:
-        ra = scale.rank(index.final[(t.conversations[a], m.kind, m.key)][ex][0])
-        rb = scale.rank(index.final[(t.conversations[b], m.kind, m.key)][ex][0])
+        [row_a] = scale.current(index.final[(t.conversations[a], m.kind, m.key)][ex])
+        [row_b] = scale.current(index.final[(t.conversations[b], m.kind, m.key)][ex])
+        ra, rb = scale.rank(row_a), scale.rank(row_b)
         total += ra - rb
         lower += ra < rb
         higher += ra > rb
@@ -1336,10 +1630,34 @@ def _d_record(d: TripleD) -> dict[str, Any]:
             "lower_minus_higher": None if d.lower is None else d.lower - d.higher}
 
 
-def final_analysis(prep: Prepared, *, seed: int = DEFAULT_SEED, resamples: int = BOOTSTRAP_RESAMPLES) -> dict[str, Any]:
-    """Every test and interval of 10.2-10.5 on the prepared triples. Called only under --final (10.6)."""
-    if "primary" in prep.refused_specs:
-        raise AnalysisRefusal(f"the primary contrast cannot be computed: {prep.refused_specs['primary']}")
+def missing_scenarios(plan: Plan, means: Mapping[str, Fraction], triples: Sequence[Triple],
+                      primary_standings: Sequence[Standing]) -> dict[str, list[str]]:
+    """Each plan scenario absent from the gate (no triple of it entered the primary contrast), with each of its
+    triples' reasons: a fire that has not landed, or the triple's standing."""
+    standing_of = {s.triple.triple_id: s for s in primary_standings}
+    out: dict[str, list[str]] = {}
+    for scenario in plan.scenarios:
+        if scenario in means:
+            continue
+        reasons = []
+        for t in triples:
+            if t.seed_id != scenario:
+                continue
+            if not t.landed:
+                reasons.append(f"{t.triple_id}: fire {t.journal_nonce} has not landed")
+            elif t.triple_id in standing_of:
+                reasons.append(f"{t.triple_id}: {standing_of[t.triple_id].reason}")
+            else:
+                reasons.append(f"{t.triple_id}: outside the primary contrast's scope")
+        out[scenario] = reasons
+    return out
+
+
+def contrast_sections(prep: Prepared, index: RowIndex, standings: Mapping[str, Sequence[Standing]],
+                      dimensions: Mapping[tuple[str, str], DimensionCheck], *, seed: int,
+                      resamples: int) -> dict[str, Any]:
+    """Every test and interval of 10.2-10.5 on one reading of the rows (`index`, and the standings computed on it).
+    Called only under --final (10.6), for the amended analysis and for the analysis as first written."""
     ds: dict[str, list[TripleD]] = {}
     per_triple: dict[str, dict[str, Any]] = {t.triple_id: {**t.label(), "contrasts": {}} for t in prep.triples}
     for spec in prep.specs:
@@ -1347,12 +1665,12 @@ def final_analysis(prep: Prepared, *, seed: int = DEFAULT_SEED, resamples: int =
             continue
         scale = prep.scales[spec.measure.name]
         ds[spec.name] = []
-        for st in prep.standings[spec.name]:
+        for st in standings[spec.name]:
             rec = st.record()
             if st.enters and spec.name == "decomposition":
-                style = pairwise_d(st, COLLOQUIAL, CAREFUL_LAY, scale, prep.index)
-                vocab = pairwise_d(st, CAREFUL_LAY, CLINICAL, scale, prep.index)
-                whole = pairwise_d(st, COLLOQUIAL, CLINICAL, scale, prep.index)
+                style = pairwise_d(st, COLLOQUIAL, CAREFUL_LAY, scale, index)
+                vocab = pairwise_d(st, CAREFUL_LAY, CLINICAL, scale, index)
+                whole = pairwise_d(st, COLLOQUIAL, CLINICAL, scale, index)
                 if style.total + vocab.total != whole.total:     # exact on one set of exchanges (10.3)
                     raise ArithmeticError(f"{st.triple.triple_id}: D(style) + D(vocabulary) != D(colloquial, clinical)")
                 diff = TripleD(whole.triple_id, whole.scenario, whole.speaker, whole.scenario_set, whole.partition,
@@ -1364,18 +1682,21 @@ def final_analysis(prep: Prepared, *, seed: int = DEFAULT_SEED, resamples: int =
                 ds.setdefault("decomposition:vocabulary", []).append(vocab)
                 ds.setdefault("decomposition:paired_difference", []).append(diff)
             elif st.enters:
-                d = pairwise_d(st, COLLOQUIAL, CLINICAL, scale, prep.index)
+                d = pairwise_d(st, COLLOQUIAL, CLINICAL, scale, index)
                 ds[spec.name].append(d)
                 rec.update(_d_record(d))
             per_triple[st.triple.triple_id]["contrasts"][spec.name] = rec
 
     # 10.2
+    planned = len(prep.plan.scenarios)
     primary = ds["primary"]
     primary_test = sign_test(primary)
     means = scenario_means(primary)
     gate = sign_flip_test(means)
+    gate["planned_scenarios"] = planned
+    gate["missing_scenarios"] = missing_scenarios(prep.plan, means, prep.triples, standings["primary"])
     loso = {}
-    for scenario in (s for seeds in prep.plan.sets.values() for s in seeds):
+    for scenario in prep.plan.scenarios:
         rerun = sign_test([d for d in primary if d.scenario != scenario])
         loso[scenario] = {"triples": rerun["triples"], "negative": rerun["negative"], "positive": rerun["positive"],
                           "tied": rerun["tied"], "p": rerun["p"], "direction": rerun["direction"],
@@ -1391,13 +1712,14 @@ def final_analysis(prep: Prepared, *, seed: int = DEFAULT_SEED, resamples: int =
         "proportion_D_negative": (sum(d.sign < 0 for d in primary) / len(primary)) if primary else None,
         "median_D": float(statistics.median([d.d for d in primary])) if primary else None,
         "mean_D": float(sum((d.d for d in primary), Fraction(0)) / len(primary)) if primary else None,
-        "scenario_t_interval": scenario_t_interval(list(means.values())),
+        "scenario_t_interval": scenario_t_interval(list(means.values()), planned_scenarios=planned),
         "bootstrap": bootstrap_mean_interval(values, seed=seed, resamples=resamples),
         "note": "AGENTS.md: cite the direction, not the magnitude",
     }
     section_10_2 = {"primary_sign_test": primary_test, "scenario_gate": gate, "leave_one_scenario_out": loso,
                     "prospective_replication": prospective, "effect_size": effect,
-                    "wording": wording_row(primary_test, gate, prospective, {s: float(m) for s, m in means.items()})}
+                    "wording": wording_row(primary_test, gate, prospective, {s: float(m) for s, m in means.items()},
+                                           planned_scenarios=planned)}
 
     # 10.3
     if "decomposition" in prep.refused_specs:
@@ -1429,15 +1751,17 @@ def final_analysis(prep: Prepared, *, seed: int = DEFAULT_SEED, resamples: int =
     for m in SECONDARY_MEASURES:
         name = f"secondary:{m.name}"
         if name in prep.refused_specs:
-            secondary[m.name] = {"status": "not run", "reason": prep.refused_specs[name]}
+            secondary[m.name] = {"status": "not run", "instrument": instrument(m), "reason": prep.refused_specs[name]}
             pvals[m.name] = None
         else:
-            secondary[m.name] = {"status": "exploratory", **sign_test(ds[name])}
+            secondary[m.name] = {"status": "exploratory", "instrument": instrument(m), **sign_test(ds[name])}
             pvals[m.name] = secondary[m.name]["p"]
     coverage_only = {}
     for m in COVERAGE_ONLY_MEASURES:
-        check = prep.dimensions[(m.kind, m.key)]
-        coverage_only[m.name] = {"status": "coverage only: section 10.5 names no statistic for this nominal dimension",
+        check = dimensions[(m.kind, m.key)]
+        coverage_only[m.name] = {"status": ("coverage only: its values carry no ordinal flag, so no rank and no D "
+                                            "exists, and section 10.5 names no statistic for it"),
+                                 "instrument": instrument(m),
                                  "pooled": check.pooled, "pooling_digest": check.pooling_digest,
                                  "rows_pooled_by_run": {s: sum(c.values()) for s, c in check.prompt_digests.items()},
                                  "rows_outside_pooling_digest_by_run": check.rows_outside_pooling_digest}
@@ -1448,21 +1772,160 @@ def final_analysis(prep: Prepared, *, seed: int = DEFAULT_SEED, resamples: int =
             "section_10_4": section_10_4, "section_10_5": section_10_5}
 
 
+AS_FIRST_WRITTEN_LABEL = ("secondary: the analysis as first written (design note 10.6; owner decision 2026-09-24, "
+                          "10.8), reported beside the amended analysis. It selects no headline: the amended analysis "
+                          "above does")
+
+
+def as_first_written(prep: Prepared, *, seed: int, resamples: int) -> dict[str, Any]:
+    """The analysis as first written (10.6): the same triples, scales, tests and wording selection as the amended
+    analysis, on each run's committed analysis_rows.jsonl read as it landed (no retry collapse, no rebuild). A row
+    without the digest the first-written 10.1 requires is not comparable (owner decision 2026-09-24), which takes
+    wave-2 epoch 1's triples out of this block, reported by name. A run whose committed file is absent or does not
+    parse has its triples reported with that reason. A refusal inside this block is reported in it and never stops
+    the amended analysis."""
+    unusable = {r.stem: r.committed.reason for r in prep.runs if r.committed.status != "read"}
+    rows_by_run = {r.stem: r.committed.rows or [] for r in prep.runs}
+    head: dict[str, Any] = {
+        "label": AS_FIRST_WRITTEN_LABEL,
+        "rows_from": "each run's committed analysis_rows.jsonl, as it landed (not bound by the manifest; sha256 below)",
+        "reading": ("a row without the rubric or prompt digest the first-written 10.1 requires is not comparable; "
+                    "retried judgments are not collapsed, so two final rows under one digest at an exchange are a "
+                    "duplicate and that exchange is not comparable"),
+        "runs_without_committed_rows": {stem: reason for stem, reason in sorted(unusable.items())},
+    }
+    try:
+        index = index_rows(prep.runs, prep.triples, rows_by_run=rows_by_run)
+        standings: dict[str, list[Standing]] = {}
+        for spec in prep.specs:
+            if spec.name in prep.refused_specs:
+                continue
+            scale = prep.scales[spec.measure.name]
+            sts = []
+            for t in prep.triples:
+                if not (t.landed and in_scope(spec, t, prep.plan)):
+                    continue
+                if t.run_stem in unusable:
+                    sts.append(Standing(t, False, f"no committed rows: {unusable[t.run_stem]}", (), {}))
+                else:
+                    sts.append(standing(t, spec.registers, scale, spec.window, index))
+            standings[spec.name] = sts
+        # the coverage-only outcome's pooling counts on these rows (an outcome's check reads no rubric tiers)
+        dims = {(m.kind, m.key): check_dimension(m.kind, m.key, prep.runs, index, prep.rubric_digest, ())
+                for m in COVERAGE_ONLY_MEASURES}
+        sections = contrast_sections(prep, index, standings, dims, seed=seed, resamples=resamples)
+    except (AnalysisRefusal, ArithmeticError) as exc:
+        return {**head, "status": "refused", "reason": f"{type(exc).__name__}: {exc}"}
+    by_run: dict[str, Any] = {}
+    for run in prep.runs:
+        not_comparable: dict[str, Any] = {}
+        for name, sts in standings.items():
+            mine = [s for s in sts if s.triple.run_stem == run.stem]
+            not_comparable[name] = {
+                "triples_not_entering": [{"triple": s.triple.triple_id, "reason": s.reason}
+                                         for s in mine if not s.enters],
+                "exchange_exclusion_reasons": dict(sorted(Counter(
+                    r for s in mine for rs in s.excluded_exchanges.values() for r in rs).items())),
+            }
+        by_run[run.stem] = {"committed_analysis_rows": run.committed.record(),
+                            "rows_not_read": index.not_read_by_run.get(run.stem, {}),
+                            "not_comparable_by_contrast": not_comparable}
+    return {**head, "status": "computed", "runs": by_run, **sections}
+
+
+def final_analysis(prep: Prepared, *, seed: int = DEFAULT_SEED, resamples: int = BOOTSTRAP_RESAMPLES) -> dict[str, Any]:
+    """Every test and interval of 10.2-10.5 on the prepared triples (the amended analysis, which selects the headline),
+    and beside it the analysis as first written, labelled secondary. Called only under --final (10.6)."""
+    if "primary" in prep.refused_specs:
+        raise AnalysisRefusal(f"the primary contrast cannot be computed: {prep.refused_specs['primary']}")
+    out = contrast_sections(prep, prep.index, prep.standings, prep.dimensions, seed=seed, resamples=resamples)
+    out["as_first_written"] = as_first_written(prep, seed=seed, resamples=resamples)
+    return out
+
+
 # ------------------------------------------------------------------ provenance and CLI
 
 
-def analysis_identity(repo_root: Path = ROOT) -> dict[str, Any]:
-    """The commit and files the analysis ran from, so the artifact names its own code."""
+def git_status(path: Path, repo_root: Path | None = None) -> list[str] | str:
+    """`git status --porcelain` for one file: [] when it is tracked and committed unchanged, the status lines when it
+    has uncommitted changes, or a string naming why git cannot say (outside the repository, not tracked, git failed).
+    Never guesses "committed". The repository is REPO_ROOT unless one is given."""
+    root = Path(REPO_ROOT if repo_root is None else repo_root).resolve()
+    try:
+        rel = Path(path).resolve().relative_to(root).as_posix()
+    except ValueError:
+        return f"outside the repository {root}, so whether it is committed cannot be established"
+    try:
+        tracked = subprocess.run(["git", "-C", str(root), "ls-files", "--error-unmatch", "--", rel],
+                                 capture_output=True, text=True)
+        if tracked.returncode != 0:
+            return f"{rel} is not tracked by git in {root}"
+        return subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--", rel], capture_output=True,
+                              text=True, check=True).stdout.splitlines()
+    except (OSError, subprocess.CalledProcessError) as exc:
+        detail = exc.stderr.strip() if isinstance(exc, subprocess.CalledProcessError) else str(exc)
+        return f"git could not report on {rel}: {detail}"
+
+
+def plan_commit_problem(path: Path) -> str | None:
+    """Why --final may not read this plan, or None (10.6): it must be the default plan file, committed unchanged."""
+    if Path(path).resolve() != Path(PLAN_FILE).resolve():
+        return (f"--final reads only the committed plan {_display(PLAN_FILE)}; --plan {path} is another file (a "
+                f"changed plan is a dated amendment committed to that file, 10.6)")
+    status = git_status(PLAN_FILE, REPO_ROOT)
+    if isinstance(status, str):
+        return f"the plan {_display(PLAN_FILE)} cannot be shown to be committed: {status}"
+    if status:
+        return f"the plan {_display(PLAN_FILE)} has uncommitted changes ({status}); commit it or restore it"
+    return None
+
+
+def journal_problems(nonces: Sequence[str], journal: Path) -> list[str]:
+    """For a declared truncation (10.1): each missing plan fire must appear in the trigger journal, read and never
+    written, as a petri-audit entry that was fired and resolved and not evicted. The problems, one per fire, or the
+    reason the journal cannot be read."""
+    journal = Path(journal)
+    if not journal.is_file():
+        return [f"the trigger journal {_display(journal)} is not found, so no missing fire can be shown fired and "
+                f"resolved"]
+    entries: list[dict] = []
+    for lineno, line in enumerate(journal.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            entry = None
+        if not isinstance(entry, dict):
+            return [f"the trigger journal {_display(journal)} line {lineno} is not a JSON object"]
+        entries.append(entry)
+    problems = []
+    for nonce in nonces:
+        mine = [e for e in entries if e.get("nonce") == nonce and e.get("trigger") == JOURNAL_TRIGGER]
+        if not mine:
+            problems.append(f"fire {nonce}: no {JOURNAL_TRIGGER} journal entry carries that nonce, so it was never "
+                            f"fired through scripts/fire_trigger.py")
+        elif not any(e.get("fired_utc") and e.get("resolved") is True and e.get("evicted") is not True for e in mine):
+            problems.append(f"fire {nonce}: its journal entry is not resolved, or was evicted, so the fire has not "
+                            f"finished: wait for it to land or be resolved")
+    return problems
+
+
+def analysis_identity(inputs: Mapping[str, Path], repo_root: Path | None = None) -> dict[str, Any]:
+    """The commit and files the analysis ran from, so the artifact names its own code and data: each input's path,
+    sha256 and any uncommitted change git reports for it (10.8: the script, the plan, judge_runner.py, the seed file,
+    the rubric and the loaded outcome registry)."""
     ident: dict[str, Any] = {"script": _display(Path(__file__)), "script_version": SCRIPT_VERSION,
                              "script_sha256": sha256_file(Path(__file__)), "python": platform.python_version(),
                              "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+    files = {"script": Path(__file__), "judge_runner": Path(judge_runner.__file__), **inputs}
+    ident["inputs"] = {name: {"path": _display(p), "sha256": sha256_file(p) if Path(p).is_file() else None}
+                       for name, p in files.items()}
+    root = REPO_ROOT if repo_root is None else repo_root
+    ident["uncommitted_changes"] = {name: git_status(p, root) for name, p in files.items()}
     try:
-        head = subprocess.run(["git", "-C", str(repo_root), "rev-parse", "HEAD"], capture_output=True, text=True,
-                              check=True).stdout.strip()
-        dirty = subprocess.run(["git", "-C", str(repo_root), "status", "--porcelain", "--",
-                                _display(Path(__file__)), _display(PLAN_FILE)],
-                               capture_output=True, text=True, check=True).stdout.splitlines()
-        ident.update({"commit": head, "uncommitted_changes_to_script_or_plan": dirty})
+        ident["commit"] = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True,
+                                         text=True, check=True).stdout.strip()
     except (OSError, subprocess.CalledProcessError) as exc:
         ident.update({"commit": None, "commit_unavailable": f"{type(exc).__name__}: {exc}"})
     return ident
@@ -1473,37 +1936,82 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("runs", nargs="*", type=Path,
                     help="run directories (default: every run under --runs-dir whose fire is in the plan)")
     ap.add_argument("--runs-dir", type=Path, default=RUNS_DIR)
-    ap.add_argument("--plan", type=Path, default=PLAN_FILE)
+    ap.add_argument("--plan", type=Path, default=PLAN_FILE,
+                    help="the plan (--final reads only the committed default)")
     ap.add_argument("--seeds", type=Path, default=SEED_FILE, help="the seed file of record")
     ap.add_argument("--rubric", type=Path, default=ADVICE_RUBRIC)
     ap.add_argument("--outcomes", type=Path, default=OUTCOME_REGISTRY, help="the loaded outcome registry")
     ap.add_argument("--registry-version", type=Path, action="append", default=[],
                     help="an outcome registry file a run recorded, when git history lacks it (repeatable)")
-    ap.add_argument("--seed", type=int, default=DEFAULT_SEED, help="the bootstrap seed (10.2; default 20260923)")
+    ap.add_argument("--seed", type=int, default=DEFAULT_SEED,
+                    help="the bootstrap seed (10.2: 20260923, the only one --final accepts)")
     ap.add_argument("--final", action="store_true",
                     help="compute the register contrasts (10.6: once, on the final data); without it, coverage only")
     ap.add_argument("--declare-truncated", metavar="REASON",
                     help="under --final, run although a plan fire has not landed, recording the analysis as "
-                         "administratively truncated with this reason (10.1)")
-    ap.add_argument("--out", type=Path, help="the JSON artifact (required with --final)")
+                         "administratively truncated with this reason (10.1); refused unless the trigger journal "
+                         "shows every missing fire fired and resolved")
+    ap.add_argument("--out", type=Path, help="the JSON artifact (required with --final, and never overwritten)")
     return ap
+
+
+def invocation_problems(args: argparse.Namespace) -> list[str]:
+    """What the command line alone rules out, before any input is read (10.6)."""
+    if not args.final:
+        return (["--declare-truncated applies only under --final"] if args.declare_truncated else [])
+    problems = []
+    if args.out is None:
+        problems.append("--final writes its result to the artifact named by --out")
+    elif args.out.exists():
+        problems.append(f"--out {args.out} exists; the final analysis runs once and never overwrites an artifact")
+    if args.seed != DEFAULT_SEED:
+        problems.append(f"--seed {args.seed}: 10.2 fixes the bootstrap seed at {DEFAULT_SEED}")
+    plan_problem = plan_commit_problem(args.plan)
+    if plan_problem:
+        problems.append(plan_problem)
+    return problems
+
+
+def final_problems(args: argparse.Namespace, prep: Prepared, missing: Sequence[str]) -> list[str]:
+    """What the inputs rule out under --final: a rubric the plan does not pin (10.1), a missing fire without a declared
+    truncation, a declared truncation with nothing missing, or one the trigger journal does not support (10.1)."""
+    problems = []
+    if prep.rubric_digest != prep.plan.rubric_digest:
+        problems.append(f"the rubric {_display(prep.rubric_path)} has digest {prep.rubric_digest}, not the "
+                        f"{prep.plan.rubric_digest} the plan pins (10.1)")
+    if missing and not args.declare_truncated:
+        problems.append(f"plan fire(s) {list(missing)} have not landed. Section 10 runs once, on the final data; to run "
+                        f"on what landed after an operational failure, pass --declare-truncated with the reason")
+    elif args.declare_truncated and not missing:
+        problems.append("--declare-truncated was given, but every plan fire has landed: nothing is truncated. Run "
+                        "without it")
+    elif missing:
+        problems.extend(journal_problems(missing, JOURNAL_FILE))
+    return problems
+
+
+def _refuse(problems: Sequence[str]) -> int:
+    for problem in problems:
+        print(f"refused: {problem}", file=sys.stderr)
+    return 2
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    if args.final and args.out is None:
-        print("refused: --final writes its result to the artifact named by --out", file=sys.stderr)
-        return 2
+    problems = invocation_problems(args)
+    if problems:
+        return _refuse(problems)
     try:
         prep = prepare(args.runs or None, runs_dir=args.runs_dir, plan_path=args.plan, seeds_path=args.seeds,
                        rubric_path=args.rubric, registry_path=args.outcomes, registry_versions=args.registry_version)
     except AnalysisRefusal as exc:
-        print(f"refused: {exc}", file=sys.stderr)
-        return 2
+        return _refuse([str(exc)])
     cov = coverage(prep)
     header = {"analysis": "docs/petri_wave2_design.md section 10 (pre-registered wave-2 register contrast)",
               "final": bool(args.final), "run_list": [r.provenance["path"] for r in prep.runs],
-              "bootstrap_seed": args.seed, "identity": analysis_identity()}
+              "bootstrap_seed": args.seed,
+              "identity": analysis_identity({"plan": args.plan, "seed_file": args.seeds, "rubric": args.rubric,
+                                             "outcome_registry": args.outcomes})}
     if not args.final:
         doc = {**header, "note": "coverage only (section 10.6): no register contrast is computed without --final",
                "coverage": cov}
@@ -1512,20 +2020,27 @@ def main(argv: list[str] | None = None) -> int:
             args.out.write_text(json.dumps(doc, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
         return 0
     missing = cov["fires_not_landed"]
-    if missing and not args.declare_truncated:
-        print(f"refused: plan fire(s) {missing} have not landed. Section 10 runs once, on the final data; to run on "
-              f"what landed after an operational failure, pass --declare-truncated with the reason", file=sys.stderr)
-        return 2
+    problems = final_problems(args, prep, missing)
+    if problems:
+        return _refuse(problems)
     try:
         result = final_analysis(prep, seed=args.seed)
     except AnalysisRefusal as exc:
-        print(f"refused: {exc}", file=sys.stderr)
-        return 2
+        return _refuse([str(exc)])
     doc = {**header, "administratively_truncated": bool(missing),
            "truncation_reason": args.declare_truncated if missing else None, "fires_not_landed": missing,
            "coverage": cov, **result}
-    args.out.write_text(json.dumps(doc, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(json.dumps({"final": True, "out": str(args.out), "wording_row": result["section_10_2"]["wording"]["row_id"],
+    try:
+        with open(args.out, "x", encoding="utf-8") as fh:       # never overwrite (10.6: the analysis runs once)
+            fh.write(json.dumps(doc, indent=1, ensure_ascii=False) + "\n")
+    except FileExistsError:
+        return _refuse([f"--out {args.out} appeared while the analysis ran; nothing was written"])
+    wording = result["section_10_2"]["wording"]
+    first = result["as_first_written"]
+    print(json.dumps({"final": True, "out": str(args.out), "wording_row": wording["row_id"],
+                      "wording_selectable_as_registered": wording["selectable_as_registered"],
+                      "as_first_written_wording_row_secondary": (first["section_10_2"]["wording"]["row_id"]
+                                                                 if first["status"] == "computed" else None),
                       "administratively_truncated": bool(missing)}, indent=1))
     return 0
 
