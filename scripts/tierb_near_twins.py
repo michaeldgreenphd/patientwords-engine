@@ -38,6 +38,12 @@ has no non-empty ``top_prompt`` string, a site row that is not an object or has
 no non-empty ``clinical_prompt`` string, or a file of the wrong shape, stops the
 run with ``MalformedInputError`` and a per-file count (exit 2, nothing
 written): dropping such rows would shrink the comparison set without a word.
+The same holds for the campaign block the ``campaign_*`` counts read (the
+batches of the endpoint population): ``tierb.batches`` in the dashboard must be
+a non-empty array of objects, each with a non-empty string ``file`` naming a
+Tier B batch file this run reads. An absent list, an entry without a file, or a
+file that is not read here is refused with a count, not counted as an empty
+campaign or skipped (Codex review of PR #32, 2026-09-24).
 
 There is no randomness and no seed: the output depends only on the inputs,
 whose fingerprints the output records under ``inputs``: the sha256 of every
@@ -145,6 +151,48 @@ def site_phrases(site: str | Path) -> list[str]:
     return out
 
 
+def campaign_stems(dashboard: object, batch_stems: set[str]) -> set[str]:
+    """Stems of the batches listed in the dashboard's ``tierb.batches``, the
+    campaign whose sealed phrases the ``campaign_*`` counts cover.
+
+    Raises MalformedInputError when the list is absent, empty or not an array,
+    or when any entry is not an object with a non-empty string ``file`` naming
+    one of ``batch_stems`` (the Tier B batch files this run reads): each of
+    those would otherwise understate the campaign counts without a word."""
+    tierb = dashboard.get("tierb") if isinstance(dashboard, dict) else None
+    batches = tierb.get("batches") if isinstance(tierb, dict) else None
+    if not isinstance(batches, list) or not batches:
+        found = ("nothing" if batches is None else "an empty array" if batches == []
+                 else type(batches).__name__)
+        raise MalformedInputError(
+            f"dashboard tierb.batches: expected a non-empty array of batch objects, found {found}. "
+            f"Refusing: the campaign counts would read an empty campaign")
+    stems: set[str] = set()
+    no_file = 0
+    unknown: list[str] = []
+    for entry in batches:
+        name = entry.get("file") if isinstance(entry, dict) else None
+        if not isinstance(name, str) or not name.strip():
+            no_file += 1
+            continue
+        stem = Path(name.strip()).stem
+        if stem in batch_stems:
+            stems.add(stem)
+        else:
+            unknown.append(stem)
+    if no_file or unknown:
+        detail = []
+        if no_file:
+            detail.append(f"{no_file} entr{'y' if no_file == 1 else 'ies'} not an object with a non-empty "
+                          f"string file")
+        if unknown:
+            detail.append(f"{len(unknown)} naming a file that is not a Tier B batch file read here, "
+                          f"e.g. {sorted(unknown)[0]}")
+        raise MalformedInputError(f"dashboard tierb.batches: {'; '.join(detail)}. Refusing: the campaign "
+                                  f"counts would leave those batches out")
+    return stems
+
+
 def near_twins(sealed: dict[str, str], comparison: list[str],
                threshold: float = THRESHOLD) -> list[str]:
     """Sorted labels of sealed phrases whose best ratio against the comparison
@@ -192,6 +240,10 @@ def compute(simulated_dir: str, dashboard_path: str, site: str | Path) -> dict:
     registry = sealed_registry(simulated_dir, dashboard_path)
     if not registry:
         raise SystemExit("CONFIG ERROR: the sealed set computes empty (null tierb.start_utc? wrong branch?)")
+    dashboard_bytes = Path(dashboard_path).read_bytes()
+    dashboard = json.loads(dashboard_bytes.decode("utf-8"))
+    batch_files = tierb_batch_files(simulated_dir, tierb_start_stamp(dashboard_path))
+    campaign = campaign_stems(dashboard, {bp.stem for bp in batch_files})   # validated before counting
     sealed = set(registry)
     explore = [top for top in tierb_phrases if top not in sealed]
     # Exact string, unstripped: an outer-spacing variant of a sealed phrase is a
@@ -200,9 +252,6 @@ def compute(simulated_dir: str, dashboard_path: str, site: str | Path) -> dict:
     comparison = explore + published
     twins = near_twins(registry, comparison)
 
-    dashboard_bytes = Path(dashboard_path).read_bytes()
-    dashboard = json.loads(dashboard_bytes.decode("utf-8"))
-    campaign = {Path(b.get("file", "")).stem for b in (dashboard.get("tierb") or {}).get("batches", [])}
     campaign_labels = {label for label in registry.values() if label.split("#")[0] in campaign}
     return {
         "_": ("Tier B Amendment 5 (registered 2026-09-23, before unsealing): the frozen list of sealed "
@@ -231,8 +280,7 @@ def compute(simulated_dir: str, dashboard_path: str, site: str | Path) -> dict:
             "engine_head": _git_head(simulated_dir),
             "dashboard_sha256": hashlib.sha256(dashboard_bytes).hexdigest(),
             "dashboard_tierb_sha256": _sha256_json(dashboard.get("tierb")),
-            "batch_files_sha256": {bp.name: _sha256_file(bp) for bp in
-                                   tierb_batch_files(simulated_dir, tierb_start_stamp(dashboard_path))},
+            "batch_files_sha256": {bp.name: _sha256_file(bp) for bp in batch_files},
             "site_head": _git_head(site),
             "site_files_sha256": {f: _sha256_file(Path(site) / f) for f in SITE_FILES},
         },

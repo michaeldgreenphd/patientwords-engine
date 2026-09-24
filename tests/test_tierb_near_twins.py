@@ -247,3 +247,45 @@ def test_a_site_copy_differing_only_by_outer_spacing_is_a_twin(tmp_path):
     # the exact sealed string on the site is still not a comparison phrase
     assert result["counts"]["comparison_phrases"] == 4           # explore_twin, explore_far, tea1, padded
 
+
+# --- the campaign block of the dashboard is validated (Codex review of PR #32, 2026-09-24) #
+# campaign_* counts read tierb.batches with defaults: an absent list counted an
+# empty campaign and an entry without a file was dropped, so the counts that
+# define the endpoint population came out plausible and understated.
+
+_BAD_CAMPAIGNS = [
+    ("absent", None),
+    ("empty", []),
+    ("not an array", {"file": f"{BATCH}.json"}),
+    ("entry not an object", [f"{BATCH}.json"]),
+    ("entry without file", [{"accepted": 3}]),
+    ("empty file", [{"file": ""}]),
+    ("file not a string", [{"file": 7}]),
+    ("file not a Tier B batch read here", [{"file": "pairs_20260901T000000Z.json"}]),
+]
+
+
+@pytest.mark.parametrize("case,batches", _BAD_CAMPAIGNS, ids=[c for c, _ in _BAD_CAMPAIGNS])
+def test_a_malformed_campaign_block_is_refused(tmp_path, capsys, case, batches):
+    sim, ops, site, _ = _tree(tmp_path)
+    dash = ops / "dashboard.json"
+    payload = json.loads(dash.read_text(encoding="utf-8"))
+    if batches is None:
+        del payload["tierb"]["batches"]
+    else:
+        payload["tierb"]["batches"] = batches
+    dash.write_text(json.dumps(payload), encoding="utf-8")
+    _refuses(sim, ops, site, "tierb.batches")
+    out = tmp_path / "twins.json"
+    argv = ["--site", str(site), "--simulated", str(sim), "--dashboard", str(dash), "--out", str(out)]
+    assert nt.main(argv) == 2 and "refused" in capsys.readouterr().out
+    assert not out.exists()
+
+
+def test_a_second_valid_campaign_entry_is_counted(tmp_path):
+    sim, ops, site, _ = _tree(tmp_path)
+    dash = ops / "dashboard.json"
+    payload = json.loads(dash.read_text(encoding="utf-8"))
+    payload["tierb"]["batches"].append({"file": f"{LATER}.json"})   # no sealed phrase: adds none
+    dash.write_text(json.dumps(payload), encoding="utf-8")
+    assert nt.compute(str(sim), str(dash), site)["counts"]["campaign_sealed_phrases"] == 3
