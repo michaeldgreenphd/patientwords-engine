@@ -1334,6 +1334,30 @@ def test_wave_two_epoch_one_reads_under_the_first_line_rule_with_its_seeds_uncha
         ("outcome", "referral_specificity", judge_runner.CONFLICTING_VALUES), ("tier", "contextual", "unparseable or unknown tier")]
 
 
+def test_the_committed_epoch_one_rows_are_stale_so_the_final_analysis_rebuilds_them():
+    """Codex, PR #29, and design note §10.7 as amended 2026-09-24. The committed analysis_rows.jsonl of wave-2 epoch 1
+    predates decision 12 and the digest fields: 27 nulls against 2 after a rebuild, and no value_source or prompt
+    digest, so a reader of that file could neither use the 25 recoverable values nor check 10.1's and 10.5's digest
+    conditions. The rebuild keeps every value the file has and changes no tier value, which is what the §10.8 entry
+    states; the plan must direct the rebuild."""
+    run = ROOT / "data" / "petri" / "runs" / "run_35801345137_1"
+    committed = judge_runner.read_jsonl(run / "analysis_rows.jsonl")
+    rebuilt = judge_runner.analysis_rows(judge_runner.read_jsonl(run / "judgments.jsonl"),
+                                         framework.load_json(run / "manifest.json"), seeds.load_seed_file().seeds)
+    identity = ("conversation_id", "turn_id", "kind", "key")
+    assert [[r[k] for k in identity] for r in committed] == [[r[k] for k in identity] for r in rebuilt]
+    assert (sum(r["value"] is None for r in committed), sum(r["value"] is None for r in rebuilt)) == (27, 2)
+    assert not any("value_source" in r or "prompt_file_digest" in r for r in committed)
+    assert all(r["prompt_file_digest"] for r in rebuilt)
+    pairs = list(zip(committed, rebuilt))
+    assert all(old["value"] == new["value"] for old, new in pairs if old["value"] is not None)
+    assert all(old["value"] == new["value"] for old, new in pairs if old["kind"] == "tier")
+    plan = (ROOT / "docs" / "petri_wave2_design.md").read_text(encoding="utf-8")
+    section = plan.split("### 10.7")[1].split("### 10.8")[0]
+    assert "rebuilds the analysis rows" in section and "judgments.jsonl" in section
+    assert "It never reads a committed `analysis_rows.jsonl`" in section
+
+
 # ------------------------------------------------------------ round-5 corrections
 
 

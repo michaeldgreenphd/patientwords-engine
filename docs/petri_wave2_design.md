@@ -1264,11 +1264,24 @@ supports a headline. `safety_netting_baseline_persistence` is analysed only on r
   parameter is stated, and the seed is recorded in its output. `python scripts/petri_w2_power_sim.py --seed 20260923
   --sims 3000` reproduces the power and error-rate figures above, and its tests are in
   tests/test_petri_w2_power_sim.py.
-- **Analysis script.** It reads `analysis_rows` from every landed wave-2 run and writes one JSON artifact recording:
+- **Analysis script.** For every landed wave-2 run it rebuilds the analysis rows from that run's `judgments.jsonl` and
+  `manifest.json` through the current `judge_runner.analysis_rows`, the function `analyze` calls, so every row has a
+  `value_source`, a `prompt_ref` and a `prompt_file_digest`. It never reads a committed `analysis_rows.jsonl` (amended
+  2026-09-24, §10.8). Those files stay as they landed, but one written before decision 12 is stale:
+  - the epoch-1 file (`run_35801345137_1`) has 27 null values where the current parser reads 25 from the answer's first
+    line, all of them secondary outcomes;
+  - it has no `value_source`, `prompt_ref` or `prompt_file_digest`, so 10.1's rubric-digest condition and 10.5's
+    prompt-digest restriction cannot be checked on its rows.
+
+  `analysis_rows` refuses a seed file whose seeds differ from the ones a run recorded. On 2026-09-24 both landed wave-2
+  runs rebuild against the current seed file.
+
+  The script writes one JSON artifact recording:
   - the triples, contrasts and partitions;
   - every exclusion and its reason;
   - each test and interval;
-  - the bootstrap seed, the rubric and prompt digests, and the run ids and commits it read.
+  - the bootstrap seed, the rubric and prompt digests, the run ids and commits it read, and the sha256 of each
+    `judgments.jsonl` and manifest it rebuilt from.
 
   It and its tests are committed before the 2026-09-25 epoch lands. It runs once, on the final data.
 - **Page.** The results page's "answer so far" is then rewritten to the matching row of 10.2's table, and 10.3's
@@ -1301,3 +1314,4 @@ final data or a threshold.
 | Area | Before | After |
 |---|---|---|
 | Design simulation's heterogeneous null (10.2, 10.7) | each scenario's downgrade probability drawn as max(0, 0.10 + N(0, 0.10)); the clip at zero raised its mean to about 0.108 against an upgrade probability of 0.10, so the row labelled a null carried a real downgrade shift, and its 7.5% (triple test) and 4.7% (scenario gate) were not error rates under a null | the deviation is clipped symmetrically about the stated mean, so the mean stays at 0.10 (`scenario_pd`); re-run with the same seed 20260923 and 3,000 simulations: 7.3% and 4.8%. The conclusion is unchanged: when scenarios differ, the triple-level test rejects above its nominal 5% and the scenario gate holds it. The other four rows of the grid, including every power figure in 10.2, are unchanged to the digit |
+| Where the analysis reads its rows (10.7) | the committed `analysis_rows.jsonl` of each landed run | rebuilt from each run's `judgments.jsonl` and manifest through the current `judge_runner.analysis_rows`. The epoch-1 file predates decision 12 and the digest fields: it has 27 nulls where the current parser reads 25 (all secondary outcomes), and no `value_source` or prompt digest, so the digest conditions of 10.1 and 10.5 could not be checked on its rows. Under 10.6 the analysis as first written is reported beside this one. For the tier outcome the two readings give the same value on every landed row (checked 2026-09-24). They differ in the 10.5 outcomes, and in whether the digest conditions can be checked on the epoch-1 rows |
