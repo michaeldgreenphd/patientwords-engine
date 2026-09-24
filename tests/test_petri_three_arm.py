@@ -21,8 +21,10 @@ from scripts.petri_audit.judge_runner import parse_answer, rubric_digest
 from scripts.petri_three_arm import (
     DEFAULT_ADVICE_RUBRIC,
     DEFAULT_OUTCOME_REGISTRY,
+    CONFLICTING_VALUES,
     HEADER_NOTE,
     OUT_OF_VOCABULARY,
+    REREAD_REFUSAL_ERRORS,
     InputRefusalError,
     RegistryMismatchError,
     Wave1RefusalError,
@@ -977,11 +979,62 @@ def test_reread_claim_the_reader_cannot_produce_is_refused(tmp_path, make_row, f
     assert f"line {index + 1}: {field}" in str(exc_info.value)
 
 
+def _failed_reread(row: dict, raw: str, error: str = CONFLICTING_VALUES, **judgment) -> dict:
+    """The row analysis_rows() derives when re-reading a null out-of-vocabulary outcome judgment yields no value: the
+    value stays null and the re-read's own reason replaces the recorded error."""
+    return {**row, "value": None, "judge_error": error, "row_eligible": False,
+            "judgment": {"value": None, "judge_error": OUT_OF_VOCABULARY, "judge_raw": raw, **judgment}}
+
+
+def test_failed_reread_naming_a_revised_answer_is_accepted_and_refused_by_exchange(tmp_path):
+    """PR #29's reader re-reads an out-of-vocabulary answer and, when a later line revises the leading-line value,
+    records CONFLICTING_VALUES instead of the vocabulary miss. The earlier validator refused the whole run over that
+    one row (run_35801345137_1 line 509, re-derived). The row is what analysis_rows() writes, so the run is analysed
+    and the exchange is refused by name for that arm (Codex review of the F2 fix on PR #30)."""
+    rows = _outcome_arms()
+    rows[1] = _failed_reread(rows[1], f"{OUTCOME_VALUES[0]}\n\nOn reflection:\n\n**{OUTCOME_VALUES[1]}**")
+    run_dir = _write_run(tmp_path, "run-failed-reread", rows)
+
+    report = analyze_run_directories([run_dir])
+
+    contrast = report.seeds["s1"].dimensions[OUTCOME_KEY].contrasts["colloquial_vs_clinical"]
+    assert (contrast.counts.n_compared, contrast.counts.n_refused) == (0, 1)
+    assert f"arm 'clinical' ineligible ({CONFLICTING_VALUES})" in contrast.refusals[0]["reason"]
+
+
+@pytest.mark.parametrize("make_row", [
+    # the judgment recorded another error, so the reader copies it unchanged
+    lambda: _failed_reread(_outcome_arms()[1], "prose", judge_error="synthetic parse error"),
+    # no recorded answer, so there was nothing to re-read
+    lambda: _failed_reread(_outcome_arms()[1], "prose", judge_raw=None),
+    # a tier judgment is never re-read
+    lambda: _failed_reread(_three_arms(value=TIERS[0])[1], "prose"),
+    # not an error a re-read can record
+    lambda: _failed_reread(_outcome_arms()[1], "prose", error="synthetic edited error"),
+    # a failed re-read carries no value_source
+    lambda: {**_failed_reread(_outcome_arms()[1], "prose"), "value_source": "value_only"},
+])
+def test_changed_error_the_reader_cannot_produce_is_refused(tmp_path, make_row):
+    """Only a re-read the reader performs can change a row's error; any other change is an edit."""
+    rows = [*_three_arms(value=TIERS[0]), *_outcome_arms()]
+    target = make_row()
+    index = next(i for i, r in enumerate(rows) if (r["kind"], r["arm"]) == (target["kind"], target["arm"]))
+    rows[index] = target
+    run_dir = _write_run(tmp_path, "run-changed-error", rows)
+
+    with pytest.raises(InputRefusalError) as exc_info:
+        analyze_run_directories([run_dir])
+    assert f"line {index + 1}: judge_error" in str(exc_info.value)
+
+
 def test_out_of_vocabulary_error_and_leading_line_rule_match_judge_runner():
-    """The validator restates two of judge_runner's parsing facts; these tie them to the parser in the tree, so a
-    change there fails here rather than turning every re-read into a refusal or every refusal into a re-read."""
+    """The validator restates judge_runner's parsing facts; these tie them to the parser in the tree, so a change
+    there fails here rather than turning every re-read into a refusal or every refusal into a re-read."""
     allowed = ["alpha", "beta"]
     assert parse_answer("gamma", allowed, "outcome")[2] == OUT_OF_VOCABULARY
+    # a revised answer: CONFLICTING_VALUES under PR #29's parser, a vocabulary miss under the value-only parser before it
+    assert parse_answer("alpha\n\n**beta**", allowed, "outcome")[2] in REREAD_REFUSAL_ERRORS
+    assert set(REREAD_REFUSAL_ERRORS) == {OUT_OF_VOCABULARY, CONFLICTING_VALUES}
     for text in ("alpha", "`alpha`", "'alpha'", "alpha.", "**alpha**", "alpha\n\nA justification."):
         value = parse_answer(text, allowed, "outcome")[0]
         if value is not None:

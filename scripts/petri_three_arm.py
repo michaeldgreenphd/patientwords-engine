@@ -243,6 +243,11 @@ LEADING_LINE_AT_ANALYSIS = "leading_line_at_analysis"
 # outcome judgment recorded with it, and carrying the judge's raw answer, is the one judgment analysis_rows() re-reads
 # at analysis time (judge_runner._read_value, PR #29); tests/test_petri_three_arm.py ties the string to parse_answer.
 OUT_OF_VOCABULARY = "answer is not one of the declared values"
+# judge_runner.parse_outcome_answer's error (PR #29) for an answer whose later line revises its leading-line value.
+# A re-read that refuses such an answer records this error in place of the vocabulary miss the judgment recorded.
+CONFLICTING_VALUES = "answer names more than one declared value"
+# every error a re-read that yields no value can record; a failed re-read keeps the value null on both sides
+REREAD_REFUSAL_ERRORS = (OUT_OF_VOCABULARY, CONFLICTING_VALUES)
 # the characters judge_runner.parse_outcome_answer (PR #29) trims from both ends of a candidate answer line
 _ANSWER_TRIM = "`'\"* .:;,"
 
@@ -295,9 +300,19 @@ def _value_problems(
     refused (Codex review of the F2 fix on PR #30: a tier row, or an outcome row with another error, was accepted with
     any value). The later-line revision check (a CONFLICTING_VALUES answer) lives in PR #29's parse_outcome_answer and
     is not repeated here.
+
+    A re-read that yields no value names its own reason (a revised answer is CONFLICTING_VALUES, not the recorded
+    vocabulary miss), so for a judgment `_rereadable` admits, a row with a null value, no value_source and one of
+    REREAD_REFUSAL_ERRORS is what analysis_rows() writes (Codex review of the F2 fix on PR #30: run_35801345137_1
+    line 509 re-derived that way was refused, refusing the whole run).
     """
     if a.get("value_source") != LEADING_LINE_AT_ANALYSIS:
-        return [f for f in ("value", "judge_error") if a.get(f) != j.get(f)]
+        bad = ["value"] if a.get("value") != j.get("value") else []
+        failed_reread = (_rereadable(j) and a.get("value") is None and a.get("value_source") is None
+                         and a.get("judge_error") in REREAD_REFUSAL_ERRORS)
+        if a.get("judge_error") != j.get("judge_error") and not failed_reread:
+            bad.append("judge_error")
+        return bad
     if not _rereadable(j):
         return ["value_source (marked as re-read, but the judgment is not a null out-of-vocabulary outcome answer "
                 "with a recorded answer)"]
