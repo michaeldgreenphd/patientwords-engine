@@ -1734,6 +1734,24 @@ def test_prompt_cache_tokens_are_priced_never_dropped(tmp_path):
                                  judge_reserve_usd=0.0, max_spend_usd=1.0).per_sample_usd == pytest.approx(0.1)
 
 
+def test_the_pricing_digest_pins_the_cache_multipliers(monkeypatch):
+    """Codex review of PR #37 (2026-09-23): `Price.cost` prices cache reads and
+    writes from the input rate by two multipliers, but the pricing digest a
+    manifest pins hashed only the registry, the engine table and the fallback
+    rate. A run priced under other multipliers carried the same digest, and
+    the summary labelled prices it could not reproduce. Each multiplier now
+    changes the digest exactly when it changes the cost."""
+    registry = {"anthropic": {"pricing": {"claude-haiku-4-5": [1.0, 5.0]}}}
+    base_digest = spend.pricing_source_digest(registry)
+    base_cost = spend.Price(1.0, 5.0, "x").cost(0, 0, 1_000_000, 1_000_000)
+    for name, changed in (("CACHE_READ_INPUT_MULTIPLIER", 0.1), ("CACHE_WRITE_INPUT_MULTIPLIER", 1.25)):
+        with monkeypatch.context() as m:
+            m.setattr(spend, name, changed)
+            assert spend.Price(1.0, 5.0, "x").cost(0, 0, 1_000_000, 1_000_000) != pytest.approx(base_cost), name
+            assert spend.pricing_source_digest(registry) != base_digest, f"{name} changes the cost but not the digest"
+    assert spend.pricing_source_digest(registry) == base_digest, "the digest is a function of its inputs"
+
+
 def test_the_fallback_spend_report_books_cache_tokens_from_the_log_stats(tmp_path, monkeypatch, capsys):
     """`cli spend-report` books a run that failed before adaptation. When the
     retained log's samples carry no usage it reads `log.stats.model_usage`,

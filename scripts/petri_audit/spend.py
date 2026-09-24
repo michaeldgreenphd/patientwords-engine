@@ -245,8 +245,17 @@ def resolve_price(model: str, registry: dict | None = None, engine_pricing: dict
 
 
 def pricing_source_digest(registry: dict | None = None) -> str:
+    """sha256 of every rate assumption `Price.cost` prices a run with: the
+    provider registry, the engine's Anthropic table, the fallback rate and the
+    two cache multipliers. The adapter pins it in the manifest
+    (usage.pricing_source_sha256) and the summary labels prices only while the
+    current digest equals that pin. The multipliers joined the digest after
+    the Codex review of 2026-09-23: without them a run priced under other
+    multipliers carried the same pin."""
     registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
-    return sha256_text(json.dumps({"registry": registry, "engine": _engine_pricing(), "fallback": FALLBACK_PRICING},
+    return sha256_text(json.dumps({"registry": registry, "engine": _engine_pricing(), "fallback": FALLBACK_PRICING,
+                                   "cache_input_multipliers": {"read": CACHE_READ_INPUT_MULTIPLIER,
+                                                               "write": CACHE_WRITE_INPUT_MULTIPLIER}},
                                   sort_keys=True, separators=(",", ":"), ensure_ascii=False))
 
 
