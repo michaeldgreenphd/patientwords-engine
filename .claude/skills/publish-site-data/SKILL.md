@@ -73,8 +73,11 @@ python scripts/export_pair_swaps.py --site ../patientwords --depth ../patientwor
 - `export_pair_swaps.py` runs AFTER depth/insights so its `<batch>#<index>` join is
   current; new batches show target-only until it re-runs. That is expected. It
   withholds Tier B holdout rows (count in the payload's `holdout_withheld`), and exits
-  2 when the sealed set computes empty (wrong branch): that is a config error, not a
-  refusal — stop, as for `seal_check.py` exit 2.
+  2 (`CONFIG ERROR`) when the sealed set computes empty (wrong branch), or when it
+  cannot read the trace-time prompts in full: no `trace_out/`, a Tier B batch with no
+  `batch_summary` part, or an unreadable part. Either is a config error, not a
+  refusal — stop, as for `seal_check.py` exit 2: the holdout rule could not be
+  applied.
 - **Transport and loglens wired 2026-07-23 (owner option 1).** The census batch's
   25/25 `save_raw` JACOBIAN_LENS runs and its `__loglens_` LOGIT_LENS runs both landed
   on this branch, and each exporter's regen reproduced its committed site file

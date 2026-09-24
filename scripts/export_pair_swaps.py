@@ -225,7 +225,7 @@ def main(argv=None):
     try:
         swaps = build_swaps(stems, args.simulated_dir, rule, withheld)
     except TraceStoreError as exc:
-        print(f"refused: {exc}. Nothing was written")
+        print(f"CONFIG ERROR: {exc}. Refusing to publish unfiltered swaps; nothing was written")
         return 2
     if not swaps:
         print(f"refused: no pairs resolved under {args.simulated_dir}")

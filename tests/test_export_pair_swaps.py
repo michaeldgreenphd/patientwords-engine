@@ -195,7 +195,8 @@ def test_a_tierb_batch_with_no_trace_part_refuses_by_name(tmp_path, capsys):
     out = tmp_path / "jlens_swaps.json"
     out.write_text('{"kept": 1}', encoding="utf-8")
     rc = ext.main(_main_args(tmp_path, sim, ops, depth, out, tmp_path / "trace_out"))
-    assert rc == 2 and UNTRACED in capsys.readouterr().out
+    printed = capsys.readouterr().out
+    assert rc == 2 and UNTRACED in printed and printed.startswith("CONFIG ERROR")   # a stop, not a refusal
     assert out.read_text() == '{"kept": 1}'
 
 
