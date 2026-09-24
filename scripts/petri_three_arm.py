@@ -17,16 +17,17 @@ import argparse
 import hashlib
 import json
 import sys
+from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
 try:
-    from scripts.petri_audit.judge_runner import dedupe_key
+    from scripts.petri_audit.judge_runner import dedupe_key, rubric_digest
 except ModuleNotFoundError:  # run as a file path: the repository root is not on sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from scripts.petri_audit.judge_runner import dedupe_key
+    from scripts.petri_audit.judge_runner import dedupe_key, rubric_digest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ADVICE_RUBRIC = REPO_ROOT / "data" / "advice_rubric.draft.json"
@@ -45,7 +46,7 @@ class Wave1RefusalError(ValueError):
 
 
 class RegistryMismatchError(ValueError):
-    """Raised when loaded registry or rubric digest mismatches the run manifest."""
+    """Raised when the loaded outcome registry's digest mismatches the run manifest."""
 
 
 class InputRefusalError(ValueError):
@@ -156,7 +157,11 @@ class RunProvenance:
     manifest_outcome_registry_sha256: dict[str, str]
     rubric_path: str
     rubric_sha256: str
-    rubric_manifest_status: str
+    # the loaded rubric's canonical digest, in the form every tier judgment records as prompt_file_digest
+    # (judge_runner.rubric_digest); tier rows recording another digest are refused per exchange
+    rubric_canonical_digest: str
+    # per run: tier judgment digest -> count of tier rows recording it
+    tier_rubric_digests: dict[str, dict[str, int]]
     superseded_retry_rows: dict[str, int]
 
 
@@ -317,7 +322,6 @@ def collapse_retries(rows: Sequence[dict[str, Any]]) -> tuple[list[dict[str, Any
 def load_run_rows(
     run_dir: Path | str,
     outcome_registry_path: Path | str | None = None,
-    rubric_path: Path | str | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], int]:
     """Loads manifest and analysis rows from a run directory.
 
@@ -327,7 +331,7 @@ def load_run_rows(
     analysis_rows.jsonl is required; raw judgments.jsonl rows are never read in its place.
     Validates that the run is eligible for three-arm analysis, cleanly refusing
     Wave 1 runs where exchange_index is null or only 2 arms are present,
-    and verifying outcome registry and rubric digests against the manifest.
+    and verifying the outcome registry digest against the manifest.
     """
     rdir = Path(run_dir)
     manifest_path = rdir / "manifest.json"
@@ -353,25 +357,8 @@ def load_run_rows(
             f"does not match loaded outcome registry {_display_path(outcomes_file)} ({loaded_outcome_sha})"
         )
 
-    # Invariant: manifest rubric digest (if recorded) must match loaded rubric
-    rubric_file = Path(rubric_path or DEFAULT_ADVICE_RUBRIC)
-    manifest_rubric_sha = (
-        manifest.get("framework", {}).get("rubric_sha256")
-        or manifest.get("framework", {}).get("advice_rubric_sha256")
-        or manifest.get("artifacts", {}).get("rubric_sha256")
-    )
-    if manifest_rubric_sha:
-        if not rubric_file.is_file():
-            raise RegistryMismatchError(
-                f"Run '{run_id}' manifest records rubric digest ({manifest_rubric_sha}), "
-                f"but loaded rubric {_display_path(rubric_file)} does not exist"
-            )
-        loaded_rubric_sha = sha256_file(rubric_file)
-        if loaded_rubric_sha != manifest_rubric_sha:
-            raise RegistryMismatchError(
-                f"Run '{run_id}' manifest rubric digest ({manifest_rubric_sha}) "
-                f"does not match loaded advice rubric {_display_path(rubric_file)} ({loaded_rubric_sha})"
-            )
+    # The rubric is verified against the digest every tier judgment records (prompt_file_digest), in
+    # analyze_seed: the manifest schema has no rubric field, so a manifest check could never fire (Codex F3 on PR #30).
 
     analysis_rows_path = rdir / "analysis_rows.jsonl"
 
@@ -623,8 +610,14 @@ def analyze_seed(
     seed_id: str,
     seed_rows: list[dict[str, Any]],
     scales: Mapping[str, list[str]],
+    *,
+    tier_rubric_digest: str | None,
 ) -> SeedAnalysis:
     """Analyzes all judged dimensions and tier instruments for one seed.
+
+    `tier_rubric_digest` is the loaded rubric's canonical digest (`judge_runner.rubric_digest`): a final
+    tier row that recorded any other digest was graded on a different scale and its exchange is refused by
+    name. It must be passed explicitly; None is only for a caller that has verified the digest itself.
 
     Identifies standard 3-arm seeds vs 2x3 identity seeds and builds the required contrasts:
     - Standard 3-arm:
@@ -701,6 +694,17 @@ def analyze_seed(
 
         # Invariant 3: Two final rows in one exchange for one arm must be refused by name, not resolved to latest turn.
         if ex in dim_errors[key][arm]:
+            continue
+
+        # Invariant 4: a tier row graded under another rubric is not on the loaded scale; a later edit to the draft
+        # rubric would otherwise reinterpret historical rows under the new tiers (Codex F3 on PR #30).
+        if (tier_rubric_digest is not None and r.get("kind") == "tier"
+                and r.get("prompt_file_digest") != tier_rubric_digest):
+            dim_errors[key][arm][ex] = (
+                f"arm '{arm}' tier row (turn {turn_id}) in exchange {ex} was judged under rubric digest "
+                f"{r.get('prompt_file_digest')!r}, not the loaded rubric's {tier_rubric_digest!r}"
+            )
+            dim_data[key][arm].pop(ex, None)
             continue
 
         if ex in dim_data[key][arm]:
@@ -881,6 +885,10 @@ def analyze_run_directories(
     rubric_file = Path(rubric_path or DEFAULT_ADVICE_RUBRIC)
     outcomes_file = Path(outcome_registry_path or DEFAULT_OUTCOME_REGISTRY)
 
+    if not rubric_file.is_file():
+        raise FileNotFoundError(f"Advice rubric file not found: {rubric_file}")
+    loaded_rubric_digest = rubric_digest(load_json(rubric_file))
+
     active_scales = (
         scales
         if scales is not None
@@ -897,26 +905,19 @@ def analyze_run_directories(
     seed_digests: dict[str, str] = {}
     judges_of_record: list[str] = []
     manifest_outcome_digests: dict[str, str] = {}
-    manifest_rubric_digests: dict[str, str | None] = {}
+    tier_rubric_digests: dict[str, dict[str, int]] = {}
     superseded_retry_rows: dict[str, int] = {}
 
     for rdir in run_dirs:
-        manifest, rows, n_superseded = load_run_rows(
-            rdir,
-            outcome_registry_path=outcomes_file,
-            rubric_path=rubric_file,
-        )
+        manifest, rows, n_superseded = load_run_rows(rdir, outcome_registry_path=outcomes_file)
         run_id = manifest.get("run_id") or str(rdir)
         if manifest.get("run_id"):
             run_ids.append(manifest["run_id"])
 
         manifest_outcome_digests[run_id] = manifest.get("framework", {}).get("outcome_registry_sha256", "")
-        manifest_rub_sha = (
-            manifest.get("framework", {}).get("rubric_sha256")
-            or manifest.get("framework", {}).get("advice_rubric_sha256")
-            or manifest.get("artifacts", {}).get("rubric_sha256")
-        )
-        manifest_rubric_digests[run_id] = manifest_rub_sha
+        tier_rubric_digests[run_id] = dict(sorted(Counter(
+            str(r.get("prompt_file_digest")) for r in rows if r.get("kind") == "tier"
+        ).items()))
 
         identity_sha = manifest.get("chain", {}).get("identity_sha256")
         if identity_sha:
@@ -960,17 +961,10 @@ def analyze_run_directories(
 
     analyzed_seeds: dict[str, SeedAnalysis] = {}
     for sid, srows in sorted(rows_by_seed.items()):
-        analyzed_seeds[sid] = analyze_seed(sid, srows, active_scales)
+        analyzed_seeds[sid] = analyze_seed(sid, srows, active_scales, tier_rubric_digest=loaded_rubric_digest)
 
     loaded_outcome_sha = sha256_file(outcomes_file) if outcomes_file.is_file() else ""
-    loaded_rubric_sha = sha256_file(rubric_file) if rubric_file.is_file() else ""
-
-    if all(v is not None for v in manifest_rubric_digests.values()):
-        rubric_status = "verified against manifest"
-    elif any(v is not None for v in manifest_rubric_digests.values()):
-        rubric_status = "partially recorded in manifest"
-    else:
-        rubric_status = "not recorded in manifest"
+    loaded_rubric_sha = sha256_file(rubric_file)
 
     ordinal_dims: list[str] = sorted({
         d_key
@@ -1002,7 +996,8 @@ def analyze_run_directories(
         manifest_outcome_registry_sha256=manifest_outcome_digests,
         rubric_path=_display_path(rubric_file),
         rubric_sha256=loaded_rubric_sha,
-        rubric_manifest_status=rubric_status,
+        rubric_canonical_digest=loaded_rubric_digest,
+        tier_rubric_digests=tier_rubric_digests,
         superseded_retry_rows=superseded_retry_rows,
     )
 
@@ -1029,7 +1024,12 @@ def format_markdown_summary(report: ThreeArmReport) -> str:
         f"- **Engine commits**: {', '.join(report.provenance.engine_commits) or 'None'}",
         f"- **Judge of record**: {', '.join(report.provenance.judge_of_record) or 'None'}",
         f"- **Outcome registry**: `{report.provenance.outcome_registry_path}` (`{report.provenance.outcome_registry_sha256[:12]}`)",
-        f"- **Rubric**: `{report.provenance.rubric_path}` ({report.provenance.rubric_manifest_status})",
+        f"- **Rubric**: `{report.provenance.rubric_path}` (canonical digest "
+        f"`{report.provenance.rubric_canonical_digest}`, checked against every tier judgment's recorded digest; "
+        "tier rows by recorded digest: "
+        + "; ".join(f"{rid}: " + ", ".join(f"`{d}` {n}" for d, n in counts.items())
+                    for rid, counts in report.provenance.tier_rubric_digests.items())
+        + ")",
         f"- **Seeds analyzed**: {len(report.seeds)}",
         "- **Superseded retry attempts** (a null judgment replaced by a later attempt under the same key): "
         + (", ".join(f"{rid}: {n}" for rid, n in report.provenance.superseded_retry_rows.items()) or "None"),

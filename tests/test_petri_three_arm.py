@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 
+from scripts.petri_audit.judge_runner import rubric_digest
 from scripts.petri_three_arm import (
     DEFAULT_ADVICE_RUBRIC,
     DEFAULT_OUTCOME_REGISTRY,
@@ -42,6 +43,7 @@ def ordinal_scales() -> dict[str, list[str]]:
 
 JUDGE = "claude-haiku-4-5"
 TIERS = load_ordinal_scales()["response_only"]
+RUBRIC_DIGEST = rubric_digest(json.loads(DEFAULT_ADVICE_RUBRIC.read_text(encoding="utf-8")))
 
 
 def _write_run(
@@ -69,7 +71,7 @@ def _write_run(
         a.setdefault("turn_id", 2 * a["exchange_index"])
         a.setdefault("assistant_turn_index", a["turn_id"] // 2)
         a.setdefault("row_eligible", a.get("value") is not None and a.get("value") != "not_applicable")
-        a.setdefault("prompt_file_digest", "0123456789ab")
+        a.setdefault("prompt_file_digest", RUBRIC_DIGEST if a.get("kind") == "tier" else "0123456789ab")
         full.append(a)
     judgments = []
     for a in full:
@@ -202,7 +204,7 @@ def test_tool_calling_arm_compares_only_final_in_exchange(ordinal_scales):
         },
     ]
 
-    analysis = analyze_seed("pw-petri-w2-tool-clarify", rows, ordinal_scales)
+    analysis = analyze_seed("pw-petri-w2-tool-clarify", rows, ordinal_scales, tier_rubric_digest=None)
     contrast = analysis.dimensions["response_only"].contrasts["colloquial_vs_clinical"]
 
     # Exactly 1 comparison row for exchange 1
@@ -259,7 +261,7 @@ def test_row_missing_final_in_exchange_is_refused_by_name(ordinal_scales):
         },
     ]
 
-    analysis = analyze_seed("pw-petri-w2-test", rows, ordinal_scales)
+    analysis = analyze_seed("pw-petri-w2-test", rows, ordinal_scales, tier_rubric_digest=None)
     contrast = analysis.dimensions["response_only"].contrasts["colloquial_vs_clinical"]
 
     assert contrast.counts.n_exchanges_total == 1
@@ -327,7 +329,7 @@ def test_two_final_rows_in_one_exchange_for_one_arm_refused_by_name(ordinal_scal
         },
     ]
 
-    analysis = analyze_seed("pw-petri-w2-test", rows, ordinal_scales)
+    analysis = analyze_seed("pw-petri-w2-test", rows, ordinal_scales, tier_rubric_digest=None)
     contrast = analysis.dimensions["response_only"].contrasts["colloquial_vs_clinical"]
 
     assert contrast.counts.n_exchanges_total == 1
@@ -362,7 +364,7 @@ def test_partially_malformed_rows_are_refused_not_skipped(ordinal_scales, broken
     rows.append({**base, "arm": "clinical", "exchange_index": 2, "turn_id": 4, **broken})
 
     with pytest.raises(InputRefusalError) as exc_info:
-        analyze_seed("s1", rows, ordinal_scales)
+        analyze_seed("s1", rows, ordinal_scales, tier_rubric_digest=None)
 
     msg = str(exc_info.value)
     assert "1 of 4 rows cannot be joined and are refused, not skipped" in msg
@@ -399,7 +401,7 @@ def test_missing_exchange_refused_by_name(ordinal_scales):
         {"seed_id": "pw-petri-w2-reassurance-decay", "arm": "clinical", "exchange_index": 2, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "self_care", "row_eligible": True},
     ]
 
-    analysis = analyze_seed("pw-petri-w2-reassurance-decay", rows, ordinal_scales)
+    analysis = analyze_seed("pw-petri-w2-reassurance-decay", rows, ordinal_scales, tier_rubric_digest=None)
     dim = analysis.dimensions["response_only"]
 
     # colloquial_vs_clinical has both exchanges present
@@ -444,7 +446,7 @@ def test_not_applicable_rows_counted_as_uncompared_never_dropped_or_compared_as_
         {"seed_id": "pw-petri-w2-referral-specificity", "arm": "lay_careful", "exchange_index": 2, "final_in_exchange": True, "kind": "outcome", "key": "assertion_handling", "value": "accepted", "row_eligible": True},
     ]
 
-    analysis = analyze_seed("pw-petri-w2-referral-specificity", rows, ordinal_scales)
+    analysis = analyze_seed("pw-petri-w2-referral-specificity", rows, ordinal_scales, tier_rubric_digest=None)
     contrast = analysis.dimensions["assertion_handling"].contrasts["colloquial_vs_clinical"]
 
     assert contrast.counts.n_exchanges_total == 2
@@ -475,7 +477,7 @@ def test_repository_shaped_not_applicable_rows_keep_their_reason(ordinal_scales)
          "row_eligible": False},
     ]
 
-    dim = analyze_seed("s1", rows, ordinal_scales).dimensions["assertion_handling"]
+    dim = analyze_seed("s1", rows, ordinal_scales, tier_rubric_digest=None).dimensions["assertion_handling"]
 
     mixed = dim.contrasts["colloquial_vs_clinical"].refusals[0]["reason"]
     assert "arm 'colloquial' is not_applicable (gate reason A)" in mixed
@@ -517,7 +519,7 @@ def test_identity_seed_emits_within_identity_and_within_register_contrasts(ordin
                 "row_eligible": True,
             })
 
-    analysis = analyze_seed("pw-petri-w2-identity-register", rows, ordinal_scales)
+    analysis = analyze_seed("pw-petri-w2-identity-register", rows, ordinal_scales, tier_rubric_digest=None)
     assert analysis.is_identity_seed is True
     assert set(analysis.arms_present) == set(arms)
 
@@ -567,7 +569,7 @@ def test_ordinal_scale_direction_upgrade_downgrade(ordinal_scales):
         {"seed_id": "pw-petri-w2-tool-clarify", "arm": "lay_careful", "exchange_index": 3, "final_in_exchange": True, "kind": "tier", "key": "response_only", "value": "routine", "row_eligible": True},
     ]
 
-    analysis = analyze_seed("pw-petri-w2-tool-clarify", rows, ordinal_scales)
+    analysis = analyze_seed("pw-petri-w2-tool-clarify", rows, ordinal_scales, tier_rubric_digest=None)
     contrast = analysis.dimensions["response_only"].contrasts["colloquial_vs_clinical"]
 
     assert contrast.is_ordinal is True
@@ -602,7 +604,7 @@ def test_value_off_the_ordinal_scale_is_refused_by_name(ordinal_scales):
         {**base, "arm": "lay_careful", "exchange_index": 2, "value": tiers[1]},
     ]
 
-    contrast = analyze_seed("s1", rows, ordinal_scales).dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+    contrast = analyze_seed("s1", rows, ordinal_scales, tier_rubric_digest=None).dimensions["response_only"].contrasts["colloquial_vs_clinical"]
 
     c = contrast.counts
     assert (c.n_compared, c.n_differing, c.n_same, c.n_refused) == (0, 0, 0, 2)
@@ -621,7 +623,7 @@ def test_recommendation_specificity_ordinal_mapping():
         {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "none", "row_eligible": True},
     ]
 
-    analysis = analyze_seed("s1", rows, custom_scales)
+    analysis = analyze_seed("s1", rows, custom_scales, tier_rubric_digest=None)
     contrast = analysis.dimensions["recommendation_specificity"].contrasts["colloquial_vs_clinical"]
 
     assert contrast.is_ordinal is True
@@ -640,7 +642,7 @@ def test_dimensions_without_ordinal_declaration_default_to_nominal(ordinal_scale
         {"seed_id": "s1", "arm": "lay_careful", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome", "key": "recommendation_specificity", "value": "none", "row_eligible": True},
     ]
 
-    analysis = analyze_seed("s1", rows, ordinal_scales)
+    analysis = analyze_seed("s1", rows, ordinal_scales, tier_rubric_digest=None)
     contrast = analysis.dimensions["recommendation_specificity"].contrasts["colloquial_vs_clinical"]
 
     assert contrast.is_ordinal is False
@@ -674,7 +676,9 @@ def test_provenance_and_header_invariants(tmp_path):
     assert prov.seed_digests == {"s1": "e" * 64}
     assert prov.outcome_registry_sha256 == registry_sha
     assert prov.manifest_outcome_registry_sha256 == {"run-synth-123": registry_sha}
-    assert prov.rubric_manifest_status == "not recorded in manifest"
+    assert prov.rubric_sha256 == sha256_file(DEFAULT_ADVICE_RUBRIC)
+    assert prov.rubric_canonical_digest == RUBRIC_DIGEST
+    assert prov.tier_rubric_digests == {"run-synth-123": {RUBRIC_DIGEST: 3}}
 
     md = format_markdown_summary(report)
     assert "# " + HEADER_NOTE in md
@@ -930,22 +934,40 @@ def test_registry_without_ordinal_flags_reports_nominal_and_names_in_header(tmp_
     assert "**Nominal dimensions (1)**: recommendation_specificity" in md
 
 
-def test_manifest_rubric_digest_mismatch_refused_by_name(tmp_path, capsys):
-    """A run whose manifest records a rubric digest that mismatches loaded rubric is refused by name."""
-    bogus_rubric_sha = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
-    run_dir = _write_run(tmp_path, "run-rubric-mismatch-004", _three_arms(),
-                         manifest_update=lambda m: m["framework"].update(rubric_sha256=bogus_rubric_sha))
+def test_tier_row_judged_under_another_rubric_is_refused_by_exchange(tmp_path):
+    """The manifest schema has no rubric field, so the rubric is verified against the canonical digest each
+    tier judgment records: a row graded under another rubric is refused by name, and the provenance
+    counts tier rows by recorded digest (Codex F3 on PR #30)."""
+    rows = _three_arms(exchanges=(1, 2))
+    rows[1] = {**rows[1], "prompt_file_digest": "ffffffffffff"}  # clinical, exchange 1
+    run_dir = _write_run(tmp_path, "run-other-rubric", rows)
 
-    with pytest.raises(RegistryMismatchError) as exc_info:
-        analyze_run_directories([run_dir])
+    report = analyze_run_directories([run_dir])
 
-    msg = str(exc_info.value)
-    assert "run-rubric-mismatch-004" in msg
-    assert "advice_rubric.draft.json" in msg
-    assert bogus_rubric_sha in msg
-    assert sha256_file(DEFAULT_ADVICE_RUBRIC) in msg
+    contrast = report.seeds["s1"].dimensions["response_only"].contrasts["colloquial_vs_clinical"]
+    assert (contrast.counts.n_compared, contrast.counts.n_refused) == (1, 1)
+    reason = contrast.refusals[0]["reason"]
+    assert "arm 'clinical' tier row (turn 2) in exchange 1 was judged under rubric digest 'ffffffffffff'" in reason
+    assert f"not the loaded rubric's '{RUBRIC_DIGEST}'" in reason
+    assert report.provenance.tier_rubric_digests == {"run-other-rubric": {RUBRIC_DIGEST: 5, "ffffffffffff": 1}}
 
-    exit_code = main(["--run-dir", str(run_dir)])
-    assert exit_code == 2
-    captured = capsys.readouterr()
-    assert "REFUSED: Run 'run-rubric-mismatch-004' manifest rubric digest" in captured.err
+
+def test_rubric_edited_after_the_run_refuses_every_tier_exchange(tmp_path):
+    """A later edit to the draft rubric would otherwise reinterpret historical tier rows under the new scale while
+    the report said only that the rubric was not recorded (Codex F3 on PR #30)."""
+    edited = json.loads(DEFAULT_ADVICE_RUBRIC.read_text(encoding="utf-8"))
+    edited["synthetic_edit"] = "changes the canonical digest, not the tier list"
+    edited_path = tmp_path / "edited_rubric.json"
+    edited_path.write_text(json.dumps(edited), encoding="utf-8")
+    run_dir = _write_run(tmp_path, "run-old-rubric", _three_arms(exchanges=(1, 2)))
+
+    report = analyze_run_directories([run_dir], rubric_path=edited_path)
+
+    assert report.provenance.rubric_canonical_digest == rubric_digest(edited)
+    for contrast in report.seeds["s1"].dimensions["response_only"].contrasts.values():
+        assert contrast.counts.n_compared == 0
+        assert contrast.counts.n_refused == 2
+        assert all("was judged under rubric digest" in r["reason"] for r in contrast.refusals)
+    md = format_markdown_summary(report)
+    assert f"canonical digest `{rubric_digest(edited)}`" in md
+    assert f"run-old-rubric: `{RUBRIC_DIGEST}` 6" in md
