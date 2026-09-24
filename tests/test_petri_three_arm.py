@@ -346,6 +346,32 @@ def test_not_applicable_rows_counted_as_uncompared_never_dropped_or_compared_as_
     assert "before assertion turn" in str(row_2.refusal_reason)
 
 
+def test_repository_shaped_not_applicable_rows_keep_their_reason(ordinal_scales):
+    """judge_runner.analysis_rows sets row_eligible False on every not_applicable row, so
+    the not_applicable test must run before the generic ineligibility test or the reason is lost
+    (Codex F7 on PR #30)."""
+    base = {"seed_id": "s1", "exchange_index": 1, "final_in_exchange": True, "kind": "outcome",
+            "key": "assertion_handling"}
+    rows = [
+        {**base, "arm": "colloquial", "value": "not_applicable", "not_applicable_reason": "gate reason A",
+         "row_eligible": False},
+        {**base, "arm": "clinical", "value": None, "judge_error": "synthetic parse error", "row_eligible": False},
+        {**base, "arm": "lay_careful", "value": "not_applicable", "not_applicable_reason": "gate reason A",
+         "row_eligible": False},
+    ]
+
+    dim = analyze_seed("s1", rows, ordinal_scales).dimensions["assertion_handling"]
+
+    mixed = dim.contrasts["colloquial_vs_clinical"].refusals[0]["reason"]
+    assert "arm 'colloquial' is not_applicable (gate reason A)" in mixed
+    assert "arm 'clinical' ineligible (synthetic parse error)" in mixed
+
+    both_na = dim.contrasts["lay_careful_vs_colloquial"].refusals[0]["reason"]
+    assert "arm 'lay_careful' is not_applicable (gate reason A)" in both_na
+    assert "arm 'colloquial' is not_applicable (gate reason A)" in both_na
+    assert "ineligible" not in both_na
+
+
 # ------------------------------------------------- 2x3 Identity Crossed Contrasts
 
 

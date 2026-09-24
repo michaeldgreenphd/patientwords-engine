@@ -26,6 +26,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ADVICE_RUBRIC = REPO_ROOT / "data" / "advice_rubric.draft.json"
 DEFAULT_URGENCY_TIERS = REPO_ROOT / "data" / "urgency_tiers.draft.json"
 DEFAULT_OUTCOME_REGISTRY = REPO_ROOT / "docs" / "framework" / "outcome_dimensions.draft.json"
+NOT_APPLICABLE = "not_applicable"
 
 HEADER_NOTE = (
     "Three-Arm Petri Audit Analysis "
@@ -310,6 +311,28 @@ def _compare_values(
     return False, "different"
 
 
+def _row_problem(arm: str, row: Mapping[str, Any]) -> str | None:
+    """Why one arm's final row cannot enter a comparison, or None when it can.
+
+    not_applicable is tested first. `judge_runner.analysis_rows` derives `row_eligible` from
+    `value != not_applicable`, so every repository-produced not_applicable row is also
+    ineligible; testing ineligibility first would report such a row as merely ineligible and
+    drop the dimension-specific `not_applicable_reason` the refusal exists to carry.
+    """
+    if row.get("value") == NOT_APPLICABLE or row.get("not_applicable_reason") is not None:
+        reason = row.get("not_applicable_reason") or "the judge answered not_applicable"
+        return f"arm '{arm}' is not_applicable ({reason})"
+    if row.get("judge_error") is not None:
+        return f"arm '{arm}' ineligible ({row['judge_error']})"
+    if row.get("shared_prefix") is True:
+        return f"arm '{arm}' ineligible (shared-prefix turn, judged on the root record)"
+    if row.get("value") is None:
+        return f"arm '{arm}' ineligible (null value)"
+    if row.get("row_eligible") is False:
+        return f"arm '{arm}' ineligible (row_eligible is false)"
+    return None
+
+
 def analyze_contrast(
     contrast_name: str,
     arm_A: str,
@@ -360,26 +383,9 @@ def analyze_contrast(
         elif row_B is None:
             refusal_reason = f"exchange {ex} refused: arm '{arm_B}' has no eligible row"
         else:
-            # Check eligibility and not_applicable
-            na_A = row_A.get("value") == "not_applicable" or row_A.get("not_applicable_reason") is not None
-            na_B = row_B.get("value") == "not_applicable" or row_B.get("not_applicable_reason") is not None
-            inelig_A = row_A.get("row_eligible") is False or row_A.get("judge_error") is not None
-            inelig_B = row_B.get("row_eligible") is False or row_B.get("judge_error") is not None
-
-            if inelig_A or inelig_B:
-                err_parts = []
-                if inelig_A:
-                    err_parts.append(f"arm '{arm_A}' ineligible ({row_A.get('judge_error') or 'ineligible row'})")
-                if inelig_B:
-                    err_parts.append(f"arm '{arm_B}' ineligible ({row_B.get('judge_error') or 'ineligible row'})")
-                refusal_reason = f"exchange {ex} refused: {', '.join(err_parts)}"
-            elif na_A or na_B:
-                na_parts = []
-                if na_A:
-                    na_parts.append(f"arm '{arm_A}' is not_applicable ({row_A.get('not_applicable_reason')})")
-                if na_B:
-                    na_parts.append(f"arm '{arm_B}' is not_applicable ({row_B.get('not_applicable_reason')})")
-                refusal_reason = f"exchange {ex} refused: {', '.join(na_parts)}"
+            problems = [p for p in (_row_problem(arm_A, row_A), _row_problem(arm_B, row_B)) if p]
+            if problems:
+                refusal_reason = f"exchange {ex} refused: {', '.join(problems)}"
             else:
                 val_A = str(row_A["value"])
                 val_B = str(row_B["value"])
