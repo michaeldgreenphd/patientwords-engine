@@ -47,6 +47,7 @@ import json
 import math
 import os
 import contextlib
+import re
 import secrets
 import subprocess
 import sys
@@ -224,6 +225,11 @@ def fire_lane(trigger: str, params: dict) -> str:
 
 PROVIDERS_RELPATH = Path("data") / "advice_providers.json"
 PETRI_BOOLEAN_KEYS = ("judge", "log_model_api", "commit_outputs")
+# The target rules of petri_audit.yml's "Resolve parameters" step, mirrored by `petri_target_problems`.
+PETRI_MOCK_TARGET = "mockllm/model"       # the params job's default target, and the only one dry_run admits
+PETRI_SENTINEL_PROVIDERS = ("mockllm", "none")
+PETRI_RUN_PROVIDERS = ("anthropic", "openrouter")
+PETRI_RUN_TARGET_RE = re.compile(r"anthropic/[^/\s]+|openrouter/[^/\s]+/[^/\s]+")
 
 
 def providers_registry(repo: str | Path | None = None) -> dict:
@@ -278,6 +284,57 @@ def petri_judge_key_env(params: dict, registry: dict | None = None) -> str | Non
     return key_env if isinstance(key_env, str) else None
 
 
+def petri_resolved_target(params: dict) -> str:
+    """The target petri_audit.yml's params job resolves from a trigger file:
+    the file's value `str()`-ed as the job does it (a JSON boolean
+    lower-cased, nothing trimmed), else the job's default."""
+    if "target" not in params:
+        return PETRI_MOCK_TARGET
+    value = params["target"]
+    return str(value).lower() if isinstance(value, bool) else str(value)
+
+
+def petri_target_problems(params: dict) -> list[str]:
+    """The params job's target refusals, in its order and stopping at the
+    first, as the job does. The fire path journals its reservation before the
+    job runs, so a target only the job refuses left an entry holding the queue
+    slot and, in mode run, the day's ceiling for a run that never started,
+    until it was resolved or expired (Codex review of PR #37, 2026-09-24).
+
+    mode run: not a mock sentinel (it prices at zero, so the paid pre-flight
+    bound admits it for free and the run commits mock output as a measurement;
+    Codex round 5 on PR #28); not a direct-vendor spelling (every target that
+    is not openrouter/ is booked to the Anthropic lane, while openai/... bills
+    its own key); and spelled exactly anthropic/<model> or
+    openrouter/<vendor>/<model>. dry_run: the mock target only. preflight
+    calls nothing, so the job checks no target there and neither does this.
+    Mode is read as the rest of this module reads it (trimmed, lower-cased):
+    a spelling the job would refuse outright is checked as the mode it names.
+    The sentinel test trims the target, so a padded sentinel is refused under
+    its own name; the job refuses it too, as a direct-vendor spelling."""
+    mode = str(params.get("mode", "preflight")).strip().lower()
+    target = petri_resolved_target(params)
+    if mode == "dry_run":
+        if target != PETRI_MOCK_TARGET:
+            return [f"petri-audit dry_run runs against {PETRI_MOCK_TARGET!r} only, got {target!r}"]
+        return []
+    if mode != "run":
+        return []
+    if target.strip().split("/")[0] in PETRI_SENTINEL_PROVIDERS:
+        named = "" if "target" in params else " (no target is named, and the workflow's default is the sentinel)"
+        return [f"petri-audit mode run must not target the test sentinel {target.strip()!r}{named}: it prices at "
+                "zero, so the paid pre-flight bound admits it for free and the run commits mock output as a "
+                "measurement; use mode dry_run for mockllm"]
+    if "/" in target and target.split("/")[0] not in PETRI_RUN_PROVIDERS:
+        return [f"petri-audit mode run target {target!r} bills its own vendor key, while every target that is not "
+                "openrouter/ is booked to the Anthropic lane and its ceiling; route it through OpenRouter as "
+                "openrouter/<vendor>/<model> (for example openrouter/openai/gpt-5.4-mini)"]
+    if not PETRI_RUN_TARGET_RE.fullmatch(target):
+        return [f"petri-audit mode run needs a target spelled anthropic/<model> or openrouter/<vendor>/<model>, "
+                f"got {target!r}; a bare model name names no provider"]
+    return []
+
+
 def petri_params_problems(params: dict, registry: dict | None = None) -> list:
     """The petri-audit invariants every entry point must enforce before a paid
     step (fire_trigger's fire path, the server-side budget-gate a
@@ -318,14 +375,7 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
                 "petri-audit mode run must carry a non-empty _nonce: it is the only join key between the "
                 "journal entry that reserves the spend and the cost sidecar the run lands, so a paid fire "
                 f"without one can never be reconciled, got {nonce!r}")
-        # A mock/test sentinel prices at zero in the engine's table, so naming one as a paid run's TARGET buys a
-        # free pre-flight bound and commits mock output through the production path. The workflow refuses these
-        # too; this refuses them before the fire (Codex round 5 on PR #28).
-        target = str(params.get("target") or "").strip()
-        if target.split("/")[0] in ("mockllm", "none"):
-            problems.append(f"petri-audit mode run must not target the test sentinel {target!r}: it prices at "
-                            "zero, so the paid pre-flight bound admits it for free and the run commits mock "
-                            "output as a measurement; use mode dry_run for mockllm")
+    problems.extend(petri_target_problems(params))
     target_channel, judge_channel = petri_channels(params, registry)
     if judge_channel is not None and judge_channel != target_channel:
         problems.append(

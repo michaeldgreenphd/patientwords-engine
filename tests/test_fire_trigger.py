@@ -7,6 +7,7 @@ under tmp_path; nothing here touches git or the network.
 
 import importlib.util
 import json
+import re
 import subprocess
 import os
 from datetime import datetime, timedelta, timezone
@@ -359,6 +360,53 @@ def test_a_paid_run_may_not_target_a_zero_price_test_sentinel():
     assert ft.validate_params("petri-audit", {**base, "target": "anthropic/claude-haiku-4-5"}) is None
     # a dry run is exactly where the sentinel belongs
     assert ft.validate_params("petri-audit", {**base, "mode": "dry_run", "target": "mockllm/model"}) is None
+
+
+_NO_TARGET = object()
+_SPELLING = "needs a target spelled anthropic/<model> or openrouter/<vendor>/<model>"
+
+
+@pytest.mark.parametrize("mode, target, refusal", [
+    # a direct-vendor spelling bills its own key while the lane books it to the Anthropic ceiling
+    ("run", "openai/gpt-5.4-mini", "bills its own vendor key"),
+    ("run", "google/gemini-3.5-flash", "bills its own vendor key"),
+    ("run", " anthropic/claude-haiku-4-5", "bills its own vendor key"),   # the params job does not trim
+    # a spelling that names no provider or no model
+    ("run", "claude-haiku-4-5", _SPELLING),
+    ("run", "", _SPELLING),
+    ("run", "anthropic/", _SPELLING),
+    ("run", "openrouter/", _SPELLING),
+    ("run", "openrouter/gpt-5.4-mini", _SPELLING),
+    ("run", "openrouter/openai/", _SPELLING),
+    ("run", "anthropic/claude-haiku-4-5/x", _SPELLING),
+    # no target at all: the params job's default is the mock sentinel
+    ("run", _NO_TARGET, "test sentinel"),
+    # dry_run runs against the mock target only
+    ("dry_run", "anthropic/claude-haiku-4-5", "dry_run runs against 'mockllm/model' only"),
+])
+def test_a_target_the_params_job_refuses_is_refused_before_the_journal(repo, mode, target, refusal):
+    # Codex review of PR #37 (2026-09-24): the workflow's params job refuses these targets, but the fire path
+    # checked only the mock sentinels, so the fire wrote and pushed a journal entry whose reservation held the
+    # queue slot and, in mode run, the day's ceiling until it was resolved or expired
+    params = {"seeds_file": "docs/framework/petri_seeds.draft.json", "mode": mode, "max_spend": "1.00",
+              "judge": "false", "commit_outputs": "true", "_nonce": "pilot-1"}
+    if target is not _NO_TARGET:
+        params["target"] = target
+    with pytest.raises(ValueError, match=re.escape(refusal)):
+        ft.validate_params("petri-audit", params)
+    assert fire(repo, "petri-audit", params) == 3
+    assert not journal_path(repo).exists(), "a refused fire journals nothing"
+    assert not trigger_path(repo, "petri-audit").exists(), "a refused fire writes no trigger file"
+
+
+@pytest.mark.parametrize("target", ["anthropic/claude-haiku-4-5", "openrouter/openai/gpt-5.4-mini",
+                                    "openrouter/google/gemini-3.5-flash"])
+def test_a_target_the_params_job_admits_passes_the_fire_guard(target):
+    params = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": target, "mode": "run",
+              "max_spend": "1.00", "judge": "false", "commit_outputs": "true", "_nonce": "pilot-1"}
+    assert ft.validate_params("petri-audit", params) is None
+    # preflight calls nothing, so the params job checks no target there and neither does the guard
+    assert ft.validate_params("petri-audit", {**params, "mode": "preflight", "target": "openai/gpt-5.4-mini"}) is None
 
 
 def test_a_value_carrying_a_control_character_is_refused_at_the_fire():

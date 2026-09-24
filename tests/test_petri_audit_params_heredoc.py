@@ -143,3 +143,43 @@ def test_mode_run_admits_the_two_providers_the_lane_books_correctly(tmp_path, ta
     rc, out, err = _run(tmp_path, {**PAID, "target": target, "_nonce": "n1"})
     assert rc == 0, err
     assert f"target={target}\n" in out
+
+
+def _fire_trigger_module():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("fire_trigger_parity", ROOT / "scripts" / "fire_trigger.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_ABSENT = object()
+
+
+@pytest.mark.parametrize("mode, target", [
+    (mode, target)
+    for mode in ("run", "dry_run", "preflight")
+    for target in ("anthropic/claude-haiku-4-5", "openrouter/openai/gpt-5.4-mini", "openai/gpt-5.4-mini",
+                   "google/gemini-3.5-flash", " anthropic/claude-haiku-4-5", "anthropic/claude-haiku-4-5 ",
+                   "claude-haiku-4-5", "", "anthropic/", "openrouter/", "openrouter/gpt-5.4-mini",
+                   "openrouter/openai/", "anthropic/claude-haiku-4-5/x", "anthropic/claude haiku",
+                   "mockllm/model", "mockllm/judge", "none/none", " mockllm/model", _ABSENT)
+])
+def test_the_fire_guard_refuses_exactly_the_targets_the_params_job_refuses(tmp_path, mode, target):
+    # Codex review of PR #37 (2026-09-24): the fire path journals a reservation before the params job runs, so a
+    # target the params job refuses must be refused at the fire too, or the entry holds the queue slot and, in mode
+    # run, the day's ceiling for a run that never starts. Same trigger file, both checks, same verdict.
+    cfg = {**PAID, "mode": mode, "_nonce": "n1"}
+    if target is _ABSENT:
+        del cfg["target"]
+    else:
+        cfg["target"] = target
+    rc, _, err = _run(tmp_path, cfg)
+    try:
+        _fire_trigger_module().validate_params("petri-audit", cfg)
+        guard_admits = True
+    except ValueError as exc:
+        guard_admits, guard_err = False, str(exc)
+    assert guard_admits == (rc == 0), (f"params job rc={rc} {err.strip()!r}; guard "
+                                       f"{'admits' if guard_admits else 'refuses: ' + guard_err}")
