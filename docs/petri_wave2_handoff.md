@@ -600,7 +600,41 @@ so it can be redone by hand.
        stay as they are.
     4. **Merge PR #29 by hand,** following §6.
   - **Codex.** The owner asked for no new Codex review requests before 01:00 EDT on 2026-09-24.
-  - **2026-09-24: the re-adapt path for decision 2 is built and not yet fired.** It is petri-audit `mode: readapt` with the new key `source_run_id`, on the local branch `claude/petri-w2e3-readapt` (unpushed, unreviewed); the recovery fire (nonce `w2e3r`, $2.50 committed, the judge's ceiling alone) waits for review and the owner's go-ahead.
+  - **2026-09-24: the re-adapt path for decision 2 is built and not yet fired.** It is petri-audit `mode: readapt`
+    with the new key `source_run_id`, on the local branch `claude/petri-w2e3-readapt` (unpushed, unreviewed). The
+    recovery fire (nonce `w2e3r`, $2.50 committed, the judge's ceiling alone) waits for review and the owner's
+    go-ahead. **How to fire it safely** (each point checked against the code on that branch):
+    - **The parameters.** The w2e3 fire's trigger file (`aa0493bf`) plus `mode: readapt`,
+      `source_run_id: "35937014168"`, `commit_outputs: true` and `_nonce: w2e3r`. The fire path and the budget
+      gate refuse a readapt whose target, seeds, epochs, token limit, ceilings, judge model, judge tokens or
+      `log_model_api` differ from the source fire's.
+    - **Set `commit_outputs: true`.** That key is not among the ones matched, and it defaults to false. With
+      false, the re-adapted exports and judgments reach only the 30-day exports artifact, while the judge's spend
+      is still booked.
+    - **Fire from a branch that already exists on the remote.** A first push to a brand-new branch runs nothing,
+      because every job skips a ref's creation. `fire_trigger.py` still journals the $2.50 reservation, and it
+      counts against the day's ceiling until it is resolved or expires (8 hours by default). Push the branch first
+      (that push runs nothing), then fire from it.
+    - **The branch must carry the source run.** Its history must contain the w2e3 fire commit `aa0493bf` and its
+      journal the `w2e3` entry. Its tree must hold the landed sidecar `run_35937014168_1.report.json` (`10020e52`),
+      which records `run_status: success`, and nothing beside it. PR #29's branch and this branch both
+      qualify. `main` qualifies only after the #29 hand merge and once it carries this code. Since `9ca69dd1` the
+      history search sees `aa0493bf` through a merge that kept `main`'s trigger file.
+    - **Fire w2e3r and w2e4 on the same branch, one after the other.** Each run appends a line to
+      `data/petri/runs/manifests.chain` linked to the chain head it checked out. If they fire on two branches, the
+      chain forks, the eventual merge conflicts in that file, and `verify-chain` fails. If one is queued behind the
+      other in the lane, the queued run checks out its own trigger commit and chains against a head that predates
+      the first run's outputs. Its outputs then fail to commit after it has spent, and only its cost sidecars
+      land. `fire_trigger.py` refuses a readapt into a busy lane, but it will queue a mode-run fire behind
+      a running readapt. So fire w2e4 only after w2e3r has landed, been pulled and been resolved. Every wave-2
+      fire so far ran from PR #29's branch (the journal's `ref`). Either move this
+      branch's commits there first, or fire w2e4 from this branch too. As of this writing, this branch is a
+      fast-forward of #29's head `74aeb447`.
+    - **Fire on a day with a ceiling override.** $2.50 is above the default $2/day ceiling.
+      `ops/budget_overrides.json` raises 2026-09-24 and 2026-09-25 (UTC) to $15. On 2026-09-25, w2e3r plus w2e4
+      commit $11.10. Any later day needs a new owner-authorised override.
+    - **Never re-run it from the Actions tab.** The plan step refuses any attempt but the first; re-fire through
+      `fire_trigger.py`. The raw artifact `petri-audit-raw-eval-35937014168-1` expires on 2026-12-23.
 
 ---
 
