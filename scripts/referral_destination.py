@@ -29,6 +29,7 @@ import json
 import os
 import random
 from collections import Counter, defaultdict
+from fractions import Fraction
 from typing import Any, Iterable
 
 VOCAB_PATH = "data/referral_destination_vocab.draft.json"
@@ -139,6 +140,33 @@ def modal_rank(ranks: list[int]) -> int:
     return max(rank for rank, count in counts.items() if count == best)
 
 
+def _exact_mean(values: Iterable[int]) -> Fraction:
+    values = list(values)
+    return Fraction(sum(values), len(values))
+
+
+def _sign(value: Fraction) -> int:
+    return (value > 0) - (value < 0)
+
+
+def sign_agreement(model_means: dict[str, Fraction], pooled_total: Fraction) -> dict[str, Any]:
+    """How many models share the pooled estimate's direction, with ties kept apart.
+
+    A model whose mean is exactly zero is `models_tied_at_zero`, never an agreeing model: the
+    earlier Boolean test counted zero as agreeing with any non-negative estimate (Codex, PR #29).
+    When the pooled estimate is itself exactly zero there is no direction to agree with, and the
+    agreeing and opposing counts are null rather than zero."""
+    direction = _sign(pooled_total)
+    signs = [_sign(m) for m in model_means.values()]
+    tied = signs.count(0)
+    return {
+        "models_agreeing_in_sign": signs.count(direction) if direction else None,
+        "models_opposing_sign": signs.count(-direction) if direction else None,
+        "models_tied_at_zero": tied,
+        "models_by_sign": {"negative": signs.count(-1), "zero": tied, "positive": signs.count(1)},
+    }
+
+
 def cluster_bootstrap_ci(
     per_cluster: dict[str, list[float]], rng: random.Random, n_boot: int
 ) -> tuple[float, float, float]:
@@ -170,9 +198,13 @@ def estimate(
     `index` selects the triple member: 1 specialist, 2 emergency. A cell contributes only when
     both arms are present; `tier_identical_only` further restricts to cells whose two arms
     carry the same modal tier (`modal_rank`), so the readout cannot be a restatement of the tier.
+
+    Per-model signs are counted on exact rational means, not floats: a model whose cells cancel
+    exactly can come out at -5.6e-18 in floating point and would otherwise be counted as
+    negative. A model at exactly zero agrees with neither direction and is reported as tied.
     """
     per_stimulus: dict[str, list[float]] = defaultdict(list)
-    per_model: dict[str, list[float]] = defaultdict(list)
+    per_model: dict[str, list[Fraction]] = defaultdict(list)
     used = 0
     for (stimulus_id, model), arms in cells.items():
         patient_arm = next((a for a in PATIENT_ARMS if a in arms), None)
@@ -183,12 +215,13 @@ def estimate(
             continue
         difference = _mean(t[index] for t in patient) - _mean(t[index] for t in clinical)
         per_stimulus[stimulus_id].append(difference)
-        per_model[model].append(difference)
+        per_model[model].append(_exact_mean(t[index] for t in patient) - _exact_mean(t[index] for t in clinical))
         used += 1
     if used == 0:
         raise ValueError("no comparable cells; refusing to report an estimate over an empty set")
     point, lo, hi = cluster_bootstrap_ci(per_stimulus, rng, n_boot)
-    agreeing = sum(1 for values in per_model.values() if (_mean(values) < 0) == (point < 0))
+    model_means = {m: sum(v) / len(v) for m, v in per_model.items()}
+    signs = sign_agreement(model_means, sum(d for v in per_model.values() for d in v))
     return {
         "cells": used,
         "stimuli": len(per_stimulus),
@@ -196,8 +229,8 @@ def estimate(
         "patient_minus_clinical": round(point, 6),
         "ci95": [round(lo, 6), round(hi, 6)],
         "ci95_excludes_zero": not (lo <= 0 <= hi),
-        "models_agreeing_in_sign": agreeing,
-        "per_model": {m: round(_mean(v), 6) for m, v in sorted(per_model.items())},
+        **signs,
+        "per_model": {m: round(float(v), 6) for m, v in sorted(model_means.items())},
     }
 
 
@@ -302,7 +335,7 @@ def format_summary(bundle: dict[str, Any]) -> str:
                 f"    {stratum:<22} {res['patient_minus_clinical']:+.4f}"
                 f"  ci95 [{res['ci95'][0]:+.4f}, {res['ci95'][1]:+.4f}]  {mark}"
                 f"  {res['cells']} cells / {res['stimuli']} stimuli"
-                f"  {res['models_agreeing_in_sign']}/{res['models']} models agree in sign"
+                f"  {_agreement_text(res)}"
             )
     tier = bundle["urgency_tier_for_comparison"]["all_cells"]
     mark = "excludes 0" if tier["ci95_excludes_zero"] else "includes 0"
@@ -311,6 +344,14 @@ def format_summary(bundle: dict[str, Any]) -> str:
         f"  ci95 [{tier['ci95'][0]:+.4f}, {tier['ci95'][1]:+.4f}]  {mark}"
     )
     return "\n".join(lines)
+
+
+def _agreement_text(res: dict[str, Any]) -> str:
+    tied = res["models_tied_at_zero"]
+    if res["models_agreeing_in_sign"] is None:
+        return f"estimate exactly zero; models by sign {res['models_by_sign']}"
+    return (f"{res['models_agreeing_in_sign']}/{res['models'] - tied} non-tied models agree in sign"
+            f" ({tied} tied at zero)")
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

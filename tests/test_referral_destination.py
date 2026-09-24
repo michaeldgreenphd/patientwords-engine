@@ -157,6 +157,47 @@ def test_the_specialist_difference_has_the_sign_the_construct_predicts(tmp_path)
     assert bundle["readouts"]["names_specialist_service"]["all_cells"]["patient_minus_clinical"] == -1.0
 
 
+def test_a_model_at_zero_is_tied_not_agreeing_even_through_float_noise(tmp_path):
+    """Codex, PR #29: a Boolean sign test counted a model at exactly zero as agreeing with any
+    non-negative estimate. `zero` has identical arms. `noise` has two cells that cancel exactly
+    (-1/3 and +1/3) but whose float mean is +2.8e-17, the same artefact that put a model at
+    -5.6e-18 in the committed corpus and counted it as negative. Only `pos` agrees."""
+    advice = _corpus(tmp_path, [
+        ("s1", "pos", "patient", "routine", "see a cardiologist", "primary"),
+        ("s1", "pos", "clinical", "routine", "see your doctor", "primary"),
+        ("s2", "zero", "patient", "routine", "see your doctor", "primary"),
+        ("s2", "zero", "clinical", "routine", "see your doctor", "primary"),
+        ("s3", "noise", "patient", "routine", "see your doctor", "primary"),
+        ("s3", "noise", "clinical", "routine", "see a cardiologist", "primary"),
+        ("s3", "noise", "clinical", "routine", "see your doctor", "primary"),
+        ("s3", "noise", "clinical", "routine", "see your doctor", "primary"),
+        ("s4", "noise", "patient", "routine", "see a cardiologist", "primary"),
+        ("s4", "noise", "clinical", "routine", "see a cardiologist", "primary"),
+        ("s4", "noise", "clinical", "routine", "see a cardiologist", "primary"),
+        ("s4", "noise", "clinical", "routine", "see your doctor", "primary"),
+    ])
+    bundle = rd.analyze(advice, judge="primary", boot=50, seed=7, vocab_path=_vocab_file(tmp_path))
+    res = bundle["readouts"]["names_specialist_service"]["all_cells"]
+    assert res["patient_minus_clinical"] > 0
+    assert res["models_agreeing_in_sign"] == 1
+    assert res["models_opposing_sign"] == 0
+    assert res["models_tied_at_zero"] == 2
+    assert res["models_by_sign"] == {"negative": 0, "zero": 2, "positive": 1}
+    assert res["per_model"]["noise"] == 0.0
+    assert "1/1 non-tied models agree in sign (2 tied at zero)" in rd.format_summary(bundle)
+
+
+def test_an_estimate_of_exactly_zero_has_no_direction_to_agree_with(tmp_path):
+    advice = _corpus(tmp_path, [
+        ("s1", "m1", "patient", "routine", "see your doctor", "primary"),
+        ("s1", "m1", "clinical", "routine", "see your doctor", "primary"),
+    ])
+    bundle = rd.analyze(advice, judge="primary", boot=50, seed=7, vocab_path=_vocab_file(tmp_path))
+    res = bundle["readouts"]["names_specialist_service"]["all_cells"]
+    assert res["models_agreeing_in_sign"] is None and res["models_opposing_sign"] is None
+    assert res["models_tied_at_zero"] == 1
+
+
 def test_the_colloquial_arm_name_is_accepted_as_the_patient_side(tmp_path):
     """The petri lane calls it `colloquial`; the advice lane calls it `patient`. Both must
     pair against `clinical` or a whole family of rows silently contributes nothing."""
