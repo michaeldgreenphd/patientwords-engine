@@ -35,7 +35,14 @@ run with ``MalformedInputError`` and a per-file count (exit 2, nothing
 written): dropping such rows would shrink the comparison set without a word.
 
 There is no randomness and no seed: the output depends only on the inputs,
-whose fingerprints the output records. The output carries labels and counts
+whose fingerprints the output records under ``inputs``: the sha256 of every
+Tier B batch file read (``batch_files_sha256``), of the dashboard file
+(``dashboard_sha256``; the Routine rewrites it daily) and of its ``tierb``
+block, the only part read (``dashboard_tierb_sha256``, canonical JSON: sorted
+keys, compact separators, UTF-8), and of both site files, with the engine and
+site commits. The commits alone do not identify the inputs: a dirty checkout
+or a custom --simulated/--dashboard path reads other contents under the same
+commit (Codex review of PR #32). The output carries labels and counts
 only, never phrase text, and not the partner of each twin (naming it would
 point at a near-copy of a sealed phrase).
 
@@ -162,6 +169,11 @@ def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _sha256_json(value: object) -> str:
+    canonical = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def _git_head(repo: str | Path) -> str | None:
     try:
         return subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True,
@@ -181,7 +193,8 @@ def compute(simulated_dir: str, dashboard_path: str, site: str | Path) -> dict:
     comparison = explore + published
     twins = near_twins(registry, comparison)
 
-    dashboard = json.loads(Path(dashboard_path).read_text(encoding="utf-8"))
+    dashboard_bytes = Path(dashboard_path).read_bytes()
+    dashboard = json.loads(dashboard_bytes.decode("utf-8"))
     campaign = {Path(b.get("file", "")).stem for b in (dashboard.get("tierb") or {}).get("batches", [])}
     campaign_labels = {label for label in registry.values() if label.split("#")[0] in campaign}
     return {
@@ -208,6 +221,10 @@ def compute(simulated_dir: str, dashboard_path: str, site: str | Path) -> dict:
         "inputs": {
             "tierb_start_utc": (dashboard.get("tierb") or {}).get("start_utc"),
             "engine_head": _git_head(simulated_dir),
+            "dashboard_sha256": hashlib.sha256(dashboard_bytes).hexdigest(),
+            "dashboard_tierb_sha256": _sha256_json(dashboard.get("tierb")),
+            "batch_files_sha256": {bp.name: _sha256_file(bp) for bp in
+                                   tierb_batch_files(simulated_dir, tierb_start_stamp(dashboard_path))},
             "site_head": _git_head(site),
             "site_files_sha256": {f: _sha256_file(Path(site) / f) for f in SITE_FILES},
         },

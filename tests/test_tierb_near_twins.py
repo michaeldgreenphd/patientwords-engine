@@ -182,3 +182,44 @@ def test_a_malformed_explore_row_is_refused_with_a_count(tmp_path):
     sim, ops, site, _ = _tree(tmp_path / "shape")
     (sim / f"{LATER}.json").write_text(json.dumps({"pairs": []}), encoding="utf-8")
     _refuses(sim, ops, site, f"{LATER}.json")
+
+
+# --- the output fingerprints the engine inputs it read (Codex review of PR #32) #
+# inputs recorded only engine_head, which is the same commit (or null) for a
+# dirty checkout or custom --simulated/--dashboard paths, so different frozen
+# results could carry identical provenance.
+
+def _sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_inputs_record_the_hash_of_every_engine_file_read(tmp_path):
+    sim, ops, site, _ = _tree(tmp_path)
+    inputs = nt.compute(str(sim), str(ops / "dashboard.json"), site)["inputs"]
+    assert inputs["batch_files_sha256"] == {f"{BATCH}.json": _sha(sim / f"{BATCH}.json"),
+                                            f"{LATER}.json": _sha(sim / f"{LATER}.json")}   # no Tier A file
+    assert inputs["dashboard_sha256"] == _sha(ops / "dashboard.json")
+    tierb = json.loads((ops / "dashboard.json").read_text(encoding="utf-8"))["tierb"]
+    canonical = json.dumps(tierb, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    assert inputs["dashboard_tierb_sha256"] == hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def test_different_engine_inputs_never_share_provenance(tmp_path):
+    sim, ops, site, _ = _tree(tmp_path)
+    dash = ops / "dashboard.json"
+    first = nt.compute(str(sim), str(dash), site)["inputs"]
+    later = sim / f"{LATER}.json"
+    later.write_text(json.dumps([*json.loads(later.read_text(encoding="utf-8")),
+                                 {"top_prompt": "mm another explore phrase", "bottom_prompt": "p"}]),
+                     encoding="utf-8")
+    second = nt.compute(str(sim), str(dash), site)["inputs"]
+    assert first["engine_head"] == second["engine_head"]            # same commit (here: no repo)
+    assert first != second
+    assert first["batch_files_sha256"][f"{LATER}.json"] != second["batch_files_sha256"][f"{LATER}.json"]
+    # a dashboard rewrite outside the tierb block changes the file hash but not the block's
+    payload = json.loads(dash.read_text(encoding="utf-8"))
+    payload["queue"] = {"pending": []}
+    dash.write_text(json.dumps(payload), encoding="utf-8")
+    third = nt.compute(str(sim), str(dash), site)["inputs"]
+    assert third["dashboard_sha256"] != second["dashboard_sha256"]
+    assert third["dashboard_tierb_sha256"] == second["dashboard_tierb_sha256"]
