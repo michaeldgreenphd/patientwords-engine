@@ -822,6 +822,106 @@ def test_a_sample_inspect_halts_at_its_token_limit_is_refused_as_a_tree(run, tmp
     assert row["calls"] == 4 and row["input_tokens"] == 1600
 
 
+def _target_calls(sample) -> list:
+    from inspect_ai.event import ModelEvent
+
+    return [e for e in sample.events if isinstance(e, ModelEvent) and e.role == "target"]
+
+
+def _rewritten_log(src: Path, dest_dir: Path, mutate) -> Path:
+    """A copy of the stored eval log at `src` with `mutate(samples)` applied,
+    for call-level evidence the mock provider cannot produce (a generation
+    served from Inspect's cache, a call whose raw request was not retained)."""
+    from inspect_ai.log import read_eval_log, write_eval_log
+
+    log = read_eval_log(str(src))
+    mutate(sorted(log.samples, key=lambda s: (str(s.id), s.epoch)))
+    dest = dest_dir / src.name
+    write_eval_log(log, str(dest))
+    return dest
+
+
+def _contract_checks(eval_path: Path, seed_set, out: Path, refusal_prefix: str) -> dict:
+    result = _adapt(eval_path, seed_set, out)
+    assert result.refused and all(r["reason"].startswith(refusal_prefix) for r in result.refused), result.refused
+    return result.manifest["execution"]["contract_checks"]
+
+
+def _cached(samples) -> None:
+    _target_calls(samples[0])[0].cache = "read"
+
+
+def _unlogged(samples) -> None:
+    _target_calls(samples[0])[0].call = None
+
+
+def _crossed(samples) -> None:
+    # the first sample's first request now carries the other condition's opening text, a prefix of no branch declared
+    # for its own condition
+    first, other = (_target_calls(s)[0] for s in samples[:2])
+    first.call.request = json.loads(json.dumps(other.call.request))
+
+
+def test_a_halted_sample_s_calls_still_reach_the_call_level_checks(run, tmp_path_factory):
+    """Codex review of PR #37 (2026-09-23): the limit refusal ran before the
+    raw-request, sampling-config and cache checks and the request-prefix
+    check, so a halted sample's calls reached none of them. A run whose trees
+    were all halted reported generation_config_pinned and no_cache as passes
+    over calls never examined, and a halted sample's cached generation,
+    unretained raw request or off-condition request passed unseen. The tree
+    is still refused; its calls are examined first."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    target = get_model("mockllm/model", custom_outputs=_MeteredTarget(seed_set), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("halted-checks-logs"), token_limit=1000, cost_limit=0.01)
+    assert [s.limit is not None and s.error is None for s in log.samples] == [True, True]
+    src, halted = Path(log.location), "sample halted by Inspect's token limit"
+    got = _contract_checks(src, seed_set, tmp_path_factory.mktemp("halted-checks") / "run", halted)
+    # the mock provider's raw request carries no sampling keys (test_contract_verdicts_are_honest_under_a_mock_provider),
+    # so the halted calls, once examined, fail the config check by name; skipped, the check passed over nothing
+    assert got["generation_config_pinned"]["status"] == "fail" and "not_sent" in got["generation_config_pinned"]["detail"]
+    assert got["no_cache"]["status"] == "pass" and got["stimulus_digest_identity"]["status"] == "pass"
+    for name, mutate, check, detail in (
+            ("cached", _cached, "no_cache", "served from Inspect's cache"),
+            ("unlogged", _unlogged, "generation_config_pinned", "1 target call(s) have no retained raw request"),
+            ("crossed", _crossed, "stimulus_digest_identity", "are not a prefix of any branch declared for this condition")):
+        path = _rewritten_log(src, tmp_path_factory.mktemp(f"halted-{name}-log"), mutate)
+        got = _contract_checks(path, seed_set, tmp_path_factory.mktemp(f"halted-{name}") / "run", halted)
+        assert got[check]["status"] == "fail" and detail in got[check]["detail"], (name, got[check])
+
+
+def test_an_errored_or_unbound_sample_s_calls_still_reach_the_cache_check(run, tmp_path_factory):
+    """The same review's rule for the refusals that come before the limit
+    refusal: a sample that errored after a paid call, and one whose metadata
+    names no known seed, are refused, but a generation either served from
+    Inspect's cache is reported (no_cache and the retained-request count need
+    no seed)."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    target = get_model("mockllm/model", custom_outputs=_RaisingTarget(seed_set), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("errored-checks-logs"), token_limit=20000, cost_limit=0.01)
+    src = Path(log.location)
+
+    def errored_first(samples):
+        samples.sort(key=lambda s: s.error is None)
+
+    def errored_cached(samples):
+        errored_first(samples)
+        _cached(samples)
+
+    def unbound_cached(samples):
+        samples[0].metadata["seed_id"] = "pw-petri-no-such-seed"
+        _cached(samples)
+
+    for name, mutate, refusal in (("errored", errored_cached, "sample error:"),
+                                  ("unbound", unbound_cached, "sample metadata names no known seed")):
+        path = _rewritten_log(src, tmp_path_factory.mktemp(f"{name}-cache-log"), mutate)
+        got = _contract_checks(path, seed_set, tmp_path_factory.mktemp(f"{name}-cache") / "run", refusal)
+        assert got["no_cache"]["status"] == "fail", (name, got["no_cache"])
+
+
 class _NoChoiceTarget(ScriptedTarget):
     """On H1, answers the clinical arm's second turn with an output that has no choice at all."""
 

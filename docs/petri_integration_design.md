@@ -176,6 +176,19 @@ manifest records each as a named check with status pass, fail or not_run
    extended to the sanitised export and `.jsonl` families before the lane
    commits anything.
 
+The raw-request parts of checks 1, 3 and 4 read the calls of a refused tree
+too. Adapter 0.2 examines a sample's calls before it refuses the tree for a
+sample error, a limit halt or a stray reply ending; until the Codex review
+of 2026-09-23 those refusals came first, so a run whose trees were all
+halted reported `generation_config_pinned` and `no_cache` as passes over
+calls never examined. A sample refused before its seed is bound (no known
+seed, a seed digest that differs from the seed file in hand, or a mode with
+no execution path) still counts toward `no_cache` and the retained-request
+count, which need no seed, but its sampling keys and request prefixes are
+not checked against a seed it cannot be bound to; one refused for an unknown
+condition has its sampling keys checked and its request prefixes not. Every
+such refusal is listed in `integrity.records_refused`.
+
 Three conditions are checked before any model call, by the seed validator
 (`seed_problems` in `tests/test_petri_framework_data.py`), so a seed that
 fails them never reaches a run:

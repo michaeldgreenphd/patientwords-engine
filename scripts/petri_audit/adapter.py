@@ -306,6 +306,14 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                     upstream_unrecorded += 1
                 else:
                     upstream_counts[host] = upstream_counts.get(host, 0) + 1
+        # cache use and raw-request retention need no seed, so they are read from every call BEFORE any refusal, as
+        # usage is: a refused sample (unknown seed, error, halted at a limit) still made its calls, and a check that
+        # skipped them passed over calls it never examined (Codex review of PR #37, 2026-09-23)
+        for e in model_events:
+            if e.cache:
+                cache_seen = True
+            if e.call is None or not isinstance(e.call.request, dict):
+                calls_missing += 1
         if seed is None:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"sample metadata names no known seed ({seed_id!r})"})
             continue
@@ -322,6 +330,14 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             continue
         seeds_used[seed_id] = seed
         max_turns = max(max_turns, seed["protocol"]["max_target_turns"])
+        # the sampling settings are checked as soon as the seed is bound, before the condition, error and limit
+        # refusals (the same review). They read the retained raw request, never the merged config; the settings are
+        # read per provider shape (nested for Google) and the requested seed is required where the provider forwards
+        # it (Codex round 3). A call without a retained request is counted above
+        for e in model_events:
+            if e.call is not None and isinstance(e.call.request, dict):
+                config_detail.extend(generation_problems(seed["generation"], e.call.request,
+                                                         forwards_seed=SEED_FORWARDING.get(target_provider)))
         if seed.get("tools"):
             any_tools = True
             tool_results_by_seed.setdefault(seed_id, 0)
@@ -336,6 +352,14 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             continue
         counts = seen_counts.setdefault(seed_id, {})
         counts[cond["condition_id"]] = counts.get(cond["condition_id"], 0) + 1
+        # raw request bodies (per sample, every branch): each retained request's complete system/user sequence must be
+        # a prefix of exactly the sequence one branch of this condition declares, never mere membership in a pool.
+        # Checked as soon as the condition is bound, before the error, limit and stray-ending refusals (the same review)
+        for e in model_events:
+            if e.call is None or not isinstance(e.call.request, dict):
+                continue
+            for problem in request_prefix_problems(request_stimuli(e.call.request), seed, cond, where=tree_id):
+                checks["stimulus_digest_identity"].fail(problem)
         if sample.error:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"sample error: {sample.error}"})
             continue
@@ -345,18 +369,6 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         if halted is not None:
             refused.append(halted)
             continue
-        # config and raw-request checks read the retained raw request, never the merged config; the settings are
-        # read per provider shape (nested for Google) and the requested seed is required where the provider
-        # forwards it (Codex round 3)
-        expected_gen = seed["generation"]
-        for e in model_events:
-            if e.cache:
-                cache_seen = True
-            if e.call is None or not isinstance(e.call.request, dict):
-                calls_missing += 1
-                continue
-            config_detail.extend(generation_problems(expected_gen, e.call.request,
-                                                     forwards_seed=SEED_FORWARDING.get(target_provider)))
         pw = _pw_events(sample)
         staged = [d for d in pw if d.get("pw") == "staged"]
         branch_infos = [d for d in pw if d.get("pw") == "branch"]
@@ -489,13 +501,6 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                                  "conversation_id": conv_id, "surviving": creation == survivor_creation,
                                  "creation_index": creation,
                                  "assistant_stop_reasons": [{"turn_id": tid, "stop_reason": r} for tid, r in turn_stops.items()]})
-        # raw request bodies (per sample, every branch): each retained request's complete system/user sequence must be
-        # a prefix of exactly the sequence one branch of this condition declares, never mere membership in a pool
-        for e in model_events:
-            if e.call is None or not isinstance(e.call.request, dict):
-                continue
-            for problem in request_prefix_problems(request_stimuli(e.call.request), seed, cond, where=tree_id):
-                checks["stimulus_digest_identity"].fail(problem)
         # every declared branch must appear in this tree's timeline; one the timeline never carried is refused here,
         # one it carried but the adapter refused above is already recorded once
         refused.extend(missing_branch_refusals(seed, branch_ids_seen, where=tree_id))
