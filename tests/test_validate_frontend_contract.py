@@ -439,11 +439,18 @@ def _multiturn_pair(sample=False):
                      "mechanisms": {"mech": {"title": "T", "question": "Q"}},
                      "seeds": [{"seed_id": "s1", "mechanism": "mech", "measures": ["m1"], "arms": ["a"],
                                 "roles": [None], "hypotheses": ["H1"]}],
-                     "conversations": [{"seed_id": "s1", "arm": "a", "epoch": 1, "identity": None, "rule": {},
+                     "conversations": [{"seed_id": "s1", "arm": "a", "epoch": 1, "identity": None,
+                                        "rule": {"tool_invoked": False, "first_tool": None, "first_call_turn": None,
+                                                 "advice_before_lookup": None, "query_text": None, "marker_echo": None,
+                                                 "parse_error_call": 0, "tool_calls_total": 0,
+                                                 "unknown_tool_calls": 0, "tool_results_received": 0,
+                                                 "reasons": {}},
                                         "register": "colloquial", "conversation_id": "c" * 64, "run": "run_1",
                                         "run_epoch": 1,
-                                        "exchanges": [{"user": "u", "reply": None, "reply_is_graded": True,
-                                                       "interim": [], "vals": {"m1": {"v": "lo"}}}]}],
+                                        "exchanges": [{"user": "u", "reply": None, "reply_turn": 2,
+                                                       "reply_is_graded": True,
+                                                       "interim": [{"role": "tool", "text": "t"}],
+                                                       "vals": {"m1": {"v": "lo"}}}]}],
                      "example": {"seed_id": "s1", "turn": 1, "colloquial": "a", "lay_careful": "b", "clinical": "c"}}
     if sample:
         summary = {"sample": True, "_note": "SYNTHETIC", **summary}
@@ -495,6 +502,52 @@ def test_owner_run_multiturn_shapes_are_checked(site):
     assert any("$.triples[0].partition" in e for e in rep.errors)
     assert any("$.headline.text" in e for e in rep.errors)
     assert any("vals.m9" in e for e in rep.errors)
+
+
+@pytest.mark.parametrize("field,value", [(f, "drop") for f, _k, _n in vfc.MT_RULE_FIELDS]
+                         + [("query_text", "drop"), ("tool_invoked", None), ("tool_calls_total", True),
+                            ("reasons", []), ("first_tool", 3)])
+def test_owner_run_multiturn_rule_outcomes_are_complete_and_typed(site, field, value):
+    """Regression (Codex review of 2026-09-25): only rule.query_text was checked, so a file missing tool_invoked,
+    marker_echo, tool_calls_total or reasons passed --strict while the page renders them."""
+    summary, conversations = _multiturn_pair()
+    rule = conversations["conversations"][0]["rule"]
+    if value == "drop":
+        del rule[field]
+    else:
+        rule[field] = value
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    rep = run(site, strict=True)
+    assert any(f"$.conversations[0].rule.{field}" in e for e in rep.errors), rep.errors
+
+
+@pytest.mark.parametrize("change", ["no reply_turn", "reply_turn text", "interim no role", "interim no text",
+                                    "interim role user"])
+def test_owner_run_multiturn_exchange_shape_is_complete(site, change):
+    """Regression (Codex review of 2026-09-25): an exchange without reply_turn, or an interim item without role or
+    text, passed --strict although the page labels turns and intermediate messages with them."""
+    summary, conversations = _multiturn_pair()
+    ex = conversations["conversations"][0]["exchanges"][0]
+    if change == "no reply_turn":
+        del ex["reply_turn"]
+        where = "exchanges[0].reply_turn"
+    elif change == "reply_turn text":
+        ex["reply_turn"] = "2"
+        where = "exchanges[0].reply_turn"
+    elif change == "interim no role":
+        del ex["interim"][0]["role"]
+        where = "exchanges[0].interim[0].role"
+    elif change == "interim no text":
+        del ex["interim"][0]["text"]
+        where = "exchanges[0].interim[0].text"
+    else:
+        ex["interim"][0]["role"] = "user"
+        where = "exchanges[0].interim[0].role"
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    rep = run(site, strict=True)
+    assert any(f"$.conversations[0].{where}" in e for e in rep.errors), rep.errors
 
 
 @pytest.mark.parametrize("key", ["register", "conversation_id", "run", "run_epoch"])

@@ -768,13 +768,53 @@ def test_cli_writes_both_files_and_prints_the_previous_diff(shared, tmp_path, ca
     assert "dry run: nothing written" in out
 
 
+@pytest.mark.parametrize("case", ["no inputs", "one input missing", "another commit's script", "path escapes"])
+def test_refuses_an_analysis_commit_that_does_not_hold_the_recorded_inputs(shared, tmp_path, case):
+    """Regression (Codex review of 2026-09-25): has_commit proved only that the id names some commit, so an unrelated
+    existing commit passed as the analysis revision. The commit must hold every input the artifact records
+    (identity.inputs) with the recorded sha256."""
+    camp, _ = shared
+    artifact = syn.build_artifact(camp)
+    inputs = artifact["identity"]["inputs"]
+    if case == "no inputs":
+        del artifact["identity"]["inputs"]
+        expected = "records no identity.inputs, so its analysis commit cannot be shown"
+    elif case == "one input missing":
+        del inputs["judge_runner"]
+        expected = "records no identity.inputs for ['judge_runner']"
+    elif case == "another commit's script":
+        inputs["script"]["sha256"] = "0" * 64                 # the commit holds other bytes than the analysis read
+        expected = "records its script scripts/petri_multiturn_synthetic.py as sha256 000000000000, but its analysis"
+    else:
+        inputs["plan"]["path"] = "../plan.json"
+        expected = "records identity.inputs.plan as"
+    assert expected in refused(camp, tmp_path, artifact)
+
+
+def test_blob_sha256_reads_a_file_as_a_commit_holds_it(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid", "GIT_COMMITTER_NAME": "t",
+           "GIT_COMMITTER_EMAIL": "t@example.invalid"}
+    for cmd in (["init", "-q"], ["add", "a.txt"], ["commit", "-q", "-m", "one"]):
+        if cmd[0] == "add":
+            (repo / "a.txt").write_text("one", encoding="utf-8")
+        subprocess.run(["git", "-C", str(repo), *cmd], check=True, env=env)
+    head = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True,
+                          check=True).stdout.strip()
+    (repo / "a.txt").write_text("two", encoding="utf-8")         # the working tree moves; the commit does not
+    assert ex.blob_sha256(head, "a.txt", root=repo) == ex.hashlib.sha256(b"one").hexdigest()
+    assert ex.blob_sha256(head, "b.txt", root=repo) is None
+
+
 def test_the_runs_must_be_this_checkouts_not_a_copy_in_another_data_petri_runs(shared, tmp_path, capsys, monkeypatch):
     """Regression (Codex review of 2026-09-24): any directory ending in data/petri/runs was accepted, so an export of
     copied runs printed a verify-chain command that names the checkout's own runs, not the bytes exported."""
     camp, _ = shared
     # the CLI's own checkout, except that it holds the synthetic analysis commit
-    monkeypatch.setattr(ex, "REPOSITORY", dataclasses.replace(ex.REPOSITORY,
-                                                              has_commit=lambda sha: sha == syn.ANALYSIS_COMMIT))
+    monkeypatch.setattr(ex, "REPOSITORY", dataclasses.replace(
+        ex.REPOSITORY, has_commit=lambda sha: sha == syn.ANALYSIS_COMMIT,
+        file_sha256_at=ex.synthetic_checkout(camp.root).file_sha256_at))
     artifact = tmp_path / "artifact.json"
     artifact.write_text(json.dumps(syn.build_artifact(camp)), encoding="utf-8")
     # the CLI exports only from this checkout's data/petri/runs; the synthetic runs sit in another one
@@ -797,7 +837,7 @@ def test_the_exporter_commit_is_recorded_and_names_every_file_the_export_read(sh
     camp, _ = shared
     seen: list[Path] = []
     checkout = ex.Checkout(camp.root / "data" / "petri" / "runs", lambda paths: seen.extend(paths) or "e" * 40,
-                           lambda sha: sha == syn.ANALYSIS_COMMIT)
+                           lambda sha: sha == syn.ANALYSIS_COMMIT, ex.synthetic_checkout(camp.root).file_sha256_at)
     out = export(camp, tmp_path, checkout=checkout).summary["provenance"]
     assert out["exporter_commit"] == "e" * 40
     read = {Path(p).resolve() for p in seen}
@@ -836,7 +876,8 @@ def test_commit_exists_accepts_only_a_commit_object_of_the_repository(shared, tm
     assert not any(ex.commit_exists(x, root=repo) for x in ("d" * 40, tree, blob))
     camp, _ = shared
     checkout = ex.Checkout(camp.root / "data" / "petri" / "runs", lambda _paths: "e" * 40,
-                           lambda sha: ex.commit_exists(sha, root=repo))
+                           lambda sha: ex.commit_exists(sha, root=repo),
+                           lambda _sha, path: ex.sha256_file(syn.input_file(camp.root, path)))
     held = export(camp, tmp_path, syn.build_artifact(camp, commit=head), checkout=checkout).summary
     assert held["provenance"]["analysis_commit"] == head
     assert "is not a commit in this repository" in refused(camp, tmp_path, syn.build_artifact(camp, commit=tree),

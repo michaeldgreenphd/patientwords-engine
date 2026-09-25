@@ -56,6 +56,18 @@ ALPHA = 0.05
 PRIMARY = ("tier", "response_only")          # 10.1's outcome
 # the analysis commit a synthetic artifact records: the one commit export_petri_multiturn.synthetic_checkout accepts
 ANALYSIS_COMMIT = "c" * 40
+# the analysis inputs a synthetic artifact records (identity.inputs, as the real artifact does), by name and path: the
+# synthetic "analysis" is this module, the plan is the campaign's own, the rest are the repository's files
+ANALYSIS_INPUT_PATHS = {"script": "scripts/petri_multiturn_synthetic.py",
+                        "judge_runner": "scripts/petri_audit/judge_runner.py", "plan": "plan.json",
+                        "seed_file": "docs/framework/petri_seeds.draft.json", "rubric": "data/advice_rubric.draft.json",
+                        "outcome_registry": "docs/framework/outcome_dimensions.draft.json"}
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def input_file(root: Path, rel: str) -> Path:
+    """Where a synthetic artifact's recorded input lives: under the campaign root (the plan), else the repository."""
+    return Path(root) / rel if (Path(root) / rel).is_file() else REPO_ROOT / rel
 
 RowsEdit = Callable[[str, list[dict]], list[dict]]          # (run stem, rows) -> rows
 ManifestEdit = Callable[[str, dict], dict]                  # (run stem, manifest) -> manifest
@@ -502,7 +514,9 @@ def build_artifact(campaign: Campaign, *, section_10_3_refused: bool = False, fi
         "analysis": ("SYNTHETIC artifact in the shape of scripts/petri_w2_register_contrast.py --final (script "
                      "version 1.1); not a result"),
         "final": final, "run_list": [r["path"] for r in runs], "bootstrap_seed": BOOTSTRAP_SEED,
-        "identity": {"commit": commit, "uncommitted_changes": {n: [] for n in names}},
+        "identity": {"commit": commit, "uncommitted_changes": {n: [] for n in names},
+                     "inputs": {n: {"path": rel, "sha256": sha256_file(input_file(campaign.root, rel))}
+                                for n, rel in ANALYSIS_INPUT_PATHS.items()}},
         "administratively_truncated": truncated, "truncation_reason": "synthetic" if truncated else None,
         "fires_not_landed": ["synthetic"] if truncated else [],
         "coverage": {"runs": runs, "rubric": {"digest": digest},

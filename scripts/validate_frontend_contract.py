@@ -425,6 +425,14 @@ MT_PARTITIONS = ("seen_before_plan", "prospective")
 # the page's three wording columns (multi-turn/index.html ARMS): a conversation is placed in one by its register, since
 # an identity seed's arm ids carry the speaker as well
 MT_REGISTERS = ("colloquial", "lay_careful", "clinical")
+# a conversation's rule outcomes as scripts/petri_audit/rules.py writes them and the page reads them (the site contract
+# fixture's `rule` keys): each field, its type, and whether null is allowed (Codex review of 2026-09-25)
+MT_RULE_FIELDS = (("tool_invoked", bool, False), ("first_tool", str, True), ("first_call_turn", int, True),
+                  ("advice_before_lookup", bool, True), ("marker_echo", bool, True), ("parse_error_call", int, False),
+                  ("tool_calls_total", int, False), ("unknown_tool_calls", int, False),
+                  ("tool_results_received", int, False), ("reasons", dict, False))
+# who wrote an intermediate message of an exchange: the target (a reply before the graded one) or the scripted tool
+MT_INTERIM_ROLES = ("assistant", "tool")
 # the page that reads the pair; while it is on the site and the real pair is not published, it fetches the samples
 MT_PAGE = "multi-turn/index.html"
 # the staging directory of one write of the pair (export_petri_multiturn.swap_dir): present only when a write was
@@ -544,10 +552,16 @@ def check_multiturn_conversations(rep: Report, a: str, c: dict, sample: bool):
         need(rep, a, cv, "conversation_id", str, path)
         need(rep, a, cv, "run", str, path)
         need(rep, a, cv, "run_epoch", int, path)
-        rule = need(rep, a, cv, "rule", dict, path) or {}
+        rule = need(rep, a, cv, "rule", dict, path)
+        # every rule field the page reads, typed (Codex review of 2026-09-25: a file missing tool_invoked or reasons
+        # passed --strict)
+        for key, kind, nullable in MT_RULE_FIELDS if rule is not None else ():
+            need(rep, a, rule, key, kind, f"{path}.rule", nullable=nullable)
         # scripts/petri_audit/rules.py: every call's arguments in order, or null when no tool was invoked; a sample
         # carries the same shape (Codex review of 2026-09-24: the samples carried one string)
-        queries = rule.get("query_text")
+        if rule is not None and "query_text" not in rule:
+            rep.err(a, f"{path}.rule.query_text", "missing required key")
+        queries = (rule or {}).get("query_text")
         if queries is not None and not (isinstance(queries, list) and all(isinstance(q, str) for q in queries)):
             rep.err(a, f"{path}.rule.query_text", "must be a list of strings (each tool call's arguments) or null")
         for j, ex in enumerate(need(rep, a, cv, "exchanges", list, path) or []):
@@ -555,7 +569,14 @@ def check_multiturn_conversations(rep: Report, a: str, c: dict, sample: bool):
             need(rep, a, ex, "user", str, xp)
             need(rep, a, ex, "reply", str, xp, nullable=True)
             need(rep, a, ex, "reply_is_graded", bool, xp)
-            need(rep, a, ex, "interim", list, xp)
+            # the graded reply's turn, which labels it, and each intermediate message's role and text (Codex review of
+            # 2026-09-25: an exchange without reply_turn, or an interim item without role or text, passed --strict)
+            need(rep, a, ex, "reply_turn", int, xp)
+            for k, item in enumerate(need(rep, a, ex, "interim", list, xp) or []):
+                ip = f"{xp}.interim[{k}]"
+                if need(rep, a, item, "role", str, ip) not in (None, *MT_INTERIM_ROLES):
+                    rep.err(a, f"{ip}.role", f"must be one of {list(MT_INTERIM_ROLES)}")
+                need(rep, a, item, "text", str, ip)
             for mid, cell in (need(rep, a, ex, "vals", dict, xp) or {}).items():
                 if mid not in measure_ids:
                     rep.err(a, f"{xp}.vals.{mid}", "a grade for a measure $.measures does not define")

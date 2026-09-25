@@ -107,6 +107,7 @@ No medical vocabulary lives here: seed ids, labels, mechanisms and registered te
 from __future__ import annotations
 
 import argparse
+import hashlib
 import itertools
 import json
 import math
@@ -949,11 +950,14 @@ class Checkout:
     command names, run from the root of the repository it belongs to. `identity`: given every file the export read,
     the commit that names them all, refused by name when there is none; it is recorded as provenance.exporter_commit.
     `has_commit`: whether a commit id names a commit object of that repository, so the analysis commit the page cites
-    is one a reader can check out. For a real export: the checkout's own data/petri/runs, checkout_identity and
-    commit_exists (REPOSITORY)."""
+    is one a reader can check out. `file_sha256_at`: the sha256 of a repository-relative file as a commit holds it, or
+    None when the commit does not hold it, so the analysis commit can be shown to hold the inputs the artifact records.
+    For a real export: the checkout's own data/petri/runs, checkout_identity, commit_exists and blob_sha256
+    (REPOSITORY)."""
     runs_dir: Path
     identity: Callable[[Sequence[Path]], str]
     has_commit: Callable[[str], bool]
+    file_sha256_at: Callable[[str, str], str | None]
 
 
 def _git(root: Path, *args: str) -> str:
@@ -1007,7 +1011,48 @@ def commit_exists(sha: str, *, root: Path = ROOT) -> bool:
     return done.returncode == 0
 
 
-REPOSITORY = Checkout(RUNS_DIR, checkout_identity, commit_exists)
+def blob_sha256(commit: str, path: str, *, root: Path = ROOT) -> str | None:
+    """The sha256 of `path` as `commit` holds it (`git cat-file blob <commit>:<path>`), or None when the commit holds
+    no such file. Git that cannot run is refused, never read as 'no such file'."""
+    try:
+        done = subprocess.run(["git", "-C", str(root), "cat-file", "blob", f"{commit}:{path}"], capture_output=True)
+    except OSError as exc:
+        raise ExportRefusal(f"git cannot run in {root} ({exc}), so the analysis inputs cannot be looked up") from exc
+    return hashlib.sha256(done.stdout).hexdigest() if done.returncode == 0 else None
+
+
+# the inputs the section 10 artifact records (identity.inputs): its code and every data file it read
+ANALYSIS_INPUTS = ("script", "judge_runner", "plan", "seed_file", "rubric", "outcome_registry")
+
+
+def analysis_inputs_problem(artifact: Mapping[str, Any], checkout: Checkout) -> str | None:
+    """Why the analysis commit does not name the analysis, or None (Codex review of 2026-09-25: any existing commit
+    passed, so an unrelated one would reach the page and the pack as the analysis revision). The artifact records each
+    input's repository path and sha256 (identity.inputs), with no uncommitted change (load_artifact); the commit must
+    hold every one of them with those bytes."""
+    ident = artifact["identity"]
+    commit, inputs = ident["commit"], ident.get("inputs")
+    if not isinstance(inputs, dict):
+        return "records no identity.inputs, so its analysis commit cannot be shown to hold the code and data it read"
+    missing = [n for n in ANALYSIS_INPUTS if n not in inputs]
+    if missing:
+        return f"records no identity.inputs for {missing}"
+    for name in sorted(inputs):
+        rec = inputs[name]
+        path = rec.get("path") if isinstance(rec, dict) else None
+        digest = rec.get("sha256") if isinstance(rec, dict) else None
+        if not (isinstance(path, str) and re.fullmatch(r"[A-Za-z0-9_.][A-Za-z0-9_./-]*", path)
+                and ".." not in path.split("/") and isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest)):
+            return f"records identity.inputs.{name} as {rec!r}, not a repository path and a sha256"
+        have = checkout.file_sha256_at(commit, path)
+        if have != digest:
+            return (f"records its {name} {path} as sha256 {digest[:12]}, but its analysis commit {commit[:12]} holds "
+                    f"{'no such file' if have is None else have[:12]}; the commit the page cites is not the one the "
+                    f"analysis ran from")
+    return None
+
+
+REPOSITORY = Checkout(RUNS_DIR, checkout_identity, commit_exists, blob_sha256)
 SYNTHETIC_COMMIT = "SYNTHETIC"
 
 
@@ -1016,8 +1061,12 @@ def synthetic_checkout(root: Path, commit: str = SYNTHETIC_COMMIT) -> Checkout:
     commit, and one analysis commit accepted, the synthetic artifact's (petri_multiturn_synthetic.ANALYSIS_COMMIT),
     since synthetic files are in no repository. The CLI never exports with it."""
     from scripts import petri_multiturn_synthetic as synthetic
+    def file_sha256_at(sha: str, path: str) -> str | None:
+        f = synthetic.input_file(Path(root), path)
+        return sha256_file(f) if sha == synthetic.ANALYSIS_COMMIT and f.is_file() else None
+
     return Checkout(Path(root).joinpath(*RUNS_SUBPATH), lambda _paths: commit,
-                    lambda sha: sha == synthetic.ANALYSIS_COMMIT)
+                    lambda sha: sha == synthetic.ANALYSIS_COMMIT, file_sha256_at)
 
 
 def _check_chain(run_dirs: Sequence[Path], runs_dir: Path) -> None:
@@ -1071,6 +1120,9 @@ def export(run_dirs: Sequence[Path], artifact_path: Path, *, seeds_path: Path = 
     if not checkout.has_commit(analysis_commit):
         raise ExportRefusal(f"the section 10 artifact's analysis commit {analysis_commit} is not a commit in this "
                             f"repository, so the page would cite an analysis commit no reader can check out")
+    problem = analysis_inputs_problem(artifact, checkout)
+    if problem:
+        raise ExportRefusal(f"the section 10 artifact {problem}")
     rubric = _load(rubric_path, "the advice rubric")
     registry = _load(registry_path, "the outcome registry")
     seed_doc = _load(seeds_path, "the seed file")
