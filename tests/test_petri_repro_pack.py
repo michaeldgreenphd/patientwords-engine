@@ -774,6 +774,64 @@ def test_an_unreadable_petri_entry_exits_3_and_never_hides_an_escalation(world, 
     assert code == 2 and "ESCALATION" in out and "UNREADABLE" in out
 
 
+def _require(w, capsys, cited=None) -> tuple[int, str]:
+    capsys.readouterr()
+    code = rp.check_packs(w["log"], require_sent=True, cited_version=cited)
+    return code, capsys.readouterr().out
+
+
+def test_the_publication_requirement_needs_a_sent_fresh_pack(world, capsys):
+    """Regression (Codex, PR #39): the check escalates only sent packs, so with nothing built, or a build never sent,
+    it exited 0 and the contract gate passed a public Multi-turn page. With --require-sent (the gate passes it once the
+    page's data is public) and the version the page cites, those states exit 4; without it the check is unchanged."""
+    assert _check(world, capsys)[0] == 0                                   # never-built: nothing required
+    code, out = _require(world, capsys)
+    assert code == rp.PUBLICATION_UNMET_EXIT and "never-built" in out
+    assert "PUBLICATION: no petri-lane pack is both sent and FRESH" in out
+    code, out = _require(world, capsys, cited="petri-v000000000000")
+    assert code == 4 and "cites petri-v000000000000, which is not a readable petri-lane pack in the log" in out
+    v1 = _build(world, out="d1").name.rsplit("_", 1)[1]
+    assert _check(world, capsys)[0] == 0                                   # built, unsent: the plain check passes
+    code, out = _require(world, capsys, cited=v1)
+    assert code == 4 and f"PUBLICATION: the published page cites {v1}, whose send is not recorded" in out
+    assert _require(world, capsys)[0] == 4
+    rp.record_sent(world["log"], v1, "vendor safety team")
+    code, out = _require(world, capsys, cited=v1)
+    assert code == 0 and f"publication: {v1} is sent and FRESH" in out
+    assert _require(world, capsys)[0] == 0
+
+
+def test_the_publication_requirement_names_a_stale_or_superseded_citation(world, capsys):
+    v1 = _build(world, out="d1").name.rsplit("_", 1)[1]
+    rp.record_sent(world["log"], v1, "vendor safety team")
+    _refresh_artifact(world, bootstrap_seed=1)                             # the analysis moved: v1 is STALE
+    code, out = _require(world, capsys, cited=v1)
+    assert code == 2 and "ESCALATION" in out                               # the escalation keeps its exit
+    assert f"PUBLICATION: the published page cites {v1}, which is STALE" in out
+    _refresh_artifact(world)
+    (world["repo"] / PROMPT_REF).write_text(json.dumps({**PROMPT, "instructions": "changed {values}"}))
+    v2 = _build(world, out="d2").name.rsplit("_", 1)[1]
+    rp.record_sent(world["log"], v2, "vendor safety team")
+    code, out = _require(world, capsys, cited=v1)
+    assert code == 4 and f"cites {v1}, but the newest pack of ('anthropic', 'w2_register_contrast') is {v2}" in out
+    assert _require(world, capsys, cited=v2)[0] == 0
+
+
+def test_cli_check_takes_the_publication_requirement(world, monkeypatch, capsys):
+    monkeypatch.setattr(rp.seal, "sealed_registry", lambda: dict(REGISTRY))
+    log = ["--log", str(world["log"])]
+    assert cli.main(["repro-pack", "--check", *log]) == 0
+    assert cli.main(["repro-pack", "--check", "--require-sent", *log]) == 4
+    assert cli.main(_cli_build(world, "--publication-state", "not_yet_public")) == 0
+    version = _log(world)[0]["pack_version"]
+    assert cli.main(["repro-pack", "--check", "--cited-version", version, *log]) == 4
+    assert cli.main(["repro-pack", "--record-sent", version, "--sent-to", "vendor safety team", *log]) == 0
+    assert cli.main(["repro-pack", "--check", "--cited-version", version, *log]) == 0
+    capsys.readouterr()
+    assert cli.main(["repro-pack", "--record-sent", version, "--sent-to", "x", "--require-sent", *log]) == 13
+    assert "--require-sent and --cited-version apply to --check only" in capsys.readouterr().err
+
+
 def test_record_sent_refusals(world):
     version = _build(world).name.rsplit("_", 1)[1]
     with pytest.raises(rp.PackRefusal, match="not in"):

@@ -467,17 +467,60 @@ REPRO_PACK_STALE_MSG = ("repro-pack --check: a SENT vendor pack is stale or supe
 PETRI_REPRO_PACK_STALE_MSG = ("petri repro-pack --check: a SENT Petri vendor pack is stale or superseded-unsent "
                               "(see lines above) - an updated pack is owed before any public per-model Multi-turn "
                               "claim")
+PETRI_PUBLICATION_UNMET_MSG = ("petri repro-pack --check --require-sent: the Multi-turn page's data files are public on "
+                               "the site, but the Petri vendor pack it cites is not sent and FRESH (see lines above) - "
+                               "the pack reaches the vendor before the page is public, and the page cites its version "
+                               "(pre-registration rules (1)-(2); Petri design note decision 16)")
+# The Multi-turn page's published data files (the site's data-contract table; written by the owner-run
+# scripts/export_petri_multiturn.py). The synthetic fixtures the page is built on are named *.sample.json and never
+# count: only a real file makes the page's per-model claim public.
+PETRI_PUBLIC_FILES = ("petri_multiturn_summary.json", "petri_multiturn_conversations.json")
+
+
+def petri_publication(site: Path | None) -> tuple[bool, str | None, list[str]]:
+    """Whether the Multi-turn page's data is public, the Petri pack version its summary cites, and errors.
+
+    Public means either real data file is in the site's data/: the site deploys data/ from main, so a real file is
+    public whether or not the page reads it yet, and it names the target model. The summary's
+    `status.vendor_pack.version` is the page's citation of its pack (pre-registration rule (2)); a published summary
+    that cites none, or cannot be read, is an error. With the conversations file alone there is nothing to cite, so
+    the gate requires only that some Petri pack is sent and FRESH. No real file means nothing is public, and nothing is
+    required: today's state, with the samples at most."""
+    if site is None:
+        return False, None, []
+    data = Path(site) / "data"
+    if not any((data / name).is_file() for name in PETRI_PUBLIC_FILES):
+        return False, None, []
+    summary = data / PETRI_PUBLIC_FILES[0]
+    if not summary.is_file():
+        return True, None, []
+    where = f"{PETRI_PUBLIC_FILES[0]} :: $.status.vendor_pack.version"
+    try:
+        doc = json.loads(summary.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return True, None, [f"{where} :: the published summary cannot be read ({type(exc).__name__}), so the Petri "
+                            f"pack it cites cannot be checked"]
+    status = doc.get("status") if isinstance(doc, dict) else None
+    pack = status.get("vendor_pack") if isinstance(status, dict) else None
+    version = pack.get("version") if isinstance(pack, dict) else None
+    if not isinstance(version, str) or not version.strip():
+        return True, None, [f"{where} :: the published summary cites no Petri pack version; a public per-model claim "
+                            f"cites the sent pack it is reproducible from (pre-registration rule (2), Petri design "
+                            f"note decision 16)"]
+    return True, version.strip(), []
 
 
 def _pack_check(run: Callable[..., subprocess.CompletedProcess], cmd: list[str], engine_root: Path,
-                stale_msg: str, name: str, what_currency: str) -> tuple[str, list[str]]:
-    """One lane's pack check: (its stdout, errors). EVERY non-zero exit is an error (repro_pack_gate)."""
+                messages: dict[int, str], name: str, what_currency: str) -> tuple[str, list[str]]:
+    """One lane's pack check: (its stdout, errors). EVERY non-zero exit is an error (repro_pack_gate); `messages`
+    names the exits the check defines (2, the stale or superseded-unsent sent pack; 4, the Petri publication
+    requirement)."""
     r = run(cmd, capture_output=True, text=True, cwd=str(engine_root))
     out = (r.stdout or "").strip()
     if r.returncode == 0:
         return out, []
-    if r.returncode == 2:
-        return out, [stale_msg]
+    if r.returncode in messages:
+        return out, [messages[r.returncode]]
     what = ("found disclosure-log entries it could not read (see lines above)" if r.returncode == 3
             else "did not complete")
     tail = " | ".join((r.stderr or "").strip().splitlines()[-3:]) or "no stderr"
@@ -486,7 +529,8 @@ def _pack_check(run: Callable[..., subprocess.CompletedProcess], cmd: list[str],
 
 
 def repro_pack_gate(engine_root: Path,
-                    run: Callable[..., subprocess.CompletedProcess] = subprocess.run) -> tuple[str, list[str]]:
+                    run: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+                    site: Path | None = None) -> tuple[str, list[str]]:
     """repro-pack currency (owner directive 2026-07-23): a sent vendor pack that has
     gone stale against the archive must surface within a daily cycle, not wait for
     someone to remember. The disclosure log lives in the engine checkout.
@@ -503,18 +547,38 @@ def repro_pack_gate(engine_root: Path,
     without stimuli_file) passed the gate with nothing printed, while it also hid
     any real escalation behind it. Exit 3 is the check naming log entries it
     could not read; anything else is the check failing to run. Either way pack
-    currency is unverified, and the gate says so with the check's stderr tail."""
+    currency is unverified, and the gate says so with the check's stderr tail.
+
+    Publication (since 2026-09-24, Codex on PR #39). Pack currency alone let the
+    Multi-turn page go public with no Petri pack built, or with one built and
+    never sent: the check passes both, since it escalates only sent packs. When
+    `site` holds the page's real data files (petri_publication), the Petri check
+    also runs with --require-sent and the version the page's summary cites, even
+    with no log, and exit 4 fails the gate. Without those files nothing is
+    public, the check runs as it did, and a missing log still skips both checks,
+    so the requirement cannot fail the gate before the page is published."""
     log = engine_root / "ops" / "disclosure_log.jsonl"
-    if not (log.is_file() and log.stat().st_size > 0):
+    has_log = log.is_file() and log.stat().st_size > 0
+    public, cited, publication_errors = petri_publication(site)
+    if not has_log and not public:
         return "", []
-    advice_out, advice_errors = _pack_check(
-        run, [sys.executable, str(engine_root / "scripts" / "advice_eval.py"), "repro-pack", "--check",
-              "--log", str(log)],
-        engine_root, REPRO_PACK_STALE_MSG, "repro-pack --check", "vendor-pack")
+    outs: list[str] = []
+    errors: list[str] = []
+    if has_log:
+        advice_out, advice_errors = _pack_check(
+            run, [sys.executable, str(engine_root / "scripts" / "advice_eval.py"), "repro-pack", "--check",
+                  "--log", str(log)],
+            engine_root, {2: REPRO_PACK_STALE_MSG}, "repro-pack --check", "vendor-pack")
+        outs.append(advice_out)
+        errors += advice_errors
+    petri_cmd = [sys.executable, "-m", "scripts.petri_audit.cli", "repro-pack", "--check", "--log", str(log)]
+    if public:
+        petri_cmd += ["--require-sent"] + (["--cited-version", cited] if cited else [])
     petri_out, petri_errors = _pack_check(
-        run, [sys.executable, "-m", "scripts.petri_audit.cli", "repro-pack", "--check", "--log", str(log)],
-        engine_root, PETRI_REPRO_PACK_STALE_MSG, "petri repro-pack --check", "Petri vendor-pack")
-    return "\n".join(o for o in (advice_out, petri_out) if o), advice_errors + petri_errors
+        run, petri_cmd, engine_root, {2: PETRI_REPRO_PACK_STALE_MSG, 4: PETRI_PUBLICATION_UNMET_MSG},
+        "petri repro-pack --check", "Petri vendor-pack")
+    outs.append(petri_out)
+    return "\n".join(o for o in outs if o), errors + publication_errors + petri_errors
 
 
 def main():
@@ -534,7 +598,7 @@ def main():
 
     # repro-pack currency: see repro_pack_gate
     engine_root = Path(args.engine) if args.engine else Path(__file__).resolve().parents[1]
-    pack_out, pack_errors = repro_pack_gate(engine_root)
+    pack_out, pack_errors = repro_pack_gate(engine_root, site=site)
     if not args.quiet and pack_out:
         print(pack_out)
     rep.errors.extend(pack_errors)

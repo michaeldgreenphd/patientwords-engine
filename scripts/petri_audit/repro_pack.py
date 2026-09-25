@@ -9,7 +9,7 @@ than restating them, and attributes a model to a vendor by the rule of its `_ven
     python -m scripts.petri_audit.cli repro-pack --vendor VENDOR --publication-state STATE \\
         --run-dir data/petri/runs/RUN [--run-dir ...] [--analysis FILE] [--out dist] [--log FILE] \\
         [--public-since DATE --deviation-link URL [--public-until DATE --withheld-reason TEXT]]
-    python -m scripts.petri_audit.cli repro-pack --check [--log FILE]
+    python -m scripts.petri_audit.cli repro-pack --check [--log FILE] [--require-sent] [--cited-version PACK_VERSION]
     python -m scripts.petri_audit.cli repro-pack --record-sent PACK_VERSION --sent-to "ROLE OR CHANNEL" [--log FILE]
 
 What a pack holds, from the public repository alone (the bundle `dist/petri_repro_<vendor>_<version>/`; `dist/` is
@@ -75,11 +75,15 @@ lock digest it ran under), not the templates or the engine commit (those change 
 not the evidence a sent pack carries).
 
 `--check` exits 2 when the newest pack of a key was sent and is STALE, or an earlier pack of that key was sent and a
-newer build is unsent (the vendor holds an outdated pack); 3 when a petri-lane log entry cannot be read and nothing
-escalates; otherwise 0, with STALE-but-unsent reported, and "never-built" when the log holds no petri-lane pack. The
-frontend contract gate (scripts/validate_frontend_contract.py `repro_pack_gate`) fails on any non-zero exit of this
-check, as it does for the advice lane's. `--record-sent` appends a copy of the build entry stamped with the time it is
-run, so record a send on the day it is made.
+newer build is unsent (the vendor holds an outdated pack); 4, with `--require-sent` or `--cited-version`, when no sent
+pack may be cited (publication_problems: the cited version is not the newest pack of its key, is unsent or is STALE;
+without a cited version, no key's newest pack is sent and FRESH), and nothing escalates; 3 when a petri-lane log entry
+cannot be read and nothing else fails; otherwise 0, with STALE-but-unsent reported, and "never-built" when the log holds
+no petri-lane pack. The frontend contract gate (scripts/validate_frontend_contract.py `repro_pack_gate`) fails on any
+non-zero exit of this check, as it does for the advice lane's, and passes `--require-sent` (with the version the page
+cites) once the Multi-turn page's data files are on the site: before that nothing requires a send, because nothing is
+public. `--record-sent` appends a copy of the build entry stamped with the time it is run, so record a send on the day
+it is made.
 """
 from __future__ import annotations
 
@@ -134,6 +138,7 @@ PUBLICATION_REQUIRES = {"not_yet_public": (),
                         "already_public": ("public_since", "deviation_link"),
                         "formerly_public": ("public_since", "public_until", "withheld_reason", "deviation_link")}
 REFUSED_EXIT = 13                             # the petri CLI's codes 3-12 are taken
+PUBLICATION_UNMET_EXIT = 4                    # repro-pack --check with --require-sent: no sent FRESH pack to cite
 # every file a landed run directory holds besides its cost sidecars (manifest.ARTIFACT_FILENAMES are the four bound
 # families); a committed analysis_rows.jsonl is not bound by the manifest, and the analysis reads it only for its
 # as-first-written block
@@ -1398,20 +1403,31 @@ def _append_build_entry(log: Path, manifest: Mapping[str, Any], note: str) -> No
           + (f" (supersedes {entry['supersedes']})" if entry["supersedes"] else ""))
 
 
-def check_packs(log: Path = DEFAULT_LOG) -> int:
-    """FRESH/STALE for the newest Petri pack of every (vendor, analysis); exit codes as the module docstring states."""
+def check_packs(log: Path = DEFAULT_LOG, *, require_sent: bool = False, cited_version: str | None = None) -> int:
+    """FRESH/STALE for the newest Petri pack of every (vendor, analysis); exit codes as the module docstring states.
+
+    `require_sent` (or `cited_version`, which implies it) is the publication requirement: the frontend contract gate
+    passes it once the Multi-turn page's data files are public on the site, and the check then also exits 4 unless a
+    sent pack is FRESH (publication_problems). Without it the check is unchanged."""
     ae = _advice()
     entries = ae._log_entries(log)
     mine, other, unreadable = partition_log(entries)
+    require = require_sent or bool(cited_version)
     for lane, n in sorted(other.items()):
         print(f"skipped: {n} log entr{'y' if n == 1 else 'ies'} of lane {lane!r} (this check covers lane {LANE!r} only)")
     for problem in unreadable:
         print(f"UNREADABLE: {problem} - not checked")
     if not mine:
         print(f"never-built: no readable {LANE}-lane pack in {_rel(log)}")
+        if require:
+            unmet = publication_problems(mine, {}, {}, {}, cited_version)
+            for u in unmet:
+                print(f"PUBLICATION: {u}")
+            return PUBLICATION_UNMET_EXIT
         return 3 if unreadable else 0
     escalate = False
     newest, sent_versions = ae._newest_by_key(mine, key_fn=pack_key)
+    statuses: dict[tuple[str, str], str] = {}
     for key in sorted(newest):
         vendor, scope = key
         e = newest[key]
@@ -1423,6 +1439,7 @@ def check_packs(log: Path = DEFAULT_LOG) -> int:
         except (KeyError, TypeError, ValueError, OSError) as exc:
             moved = [f"state could not be recomputed ({type(exc).__name__}: {exc})"]
         status = "FRESH" if not moved else "STALE"
+        statuses[key] = status
         shown = moved[:MAX_MOVED_SHOWN] + ([f"... and {len(moved) - MAX_MOVED_SHOWN} more"]
                                            if len(moved) > MAX_MOVED_SHOWN else [])
         print(f"{status}  {e['pack_version']}  {vendor}  {scope}" + ("" if not moved else "  | " + "; ".join(shown)))
@@ -1436,9 +1453,46 @@ def check_packs(log: Path = DEFAULT_LOG) -> int:
             print(f"note: {vendor} {scope}: SENT pack(s) {', '.join(sorted(sent))}; newest built is "
                   f"{e['pack_version']} (unsent) - send the superseding pack")
             escalate = True
+    unmet = publication_problems(mine, newest, sent_versions, statuses, cited_version) if require else []
+    for u in unmet:
+        print(f"PUBLICATION: {u}")
+    if require and not unmet:
+        print(f"publication: {cited_version or 'a sent pack'} is sent and FRESH")
     if escalate:
         return 2
+    if unmet:
+        return PUBLICATION_UNMET_EXIT
     return 3 if unreadable else 0
+
+
+def publication_problems(mine: Sequence[Mapping[str, Any]], newest: Mapping[tuple[str, str], Mapping[str, Any]],
+                         sent_versions: Mapping[tuple[str, str], set[str]], statuses: Mapping[tuple[str, str], str],
+                         cited_version: str | None) -> list[str]:
+    """Why a public per-model claim from this lane is not yet allowed, or nothing. The pre-registration's rules (1) and
+    (2), bound on the Multi-turn page by decision 16: the pack reaches the vendor before the page is public, and the
+    page cites a version that is FRESH. With `cited_version` (the version the published summary cites) that pack must
+    be a readable petri-lane entry, the newest of its (vendor, analysis) (the only one --check computes FRESH/STALE
+    for), with a recorded send, and FRESH. Without it, the newest pack of some (vendor, analysis) must be sent and
+    FRESH."""
+    if cited_version:
+        cited = [e for e in mine if e["pack_version"] == cited_version]
+        if not cited:
+            return [f"the published page cites {cited_version}, which is not a readable {LANE}-lane pack in the log"]
+        key = pack_key(cited[0])
+        if newest[key]["pack_version"] != cited_version:
+            return [f"the published page cites {cited_version}, but the newest pack of {key} is "
+                    f"{newest[key]['pack_version']}; the page cites the newest pack"]
+        problems = []
+        if cited_version not in sent_versions.get(key, set()):
+            problems.append(f"the published page cites {cited_version}, whose send is not recorded (--record-sent): "
+                            f"the pack reaches the vendor before the page is public")
+        if statuses.get(key) != "FRESH":
+            problems.append(f"the published page cites {cited_version}, which is STALE; the page cites a FRESH pack")
+        return problems
+    if any(e["pack_version"] in sent_versions.get(k, set()) and statuses.get(k) == "FRESH" for k, e in newest.items()):
+        return []
+    return [f"no {LANE}-lane pack is both sent and FRESH (the newest of its (vendor, analysis)), and the page's data is "
+            f"public: the pack reaches the vendor before the page is public"]
 
 
 def record_sent(log: Path, version: str, sent_to: str, note: str = "") -> None:
@@ -1490,6 +1544,12 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("--check", action="store_true",
                    help="FRESH/STALE for the newest Petri pack of each (vendor, analysis); exit 2 when a sent pack is "
                         "stale or superseded-but-unsent, 3 when a petri-lane log entry cannot be read")
+    p.add_argument("--require-sent", action="store_true",
+                   help="--check: also require a sent FRESH pack, exit 4 otherwise (the contract gate passes it once "
+                        "the Multi-turn page's data is public)")
+    p.add_argument("--cited-version", metavar="PACK_VERSION", default=None,
+                   help="--check: the pack version the public page cites; it must be the newest of its key, sent "
+                        "and FRESH (implies --require-sent)")
     p.add_argument("--record-sent", metavar="PACK_VERSION", default=None,
                    help="append a send event for a built Petri pack, stamped now")
     p.add_argument("--sent-to", default="", help="role/channel reference only - never private contact details")
@@ -1497,8 +1557,10 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
 
 def cmd_repro_pack(args: argparse.Namespace) -> int:
     if args.check:
-        return check_packs(Path(args.log))
+        return check_packs(Path(args.log), require_sent=args.require_sent, cited_version=args.cited_version)
     try:
+        if args.require_sent or args.cited_version:
+            raise PackRefusal(["--require-sent and --cited-version apply to --check only"])
         if args.record_sent:
             record_sent(Path(args.log), args.record_sent, args.sent_to, args.note)
             return 0

@@ -479,5 +479,14 @@ builds one vendor's pack over an explicit list of landed Petri runs and the
 section 10 analysis artifact, keyed by (vendor, analysis), with its own
 `--check` and `--record-sent`. Its log entries carry `"lane": "petri"`, which
 the advice check counts and skips, and the frontend contract gate runs both
-checks and fails on a non-zero exit of either. The module docstring states
-what the pack holds and what makes it STALE.
+checks and fails on a non-zero exit of either. Rules (1) and (2) are checked
+too, once there is something public to check them against: when the site's
+`data/` holds either of the Multi-turn page's real data files
+(`petri_multiturn_summary.json`, `petri_multiturn_conversations.json`; the
+`.sample.json` fixtures do not count), the gate runs the Petri check with
+`--require-sent` and the version the summary cites
+(`status.vendor_pack.version`), and fails unless that version is the newest
+pack of its (vendor, analysis), has a recorded send, and is FRESH. It fails
+too when the published summary cites no version. Until those files exist
+nothing is required, so the gate is unchanged while the page is unpublished.
+The module docstring states what the pack holds and what makes it STALE.

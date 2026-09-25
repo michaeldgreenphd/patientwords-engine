@@ -415,3 +415,113 @@ def test_main_passes_the_same_site_when_the_pack_check_is_clean(site, tmp_path, 
                                           "manifest": {"run_ids": ["run_1"]}, "sent_utc": None}])
     assert _main(monkeypatch, site, engine) == 0
     assert "contract check: 0 error(s)" in capsys.readouterr().out
+
+
+# ---- the Multi-turn page's publication gate (Codex, PR #39): a public page needs a sent, FRESH Petri pack
+
+def _publish_multiturn(site, version="petri-v000000000001", conversations=True, summary=True):
+    """The Multi-turn page's real data files in the site's data/ (what export_petri_multiturn.py writes once the page
+    is public), the summary citing `version` as its vendor pack. Placeholder content only."""
+    data = site / "data"
+    if summary:
+        (data / "petri_multiturn_summary.json").write_text(json.dumps(
+            {"status": {"final": True, "vendor_pack": {"version": version, "sent": None}}}), encoding="utf-8")
+    if conversations:
+        (data / "petri_multiturn_conversations.json").write_text(json.dumps({"conversations": []}), encoding="utf-8")
+
+
+def _samples_only(site):
+    """The page's state today: only the synthetic .sample.json fixtures, which never make the data public."""
+    data = site / "data"
+    for name in ("petri_multiturn_summary.sample.json", "petri_multiturn_conversations.sample.json"):
+        (data / name).write_text(json.dumps({"sample": True, "status": {"vendor_pack": {"version": None}}}),
+                                 encoding="utf-8")
+
+
+def _no_log_engine(tmp_path):
+    engine = _engine_with_log(tmp_path, [])
+    (engine / "ops" / "disclosure_log.jsonl").unlink()
+    return engine
+
+
+def test_multiturn_publication_reads_only_the_real_files(site):
+    assert vfc.petri_publication(site) == (False, None, [])
+    _samples_only(site)
+    assert vfc.petri_publication(site) == (False, None, [])
+    _publish_multiturn(site, summary=False)
+    assert vfc.petri_publication(site) == (True, None, [])        # public, with no summary to cite a version
+    _publish_multiturn(site, version="petri-vabc")
+    assert vfc.petri_publication(site) == (True, "petri-vabc", [])
+    _publish_multiturn(site, version=None)
+    public, cited, errors = vfc.petri_publication(site)
+    assert public and cited is None and len(errors) == 1
+    assert errors[0].startswith("petri_multiturn_summary.json :: $.status.vendor_pack.version :: the published summary "
+                                "cites no Petri pack version")
+    (site / "data" / "petri_multiturn_summary.json").write_text("{not json", encoding="utf-8")
+    public, cited, errors = vfc.petri_publication(site)
+    assert public and cited is None and len(errors) == 1 and "cannot be read" in errors[0]
+    assert vfc.petri_publication(None) == (False, None, [])
+
+
+def test_repro_pack_gate_requires_a_sent_petri_pack_once_the_multiturn_data_is_public(tmp_path, site):
+    engine = _engine_with_log(tmp_path, [{"pack_version": "v1"}])
+    _publish_multiturn(site, version="petri-vabc")
+    run_fn, calls = _fake_run(0, petri_code=4, petri_stdout="PUBLICATION: petri-vabc: no send is recorded")
+    out, errors = vfc.repro_pack_gate(engine, run=run_fn, site=site)
+    assert [c for c in calls if _is_petri(c)] == [[vfc.sys.executable, "-m", "scripts.petri_audit.cli", "repro-pack",
+                                                   "--check", "--log", str(engine / "ops" / "disclosure_log.jsonl"),
+                                                   "--require-sent", "--cited-version", "petri-vabc"]]
+    assert errors == [vfc.PETRI_PUBLICATION_UNMET_MSG] and "PUBLICATION: petri-vabc" in out
+    run_fn, calls = _fake_run(0, petri_code=0)
+    assert vfc.repro_pack_gate(engine, run=run_fn, site=site)[1] == []
+
+
+def test_repro_pack_gate_is_unchanged_while_the_multiturn_page_is_unpublished(tmp_path, site):
+    """Today's state: no real Multi-turn file (the samples at most). The Petri check runs as before, without the
+    publication requirement, and a missing log still skips both checks."""
+    _samples_only(site)
+    engine = _engine_with_log(tmp_path, [{"pack_version": "v1"}])
+    run_fn, calls = _fake_run(0, petri_code=0)
+    assert vfc.repro_pack_gate(engine, run=run_fn, site=site) == ("", [])
+    assert [c for c in calls if _is_petri(c)][0][-2:] == ["--log", str(engine / "ops" / "disclosure_log.jsonl")]
+    run_fn, calls = _fake_run(1)
+    assert vfc.repro_pack_gate(_no_log_engine(tmp_path / "x"), run=run_fn, site=site) == ("", []) and calls == []
+
+
+def test_repro_pack_gate_end_to_end_on_public_multiturn_data_with_no_pack(tmp_path, site):
+    """The reproduced case, through the real check: the page's data is public and no Petri pack was ever built (no
+    log at all). Before the fix the gate skipped both checks and passed; now the Petri check runs with the requirement
+    and fails (exit 4), and the gate names it."""
+    _publish_multiturn(site)
+    out, errors = vfc.repro_pack_gate(_no_log_engine(tmp_path), site=site)
+    assert "never-built" in out and "PUBLICATION:" in out
+    assert errors == [vfc.PETRI_PUBLICATION_UNMET_MSG]
+
+
+def test_repro_pack_gate_end_to_end_on_public_multiturn_data_citing_an_unsent_pack(tmp_path, site):
+    """A Petri pack built and logged, never sent, which the public summary cites. Unsent and unescalated, the plain
+    check exits 0; the publication requirement fails it."""
+    entry = {"pack_version": "petri-v000000000001", "lane": "petri", "vendor": "acme", "sent_utc": None,
+             "manifest": {"scope": "w2_register_contrast",
+                          "inputs": {k: "absent" for k in ("vendor", "runs_dir", "analysis", "plan", "claims",
+                                                            "seeds", "lock", "repo_root")} | {"run_dirs": []},
+                          "depends_on": {"prompt_refs": {}, "seed_ids": []}, "state": {}}}
+    engine = _engine_with_log(tmp_path, [entry])
+    _publish_multiturn(site, version="petri-v000000000001")
+    out, errors = vfc.repro_pack_gate(engine, site=site)
+    assert "PUBLICATION: the published page cites petri-v000000000001, whose send is not recorded" in out
+    assert errors == [vfc.PETRI_PUBLICATION_UNMET_MSG]
+    unpublished = tmp_path / "unpublished"
+    unpublished.mkdir()
+    assert vfc.repro_pack_gate(engine, site=unpublished)[1] == []      # the same log, the page not public: green
+
+
+def test_main_fails_when_the_multiturn_data_is_public_without_a_sent_pack(site, tmp_path, monkeypatch, capsys):
+    engine = _no_log_engine(tmp_path)
+    _samples_only(site)
+    assert _main(monkeypatch, site, engine) == 0                          # today: samples only, no log
+    capsys.readouterr()
+    _publish_multiturn(site)
+    assert _main(monkeypatch, site, engine) == 1
+    out = capsys.readouterr().out
+    assert f"FAIL: {vfc.PETRI_PUBLICATION_UNMET_MSG}" in out and "contract check: 1 error(s)" in out
