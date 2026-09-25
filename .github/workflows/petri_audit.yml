@@ -16,6 +16,16 @@ name: Petri Audit (medlang-circuits)
 # judge_max_spend alone, and fire_trigger.py and the budget gate below refuse
 # it unless its parameters are the ones the source fire ran under.
 #
+# `rejudge` (2026-09-24; scripts/petri_audit/rejudge.py; exploratory, owner-approved) re-grades landed runs
+# (`source_runs`: run stems under data/petri/runs) with a judge other than their judge of record. It runs in its
+# own job below: no target call, no adaptation, nothing under data/petri/runs written. It plans exactly the
+# judgments the judge of record made, from the committed transcripts, refuses unless the plan matches that judge's
+# rows digest for digest, and writes data/petri/rejudge/<judge slug>/<stem>/. Paid (the judge); its commitment is
+# judge_max_spend alone, on the judge's channel. `judge_model: mockllm/judge` is the free rehearsal: the whole job
+# at $0, uploaded as an artifact and never committed; the job's steps read it from the params job's exact `rehearsal`
+# output. A later source run's abort does not discard an earlier one's completed re-grade: verification, upload and
+# the commit run whenever the plan succeeded, over exactly the re-grades that wrote their manifest.
+#
 # The raw Inspect .eval log is NEVER committed: it is written outside the
 # checkout, uploaded as a workflow artifact with 90-day retention, and bound
 # to the committed manifest by sha256. Only the sanitised allowlist
@@ -49,7 +59,7 @@ on:
         type: string
         default: "mockllm/model"
       mode:
-        description: "preflight (no calls), dry_run (mockllm, $0), run (paid), readapt (judge paid; push-to-run fires only)"
+        description: "preflight (no calls), dry_run (mockllm, $0), run (paid), readapt (judge paid; push-to-run fires only), rejudge (judge paid; mockllm/judge rehearsal $0)"
         type: string
         default: "preflight"
       epochs:
@@ -92,6 +102,10 @@ on:
         description: "Mode readapt only: the workflow run id whose raw-eval artifact is re-adapted (empty otherwise)"
         type: string
         default: ""
+      source_runs:
+        description: "Mode rejudge only: space-separated landed run stems under data/petri/runs to re-grade (empty otherwise)"
+        type: string
+        default: ""
   push:
     paths:
       - ".github/trigger/petri-audit.json"
@@ -127,6 +141,10 @@ jobs:
       log_model_api: ${{ steps.params.outputs.log_model_api }}
       commit_outputs: ${{ steps.params.outputs.commit_outputs }}
       source_run_id: ${{ steps.params.outputs.source_run_id }}
+      source_runs: ${{ steps.params.outputs.source_runs }}
+      # mode rejudge's rehearsal, decided by an exact comparison in the heredoc: the rejudge job's steps gate on this
+      # "true"/"false" rather than on judge_model, which GitHub's expression != compares ignoring case (PR #41 review)
+      rehearsal: ${{ steps.params.outputs.rehearsal }}
       # the fire's `_nonce` (pass-through metadata, never a trigger key): the run records it so its cost sidecar can be
       # reconciled with the journal entry that reserved the spend (PR B, 2026-09-18)
       _nonce: ${{ steps.params.outputs._nonce }}
@@ -165,6 +183,7 @@ jobs:
           IN_LOG_MODEL_API: ${{ inputs.log_model_api }}
           IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
           IN_SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          IN_SOURCE_RUNS: ${{ inputs.source_runs }}
         run: |
           python - <<'EOF'
           import json, os, re
@@ -185,15 +204,17 @@ jobs:
                       "judge_max_tokens": "300",
                       "log_model_api": "true",
                       "commit_outputs": "false",
-                      "source_run_id": ""}
+                      "source_run_id": "",
+                      "source_runs": ""}
           p = dict(defaults)
           nonce = ""                        # the fire's _nonce, metadata beside the trigger keys (empty on dispatch)
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/petri-audit.json", encoding="utf-8") as f:
                   cfg = json.load(f)
               nonce = str(cfg.get("_nonce") or "")
-              if isinstance(cfg.get("seed_ids"), list):
-                  cfg["seed_ids"] = " ".join(str(s) for s in cfg["seed_ids"])
+              for k in ("seed_ids", "source_runs"):
+                  if isinstance(cfg.get(k), list):
+                      cfg[k] = " ".join(str(s) for s in cfg[k])
               p.update({k: (str(v).lower() if isinstance(v, bool) else str(v))
                         for k, v in cfg.items() if k in defaults})
           else:
@@ -201,8 +222,8 @@ jobs:
                   v = os.environ.get("IN_" + k.upper(), "")
                   if v:
                       p[k] = v
-          if p["mode"] not in ("preflight", "dry_run", "run", "readapt"):
-              raise SystemExit("mode must be preflight, dry_run, run or readapt")
+          if p["mode"] not in ("preflight", "dry_run", "run", "readapt", "rejudge"):
+              raise SystemExit("mode must be preflight, dry_run, run, readapt or rejudge")
           if p["mode"] == "dry_run" and p["target"] != "mockllm/model":
               raise SystemExit("dry_run runs against mockllm/model only")
           # every mock/test sentinel, not just the one dry_run uses: `mockllm/judge` and `none/none` price at
@@ -267,6 +288,42 @@ jobs:
           elif p["source_run_id"]:
               raise SystemExit(f"source_run_id is read by mode readapt only, got {p['source_run_id']!r} with mode "
                                f"{p['mode']!r}")
+          # mode rejudge re-grades landed runs with another judge (scripts/petri_audit/rejudge.py): no target call,
+          # so the target and max_spend are not read. It names one or more run stems, none twice, runs the judge, and
+          # carries the judge spec exactly: `mockllm/judge` is the free rehearsal, recognised by exact match, which is
+          # never committed and may run from a dispatch; any other judge is paid and admitted from a push-to-run fire
+          # on its first attempt only, as run and readapt are. Any other mode ignores source_runs, so a value there is
+          # refused rather than carried
+          if p["mode"] == "rejudge":
+              stems = p["source_runs"].split()
+              if not stems or any(not re.fullmatch(r"run_[0-9]+_[0-9]+", t) for t in stems) or len(set(stems)) != len(stems):
+                  raise SystemExit(f"mode rejudge needs source_runs, one or more distinct run stems "
+                                   f"(run_<workflow run id>_<attempt>), got {p['source_runs']!r}")
+              if p["judge"] != "true":
+                  raise SystemExit("mode rejudge runs a judge (judge true): the judge is its only work and its only spend")
+              if not p["judge_model"] or p["judge_model"] != p["judge_model"].strip():
+                  raise SystemExit(f"mode rejudge needs judge_model spelled exactly, got {p['judge_model']!r}")
+              # a zero-price sentinel in another case would be the rehearsal to an expression `!=` (which ignores
+              # case) and a paid judge to every Python check; no judge is spelled so, so it is refused
+              if (p["judge_model"].lower() in ("mockllm/judge", "mockllm/model", "none/none")
+                      and p["judge_model"] not in ("mockllm/judge", "mockllm/model", "none/none")):
+                  raise SystemExit(f"mode rejudge judge_model {p['judge_model']!r} differs from a test sentinel in case "
+                                   "alone; the workflow compares it ignoring case, so it is refused")
+              if p["judge_model"] == "mockllm/judge":
+                  if p["commit_outputs"] == "true":
+                      raise SystemExit("mode rejudge with the rehearsal judge mockllm/judge is never committed; it needs "
+                                       "commit_outputs false")
+              elif os.environ["EVENT_NAME"] != "push":
+                  raise SystemExit("a paid rejudge is fired through scripts/fire_trigger.py only (its journal entry is the "
+                                   "reservation the daily ceiling counts); a workflow_dispatch may run the mockllm/judge "
+                                   "rehearsal")
+              elif os.environ.get("RUN_ATTEMPT", "1") != "1":
+                  raise SystemExit(f"a paid rejudge cannot be re-run from the Actions tab (attempt "
+                                   f"{os.environ.get('RUN_ATTEMPT')} has no reservation of its own); re-fire through "
+                                   "scripts/fire_trigger.py")
+          elif p["source_runs"]:
+              raise SystemExit(f"source_runs is read by mode rejudge only, got {p['source_runs']!r} with mode "
+                               f"{p['mode']!r}")
           # Every value below is written as one `key=value` line, and a later duplicate key wins, so a value
           # carrying a newline writes further key=value lines of its own: a trigger file whose `target` or
           # `_nonce` held one could rewrite mode, a ceiling or commit_outputs AFTER the checks above passed.
@@ -279,6 +336,8 @@ jobs:
           with open(out, "a", encoding="utf-8") as f:
               for k in defaults:
                   f.write(k + "=" + p[k] + "\n")
+              f.write("rehearsal=" + ("true" if p["mode"] == "rejudge" and p["judge_model"] == "mockllm/judge"
+                                      else "false") + "\n")
               f.write("_nonce=" + nonce + "\n")
           print(" | ".join(f"{k}={p[k]}" for k in sorted(defaults)))
           EOF
@@ -299,7 +358,8 @@ jobs:
           python3 scripts/fire_trigger.py budget-gate --trigger petri-audit --params-file "$RUNNER_TEMP/gate_params.json" --push-before "$PUSH_BEFORE" --ref "$REF_NAME"
 
   audit:
-    if: ${{ !github.event.created }}
+    # every mode but rejudge, which has its own job below (it calls no target and adapts nothing)
+    if: ${{ !github.event.created && needs.params.outputs.mode != 'rejudge' }}
     needs: params
     runs-on: ubuntu-latest
     timeout-minutes: 180
@@ -713,4 +773,201 @@ jobs:
               --params-file "$RUNNER_TEMP/resolved_params.json" --json-out "$RUNNER_TEMP/run_summary.json" \
               --judge-started-marker "$RUNNER_TEMP/petri-run/judge_started" --seal-scan >> "$GITHUB_STEP_SUMMARY"; then
             echo "## Petri audit ($MODE, $RUN_STEM): run-summary failed; see this step's log" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # Mode rejudge (2026-09-24; scripts/petri_audit/rejudge.py): re-grade landed runs with a judge other than their judge
+  # of record. No target call and no adaptation, so none of the audit job's run steps exist here; nothing under
+  # data/petri/runs is written and its manifests chain is not appended to. Paid (the judge) unless the judge is the
+  # mockllm/judge rehearsal, which runs the whole job at $0 and commits nothing.
+  rejudge:
+    if: ${{ !github.event.created && needs.params.outputs.mode == 'rejudge' }}
+    needs: params
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            data
+            medlang_circuits
+            docs
+            ops
+            tests
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          # the exact interpreter the environment lock records; verify-lock refuses any other
+          python-version: "3.12.3"
+
+      # the judge of record ran in this environment, so the re-grade does too
+      - name: Install the locked environment (exact versions from docs/framework/petri_environment.lock.json)
+        run: |
+          python - <<'EOF'
+          import json
+          lock = json.load(open("docs/framework/petri_environment.lock.json", encoding="utf-8"))
+          with open("petri-lock-requirements.txt", "w", encoding="utf-8") as f:
+              for name, version in sorted(lock["packages"].items()):
+                  f.write(f"{name}=={version}\n")
+          with open("petri-harness-commit.txt", "w", encoding="utf-8") as f:
+              f.write(lock["harness"]["commit"])
+          EOF
+          pip install --quiet -r petri-lock-requirements.txt
+          pip install --quiet --no-deps "inspect_petri @ git+https://github.com/michaeldgreenphd/patientwords-inspect_petri@$(cat petri-harness-commit.txt)"
+          pip install --quiet -e ".[llm]" pyyaml
+          rm -f petri-lock-requirements.txt petri-harness-commit.txt
+
+      - name: Verify the environment lock (refuses any drift before a model call)
+        run: python -m scripts.petri_audit.cli verify-lock
+
+      # No model call. Every source run must verify on its own and be chained, its judge of record must be another
+      # judge under the same judge_max_tokens, its output directory must hold no re-grade (only earlier failed fires'
+      # judge sidecars, each accounted for by exactly one journal entry), and the judgments planned from its committed
+      # transcripts must be exactly the ones its judge of record made, rendered prompt and context digest for digest.
+      - name: Plan the rejudge (verify the source runs and the instrument; no model call)
+        id: plan
+        env:
+          RESOLVED_PARAMS: ${{ toJSON(needs.params.outputs) }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/petri-rejudge/started"
+          printf '%s' "$RESOLVED_PARAMS" > "$RUNNER_TEMP/petri-rejudge/params.json"
+          python -m scripts.petri_audit.cli rejudge-plan --params-file "$RUNNER_TEMP/petri-rejudge/params.json" \
+            --runs-dir data/petri/runs --rejudge-root data/petri/rejudge \
+            --rejudge-run-id "$GITHUB_RUN_ID" --rejudge-run-attempt "$GITHUB_RUN_ATTEMPT" --rejudge-commit "$GITHUB_SHA" \
+            --out "$RUNNER_TEMP/petri-rejudge/plan.json"
+
+      # Before each source run's first call the CLI writes a marker under the runner's temp directory naming its
+      # sidecar and its allotment of the fire's ceiling; the always()-gated spend report below books that allotment
+      # for a run whose judge started and left no sidecar. A judge client that raises leaves its sidecar (exit 8).
+      - name: Rejudge (paid unless the judge is mockllm/judge; no target call)
+        id: rejudge
+        env:
+          # the same key set as the audit job's judge step: the registry resolves a judge spec to its provider's key_env
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python -m scripts.petri_audit.cli rejudge --plan "$RUNNER_TEMP/petri-rejudge/plan.json" \
+            --started-dir "$RUNNER_TEMP/petri-rejudge/started"
+
+      # always() once the plan succeeded (PR #41 review): a later source run whose judge aborted must not discard an
+      # earlier one that completed. Fails closed. verify-rejudge checks each re-grade this fire wrote a manifest into
+      # (the executor writes it last, so an aborted run's partial rows have none and are never touched), on its own and
+      # against its source run; only when every one verifies does it copy them outside the checkout for the upload and
+      # write the list of what the commit stages: those directories and this fire's sidecars. The seal check then
+      # sweeps exactly that list, and the runs read, before the step can succeed.
+      - name: Verify the re-grades and seal-check exactly what is staged (fails closed)
+        id: verify
+        if: ${{ always() && steps.plan.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          python -m scripts.petri_audit.cli verify-chain --data-dir data/petri/runs
+          python -m scripts.petri_audit.cli verify-rejudge --plan "$RUNNER_TEMP/petri-rejudge/plan.json" \
+            --runs-dir data/petri/runs --copy-to "$RUNNER_TEMP/petri-rejudge/exports" \
+            --verified-list "$RUNNER_TEMP/petri-rejudge/verified.txt" --stage-list "$RUNNER_TEMP/petri-rejudge/stage.txt"
+          EXTRA="data/petri/runs"
+          while IFS= read -r path; do EXTRA="$EXTRA,$path"; done < "$RUNNER_TEMP/petri-rejudge/stage.txt"
+          python scripts/seal_check.py --site "$RUNNER_TEMP/no-site" --extra "$EXTRA"
+          echo "verified=$(grep -c . "$RUNNER_TEMP/petri-rejudge/verified.txt" || true)" >> "$GITHUB_OUTPUT"
+
+      - name: Refuse to publish a raw log (belt and braces)
+        id: rawlog
+        if: ${{ always() }}
+        run: |
+          if find data/petri -name '*.eval' | grep -q .; then
+            echo "a raw .eval is inside the checkout; refusing" >&2
+            exit 1
+          fi
+
+      # The seal-cleared re-grades of this fire, as the audit job uploads a run's: the only copy of a rehearsal, and the
+      # recovery copy of a paid rejudge that commits (non-blocking only there, so its own failure cannot skip the
+      # commit). Only when the verification and seal check passed, at least one re-grade verified, and the raw-log
+      # refusal passed; a later run's abort no longer skips it.
+      - name: Upload the seal-cleared re-grades (rehearsal or paid; never a raw log)
+        if: ${{ always() && steps.verify.outcome == 'success' && steps.verify.outputs.verified != '0' && steps.rawlog.outcome == 'success' }}
+        continue-on-error: ${{ needs.params.outputs.rehearsal != 'true' && needs.params.outputs.commit_outputs == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: petri-audit-rejudge-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/petri-rejudge/exports/
+          retention-days: 30
+          if-no-files-found: error
+
+      # A judge that started on a source run and left no sidecar (the process died mid-call) is booked at that run's
+      # allotment of the fire's ceiling; a run whose judge never started books nothing. The rehearsal spends nothing.
+      - name: Spend report for a rejudge judge that started and left no sidecar
+        if: ${{ always() && needs.params.outputs.rehearsal != 'true' }}
+        run: |
+          python -m scripts.petri_audit.cli rejudge-spend-report --plan "$RUNNER_TEMP/petri-rejudge/plan.json" \
+            --started-dir "$RUNNER_TEMP/petri-rejudge/started"
+
+      # always() so a later source run's abort does not discard an earlier one's completed re-grade (PR #41 review),
+      # but only once the verification and the seal check over exactly what is staged succeeded and the raw-log
+      # refusal passed: it stages the list verify-rejudge wrote (the verified directories and this fire's sidecars) and
+      # nothing else, never the rejudge root wholesale, so an aborted run's partial rows stay out. Never the rehearsal.
+      - name: Commit the re-grades to the branch (paid rejudge with commit_outputs; the verified re-grades only)
+        if: ${{ always() && steps.verify.outcome == 'success' && steps.verify.outputs.verified != '0' && steps.rawlog.outcome == 'success' && needs.params.outputs.rehearsal != 'true' && needs.params.outputs.commit_outputs == 'true' }}
+        env:
+          BRANCH: ${{ github.ref_name }}
+          JUDGE_MODEL: ${{ needs.params.outputs.judge_model }}
+          SOURCE_RUNS: ${{ needs.params.outputs.source_runs }}
+        run: |
+          set -euo pipefail
+          if find data/petri -name '*.eval' | grep -q .; then echo "raw log present; refusing" >&2; exit 1; fi
+          while IFS= read -r path; do git add -f -- "$path"; done < "$RUNNER_TEMP/petri-rejudge/stage.txt"
+          if git diff --cached --quiet; then echo "No re-grades to commit"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Petri rejudge (exploratory): $JUDGE_MODEL over $SOURCE_RUNS (workflow run $GITHUB_RUN_ID)"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 2))
+          done
+          exit 1
+
+      # The judge cost sidecars are spend records (model ids, token counts, ceilings, digests; never text), booked
+      # whether or not the re-grades were committed and whether or not a later step failed. Nothing else is staged;
+      # an earlier fire's sidecar in the same directory is unchanged, so adding it stages nothing. Never the rehearsal.
+      - name: Commit rejudge cost sidecars (paid rejudge; independent of commit_outputs)
+        if: ${{ always() && needs.params.outputs.rehearsal != 'true' }}
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if find data/petri -name '*.eval' | grep -q .; then echo "raw log present; refusing" >&2; exit 1; fi
+          git fetch origin "$BRANCH"
+          if [ -n "$(git log --oneline "origin/$BRANCH..HEAD")" ]; then
+            echo "local commit(s) never reached origin/$BRANCH; re-committing the cost sidecars alone"
+            git reset --soft "origin/$BRANCH"
+            git reset -q
+          fi
+          for f in data/petri/rejudge/*/*/*.report.json; do
+            if [ -f "$f" ]; then git add -f "$f"; fi
+          done
+          if git diff --cached --quiet; then echo "No rejudge cost sidecars to commit (already on the remote, or none written)"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Petri rejudge: cost sidecars (workflow run $GITHUB_RUN_ID)"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 2))
+          done
+          exit 1
+
+      # Counts and cost per source run, never text; passed through the holdout seal before it is published.
+      - name: Job summary
+        if: ${{ always() }}
+        run: |
+          if ! python -m scripts.petri_audit.cli rejudge-summary --plan "$RUNNER_TEMP/petri-rejudge/plan.json" \
+              --seal-scan >> "$GITHUB_STEP_SUMMARY"; then
+            echo "## Petri rejudge: rejudge-summary failed; see this step's log" >> "$GITHUB_STEP_SUMMARY"
           fi

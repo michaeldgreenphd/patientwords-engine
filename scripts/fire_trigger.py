@@ -74,8 +74,10 @@ TRIGGERS = (
 # the evaluate stage bills Anthropic (2026-08-04, exploratory arm).
 # petri-audit: the target model and the optional judge of record spend provider
 # tokens when mode is `run` (2026-09-16), and the judge alone when mode is
-# `readapt` (2026-09-24); preflight and dry_run cost nothing but the lane is
-# counted paid so every fire goes through the ceiling.
+# `readapt` (2026-09-24), and the judge alone when mode is `rejudge` with a
+# real judge (2026-09-24; its `mockllm/judge` rehearsal is free); preflight and
+# dry_run cost nothing but the lane is counted paid so every fire goes through
+# the ceiling.
 PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval", "petri-audit", "pab-probe"})
 # A circuit-trace fire with show_mitigation=true makes Anthropic translation
 # calls (the only paid path outside PAID_TRIGGERS). Its cost has no max_spend
@@ -140,6 +142,21 @@ PETRI_RUNS_RELPATH = Path("data") / "petri" / "runs"
 PETRI_ADAPTED_FILES = ("manifest.json", "transcripts.jsonl", "rule_outcomes.jsonl", "sanitised_log.json",
                        "judgments.jsonl", "analysis_rows.jsonl")
 PETRI_READAPT_JUDGE_SUFFIX = r"\.readapt_[0-9]+\.judge\.report\.json"
+# petri-audit mode rejudge (2026-09-24, owner-approved exploratory re-grading): grade the judgments of landed runs
+# again under a judge other than their judge of record, from the committed transcripts, without a target call or an
+# adaptation, into data/petri/rejudge/<judge slug>/<source stem>/ (scripts/petri_audit/rejudge.py). `source_runs`
+# names the run stems; it is read by this mode only and is empty in the park. Its commitment is judge_max_spend
+# alone, on the judge's channel; `mockllm/judge` is the free rehearsal, which never commits. Mirrors of the lane's
+# names follow (this script imports nothing from the lane; tests/test_petri_audit_rejudge.py holds them equal).
+PETRI_REJUDGE_MODE = "rejudge"
+PETRI_REJUDGE_MOCK_JUDGE = "mockllm/judge"
+PETRI_REJUDGE_RELPATH = Path("data") / "petri" / "rejudge"
+PETRI_REJUDGE_STEM_RE = re.compile(r"run_[0-9]+_[0-9]+")
+PETRI_REJUDGE_OUTPUT_FILES = ("judgments.jsonl", "analysis_rows.jsonl", "rejudge_manifest.json")
+PETRI_REJUDGE_JUDGE_SUFFIX = r"\.rejudge_[0-9]+\.judge\.report\.json"
+PETRI_JUDGE_DEFAULT = "claude-haiku-4-5"        # the params job's judge_model default
+# scripts/petri_audit/spend.py ZERO_PRICE_MODELS: the test sentinels, of which only the rehearsal judge is a rejudge's
+PETRI_SENTINEL_SPECS = ("mockllm/model", "mockllm/judge", "none/none")
 PARK_NOTE = ("PARK (resting-state rule): cheapest no-op default committed so branch operations "
              "that touch this trigger file re-run a $0/negligible stage instead of the last "
              "expensive fire; commit_outputs false where the workflow supports it. "
@@ -170,9 +187,18 @@ def is_paid_fire(trigger, params):
         return True
     if trigger not in PAID_TRIGGERS:
         return False
+    if trigger == "petri-audit" and petri_mode(params) == PETRI_REJUDGE_MODE:
+        # a rejudge spends through its judge, unless the judge is the zero-price rehearsal sentinel
+        return not petri_rejudge_is_rehearsal(params)
     if trigger == "petri-audit" and petri_mode(params) not in PETRI_PAID_MODES:
         return False
     return True
+
+
+def petri_rejudge_is_rehearsal(params):
+    """Whether a petri-audit rejudge names the mock judge, exactly as the params job compares it: the free rehearsal
+    that makes no provider call and commits nothing."""
+    return _petri_job_value(params, "judge_model", PETRI_JUDGE_DEFAULT) == PETRI_REJUDGE_MOCK_JUDGE
 
 
 def paid_budget_params(trigger, params):
@@ -256,8 +282,9 @@ PROVIDERS_RELPATH = Path("data") / "advice_providers.json"
 PETRI_BOOLEAN_KEYS = ("judge", "log_model_api", "commit_outputs")
 # The mode and target rules of petri_audit.yml's "Resolve parameters" step, mirrored by `petri_params_problems`
 # (mode) and `petri_target_problems` (target).
-# Compared exactly by the params job, the first being its default; the fourth is PR #29's mode readapt.
-PETRI_MODES = ("preflight", "dry_run", "run", PETRI_READAPT_MODE)
+# Compared exactly by the params job, the first being its default; the fourth is PR #29's mode readapt, the fifth
+# mode rejudge (2026-09-24).
+PETRI_MODES = ("preflight", "dry_run", "run", PETRI_READAPT_MODE, PETRI_REJUDGE_MODE)
 PETRI_MOCK_TARGET = "mockllm/model"       # the params job's default target, and the only one dry_run admits
 PETRI_SENTINEL_PROVIDERS = ("mockllm", "none")
 PETRI_RUN_PROVIDERS = ("anthropic", "openrouter")
@@ -434,10 +461,22 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
             problems.append("petri-audit mode readapt must run the judge of record (judge true): a readapt makes no "
                             "target call, so the judge is its only spend and judge_max_spend its whole commitment; "
                             "the lane has no free re-adapt path")
-    elif source_run_id not in ("", None):
+    elif _petri_job_value(params, "source_run_id", ""):
+        # the job's own resolution (`str(value)`): a JSON null is "None", which the job refuses outside readapt, so
+        # the guard refuses it too rather than journaling a reservation for a run the job will not start (PR #41)
         problems.append(f"petri-audit source_run_id is read by mode readapt only, got {source_run_id!r} with mode "
                         f"{mode!r}: a value the workflow would ignore is refused rather than carried")
-    if mode in PETRI_PAID_MODES:
+    # mode rejudge (2026-09-24): the params job's rules for it, in the same order (scripts/petri_audit/rejudge.py)
+    source_runs = params.get("source_runs", "")
+    rejudge_paid = False
+    if mode == PETRI_REJUDGE_MODE:
+        problems.extend(petri_rejudge_param_problems(params))
+        rejudge_paid = not petri_rejudge_is_rehearsal(params)
+    elif petri_source_runs_resolved(params):
+        # the job joins a list and `str()`s anything else, so a JSON null is "None", refused outside rejudge (PR #41)
+        problems.append(f"petri-audit source_runs is read by mode rejudge only, got {source_runs!r} with mode "
+                        f"{mode!r}: a value the workflow would ignore is refused rather than carried")
+    if mode in PETRI_PAID_MODES or rejudge_paid:
         nonce = params.get("_nonce")
         # The workflow resolves the trigger value as `str(cfg.get("_nonce") or "")`, so any FALSY scalar - 0,
         # false, "" - reaches the run as an empty nonce while this entry journals "0" or "False" and the two
@@ -453,7 +492,9 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
                 f"without one can never be reconciled, got {nonce!r}")
     problems.extend(petri_target_problems(params))
     target_channel, judge_channel = petri_channels(params, registry)
-    if judge_channel is not None and judge_channel != target_channel:
+    # a rejudge calls no target, so its one channel is its judge's (`_petri_lane`) and a target it does not call
+    # cannot mix channels with it
+    if mode != PETRI_REJUDGE_MODE and judge_channel is not None and judge_channel != target_channel:
         problems.append(
             f"petri-audit target {params.get('target')!r} bills the {target_channel} lane but judge "
             f"{params.get('judge_model')!r} bills the {judge_channel} lane: one fire carries one commitment on "
@@ -473,6 +514,188 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
     return problems
 
 
+def petri_source_runs_resolved(params: dict) -> str:
+    """`source_runs` exactly as the params job resolves it: a JSON list joined with spaces, a JSON boolean
+    lower-cased, anything else `str()`-ed (so a JSON null is "None"); "" when the key is absent."""
+    if "source_runs" not in params:
+        return ""
+    value = params["source_runs"]
+    if isinstance(value, list):
+        return " ".join(str(v) for v in value)
+    return str(value).lower() if isinstance(value, bool) else str(value)
+
+
+def petri_source_runs(params: dict) -> list[str]:
+    """The `source_runs` of a petri-audit rejudge as the params job resolves them, split on whitespace."""
+    return petri_source_runs_resolved(params).split()
+
+
+def petri_rejudge_param_problems(params: dict) -> list[str]:
+    """The params job's refusals of a mode-rejudge trigger file, mirrored so the fire path refuses before it
+    journals a reservation: source_runs names one or more run stems, none twice; the judge runs (judge true); the
+    judge spec carries no padding (the job compares it exactly, and the mock rehearsal is recognised by exact
+    match); and the rehearsal never commits. The key set and the booleans' spelling are checked elsewhere
+    (validate_params, petri_params_problems)."""
+    problems = []
+    stems = petri_source_runs(params)
+    if not stems:
+        problems.append("petri-audit mode rejudge needs source_runs, the stems of the landed runs under "
+                        "data/petri/runs it re-grades (for example run_36076994201_1)")
+    bad = [s for s in stems if not PETRI_REJUDGE_STEM_RE.fullmatch(s)]
+    if bad:
+        problems.append(f"petri-audit mode rejudge source_runs {bad} are not run stems (run_<workflow run id>_<attempt>)")
+    if len(set(stems)) != len(stems):
+        problems.append(f"petri-audit mode rejudge names a source run twice ({stems}); one fire judges each run once")
+    if _petri_job_value(params, "judge", "false") != "true":
+        problems.append("petri-audit mode rejudge runs a judge (judge true): the judge is its only work and its only "
+                        "spend")
+    judge = _petri_job_value(params, "judge_model", PETRI_JUDGE_DEFAULT)
+    if not judge or judge != judge.strip():
+        problems.append(f"petri-audit mode rejudge needs judge_model spelled exactly, got {judge!r}")
+    elif judge.lower() in PETRI_SENTINEL_SPECS and judge not in PETRI_SENTINEL_SPECS:
+        # GitHub's expression `!=` compares ignoring case, so `MockLLM/Judge` would be the rehearsal to the workflow's
+        # step conditions and a paid judge to every Python check (PR #41 review); the params job refuses it too
+        problems.append(f"petri-audit mode rejudge judge_model {judge!r} differs from a test sentinel in case alone; "
+                        "the workflow compares it ignoring case, so it is refused")
+    elif judge != PETRI_REJUDGE_MOCK_JUDGE:
+        problems.extend(petri_judge_spec_problems(judge))
+    if judge == PETRI_REJUDGE_MOCK_JUDGE and _petri_job_value(params, "commit_outputs", "false") == "true":
+        problems.append(f"petri-audit mode rejudge with the rehearsal judge {PETRI_REJUDGE_MOCK_JUDGE!r} is never "
+                        "committed; it needs commit_outputs false")
+    return problems
+
+
+def petri_judge_spec_problems(spec: str, registry: dict | None = None) -> list[str]:
+    """The rejudge plan's refusals of a (non-rehearsal) judge spec that need only the registry, mirrored so the fire
+    path refuses before it journals a reservation (PR #41 review): scripts/petri_audit/judge_runner.py
+    judge_spec_problems (a zero-price test sentinel; a provider the registry does not know, one with no public API,
+    or no model and no consumer_default, as scripts/advice_eval.py _resolve_spec refuses them) and
+    scripts/petri_audit/spend.py openrouter_price_problems (an `openrouter:` spec with no reviewed per-model price).
+    The key routing rule is petri_params_problems' own."""
+    spec = spec.strip()
+    if spec in PETRI_SENTINEL_SPECS:
+        return [f"petri-audit mode rejudge judge spec {spec!r} is a zero-price test sentinel, not a judge; only "
+                f"{PETRI_REJUDGE_MOCK_JUDGE!r} is admitted, as the free rehearsal"]
+    registry = providers_registry() if registry is None else registry
+    registry = {"anthropic": {"api": "anthropic"}, **(registry if isinstance(registry, dict) else {})}
+    if ":" in spec:
+        provider, model = spec.split(":", 1)
+    elif isinstance(registry.get(spec), dict) and not spec.startswith("_"):
+        provider, model = spec, ""
+    else:
+        provider, model = "anthropic", spec
+    cfg = registry.get(provider) if not provider.startswith("_") else None
+    if not isinstance(cfg, dict):
+        return [f"petri-audit mode rejudge judge spec {spec!r}: unknown provider {provider!r}"]
+    if cfg.get("api") == "manual_ui":
+        return [f"petri-audit mode rejudge judge spec {spec!r}: provider {provider!r} has no public API"]
+    if not (model or str(cfg.get("consumer_default") or "")):
+        return [f"petri-audit mode rejudge judge spec {spec!r}: no model given and no consumer_default"]
+    if provider == "openrouter" and model not in ((cfg.get("pricing") or {}) if isinstance(cfg.get("pricing"), dict) else {}):
+        return [f"petri-audit mode rejudge judge spec {spec!r} has no reviewed per-model price in "
+                "data/advice_providers.json openrouter.pricing (unreviewed_openrouter_price)"]
+    return []
+
+
+def petri_rejudge_slug(spec: str) -> str:
+    """The directory a judge's re-grades live under (scripts/petri_audit/rejudge.py judge_slug): the spec with every
+    run of characters outside [A-Za-z0-9._-] replaced by one hyphen. ValueError for a spec that gives no plain name."""
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", str(spec).strip()).strip("-")
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", slug):
+        raise ValueError(f"judge spec {spec!r} gives no usable directory name ({slug!r})")
+    return slug
+
+
+def petri_judge_inspect_name(spec: str, registry: dict | None = None) -> str | None:
+    """The Inspect-form model a registry judge spec calls (scripts/petri_audit/spend.py registry_spec_to_inspect),
+    so two spellings of one judge compare equal; None for a bare provider with no consumer_default, which the
+    resolver refuses."""
+    spec = str(spec).strip()
+    if spec in ("mockllm/model", PETRI_REJUDGE_MOCK_JUDGE, "none/none"):
+        return spec
+    if ":" in spec:
+        provider, model = spec.split(":", 1)
+        return f"{provider}/{model}"
+    registry = providers_registry() if registry is None else registry
+    cfg = registry.get(spec) if isinstance(registry, dict) else None
+    if isinstance(cfg, dict):
+        default = str(cfg.get("consumer_default") or "").strip()
+        return f"{spec}/{default}" if default else None
+    return f"anthropic/{spec}"
+
+
+def petri_rejudge_source_problems(repo, trigger, params):
+    """Why a petri-audit `mode: rejudge` fire cannot re-grade the runs it names, as a list of refusals; empty for
+    every other fire. Each source run must be landed and chained (`data/petri/runs/<stem>/manifest.json`, named by
+    `manifests.chain`) with a judge of record bound; the rejudge's judge must not be that judge (by exact spec, or
+    by the model the spec calls) and must use its judge_max_tokens; and the output directory
+    `data/petri/rejudge/<judge slug>/<stem>` must be absent or hold only earlier fires' judge sidecars, since a
+    landed rejudge is never rewritten. The workflow's plan step checks all of this again and more (the source run
+    verifies on its own, and the judgments planned from its transcripts are exactly its judge of record's) before
+    any call; this refuses what can be seen here before the fire holds a queue slot or the day's ceiling."""
+    if trigger != "petri-audit" or petri_mode(params) != PETRI_REJUDGE_MODE:
+        return []
+    stems = petri_source_runs(params)
+    if not stems or any(not PETRI_REJUDGE_STEM_RE.fullmatch(s) for s in stems):
+        return []                                        # petri_params_problems names it
+    repo = Path(repo)
+    judge = _petri_job_value(params, "judge_model", PETRI_JUDGE_DEFAULT)
+    try:
+        slug = petri_rejudge_slug(judge)
+    except ValueError as exc:
+        return [f"petri-audit rejudge: {exc}"]
+    registry = providers_registry(repo)
+    runs = repo / PETRI_RUNS_RELPATH
+    chain = runs / "manifests.chain"
+    chained = set()
+    if chain.is_file():
+        chained = {ln.strip().rsplit(" ", 1)[0] for ln in chain.read_text(encoding="utf-8").splitlines() if ln.strip()}
+    try:
+        tokens = int(_petri_job_value(params, "judge_max_tokens", "300"))
+    except ValueError:
+        tokens = None                                    # petri_params_problems names it
+    problems = []
+    for stem in stems:
+        where = f"petri-audit rejudge of {stem}"
+        manifest_path = runs / stem / "manifest.json"
+        if not manifest_path.is_file():
+            problems.append(f"{where}: {PETRI_RUNS_RELPATH.as_posix()}/{stem} holds no landed run (no manifest.json)")
+            continue
+        if f"{stem}/manifest.json" not in chained:
+            problems.append(f"{where}: {PETRI_RUNS_RELPATH.as_posix()}/manifests.chain does not name it; only a landed, "
+                            "chained run is re-graded")
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            problems.append(f"{where}: its manifest does not parse ({exc})")
+            continue
+        jor = ((manifest.get("artifacts") or {}).get("judge_of_record") if isinstance(manifest, dict) else None) or {}
+        of_record = jor.get("judge_model") if isinstance(jor, dict) else None
+        if not of_record:
+            problems.append(f"{where}: no judge of record is bound in its manifest")
+        else:
+            mine, theirs = petri_judge_inspect_name(judge, registry), petri_judge_inspect_name(of_record, registry)
+            if judge == of_record or (mine is not None and mine == theirs):
+                problems.append(f"{where}: {judge!r} is its judge of record ({of_record!r}); a rejudge grades with a "
+                                "different judge")
+            if tokens is not None and jor.get("judge_max_tokens") is not None and int(jor["judge_max_tokens"]) != tokens:
+                problems.append(f"{where}: its judge of record ran with judge_max_tokens {jor['judge_max_tokens']}; a "
+                                f"rejudge applies the same instrument, not {tokens}")
+        out = repo / PETRI_REJUDGE_RELPATH / slug / stem
+        if out.exists():
+            names = sorted(p.name for p in out.iterdir()) if out.is_dir() else [out.name]
+            landed = [n for n in names if n in PETRI_REJUDGE_OUTPUT_FILES]
+            other = [n for n in names if n not in PETRI_REJUDGE_OUTPUT_FILES
+                     and not re.fullmatch(re.escape(stem) + PETRI_REJUDGE_JUDGE_SUFFIX, n)]
+            if landed:
+                problems.append(f"{where}: {PETRI_REJUDGE_RELPATH.as_posix()}/{slug}/{stem} already holds a re-grade "
+                                f"({', '.join(landed)}); a landed rejudge is never rewritten")
+            elif other:
+                problems.append(f"{where}: {PETRI_REJUDGE_RELPATH.as_posix()}/{slug}/{stem} holds files other than "
+                                f"earlier rejudge fires' judge sidecars ({', '.join(other)})")
+    return problems
+
+
 def lane_params_problems(trigger: str, params: dict, registry: dict | None = None) -> list:
     """Lane-specific invariants beyond the key set; empty for lanes that have none."""
     if trigger == "petri-audit":
@@ -485,8 +708,11 @@ def _petri_lane(params: dict) -> str:
     must bill the same channel; validate_params and budget-gate refuse a
     mixed fire because a single journal entry cannot carry two commitments on
     two accounts (Codex rounds 2 and 3). A mixed fire that somehow reaches
-    here still fails closed."""
+    here still fails closed. A rejudge calls no target: its lane is its
+    judge's (2026-09-24)."""
     target_channel, judge_channel = petri_channels(params)
+    if petri_mode(params) == PETRI_REJUDGE_MODE:
+        return judge_channel or "anthropic"
     if judge_channel is not None and judge_channel != target_channel:
         return "anthropic"
     return target_channel
@@ -568,11 +794,12 @@ KNOWN_KEYS = {
     # checks it against the heredoc): seeds_file, seed_ids, wave, target, mode,
     # epochs, token_limit, max_spend, judge, judge_model, judge_max_spend,
     # judge_max_tokens, log_model_api, commit_outputs, source_run_id (mode
-    # readapt only, 2026-09-24; empty by default and absent from the park).
+    # readapt only, 2026-09-24; empty by default and absent from the park),
+    # source_runs (mode rejudge only, 2026-09-24; likewise).
     "petri-audit": frozenset({
         "seeds_file", "seed_ids", "wave", "target", "mode", "epochs", "token_limit",
         "max_spend", "judge", "judge_model", "judge_max_spend", "judge_max_tokens",
-        "log_model_api", "commit_outputs", "source_run_id",
+        "log_model_api", "commit_outputs", "source_run_id", "source_runs",
     }),
     # pab_probe.yml `defaults` dict (verified 2026-08-04 against the params
     # heredoc by tests/test_pab_ci_staged.py): stage, fork_ref, cases_file,
@@ -836,13 +1063,16 @@ def fire_commitment(params):
 
     A petri-audit `mode: readapt` fire makes no target call: its max_spend is
     the SOURCE run's ceiling, recorded in the manifest and already reserved
-    by the source fire, so its commitment is judge_max_spend alone. No other
-    lane has a mode of that name."""
-    if str(params.get("mode", "")).strip().lower() == PETRI_READAPT_MODE:
+    by the source fire, so its commitment is judge_max_spend alone. A
+    `mode: rejudge` fire makes no target call either and re-grades landed
+    runs with a judge alone, so its commitment is judge_max_spend too, and
+    max_spend is not read. No other lane has a mode of either name."""
+    mode = str(params.get("mode", "")).strip().lower()
+    if mode in (PETRI_READAPT_MODE, PETRI_REJUDGE_MODE):
         judge = parse_max_spend(params.get("judge_max_spend")) if judge_is_on(params) else None
         if judge is None:
             return None, (
-                "mode readapt commits the judge's ceiling alone, so it needs judge=true and a usable "
+                f"mode {mode} commits the judge's ceiling alone, so it needs judge=true and a usable "
                 f"judge_max_spend (finite number > 0), got judge={params.get('judge')!r}, "
                 f"judge_max_spend={params.get('judge_max_spend')!r}"
             )
@@ -942,7 +1172,8 @@ def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DE
     `now` and `expire_hours` are accepted for call compatibility; the day's sum
     no longer depends on them (a fire's expiry releases its queue slot only).
     """
-    if "max_spend" not in params:
+    # a petri-audit rejudge commits its judge's ceiling alone and reads no max_spend (fire_commitment)
+    if "max_spend" not in params and str(params.get("mode", "")).strip().lower() != PETRI_REJUDGE_MODE:
         return "invalid", "paid trigger params must include max_spend"
     max_spend, commit_err = fire_commitment(params)
     if max_spend is None:
@@ -1395,8 +1626,10 @@ def cmd_fire(args):
     except ValueError as exc:
         print(f"refused: {exc}", file=sys.stderr)
         return 3
-    # 2b. A petri-audit readapt must recover the run it names, under the parameters that run's fire recorded.
-    readapt_problems = petri_readapt_source_problems(repo, args.trigger, params)
+    # 2b. A petri-audit readapt must recover the run it names, under the parameters that run's fire recorded; a
+    # rejudge must re-grade landed runs with another judge into directories that hold no re-grade yet.
+    readapt_problems = (petri_readapt_source_problems(repo, args.trigger, params)
+                        or petri_rejudge_source_problems(repo, args.trigger, params))
     if readapt_problems:
         print("refused: " + "; ".join(readapt_problems), file=sys.stderr)
         return 3
@@ -1405,14 +1638,18 @@ def cmd_fire(args):
     journal_path = repo / JOURNAL_RELPATH
     entries = load_journal(journal_path)
     actives = active_entries(entries, args.trigger, now, expire_hours)
-    if actives and args.trigger == "petri-audit" and petri_mode(params) == PETRI_READAPT_MODE:
+    if (actives and args.trigger == "petri-audit"
+            and petri_mode(params) in (PETRI_READAPT_MODE, PETRI_REJUDGE_MODE)):
         # A queued run starts from its own trigger commit, not the branch tip: a readapt queued behind a run, or
         # behind another readapt of the same source, adapts against a chain file and a run directory that predate
         # the first run's commit, and its own commit then conflicts after the judge has spent. So a readapt fires
-        # only into an idle lane; chain it after the running fire lands and is resolved.
+        # only into an idle lane; chain it after the running fire lands and is resolved. A rejudge likewise: queued
+        # behind another rejudge of the same judge and run it would find the output directory still empty in its
+        # own checkout, spend, and conflict on commit (2026-09-24).
+        mode = petri_mode(params)
         print(f"refused: {len(actives)} active {args.trigger} journal entr{'y' if len(actives) == 1 else 'ies'}; a "
-              "readapt fires only when the lane is idle, because a queued run checks out its own trigger commit and "
-              "would adapt against outputs that predate the running fire's. Wait for it to land, pull, `resolve`, "
+              f"{mode} fires only when the lane is idle, because a queued run checks out its own trigger commit and "
+              "would work against outputs that predate the running fire's. Wait for it to land, pull, `resolve`, "
               "and fire again", file=sys.stderr)
         return 2
     # ...and the rule is symmetric: nothing enters the lane behind an active readapt, whatever its mode. A mode-run
@@ -1422,8 +1659,8 @@ def cmd_fire(args):
     readapt_ahead = petri_active_readapt_problems(repo, args.trigger, actives)
     if readapt_ahead:
         print("refused: " + "; ".join(readapt_ahead) + ". No petri-audit fire of any mode enters the lane while a "
-              "readapt is active: a run queued behind it checks out a commit whose manifest chain predates the "
-              "readapt's. Wait for it to land, pull, `resolve`, and fire again", file=sys.stderr)
+              "readapt or a rejudge is active: a run queued behind it checks out a commit whose outputs predate "
+              "its. Wait for it to land, pull, `resolve`, and fire again", file=sys.stderr)
         return 2
     to_evict = None
     if len(actives) >= 2:
@@ -2708,6 +2945,8 @@ def petri_active_readapt_problems(repo, trigger, actives):
                             "whether it is a readapt cannot be established")
         elif petri_mode(fired) == PETRI_READAPT_MODE:
             problems.append(f"{label} is a readapt (source_run_id {fired.get('source_run_id')!r})")
+        elif petri_mode(fired) == PETRI_REJUDGE_MODE:
+            problems.append(f"{label} is a rejudge (source_runs {fired.get('source_runs')!r})")
     return problems
 
 
@@ -2895,6 +3134,8 @@ def cmd_budget_gate(args):
     # a readapt must be the recovery of the run it names, with that run's parameters, checked here against this
     # checkout's runs, journal and history as the fire path checked it against the operator's (mode readapt)
     problems = problems or petri_readapt_source_problems(repo, args.trigger, params)
+    # ...and a rejudge must re-grade landed runs with another judge into directories that hold no re-grade yet
+    problems = problems or petri_rejudge_source_problems(repo, args.trigger, params)
     if problems:
         for problem in problems:
             print(f"budget-gate: REFUSED - {problem}", file=sys.stderr)

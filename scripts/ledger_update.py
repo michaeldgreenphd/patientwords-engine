@@ -60,6 +60,10 @@ def parse_args(argv=None):
                              "judge sidecars, <run>.judge.report.json and a re-adapt's "
                              "<run>.readapt_<workflow run id>.judge.report.json (cumulative, so growth folds as a "
                              "delta); each carries an explicit billing_channel")
+    parser.add_argument("--petri-rejudge-dir", default="data/petri/rejudge",
+                        help="Petri rejudge outputs (petri-audit mode rejudge): every <judge>/<run>/*.report.json "
+                             "judge sidecar, <run>.rejudge_<workflow run id>.judge.report.json (cumulative, explicit "
+                             "billing_channel), folds into the same totals, once")
     parser.add_argument("--dashboard", default="ops/dashboard.json")
     parser.add_argument("--ledger", default=None,
                         help="ledger markdown file (default: lexicographically newest docs/*ledger*.md, "
@@ -401,10 +405,15 @@ def main(argv=None):
     # (<run>.judge.report.json, and a re-adapt's <run>.readapt_<id>.judge.report.json);
     # they carry an explicit billing_channel because Inspect names
     # OpenRouter models `openrouter/...`, which the derivation above would not see.
+    # Petri rejudge sidecars (data/petri/rejudge/<judge>/<run>/<run>.rejudge_<id>.judge.report.json,
+    # 2026-09-24) are the same judge-loop writer's, one per source run a rejudge fire judged; their
+    # basenames carry the source stem and the rejudging workflow run, so the bare-filename key below
+    # books each one once and never collides with a run's own judge sidecar.
     scan_specs = [(Path(args.simulated_dir), "*.report.json"),
                   (Path(args.advice_dir), "*.report.json"),
                   (Path(args.pab_dir), "*.report.json"),
                   (Path(args.petri_dir), "*/*.report.json"),
+                  (Path(args.petri_rejudge_dir), "*/*/*.report.json"),
                   (Path(args.trace_dir), "*/mitigation*.report.json")]
     pab_dir = Path(args.pab_dir)
     by_day_ch = spend.setdefault("by_day_by_channel", {})
@@ -461,14 +470,15 @@ def main(argv=None):
     # attribution by construction.
     entries_folded = spend.setdefault("entries_folded", {})
     seen_set = set(entries_seen)
-    petri_dir = Path(args.petri_dir)
+    # the rejudge root is the Petri lane's too: its judge sidecars are the same cumulative writer's
+    petri_dirs = {Path(args.petri_dir), Path(args.petri_rejudge_dir)}
     for scan_dir, pattern in scan_specs:
         if not Path(scan_dir).is_dir():
             continue
         # Petri judge sidecars are cumulative to eight decimals and a resumed retry through a cheap provider can
         # legitimately add $0.0005 or less; the rounding-noise floor below would drop such a delta for good
         # (Codex round 7 on PR #26), so every positive Petri delta folds
-        min_delta = 0.0 if Path(scan_dir) == petri_dir else 0.0005
+        min_delta = 0.0 if Path(scan_dir) in petri_dirs else 0.0005
         for path in sorted(Path(scan_dir).glob(pattern)):
             key = sidecar_key(path)
             if key not in seen_set and path.name not in seen_set:
@@ -492,7 +502,7 @@ def main(argv=None):
                 run_ts = parse_ts(report.get("run_utc") or report.get("run_timestamp"))
                 day = run_ts.astimezone(timezone.utc).date().isoformat() if run_ts else date
                 lifetime_before = float(spend.get("lifetime_generation_usd") or 0.0)
-                if Path(scan_dir) == petri_dir:
+                if Path(scan_dir) in petri_dirs:
                     # the accumulators hold four decimals: book what they can represent and advance the folded
                     # watermark by that amount alone, so a sub-representable delta waits, unfolded, until growth
                     # makes it representable instead of being discarded (Codex round 8 on PR #26)

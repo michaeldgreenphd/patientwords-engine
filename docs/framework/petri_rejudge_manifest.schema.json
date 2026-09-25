@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/michaeldgreenphd/patientwords-engine/docs/framework/petri_rejudge_manifest.schema.json",
+  "title": "Petri rejudge manifest, draft 0.1",
+  "description": "One manifest per re-graded source run, written by scripts/petri_audit/rejudge.py (petri-audit mode rejudge, 2026-09-24) into data/petri/rejudge/<judge slug>/<source run stem>/. A rejudge grades the judgments a landed run's judge of record planned again, under a different judge, from the run's committed transcripts; it writes nothing under data/petri/runs and appends nothing to its manifests chain. This manifest binds the source run by digest (its manifest file, its chain line, its transcripts and its judge of record's judgments), records the instrument by digest (outcome registry, rubric, every outcome prompt file, the plan), the judge and the ceiling it ran under, the fire that reserved it, the counts, and the digest of every file beside it. Exploratory work: no rejudge is a confirmatory measurement. Every object is closed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rejudge_manifest_version", "mode", "exploratory", "rehearsal", "created_utc", "source", "judge",
+               "instrument", "fire", "counts", "estimate", "cost_usd", "artifacts", "manifest_sha256"],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "count": {"type": "integer", "minimum": 0},
+    "share": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "usd": {"type": "number", "minimum": 0},
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1, "description": "A file directly in the re-grade directory."},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "rows": {"$ref": "#/$defs/count"}
+      }
+    }
+  },
+  "properties": {
+    "rejudge_manifest_version": {"type": "string", "enum": ["0.1"]},
+    "mode": {"type": "string", "const": "rejudge"},
+    "exploratory": {"type": "boolean", "const": true},
+    "rehearsal": {"type": "boolean", "description": "True for the mockllm/judge rehearsal, which is never committed."},
+    "created_utc": {"$ref": "#/$defs/utc"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_stem", "run_id", "eval_id", "manifest_sha256", "chain_manifest_sha256", "transcripts_sha256",
+                   "judgments_sha256", "judge_of_record"],
+      "properties": {
+        "run_stem": {"type": "string", "pattern": "^run_[0-9]+_[0-9]+$"},
+        "run_id": {"type": "string", "minLength": 1},
+        "eval_id": {"type": "string", "minLength": 1},
+        "manifest_sha256": {"$ref": "#/$defs/sha256", "description": "sha256 of the source run's manifest.json file as read."},
+        "chain_manifest_sha256": {"$ref": "#/$defs/sha256", "description": "The source manifest's own chain digest, as its manifests.chain line names it."},
+        "transcripts_sha256": {"$ref": "#/$defs/sha256"},
+        "judgments_sha256": {"$ref": "#/$defs/sha256", "description": "The judge of record's judgments.jsonl, as its manifest binds it."},
+        "judge_of_record": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["judge_model", "judge_max_tokens", "temperature", "planned", "judged", "null", "not_applicable",
+                       "truncated", "cost_usd"],
+          "properties": {
+            "judge_model": {"type": "string", "minLength": 1},
+            "judge_max_tokens": {"type": ["integer", "null"]},
+            "temperature": {"type": ["number", "null"]},
+            "planned": {"type": ["integer", "null"]},
+            "judged": {"type": ["integer", "null"]},
+            "null": {"type": ["integer", "null"]},
+            "not_applicable": {"type": ["integer", "null"]},
+            "truncated": {"type": ["boolean", "null"]},
+            "cost_usd": {"type": ["number", "null"]}
+          }
+        }
+      }
+    },
+    "judge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["judge_model", "judge_slug", "inspect_name", "billing_channel", "price_source", "input_per_mtok",
+                   "output_per_mtok", "judge_max_tokens", "temperature", "max_spend_usd", "fire_judge_max_spend_usd",
+                   "fire_spent_before_usd"],
+      "properties": {
+        "judge_model": {"type": "string", "minLength": 1, "description": "The exact registry judge spec every row carries."},
+        "judge_slug": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+        "inspect_name": {"type": "string", "minLength": 1},
+        "billing_channel": {"type": "string", "enum": ["anthropic", "openrouter"]},
+        "price_source": {"type": "string", "minLength": 1},
+        "input_per_mtok": {"$ref": "#/$defs/usd"},
+        "output_per_mtok": {"$ref": "#/$defs/usd"},
+        "judge_max_tokens": {"type": "integer", "minimum": 1},
+        "temperature": {"type": "number"},
+        "max_spend_usd": {"$ref": "#/$defs/usd", "description": "The ceiling this run's judge ran under: what the fire's ceiling had left when it started."},
+        "fire_judge_max_spend_usd": {"$ref": "#/$defs/usd"},
+        "fire_spent_before_usd": {"$ref": "#/$defs/usd"}
+      }
+    },
+    "instrument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome_registry", "rubric", "prompt_files", "plan_sha256", "planned", "parity_with_judge_of_record"],
+      "properties": {
+        "outcome_registry": {
+          "type": "object", "additionalProperties": false, "required": ["ref", "sha256"],
+          "properties": {"ref": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/sha256"}}
+        },
+        "rubric": {
+          "type": "object", "additionalProperties": false, "required": ["ref", "sha256", "digest"],
+          "properties": {"ref": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/sha256"},
+                         "digest": {"type": "string", "minLength": 1}}
+        },
+        "prompt_files": {"type": "object", "description": "Outcome prompt file ref -> {digest (the canonical digest the rows carry), sha256 (the file)}."},
+        "plan_sha256": {"$ref": "#/$defs/sha256"},
+        "planned": {"$ref": "#/$defs/count"},
+        "parity_with_judge_of_record": {"type": "string", "enum": ["exact"], "description": "Every planned judgment is one the judge of record made, shown the same rendered prompt and context (by digest), and none is missing."}
+      }
+    },
+    "fire": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workflow_run_id", "workflow_run_attempt", "commit", "journal_nonce", "source_runs", "position"],
+      "properties": {
+        "workflow_run_id": {"type": "string", "pattern": "^[0-9]+$"},
+        "workflow_run_attempt": {"type": "string", "pattern": "^[0-9]+$"},
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "journal_nonce": {"type": ["string", "null"], "description": "The fire's _nonce; null only for a rehearsal."},
+        "source_runs": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^run_[0-9]+_[0-9]+$"}},
+        "position": {"type": "integer", "minimum": 1}
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["planned", "keys", "judged", "null", "not_applicable", "null_share", "judge_of_record_null_share",
+                   "truncated", "stopped_early", "call_failures", "calls_without_usage"],
+      "properties": {
+        "planned": {"$ref": "#/$defs/count"},
+        "keys": {"$ref": "#/$defs/count"},
+        "judged": {"$ref": "#/$defs/count"},
+        "null": {"$ref": "#/$defs/count"},
+        "not_applicable": {"$ref": "#/$defs/count"},
+        "null_share": {"$ref": "#/$defs/share", "description": "null / (judged + null): the share of the judgments that were not not-applicable which came back with no parseable value; null when there were none."},
+        "judge_of_record_null_share": {"$ref": "#/$defs/share", "description": "The same share for the judge of record, from its recorded counts."},
+        "truncated": {"type": "boolean"},
+        "stopped_early": {"type": "boolean"},
+        "call_failures": {"$ref": "#/$defs/count"},
+        "calls_without_usage": {"$ref": "#/$defs/count"}
+      }
+    },
+    "estimate": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "What the plan expected this re-grade to cost (rejudge.estimate_cost): the judge of record's recorded tokens at this judge's registry price. It assumes the new judge's token counts are close to the judge of record's.",
+      "required": ["calls", "recorded_input_tokens", "recorded_output_tokens", "calls_without_recorded_usage",
+                   "price_source", "input_per_mtok", "output_per_mtok", "expected_usd", "worst_case_usd",
+                   "last_call_headroom_usd", "assumption"],
+      "properties": {
+        "calls": {"$ref": "#/$defs/count"},
+        "recorded_input_tokens": {"$ref": "#/$defs/count"},
+        "recorded_output_tokens": {"$ref": "#/$defs/count"},
+        "calls_without_recorded_usage": {"$ref": "#/$defs/count"},
+        "price_source": {"type": "string", "minLength": 1},
+        "input_per_mtok": {"$ref": "#/$defs/usd"},
+        "output_per_mtok": {"$ref": "#/$defs/usd"},
+        "expected_usd": {"$ref": "#/$defs/usd"},
+        "worst_case_usd": {"$ref": "#/$defs/usd"},
+        "last_call_headroom_usd": {"$ref": "#/$defs/usd"},
+        "assumption": {"type": "string", "minLength": 1}
+      }
+    },
+    "cost_usd": {"$ref": "#/$defs/usd"},
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["judgments", "analysis_rows", "judge_report"],
+      "properties": {
+        "judgments": {"$ref": "#/$defs/file"},
+        "analysis_rows": {"$ref": "#/$defs/file"},
+        "judge_report": {"$ref": "#/$defs/file"}
+      }
+    },
+    "manifest_sha256": {"$ref": "#/$defs/sha256", "description": "sha256 of the canonical JSON of this manifest with this field blanked."}
+  }
+}
