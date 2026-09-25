@@ -64,7 +64,8 @@ After the harvest, run `python scripts/ledger_update.py` with no
 arguments. It folds every cost sidecar not yet in `spend.entries_seen` —
 generation and model-eval (`data/simulated/`), advice (`data/advice/`),
 PAB (`data/pab/`), Petri (`data/petri/runs/<run>/`, run and judge
-sidecars) and circuit-trace mitigation (`trace_out/*/mitigation*`) — into
+sidecars; `data/petri/rejudge/<judge>/<run>/`, rejudge judge sidecars) and
+circuit-trace mitigation (`trace_out/*/mitigation*`) — into
 the `spend` block of `ops/dashboard.json`, and appends one bullet per
 sidecar to the newest `docs/*ledger*.md`. It is idempotent: a second run
 finds nothing new to fold. Its `WARNING:` lines (a ceiling passed, a

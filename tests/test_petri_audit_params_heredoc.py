@@ -220,7 +220,7 @@ def test_a_readapt_resolves_with_its_source_run_and_nonce(tmp_path):
     ({**READAPT, "judge": "false"}, "mode readapt runs the judge of record"),
     ({**READAPT, "target": "mockllm/model"}, "mode readapt needs a real target"),
     ({**PAID, "source_run_id": "35937014168"}, "source_run_id is read by mode readapt only"),
-    ({**READAPT, "mode": "re-adapt"}, "mode must be preflight, dry_run, run or readapt"),
+    ({**READAPT, "mode": "re-adapt"}, "mode must be preflight, dry_run, run, readapt or rejudge"),
 ])
 def test_a_readapt_the_workflow_cannot_run_is_refused_before_any_output(tmp_path, cfg, needle):
     rc, out, err = _run(tmp_path, {**cfg, "_nonce": "n"})
