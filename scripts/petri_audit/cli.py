@@ -20,6 +20,12 @@ same checks and calls nothing.
     python -m scripts.petri_audit.cli run-summary --run-dir DIR --mode MODE [--raw-eval-dir DIR] [--seeds FILE] [...]
     python -m scripts.petri_audit.cli repro-pack --vendor V --publication-state S --run-dir DIR [...]
     python -m scripts.petri_audit.cli repro-pack --check | --record-sent VERSION --sent-to ROLE   (repro_pack.py)
+    python -m scripts.petri_audit.cli rejudge-plan --params-file FILE --rejudge-run-id ID [...] --out PLAN   (mode rejudge)
+    python -m scripts.petri_audit.cli rejudge --plan PLAN --started-dir DIR
+    python -m scripts.petri_audit.cli rejudge-spend-report --plan PLAN --started-dir DIR
+    python -m scripts.petri_audit.cli verify-rejudge (--plan PLAN | --dir DIR ... | --root DIR) [--runs-dir DIR]
+    python -m scripts.petri_audit.cli rejudge-summary --plan PLAN [--seal-scan]
+    python -m scripts.petri_audit.cli rejudge-rehearse --source-run STEM --out-root DIR   ($0, mock judge, local)
 
 Python 3.11 can run everything except `run` and `adapt`, which import the
 harness and are 3.12 only.
@@ -33,7 +39,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import readapt, repro_pack
+from . import readapt, rejudge, repro_pack
 from .envlock import load_lock, report_lines, verify_lock
 from .framework import ENV_LOCK, OUTCOME_REGISTRY, ROOT, SEED_FILE, load_json, sha256_file, write_json
 from .manifest import bind_judgments, reseal_problems, verify_chain, verify_run
@@ -622,7 +628,7 @@ def cmd_reconcile_spend(args: argparse.Namespace) -> int:
     (scripts/petri_audit/reconcile.py). Exit 1 only under --strict with problems; the report itself never fails."""
     from .reconcile import reconcile, render_markdown
 
-    result = reconcile(args.journal, args.runs, args.dashboard)
+    result = reconcile(args.journal, args.runs, args.dashboard, rejudge_dir=args.rejudge)
     print(render_markdown(result), end="")
     if args.json_out:
         write_json(Path(args.json_out), result)
@@ -686,6 +692,177 @@ def cmd_run_summary(args: argparse.Namespace) -> int:
         text = _seal_gate_summary(text, args.mode, args.run_dir)
     print(text, end="")
     return 0
+
+
+def cmd_rejudge_plan(args: argparse.Namespace) -> int:
+    """Mode rejudge, before any call: every source run verifies and is chained, its judge of record is another judge
+    under the same allowance, its output directory is free, and the judgments planned from its committed
+    transcripts are exactly the ones its judge of record made (scripts/petri_audit/rejudge.py). Writes the plan the
+    rejudge step reads; makes no model call."""
+    from .reconcile import read_journal
+
+    try:
+        params = load_json(args.params_file)
+        if not isinstance(params, dict):
+            raise rejudge.RejudgeError(f"{args.params_file} holds a {type(params).__name__}, not the resolved params")
+        journal = read_journal(args.journal) if Path(args.journal).is_file() else []
+        plan = rejudge.make_plan(params=params, runs_dir=Path(args.runs_dir), rejudge_root=Path(args.rejudge_root),
+                                 journal_entries=journal, workflow_run_id=args.rejudge_run_id,
+                                 workflow_run_attempt=args.rejudge_run_attempt, commit=args.rejudge_commit)
+    except (rejudge.RejudgeError, ValueError, KeyError, OSError) as exc:
+        print(f"rejudge refused before any call: {exc}", file=sys.stderr)
+        return 12
+    write_json(Path(args.out), plan)
+    print(f"rejudge plan: judge {plan['judge_model']} ({'rehearsal, $0' if plan['rehearsal'] else 'paid'}), fire "
+          f"ceiling ${plan['judge_max_spend_usd']:.4f}, judge_max_tokens {plan['judge_max_tokens']}, nonce "
+          f"{plan['fire']['journal_nonce']!r}")
+    for source in plan["sources"]:
+        print(f"  {source['run_stem']}: {source['planned']} planned judgment(s), parity with the judge of record "
+              f"{source['source']['judge_of_record']['judge_model']!r} exact; plan {source['plan_sha256'][:12]}; "
+              f"{len(source['prior_judge_reports'])} earlier fire sidecar(s) kept")
+    return 0
+
+
+def cmd_rejudge(args: argparse.Namespace) -> int:
+    """Mode rejudge's paid step (free for the mockllm/judge rehearsal): judge every planned judgment of each source
+    run with the plan's judge, then write the analysis rows and the manifest. Exit 8 when the judge client raised
+    (its sidecar is written and the outputs of that run are not)."""
+    plan = load_json(args.plan)
+    try:
+        # the same pre-call routing check `cli judge` makes, for a plan reached without the plan step's
+        if not plan["rehearsal"]:
+            problems = rejudge.judge_spec_refusals(plan["judge_model"])
+            if problems:
+                raise rejudge.RejudgeError("; ".join(problems))
+        outcome = rejudge.execute(plan, started_dir=Path(args.started_dir))
+    except (rejudge.RejudgeError, ValueError, KeyError, OSError) as exc:
+        # before a run's first call this is a refusal; after one, whatever that run's judge charged is in its sidecar
+        print(f"rejudge stopped: {exc}", file=sys.stderr)
+        return 13
+    for r in outcome["results"]:
+        if r["status"] in ("complete", "truncated"):
+            c = r["counts"]
+            print(f"{r['run_stem']}: {r['status']}; planned {c['planned']}, judged {c['judged']}, null {c['null']}, "
+                  f"not applicable {c['not_applicable']}; cost ${float(r['cost_usd']):.4f}")
+        else:
+            print(f"{r['run_stem']}: {r['status']}" + (f" ({r.get('reason') or r.get('error')})"
+                                                          if r.get("reason") or r.get("error") else ""))
+    print(f"rejudge spent ${outcome['spent_usd']:.4f} of the fire's ${float(plan['judge_max_spend_usd']):.4f}")
+    return 8 if outcome["aborted"] else 0
+
+
+def cmd_rejudge_spend_report(args: argparse.Namespace) -> int:
+    """The judge sidecar of every source run whose rejudge judge started and left none: that run's allotment of
+    the fire's ceiling is booked (rejudge.impute_missing_reports). Nothing for a run that never started."""
+    if not Path(args.plan).is_file():
+        print("rejudge plan absent (the plan step refused or never ran): no judge started, nothing to book")
+        return 0
+    written = rejudge.impute_missing_reports(load_json(args.plan), Path(args.started_dir))
+    for path in written:
+        print(f"rejudge judge spend report {path}: the run's allotment of the fire's judge ceiling is booked")
+    if not written:
+        print("every rejudge judge that started left its own sidecar; nothing to impute")
+    return 0
+
+
+def cmd_verify_rejudge(args: argparse.Namespace) -> int:
+    """Re-grade directories on their own (rejudge.verify_output), each against the source run it names; with
+    --plan, the directories this fire wrote. With --copy-to, every verified directory is copied under it
+    (`<slug>/<stem>`) once all of them verify, for the workflow's artifact upload."""
+    import shutil
+
+    runs_dir = Path(args.runs_dir)
+    dirs: list[Path] = [Path(d) for d in args.dir]
+    if args.root:
+        dirs += rejudge.output_dirs(args.root)
+    if args.plan:
+        plan = load_json(args.plan)
+        root = Path(plan["rejudge_root"]) / plan["judge_slug"]
+        for source in plan["sources"]:
+            d = root / source["run_stem"]
+            if (d / rejudge.MANIFEST_NAME).is_file():
+                dirs.append(d)
+            else:
+                print(f"{d}: no re-grade written (not started, or its judge failed); nothing to verify")
+    ok, msg = verify_chain(runs_dir)
+    problems = [] if ok else [f"{runs_dir}: the manifests chain does not verify ({msg})"]
+    for d in dirs:
+        found = rejudge.verify_output(d, runs_dir)
+        problems += [f"{d}: {p}" for p in found]
+        if not found:
+            print(f"{d}: re-grade verifies on its own, and its source run still verifies")
+    for p in problems:
+        print(p, file=sys.stderr)
+    if problems:
+        return 6
+    if args.copy_to:
+        for d in dirs:
+            dest = Path(args.copy_to) / d.parent.name / d.name
+            shutil.copytree(d, dest)
+        print(f"copied {len(dirs)} verified re-grade director{'y' if len(dirs) == 1 else 'ies'} to {args.copy_to}")
+    return 0
+
+
+def cmd_rejudge_summary(args: argparse.Namespace) -> int:
+    """The rejudge job's summary: counts and cost per source run, never text (rejudge.render_summary). With
+    --seal-scan it passes the holdout seal before it is printed, as run-summary does."""
+    try:
+        text = rejudge.render_summary(load_json(args.plan)) if Path(args.plan).is_file() else \
+            rejudge.render_summary(None, plan_error="the plan step refused or never ran; see its log")
+    except Exception as exc:  # noqa: BLE001 - the summary step never fails the job over its own output
+        text = f"## Petri rejudge\n\nsummary render failed: {type(exc).__name__}: {exc}\n"
+    if args.seal_scan:
+        text = _seal_gate_summary(text, rejudge.MODE, None)
+    print(text, end="")
+    return 0
+
+
+def cmd_rejudge_rehearse(args: argparse.Namespace) -> int:
+    """The $0 rehearsal, locally: plan a rejudge of one landed run with the mock judge (every answer the first
+    declared value), run it into --out-root (outside the repository), and verify the result. Makes no provider
+    call, writes nothing under the checkout, and computes no register contrast (the analysis rows are the
+    per-judgment projection only). Prints counts and digests, never text."""
+    out_root = Path(args.out_root).resolve()
+    repo = ROOT.resolve()
+    if out_root == repo or repo in out_root.parents:
+        print(f"refused: --out-root {out_root} is inside the repository; a rehearsal writes outside it, so nothing it "
+              "writes can be committed or folded into the ledger", file=sys.stderr)
+        return 2
+    runs_dir = Path(args.runs_dir)
+    try:
+        source = rejudge.source_record(runs_dir, args.source_run)
+        tokens = args.judge_max_tokens or source["judge_of_record"]["judge_max_tokens"]
+        params = {"mode": rejudge.MODE, "source_runs": args.source_run, "judge": "true",
+                  "judge_model": rejudge.MOCK_JUDGE, "judge_max_spend": "0.01", "judge_max_tokens": str(tokens),
+                  "commit_outputs": "false", "seeds_file": args.seeds, "_nonce": ""}
+        plan = rejudge.make_plan(params=params, runs_dir=runs_dir, rejudge_root=out_root, journal_entries=[],
+                                 workflow_run_id="0", workflow_run_attempt="1", commit="0" * 40)
+        out_root.mkdir(parents=True, exist_ok=True)
+        write_json(out_root / "plan.json", plan)
+        outcome = rejudge.execute(plan, started_dir=out_root / "_started")
+    except (rejudge.RejudgeError, ValueError, KeyError, OSError) as exc:
+        print(f"rehearsal refused: {exc}", file=sys.stderr)
+        return 12
+    failed = 0
+    for r in outcome["results"]:
+        print(f"{r['run_stem']}: {r['status']}")
+        if r["status"] not in ("complete", "truncated"):
+            failed += 1
+            continue
+        d = Path(r["out_dir"])
+        problems = rejudge.verify_output(d, runs_dir)
+        m = load_json(d / rejudge.MANIFEST_NAME)
+        c = m["counts"]
+        print(f"  parity with judge of record {m['source']['judge_of_record']['judge_model']!r}: "
+              f"{m['instrument']['parity_with_judge_of_record']}; plan {m['instrument']['plan_sha256'][:12]}")
+        print(f"  planned {c['planned']}, judged {c['judged']}, null {c['null']}, not applicable "
+              f"{c['not_applicable']} (judge of record: planned {m['source']['judge_of_record']['planned']}, "
+              f"not applicable {m['source']['judge_of_record']['not_applicable']}); cost ${m['cost_usd']:.4f}")
+        print(f"  analysis rows {m['artifacts']['analysis_rows']['rows']}; verify: "
+              + ("clean" if not problems else "; ".join(problems)))
+        failed += bool(problems)
+    print(f"rehearsal outputs under {out_root}")
+    return 0 if not failed else 6
 
 
 def cmd_digest(args: argparse.Namespace) -> int:
@@ -821,6 +998,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("reconcile-spend")
     p.add_argument("--journal", default=str(ROOT / "ops" / "trigger_journal.jsonl"))
     p.add_argument("--runs", default=str(ROOT / "data" / "petri" / "runs"))
+    p.add_argument("--rejudge", default=str(rejudge.DEFAULT_ROOT),
+                   help="the rejudge root (data/petri/rejudge); its judge sidecars are joined to rejudge fires")
     p.add_argument("--dashboard", default=str(ROOT / "ops" / "dashboard.json"))
     p.add_argument("--json-out", default=None)
     p.add_argument("--strict", action="store_true", help="exit 1 when any problem is reported")
@@ -839,6 +1018,51 @@ def build_parser() -> argparse.ArgumentParser:
                    help="pass the rendered text through the holdout seal before printing it; a hit or an unchecked scan "
                         "withholds the summary and prints the verdict alone")
     p.set_defaults(func=cmd_run_summary)
+
+    p = sub.add_parser("rejudge-plan")
+    p.add_argument("--params-file", required=True, help="the params job's resolved outputs, as JSON (mode rejudge)")
+    p.add_argument("--runs-dir", default=str(DEFAULT_RUNS_DIR))
+    p.add_argument("--rejudge-root", default=str(rejudge.DEFAULT_ROOT))
+    p.add_argument("--journal", default=str(ROOT / "ops" / "trigger_journal.jsonl"))
+    p.add_argument("--rejudge-run-id", required=True, help="this workflow run's id (GITHUB_RUN_ID)")
+    p.add_argument("--rejudge-run-attempt", required=True, help="this workflow run's attempt (GITHUB_RUN_ATTEMPT)")
+    p.add_argument("--rejudge-commit", required=True, help="the commit this workflow run checked out (GITHUB_SHA)")
+    p.add_argument("--out", required=True)
+    p.set_defaults(func=cmd_rejudge_plan)
+
+    p = sub.add_parser("rejudge")
+    p.add_argument("--plan", required=True, help="the plan `rejudge-plan` wrote")
+    p.add_argument("--started-dir", required=True,
+                   help="where a marker is written before each run's first judge call (outside the checkout); the "
+                        "fallback `rejudge-spend-report` books the allotment of a run that started and left no sidecar")
+    p.set_defaults(func=cmd_rejudge)
+
+    p = sub.add_parser("rejudge-spend-report")
+    p.add_argument("--plan", required=True)
+    p.add_argument("--started-dir", required=True)
+    p.set_defaults(func=cmd_rejudge_spend_report)
+
+    p = sub.add_parser("verify-rejudge")
+    p.add_argument("--plan", default=None, help="verify the re-grade directories this plan's fire wrote")
+    p.add_argument("--dir", action="append", default=[], help="a re-grade directory (<root>/<judge slug>/<stem>)")
+    p.add_argument("--root", default=None, help="verify every re-grade directory under this root")
+    p.add_argument("--runs-dir", default=str(DEFAULT_RUNS_DIR))
+    p.add_argument("--copy-to", default=None, help="copy every verified directory here once all of them verify")
+    p.set_defaults(func=cmd_verify_rejudge)
+
+    p = sub.add_parser("rejudge-summary")
+    p.add_argument("--plan", required=True)
+    p.add_argument("--seal-scan", action="store_true")
+    p.set_defaults(func=cmd_rejudge_summary)
+
+    p = sub.add_parser("rejudge-rehearse")
+    p.add_argument("--source-run", required=True, help="a landed run stem under --runs-dir, e.g. run_36076994201_1")
+    p.add_argument("--out-root", required=True, help="a directory outside the repository")
+    p.add_argument("--runs-dir", default=str(DEFAULT_RUNS_DIR))
+    p.add_argument("--seeds", default=str(SEED_FILE))
+    p.add_argument("--judge-max-tokens", type=int, default=None,
+                   help="default: the source run's judge of record's allowance (any other is refused by the plan)")
+    p.set_defaults(func=cmd_rejudge_rehearse)
 
     p = sub.add_parser("digest")
     p.add_argument("paths", nargs="+")

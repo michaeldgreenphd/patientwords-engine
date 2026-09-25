@@ -37,13 +37,15 @@ def tree(tmp_path):
     pab.mkdir()
     petri = tmp_path / "data" / "petri" / "runs"
     petri.mkdir(parents=True)
+    rejudge = tmp_path / "data" / "petri" / "rejudge"
+    rejudge.mkdir()
     docs = tmp_path / "docs"
     docs.mkdir()
     ledger = docs / "overnight_ledger_20260708.md"
     ledger.write_text("# Overnight session ledger\n\nProse the script must not touch.\n", encoding="utf-8")
     trace = tmp_path / "trace_out"
     trace.mkdir()
-    return {"sim": sim, "adv": adv, "pab": pab, "petri": petri, "trace": trace,
+    return {"sim": sim, "adv": adv, "pab": pab, "petri": petri, "rejudge": rejudge, "trace": trace,
             "dash": tmp_path / "ops" / "dashboard.json", "ledger": ledger}
 
 
@@ -54,6 +56,7 @@ def run(tree, *extra):
     # these tests started reading the real pilot's spend out of the repository.
     argv = ["--simulated-dir", str(tree["sim"]), "--advice-dir", str(tree["adv"]),
             "--pab-dir", str(tree["pab"]), "--petri-dir", str(tree["petri"]),
+            "--petri-rejudge-dir", str(tree["rejudge"]),
             "--trace-dir", str(tree["trace"]),
             "--dashboard", str(tree["dash"]),
             "--ledger", str(tree["ledger"]), "--date", TODAY, *extra]
@@ -426,6 +429,7 @@ def test_the_first_fold_on_the_repos_own_dashboard_leaves_the_closed_tierb_recor
     assert ledger_update.main([
         "--simulated-dir", str(root / "data" / "simulated"), "--advice-dir", str(root / "data" / "advice"),
         "--pab-dir", str(root / "data" / "pab"), "--petri-dir", str(root / "data" / "petri" / "runs"),
+        "--petri-rejudge-dir", str(root / "data" / "petri" / "rejudge"),
         "--trace-dir", str(root / "trace_out"), "--dashboard", str(dash_path), "--ledger", str(ledger),
         "--date", "2026-09-23"]) == 0
 
