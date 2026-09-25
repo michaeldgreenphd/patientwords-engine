@@ -560,6 +560,11 @@ def test_owner_run_multiturn_exchange_shape_is_complete(site, change):
     ("blank judge", "$.provenance.models.judge :: must be a non-empty list of model strings"),
     ("infinite temperature", "$.provenance.models.target_temperature :: must be a finite number"),
     ("no target label", "$.provenance.models.target_label :: missing required key"),
+    # Codex review of PR #46: a blank label, a blank model string and an integer too large for a float
+    ("blank target label", "$.provenance.models.target_label :: must name the model, not be blank"),
+    ("whitespace judge label", "$.provenance.models.judge_label :: must name the model, not be blank"),
+    ("whitespace served string", "$.provenance.models.target_served :: must be a non-empty list of model strings"),
+    ("huge integer temperature", "$.provenance.models.target_temperature :: must be a finite number"),
 ])
 def test_owner_run_multiturn_summary_names_its_models(site, case, where):
     """Regression (Codex review of site PR #9, 2026-09-25): the page's Method sentence stated the model and the
@@ -574,6 +579,14 @@ def test_owner_run_multiturn_summary_names_its_models(site, case, where):
         models["judge"] = [""]
     elif case == "infinite temperature":
         models["target_temperature"] = float("inf")
+    elif case == "blank target label":
+        models["target_label"] = ""
+    elif case == "whitespace judge label":
+        models["judge_label"] = "  "
+    elif case == "whitespace served string":
+        models["target_served"] = [" "]
+    elif case == "huge integer temperature":
+        models["target_temperature"] = 10 ** 400        # valid JSON; math.isfinite raised OverflowError on it
     else:
         del models["target_label"]
     _write_pair(site, (summary, conversations))

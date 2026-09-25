@@ -676,6 +676,9 @@ def test_a_vocabulary_without_well_formed_campaign_models_is_refused(shared, tmp
                           "campaign_models.target_temperature must be the finite number the page states"),
                          (lambda d: d["campaign_models"].update(target_temperature=float("nan")),
                           "campaign_models.target_temperature must be the finite number the page states"),
+                         # Codex review of PR #46: an integer too large for a float is refused, not a crash
+                         (lambda d: d["campaign_models"].update(target_temperature=10 ** 400),
+                          "campaign_models.target_temperature must be the finite number the page states"),
                          # Codex review of site PR #9: the page shows these names, read from the export
                          (lambda d: d["campaign_models"].pop("target_label"),
                           "campaign_models.target_label must be the name the page shows"),
