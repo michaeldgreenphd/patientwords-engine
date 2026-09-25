@@ -32,14 +32,16 @@ gitignored, so a pack is never committed, as in the advice lane):
 - `MANIFEST.json` (the pack's state and identity) and `SHA256SUMS` (every other file's sha256).
 
 The build refuses, by name and before anything is written: an analysis artifact that is absent, is not a `--final`
-output, or was computed on other bytes of a run than the ones listed; a run list that differs from the runs the analysis
-read, or omits a landed run of the plan's fires; a run that fails `verify-run`, is missing from the chain, holds an
-unknown file, or lacks a cost sidecar; a chain that does not verify; any record naming a model of another vendor (runs
-are never filtered: their files are bound by digest); a seed whose current digest differs from the one a run recorded; a
-missing prompt file; a judgment that records no prompt digest (the pack could not name the prompt it was judged under);
-a claim id the wording file does not carry; an analysis artifact and a plan that share a basename (both are carried
-under `analysis/`); a pack that fails the holdout seal (labels only, never a phrase); and a pack directory of the same
-version that holds other bytes.
+output, was computed on other bytes of a run than the ones listed, or whose truncation record
+(`administratively_truncated`, `truncation_reason`, `fires_not_landed`) is absent, contradicts itself, or names other
+fires not landed than the plan's fires without a listed run; a run list that differs from the runs the analysis read, or
+omits a landed run of the plan's fires; a run that fails `verify-run`, is missing from the chain, holds an unknown file,
+or lacks a cost sidecar; a chain that does not verify; any record naming a model of another vendor (runs are never
+filtered: their files are bound by digest); a seed whose current digest differs from the one a run recorded; a missing
+prompt file; a judgment that records no prompt digest (the pack could not name the prompt it was judged under); a claim
+id the wording file does not carry; an analysis artifact and a plan that share a basename (both are carried under
+`analysis/`); a pack that fails the holdout seal (labels only, never a phrase); and a pack directory of the same version
+that holds other bytes.
 
 Identity. A pack is keyed by (vendor, analysis artifact stem), like the advice lane's (vendor, archive). Its version is
 `petri-v` + the first 12 hex of the sha256 of its manifest's canonical JSON (MANIFEST.json without `pack_version`),
@@ -548,7 +550,41 @@ def read_analysis(path: Path) -> tuple[dict[str, Any] | None, list[str]]:
                         f"{ANALYSIS_SEED} section 10.2 fixes")
     if not isinstance((doc.get("coverage") or {}).get("runs"), list):
         problems.append(f"the analysis artifact {where}: coverage.runs is not a list of runs")
+    problems += truncation_problems(doc, where)
     return (None if problems else doc), problems
+
+
+TRUNCATION_KEYS = ("administratively_truncated", "truncation_reason", "fires_not_landed")
+
+
+def truncation_problems(doc: Mapping[str, Any], where: str) -> list[str]:
+    """The artifact's truncation record, which a --final output always writes (`administratively_truncated`, a bool;
+    `truncation_reason`, the --declare-truncated text or null; `fires_not_landed`, the plan's fires with no run). The
+    README states from it whether every fire landed, so an absent field is refused, never read as the untruncated
+    case, and so is a combination that contradicts itself."""
+    missing = [k for k in TRUNCATION_KEYS if k not in doc]
+    if missing:
+        return [f"the analysis artifact {where} has no {', '.join(missing)}: a --final output records whether the "
+                f"campaign was truncated, and the pack never assumes it was not"]
+    truncated, reason, fires = (doc[k] for k in TRUNCATION_KEYS)
+    problems = []
+    if not isinstance(truncated, bool):
+        problems.append(f"the analysis artifact {where}: administratively_truncated is {truncated!r}, not true or "
+                        f"false")
+    if not isinstance(fires, list) or not all(isinstance(f, str) and f for f in fires):
+        problems.append(f"the analysis artifact {where}: fires_not_landed is {fires!r}, not a list of fire nonces")
+    elif truncated is True:
+        if not (isinstance(reason, str) and reason.strip()):
+            problems.append(f"the analysis artifact {where} is truncated but records no truncation_reason")
+        if not fires:
+            problems.append(f"the analysis artifact {where} is truncated but names no fire not landed")
+    elif truncated is False:
+        if reason is not None:
+            problems.append(f"the analysis artifact {where} is not truncated but records a truncation_reason "
+                            f"({reason!r})")
+        if fires:
+            problems.append(f"the analysis artifact {where} is not truncated but names fire(s) not landed {fires}")
+    return problems
 
 
 def analysis_run_problems(doc: Mapping[str, Any], run_dirs: Sequence[Path]) -> list[str]:
@@ -633,9 +669,10 @@ def claims_block(doc: Mapping[str, Any], wording: Mapping[str, Any], analysis_pa
     block = {
         "analysis": {"path": _rel(analysis_path), "sha256": _sha(analysis_path), "commit": identity.get("commit"),
                      "generated_utc": identity.get("generated_utc"), "bootstrap_seed": doc.get("bootstrap_seed"),
-                     "administratively_truncated": bool(doc.get("administratively_truncated")),
-                     "truncation_reason": doc.get("truncation_reason"),
-                     "fires_not_landed": doc.get("fires_not_landed") or [], "uncommitted_changes": dirty},
+                     # read_analysis has refused an artifact without these three (truncation_problems)
+                     "administratively_truncated": doc["administratively_truncated"],
+                     "truncation_reason": doc["truncation_reason"],
+                     "fires_not_landed": list(doc["fires_not_landed"]), "uncommitted_changes": dirty},
         "headline": {"source": "section_10_2.wording", "table": table["section"], "row_id": head["row_id"],
                      "selectable_as_registered": head.get("selectable_as_registered"),
                      "not_selectable_reasons": head.get("not_selectable_reasons") or [],
@@ -965,6 +1002,14 @@ def _collect(inputs: PackInputs) -> tuple[dict[str, Any], list[str], list[str]]:
             problems.append(f"{stem} is a landed run of the plan's fires that the pack does not list")
     if doc is not None:
         problems += analysis_run_problems(doc, inputs.run_dirs)
+    if doc is not None and fires and len(runs) == len(stems):
+        # the README's truncation statement, counted by the pack as well: the plan's fires no listed run carries
+        unlanded = sorted(set(fires) - {r["facts"]["journal_nonce"] for r in runs.values()})
+        stated = sorted(doc["fires_not_landed"])
+        if stated != unlanded:
+            problems.append(f"the analysis artifact {_rel(inputs.analysis)} names fires not landed {stated}, but the "
+                            f"plan's fires with no listed run are {unlanded}; the pack states the truncation only "
+                            f"where the two agree")
     claims: dict[str, Any] = {}
     if doc is not None and wording is not None:
         try:

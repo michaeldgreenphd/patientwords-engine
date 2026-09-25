@@ -431,6 +431,44 @@ def test_refuses_an_analysis_and_a_plan_with_one_basename(world):
     assert not world["log"].exists() and not world["out"].exists()
 
 
+@pytest.mark.parametrize("change,expected", [
+    ({"drop": "administratively_truncated"}, "has no administratively_truncated"),
+    ({"drop": "truncation_reason"}, "has no truncation_reason"),
+    ({"drop": "fires_not_landed"}, "has no fires_not_landed"),
+    ({"administratively_truncated": "no"}, "administratively_truncated is 'no', not true or false"),
+    ({"administratively_truncated": None}, "administratively_truncated is None, not true or false"),
+    ({"fires_not_landed": None}, "fires_not_landed is None, not a list of fire nonces"),
+    ({"fires_not_landed": ["f2"]}, "is not truncated but names fire(s) not landed ['f2']"),
+    ({"truncation_reason": "a reason"}, "is not truncated but records a truncation_reason"),
+    ({"administratively_truncated": True, "fires_not_landed": ["f2"]}, "is truncated but records no truncation_reason"),
+    ({"administratively_truncated": True, "truncation_reason": "x"}, "is truncated but names no fire not landed"),
+])
+def test_refuses_truncation_metadata_that_is_absent_or_inconsistent(world, change, expected):
+    """Regression (Codex, PR #39): an artifact without the truncation fields was read as `False`, `None` and `[]`, so
+    the README said every fire of the plan landed although the artifact never said so. A --final artifact always
+    writes the three fields; the pack requires them and refuses a combination that contradicts itself."""
+    doc = _artifact([world["r1"], world["r2"]])
+    if "drop" in change:
+        doc.pop(change["drop"])
+    else:
+        doc.update(change)
+    world["analysis"].write_text(json.dumps(doc), encoding="utf-8")
+    problems = _refusal(world)
+    assert any(expected in p for p in problems), problems
+
+
+def test_refuses_an_untruncated_artifact_when_a_plan_fire_has_no_run(world):
+    """The pack's own count: a fire of the plan with no listed run contradicts 'every fire landed', whatever the
+    artifact says."""
+    (world["repo"] / "plan.json").write_text(json.dumps(
+        {"fires": [*PLAN["fires"], {"journal_nonce": "f3", "campaign_epochs": {"original": 3},
+                                    "partition": "prospective"}]}), encoding="utf-8")
+    problems = _refusal(world)
+    assert len(problems) == 1 and problems[0].endswith(
+        "names fires not landed [], but the plan's fires with no listed run are ['f3']; the pack states the "
+        "truncation only where the two agree"), problems
+
+
 def test_refuses_unknown_files_and_a_missing_cost_sidecar(world):
     (world["r1"] / "notes.txt").write_text("x")
     (world["r2"] / "run_300_1.report.json").unlink()
@@ -486,6 +524,9 @@ def test_claims_resolve_every_id_the_analysis_writes():
 
 
 def test_readme_names_truncation_and_an_unselectable_row(world):
+    (world["repo"] / "plan.json").write_text(json.dumps(          # a plan fire, f3, that never landed
+        {"fires": [*PLAN["fires"], {"journal_nonce": "f3", "campaign_epochs": {"original": 3},
+                                    "partition": "prospective"}]}), encoding="utf-8")
     _refresh_artifact(world, administratively_truncated=True, truncation_reason="fire failed",
                       fires_not_landed=["f3"],
                       section_10_2={"wording": {"row_id": "row3", "selectable_as_registered": False,
