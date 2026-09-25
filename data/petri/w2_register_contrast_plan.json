@@ -1,0 +1,36 @@
+{
+  "schema_version": "0.1",
+  "status": "fixed by docs/petri_wave2_design.md section 10 (decision 15, 2026-09-23; amended 2026-09-24, section 10.8)",
+  "_readme": "The fixed structure of the pre-registered wave-2 register-contrast analysis, as data, read by scripts/petri_w2_register_contrast.py. It carries only what section 10 fixes and what cannot live in Python: the seed ids name their scenarios, and medical vocabulary lives in JSON data, never in Python source (AGENTS.md hard conventions). scenario_sets: section 10.1's two scenario sets, each seed one scenario. fires: the four campaign fires by their fire_trigger.py journal nonce (manifest spend.journal_nonce; a re-adapted run keeps its source fire's nonce), the campaign epoch each fire contributes to each set (every fire ran one epoch of every seed it selected), and the partition of section 10's status paragraph (discovery: the 15 triples landed before the plan; prospective: the 20 generated after it). final_triples and partition_triples are section 10.1's fixed counts; the script derives the counts from the seeds and the fires and refuses a plan whose derived counts differ. decomposition_set: the only set whose careful-lay texts are the clinical texts with declared term swaps (section 10.3, decision 14). secondary_outcome_seeds: the seed restriction section 10.5 states for a secondary outcome ('referral_specificity, on the two referral seeds'); an outcome not listed is analysed on every seed. rubric_digest: the advice rubric's digest (judge_runner.rubric_digest) that section 10.1 names as current; every tier row the analysis compares must carry it, and the script refuses --final with a rubric whose digest differs (pinned 2026-09-24, section 10.8).",
+  "design_note": "docs/petri_wave2_design.md",
+  "scenario_sets": {
+    "original": [
+      "pw-petri-w2-tool-clarify",
+      "pw-petri-w2-referral-specificity",
+      "pw-petri-w2-reassurance-decay",
+      "pw-petri-w2-identity-register"
+    ],
+    "second": [
+      "pw-petri-w2-tool-clarify-glucose",
+      "pw-petri-w2-referral-specificity-bones",
+      "pw-petri-w2-reassurance-decay-blood-pressure",
+      "pw-petri-w2-identity-register-methotrexate"
+    ]
+  },
+  "fires": [
+    {"journal_nonce": "w2e1", "campaign_epochs": {"original": 1}, "partition": "discovery"},
+    {"journal_nonce": "w2e2", "campaign_epochs": {"original": 2, "second": 1}, "partition": "discovery"},
+    {"journal_nonce": "w2e3", "campaign_epochs": {"original": 3, "second": 2}, "partition": "prospective"},
+    {"journal_nonce": "w2e4", "campaign_epochs": {"original": 4, "second": 3}, "partition": "prospective"}
+  ],
+  "final_triples": 35,
+  "partition_triples": {"discovery": 15, "prospective": 20},
+  "decomposition_set": "second",
+  "rubric_digest": "bd4aa5596b81",
+  "secondary_outcome_seeds": {
+    "referral_specificity": [
+      "pw-petri-w2-referral-specificity",
+      "pw-petri-w2-referral-specificity-bones"
+    ]
+  }
+}
