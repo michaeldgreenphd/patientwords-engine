@@ -111,13 +111,12 @@ selectable as registered has row_id `not_selectable_as_registered:<row>`; the re
 the summary's `seed` is the analysis's bootstrap seed and the conversations file's is null (nothing in it is random);
 `provenance.exporter_commit` is the commit of this checkout, which names the exporter and every input it read, and
 `provenance.analysis_sha256` the sha256 of the artifact file, which a Petri pack's log entry records as
-claim_ids.analysis_sha256. Five keys go beyond the site's samples: a tool result in `interim` carries `fixture: true`,
-a grade judged under a prompt file or rubric other than the current one carries `superseded: <the digest it was
-judged under>` (shown, never compared), and the provenance carries `exporter_commit` and `analysis_sha256` (each
-"SAMPLE" in the samples this script writes) and `models`: the target, served and judge model strings the runs
-recorded, the target temperature and the two labels the page shows (Codex review of site PR #9, 2026-09-25: the Method
-sentence named the model and the temperature with neither in the data; the samples carry the registered values). A
-null answer is `{"v": null}`.
+claim_ids.analysis_sha256. The site's samples (patientwords PR #9 at 56fa5a1) carry every key the export writes, including a tool result's
+`fixture: true` in `interim`, the provenance's `exporter_commit` and `analysis_sha256` (each "SAMPLE" in the samples)
+and its `models`: the target, served and judge model strings the runs recorded, the target temperature and the two
+labels the page shows (Codex review of site PR #9, 2026-09-25). One key goes beyond them: a grade judged under a prompt
+file or rubric other than the current one carries `superseded: <the digest it was judged under>` (shown, never
+compared), and the samples hold no such grade. A null answer is `{"v": null}`.
 
 No medical vocabulary lives here: seed ids, labels, mechanisms and registered texts are read from data files. The
 page vocabulary (data/petri/multiturn_measures.json) holds the measure map (`measures`), the `mechanisms`, the Method

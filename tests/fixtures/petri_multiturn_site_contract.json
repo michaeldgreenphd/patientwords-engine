@@ -1,6 +1,6 @@
 {
- "_readme": "The key skeleton of the site's two Multi-turn sample files (patientwords branch claude/multiturn-tab at 771ebb0aee4b0e7603967528154df7142e680820, PR #9: data/petri_multiturn_summary.sample.json and data/petri_multiturn_conversations.sample.json), the shapes multi-turn/index.html reads. Each path maps to the keys its objects carry, in the samples' order (the union over every object at that path), or to '*' for an open map whose keys are data (scenario ids, mechanism ids, measure ids, rule field names). seeds[].swaps is not descended: the page never reads it and the samples carry null. tests/test_export_petri_multiturn.py holds the exporter's output to this skeleton. Regenerate it from the site's samples when the page's reads change.",
- "site_commit": "771ebb0aee4b0e7603967528154df7142e680820",
+ "_readme": "The key skeleton of the site's two Multi-turn sample files (patientwords branch claude/multiturn-tab at 56fa5a18d55d25a960077e29690aabae0bcf92ba, PR #9: data/petri_multiturn_summary.sample.json and data/petri_multiturn_conversations.sample.json), the shapes multi-turn/index.html reads. Each path maps to the keys its objects carry, in the samples' order (the union over every object at that path), or to '*' for an open map whose keys are data (scenario ids, mechanism ids, measure ids, rule field names). seeds[].swaps is not descended: the page never reads it and the samples carry null. tests/test_export_petri_multiturn.py holds the exporter's output to this skeleton. Regenerate it from the site's samples when the page's reads change.",
+ "site_commit": "56fa5a18d55d25a960077e29690aabae0bcf92ba",
  "opaque": [
   "$.seeds[].swaps"
  ],
@@ -67,7 +67,18 @@
   "$.provenance": [
    "runs",
    "analysis_commit",
-   "verify"
+   "analysis_sha256",
+   "exporter_commit",
+   "verify",
+   "models"
+  ],
+  "$.provenance.models": [
+   "target",
+   "target_served",
+   "judge",
+   "target_temperature",
+   "target_label",
+   "judge_label"
   ]
  },
  "conversations": {
@@ -136,7 +147,8 @@
   ],
   "$.conversations[].exchanges[].interim[]": [
    "role",
-   "text"
+   "text",
+   "fixture"
   ],
   "$.conversations[].rule": [
    "tool_invoked",
