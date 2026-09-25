@@ -36,8 +36,9 @@ output, or was computed on other bytes of a run than the ones listed; a run list
 analysis read, or omits a landed run of the plan's fires; a run that fails `verify-run`, is missing from the chain,
 holds an unknown file, or lacks a cost sidecar; a chain that does not verify; any record naming a model of another
 vendor (runs are never filtered: their files are bound by digest); a seed whose current digest differs from the one a
-run recorded; a missing prompt file; a claim id the wording file does not carry; a pack that fails the holdout seal
-(labels only, never a phrase); and a pack directory of the same version that holds other bytes.
+run recorded; a missing prompt file; a claim id the wording file does not carry; an analysis artifact and a plan
+that share a basename (both are carried under `analysis/`); a pack that fails the holdout seal (labels only, never a
+phrase); and a pack directory of the same version that holds other bytes.
 
 Identity. A pack is keyed by (vendor, analysis artifact stem), like the advice lane's (vendor, archive). Its version is
 `petri-v` + the first 12 hex of the sha256 of its manifest's canonical JSON (MANIFEST.json without `pack_version`),
@@ -830,6 +831,9 @@ def _collect(inputs: PackInputs) -> tuple[dict[str, Any], list[str], list[str]]:
         problems.append(f"the provider registry {_rel(PROVIDERS_PATH)} does not parse ({exc})")
     doc, analysis_problems = read_analysis(inputs.analysis)
     problems += analysis_problems
+    if Path(inputs.analysis).name == Path(inputs.plan).name:
+        problems.append(f"--analysis and --plan share the basename {Path(inputs.analysis).name}, and the pack carries "
+                        f"both under analysis/ by that name; rename one")
     wording: dict[str, Any] | None = None
     try:
         loaded = load_json(inputs.claims)

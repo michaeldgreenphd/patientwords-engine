@@ -398,6 +398,19 @@ def test_refuses_a_seed_that_drifted_from_what_a_run_recorded(world):
     assert any(p.startswith("seed s1: run_200_1 recorded digest") for p in _refusal(world))
 
 
+def test_refuses_an_analysis_and_a_plan_with_one_basename(world):
+    """Regression (Codex, PR #39): both are copied into analysis/ by basename, so a plan named like the artifact
+    overwrote it, and the pack was sealed without the analysis it claims to carry."""
+    plan = world["repo"] / "plans" / world["analysis"].name
+    plan.parent.mkdir()
+    plan.write_text(json.dumps(PLAN), encoding="utf-8")
+    inputs = rp.PackInputs(**{**world["inputs"].__dict__, "plan": plan})
+    problems = _refusal(world, inputs=inputs)
+    assert problems == [f"--analysis and --plan share the basename {world['analysis'].name}, and the pack carries "
+                        f"both under analysis/ by that name; rename one"]
+    assert not world["log"].exists() and not world["out"].exists()
+
+
 def test_refuses_unknown_files_and_a_missing_cost_sidecar(world):
     (world["r1"] / "notes.txt").write_text("x")
     (world["r2"] / "run_300_1.report.json").unlink()
