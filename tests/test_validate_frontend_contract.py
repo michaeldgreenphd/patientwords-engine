@@ -456,3 +456,32 @@ def test_owner_run_multiturn_conversations_seed_is_null_or_an_int(site):
     rep = run(site)
     assert any("petri_multiturn_conversations.json :: $.seed" in e and "wrong type" in e for e in rep.errors)
     assert any("petri_multiturn_conversations.sample.json :: $.seed" in e and "null" in e for e in rep.errors)
+
+
+def _multiturn_page(site):
+    page = site / "multi-turn" / "index.html"
+    page.parent.mkdir()
+    page.write_text("<!doctype html>", encoding="utf-8")
+
+
+def test_owner_run_multiturn_page_without_real_pair_or_samples_is_an_error(site):
+    """Regression (Codex review of 2026-09-24): with neither pair on disk the validator passed, though the page then
+    has nothing to fetch. The samples are required whenever the page is on the site and the real pair is not
+    published (one real file alone counts as not published: the page falls back to both samples)."""
+    _multiturn_page(site)
+    rep = run(site, strict=True)
+    assert any("petri_multiturn_summary.sample.json and petri_multiturn_conversations.sample.json" in e
+               and "nothing to fetch" in e for e in rep.errors)
+    (site / "data" / "petri_multiturn_summary.json").write_text(json.dumps(_multiturn_pair()[0]), encoding="utf-8")
+    assert any("nothing to fetch" in e for e in run(site).errors)
+
+
+def test_owner_run_multiturn_samples_not_required_without_the_page_or_beside_the_real_pair(site):
+    rep = run(site, strict=True)                      # the site's main before the page lands: neither is needed
+    assert not any("petri_multiturn" in e for e in rep.errors + rep.warnings)
+    _multiturn_page(site)
+    _write_pair(site, _multiturn_pair())              # the real pair published: the page does not need the samples
+    rep = run(site, strict=True)
+    assert not any("petri_multiturn" in e for e in rep.errors + rep.warnings)
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    assert not any("petri_multiturn" in e for e in run(site, strict=True).errors)

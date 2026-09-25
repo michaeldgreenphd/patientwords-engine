@@ -421,6 +421,8 @@ MT_SUMMARY_KEYS = {"seed", "status", "headline", "style_sentence", "primary", "t
 MT_CONVERSATIONS_KEYS = {"seed", "measures", "mechanisms", "seeds", "conversations", "example"}
 MT_SAMPLE_KEYS = {"sample", "_note"}
 MT_PARTITIONS = ("seen_before_plan", "prospective")
+# the page that reads the pair; while it is on the site and the real pair is not published, it fetches the samples
+MT_PAGE = "multi-turn/index.html"
 
 
 def _sample_flag(rep: Report, a: str, obj: dict, sample: bool):
@@ -532,14 +534,23 @@ def check_multiturn_conversations(rep: Report, a: str, c: dict, sample: bool):
 def check_owner_run(rep: Report, site: Path):
     """The owner-run Multi-turn pair: absent (the expected state until it is published) is a note; one file without
     the other is an error; present files are shape-checked. The .sample.json fixtures are checked the same way,
-    because the page fetches them whenever the real pair is not published."""
+    because the page fetches them whenever the real pair is not published: with the page on the site and the real
+    pair not published, the sample pair is required (Codex review of 2026-09-24; before, a site with neither passed).
+    A site without the page (the site's main before the page lands) needs neither."""
+    real_published = False
     for suffix, sample in ((".json", False), (".sample.json", True)):
         names = [stem + suffix for stem in MT_PAIR]
         present = [n for n in names if (site / "data" / n).is_file()]
+        if not sample:
+            real_published = len(present) == len(names)
         if not present:
             if not sample:
                 rep.notes.append(f"{' and '.join(names)} not published (owner-run: {OWNER_RUN[names[0]]}); the "
                                  f"Multi-turn page renders its samples until they are")
+            elif not real_published and (site / MT_PAGE).is_file():
+                rep.err(" and ".join(names), "-", f"missing while {MT_PAGE} is on the site and the real pair is not "
+                                                  f"published: the page falls back to these samples and has nothing "
+                                                  f"to fetch")
             continue
         if len(present) == 1:
             rep.err(present[0], "-", "published without its pair: the Multi-turn page reads the summary and the "
