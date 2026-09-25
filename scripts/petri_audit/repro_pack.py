@@ -7,7 +7,8 @@ the same disclosure log and the same exit codes. It reuses that module's log, su
 than restating them, and attributes a model to a vendor by the rule of its `_vendor_match`.
 
     python -m scripts.petri_audit.cli repro-pack --vendor VENDOR --publication-state STATE \\
-        --run-dir data/petri/runs/RUN [--run-dir ...] [--analysis FILE] [--out dist] [--log FILE]
+        --run-dir data/petri/runs/RUN [--run-dir ...] [--analysis FILE] [--out dist] [--log FILE] \\
+        [--public-since DATE --deviation-link URL [--public-until DATE --withheld-reason TEXT]]
     python -m scripts.petri_audit.cli repro-pack --check [--log FILE]
     python -m scripts.petri_audit.cli repro-pack --record-sent PACK_VERSION --sent-to "ROLE OR CHANNEL" [--log FILE]
 
@@ -28,7 +29,11 @@ gitignored, so a pack is never committed, as in the advice lane):
   recorded.
 - `README.md` and `DISCLOSURE_NOTE.md`, rendered from the data templates `docs/petri_repro_pack_readme_template.md` and
   `docs/petri_repro_pack_disclosure_note_template.md` (the note in the version `--publication-state` names); request
-  ids are counted from the records, never promised.
+  ids are counted from the records, never promised. What a public state's note states beyond the records (since when a
+  page has shown the results, until when and why it withheld them, the link to the recorded deviation) is a build
+  input (`--public-since`, `--public-until`, `--withheld-reason`, `--deviation-link`, publication_record), recorded in
+  the manifest, so the version and SHA256SUMS cover the note as sent; a note that still holds a bracketed field is
+  refused.
 - `MANIFEST.json` (the pack's state and identity) and `SHA256SUMS` (every other file's sha256).
 
 The build refuses, by name and before anything is written: an analysis artifact that is absent, is not a `--final`
@@ -46,12 +51,13 @@ that holds other bytes.
 Identity. A pack is keyed by (vendor, analysis artifact stem), like the advice lane's (vendor, archive). Its version is
 `petri-v` + the first 12 hex of the sha256 of its manifest's canonical JSON (MANIFEST.json without `pack_version`),
 which covers every input the bundle's bytes depend on (the state below, the run facts, the claims, the templates'
-sha256, the publication state and the engine commit), so a rebuild from the same inputs is byte-identical and logs
-nothing, and any change is a new version. The log entry keeps the part of the manifest --check reads and the claim ids
-(LOG_MANIFEST_KEYS); the bundle's MANIFEST.json holds the whole. The build appends one
-entry per new version to the disclosure log (`ops/disclosure_log.jsonl`, public and append-only, no contact details)
-with `"lane": "petri"`; the advice lane's --check counts entries of another lane and skips them. `supersedes` names the
-newest earlier build for the same key. A sent pack is never rebuilt in place and no entry is ever rewritten.
+sha256, the publication state with its dates and link, and the engine commit), so a rebuild from the same inputs is
+byte-identical and logs nothing, and any change is a new version. The log entry keeps the part of the manifest --check
+reads, the publication state with its inputs, and the claim ids (LOG_MANIFEST_KEYS); the bundle's MANIFEST.json holds
+the whole. The build appends one entry per new version to the disclosure log (`ops/disclosure_log.jsonl`, public and
+append-only, no contact details) with `"lane": "petri"`; the advice lane's --check counts entries of another lane and
+skips them. `supersedes` names the newest earlier build for the same key. A sent pack is never rebuilt in place and no
+entry is ever rewritten.
 
 STALE. `--check` recomputes, for the newest pack of every (vendor, analysis), the state it was built from, and the
 pack is STALE when any of these moved:
@@ -85,6 +91,7 @@ import sys
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -119,6 +126,13 @@ DEFAULT_OUT = ROOT / "dist"
 ANALYSIS_SCRIPT = "scripts/petri_w2_register_contrast.py"
 ANALYSIS_SEED = 20260923                      # design note 10.2; the only seed the analysis's --final accepts
 PUBLICATION_STATES = ("not_yet_public", "already_public", "formerly_public")
+# what the note of each publication state states beyond the pack's own records: build inputs, recorded in the manifest,
+# so the pack's version and SHA256SUMS cover the note as it is sent (publication_record)
+PUBLICATION_FIELDS = {"public_since": "--public-since", "public_until": "--public-until",
+                      "withheld_reason": "--withheld-reason", "deviation_link": "--deviation-link"}
+PUBLICATION_REQUIRES = {"not_yet_public": (),
+                        "already_public": ("public_since", "deviation_link"),
+                        "formerly_public": ("public_since", "public_until", "withheld_reason", "deviation_link")}
 REFUSED_EXIT = 13                             # the petri CLI's codes 3-12 are taken
 # every file a landed run directory holds besides its cost sidecars (manifest.ARTIFACT_FILENAMES are the four bound
 # families); a committed analysis_rows.jsonl is not bound by the manifest, and the analysis reads it only for its
@@ -129,7 +143,8 @@ MAX_MOVED_SHOWN = 8
 PROMPT_DIGEST = re.compile(r"[0-9a-f]{12}")
 # what a log entry's manifest keeps: everything --check reads, the pack's identity and the claim ids. The bundle's
 # MANIFEST.json holds the whole manifest, whose canonical sha256 the version is cut from.
-LOG_MANIFEST_KEYS = ("pack_format", "lane", "vendor", "scope", "publication_state", "inputs", "depends_on", "state",
+LOG_MANIFEST_KEYS = ("pack_format", "lane", "vendor", "scope", "publication_state", "publication", "inputs",
+                     "depends_on", "state",
                      "chain_head_at_build", "engine_commit", "state_utc", "pack_version")
 
 
@@ -777,17 +792,69 @@ def note_blocks(template: str) -> dict[str, str]:
 
 def render_note(template: str, publication_state: str, fields: Mapping[str, Any]) -> str:
     """The disclosure note: the template's `note` block with the opening and dispute clauses of the publication state
-    it names. Raises PackRefusal for a template missing a block or naming a field the builder does not fill."""
+    it names, every clause's fields filled. Raises PackRefusal for a template missing a block or naming a field the
+    builder does not fill, and for a note that still holds a bracketed field: the note is sealed into the pack, so
+    nothing in it is left to fill by hand."""
     blocks = note_blocks(template)
     need = ["note", f"opening:{publication_state}", f"dispute:{publication_state}"]
     missing = [b for b in need if b not in blocks]
     if missing:
         raise PackRefusal([f"the note template {_rel(NOTE_TEMPLATE)} has no block(s) {missing}"])
     try:
-        return blocks["note"].format(opening=blocks[f"opening:{publication_state}"].strip(),
-                                     dispute=blocks[f"dispute:{publication_state}"].strip(), **fields) + "\n"
+        text = blocks["note"].format(opening=blocks[f"opening:{publication_state}"].strip().format(**fields),
+                                     dispute=blocks[f"dispute:{publication_state}"].strip().format(**fields),
+                                     **fields) + "\n"
     except (KeyError, IndexError, ValueError) as exc:
         raise PackRefusal([f"the note template names a field the builder does not fill ({exc!r})"]) from exc
+    left = sorted(set(re.findall(r"\[[^\]\n]*\]", text)))
+    if left:
+        raise PackRefusal([f"the rendered note still holds bracketed field(s) {left}; a pack seals its note, so every "
+                           f"field is a build input ({', '.join(PUBLICATION_FIELDS.values())})"])
+    return text
+
+
+_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def publication_record(publication_state: str, details: Mapping[str, Any]) -> tuple[dict[str, str | None], list[str]]:
+    """The facts the note of a publication state states beyond the pack's records: since when a page has shown the
+    results (`already_public`, `formerly_public`), until when and why the page withheld them (`formerly_public`), and
+    where the deviation is recorded (both). Returns (the four fields, null where the state has none; problems). A
+    field the state requires and lacks, a field it does not use, a date that is not YYYY-MM-DD, an end before the
+    start, a link that is not https and a text with a line break or a bracket are each refused by name."""
+    required = PUBLICATION_REQUIRES.get(publication_state, ())
+    record: dict[str, str | None] = {}
+    problems: list[str] = []
+    for field, flag in PUBLICATION_FIELDS.items():
+        raw = details.get(field)
+        value = raw.strip() if isinstance(raw, str) else raw
+        if value in (None, ""):
+            record[field] = None
+            if field in required:
+                problems.append(f"{flag} is required for --publication-state {publication_state}: its note states it")
+            continue
+        record[field] = value
+        if field not in required:
+            problems.append(f"{flag} does not apply to --publication-state {publication_state}, whose note does not "
+                            f"state it")
+        elif not isinstance(value, str):
+            problems.append(f"{flag} is {value!r}, not text")
+        elif field in ("public_since", "public_until"):
+            try:
+                ok = bool(_DATE.fullmatch(value)) and date.fromisoformat(value).isoformat() == value
+            except ValueError:
+                ok = False
+            if not ok:
+                problems.append(f"{flag} {value!r} is not a date in the form YYYY-MM-DD")
+        elif field == "deviation_link" and (not value.startswith("https://") or re.search(r"\s", value)):
+            problems.append(f"{flag} {value!r} is not an https link")
+        elif field == "withheld_reason" and re.search(r"[\n\r\[\]]", value):
+            problems.append(f"{flag} holds a line break or a bracket; give the reason as one line of text")
+    since, until = record["public_since"], record["public_until"]
+    dated = not any(p.startswith(("--public-since", "--public-until")) for p in problems)
+    if since and until and dated and until < since:            # YYYY-MM-DD compares as the dates do
+        problems.append(f"--public-until {until} is before --public-since {since}")
+    return record, problems
 
 
 def render_readme(template: str, fields: Mapping[str, Any]) -> str:
@@ -1025,13 +1092,16 @@ def _collect(inputs: PackInputs) -> tuple[dict[str, Any], list[str], list[str]]:
 
 
 def build_pack(inputs: PackInputs, *, publication_state: str, out: Path = DEFAULT_OUT, log: Path = DEFAULT_LOG,
-               note: str = "", registry: Mapping[str, str] | None = None) -> Path:
+               note: str = "", registry: Mapping[str, str] | None = None,
+               publication_details: Mapping[str, Any] | None = None) -> Path:
     """Assemble one vendor's pack over the listed runs, write it under `out`, and log a new version. Deterministic: the
     same inputs give a byte-identical bundle and log nothing new; wall-clock time enters only the log entry's
     built_utc. Raises PackRefusal, before anything is written, for every reason the module docstring lists."""
     if publication_state not in PUBLICATION_STATES:
         raise PackRefusal([f"--publication-state {publication_state!r} is not one of {list(PUBLICATION_STATES)}"])
+    publication, publication_problems = publication_record(publication_state, publication_details or {})
     facts, problems, notices = _collect(inputs)
+    problems = publication_problems + problems
     if problems:
         raise PackRefusal(problems)
     for n in notices:
@@ -1059,6 +1129,7 @@ def build_pack(inputs: PackInputs, *, publication_state: str, out: Path = DEFAUL
     manifest: dict[str, Any] = {
         "pack_format": PACK_FORMAT, "lane": LANE, "vendor": vendor, "scope": Path(inputs.analysis).stem,
         "publication_state": publication_state,
+        "publication": publication,
         "inputs": inputs.record(),
         "depends_on": {"run_stems": stems, "prompt_refs": dict(sorted(prompt_refs.items())), "seed_ids": seed_ids},
         "state": state,
@@ -1152,7 +1223,7 @@ def _write_bundle(root: Path, inputs: PackInputs, facts: Mapping[str, Any], mani
     note_fields = {"vendor": manifest["vendor"], "pack_version": manifest["pack_version"],
                    "target_model": fields["target_model"], "run_count": fields["run_count"],
                    "conversations": fields["conversations"], "judgments": fields["judgments"],
-                   "request_id_clause": _request_id_clause(target, judge)}
+                   "request_id_clause": _request_id_clause(target, judge), **manifest["publication"]}
     (root / "DISCLOSURE_NOTE.md").write_text(render_note(note_template, manifest["publication_state"], note_fields),
                                              encoding="utf-8")
     sums = _dir_digests(root)
@@ -1398,6 +1469,14 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
                    help="build: a landed run directory under --runs-dir (repeat for each run of the analysis)")
     p.add_argument("--publication-state", choices=PUBLICATION_STATES, default=None,
                    help="build: which disclosure-note version is true (not_yet_public until a page shows the results)")
+    p.add_argument("--public-since", default=None, metavar="YYYY-MM-DD",
+                   help="build, already_public and formerly_public: the date a page first showed the results")
+    p.add_argument("--public-until", default=None, metavar="YYYY-MM-DD",
+                   help="build, formerly_public: the date the page withheld them")
+    p.add_argument("--withheld-reason", default=None,
+                   help="build, formerly_public: why the page withheld them, as the page states it (one line)")
+    p.add_argument("--deviation-link", default=None, metavar="URL",
+                   help="build, already_public and formerly_public: the https link to the recorded deviation")
     p.add_argument("--analysis", default=str(DEFAULT_ANALYSIS), help="the section 10 --final artifact")
     p.add_argument("--plan", default=str(DEFAULT_PLAN))
     p.add_argument("--claims", default=str(DEFAULT_CLAIMS), help="the claims wording file")
@@ -1432,7 +1511,7 @@ def cmd_repro_pack(args: argparse.Namespace) -> int:
                             claims=Path(args.claims), seeds=Path(args.seeds), lock=Path(args.lock),
                             repo_root=Path(args.repo_root))
         build_pack(inputs, publication_state=args.publication_state, out=Path(args.out), log=Path(args.log),
-                   note=args.note)
+                   note=args.note, publication_details={f: getattr(args, f) for f in PUBLICATION_FIELDS})
         return 0
     except PackRefusal as exc:
         for p in exc.problems:

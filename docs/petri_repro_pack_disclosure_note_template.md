@@ -24,9 +24,16 @@ matters):
   shows them.
 - `formerly_public`: a page showed them and has since withheld them.
 
-The last two leave bracketed fields for the dates and links; fill them before
-sending. The request-id clause is counted from the pack's own records: never
-promise request ids the pack does not hold.
+The last two state dates, a link and a reason the records do not hold, so
+they are build inputs: `--public-since` and `--deviation-link` for both,
+`--public-until` and `--withheld-reason` (the reason as the page states it)
+for `formerly_public`. The builder refuses a state without its inputs, or with
+inputs it does not use, and refuses a note that still holds a bracketed field.
+The inputs enter the pack's manifest, so its version and `SHA256SUMS` cover
+the note as sent: never edit `DISCLOSURE_NOTE.md` after the build (its
+checksum would fail, and two notes would share one version); rebuild with the
+corrected inputs instead. The request-id clause is counted from the pack's own
+records: never promise request ids the pack does not hold.
 
 <!-- BEGIN note -->
 Subject: Measurement disclosure — {vendor} model in a public multi-turn
@@ -61,19 +68,19 @@ result naming it, this pack gives your team
 
 <!-- BEGIN opening:already_public -->
 Our public results page has shown this arm's results for your model since
-[date]. The study's pre-registration requires this pack to reach you before
-per-model results are published; the page showed them without it, and we
-record that deviation publicly ([link to the deviation]). This pack gives
-your team
+{public_since}. The study's pre-registration requires this pack to reach you
+before per-model results are published; the page showed them without it, and
+we record that deviation publicly ({deviation_link}). This pack gives your
+team
 <!-- END opening:already_public -->
 
 <!-- BEGIN opening:formerly_public -->
 Our public results page showed this arm's results for your model from
-[first date] to [last date], and has withheld them since then ([the reason,
-as the page states it]). The study's pre-registration requires this pack to
-reach you before per-model results are published; the page showed them
-without it, and we record that deviation publicly ([link to the deviation]).
-This pack gives your team
+{public_since} to {public_until}, and has withheld them since then
+({withheld_reason}). The study's pre-registration requires this pack to reach
+you before per-model results are published; the page showed them without it,
+and we record that deviation publicly ({deviation_link}). This pack gives
+your team
 <!-- END opening:formerly_public -->
 
 <!-- BEGIN dispute:not_yet_public -->

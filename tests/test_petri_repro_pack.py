@@ -181,9 +181,10 @@ def world(tmp_path):
             "log": tmp_path / "disclosure_log.jsonl", "out": tmp_path / "dist"}
 
 
-def _build(w, out="dist", state="not_yet_public", inputs=None, registry=REGISTRY) -> Path:
+def _build(w, out="dist", state="not_yet_public", inputs=None, registry=REGISTRY, publication=None) -> Path:
+    extra = {} if publication is None else {"publication_details": publication}
     return rp.build_pack(inputs or w["inputs"], publication_state=state, out=w["tmp"] / out, log=w["log"],
-                         registry=registry)
+                         registry=registry, **extra)
 
 
 def _log(w) -> list[dict]:
@@ -280,18 +281,82 @@ def test_request_id_text_names_an_aggregators_ids_as_not_the_vendors():
     assert kept.startswith("Of the 3 target calls, 2 model events in the sanitised logs keep the raw provider call")
 
 
+DEVIATION = "https://example.org/deviation-d3"
+PUBLICATION = {
+    "not_yet_public": {},
+    "already_public": {"public_since": "2026-10-01", "deviation_link": DEVIATION},
+    "formerly_public": {"public_since": "2026-10-01", "public_until": "2026-10-09",
+                        "withheld_reason": "withheld pending the pack", "deviation_link": DEVIATION},
+}
+
+
 @pytest.mark.parametrize("state,needle,absent", [
-    ("not_yet_public", "Nothing from this arm naming your model is public yet", "[date]"),
-    ("already_public", "has shown this arm's results for your model since\n[date]", "Nothing from this arm"),
-    ("formerly_public", "from\n[first date] to [last date]", "Nothing from this arm"),
+    ("not_yet_public", "Nothing from this arm naming your model is public yet", "2026-10-01"),
+    ("already_public", "has shown this arm's results for your model since\n2026-10-01. The study's",
+     "Nothing from this arm"),
+    ("formerly_public", "from\n2026-10-01 to 2026-10-09, and has withheld them since then\n(withheld pending the pack)",
+     "Nothing from this arm"),
 ])
 def test_disclosure_note_takes_the_publication_states_version(world, state, needle, absent):
-    note = (_build(world, state=state) / "DISCLOSURE_NOTE.md").read_text()
+    note = (_build(world, state=state, publication=PUBLICATION[state]) / "DISCLOSURE_NOTE.md").read_text()
     assert needle in note and absent not in note
     assert "before publication" in note if state == "not_yet_public" else "we want to know:" in note
     assert "{" not in note and "BEGIN" not in note
-    if state == "not_yet_public":
-        assert not re.search(r"\[[^\]]+\]", note)                  # nothing left to fill
+    assert not re.search(r"\[[^\]]+\]", note)                      # nothing left to fill, in any state
+    if state != "not_yet_public":
+        assert f"deviation publicly ({DEVIATION})" in note
+
+
+@pytest.mark.parametrize("state", ["already_public", "formerly_public"])
+def test_a_public_states_note_is_sealed_with_its_dates(world, state):
+    """Regression (Codex, PR #39): the note of a public state left [date] and link placeholders to fill after the
+    build, which had already cut the version and hashed DISCLOSURE_NOTE.md into SHA256SUMS, so the sent note either
+    held placeholders or failed its checksum, and two notes could share one version. The dates, link and reason are
+    now build inputs: refused when absent, recorded in the manifest, and sealed with the note."""
+    problems = _refusal(world, state=state)
+    flags = ["--public-since", "--deviation-link"] + (["--public-until", "--withheld-reason"]
+                                                      if state == "formerly_public" else [])
+    assert sorted(p.split(" ", 1)[0] for p in problems) == sorted(flags), problems
+    assert all(p.endswith(f"is required for --publication-state {state}: its note states it") for p in problems)
+    assert not world["log"].exists() and not world["out"].exists()
+    bundle = _build(world, out="d1", state=state, publication=PUBLICATION[state])
+    man = json.loads((bundle / "MANIFEST.json").read_text())
+    assert man["publication"] == {f: PUBLICATION[state].get(f) for f in rp.PUBLICATION_FIELDS}
+    assert _log(world)[0]["manifest"]["publication"] == man["publication"]
+    sums = dict(reversed(ln.split("  ", 1)) for ln in (bundle / "SHA256SUMS").read_text().splitlines())
+    assert sums["DISCLOSURE_NOTE.md"] == sha256_file(bundle / "DISCLOSURE_NOTE.md")
+    # another date is another note, so another version
+    other = _build(world, out="d2", state=state, publication={**PUBLICATION[state], "public_since": "2026-09-30"})
+    assert other.name != bundle.name and "2026-09-30" in (other / "DISCLOSURE_NOTE.md").read_text()
+
+
+@pytest.mark.parametrize("state,details,expected", [
+    ("not_yet_public", {"public_since": "2026-10-01"},
+     "--public-since does not apply to --publication-state not_yet_public"),
+    ("already_public", {**PUBLICATION["already_public"], "public_until": "2026-10-09"},
+     "--public-until does not apply to --publication-state already_public"),
+    ("already_public", {**PUBLICATION["already_public"], "public_since": "2026-13-01"},
+     "--public-since '2026-13-01' is not a date in the form YYYY-MM-DD"),
+    ("already_public", {**PUBLICATION["already_public"], "public_since": "1 Oct 2026"},
+     "--public-since '1 Oct 2026' is not a date in the form YYYY-MM-DD"),
+    ("already_public", {**PUBLICATION["already_public"], "deviation_link": "see the deviation"},
+     "--deviation-link 'see the deviation' is not an https link"),
+    ("formerly_public", {**PUBLICATION["formerly_public"], "public_until": "2026-09-01"},
+     "--public-until 2026-09-01 is before --public-since 2026-10-01"),
+    ("formerly_public", {**PUBLICATION["formerly_public"], "withheld_reason": "[the reason]"},
+     "--withheld-reason holds a line break or a bracket"),
+])
+def test_publication_inputs_are_refused_where_they_do_not_apply_or_are_malformed(world, state, details, expected):
+    problems = _refusal(world, state=state, publication=details)
+    assert len(problems) == 1 and problems[0].startswith(expected), problems
+
+
+def test_a_note_template_with_a_bracketed_field_is_refused():
+    template = rp.NOTE_TEMPLATE.read_text(encoding="utf-8").replace("{public_since}", "[date]")
+    fields = {"vendor": "v", "pack_version": "p", "target_model": "m", "run_count": 1, "conversations": 1,
+              "judgments": 1, "request_id_clause": "r", **PUBLICATION["already_public"]}
+    with pytest.raises(rp.PackRefusal, match=r"still holds bracketed field\(s\) \['\[date\]'\]"):
+        rp.render_note(template, "already_public", fields)
 
 
 def test_build_is_deterministic_and_logs_each_version_once(world):
@@ -761,6 +826,18 @@ def test_cli_builds_checks_and_records_a_send(world, monkeypatch, capsys):
     world["analysis"].unlink()
     assert cli.main(_cli_build(world, "--publication-state", "not_yet_public")) == rp.REFUSED_EXIT
     assert "is absent" in capsys.readouterr().err
+
+
+def test_cli_takes_a_public_states_dates_and_link(world, monkeypatch, capsys):
+    monkeypatch.setattr(rp.seal, "sealed_registry", lambda: dict(REGISTRY))
+    assert cli.main(_cli_build(world, "--publication-state", "already_public")) == rp.REFUSED_EXIT
+    err = capsys.readouterr().err
+    assert "refused: --public-since is required for --publication-state already_public" in err
+    assert "refused: --deviation-link is required for --publication-state already_public" in err
+    assert cli.main(_cli_build(world, "--publication-state", "already_public", "--public-since", "2026-10-01",
+                               "--deviation-link", DEVIATION)) == 0
+    assert _log(world)[0]["manifest"]["publication"] == {"public_since": "2026-10-01", "public_until": None,
+                                                          "withheld_reason": None, "deviation_link": DEVIATION}
 
 
 # ------------------------------------------------------------------ the chain prefix
