@@ -612,6 +612,12 @@ def _first_source(field, value):
      "its target was sampled at temperature 0.7 (models.target.config.temperature), not the registered 1.0"),
     ("manifest_edit", lambda m: m["models"]["target"].update(config={}),
      "its target was sampled at temperature None (models.target.config.temperature), not the registered 1.0"),
+    # Codex, PR #43: the configured temperature is what was requested; the adapter's contract check says whether the
+    # raw requests carried it
+    ("manifest_edit", lambda m: m["execution"]["contract_checks"]["generation_config_pinned"].update(status="fail"),
+     "its generation_config_pinned contract check is 'fail', not pass"),
+    ("manifest_edit", lambda m: m["execution"]["contract_checks"].pop("generation_config_pinned"),
+     "its generation_config_pinned contract check is None, not pass"),
     ("manifest_edit", lambda m: m["artifacts"]["judge_of_record"].update(judge_model=OTHER_JUDGE),
      f"its judge of record (artifacts.judge_of_record.judge_model) is '{OTHER_JUDGE}', not a registered judge"),
     ("judgment_edit", _first_judgment,
@@ -648,9 +654,14 @@ def test_a_vocabulary_without_well_formed_campaign_models_is_refused(shared, tmp
                          (lambda d: d["campaign_models"].update(target=["a", "a"]), "campaign_models.target must be"),
                          (lambda d: d["campaign_models"].pop("target_served"), "campaign_models.target_served must"),
                          (lambda d: d["campaign_models"].pop("target_temperature"),
-                          "campaign_models.target_temperature must be the number the page states"),
+                          "campaign_models.target_temperature must be the finite number the page states"),
                          (lambda d: d["campaign_models"].update(target_temperature="1"),
-                          "campaign_models.target_temperature must be the number the page states")):
+                          "campaign_models.target_temperature must be the finite number the page states"),
+                         # Codex, PR #43: Python's json reads Infinity and NaN as floats
+                         (lambda d: d["campaign_models"].update(target_temperature=float("inf")),
+                          "campaign_models.target_temperature must be the finite number the page states"),
+                         (lambda d: d["campaign_models"].update(target_temperature=float("nan")),
+                          "campaign_models.target_temperature must be the finite number the page states")):
         doc = json.loads(json.dumps(VOCAB))
         change(doc)
         path = tmp_path / "vocabulary.json"

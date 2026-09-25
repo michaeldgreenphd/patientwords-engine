@@ -548,8 +548,10 @@ def load_vocabulary(path: Path, rubric: Mapping[str, Any], registry: Mapping[str
                 problems.append(f"campaign_models.{key} must be a non-empty list of distinct model strings, not "
                                 f"{specs!r}")
         temperature = cm.get("target_temperature")
-        if isinstance(temperature, bool) or not isinstance(temperature, (int, float)):
-            problems.append(f"campaign_models.target_temperature must be the number the page states, not "
+        # a finite number: Python's json reads Infinity and NaN, which name no sampling setting (Codex, PR #43)
+        if (isinstance(temperature, bool) or not isinstance(temperature, (int, float))
+                or not math.isfinite(temperature)):
+            problems.append(f"campaign_models.target_temperature must be the finite number the page states, not "
                             f"{temperature!r}")
     if problems:
         raise ExportRefusal(f"the page vocabulary {path}: " + "; ".join(problems))
@@ -724,6 +726,16 @@ def model_problems(manifest: Mapping[str, Any], models: CampaignModels) -> list[
         if isinstance(temperature, bool) or temperature != models.target_temperature:
             problems.append(f"its target was sampled at temperature {temperature!r} (models.target.config."
                             f"temperature), not the registered {models.target_temperature}")
+    # models.target.config is the role's configuration as requested; whether every retained raw request actually
+    # carried it is the adapter's generation_config_pinned contract check, which must have passed (Codex, PR #43: a
+    # run whose requests omitted or changed the temperature records a failed check beside the requested config)
+    execution = manifest.get("execution") if isinstance(manifest.get("execution"), dict) else {}
+    checks = execution.get("contract_checks") if isinstance(execution.get("contract_checks"), dict) else {}
+    pinned = checks.get("generation_config_pinned")
+    status = pinned.get("status") if isinstance(pinned, dict) else None
+    if status != "pass":
+        problems.append(f"its generation_config_pinned contract check is {status!r}, not pass, so the raw requests are "
+                        f"not shown to have carried the configured sampling settings")
     art = manifest.get("artifacts") if isinstance(manifest.get("artifacts"), dict) else {}
     of_record = art.get("judge_of_record")
     judge = of_record.get("judge_model") if isinstance(of_record, dict) else None
