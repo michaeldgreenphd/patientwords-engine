@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import subprocess
 import sys
@@ -507,6 +508,19 @@ def check_multiturn_summary(rep: Report, a: str, s: dict, sample: bool):
     if not all(isinstance(r, str) for r in runs):
         rep.err(a, "$.provenance.runs", "must be a list of run ids")
     need(rep, a, prov, "analysis_commit", str, "$.provenance")
+    # the models the page's Method sentence names, as the runs recorded them (Codex review of site PR #9,
+    # 2026-09-25). A real summary carries them; the site's samples predate the key, so a sample may omit it
+    models = need(rep, a, prov, "models", dict, "$.provenance") if not sample or "models" in prov else None
+    if models is not None:
+        for key in ("target", "target_served", "judge"):
+            value = need(rep, a, models, key, list, "$.provenance.models")
+            if value is not None and not (value and all(isinstance(v, str) and v for v in value)):
+                rep.err(a, f"$.provenance.models.{key}", "must be a non-empty list of model strings")
+        temperature = need(rep, a, models, "target_temperature", NUM, "$.provenance.models")
+        if isinstance(temperature, (int, float)) and not math.isfinite(temperature):
+            rep.err(a, "$.provenance.models.target_temperature", "must be a finite number")
+        for key in ("target_label", "judge_label"):
+            need(rep, a, models, key, str, "$.provenance.models")
     # the section 10 artifact the summary was exported from, by sha256; a Petri pack's log entry records the same
     # digest (claim_ids.analysis_sha256), which binds the page to the analysis its cited pack was built from (Codex
     # review of PR #39, 2026-09-25). The site's own samples predate the key, so a sample may omit it; the exporter's

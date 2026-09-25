@@ -432,6 +432,8 @@ def _multiturn_pair(sample=False):
                             "partition": "prospective", "eligible": True}],
                "scenario_means": {"sc1": -0.5}, "repeats": [{"seed_id": "s1", "epochs": 1, "same_direction": 1}],
                "provenance": {"runs": ["run_1"], "analysis_commit": "c" * 40, "analysis_sha256": "a" * 64,
+                              "models": {"target": ["t/one"], "target_served": ["t-one-1"], "judge": ["j-one"],
+                                         "target_temperature": 1.0, "target_label": "T", "judge_label": "J"},
                               "exporter_commit": "e" * 40, "verify": "verify"}}
     conversations = {"seed": None,
                      "measures": [{"id": "m1", "row": ["tier", "k"], "label": "M", "kind": "ordinal",
@@ -550,6 +552,47 @@ def test_owner_run_multiturn_exchange_shape_is_complete(site, change):
     _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
     rep = run(site, strict=True)
     assert any(f"$.conversations[0].{where}" in e for e in rep.errors), rep.errors
+
+
+@pytest.mark.parametrize("case,where", [
+    ("no block", "$.provenance.models :: missing required key"),
+    ("empty target", "$.provenance.models.target :: must be a non-empty list of model strings"),
+    ("blank judge", "$.provenance.models.judge :: must be a non-empty list of model strings"),
+    ("infinite temperature", "$.provenance.models.target_temperature :: must be a finite number"),
+    ("no target label", "$.provenance.models.target_label :: missing required key"),
+])
+def test_owner_run_multiturn_summary_names_its_models(site, case, where):
+    """Regression (Codex review of site PR #9, 2026-09-25): the page's Method sentence stated the model and the
+    temperature with neither in the published data. A real summary carries provenance.models, which the page reads."""
+    summary, conversations = _multiturn_pair()
+    models = summary["provenance"]["models"]
+    if case == "no block":
+        del summary["provenance"]["models"]
+    elif case == "empty target":
+        models["target"] = []
+    elif case == "blank judge":
+        models["judge"] = [""]
+    elif case == "infinite temperature":
+        models["target_temperature"] = float("inf")
+    else:
+        del models["target_label"]
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    rep = run(site, strict=True)
+    assert any(f"petri_multiturn_summary.json :: {where}" in e for e in rep.errors), rep.errors
+
+
+def test_owner_run_multiturn_sample_may_omit_its_models(site):
+    """The site's samples predate provenance.models, so a sample may omit the block; one that carries it is checked."""
+    _write_pair(site, _multiturn_pair())
+    s_summary, s_conversations = _multiturn_pair(sample=True)
+    s_summary["provenance"].pop("models", None)
+    _write_pair(site, (s_summary, s_conversations), ".sample.json")
+    assert not any("provenance.models" in e for e in run(site, strict=True).errors)
+    s_summary["provenance"]["models"] = {"target": []}
+    _write_pair(site, (s_summary, s_conversations), ".sample.json")
+    assert any("petri_multiturn_summary.sample.json :: $.provenance.models.target" in e
+               for e in run(site, strict=True).errors)
 
 
 @pytest.mark.parametrize("key", ["register", "conversation_id", "run", "run_epoch"])
