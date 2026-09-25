@@ -27,7 +27,10 @@ What it refuses, by name, before writing anything (AGENTS.md: no silent failures
   that records no analysis commit, or that ran with any input git could not show committed;
 - run directories that are not exactly the runs the artifact covers: the run stems, each run id, and each manifest's
   and judgments file's sha256 must be the ones the artifact recorded; each transcripts and rule-outcomes file must be
-  the one its manifest binds;
+  the one its manifest binds; and runs anywhere but this checkout's data/petri/runs, the directory the page's
+  verify-chain command names;
+- a checkout whose commit would not name what the export read: an input outside the checkout or not tracked, or any
+  tracked file that differs from HEAD (the commit is recorded as provenance.exporter_commit);
 - a run whose publication conditions do not hold (docs/petri_integration_design.md section 4): no bound environment
   lock (`harness.environment_lock_sha256`), no bound raw log with its custody, a raw log marked published, no bound
   sanitised projection, no holdout block, or a holdout-seal contract check that did not pass;
@@ -61,10 +64,12 @@ The keys are the site samples' (tests/fixtures/petri_multiturn_site_contract.jso
 readings: a triple's partition is the page's `seen_before_plan` for the plan's `discovery`; a headline that is not
 selectable as registered has row_id `not_selectable_as_registered:<row>`; the reverse direction keeps the artifact's
 `row4/<row>` id and row 4's text; a style sentence with the added clause is `style_larger+vocabulary_also_lowered`;
-the summary's `seed` is the analysis's bootstrap seed and the conversations file's is null (nothing in it is random).
-Two keys go beyond the samples: a tool result in `interim` carries `fixture: true`, and a grade judged under a prompt
-file or rubric other than the current one carries `superseded: <the digest it was judged under>` (shown, never
-compared). A null answer is `{"v": null}`.
+the summary's `seed` is the analysis's bootstrap seed and the conversations file's is null (nothing in it is random);
+`provenance.exporter_commit` is the commit of this checkout, which names the exporter and every input it read.
+Three keys go beyond the site's samples: a tool result in `interim` carries `fixture: true`, a grade judged under a
+prompt file or rubric other than the current one carries `superseded: <the digest it was judged under>` (shown, never
+compared), and the provenance carries `exporter_commit` ("SAMPLE" in the samples this script writes). A null answer
+is `{"v": null}`.
 
 No medical vocabulary lives here: seed ids, labels, mechanisms and registered texts are read from data files.
 """
@@ -79,7 +84,7 @@ import subprocess
 import sys
 import tempfile
 from collections import Counter, defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from fractions import Fraction
 from pathlib import Path
@@ -823,18 +828,60 @@ class Export:
 
 @dataclass(frozen=True)
 class Checkout:
-    """Where an export's runs must sit: the directory the page's verify-chain command names, run from the root of the
-    repository it belongs to. For a real export this is the checkout's own data/petri/runs (RUNS_DIR)."""
+    """Where an export's inputs come from. `runs_dir`: where the runs must sit, the directory the page's verify-chain
+    command names, run from the root of the repository it belongs to. `identity`: given every file the export read,
+    the commit that names them all, refused by name when there is none; it is recorded as provenance.exporter_commit.
+    For a real export: the checkout's own data/petri/runs and checkout_identity (REPOSITORY)."""
     runs_dir: Path
+    identity: Callable[[Sequence[Path]], str]
 
 
-REPOSITORY = Checkout(RUNS_DIR)
+def _git(root: Path, *args: str) -> str:
+    return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, check=True).stdout
 
 
-def synthetic_checkout(root: Path) -> Checkout:
-    """For SYNTHETIC input only (the tests, --write-samples): runs under `<root>/data/petri/runs`, since synthetic run
-    directories are in no repository. The CLI never exports with it."""
-    return Checkout(Path(root).joinpath(*RUNS_SUBPATH))
+def checkout_identity(paths: Sequence[Path], *, root: Path = ROOT) -> str:
+    """The commit of the checkout at `root` (HEAD), refused unless it names every file the export read and the code
+    that read them (Codex review of 2026-09-24: the exporter's revision was printed, never recorded). Each path must
+    be inside the checkout and tracked there (a path absent from both the disk and the index is an absence the commit
+    records too), and no tracked file of the checkout may differ from HEAD, staged or not: the code, the rubric, the
+    judge prompts the digests are taken over and every other tracked input are then the commit's. Untracked files the
+    export does not read do not matter."""
+    root = Path(root).resolve()
+    problems: list[str] = []
+    rels: dict[str, Path] = {}
+    for p in dict.fromkeys(Path(x) for x in paths):
+        try:
+            rels[p.resolve().relative_to(root).as_posix()] = p
+        except ValueError:
+            problems.append(f"{p} is outside the checkout {root}")
+    try:
+        head = _git(root, "rev-parse", "HEAD").strip()
+        tracked = set(_git(root, "ls-files", "-z", "--", *rels).split("\0")) if rels else set()
+        changed = _git(root, "status", "--porcelain", "--untracked-files=no").splitlines()
+    except (OSError, subprocess.CalledProcessError) as exc:
+        detail = exc.stderr.strip() if isinstance(exc, subprocess.CalledProcessError) else str(exc)
+        raise ExportRefusal(f"git cannot report on the checkout {root} ({detail}), so no exporter commit can be "
+                            f"recorded") from exc
+    if not re.fullmatch(r"[0-9a-f]{40}", head):
+        problems.append(f"HEAD is {head!r}, not a commit")
+    problems += [f"{rel} is not tracked by git" for rel, p in rels.items() if rel not in tracked and p.exists()]
+    if changed:
+        problems.append(f"tracked files differ from HEAD: {'; '.join(line.strip() for line in changed)}")
+    if problems:
+        raise ExportRefusal("the exporter commit would not name everything the export read: " + "; ".join(problems)
+                            + " (commit the inputs, or restore them, and export again)")
+    return head
+
+
+REPOSITORY = Checkout(RUNS_DIR, checkout_identity)
+SYNTHETIC_COMMIT = "SYNTHETIC"
+
+
+def synthetic_checkout(root: Path, commit: str = SYNTHETIC_COMMIT) -> Checkout:
+    """For SYNTHETIC input only (the tests, --write-samples): runs under `<root>/data/petri/runs` and a fixed exporter
+    commit, since synthetic files are in no repository. The CLI never exports with it."""
+    return Checkout(Path(root).joinpath(*RUNS_SUBPATH), lambda _paths: commit)
 
 
 def _verify_command(run_dirs: Sequence[Path], runs_dir: Path) -> str:
@@ -874,6 +921,14 @@ def export(run_dirs: Sequence[Path], artifact_path: Path, *, seeds_path: Path = 
         raise ExportRefusal(f"the artifact ranked tiers under rubric digest {ranked_under!r}, the rubric in hand is "
                             f"{rubric_digest}")
     runs = _load_runs(run_dirs, artifact, seeds, checkout.runs_dir)
+    # every file the export reads, and the exporter's own code: the commit recorded must name them all
+    read = [Path(__file__), *sorted(Path(judge_runner.__file__).parent.glob("*.py")), Path(artifact_path),
+            *(Path(x) for x in (seeds_path, rubric_path, registry_path, vocabulary_path, wording_path, design_note,
+                                swaps_path, disclosure_log)),
+            *(r.path / name for r in runs.values()
+              for name in ("manifest.json", *(ARTIFACT_FILENAMES[f] for f in ("judgments", "transcripts",
+                                                                             "rule_outcomes"))))]
+    exporter_commit = checkout.identity(read)
     notes: Counter = Counter()
     for run in runs.values():
         notes["judgments superseded by a retry (the latest per key is read)"] += run.superseded_by_retry
@@ -898,6 +953,7 @@ def export(run_dirs: Sequence[Path], artifact_path: Path, *, seeds_path: Path = 
                "primary": primary, "triples": triples, "scenario_means": scenario_means,
                "repeats": _repeats(seed_order, entering, direction),
                "provenance": {"runs": [r.stem for r in order], "analysis_commit": artifact["identity"]["commit"],
+                              "exporter_commit": exporter_commit,
                               "verify": _verify_command(run_dirs, checkout.runs_dir)}}
     mechanisms = {mid: dict(v) for mid, v in vocab.mechanisms.items()
                   if any(vocab.mechanism_of[s] == mid for s in seed_order)}
@@ -1332,7 +1388,8 @@ def samplify(result: Export, rng_seed: int, epoch: int = 1) -> tuple[dict[str, A
     s["headline"] = {"row_id": "SAMPLE", "text": "[Sample headline: the section 10.2 wording-table row goes here "
                                                  "verbatim.]"}
     s["style_sentence"] = {"row_id": "SAMPLE", "text": "[Sample sentence: the section 10.3 row goes here verbatim.]"}
-    s["provenance"] = {"runs": list(run_ids.values()), "analysis_commit": "SAMPLE", "verify": s["provenance"]["verify"]}
+    s["provenance"] = {"runs": list(run_ids.values()), "analysis_commit": "SAMPLE", "exporter_commit": "SAMPLE",
+                       "verify": s["provenance"]["verify"]}
     convs = [x for x in c["conversations"] if x["epoch"] == epoch]
     for n, x in enumerate(convs, 1):
         x["conversation_id"] = f"sample-{n:03d}"
@@ -1399,14 +1456,6 @@ def sample_export(*, vocabulary_path: Path = VOCABULARY_FILE, seeds_path: Path =
     return samplify(result, cfg["rng_seed"])
 
 
-def _git_head() -> str | None:
-    try:
-        return subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture_output=True, text=True,
-                              check=True).stdout.strip() or None
-    except (OSError, subprocess.CalledProcessError):
-        return None
-
-
 # ------------------------------------------------------------------ CLI
 
 
@@ -1460,7 +1509,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"headline row: {summary['headline']['row_id']}; style row: {summary['style_sentence']['row_id']}")
     print(f"{len(summary['triples'])} triples ({summary['primary']['triples']} entering the primary test), "
           f"{len(conversations['conversations'])} conversations, {len(conversations['seeds'])} seeds")
-    print(f"analysis commit {summary['provenance']['analysis_commit']}; exporter commit {_git_head()}")
+    print(f"analysis commit {summary['provenance']['analysis_commit']}; "
+          f"exporter commit {summary['provenance']['exporter_commit']}")
     for line in notes:
         print(f"  {line}")
     print("dry run: nothing written" if args.dry_run else "wrote " + ", ".join(str(p) for p in written))

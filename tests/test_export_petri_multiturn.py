@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import subprocess
 from fractions import Fraction
 from pathlib import Path
 
@@ -46,6 +47,9 @@ NO_SEAL: dict[str, str] = {}      # the sealed set is not the subject of most te
 # keys the exporter adds there beyond the site's samples (both reported to the site)
 ALTERNATIVES = {"$.conversations[].exchanges[].interim[]": {"fixture"},
                 "$.conversations[].exchanges[].vals{}": {"superseded"}}
+# keys every document carries beyond the site's samples at patientwords PR #9's fixture commit, reported to the site
+# (Codex review of 2026-09-24: the exporter commit is recorded in the provenance)
+ADDED = {"$.provenance": {"exporter_commit"}}
 
 
 def skeleton(obj, path="$", out=None):
@@ -79,7 +83,7 @@ def assert_site_keys(doc, which, *, sample):
         if keys == "*":
             assert ours[path] == "*", path
             continue
-        want = set(keys) - (set() if sample or path != "$" else {"sample", "_note"})
+        want = (set(keys) | ADDED.get(path, set())) - (set() if sample or path != "$" else {"sample", "_note"})
         if path in ALTERNATIVES:
             assert set(ours[path]) <= want | ALTERNATIVES[path], (path, ours[path])
         else:
@@ -158,6 +162,7 @@ def test_end_to_end_export_has_exactly_the_site_keys(tmp_path):
     assert summary["status"] == {"final": True, "clinician_review": "pending",
                                  "vendor_pack": {"version": None, "sent": None}}
     assert summary["provenance"] == {"runs": [r.stem for r in camp.runs], "analysis_commit": "c" * 40,
+                                     "exporter_commit": ex.SYNTHETIC_COMMIT,
                                      "verify": "python -m scripts.petri_audit.cli verify-chain --data-dir "
                                                "data/petri/runs"}
     assert [r["seed_id"] for r in summary["repeats"]] == ORIGINAL + SECOND
@@ -495,6 +500,67 @@ def test_the_runs_must_be_this_checkouts_not_a_copy_in_another_data_petri_runs(s
                   seal_registry=NO_SEAL, checkout=ex.synthetic_checkout(camp.root))
 
 
+def test_the_exporter_commit_is_recorded_and_names_every_file_the_export_read(shared, tmp_path):
+    """Regression (Codex review of 2026-09-24): the exporter's revision was printed after writing and never recorded,
+    so the published files did not say which exporter produced them."""
+    camp, _ = shared
+    seen: list[Path] = []
+    checkout = ex.Checkout(camp.root / "data" / "petri" / "runs", lambda paths: seen.extend(paths) or "e" * 40)
+    out = export(camp, tmp_path, checkout=checkout).summary["provenance"]
+    assert out["exporter_commit"] == "e" * 40
+    read = {Path(p).resolve() for p in seen}
+    must = [Path(ex.__file__), ex.SEED_FILE, ex.ADVICE_RUBRIC, ex.OUTCOME_REGISTRY, ex.VOCABULARY_FILE,
+            ex.WORDING_FILE, ex.DESIGN_NOTE, ex.SWAPS_FILE, tmp_path / "artifact.json",
+            tmp_path / "no_disclosure_log.jsonl", ROOT / "scripts" / "petri_audit" / "judge_runner.py",
+            *(d / n for d in camp.run_dirs
+              for n in ("manifest.json", "judgments.jsonl", "transcripts.jsonl", "rule_outcomes.jsonl"))]
+    assert not [str(p) for p in must if p.resolve() not in read]
+
+
+def _repo_git(repo: Path, *argv: str) -> str:
+    """git in a throwaway repository, isolated from the user's and the system's configuration."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env.update({"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_AUTHOR_NAME": "synthetic", "GIT_AUTHOR_EMAIL": "synthetic@example.invalid",
+                "GIT_COMMITTER_NAME": "synthetic", "GIT_COMMITTER_EMAIL": "synthetic@example.invalid"})
+    return subprocess.run(["git", "-C", str(repo), *argv], check=True, capture_output=True, env=env).stdout.decode()
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="git is not installed")
+def test_checkout_identity_names_a_clean_checkout_and_refuses_anything_else(tmp_path):
+    repo = tmp_path / "repo"
+    (repo / "data").mkdir(parents=True)
+    _repo_git(repo, "init", "-q")
+    for name, text in (("data/a.json", "{}"), ("data/b.json", "[]"), ("other.txt", "x"), (".gitignore", "ign.json\n")):
+        (repo / name).write_text(text, encoding="utf-8")
+    _repo_git(repo, "add", "-A")
+    _repo_git(repo, "commit", "-q", "-m", "inputs")
+    head = _repo_git(repo, "rev-parse", "HEAD").strip()
+    inputs = [repo / "data" / "a.json", repo / "data" / "b.json", repo / "data" / "absent.json"]
+    assert ex.checkout_identity(inputs, root=repo) == head      # an input absent from disk and index is fine
+    (repo / "scratch.txt").write_text("untracked, not read", encoding="utf-8")
+    assert ex.checkout_identity(inputs, root=repo) == head
+
+    def says(paths) -> str:
+        with pytest.raises(ex.ExportRefusal) as info:
+            ex.checkout_identity(paths, root=repo)
+        return str(info.value)
+    (repo / "other.txt").write_text("changed", encoding="utf-8")         # a tracked file the list does not name
+    assert "tracked files differ from HEAD" in says(inputs) and "other.txt" in says(inputs)
+    _repo_git(repo, "add", "other.txt")                                  # staged is not committed either
+    assert "other.txt" in says(inputs)
+    _repo_git(repo, "commit", "-q", "-m", "other")
+    (repo / "data" / "new.json").write_text("{}", encoding="utf-8")
+    (repo / "ign.json").write_text("{}", encoding="utf-8")
+    message = says([*inputs, repo / "data" / "new.json", repo / "ign.json"])
+    assert "data/new.json is not tracked" in message and "ign.json is not tracked" in message
+    assert f"{tmp_path / 'elsewhere.json'} is outside the checkout" in says([tmp_path / "elsewhere.json"])
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    with pytest.raises(ex.ExportRefusal, match="git cannot report on the checkout"):
+        ex.checkout_identity([], root=plain)
+
+
 def test_cli_refuses_with_exit_2_and_writes_nothing(shared, tmp_path, capsys):
     camp, _ = shared
     artifact = tmp_path / "artifact.json"
@@ -609,7 +675,8 @@ def test_write_samples_matches_the_site_samples(tmp_path):
     assert summary["seed"] == conversations["seed"] == seed
     assert summary["_note"].startswith("SYNTHETIC SAMPLE") and conversations["_note"].startswith("SYNTHETIC SAMPLE")
     assert summary["headline"]["row_id"] == summary["style_sentence"]["row_id"] == "SAMPLE"
-    assert summary["status"]["final"] is False and summary["provenance"]["analysis_commit"] == "SAMPLE"
+    assert summary["status"]["final"] is False
+    assert summary["provenance"]["analysis_commit"] == summary["provenance"]["exporter_commit"] == "SAMPLE"
     assert [s["seed_id"] for s in conversations["seeds"]] == VOCAB["samples"]["seed_ids"]
     texts = [x for c in conversations["conversations"] for e in c["exchanges"]
              for x in (e["user"], e["reply"], *(i["text"] for i in e["interim"]))]

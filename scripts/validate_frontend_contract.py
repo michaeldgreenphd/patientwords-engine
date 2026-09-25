@@ -476,6 +476,8 @@ def check_multiturn_summary(rep: Report, a: str, s: dict, sample: bool):
     if not all(isinstance(r, str) for r in runs):
         rep.err(a, "$.provenance.runs", "must be a list of run ids")
     need(rep, a, prov, "analysis_commit", str, "$.provenance")
+    # the checkout the exporter ran from, naming its code and every input it read (Codex review of 2026-09-24)
+    need(rep, a, prov, "exporter_commit", str, "$.provenance")
     need(rep, a, prov, "verify", str, "$.provenance")
 
 

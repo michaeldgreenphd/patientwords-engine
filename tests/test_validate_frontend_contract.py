@@ -368,7 +368,8 @@ def _multiturn_pair(sample=False):
                "triples": [{"seed_id": "s1", "scenario_id": "sc1", "epoch": 1, "D": -0.5,
                             "partition": "prospective", "eligible": True}],
                "scenario_means": {"sc1": -0.5}, "repeats": [{"seed_id": "s1", "epochs": 1, "same_direction": 1}],
-               "provenance": {"runs": ["run_1"], "analysis_commit": "c" * 40, "verify": "verify"}}
+               "provenance": {"runs": ["run_1"], "analysis_commit": "c" * 40, "exporter_commit": "e" * 40,
+                              "verify": "verify"}}
     conversations = {"seed": None,
                      "measures": [{"id": "m1", "row": ["tier", "k"], "label": "M", "kind": "ordinal",
                                    "values": ["lo", "hi"], "definition": None}],
@@ -500,3 +501,16 @@ def test_owner_run_multiturn_query_text_is_a_list_or_null(site):
     assert [e for e in errors if "query_text" in e] == [
         "petri_multiturn_conversations.sample.json :: $.conversations[0].rule.query_text :: must be a list of strings "
         "(each tool call's arguments) or null"]
+
+
+@pytest.mark.parametrize("sample", [False, True])
+def test_owner_run_multiturn_exporter_commit_is_required(site, sample):
+    """Regression (Codex review of 2026-09-24): the summary did not record the exporter's commit; it now does, and a
+    summary without it, real or sample, fails the gate."""
+    summary, conversations = _multiturn_pair(sample)
+    del summary["provenance"]["exporter_commit"]
+    suffix = ".sample.json" if sample else ".json"
+    _write_pair(site, (summary, conversations), suffix)
+    if not sample:
+        _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    assert any(f"petri_multiturn_summary{suffix} :: $.provenance.exporter_commit" in e for e in run(site).errors)
