@@ -638,6 +638,43 @@ so it can be redone by hand.
   - **What is not reported here.** No register contrast from this epoch: §10 runs once, on the final data.
   - **Next.** The final data is now w2e1, w2e2, the recovered w2e3 and the w2e4 fire at 00:07 UTC on 2026-09-25,
     which is 35 triples as §10.1 fixed.
+- **2026-09-25: w2e4 landed, and the one-time §10 analysis ran.**
+  - **The fire.** w2e4 was fired at 00:19 UTC as `4d740b95`. The scheduled job had been held up behind agent
+    notifications, so it was fired by hand under the same owner approval and gates. Workflow run
+    [36076994201](https://github.com/michaeldgreenphd/patientwords-engine/actions/runs/36076994201) concluded
+    **success**, and its outputs landed in `f0d08cd7`.
+  - **Checks.** 7 of 7 contract checks pass, and the run is claim-grade eligible: 30 trees and 300 target calls.
+    `verify-run` passes, and `verify-chain` is intact.
+  - **Spend.** $0.93 target and $1.61 judge, $2.54 in all, against $8.60 committed.
+  - **Judge.** 1,359 of 1,590 planned gradings were judged, 3 came back null and 228 were not applicable; it was not
+    truncated.
+  - **Afterwards.** The fire was resolved and the lane re-parked (`9229be79`); the park was resolved in `3230e68d`.
+  - **The analysis.** `scripts/petri_w2_register_contrast.py --final --out data/petri/w2_register_contrast.json` ran
+    once, at 00:40 UTC, on the four runs: 35 triples, not truncated, seed 20260923. The artifact is `03c6d375`.
+    - **§10.2.**
+      - The primary exact sign test: 27 of 35 triples had D negative, 6 positive and 2 tied; p = 0.00032.
+      - The scenario gate: 8 scenarios, exact p = 1/64, same direction.
+      - Leave-one-scenario-out: significant and negative for every scenario left out.
+      - The prospective partition: 17 negative, 2 positive and 1 tied of 20; p = 0.00073, same direction.
+      - D is negative in 77% of triples. The scenario t interval (df 7) for the mean of scenario means is [−0.49,
+        −0.09]; the labelled secondary bootstrap is [−0.39, −0.18]. Cite the direction, not the magnitude.
+      - **The selected wording is row 1, selectable as registered:** "In this pilot of eight scripted scenarios,
+        Claude Haiku 4.5's replies to casual wording were graded as less urgent than its replies to clinical wording,
+        and the difference held across the scenarios and in the conversations run after the analysis was fixed." The
+        "as first written" reading, with w2e1 dropped, also selects row 1.
+    - **§10.3,** on the second set's 15 triples.
+      - Style: 13 negative against 2; significant after Holm.
+      - Vocabulary: 7 against 5, with 3 tied; not significant.
+      - Paired difference: 10 against 3; p = 0.092, not significant after Holm.
+      - **The statement is "not separated":** "the pilot could not separate the contribution of the writing style
+        from that of the medical terms."
+    - **§10.5,** exploratory. No outcome is significant after Holm. Referral specificity was 7 of 7 negative on the
+      referral seeds, but p_Holm = 0.0625.
+  - **Still to do.**
+    - The close-out PR into main, merged by hand.
+    - The exporter, engine PR #40, run on these files, and the Petri pack, engine PR #39, built and sent.
+    - The owner's sign-off on the page text of site PR #9.
+    - The results page shows the row verbatim.
   - **2026-09-24: the re-adapt path for decision 2 is built and not yet fired.** It is petri-audit `mode: readapt`
     with the new key `source_run_id`, on the local branch `claude/petri-w2e3-readapt` (unpushed, unreviewed). The
     recovery fire (nonce `w2e3r`, $2.50 committed, the judge's ceiling alone) waits for review and the owner's
