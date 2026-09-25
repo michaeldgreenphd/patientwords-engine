@@ -1,0 +1,2285 @@
+{
+  "manifest_version": "0.2",
+  "run_id": "nrYxRNgu3JQKHKNDLbn9Qt",
+  "eval_id": "SsayfiehZVutyNbSDs5tQn",
+  "created_utc": "2026-09-25T02:30:23Z",
+  "harness": {
+    "name": "inspect_petri",
+    "commit": "e199ec1abcd10267c60cd7eb03035a76567d9e52",
+    "version_string": "0.1.dev150",
+    "inspect_ai_version": "0.3.237",
+    "inspect_scout_version": "0.4.39",
+    "python_version": "3.12.3",
+    "environment_lock_path": "docs/framework/petri_environment.lock.json",
+    "environment_lock_sha256": "4aecf38c856ea4b68567bb76335954d4b92f16a112de200f9b9eb7e432aa0eff"
+  },
+  "adapter": {
+    "name": "petri_audit.adapter",
+    "version": "0.2",
+    "engine_sha": "46285ed3211042b02d17cbf29b07749fa04069eb"
+  },
+  "framework": {
+    "transcript_schema_version": "0.2",
+    "framing_registry_sha256": "28b0a5dce73e286baaba1f4d3a29d749a0880f9f313602574ddb4fb589c9effe",
+    "outcome_registry_sha256": "ea2042a3e71ecc592398ca8643b39fd8b89d90ebf2b1caf0900484ce764c2f3a",
+    "seed_schema_version": "0.2"
+  },
+  "execution": {
+    "mode": "scripted",
+    "claim_grade_eligible": false,
+    "contract_checks": {
+      "stimulus_digest_identity": {
+        "status": "pass",
+        "detail": "every record carries exactly the texts its condition and branch declare; staging records agree and every retained raw request is a branch prefix"
+      },
+      "arms_in_one_run": {
+        "status": "pass",
+        "detail": "every condition of every selected seed ran 1 time(s) in this eval"
+      },
+      "generation_config_pinned": {
+        "status": "pass",
+        "detail": "every raw request carries the seed's sampling keys and one served model string"
+      },
+      "no_prefill": {
+        "status": "pass",
+        "detail": "no prefill"
+      },
+      "no_cache": {
+        "status": "pass",
+        "detail": "no cached generation"
+      },
+      "tool_results_from_data": {
+        "status": "pass",
+        "detail": "every tool result matches the seed's results table (6 tool-result turn(s) examined across records; no tool call on pw-petri-w2-tool-clarify-glucose)"
+      },
+      "holdout_seal": {
+        "status": "pass",
+        "detail": "183 sealed phrases, no hits in the exports"
+      }
+    },
+    "prefill_enabled": false,
+    "cache_enabled": false,
+    "target_tools_mode": "fixed",
+    "max_turns": 10,
+    "max_tool_rounds_per_turn": 4,
+    "epochs": 1,
+    "auditor_instruction_sha256": null,
+    "log_model_api": true
+  },
+  "models": {
+    "target": {
+      "provider": "openrouter",
+      "model": "x-ai/grok-4.3",
+      "inspect_name": "openrouter/x-ai/grok-4.3",
+      "registry_spec": "openrouter:x-ai/grok-4.3",
+      "served_model_strings": [
+        "x-ai/grok-4.3"
+      ],
+      "stop_reasons": [
+        {
+          "stop_reason": "stop",
+          "calls": 300
+        },
+        {
+          "stop_reason": "tool_calls",
+          "calls": 6
+        }
+      ],
+      "upstream_providers": {
+        "by_provider": [
+          {
+            "provider": "xAI",
+            "calls": 306
+          }
+        ],
+        "calls_unrecorded": 0
+      },
+      "config": {
+        "max_tokens": 1024,
+        "temperature": 1.0
+      },
+      "seed_requested": null,
+      "seed_forwarded_by_provider": null,
+      "seed_honored": null
+    },
+    "auditor": null,
+    "judge_harness": null
+  },
+  "seeds": [
+    {
+      "seed_id": "pw-petri-w2-identity-register-methotrexate",
+      "seed_sha256": "9f54854e955ce0e1be6d9265591fe196438f1e63d8a0f8d8cd080a7dcc2f6e6f",
+      "file": "docs/framework/petri_seeds.draft.json",
+      "claim_grade_eligible": true
+    },
+    {
+      "seed_id": "pw-petri-w2-identity-register",
+      "seed_sha256": "b5f2f83a1bcf14a118cd0442ba8ed3dae5e8363fbe5260fca9755a7ccb2deaea",
+      "file": "docs/framework/petri_seeds.draft.json",
+      "claim_grade_eligible": true
+    },
+    {
+      "seed_id": "pw-petri-w2-reassurance-decay-blood-pressure",
+      "seed_sha256": "610da219354a833c247570e9eaac8f0593c4db697f3b921c76c11006bc58a1cd",
+      "file": "docs/framework/petri_seeds.draft.json",
+      "claim_grade_eligible": true
+    },
+    {
+      "seed_id": "pw-petri-w2-reassurance-decay",
+      "seed_sha256": "58c9c45494d18fb3b7d2ea292eb603ef1afd4a55c5974958b921af57b240a255",
+      "file": "docs/framework/petri_seeds.draft.json",
+      "claim_grade_eligible": true
+    },
+    {
+      "seed_id": "pw-petri-w2-referral-specificity-bones",
+      "seed_sha256": "46ed1be1fb63e46ade7d44986b42faa84b88606009edebd93952c6563efe530d",
+      "file": "docs/framework/petri_seeds.draft.json",
+      "claim_grade_eligible": true
+    },
+    {
+      "seed_id": "pw-petri-w2-referral-specificity",
+      "seed_sha256": "0acfa7970ef43819c44949584db69892637f727fff646d698ffbb813c6f813a7",
+      "file": "docs/framework/petri_seeds.draft.json",
+      "claim_grade_eligible": true
+    },
+    {
+      "seed_id": "pw-petri-w2-tool-clarify-glucose",
+      "seed_sha256": "5f4ebf3b45ee6c55319b7d4e72b08b93298bd279f6bd803d80930ac9520cc12f",
+      "file": "docs/framework/petri_seeds.draft.json",
+      "claim_grade_eligible": true
+    },
+    {
+      "seed_id": "pw-petri-w2-tool-clarify",
+      "seed_sha256": "a72117287e9df89b90b00e6591721beb63d66ac230398df3a388ce2f9231e5db",
+      "file": "docs/framework/petri_seeds.draft.json",
+      "claim_grade_eligible": true
+    }
+  ],
+  "trees": [
+    {
+      "tree_id": "pw-petri-w2-identity-register-methotrexate::clinician_clinical#1",
+      "sample_uuid": "Eg9KdMFGQ8fmn8TcjLp2eN",
+      "sample_id": "pw-petri-w2-identity-register-methotrexate::clinician_clinical",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-identity-register-methotrexate",
+      "arm": "clinician_clinical",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "clinician_clinical",
+          "conversation_id": "fce67873982ee82243adc72b54920db611e218be1410877032c36956c41ce02a",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-identity-register-methotrexate::clinician_colloquial#1",
+      "sample_uuid": "Bqrxx6fsTqFFcHFz6uv8En",
+      "sample_id": "pw-petri-w2-identity-register-methotrexate::clinician_colloquial",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-identity-register-methotrexate",
+      "arm": "clinician_colloquial",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "clinician_colloquial",
+          "conversation_id": "0aaeadbd07deb50c6137b34ac3b7561716a4217de01f32732b6739b9587d1f23",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-identity-register-methotrexate::clinician_lay_careful#1",
+      "sample_uuid": "Pc24JNssAsr7hFvn97mBPA",
+      "sample_id": "pw-petri-w2-identity-register-methotrexate::clinician_lay_careful",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-identity-register-methotrexate",
+      "arm": "clinician_lay_careful",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "clinician_lay_careful",
+          "conversation_id": "0cfa421398b23dc64e65990973e48bee0f6b68189a7da90a1251888d83c91387",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-identity-register-methotrexate::patient_clinical#1",
+      "sample_uuid": "m5nukGfcpKkDLTyPoXa6kd",
+      "sample_id": "pw-petri-w2-identity-register-methotrexate::patient_clinical",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-identity-register-methotrexate",
+      "arm": "patient_clinical",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "patient_clinical",
+          "conversation_id": "35b65a26e2ac1b199194e28c615096dcf887b6d667f09b0de698c1c5f4c08e02",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-identity-register-methotrexate::patient_colloquial#1",
+      "sample_uuid": "Y32REJFxWi2FdpmKUdETLD",
+      "sample_id": "pw-petri-w2-identity-register-methotrexate::patient_colloquial",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-identity-register-methotrexate",
+      "arm": "patient_colloquial",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "patient_colloquial",
+          "conversation_id": "27336fd9cb563dddb8d6b9c1aa0b0d374650f7d1e91bd6bf6bfb45dc3a567db4",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-identity-register-methotrexate::patient_lay_careful#1",
+      "sample_uuid": "kDKhWMGSzbezDAJcF7wpwa",
+      "sample_id": "pw-petri-w2-identity-register-methotrexate::patient_lay_careful",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-identity-register-methotrexate",
+      "arm": "patient_lay_careful",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "patient_lay_careful",
+          "conversation_id": "7efc310b265e061e6e05e9de42ba2001af196d79f920761c3b9a1e892b122ae3",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-identity-register::clinician_clinical#1",
+      "sample_uuid": "bBbdUwWAdmmRLqZ2UyATDE",
+      "sample_id": "pw-petri-w2-identity-register::clinician_clinical",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-identity-register",
+      "arm": "clinician_clinical",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "clinician_clinical",
+          "conversation_id": "56114da3fb4978e9179d8c4036c6cf04d3f0e44674c2e37c073968f1669c8158",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-identity-register::clinician_colloquial#1",
+      "sample_uuid": "o5UFcivx4dAcXM3pqP9Pd8",
+      "sample_id": "pw-petri-w2-identity-register::clinician_colloquial",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-identity-register",
+      "arm": "clinician_colloquial",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "clinician_colloquial",
+          "conversation_id": "9d68870c9d8d6144ce1be8b0256c42dbdd0692c0337b9dd3c04a20ffd479cd4d",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-identity-register::clinician_lay_careful#1",
+      "sample_uuid": "84t9vppiUb3Wt8n46ZVVMC",
+      "sample_id": "pw-petri-w2-identity-register::clinician_lay_careful",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-identity-register",
+      "arm": "clinician_lay_careful",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "clinician_lay_careful",
+          "conversation_id": "b947e8e8ef7888330f5724b4041eb3f0f59278c5d6a201ea0c99ade9e6c3180c",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-identity-register::patient_clinical#1",
+      "sample_uuid": "LzGyxpL8Y65BdCRHNcV2Uf",
+      "sample_id": "pw-petri-w2-identity-register::patient_clinical",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-identity-register",
+      "arm": "patient_clinical",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "patient_clinical",
+          "conversation_id": "f650a5c7f6fff4bafa9884223554d8a7d63a22294695905c84a68140bccc6ec6",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-identity-register::patient_lay_careful#1",
+      "sample_uuid": "7uxJh95Xhc4JuGBJZ6nrJC",
+      "sample_id": "pw-petri-w2-identity-register::patient_lay_careful",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-identity-register",
+      "arm": "patient_lay_careful",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "patient_lay_careful",
+          "conversation_id": "7f502fb3cdb04b7c9f21813a4392441fbce798f22b5763962bb7bec53ec14634",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-reassurance-decay-blood-pressure::clinical#1",
+      "sample_uuid": "cTQ5cA8eZ4fvJUdbPfLUTa",
+      "sample_id": "pw-petri-w2-reassurance-decay-blood-pressure::clinical",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-reassurance-decay-blood-pressure",
+      "arm": "clinical",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "clinical",
+          "conversation_id": "d26bc701cf5a1e22ae5221a61bff5c6a2c1cc07911be8a8149c58fba4169279d",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-reassurance-decay-blood-pressure::colloquial#1",
+      "sample_uuid": "QiYD8g9GfSSpKF7pkoViee",
+      "sample_id": "pw-petri-w2-reassurance-decay-blood-pressure::colloquial",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-reassurance-decay-blood-pressure",
+      "arm": "colloquial",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "colloquial",
+          "conversation_id": "654077a7ff8168e192ad8d1235355f83a484662ea4a3c186eb8e179319854e37",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-reassurance-decay-blood-pressure::lay_careful#1",
+      "sample_uuid": "9N5WgQcbsnd8V8rj3qdLT3",
+      "sample_id": "pw-petri-w2-reassurance-decay-blood-pressure::lay_careful",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-reassurance-decay-blood-pressure",
+      "arm": "lay_careful",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "lay_careful",
+          "conversation_id": "4f6f8e15a21576bd360d40e49e3474e2cb57766e2bf0568be38ae64291453619",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-reassurance-decay::clinical#1",
+      "sample_uuid": "RN2yCdxqkDgxuuCvUCbpzh",
+      "sample_id": "pw-petri-w2-reassurance-decay::clinical",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-reassurance-decay",
+      "arm": "clinical",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "clinical",
+          "conversation_id": "af98bb683d9de9f643f660a2c09fdba31c6ef218f4458b7cae91fec46e0f1926",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-reassurance-decay::colloquial#1",
+      "sample_uuid": "ihm5nktsdBBFeCv4RdPTge",
+      "sample_id": "pw-petri-w2-reassurance-decay::colloquial",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-reassurance-decay",
+      "arm": "colloquial",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "colloquial",
+          "conversation_id": "524ed9dde19eb348e3f5608401448aa697c6fdb7fb01a735613c56ddf0c0f11d",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-reassurance-decay::lay_careful#1",
+      "sample_uuid": "XqrKTnTjPFJPs567Ze6SfX",
+      "sample_id": "pw-petri-w2-reassurance-decay::lay_careful",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-reassurance-decay",
+      "arm": "lay_careful",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "lay_careful",
+          "conversation_id": "14a750020007feeea8de3c904a3fa39220e51750df83db5f174fb926ed60465b",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-referral-specificity-bones::colloquial#1",
+      "sample_uuid": "mpvgXi8955bMj3LVyPL4p8",
+      "sample_id": "pw-petri-w2-referral-specificity-bones::colloquial",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-referral-specificity-bones",
+      "arm": "colloquial",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "colloquial",
+          "conversation_id": "6e56aedd715c6994325c40af17c069c20789df5d517499922c92fe5cc05fa5ae",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-referral-specificity-bones::lay_careful#1",
+      "sample_uuid": "8ivo2QeZQFcGvQesm3rSj2",
+      "sample_id": "pw-petri-w2-referral-specificity-bones::lay_careful",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-referral-specificity-bones",
+      "arm": "lay_careful",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "lay_careful",
+          "conversation_id": "e3c1fb4e43ca338e8f0623a7985ef6d5c208151d09cacbe7ccfa0021ef95ca0f",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-referral-specificity::clinical#1",
+      "sample_uuid": "3GkoEPNUQB2EeXRwDEJqnX",
+      "sample_id": "pw-petri-w2-referral-specificity::clinical",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-referral-specificity",
+      "arm": "clinical",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "clinical",
+          "conversation_id": "b05f2f2538f62c392b55a1d307e87758025d4d3400f57e42e42e2530ef12a25f",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-referral-specificity::colloquial#1",
+      "sample_uuid": "Wc9ERsVzF4pHnPVnWmNzCq",
+      "sample_id": "pw-petri-w2-referral-specificity::colloquial",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-referral-specificity",
+      "arm": "colloquial",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "colloquial",
+          "conversation_id": "709142e077a4f6121960b24797614994672a578ec545397fe5f38e51f5c80b08",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-referral-specificity::lay_careful#1",
+      "sample_uuid": "WAGRoHFsvg2WtXCeUJExGc",
+      "sample_id": "pw-petri-w2-referral-specificity::lay_careful",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-referral-specificity",
+      "arm": "lay_careful",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "lay_careful",
+          "conversation_id": "f6a6667ed173f34bd8c3e7434c07ef257a55412be262d3551880b7afd13d0bc4",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-tool-clarify-glucose::clinical#1",
+      "sample_uuid": "6refPMEvH5Bseh8AaQrA97",
+      "sample_id": "pw-petri-w2-tool-clarify-glucose::clinical",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-tool-clarify-glucose",
+      "arm": "clinical",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "clinical",
+          "conversation_id": "67aa5002fafd353af06e91dcc559e37930c6c4601e6dab71513a5edb74926b69",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-tool-clarify-glucose::colloquial#1",
+      "sample_uuid": "Y3mj3cJppBce5PeXGPoYLA",
+      "sample_id": "pw-petri-w2-tool-clarify-glucose::colloquial",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-tool-clarify-glucose",
+      "arm": "colloquial",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "colloquial",
+          "conversation_id": "3494980a5dc299d02aa5c80332ec5120b1b3ec96ebc3d2bb08baf046661ba1d6",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-tool-clarify-glucose::lay_careful#1",
+      "sample_uuid": "Jbp9dA84Vv8MYg64FX7mEe",
+      "sample_id": "pw-petri-w2-tool-clarify-glucose::lay_careful",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-tool-clarify-glucose",
+      "arm": "lay_careful",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "lay_careful",
+          "conversation_id": "7f99cae18c155ab9ec1cceae086135f99e1919812f73e056c36297b00cc595d1",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-tool-clarify::clinical#1",
+      "sample_uuid": "QRudUsBAh796EfUa7Jw7m2",
+      "sample_id": "pw-petri-w2-tool-clarify::clinical",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-tool-clarify",
+      "arm": "clinical",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "clinical",
+          "conversation_id": "b171e77539de7dec85294beebff7be5ef8f5028a2391aaac3516dec70acc5d24",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "tool_calls"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "tool_calls"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 22,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 24,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-tool-clarify::colloquial#1",
+      "sample_uuid": "gTN7hYqdykdMMzo7LbMeeV",
+      "sample_id": "pw-petri-w2-tool-clarify::colloquial",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-tool-clarify",
+      "arm": "colloquial",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "colloquial",
+          "conversation_id": "24faeecbbaa5551ac2d29ce18b32e076030b06007b0da84daf9dc30a0188e9da",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "tool_calls"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "tool_calls"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 22,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 24,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-w2-tool-clarify::lay_careful#1",
+      "sample_uuid": "5BwRJpJdm7iLNrfTgs7szc",
+      "sample_id": "pw-petri-w2-tool-clarify::lay_careful",
+      "epoch": 1,
+      "seed_id": "pw-petri-w2-tool-clarify",
+      "arm": "lay_careful",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "lay_careful",
+          "conversation_id": "229b35daf2a3f3f9752dd1737fac123610966e9ff95c58e001f9b36f38ce529e",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "tool_calls"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "tool_calls"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 22,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 24,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    }
+  ],
+  "usage": {
+    "by_role": [
+      {
+        "role": "target",
+        "input_tokens": 267282,
+        "output_tokens": 95765,
+        "total_tokens": 740455,
+        "input_tokens_cache_read": 377408,
+        "input_tokens_cache_write": null,
+        "reasoning_tokens": 58767,
+        "calls": 306,
+        "calls_without_usage": 0
+      }
+    ],
+    "by_model": [
+      {
+        "model": "openrouter/x-ai/grok-4.3",
+        "input_tokens": 267282,
+        "output_tokens": 95765,
+        "total_tokens": 740455,
+        "input_tokens_cache_read": 377408,
+        "input_tokens_cache_write": null,
+        "reasoning_tokens": 58767,
+        "calls": 306,
+        "calls_without_usage": 0
+      }
+    ],
+    "engine_priced_cost_usd": 1.10285275,
+    "usage_missing_models": [],
+    "pricing_source": "data/advice_providers.json + medlang_circuits.evaluate_models.PRICING + fallback + cache multipliers",
+    "pricing_source_sha256": "66af3035bdfab4c1e8bf904aacb203cb6343cbabc57d2716dba2ff5ea9c96afa"
+  },
+  "spend": {
+    "lane": "petri-audit",
+    "max_spend_usd": 3.2,
+    "judge_max_spend_usd": 3.3,
+    "journal_nonce": "xm-grok43-1",
+    "cost_limit_per_sample_usd": 0.10666666666666667,
+    "token_limit_per_sample": 40000
+  },
+  "holdout": {
+    "phrases_in_seeds": 0,
+    "sealed_phrases_in_seeds": 0,
+    "consumed": false,
+    "consumption_registry_ref": null,
+    "consumed_phrase_sha1": []
+  },
+  "artifacts": {
+    "raw_eval_log_sha256": "3d2ad480123cc5f3d7154841d20bf4141e7bd49ca092dba053e663591032445a",
+    "raw_eval_log_published": false,
+    "raw_eval_log_custody": "github_actions_artifact:90d",
+    "sanitised_log_path": "run_36086425534_1/sanitised_log.json",
+    "sanitised_log_sha256": "74404504a74852aa0fed00d724ea0a887f0f487c9f759b2c0b2c4b0f31e96d87",
+    "sanitiser": {
+      "version": "0.3",
+      "allowlist_sha256": "6f62dfe81ef704c2477f60e4606ba822b7d287eaf80beb1dbe8bee4a70845caa",
+      "redaction_report": {
+        "fields_removed": 6278,
+        "fields_hashed": 0,
+        "request_bodies_kept": true,
+        "headers_kept": false,
+        "base_urls_kept": false,
+        "events_dropped_by_type": {},
+        "timeline_content_dropped_by_type": {},
+        "samples": 30,
+        "events_kept": 1824,
+        "forbidden_keys_dropped": {}
+      }
+    },
+    "transcripts_path": "run_36086425534_1/transcripts.jsonl",
+    "transcripts_sha256": "01a46ae06498a071957457a2366d34c65f08d12b4c52100d84e42a7da7bdd2ef",
+    "rule_outcomes_path": "run_36086425534_1/rule_outcomes.jsonl",
+    "rule_outcomes_sha256": "cfbc1b595a4205fcd40b573a8075e114e3e6086249503b88dbb32d91ee51e73c",
+    "judgments_path": "run_36086425534_1/judgments.jsonl",
+    "judgments_sha256": "f1acf15a52a594e3095dc0399da6a2a270f682a289959fefaed071205cea3ff1",
+    "judge_of_record": {
+      "judge_model": "openrouter:anthropic/claude-haiku-4.5",
+      "billing_channel": "openrouter",
+      "price_source": "registry:openrouter:pricing",
+      "judged_utc": "2026-09-25T02:55:58Z",
+      "cost_usd": 1.24850192,
+      "truncated": false,
+      "planned": 1512,
+      "judged": 1298,
+      "null": 1,
+      "not_applicable": 213,
+      "judge_max_tokens": 300,
+      "temperature": 0.0,
+      "report_path": "run_36086425534_1/run_36086425534_1.judge.report.json",
+      "report_sha256": "990d7ae81bda56557c42b7eb48df6e904dd437c94dce2705b88f62ef550625bf"
+    }
+  },
+  "integrity": {
+    "attachments_resolved": true,
+    "branches_dropped_empty": 0,
+    "records_refused": [
+      {
+        "branch_id": "pw-petri-w2-identity-register::patient_colloquial#1:root",
+        "reason": "pw-petri-w2-identity-register::patient_colloquial#1:root: assistant turn 12 is empty (no text and no tool call, stop_reason 'stop')"
+      },
+      {
+        "branch_id": "pw-petri-w2-referral-specificity-bones::clinical#1:root",
+        "reason": "pw-petri-w2-referral-specificity-bones::clinical#1:root: assistant turn 14 is empty (no text and no tool call, stop_reason 'stop')"
+      }
+    ],
+    "timestamps_truncated_to_seconds": true
+  },
+  "eval_spec_dump": {
+    "eval_id": "SsayfiehZVutyNbSDs5tQn",
+    "run_id": "nrYxRNgu3JQKHKNDLbn9Qt",
+    "created": "2026-09-25T02:30:23+00:00",
+    "task": "patientwords-petri-audit",
+    "task_id": "VrC5YjotjFosrTnEzyja5n",
+    "task_version": 0,
+    "task_registry_name": null,
+    "task_args": {},
+    "dataset": {
+      "name": "patientwords-petri-audit",
+      "location": null,
+      "samples": 30,
+      "sample_ids": [
+        "pw-petri-w2-tool-clarify::clinical",
+        "pw-petri-w2-tool-clarify::colloquial",
+        "pw-petri-w2-tool-clarify::lay_careful",
+        "pw-petri-w2-referral-specificity::clinical",
+        "pw-petri-w2-referral-specificity::colloquial",
+        "pw-petri-w2-referral-specificity::lay_careful",
+        "pw-petri-w2-reassurance-decay::clinical",
+        "pw-petri-w2-reassurance-decay::colloquial",
+        "pw-petri-w2-reassurance-decay::lay_careful",
+        "pw-petri-w2-identity-register::patient_clinical",
+        "pw-petri-w2-identity-register::patient_colloquial",
+        "pw-petri-w2-identity-register::clinician_clinical",
+        "pw-petri-w2-identity-register::clinician_colloquial",
+        "pw-petri-w2-identity-register::patient_lay_careful",
+        "pw-petri-w2-identity-register::clinician_lay_careful",
+        "pw-petri-w2-tool-clarify-glucose::clinical",
+        "pw-petri-w2-tool-clarify-glucose::colloquial",
+        "pw-petri-w2-tool-clarify-glucose::lay_careful",
+        "pw-petri-w2-referral-specificity-bones::clinical",
+        "pw-petri-w2-referral-specificity-bones::colloquial",
+        "pw-petri-w2-referral-specificity-bones::lay_careful",
+        "pw-petri-w2-reassurance-decay-blood-pressure::clinical",
+        "pw-petri-w2-reassurance-decay-blood-pressure::colloquial",
+        "pw-petri-w2-reassurance-decay-blood-pressure::lay_careful",
+        "pw-petri-w2-identity-register-methotrexate::patient_clinical",
+        "pw-petri-w2-identity-register-methotrexate::patient_colloquial",
+        "pw-petri-w2-identity-register-methotrexate::clinician_clinical",
+        "pw-petri-w2-identity-register-methotrexate::clinician_colloquial",
+        "pw-petri-w2-identity-register-methotrexate::patient_lay_careful",
+        "pw-petri-w2-identity-register-methotrexate::clinician_lay_careful"
+      ],
+      "shuffled": false
+    },
+    "model": "none/none",
+    "model_generate_config": {
+      "max_tokens": null,
+      "temperature": null,
+      "top_p": null,
+      "top_k": null,
+      "seed": null,
+      "stop_seqs": null,
+      "frequency_penalty": null,
+      "presence_penalty": null,
+      "max_retries": null,
+      "timeout": null,
+      "system_message": null,
+      "reasoning_effort": null,
+      "reasoning_tokens": null,
+      "reasoning_summary": null,
+      "reasoning_history": null,
+      "response_schema": null,
+      "parallel_tool_calls": null,
+      "internal_tools": null,
+      "max_tool_output": null,
+      "cache_prompt": null,
+      "num_choices": null,
+      "best_of": null,
+      "logprobs": null,
+      "top_logprobs": null,
+      "max_connections": null
+    },
+    "model_roles": {
+      "target": {
+        "model": "openrouter/x-ai/grok-4.3",
+        "config": {
+          "max_tokens": 1024,
+          "temperature": 1.0,
+          "top_p": null,
+          "top_k": null,
+          "seed": null,
+          "stop_seqs": null,
+          "frequency_penalty": null,
+          "presence_penalty": null,
+          "max_retries": null,
+          "timeout": null,
+          "system_message": null,
+          "reasoning_effort": null,
+          "reasoning_tokens": null,
+          "reasoning_summary": null,
+          "reasoning_history": null,
+          "response_schema": null,
+          "parallel_tool_calls": null,
+          "internal_tools": null,
+          "max_tool_output": null,
+          "cache_prompt": null,
+          "num_choices": null,
+          "best_of": null,
+          "logprobs": null,
+          "top_logprobs": null,
+          "max_connections": null
+        }
+      }
+    },
+    "config": {
+      "limit": null,
+      "sample_id": null,
+      "sample_shuffle": null,
+      "epochs": 1,
+      "epochs_reducer": [
+        "mean"
+      ],
+      "approval": null,
+      "notification": null,
+      "fail_on_error": false,
+      "continue_on_fail": false,
+      "retry_on_error": null,
+      "score_on_error": false,
+      "message_limit": null,
+      "token_limit": 40000,
+      "time_limit": null,
+      "working_limit": null,
+      "cost_limit": 0.10666666666666667,
+      "max_samples": null,
+      "max_dataset_memory": null,
+      "max_tasks": null,
+      "max_subprocesses": null,
+      "max_sandboxes": null,
+      "sandbox_cleanup": true,
+      "log_samples": true,
+      "log_realtime": true,
+      "log_images": true,
+      "log_model_api": true,
+      "log_buffer": null,
+      "log_shared": null,
+      "score_display": true,
+      "acp_server": null
+    },
+    "revision": {
+      "type": "git",
+      "origin": "https://github.com/michaeldgreenphd/patientwords-engine",
+      "commit": "46285ed",
+      "dirty": false
+    },
+    "packages": {
+      "inspect_ai": "0.3.237"
+    },
+    "metadata": {
+      "patientwords": {
+        "seed_file": "docs/framework/petri_seeds.draft.json",
+        "seed_file_sha256": "86af3539a561ff7616b5104d629bf60fd7da607c936c2f519a3cbf3a1e1f41bc",
+        "seed_ids": [
+          "pw-petri-w2-tool-clarify",
+          "pw-petri-w2-referral-specificity",
+          "pw-petri-w2-reassurance-decay",
+          "pw-petri-w2-identity-register",
+          "pw-petri-w2-tool-clarify-glucose",
+          "pw-petri-w2-referral-specificity-bones",
+          "pw-petri-w2-reassurance-decay-blood-pressure",
+          "pw-petri-w2-identity-register-methotrexate"
+        ]
+      }
+    },
+    "scorers": null,
+    "metrics": null
+  },
+  "chain": {
+    "prev_sha256": "e98beed39a303346ab86c6b6da6ac1ad2926a2c23d665276e714059d034556ee",
+    "identity_sha256": "cc87ee937b393f5d7ac9523a56410eea592cea71bad28db39cadc234216c138e",
+    "manifest_sha256": "2993da696b07f05dfaf3ef2d3b0216594b63b9b86d93976fb4fb5e167b9da5cc"
+  }
+}
