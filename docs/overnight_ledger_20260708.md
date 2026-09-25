@@ -762,3 +762,18 @@ patching smoke run 1 = failure; diagnosis below after log pull.
 - judgments_stimuli_20260827T141036Z.report.json · $0.1206 · alias · accepted — · —
 - responses_stimuli_20260827T141036Z.report.json · $0.1839 · alias · accepted — · —
 - responses_stimuli_20260827T141036Z.report.json · booked $0.0000 to 2026-08-27 (run_cost_usd); $0.1839 prior-runs balance folded to lifetime only (cost_basis=cumulative_from_records)
+- modeleval_20260829T200735Z.report.json · $0.0004 · claude-haiku-4-5 · accepted — · 2026-08-29T20:07:32.971314+00:00
+- modeleval_20260903T205639Z.report.json · $0.0004 · claude-haiku-4-5 · accepted — · 2026-09-03T20:56:37.671424+00:00
+- modeleval_20260904T222448Z.report.json · $0.0004 · claude-haiku-4-5 · accepted — · 2026-09-04T22:24:46.500504+00:00
+- pairs_20260721T132205Z.report.json · $0.1467 · claude-haiku-4-5 · accepted 100 · 2026-07-21T13:25:03.115339+00:00
+- pairs_20260829T200716Z.report.json · $0.0019 · claude-haiku-4-5 · accepted 1 · 2026-08-29T20:07:20.648880+00:00
+- pairs_20260903T211234Z.report.json · $0.0018 · claude-haiku-4-5 · accepted 1 · 2026-09-03T21:12:37.226738+00:00
+- pairs_20260904T223033Z.report.json · $0.0018 · claude-haiku-4-5 · accepted 1 · 2026-09-04T22:30:36.392223+00:00
+- run_35351739969_1.judge.report.json · $0.0683 · alias · accepted — · —
+- run_35351739969_1.report.json · $0.0354 · alias · accepted — · —
+- run_35801345137_1.judge.report.json · $0.8060 · alias · accepted — · —
+- run_35801345137_1.report.json · $0.4643 · alias · accepted — · —
+- run_35812312136_1.judge.report.json · $1.6075 · alias · accepted — · —
+- run_35812312136_1.report.json · $0.9274 · alias · accepted — · —
+- run_35937014168_1.readapt_35979450123.judge.report.json · $1.6269 · alias · accepted — · —
+- run_35937014168_1.report.json · $0.9298 · alias · accepted — · —
