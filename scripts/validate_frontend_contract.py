@@ -421,6 +421,9 @@ MT_SUMMARY_KEYS = {"seed", "status", "headline", "style_sentence", "primary", "t
 MT_CONVERSATIONS_KEYS = {"seed", "measures", "mechanisms", "seeds", "conversations", "example"}
 MT_SAMPLE_KEYS = {"sample", "_note"}
 MT_PARTITIONS = ("seen_before_plan", "prospective")
+# the page's three wording columns (multi-turn/index.html ARMS): a conversation is placed in one by its register, since
+# an identity seed's arm ids carry the speaker as well
+MT_REGISTERS = ("colloquial", "lay_careful", "clinical")
 # the page that reads the pair; while it is on the site and the real pair is not published, it fetches the samples
 MT_PAGE = "multi-turn/index.html"
 # the staging directory of one write of the pair (export_petri_multiturn.swap_dir): present only when a write was
@@ -445,8 +448,12 @@ def check_multiturn_summary(rep: Report, a: str, s: dict, sample: bool):
     need(rep, a, status, "final", bool, "$.status")
     need(rep, a, status, "clinician_review", str, "$.status")
     pack = need(rep, a, status, "vendor_pack", dict, "$.status") or {}
+    # a sample has no pack; the real pair is public, so it cites the sent pack (pre-registration rules (1)-(2), design
+    # note decision 16): a null version or send date fails --strict and plain runs alike (Codex review of 2026-09-25)
     for key in ("version", "sent"):
-        need(rep, a, pack, key, str, "$.status.vendor_pack", nullable=True)
+        value = need(rep, a, pack, key, str, "$.status.vendor_pack", nullable=sample)
+        if not sample and isinstance(value, str) and not value.strip():
+            rep.err(a, f"$.status.vendor_pack.{key}", "empty where the sent pack's value is required")
     for block in ("headline", "style_sentence"):
         b = need(rep, a, s, block, dict, "$") or {}
         need(rep, a, b, "row_id", str, f"$.{block}")
@@ -519,6 +526,12 @@ def check_multiturn_conversations(rep: Report, a: str, c: dict, sample: bool):
         need(rep, a, cv, "arm", str, path)
         need(rep, a, cv, "epoch", int, path)
         need(rep, a, cv, "identity", str, path, nullable=True)
+        # the keys the page groups and selects by (Codex review of 2026-09-25: a file without register passed --strict)
+        if need(rep, a, cv, "register", str, path) not in (None, *MT_REGISTERS):
+            rep.err(a, f"{path}.register", f"must be one of {list(MT_REGISTERS)} (the page's three wording columns)")
+        need(rep, a, cv, "conversation_id", str, path)
+        need(rep, a, cv, "run", str, path)
+        need(rep, a, cv, "run_epoch", int, path)
         rule = need(rep, a, cv, "rule", dict, path) or {}
         # scripts/petri_audit/rules.py: every call's arguments in order, or null when no tool was invoked; a sample
         # carries the same shape (Codex review of 2026-09-24: the samples carried one string)

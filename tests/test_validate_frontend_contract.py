@@ -422,7 +422,9 @@ def test_main_passes_the_same_site_when_the_pack_check_is_clean(site, tmp_path, 
 def _multiturn_pair(sample=False):
     """A minimal valid pair in the Multi-turn page's shapes; abstract vocabulary only."""
     summary = {"seed": 1, "status": {"final": True, "clinician_review": "pending",
-                                     "vendor_pack": {"version": None, "sent": None}},
+                                     "vendor_pack": ({"version": None, "sent": None} if sample else
+                                                     {"version": "petri-v000000000001",
+                                                      "sent": "2026-09-25T00:00:00Z"})},
                "headline": {"row_id": "row5", "text": "alpha"}, "style_sentence": {"row_id": "x", "text": None},
                "primary": {"triples": 1, "negative": 1, "positive": 0, "tied": 0, "p_two_sided": 1.0,
                            "gate_p": 1.0, "gate_passed": False},
@@ -438,6 +440,8 @@ def _multiturn_pair(sample=False):
                      "seeds": [{"seed_id": "s1", "mechanism": "mech", "measures": ["m1"], "arms": ["a"],
                                 "roles": [None], "hypotheses": ["H1"]}],
                      "conversations": [{"seed_id": "s1", "arm": "a", "epoch": 1, "identity": None, "rule": {},
+                                        "register": "colloquial", "conversation_id": "c" * 64, "run": "run_1",
+                                        "run_epoch": 1,
                                         "exchanges": [{"user": "u", "reply": None, "reply_is_graded": True,
                                                        "interim": [], "vals": {"m1": {"v": "lo"}}}]}],
                      "example": {"seed_id": "s1", "turn": 1, "colloquial": "a", "lay_careful": "b", "clinical": "c"}}
@@ -490,6 +494,42 @@ def test_owner_run_multiturn_shapes_are_checked(site):
     assert any("$.triples[0].partition" in e for e in rep.errors)
     assert any("$.headline.text" in e for e in rep.errors)
     assert any("vals.m9" in e for e in rep.errors)
+
+
+@pytest.mark.parametrize("key", ["register", "conversation_id", "run", "run_epoch"])
+def test_owner_run_multiturn_conversation_keys_the_page_groups_by_are_required(site, key):
+    """Regression (Codex review of 2026-09-25): a conversation without register, conversation_id, run or run_epoch
+    passed --strict, although the page places a conversation in its wording column by register (an identity seed's
+    arm ids carry the speaker) and selects by the others."""
+    summary, conversations = _multiturn_pair()
+    del conversations["conversations"][0][key]
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    rep = run(site, strict=True)
+    assert any(f"petri_multiturn_conversations.json :: $.conversations[0].{key}" in e and "missing" in e
+               for e in rep.errors), rep.errors
+
+
+def test_owner_run_multiturn_conversation_register_is_one_of_the_pages_columns(site):
+    summary, conversations = _multiturn_pair()
+    conversations["conversations"][0]["register"] = "patient_colloquial"
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    rep = run(site, strict=True)
+    assert any("$.conversations[0].register" in e and "must be one of" in e for e in rep.errors), rep.errors
+
+
+@pytest.mark.parametrize("key,value", [("version", None), ("sent", None), ("version", " "), ("sent", "")])
+def test_owner_run_multiturn_real_summary_cites_a_sent_pack(site, key, value):
+    """Regression (Codex review of 2026-09-25): version and sent were nullable in the real summary too, so --strict
+    passed the state in which no Petri pack was sent (design note 10.6, decision 16). The sample keeps nulls."""
+    summary, conversations = _multiturn_pair()
+    summary["status"]["vendor_pack"][key] = value
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    rep = run(site, strict=True)
+    assert any(f"petri_multiturn_summary.json :: $.status.vendor_pack.{key}" in e for e in rep.errors), rep.errors
+    assert not any("petri_multiturn_summary.sample.json :: $.status.vendor_pack" in e for e in rep.errors)
 
 
 @pytest.mark.parametrize("sample", [False, True])

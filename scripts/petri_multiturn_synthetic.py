@@ -9,7 +9,9 @@ shape `scripts/petri_w2_register_contrast.py --final` writes (script version 1.1
 wording row, the section 10.3 statement and the flags that decide the exporter's refusals are parameters, so a test
 states the case it exercises rather than searching for random data that produces it.
 
-The run directories sit under `<root>/data/petri/runs/`, the layout the exporter's verify-chain command names.
+The run directories sit under `<root>/data/petri/runs/`, the layout the exporter's verify-chain command names, each
+manifest sealed into that directory's `manifests.chain` (so the command verifies them, as it does landed runs), and the
+plan the campaign's fires realise is written to `<root>/plan.json`, whose sha256 the artifact records.
 """
 from __future__ import annotations
 
@@ -27,6 +29,7 @@ from typing import Any
 try:
     from scripts.petri_audit import judge_runner
     from scripts.petri_audit.framework import sha256_file
+    from scripts.petri_audit.manifest import CHAIN_FILE, seal_manifest
     from scripts.petri_audit.rules import rule_outcomes
     from scripts.petri_audit.seeds import ROOT_BRANCH, seed_digest, text_of, texts_by_key, tool_result_for
 except ModuleNotFoundError:  # run as a file path: the repository root is not on sys.path
@@ -35,6 +38,7 @@ except ModuleNotFoundError:  # run as a file path: the repository root is not on
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from scripts.petri_audit import judge_runner
     from scripts.petri_audit.framework import sha256_file
+    from scripts.petri_audit.manifest import CHAIN_FILE, seal_manifest
     from scripts.petri_audit.rules import rule_outcomes
     from scripts.petri_audit.seeds import ROOT_BRANCH, seed_digest, text_of, texts_by_key, tool_result_for
 
@@ -81,6 +85,7 @@ class Campaign:
     seeds: dict[str, dict]
     rubric: dict
     registry: dict
+    plan_path: Path
 
     @property
     def run_dirs(self) -> list[Path]:
@@ -241,7 +246,30 @@ def build_campaign(root: Path, *, seeds: Mapping[str, dict], sets: Mapping[str, 
         (path / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
         rows = judge_runner.analysis_rows(judgments, manifest, dict(seeds))
         runs.append(SyntheticRun(stem, path, fire, manifest, rows))
-    return Campaign(Path(root), runs, {k: list(v) for k, v in sets.items()}, dict(seeds), rubric, registry)
+    prev: str | None = None
+    lines = []
+    for run in runs:                      # the chain, in fire order, as the lane's landing appends it
+        run.manifest = seal_manifest(run.manifest, prev)
+        (run.path / "manifest.json").write_text(json.dumps(run.manifest, indent=1) + "\n", encoding="utf-8")
+        prev = run.manifest["chain"]["manifest_sha256"]
+        lines.append(f"{run.stem}/manifest.json {prev}")
+    (runs_dir / CHAIN_FILE).write_text("\n".join(lines) + "\n", encoding="utf-8")
+    plan_path = Path(root) / "plan.json"
+    plan_path.write_text(json.dumps(plan_doc(seeds, sets, fires), indent=1) + "\n", encoding="utf-8")
+    return Campaign(Path(root), runs, {k: list(v) for k, v in sets.items()}, dict(seeds), rubric, registry, plan_path)
+
+
+def plan_doc(seeds: Mapping[str, dict], sets: Mapping[str, Sequence[str]], fires: Sequence[Fire]) -> dict[str, Any]:
+    """The section 10 plan these fires realise, in the plan file's shape: the scenario sets, each fire's partition and
+    campaign epochs, and the final triple count by partition (one triple per seed, epoch and speaker)."""
+    by_partition: dict[str, int] = {}
+    for fire in fires:
+        n = sum(len(layout(seeds[sid])[0]) for set_name in fire.campaign_epochs for sid in sets[set_name])
+        by_partition[fire.partition] = by_partition.get(fire.partition, 0) + n
+    return {"scenario_sets": {k: list(v) for k, v in sets.items()},
+            "fires": [{"journal_nonce": f.nonce, "campaign_epochs": dict(f.campaign_epochs), "partition": f.partition}
+                      for f in fires],
+            "final_triples": sum(by_partition.values()), "partition_triples": by_partition}
 
 
 def _binomial_p(k: int, n: int) -> float:
@@ -340,7 +368,8 @@ def build_artifact(campaign: Campaign, *, wording_row: str = "row5", selectable:
         "identity": {"commit": commit, "uncommitted_changes": {n: [] for n in names}},
         "administratively_truncated": truncated, "truncation_reason": "synthetic" if truncated else None,
         "fires_not_landed": ["synthetic"] if truncated else [],
-        "coverage": {"runs": runs, "rubric": {"digest": digest}},
+        "coverage": {"runs": runs, "rubric": {"digest": digest},
+                     "plan": {"path": str(campaign.plan_path), "sha256": sha256_file(campaign.plan_path)}},
         "triples": triples,
         "section_10_2": {"primary_sign_test": primary, "scenario_gate": gate, "wording": wording},
         "section_10_3": s103, "section_10_4": {}, "section_10_5": {},

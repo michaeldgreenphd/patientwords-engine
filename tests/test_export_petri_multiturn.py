@@ -101,6 +101,7 @@ def export(camp: syn.Campaign, tmp: Path, artifact: dict | None = None, name: st
     kw.setdefault("disclosure_log", tmp / "no_disclosure_log.jsonl")
     kw.setdefault("seal_registry", NO_SEAL)
     kw.setdefault("checkout", ex.synthetic_checkout(camp.root))
+    kw.setdefault("plan_path", camp.plan_path)
     return ex.export(camp.run_dirs, path, **kw)
 
 
@@ -263,13 +264,117 @@ def test_refuses_an_artifact_run_from_uncommitted_inputs(shared, tmp_path):
     assert "did not show committed" in refused(camp, tmp_path, artifact)
 
 
+def test_refuses_a_self_consistent_artifact_over_a_subset_of_the_registered_triples(shared, tmp_path):
+    """Regression (Codex review of 2026-09-25): the exporter checked only the triples the artifact listed, so an
+    artifact computed over part of the campaign (an epoch or a scenario dropped, every listed triple landed and its
+    counts and tests consistent with them) was exported with altered counts and p-values. The plan fixes the set."""
+    camp, _ = shared
+    first_fire = syn.Campaign(camp.root, camp.runs[:1], camp.sets, camp.seeds, camp.rubric, camp.registry,
+                              camp.plan_path)
+    msg = refused(camp, tmp_path, syn.build_artifact(first_fire))
+    assert "triples are not the registered final set of" in msg and "missing " in msg and "(t2)" in msg
+    one_set = syn.Campaign(camp.root, camp.runs, {**camp.sets, "second": []}, camp.seeds, camp.rubric, camp.registry,
+                           camp.plan_path)
+    msg = refused(camp, tmp_path, syn.build_artifact(one_set))
+    assert "triples are not the registered final set of" in msg and SECOND[0] in msg
+    doubled = syn.build_artifact(camp)
+    doubled["triples"] = doubled["triples"][:-1] + doubled["triples"][:1]
+    msg = refused(camp, tmp_path, doubled)
+    assert "not registered, or listed twice: " + doubled["triples"][0]["seed_id"] in msg
+
+
+def test_refuses_a_plan_the_analysis_did_not_read_or_that_contradicts_itself(shared, tmp_path):
+    camp, _ = shared
+    plan = load_json(camp.plan_path)
+    other = tmp_path / "plan.json"
+    other.write_text(json.dumps({**plan, "note": "edited"}), encoding="utf-8")
+    assert "the registered triple set is read from the plan the analysis read" in refused(camp, tmp_path,
+                                                                                         plan_path=other)
+    other.write_text(json.dumps({**plan, "final_triples": plan["final_triples"] + 1}), encoding="utf-8")
+    artifact = syn.build_artifact(camp)
+    artifact["coverage"]["plan"]["sha256"] = ex.sha256_file(other)
+    msg = refused(camp, tmp_path, artifact, plan_path=other)
+    assert f"triples {plan['partition_triples']}, not the {plan['final_triples'] + 1}" in msg
+
+
+def _stale(artifact: dict, where: str, value) -> dict:
+    node = artifact["section_10_2"]
+    *parents, leaf = where.split(".")
+    for part in parents:
+        node = node[part]
+    node[leaf] = value
+    return artifact
+
+
+@pytest.mark.parametrize("where,value", [
+    ("primary_sign_test.p", 0.5), ("primary_sign_test.non_tied", 99), ("primary_sign_test.direction", "flipped"),
+    ("primary_sign_test.alpha", 0.1), ("scenario_gate.p", 0.5), ("scenario_gate.p_exact", "1/2"),
+    ("scenario_gate.scenarios", 99), ("scenario_gate.direction", "flipped"), ("scenario_gate.significant", "flipped"),
+    ("wording.gate_same_direction", "flipped"),
+])
+def test_refuses_published_test_fields_the_entering_triples_do_not_give(shared, tmp_path, where, value):
+    """Regression (Codex review of 2026-09-25): the p-values, direction, non_tied and scenario count were published
+    from the artifact unchecked, while only the counts and exact means were checked, so a stale field reached the page
+    (and the direction drove the 'does it repeat' counts). Each is recomputed and must equal the artifact's."""
+    camp, _ = shared
+    artifact = syn.build_artifact(camp)
+    if value == "flipped":
+        node = artifact["section_10_2"][where.split(".")[0]]
+        leaf = where.split(".")[1]
+        value = (not node[leaf]) if isinstance(node[leaf], bool) else {"negative": "positive"}.get(node[leaf],
+                                                                                                    "negative")
+    msg = refused(camp, tmp_path, _stale(artifact, where, value))
+    assert ("the primary sign test records (non_tied, p, direction, alpha)" in msg
+            or "the scenario gate records (scenarios, p, p_exact, direction, significant, alpha" in msg), msg
+
+
+def test_published_test_fields_are_the_recomputed_values(shared, tmp_path):
+    camp, _ = shared
+    artifact = syn.build_artifact(camp)
+    s = export(camp, tmp_path, artifact).summary
+    pst, gate = artifact["section_10_2"]["primary_sign_test"], artifact["section_10_2"]["scenario_gate"]
+    assert s["primary"]["p_two_sided"] == ex.exact_sign_test_p(min(pst["negative"], pst["positive"]),
+                                                               pst["negative"] + pst["positive"])
+    assert s["primary"]["gate_p"] == float(Fraction(gate["p_exact"]))
+
+
+@pytest.mark.parametrize("breakage", ["no chain file", "a run left out of the chain", "a malformed line",
+                                      "a manifest changed after sealing"])
+def test_refuses_runs_the_verify_chain_command_would_not_examine(tmp_path, breakage):
+    """Regression (Codex review of 2026-09-25): the exact-parent check did not show that the printed command verifies
+    the exported runs. verify_chain succeeds with no chain file and checks only the manifests the chain names, so a run
+    under the right directory but outside the chain was exported. The chain must exist, verify and name every run."""
+    camp = build(tmp_path / "c")
+    chain = camp.run_dirs[0].parent / ex.CHAIN_FILE
+    lines = chain.read_text().splitlines()
+    artifact = syn.build_artifact(camp)
+    if breakage == "no chain file":
+        chain.unlink()
+        expected = "has no manifests.chain"
+    elif breakage == "a run left out of the chain":
+        chain.write_text("\n".join(lines[:-1]) + "\n")
+        expected = f"runs ['{camp.runs[-1].stem}'] are not in"
+    elif breakage == "a malformed line":
+        chain.write_text("\n".join(lines) + "\ngarbage\n")
+        expected = "cannot be read (ValueError"
+    else:
+        man = camp.run_dirs[0] / "manifest.json"
+        doc = json.loads(man.read_text())
+        doc["created_utc"] = "2026-09-30T00:00:00Z"
+        man.write_text(json.dumps(doc, indent=1) + "\n")
+        artifact["coverage"]["runs"][0]["manifest_sha256"] = ex.sha256_file(man)
+        expected = "does not verify: line 1"
+    assert expected in refused(camp, tmp_path, artifact)
+
+
 def test_refuses_runs_that_are_not_the_artifacts(shared, tmp_path):
     camp, _ = shared
     artifact = syn.build_artifact(camp)
     path = tmp_path / "artifact.json"
     path.write_text(json.dumps(artifact), encoding="utf-8")
     with pytest.raises(ex.ExportRefusal, match="not the runs the section 10 artifact covers"):
-        ex.export(camp.run_dirs[:1], path, seal_registry=NO_SEAL, checkout=ex.synthetic_checkout(camp.root))
+        ex.export(camp.run_dirs[:1], path, seal_registry=NO_SEAL, checkout=ex.synthetic_checkout(camp.root),
+                  plan_path=camp.plan_path)
     changed = json.loads(json.dumps(artifact))
     changed["coverage"]["runs"][0]["judgments_sha256"] = "0" * 64
     assert "judgments.jsonl is not the file the section 10 artifact read" in refused(camp, tmp_path, changed)
@@ -464,7 +569,7 @@ def test_cli_writes_both_files_and_prints_the_previous_diff(shared, tmp_path, ca
     site = tmp_path / "site"
     (site / "data").mkdir(parents=True)
     args = ["--analysis", str(artifact), "--site", str(site), "--disclosure-log", str(tmp_path / "none.jsonl"),
-            *map(str, camp.run_dirs)]
+            "--plan", str(camp.plan_path), *map(str, camp.run_dirs)]
     assert ex.main(args) == 0
     first = json.loads((site / "data" / "petri_multiturn_summary.json").read_text("utf-8"))
     json.loads((site / "data" / "petri_multiturn_conversations.json").read_text("utf-8"))
@@ -488,7 +593,7 @@ def test_the_runs_must_be_this_checkouts_not_a_copy_in_another_data_petri_runs(s
     artifact.write_text(json.dumps(syn.build_artifact(camp)), encoding="utf-8")
     # the CLI exports only from this checkout's data/petri/runs; the synthetic runs sit in another one
     assert ex.main(["--analysis", str(artifact), "--dry-run", "--disclosure-log", str(tmp_path / "none.jsonl"),
-                    *map(str, camp.run_dirs)]) == 2
+                    "--plan", str(camp.plan_path), *map(str, camp.run_dirs)]) == 2
     err = capsys.readouterr().err
     assert f"not in {ex.ROOT / 'data' / 'petri' / 'runs'}" in err and "would verify other bytes" in err
     # and given the campaign's own runs directory, a copy of its runs elsewhere is refused just the same
@@ -497,7 +602,7 @@ def test_the_runs_must_be_this_checkouts_not_a_copy_in_another_data_petri_runs(s
         shutil.copytree(d, copy / d.name)
     with pytest.raises(ex.ExportRefusal, match="the directory the page's verify-chain command"):
         ex.export([copy / d.name for d in camp.run_dirs], artifact, disclosure_log=tmp_path / "none.jsonl",
-                  seal_registry=NO_SEAL, checkout=ex.synthetic_checkout(camp.root))
+                  seal_registry=NO_SEAL, checkout=ex.synthetic_checkout(camp.root), plan_path=camp.plan_path)
 
 
 def test_the_exporter_commit_is_recorded_and_names_every_file_the_export_read(shared, tmp_path):
@@ -688,9 +793,19 @@ def test_exported_and_sample_files_pass_the_contract_validator(shared, tmp_path)
     camp, _ = shared
     site = tmp_path / "site"
     (site / "data").mkdir(parents=True)
+    ex.write_site(site, *ex.sample_export(seal_registry=NO_SEAL), sample=True)
+    # with no Petri pack sent, the real summary cites none, and the validator refuses exactly that (decision 16)
     result = export(camp, tmp_path)
     ex.write_site(site, result.summary, result.conversations)
-    ex.write_site(site, *ex.sample_export(seal_registry=NO_SEAL), sample=True)
+    rep = vfc.Report()
+    vfc.check_owner_run(rep, site)
+    assert sorted(rep.errors) == [f"petri_multiturn_summary.json :: $.status.vendor_pack.{k} :: null where a value is "
+                                  f"required" for k in ("sent", "version")] and rep.warnings == [] and rep.notes == []
+    log = tmp_path / "disclosure_log.jsonl"
+    log.write_text(json.dumps({"pack_version": "petri-v000000000001", "lane": "petri", "vendor": "anthropic",
+                               "sent_utc": "2026-09-25T00:00:00Z"}) + "\n", encoding="utf-8")
+    result = export(camp, tmp_path, disclosure_log=log)
+    ex.write_site(site, result.summary, result.conversations)
     rep = vfc.Report()
     vfc.check_owner_run(rep, site)
     assert rep.errors == [] and rep.warnings == [] and rep.notes == []

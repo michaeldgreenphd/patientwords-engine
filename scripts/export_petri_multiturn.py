@@ -15,6 +15,7 @@ Owner-run, once, after the design note's section 10 analysis (`scripts/petri_w2_
 on the final data. It is not part of the daily Routine's publish chain. Usage:
 
   python scripts/export_petri_multiturn.py --analysis data/petri/w2_register_contrast.json \\
+      [--plan data/petri/w2_register_contrast_plan.json] \\
       --site ../patientwords [--previous ../patientwords/data/petri_multiturn_summary.json] [--dry-run] \\
       data/petri/runs/<run> [data/petri/runs/<run> ...]
   python scripts/export_petri_multiturn.py --write-samples --site ../patientwords
@@ -25,10 +26,15 @@ that differs from an earlier summary file. Exit 0 on success, 2 on a refusal (no
 What it refuses, by name, before writing anything (AGENTS.md: no silent failures):
 - an artifact that is not final, that was administratively truncated (the summary has no field that would say so),
   that records no analysis commit, or that ran with any input git could not show committed;
+- an artifact whose triples are not exactly the registered final set: the plan the analysis read (`--plan`, its
+  sha256 the one the artifact's coverage records) fixes the scenario sets, each fire's partition and campaign epochs,
+  and the final count by partition (design note 10.1), and every (seed, epoch, speaker) it implies must be listed
+  once, with nothing else;
 - run directories that are not exactly the runs the artifact covers: the run stems, each run id, and each manifest's
   and judgments file's sha256 must be the ones the artifact recorded; each transcripts and rule-outcomes file must be
-  the one its manifest binds; and runs anywhere but this checkout's data/petri/runs, the directory the page's
-  verify-chain command names;
+  the one its manifest binds; runs anywhere but this checkout's data/petri/runs, the directory the page's
+  verify-chain command names; and runs that command would not examine (no chain file, a chain that does not verify,
+  or a run the chain does not name);
 - a checkout whose commit would not name what the export read: an input outside the checkout or not tracked, or any
   tracked file that differs from HEAD (the commit is recorded as provenance.exporter_commit);
 - a run whose publication conditions do not hold (docs/petri_integration_design.md section 4): no bound environment
@@ -45,6 +51,9 @@ What it refuses, by name, before writing anything (AGENTS.md: no silent failures
 - a D the rows do not reproduce: for every triple the exporter recomputes D(colloquial, clinical) over the exchanges
   the artifact counts as comparable, and refuses when an entering triple's sum, n or D, the primary test's counts or
   a scenario mean differ from the artifact's;
+- a published test field the entering triples do not give: the sign test's non_tied, p, direction and alpha, and the
+  scenario gate's scenario count, p (and p_exact), direction, significance, alpha and same-direction flag are
+  recomputed and must equal the artifact's; the page gets the recomputed values;
 - a tool result that is not the seed's scripted result (the page labels every tool result as text the study wrote);
 - a sealed Tier B phrase anywhere in the output (reported by label only).
 
@@ -76,7 +85,9 @@ No medical vocabulary lives here: seed ids, labels, mechanisms and registered te
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
+import math
 import os
 import re
 import shutil
@@ -106,7 +117,7 @@ from scripts.petri_audit.framework import (  # noqa: E402
     prompt_digest,
     sha256_file,
 )
-from scripts.petri_audit.manifest import ARTIFACT_FILENAMES  # noqa: E402
+from scripts.petri_audit.manifest import ARTIFACT_FILENAMES, CHAIN_FILE, verify_chain  # noqa: E402
 from scripts.petri_audit.seal import scan_strings, sealed_registry  # noqa: E402
 from scripts.petri_audit.seeds import ROOT_BRANCH, text_of, texts_by_key, tool_result_for  # noqa: E402
 
@@ -119,6 +130,7 @@ CONVERSATIONS_NAME = "petri_multiturn_conversations"
 VOCABULARY_FILE = ROOT / "data" / "petri" / "multiturn_measures.json"
 WORDING_FILE = ROOT / "data" / "petri" / "w2_registered_wording.json"
 DESIGN_NOTE = ROOT / "docs" / "petri_wave2_design.md"
+PLAN_FILE = ROOT / "data" / "petri" / "w2_register_contrast_plan.json"
 SWAPS_FILE = ROOT / "data" / "petri" / "lay_careful_swaps.draft.json"
 DISCLOSURE_LOG = ROOT / "ops" / "disclosure_log.jsonl"
 DEFAULT_SITE = ROOT.parent / "patientwords"
@@ -133,6 +145,10 @@ REGISTERS = (COLLOQUIAL, CAREFUL_LAY, CLINICAL)
 # 10.1's outcome, the rows D is computed on
 PRIMARY_ROW = ("tier", "response_only")
 PRIMARY_CONTRAST = "primary"
+# 10.2's significance level, for the sign test and the scenario gate
+ALPHA = 0.05
+# the scenario gate enumerates 2^k sign assignments; the registered design has k = 8
+GATE_MAX_SCENARIOS = 20
 # the artifact's partitions (the plan's) and the page's names for them
 PARTITION_LABEL = {"discovery": "seen_before_plan", "prospective": "prospective"}
 # the section 10.2 and 10.3 ids the table has no text for: carried by name, never worded here
@@ -231,6 +247,61 @@ def load_artifact(path: Path) -> dict[str, Any]:
     if not _count(doc.get("bootstrap_seed")):
         raise ExportRefusal(f"the section 10 artifact {path} records no bootstrap_seed")
     return doc
+
+
+def _triple_label(key: tuple) -> str:
+    sid, _set, epoch, speaker, _partition, nonce = key
+    return f"{sid}#e{epoch}" + (f"/{speaker}" if speaker else "") + f" ({nonce})"
+
+
+def registered_triples(plan_path: Path, artifact: Mapping[str, Any], seeds: Mapping[str, dict]) -> None:
+    """Refuse unless the artifact's triples are exactly the registered final set (Codex review of 2026-09-25). The plan
+    the analysis read (its sha256 is recorded in the artifact's coverage) fixes the scenario sets, each fire's partition
+    and the campaign epoch it gives each set, and the final triple count by partition (design note 10.1: 35 across
+    eight scenarios). A triple is one (seed, campaign epoch, speaker), the speakers read from the seed file as the
+    analysis reads them (seed_cells). The artifact's list is checked against that set, never taken as the set: an
+    analysis that dropped an epoch or a scenario would otherwise publish altered counts, p-values and possibly another
+    headline, with every listed triple landed."""
+    plan = _load(plan_path, "the section 10 plan")
+    cov_plan = artifact["coverage"].get("plan")
+    recorded = cov_plan.get("sha256") if isinstance(cov_plan, dict) else None
+    if recorded != sha256_file(plan_path):
+        raise ExportRefusal(f"the section 10 artifact records plan sha256 {recorded!r}, and the plan {plan_path} is "
+                            f"{sha256_file(plan_path)}: the registered triple set is read from the plan the analysis "
+                            f"read")
+    expected: Counter = Counter()
+    try:
+        sets, final, by_partition = plan["scenario_sets"], plan["final_triples"], plan["partition_triples"]
+        for fire in plan["fires"]:
+            for set_name, epoch in fire["campaign_epochs"].items():
+                for sid in sets[set_name]:
+                    if sid not in seeds:
+                        raise ExportRefusal(f"the plan's scenario set {set_name} names seed {sid}, which is not in "
+                                            f"the seed file")
+                    for speaker in seed_cells(seeds[sid])[0]:
+                        expected[(sid, set_name, epoch, speaker, fire["partition"], fire["journal_nonce"])] += 1
+    except (KeyError, TypeError, AttributeError) as exc:
+        raise ExportRefusal(f"the section 10 plan {plan_path} cannot be read as the registered design "
+                            f"({type(exc).__name__}: {exc})") from exc
+    partitions = dict(Counter(k[4] for k in expected.elements()))
+    if not _count(final) or sum(expected.values()) != final or partitions != by_partition:
+        raise ExportRefusal(f"the plan's fires and scenario sets give {sum(expected.values())} triples {partitions}, "
+                            f"not the {final!r} {by_partition!r} it fixes")
+    if not all(isinstance(t, dict) for t in artifact["triples"]):
+        raise ExportRefusal("the section 10 artifact lists a triple that is not an object")
+    got = Counter((t.get("seed_id"), t.get("scenario_set"), t.get("campaign_epoch"), t.get("speaker"),
+                   t.get("partition"), t.get("journal_nonce")) for t in artifact["triples"])
+    missing, extra = expected - got, got - expected
+    if missing or extra:
+        def listed(c: Counter) -> str:
+            keys = sorted(c.elements(), key=str)
+            if not keys:
+                return "none"
+            more = f" and {len(keys) - 6} more" if len(keys) > 6 else ""
+            return ", ".join(_triple_label(k) for k in keys[:6]) + more
+        raise ExportRefusal(f"the section 10 artifact's {len(artifact['triples'])} triples are not the registered "
+                            f"final set of {final}: missing {listed(missing)}; not registered, or listed twice: "
+                            f"{listed(extra)}")
 
 
 # ------------------------------------------------------------------ the page vocabulary (data)
@@ -884,6 +955,29 @@ def synthetic_checkout(root: Path, commit: str = SYNTHETIC_COMMIT) -> Checkout:
     return Checkout(Path(root).joinpath(*RUNS_SUBPATH), lambda _paths: commit)
 
 
+def _check_chain(run_dirs: Sequence[Path], runs_dir: Path) -> None:
+    """The page's command verifies the exported runs (Codex review of 2026-09-25): the chain under `runs_dir` exists,
+    verifies (manifest digests, links and artifacts), and names every exported run. verify_chain succeeds with no chain
+    file and checks only the manifests the chain names, so a run under this directory but outside the chain would be
+    exported while the printed command never examined it."""
+    chain = Path(runs_dir) / CHAIN_FILE
+    if not chain.is_file():
+        raise ExportRefusal(f"{runs_dir} has no {CHAIN_FILE}, so the page's command ({VERIFY_COMMAND}) would verify "
+                            f"no run")
+    try:
+        ok, msg = verify_chain(Path(runs_dir))
+        chained = {Path(line.strip().rsplit(" ", 1)[0]).parent.as_posix()
+                   for line in chain.read_text(encoding="utf-8").splitlines() if line.strip()}
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise ExportRefusal(f"the chain {chain} cannot be read ({type(exc).__name__}: {exc})") from exc
+    if not ok:
+        raise ExportRefusal(f"the chain under {runs_dir} does not verify: {msg}")
+    outside = sorted(Path(p).name for p in run_dirs if Path(p).name not in chained)
+    if outside:
+        raise ExportRefusal(f"runs {outside} are not in {chain}, so the page's command ({VERIFY_COMMAND}) would not "
+                            f"examine them")
+
+
 def _verify_command(run_dirs: Sequence[Path], runs_dir: Path) -> str:
     """The chain-verification command the page prints, refused unless every run sits in `runs_dir` itself: a copy of
     the runs in another data/petri/runs would be exported while the command verifies the checkout's own (Codex review
@@ -899,7 +993,7 @@ def _verify_command(run_dirs: Sequence[Path], runs_dir: Path) -> str:
 def export(run_dirs: Sequence[Path], artifact_path: Path, *, seeds_path: Path = SEED_FILE,
            rubric_path: Path = ADVICE_RUBRIC, registry_path: Path = OUTCOME_REGISTRY,
            vocabulary_path: Path = VOCABULARY_FILE, wording_path: Path = WORDING_FILE, design_note: Path = DESIGN_NOTE,
-           swaps_path: Path = SWAPS_FILE, disclosure_log: Path = DISCLOSURE_LOG,
+           swaps_path: Path = SWAPS_FILE, disclosure_log: Path = DISCLOSURE_LOG, plan_path: Path = PLAN_FILE,
            seal_registry: Mapping[str, str] | None = None, example: Mapping[str, Any] | None = None,
            checkout: Checkout | None = None) -> Export:
     """Build both files in memory from the run directories and the section 10 artifact; refuse by name on any
@@ -920,11 +1014,13 @@ def export(run_dirs: Sequence[Path], artifact_path: Path, *, seeds_path: Path = 
     if ranked_under != rubric_digest:
         raise ExportRefusal(f"the artifact ranked tiers under rubric digest {ranked_under!r}, the rubric in hand is "
                             f"{rubric_digest}")
+    registered_triples(Path(plan_path), artifact, seeds)
     runs = _load_runs(run_dirs, artifact, seeds, checkout.runs_dir)
     # every file the export reads, and the exporter's own code: the commit recorded must name them all
     read = [Path(__file__), *sorted(Path(judge_runner.__file__).parent.glob("*.py")), Path(artifact_path),
             *(Path(x) for x in (seeds_path, rubric_path, registry_path, vocabulary_path, wording_path, design_note,
-                                swaps_path, disclosure_log)),
+                                swaps_path, disclosure_log, plan_path)),
+            Path(checkout.runs_dir) / CHAIN_FILE,
             *(r.path / name for r in runs.values()
               for name in ("manifest.json", *(ARTIFACT_FILENAMES[f] for f in ("judgments", "transcripts",
                                                                              "rule_outcomes"))))]
@@ -954,7 +1050,7 @@ def export(run_dirs: Sequence[Path], artifact_path: Path, *, seeds_path: Path = 
                "repeats": _repeats(seed_order, entering, direction),
                "provenance": {"runs": [r.stem for r in order], "analysis_commit": artifact["identity"]["commit"],
                               "exporter_commit": exporter_commit,
-                              "verify": _verify_command(run_dirs, checkout.runs_dir)}}
+                              "verify": VERIFY_COMMAND}}    # _load_runs checked the command verifies these runs
     mechanisms = {mid: dict(v) for mid, v in vocab.mechanisms.items()
                   if any(vocab.mechanism_of[s] == mid for s in seed_order)}
     conversations = {"seed": None, "measures": [m.exported() for m in vocab.measures], "mechanisms": mechanisms,
@@ -990,7 +1086,9 @@ def _load_runs(run_dirs: Sequence[Path], artifact: Mapping[str, Any], seeds: Map
         raise ExportRefusal(f"the runs given {sorted(stems)} are not the runs the section 10 artifact covers "
                             f"{sorted(recorded)}")
     _verify_command(run_dirs, runs_dir)
-    return {Path(p).name: load_run(Path(p), recorded[Path(p).name], seeds) for p in run_dirs}
+    runs = {Path(p).name: load_run(Path(p), recorded[Path(p).name], seeds) for p in run_dirs}
+    _check_chain(run_dirs, runs_dir)
+    return runs
 
 
 def _plan_seeds(triples: Sequence[Any], seeds: Mapping[str, dict],
@@ -1136,11 +1234,39 @@ def _triples(triples: Sequence[dict], seeds: Mapping[str, dict], rows_of: Mappin
     return out, entering
 
 
+def exact_sign_test_p(k: int, n: int) -> float:
+    """10.2's exact two-sided sign-test p for k of n non-tied triples on one side, as the analysis computes it
+    (scripts/petri_w2_register_contrast.py exact_sign_test_p): 2 * P(X <= min(k, n - k)), X ~ Binomial(n, 1/2), capped
+    at 1, in rationals; 1.0 when n = 0."""
+    if n == 0:
+        return 1.0
+    m = min(k, n - k)
+    return float(min(Fraction(1), Fraction(2 * sum(math.comb(n, i) for i in range(m + 1)), 2 ** n)))
+
+
+def sign_flip_p(means: Sequence[Fraction]) -> Fraction:
+    """10.2's scenario gate as the analysis computes it (sign_flip_test): the share of the 2^k sign assignments of the
+    k scenario means whose |sum| is at least the observed |sum|, compared exactly."""
+    observed = abs(sum(means, Fraction(0)))
+    hits = sum(1 for signs in itertools.product((1, -1), repeat=len(means))
+               if abs(sum((s * v for s, v in zip(signs, means)), Fraction(0))) >= observed)
+    return Fraction(hits, 2 ** len(means))
+
+
+def _direction(total: Fraction | int) -> str:
+    return "negative" if total < 0 else "positive" if total > 0 else "none"
+
+
 def _primary(s102: Mapping[str, Any], entering: Sequence[tuple[dict, Fraction]], seeds: Mapping[str, dict],
              seed_order: Sequence[str]) -> tuple[dict[str, Any], dict[str, float], int | None]:
     """10.2's counts, p-values and gate, checked against the entering triples; the scenario means keyed by scenario
     id; and the primary test's direction as a sign (None when it has none). A p-value of a test that did not run (no
-    non-tied triple; no scenario) is null, never the 1 the artifact's arithmetic gives it."""
+    non-tied triple; no scenario) is null, never the 1 the artifact's arithmetic gives it.
+
+    Every published field is recomputed from the entering triples and must equal the artifact's (Codex review of
+    2026-09-25): the sign test's non_tied, p and direction; the gate's scenarios, p (and p_exact), direction and
+    significance; and the wording's gate_same_direction. What the page gets is the recomputed value, never the
+    artifact's copy of it."""
     pst, gate, wording_row = s102.get("primary_sign_test"), s102.get("scenario_gate"), s102.get("wording")
     if not (isinstance(pst, dict) and isinstance(gate, dict) and isinstance(wording_row, dict)
             and _count(pst.get("non_tied")) and _count(gate.get("scenarios"))):
@@ -1151,6 +1277,14 @@ def _primary(s102: Mapping[str, Any], entering: Sequence[tuple[dict, Fraction]],
     if recorded != counts:
         raise ExportRefusal(f"the primary test counts (triples, negative, positive, tied) {recorded} are not the "
                             f"entering triples' {counts}")
+    negative, positive = counts[1], counts[2]
+    non_tied = negative + positive
+    p_sign = exact_sign_test_p(min(negative, positive), non_tied)
+    direction = _direction(positive - negative)
+    stated = (pst.get("non_tied"), pst.get("p"), pst.get("direction"), pst.get("alpha"))
+    if stated != (non_tied, p_sign, direction, ALPHA):
+        raise ExportRefusal(f"the primary sign test records (non_tied, p, direction, alpha) {stated}; the entering "
+                            f"triples give {(non_tied, p_sign, direction, ALPHA)}")
     by_scenario: dict[str, list[Fraction]] = defaultdict(list)
     for t, e in entering:
         by_scenario[t["seed_id"]].append(e)
@@ -1165,14 +1299,26 @@ def _primary(s102: Mapping[str, Any], entering: Sequence[tuple[dict, Fraction]],
     scenario_of = {s: seeds[s]["scenario"]["id"] for s in seed_order}
     if len(set(scenario_of.values())) != len(scenario_of):
         raise ExportRefusal("two seeds share a scenario id, and the page keys scenario means by scenario id")
-    gate_ran = gate["scenarios"] > 0
-    primary = {"triples": pst["triples"], "negative": pst["negative"], "positive": pst["positive"],
-               "tied": pst["tied"], "p_two_sided": pst.get("p") if pst["non_tied"] > 0 else None,
-               "gate_p": gate.get("p") if gate_ran else None,
-               "gate_passed": bool(wording_row.get("gate_same_direction")) if gate_ran else None}
+    k = len(means)
+    if k > GATE_MAX_SCENARIOS:
+        raise ExportRefusal(f"{k} scenarios: the gate's 2^k enumeration is bounded at {GATE_MAX_SCENARIOS}")
+    gate_p = sign_flip_p([means[s] for s in sorted(means)])
+    gate_direction = _direction(sum(means.values(), Fraction(0)))
+    gate_significant = float(gate_p) < ALPHA
+    same = gate_significant and gate_direction == direction
+    stated = (gate.get("scenarios"), gate.get("p"), gate.get("p_exact"), gate.get("direction"),
+              gate.get("significant"), gate.get("alpha"), wording_row.get("gate_same_direction"))
+    computed = (k, float(gate_p), str(gate_p), gate_direction, gate_significant, ALPHA, same)
+    if stated != computed:
+        raise ExportRefusal(f"the scenario gate records (scenarios, p, p_exact, direction, significant, alpha, "
+                            f"gate_same_direction) {stated}; the entering triples' scenario means give {computed}")
+    primary = {"triples": counts[0], "negative": negative, "positive": positive, "tied": counts[3],
+               "p_two_sided": p_sign if non_tied > 0 else None,
+               "gate_p": float(gate_p) if k > 0 else None,
+               "gate_passed": same if k > 0 else None}
     # the page is given the recomputed means, the values checked above, never the artifact's mirror of them
     return (primary, {scenario_of[s]: float(m) for s, m in means.items()},
-            {"negative": -1, "positive": 1}.get(pst.get("direction")))
+            {"negative": -1, "positive": 1}.get(direction))
 
 
 def _repeats(seed_order: Sequence[str], entering: Sequence[tuple[dict, Fraction]],
@@ -1452,7 +1598,7 @@ def sample_export(*, vocabulary_path: Path = VOCABULARY_FILE, seeds_path: Path =
                         registry_path=registry_path, vocabulary_path=vocabulary_path,
                         disclosure_log=Path(tmp) / "no_disclosure_log.jsonl", seal_registry=seal_registry,
                         example={"seed_id": cfg["seed_ids"][0], "turn": vocab.example["turn"]},
-                        checkout=synthetic_checkout(Path(tmp)))
+                        checkout=synthetic_checkout(Path(tmp)), plan_path=campaign.plan_path)
     return samplify(result, cfg["rng_seed"])
 
 
@@ -1475,6 +1621,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--wording", type=Path, default=WORDING_FILE)
     ap.add_argument("--design-note", type=Path, default=DESIGN_NOTE)
     ap.add_argument("--swaps", type=Path, default=SWAPS_FILE)
+    ap.add_argument("--plan", type=Path, default=PLAN_FILE, help="the section 10 plan the analysis read")
     ap.add_argument("--disclosure-log", type=Path, default=DISCLOSURE_LOG)
     return ap
 
@@ -1494,7 +1641,8 @@ def main(argv: list[str] | None = None) -> int:
                 raise ExportRefusal("give --analysis and the run directories it covers")
             result = export(args.runs, args.analysis, seeds_path=args.seeds, rubric_path=args.rubric,
                             registry_path=args.outcomes, vocabulary_path=args.vocabulary, wording_path=args.wording,
-                            design_note=args.design_note, swaps_path=args.swaps, disclosure_log=args.disclosure_log)
+                            design_note=args.design_note, swaps_path=args.swaps, disclosure_log=args.disclosure_log,
+                            plan_path=args.plan)
             summary, conversations, notes, sample = result.summary, result.conversations, result.notes, False
         if args.previous is not None:
             old = _load(args.previous, "--previous")
