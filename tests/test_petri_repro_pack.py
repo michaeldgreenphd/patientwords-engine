@@ -576,7 +576,7 @@ def test_claims_resolve_every_id_the_analysis_writes():
         doc.update(over)
         return rp.claims_block(doc, wording, Path("a.json"), Path("c.json"))
 
-    block, problems = claims(section_10_2={"wording": {"row_id": "row4/row2"}})
+    block, problems = claims(section_10_2={"wording": {"row_id": "row4/row2", "selectable_as_registered": True}})
     assert problems == [] and block["headline"]["what_may_be_said"] == (
         f"{rows['row4']['what_may_be_said']} Under row2's rule: {rows['row2']['what_may_be_said']}")
     block, _ = claims(section_10_2={"wording": {"row_id": "no_prespecified_row", "selectable_as_registered": False,
@@ -590,10 +590,80 @@ def test_claims_resolve_every_id_the_analysis_writes():
     block, _ = claims(as_first_written={"status": "refused", "reason": "no committed rows"})
     assert block["as_first_written"] == {"source": "as_first_written.section_10_2.wording", "label": None,
                                          "status": "refused", "reason": "no committed rows"}
-    _, problems = claims(section_10_2={"wording": {"row_id": "row9"}})
+    _, problems = claims(section_10_2={"wording": {"row_id": "row9", "selectable_as_registered": True}})
     assert problems == ["the wording table (10.2, 'What each outcome permits') has no row 'row9'"]
     _, problems = claims(section_10_3={"statement": {"statement_id": "invented", "vocabulary_also_lowered": False}})
     assert problems == ["the statement table (10.3, 'What may be said') has no statement 'invented'"]
+
+
+@pytest.mark.parametrize("row_id", ["row1/row2", "row4/row5", "row4/row4", "row5/row1", "row4/", "/row1"])
+def test_only_the_composite_rows_the_analysis_writes_are_worded(row_id):
+    """Regression (Codex, PR #39): any `rowA/rowB` whose parts were table keys was worded, so a malformed artifact
+    could seal headline text the registered analysis never defines. wording_row writes only row4/row1, row4/row2 and
+    row4/row3 (the reverse direction under rows 1-3's rules)."""
+    table = load_json(rp.DEFAULT_CLAIMS)["wording_table"]
+    text, problem = rp._wording(row_id, table)
+    assert text == {} and problem == f"the wording table ({table['section']}) has no row {row_id!r}"
+    for ok in ("row4/row1", "row4/row2", "row4/row3"):
+        assert rp._wording(ok, table)[1] is None
+
+
+@pytest.mark.parametrize("value", ["absent", None, "yes", 1])
+def test_refuses_a_headline_selectability_that_is_not_a_recorded_boolean(world, value):
+    """Regression (Codex, PR #39): an absent selectable_as_registered was read as None, and the README warns only on
+    false, so the headline was presented as selectable without a recorded result."""
+    wording = {"row_id": "row5", "not_selectable_reasons": [], "scenarios_with_mean_in_primary_direction": []}
+    if value != "absent":
+        wording["selectable_as_registered"] = value
+    _refresh_artifact(world, section_10_2={"wording": wording})
+    problems = _refusal(world)
+    assert problems == [f"the analysis artifact's section_10_2.wording.selectable_as_registered is "
+                        f"{None if value == 'absent' else value!r}, not true or false; the pack presents a headline "
+                        f"only on a recorded result"]
+
+
+@pytest.mark.parametrize("changes", ["absent", None, [], "clean"])
+def test_refuses_an_artifact_without_its_uncommitted_changes_record(world, changes):
+    """Regression (Codex, PR #39): an absent or null identity.uncommitted_changes became {}, a clean record, so the
+    README gave a checkout command that may not recreate the analysis."""
+    identity = {"commit": _hex("analysis"), "generated_utc": "2026-09-25T03:00:00Z",
+                "inputs": {"plan": {"path": "plan.json", "sha256": _plan_sha(world["inputs"].plan)}}}
+    if changes != "absent":
+        identity["uncommitted_changes"] = changes
+    _refresh_artifact(world, identity=identity)
+    problems = _refusal(world)
+    assert len(problems) == 1 and problems[0].endswith(
+        "records no identity.uncommitted_changes object, so the pack cannot state whether its commit reproduces the "
+        "analysis"), problems
+
+
+def test_refuses_duplicate_coverage_entries_for_one_run(world):
+    """Regression (Codex, PR #39): the coverage lookup kept the last entry per run_stem, so a contradictory earlier
+    record of the same run was never checked."""
+    doc = _artifact([world["r1"], world["r2"]], plan=world["inputs"].plan)
+    bad = dict(doc["coverage"]["runs"][0], judgments_sha256="0" * 64)
+    doc["coverage"]["runs"] = [bad, *doc["coverage"]["runs"]]
+    world["analysis"].write_text(json.dumps(doc), encoding="utf-8")
+    problems = _refusal(world)
+    assert problems == ["the analysis artifact's coverage.runs records 'run_200_1' 2 times; each run it read is "
+                        "recorded once, and a second record would go unchecked (Codex, PR #39)"]
+
+
+@pytest.mark.parametrize("bad", [["not", "an", "object"], {"no": "kind"}, "kind:unknown"])
+def test_refuses_judgment_rows_that_are_not_objects_of_a_known_kind(world, bad):
+    """Regression (Codex, PR #39): a bound judgments.jsonl line that was valid JSON but not an object raised
+    AttributeError instead of a named refusal, and an absent or unknown kind was read as an outcome prompt."""
+    rows = [json.loads(x) for x in (world["r1"] / "judgments.jsonl").read_text().splitlines()]
+    if bad == "kind:unknown":
+        rows[0]["kind"] = "verdict"
+    else:
+        rows.append(bad)
+    _jsonl(world["r1"] / "judgments.jsonl", rows)
+    _reseal(world["r1"], judgments_sha256=sha256_file(world["r1"] / "judgments.jsonl"))
+    _refresh_artifact(world)
+    problems = _refusal(world)
+    assert any(p.startswith("run_200_1: judgments.jsonl line(s) [") and "are not objects with a kind in "
+               "['outcome', 'tier']" in p for p in problems), problems
 
 
 @pytest.mark.parametrize("statement,shown", [({"statement_id": "not_separated"}, "None"),
@@ -624,8 +694,10 @@ def test_refuses_a_plan_whose_bytes_the_analysis_did_not_read(world):
         r"a plan digesting to [0-9a-f]{12}; the pack carries the plan the analysis read", problems[0]), problems
     _refresh_artifact(world)                                        # the analysis re-run on the new plan: accepted
     assert _build(world).is_dir()
-    for identity in ({"commit": _hex("analysis"), "generated_utc": "2026-09-25T03:00:00Z"},
+    for identity in ({"commit": _hex("analysis"), "generated_utc": "2026-09-25T03:00:00Z",
+                      "uncommitted_changes": {"script": [], "plan": []}},
                      {"commit": _hex("analysis"), "generated_utc": "2026-09-25T03:00:00Z",
+                      "uncommitted_changes": {"script": [], "plan": []},
                       "inputs": {"plan": {"path": "plan.json", "sha256": None}}}):
         _refresh_artifact(world, identity=identity)
         problems = _refusal(world, out="d2")
@@ -894,16 +966,42 @@ def test_the_cited_pack_must_be_built_over_the_runs_the_page_publishes(world, ca
         code, out = _check_cited(world, capsys, v1, other)
         assert code == rp.PUBLICATION_UNMET_EXIT, other
         assert (f"PUBLICATION: the published page cites {v1}, which is built over runs {published!r}, but the page "
-                f"publishes runs {sorted(other)}; the page cites the pack of the runs it publishes") in out
+                f"publishes runs {sorted(other)}; the page cites the pack of the runs and the analysis it "
+                f"publishes") in out
         code, out = _check_cited(world, capsys, None, other)       # no citation: no pack over those runs stands in
         assert code == 4 and f"no petri-lane pack over the published runs {sorted(other)} is both sent and FRESH" in out
     assert _check_cited(world, capsys, None, published)[0] == 0
 
 
-def _check_cited(w, capsys, cited, runs) -> tuple[int, str]:
+def _check_cited(w, capsys, cited, runs, analysis=None) -> tuple[int, str]:
     capsys.readouterr()
-    code = rp.check_packs(w["log"], require_sent=True, cited_version=cited, cited_runs=runs)
+    code = rp.check_packs(w["log"], require_sent=True, cited_version=cited, cited_runs=runs,
+                          cited_analysis_sha256=analysis)
     return code, capsys.readouterr().out
+
+
+def test_the_cited_pack_must_be_built_from_the_analysis_the_page_publishes(world, capsys):
+    """Regression (Codex, PR #39, round 3): two analyses of the same runs are two keys, both of which can be sent and
+    FRESH, so the run binding alone let a page publishing one analysis cite the other's pack. The summary's
+    provenance.analysis_sha256 must be the cited pack's claim_ids.analysis_sha256."""
+    runs = ["run_200_1", "run_300_1"]
+    v1 = _build(world, out="d1").name.rsplit("_", 1)[1]
+    rp.record_sent(world["log"], v1, "vendor safety team")
+    other = world["repo"] / "w3_other_contrast.json"
+    doc = json.loads(world["analysis"].read_text())
+    doc["identity"]["generated_utc"] = "2026-09-26T03:00:00Z"            # another artifact over the same runs
+    other.write_text(json.dumps(doc), encoding="utf-8")
+    v2 = _build(world, out="d2", inputs=rp.PackInputs(**{**world["inputs"].__dict__, "analysis": other})
+                ).name.rsplit("_", 1)[1]
+    rp.record_sent(world["log"], v2, "vendor safety team")
+    published = sha256_file(world["analysis"])
+    assert _check_cited(world, capsys, v1, runs, published)[0] == 0
+    code, out = _check_cited(world, capsys, v2, runs, published)
+    assert code == rp.PUBLICATION_UNMET_EXIT and f"the published page cites {v2}, which is built over runs " in out
+    assert f"from analysis {sha256_file(other)[:12]}, but the page publishes runs {runs} from analysis " \
+           f"{published[:12]}; the page cites the pack of the runs and the analysis it publishes" in out
+    assert _check_cited(world, capsys, None, runs, published)[0] == 0        # v1 stands, uncited
+    assert _check_cited(world, capsys, None, runs, "0" * 64)[0] == 4         # no pack of that analysis
 
 
 def test_cli_check_takes_the_publication_requirement(world, monkeypatch, capsys):
@@ -922,7 +1020,8 @@ def test_cli_check_takes_the_publication_requirement(world, monkeypatch, capsys)
     assert cli.main(["repro-pack", "--check", "--cited-run", "run_900_1", *log]) == 4
     capsys.readouterr()
     assert cli.main(["repro-pack", "--record-sent", version, "--sent-to", "x", "--require-sent", *log]) == 13
-    assert "--require-sent, --cited-version and --cited-run apply to --check only" in capsys.readouterr().err
+    assert "--require-sent, --cited-version, --cited-run and --cited-analysis-sha256 apply to --check only" in \
+        capsys.readouterr().err
 
 
 def test_record_sent_refusals(world):

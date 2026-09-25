@@ -77,8 +77,8 @@ not the evidence a sent pack carries).
 `--check` exits 2 when the newest pack of a key was sent and is STALE, or an earlier pack of that key was sent and a
 newer build is unsent (the vendor holds an outdated pack); 4, with `--require-sent` or `--cited-version`, when no sent
 pack may be cited (publication_problems: the cited version is not the newest pack of its key, is unsent or is STALE,
-or was built over other runs than the page publishes (`--cited-run`); without a cited version, no key's newest pack is
-sent and FRESH), and nothing escalates; 3 when a petri-lane log entry
+or was built over other runs or from another analysis artifact than the page publishes (`--cited-run`,
+`--cited-analysis-sha256`); without a cited version, no key's newest pack is sent and FRESH), and nothing escalates; 3 when a petri-lane log entry
 cannot be read and nothing else fails; otherwise 0, with STALE-but-unsent reported, and "never-built" when the log holds
 no petri-lane pack. The frontend contract gate (scripts/validate_frontend_contract.py `repro_pack_gate`) fails on any
 non-zero exit of this check, as it does for the advice lane's, and passes `--require-sent` (with the version the page
@@ -147,6 +147,11 @@ RUN_FILES = ("manifest.json", *ARTIFACT_FILENAMES.values(), "analysis_rows.jsonl
 MAX_MOVED_SHOWN = 8
 # the digest a judgment records for its prompt file (judge_runner.plan_record; prompt_file_digest below)
 PROMPT_DIGEST = re.compile(r"[0-9a-f]{12}")
+# the judgment kinds the judge writes (judge_runner): a tier row is judged under the rubric, an outcome row under an
+# outcome prompt file
+JUDGMENT_KINDS = frozenset({"tier", "outcome"})
+# the composite 10.2 row ids the analysis writes (wording_row): row 4, the reverse direction, under row 1, 2 or 3's rule
+COMPOSITE_BASES = ("row1", "row2", "row3")
 # what a log entry's manifest keeps: everything --check reads, the pack's identity and the claim ids. The bundle's
 # MANIFEST.json holds the whole manifest, whose canonical sha256 the version is cut from.
 LOG_MANIFEST_KEYS = ("pack_format", "lane", "vendor", "scope", "publication_state", "publication", "inputs",
@@ -572,6 +577,12 @@ def read_analysis(path: Path) -> tuple[dict[str, Any] | None, list[str]]:
                         f"{ANALYSIS_SEED} section 10.2 fixes")
     if not isinstance((doc.get("coverage") or {}).get("runs"), list):
         problems.append(f"the analysis artifact {where}: coverage.runs is not a list of runs")
+    identity = doc.get("identity")
+    if not isinstance((identity or {}).get("uncommitted_changes") if isinstance(identity, dict) else None, dict):
+        # the README's reproduction command checks out the recorded commit; unknown working-tree state is refused,
+        # never read as clean (Codex, PR #39)
+        problems.append(f"the analysis artifact {where} records no identity.uncommitted_changes object, so the "
+                        f"pack cannot state whether its commit reproduces the analysis")
     problems += truncation_problems(doc, where)
     return (None if problems else doc), problems
 
@@ -632,9 +643,17 @@ def truncation_problems(doc: Mapping[str, Any], where: str) -> list[str]:
 def analysis_run_problems(doc: Mapping[str, Any], run_dirs: Sequence[Path]) -> list[str]:
     """The listed runs must be the runs the analysis read, on the same bytes: the manifest and judgments it rebuilt
     from, and the committed analysis rows its as-first-written block read (their sha256, as the artifact records)."""
-    recorded = {r.get("run_stem"): r for r in doc["coverage"]["runs"] if isinstance(r, dict)}
+    entries = doc["coverage"]["runs"]
+    stems = Counter(r.get("run_stem") if isinstance(r, dict) else None for r in entries)
+    problems = [f"the analysis artifact's coverage.runs records {stem!r} {n} times; each run it read is recorded once, "
+                f"and a second record would go unchecked (Codex, PR #39)"
+                for stem, n in sorted(stems.items(), key=lambda kv: str(kv[0])) if n > 1]
+    if None in stems:
+        problems.append("the analysis artifact's coverage.runs holds an entry that is not an object with a run_stem")
+    if problems:
+        return problems
+    recorded = {r["run_stem"]: r for r in entries}
     listed = {Path(d).name: Path(d) for d in run_dirs}
-    problems = []
     for stem in sorted(set(recorded) - set(listed), key=str):
         problems.append(f"the analysis read {stem}, which the pack does not list; the claims rest on every run it read")
     for stem in sorted(set(listed) - set(recorded)):
@@ -653,15 +672,16 @@ def analysis_run_problems(doc: Mapping[str, Any], run_dirs: Sequence[Path]) -> l
 
 
 def _wording(row_id: str, table: Mapping[str, Any]) -> tuple[dict[str, Any], str | None]:
-    """The 10.2 table's permitted wording for a row id the analysis wrote, or the problem. `rowA/rowB` (the reverse
-    direction, rows 1-3's rule B applied) joins row A's cell and row B's."""
+    """The 10.2 table's permitted wording for a row id the analysis wrote, or the problem. `row4/rowN` (the reverse
+    direction under row N's rule, N in 1-3: wording_row writes no other composite) joins row 4's cell and row N's; any
+    other composite is refused, never worded (Codex, PR #39)."""
     rows, without = table["rows"], table["without_a_row"]
     if row_id in rows:
         return {"what_may_be_said": rows[row_id]["what_may_be_said"], "note": None}, None
     if row_id in without:
         return {"what_may_be_said": None, "note": without[row_id]["note"]}, None
     head, sep, base = row_id.partition("/")
-    if sep and head in rows and base in rows:
+    if sep and head == "row4" and base in COMPOSITE_BASES and head in rows and base in rows:
         return {"what_may_be_said": f"{rows[head]['what_may_be_said']} Under {base}'s rule: "
                                     f"{rows[base]['what_may_be_said']}", "note": None}, None
     return {}, f"the wording table ({table['section']}) has no row {row_id!r}"
@@ -677,6 +697,11 @@ def claims_block(doc: Mapping[str, Any], wording: Mapping[str, Any], analysis_pa
     headline, p = _wording(str(head["row_id"]), table)
     if p:
         problems.append(p)
+    if not isinstance(head.get("selectable_as_registered"), bool):
+        # the README warns only on false, so an absent result would read as a selectable headline (Codex, PR #39)
+        problems.append(f"the analysis artifact's section_10_2.wording.selectable_as_registered is "
+                        f"{head.get('selectable_as_registered')!r}, not true or false; the pack presents a headline "
+                        f"only on a recorded result")
     statements = wording["decomposition_statements"]
     sec3 = doc["section_10_3"]
     if sec3.get("status") == "refused":
@@ -710,8 +735,8 @@ def claims_block(doc: Mapping[str, Any], wording: Mapping[str, Any], analysis_pa
     else:
         first["reason"] = afw.get("reason")
     identity = doc.get("identity") or {}
-    changes = identity.get("uncommitted_changes") or {}
-    dirty = {k: v for k, v in changes.items() if v} if isinstance(changes, dict) else {"all": changes}
+    changes = identity.get("uncommitted_changes")      # read_analysis has refused an artifact without this object
+    dirty = {k: v for k, v in changes.items() if v}
     block = {
         "analysis": {"path": _rel(analysis_path), "sha256": _sha(analysis_path), "commit": identity.get("commit"),
                      "generated_utc": identity.get("generated_utc"), "bootstrap_seed": doc.get("bootstrap_seed"),
@@ -1025,10 +1050,22 @@ def _collect(inputs: PackInputs) -> tuple[dict[str, Any], list[str], list[str]]:
         except (OSError, ValueError) as exc:
             problems.append(f"{stem}: {exc}")
             continue
+        # every row an object, and every judgment of a kind the judge writes: the kind decides which digest rule names
+        # its prompt file, so an absent or unknown kind is refused, never read as an outcome prompt (Codex, PR #39)
+        malformed = [n for n, j in enumerate(judgments, 1)
+                     if not isinstance(j, dict) or j.get("kind") not in JUDGMENT_KINDS]
+        if malformed or not all(isinstance(t, dict) for t in transcripts):
+            if malformed:
+                problems.append(f"{stem}: judgments.jsonl line(s) {malformed[:5]}"
+                                + (f" and {len(malformed) - 5} more" if len(malformed) > 5 else "")
+                                + f" are not objects with a kind in {sorted(JUDGMENT_KINDS)}")
+            else:
+                problems.append(f"{stem}: transcripts.jsonl holds a line that is not an object")
+            continue
         undigested: Counter = Counter()
         for j in judgments:
             ref, digest = j.get("prompt_ref"), j.get("prompt_file_digest")
-            kind = "rubric" if j.get("kind") == "tier" else "prompt"
+            kind = "rubric" if j["kind"] == "tier" else "prompt"
             if not isinstance(ref, str) or not ref:
                 problems.append(f"{stem}: a judgment names no prompt_ref, so its prompt file cannot be packed")
                 break
@@ -1436,17 +1473,17 @@ def _append_build_entry(log: Path, manifest: Mapping[str, Any], note: str) -> No
 
 
 def check_packs(log: Path = DEFAULT_LOG, *, require_sent: bool = False, cited_version: str | None = None,
-                cited_runs: Sequence[str] = ()) -> int:
+                cited_runs: Sequence[str] = (), cited_analysis_sha256: str | None = None) -> int:
     """FRESH/STALE for the newest Petri pack of every (vendor, analysis); exit codes as the module docstring states.
 
-    `require_sent` (or `cited_version` or `cited_runs`, which imply it) is the publication requirement: the frontend
-    contract gate passes it once the Multi-turn page's data files are public on the site, and the check then also exits
-    4 unless a sent pack is FRESH and, when the page names its runs, built over exactly those (publication_problems).
-    Without it the check is unchanged."""
+    `require_sent` (or `cited_version`, `cited_runs` or `cited_analysis_sha256`, which imply it) is the publication
+    requirement: the frontend contract gate passes it once the Multi-turn page's data files are public on the site, and
+    the check then also exits 4 unless a sent pack is FRESH and, when the page names them, built over exactly its runs
+    and from its analysis artifact (publication_problems). Without it the check is unchanged."""
     ae = _advice()
     entries = ae._log_entries(log)
     mine, other, unreadable = partition_log(entries)
-    require = require_sent or bool(cited_version) or bool(cited_runs)
+    require = require_sent or bool(cited_version) or bool(cited_runs) or bool(cited_analysis_sha256)
     for lane, n in sorted(other.items()):
         print(f"skipped: {n} log entr{'y' if n == 1 else 'ies'} of lane {lane!r} (this check covers lane {LANE!r} only)")
     for problem in unreadable:
@@ -1454,7 +1491,7 @@ def check_packs(log: Path = DEFAULT_LOG, *, require_sent: bool = False, cited_ve
     if not mine:
         print(f"never-built: no readable {LANE}-lane pack in {_rel(log)}")
         if require:
-            unmet = publication_problems(mine, {}, {}, {}, cited_version, cited_runs)
+            unmet = publication_problems(mine, {}, {}, {}, cited_version, cited_runs, cited_analysis_sha256)
             for u in unmet:
                 print(f"PUBLICATION: {u}")
             return PUBLICATION_UNMET_EXIT
@@ -1487,7 +1524,8 @@ def check_packs(log: Path = DEFAULT_LOG, *, require_sent: bool = False, cited_ve
             print(f"note: {vendor} {scope}: SENT pack(s) {', '.join(sorted(sent))}; newest built is "
                   f"{e['pack_version']} (unsent) - send the superseding pack")
             escalate = True
-    unmet = publication_problems(mine, newest, sent_versions, statuses, cited_version, cited_runs) if require else []
+    unmet = (publication_problems(mine, newest, sent_versions, statuses, cited_version, cited_runs,
+                                  cited_analysis_sha256) if require else [])
     for u in unmet:
         print(f"PUBLICATION: {u}")
     if require and not unmet:
@@ -1501,7 +1539,8 @@ def check_packs(log: Path = DEFAULT_LOG, *, require_sent: bool = False, cited_ve
 
 def publication_problems(mine: Sequence[Mapping[str, Any]], newest: Mapping[tuple[str, str], Mapping[str, Any]],
                          sent_versions: Mapping[tuple[str, str], set[str]], statuses: Mapping[tuple[str, str], str],
-                         cited_version: str | None, cited_runs: Sequence[str] = ()) -> list[str]:
+                         cited_version: str | None, cited_runs: Sequence[str] = (),
+                         cited_analysis_sha256: str | None = None) -> list[str]:
     """Why a public per-model claim from this lane is not yet allowed, or nothing. The pre-registration's rules (1) and
     (2), bound on the Multi-turn page by decision 16: the pack reaches the vendor before the page is public, and the
     page cites a version that is FRESH. With `cited_version` (the version the published summary cites) that pack must
@@ -1511,8 +1550,10 @@ def publication_problems(mine: Sequence[Mapping[str, Any]], newest: Mapping[tupl
 
     `cited_runs` (the summary's `provenance.runs`, Codex on PR #39) binds the citation to the published campaign: the
     cited pack must be built over exactly those runs (`depends_on.run_stems`). The run set fixes the campaign, and the
-    vendor with it, since a build refuses runs that name another vendor's model. Without a cited version the runs must
-    still match, so no pack over other runs can stand in."""
+    vendor with it, since a build refuses runs that name another vendor's model. `cited_analysis_sha256` (the summary's
+    `provenance.analysis_sha256`) binds it to the analysis: two analyses of the same runs are two packs (pack_key), so
+    the cited pack's build must have read that artifact (its log entry's `claim_ids.analysis_sha256`; Codex, PR #39).
+    Without a cited version both must still match, so no pack of other runs or another analysis can stand in."""
     runs = sorted(set(cited_runs))
 
     def built_over(entry: Mapping[str, Any]) -> Any:
@@ -1520,9 +1561,15 @@ def publication_problems(mine: Sequence[Mapping[str, Any]], newest: Mapping[tupl
         dep = man.get("depends_on") if isinstance(man, dict) else None
         return dep.get("run_stems") if isinstance(dep, dict) else None
 
+    def built_from(entry: Mapping[str, Any]) -> Any:
+        man = entry.get("manifest")
+        ids = man.get("claim_ids") if isinstance(man, dict) else None
+        return ids.get("analysis_sha256") if isinstance(ids, dict) else None
+
     def matches(entry: Mapping[str, Any]) -> bool:
         built = built_over(entry)
-        return not runs or (isinstance(built, list) and sorted(set(map(str, built))) == runs)
+        return ((not runs or (isinstance(built, list) and sorted(set(map(str, built))) == runs))
+                and (not cited_analysis_sha256 or built_from(entry) == cited_analysis_sha256))
 
     if cited_version:
         cited = [e for e in mine if e["pack_version"] == cited_version]
@@ -1534,9 +1581,11 @@ def publication_problems(mine: Sequence[Mapping[str, Any]], newest: Mapping[tupl
                     f"{newest[key]['pack_version']}; the page cites the newest pack"]
         problems = []
         if not matches(cited[0]):
+            of = f" from analysis {_short(built_from(cited[0]))}" if cited_analysis_sha256 else ""
+            page = f" from analysis {_short(cited_analysis_sha256)}" if cited_analysis_sha256 else ""
             problems.append(f"the published page cites {cited_version}, which is built over runs "
-                            f"{built_over(cited[0])!r}, but the page publishes runs {runs}; the page cites the pack "
-                            f"of the runs it publishes")
+                            f"{built_over(cited[0])!r}{of}, but the page publishes runs {runs}{page}; the page cites "
+                            f"the pack of the runs and the analysis it publishes")
         if cited_version not in sent_versions.get(key, set()):
             problems.append(f"the published page cites {cited_version}, whose send is not recorded (--record-sent): "
                             f"the pack reaches the vendor before the page is public")
@@ -1546,7 +1595,8 @@ def publication_problems(mine: Sequence[Mapping[str, Any]], newest: Mapping[tupl
     if any(e["pack_version"] in sent_versions.get(k, set()) and statuses.get(k) == "FRESH" and matches(e)
            for k, e in newest.items()):
         return []
-    over = f" over the published runs {runs}" if runs else ""
+    over = (f" over the published runs {runs}" if runs else "") + (
+        f" from analysis {_short(cited_analysis_sha256)}" if cited_analysis_sha256 else "")
     return [f"no {LANE}-lane pack{over} is both sent and FRESH (the newest of its (vendor, analysis)), and the page's "
             f"data is public: the pack reaches the vendor before the page is public"]
 
@@ -1609,6 +1659,9 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("--cited-run", metavar="RUN", action="append", default=[],
                    help="--check: a run the public page publishes (repeat for each); the cited pack must be built over "
                         "exactly these runs (implies --require-sent)")
+    p.add_argument("--cited-analysis-sha256", metavar="SHA256", default=None,
+                   help="--check: the sha256 of the analysis artifact the public page publishes from; the cited pack "
+                        "must have been built from it (implies --require-sent)")
     p.add_argument("--record-sent", metavar="PACK_VERSION", default=None,
                    help="append a send event for a built Petri pack, stamped now")
     p.add_argument("--sent-to", default="", help="role/channel reference only - never private contact details")
@@ -1617,10 +1670,11 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
 def cmd_repro_pack(args: argparse.Namespace) -> int:
     if args.check:
         return check_packs(Path(args.log), require_sent=args.require_sent, cited_version=args.cited_version,
-                           cited_runs=args.cited_run)
+                           cited_runs=args.cited_run, cited_analysis_sha256=args.cited_analysis_sha256)
     try:
-        if args.require_sent or args.cited_version or args.cited_run:
-            raise PackRefusal(["--require-sent, --cited-version and --cited-run apply to --check only"])
+        if args.require_sent or args.cited_version or args.cited_run or args.cited_analysis_sha256:
+            raise PackRefusal(["--require-sent, --cited-version, --cited-run and --cited-analysis-sha256 apply to "
+                               "--check only"])
         if args.record_sent:
             record_sent(Path(args.log), args.record_sent, args.sent_to, args.note)
             return 0
