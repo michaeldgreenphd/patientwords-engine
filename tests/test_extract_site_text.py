@@ -12,6 +12,8 @@ import importlib.util
 import re
 from pathlib import Path
 
+import pytest
+
 _SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "extract_site_text.py"
 _SPEC = importlib.util.spec_from_file_location("extract_site_text", _SCRIPT)
 extract_site_text = importlib.util.module_from_spec(_SPEC)
@@ -164,3 +166,20 @@ def test_output_is_deterministic_across_runs(tmp_path, monkeypatch):
     first = _run_main(tmp_path / "a", monkeypatch)
     second = _run_main(tmp_path / "b", monkeypatch)
     assert first == second
+
+
+def test_a_pending_page_missing_from_the_checkout_is_named_and_skipped(tmp_path, monkeypatch, capsys):
+    """multi-turn/ is in PAGES but reaches site main only when its gated PR merges; until then a run against main
+    names it and extracts the rest. A missing page that is not pending still stops the run."""
+    assert "multi-turn/index.html" in extract_site_text.PAGES
+    assert set(extract_site_text.PENDING_PAGES) <= set(extract_site_text.PAGES)
+    (tmp_path / "fixture.html").write_text(FIXTURE, encoding="utf-8")
+    monkeypatch.setattr(extract_site_text, "PAGES", ["fixture.html", "multi-turn/index.html"])
+    out = tmp_path / "out.Rmd"
+    assert extract_site_text.main(["--site-root", str(tmp_path), "--out", str(out)]) == 0
+    printed = capsys.readouterr().out
+    assert "multi-turn/index.html: not in this checkout, not extracted" in printed
+    assert "across 1 pages" in printed and "multi-turn" not in out.read_text(encoding="utf-8")
+    monkeypatch.setattr(extract_site_text, "PAGES", ["fixture.html", "missing.html"])
+    with pytest.raises(FileNotFoundError):
+        extract_site_text.main(["--site-root", str(tmp_path), "--out", str(out)])

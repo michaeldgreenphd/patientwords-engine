@@ -417,6 +417,328 @@ def test_main_passes_the_same_site_when_the_pack_check_is_clean(site, tmp_path, 
     assert "contract check: 0 error(s)" in capsys.readouterr().out
 
 
+# ---- owner-run files (2026-09-24): the Multi-turn pair is noted while absent, shape-checked once published
+
+def _multiturn_pair(sample=False):
+    """A minimal valid pair in the Multi-turn page's shapes; abstract vocabulary only."""
+    summary = {"seed": 1, "status": {"final": True, "clinician_review": "pending",
+                                     "vendor_pack": ({"version": None, "sent": None} if sample else
+                                                     {"version": "petri-v000000000001",
+                                                      "sent": "2026-09-25T00:00:00Z"})},
+               "headline": {"row_id": "row5", "text": "alpha"}, "style_sentence": {"row_id": "x", "text": None},
+               "primary": {"triples": 1, "negative": 1, "positive": 0, "tied": 0, "p_two_sided": 1.0,
+                           "gate_p": 1.0, "gate_passed": False},
+               "triples": [{"seed_id": "s1", "scenario_id": "sc1", "epoch": 1, "D": -0.5,
+                            "partition": "prospective", "eligible": True}],
+               "scenario_means": {"sc1": -0.5}, "repeats": [{"seed_id": "s1", "epochs": 1, "same_direction": 1}],
+               "provenance": {"runs": ["run_1"], "analysis_commit": "c" * 40, "analysis_sha256": "a" * 64,
+                              "exporter_commit": "e" * 40, "verify": "verify"}}
+    conversations = {"seed": None,
+                     "measures": [{"id": "m1", "row": ["tier", "k"], "label": "M", "kind": "ordinal",
+                                   "values": ["lo", "hi"], "definition": None}],
+                     "mechanisms": {"mech": {"title": "T", "question": "Q"}},
+                     "seeds": [{"seed_id": "s1", "mechanism": "mech", "set": "original", "topic": "T",
+                                "scenario_id": "sc1", "hypotheses": ["H1"], "roles": [None], "arms": ["a"],
+                                "measures": ["m1"], "epochs": [1], "proposition": None, "system_prompt": "none",
+                                "swaps": None}],
+                     "conversations": [{"seed_id": "s1", "arm": "a", "epoch": 1, "identity": None,
+                                        "rule": {"tool_invoked": False, "first_tool": None, "first_call_turn": None,
+                                                 "advice_before_lookup": None, "query_text": None, "marker_echo": None,
+                                                 "parse_error_call": 0, "tool_calls_total": 0,
+                                                 "unknown_tool_calls": 0, "tool_results_received": 0,
+                                                 "reasons": {}},
+                                        "register": "colloquial", "conversation_id": "c" * 64, "run": "run_1",
+                                        "run_epoch": 1,
+                                        "exchanges": [{"user": "u", "reply": None, "reply_turn": 2,
+                                                       "reply_is_graded": True,
+                                                       "interim": [{"role": "tool", "text": "t"}],
+                                                       "vals": {"m1": {"v": "lo"}}}]}],
+                     "example": {"seed_id": "s1", "turn": 1, "colloquial": "a", "lay_careful": "b", "clinical": "c"}}
+    if sample:
+        summary = {"sample": True, "_note": "SYNTHETIC", **summary}
+        del summary["provenance"]["analysis_sha256"]          # the site's own samples predate the key
+        conversations = {"sample": True, "_note": "SYNTHETIC", **conversations, "seed": 1}   # the generator seed
+    return summary, conversations
+
+
+def _write_pair(site, pair, suffix=".json"):
+    for stem, doc in zip(vfc.MT_PAIR, pair):
+        (site / "data" / (stem + suffix)).write_text(json.dumps(doc), encoding="utf-8")
+
+
+def test_owner_run_multiturn_pair_absent_is_a_note_never_a_warning(site):
+    rep = run(site, strict=True)      # strict turns every warning into an error: none may name the pair
+    assert not any("petri_multiturn" in e for e in rep.errors + rep.warnings)
+    assert any("petri_multiturn_summary.json" in n and "owner-run" in n for n in rep.notes)
+
+
+def test_owner_run_multiturn_pair_published_valid(site):
+    _write_pair(site, _multiturn_pair())
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    rep = run(site, strict=True)
+    assert not any("petri_multiturn" in e for e in rep.errors + rep.warnings) and rep.notes == []
+
+
+def test_owner_run_multiturn_file_without_its_pair_is_an_error(site):
+    (site / "data" / "petri_multiturn_summary.json").write_text(json.dumps(_multiturn_pair()[0]), encoding="utf-8")
+    rep = run(site)
+    assert any("published without its pair" in e for e in rep.errors)
+
+
+def test_owner_run_multiturn_sample_flags_are_checked(site):
+    summary, conversations = _multiturn_pair()
+    _write_pair(site, ({"sample": True, **summary}, conversations))
+    _write_pair(site, _multiturn_pair(), ".sample.json")
+    rep = run(site)
+    assert any("petri_multiturn_summary.json :: $.sample" in e for e in rep.errors)
+    assert sum("must carry sample: true" in e for e in rep.errors) == 2
+
+
+def test_owner_run_multiturn_shapes_are_checked(site):
+    summary, conversations = _multiturn_pair()
+    summary["triples"][0]["partition"] = "elsewhere"
+    del summary["headline"]["text"]
+    conversations["conversations"][0]["exchanges"][0]["vals"]["m9"] = {"v": "lo"}
+    _write_pair(site, (summary, conversations))
+    rep = run(site)
+    assert any("$.triples[0].partition" in e for e in rep.errors)
+    assert any("$.headline.text" in e for e in rep.errors)
+    assert any("vals.m9" in e for e in rep.errors)
+
+
+@pytest.mark.parametrize("field,value", [(f, "drop") for f, _k, _n in vfc.MT_RULE_FIELDS]
+                         + [("query_text", "drop"), ("tool_invoked", None), ("tool_calls_total", True),
+                            ("reasons", []), ("first_tool", 3)])
+def test_owner_run_multiturn_rule_outcomes_are_complete_and_typed(site, field, value):
+    """Regression (Codex review of 2026-09-25): only rule.query_text was checked, so a file missing tool_invoked,
+    marker_echo, tool_calls_total or reasons passed --strict while the page renders them."""
+    summary, conversations = _multiturn_pair()
+    rule = conversations["conversations"][0]["rule"]
+    if value == "drop":
+        del rule[field]
+    else:
+        rule[field] = value
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    rep = run(site, strict=True)
+    assert any(f"$.conversations[0].rule.{field}" in e for e in rep.errors), rep.errors
+
+
+@pytest.mark.parametrize("change", ["no reply_turn", "reply_turn text", "interim no role", "interim no text",
+                                    "interim role user"])
+def test_owner_run_multiturn_exchange_shape_is_complete(site, change):
+    """Regression (Codex review of 2026-09-25): an exchange without reply_turn, or an interim item without role or
+    text, passed --strict although the page labels turns and intermediate messages with them."""
+    summary, conversations = _multiturn_pair()
+    ex = conversations["conversations"][0]["exchanges"][0]
+    if change == "no reply_turn":
+        del ex["reply_turn"]
+        where = "exchanges[0].reply_turn"
+    elif change == "reply_turn text":
+        ex["reply_turn"] = "2"
+        where = "exchanges[0].reply_turn"
+    elif change == "interim no role":
+        del ex["interim"][0]["role"]
+        where = "exchanges[0].interim[0].role"
+    elif change == "interim no text":
+        del ex["interim"][0]["text"]
+        where = "exchanges[0].interim[0].text"
+    else:
+        ex["interim"][0]["role"] = "user"
+        where = "exchanges[0].interim[0].role"
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    rep = run(site, strict=True)
+    assert any(f"$.conversations[0].{where}" in e for e in rep.errors), rep.errors
+
+
+@pytest.mark.parametrize("key", ["register", "conversation_id", "run", "run_epoch"])
+def test_owner_run_multiturn_conversation_keys_the_page_groups_by_are_required(site, key):
+    """Regression (Codex review of 2026-09-25): a conversation without register, conversation_id, run or run_epoch
+    passed --strict, although the page places a conversation in its wording column by register (an identity seed's
+    arm ids carry the speaker) and selects by the others."""
+    summary, conversations = _multiturn_pair()
+    del conversations["conversations"][0][key]
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    rep = run(site, strict=True)
+    assert any(f"petri_multiturn_conversations.json :: $.conversations[0].{key}" in e and "missing" in e
+               for e in rep.errors), rep.errors
+
+
+def test_owner_run_multiturn_conversation_register_is_one_of_the_pages_columns(site):
+    summary, conversations = _multiturn_pair()
+    conversations["conversations"][0]["register"] = "patient_colloquial"
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    rep = run(site, strict=True)
+    assert any("$.conversations[0].register" in e and "must be one of" in e for e in rep.errors), rep.errors
+
+
+@pytest.mark.parametrize("key,value,says", [(k, "drop", "missing required key") for k, _t, _n in vfc.MT_SEED_FIELDS]
+                         + [("set", None, "null where a value is required"), ("topic", 3, "wrong type"),
+                            ("scenario_id", ["sc1"], "wrong type"), ("epochs", 1, "wrong type"),
+                            ("epochs", [1, "2"], "a list of campaign epochs"), ("epochs", [True], "a list of campaign"),
+                            ("proposition", 3, "wrong type"), ("system_prompt", None, "null where a value is"),
+                            ("swaps", "t01", "wrong type"), ("swaps", {"": "x"}, "one per exchange"),
+                            ("swaps", {"": [[["a"]]]}, "one per exchange"), ("swaps", {"": [[["a", 2]]]}, "one per")])
+@pytest.mark.parametrize("sample", [False, True])
+def test_owner_run_multiturn_seed_records_are_complete_and_typed(site, key, value, says, sample):
+    """Regression (Codex review of 2026-09-25): a seed record was checked for its id, mechanism and lists only, so a
+    file without set, topic, scenario_id, epochs, proposition, system_prompt or swaps (the site contract fixture's
+    seeds[] keys, which export_petri_multiturn._seed_record writes) passed --strict. Each is required, typed as the
+    exporter writes it; proposition and swaps may be null."""
+    summary, conversations = _multiturn_pair(sample)
+    seed = conversations["seeds"][0]
+    if value == "drop":
+        del seed[key]
+    else:
+        seed[key] = value
+    suffix = ".sample.json" if sample else ".json"
+    _write_pair(site, (summary, conversations), suffix)
+    if not sample:
+        _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    found = [e for e in run(site, strict=True).errors if "$.seeds[0]" in e]
+    assert len(found) == 1, found
+    assert found[0].startswith(f"petri_multiturn_conversations{suffix} :: $.seeds[0].{key} :: ") and says in found[0]
+
+
+@pytest.mark.parametrize("key,value", [("proposition", "P"), ("swaps", {"": [[["a", "b"]], []]}), ("epochs", []),
+                                       ("swaps", {"patient_": [[], [["a", "b"], ["c", "d"]]]})])
+def test_owner_run_multiturn_seed_record_values_the_exporter_writes_pass(site, key, value):
+    """The control for the test above: a proposition, declared swaps (per speaker prefix, one list per exchange) and
+    an empty epoch list are what the exporter can write, and pass."""
+    summary, conversations = _multiturn_pair()
+    conversations["seeds"][0][key] = value
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    assert not [e for e in run(site, strict=True).errors if "petri_multiturn" in e]
+
+
+@pytest.mark.parametrize("key,value", [("version", None), ("sent", None), ("version", " "), ("sent", "")])
+def test_owner_run_multiturn_real_summary_cites_a_sent_pack(site, key, value):
+    """Regression (Codex review of 2026-09-25): version and sent were nullable in the real summary too, so --strict
+    passed the state in which no Petri pack was sent (design note 10.6, decision 16). The sample keeps nulls."""
+    summary, conversations = _multiturn_pair()
+    summary["status"]["vendor_pack"][key] = value
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    rep = run(site, strict=True)
+    assert any(f"petri_multiturn_summary.json :: $.status.vendor_pack.{key}" in e for e in rep.errors), rep.errors
+    assert not any("petri_multiturn_summary.sample.json :: $.status.vendor_pack" in e for e in rep.errors)
+
+
+@pytest.mark.parametrize("sample", [False, True])
+def test_owner_run_multiturn_summary_seed_is_required(site, sample):
+    """Regression (Codex review of 2026-09-24): the summary's seed was nullable, so a published summary with its
+    bootstrap seed removed passed --strict. The exporter always records one (a sample: its generator seed)."""
+    summary, conversations = _multiturn_pair(sample)
+    summary["seed"] = None
+    suffix = ".sample.json" if sample else ".json"
+    _write_pair(site, (summary, conversations), suffix)
+    if not sample:
+        _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    rep = run(site, strict=True)
+    assert any(f"petri_multiturn_summary{suffix} :: $.seed" in e and "null" in e for e in rep.errors)
+
+
+def test_owner_run_multiturn_conversations_seed_is_null_or_an_int(site):
+    """The conversations file's seed is null when published (nothing in it is random); a sample records its generator
+    seed, and a seed of another type is an error in either."""
+    summary, conversations = _multiturn_pair()
+    conversations["seed"] = "7"
+    s_summary, s_conversations = _multiturn_pair(sample=True)
+    s_conversations["seed"] = None
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, (s_summary, s_conversations), ".sample.json")
+    rep = run(site)
+    assert any("petri_multiturn_conversations.json :: $.seed" in e and "wrong type" in e for e in rep.errors)
+    assert any("petri_multiturn_conversations.sample.json :: $.seed" in e and "null" in e for e in rep.errors)
+
+
+def _multiturn_page(site):
+    page = site / "multi-turn" / "index.html"
+    page.parent.mkdir()
+    page.write_text("<!doctype html>", encoding="utf-8")
+
+
+def test_owner_run_multiturn_page_without_real_pair_or_samples_is_an_error(site):
+    """Regression (Codex review of 2026-09-24): with neither pair on disk the validator passed, though the page then
+    has nothing to fetch. The samples are required whenever the page is on the site and the real pair is not
+    published (one real file alone counts as not published: the page falls back to both samples)."""
+    _multiturn_page(site)
+    rep = run(site, strict=True)
+    assert any("petri_multiturn_summary.sample.json and petri_multiturn_conversations.sample.json" in e
+               and "nothing to fetch" in e for e in rep.errors)
+    (site / "data" / "petri_multiturn_summary.json").write_text(json.dumps(_multiturn_pair()[0]), encoding="utf-8")
+    assert any("nothing to fetch" in e for e in run(site).errors)
+
+
+def test_owner_run_multiturn_samples_not_required_without_the_page_or_beside_the_real_pair(site):
+    rep = run(site, strict=True)                      # the site's main before the page lands: neither is needed
+    assert not any("petri_multiturn" in e for e in rep.errors + rep.warnings)
+    _multiturn_page(site)
+    _write_pair(site, _multiturn_pair())              # the real pair published: the page does not need the samples
+    rep = run(site, strict=True)
+    assert not any("petri_multiturn" in e for e in rep.errors + rep.warnings)
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    assert not any("petri_multiturn" in e for e in run(site, strict=True).errors)
+
+
+def test_owner_run_multiturn_query_text_is_a_list_or_null(site):
+    """Regression (Codex review of 2026-09-24): the lane writes rule.query_text as a list of each call's arguments or
+    null; the samples carried one string, and nothing checked the type the page is built against."""
+    summary, conversations = _multiturn_pair()
+    s_summary, s_conversations = _multiturn_pair(sample=True)
+    conversations["conversations"][0]["rule"] = {"query_text": ['{"query": "q"}']}
+    s_conversations["conversations"][0]["rule"] = {"query_text": "[Sample query text: placeholder.]"}
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, (s_summary, s_conversations), ".sample.json")
+    errors = run(site).errors
+    assert [e for e in errors if "query_text" in e] == [
+        "petri_multiturn_conversations.sample.json :: $.conversations[0].rule.query_text :: must be a list of strings "
+        "(each tool call's arguments) or null"]
+
+
+@pytest.mark.parametrize("sample", [False, True])
+def test_owner_run_multiturn_exporter_commit_is_required(site, sample):
+    """Regression (Codex review of 2026-09-24): the summary did not record the exporter's commit; it now does, and a
+    summary without it, real or sample, fails the gate."""
+    summary, conversations = _multiturn_pair(sample)
+    del summary["provenance"]["exporter_commit"]
+    suffix = ".sample.json" if sample else ".json"
+    _write_pair(site, (summary, conversations), suffix)
+    if not sample:
+        _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    assert any(f"petri_multiturn_summary{suffix} :: $.provenance.exporter_commit" in e for e in run(site).errors)
+
+
+@pytest.mark.parametrize("sample, value, error", [
+    (False, None, "missing required key"), (False, "SAMPLE", "64 lowercase hex"), (False, "A" * 64, "64 lowercase hex"),
+    (False, "a" * 63, "64 lowercase hex"), (False, "a" * 64, None),
+    (True, None, None), (True, "SAMPLE", None), (True, "a" * 64, 'carries "SAMPLE" here, or nothing'),
+])
+def test_owner_run_multiturn_analysis_sha256(site, sample, value, error):
+    """Regression (Codex review of PR #39, 2026-09-25): a published summary binds to the analysis its cited pack was
+    built from by the artifact's sha256. A real summary needs a 64-hex digest; a sample may omit it (the site's own
+    samples do) or carry "SAMPLE", what the exporter's samples carry."""
+    summary, conversations = _multiturn_pair(sample)
+    if value is None:
+        summary["provenance"].pop("analysis_sha256", None)
+    else:
+        summary["provenance"]["analysis_sha256"] = value
+    suffix = ".sample.json" if sample else ".json"
+    _write_pair(site, (summary, conversations), suffix)
+    if not sample:
+        _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    found = [e for e in run(site).errors if "analysis_sha256" in e]
+    if error is None:
+        assert found == []
+    else:
+        assert len(found) == 1 and found[0].startswith(f"petri_multiturn_summary{suffix} :: "
+                                                        f"$.provenance.analysis_sha256 :: ") and error in found[0]
+
+
 # ---- the Multi-turn page's publication gate (Codex, PR #39): a public page needs a sent, FRESH Petri pack
 
 PUBLISHED_RUNS = ["run_200_1", "run_300_1"]
@@ -426,23 +748,25 @@ PUBLISHED_ANALYSIS = "a" * 64
 def _publish_multiturn(site, version="petri-v000000000001", conversations=True, summary=True, runs=PUBLISHED_RUNS,
                        analysis=PUBLISHED_ANALYSIS):
     """The Multi-turn page's real data files in the site's data/ (what export_petri_multiturn.py writes once the page
-    is public), the summary citing `version` as its vendor pack and `runs` as the runs it publishes. Placeholder
-    content only."""
-    data = site / "data"
+    is public), the summary citing `version` as its vendor pack, `runs` as the runs it publishes and `analysis` as the
+    artifact's sha256. A valid pair
+    (_multiturn_pair, abstract vocabulary only): check_owner_run shape-checks every published file, so a stub here
+    would add schema errors beside the publication gate's and the tests below could not tell the gate's failure from
+    the stub's."""
+    s, c = _multiturn_pair(sample=False)
+    s["status"]["vendor_pack"]["version"] = version
+    s["provenance"]["runs"] = runs
+    s["provenance"]["analysis_sha256"] = analysis
     if summary:
-        (data / "petri_multiturn_summary.json").write_text(json.dumps(
-            {"status": {"final": True, "vendor_pack": {"version": version, "sent": None}},
-             "provenance": {"runs": runs, "analysis_sha256": analysis}}), encoding="utf-8")
+        (site / "data" / "petri_multiturn_summary.json").write_text(json.dumps(s), encoding="utf-8")
     if conversations:
-        (data / "petri_multiturn_conversations.json").write_text(json.dumps({"conversations": []}), encoding="utf-8")
+        (site / "data" / "petri_multiturn_conversations.json").write_text(json.dumps(c), encoding="utf-8")
 
 
 def _samples_only(site):
-    """The page's state today: only the synthetic .sample.json fixtures, which never make the data public."""
-    data = site / "data"
-    for name in ("petri_multiturn_summary.sample.json", "petri_multiturn_conversations.sample.json"):
-        (data / name).write_text(json.dumps({"sample": True, "status": {"vendor_pack": {"version": None}}}),
-                                 encoding="utf-8")
+    """The page's state today: only the synthetic .sample.json fixtures, which never make the data public. A valid
+    sample pair, for the reason _publish_multiturn gives: check_owner_run shape-checks the samples too."""
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
 
 
 def _no_log_engine(tmp_path):

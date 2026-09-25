@@ -218,6 +218,9 @@ deletes nothing and lists them. It refuses, writing nothing, over a site checkou
 keeps tracked renders off disk (the cloud containers' sparse clone excludes `modes/`),
 or any tracked file its render-reference scan reads, and `scripts/seal_check.py` exits
 2 over one: `git -C ../patientwords sparse-checkout disable` first.
+The Multi-turn page's two files come from `scripts/export_petri_multiturn.py`, **owner-run
+once** after the wave-2 section 10 analysis and never in the Routine's chain (its module
+docstring has the usage and every refusal).
 
 ## Figure style (standing preference)
 

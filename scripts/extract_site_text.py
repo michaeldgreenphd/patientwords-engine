@@ -48,11 +48,20 @@ PAGES = [
     "simulated-scenarios/scenario.html",
     "llm/index.html",
     "llm/code.html",
+    "multi-turn/index.html",
     "wording-differences/index.html",
     "dialect-differences/index.html",
     "translation/index.html",
     "phrase-dataset/index.html",
 ]
+# Pages in PAGES that a site checkout may not have yet, each with why. A missing
+# page listed here is named on stdout and left out; any other missing page still
+# stops the run. multi-turn/ is built on the site's claude/multiturn-tab branch
+# (PR #9) and merges to site main only after its gates (the design note's
+# section 10 analysis, the exporter on engine main, the vendor pack, sign-off).
+PENDING_PAGES = {
+    "multi-turn/index.html": "gated: not on site main until site PR #9 merges",
+}
 
 CAPTURE_TAGS = {"h1", "h2", "h3", "p", "li", "summary", "figcaption", "footer"}
 # Subtrees skipped wholesale: script/style are code, nav is chrome. The footer
@@ -262,13 +271,16 @@ def main(argv=None):
     out_path = Path(args.out) if args.out else REPO_ROOT / "ops" / "site_text_outline.Rmd"
     sections, total = [], 0
     for rel_path in PAGES:
+        if rel_path in PENDING_PAGES and not (site_root / rel_path).is_file():
+            print(f"{rel_path}: not in this checkout, not extracted ({PENDING_PAGES[rel_path]})")
+            continue
         parsed = parse_page((site_root / rel_path).read_text(encoding="utf-8"))
         sections.append(render_page(rel_path, parsed))
         total += len(parsed.blocks)
         print(f"{rel_path}: {len(parsed.blocks)} blocks")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(render_document(sections), encoding="utf-8")
-    print(f"total: {total} blocks across {len(PAGES)} pages -> {out_path}")
+    print(f"total: {total} blocks across {len(sections)} pages -> {out_path}")
     return 0
 
 
