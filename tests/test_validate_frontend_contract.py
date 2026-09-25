@@ -579,13 +579,18 @@ def test_owner_run_multiturn_exporter_commit_is_required(site, sample):
 
 # ---- the Multi-turn page's publication gate (Codex, PR #39): a public page needs a sent, FRESH Petri pack
 
-def _publish_multiturn(site, version="petri-v000000000001", conversations=True, summary=True):
+PUBLISHED_RUNS = ["run_200_1", "run_300_1"]
+
+
+def _publish_multiturn(site, version="petri-v000000000001", conversations=True, summary=True, runs=PUBLISHED_RUNS):
     """The Multi-turn page's real data files in the site's data/ (what export_petri_multiturn.py writes once the page
-    is public), the summary citing `version` as its vendor pack. A valid pair (_multiturn_pair, abstract vocabulary
-    only): check_owner_run shape-checks every published file, so a stub here would add schema errors beside the
-    publication gate's and the tests below could not tell the gate's failure from the stub's."""
+    is public), the summary citing `version` as its vendor pack and `runs` as the runs it publishes. A valid pair
+    (_multiturn_pair, abstract vocabulary only): check_owner_run shape-checks every published file, so a stub here
+    would add schema errors beside the publication gate's and the tests below could not tell the gate's failure from
+    the stub's."""
     s, c = _multiturn_pair(sample=False)
     s["status"]["vendor_pack"]["version"] = version
+    s["provenance"]["runs"] = runs
     if summary:
         (site / "data" / "petri_multiturn_summary.json").write_text(json.dumps(s), encoding="utf-8")
     if conversations:
@@ -605,22 +610,41 @@ def _no_log_engine(tmp_path):
 
 
 def test_multiturn_publication_reads_only_the_real_files(site):
-    assert vfc.petri_publication(site) == (False, None, [])
+    assert vfc.petri_publication(site) == (False, None, [], [])
     _samples_only(site)
-    assert vfc.petri_publication(site) == (False, None, [])
-    _publish_multiturn(site, summary=False)
-    assert vfc.petri_publication(site) == (True, None, [])        # public, with no summary to cite a version
+    assert vfc.petri_publication(site) == (False, None, [], [])
     _publish_multiturn(site, version="petri-vabc")
-    assert vfc.petri_publication(site) == (True, "petri-vabc", [])
+    assert vfc.petri_publication(site) == (True, "petri-vabc", PUBLISHED_RUNS, [])
     _publish_multiturn(site, version=None)
-    public, cited, errors = vfc.petri_publication(site)
-    assert public and cited is None and len(errors) == 1
+    public, cited, runs, errors = vfc.petri_publication(site)
+    assert public and cited is None and runs == PUBLISHED_RUNS and len(errors) == 1
     assert errors[0].startswith("petri_multiturn_summary.json :: $.status.vendor_pack.version :: the published summary "
                                 "cites no Petri pack version")
     (site / "data" / "petri_multiturn_summary.json").write_text("{not json", encoding="utf-8")
-    public, cited, errors = vfc.petri_publication(site)
-    assert public and cited is None and len(errors) == 1 and "cannot be read" in errors[0]
-    assert vfc.petri_publication(None) == (False, None, [])
+    public, cited, runs, errors = vfc.petri_publication(site)
+    assert public and cited is None and runs == [] and len(errors) == 1 and "cannot be read" in errors[0]
+    assert vfc.petri_publication(None) == (False, None, [], [])
+
+
+def test_public_conversations_without_the_summary_fail_publication(site):
+    """Regression (Codex, PR #39): with only the conversations file on the site the page was public but cited no
+    pack, and the gate fell back to accepting any sent, FRESH Petri pack. Per-model data with no citation fails."""
+    _publish_multiturn(site, summary=False)
+    public, cited, runs, errors = vfc.petri_publication(site)
+    assert public and cited is None and runs == [] and len(errors) == 1
+    assert errors[0].startswith("petri_multiturn_conversations.json :: the conversations file is public without "
+                                "petri_multiturn_summary.json, so no page cites the Petri pack")
+
+
+@pytest.mark.parametrize("runs", [None, [], "run_200_1", ["run_200_1", ""], ["run_200_1", 7], [" run_200_1"]])
+def test_a_published_summary_must_name_its_runs(site, runs):
+    """Regression (Codex, PR #39): the cited pack is bound to the runs the page publishes, so a summary that names
+    none (or not as a list of run directory names) cannot be checked and fails."""
+    _publish_multiturn(site, version="petri-vabc", runs=runs)
+    public, cited, got, errors = vfc.petri_publication(site)
+    assert public and cited == "petri-vabc" and got == [] and len(errors) == 1
+    assert errors[0].startswith("petri_multiturn_summary.json :: $.provenance.runs :: the published summary names no "
+                                "runs")
 
 
 def test_repro_pack_gate_requires_a_sent_petri_pack_once_the_multiturn_data_is_public(tmp_path, site):
@@ -630,7 +654,8 @@ def test_repro_pack_gate_requires_a_sent_petri_pack_once_the_multiturn_data_is_p
     out, errors = vfc.repro_pack_gate(engine, run=run_fn, site=site)
     assert [c for c in calls if _is_petri(c)] == [[vfc.sys.executable, "-m", "scripts.petri_audit.cli", "repro-pack",
                                                    "--check", "--log", str(engine / "ops" / "disclosure_log.jsonl"),
-                                                   "--require-sent", "--cited-version", "petri-vabc"]]
+                                                   "--require-sent", "--cited-version", "petri-vabc",
+                                                   "--cited-run", "run_200_1", "--cited-run", "run_300_1"]]
     assert errors == [vfc.PETRI_PUBLICATION_UNMET_MSG] and "PUBLICATION: petri-vabc" in out
     run_fn, calls = _fake_run(0, petri_code=0)
     assert vfc.repro_pack_gate(engine, run=run_fn, site=site)[1] == []
