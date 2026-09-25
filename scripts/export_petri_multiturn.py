@@ -72,7 +72,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -1202,22 +1204,72 @@ def _dumps(obj: Any, *, compact: bool) -> str:
     return json.dumps(obj, ensure_ascii=False, indent=1) + "\n"
 
 
+def swap_dir(data: Path, sample: bool) -> Path:
+    """Where write_site stages one write of the pair: `new/` (the files to swap in), `old/` (a copy of each file it
+    replaces) and `journal.json` (which destinations existed before). The contract validator fails a site that holds
+    one (scripts/validate_frontend_contract.py, MT_SWAP_GLOB), since the pair beside it may be mixed."""
+    return Path(data) / (".petri_multiturn" + (".sample" if sample else "") + ".swap")
+
+
+def recover_interrupted_write(data: Path, sample: bool = False) -> bool:
+    """Put back the pair a write_site that stopped between its replacements left (a crash, a kill): with the journal
+    present, each destination is restored from its copy in `old/`, or removed when it did not exist before that write
+    (a destination whose copy is gone was restored by an earlier recovery that was itself interrupted); without the
+    journal no destination had been touched. The swap directory is then removed. True when there was one."""
+    swap = swap_dir(data, sample)
+    if not swap.exists():
+        return False
+    journal = swap / "journal.json"
+    if journal.is_file():
+        try:
+            existed = json.loads(journal.read_text(encoding="utf-8"))["existed"]
+        except (ValueError, KeyError, TypeError) as exc:
+            raise ExportRefusal(f"{journal} does not parse ({exc}); the pair in {data} may be mixed: restore it from "
+                                f"git and remove {swap}") from exc
+        for name, had in existed.items():
+            dest, old = Path(data) / name, swap / "old" / name
+            if had and old.is_file():
+                os.replace(old, dest)
+            elif not had:
+                dest.unlink(missing_ok=True)
+    shutil.rmtree(swap)
+    return True
+
+
 def write_site(site: Path, summary: Mapping[str, Any], conversations: Mapping[str, Any], *,
                sample: bool = False) -> list[Path]:
-    """Write both files into `<site>/data/` (the `.sample.json` names when `sample`). Both are written to temporary
-    names first and then renamed, so a failed write never leaves one new file beside one old one (the page reads the
-    two as one unit)."""
+    """Write both files into `<site>/data/` (the `.sample.json` names when `sample`), fully or not at all: the page
+    reads the two as one unit, and neither file carries an identifier the other could be matched by. Both new files
+    are staged in the swap directory with a copy of each file they replace and a journal, and only then renamed into
+    place. Any exception between the two renames (an error, a keyboard interrupt) puts the previous pair back before
+    it propagates; a process killed there leaves the swap directory, which the next write (and
+    recover_interrupted_write) rolls back first and the contract validator fails the site over until then (Codex
+    review of 2026-09-24: two bare renames could leave one new file beside one old one)."""
     data = Path(site) / "data"
     if not data.is_dir():
         raise ExportRefusal(f"{data} is not a directory")
+    recover_interrupted_write(data, sample)
     suffix = ".sample.json" if sample else ".json"
     out = [data / (SUMMARY_NAME + suffix), data / (CONVERSATIONS_NAME + suffix)]
     texts = [_dumps(summary, compact=False), _dumps(conversations, compact=not sample)]
-    staged = [p.with_name(p.name + ".tmp") for p in out]
-    for path, text in zip(staged, texts):
-        path.write_text(text, encoding="utf-8")
-    for tmp, path in zip(staged, out):
-        tmp.replace(path)
+    swap = swap_dir(data, sample)
+    try:
+        (swap / "new").mkdir(parents=True)
+        (swap / "old").mkdir()
+        existed = {p.name: p.is_file() for p in out}
+        for path, text in zip(out, texts):
+            (swap / "new" / path.name).write_text(text, encoding="utf-8")
+            if existed[path.name]:
+                shutil.copy2(path, swap / "old" / path.name)
+        # the journal appears whole or not at all, and only once every copy it vouches for is complete
+        (swap / "journal.json.tmp").write_text(json.dumps({"existed": existed}), encoding="utf-8")
+        os.replace(swap / "journal.json.tmp", swap / "journal.json")
+        for path in out:
+            os.replace(swap / "new" / path.name, path)
+    except BaseException:
+        recover_interrupted_write(data, sample)
+        raise
+    shutil.rmtree(swap)
     return out
 
 

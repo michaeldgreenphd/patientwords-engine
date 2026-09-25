@@ -423,6 +423,9 @@ MT_SAMPLE_KEYS = {"sample", "_note"}
 MT_PARTITIONS = ("seen_before_plan", "prospective")
 # the page that reads the pair; while it is on the site and the real pair is not published, it fetches the samples
 MT_PAGE = "multi-turn/index.html"
+# the staging directory of one write of the pair (export_petri_multiturn.swap_dir): present only when a write was
+# interrupted between its two renames, so the pair beside it may be one new file and one old one
+MT_SWAP_GLOB = ".petri_multiturn*.swap"
 
 
 def _sample_flag(rep: Report, a: str, obj: dict, sample: bool):
@@ -542,6 +545,10 @@ def check_owner_run(rep: Report, site: Path):
     because the page fetches them whenever the real pair is not published: with the page on the site and the real
     pair not published, the sample pair is required (Codex review of 2026-09-24; before, a site with neither passed).
     A site without the page (the site's main before the page lands) needs neither."""
+    for swap in sorted((site / "data").glob(MT_SWAP_GLOB)):
+        rep.err(f"data/{swap.name}", "-", "an interrupted write of the Multi-turn pair left this, so the pair on disk "
+                                          "may be one new file beside one old one: rerun the exporter (it puts the "
+                                          "previous pair back first), or restore the pair from git and remove it")
     real_published = False
     for suffix, sample in ((".json", False), (".sample.json", True)):
         names = [stem + suffix for stem in MT_PAIR]

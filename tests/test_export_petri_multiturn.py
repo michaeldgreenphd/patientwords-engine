@@ -13,6 +13,7 @@ adds, fails here. Seed ids come from data/petri/multiturn_measures.json, never f
 from __future__ import annotations
 
 import json
+import os
 from fractions import Fraction
 from pathlib import Path
 
@@ -480,6 +481,93 @@ def test_cli_refuses_with_exit_2_and_writes_nothing(shared, tmp_path, capsys):
     assert ex.main(["--analysis", str(artifact), "--site", str(site), *map(str, camp.run_dirs)]) == 2
     assert "refused:" in capsys.readouterr().err
     assert list((site / "data").iterdir()) == []
+
+
+# ------------------------------------------------------------------ the pair is written fully or not at all
+
+
+PAIR = ("petri_multiturn_summary.json", "petri_multiturn_conversations.json")
+
+
+def _pair_bytes(data: Path) -> dict[str, bytes | None]:
+    return {n: (data / n).read_bytes() if (data / n).is_file() else None for n in PAIR}
+
+
+def _fail_second_replacement(monkeypatch, data: Path, exc: BaseException) -> None:
+    """os.replace raises `exc` the first time anything is renamed onto the conversations file, i.e. after the summary
+    has been replaced and before the conversations file is (a failure between the two replacements)."""
+    real, fired = os.replace, []
+
+    def flaky(src, dst, *a, **kw):
+        if Path(dst) == data / PAIR[1] and not fired:
+            fired.append(src)
+            raise exc
+        return real(src, dst, *a, **kw)
+    monkeypatch.setattr(os, "replace", flaky)
+
+
+@pytest.mark.parametrize("before", ["old pair", "no pair"])
+def test_a_failure_between_the_two_replacements_leaves_the_previous_pair(tmp_path, monkeypatch, before):
+    """Regression (Codex review of 2026-09-24): the two files were renamed into place one after the other, so a
+    failure after the first rename left a new summary beside the old conversations."""
+    data = tmp_path / "site" / "data"
+    data.mkdir(parents=True)
+    if before == "old pair":
+        ex.write_site(data.parent, {"generation": "old"}, {"generation": "old"})
+    previous = _pair_bytes(data)
+    _fail_second_replacement(monkeypatch, data, OSError("simulated failure between the two replacements"))
+    with pytest.raises(OSError, match="simulated failure"):
+        ex.write_site(data.parent, {"generation": "new"}, {"generation": "new"})
+    assert _pair_bytes(data) == previous
+    assert sorted(p.name for p in data.iterdir()) == (sorted(PAIR) if before == "old pair" else [])
+
+
+class _Killed(BaseException):
+    """Stands for the process dying: nothing after it runs."""
+
+
+def test_a_write_killed_between_the_replacements_is_caught_by_the_gate_and_rolled_back(tmp_path, monkeypatch):
+    """A kill between the two renames runs no handler, so the mixed pair stays on disk beside the swap directory and
+    its journal: the contract validator fails the site over it, and the next write, or recover_interrupted_write,
+    puts the previous pair back first."""
+    site = tmp_path / "site"
+    data = site / "data"
+    data.mkdir(parents=True)
+    ex.write_site(site, {"generation": "old"}, {"generation": "old"})
+    previous = _pair_bytes(data)
+    with monkeypatch.context() as m:
+        _fail_second_replacement(m, data, _Killed())
+        m.setattr(ex, "recover_interrupted_write", lambda *a, **kw: False)   # a killed process recovers nothing
+        with pytest.raises(_Killed):
+            ex.write_site(site, {"generation": "new"}, {"generation": "new"})
+    mixed = _pair_bytes(data)
+    assert mixed[PAIR[0]] != previous[PAIR[0]] and mixed[PAIR[1]] == previous[PAIR[1]]
+    swap = ex.swap_dir(data, sample=False)
+    assert (swap / "journal.json").is_file()
+    rep = vfc.Report()
+    vfc.check_owner_run(rep, site)
+    assert any(e.startswith(f"data/{swap.name} :: ") and "interrupted write" in e for e in rep.errors)
+
+    assert ex.recover_interrupted_write(data) is True
+    assert _pair_bytes(data) == previous and not swap.exists()
+    rep = vfc.Report()
+    vfc.check_owner_run(rep, site)
+    assert not any("interrupted write" in e for e in rep.errors)
+
+
+def test_the_next_write_rolls_back_an_interrupted_one_then_writes_the_whole_pair(tmp_path, monkeypatch):
+    site = tmp_path / "site"
+    data = site / "data"
+    data.mkdir(parents=True)
+    ex.write_site(site, {"generation": "old"}, {"generation": "old"})
+    with monkeypatch.context() as m:
+        _fail_second_replacement(m, data, _Killed())
+        m.setattr(ex, "recover_interrupted_write", lambda *a, **kw: False)
+        with pytest.raises(_Killed):
+            ex.write_site(site, {"generation": "new"}, {"generation": "new"})
+    ex.write_site(site, {"generation": "newer"}, {"generation": "newer"})
+    assert [json.loads((data / n).read_text("utf-8")) for n in PAIR] == [{"generation": "newer"}] * 2
+    assert sorted(p.name for p in data.iterdir()) == sorted(PAIR)
 
 
 # ------------------------------------------------------------------ the sample fixtures and the site's gate
