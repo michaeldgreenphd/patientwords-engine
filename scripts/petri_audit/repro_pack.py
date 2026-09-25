@@ -92,6 +92,7 @@ import argparse
 import json
 import re
 import shutil
+import subprocess
 import sys
 from collections import Counter
 from collections.abc import Mapping, Sequence
@@ -506,10 +507,13 @@ def seed_state(seed_file: Path, seed_ids: Sequence[str]) -> dict[str, str | None
     """{seed_id: seeds.seed_digest of its current text} for the seeds the listed runs used; null when absent."""
     try:
         doc = load_json(seed_file)
+        count = Counter(s["seed_id"] for s in doc["seeds"])
         seeds = {s["seed_id"]: s for s in doc["seeds"]}
     except (OSError, ValueError, KeyError, TypeError) as exc:
         return {sid: f"unreadable seed file: {type(exc).__name__}" for sid in seed_ids}
-    return {sid: (seed_digest(seeds[sid]) if sid in seeds else None) for sid in sorted(seed_ids)}
+    # a seed defined twice is ambiguous: it reads as moved, never as the last copy's digest (Codex, PR #39)
+    return {sid: (f"defined {count[sid]} times" if count[sid] > 1 else seed_digest(seeds[sid]) if sid in seeds
+                  else None) for sid in sorted(seed_ids)}
 
 
 # ------------------------------------------------------------------ the freshness basis
@@ -585,6 +589,11 @@ def read_analysis(path: Path) -> tuple[dict[str, Any] | None, list[str]]:
     if not isinstance((doc.get("coverage") or {}).get("runs"), list):
         problems.append(f"the analysis artifact {where}: coverage.runs is not a list of runs")
     identity = doc.get("identity")
+    commit = identity.get("commit") if isinstance(identity, dict) else None
+    if not (isinstance(commit, str) and re.fullmatch(r"[0-9a-f]{40}", commit)):
+        # the README's reproduction checks out the commit the analysis ran from; engine_commit is the pack build's
+        problems.append(f"the analysis artifact {where} records no analysis commit (identity.commit {commit!r}), so the "
+                        f"pack cannot say which revision reproduces it (Codex, PR #39)")
     if not isinstance((identity or {}).get("uncommitted_changes") if isinstance(identity, dict) else None, dict):
         # the README's reproduction command checks out the recorded commit; unknown working-tree state is refused,
         # never read as clean (Codex, PR #39)
@@ -674,9 +683,17 @@ def analysis_run_problems(doc: Mapping[str, Any], run_dirs: Sequence[Path]) -> l
         problems.append(f"the analysis read {stem}, which the pack does not list; the claims rest on every run it read")
     for stem in sorted(set(listed) - set(recorded)):
         problems.append(f"the pack lists {stem}, which the analysis did not read; its claims do not cover that run")
+    first_computed = (doc.get("as_first_written") or {}).get("status") == "computed"
     for stem in sorted(set(listed) & set(recorded)):
         rec, run_dir = recorded[stem], listed[stem]
         rows = rec.get("committed_analysis_rows") or {}
+        if first_computed and not (isinstance(rows, dict) and rows.get("status") == "read"
+                                   and isinstance(rows.get("sha256"), str)
+                                   and re.fullmatch(r"[0-9a-f]{64}", rows["sha256"])):
+            # the secondary analysis read these rows; without their digest the pack would seal a computed result and
+            # omit what it was computed from (Codex, PR #39)
+            problems.append(f"{stem}: the artifact computes the analysis as first written, but records no committed "
+                            f"analysis_rows.jsonl digest for this run (coverage committed_analysis_rows {rows!r})")
         for name, want in (("manifest.json", rec.get("manifest_sha256")),
                            ("judgments.jsonl", rec.get("judgments_sha256")),
                            ("analysis_rows.jsonl", rows.get("sha256") if isinstance(rows, dict) else None)):
@@ -733,6 +750,15 @@ def claims_block(doc: Mapping[str, Any], wording: Mapping[str, Any], analysis_pa
                         f"only on a recorded result")
     statements = wording["decomposition_statements"]
     sec3 = doc["section_10_3"]
+    # the producer's two states: refused (status "refused" and its reason) or computed (no status and a statement);
+    # anything else is refused, never read as computed (Codex, PR #39)
+    if sec3.get("status") not in (None, "refused"):
+        problems.append(f"the analysis artifact's section_10_3.status is {sec3.get('status')!r}, not refused or "
+                        f"absent (computed)")
+    elif sec3.get("status") == "refused" and not (isinstance(sec3.get("reason"), str) and sec3["reason"].strip()):
+        problems.append("the analysis artifact's section_10_3 is refused without a reason")
+    elif sec3.get("status") is None and not isinstance(sec3.get("statement"), dict):
+        problems.append("the analysis artifact's section_10_3 records no status and no statement")
     if sec3.get("status") == "refused":
         decomposition: dict[str, Any] = {"status": "refused", "reason": sec3.get("reason"), "statement_id": None,
                                          "what_may_be_said": None, "note": None}
@@ -789,6 +815,33 @@ def claims_block(doc: Mapping[str, Any], wording: Mapping[str, Any], analysis_pa
 
 
 # ------------------------------------------------------------------ counted facts for the README and the note
+
+
+def _model_key(spec: Any) -> str:
+    """A model spec reduced to its model name for comparison: the provider and route prefixes dropped, case folded,
+    dots read as dashes (OpenRouter's `anthropic/claude-haiku-4.5` is the direct API's `claude-haiku-4-5`)."""
+    name = str(spec).rsplit(":", 1)[-1].rsplit("/", 1)[-1]
+    return name.lower().replace(".", "-")
+
+
+def same_model_problems(runs: Mapping[str, Mapping[str, Any]]) -> list[str]:
+    """The README and the disclosure note state that the replies were graded by the same model that wrote them. That
+    holds only when every run has one target model and every judge call was made by it (Codex, PR #39): the lane lets
+    target and judge_model differ, so it is checked, and a pack that would misstate it is refused."""
+    targets = {s: ((r["manifest"].get("models") or {}).get("target") or {}).get("model") for s, r in runs.items()}
+    names = {_model_key(t) for t in targets.values() if t}
+    problems = []
+    if len(names) != 1 or not all(targets.values()):
+        problems.append(f"the runs record target models {sorted(map(str, targets.values()))}; the pack states one "
+                        f"target model")
+        return problems
+    (target,) = names
+    judges = sorted({str(j.get("judge_model")) for r in runs.values() for j in r["judgments"]
+                     if j.get("method") == "judge" and _model_key(j.get("judge_model")) != target})
+    if judges:
+        problems.append(f"judge calls were made by {judges}, not the target model {target}; the pack states that the "
+                        f"replies were graded by the same model that wrote them")
+    return problems
 
 
 def _judge_facts(runs: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
@@ -1001,7 +1054,21 @@ def _dir_digests(root: Path) -> dict[str, str]:
 
 def _safe_ref(ref: str) -> bool:
     parts = Path(ref).parts
-    return bool(parts) and not Path(ref).is_absolute() and not any(p in ("..", ".", "") for p in parts)
+    # no hidden component either: repository metadata (.git/) and local files (.env) are never prompt files
+    return (bool(parts) and not Path(ref).is_absolute() and not any(p in ("..", ".", "") for p in parts)
+            and not any(p.startswith(".") for p in parts))
+
+
+def _tracked(repo_root: Path, ref: str) -> bool:
+    """Whether `ref` is a file git tracks in the checkout at `repo_root`: the pack promises every enclosed file comes
+    from the public repository, so an untracked local file is never copied (Codex, PR #39). Git that cannot run, or a
+    root that is not a checkout, reads as untracked."""
+    try:
+        done = subprocess.run(["git", "-C", str(repo_root), "ls-files", "--error-unmatch", "--", ref],
+                              capture_output=True, text=True)
+    except OSError:
+        return False
+    return done.returncode == 0
 
 
 def _collect(inputs: PackInputs) -> tuple[dict[str, Any], list[str], list[str]]:
@@ -1040,6 +1107,10 @@ def _collect(inputs: PackInputs) -> tuple[dict[str, Any], list[str], list[str]]:
         problems.append(f"the claims wording file {_rel(inputs.claims)} cannot be read ({type(exc).__name__}: {exc})")
     try:
         seed_doc = load_json(inputs.seeds)
+        twice = sorted(sid for sid, n in Counter(s["seed_id"] for s in seed_doc["seeds"]).items() if n > 1)
+        if twice:
+            problems.append(f"the seed file {_rel(inputs.seeds)} defines seed(s) {twice} more than once, so which "
+                            f"text a run used is ambiguous (Codex, PR #39)")
         current_seeds = {s["seed_id"]: s for s in seed_doc["seeds"]}
     except (OSError, ValueError, KeyError, TypeError) as exc:
         current_seeds = {}
@@ -1155,6 +1226,9 @@ def _collect(inputs: PackInputs) -> tuple[dict[str, Any], list[str], list[str]]:
             problems.append(f"prompt ref {ref!r} is not a plain repository-relative path")
         elif not (Path(inputs.repo_root) / ref).is_file():
             problems.append(f"prompt file {ref} is missing, so the pack cannot carry it")
+        elif not _tracked(Path(inputs.repo_root), ref):
+            problems.append(f"prompt file {ref} is not tracked by git in {_rel(inputs.repo_root)}, and the pack carries "
+                            f"only files of the public repository")
     lines: list[tuple[str, str]] | None
     try:
         ok, msg = verify_chain(Path(inputs.runs_dir))
@@ -1175,6 +1249,8 @@ def _collect(inputs: PackInputs) -> tuple[dict[str, Any], list[str], list[str]]:
     if doc is not None:
         problems += analysis_run_problems(doc, inputs.run_dirs)
         problems += plan_binding_problems(doc, inputs.plan, inputs.analysis)
+    if runs and len(runs) == len(stems):
+        problems += same_model_problems(runs)
     if doc is not None and fires and len(runs) == len(stems):
         # the README's truncation statement, counted by the pack as well: the plan's fires no listed run carries
         unlanded = sorted(set(fires) - {r["facts"]["journal_nonce"] for r in runs.values()})
@@ -1245,7 +1321,10 @@ def build_pack(inputs: PackInputs, *, publication_state: str, out: Path = DEFAUL
                   | {"analysis": facts["claims"]["analysis"]},
         "target": target, "judge": judge, "prompts": prompts,
         "seeds": {sid: state["seeds"][sid] for sid in seed_ids},
+        # the raw bytes the bundle copies, beside the canonical digest the runs bind: the version then covers the file
+        # as sent (Codex, PR #39)
         "environment_lock": {"path": _rel(inputs.lock), "current_digest": current_lock,
+                             "raw_sha256": _sha(inputs.lock),
                              "recorded_by_runs": lock_recorded, "packed": lock_packed},
         "templates": {"readme": {"path": _rel(README_TEMPLATE), "sha256": sha256_text(readme_template)},
                       "note": {"path": _rel(NOTE_TEMPLATE), "sha256": sha256_text(note_template)}},

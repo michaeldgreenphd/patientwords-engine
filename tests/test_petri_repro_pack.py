@@ -13,6 +13,7 @@ import hashlib
 import json
 import re
 import shutil
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -172,6 +173,10 @@ def world(tmp_path):
     (repo / PROMPT_REF).write_text(json.dumps(PROMPT), encoding="utf-8")
     (repo / "seeds.json").write_text(json.dumps(SEEDS), encoding="utf-8")
     (repo / "plan.json").write_text(json.dumps(PLAN), encoding="utf-8")
+    # the prompt files are tracked, as in the public repository (the pack copies only tracked files); staging needs no
+    # git identity
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "add", RUBRIC_REF, PROMPT_REF], check=True)
     shutil.copyfile(rp.DEFAULT_CLAIMS, repo / "claims.json")
     shutil.copyfile(rp.ENV_LOCK, repo / "lock.json")
     runs = repo / "data" / "petri" / "runs"
@@ -446,7 +451,9 @@ def test_refuses_a_record_naming_another_vendors_model(world, where):
         expected = "run_200_1/run_200_1.report.json models.model names 'openai/gpt-9'"
     _refresh_artifact(world)
     problems = _refusal(world)
-    assert len(problems) == 1 and problems[0].startswith(expected), problems
+    assert problems[0].startswith(expected), problems
+    # a foreign judge is also not the target model, which the same-model statement needs (Codex, PR #39, round 5)
+    assert all("graded by the same model" in p for p in problems[1:]) and len(problems) <= 2, problems
 
 
 @pytest.mark.parametrize("spec,vendor,expected", [
@@ -737,6 +744,116 @@ def test_check_and_send_modes_are_refused_together(world, capsys):
     assert "--check and --record-sent are separate modes" in capsys.readouterr().err
     assert not world["log"].exists()
     assert cli.main(["repro-pack", "--check", "--vendor", "anthropic", *log]) == 13
+
+
+def test_the_lock_files_raw_bytes_are_versioned(world, tmp_path):
+    """Regression (Codex, PR #39, round 5): the manifest recorded only the lock's canonical digest while the bundle
+    copied its raw bytes, so a reformatted lock built the same version with other bytes."""
+    v1 = _build(world, out="d1").name.rsplit("_", 1)[1]
+    lock = world["repo"] / "lock.json"
+    lock.write_text(json.dumps(load_json(lock), indent=4), encoding="utf-8")     # same content, other bytes
+    v2 = _build(world, out="d2").name.rsplit("_", 1)[1]
+    assert v1 != v2
+    assert json.loads((world["tmp"] / "d2" / f"petri_repro_anthropic_{v2}" / "MANIFEST.json").read_text()
+                      )["environment_lock"]["raw_sha256"] == sha256_file(lock)
+
+
+def test_refuses_a_judge_that_is_not_the_target_model(world):
+    """Regression (Codex, PR #39, round 5): any model of the vendor passed, although the README and note state that
+    the replies were graded by the same model that wrote them."""
+    run = world["r2"]
+    rows = _judgments(run.name)
+    rows[1]["judge_model"] = "claude-sonnet-4-5"
+    _jsonl(run / "judgments.jsonl", rows)
+    _reseal(run)
+    _refresh_artifact(world)
+    problems = _refusal(world)
+    assert problems == ["judge calls were made by ['claude-sonnet-4-5'], not the target model claude-haiku-4-5; the "
+                        "pack states that the replies were graded by the same model that wrote them"]
+
+
+def test_model_key_reads_route_and_version_spellings_as_one_model():
+    assert {rp._model_key(x) for x in ("claude-haiku-4-5", "anthropic/claude-haiku-4-5",
+                                       "openrouter:anthropic/claude-haiku-4.5")} == {"claude-haiku-4-5"}
+
+
+@pytest.mark.parametrize("rows", ["absent", {"status": "read", "sha256": None}, {"status": "missing"}])
+def test_refuses_a_computed_first_analysis_without_its_rows(world, rows):
+    """Regression (Codex, PR #39, round 5): with no committed-rows digest and no file, want and have were both None,
+    so a computed as-first-written block was sealed without the rows it was computed from."""
+    doc = _artifact([world["r1"], world["r2"]], plan=world["inputs"].plan)
+    if rows == "absent":
+        doc["coverage"]["runs"][0].pop("committed_analysis_rows")
+    else:
+        doc["coverage"]["runs"][0]["committed_analysis_rows"] = rows
+    world["analysis"].write_text(json.dumps(doc), encoding="utf-8")
+    problems = _refusal(world)
+    assert any(p.startswith("run_200_1: the artifact computes the analysis as first written, but records no "
+                            "committed analysis_rows.jsonl digest") for p in problems), problems
+
+
+@pytest.mark.parametrize("sec3,expected", [
+    ({"status": "computed", "statement": {"statement_id": "not_separated", "vocabulary_also_lowered": False}},
+     "section_10_3.status is 'computed', not refused or absent"),
+    ({"status": "refused"}, "section_10_3 is refused without a reason"),
+    ({"status": "refused", "reason": " "}, "section_10_3 is refused without a reason"),
+    ({"tests": {}}, "section_10_3 records no status and no statement"),
+])
+def test_refuses_a_decomposition_in_no_producer_state(world, sec3, expected):
+    """Regression (Codex, PR #39, round 5): any status but "refused" was read as computed, and a refusal needed no
+    reason. The producer writes either a refusal with its reason, or no status and a statement."""
+    _refresh_artifact(world, section_10_3=sec3)
+    problems = _refusal(world)
+    assert any(expected in p for p in problems), problems
+
+
+@pytest.mark.parametrize("commit", ["absent", None, "abc", "C" * 40])
+def test_refuses_an_artifact_without_its_analysis_commit(world, commit):
+    """Regression (Codex, PR #39, round 5): identity.commit was read with .get(), so an artifact without it built a
+    pack whose README could not name the revision that reproduces the analysis."""
+    identity = {"generated_utc": "2026-09-25T03:00:00Z", "uncommitted_changes": {"script": [], "plan": []},
+                "inputs": {"plan": {"path": "plan.json", "sha256": _plan_sha(world["inputs"].plan)}}}
+    if commit != "absent":
+        identity["commit"] = commit
+    _refresh_artifact(world, identity=identity)
+    problems = _refusal(world)
+    assert any("records no analysis commit (identity.commit" in p for p in problems), problems
+
+
+@pytest.mark.parametrize("ref", [".git/config", ".env", "docs/untracked.json"])
+def test_prompt_refs_must_be_tracked_public_files(world, ref):
+    """Regression (Codex, PR #39, round 5): a traversal-free path such as .git/config, .env or an untracked local file
+    was copied into prompts/ and sent, although the pack carries only files of the public repository."""
+    target = world["repo"] / ref
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if not target.exists():
+        target.write_text(json.dumps(RUBRIC), encoding="utf-8")
+    run = world["r2"]
+    rows = _judgments(run.name)
+    for r in rows:
+        if r.get("kind") == "tier":
+            r["prompt_ref"] = ref
+    _jsonl(run / "judgments.jsonl", rows)
+    _reseal(run)
+    _refresh_artifact(world)
+    problems = _refusal(world)
+    assert any(p in (f"prompt ref {ref!r} is not a plain repository-relative path",
+                     f"prompt file {ref} is not tracked by git in {rp._rel(world['repo'])}, and the pack carries only "
+                     f"files of the public repository") for p in problems), problems
+
+
+def test_refuses_a_seed_file_defining_one_seed_twice(world, capsys):
+    """Regression (Codex, PR #39, round 5): the seed lookup kept the last object per id, so an ambiguous seed file
+    built, and a conflicting duplicate inserted later did not stale a sent pack."""
+    version = _build(world).name.rsplit("_", 1)[1]
+    rp.record_sent(world["log"], version, "vendor safety team")
+    seeds = copy.deepcopy(SEEDS)
+    seeds["seeds"].insert(0, {"seed_id": "s1", "text": "a conflicting copy"})
+    (world["repo"] / "seeds.json").write_text(json.dumps(seeds), encoding="utf-8")
+    code, out = _check(world, capsys)
+    assert code == 2 and "seeds[s1]:" in out                               # the sent pack is stale
+    problems = _refusal(world, out="d2")
+    assert any("defines seed(s) ['s1'] more than once" in p for p in problems), problems
 
 
 @pytest.mark.parametrize("statement,shown", [({"statement_id": "not_separated"}, "None"),
