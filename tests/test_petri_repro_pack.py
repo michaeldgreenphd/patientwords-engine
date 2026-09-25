@@ -576,7 +576,8 @@ def test_claims_resolve_every_id_the_analysis_writes():
         doc.update(over)
         return rp.claims_block(doc, wording, Path("a.json"), Path("c.json"))
 
-    block, problems = claims(section_10_2={"wording": {"row_id": "row4/row2", "selectable_as_registered": True}})
+    block, problems = claims(section_10_2={"wording": {"row_id": "row4/row2", "selectable_as_registered": True,
+                                                       "not_selectable_reasons": [], "scenarios_with_mean_in_primary_direction": []}})
     assert problems == [] and block["headline"]["what_may_be_said"] == (
         f"{rows['row4']['what_may_be_said']} Under row2's rule: {rows['row2']['what_may_be_said']}")
     block, _ = claims(section_10_2={"wording": {"row_id": "no_prespecified_row", "selectable_as_registered": False,
@@ -590,7 +591,8 @@ def test_claims_resolve_every_id_the_analysis_writes():
     block, _ = claims(as_first_written={"status": "refused", "reason": "no committed rows"})
     assert block["as_first_written"] == {"source": "as_first_written.section_10_2.wording", "label": None,
                                          "status": "refused", "reason": "no committed rows"}
-    _, problems = claims(section_10_2={"wording": {"row_id": "row9", "selectable_as_registered": True}})
+    _, problems = claims(section_10_2={"wording": {"row_id": "row9", "selectable_as_registered": True,
+                                                   "not_selectable_reasons": [], "scenarios_with_mean_in_primary_direction": []}})
     assert problems == ["the wording table (10.2, 'What each outcome permits') has no row 'row9'"]
     _, problems = claims(section_10_3={"statement": {"statement_id": "invented", "vocabulary_also_lowered": False}})
     assert problems == ["the statement table (10.3, 'What may be said') has no statement 'invented'"]
@@ -664,6 +666,77 @@ def test_refuses_judgment_rows_that_are_not_objects_of_a_known_kind(world, bad):
     problems = _refusal(world)
     assert any(p.startswith("run_200_1: judgments.jsonl line(s) [") and "are not objects with a kind in "
                "['outcome', 'tier']" in p for p in problems), problems
+
+
+def test_refuses_a_plan_naming_one_fire_twice(world):
+    """Regression (Codex, PR #39, round 4): the plan lookup kept the last entry per nonce, so a plan with conflicting
+    metadata for one fire was accepted."""
+    (world["repo"] / "plan.json").write_text(json.dumps({"fires": [*PLAN["fires"], {**PLAN["fires"][0],
+                                                                                    "partition": "prospective"}]}))
+    _refresh_artifact(world)
+    problems = _refusal(world)
+    assert any("names fire(s) ['f1'] more than once" in p for p in problems), problems
+
+
+@pytest.mark.parametrize("method", [None, "absent", "human"])
+def test_refuses_judgment_rows_without_a_known_method(world, method):
+    """Regression (Codex, PR #39, round 4): a judgment of a known kind but with an absent or other method passed, and
+    the README's judge-call counts left it out while describing it as coded without a call."""
+    rows = [json.loads(x) for x in (world["r1"] / "judgments.jsonl").read_text().splitlines()]
+    if method == "absent":
+        rows[0].pop("method", None)
+    else:
+        rows[0]["method"] = method
+    _jsonl(world["r1"] / "judgments.jsonl", rows)
+    _reseal(world["r1"], judgments_sha256=sha256_file(world["r1"] / "judgments.jsonl"))
+    _refresh_artifact(world)
+    problems = _refusal(world)
+    assert any(p.startswith("run_200_1: judgments.jsonl line(s) [1]") and "a method in ['judge', 'rule']" in p
+               for p in problems), problems
+
+
+@pytest.mark.parametrize("change,expected", [
+    ({"not_selectable_reasons": None}, "not_selectable_reasons is None, not a list of strings"),
+    ({"not_selectable_reasons": "one reason"}, "not_selectable_reasons is 'one reason', not a list of strings"),
+    ({"scenarios_with_mean_in_primary_direction": None},
+     "scenarios_with_mean_in_primary_direction is None, not a list of strings"),
+    ({"selectable_as_registered": False}, "is selectable_as_registered False with 0 not-selectable reason(s)"),
+    ({"not_selectable_reasons": ["x"]}, "is selectable_as_registered True with 1 not-selectable reason(s)"),
+    ({"row_id": "row3"}, "selects row 3, whose registered wording names the scenarios"),
+    ({"row_id": "row4/row3"}, "selects row 3, whose registered wording names the scenarios"),
+])
+def test_refuses_headline_qualifier_lists_that_are_absent_or_inconsistent(world, change, expected):
+    """Regression (Codex, PR #39, round 4): `or []` turned an absent list into an empty one, and a string reason was
+    joined character by character, so the README could omit row 3's required scenario names or print a garbled
+    reason while still sealing the pack."""
+    wording = {"row_id": "row5", "selectable_as_registered": True, "not_selectable_reasons": [],
+               "scenarios_with_mean_in_primary_direction": [], **change}
+    _refresh_artifact(world, section_10_2={"wording": wording})
+    problems = _refusal(world)
+    assert any(expected in p for p in problems), problems
+
+
+@pytest.mark.parametrize("run_list", ["scalar", None, "one missing", "one other", "one twice"])
+def test_refuses_a_run_list_that_disagrees_with_the_coverage(world, run_list):
+    """Regression (Codex, PR #39, round 4): any non-null run_list passed, so the pack could seal an artifact whose
+    own declared run list contradicts the runs its coverage binds."""
+    r1, r2 = str(world["r1"]), str(world["r2"])
+    value = {"scalar": r1, "none": None, "one missing": [r1], "one other": [r1, r2.replace("300", "900")],
+             "one twice": [r1, r2, r2]}.get(run_list)
+    _refresh_artifact(world, run_list=value)
+    problems = _refusal(world)
+    assert any("run_list" in p for p in problems), problems
+
+
+def test_check_and_send_modes_are_refused_together(world, capsys):
+    """Regression (Codex, PR #39, round 4): --check with --record-sent ran the check alone and exited 0 without
+    appending the send."""
+    log = ["--log", str(world["log"])]
+    capsys.readouterr()
+    assert cli.main(["repro-pack", "--check", "--record-sent", "petri-v000000000000", "--sent-to", "team", *log]) == 13
+    assert "--check and --record-sent are separate modes" in capsys.readouterr().err
+    assert not world["log"].exists()
+    assert cli.main(["repro-pack", "--check", "--vendor", "anthropic", *log]) == 13
 
 
 @pytest.mark.parametrize("statement,shown", [({"statement_id": "not_separated"}, "None"),

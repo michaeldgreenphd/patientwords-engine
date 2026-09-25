@@ -150,6 +150,9 @@ PROMPT_DIGEST = re.compile(r"[0-9a-f]{12}")
 # the judgment kinds the judge writes (judge_runner): a tier row is judged under the rubric, an outcome row under an
 # outcome prompt file
 JUDGMENT_KINDS = frozenset({"tier", "outcome"})
+# how a judgment was made (judge_runner): by a judge call, or by rule without a call (a not-applicable row). The README
+# counts judge calls by it, so an absent or other method is refused (Codex, PR #39)
+JUDGMENT_METHODS = frozenset({"judge", "rule"})
 # the composite 10.2 row ids the analysis writes (wording_row): row 4, the reverse direction, under row 1, 2 or 3's rule
 COMPOSITE_BASES = ("row1", "row2", "row3")
 # what a log entry's manifest keeps: everything --check reads, the pack's identity and the claim ids. The bundle's
@@ -435,6 +438,10 @@ def plan_fires(plan_path: Path) -> dict[str, dict[str, Any]]:
     if not isinstance(fires, list) or not all(isinstance(f, dict) and isinstance(f.get("journal_nonce"), str)
                                               for f in fires):
         raise ValueError(f"{Path(plan_path).name} names no fires by journal_nonce")
+    twice = sorted(n for n, k in Counter(f["journal_nonce"] for f in fires).items() if k > 1)
+    if twice:
+        # a lookup would keep the last entry, and a plan with conflicting metadata for one fire would pass (Codex, #39)
+        raise ValueError(f"{Path(plan_path).name} names fire(s) {twice} more than once")
     return {f["journal_nonce"]: f for f in fires}
 
 
@@ -650,6 +657,15 @@ def analysis_run_problems(doc: Mapping[str, Any], run_dirs: Sequence[Path]) -> l
                 for stem, n in sorted(stems.items(), key=lambda kv: str(kv[0])) if n > 1]
     if None in stems:
         problems.append("the analysis artifact's coverage.runs holds an entry that is not an object with a run_stem")
+    run_list = doc.get("run_list")
+    if not (isinstance(run_list, list) and all(isinstance(x, str) and x for x in run_list)):
+        problems.append(f"the analysis artifact's run_list is {run_list!r}, not a list of run paths")
+    else:
+        named = Counter(Path(x).name for x in run_list)
+        if any(n > 1 for n in named.values()) or set(named) != set(stems):
+            # the artifact's own declaration of what it read must agree with the runs its coverage binds (Codex, #39)
+            problems.append(f"the analysis artifact's run_list names {sorted(named)}, but its coverage.runs records "
+                            f"{sorted(s for s in stems if s)}; the two must name the same runs, each once")
     if problems:
         return problems
     recorded = {r["run_stem"]: r for r in entries}
@@ -697,6 +713,19 @@ def claims_block(doc: Mapping[str, Any], wording: Mapping[str, Any], analysis_pa
     headline, p = _wording(str(head["row_id"]), table)
     if p:
         problems.append(p)
+    reasons, carrying = head.get("not_selectable_reasons"), head.get("scenarios_with_mean_in_primary_direction")
+    for name, value in (("not_selectable_reasons", reasons), ("scenarios_with_mean_in_primary_direction", carrying)):
+        if not (isinstance(value, list) and all(isinstance(x, str) and x for x in value)):
+            problems.append(f"the analysis artifact's section_10_2.wording.{name} is {value!r}, not a list of "
+                            f"strings; the README states it only from a recorded list (Codex, PR #39)")
+    selectable = head.get("selectable_as_registered")
+    if isinstance(reasons, list) and isinstance(selectable, bool) and selectable == bool(reasons):
+        problems.append(f"the analysis artifact's section_10_2.wording is selectable_as_registered {selectable} with "
+                        f"{len(reasons)} not-selectable reason(s); wording_row gives reasons exactly when it is false")
+    if str(head.get("row_id")).split("/")[-1] == "row3" and isinstance(carrying, list) and not carrying:
+        problems.append("the analysis artifact selects row 3, whose registered wording names the scenarios that carry "
+                        "the difference, but names no scenario in section_10_2.wording."
+                        "scenarios_with_mean_in_primary_direction")
     if not isinstance(head.get("selectable_as_registered"), bool):
         # the README warns only on false, so an absent result would read as a selectable headline (Codex, PR #39)
         problems.append(f"the analysis artifact's section_10_2.wording.selectable_as_registered is "
@@ -746,9 +775,10 @@ def claims_block(doc: Mapping[str, Any], wording: Mapping[str, Any], analysis_pa
                      "fires_not_landed": list(doc["fires_not_landed"]), "uncommitted_changes": dirty},
         "headline": {"source": "section_10_2.wording", "table": table["section"], "row_id": head["row_id"],
                      "selectable_as_registered": head.get("selectable_as_registered"),
-                     "not_selectable_reasons": head.get("not_selectable_reasons") or [],
-                     "scenarios_with_mean_in_primary_direction":
-                         head.get("scenarios_with_mean_in_primary_direction") or [], **headline},
+                     # checked above to be lists of strings: a refusal stops the build before these are read
+                     "not_selectable_reasons": reasons if isinstance(reasons, list) else [],
+                     "scenarios_with_mean_in_primary_direction": carrying if isinstance(carrying, list) else [],
+                     **headline},
         "decomposition": {"source": "section_10_3.statement", "table": statements["section"], **decomposition},
         "never_said": statements["always"],
         "as_first_written": {"source": "as_first_written.section_10_2.wording", **first},
@@ -1053,12 +1083,14 @@ def _collect(inputs: PackInputs) -> tuple[dict[str, Any], list[str], list[str]]:
         # every row an object, and every judgment of a kind the judge writes: the kind decides which digest rule names
         # its prompt file, so an absent or unknown kind is refused, never read as an outcome prompt (Codex, PR #39)
         malformed = [n for n, j in enumerate(judgments, 1)
-                     if not isinstance(j, dict) or j.get("kind") not in JUDGMENT_KINDS]
+                     if not isinstance(j, dict) or j.get("kind") not in JUDGMENT_KINDS
+                     or j.get("method") not in JUDGMENT_METHODS]
         if malformed or not all(isinstance(t, dict) for t in transcripts):
             if malformed:
                 problems.append(f"{stem}: judgments.jsonl line(s) {malformed[:5]}"
                                 + (f" and {len(malformed) - 5} more" if len(malformed) > 5 else "")
-                                + f" are not objects with a kind in {sorted(JUDGMENT_KINDS)}")
+                                + f" are not objects with a kind in {sorted(JUDGMENT_KINDS)} and a method in "
+                                  f"{sorted(JUDGMENT_METHODS)}")
             else:
                 problems.append(f"{stem}: transcripts.jsonl holds a line that is not an object")
             continue
@@ -1668,6 +1700,14 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
 
 
 def cmd_repro_pack(args: argparse.Namespace) -> int:
+    modes = [flag for flag, on in (("--check", args.check), ("--record-sent", args.record_sent),
+                                   ("a build (--vendor/--run-dir/--publication-state)",
+                                    args.vendor or args.run_dir or args.publication_state)) if on]
+    if len(modes) > 1:
+        # one mode per call: a --check that also names a send would exit on the check and silently record nothing
+        # (Codex, PR #39)
+        print(f"refused: {' and '.join(modes)} are separate modes; run them one at a time", file=sys.stderr)
+        return REFUSED_EXIT
     if args.check:
         return check_packs(Path(args.log), require_sent=args.require_sent, cited_version=args.cited_version,
                            cited_runs=args.cited_run, cited_analysis_sha256=args.cited_analysis_sha256)
