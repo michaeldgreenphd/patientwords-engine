@@ -137,10 +137,16 @@ def _reseal(run: Path, **artifact_updates) -> None:
     chain.write_text(chain.read_text().replace(old, sealed["chain"]["manifest_sha256"]), encoding="utf-8")
 
 
-def _artifact(runs: list[Path], **over) -> dict:
+def _plan_sha(plan: Path | None) -> str:
+    """The sha256 the analysis records for the plan it read: the file's, or PLAN's as the fixture writes it."""
+    return sha256_file(plan) if plan is not None else hashlib.sha256(json.dumps(PLAN).encode("utf-8")).hexdigest()
+
+
+def _artifact(runs: list[Path], plan: Path | None = None, **over) -> dict:
     doc = {
         "analysis": "synthetic", "final": True, "run_list": [str(r) for r in runs], "bootstrap_seed": 20260923,
         "identity": {"commit": _hex("analysis"), "generated_utc": "2026-09-25T03:00:00Z",
+                     "inputs": {"plan": {"path": "plan.json", "sha256": _plan_sha(plan)}},
                      "uncommitted_changes": {"script": [], "plan": []}},
         "administratively_truncated": False, "truncation_reason": None, "fires_not_landed": [],
         "coverage": {"runs": [{"run_stem": r.name, "manifest_sha256": sha256_file(r / "manifest.json"),
@@ -204,7 +210,8 @@ def _refusal(w, **kw) -> list[str]:
 
 
 def _refresh_artifact(w, **over) -> None:
-    w["analysis"].write_text(json.dumps(_artifact([w["r1"], w["r2"]], **over)), encoding="utf-8")
+    w["analysis"].write_text(json.dumps(_artifact([w["r1"], w["r2"]], plan=w["inputs"].plan, **over)),
+                             encoding="utf-8")
 
 
 # ------------------------------------------------------------------ contents
@@ -528,6 +535,7 @@ def test_refuses_an_untruncated_artifact_when_a_plan_fire_has_no_run(world):
     (world["repo"] / "plan.json").write_text(json.dumps(
         {"fires": [*PLAN["fires"], {"journal_nonce": "f3", "campaign_epochs": {"original": 3},
                                     "partition": "prospective"}]}), encoding="utf-8")
+    _refresh_artifact(world)                                        # the analysis read this plan
     problems = _refusal(world)
     assert len(problems) == 1 and problems[0].endswith(
         "names fires not landed [], but the plan's fires with no listed run are ['f3']; the pack states the "
@@ -584,8 +592,64 @@ def test_claims_resolve_every_id_the_analysis_writes():
                                          "status": "refused", "reason": "no committed rows"}
     _, problems = claims(section_10_2={"wording": {"row_id": "row9"}})
     assert problems == ["the wording table (10.2, 'What each outcome permits') has no row 'row9'"]
-    _, problems = claims(section_10_3={"statement": {"statement_id": "invented"}})
+    _, problems = claims(section_10_3={"statement": {"statement_id": "invented", "vocabulary_also_lowered": False}})
     assert problems == ["the statement table (10.3, 'What may be said') has no statement 'invented'"]
+
+
+@pytest.mark.parametrize("statement,shown", [({"statement_id": "not_separated"}, "None"),
+                                             ({"statement_id": "not_separated", "vocabulary_also_lowered": None},
+                                              "None"),
+                                             ({"statement_id": "style_larger", "vocabulary_also_lowered": "yes"},
+                                              "'yes'")])
+def test_refuses_a_decomposition_qualifier_that_is_not_a_recorded_boolean(world, statement, shown):
+    """Regression (Codex, PR #39): `bool(st.get("vocabulary_also_lowered"))` read an absent qualifier as false, so the
+    sealed claims and README omitted the registered additional sentence on a result the artifact never reported. The
+    qualifier shapes a claim, so anything but true or false is refused."""
+    _refresh_artifact(world, section_10_3={"statement": statement})
+    problems = _refusal(world)
+    assert problems == [f"the analysis artifact's section_10_3.statement.vocabulary_also_lowered is {shown}, not true "
+                        f"or false; the claims add or omit its registered sentence only on a recorded result"]
+    assert not world["log"].exists() and not world["out"].exists()
+
+
+def test_refuses_a_plan_whose_bytes_the_analysis_did_not_read(world):
+    """Regression (Codex, PR #39): the build parsed only the plan's fires, so a plan with the same fire nonces and
+    changed analysis parameters was sealed and labelled as the analysis plan although it would not reproduce the
+    enclosed results. The artifact records the plan's sha256; the pack refuses other bytes, and an artifact that
+    records none."""
+    (world["repo"] / "plan.json").write_text(json.dumps({**PLAN, "bootstrap_draws": 1}), encoding="utf-8")
+    problems = _refusal(world)
+    assert len(problems) == 1 and re.fullmatch(
+        r"the plan .*plan\.json digests to [0-9a-f]{12}, but the analysis artifact .*w2_register_contrast\.json read "
+        r"a plan digesting to [0-9a-f]{12}; the pack carries the plan the analysis read", problems[0]), problems
+    _refresh_artifact(world)                                        # the analysis re-run on the new plan: accepted
+    assert _build(world).is_dir()
+    for identity in ({"commit": _hex("analysis"), "generated_utc": "2026-09-25T03:00:00Z"},
+                     {"commit": _hex("analysis"), "generated_utc": "2026-09-25T03:00:00Z",
+                      "inputs": {"plan": {"path": "plan.json", "sha256": None}}}):
+        _refresh_artifact(world, identity=identity)
+        problems = _refusal(world, out="d2")
+        assert len(problems) == 1 and "records no plan digest (identity.inputs.plan.sha256)" in problems[0]
+
+
+@pytest.mark.parametrize("breakage", ["no space on the line", "manifest of another shape"])
+def test_a_malformed_chain_is_a_named_refusal_not_a_traceback(world, capsys, monkeypatch, breakage):
+    """Regression (Codex, PR #39): verify_chain raised on a nonempty chain line without a digest, or on a manifest the
+    chain names whose chain block has another shape; _collect did not catch it and the build exited with a traceback
+    instead of the named refusal the command promises."""
+    chain = world["runs"] / CHAIN_FILE
+    if breakage == "no space on the line":
+        chain.write_text(chain.read_text() + "garbage\n", encoding="utf-8")
+    else:
+        rel = chain.read_text().splitlines()[0].rsplit(" ", 1)[0]
+        doc = load_json(world["runs"] / rel)
+        doc["chain"] = ["not", "an", "object"]
+        (world["runs"] / rel).write_text(json.dumps(doc), encoding="utf-8")
+    problems = _refusal(world)
+    assert any(p.startswith(f"the chain under {rp._rel(world['runs'])} does not verify: ") for p in problems), problems
+    monkeypatch.setattr(rp.seal, "sealed_registry", lambda: dict(REGISTRY))
+    assert cli.main(_cli_build(world, "--publication-state", "not_yet_public")) == 13
+    assert "refused: the chain under" in capsys.readouterr().err
 
 
 def test_readme_names_truncation_and_an_unselectable_row(world):
@@ -817,6 +881,31 @@ def test_the_publication_requirement_names_a_stale_or_superseded_citation(world,
     assert _require(world, capsys, cited=v2)[0] == 0
 
 
+def test_the_cited_pack_must_be_built_over_the_runs_the_page_publishes(world, capsys):
+    """Regression (Codex, PR #39): the check validated the cited pack only against the newest pack of its own key, so a
+    sent, FRESH pack for another campaign (or another vendor's runs) satisfied the page's gate. The page names its
+    runs (the summary's provenance.runs, passed as --cited-run); the cited pack must be built over exactly those."""
+    v1 = _build(world, out="d1").name.rsplit("_", 1)[1]
+    rp.record_sent(world["log"], v1, "vendor safety team")
+    published = ["run_200_1", "run_300_1"]
+    code, out = _check_cited(world, capsys, v1, published)
+    assert code == 0 and f"publication: {v1} is sent and FRESH" in out
+    for other in (["run_200_1"], ["run_200_1", "run_300_1", "run_900_1"], ["run_700_1", "run_800_1"]):
+        code, out = _check_cited(world, capsys, v1, other)
+        assert code == rp.PUBLICATION_UNMET_EXIT, other
+        assert (f"PUBLICATION: the published page cites {v1}, which is built over runs {published!r}, but the page "
+                f"publishes runs {sorted(other)}; the page cites the pack of the runs it publishes") in out
+        code, out = _check_cited(world, capsys, None, other)       # no citation: no pack over those runs stands in
+        assert code == 4 and f"no petri-lane pack over the published runs {sorted(other)} is both sent and FRESH" in out
+    assert _check_cited(world, capsys, None, published)[0] == 0
+
+
+def _check_cited(w, capsys, cited, runs) -> tuple[int, str]:
+    capsys.readouterr()
+    code = rp.check_packs(w["log"], require_sent=True, cited_version=cited, cited_runs=runs)
+    return code, capsys.readouterr().out
+
+
 def test_cli_check_takes_the_publication_requirement(world, monkeypatch, capsys):
     monkeypatch.setattr(rp.seal, "sealed_registry", lambda: dict(REGISTRY))
     log = ["--log", str(world["log"])]
@@ -827,9 +916,13 @@ def test_cli_check_takes_the_publication_requirement(world, monkeypatch, capsys)
     assert cli.main(["repro-pack", "--check", "--cited-version", version, *log]) == 4
     assert cli.main(["repro-pack", "--record-sent", version, "--sent-to", "vendor safety team", *log]) == 0
     assert cli.main(["repro-pack", "--check", "--cited-version", version, *log]) == 0
+    runs = ["--cited-run", "run_200_1", "--cited-run", "run_300_1"]
+    assert cli.main(["repro-pack", "--check", "--cited-version", version, *runs, *log]) == 0
+    assert cli.main(["repro-pack", "--check", "--cited-version", version, "--cited-run", "run_200_1", *log]) == 4
+    assert cli.main(["repro-pack", "--check", "--cited-run", "run_900_1", *log]) == 4
     capsys.readouterr()
     assert cli.main(["repro-pack", "--record-sent", version, "--sent-to", "x", "--require-sent", *log]) == 13
-    assert "--require-sent and --cited-version apply to --check only" in capsys.readouterr().err
+    assert "--require-sent, --cited-version and --cited-run apply to --check only" in capsys.readouterr().err
 
 
 def test_record_sent_refusals(world):

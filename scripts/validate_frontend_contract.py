@@ -477,37 +477,52 @@ PETRI_PUBLICATION_UNMET_MSG = ("petri repro-pack --check --require-sent: the Mul
 PETRI_PUBLIC_FILES = ("petri_multiturn_summary.json", "petri_multiturn_conversations.json")
 
 
-def petri_publication(site: Path | None) -> tuple[bool, str | None, list[str]]:
-    """Whether the Multi-turn page's data is public, the Petri pack version its summary cites, and errors.
+def petri_publication(site: Path | None) -> tuple[bool, str | None, list[str], list[str]]:
+    """Whether the Multi-turn page's data is public, the Petri pack version its summary cites, the runs it publishes,
+    and errors.
 
     Public means either real data file is in the site's data/: the site deploys data/ from main, so a real file is
     public whether or not the page reads it yet, and it names the target model. The summary's
-    `status.vendor_pack.version` is the page's citation of its pack (pre-registration rule (2)); a published summary
-    that cites none, or cannot be read, is an error. With the conversations file alone there is nothing to cite, so
-    the gate requires only that some Petri pack is sent and FRESH. No real file means nothing is public, and nothing is
-    required: today's state, with the samples at most."""
+    `status.vendor_pack.version` is the page's citation of its pack (pre-registration rule (2)), and its
+    `provenance.runs` names the runs the page publishes, which the cited pack must be built over (the pack builder
+    refuses runs naming another vendor's model, so the run set binds both the vendor and the campaign). A published
+    summary that cites no version or no runs, or cannot be read, is an error; so is the conversations file without
+    the summary (Codex, PR #39): per-model data would be public with no page able to cite a pack. No real file means
+    nothing is public, and nothing is required: today's state, with the samples at most."""
     if site is None:
-        return False, None, []
+        return False, None, [], []
     data = Path(site) / "data"
     if not any((data / name).is_file() for name in PETRI_PUBLIC_FILES):
-        return False, None, []
+        return False, None, [], []
     summary = data / PETRI_PUBLIC_FILES[0]
     if not summary.is_file():
-        return True, None, []
+        return True, None, [], [f"{PETRI_PUBLIC_FILES[1]} :: the conversations file is public without "
+                                f"{PETRI_PUBLIC_FILES[0]}, so no page cites the Petri pack its per-model data is "
+                                f"reproducible from; the two files are published together (pre-registration rule (2), "
+                                f"Petri design note decision 16)"]
     where = f"{PETRI_PUBLIC_FILES[0]} :: $.status.vendor_pack.version"
     try:
         doc = json.loads(summary.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
-        return True, None, [f"{where} :: the published summary cannot be read ({type(exc).__name__}), so the Petri "
-                            f"pack it cites cannot be checked"]
+        return True, None, [], [f"{where} :: the published summary cannot be read ({type(exc).__name__}), so the "
+                                f"Petri pack it cites cannot be checked"]
     status = doc.get("status") if isinstance(doc, dict) else None
     pack = status.get("vendor_pack") if isinstance(status, dict) else None
     version = pack.get("version") if isinstance(pack, dict) else None
+    provenance = doc.get("provenance") if isinstance(doc, dict) else None
+    runs = provenance.get("runs") if isinstance(provenance, dict) else None
+    errors = []
     if not isinstance(version, str) or not version.strip():
-        return True, None, [f"{where} :: the published summary cites no Petri pack version; a public per-model claim "
-                            f"cites the sent pack it is reproducible from (pre-registration rule (2), Petri design "
-                            f"note decision 16)"]
-    return True, version.strip(), []
+        errors.append(f"{where} :: the published summary cites no Petri pack version; a public per-model claim cites "
+                      f"the sent pack it is reproducible from (pre-registration rule (2), Petri design note "
+                      f"decision 16)")
+    if (not isinstance(runs, list) or not runs
+            or not all(isinstance(r, str) and r.strip() and r == r.strip() for r in runs)):
+        errors.append(f"{PETRI_PUBLIC_FILES[0]} :: $.provenance.runs :: the published summary names no runs as a "
+                      f"list of run directory names, so the Petri pack it cites cannot be bound to the data it "
+                      f"publishes")
+        runs = []
+    return True, (version.strip() if isinstance(version, str) and version.strip() else None), list(runs), errors
 
 
 def _pack_check(run: Callable[..., subprocess.CompletedProcess], cmd: list[str], engine_root: Path,
@@ -553,13 +568,15 @@ def repro_pack_gate(engine_root: Path,
     Multi-turn page go public with no Petri pack built, or with one built and
     never sent: the check passes both, since it escalates only sent packs. When
     `site` holds the page's real data files (petri_publication), the Petri check
-    also runs with --require-sent and the version the page's summary cites, even
-    with no log, and exit 4 fails the gate. Without those files nothing is
-    public, the check runs as it did, and a missing log still skips both checks,
-    so the requirement cannot fail the gate before the page is published."""
+    also runs with --require-sent, the version the page's summary cites and the
+    runs it publishes (--cited-run, one per run; the cited pack must be built
+    over exactly those), even with no log, and exit 4 fails the gate. Without
+    those files nothing is public, the check runs as it did, and a missing log
+    still skips both checks, so the requirement cannot fail the gate before the
+    page is published."""
     log = engine_root / "ops" / "disclosure_log.jsonl"
     has_log = log.is_file() and log.stat().st_size > 0
-    public, cited, publication_errors = petri_publication(site)
+    public, cited, cited_runs, publication_errors = petri_publication(site)
     if not has_log and not public:
         return "", []
     outs: list[str] = []
@@ -574,6 +591,8 @@ def repro_pack_gate(engine_root: Path,
     petri_cmd = [sys.executable, "-m", "scripts.petri_audit.cli", "repro-pack", "--check", "--log", str(log)]
     if public:
         petri_cmd += ["--require-sent"] + (["--cited-version", cited] if cited else [])
+        for stem in cited_runs:
+            petri_cmd += ["--cited-run", stem]
     petri_out, petri_errors = _pack_check(
         run, petri_cmd, engine_root, {2: PETRI_REPRO_PACK_STALE_MSG, 4: PETRI_PUBLICATION_UNMET_MSG},
         "petri repro-pack --check", "Petri vendor-pack")
