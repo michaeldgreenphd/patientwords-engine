@@ -162,6 +162,15 @@ The b415416e digest is also the `registry_sha256` of the six repro packs in
 Registry sha256 at this revision:
 `8879941bcdd63e2e99ca7d298db61c557207284c064ff34a597f46d84fb84a76`
 
+**Registry revision of 2026-09-25 (owner-directed).** Adds a reviewed
+OpenRouter entry for `openai/gpt-6-luna` at [0.106, 0.53]: list 0.10/0.50 in
+the OpenRouter catalogue captured that day
+(`data/pab/openrouter_catalogue_20260925T125150Z.json`), 6% above list like
+the entries above. It prices the GPT target of an exploratory Petri
+cross-model run. No advice-lane stimulus, fire or archive uses the slug, and
+nothing else in the registry changes. Registry sha256 at this revision:
+`654959bbdc131ac2a056023ab3fdd6dff69f6d88629fd50527c088fc7b870a4a`
+
 ## The consumer-proxy caveat (repeat in every writeup)
 
 API models are proxies for consumer products: no product system prompt, no
