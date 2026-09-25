@@ -23,6 +23,8 @@ from pathlib import Path
 from typing import Any
 
 from .framework import ROOT, load_json
+from .rejudge import TASK as REJUDGE_TASK
+from .rejudge import RejudgeError, judge_report_name, judge_slug
 
 LANE = "petri-audit"
 JUDGE_SUFFIX = ".judge.report.json"
@@ -45,6 +47,9 @@ CUMULATIVE = "cumulative_from_records"
 # happens to be missing (Codex round 10 on PR #28).
 FALLBACK_JUDGE_BASES = tuple(b for b in JUDGE_BASES if b != CUMULATIVE)
 DEFAULT_RUNS_DIR = ROOT / "data" / "petri" / "runs"      # the CLI's default; the first landed run creates it
+# where mode rejudge writes (scripts/petri_audit/rejudge.py): <root>/<judge slug>/<source stem>/, one judge sidecar per
+# source run per fire, named for the rejudging workflow run; by default the runs directory's sibling
+REJUDGE_DIRNAME = "rejudge"
 
 
 def read_journal(path: Path | str) -> list[dict[str, Any]]:
@@ -78,6 +83,26 @@ def _sidecars(runs_dir: Path) -> tuple[list[tuple[Path, Any]], list[tuple[Path, 
             report = {"unreadable": f"not an object ({type(report).__name__})"}
         (judges if p.name.endswith(JUDGE_SUFFIX) else targets).append((p, report))
     return targets, judges
+
+
+def _rejudge_sidecars(rejudge_dir: Path | None) -> list[tuple[Path, Any]]:
+    """Every judge sidecar a rejudge left (`<root>/<judge slug>/<source stem>/*.report.json`); unreadable kept, marked."""
+    found: list[tuple[Path, Any]] = []
+    if rejudge_dir is None or not Path(rejudge_dir).is_dir():
+        return found
+    for p in sorted(Path(rejudge_dir).glob("*/*/*.report.json")):
+        try:
+            report: Any = load_json(p)
+        except (OSError, ValueError) as exc:
+            report = {"unreadable": str(exc)}
+        if not isinstance(report, dict):
+            report = {"unreadable": f"not an object ({type(report).__name__})"}
+        found.append((p, report))
+    return found
+
+
+def _rejudge_label(p: Path) -> str:
+    return f"rejudge/{p.parent.parent.name}/{p.parent.name}/{p.name}"
 
 
 def _money(value: Any) -> float | None:
@@ -594,6 +619,126 @@ def _readapt_judge_row(e: dict[str, Any], row: dict[str, Any], found: list[tuple
     row["status"] = "landed (readapt judge)"
 
 
+def _rejudge_identity_problems(p: Path, r: dict[str, Any]) -> list[str]:
+    """Why a rejudge sidecar is not where its own record says it belongs: the directory is `<judge slug>/<source
+    stem>` for the judge and run it records, and its name is the one the rejudge gives that run's sidecar for the
+    workflow run it records (`rejudge.judge_report_name`). A copied or renamed sidecar would otherwise be joined on
+    its nonce alone."""
+    label = _rejudge_label(p)
+    found: list[str] = []
+    if r.get("task") != REJUDGE_TASK:
+        found.append(f"{label}: task {r.get('task')!r} is not {REJUDGE_TASK!r}; only a rejudge writes under the "
+                     "rejudge root")
+    stem, spec = r.get("source_run_stem"), r.get("judge_model")
+    if not isinstance(stem, str) or stem != p.parent.name:
+        found.append(f"{label}: it records source run {stem!r} but sits in {p.parent.name!r}")
+    try:
+        if not isinstance(spec, str) or judge_slug(spec) != p.parent.parent.name:
+            found.append(f"{label}: it records judge {spec!r}, whose directory is not {p.parent.parent.name!r}")
+    except RejudgeError as exc:
+        found.append(f"{label}: {exc}")
+    try:
+        if isinstance(stem, str) and p.name != judge_report_name(stem, r.get("rejudge_workflow_run_id")):
+            found.append(f"{label}: it records workflow run {r.get('rejudge_workflow_run_id')!r}, whose sidecar is not "
+                         "named this")
+    except RejudgeError as exc:
+        found.append(f"{label}: {exc}")
+    return found
+
+
+def _rejudge_row(e: dict[str, Any], row: dict[str, Any], found: list[tuple[Path, dict[str, Any]]], ledger: Ledger | None,
+                 duplicate_names: set[str], now: datetime, problems: list[str]) -> None:
+    """Fill the row of a rejudge fire (petri-audit `mode: rejudge`, scripts/petri_audit/rejudge.py) from the judge
+    sidecars that carry its nonce, one per source run it started.
+
+    A rejudge makes no target call: its fire reserves exactly the judge's ceiling (`fire_judge_max_spend_usd`), and
+    each source run's judge ran under what that ceiling had left (`max_spend_usd`, after `fire_spent_before_usd`).
+    The checks are the ordinary judge's, per sidecar and for the fire: basis, identity (directory and name), cost
+    within its own ceiling, the allotments adding back to the fire's ceiling, that ceiling equal to the commitment,
+    the costs summed within it, one billing channel equal to the fire's lane, one workflow run, a stamp inside the
+    fire's interval, and the ledger's fold of every sidecar.
+    """
+    nonce = e.get("nonce")
+    readable = [(p, r) for p, r in found if "unreadable" not in r]      # an unreadable one carries no nonce to join on
+    row["run"] = ", ".join(f"{p.parent.parent.name}/{p.parent.name}" for p, _ in found)
+    costs: list[float] = []
+    lane = e.get("lane")
+    if not isinstance(lane, str) or not lane:
+        problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}): the journal entry records no lane "
+                        f"({lane!r}), so which account the rejudge judge's commitment was reserved against is "
+                        "assumed, not recorded")
+    elif _channel_unsupported(lane):
+        problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}): lane {lane!r} is not an account this "
+                        f"study bills ({' or '.join(CHANNELS)})")
+    runs = {str(r.get("rejudge_workflow_run_id")) for _, r in readable}
+    if len(runs) > 1:
+        problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}): its rejudge sidecars name {len(runs)} "
+                        f"workflow runs ({', '.join(sorted(runs))}); one fire is one workflow run")
+    folded: list[bool] = []
+    for p, r in readable:
+        label = _rejudge_label(p)
+        problems.extend(_rejudge_identity_problems(p, r))
+        cost = _money(r.get("cost_usd"))
+        if cost is None:
+            problems.append(f"{label}: judge cost_usd {r.get('cost_usd')!r} is missing or not a finite non-negative "
+                            "number")
+        else:
+            costs.append(cost)
+        problems.extend(_basis_problems(label, r, cost, judge=True))
+        own, fire_ceiling, before = (_money(r.get("max_spend_usd")), _money(r.get("fire_judge_max_spend_usd")),
+                                     _money(r.get("fire_spent_before_usd")))
+        if own is None or own == 0.0:
+            problems.append(f"{label}: max_spend_usd {r.get('max_spend_usd')!r} is not a positive number, so the "
+                            "ceiling this run's judge ran under cannot be established")
+        elif cost is not None and cost > own + 1e-9:
+            problems.append(f"{label}: judge cost {cost:.4f} exceeds the ceiling {own:.4f} it ran under")
+        if fire_ceiling is None or before is None:
+            problems.append(f"{label}: fire_judge_max_spend_usd {r.get('fire_judge_max_spend_usd')!r} and "
+                            f"fire_spent_before_usd {r.get('fire_spent_before_usd')!r} are not both finite non-negative "
+                            "numbers, so this run's share of the fire's ceiling cannot be established")
+        else:
+            if row["max_spend"] is not None and abs(fire_ceiling - row["max_spend"]) > 1e-9:
+                problems.append(f"{label}: the rejudge fire's judge ceiling is recorded as {fire_ceiling:.4f} but the "
+                                f"fire reserved {row['max_spend']:.4f}; a rejudge fire reserves exactly the judge's "
+                                "ceiling")
+            if own is not None and abs(before + own - fire_ceiling) > 1e-6:
+                problems.append(f"{label}: its ceiling {own:.4f} after {before:.4f} already spent does not add back to "
+                                f"the fire's ceiling {fire_ceiling:.4f}")
+        channel = _channel(r.get("billing_channel"), "")
+        if not channel:
+            problems.append(f"{label}: the judge sidecar states no billing_channel, so which account its cost lands on "
+                            "cannot be checked against the fire's lane")
+        elif _channel_unsupported(channel):
+            problems.append(f"{label}: the judge sidecar books billing_channel {channel!r}, which is neither "
+                            f"{' nor '.join(CHANNELS)}")
+        elif isinstance(lane, str) and lane and channel != lane:
+            problems.append(f"{label}: the judge sidecar books the {channel} account but the fire reserved its "
+                            f"commitment on {lane}, so the two ceilings disagree about this spend")
+        problems.extend(_stamp_problems(p, r, e, now))
+        if ledger is not None and p.name not in duplicate_names:
+            folded.append(ledger.state(p.name, cost)[0])
+            day_problem = ledger.day_problem(p.name, _ledger_day(r), _day_bookable(r))
+            if day_problem:
+                problems.append(f"{label}: {day_problem}")
+    bases = {r.get("cost_basis") for _, r in readable if isinstance(r.get("cost_basis"), str)}
+    row["cost_basis"] = bases.pop() if len(bases) == 1 else ("mixed" if bases else None)
+    if len(costs) == len(readable) and readable:
+        row["judge_cost_usd"] = round(sum(costs), 8)
+        row["total_usd"] = row["judge_cost_usd"]
+        if row["max_spend"] is not None and row["total_usd"] > row["max_spend"] + 1e-9:
+            problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}): rejudge cost {row['total_usd']:.4f} "
+                            f"exceeds the fire's commitment {row['max_spend']:.4f}")
+    if ledger is not None and folded and len(folded) == len(readable):
+        row["judge_folded"] = all(folded)
+        row["folded"] = row["judge_folded"]
+        if row["judge_folded"] and not row["resolved"] and not row["evicted"]:
+            problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}) landed and is fully booked but the "
+                            "journal entry is still unresolved, so it holds a queue slot until it expires (its "
+                            "commitment counts beside the landed cost for the rest of its UTC day whether it is "
+                            "resolved or not). Run `fire_trigger.py resolve --trigger petri-audit`")
+    row["status"] = "landed (rejudge)"
+
+
 def _judge_identity_problem(run_dir: str, target: dict[str, Any], judge: dict[str, Any]) -> str | None:
     """Why a judge sidecar does not belong to the target run it sits beside.
 
@@ -664,7 +809,8 @@ def _judge_identity_problem(run_dir: str, target: dict[str, Any], judge: dict[st
     return None
 
 
-def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Path | str | None = None) -> dict[str, Any]:
+def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Path | str | None = None,
+              rejudge_dir: Path | str | None = None) -> dict[str, Any]:
     """Join the lane's paid journal entries to the landed cost sidecars on the fire nonce.
 
     Returns `{"lane", "paid_fires": [row...], "sidecars": {"target", "judge"}, "runs_dir", "runs_dir_note",
@@ -674,6 +820,10 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
     it could not be read, never `False`, since unknown is not unbooked. `runs_dir_note` states an absent runs
     archive whether or not it is a problem. `problems` is the list a strict caller fails on; every sidecar the
     ledger has not booked is in it, so `unfolded_sidecars` is never a list of unnamed gaps.
+
+    `rejudge_dir` is the rejudge root (petri-audit `mode: rejudge`), default the runs directory's sibling
+    `rejudge/`; its judge sidecars are joined to rejudge fires on their nonce (`_rejudge_row`) and counted in
+    `rejudge_sidecars`, beside `sidecars`, whose shape is unchanged.
     """
     entries = read_journal(journal_path)
     # read once, so every stamp in one report is judged against the same instant (Codex round 12 on PR #28)
@@ -692,6 +842,7 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
         # paid fire is waiting on it, so the report states the absence without calling it a problem.
         problems.append(f"{runs_dir}: no such directory, so no landed sidecar was scanned at all")
     targets, judges = _sidecars(Path(runs_dir))
+    rejudges = _rejudge_sidecars(Path(runs_dir).parent / REJUDGE_DIRNAME if rejudge_dir is None else Path(rejudge_dir))
     ledger = _read_ledger(dashboard_path, problems)
 
     # `ledger_update.sidecar_key` keys a Petri sidecar on its BARE FILENAME, so two run directories holding the
@@ -702,6 +853,8 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
     by_basename: dict[str, set[str]] = {}
     for sp, _ in targets + judges:
         by_basename.setdefault(sp.name, set()).add(sp.parent.name)
+    for sp, _ in rejudges:
+        by_basename.setdefault(sp.name, set()).add(_rejudge_label(sp).rsplit("/", 1)[0])
     duplicate_names = {name for name, dirs in by_basename.items() if len(dirs) > 1}
     for name in sorted(duplicate_names):
         where = ", ".join(sorted(by_basename[name]))
@@ -752,6 +905,17 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
     # one judge sidecar per run directory is what the writers produce; keeping the last of several silently
     # dropped the others' cost from the reconciliation (Codex round 1 on PR #28), so an ambiguous directory
     # carries no judge cost at all and is named
+    # A rejudge's judge sidecars (petri-audit `mode: rejudge`) sit under the rejudge root, one per source run the fire
+    # started, each carrying the fire's nonce; they are joined to that fire alone (`_rejudge_row`)
+    rejudge_by_nonce: dict[str, list[tuple[Path, dict[str, Any]]]] = {}
+    for p, r in rejudges:
+        jn = r.get("journal_nonce") if "unreadable" not in r else None
+        if isinstance(jn, str) and jn:
+            rejudge_by_nonce.setdefault(jn, []).append((p, r))
+        elif "unreadable" in r:
+            problems.append(f"{_rejudge_label(p)}: rejudge sidecar unreadable ({r['unreadable']})")
+        else:
+            problems.append(f"{_rejudge_label(p)}: rejudge sidecar carries no journal_nonce; no fire accounts for it")
     judges_by_dir: dict[str, list[tuple[Path, dict[str, Any]]]] = {}
     for p, r in ordinary_judges:
         judges_by_dir.setdefault(p.parent.name, []).append((p, r))
@@ -802,7 +966,20 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             continue
         matches = by_nonce.get(nonce, [])
         readapt_found = readapt_judges.get(nonce, [])
-        if matches and readapt_found:
+        rejudge_found = rejudge_by_nonce.get(nonce, [])
+        if rejudge_found and (matches or readapt_found):
+            row["status"] = "ambiguous"
+            names = ", ".join(f"{p.parent.name}/{p.name}" for p, _ in matches + readapt_found) + ", " + ", ".join(
+                _rejudge_label(p) for p, _ in rejudge_found)
+            problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}): both a run sidecar and a rejudge "
+                            f"sidecar carry its nonce ({names}); one fire is one run, one readapt or one rejudge")
+        elif rejudge_found:
+            # a rejudge fire: its only landed spend is its judge's, one sidecar per source run it started
+            if row["evicted"]:
+                problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}) is journaled evicted but its "
+                                "rejudge judge landed: the queue released its commitment while the judge spent")
+            _rejudge_row(e, row, rejudge_found, ledger, duplicate_names, now, problems)
+        elif matches and readapt_found:
             row["status"] = "ambiguous"
             names = ", ".join(f"{p.parent.name}/{p.name}" for p, _ in matches + readapt_found)
             problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}): both a target sidecar and a readapt "
@@ -1065,6 +1242,10 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
         if nonce not in known:
             for p, _ in matches:
                 problems.append(f"{p.parent.name}/{p.name}: journal_nonce {nonce!r} matches no paid {LANE} journal entry")
+    for nonce, matches in rejudge_by_nonce.items():
+        if nonce not in known:
+            for p, _ in matches:
+                problems.append(f"{_rejudge_label(p)}: journal_nonce {nonce!r} matches no paid {LANE} journal entry")
     # Every sidecar the ledger has not fully booked, joined to a fire or not, named here and nowhere else, so
     # `--strict` cannot exit 0 while this list is non-empty (Codex round 2 on PR #28).
     unfolded: list[str] = []
@@ -1078,6 +1259,13 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             if not booked:
                 unfolded.append(p.name)
                 problems.append(f"{p.parent.name}/{p.name}: {why}")
+        for p, r in rejudges:
+            if "unreadable" in r or p.name in duplicate_names:
+                continue
+            booked, why = ledger.state(p.name, _money(r.get("cost_usd")))
+            if not booked:
+                unfolded.append(p.name)
+                problems.append(f"{_rejudge_label(p)}: {why}")
     unfolded = sorted(unfolded)
     if runs_absent:
         # stated whether or not it is a problem, so "Sidecars found: 0" is never read as "the archive is empty"
@@ -1085,7 +1273,7 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
     else:
         problems_note = None
     return {"lane": LANE, "paid_fires": rows, "sidecars": {"target": len(targets), "judge": len(judges)},
-            "runs_dir": str(runs_dir), "runs_dir_note": problems_note,
+            "rejudge_sidecars": len(rejudges), "runs_dir": str(runs_dir), "runs_dir_note": problems_note,
             "unfolded_sidecars": unfolded, "problems": problems}
 
 
@@ -1108,7 +1296,9 @@ def render_markdown(result: dict[str, Any]) -> str:
     if not result["paid_fires"]:
         lines.append("| — | — | — | — | — | — | — | — | — | no paid fire journaled |")
     s = result["sidecars"]
-    lines += ["", f"Sidecars found: {s['target']} target, {s['judge']} judge."]
+    rejudged = result.get("rejudge_sidecars") or 0
+    lines += ["", f"Sidecars found: {s['target']} target, {s['judge']} judge"
+              + (f", {rejudged} rejudge." if rejudged else ".")]
     if result.get("runs_dir_note"):
         lines.append(result["runs_dir_note"])
     if result["unfolded_sidecars"]:
@@ -1117,7 +1307,7 @@ def render_markdown(result: dict[str, Any]) -> str:
     if result["problems"]:
         lines.append(f"**Problems ({len(result['problems'])})**")
         lines += [f"- {p}" for p in result["problems"]]
-    elif not result["paid_fires"] and not s["target"] and not s["judge"]:
+    elif not result["paid_fires"] and not s["target"] and not s["judge"] and not rejudged:
         # a universal claim over an empty set reads as an assurance it is not: say what was actually the case
         lines.append("Nothing to reconcile: no paid petri-audit fire is journaled and no cost sidecar has landed.")
     else:
