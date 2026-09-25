@@ -27,6 +27,7 @@ from typing import Any
 try:
     from scripts.petri_audit import judge_runner
     from scripts.petri_audit.framework import sha256_file
+    from scripts.petri_audit.rules import rule_outcomes
     from scripts.petri_audit.seeds import ROOT_BRANCH, seed_digest, text_of, texts_by_key, tool_result_for
 except ModuleNotFoundError:  # run as a file path: the repository root is not on sys.path
     import sys
@@ -34,6 +35,7 @@ except ModuleNotFoundError:  # run as a file path: the repository root is not on
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from scripts.petri_audit import judge_runner
     from scripts.petri_audit.framework import sha256_file
+    from scripts.petri_audit.rules import rule_outcomes
     from scripts.petri_audit.seeds import ROOT_BRANCH, seed_digest, text_of, texts_by_key, tool_result_for
 
 RUNS_SUBPATH = ("data", "petri", "runs")
@@ -107,13 +109,14 @@ def _sha(text: str) -> str:
 def _conversation(seed: Mapping[str, Any], arm: Mapping[str, Any], cid: str,
                   tool_exchange: int) -> tuple[dict, dict]:
     """One transcript record and its rule outcome. User turns carry the seed's scripted texts; replies are
-    placeholders. A seed with tools makes one call at `tool_exchange`, answered by the seed's scripted result."""
+    placeholders. A seed with tools makes one call at `tool_exchange`, answered by the seed's scripted result. The
+    rule outcome is the lane's own (`rules.rule_outcomes` over the record), so it has the shapes a landed run's has
+    (`query_text` a list of every call's arguments; Codex review of PR #40, 2026-09-24: a hand-built one gave a
+    string, and the samples built from it never carried the list the real files do)."""
     results = (seed.get("tools") or {}).get("results") or []
     tool = results[0]["tool"] if results else None
     turns: list[dict] = []
     tid = 0
-    first_call = None
-    calls = 0
     for i, entry in enumerate(arm["turns"], 1):
         tid += 1
         user = tid
@@ -123,25 +126,17 @@ def _conversation(seed: Mapping[str, Any], arm: Mapping[str, Any], cid: str,
             args = {"query": TOOL_QUERY}
             call_id = f"call_{cid[:8]}_{i}"
             tid += 1
-            first_call = first_call or tid
             turns.append({"turn_id": tid, "role": "assistant", "text": "", "attachments_omitted": 0, "reply_to": user,
                           "tool_calls": [{"call_id": call_id, "name": tool, "arguments": args, "parse_error": None}]})
             result, _, _ = tool_result_for(dict(seed), tool, args)
             tid += 1
             turns.append({"turn_id": tid, "role": "tool", "text": result, "attachments_omitted": 0,
                           "tool_call_id": call_id})
-            calls += 1
         tid += 1
         turns.append({"turn_id": tid, "role": "assistant", "text": f"[Synthetic reply to exchange {i}: placeholder.]",
                       "attachments_omitted": 0, "reply_to": user})
-    reasons = {"marker_echo": "synthetic: not computed"}
-    if not calls:
-        reasons["advice_before_lookup"] = "no tool invoked"
-    rule = {"tool_invoked": bool(calls), "first_tool": tool if calls else None, "first_call_turn": first_call,
-            "advice_before_lookup": (tool_exchange > 1) if calls else None,
-            "query_text": TOOL_QUERY if calls else None, "marker_echo": None, "parse_error_call": 0,
-            "tool_calls_total": calls, "unknown_tool_calls": 0, "tool_results_received": calls, "reasons": reasons}
-    return {"conversation_id": cid, "turns": turns}, rule
+    record = {"conversation_id": cid, "turns": turns}
+    return record, rule_outcomes(record, dict(seed))
 
 
 def _judgment(plan: judge_runner.JudgePlan, rng: random.Random) -> dict:

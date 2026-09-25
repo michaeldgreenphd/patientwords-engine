@@ -186,6 +186,21 @@ def test_the_scripted_lookup_result_carries_fixture_true(shared, tmp_path):
                if it["role"] == "assistant")
 
 
+def test_rule_outcomes_keep_the_lanes_query_text_list_in_exports_and_samples(shared, tmp_path):
+    """Regression (Codex review of 2026-09-24): the lane writes query_text as a list of every call's arguments
+    (scripts/petri_audit/rules.py), but the synthetic runs carried one string and the samples replaced it with one
+    string, so the page was built against a type the real files never carry."""
+    camp, _ = shared
+    convs = export(camp, tmp_path).conversations["conversations"]
+    called = [c["rule"]["query_text"] for c in convs if c["rule"]["tool_invoked"]]
+    assert called and all(q == [json.dumps({"query": syn.TOOL_QUERY})] for q in called)
+    assert all(c["rule"]["query_text"] is None for c in convs if not c["rule"]["tool_invoked"])
+    _, sample = ex.sample_export(seal_registry=NO_SEAL)
+    queries = [c["rule"]["query_text"] for c in sample["conversations"]]
+    listed = [q for q in queries if q is not None]
+    assert listed and all(q == ["[Sample query text 1: placeholder.]"] for q in listed)
+
+
 def test_a_tool_result_that_is_not_the_scripted_text_is_refused(tmp_path):
     def tamper(stem, records):
         for t in records[0]["turns"]:

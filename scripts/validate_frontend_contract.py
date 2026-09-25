@@ -514,7 +514,12 @@ def check_multiturn_conversations(rep: Report, a: str, c: dict, sample: bool):
         need(rep, a, cv, "arm", str, path)
         need(rep, a, cv, "epoch", int, path)
         need(rep, a, cv, "identity", str, path, nullable=True)
-        need(rep, a, cv, "rule", dict, path)
+        rule = need(rep, a, cv, "rule", dict, path) or {}
+        # scripts/petri_audit/rules.py: every call's arguments in order, or null when no tool was invoked; a sample
+        # carries the same shape (Codex review of 2026-09-24: the samples carried one string)
+        queries = rule.get("query_text")
+        if queries is not None and not (isinstance(queries, list) and all(isinstance(q, str) for q in queries)):
+            rep.err(a, f"{path}.rule.query_text", "must be a list of strings (each tool call's arguments) or null")
         for j, ex in enumerate(need(rep, a, cv, "exchanges", list, path) or []):
             xp = f"{path}.exchanges[{j}]"
             need(rep, a, ex, "user", str, xp)

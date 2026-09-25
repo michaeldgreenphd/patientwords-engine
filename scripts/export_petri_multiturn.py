@@ -1275,8 +1275,13 @@ def samplify(result: Export, rng_seed: int, epoch: int = 1) -> tuple[dict[str, A
                 if "na" in cell:
                     cell["na"] = "sample: not applicable"
         rule = x["rule"]
-        if rule.get("query_text"):
-            rule["query_text"] = "[Sample query text: placeholder.]"
+        # the lane's shape kept: a list of every call's arguments, or null (scripts/petri_audit/rules.py)
+        queries = rule.get("query_text")
+        if queries is not None:
+            if not isinstance(queries, list):
+                raise ExportRefusal(f"the synthetic rule outcome's query_text is a {type(queries).__name__}, not the "
+                                    f"list the lane writes")
+            rule["query_text"] = [f"[Sample query text {k}: placeholder.]" for k in range(1, len(queries) + 1)]
         if rule.get("first_tool"):
             rule["first_tool"] = "sample_lookup"
     c["conversations"] = convs

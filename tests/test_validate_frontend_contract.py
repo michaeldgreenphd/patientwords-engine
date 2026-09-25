@@ -485,3 +485,18 @@ def test_owner_run_multiturn_samples_not_required_without_the_page_or_beside_the
     assert not any("petri_multiturn" in e for e in rep.errors + rep.warnings)
     _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
     assert not any("petri_multiturn" in e for e in run(site, strict=True).errors)
+
+
+def test_owner_run_multiturn_query_text_is_a_list_or_null(site):
+    """Regression (Codex review of 2026-09-24): the lane writes rule.query_text as a list of each call's arguments or
+    null; the samples carried one string, and nothing checked the type the page is built against."""
+    summary, conversations = _multiturn_pair()
+    s_summary, s_conversations = _multiturn_pair(sample=True)
+    conversations["conversations"][0]["rule"] = {"query_text": ['{"query": "q"}']}
+    s_conversations["conversations"][0]["rule"] = {"query_text": "[Sample query text: placeholder.]"}
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, (s_summary, s_conversations), ".sample.json")
+    errors = run(site).errors
+    assert [e for e in errors if "query_text" in e] == [
+        "petri_multiturn_conversations.sample.json :: $.conversations[0].rule.query_text :: must be a list of strings "
+        "(each tool call's arguments) or null"]
