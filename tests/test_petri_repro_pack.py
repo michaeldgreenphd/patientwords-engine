@@ -398,6 +398,26 @@ def test_refuses_a_seed_that_drifted_from_what_a_run_recorded(world):
     assert any(p.startswith("seed s1: run_200_1 recorded digest") for p in _refusal(world))
 
 
+@pytest.mark.parametrize("digest", ["absent", None, "", "0123abc"])
+def test_refuses_a_judgment_that_records_no_prompt_digest(world, digest):
+    """Regression (Codex, PR #39): a judgment with a prompt_ref but no prompt_file_digest was packed. Its rows were
+    counted under the digest `None`, and the README said they were judged under an earlier version of the file, which
+    git history holds, so the pack could not name the prompt they were judged under."""
+    rows = _judgments(world["r2"].name)
+    for row in rows[1:]:                                  # both rows naming the outcome prompt
+        if digest == "absent":
+            row.pop("prompt_file_digest")
+        else:
+            row["prompt_file_digest"] = digest
+    _jsonl(world["r2"] / "judgments.jsonl", rows)
+    _reseal(world["r2"])
+    _refresh_artifact(world)
+    problems = _refusal(world)
+    assert len(problems) == 1, problems
+    assert problems[0].startswith(f"run_300_1: 2 judgment(s) naming {PROMPT_REF} record no prompt_file_digest")
+    assert not world["log"].exists()
+
+
 def test_refuses_an_analysis_and_a_plan_with_one_basename(world):
     """Regression (Codex, PR #39): both are copied into analysis/ by basename, so a plan named like the artifact
     overwrote it, and the pack was sealed without the analysis it claims to carry."""

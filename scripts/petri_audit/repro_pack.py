@@ -32,13 +32,14 @@ gitignored, so a pack is never committed, as in the advice lane):
 - `MANIFEST.json` (the pack's state and identity) and `SHA256SUMS` (every other file's sha256).
 
 The build refuses, by name and before anything is written: an analysis artifact that is absent, is not a `--final`
-output, or was computed on other bytes of a run than the ones listed; a run list that differs from the runs the
-analysis read, or omits a landed run of the plan's fires; a run that fails `verify-run`, is missing from the chain,
-holds an unknown file, or lacks a cost sidecar; a chain that does not verify; any record naming a model of another
-vendor (runs are never filtered: their files are bound by digest); a seed whose current digest differs from the one a
-run recorded; a missing prompt file; a claim id the wording file does not carry; an analysis artifact and a plan
-that share a basename (both are carried under `analysis/`); a pack that fails the holdout seal (labels only, never a
-phrase); and a pack directory of the same version that holds other bytes.
+output, or was computed on other bytes of a run than the ones listed; a run list that differs from the runs the analysis
+read, or omits a landed run of the plan's fires; a run that fails `verify-run`, is missing from the chain, holds an
+unknown file, or lacks a cost sidecar; a chain that does not verify; any record naming a model of another vendor (runs
+are never filtered: their files are bound by digest); a seed whose current digest differs from the one a run recorded; a
+missing prompt file; a judgment that records no prompt digest (the pack could not name the prompt it was judged under);
+a claim id the wording file does not carry; an analysis artifact and a plan that share a basename (both are carried
+under `analysis/`); a pack that fails the holdout seal (labels only, never a phrase); and a pack directory of the same
+version that holds other bytes.
 
 Identity. A pack is keyed by (vendor, analysis artifact stem), like the advice lane's (vendor, archive). Its version is
 `petri-v` + the first 12 hex of the sha256 of its manifest's canonical JSON (MANIFEST.json without `pack_version`),
@@ -122,6 +123,8 @@ REFUSED_EXIT = 13                             # the petri CLI's codes 3-12 are t
 # as-first-written block
 RUN_FILES = ("manifest.json", *ARTIFACT_FILENAMES.values(), "analysis_rows.jsonl")
 MAX_MOVED_SHOWN = 8
+# the digest a judgment records for its prompt file (judge_runner.plan_record; prompt_file_digest below)
+PROMPT_DIGEST = re.compile(r"[0-9a-f]{12}")
 # what a log entry's manifest keeps: everything --check reads, the pack's identity and the claim ids. The bundle's
 # MANIFEST.json holds the whole manifest, whose canonical sha256 the version is cut from.
 LOG_MANIFEST_KEYS = ("pack_format", "lane", "vendor", "scope", "publication_state", "inputs", "depends_on", "state",
@@ -887,6 +890,7 @@ def _collect(inputs: PackInputs) -> tuple[dict[str, Any], list[str], list[str]]:
         except (OSError, ValueError) as exc:
             problems.append(f"{stem}: {exc}")
             continue
+        undigested: Counter = Counter()
         for j in judgments:
             ref, digest = j.get("prompt_ref"), j.get("prompt_file_digest")
             kind = "rubric" if j.get("kind") == "tier" else "prompt"
@@ -895,7 +899,14 @@ def _collect(inputs: PackInputs) -> tuple[dict[str, Any], list[str], list[str]]:
                 break
             if prompt_refs.setdefault(ref, kind) != kind:
                 problems.append(f"{ref} is named both as a rubric and as an outcome prompt")
+            if not (isinstance(digest, str) and PROMPT_DIGEST.fullmatch(digest)):
+                undigested[ref] += 1
+                continue
             prompt_rows.setdefault(ref, Counter())[f"{digest} ({stem})"] += 1
+        for ref, n in sorted(undigested.items()):
+            problems.append(f"{stem}: {n} judgment(s) naming {ref} record no prompt_file_digest (absent, null, empty "
+                            f"or not the 12-hex digest a judgment records), so the pack cannot name the prompt they "
+                            f"were judged under")
         for s in manifest.get("seeds") or []:
             seed_recorded.setdefault(s["seed_id"], {})[stem] = s["seed_sha256"]
         nonce = run_nonce(manifest)
