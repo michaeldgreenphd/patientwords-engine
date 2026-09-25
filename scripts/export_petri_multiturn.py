@@ -258,6 +258,15 @@ def _text(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
+def _finite(value: float) -> bool:
+    """Whether a number is finite; an integer too large for a float is not (math.isfinite raises OverflowError on it;
+    Codex review of PR #46)."""
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
 def _count(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 
@@ -555,7 +564,7 @@ def load_vocabulary(path: Path, rubric: Mapping[str, Any], registry: Mapping[str
         temperature = cm.get("target_temperature")
         # a finite number: Python's json reads Infinity and NaN, which name no sampling setting (Codex, PR #43)
         if (isinstance(temperature, bool) or not isinstance(temperature, (int, float))
-                or not math.isfinite(temperature)):
+                or not _finite(temperature)):
             problems.append(f"campaign_models.target_temperature must be the finite number the page states, not "
                             f"{temperature!r}")
         for key in ("target_label", "judge_label"):
