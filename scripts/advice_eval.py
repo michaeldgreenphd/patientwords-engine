@@ -42,6 +42,7 @@ import re
 import statistics
 import subprocess
 import time
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -1967,18 +1968,23 @@ def _pack_key(entry: dict) -> PackKey:
     return (entry["vendor"], _archive_id(entry["manifest"]["stimuli_file"]))
 
 
-def _newest_by_key(entries: list[dict]) -> tuple[dict[PackKey, dict], dict[PackKey, set[str]]]:
+def _newest_by_key(entries: list[dict], key_fn: Callable[[dict], tuple] = _pack_key
+                   ) -> tuple[dict[PackKey, dict], dict[PackKey, set[str]]]:
     """Per (vendor, archive): the newest pack by BUILD order, and the set of pack
     versions with a recorded send. `entries` are readable advice-lane entries
     (`_partition_log`).
 
     A send entry is a copy of its build entry appended later, so it never makes its
     pack "newer" than a pack built after it; it stands in for the build only when
-    the log holds no build entry for that (vendor, archive)."""
+    the log holds no build entry for that (vendor, archive).
+
+    `key_fn` is a pack's identity; the Petri lane's packs are keyed by (vendor,
+    analysis) instead (scripts/petri_audit/repro_pack.py `pack_key`), with the same
+    build-order and send rules."""
     newest: dict[PackKey, dict] = {}
     sent_versions: dict[PackKey, set[str]] = {}
     for e in entries:
-        key = _pack_key(e)
+        key = key_fn(e)
         if e.get("sent_utc"):
             sent_versions.setdefault(key, set()).add(e["pack_version"])
             newest.setdefault(key, e)

@@ -9,7 +9,8 @@ the harness:
   ``transcripts`` (transcript 0.2 records), ``rules`` (rule outcomes),
   ``sanitizer`` (raw-log allowlist projection), ``manifest`` (run manifest and
   hash chain), ``spend`` (pricing and pre-flight bounds), ``seal`` (holdout
-  checks over publishable outputs), ``judge_runner`` (per-turn judge of record).
+  checks over publishable outputs), ``judge_runner`` (per-turn judge of record),
+  ``repro_pack`` (vendor reproduction packs over landed runs).
 - 3.12 only, imported on demand: ``controller`` (the scripted auditor Agent),
   ``task`` (study Task assembly and ``eval`` invocation) and ``adapter`` (the
   deterministic ``.eval`` reader).
