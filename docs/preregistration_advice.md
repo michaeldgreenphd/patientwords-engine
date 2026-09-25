@@ -485,10 +485,12 @@ too, once there is something public to check them against: when the site's
 (`petri_multiturn_summary.json`, `petri_multiturn_conversations.json`; the
 `.sample.json` fixtures do not count), the gate runs the Petri check with
 `--require-sent`, the version the summary cites
-(`status.vendor_pack.version`) and the runs it publishes (`provenance.runs`),
-and fails unless that version is the newest pack of its (vendor, analysis),
-was built over exactly those runs, has a recorded send, and is FRESH. It fails
-too when the published summary cites no version or names no runs, and when the
-conversations file is on the site without the summary. Until those files exist
+(`status.vendor_pack.version`), the runs it publishes (`provenance.runs`) and
+the analysis artifact's sha256 (`provenance.analysis_sha256`), and fails unless
+that version is the newest pack of its (vendor, analysis), was built over
+exactly those runs from that artifact, has a recorded send, and is FRESH. It
+fails too when the published summary cites no version, names no runs or no
+analysis digest, and when the conversations file is on the site without the
+summary. Until those files exist
 nothing is required, so the gate is unchanged while the page is unpublished.
 The module docstring states what the pack holds and what makes it STALE.
