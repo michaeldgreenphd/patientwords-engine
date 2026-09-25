@@ -437,8 +437,10 @@ def _multiturn_pair(sample=False):
                      "measures": [{"id": "m1", "row": ["tier", "k"], "label": "M", "kind": "ordinal",
                                    "values": ["lo", "hi"], "definition": None}],
                      "mechanisms": {"mech": {"title": "T", "question": "Q"}},
-                     "seeds": [{"seed_id": "s1", "mechanism": "mech", "measures": ["m1"], "arms": ["a"],
-                                "roles": [None], "hypotheses": ["H1"]}],
+                     "seeds": [{"seed_id": "s1", "mechanism": "mech", "set": "original", "topic": "T",
+                                "scenario_id": "sc1", "hypotheses": ["H1"], "roles": [None], "arms": ["a"],
+                                "measures": ["m1"], "epochs": [1], "proposition": None, "system_prompt": "none",
+                                "swaps": None}],
                      "conversations": [{"seed_id": "s1", "arm": "a", "epoch": 1, "identity": None,
                                         "rule": {"tool_invoked": False, "first_tool": None, "first_call_turn": None,
                                                  "advice_before_lookup": None, "query_text": None, "marker_echo": None,
@@ -571,6 +573,46 @@ def test_owner_run_multiturn_conversation_register_is_one_of_the_pages_columns(s
     _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
     rep = run(site, strict=True)
     assert any("$.conversations[0].register" in e and "must be one of" in e for e in rep.errors), rep.errors
+
+
+@pytest.mark.parametrize("key,value,says", [(k, "drop", "missing required key") for k, _t, _n in vfc.MT_SEED_FIELDS]
+                         + [("set", None, "null where a value is required"), ("topic", 3, "wrong type"),
+                            ("scenario_id", ["sc1"], "wrong type"), ("epochs", 1, "wrong type"),
+                            ("epochs", [1, "2"], "a list of campaign epochs"), ("epochs", [True], "a list of campaign"),
+                            ("proposition", 3, "wrong type"), ("system_prompt", None, "null where a value is"),
+                            ("swaps", "t01", "wrong type"), ("swaps", {"": "x"}, "one per exchange"),
+                            ("swaps", {"": [[["a"]]]}, "one per exchange"), ("swaps", {"": [[["a", 2]]]}, "one per")])
+@pytest.mark.parametrize("sample", [False, True])
+def test_owner_run_multiturn_seed_records_are_complete_and_typed(site, key, value, says, sample):
+    """Regression (Codex review of 2026-09-25): a seed record was checked for its id, mechanism and lists only, so a
+    file without set, topic, scenario_id, epochs, proposition, system_prompt or swaps (the site contract fixture's
+    seeds[] keys, which export_petri_multiturn._seed_record writes) passed --strict. Each is required, typed as the
+    exporter writes it; proposition and swaps may be null."""
+    summary, conversations = _multiturn_pair(sample)
+    seed = conversations["seeds"][0]
+    if value == "drop":
+        del seed[key]
+    else:
+        seed[key] = value
+    suffix = ".sample.json" if sample else ".json"
+    _write_pair(site, (summary, conversations), suffix)
+    if not sample:
+        _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    found = [e for e in run(site, strict=True).errors if "$.seeds[0]" in e]
+    assert len(found) == 1, found
+    assert found[0].startswith(f"petri_multiturn_conversations{suffix} :: $.seeds[0].{key} :: ") and says in found[0]
+
+
+@pytest.mark.parametrize("key,value", [("proposition", "P"), ("swaps", {"": [[["a", "b"]], []]}), ("epochs", []),
+                                       ("swaps", {"patient_": [[], [["a", "b"], ["c", "d"]]]})])
+def test_owner_run_multiturn_seed_record_values_the_exporter_writes_pass(site, key, value):
+    """The control for the test above: a proposition, declared swaps (per speaker prefix, one list per exchange) and
+    an empty epoch list are what the exporter can write, and pass."""
+    summary, conversations = _multiturn_pair()
+    conversations["seeds"][0][key] = value
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    assert not [e for e in run(site, strict=True).errors if "petri_multiturn" in e]
 
 
 @pytest.mark.parametrize("key,value", [("version", None), ("sent", None), ("version", " "), ("sent", "")])

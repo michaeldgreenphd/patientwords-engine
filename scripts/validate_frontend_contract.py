@@ -431,6 +431,12 @@ MT_RULE_FIELDS = (("tool_invoked", bool, False), ("first_tool", str, True), ("fi
                   ("advice_before_lookup", bool, True), ("marker_echo", bool, True), ("parse_error_call", int, False),
                   ("tool_calls_total", int, False), ("unknown_tool_calls", int, False),
                   ("tool_results_received", int, False), ("reasons", dict, False))
+# a seed record's fields beyond its lists, as export_petri_multiturn._seed_record writes them: each field, its type,
+# and whether null is allowed (proposition: a seed that asserts none; swaps: a seed with no declared term swaps).
+# `epochs` (a list of integers) and `swaps` (per speaker prefix, one list per exchange of [clinical, careful-lay] string
+# pairs) are checked item by item as well
+MT_SEED_FIELDS = (("set", str, False), ("topic", str, False), ("scenario_id", str, False), ("epochs", list, False),
+                  ("proposition", str, True), ("system_prompt", str, False), ("swaps", dict, True))
 # who wrote an intermediate message of an exchange: the target (a reply before the graded one) or the scripted tool
 MT_INTERIM_ROLES = ("assistant", "tool")
 # the page that reads the pair; while it is on the site and the real pair is not published, it fetches the samples
@@ -438,6 +444,15 @@ MT_PAGE = "multi-turn/index.html"
 # the staging directory of one write of the pair (export_petri_multiturn.swap_dir): present only when a write was
 # interrupted between its two renames, so the pair beside it may be one new file and one old one
 MT_SWAP_GLOB = ".petri_multiturn*.swap"
+
+
+def _swap_list(per_exchange) -> bool:
+    """One speaker's swaps as export_petri_multiturn.swaps_of writes them: a list with one entry per exchange, each a
+    list of [clinical span, careful-lay span] pairs of strings."""
+    return isinstance(per_exchange, list) and all(
+        isinstance(pairs, list) and all(isinstance(p, list) and len(p) == 2 and all(isinstance(x, str) for x in p)
+                                        for p in pairs)
+        for pairs in per_exchange)
 
 
 def _sample_flag(rep: Report, a: str, obj: dict, sample: bool):
@@ -536,6 +551,18 @@ def check_multiturn_conversations(rep: Report, a: str, c: dict, sample: bool):
             rep.err(a, f"{path}.mechanism", f"{mech!r} is not in $.mechanisms (the seed header loses its question)")
         for key in ("measures", "arms", "roles", "hypotheses"):
             need(rep, a, sd, key, list, path)
+        # the rest of the record export_petri_multiturn._seed_record writes (the site contract fixture's seeds[] keys),
+        # typed as it writes them (Codex review of 2026-09-25: a seed without set, topic, scenario_id, epochs,
+        # proposition, system_prompt or swaps passed --strict)
+        for key, kinds, nullable in MT_SEED_FIELDS:
+            need(rep, a, sd, key, kinds, path, nullable=nullable)
+        epochs = sd.get("epochs") if isinstance(sd, dict) else None
+        if isinstance(epochs, list) and not all(_is(e, int) for e in epochs):
+            rep.err(a, f"{path}.epochs", "must be a list of campaign epochs (integers)")
+        swaps = sd.get("swaps") if isinstance(sd, dict) else None
+        if isinstance(swaps, dict) and not all(_swap_list(v) for v in swaps.values()):
+            rep.err(a, f"{path}.swaps", "each speaker's swaps must be a list, one per exchange, of [clinical span, "
+                                        "careful-lay span] string pairs")
         if sid:
             seed_ids.add(sid)
     for i, cv in enumerate(need(rep, a, c, "conversations", list, "$") or []):
