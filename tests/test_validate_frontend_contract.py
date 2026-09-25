@@ -381,7 +381,7 @@ def _multiturn_pair(sample=False):
                      "example": {"seed_id": "s1", "turn": 1, "colloquial": "a", "lay_careful": "b", "clinical": "c"}}
     if sample:
         summary = {"sample": True, "_note": "SYNTHETIC", **summary}
-        conversations = {"sample": True, "_note": "SYNTHETIC", **conversations}
+        conversations = {"sample": True, "_note": "SYNTHETIC", **conversations, "seed": 1}   # the generator seed
     return summary, conversations
 
 
@@ -428,3 +428,31 @@ def test_owner_run_multiturn_shapes_are_checked(site):
     assert any("$.triples[0].partition" in e for e in rep.errors)
     assert any("$.headline.text" in e for e in rep.errors)
     assert any("vals.m9" in e for e in rep.errors)
+
+
+@pytest.mark.parametrize("sample", [False, True])
+def test_owner_run_multiturn_summary_seed_is_required(site, sample):
+    """Regression (Codex review of 2026-09-24): the summary's seed was nullable, so a published summary with its
+    bootstrap seed removed passed --strict. The exporter always records one (a sample: its generator seed)."""
+    summary, conversations = _multiturn_pair(sample)
+    summary["seed"] = None
+    suffix = ".sample.json" if sample else ".json"
+    _write_pair(site, (summary, conversations), suffix)
+    if not sample:
+        _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    rep = run(site, strict=True)
+    assert any(f"petri_multiturn_summary{suffix} :: $.seed" in e and "null" in e for e in rep.errors)
+
+
+def test_owner_run_multiturn_conversations_seed_is_null_or_an_int(site):
+    """The conversations file's seed is null when published (nothing in it is random); a sample records its generator
+    seed, and a seed of another type is an error in either."""
+    summary, conversations = _multiturn_pair()
+    conversations["seed"] = "7"
+    s_summary, s_conversations = _multiturn_pair(sample=True)
+    s_conversations["seed"] = None
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, (s_summary, s_conversations), ".sample.json")
+    rep = run(site)
+    assert any("petri_multiturn_conversations.json :: $.seed" in e and "wrong type" in e for e in rep.errors)
+    assert any("petri_multiturn_conversations.sample.json :: $.seed" in e and "null" in e for e in rep.errors)

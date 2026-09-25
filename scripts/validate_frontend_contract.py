@@ -433,7 +433,9 @@ def _sample_flag(rep: Report, a: str, obj: dict, sample: bool):
 def check_multiturn_summary(rep: Report, a: str, s: dict, sample: bool):
     _sample_flag(rep, a, s, sample)
     known_keys(rep, a, s, MT_SUMMARY_KEYS | (MT_SAMPLE_KEYS if sample else set()))
-    need(rep, a, s, "seed", int, "$", nullable=True)
+    # the analysis's bootstrap seed (a sample: its generator seed); the exporter always records one, and a summary
+    # without it is not reproducible from its own output (AGENTS.md), so null is an error (Codex review, 2026-09-24)
+    need(rep, a, s, "seed", int, "$")
     status = need(rep, a, s, "status", dict, "$") or {}
     need(rep, a, status, "final", bool, "$.status")
     need(rep, a, status, "clinician_review", str, "$.status")
@@ -475,6 +477,8 @@ def check_multiturn_summary(rep: Report, a: str, s: dict, sample: bool):
 def check_multiturn_conversations(rep: Report, a: str, c: dict, sample: bool):
     _sample_flag(rep, a, c, sample)
     known_keys(rep, a, c, MT_CONVERSATIONS_KEYS | (MT_SAMPLE_KEYS if sample else set()))
+    # null in a published file (nothing in it is random); a sample records its generator seed
+    need(rep, a, c, "seed", int, "$", nullable=not sample)
     measure_ids = set()
     for i, m in enumerate(need(rep, a, c, "measures", list, "$") or []):
         path = f"$.measures[{i}]"
