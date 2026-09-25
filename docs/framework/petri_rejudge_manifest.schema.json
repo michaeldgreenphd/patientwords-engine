@@ -6,11 +6,12 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["rejudge_manifest_version", "mode", "exploratory", "rehearsal", "created_utc", "source", "judge",
-               "instrument", "fire", "counts", "cost_usd", "artifacts", "manifest_sha256"],
+               "instrument", "fire", "counts", "estimate", "cost_usd", "artifacts", "manifest_sha256"],
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
     "count": {"type": "integer", "minimum": 0},
+    "share": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
     "usd": {"type": "number", "minimum": 0},
     "file": {
       "type": "object",
@@ -118,18 +119,41 @@
     "counts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["planned", "keys", "judged", "null", "not_applicable", "truncated", "stopped_early", "call_failures",
-                   "calls_without_usage"],
+      "required": ["planned", "keys", "judged", "null", "not_applicable", "null_share", "judge_of_record_null_share",
+                   "truncated", "stopped_early", "call_failures", "calls_without_usage"],
       "properties": {
         "planned": {"$ref": "#/$defs/count"},
         "keys": {"$ref": "#/$defs/count"},
         "judged": {"$ref": "#/$defs/count"},
         "null": {"$ref": "#/$defs/count"},
         "not_applicable": {"$ref": "#/$defs/count"},
+        "null_share": {"$ref": "#/$defs/share", "description": "null / (judged + null): the share of the judgments that were not not-applicable which came back with no parseable value; null when there were none."},
+        "judge_of_record_null_share": {"$ref": "#/$defs/share", "description": "The same share for the judge of record, from its recorded counts."},
         "truncated": {"type": "boolean"},
         "stopped_early": {"type": "boolean"},
         "call_failures": {"$ref": "#/$defs/count"},
         "calls_without_usage": {"$ref": "#/$defs/count"}
+      }
+    },
+    "estimate": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "What the plan expected this re-grade to cost (rejudge.estimate_cost): the judge of record's recorded tokens at this judge's registry price. It assumes the new judge's token counts are close to the judge of record's.",
+      "required": ["calls", "recorded_input_tokens", "recorded_output_tokens", "calls_without_recorded_usage",
+                   "price_source", "input_per_mtok", "output_per_mtok", "expected_usd", "worst_case_usd",
+                   "last_call_headroom_usd", "assumption"],
+      "properties": {
+        "calls": {"$ref": "#/$defs/count"},
+        "recorded_input_tokens": {"$ref": "#/$defs/count"},
+        "recorded_output_tokens": {"$ref": "#/$defs/count"},
+        "calls_without_recorded_usage": {"$ref": "#/$defs/count"},
+        "price_source": {"type": "string", "minLength": 1},
+        "input_per_mtok": {"$ref": "#/$defs/usd"},
+        "output_per_mtok": {"$ref": "#/$defs/usd"},
+        "expected_usd": {"$ref": "#/$defs/usd"},
+        "worst_case_usd": {"$ref": "#/$defs/usd"},
+        "last_call_headroom_usd": {"$ref": "#/$defs/usd"},
+        "assumption": {"type": "string", "minLength": 1}
       }
     },
     "cost_usd": {"$ref": "#/$defs/usd"},

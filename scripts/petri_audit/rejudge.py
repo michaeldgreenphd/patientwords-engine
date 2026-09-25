@@ -32,11 +32,36 @@ judged in order, each under what the fire's `judge_max_spend` has left
 `fire_spent_before_usd` beside it), and a run whose judge stopped at the
 ceiling ends the fire: later runs are not started and write nothing. A
 truncated re-grade is committed with `truncated` recorded; its directory is
-then closed like any other.
+then closed like any other (a resume would rewrite a landed judgments file and
+its manifest, which the append-only rule forbids). So the plan sizes the
+ceiling before any call (`estimate_cost`): the judge of record's recorded
+tokens at the new judge's registry price is the expected cost, and a
+`judge_max_spend` below the expected cost of every source run plus one call's
+admission headroom is refused. The estimate ASSUMES the new judge's token
+counts are close to the judge of record's: another tokenizer, or longer
+answers, move it; the worst case beside it takes every answer at the full
+`judge_max_tokens`. Each manifest records the estimate and the share of
+judgments that were not rule-level not-applicable and came back null
+(`counts.null_share`, beside the judge of record's), so a re-grade that is
+complete but mostly null is visible as such.
+
+A later source run whose judge aborts does not discard an earlier one that
+completed: the workflow verifies, uploads and commits every re-grade that
+wrote its manifest (`verify-rejudge --stage-list`), stages exactly those
+directories and the fire's sidecars, and leaves the aborted run's partial
+rows uncommitted.
+
+A paid judge's key must be in the environment before the first call's marker
+is written (`judge_key_problem`): a judge that cannot make a call must not
+leave a marker the fallback would book the whole allotment against.
 
 `mockllm/judge` (MOCK_JUDGE) is the rehearsal judge: every answer is the first
 declared value, priced at zero, never committed. It exercises the whole path
-(CI, or `cli rejudge-rehearse` locally into a temporary directory) at $0.
+(CI, or `cli rejudge-rehearse` locally into a temporary directory) at $0. It is
+recognised by exact match only, and a spelling that differs from a zero-price
+sentinel in case alone is refused (`sentinel_case_problem`): the workflow's
+expression `!=` ignores case, so such a spelling would be a paid judge to the
+Python checks and the rehearsal to the step conditions.
 
 This module imports nothing from the harness, so every check is testable
 under the engine's ordinary 3.11 environment. Every refusal is named
@@ -46,8 +71,9 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -68,6 +94,7 @@ from .framework import (
 )
 from .manifest import CHAIN_FILE, verify_chain, verify_run
 from .spend import (
+    ZERO_PRICE_MODELS,
     judge_billing_channel,
     judge_key_routing_problems,
     openrouter_price_problems,
@@ -413,6 +440,9 @@ def judge_spec_refusals(spec: str) -> list[str]:
     per-model price (`spend.openrouter_price_problems`), as `cli judge` requires."""
     from .judge_runner import judge_spec_problems
 
+    case_problem = sentinel_case_problem(spec)
+    if case_problem:
+        return [case_problem]
     problems = judge_spec_problems(spec)
     if problems:
         return problems
@@ -422,6 +452,89 @@ def judge_spec_refusals(spec: str) -> list[str]:
     except ValueError as exc:
         problems.append(str(exc))
     return problems
+
+
+def sentinel_case_problem(spec: str) -> str | None:
+    """A spec that equals a zero-price test sentinel (`spend.ZERO_PRICE_MODELS`) in everything but case, which no
+    judge is (review of PR #41): GitHub's expression `!=` compares strings ignoring case, so the workflow would read
+    `MockLLM/Judge` as the rehearsal while every Python check reads it as a paid judge, sent to Anthropic as a bare
+    model id and priced at the fallback rate. None for every other spec, the exact sentinels included."""
+    folded = {m.lower() for m in ZERO_PRICE_MODELS}
+    if spec.strip().lower() in folded and spec not in ZERO_PRICE_MODELS:
+        return (f"judge spec {spec!r} differs from the test sentinel {spec.strip().lower()!r} in case alone; the "
+                "workflow compares it ignoring case and the lane exactly, so it is refused rather than read two ways")
+    return None
+
+
+def judge_key_problem(spec: str, environ: Mapping[str, str] | None = None) -> str | None:
+    """Why the judge `spec` cannot make its first call in this environment: its registry provider names no key, or
+    the key variable it names is unset or empty. Checked before the start marker is written (review of PR #41): the
+    provider clients raise SystemExit on a missing key at the first call, which no handler below catches, and the
+    marker would then have the fallback book the run's whole allotment for a call never made. None for the rehearsal
+    judge, which calls nothing."""
+    if spec == MOCK_JUDGE:
+        return None
+    from .judge_runner import _advice_eval_module
+
+    environ = os.environ if environ is None else environ
+    ae = _advice_eval_module()
+    try:
+        cfg = ae._resolve_spec(spec, ae._load_providers(ae.DEFAULT_PROVIDERS))["cfg"]
+    except SystemExit as exc:
+        return f"judge spec {spec!r}: {exc}"
+    key_env = cfg.get("key_env") or ("ANTHROPIC_API_KEY" if cfg.get("api") == "anthropic" else None)
+    if not key_env:
+        return f"judge spec {spec!r}: its registry provider names no key_env, so no call can be authenticated"
+    if not str(environ.get(key_env) or "").strip():
+        return (f"judge {spec!r} bills {key_env}, which is unset or empty in this environment; no call is made and no "
+                "start marker is written, so nothing is booked for this fire's judge")
+    return None
+
+
+def estimate_cost(plans: list, rows: list[dict], judge_model: str, judge_max_tokens: int) -> dict:
+    """What re-grading these plans with `judge_model` is expected to cost, from the judge of record's recorded
+    usage (review of PR #41). Every plan with a prompt is one call; its expected tokens are the judge of record's
+    latest row for the same judgment (`cumulative_counts` reads the same row), or, where that row recorded no usage,
+    the input bound `SpendCeiling` prices (`estimate_input_tokens`) and the full output allowance. The expected cost
+    is those tokens at the new judge's registry price; the worst case keeps the recorded input and takes every
+    answer at `judge_max_tokens`; the headroom is one call's worst case under the ceiling's own admission rule,
+    which the last call needs free. ASSUMES the new judge's token counts are close to the judge of record's: a
+    different tokenizer or longer answers move the expected figure, which is why the worst case is beside it."""
+    from .judge_runner import estimate_input_tokens
+
+    latest: dict[tuple, dict] = {}
+    for r in rows:
+        latest[_row_key(r)] = r
+    price = resolve_registry_price(judge_model)
+    calls = [p for p in plans if p.prompt is not None]
+    tokens_in = tokens_out = without_usage = 0
+    for p in calls:
+        r = latest.get(plan_key(p)) or {}
+        if r.get("input_tokens") is None or r.get("output_tokens") is None:
+            tokens_in += estimate_input_tokens(p.prompt)
+            tokens_out += judge_max_tokens
+            without_usage += 1
+        else:
+            tokens_in += int(r["input_tokens"])
+            tokens_out += int(r["output_tokens"])
+    headroom = max((estimate_input_tokens(p.prompt) for p in calls), default=0) * price.input_per_mtok / 1e6 \
+        + (judge_max_tokens * price.output_per_mtok / 1e6 if calls else 0.0)
+    return {"calls": len(calls), "recorded_input_tokens": tokens_in, "recorded_output_tokens": tokens_out,
+            "calls_without_recorded_usage": without_usage, "price_source": price.source,
+            "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok,
+            "expected_usd": round(tokens_in * price.input_per_mtok / 1e6 + tokens_out * price.output_per_mtok / 1e6, 6),
+            "worst_case_usd": round(tokens_in * price.input_per_mtok / 1e6
+                                    + len(calls) * judge_max_tokens * price.output_per_mtok / 1e6, 6),
+            "last_call_headroom_usd": round(headroom, 6),
+            "assumption": "the new judge's token counts are close to the judge of record's recorded ones"}
+
+
+def null_share(judged: Any, null: Any) -> float | None:
+    """The share of the judgments that were not not-applicable which came back null (no parseable value): null
+    over judged plus null; None when there were none, or a count is missing."""
+    if not isinstance(judged, int) or not isinstance(null, int) or judged + null == 0:
+        return None
+    return round(null / (judged + null), 6)
 
 
 def make_plan(*, params: dict, runs_dir: Path | str, rejudge_root: Path | str, journal_entries: list[dict],
@@ -440,6 +553,9 @@ def make_plan(*, params: dict, runs_dir: Path | str, rejudge_root: Path | str, j
     judge_model = params.get("judge_model")
     if not isinstance(judge_model, str) or not judge_model or judge_model != judge_model.strip():
         raise RejudgeError(f"mode rejudge needs judge_model spelled exactly, got {judge_model!r}")
+    case_problem = sentinel_case_problem(judge_model)
+    if case_problem:
+        raise RejudgeError(case_problem)
     rehearsal = judge_model == MOCK_JUDGE
     fire_ceiling = _money(params.get("judge_max_spend"), "judge_max_spend")
     try:
@@ -511,10 +627,26 @@ def make_plan(*, params: dict, runs_dir: Path | str, rejudge_root: Path | str, j
         except RejudgeError as exc:
             problems.append(str(exc))
             continue
-        parity = parity_problems(plans, read_jsonl(runs_dir / stem / JUDGMENTS_NAME))
+        of_record_rows = read_jsonl(runs_dir / stem / JUDGMENTS_NAME)
+        parity = parity_problems(plans, of_record_rows)
         problems += [f"{stem}: {p}" for p in parity]
         sources.append({"run_stem": stem, "source": src, "prior_judge_reports": prior,
-                        "plan_sha256": plan_digest(plans), "planned": len(plans)})
+                        "plan_sha256": plan_digest(plans), "planned": len(plans),
+                        "estimate": estimate_cost(plans, of_record_rows, judge_model, judge_max_tokens)})
+    # the ceiling must admit the whole expected re-grade: a truncated re-grade closes its directory for good
+    estimate = {"expected_usd": round(sum(x["estimate"]["expected_usd"] for x in sources), 6),
+                "worst_case_usd": round(sum(x["estimate"]["worst_case_usd"] for x in sources), 6),
+                "last_call_headroom_usd": max((x["estimate"]["last_call_headroom_usd"] for x in sources), default=0.0),
+                "assumption": "the new judge's token counts are close to the judge of record's recorded ones"}
+    estimate["required_usd"] = round(estimate["expected_usd"] + estimate["last_call_headroom_usd"], 6)
+    if sources and len(sources) == len(stems) and fire_ceiling < estimate["required_usd"]:
+        problems.append(f"judge_max_spend {fire_ceiling:.4f} is below the expected cost of the re-grade, "
+                        f"${estimate['expected_usd']:.4f} (the judge of record's recorded tokens at {judge_model}'s "
+                        f"price, assuming its token counts are close), plus ${estimate['last_call_headroom_usd']:.4f} of "
+                        "headroom the ceiling needs free to admit the last call; a truncated re-grade closes its "
+                        "directory for good, so raise the ceiling to at least "
+                        f"${estimate['required_usd']:.4f} (worst case, every answer at judge_max_tokens: "
+                        f"${estimate['worst_case_usd']:.4f})")
     if problems:
         raise RejudgeError("; ".join(problems))
     return {"mode": MODE, "rehearsal": rehearsal, "exploratory": True, "judge_model": judge_model,
@@ -523,7 +655,7 @@ def make_plan(*, params: dict, runs_dir: Path | str, rejudge_root: Path | str, j
             "rejudge_root": str(rejudge_root), "source_runs": stems,
             "fire": {"workflow_run_id": run_id, "workflow_run_attempt": attempt, "commit": str(commit),
                      "journal_nonce": nonce},
-            "sources": sources}
+            "estimate": estimate, "sources": sources}
 
 
 # ------------------------------------------------------------ execution
@@ -571,6 +703,7 @@ def _counts(sidecar: dict, rows: list[dict]) -> dict:
     totals = cumulative_counts(rows)
     return {"planned": int(sidecar["planned"]), "keys": totals["keys"], "judged": totals["judged"],
             "null": totals["null"], "not_applicable": totals["not_applicable"],
+            "null_share": null_share(totals["judged"], totals["null"]),
             "truncated": bool(sidecar["truncated"]), "stopped_early": bool(sidecar["stopped_early"]),
             "call_failures": int(sidecar["call_failures"]), "calls_without_usage": totals["calls_without_usage"]}
 
@@ -591,7 +724,10 @@ def build_manifest(*, plan: dict, source: dict, position: int, instrument: dict,
                   "fire_spent_before_usd": sidecar["fire_spent_before_usd"]},
         "instrument": instrument,
         "fire": {**plan["fire"], "source_runs": list(plan["source_runs"]), "position": position},
-        "counts": _counts(sidecar, rows),
+        "counts": {**_counts(sidecar, rows),
+                   "judge_of_record_null_share": null_share(source["source"]["judge_of_record"].get("judged"),
+                                                            source["source"]["judge_of_record"].get("null"))},
+        "estimate": dict(source["estimate"]),
         "cost_usd": sidecar["cost_usd"],
         "artifacts": {"judgments": {"path": JUDGMENTS_NAME, "sha256": sha256_file(out_dir / JUDGMENTS_NAME),
                                     "rows": len(rows)},
@@ -609,7 +745,7 @@ def started_marker(started_dir: Path | str, stem: str) -> Path:
 
 
 def execute(plan: dict, *, started_dir: Path | str, client_factory: Callable[[str, list], Any] = default_client,
-            now_fn: Callable[[], str] = utc_now_iso) -> dict:
+            now_fn: Callable[[], str] = utc_now_iso, environ: Mapping[str, str] | None = None) -> dict:
     """Run the plan: for each source run in order, re-check what the plan bound, judge every planned judgment with
     the plan's judge under what the fire's ceiling has left, then write the analysis rows and the manifest.
     Returns {"results": [...], "aborted": bool, "spent_usd": float}. A run whose judge stopped at the ceiling ends
@@ -629,6 +765,11 @@ def execute(plan: dict, *, started_dir: Path | str, client_factory: Callable[[st
     judge_model, slug = plan["judge_model"], plan["judge_slug"]
     runs_dir, root = Path(plan["runs_dir"]), Path(plan["rejudge_root"])
     fire = plan["fire"]
+    # before any marker is written: a judge whose key is absent fails at its first call with SystemExit, which leaves
+    # no sidecar, and the marker would have the fallback book the whole allotment for a call that was never made
+    key_problem = None if plan["rehearsal"] else judge_key_problem(judge_model, environ)
+    if key_problem:
+        raise RejudgeError(key_problem)
     price = resolve_registry_price(judge_model)
     channel = judge_billing_channel(judge_model)
     fire_ceiling = float(plan["judge_max_spend_usd"])
@@ -776,6 +917,12 @@ def verify_output(out_dir: Path | str, runs_dir: Path | str | None = None) -> li
     for key in ("keys", "judged", "null", "not_applicable", "calls_without_usage"):
         if totals[key] != counts[key]:
             problems.append(f"counts: {key} is {totals[key]} in the judgments, the manifest records {counts[key]}")
+    if counts["null_share"] != null_share(totals["judged"], totals["null"]):
+        problems.append(f"counts: null_share {counts['null_share']!r} is not the judgments' "
+                        f"{null_share(totals['judged'], totals['null'])!r}")
+    jor = manifest["source"]["judge_of_record"]
+    if counts["judge_of_record_null_share"] != null_share(jor.get("judged"), jor.get("null")):
+        problems.append("counts: judge_of_record_null_share is not the recorded judge of record's")
     analysis = read_jsonl(out_dir / ANALYSIS_NAME)
     if len(analysis) != arts["analysis_rows"]["rows"] or len(analysis) != len(rows):
         problems.append(f"analysis_rows: {len(analysis)} rows for {len(rows)} judgments (manifest "
@@ -812,6 +959,25 @@ def source_still_verifies(runs_dir: Path, source: dict) -> list[str]:
     if (manifest.get("artifacts") or {}).get("judgments_sha256") != source["judgments_sha256"]:
         problems.append(f"source {stem}: its judge of record's judgments are not the ones the rejudge compared with")
     return problems
+
+
+def fire_outputs(plan: dict) -> tuple[list[Path], list[Path]]:
+    """(re-grade directories, judge sidecars) this plan's fire left: every source run's directory holding a
+    manifest (the executor writes it last, after the judgments, the analysis rows and the sidecar, so a run whose
+    judge aborted or died has none), and this fire's own sidecar in every source run's directory, an aborted run's
+    included. What the workflow verifies, seal-checks, uploads and stages: never the partial rows of an aborted run
+    (review of PR #41: a later run's abort used to discard an earlier run's completed re-grade)."""
+    root = Path(plan["rejudge_root"]) / plan["judge_slug"]
+    dirs: list[Path] = []
+    sidecars: list[Path] = []
+    for source in plan["sources"]:
+        d = root / source["run_stem"]
+        if (d / MANIFEST_NAME).is_file():
+            dirs.append(d)
+        report = d / judge_report_name(source["run_stem"], plan["fire"]["workflow_run_id"])
+        if report.is_file():
+            sidecars.append(report)
+    return dirs, sidecars
 
 
 def output_dirs(root: Path | str) -> list[Path]:
@@ -890,11 +1056,18 @@ def render_summary(plan: dict | None, *, plan_error: str | None = None) -> str:
     its sidecar alone), counts and cost only; never a prompt, an answer or any transcript text."""
     if plan is None:
         return f"## Petri rejudge: refused before any call\n\n{plan_error or 'no plan was written'}\n"
+    est = plan.get("estimate") or {}
     lines = [f"## Petri rejudge ({'rehearsal, ' if plan['rehearsal'] else ''}exploratory): {plan['judge_model']}", "",
              f"Fire ceiling ${float(plan['judge_max_spend_usd']):.4f}; judge_max_tokens {plan['judge_max_tokens']}; "
-             f"commit_outputs {str(plan['commit_outputs']).lower()}; nonce {plan['fire']['journal_nonce']!r}.", "",
-             "| source run | status | planned | judged | null | not applicable | cost (USD) |",
-             "|---|---|---|---|---|---|---|"]
+             f"commit_outputs {str(plan['commit_outputs']).lower()}; nonce {plan['fire']['journal_nonce']!r}.",
+             f"Expected ${float(est.get('expected_usd') or 0):.4f}, worst case ${float(est.get('worst_case_usd') or 0):.4f} "
+             "(the judge of record's recorded tokens at this judge's price; assumes its token counts are close).", "",
+             "| source run | status | planned | judged | null | null share (judge of record) | not applicable | "
+             "cost (USD) | expected (USD) |",
+             "|---|---|---|---|---|---|---|---|---|"]
+
+    def share(value: Any) -> str:
+        return "—" if value is None else f"{100 * float(value):.1f}%"
     root = Path(plan["rejudge_root"])
     for source in plan["sources"]:
         stem = source["run_stem"]
@@ -907,10 +1080,12 @@ def render_summary(plan: dict | None, *, plan_error: str | None = None) -> str:
                 c = m["counts"]
                 status = "truncated" if c["truncated"] else "complete"
                 lines.append(f"| {stem} | {status} | {c['planned']} | {c['judged']} | {c['null']} | "
-                             f"{c['not_applicable']} | {float(m['cost_usd']):.4f} |")
+                             f"{share(c['null_share'])} ({share(c['judge_of_record_null_share'])}) | "
+                             f"{c['not_applicable']} | {float(m['cost_usd']):.4f} | "
+                             f"{float(m['estimate']['expected_usd']):.4f} |")
                 continue
             except (OSError, ValueError, KeyError, TypeError) as exc:
-                lines.append(f"| {stem} | manifest unreadable ({type(exc).__name__}) | — | — | — | — | — |")
+                lines.append(f"| {stem} | manifest unreadable ({type(exc).__name__}) | — | — | — | — | — | — | — |")
                 continue
         if report_path.is_file():
             try:
@@ -918,7 +1093,7 @@ def render_summary(plan: dict | None, *, plan_error: str | None = None) -> str:
             except (OSError, ValueError, KeyError, TypeError):
                 cost = "unavailable"
             lines.append(f"| {stem} | sidecar only (judge failed; outputs not written) | {source['planned']} | — | — | — | "
-                         f"{cost} |")
+                         f"— | {cost} | — |")
         else:
-            lines.append(f"| {stem} | not started | {source['planned']} | — | — | — | — |")
+            lines.append(f"| {stem} | not started | {source['planned']} | — | — | — | — | — | — |")
     return "\n".join(lines) + "\n"

@@ -155,6 +155,8 @@ PETRI_REJUDGE_STEM_RE = re.compile(r"run_[0-9]+_[0-9]+")
 PETRI_REJUDGE_OUTPUT_FILES = ("judgments.jsonl", "analysis_rows.jsonl", "rejudge_manifest.json")
 PETRI_REJUDGE_JUDGE_SUFFIX = r"\.rejudge_[0-9]+\.judge\.report\.json"
 PETRI_JUDGE_DEFAULT = "claude-haiku-4-5"        # the params job's judge_model default
+# scripts/petri_audit/spend.py ZERO_PRICE_MODELS: the test sentinels, of which only the rehearsal judge is a rejudge's
+PETRI_SENTINEL_SPECS = ("mockllm/model", "mockllm/judge", "none/none")
 PARK_NOTE = ("PARK (resting-state rule): cheapest no-op default committed so branch operations "
              "that touch this trigger file re-run a $0/negligible stage instead of the last "
              "expensive fire; commit_outputs false where the workflow supports it. "
@@ -459,7 +461,9 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
             problems.append("petri-audit mode readapt must run the judge of record (judge true): a readapt makes no "
                             "target call, so the judge is its only spend and judge_max_spend its whole commitment; "
                             "the lane has no free re-adapt path")
-    elif source_run_id not in ("", None):
+    elif _petri_job_value(params, "source_run_id", ""):
+        # the job's own resolution (`str(value)`): a JSON null is "None", which the job refuses outside readapt, so
+        # the guard refuses it too rather than journaling a reservation for a run the job will not start (PR #41)
         problems.append(f"petri-audit source_run_id is read by mode readapt only, got {source_run_id!r} with mode "
                         f"{mode!r}: a value the workflow would ignore is refused rather than carried")
     # mode rejudge (2026-09-24): the params job's rules for it, in the same order (scripts/petri_audit/rejudge.py)
@@ -468,7 +472,8 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
     if mode == PETRI_REJUDGE_MODE:
         problems.extend(petri_rejudge_param_problems(params))
         rejudge_paid = not petri_rejudge_is_rehearsal(params)
-    elif source_runs not in ("", None, []):
+    elif petri_source_runs_resolved(params):
+        # the job joins a list and `str()`s anything else, so a JSON null is "None", refused outside rejudge (PR #41)
         problems.append(f"petri-audit source_runs is read by mode rejudge only, got {source_runs!r} with mode "
                         f"{mode!r}: a value the workflow would ignore is refused rather than carried")
     if mode in PETRI_PAID_MODES or rejudge_paid:
@@ -509,13 +514,20 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
     return problems
 
 
-def petri_source_runs(params: dict) -> list[str]:
-    """The `source_runs` of a petri-audit rejudge as the params job resolves them: a JSON list joined with spaces,
-    anything else `str()`-ed, then split on whitespace."""
-    value = params.get("source_runs", "")
+def petri_source_runs_resolved(params: dict) -> str:
+    """`source_runs` exactly as the params job resolves it: a JSON list joined with spaces, a JSON boolean
+    lower-cased, anything else `str()`-ed (so a JSON null is "None"); "" when the key is absent."""
+    if "source_runs" not in params:
+        return ""
+    value = params["source_runs"]
     if isinstance(value, list):
-        value = " ".join(str(v) for v in value)
-    return str(value).split()
+        return " ".join(str(v) for v in value)
+    return str(value).lower() if isinstance(value, bool) else str(value)
+
+
+def petri_source_runs(params: dict) -> list[str]:
+    """The `source_runs` of a petri-audit rejudge as the params job resolves them, split on whitespace."""
+    return petri_source_runs_resolved(params).split()
 
 
 def petri_rejudge_param_problems(params: dict) -> list[str]:
@@ -540,10 +552,49 @@ def petri_rejudge_param_problems(params: dict) -> list[str]:
     judge = _petri_job_value(params, "judge_model", PETRI_JUDGE_DEFAULT)
     if not judge or judge != judge.strip():
         problems.append(f"petri-audit mode rejudge needs judge_model spelled exactly, got {judge!r}")
+    elif judge.lower() in PETRI_SENTINEL_SPECS and judge not in PETRI_SENTINEL_SPECS:
+        # GitHub's expression `!=` compares ignoring case, so `MockLLM/Judge` would be the rehearsal to the workflow's
+        # step conditions and a paid judge to every Python check (PR #41 review); the params job refuses it too
+        problems.append(f"petri-audit mode rejudge judge_model {judge!r} differs from a test sentinel in case alone; "
+                        "the workflow compares it ignoring case, so it is refused")
+    elif judge != PETRI_REJUDGE_MOCK_JUDGE:
+        problems.extend(petri_judge_spec_problems(judge))
     if judge == PETRI_REJUDGE_MOCK_JUDGE and _petri_job_value(params, "commit_outputs", "false") == "true":
         problems.append(f"petri-audit mode rejudge with the rehearsal judge {PETRI_REJUDGE_MOCK_JUDGE!r} is never "
                         "committed; it needs commit_outputs false")
     return problems
+
+
+def petri_judge_spec_problems(spec: str, registry: dict | None = None) -> list[str]:
+    """The rejudge plan's refusals of a (non-rehearsal) judge spec that need only the registry, mirrored so the fire
+    path refuses before it journals a reservation (PR #41 review): scripts/petri_audit/judge_runner.py
+    judge_spec_problems (a zero-price test sentinel; a provider the registry does not know, one with no public API,
+    or no model and no consumer_default, as scripts/advice_eval.py _resolve_spec refuses them) and
+    scripts/petri_audit/spend.py openrouter_price_problems (an `openrouter:` spec with no reviewed per-model price).
+    The key routing rule is petri_params_problems' own."""
+    spec = spec.strip()
+    if spec in PETRI_SENTINEL_SPECS:
+        return [f"petri-audit mode rejudge judge spec {spec!r} is a zero-price test sentinel, not a judge; only "
+                f"{PETRI_REJUDGE_MOCK_JUDGE!r} is admitted, as the free rehearsal"]
+    registry = providers_registry() if registry is None else registry
+    registry = {"anthropic": {"api": "anthropic"}, **(registry if isinstance(registry, dict) else {})}
+    if ":" in spec:
+        provider, model = spec.split(":", 1)
+    elif isinstance(registry.get(spec), dict) and not spec.startswith("_"):
+        provider, model = spec, ""
+    else:
+        provider, model = "anthropic", spec
+    cfg = registry.get(provider) if not provider.startswith("_") else None
+    if not isinstance(cfg, dict):
+        return [f"petri-audit mode rejudge judge spec {spec!r}: unknown provider {provider!r}"]
+    if cfg.get("api") == "manual_ui":
+        return [f"petri-audit mode rejudge judge spec {spec!r}: provider {provider!r} has no public API"]
+    if not (model or str(cfg.get("consumer_default") or "")):
+        return [f"petri-audit mode rejudge judge spec {spec!r}: no model given and no consumer_default"]
+    if provider == "openrouter" and model not in ((cfg.get("pricing") or {}) if isinstance(cfg.get("pricing"), dict) else {}):
+        return [f"petri-audit mode rejudge judge spec {spec!r} has no reviewed per-model price in "
+                "data/advice_providers.json openrouter.pricing (unreviewed_openrouter_price)"]
+    return []
 
 
 def petri_rejudge_slug(spec: str) -> str:
