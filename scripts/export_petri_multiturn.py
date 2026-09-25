@@ -52,7 +52,8 @@ What it refuses, by name, before writing anything (AGENTS.md: no silent failures
   source.model), the model strings the provider served it as (`target_served`: every one of models.target's
   served_model_strings, and a transcript's source.model_version when it records one) and the judge (`judge`: the
   manifest's artifacts.judge_of_record.judge_model and every judgment's judge_model, a superseded retry's too); the
-  ones that are not registered are named;
+  ones that are not registered are named; and a run whose target was sampled at another temperature than the one the
+  page states (`target_temperature`: models.target.config.temperature);
 - a transcript record not bound to its run, or not in the shape the exporter reads: its provenance.run_manifest.sha256
   must be the manifest's identity digest (chain.identity_sha256, itself refused unless it is the identity digest of
   the manifest body), the pairing check scripts/petri_audit/summary.py makes; and it needs a conversation id and a
@@ -118,7 +119,8 @@ judged under>` (shown, never compared), and the provenance carries `exporter_com
 No medical vocabulary lives here: seed ids, labels, mechanisms and registered texts are read from data files. The
 page vocabulary (data/petri/multiturn_measures.json) holds the measure map (`measures`), the `mechanisms`, the Method
 section's `example`, the `samples` settings and the campaign's registered models (`campaign_models`: `target`,
-`target_served` and `judge`, each a non-empty list of distinct model strings). `--write-samples` builds its SYNTHETIC
+`target_served` and `judge`, each a non-empty list of distinct model strings, and `target_temperature`, the number the
+page states). `--write-samples` builds its SYNTHETIC
 campaign on the first of each campaign_models list, so the sample path passes the same model check, with no exemption.
 """
 from __future__ import annotations
@@ -136,7 +138,7 @@ import sys
 import tempfile
 from collections import Counter, defaultdict
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import asdict, dataclass, field, fields
+from dataclasses import asdict, dataclass, field
 from fractions import Fraction
 from pathlib import Path
 from typing import Any
@@ -401,13 +403,16 @@ class CampaignModels:
     `target`, the Inspect provider/model string of the target (a manifest's models.target.inspect_name, a transcript's
     source.model); `target_served`, the model strings the provider returned (models.target.served_model_strings, a
     transcript's source.model_version when it records one); `judge`, the judge of record (every judgment's
-    judge_model, the manifest's artifacts.judge_of_record.judge_model)."""
+    judge_model, the manifest's artifacts.judge_of_record.judge_model); `target_temperature`, the sampling temperature
+    the page states (a manifest's models.target.config.temperature; Antigravity review of 2026-09-25)."""
     target: tuple[str, ...]
     target_served: tuple[str, ...]
     judge: tuple[str, ...]
+    target_temperature: float
 
 
-CAMPAIGN_MODEL_KEYS = tuple(f.name for f in fields(CampaignModels))
+# the lists of model strings; target_temperature is the one number
+CAMPAIGN_MODEL_KEYS = ("target", "target_served", "judge")
 
 
 @dataclass(frozen=True)
@@ -542,12 +547,16 @@ def load_vocabulary(path: Path, rubric: Mapping[str, Any], registry: Mapping[str
             if not (isinstance(specs, list) and specs and all(_text(s) for s in specs) and len(set(specs)) == len(specs)):
                 problems.append(f"campaign_models.{key} must be a non-empty list of distinct model strings, not "
                                 f"{specs!r}")
+        temperature = cm.get("target_temperature")
+        if isinstance(temperature, bool) or not isinstance(temperature, (int, float)):
+            problems.append(f"campaign_models.target_temperature must be the number the page states, not "
+                            f"{temperature!r}")
     if problems:
         raise ExportRefusal(f"the page vocabulary {path}: " + "; ".join(problems))
     # measures keep the file's order (a flag measure was held back only until its source was known)
     order = {m["id"]: i for i, m in enumerate(raw) if isinstance(m, dict)}
     measures.sort(key=lambda x: order[x.id])
-    models = CampaignModels(*(tuple(cm[key]) for key in CAMPAIGN_MODEL_KEYS))
+    models = CampaignModels(*(tuple(cm[key]) for key in CAMPAIGN_MODEL_KEYS), float(cm["target_temperature"]))
     return Vocabulary(tuple(measures), mechanisms, mechanism_of, dict(example), dict(samples), models)
 
 
@@ -708,6 +717,13 @@ def model_problems(manifest: Mapping[str, Any], models: CampaignModels) -> list[
             if other:
                 problems.append(f"the provider served the target as {other!r} (models.target.served_model_strings), "
                                 f"not a registered model string {list(models.target_served)}")
+        # the page states the sampling temperature; a run sampled otherwise is not the page's data (Antigravity
+        # review of 2026-09-25)
+        config = target.get("config")
+        temperature = config.get("temperature") if isinstance(config, dict) else None
+        if isinstance(temperature, bool) or temperature != models.target_temperature:
+            problems.append(f"its target was sampled at temperature {temperature!r} (models.target.config."
+                            f"temperature), not the registered {models.target_temperature}")
     art = manifest.get("artifacts") if isinstance(manifest.get("artifacts"), dict) else {}
     of_record = art.get("judge_of_record")
     judge = of_record.get("judge_model") if isinstance(of_record, dict) else None

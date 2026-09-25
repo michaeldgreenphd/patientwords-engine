@@ -607,6 +607,11 @@ def _first_source(field, value):
     ("manifest_edit", lambda m: m["models"]["target"].update(served_model_strings=[]),
      "models.target.served_model_strings is [], not the model strings the provider returned"),
     ("manifest_edit", lambda m: m.pop("models"), "the manifest records no models.target"),
+    # Antigravity review of 2026-09-25: the page states the target was sampled at temperature 1
+    ("manifest_edit", lambda m: m["models"]["target"]["config"].update(temperature=0.7),
+     "its target was sampled at temperature 0.7 (models.target.config.temperature), not the registered 1.0"),
+    ("manifest_edit", lambda m: m["models"]["target"].update(config={}),
+     "its target was sampled at temperature None (models.target.config.temperature), not the registered 1.0"),
     ("manifest_edit", lambda m: m["artifacts"]["judge_of_record"].update(judge_model=OTHER_JUDGE),
      f"its judge of record (artifacts.judge_of_record.judge_model) is '{OTHER_JUDGE}', not a registered judge"),
     ("judgment_edit", _first_judgment,
@@ -641,7 +646,11 @@ def test_a_vocabulary_without_well_formed_campaign_models_is_refused(shared, tmp
     for change, says in ((lambda d: d.pop("campaign_models"), "campaign_models must be {target, target_served, judge}"),
                          (lambda d: d["campaign_models"].update(judge=[]), "campaign_models.judge must be a non-empty"),
                          (lambda d: d["campaign_models"].update(target=["a", "a"]), "campaign_models.target must be"),
-                         (lambda d: d["campaign_models"].pop("target_served"), "campaign_models.target_served must")):
+                         (lambda d: d["campaign_models"].pop("target_served"), "campaign_models.target_served must"),
+                         (lambda d: d["campaign_models"].pop("target_temperature"),
+                          "campaign_models.target_temperature must be the number the page states"),
+                         (lambda d: d["campaign_models"].update(target_temperature="1"),
+                          "campaign_models.target_temperature must be the number the page states")):
         doc = json.loads(json.dumps(VOCAB))
         change(doc)
         path = tmp_path / "vocabulary.json"
@@ -654,7 +663,8 @@ def test_the_samples_are_built_from_the_vocabularys_registered_models(tmp_path):
     registered models, so a vocabulary registering others still writes samples, and a campaign recording models the
     vocabulary does not register is refused like a landed run."""
     doc = json.loads(json.dumps(VOCAB))
-    doc["campaign_models"] = {"target": [OTHER_TARGET], "target_served": [OTHER_SERVED], "judge": [OTHER_JUDGE]}
+    doc["campaign_models"] = {"target": [OTHER_TARGET], "target_served": [OTHER_SERVED], "judge": [OTHER_JUDGE],
+                              "target_temperature": 1.0}
     path = tmp_path / "vocabulary.json"
     path.write_text(json.dumps(doc), encoding="utf-8")
     assert ex.sample_export(vocabulary_path=path, seal_registry=SEAL) == ex.sample_export(seal_registry=SEAL)

@@ -71,8 +71,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 VOCABULARY_FILE = REPO_ROOT / "data" / "petri" / "multiturn_measures.json"
 
 
-def registered_models(vocabulary: Path = VOCABULARY_FILE) -> dict[str, list[str]]:
-    """The campaign_models block of the page vocabulary: {target, target_served, judge}, each a list of model strings."""
+def registered_models(vocabulary: Path = VOCABULARY_FILE) -> dict[str, Any]:
+    """The campaign_models block of the page vocabulary: {target, target_served, judge}, each a list of model strings,
+    and target_temperature, the number the page states."""
     return json.loads(Path(vocabulary).read_text(encoding="utf-8"))["campaign_models"]
 
 
@@ -303,7 +304,8 @@ def build_campaign(root: Path, *, seeds: Mapping[str, dict], sets: Mapping[str, 
             "spend": {"journal_nonce": fire.nonce},
             "models": {"target": {"provider": target.split("/", 1)[0], "model": target.split("/", 1)[-1],
                                   "inspect_name": target, "registry_spec": target, "served_model_strings": [served],
-                                  "config": {}, "seed_requested": None, "seed_forwarded_by_provider": None,
+                                  "config": {"temperature": float(models.get("target_temperature", 1.0))},
+                                  "seed_requested": None, "seed_forwarded_by_provider": None,
                                   "seed_honored": None},
                        "auditor": None, "judge_harness": None},
             "seeds": [{"seed_id": sid, "seed_sha256": seed_digest(seeds[sid])} for sid in seed_ids],
