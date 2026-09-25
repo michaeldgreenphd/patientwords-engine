@@ -57,14 +57,11 @@ SEAL = {"zq sealed placeholder phrase zq": "pairs_T#1"}
 # keys the exporter adds there beyond the site's samples (both reported to the site)
 ALTERNATIVES = {"$.conversations[].exchanges[].interim[]": {"fixture"},
                 "$.conversations[].exchanges[].vals{}": {"superseded"}}
-# keys every document carries beyond the site's samples at patientwords PR #9's fixture commit, reported to the site
-# (Codex review of 2026-09-24: the exporter commit is recorded in the provenance; Codex review of PR #39, 2026-09-25:
-# so is the sha256 of the section 10 artifact, which binds the page to the analysis its cited pack was built from)
-ADDED = {"$.provenance": {"exporter_commit", "analysis_sha256", "models"}}
-# paths the exporter writes that the site's samples do not have yet, with their keys (Codex review of site PR #9,
-# 2026-09-25: the models the page's Method sentence names, published so the page reads them from the file)
-ADDED_PATHS = {"$.provenance.models": {"target", "target_served", "judge", "target_temperature", "target_label",
-                                       "judge_label"}}
+# keys and paths the exporter writes beyond the site's samples at the fixture's site commit. None since the fixture was
+# refreshed from patientwords PR #9 at 56fa5a1 (2026-09-25), whose samples carry exporter_commit, analysis_sha256 and
+# provenance.models; a key added later is listed here until the site's samples carry it
+ADDED: dict[str, set[str]] = {}
+ADDED_PATHS: dict[str, set[str]] = {}
 
 
 def skeleton(obj, path="$", out=None):
