@@ -44,16 +44,22 @@ def workflow() -> dict:
     return yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
 
 
-def _runs(expr, **outputs) -> bool:
-    """Whether a step's or job's `if:` admits it for the given params outputs, `always()` and the created guard read
-    as a success path on an existing ref. The conditions use only ==, !=, &&, ||, parentheses,
-    needs.params.outputs.<key> and github.event.created."""
+def _runs(expr, steps: dict | None = None, **outputs) -> bool:
+    """Whether a step's or job's `if:` admits it for the given params outputs and earlier steps' outcomes and
+    outputs (`steps`: {id: {"outcome": ..., "outputs": {...}}}, default a success with no outputs), `always()` and
+    the created guard read as on an existing ref. The conditions use only ==, !=, &&, ||, parentheses,
+    needs.params.outputs.<key>, steps.<id>.outcome, steps.<id>.outputs.<key> and github.event.created. Values are
+    compared exactly here; GitHub ignores case, which is why the steps gate on the params job's exact `rehearsal`."""
     if expr is None:
         return True
+    steps = steps or {}
     body = str(expr).strip()
     assert body.startswith("${{") and body.endswith("}}"), body
     body = body[3:-2].replace("always()", "True").replace("github.event.created", "False")
     body = re.sub(r"needs\.params\.outputs\.(\w+)", lambda m: repr(outputs[m.group(1)]), body)
+    body = re.sub(r"steps\.(\w+)\.outcome", lambda m: repr(steps.get(m.group(1), {}).get("outcome", "success")), body)
+    body = re.sub(r"steps\.(\w+)\.outputs\.(\w+)",
+                  lambda m: repr(steps.get(m.group(1), {}).get("outputs", {}).get(m.group(2), "")), body)
     body = body.replace("!=", " __NE__ ").replace("&&", " and ").replace("||", " or ").replace("!", " not ")
     return bool(eval(body.replace("__NE__", "!="), {"__builtins__": {}}, {}))  # noqa: S307 - a literal expression
 
@@ -297,12 +303,13 @@ def test_a_paid_rejudge_is_admitted_from_a_first_attempt_push_only_and_the_rehea
     {"source_runs": ""}, {"source_runs": "run_1_1 run_1_1"}, {"source_runs": "run_1"}, {"source_runs": ["run_1_1"]},
     {"judge": "false"}, {"judge": True}, {"judge_model": f" {PAID_JUDGE}"}, {"judge_model": ""},
     {"mode": "Rejudge"}, {"mode": "rejudge "}, {"target": "anthropic/claude-haiku-4-5"},
-    {"target": "openai/gpt-5.4-mini"}, {"source_run_id": "12"},
+    {"target": "openai/gpt-5.4-mini"}, {"source_run_id": "12"}, {"source_run_id": None}, {"source_runs": None},
+    {"judge_model": "MockLLM/Judge"},
 ])
 def test_the_fire_guard_refuses_exactly_the_rejudges_the_params_job_refuses(tmp_path, change):
     """The fire path journals a reservation before the params job runs, so a rejudge the job would refuse must be
-    refused at the fire too. Same trigger file, both checks, same verdict (the nonce rule and the judge's key
-    routing are the guard's own and are held constant here)."""
+    refused at the fire too. Same trigger file, both checks, same verdict (the nonce rule, the judge's key routing and
+    the plan's judge-spec rules are the guard's own, stricter than the job, and are held constant here)."""
     cfg = dict(REJUDGE, **change)
     rc, _, err = _run_params_job(tmp_path, cfg)
     try:
@@ -339,9 +346,9 @@ def test_mode_rejudge_runs_its_own_job_and_no_step_of_the_audit_job(workflow):
         "Rejudge (paid unless the judge is mockllm/judge; no target call)")
 
 
-def test_the_rejudge_steps_run_plan_judge_seal_verify_and_commit_in_order(workflow):
+def test_the_rejudge_steps_run_plan_judge_verify_and_commit_in_order(workflow):
     plan = _step(workflow, "rejudge", "Plan the rejudge")
-    assert plan["env"]["RESOLVED_PARAMS"] == "${{ toJSON(needs.params.outputs) }}"
+    assert plan["id"] == "plan" and plan["env"]["RESOLVED_PARAMS"] == "${{ toJSON(needs.params.outputs) }}"
     for flag in ("rejudge-plan", "--runs-dir data/petri/runs", "--rejudge-root data/petri/rejudge",
                  '--rejudge-run-id "$GITHUB_RUN_ID"', '--rejudge-run-attempt "$GITHUB_RUN_ATTEMPT"',
                  '--rejudge-commit "$GITHUB_SHA"', '--out "$RUNNER_TEMP/petri-rejudge/plan.json"'):
@@ -349,43 +356,100 @@ def test_the_rejudge_steps_run_plan_judge_seal_verify_and_commit_in_order(workfl
     judge = _step(workflow, "rejudge", "Rejudge (paid")
     assert {"ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"} == set(judge["env"])
     assert '--started-dir "$RUNNER_TEMP/petri-rejudge/started"' in judge["run"]
-    seal = _step(workflow, "rejudge", "Holdout seal check and verification")
-    assert "--extra data/petri/runs,data/petri/rejudge" in seal["run"] and "verify-chain" in seal["run"]
-    assert 'verify-rejudge --plan "$RUNNER_TEMP/petri-rejudge/plan.json"' in seal["run"] and "--copy-to" in seal["run"]
+    verify = _step(workflow, "rejudge", "Verify the re-grades and seal-check exactly what is staged")
+    assert verify["id"] == "verify" and "verify-chain" in verify["run"]
+    for flag in ('verify-rejudge --plan "$RUNNER_TEMP/petri-rejudge/plan.json"', "--copy-to",
+                 '--verified-list "$RUNNER_TEMP/petri-rejudge/verified.txt"',
+                 '--stage-list "$RUNNER_TEMP/petri-rejudge/stage.txt"', 'seal_check.py --site "$RUNNER_TEMP/no-site"',
+                 '--extra "$EXTRA"', 'EXTRA="data/petri/runs"', 'echo "verified='):
+        assert flag in verify["run"], flag
+    # the seal check sweeps exactly the staged list (and the runs read), after the list is written
+    body = verify["run"]
+    assert body.index("--stage-list") < body.index('done < "$RUNNER_TEMP/petri-rejudge/stage.txt"') < body.index("seal_check.py")
+    assert "data/petri/rejudge" not in body.split("seal_check.py", 1)[1].split("\n", 1)[0], "never the root wholesale"
     steps = _job_steps(workflow, "rejudge")
     names = [s.get("name", "") for s in steps]
-    unconditional = [s["name"] for s in steps if "always()" in str(s.get("if", ""))]
-    assert unconditional == ["Refuse to publish a raw log (belt and braces)",
-                             "Spend report for a rejudge judge that started and left no sidecar",
-                             "Commit rejudge cost sidecars (paid rejudge; independent of commit_outputs)",
-                             "Job summary"]
     commit = _step(workflow, "rejudge", "Commit the re-grades")
     sidecars = _step(workflow, "rejudge", "Commit rejudge cost sidecars")
     upload = _step(workflow, "rejudge", "Upload the seal-cleared re-grades")
-    assert names.index(seal["name"]) < names.index(upload["name"]) < names.index(commit["name"]) < names.index(sidecars["name"])
-    assert names.index("Refuse to publish a raw log (belt and braces)") < names.index(upload["name"])
-    # outputs: a paid rejudge that commits, only after every step before it succeeded; never the rehearsal
-    assert "always()" not in commit["if"] and "continue-on-error" not in commit
-    assert _runs(commit["if"], judge_model=PAID_JUDGE, commit_outputs="true")
-    assert not _runs(commit["if"], judge_model=PAID_JUDGE, commit_outputs="false")
-    assert not _runs(commit["if"], judge_model=MOCK, commit_outputs="true")
-    assert "git add -f data/petri/rejudge/" in commit["run"] and "data/petri/runs" not in commit["run"]
+    rawlog = _step(workflow, "rejudge", "Refuse to publish a raw log")
+    assert rawlog["id"] == "rawlog"
+    assert names.index(verify["name"]) < names.index(rawlog["name"]) < names.index(upload["name"]) \
+        < names.index(commit["name"]) < names.index(sidecars["name"])
+    # the commit stages exactly the list verify-rejudge wrote; never the rejudge root wholesale
+    assert 'while IFS= read -r path; do git add -f -- "$path"; done < "$RUNNER_TEMP/petri-rejudge/stage.txt"' in commit["run"]
+    assert "git add -f data/petri/rejudge/" not in commit["run"] and "data/petri/runs" not in commit["run"]
+    assert "continue-on-error" not in commit
     # the cost sidecars: every paid rejudge, whatever happened; never the rehearsal; only report files are staged
-    assert _runs(sidecars["if"], judge_model=PAID_JUDGE) and not _runs(sidecars["if"], judge_model=MOCK)
+    assert _runs(sidecars["if"], rehearsal="false") and not _runs(sidecars["if"], rehearsal="true")
     assert "for f in data/petri/rejudge/*/*/*.report.json" in sidecars["run"]
     assert "data/petri/runs" not in sidecars["run"] and "git add -f data/petri/rejudge/ " not in sidecars["run"]
     spend = _step(workflow, "rejudge", "Spend report for a rejudge judge")
-    assert _runs(spend["if"], judge_model=PAID_JUDGE) and not _runs(spend["if"], judge_model=MOCK)
+    assert _runs(spend["if"], rehearsal="false") and not _runs(spend["if"], rehearsal="true")
     assert "rejudge-spend-report" in spend["run"]
     # the recovery upload is non-blocking only where a commit follows it; the rehearsal's copy is its only one
-    assert upload["continue-on-error"] == ("${{ needs.params.outputs.judge_model != 'mockllm/judge' && "
+    assert upload["continue-on-error"] == ("${{ needs.params.outputs.rehearsal != 'true' && "
                                            "needs.params.outputs.commit_outputs == 'true' }}")
     assert upload["with"]["path"] == "${{ runner.temp }}/petri-rejudge/exports/"
     assert upload["with"]["if-no-files-found"] == "error" and "petri-run/logs" not in upload["with"]["path"]
     summary = _step(workflow, "rejudge", "Job summary")
-    assert "rejudge-summary" in summary["run"] and "--seal-scan" in summary["run"]
+    assert "always()" in summary["if"] and "rejudge-summary" in summary["run"] and "--seal-scan" in summary["run"]
     for step in steps:
         assert "${{ secrets." not in (step.get("run") or ""), step.get("name")
+        # no rejudge step reads the judge spec to decide paid or rehearsal: `!=` in an expression ignores case
+        assert "outputs.judge_model !=" not in str(step.get("if", "")) + str(step.get("continue-on-error", "")), \
+            step.get("name")
+
+
+def test_a_later_runs_abort_does_not_skip_the_verification_upload_or_commit_of_an_earlier_one(workflow):
+    """PR #41 review: when the judge aborted on a later source run, the Rejudge step failed and every step gated on
+    success (verify, upload, commit) was skipped, so an earlier run's completed re-grade was discarded and its retry
+    paid again. They now run whenever the plan succeeded, over what verify-rejudge verified."""
+    verify = _step(workflow, "rejudge", "Verify the re-grades")
+    upload = _step(workflow, "rejudge", "Upload the seal-cleared re-grades")
+    commit = _step(workflow, "rejudge", "Commit the re-grades")
+    aborted = {"plan": {"outcome": "success"}, "rejudge": {"outcome": "failure"},
+               "verify": {"outcome": "success", "outputs": {"verified": "1"}}, "rawlog": {"outcome": "success"}}
+    paid = {"rehearsal": "false", "commit_outputs": "true"}
+    assert _runs(verify["if"], aborted, **paid) and _runs(upload["if"], aborted, **paid) and _runs(commit["if"], aborted, **paid)
+    # nothing verified (the first run aborted): nothing to upload or commit; the sidecar step books the spend
+    none_verified = dict(aborted, verify={"outcome": "success", "outputs": {"verified": "0"}})
+    assert not _runs(upload["if"], none_verified, **paid) and not _runs(commit["if"], none_verified, **paid)
+    # fail closed: a verification or seal failure, or a raw log in the checkout, stops the upload and the commit
+    for broken in ({"verify": {"outcome": "failure", "outputs": {"verified": "1"}}}, {"rawlog": {"outcome": "failure"}}):
+        state = {**aborted, **broken}
+        assert not _runs(upload["if"], state, **paid) and not _runs(commit["if"], state, **paid), broken
+    # the plan refused: nothing was judged, so nothing is verified
+    assert not _runs(verify["if"], {"plan": {"outcome": "failure"}}, **paid)
+    # the rehearsal uploads and never commits; a paid rejudge without commit_outputs uploads only
+    assert _runs(upload["if"], aborted, rehearsal="true", commit_outputs="false")
+    assert not _runs(commit["if"], aborted, rehearsal="true", commit_outputs="false")
+    assert not _runs(commit["if"], aborted, rehearsal="false", commit_outputs="false")
+
+
+def test_the_params_job_emits_the_rehearsal_flag_from_an_exact_comparison(tmp_path, workflow):
+    assert workflow["jobs"]["params"]["outputs"]["rehearsal"] == "${{ steps.params.outputs.rehearsal }}"
+    for cfg, flag in ((dict(REJUDGE, judge_model=MOCK, commit_outputs="false"), "true"), (REJUDGE, "false"),
+                      (dict(ft.PARK_DEFAULTS[TRIGGER]), "false"),
+                      (dict(ft.PARK_DEFAULTS[TRIGGER], judge_model=MOCK), "false")):
+        rc, out, err = _run_params_job(tmp_path, cfg)
+        assert rc == 0 and f"rehearsal={flag}\n" in out, (cfg, err)
+
+
+@pytest.mark.parametrize("spec", ["MockLLM/Judge", "mockllm/JUDGE", "MOCKLLM/MODEL", "None/None"])
+def test_a_sentinel_spelled_in_another_case_is_refused_by_the_guard_the_job_and_the_plan(tmp_path, spec):
+    """GitHub's expression `!=` compares strings ignoring case: `MockLLM/Judge` gated the steps as the rehearsal while
+    every Python check read it as a paid judge (PR #41 review). It is refused everywhere."""
+    cfg = dict(REJUDGE, judge_model=spec)
+    with pytest.raises(ValueError, match="differs from a test sentinel in case alone"):
+        ft.validate_params(TRIGGER, cfg)
+    rc, out, err = _run_params_job(tmp_path, cfg)
+    assert rc != 0 and "differs from a test sentinel in case alone" in err and out == ""
+    from scripts.petri_audit import rejudge
+
+    assert "in case alone" in (rejudge.sentinel_case_problem(spec) or "")
+    assert any("in case alone" in p for p in rejudge.judge_spec_refusals(spec)), "cli rejudge's own re-check too"
+    assert rejudge.sentinel_case_problem("mockllm/judge") is None and rejudge.sentinel_case_problem(PAID_JUDGE) is None
 
 
 def test_the_trigger_docs_name_the_mode_and_its_key():
@@ -393,3 +457,56 @@ def test_the_trigger_docs_name_the_mode_and_its_key():
     agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
     assert "`mode: rejudge`" in doc and "`source_runs`" in doc and "data/petri/rejudge/" in doc
     assert "`mode: rejudge`" in agents
+
+
+# ------------------------------------------------------------ PR #41 review: what the fire guard admits and the job refuses
+
+
+@pytest.mark.parametrize("base, change", [
+    ({"mode": "run", "target": "anthropic/claude-haiku-4-5", "judge": "false", "commit_outputs": "false", "_nonce": "n"},
+     {"source_runs": None}),
+    ({"mode": "run", "target": "anthropic/claude-haiku-4-5", "judge": "false", "commit_outputs": "false", "_nonce": "n"},
+     {"source_run_id": None}),
+    ({"mode": "preflight", "commit_outputs": "false"}, {"source_runs": None}),
+    ({"mode": "preflight", "commit_outputs": "false"}, {"source_run_id": None}),
+    (REJUDGE, {"source_runs": None}),
+    (REJUDGE, {"source_run_id": None}),
+])
+def test_a_json_null_the_job_reads_as_the_string_none_is_refused_at_the_fire_too(tmp_path, base, change):
+    """The params job `str()`s every value, so a JSON null is "None": outside the mode that reads the key it is a
+    value the job refuses, and the guard journaled a reservation for it (PR #41 review)."""
+    cfg = dict(base, **change)
+    rc, _, err = _run_params_job(tmp_path, cfg)
+    assert rc != 0, err
+    with pytest.raises(ValueError):
+        ft.validate_params(TRIGGER, cfg)
+
+
+def test_a_readapt_still_refuses_a_null_source_run_id_as_before():
+    readapt = {"mode": "readapt", "source_run_id": None, "target": "anthropic/claude-haiku-4-5", "judge": "true",
+               "judge_model": "claude-haiku-4-5", "judge_max_spend": "1.0", "commit_outputs": "true", "_nonce": "r"}
+    with pytest.raises(ValueError, match="mode readapt needs source_run_id"):
+        ft.validate_params(TRIGGER, readapt)
+
+
+@pytest.mark.parametrize("spec", ["mockllm/model", "none/none", "foo:bar", "copilot", "copilot:x", "openrouter",
+                                  "openrouter:", "openrouter:openai/gpt-5.5", "_readme:x"])
+def test_the_fire_guard_refuses_the_judge_specs_the_plan_refuses(spec):
+    """The plan refuses these before any call, but only after the fire's reservation held the day's ceiling; the
+    guard now refuses them first (a mirror of judge_runner.judge_spec_problems and spend.openrouter_price_problems)."""
+    with pytest.raises(ValueError):
+        ft.validate_params(TRIGGER, dict(REJUDGE, judge_model=spec))
+
+
+@pytest.mark.parametrize("spec", ["mockllm/model", "none/none", "foo:bar", "copilot", "copilot:x", "openrouter",
+                                  "openrouter:", "openrouter:openai/gpt-5.5", "openrouter:openai/gpt-5.4-mini",
+                                  "openrouter:x-ai/grok-4.3", "openrouter:google/gemini-3.5-flash", "xai",
+                                  "xai:x-ai/grok-4.3", "openai", "openai:gpt-5.4-mini", "claude-sonnet-4-5",
+                                  "anthropic:claude-haiku-4-5", "deepseek", "moonshot"])
+def test_the_guards_judge_spec_rule_is_the_plans(spec):
+    from scripts.petri_audit import rejudge
+
+    guard = ft.petri_judge_spec_problems(spec)
+    plan = rejudge.judge_spec_refusals(spec)
+    # the plan's key-routing refusal (google:, GEMINI_API_KEY) is the guard's own separate rule; none of these bill it
+    assert bool(guard) == bool(plan), (spec, guard, plan)

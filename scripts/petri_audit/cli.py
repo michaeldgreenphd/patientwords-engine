@@ -715,9 +715,22 @@ def cmd_rejudge_plan(args: argparse.Namespace) -> int:
           f"ceiling ${plan['judge_max_spend_usd']:.4f}, judge_max_tokens {plan['judge_max_tokens']}, nonce "
           f"{plan['fire']['journal_nonce']!r}")
     for source in plan["sources"]:
+        est = source["estimate"]
         print(f"  {source['run_stem']}: {source['planned']} planned judgment(s), parity with the judge of record "
               f"{source['source']['judge_of_record']['judge_model']!r} exact; plan {source['plan_sha256'][:12]}; "
               f"{len(source['prior_judge_reports'])} earlier fire sidecar(s) kept")
+        print(f"    expected ${est['expected_usd']:.4f}: {est['calls']} call(s), the judge of record's "
+              f"{est['recorded_input_tokens']} input and {est['recorded_output_tokens']} output tokens at "
+              f"{est['input_per_mtok']}/{est['output_per_mtok']} per Mtok ({est['price_source']}); "
+              f"{est['calls_without_recorded_usage']} call(s) without recorded usage taken at their bound")
+        print(f"    worst case ${est['worst_case_usd']:.4f}: the same input, every answer at {plan['judge_max_tokens']} "
+              f"output tokens")
+    total = plan["estimate"]
+    print(f"  fire: expected ${total['expected_usd']:.4f} + last-call headroom ${total['last_call_headroom_usd']:.4f} = "
+          f"${total['required_usd']:.4f} needed, worst case ${total['worst_case_usd']:.4f}, against the ceiling "
+          f"${plan['judge_max_spend_usd']:.4f}")
+    print("  the estimate ASSUMES the new judge's token counts are close to the judge of record's; a different "
+          "tokenizer or longer answers move it, and the worst case bounds the answers")
     return 0
 
 
@@ -740,8 +753,9 @@ def cmd_rejudge(args: argparse.Namespace) -> int:
     for r in outcome["results"]:
         if r["status"] in ("complete", "truncated"):
             c = r["counts"]
-            print(f"{r['run_stem']}: {r['status']}; planned {c['planned']}, judged {c['judged']}, null {c['null']}, "
-                  f"not applicable {c['not_applicable']}; cost ${float(r['cost_usd']):.4f}")
+            print(f"{r['run_stem']}: {r['status']}; planned {c['planned']}, judged {c['judged']}, null {c['null']} "
+                  f"(null share {c['null_share']}), not applicable {c['not_applicable']}; cost "
+                  f"${float(r['cost_usd']):.4f}")
         else:
             print(f"{r['run_stem']}: {r['status']}" + (f" ({r.get('reason') or r.get('error')})"
                                                           if r.get("reason") or r.get("error") else ""))
@@ -765,23 +779,28 @@ def cmd_rejudge_spend_report(args: argparse.Namespace) -> int:
 
 def cmd_verify_rejudge(args: argparse.Namespace) -> int:
     """Re-grade directories on their own (rejudge.verify_output), each against the source run it names; with
-    --plan, the directories this fire wrote. With --copy-to, every verified directory is copied under it
-    (`<slug>/<stem>`) once all of them verify, for the workflow's artifact upload."""
+    --plan, the directories this fire wrote a manifest into (rejudge.fire_outputs), whatever happened to a later
+    run. Once all of them verify: --copy-to copies each under it (`<slug>/<stem>`) for the artifact upload,
+    --verified-list writes their paths one per line, and --stage-list writes exactly what the workflow stages (those
+    directories and this fire's sidecars, an aborted run's included), one path per line. Nothing is written when
+    any directory fails to verify."""
     import shutil
 
     runs_dir = Path(args.runs_dir)
     dirs: list[Path] = [Path(d) for d in args.dir]
+    sidecars: list[Path] = []
     if args.root:
         dirs += rejudge.output_dirs(args.root)
     if args.plan:
         plan = load_json(args.plan)
+        written, sidecars = rejudge.fire_outputs(plan)
+        dirs += written
         root = Path(plan["rejudge_root"]) / plan["judge_slug"]
         for source in plan["sources"]:
             d = root / source["run_stem"]
-            if (d / rejudge.MANIFEST_NAME).is_file():
-                dirs.append(d)
-            else:
-                print(f"{d}: no re-grade written (not started, or its judge failed); nothing to verify")
+            if d not in written:
+                print(f"{d}: no re-grade written (not started, or its judge failed); nothing to verify or stage "
+                      "but its sidecar, if any")
     ok, msg = verify_chain(runs_dir)
     problems = [] if ok else [f"{runs_dir}: the manifests chain does not verify ({msg})"]
     for d in dirs:
@@ -794,10 +813,18 @@ def cmd_verify_rejudge(args: argparse.Namespace) -> int:
     if problems:
         return 6
     if args.copy_to:
+        Path(args.copy_to).mkdir(parents=True, exist_ok=True)
         for d in dirs:
             dest = Path(args.copy_to) / d.parent.name / d.name
             shutil.copytree(d, dest)
         print(f"copied {len(dirs)} verified re-grade director{'y' if len(dirs) == 1 else 'ies'} to {args.copy_to}")
+    if args.verified_list:
+        Path(args.verified_list).write_text("".join(f"{d}\n" for d in dirs), encoding="utf-8")
+    if args.stage_list:
+        staged = [str(d) for d in dirs] + [str(p) for p in sidecars if p.parent not in dirs]
+        Path(args.stage_list).write_text("".join(f"{p}\n" for p in staged), encoding="utf-8")
+        print(f"to stage: {len(dirs)} verified re-grade director{'y' if len(dirs) == 1 else 'ies'} and "
+              f"{len(staged) - len(dirs)} further sidecar(s) of this fire")
     return 0
 
 
@@ -856,6 +883,9 @@ def cmd_rejudge_rehearse(args: argparse.Namespace) -> int:
         print(f"  planned {c['planned']}, judged {c['judged']}, null {c['null']}, not applicable "
               f"{c['not_applicable']} (judge of record: planned {m['source']['judge_of_record']['planned']}, "
               f"not applicable {m['source']['judge_of_record']['not_applicable']}); cost ${m['cost_usd']:.4f}")
+        print(f"  null share {c['null_share']} (judge of record {c['judge_of_record_null_share']}); the judge of "
+              f"record's recorded tokens: {m['estimate']['recorded_input_tokens']} in, "
+              f"{m['estimate']['recorded_output_tokens']} out over {m['estimate']['calls']} call(s)")
         print(f"  analysis rows {m['artifacts']['analysis_rows']['rows']}; verify: "
               + ("clean" if not problems else "; ".join(problems)))
         failed += bool(problems)
@@ -1046,6 +1076,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--root", default=None, help="verify every re-grade directory under this root")
     p.add_argument("--runs-dir", default=str(DEFAULT_RUNS_DIR))
     p.add_argument("--copy-to", default=None, help="copy every verified directory here once all of them verify")
+    p.add_argument("--verified-list", default=None, help="write the verified directories here, one per line")
+    p.add_argument("--stage-list", default=None,
+                   help="write what the workflow stages here, one path per line: the verified directories and this "
+                        "fire's sidecars (with --plan)")
     p.set_defaults(func=cmd_verify_rejudge)
 
     p = sub.add_parser("rejudge-summary")

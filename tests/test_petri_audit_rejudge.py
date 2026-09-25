@@ -31,6 +31,9 @@ JUDGE_OF_RECORD = "claude-haiku-4-5"
 PAID_JUDGE = "openrouter:openai/gpt-5.4-mini"
 PAID_SLUG = "openrouter-openai-gpt-5.4-mini"
 COMMIT = "c" * 40
+# the environment a paid judge's key check reads (rejudge.judge_key_problem); every judge here is a MockJudge, so the
+# value is never sent anywhere
+KEYS = {"OPENROUTER_API_KEY": "test-key-never-sent"}
 
 
 def _load_fire_trigger():
@@ -220,7 +223,7 @@ def test_a_paid_rejudge_books_its_judge_to_its_own_fire_on_the_judges_channel(la
     runs, root = layout
     plan = _plan(runs, root)
     assert plan["rehearsal"] is False and plan["judge_slug"] == PAID_SLUG and plan["fire"]["journal_nonce"] == "rj-1"
-    outcome = rejudge.execute(plan, started_dir=root.parent / "started", client_factory=_mock_factory)
+    outcome = rejudge.execute(plan, started_dir=root.parent / "started", client_factory=_mock_factory, environ=KEYS)
     out_dir = root / PAID_SLUG / "run_4242_1"
     report = framework.load_json(out_dir / "run_4242_1.rejudge_777.judge.report.json")
     assert report["journal_nonce"] == "rj-1" and report["billing_channel"] == "openrouter"
@@ -265,7 +268,7 @@ def test_the_judge_of_record_or_another_allowance_is_refused(layout):
 
 def test_a_directory_holding_a_regrade_is_never_written_again(layout):
     runs, root = layout
-    rejudge.execute(_plan(runs, root), started_dir=root.parent / "s1", client_factory=_mock_factory)
+    rejudge.execute(_plan(runs, root), started_dir=root.parent / "s1", client_factory=_mock_factory, environ=KEYS)
     out_dir = root / PAID_SLUG / "run_4242_1"
     before = _tree_digest(out_dir)
     with pytest.raises(rejudge.RejudgeError, match="already holds a re-grade"):
@@ -281,7 +284,7 @@ def test_a_directory_holding_a_regrade_is_never_written_again(layout):
     (other / PAID_SLUG / "run_4242_1").mkdir(parents=True)
     (other / PAID_SLUG / "run_4242_1" / rejudge.JUDGMENTS_NAME).write_text("", encoding="utf-8")
     with pytest.raises(rejudge.RejudgeError, match="already holds a re-grade"):
-        rejudge.execute(plan, started_dir=root.parent / "s3", client_factory=_mock_factory)
+        rejudge.execute(plan, started_dir=root.parent / "s3", client_factory=_mock_factory, environ=KEYS)
 
 
 def test_a_retry_is_admitted_beside_an_earlier_failed_fires_sidecar_which_it_leaves_as_it_is(layout):
@@ -296,7 +299,7 @@ def test_a_retry_is_admitted_beside_an_earlier_failed_fires_sidecar_which_it_lea
     assert plan["sources"][0]["prior_judge_reports"] == [
         {"path": prior.name, "sha256": framework.sha256_file(prior), "journal_nonce": "rj-0"}]
     digest = framework.sha256_file(prior)
-    rejudge.execute(plan, started_dir=root.parent / "s", client_factory=_mock_factory)
+    rejudge.execute(plan, started_dir=root.parent / "s", client_factory=_mock_factory, environ=KEYS)
     assert framework.sha256_file(prior) == digest, "the earlier fire's sidecar is a spend record, never rewritten"
     assert rejudge.verify_output(out_dir, runs) == []
     # refusals: a nonce no fire accounts for, another judge's sidecar, this fire's own nonce, a stray file
@@ -327,7 +330,7 @@ def test_a_retry_is_admitted_beside_an_earlier_failed_fires_sidecar_which_it_lea
     plan = _plan(runs, changed_root, journal=journal)
     bound.write_text(bound.read_text(encoding="utf-8") + " ", encoding="utf-8")
     with pytest.raises(rejudge.RejudgeError, match="changed after the rejudge bound it"):
-        rejudge.execute(plan, started_dir=root.parent / "s4", client_factory=_mock_factory)
+        rejudge.execute(plan, started_dir=root.parent / "s4", client_factory=_mock_factory, environ=KEYS)
     assert not (d / rejudge.JUDGMENTS_NAME).exists()
 
 
@@ -386,7 +389,7 @@ def test_parity_with_the_judge_of_record_is_exact_or_refused(layout, seed_set):
 
 def test_verification_names_every_alteration(layout):
     runs, root = layout
-    rejudge.execute(_plan(runs, root), started_dir=root.parent / "s", client_factory=_mock_factory)
+    rejudge.execute(_plan(runs, root), started_dir=root.parent / "s", client_factory=_mock_factory, environ=KEYS)
     out_dir = root / PAID_SLUG / "run_4242_1"
     assert rejudge.verify_output(out_dir, runs) == []
     judgments = out_dir / rejudge.JUDGMENTS_NAME
@@ -422,7 +425,7 @@ def test_one_fire_shares_one_ceiling_across_its_source_runs(tmp_path, seed_set):
     _land(runs, "run_4242_1", seed_set)
     _land(runs, "run_4343_1", seed_set)
     plan = _plan(runs, root, source_runs="run_4242_1 run_4343_1", judge_max_spend="1.00")
-    outcome = rejudge.execute(plan, started_dir=tmp_path / "s", client_factory=_mock_factory)
+    outcome = rejudge.execute(plan, started_dir=tmp_path / "s", client_factory=_mock_factory, environ=KEYS)
     assert [r["status"] for r in outcome["results"]] == ["complete", "complete"]
     first = framework.load_json(root / PAID_SLUG / "run_4242_1" / "run_4242_1.rejudge_777.judge.report.json")
     second = framework.load_json(root / PAID_SLUG / "run_4343_1" / "run_4343_1.rejudge_777.judge.report.json")
@@ -433,8 +436,9 @@ def test_one_fire_shares_one_ceiling_across_its_source_runs(tmp_path, seed_set):
         assert rejudge.verify_output(root / PAID_SLUG / stem, runs) == []
     # a ceiling the first run exhausts truncates it, and the second is not started and writes nothing
     tight_root = tmp_path / "tight"
-    plan = _plan(runs, tight_root, source_runs="run_4242_1 run_4343_1", judge_max_spend="0.0001")
-    outcome = rejudge.execute(plan, started_dir=tmp_path / "s2", client_factory=_mock_factory)
+    plan = _plan(runs, tight_root, source_runs="run_4242_1 run_4343_1")
+    plan["judge_max_spend_usd"] = 0.0001          # a judge that spends past the estimate, which the plan cannot see
+    outcome = rejudge.execute(plan, started_dir=tmp_path / "s2", client_factory=_mock_factory, environ=KEYS)
     assert [r["status"] for r in outcome["results"]] == ["truncated", "not_started"]
     assert not (tight_root / PAID_SLUG / "run_4343_1").exists()
     m = framework.load_json(tight_root / PAID_SLUG / "run_4242_1" / rejudge.MANIFEST_NAME)
@@ -453,7 +457,7 @@ def test_a_judge_that_raises_leaves_its_sidecar_no_outputs_and_ends_the_fire(tmp
     _land(runs, "run_4343_1", seed_set)
     plan = _plan(runs, root, source_runs="run_4242_1 run_4343_1")
     outcome = rejudge.execute(plan, started_dir=tmp_path / "s",
-                              client_factory=lambda spec, plans: _Raising(lambda p: "", model_spec=spec))
+                              client_factory=lambda spec, plans: _Raising(lambda p: "", model_spec=spec), environ=KEYS)
     assert outcome["aborted"] and [r["status"] for r in outcome["results"]] == ["aborted", "not_started"]
     d = root / PAID_SLUG / "run_4242_1"
     report = framework.load_json(d / "run_4242_1.rejudge_777.judge.report.json")
@@ -558,7 +562,7 @@ def test_reconciliation_joins_every_rejudge_sidecar_to_its_own_fire(tmp_path, se
     _land(runs, "run_4242_1", seed_set)
     _land(runs, "run_4343_1", seed_set)
     rejudge.execute(_plan(runs, root, source_runs="run_4242_1 run_4343_1"), started_dir=tmp_path / "s",
-                    client_factory=_mock_factory)
+                    client_factory=_mock_factory, environ=KEYS)
     journal = tmp_path / "journal.jsonl"
     _journal(journal, _rejudge_entry())
     # the fixture's source runs carry a judge sidecar but no target sidecar, which reconciliation rightly names; the
@@ -597,7 +601,7 @@ def test_reconciliation_joins_every_rejudge_sidecar_to_its_own_fire(tmp_path, se
 def test_the_ledger_folds_each_rejudge_sidecar_once_to_the_judges_channel(tmp_path, seed_set):
     runs, root = tmp_path / "data" / "petri" / "runs", tmp_path / "data" / "petri" / "rejudge"
     _land(runs, "run_4242_1", seed_set)
-    rejudge.execute(_plan(runs, root), started_dir=tmp_path / "s", client_factory=_mock_factory)
+    rejudge.execute(_plan(runs, root), started_dir=tmp_path / "s", client_factory=_mock_factory, environ=KEYS)
     report = next(root.glob("*/*/*.report.json"))
     cost = framework.load_json(report)["cost_usd"]
     day = framework.load_json(report)["run_utc"][:10]
@@ -623,3 +627,150 @@ def test_the_ledger_folds_each_rejudge_sidecar_once_to_the_judges_channel(tmp_pa
     result = reconcile.reconcile(journal, runs, dashboard_path=dash, rejudge_dir=root)
     (row,) = result["paid_fires"]
     assert row["folded"] is True and report.name not in result["unfolded_sidecars"]
+
+
+# ------------------------------------------------------------ PR #41 review
+
+
+def test_an_earlier_runs_completed_regrade_survives_a_later_runs_abort(tmp_path, seed_set, capsys):
+    """Finding 1: the judge aborting on the second source run failed the Rejudge step, and verification, upload and
+    the re-grade commit were skipped, so the branch kept only sidecars and a retry paid again for run 1. The verify
+    step now runs whenever the plan succeeded: it verifies the re-grades that wrote their manifest, and writes
+    exactly what the commit stages (those directories and the fire's sidecars, never the aborted run's rows)."""
+    runs, root = tmp_path / "runs", tmp_path / "rejudge"
+    _land(runs, "run_4242_1", seed_set)
+    _land(runs, "run_4343_1", seed_set)
+    plan = _plan(runs, root, source_runs="run_4242_1 run_4343_1")
+    calls = {"n": 0}
+
+    def factory(spec, plans):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            return _Raising(lambda p: "", model_spec=spec)            # the provider fails on the second source run
+        return _mock_factory(spec, plans)
+
+    outcome = rejudge.execute(plan, started_dir=tmp_path / "s", client_factory=factory, environ=KEYS)
+    assert [r["status"] for r in outcome["results"]] == ["complete", "aborted"] and outcome["aborted"]
+    plan_path = tmp_path / "plan.json"
+    framework.write_json(plan_path, plan)
+    exports, verified, stage = tmp_path / "exports", tmp_path / "verified.txt", tmp_path / "stage.txt"
+    assert cli.main(["verify-rejudge", "--plan", str(plan_path), "--runs-dir", str(runs), "--copy-to", str(exports),
+                     "--verified-list", str(verified), "--stage-list", str(stage)]) == 0
+    first, second = root / PAID_SLUG / "run_4242_1", root / PAID_SLUG / "run_4343_1"
+    assert verified.read_text(encoding="utf-8").splitlines() == [str(first)]
+    assert stage.read_text(encoding="utf-8").splitlines() == [
+        str(first), str(second / "run_4343_1.rejudge_777.judge.report.json")], "never the aborted run's rows"
+    assert (second / rejudge.JUDGMENTS_NAME).is_file(), "the aborted run's partial rows exist and are not staged"
+    assert sorted(p.name for p in (exports / PAID_SLUG).iterdir()) == ["run_4242_1"], "only the verified re-grade"
+    assert "run_4343_1" in capsys.readouterr().out
+    # the branch after the commit steps: run 1's re-grade and both sidecars; the aborted run's rows never landed
+    (second / rejudge.JUDGMENTS_NAME).unlink()
+    with pytest.raises(rejudge.RejudgeError, match="run_4242_1: already holds a re-grade"):
+        _plan(runs, root, source_runs="run_4242_1", run_id="778", _nonce="rj-2",
+              journal=[{"trigger": "petri-audit", "nonce": "rj-1"}])
+    retry = _plan(runs, root, source_runs="run_4343_1", run_id="778", _nonce="rj-2",
+                  journal=[{"trigger": "petri-audit", "nonce": "rj-1"}])
+    assert [p["path"] for p in retry["sources"][0]["prior_judge_reports"]] == ["run_4343_1.rejudge_777.judge.report.json"]
+    # a directory that fails verification writes no list at all: the step fails closed and nothing is staged
+    (first / rejudge.ANALYSIS_NAME).write_text("tampered\n", encoding="utf-8")
+    verified.unlink()
+    stage.unlink()
+    assert cli.main(["verify-rejudge", "--plan", str(plan_path), "--runs-dir", str(runs),
+                     "--verified-list", str(verified), "--stage-list", str(stage)]) == 6
+    assert not verified.exists() and not stage.exists()
+
+
+def test_a_judge_whose_key_is_absent_is_refused_before_any_marker_and_books_nothing(layout, monkeypatch, capsys):
+    """Finding 2: the start marker was written before the first call, the provider client raised SystemExit on the
+    empty key, nothing caught it, and the fallback booked the whole allotment for a call never made. The key is now
+    checked before the marker: a named refusal, no marker, nothing imputed."""
+    runs, root = layout
+    plan = _plan(runs, root)
+    started = root.parent / "started"
+    for environ in ({}, {"OPENROUTER_API_KEY": ""}, {"OPENROUTER_API_KEY": "  "}, {"ANTHROPIC_API_KEY": "x"}):
+        with pytest.raises(rejudge.RejudgeError, match="OPENROUTER_API_KEY, which is unset or empty"):
+            rejudge.execute(plan, started_dir=started, client_factory=_mock_factory, environ=environ)
+        assert not list(started.glob("*.json")), "no start marker for a judge that cannot call"
+        assert rejudge.impute_missing_reports(plan, started) == [], "nothing booked"
+        assert not (root / PAID_SLUG).exists()
+    # through the CLI, with the process environment the workflow gives it
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    plan_path = root.parent / "plan.json"
+    framework.write_json(plan_path, plan)
+    assert cli.main(["rejudge", "--plan", str(plan_path), "--started-dir", str(started)]) == 13
+    assert "OPENROUTER_API_KEY, which is unset or empty" in capsys.readouterr().err
+    assert cli.main(["rejudge-spend-report", "--plan", str(plan_path), "--started-dir", str(started)]) == 0
+    assert "nothing to impute" in capsys.readouterr().out and not list(root.glob("*/*/*.report.json"))
+    # an Anthropic judge reads ANTHROPIC_API_KEY; the rehearsal reads no key at all
+    assert "ANTHROPIC_API_KEY" in (rejudge.judge_key_problem("claude-sonnet-4-5", {}) or "")
+    assert rejudge.judge_key_problem("claude-sonnet-4-5", {"ANTHROPIC_API_KEY": "x"}) is None
+    assert rejudge.judge_key_problem(rejudge.MOCK_JUDGE, {}) is None
+
+
+def test_the_plan_prices_the_regrade_from_the_judge_of_records_tokens_and_refuses_a_ceiling_below_it(layout, capsys):
+    """Finding 3a: nothing sized the ceiling, and a truncated re-grade closes its directory for good. The plan prices
+    every source run from the judge of record's recorded tokens at the new judge's registry price, prints that and
+    the worst case, and refuses a ceiling below the expected cost plus one call's admission headroom."""
+    from scripts.petri_audit import spend
+
+    runs, root = layout
+    plan = _plan(runs, root)
+    rows = judge_runner.read_jsonl(runs / "run_4242_1" / "judgments.jsonl")
+    judged = [r for r in rows if r["method"] == "judge"]
+    tokens_in, tokens_out = sum(r["input_tokens"] for r in judged), sum(r["output_tokens"] for r in judged)
+    price = spend.resolve_registry_price(PAID_JUDGE)
+    est = plan["sources"][0]["estimate"]
+    assert (est["calls"], est["recorded_input_tokens"], est["recorded_output_tokens"]) == (len(judged), tokens_in, tokens_out)
+    assert est["expected_usd"] == pytest.approx(tokens_in * 0.8 / 1e6 + tokens_out * 4.75 / 1e6, abs=1e-6)
+    assert est["worst_case_usd"] == pytest.approx(tokens_in * 0.8 / 1e6 + len(judged) * 300 * 4.75 / 1e6, abs=1e-6)
+    assert (est["input_per_mtok"], est["output_per_mtok"]) == (price.input_per_mtok, price.output_per_mtok) == (0.8, 4.75)
+    assert "close to the judge of record's" in est["assumption"]
+    required = plan["estimate"]["required_usd"]
+    assert required == pytest.approx(est["expected_usd"] + est["last_call_headroom_usd"]) and required > est["expected_usd"]
+    with pytest.raises(rejudge.RejudgeError, match="is below the expected cost of the re-grade"):
+        _plan(runs, root.parent / "tight", judge_max_spend=f"{required * 0.99:.8f}")
+    _plan(runs, root.parent / "enough", judge_max_spend=f"{required:.8f}")
+    # a judge of record row without usage is priced at the ceiling's own bound, and counted
+    no_usage = [dict(r, input_tokens=None, output_tokens=None) if r is judged[0] else r for r in rows]
+    plans, _m, _s = rejudge.build_plans(runs, "run_4242_1")
+    bounded = rejudge.estimate_cost(plans, no_usage, PAID_JUDGE, 300)
+    assert bounded["calls_without_recorded_usage"] == 1 and bounded["recorded_output_tokens"] > tokens_out
+    # the CLI prints both figures and the assumption
+    params = root.parent / "params.json"
+    framework.write_json(params, _params())
+    assert cli.main(["rejudge-plan", "--params-file", str(params), "--runs-dir", str(runs), "--rejudge-root", str(root),
+                     "--journal", str(root.parent / "none.jsonl"), "--rejudge-run-id", "5", "--rejudge-run-attempt", "1",
+                     "--rejudge-commit", COMMIT, "--out", str(root.parent / "plan.json")]) == 0
+    out = capsys.readouterr().out
+    assert f"expected ${est['expected_usd']:.4f}" in out and f"worst case ${est['worst_case_usd']:.4f}" in out
+    assert "ASSUMES the new judge's token counts are close to the judge of record's" in out
+
+
+def test_the_manifest_and_summary_make_a_mostly_null_regrade_visible(layout, capsys):
+    """Finding 3b: a re-grade that is complete but mostly null closed its directory looking like a success. The
+    manifest records the share of the judgments that were not not-applicable which came back null, beside the judge
+    of record's, and verification and the summary carry it."""
+    runs, root = layout
+    plan = _plan(runs, root)
+
+    def mostly_unparseable(spec, plans):
+        return judge_runner.MockJudge(lambda p: "no value here", model_spec=spec)
+
+    rejudge.execute(plan, started_dir=root.parent / "s", client_factory=mostly_unparseable, environ=KEYS)
+    out_dir = root / PAID_SLUG / "run_4242_1"
+    m = framework.load_json(out_dir / rejudge.MANIFEST_NAME)
+    c = m["counts"]
+    assert c["judged"] == 0 and c["null"] > 0 and c["null_share"] == 1.0
+    assert c["judge_of_record_null_share"] == 0.0, "the mock judge of record answered every call"
+    assert m["estimate"]["expected_usd"] == plan["sources"][0]["estimate"]["expected_usd"]
+    assert rejudge.verify_output(out_dir, runs) == []
+    understated = {**m, "counts": {**c, "null_share": 0.0}}
+    understated["manifest_sha256"] = rejudge.manifest_digest(understated)       # resealed: only the count is wrong
+    framework.write_json(out_dir / rejudge.MANIFEST_NAME, understated)
+    assert any("null_share" in p for p in rejudge.verify_output(out_dir, runs))
+    framework.write_json(out_dir / rejudge.MANIFEST_NAME, m)
+    plan_path = root.parent / "plan.json"
+    framework.write_json(plan_path, plan)
+    assert cli.main(["rejudge-summary", "--plan", str(plan_path)]) == 0
+    assert "| 100.0% (0.0%) |" in capsys.readouterr().out
+    assert rejudge.null_share(0, 0) is None and rejudge.null_share(3, 1) == 0.25 and rejudge.null_share(None, 1) is None
