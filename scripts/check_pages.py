@@ -74,7 +74,7 @@ from urllib.request import urlopen
 # adds a table adds its id here.
 JS_TABLE_BODIES = (
     "dlc-body", "dlf-body", "dlm-body", "ev-body", "ja-body", "me-body",
-    "mx-body", "router-body", "sim-sum-body", "sp-body", "tier-body",
+    "mx-body", "rep-body", "router-body", "sim-sum-body", "sp-body", "tier-body",
     "tx-scale-body",
 )
 

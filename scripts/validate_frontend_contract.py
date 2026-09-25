@@ -43,6 +43,7 @@ class Report:
     def __init__(self):
         self.errors: list[str] = []
         self.warnings: list[str] = []
+        self.notes: list[str] = []      # expected states worth saying, never counted (owner-run files not yet out)
 
     def err(self, artifact: str, path: str, msg: str):
         self.errors.append(f"{artifact} :: {path} :: {msg}")
@@ -402,6 +403,255 @@ def check_shapes(rep: Report, site: Path, joins: dict):
                          "no timestamp under any known key (schema drift across entries)")
 
 
+# ------------------------------------------------------------------ owner-run files
+
+# Files an owner-run exporter writes outside the daily Routine's publish chain (the site's contract table marks them
+# "owner-run, not the daily Routine"). They are published once, after gates the Routine never sees (for the Multi-turn
+# page: the design note's section 10 analysis, the vendor pack, the owner's sign-off), so until then their absence is
+# the expected state: it is noted, never warned, because under --strict a warning would fail the Routine's gate over a
+# file it has no business publishing. Present, they are shape-checked like any payload.
+OWNER_RUN = {
+    "petri_multiturn_summary.json": "scripts/export_petri_multiturn.py",
+    "petri_multiturn_conversations.json": "scripts/export_petri_multiturn.py",
+}
+# the Multi-turn page reads these two as one unit (both real files, or both samples), in the shapes of
+# multi-turn/index.html's reads; the .sample.json fixtures carry the same keys plus sample/_note
+MT_PAIR = ("petri_multiturn_summary", "petri_multiturn_conversations")
+MT_SUMMARY_KEYS = {"seed", "status", "headline", "style_sentence", "primary", "triples", "scenario_means", "repeats",
+                   "provenance"}
+MT_CONVERSATIONS_KEYS = {"seed", "measures", "mechanisms", "seeds", "conversations", "example"}
+MT_SAMPLE_KEYS = {"sample", "_note"}
+MT_PARTITIONS = ("seen_before_plan", "prospective")
+# the page's three wording columns (multi-turn/index.html ARMS): a conversation is placed in one by its register, since
+# an identity seed's arm ids carry the speaker as well
+MT_REGISTERS = ("colloquial", "lay_careful", "clinical")
+# a conversation's rule outcomes as scripts/petri_audit/rules.py writes them and the page reads them (the site contract
+# fixture's `rule` keys): each field, its type, and whether null is allowed (Codex review of 2026-09-25)
+MT_RULE_FIELDS = (("tool_invoked", bool, False), ("first_tool", str, True), ("first_call_turn", int, True),
+                  ("advice_before_lookup", bool, True), ("marker_echo", bool, True), ("parse_error_call", int, False),
+                  ("tool_calls_total", int, False), ("unknown_tool_calls", int, False),
+                  ("tool_results_received", int, False), ("reasons", dict, False))
+# a seed record's fields beyond its lists, as export_petri_multiturn._seed_record writes them: each field, its type,
+# and whether null is allowed (proposition: a seed that asserts none; swaps: a seed with no declared term swaps).
+# `epochs` (a list of integers) and `swaps` (per speaker prefix, one list per exchange of [clinical, careful-lay] string
+# pairs) are checked item by item as well
+MT_SEED_FIELDS = (("set", str, False), ("topic", str, False), ("scenario_id", str, False), ("epochs", list, False),
+                  ("proposition", str, True), ("system_prompt", str, False), ("swaps", dict, True))
+# who wrote an intermediate message of an exchange: the target (a reply before the graded one) or the scripted tool
+MT_INTERIM_ROLES = ("assistant", "tool")
+# the page that reads the pair; while it is on the site and the real pair is not published, it fetches the samples
+MT_PAGE = "multi-turn/index.html"
+# the staging directory of one write of the pair (export_petri_multiturn.swap_dir): present only when a write was
+# interrupted between its two renames, so the pair beside it may be one new file and one old one
+MT_SWAP_GLOB = ".petri_multiturn*.swap"
+
+
+def _swap_list(per_exchange) -> bool:
+    """One speaker's swaps as export_petri_multiturn.swaps_of writes them: a list with one entry per exchange, each a
+    list of [clinical span, careful-lay span] pairs of strings."""
+    return isinstance(per_exchange, list) and all(
+        isinstance(pairs, list) and all(isinstance(p, list) and len(p) == 2 and all(isinstance(x, str) for x in p)
+                                        for p in pairs)
+        for pairs in per_exchange)
+
+
+def _sample_flag(rep: Report, a: str, obj: dict, sample: bool):
+    if sample and obj.get("sample") is not True:
+        rep.err(a, "$.sample", "a .sample.json fixture must carry sample: true (the page's sample notice keys on it)")
+    if not sample and (MT_SAMPLE_KEYS & set(obj)):
+        rep.err(a, "$.sample", "a published file must not carry the sample flag or note")
+
+
+def check_multiturn_summary(rep: Report, a: str, s: dict, sample: bool):
+    _sample_flag(rep, a, s, sample)
+    known_keys(rep, a, s, MT_SUMMARY_KEYS | (MT_SAMPLE_KEYS if sample else set()))
+    # the analysis's bootstrap seed (a sample: its generator seed); the exporter always records one, and a summary
+    # without it is not reproducible from its own output (AGENTS.md), so null is an error (Codex review, 2026-09-24)
+    need(rep, a, s, "seed", int, "$")
+    status = need(rep, a, s, "status", dict, "$") or {}
+    need(rep, a, status, "final", bool, "$.status")
+    need(rep, a, status, "clinician_review", str, "$.status")
+    pack = need(rep, a, status, "vendor_pack", dict, "$.status") or {}
+    # a sample has no pack; the real pair is public, so it cites the sent pack (pre-registration rules (1)-(2), design
+    # note decision 16): a null version or send date fails --strict and plain runs alike (Codex review of 2026-09-25)
+    for key in ("version", "sent"):
+        value = need(rep, a, pack, key, str, "$.status.vendor_pack", nullable=sample)
+        if not sample and isinstance(value, str) and not value.strip():
+            rep.err(a, f"$.status.vendor_pack.{key}", "empty where the sent pack's value is required")
+    for block in ("headline", "style_sentence"):
+        b = need(rep, a, s, block, dict, "$") or {}
+        need(rep, a, b, "row_id", str, f"$.{block}")
+        need(rep, a, b, "text", str, f"$.{block}", nullable=True)
+    p = need(rep, a, s, "primary", dict, "$") or {}
+    for key in ("triples", "negative", "positive", "tied"):
+        need(rep, a, p, key, int, "$.primary")
+    for key in ("p_two_sided", "gate_p"):
+        need(rep, a, p, key, NUM, "$.primary", nullable=True)
+    need(rep, a, p, "gate_passed", bool, "$.primary", nullable=True)
+    for i, t in enumerate(need(rep, a, s, "triples", list, "$") or []):
+        path = f"$.triples[{i}]"
+        for key, kinds in (("seed_id", str), ("scenario_id", str), ("epoch", int), ("eligible", bool)):
+            need(rep, a, t, key, kinds, path)
+        need(rep, a, t, "D", NUM, path, nullable=True)
+        if isinstance(t, dict) and t.get("partition") not in MT_PARTITIONS:
+            rep.err(a, f"{path}.partition", f"must be one of {list(MT_PARTITIONS)} (the figure's two panels)")
+    for key, value in (need(rep, a, s, "scenario_means", dict, "$") or {}).items():
+        if not _is(value, NUM):
+            rep.err(a, f"$.scenario_means.{key}", "must be a number")
+    for i, r in enumerate(need(rep, a, s, "repeats", list, "$") or []):
+        need(rep, a, r, "seed_id", str, f"$.repeats[{i}]")
+        need(rep, a, r, "epochs", int, f"$.repeats[{i}]")
+        need(rep, a, r, "same_direction", int, f"$.repeats[{i}]", nullable=True)
+    prov = need(rep, a, s, "provenance", dict, "$") or {}
+    runs = need(rep, a, prov, "runs", list, "$.provenance") or []
+    if not all(isinstance(r, str) for r in runs):
+        rep.err(a, "$.provenance.runs", "must be a list of run ids")
+    need(rep, a, prov, "analysis_commit", str, "$.provenance")
+    # the section 10 artifact the summary was exported from, by sha256; a Petri pack's log entry records the same
+    # digest (claim_ids.analysis_sha256), which binds the page to the analysis its cited pack was built from (Codex
+    # review of PR #39, 2026-09-25). The site's own samples predate the key, so a sample may omit it; the exporter's
+    # samples carry "SAMPLE"
+    if sample:
+        if "analysis_sha256" in prov and prov["analysis_sha256"] != "SAMPLE":
+            rep.err(a, "$.provenance.analysis_sha256", 'a sample carries "SAMPLE" here, or nothing')
+    else:
+        digest = need(rep, a, prov, "analysis_sha256", str, "$.provenance")
+        if isinstance(digest, str) and not (len(digest) == 64 and all(c in "0123456789abcdef" for c in digest)):
+            rep.err(a, "$.provenance.analysis_sha256", "must be the artifact file's sha256 (64 lowercase hex)")
+    # the checkout the exporter ran from, naming its code and every input it read (Codex review of 2026-09-24)
+    need(rep, a, prov, "exporter_commit", str, "$.provenance")
+    need(rep, a, prov, "verify", str, "$.provenance")
+
+
+def check_multiturn_conversations(rep: Report, a: str, c: dict, sample: bool):
+    _sample_flag(rep, a, c, sample)
+    known_keys(rep, a, c, MT_CONVERSATIONS_KEYS | (MT_SAMPLE_KEYS if sample else set()))
+    # null in a published file (nothing in it is random); a sample records its generator seed
+    need(rep, a, c, "seed", int, "$", nullable=not sample)
+    measure_ids = set()
+    for i, m in enumerate(need(rep, a, c, "measures", list, "$") or []):
+        path = f"$.measures[{i}]"
+        mid = need(rep, a, m, "id", str, path)
+        for key, kinds in (("label", str), ("kind", str), ("values", list)):
+            need(rep, a, m, key, kinds, path)
+        need(rep, a, m, "definition", str, path, nullable=True)
+        need(rep, a, m, "row", list, path, nullable=True)
+        if mid:
+            measure_ids.add(mid)
+    mechanisms = need(rep, a, c, "mechanisms", dict, "$") or {}
+    for key, value in mechanisms.items():
+        need(rep, a, value, "title", str, f"$.mechanisms.{key}")
+        need(rep, a, value, "question", str, f"$.mechanisms.{key}")
+    seed_ids = set()
+    for i, sd in enumerate(need(rep, a, c, "seeds", list, "$") or []):
+        path = f"$.seeds[{i}]"
+        sid = need(rep, a, sd, "seed_id", str, path)
+        mech = need(rep, a, sd, "mechanism", str, path)
+        if mech and mech not in mechanisms:
+            rep.err(a, f"{path}.mechanism", f"{mech!r} is not in $.mechanisms (the seed header loses its question)")
+        for key in ("measures", "arms", "roles", "hypotheses"):
+            need(rep, a, sd, key, list, path)
+        # the rest of the record export_petri_multiturn._seed_record writes (the site contract fixture's seeds[] keys),
+        # typed as it writes them (Codex review of 2026-09-25: a seed without set, topic, scenario_id, epochs,
+        # proposition, system_prompt or swaps passed --strict)
+        for key, kinds, nullable in MT_SEED_FIELDS:
+            need(rep, a, sd, key, kinds, path, nullable=nullable)
+        epochs = sd.get("epochs") if isinstance(sd, dict) else None
+        if isinstance(epochs, list) and not all(_is(e, int) for e in epochs):
+            rep.err(a, f"{path}.epochs", "must be a list of campaign epochs (integers)")
+        swaps = sd.get("swaps") if isinstance(sd, dict) else None
+        if isinstance(swaps, dict) and not all(_swap_list(v) for v in swaps.values()):
+            rep.err(a, f"{path}.swaps", "each speaker's swaps must be a list, one per exchange, of [clinical span, "
+                                        "careful-lay span] string pairs")
+        if sid:
+            seed_ids.add(sid)
+    for i, cv in enumerate(need(rep, a, c, "conversations", list, "$") or []):
+        path = f"$.conversations[{i}]"
+        sid = need(rep, a, cv, "seed_id", str, path)
+        if sid and sid not in seed_ids:
+            rep.err(a, f"{path}.seed_id", f"{sid} is not in $.seeds")
+        need(rep, a, cv, "arm", str, path)
+        need(rep, a, cv, "epoch", int, path)
+        need(rep, a, cv, "identity", str, path, nullable=True)
+        # the keys the page groups and selects by (Codex review of 2026-09-25: a file without register passed --strict)
+        if need(rep, a, cv, "register", str, path) not in (None, *MT_REGISTERS):
+            rep.err(a, f"{path}.register", f"must be one of {list(MT_REGISTERS)} (the page's three wording columns)")
+        need(rep, a, cv, "conversation_id", str, path)
+        need(rep, a, cv, "run", str, path)
+        need(rep, a, cv, "run_epoch", int, path)
+        rule = need(rep, a, cv, "rule", dict, path)
+        # every rule field the page reads, typed (Codex review of 2026-09-25: a file missing tool_invoked or reasons
+        # passed --strict)
+        for key, kind, nullable in MT_RULE_FIELDS if rule is not None else ():
+            need(rep, a, rule, key, kind, f"{path}.rule", nullable=nullable)
+        # scripts/petri_audit/rules.py: every call's arguments in order, or null when no tool was invoked; a sample
+        # carries the same shape (Codex review of 2026-09-24: the samples carried one string)
+        if rule is not None and "query_text" not in rule:
+            rep.err(a, f"{path}.rule.query_text", "missing required key")
+        queries = (rule or {}).get("query_text")
+        if queries is not None and not (isinstance(queries, list) and all(isinstance(q, str) for q in queries)):
+            rep.err(a, f"{path}.rule.query_text", "must be a list of strings (each tool call's arguments) or null")
+        for j, ex in enumerate(need(rep, a, cv, "exchanges", list, path) or []):
+            xp = f"{path}.exchanges[{j}]"
+            need(rep, a, ex, "user", str, xp)
+            need(rep, a, ex, "reply", str, xp, nullable=True)
+            need(rep, a, ex, "reply_is_graded", bool, xp)
+            # the graded reply's turn, which labels it, and each intermediate message's role and text (Codex review of
+            # 2026-09-25: an exchange without reply_turn, or an interim item without role or text, passed --strict)
+            need(rep, a, ex, "reply_turn", int, xp)
+            for k, item in enumerate(need(rep, a, ex, "interim", list, xp) or []):
+                ip = f"{xp}.interim[{k}]"
+                if need(rep, a, item, "role", str, ip) not in (None, *MT_INTERIM_ROLES):
+                    rep.err(a, f"{ip}.role", f"must be one of {list(MT_INTERIM_ROLES)}")
+                need(rep, a, item, "text", str, ip)
+            for mid, cell in (need(rep, a, ex, "vals", dict, xp) or {}).items():
+                if mid not in measure_ids:
+                    rep.err(a, f"{xp}.vals.{mid}", "a grade for a measure $.measures does not define")
+                elif not isinstance(cell, dict) or not ({"v", "na"} & set(cell)):
+                    rep.err(a, f"{xp}.vals.{mid}", "a grade cell carries v (a value or null) or na (the reason)")
+    example = need(rep, a, c, "example", dict, "$", nullable=True)
+    for key in ("seed_id", "colloquial", "lay_careful", "clinical") if example else ():
+        need(rep, a, example, key, str, "$.example")
+
+
+def check_owner_run(rep: Report, site: Path):
+    """The owner-run Multi-turn pair: absent (the expected state until it is published) is a note; one file without
+    the other is an error; present files are shape-checked. The .sample.json fixtures are checked the same way,
+    because the page fetches them whenever the real pair is not published: with the page on the site and the real
+    pair not published, the sample pair is required (Codex review of 2026-09-24; before, a site with neither passed).
+    A site without the page (the site's main before the page lands) needs neither."""
+    for swap in sorted((site / "data").glob(MT_SWAP_GLOB)):
+        rep.err(f"data/{swap.name}", "-", "an interrupted write of the Multi-turn pair left this, so the pair on disk "
+                                          "may be one new file beside one old one: rerun the exporter (it puts the "
+                                          "previous pair back first), or restore the pair from git and remove it")
+    real_published = False
+    for suffix, sample in ((".json", False), (".sample.json", True)):
+        names = [stem + suffix for stem in MT_PAIR]
+        present = [n for n in names if (site / "data" / n).is_file()]
+        if not sample:
+            real_published = len(present) == len(names)
+        if not present:
+            if not sample:
+                rep.notes.append(f"{' and '.join(names)} not published (owner-run: {OWNER_RUN[names[0]]}); the "
+                                 f"Multi-turn page renders its samples until they are")
+            elif not real_published and (site / MT_PAGE).is_file():
+                rep.err(" and ".join(names), "-", f"missing while {MT_PAGE} is on the site and the real pair is not "
+                                                  f"published: the page falls back to these samples and has nothing "
+                                                  f"to fetch")
+            continue
+        if len(present) == 1:
+            rep.err(present[0], "-", "published without its pair: the Multi-turn page reads the summary and the "
+                                     "conversations as one unit and falls back to both samples when either is missing")
+        for name, check in ((names[0], check_multiturn_summary), (names[1], check_multiturn_conversations)):
+            data = load(site, name, rep) if name in present else None
+            if data is None:
+                continue
+            if not isinstance(data, dict):
+                rep.err(name, "$", f"expected object, got {type(data).__name__}")
+                continue
+            check(rep, name, data, sample)
+
+
 # ------------------------------------------------------------------ cross-repo checks
 
 def check_engine_copies(rep: Report, site: Path, engine: Path):
@@ -455,6 +705,7 @@ def validate(site: Path, engine: Path | None, strict: bool = False) -> Report:
     if isinstance(urg, dict):
         check_urgency(rep, urg, joins)
     check_shapes(rep, site, joins)
+    check_owner_run(rep, site)
     if engine is not None and engine.is_dir():
         check_engine_copies(rep, site, engine)
     if strict:
@@ -646,6 +897,8 @@ def main():
     rep.errors.extend(pack_errors)
 
     if not args.quiet:
+        for n in rep.notes:
+            print("note:", n)
         for w in rep.warnings:
             print("warn:", w)
         for e in rep.errors:

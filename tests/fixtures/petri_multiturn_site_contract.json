@@ -1,0 +1,163 @@
+{
+ "_readme": "The key skeleton of the site's two Multi-turn sample files (patientwords branch claude/multiturn-tab at 771ebb0aee4b0e7603967528154df7142e680820, PR #9: data/petri_multiturn_summary.sample.json and data/petri_multiturn_conversations.sample.json), the shapes multi-turn/index.html reads. Each path maps to the keys its objects carry, in the samples' order (the union over every object at that path), or to '*' for an open map whose keys are data (scenario ids, mechanism ids, measure ids, rule field names). seeds[].swaps is not descended: the page never reads it and the samples carry null. tests/test_export_petri_multiturn.py holds the exporter's output to this skeleton. Regenerate it from the site's samples when the page's reads change.",
+ "site_commit": "771ebb0aee4b0e7603967528154df7142e680820",
+ "opaque": [
+  "$.seeds[].swaps"
+ ],
+ "open_maps": [
+  "$.conversations[].exchanges[].vals",
+  "$.conversations[].rule.reasons",
+  "$.mechanisms",
+  "$.scenario_means"
+ ],
+ "summary": {
+  "$": [
+   "sample",
+   "_note",
+   "seed",
+   "status",
+   "headline",
+   "style_sentence",
+   "primary",
+   "triples",
+   "scenario_means",
+   "repeats",
+   "provenance"
+  ],
+  "$.status": [
+   "final",
+   "clinician_review",
+   "vendor_pack"
+  ],
+  "$.status.vendor_pack": [
+   "version",
+   "sent"
+  ],
+  "$.headline": [
+   "row_id",
+   "text"
+  ],
+  "$.style_sentence": [
+   "row_id",
+   "text"
+  ],
+  "$.primary": [
+   "triples",
+   "negative",
+   "positive",
+   "tied",
+   "p_two_sided",
+   "gate_p",
+   "gate_passed"
+  ],
+  "$.triples[]": [
+   "seed_id",
+   "scenario_id",
+   "epoch",
+   "D",
+   "partition",
+   "eligible"
+  ],
+  "$.scenario_means": "*",
+  "$.repeats[]": [
+   "seed_id",
+   "epochs",
+   "same_direction"
+  ],
+  "$.provenance": [
+   "runs",
+   "analysis_commit",
+   "verify"
+  ]
+ },
+ "conversations": {
+  "$": [
+   "sample",
+   "_note",
+   "seed",
+   "measures",
+   "mechanisms",
+   "seeds",
+   "conversations",
+   "example"
+  ],
+  "$.measures[]": [
+   "id",
+   "row",
+   "label",
+   "kind",
+   "values",
+   "definition"
+  ],
+  "$.mechanisms": "*",
+  "$.mechanisms{}": [
+   "title",
+   "question"
+  ],
+  "$.seeds[]": [
+   "seed_id",
+   "mechanism",
+   "set",
+   "topic",
+   "scenario_id",
+   "hypotheses",
+   "roles",
+   "arms",
+   "measures",
+   "epochs",
+   "proposition",
+   "system_prompt",
+   "swaps"
+  ],
+  "$.conversations[]": [
+   "run",
+   "run_epoch",
+   "seed_id",
+   "arm",
+   "register",
+   "identity",
+   "conversation_id",
+   "exchanges",
+   "rule",
+   "epoch"
+  ],
+  "$.conversations[].exchanges[]": [
+   "user",
+   "reply",
+   "reply_turn",
+   "reply_is_graded",
+   "interim",
+   "vals"
+  ],
+  "$.conversations[].exchanges[].vals": "*",
+  "$.conversations[].exchanges[].vals{}": [
+   "v",
+   "na"
+  ],
+  "$.conversations[].exchanges[].interim[]": [
+   "role",
+   "text"
+  ],
+  "$.conversations[].rule": [
+   "tool_invoked",
+   "first_tool",
+   "first_call_turn",
+   "advice_before_lookup",
+   "query_text",
+   "marker_echo",
+   "parse_error_call",
+   "tool_calls_total",
+   "unknown_tool_calls",
+   "tool_results_received",
+   "reasons"
+  ],
+  "$.conversations[].rule.reasons": "*",
+  "$.example": [
+   "seed_id",
+   "turn",
+   "colloquial",
+   "lay_careful",
+   "clinical"
+  ]
+ }
+}
