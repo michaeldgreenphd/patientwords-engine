@@ -60,7 +60,11 @@ ALTERNATIVES = {"$.conversations[].exchanges[].interim[]": {"fixture"},
 # keys every document carries beyond the site's samples at patientwords PR #9's fixture commit, reported to the site
 # (Codex review of 2026-09-24: the exporter commit is recorded in the provenance; Codex review of PR #39, 2026-09-25:
 # so is the sha256 of the section 10 artifact, which binds the page to the analysis its cited pack was built from)
-ADDED = {"$.provenance": {"exporter_commit", "analysis_sha256"}}
+ADDED = {"$.provenance": {"exporter_commit", "analysis_sha256", "models"}}
+# paths the exporter writes that the site's samples do not have yet, with their keys (Codex review of site PR #9,
+# 2026-09-25: the models the page's Method sentence names, published so the page reads them from the file)
+ADDED_PATHS = {"$.provenance.models": {"target", "target_served", "judge", "target_temperature", "target_label",
+                                       "judge_label"}}
 
 
 def skeleton(obj, path="$", out=None):
@@ -88,7 +92,10 @@ def skeleton(obj, path="$", out=None):
 def assert_site_keys(doc, which, *, sample):
     """The document carries exactly the site sample's keys at every path the site defines, and no other path."""
     site, ours = CONTRACT[which], skeleton(doc)
-    assert set(ours) <= set(site), f"paths the site's samples do not have: {sorted(set(ours) - set(site))}"
+    extra = set(ours) - set(site)
+    assert extra <= set(ADDED_PATHS), f"paths the site's samples do not have: {sorted(extra - set(ADDED_PATHS))}"
+    for path in extra:
+        assert set(ours[path]) == ADDED_PATHS[path], (path, ours[path])
     for path, keys in site.items():
         assert path in ours, f"{which}: the page reads {path}, which the export lacks"
         if keys == "*":
@@ -201,7 +208,14 @@ def test_end_to_end_export_has_exactly_the_site_keys(tmp_path):
                                      "analysis_sha256": ex.sha256_file(tmp_path / "artifact.json"),
                                      "exporter_commit": ex.SYNTHETIC_COMMIT,
                                      "verify": "python -m scripts.petri_audit.cli verify-chain --data-dir "
-                                               "data/petri/runs"}
+                                               "data/petri/runs",
+                                     # the models the runs recorded, with the labels the page shows (Codex review of
+                                     # site PR #9, 2026-09-25)
+                                     "models": {"target": MODELS["target"][:1], "target_served": MODELS["target_served"][:1],
+                                                "judge": MODELS["judge"][:1],
+                                                "target_temperature": MODELS["target_temperature"],
+                                                "target_label": MODELS["target_label"],
+                                                "judge_label": MODELS["judge_label"]}}
     assert [r["seed_id"] for r in summary["repeats"]] == ORIGINAL + SECOND
     assert all(r["epochs"] == 2 for r in summary["repeats"])
 
@@ -661,7 +675,12 @@ def test_a_vocabulary_without_well_formed_campaign_models_is_refused(shared, tmp
                          (lambda d: d["campaign_models"].update(target_temperature=float("inf")),
                           "campaign_models.target_temperature must be the finite number the page states"),
                          (lambda d: d["campaign_models"].update(target_temperature=float("nan")),
-                          "campaign_models.target_temperature must be the finite number the page states")):
+                          "campaign_models.target_temperature must be the finite number the page states"),
+                         # Codex review of site PR #9: the page shows these names, read from the export
+                         (lambda d: d["campaign_models"].pop("target_label"),
+                          "campaign_models.target_label must be the name the page shows"),
+                         (lambda d: d["campaign_models"].update(judge_label=" "),
+                          "campaign_models.judge_label must be the name the page shows")):
         doc = json.loads(json.dumps(VOCAB))
         change(doc)
         path = tmp_path / "vocabulary.json"
@@ -675,10 +694,17 @@ def test_the_samples_are_built_from_the_vocabularys_registered_models(tmp_path):
     vocabulary does not register is refused like a landed run."""
     doc = json.loads(json.dumps(VOCAB))
     doc["campaign_models"] = {"target": [OTHER_TARGET], "target_served": [OTHER_SERVED], "judge": [OTHER_JUDGE],
-                              "target_temperature": 1.0}
+                              "target_temperature": 1.0, "target_label": "Other", "judge_label": "Other"}
     path = tmp_path / "vocabulary.json"
     path.write_text(json.dumps(doc), encoding="utf-8")
-    assert ex.sample_export(vocabulary_path=path, seal_registry=SEAL) == ex.sample_export(seal_registry=SEAL)
+    (other_summary, other_convs), (summary, convs) = (ex.sample_export(vocabulary_path=path, seal_registry=SEAL),
+                                                      ex.sample_export(seal_registry=SEAL))
+    # the same samples, but for the models they name, which follow the vocabulary's
+    assert other_summary["provenance"].pop("models") == {
+        "target": [OTHER_TARGET], "target_served": [OTHER_SERVED], "judge": [OTHER_JUDGE], "target_temperature": 1.0,
+        "target_label": "Other", "judge_label": "Other"}
+    assert summary["provenance"].pop("models")["target"] == MODELS["target"][:1]
+    assert (other_summary, other_convs) == (summary, convs)
     camp = build(tmp_path / "c", models=doc["campaign_models"])
     assert f"its target (models.target.inspect_name) is '{OTHER_TARGET}'" in refused(camp, tmp_path)
 
@@ -1226,6 +1252,7 @@ def test_write_samples_matches_the_site_samples(tmp_path):
     assert summary["status"]["final"] is False
     assert summary["provenance"]["analysis_commit"] == summary["provenance"]["exporter_commit"] == "SAMPLE"
     assert summary["provenance"]["analysis_sha256"] == "SAMPLE"
+    assert summary["provenance"]["models"]["target_label"] == VOCAB["campaign_models"]["target_label"]
     assert [s["seed_id"] for s in conversations["seeds"]] == VOCAB["samples"]["seed_ids"]
     texts = [x for c in conversations["conversations"] for e in c["exchanges"]
              for x in (e["user"], e["reply"], *(i["text"] for i in e["interim"]))]

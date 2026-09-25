@@ -111,16 +111,19 @@ selectable as registered has row_id `not_selectable_as_registered:<row>`; the re
 the summary's `seed` is the analysis's bootstrap seed and the conversations file's is null (nothing in it is random);
 `provenance.exporter_commit` is the commit of this checkout, which names the exporter and every input it read, and
 `provenance.analysis_sha256` the sha256 of the artifact file, which a Petri pack's log entry records as
-claim_ids.analysis_sha256. Four keys go beyond the site's samples: a tool result in `interim` carries `fixture: true`,
+claim_ids.analysis_sha256. Five keys go beyond the site's samples: a tool result in `interim` carries `fixture: true`,
 a grade judged under a prompt file or rubric other than the current one carries `superseded: <the digest it was
 judged under>` (shown, never compared), and the provenance carries `exporter_commit` and `analysis_sha256` (each
-"SAMPLE" in the samples this script writes). A null answer is `{"v": null}`.
+"SAMPLE" in the samples this script writes) and `models`: the target, served and judge model strings the runs
+recorded, the target temperature and the two labels the page shows (Codex review of site PR #9, 2026-09-25: the Method
+sentence named the model and the temperature with neither in the data; the samples carry the registered values). A
+null answer is `{"v": null}`.
 
 No medical vocabulary lives here: seed ids, labels, mechanisms and registered texts are read from data files. The
 page vocabulary (data/petri/multiturn_measures.json) holds the measure map (`measures`), the `mechanisms`, the Method
 section's `example`, the `samples` settings and the campaign's registered models (`campaign_models`: `target`,
-`target_served` and `judge`, each a non-empty list of distinct model strings, and `target_temperature`, the number the
-page states). `--write-samples` builds its SYNTHETIC
+`target_served` and `judge`, each a non-empty list of distinct model strings; `target_temperature`, the number the
+page states; `target_label` and `judge_label`, the names it shows). `--write-samples` builds its SYNTHETIC
 campaign on the first of each campaign_models list, so the sample path passes the same model check, with no exemption.
 """
 from __future__ import annotations
@@ -409,6 +412,9 @@ class CampaignModels:
     target_served: tuple[str, ...]
     judge: tuple[str, ...]
     target_temperature: float
+    # the names the page shows for the target and the grader (published in summary.provenance.models)
+    target_label: str
+    judge_label: str
 
 
 # the lists of model strings; target_temperature is the one number
@@ -553,12 +559,16 @@ def load_vocabulary(path: Path, rubric: Mapping[str, Any], registry: Mapping[str
                 or not math.isfinite(temperature)):
             problems.append(f"campaign_models.target_temperature must be the finite number the page states, not "
                             f"{temperature!r}")
+        for key in ("target_label", "judge_label"):
+            if not _text(cm.get(key)):
+                problems.append(f"campaign_models.{key} must be the name the page shows, not {cm.get(key)!r}")
     if problems:
         raise ExportRefusal(f"the page vocabulary {path}: " + "; ".join(problems))
     # measures keep the file's order (a flag measure was held back only until its source was known)
     order = {m["id"]: i for i, m in enumerate(raw) if isinstance(m, dict)}
     measures.sort(key=lambda x: order[x.id])
-    models = CampaignModels(*(tuple(cm[key]) for key in CAMPAIGN_MODEL_KEYS), float(cm["target_temperature"]))
+    models = CampaignModels(*(tuple(cm[key]) for key in CAMPAIGN_MODEL_KEYS), float(cm["target_temperature"]),
+                            cm["target_label"], cm["judge_label"])
     return Vocabulary(tuple(measures), mechanisms, mechanism_of, dict(example), dict(samples), models)
 
 
@@ -743,6 +753,19 @@ def model_problems(manifest: Mapping[str, Any], models: CampaignModels) -> list[
         problems.append(f"its judge of record (artifacts.judge_of_record.judge_model) is {judge!r}, not a registered "
                         f"judge {list(models.judge)}")
     return problems
+
+
+def published_models(runs: Mapping[str, RunData], models: CampaignModels) -> dict[str, Any]:
+    """The models the page names, as the exported runs recorded them, for summary.provenance.models (Codex review of
+    site PR #9, 2026-09-25: the page's Method sentence stated the model and the temperature with neither in its data).
+    load_run has refused any run whose target, served strings, judge of record or temperature are not the registered
+    ones (model_problems), so these are the recorded values, each a registered one; the labels are the vocabulary's."""
+    targets = sorted({r.manifest["models"]["target"]["inspect_name"] for r in runs.values()})
+    served = sorted({s for r in runs.values() for s in r.manifest["models"]["target"]["served_model_strings"]})
+    judges = sorted({r.manifest["artifacts"]["judge_of_record"]["judge_model"] for r in runs.values()})
+    return {"target": targets, "target_served": served, "judge": judges,
+            "target_temperature": models.target_temperature,
+            "target_label": models.target_label, "judge_label": models.judge_label}
 
 
 def manifest_identity(manifest: Mapping[str, Any], where: str) -> str:
@@ -1391,7 +1414,8 @@ def export(run_dirs: Sequence[Path], artifact_path: Path, *, seeds_path: Path = 
                "provenance": {"runs": [r.stem for r in order], "analysis_commit": analysis_commit,
                               "analysis_sha256": sha256_file(Path(artifact_path)),
                               "exporter_commit": exporter_commit,
-                              "verify": VERIFY_COMMAND}}    # _load_runs checked the command verifies these runs
+                              "verify": VERIFY_COMMAND,     # _load_runs checked the command verifies these runs
+                              "models": published_models(runs, vocab.models)}}
     mechanisms = {mid: dict(v) for mid, v in vocab.mechanisms.items()
                   if any(vocab.mechanism_of[s] == mid for s in seed_order)}
     conversations = {"seed": None, "measures": [m.exported() for m in vocab.measures], "mechanisms": mechanisms,
@@ -2097,7 +2121,9 @@ def samplify(result: Export, rng_seed: int, epoch: int = 1) -> tuple[dict[str, A
                                                  "verbatim.]"}
     s["style_sentence"] = {"row_id": "SAMPLE", "text": "[Sample sentence: the section 10.3 row goes here verbatim.]"}
     s["provenance"] = {"runs": list(run_ids.values()), "analysis_commit": "SAMPLE", "analysis_sha256": "SAMPLE",
-                       "exporter_commit": "SAMPLE", "verify": s["provenance"]["verify"]}
+                       "exporter_commit": "SAMPLE", "verify": s["provenance"]["verify"],
+                       # the registered models the synthetic campaign recorded, so the page's Method sentence renders
+                       "models": s["provenance"]["models"]}
     convs = [x for x in c["conversations"] if x["epoch"] == epoch]
     for n, x in enumerate(convs, 1):
         x["conversation_id"] = f"sample-{n:03d}"
