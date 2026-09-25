@@ -483,6 +483,17 @@ def check_multiturn_summary(rep: Report, a: str, s: dict, sample: bool):
     if not all(isinstance(r, str) for r in runs):
         rep.err(a, "$.provenance.runs", "must be a list of run ids")
     need(rep, a, prov, "analysis_commit", str, "$.provenance")
+    # the section 10 artifact the summary was exported from, by sha256; a Petri pack's log entry records the same
+    # digest (claim_ids.analysis_sha256), which binds the page to the analysis its cited pack was built from (Codex
+    # review of PR #39, 2026-09-25). The site's own samples predate the key, so a sample may omit it; the exporter's
+    # samples carry "SAMPLE"
+    if sample:
+        if "analysis_sha256" in prov and prov["analysis_sha256"] != "SAMPLE":
+            rep.err(a, "$.provenance.analysis_sha256", 'a sample carries "SAMPLE" here, or nothing')
+    else:
+        digest = need(rep, a, prov, "analysis_sha256", str, "$.provenance")
+        if isinstance(digest, str) and not (len(digest) == 64 and all(c in "0123456789abcdef" for c in digest)):
+            rep.err(a, "$.provenance.analysis_sha256", "must be the artifact file's sha256 (64 lowercase hex)")
     # the checkout the exporter ran from, naming its code and every input it read (Codex review of 2026-09-24)
     need(rep, a, prov, "exporter_commit", str, "$.provenance")
     need(rep, a, prov, "verify", str, "$.provenance")

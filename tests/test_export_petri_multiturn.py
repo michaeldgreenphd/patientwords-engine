@@ -12,6 +12,7 @@ adds, fails here. Seed ids come from data/petri/multiturn_measures.json, never f
 """
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import shutil
@@ -41,15 +42,25 @@ SECOND = [MECH["tool-clarify"][1], MECH["identity-register"][1]]
 SETS = {"original": ORIGINAL, "second": SECOND}
 FIRES = [syn.Fire("t1", "discovery", {"original": 1, "second": 1}),
          syn.Fire("t2", "prospective", {"original": 2, "second": 2})]
-NO_SEAL: dict[str, str] = {}      # the sealed set is not the subject of most tests; one test gives its own
+# the eight plan seeds (each mechanism's original-set and second-set seed) over three fires, 30 triples: 10.2's gate
+# can reject only with at least six scenarios (its smallest p is 2/2^k), and 10.3's Holm family needs more non-tied
+# second-set triples than the four-seed campaign has, so the rows and statements that need them use this campaign
+FULL_SETS = {"original": [m[0] for m in MECH.values()], "second": [m[1] for m in MECH.values()]}
+FULL_FIRES = [syn.Fire("f1", "discovery", {"original": 1, "second": 1}),
+              syn.Fire("f2", "prospective", {"original": 2, "second": 2}),
+              syn.Fire("f3", "prospective", {"original": 3, "second": 3})]
+# a sealed set of one placeholder phrase no synthetic text contains, so the export's seal scan runs and passes (an
+# empty set scans nothing and is refused); the sealed phrases themselves are never the subject here
+SEAL = {"zq sealed placeholder phrase zq": "pairs_T#1"}
 
 # the paths whose items are alternatives (an assistant or a tool message; a value or a not-applicable cell), and the
 # keys the exporter adds there beyond the site's samples (both reported to the site)
 ALTERNATIVES = {"$.conversations[].exchanges[].interim[]": {"fixture"},
                 "$.conversations[].exchanges[].vals{}": {"superseded"}}
 # keys every document carries beyond the site's samples at patientwords PR #9's fixture commit, reported to the site
-# (Codex review of 2026-09-24: the exporter commit is recorded in the provenance)
-ADDED = {"$.provenance": {"exporter_commit"}}
+# (Codex review of 2026-09-24: the exporter commit is recorded in the provenance; Codex review of PR #39, 2026-09-25:
+# so is the sha256 of the section 10 artifact, which binds the page to the analysis its cited pack was built from)
+ADDED = {"$.provenance": {"exporter_commit", "analysis_sha256"}}
 
 
 def skeleton(obj, path="$", out=None):
@@ -95,11 +106,35 @@ def build(root: Path, **edits) -> syn.Campaign:
                               rng_seed=11, **edits)
 
 
+def designed(root: Path, design: syn.Design, *, full: bool = True, **edits) -> syn.Campaign:
+    """A campaign whose final response-only tier grades the design fixes: the eight-seed campaign, or (full=False)
+    the four-seed one, whose gate cannot reject."""
+    sets, fires = (FULL_SETS, FULL_FIRES) if full else (SETS, FIRES)
+    return syn.build_campaign(root, seeds=SEEDS, sets=sets, fires=fires, rubric=RUBRIC, registry=REGISTRY,
+                              rng_seed=11, design=design, **edits)
+
+
+def ranks(colloquial: int, careful_lay: int, clinical: int) -> syn.Design:
+    """A design giving each wording one rank at every exchange."""
+    by_register = {ex.COLLOQUIAL: colloquial, ex.CAREFUL_LAY: careful_lay, ex.CLINICAL: clinical}
+    return lambda cell: by_register[cell.register]
+
+
+def shift(offset) -> syn.Design:
+    """A design: careful-lay and clinical grades rank 1, the colloquial grade 1 + offset(cell), so a triple's
+    D(colloquial, clinical) is the mean of its offsets."""
+    return lambda cell: 1 + offset(cell) if cell.register == ex.COLLOQUIAL else 1
+
+
+def first_speaker(seed_id: str):
+    return syn.layout(SEEDS[seed_id])[0][0]
+
+
 def export(camp: syn.Campaign, tmp: Path, artifact: dict | None = None, name: str = "artifact.json", **kw):
     path = tmp / name
     path.write_text(json.dumps(artifact if artifact is not None else syn.build_artifact(camp)), encoding="utf-8")
     kw.setdefault("disclosure_log", tmp / "no_disclosure_log.jsonl")
-    kw.setdefault("seal_registry", NO_SEAL)
+    kw.setdefault("seal_registry", SEAL)
     kw.setdefault("checkout", ex.synthetic_checkout(camp.root))
     kw.setdefault("plan_path", camp.plan_path)
     return ex.export(camp.run_dirs, path, **kw)
@@ -162,7 +197,8 @@ def test_end_to_end_export_has_exactly_the_site_keys(tmp_path):
     assert summary["seed"] == artifact["bootstrap_seed"]
     assert summary["status"] == {"final": True, "clinician_review": "pending",
                                  "vendor_pack": {"version": None, "sent": None}}
-    assert summary["provenance"] == {"runs": [r.stem for r in camp.runs], "analysis_commit": "c" * 40,
+    assert summary["provenance"] == {"runs": [r.stem for r in camp.runs], "analysis_commit": syn.ANALYSIS_COMMIT,
+                                     "analysis_sha256": ex.sha256_file(tmp_path / "artifact.json"),
                                      "exporter_commit": ex.SYNTHETIC_COMMIT,
                                      "verify": "python -m scripts.petri_audit.cli verify-chain --data-dir "
                                                "data/petri/runs"}
@@ -204,7 +240,7 @@ def test_rule_outcomes_keep_the_lanes_query_text_list_in_exports_and_samples(sha
     called = [c["rule"]["query_text"] for c in convs if c["rule"]["tool_invoked"]]
     assert called and all(q == [json.dumps({"query": syn.TOOL_QUERY})] for q in called)
     assert all(c["rule"]["query_text"] is None for c in convs if not c["rule"]["tool_invoked"])
-    _, sample = ex.sample_export(seal_registry=NO_SEAL)
+    _, sample = ex.sample_export(seal_registry=SEAL)
     queries = [c["rule"]["query_text"] for c in sample["conversations"]]
     listed = [q for q in queries if q is not None]
     assert listed and all(q == ["[Sample query text 1: placeholder.]"] for q in listed)
@@ -269,12 +305,10 @@ def test_refuses_a_self_consistent_artifact_over_a_subset_of_the_registered_trip
     artifact computed over part of the campaign (an epoch or a scenario dropped, every listed triple landed and its
     counts and tests consistent with them) was exported with altered counts and p-values. The plan fixes the set."""
     camp, _ = shared
-    first_fire = syn.Campaign(camp.root, camp.runs[:1], camp.sets, camp.seeds, camp.rubric, camp.registry,
-                              camp.plan_path)
+    first_fire = dataclasses.replace(camp, runs=camp.runs[:1])
     msg = refused(camp, tmp_path, syn.build_artifact(first_fire))
     assert "triples are not the registered final set of" in msg and "missing " in msg and "(t2)" in msg
-    one_set = syn.Campaign(camp.root, camp.runs, {**camp.sets, "second": []}, camp.seeds, camp.rubric, camp.registry,
-                           camp.plan_path)
+    one_set = dataclasses.replace(camp, sets={**camp.sets, "second": []})
     msg = refused(camp, tmp_path, syn.build_artifact(one_set))
     assert "triples are not the registered final set of" in msg and SECOND[0] in msg
     doubled = syn.build_artifact(camp)
@@ -295,6 +329,11 @@ def test_refuses_a_plan_the_analysis_did_not_read_or_that_contradicts_itself(sha
     artifact["coverage"]["plan"]["sha256"] = ex.sha256_file(other)
     msg = refused(camp, tmp_path, artifact, plan_path=other)
     assert f"triples {plan['partition_triples']}, not the {plan['final_triples'] + 1}" in msg
+    # 10.3's set, which the recomputed statement reads, must be one of the plan's scenario sets
+    other.write_text(json.dumps({**plan, "decomposition_set": "third"}), encoding="utf-8")
+    artifact["coverage"]["plan"]["sha256"] = ex.sha256_file(other)
+    msg = refused(camp, tmp_path, artifact, plan_path=other)
+    assert "decomposition_set 'third' is not one of its scenario sets ['original', 'second']" in msg
 
 
 def _stale(artifact: dict, where: str, value) -> dict:
@@ -373,7 +412,7 @@ def test_refuses_runs_that_are_not_the_artifacts(shared, tmp_path):
     path = tmp_path / "artifact.json"
     path.write_text(json.dumps(artifact), encoding="utf-8")
     with pytest.raises(ex.ExportRefusal, match="not the runs the section 10 artifact covers"):
-        ex.export(camp.run_dirs[:1], path, seal_registry=NO_SEAL, checkout=ex.synthetic_checkout(camp.root),
+        ex.export(camp.run_dirs[:1], path, seal_registry=SEAL, checkout=ex.synthetic_checkout(camp.root),
                   plan_path=camp.plan_path)
     changed = json.loads(json.dumps(artifact))
     changed["coverage"]["runs"][0]["judgments_sha256"] = "0" * 64
@@ -475,46 +514,190 @@ def test_a_sealed_phrase_is_refused_by_label_only(shared, tmp_path):
     assert "sealed-label-7" in message and phrase not in message
 
 
+def test_refuses_an_export_the_seal_scan_did_not_run_on(shared, tmp_path):
+    """Regression (Codex review of 2026-09-25): only a failing scan was refused, so an empty sealed set, which scans
+    nothing and reports not_run, let the export through."""
+    camp, _ = shared
+    msg = refused(camp, tmp_path, seal_registry={})
+    assert "the holdout-seal scan of the export is 'not_run', not 'pass'" in msg
+
+
+def test_refuses_eligibility_the_rows_do_not_give(tmp_path):
+    """Regression (Codex review of 2026-09-25): comparable_exchanges and enters were taken from the artifact, so an
+    analysis run over another window or floor, every statistic consistent with it, was exported. Each triple's
+    comparable exchanges are recomputed over 10.1's window, enters against its floor, and the artifact's coverage must
+    name that window and floor."""
+    camp = build(tmp_path / "c", judgment_edit=syn.below_floor(1))
+    # a floor of 7 lets in the triple 10.1 leaves out, with counts, tests and the row consistent with it
+    low = syn.build_artifact(camp, floor=7)
+    assert "(window, floor) ('exchanges 1-10', 7), not 10.1's ('exchanges 1-10', 8)" in refused(camp, tmp_path, low)
+    for head in low["coverage"]["contrasts"].values():
+        head["floor"] = 8
+    msg = refused(camp, tmp_path, low)
+    assert "the artifact records enters True, and its 7 comparable exchanges against 10.1's floor of 8 give False" in msg
+    # a window of exchanges 1-9: every triple's D over nine exchanges
+    short = syn.build_artifact(camp, window=range(1, 10))
+    assert "(window, floor) ('exchanges 1-9', 8)" in refused(camp, tmp_path, short)
+    for head in short["coverage"]["contrasts"].values():
+        head["window"] = "exchanges 1-10"
+    assert "comparable; the rows give [4, 5, 6, 7, 8, 9, 10]" in refused(camp, tmp_path, short)
+
+
+def test_refuses_a_triple_whose_run_records_another_fires_nonce(tmp_path):
+    """Regression (Codex review of 2026-09-25): a triple's conversations were read from the run the artifact named
+    without checking that the run is the triple's fire."""
+    def other_fire(stem, manifest):
+        if stem == syn.run_stem(2):
+            manifest["spend"]["journal_nonce"] = "t1"
+        return manifest
+    camp = build(tmp_path / "c", manifest_edit=other_fire)
+    assert "records journal nonce 't1' (spend.journal_nonce), not the triple's 't2'" in refused(camp, tmp_path)
+
+
+def test_refuses_an_analysis_commit_the_checkout_does_not_hold(shared, tmp_path):
+    """Regression (Codex review of 2026-09-25): identity.commit was only format-checked. synthetic_checkout holds one
+    commit, the synthetic artifact's; any other well-formed id is refused."""
+    camp, _ = shared
+    msg = refused(camp, tmp_path, syn.build_artifact(camp, commit="d" * 40))
+    assert f"analysis commit {'d' * 40} is not a commit in this repository" in msg
+
+
+def test_refuses_a_rule_outcome_the_transcript_does_not_give(tmp_path):
+    """Regression (Codex review of 2026-09-25): the stored rule outcomes were published verbatim. They are recomputed
+    with rules.rule_outcomes from the bound transcript and the seed, and a stored value that differs is refused."""
+    def tamper(stem, rules):
+        if stem == syn.run_stem(1):
+            rules[0]["outcomes"]["tool_calls_total"] += 1
+        return rules
+    camp = build(tmp_path / "c", rule_edit=tamper)
+    msg = refused(camp, tmp_path)
+    assert "is not what scripts/petri_audit/rules.py" in msg and "they differ in ['tool_calls_total']" in msg
+
+
 # ------------------------------------------------------------------ the registered wording, carried verbatim
 
 
-@pytest.mark.parametrize("row", ["row1", "row2", "row3", "row4/row1", "row4/row3", "row5"])
-def test_headline_text_is_the_design_notes_row_verbatim(shared, tmp_path, row):
-    camp, _ = shared
+def _one_positive_triple_per_scenario(cell) -> int:
+    """Colloquial offsets for no_prespecified_row: in every scenario the first fire's first-speaker triple has D = +1
+    and every other triple D = -1/10 (one exchange lower), so 22 of 30 triples are negative (sign test p = 0.016) while
+    all eight scenario means are positive (gate p = 2/256)."""
+    if cell.fire.nonce == "f1" and cell.speaker == first_speaker(cell.seed_id):
+        return 1
+    return -1 if cell.exchange == 1 else 0
+
+
+def _one_scenario_below_floor(cell) -> int | None:
+    """Every triple D = -1, except that the first plan seed's clinical grades at exchanges 1-3 are nulls, so none of
+    its triples reaches 10.1's floor: the gate runs on 7 of the plan's 8 scenarios."""
+    if cell.seed_id == FULL_SETS["original"][0] and cell.register == ex.CLINICAL and cell.exchange <= 3:
+        return None
+    return 0 if cell.register == ex.COLLOQUIAL else 1
+
+
+# each 10.2 outcome, by the campaign whose recomputed tests select it: (the eight-seed campaign?, the design)
+ROW_DESIGNS = {
+    # all 30 triples negative, all 8 scenario means negative, the prospective replication negative
+    "row1": (True, shift(lambda c: -1)),
+    # the prospective triples tied, so the replication has no direction
+    "row2": (True, shift(lambda c: -1 if c.fire.partition == "discovery" else 0)),
+    # four scenarios: the gate's smallest p is 2/16, so it cannot reject
+    "row3": (False, shift(lambda c: -1)),
+    "row4/row1": (True, shift(lambda c: 1)),
+    "row4/row2": (True, shift(lambda c: 1 if c.fire.partition == "discovery" else 0)),
+    "row4/row3": (False, shift(lambda c: 1)),
+    # six negative and six positive triples
+    "row5": (False, shift(lambda c: -1 if c.fire.nonce == "t1" else 1)),
+    # every triple tied: no sign test ran
+    "not_computable": (False, shift(lambda c: 0)),
+    "no_prespecified_row": (True, shift(_one_positive_triple_per_scenario)),
+    "row1 on 7 of 8 scenarios": (True, _one_scenario_below_floor),
+}
+
+
+@pytest.mark.parametrize("row", ["row1", "row2", "row3", "row4/row1", "row4/row2", "row4/row3", "row5"])
+def test_each_headline_row_is_the_one_the_recomputed_tests_select_worded_verbatim(tmp_path, row):
+    """Regression (Codex review of 2026-09-25): the headline row was published from the artifact unchecked. Each row
+    is now exercised by a campaign whose statistics select it, and the exporter's own selection (the analysis's
+    wording_row rule over the recomputed tests) is what the page gets, its text the design note's cell verbatim."""
+    full, design = ROW_DESIGNS[row]
+    camp = designed(tmp_path / "c", design, full=full)
+    artifact = syn.build_artifact(camp)
+    assert (artifact["section_10_2"]["wording"]["row_id"], artifact["section_10_2"]["wording"][
+        "selectable_as_registered"]) == (row, True)
     rows, _ = note_rows()
-    out = export(camp, tmp_path, syn.build_artifact(camp, wording_row=row)).summary
-    assert out["headline"] == {"row_id": row, "text": rows[row.split("/")[0]]}
+    assert export(camp, tmp_path, artifact).summary["headline"] == {"row_id": row, "text": rows[row.split("/")[0]]}
 
 
-def test_style_sentence_is_the_design_notes_statement_verbatim(shared, tmp_path):
-    camp, _ = shared
+@pytest.mark.parametrize("case, headline", [
+    ("not_computable", {"row_id": "not_computable", "text": None}),
+    ("no_prespecified_row", {"row_id": "no_prespecified_row", "text": None}),
+    ("row1 on 7 of 8 scenarios", {"row_id": "not_selectable_as_registered:row1", "text": None}),
+])
+def test_unworded_and_unselectable_rows_are_carried_by_name(tmp_path, case, headline):
+    full, design = ROW_DESIGNS[case]
+    camp = designed(tmp_path / "c", design, full=full)
+    assert export(camp, tmp_path, syn.build_artifact(camp)).summary["headline"] == headline
+
+
+@pytest.mark.parametrize("field, value", [("row_id", "row2"), ("row_id", "row4/row1"),
+                                          ("selectable_as_registered", False)])
+def test_refuses_a_headline_row_the_recomputed_tests_do_not_select(tmp_path, field, value):
+    """Regression (Codex review of 2026-09-25): an artifact whose wording block names another row, or calls the row
+    not selectable, with every test field consistent, was published with that row."""
+    camp = designed(tmp_path / "c", ROW_DESIGNS["row1"][1])
+    artifact = syn.build_artifact(camp)
+    artifact["section_10_2"]["wording"][field] = value
+    msg = refused(camp, tmp_path, artifact)
+    assert "the recomputed primary test, scenario gate and prospective replication select ('row1', True)" in msg
+
+
+# each 10.3 statement, by the ranks (colloquial, careful lay, clinical) of the eight-seed campaign's grades that give it
+STATEMENT_DESIGNS = {
+    # style -2, vocabulary 0, paired difference -2 in every second-set triple
+    "style_larger": ranks(0, 2, 2),
+    # style -2, vocabulary -1, paired difference -1
+    "style_larger+vocabulary_also_lowered": ranks(0, 2, 3),
+    # the second fire's triples have paired difference +2 and the others -2: 10 of 15 negative, p = 0.30
+    "not_separated": lambda c: {ex.COLLOQUIAL: 0, ex.CAREFUL_LAY: 0 if c.fire.nonce == "f2" else 2,
+                                ex.CLINICAL: 2}[c.register],
+    # style 0, vocabulary -2, paired difference +2: significant, and positive
+    "no_prespecified_statement": ranks(1, 1, 3),
+    # style -1 and vocabulary -1 everywhere: every paired difference tied
+    "not_computable": ranks(0, 1, 2),
+}
+
+
+@pytest.mark.parametrize("statement", ["style_larger", "style_larger+vocabulary_also_lowered", "not_separated"])
+def test_each_style_sentence_is_the_one_the_recomputed_decomposition_selects_worded_verbatim(tmp_path, statement):
+    """Regression (Codex review of 2026-09-25): the 10.3 statement was published from the artifact unchecked. Each is
+    now exercised by a campaign whose decomposition gives it, recomputed from the rows by the exporter."""
+    camp = designed(tmp_path / "c", STATEMENT_DESIGNS[statement])
+    artifact = syn.build_artifact(camp)
+    st = artifact["section_10_3"]["statement"]
+    assert st["statement_id"] + ("+vocabulary_also_lowered" if st["vocabulary_also_lowered"] else "") == statement
+    out = export(camp, tmp_path, artifact).summary["style_sentence"]
     _, s3 = note_rows()
-    out = export(camp, tmp_path, syn.build_artifact(camp, statement="not_separated")).summary["style_sentence"]
-    assert out["row_id"] == "not_separated" and f"**Paired difference not significant:** {out['text']}" in s3
-    out = export(camp, tmp_path, syn.build_artifact(camp, statement="style_larger", also_lowered=True),
-                 name="a2.json").summary["style_sentence"]
-    assert out["row_id"] == "style_larger+vocabulary_also_lowered"
-    assert f"style significant and negative:** {out['text']} - **Paired difference not significant:**" in s3
+    text = ex.load_wording(ex.WORDING_FILE, ex.DESIGN_NOTE).statements[statement.split("+")[0]]
+    assert out == {"row_id": statement, "text": text} and text in s3
 
 
-@pytest.mark.parametrize("kw, headline", [
-    ({"wording_row": "not_computable", "selectable": False}, {"row_id": "not_computable", "text": None}),
-    ({"wording_row": "no_prespecified_row", "selectable": False}, {"row_id": "no_prespecified_row", "text": None}),
-    ({"wording_row": "row5", "selectable": False}, {"row_id": "not_selectable_as_registered:row5", "text": None}),
-])
-def test_unworded_and_unselectable_rows_are_carried_by_name(shared, tmp_path, kw, headline):
-    camp, _ = shared
-    assert export(camp, tmp_path, syn.build_artifact(camp, **kw)).summary["headline"] == headline
+@pytest.mark.parametrize("case", ["not_computable", "no_prespecified_statement", "refused"])
+def test_unworded_statements_are_carried_by_name(tmp_path, case):
+    camp = designed(tmp_path / "c", STATEMENT_DESIGNS.get(case, ranks(0, 2, 2)))
+    artifact = syn.build_artifact(camp, section_10_3_refused=case == "refused")
+    assert export(camp, tmp_path, artifact).summary["style_sentence"] == {"row_id": case, "text": None}
 
 
-@pytest.mark.parametrize("kw, style", [
-    ({"statement": "not_computable"}, {"row_id": "not_computable", "text": None}),
-    ({"statement": "no_prespecified_statement"}, {"row_id": "no_prespecified_statement", "text": None}),
-    ({"section_10_3_refused": True}, {"row_id": "refused", "text": None}),
-])
-def test_unworded_statements_are_carried_by_name(shared, tmp_path, kw, style):
-    camp, _ = shared
-    assert export(camp, tmp_path, syn.build_artifact(camp, **kw)).summary["style_sentence"] == style
+@pytest.mark.parametrize("field, value", [("statement_id", "not_separated"), ("statement_id", "no_prespecified_statement"),
+                                          ("vocabulary_also_lowered", True)])
+def test_refuses_a_statement_the_recomputed_decomposition_does_not_give(tmp_path, field, value):
+    """Regression (Codex review of 2026-09-25): an artifact naming another 10.3 statement, or adding the vocabulary
+    clause, was published with it."""
+    camp = designed(tmp_path / "c", STATEMENT_DESIGNS["style_larger"])
+    artifact = syn.build_artifact(camp)
+    artifact["section_10_3"]["statement"][field] = value
+    msg = refused(camp, tmp_path, artifact)
+    assert "the recomputed decomposition on scenario set second gives ('style_larger', False)" in msg
 
 
 def test_the_wording_file_is_the_design_notes(tmp_path):
@@ -585,10 +768,13 @@ def test_cli_writes_both_files_and_prints_the_previous_diff(shared, tmp_path, ca
     assert "dry run: nothing written" in out
 
 
-def test_the_runs_must_be_this_checkouts_not_a_copy_in_another_data_petri_runs(shared, tmp_path, capsys):
+def test_the_runs_must_be_this_checkouts_not_a_copy_in_another_data_petri_runs(shared, tmp_path, capsys, monkeypatch):
     """Regression (Codex review of 2026-09-24): any directory ending in data/petri/runs was accepted, so an export of
     copied runs printed a verify-chain command that names the checkout's own runs, not the bytes exported."""
     camp, _ = shared
+    # the CLI's own checkout, except that it holds the synthetic analysis commit
+    monkeypatch.setattr(ex, "REPOSITORY", dataclasses.replace(ex.REPOSITORY,
+                                                              has_commit=lambda sha: sha == syn.ANALYSIS_COMMIT))
     artifact = tmp_path / "artifact.json"
     artifact.write_text(json.dumps(syn.build_artifact(camp)), encoding="utf-8")
     # the CLI exports only from this checkout's data/petri/runs; the synthetic runs sit in another one
@@ -602,7 +788,7 @@ def test_the_runs_must_be_this_checkouts_not_a_copy_in_another_data_petri_runs(s
         shutil.copytree(d, copy / d.name)
     with pytest.raises(ex.ExportRefusal, match="the directory the page's verify-chain command"):
         ex.export([copy / d.name for d in camp.run_dirs], artifact, disclosure_log=tmp_path / "none.jsonl",
-                  seal_registry=NO_SEAL, checkout=ex.synthetic_checkout(camp.root), plan_path=camp.plan_path)
+                  seal_registry=SEAL, checkout=ex.synthetic_checkout(camp.root), plan_path=camp.plan_path)
 
 
 def test_the_exporter_commit_is_recorded_and_names_every_file_the_export_read(shared, tmp_path):
@@ -610,7 +796,8 @@ def test_the_exporter_commit_is_recorded_and_names_every_file_the_export_read(sh
     so the published files did not say which exporter produced them."""
     camp, _ = shared
     seen: list[Path] = []
-    checkout = ex.Checkout(camp.root / "data" / "petri" / "runs", lambda paths: seen.extend(paths) or "e" * 40)
+    checkout = ex.Checkout(camp.root / "data" / "petri" / "runs", lambda paths: seen.extend(paths) or "e" * 40,
+                           lambda sha: sha == syn.ANALYSIS_COMMIT)
     out = export(camp, tmp_path, checkout=checkout).summary["provenance"]
     assert out["exporter_commit"] == "e" * 40
     read = {Path(p).resolve() for p in seen}
@@ -629,6 +816,31 @@ def _repo_git(repo: Path, *argv: str) -> str:
                 "GIT_AUTHOR_NAME": "synthetic", "GIT_AUTHOR_EMAIL": "synthetic@example.invalid",
                 "GIT_COMMITTER_NAME": "synthetic", "GIT_COMMITTER_EMAIL": "synthetic@example.invalid"})
     return subprocess.run(["git", "-C", str(repo), *argv], check=True, capture_output=True, env=env).stdout.decode()
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="git is not installed")
+def test_commit_exists_accepts_only_a_commit_object_of_the_repository(shared, tmp_path):
+    """Regression (Codex review of 2026-09-25): REPOSITORY's has_commit is `git cat-file -e <sha>^{commit}` in the
+    checkout, so a well-formed id of no commit, or of a tree or blob, is refused, and an export from a repository
+    that holds the artifact's commit goes through."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _repo_git(repo, "init", "-q")
+    (repo / "a.json").write_text("{}", encoding="utf-8")
+    _repo_git(repo, "add", "-A")
+    _repo_git(repo, "commit", "-q", "-m", "one")
+    head = _repo_git(repo, "rev-parse", "HEAD").strip()
+    tree = _repo_git(repo, "rev-parse", "HEAD^{tree}").strip()
+    blob = _repo_git(repo, "rev-parse", "HEAD:a.json").strip()
+    assert ex.commit_exists(head, root=repo)
+    assert not any(ex.commit_exists(x, root=repo) for x in ("d" * 40, tree, blob))
+    camp, _ = shared
+    checkout = ex.Checkout(camp.root / "data" / "petri" / "runs", lambda _paths: "e" * 40,
+                           lambda sha: ex.commit_exists(sha, root=repo))
+    held = export(camp, tmp_path, syn.build_artifact(camp, commit=head), checkout=checkout).summary
+    assert held["provenance"]["analysis_commit"] == head
+    assert "is not a commit in this repository" in refused(camp, tmp_path, syn.build_artifact(camp, commit=tree),
+                                                           checkout=checkout)
 
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="git is not installed")
@@ -782,6 +994,7 @@ def test_write_samples_matches_the_site_samples(tmp_path):
     assert summary["headline"]["row_id"] == summary["style_sentence"]["row_id"] == "SAMPLE"
     assert summary["status"]["final"] is False
     assert summary["provenance"]["analysis_commit"] == summary["provenance"]["exporter_commit"] == "SAMPLE"
+    assert summary["provenance"]["analysis_sha256"] == "SAMPLE"
     assert [s["seed_id"] for s in conversations["seeds"]] == VOCAB["samples"]["seed_ids"]
     texts = [x for c in conversations["conversations"] for e in c["exchanges"]
              for x in (e["user"], e["reply"], *(i["text"] for i in e["interim"]))]
@@ -793,7 +1006,7 @@ def test_exported_and_sample_files_pass_the_contract_validator(shared, tmp_path)
     camp, _ = shared
     site = tmp_path / "site"
     (site / "data").mkdir(parents=True)
-    ex.write_site(site, *ex.sample_export(seal_registry=NO_SEAL), sample=True)
+    ex.write_site(site, *ex.sample_export(seal_registry=SEAL), sample=True)
     # with no Petri pack sent, the real summary cites none, and the validator refuses exactly that (decision 16)
     result = export(camp, tmp_path)
     ex.write_site(site, result.summary, result.conversations)

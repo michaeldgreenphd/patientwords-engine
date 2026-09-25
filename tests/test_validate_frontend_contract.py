@@ -431,8 +431,8 @@ def _multiturn_pair(sample=False):
                "triples": [{"seed_id": "s1", "scenario_id": "sc1", "epoch": 1, "D": -0.5,
                             "partition": "prospective", "eligible": True}],
                "scenario_means": {"sc1": -0.5}, "repeats": [{"seed_id": "s1", "epochs": 1, "same_direction": 1}],
-               "provenance": {"runs": ["run_1"], "analysis_commit": "c" * 40, "exporter_commit": "e" * 40,
-                              "verify": "verify"}}
+               "provenance": {"runs": ["run_1"], "analysis_commit": "c" * 40, "analysis_sha256": "a" * 64,
+                              "exporter_commit": "e" * 40, "verify": "verify"}}
     conversations = {"seed": None,
                      "measures": [{"id": "m1", "row": ["tier", "k"], "label": "M", "kind": "ordinal",
                                    "values": ["lo", "hi"], "definition": None}],
@@ -447,6 +447,7 @@ def _multiturn_pair(sample=False):
                      "example": {"seed_id": "s1", "turn": 1, "colloquial": "a", "lay_careful": "b", "clinical": "c"}}
     if sample:
         summary = {"sample": True, "_note": "SYNTHETIC", **summary}
+        del summary["provenance"]["analysis_sha256"]          # the site's own samples predate the key
         conversations = {"sample": True, "_note": "SYNTHETIC", **conversations, "seed": 1}   # the generator seed
     return summary, conversations
 
@@ -615,6 +616,32 @@ def test_owner_run_multiturn_exporter_commit_is_required(site, sample):
     if not sample:
         _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
     assert any(f"petri_multiturn_summary{suffix} :: $.provenance.exporter_commit" in e for e in run(site).errors)
+
+
+@pytest.mark.parametrize("sample, value, error", [
+    (False, None, "missing required key"), (False, "SAMPLE", "64 lowercase hex"), (False, "A" * 64, "64 lowercase hex"),
+    (False, "a" * 63, "64 lowercase hex"), (False, "a" * 64, None),
+    (True, None, None), (True, "SAMPLE", None), (True, "a" * 64, 'carries "SAMPLE" here, or nothing'),
+])
+def test_owner_run_multiturn_analysis_sha256(site, sample, value, error):
+    """Regression (Codex review of PR #39, 2026-09-25): a published summary binds to the analysis its cited pack was
+    built from by the artifact's sha256. A real summary needs a 64-hex digest; a sample may omit it (the site's own
+    samples do) or carry "SAMPLE", what the exporter's samples carry."""
+    summary, conversations = _multiturn_pair(sample)
+    if value is None:
+        summary["provenance"].pop("analysis_sha256", None)
+    else:
+        summary["provenance"]["analysis_sha256"] = value
+    suffix = ".sample.json" if sample else ".json"
+    _write_pair(site, (summary, conversations), suffix)
+    if not sample:
+        _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    found = [e for e in run(site).errors if "analysis_sha256" in e]
+    if error is None:
+        assert found == []
+    else:
+        assert len(found) == 1 and found[0].startswith(f"petri_multiturn_summary{suffix} :: "
+                                                        f"$.provenance.analysis_sha256 :: ") and error in found[0]
 
 
 # ---- the Multi-turn page's publication gate (Codex, PR #39): a public page needs a sent, FRESH Petri pack
