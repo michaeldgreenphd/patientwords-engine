@@ -260,25 +260,36 @@ def test_two_default_models(site):
 # ---- repro-pack gate (2026-09-23): any non-zero exit of the check is an error
 
 _ADVICE_EVAL = _MODULE_PATH.parent / "advice_eval.py"
+_PETRI_AUDIT = _MODULE_PATH.parent / "petri_audit"
 
 
 def _engine_with_log(tmp_path, entries):
-    """A scratch engine root: the real advice_eval.py and a disclosure log holding
+    """A scratch engine root: the real advice_eval.py, the real Petri package (the
+    gate runs its pack check too, since 2026-09-24) and a disclosure log holding
     `entries` (never the repository's own log)."""
     engine = tmp_path / "engine"
     (engine / "scripts").mkdir(parents=True)
     (engine / "ops").mkdir()
     shutil.copy(_ADVICE_EVAL, engine / "scripts" / "advice_eval.py")
+    shutil.copytree(_PETRI_AUDIT, engine / "scripts" / "petri_audit", ignore=shutil.ignore_patterns("__pycache__"))
     (engine / "ops" / "disclosure_log.jsonl").write_text(
         "".join(json.dumps(e) + "\n" for e in entries), encoding="utf-8")
     return engine
 
 
-def _fake_run(code, stdout="", stderr=""):
+def _is_petri(cmd):
+    return "scripts.petri_audit.cli" in cmd
+
+
+def _fake_run(code, stdout="", stderr="", petri_code=0, petri_stdout="", petri_stderr=""):
+    """A stand-in for subprocess.run: the advice check returns (code, stdout, stderr),
+    the Petri check (petri_code, petri_stdout, petri_stderr)."""
     calls = []
 
     def run(cmd, **kw):
         calls.append(cmd)
+        if _is_petri(cmd):
+            return subprocess.CompletedProcess(cmd, petri_code, petri_stdout, petri_stderr)
         return subprocess.CompletedProcess(cmd, code, stdout, stderr)
     return run, calls
 
@@ -290,8 +301,8 @@ def test_repro_pack_gate_fails_on_any_nonzero_exit(tmp_path, code):
     engine = _engine_with_log(tmp_path, [{"pack_version": "v1"}])
     run_fn, calls = _fake_run(code, stderr="Traceback (most recent call last):\nKeyError: 'stimuli_file'")
     out, errors = vfc.repro_pack_gate(engine, run=run_fn)
-    assert len(calls) == 1 and len(errors) == 1
-    assert f"exited {code}" in errors[0] and "unverified" in errors[0]
+    assert len(calls) == 2 and sum(map(_is_petri, calls)) == 1 and len(errors) == 1
+    assert errors[0].startswith(f"repro-pack --check exited {code}") and "unverified" in errors[0]
     assert "KeyError: 'stimuli_file'" in errors[0]
 
 
@@ -300,6 +311,32 @@ def test_repro_pack_gate_exit_codes_zero_and_two(tmp_path):
     assert vfc.repro_pack_gate(engine, run=_fake_run(0, "FRESH  v1  acme  s")[0]) == ("FRESH  v1  acme  s", [])
     out, errors = vfc.repro_pack_gate(engine, run=_fake_run(2, "ESCALATION: ...")[0])
     assert errors == [vfc.REPRO_PACK_STALE_MSG] and out == "ESCALATION: ..."
+
+
+@pytest.mark.parametrize("code", [1, 3, 120])
+def test_repro_pack_gate_fails_on_any_nonzero_exit_of_the_petri_check(tmp_path, code):
+    """Since 2026-09-24 the gate also runs the Petri lane's pack check, whose packs gate
+    the Multi-turn page (design note decision 16); any non-zero exit of it fails the
+    gate with a message naming that lane, never the advice lane's."""
+    engine = _engine_with_log(tmp_path, [{"pack_version": "v1"}])
+    run_fn, calls = _fake_run(0, "skipped: 1 log entry of lane 'petri'", petri_code=code,
+                              petri_stdout="UNREADABLE: entry 1", petri_stderr="Traceback\nKeyError: 'scope'")
+    out, errors = vfc.repro_pack_gate(engine, run=run_fn)
+    assert [c for c in calls if _is_petri(c)] == [[vfc.sys.executable, "-m", "scripts.petri_audit.cli", "repro-pack",
+                                                   "--check", "--log", str(engine / "ops" / "disclosure_log.jsonl")]]
+    assert len(errors) == 1 and errors[0].startswith(f"petri repro-pack --check exited {code}")
+    assert "Petri vendor-pack currency is unverified" in errors[0] and "KeyError: 'scope'" in errors[0]
+    assert out == "skipped: 1 log entry of lane 'petri'\nUNREADABLE: entry 1"
+
+
+def test_repro_pack_gate_names_a_stale_sent_petri_pack_apart_from_the_advice_lanes(tmp_path):
+    engine = _engine_with_log(tmp_path, [{"pack_version": "v1"}])
+    out, errors = vfc.repro_pack_gate(engine, run=_fake_run(0, petri_code=2, petri_stdout="ESCALATION: petri")[0])
+    assert errors == [vfc.PETRI_REPRO_PACK_STALE_MSG] and out == "ESCALATION: petri"
+    out, errors = vfc.repro_pack_gate(engine, run=_fake_run(2, "ESCALATION: advice", petri_code=2,
+                                                            petri_stdout="ESCALATION: petri")[0])
+    assert errors == [vfc.REPRO_PACK_STALE_MSG, vfc.PETRI_REPRO_PACK_STALE_MSG]
+    assert vfc.REPRO_PACK_STALE_MSG != vfc.PETRI_REPRO_PACK_STALE_MSG and "Petri" in vfc.PETRI_REPRO_PACK_STALE_MSG
 
 
 def test_repro_pack_gate_skips_without_a_log(tmp_path):
@@ -312,19 +349,34 @@ def test_repro_pack_gate_skips_without_a_log(tmp_path):
 def test_repro_pack_gate_end_to_end_on_an_undeclared_foreign_entry(tmp_path):
     """The reproduced case, through the real check: a pack entry with no
     stimuli_file and no declared lane. Before 2026-09-23 the check exited 1 and the
-    gate reported nothing; now the check names the entry (exit 3) and the gate fails."""
+    gate reported nothing; now the check names the entry (exit 3) and the gate fails.
+    The Petri check counts the lane-less entry as the advice lane's and skips it."""
     engine = _engine_with_log(tmp_path, [{"pack_version": "vpetri000001", "vendor": "acme",
                                           "manifest": {"run_ids": ["run_1"]}, "sent_utc": None}])
     out, errors = vfc.repro_pack_gate(engine)
     assert "UNREADABLE: entry 1 (vpetri000001): missing manifest.stimuli_file" in out
-    assert len(errors) == 1 and "exited 3" in errors[0]
+    assert "skipped: 1 log entry of lane 'advice' (this check covers lane 'petri' only)" in out
+    assert len(errors) == 1 and errors[0].startswith("repro-pack --check exited 3")
 
 
-def test_repro_pack_gate_end_to_end_on_a_declared_foreign_lane(tmp_path):
+def test_repro_pack_gate_end_to_end_on_a_lane_neither_check_owns(tmp_path):
+    engine = _engine_with_log(tmp_path, [{"pack_version": "vz000001", "lane": "zeta", "vendor": "acme",
+                                          "manifest": {"run_ids": ["run_1"]}, "sent_utc": None}])
+    out, errors = vfc.repro_pack_gate(engine)
+    assert errors == [] and "skipped: 1 log entry of lane 'zeta' (this check covers lane 'advice' only)" in out
+    assert "skipped: 1 log entry of lane 'zeta' (this check covers lane 'petri' only)" in out
+
+
+def test_repro_pack_gate_end_to_end_on_a_petri_entry_the_petri_check_cannot_read(tmp_path):
+    """A petri-lane entry: the advice check skips it (as before 2026-09-24), and the
+    Petri check, which owns it, names it unreadable (exit 3), so the gate fails with
+    the Petri lane's message."""
     engine = _engine_with_log(tmp_path, [{"pack_version": "vpetri000001", "lane": "petri", "vendor": "acme",
                                           "manifest": {"run_ids": ["run_1"]}, "sent_utc": None}])
     out, errors = vfc.repro_pack_gate(engine)
-    assert errors == [] and "skipped: 1 log entry of lane 'petri'" in out
+    assert "skipped: 1 log entry of lane 'petri' (this check covers lane 'advice' only)" in out
+    assert "UNREADABLE: entry 1 (vpetri000001): missing manifest.scope, manifest.inputs" in out
+    assert len(errors) == 1 and errors[0].startswith("petri repro-pack --check exited 3")
 
 
 def _main(monkeypatch, site, engine):
@@ -347,10 +399,169 @@ def test_main_fails_when_the_pack_check_cannot_read_the_log(site, tmp_path, monk
     assert "contract check: 1 error(s)" in out
 
 
-def test_main_passes_the_same_site_when_the_pack_check_is_clean(site, tmp_path, monkeypatch, capsys):
-    """The control for the test above: the same valid site and scratch engine with
-    a log the check reads cleanly give no error, so the failure above is the gate's."""
+def test_main_fails_when_the_petri_pack_check_cannot_read_the_log(site, tmp_path, monkeypatch, capsys):
     engine = _engine_with_log(tmp_path, [{"pack_version": "vpetri000001", "lane": "petri", "vendor": "acme",
+                                          "manifest": {"run_ids": ["run_1"]}, "sent_utc": None}])
+    assert _main(monkeypatch, site, engine) == 1
+    out = capsys.readouterr().out
+    assert "FAIL: petri repro-pack --check exited 3" in out
+    assert "contract check: 1 error(s)" in out
+
+
+def test_main_passes_the_same_site_when_the_pack_check_is_clean(site, tmp_path, monkeypatch, capsys):
+    """The control for the tests above: the same valid site and scratch engine with
+    a log both checks read cleanly give no error, so the failures above are the gate's."""
+    engine = _engine_with_log(tmp_path, [{"pack_version": "vz000001", "lane": "zeta", "vendor": "acme",
                                           "manifest": {"run_ids": ["run_1"]}, "sent_utc": None}])
     assert _main(monkeypatch, site, engine) == 0
     assert "contract check: 0 error(s)" in capsys.readouterr().out
+
+
+# ---- the Multi-turn page's publication gate (Codex, PR #39): a public page needs a sent, FRESH Petri pack
+
+PUBLISHED_RUNS = ["run_200_1", "run_300_1"]
+PUBLISHED_ANALYSIS = "a" * 64
+
+
+def _publish_multiturn(site, version="petri-v000000000001", conversations=True, summary=True, runs=PUBLISHED_RUNS,
+                       analysis=PUBLISHED_ANALYSIS):
+    """The Multi-turn page's real data files in the site's data/ (what export_petri_multiturn.py writes once the page
+    is public), the summary citing `version` as its vendor pack and `runs` as the runs it publishes. Placeholder
+    content only."""
+    data = site / "data"
+    if summary:
+        (data / "petri_multiturn_summary.json").write_text(json.dumps(
+            {"status": {"final": True, "vendor_pack": {"version": version, "sent": None}},
+             "provenance": {"runs": runs, "analysis_sha256": analysis}}), encoding="utf-8")
+    if conversations:
+        (data / "petri_multiturn_conversations.json").write_text(json.dumps({"conversations": []}), encoding="utf-8")
+
+
+def _samples_only(site):
+    """The page's state today: only the synthetic .sample.json fixtures, which never make the data public."""
+    data = site / "data"
+    for name in ("petri_multiturn_summary.sample.json", "petri_multiturn_conversations.sample.json"):
+        (data / name).write_text(json.dumps({"sample": True, "status": {"vendor_pack": {"version": None}}}),
+                                 encoding="utf-8")
+
+
+def _no_log_engine(tmp_path):
+    engine = _engine_with_log(tmp_path, [])
+    (engine / "ops" / "disclosure_log.jsonl").unlink()
+    return engine
+
+
+def test_multiturn_publication_reads_only_the_real_files(site):
+    assert vfc.petri_publication(site) == (False, None, [], None, [])
+    _samples_only(site)
+    assert vfc.petri_publication(site) == (False, None, [], None, [])
+    _publish_multiturn(site, version="petri-vabc")
+    assert vfc.petri_publication(site) == (True, "petri-vabc", PUBLISHED_RUNS, PUBLISHED_ANALYSIS, [])
+    _publish_multiturn(site, version=None)
+    public, cited, runs, analysis, errors = vfc.petri_publication(site)
+    assert public and cited is None and runs == PUBLISHED_RUNS and analysis == PUBLISHED_ANALYSIS and len(errors) == 1
+    assert errors[0].startswith("petri_multiturn_summary.json :: $.status.vendor_pack.version :: the published summary "
+                                "cites no Petri pack version")
+    (site / "data" / "petri_multiturn_summary.json").write_text("{not json", encoding="utf-8")
+    public, cited, runs, analysis, errors = vfc.petri_publication(site)
+    assert public and cited is None and runs == [] and len(errors) == 1 and "cannot be read" in errors[0]
+    assert vfc.petri_publication(None) == (False, None, [], None, [])
+
+
+def test_public_conversations_without_the_summary_fail_publication(site):
+    """Regression (Codex, PR #39): with only the conversations file on the site the page was public but cited no
+    pack, and the gate fell back to accepting any sent, FRESH Petri pack. Per-model data with no citation fails."""
+    _publish_multiturn(site, summary=False)
+    public, cited, runs, analysis, errors = vfc.petri_publication(site)
+    assert public and cited is None and runs == [] and analysis is None and len(errors) == 1
+    assert errors[0].startswith("petri_multiturn_conversations.json :: the conversations file is public without "
+                                "petri_multiturn_summary.json, so no page cites the Petri pack")
+
+
+@pytest.mark.parametrize("analysis", [None, "", "a" * 63, "A" * 64, 7])
+def test_a_published_summary_must_name_its_analysis_digest(site, analysis):
+    """Regression (Codex, PR #39, round 3): two analyses of the same runs are two packs, so a summary for one could
+    cite a sent, FRESH pack of the other. The summary names the artifact it publishes (provenance.analysis_sha256),
+    and the gate binds the cited pack to it; a summary without one fails."""
+    _publish_multiturn(site, version="petri-vabc", analysis=analysis)
+    public, cited, runs, got, errors = vfc.petri_publication(site)
+    assert public and cited == "petri-vabc" and runs == PUBLISHED_RUNS and got is None and len(errors) == 1
+    assert errors[0].startswith("petri_multiturn_summary.json :: $.provenance.analysis_sha256 :: the published "
+                                "summary names no analysis artifact digest")
+
+
+@pytest.mark.parametrize("runs", [None, [], "run_200_1", ["run_200_1", ""], ["run_200_1", 7], [" run_200_1"]])
+def test_a_published_summary_must_name_its_runs(site, runs):
+    """Regression (Codex, PR #39): the cited pack is bound to the runs the page publishes, so a summary that names
+    none (or not as a list of run directory names) cannot be checked and fails."""
+    _publish_multiturn(site, version="petri-vabc", runs=runs)
+    public, cited, got, _analysis, errors = vfc.petri_publication(site)
+    assert public and cited == "petri-vabc" and got == [] and len(errors) == 1
+    assert errors[0].startswith("petri_multiturn_summary.json :: $.provenance.runs :: the published summary names no "
+                                "runs")
+
+
+def test_repro_pack_gate_requires_a_sent_petri_pack_once_the_multiturn_data_is_public(tmp_path, site):
+    engine = _engine_with_log(tmp_path, [{"pack_version": "v1"}])
+    _publish_multiturn(site, version="petri-vabc")
+    run_fn, calls = _fake_run(0, petri_code=4, petri_stdout="PUBLICATION: petri-vabc: no send is recorded")
+    out, errors = vfc.repro_pack_gate(engine, run=run_fn, site=site)
+    assert [c for c in calls if _is_petri(c)] == [[vfc.sys.executable, "-m", "scripts.petri_audit.cli", "repro-pack",
+                                                   "--check", "--log", str(engine / "ops" / "disclosure_log.jsonl"),
+                                                   "--require-sent", "--cited-version", "petri-vabc",
+                                                   "--cited-run", "run_200_1", "--cited-run", "run_300_1",
+                                                   "--cited-analysis-sha256", PUBLISHED_ANALYSIS]]
+    assert errors == [vfc.PETRI_PUBLICATION_UNMET_MSG] and "PUBLICATION: petri-vabc" in out
+    run_fn, calls = _fake_run(0, petri_code=0)
+    assert vfc.repro_pack_gate(engine, run=run_fn, site=site)[1] == []
+
+
+def test_repro_pack_gate_is_unchanged_while_the_multiturn_page_is_unpublished(tmp_path, site):
+    """Today's state: no real Multi-turn file (the samples at most). The Petri check runs as before, without the
+    publication requirement, and a missing log still skips both checks."""
+    _samples_only(site)
+    engine = _engine_with_log(tmp_path, [{"pack_version": "v1"}])
+    run_fn, calls = _fake_run(0, petri_code=0)
+    assert vfc.repro_pack_gate(engine, run=run_fn, site=site) == ("", [])
+    assert [c for c in calls if _is_petri(c)][0][-2:] == ["--log", str(engine / "ops" / "disclosure_log.jsonl")]
+    run_fn, calls = _fake_run(1)
+    assert vfc.repro_pack_gate(_no_log_engine(tmp_path / "x"), run=run_fn, site=site) == ("", []) and calls == []
+
+
+def test_repro_pack_gate_end_to_end_on_public_multiturn_data_with_no_pack(tmp_path, site):
+    """The reproduced case, through the real check: the page's data is public and no Petri pack was ever built (no
+    log at all). Before the fix the gate skipped both checks and passed; now the Petri check runs with the requirement
+    and fails (exit 4), and the gate names it."""
+    _publish_multiturn(site)
+    out, errors = vfc.repro_pack_gate(_no_log_engine(tmp_path), site=site)
+    assert "never-built" in out and "PUBLICATION:" in out
+    assert errors == [vfc.PETRI_PUBLICATION_UNMET_MSG]
+
+
+def test_repro_pack_gate_end_to_end_on_public_multiturn_data_citing_an_unsent_pack(tmp_path, site):
+    """A Petri pack built and logged, never sent, which the public summary cites. Unsent and unescalated, the plain
+    check exits 0; the publication requirement fails it."""
+    entry = {"pack_version": "petri-v000000000001", "lane": "petri", "vendor": "acme", "sent_utc": None,
+             "manifest": {"scope": "w2_register_contrast",
+                          "inputs": {k: "absent" for k in ("vendor", "runs_dir", "analysis", "plan", "claims",
+                                                            "seeds", "lock", "repo_root")} | {"run_dirs": []},
+                          "depends_on": {"prompt_refs": {}, "seed_ids": []}, "state": {}}}
+    engine = _engine_with_log(tmp_path, [entry])
+    _publish_multiturn(site, version="petri-v000000000001")
+    out, errors = vfc.repro_pack_gate(engine, site=site)
+    assert "PUBLICATION: the published page cites petri-v000000000001, whose send is not recorded" in out
+    assert errors == [vfc.PETRI_PUBLICATION_UNMET_MSG]
+    unpublished = tmp_path / "unpublished"
+    unpublished.mkdir()
+    assert vfc.repro_pack_gate(engine, site=unpublished)[1] == []      # the same log, the page not public: green
+
+
+def test_main_fails_when_the_multiturn_data_is_public_without_a_sent_pack(site, tmp_path, monkeypatch, capsys):
+    engine = _no_log_engine(tmp_path)
+    _samples_only(site)
+    assert _main(monkeypatch, site, engine) == 0                          # today: samples only, no log
+    capsys.readouterr()
+    _publish_multiturn(site)
+    assert _main(monkeypatch, site, engine) == 1
+    out = capsys.readouterr().out
+    assert f"FAIL: {vfc.PETRI_PUBLICATION_UNMET_MSG}" in out and "contract check: 1 error(s)" in out

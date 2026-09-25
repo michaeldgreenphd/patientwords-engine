@@ -210,15 +210,27 @@ def artifact_problems(manifest: dict, data_dir: Path, manifest_dir: str | None =
     return problems
 
 
-def verify_chain(data_dir: Path) -> tuple[bool, str]:
+def verify_chain(data_dir: Path, lines: int | None = None) -> tuple[bool, str]:
     """Every manifest the chain file names exists, digests to its recorded
     value, links to the previous line, and names only artifacts that exist
-    and digest to their recorded values."""
+    and digest to their recorded values.
+
+    With `lines`, only the chain's first `lines` lines are checked, and a
+    chain shorter than that fails: a vendor reproduction pack over the runs
+    those lines name depends on them alone, and a line appended after them
+    (a later run) is not its evidence (scripts/petri_audit/repro_pack.py)."""
     path = data_dir / CHAIN_FILE
     if not path.is_file():
+        if lines:
+            return False, f"no chain file, so its first {lines} line(s) cannot be verified"
         return True, "no chain file (no manifests yet)"
+    chain = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    if lines is not None:
+        if len(chain) < lines:
+            return False, f"the chain has {len(chain)} line(s), fewer than the {lines} to verify"
+        chain = chain[:lines]
     prev: str | None = None
-    for n, line in enumerate(ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()):
+    for n, line in enumerate(chain):
         rel, digest = line.rsplit(" ", 1)
         mpath = data_dir / rel
         if not mpath.is_file():

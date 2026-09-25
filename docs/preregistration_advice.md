@@ -471,3 +471,26 @@ public and the page cites its version. The Petri lane has no pre-registration
 of its own, so it adopts the rule by its own instrument: decision 16 of the
 Petri wave-2 design note (`docs/petri_wave2_design.md`, added by engine PR
 #29, `claude/awesome-franklin-kj9jw7`) records the same ruling.
+
+**The Petri pack (2026-09-24).** The Petri lane's builder is
+`python -m scripts.petri_audit.cli repro-pack` (`scripts/petri_audit/repro_pack.py`),
+the counterpart of `advice_eval.py repro-pack` under the same three rules. It
+builds one vendor's pack over an explicit list of landed Petri runs and the
+section 10 analysis artifact, keyed by (vendor, analysis), with its own
+`--check` and `--record-sent`. Its log entries carry `"lane": "petri"`, which
+the advice check counts and skips, and the frontend contract gate runs both
+checks and fails on a non-zero exit of either. Rules (1) and (2) are checked
+too, once there is something public to check them against: when the site's
+`data/` holds either of the Multi-turn page's real data files
+(`petri_multiturn_summary.json`, `petri_multiturn_conversations.json`; the
+`.sample.json` fixtures do not count), the gate runs the Petri check with
+`--require-sent`, the version the summary cites
+(`status.vendor_pack.version`), the runs it publishes (`provenance.runs`) and
+the analysis artifact's sha256 (`provenance.analysis_sha256`), and fails unless
+that version is the newest pack of its (vendor, analysis), was built over
+exactly those runs from that artifact, has a recorded send, and is FRESH. It
+fails too when the published summary cites no version, names no runs or no
+analysis digest, and when the conversations file is on the site without the
+summary. Until those files exist
+nothing is required, so the gate is unchanged while the page is unpublished.
+The module docstring states what the pack holds and what makes it STALE.
