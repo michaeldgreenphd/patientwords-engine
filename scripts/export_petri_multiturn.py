@@ -40,12 +40,25 @@ What it refuses, by name, before writing anything (AGENTS.md: no silent failures
   verify-chain command names; runs that command would not examine (no chain file, a chain that does not verify,
   or a run the chain does not name); and a triple whose run's manifest records another journal nonce
   (spend.journal_nonce, which a re-adapted run keeps from its source fire) than the triple's, checked before any of
-  its conversations is read;
+  its conversations is read (the chain is verified before any run is read, so a manifest edited after it was sealed is
+  refused as that);
 - a checkout whose commit would not name what the export read: an input outside the checkout or not tracked, or any
   tracked file that differs from HEAD (the commit is recorded as provenance.exporter_commit);
 - a run whose publication conditions do not hold (docs/petri_integration_design.md section 4): no bound environment
   lock (`harness.environment_lock_sha256`), no bound raw log with its custody, a raw log marked published, no bound
   sanitised projection, no holdout block, or a holdout-seal contract check that did not pass;
+- a run of a model the campaign did not register, which the page's text would then misname: the page vocabulary's
+  campaign_models lists the registered target (`target`: a manifest's models.target.inspect_name, a transcript's
+  source.model), the model strings the provider served it as (`target_served`: every one of models.target's
+  served_model_strings, and a transcript's source.model_version when it records one) and the judge (`judge`: the
+  manifest's artifacts.judge_of_record.judge_model and every judgment's judge_model, a superseded retry's too); the
+  ones that are not registered are named;
+- a transcript record not bound to its run, or not in the shape the exporter reads: its provenance.run_manifest.sha256
+  must be the manifest's identity digest (chain.identity_sha256, itself refused unless it is the identity digest of
+  the manifest body), the pairing check scripts/petri_audit/summary.py makes; and it needs a conversation id and a
+  non-empty list of turns, each with an integer turn_id unique in the record, a role and a text, tool calls only on an
+  assistant turn (each with a call id, a name and object arguments), and the tool-call pairing
+  framework.tool_call_problems checks;
 - a missing final row: every exchange of every exported conversation must carry one final-reply row for each
   instrument the judge plans at that reply (the response-only tier, the contextual tier from the second assistant
   message on, and every outcome dimension the seed judges, as judge_runner.plan_record plans them);
@@ -102,7 +115,11 @@ a grade judged under a prompt file or rubric other than the current one carries 
 judged under>` (shown, never compared), and the provenance carries `exporter_commit` and `analysis_sha256` (each
 "SAMPLE" in the samples this script writes). A null answer is `{"v": null}`.
 
-No medical vocabulary lives here: seed ids, labels, mechanisms and registered texts are read from data files.
+No medical vocabulary lives here: seed ids, labels, mechanisms and registered texts are read from data files. The
+page vocabulary (data/petri/multiturn_measures.json) holds the measure map (`measures`), the `mechanisms`, the Method
+section's `example`, the `samples` settings and the campaign's registered models (`campaign_models`: `target`,
+`target_served` and `judge`, each a non-empty list of distinct model strings). `--write-samples` builds its SYNTHETIC
+campaign on the first of each campaign_models list, so the sample path passes the same model check, with no exemption.
 """
 from __future__ import annotations
 
@@ -119,7 +136,7 @@ import sys
 import tempfile
 from collections import Counter, defaultdict
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from fractions import Fraction
 from pathlib import Path
 from typing import Any
@@ -139,11 +156,13 @@ from scripts.petri_audit.framework import (  # noqa: E402
     load_json,
     prompt_digest,
     sha256_file,
+    tool_call_problems,
 )
-from scripts.petri_audit.manifest import ARTIFACT_FILENAMES, CHAIN_FILE, verify_chain  # noqa: E402
+from scripts.petri_audit.manifest import ARTIFACT_FILENAMES, CHAIN_FILE, identity_digest, verify_chain  # noqa: E402
 from scripts.petri_audit.rules import ANNOTATOR, rule_outcomes  # noqa: E402
 from scripts.petri_audit.seal import scan_strings, sealed_registry  # noqa: E402
 from scripts.petri_audit.seeds import ROOT_BRANCH, text_of, texts_by_key, tool_result_for  # noqa: E402
+from scripts.petri_audit.transcripts import ROLES as TRANSCRIPT_ROLES  # noqa: E402
 
 if Path(ROOT).resolve() != Path(__file__).resolve().parents[1]:
     raise ImportError(f"scripts.petri_audit was imported from {ROOT}, not from this checkout "
@@ -377,21 +396,38 @@ class MeasureSpec:
 
 
 @dataclass(frozen=True)
+class CampaignModels:
+    """The models the campaign registered (the page vocabulary's campaign_models), which the page's text names:
+    `target`, the Inspect provider/model string of the target (a manifest's models.target.inspect_name, a transcript's
+    source.model); `target_served`, the model strings the provider returned (models.target.served_model_strings, a
+    transcript's source.model_version when it records one); `judge`, the judge of record (every judgment's
+    judge_model, the manifest's artifacts.judge_of_record.judge_model)."""
+    target: tuple[str, ...]
+    target_served: tuple[str, ...]
+    judge: tuple[str, ...]
+
+
+CAMPAIGN_MODEL_KEYS = tuple(f.name for f in fields(CampaignModels))
+
+
+@dataclass(frozen=True)
 class Vocabulary:
     measures: tuple[MeasureSpec, ...]
     mechanisms: dict[str, dict[str, str]]
     mechanism_of: dict[str, str]
     example: dict[str, Any]
     samples: dict[str, Any]
+    models: CampaignModels
 
     def by_row(self) -> dict[tuple[str, str], MeasureSpec]:
         return {m.row: m for m in self.measures if m.row is not None}
 
 
 def load_vocabulary(path: Path, rubric: Mapping[str, Any], registry: Mapping[str, Any]) -> Vocabulary:
-    """The measure map, mechanisms, example and sample settings, checked against the rubric (tier rows: its tier ids in
-    order, its flags) and the outcome registry (outcome rows: the dimension's values in order, `ordinal` iff the kind
-    is ordinal, the definition). Every problem is refused by name."""
+    """The measure map, mechanisms, example, sample settings and the campaign's registered models, the measures
+    checked against the rubric (tier rows: its tier ids in order, its flags) and the outcome registry (outcome rows: the
+    dimension's values in order, `ordinal` iff the kind is ordinal, the definition), and each campaign_models list a
+    non-empty list of distinct strings. Every problem is refused by name."""
     doc = _load(path, "the page vocabulary")
     problems: list[str] = []
     tiers = tuple(t["id"] for t in rubric.get("tiers") or [])
@@ -496,12 +532,23 @@ def load_vocabulary(path: Path, rubric: Mapping[str, Any], registry: Mapping[str
     if not (isinstance(samples, dict) and isinstance(samples.get("seed_ids"), list) and samples["seed_ids"]
             and _count(samples.get("epochs")) and samples["epochs"] >= 1 and _count(samples.get("rng_seed"))):
         problems.append("samples must be {seed_ids, epochs, rng_seed}")
+    cm = doc.get("campaign_models")
+    if not isinstance(cm, dict):
+        problems.append(f"campaign_models must be {{{', '.join(CAMPAIGN_MODEL_KEYS)}}}: the model strings the campaign "
+                        f"registered, which every exported run must record")
+    else:
+        for key in CAMPAIGN_MODEL_KEYS:
+            specs = cm.get(key)
+            if not (isinstance(specs, list) and specs and all(_text(s) for s in specs) and len(set(specs)) == len(specs)):
+                problems.append(f"campaign_models.{key} must be a non-empty list of distinct model strings, not "
+                                f"{specs!r}")
     if problems:
         raise ExportRefusal(f"the page vocabulary {path}: " + "; ".join(problems))
     # measures keep the file's order (a flag measure was held back only until its source was known)
     order = {m["id"]: i for i, m in enumerate(raw) if isinstance(m, dict)}
     measures.sort(key=lambda x: order[x.id])
-    return Vocabulary(tuple(measures), mechanisms, mechanism_of, dict(example), dict(samples))
+    models = CampaignModels(*(tuple(cm[key]) for key in CAMPAIGN_MODEL_KEYS))
+    return Vocabulary(tuple(measures), mechanisms, mechanism_of, dict(example), dict(samples), models)
 
 
 # ------------------------------------------------------------------ the registered wording (checked against the note)
@@ -636,6 +683,120 @@ def publication_problems(manifest: Mapping[str, Any]) -> list[str]:
     return problems
 
 
+def model_problems(manifest: Mapping[str, Any], models: CampaignModels) -> list[str]:
+    """Why a run's manifest does not record the campaign's registered models, or [] (Codex review of 2026-09-25: a
+    registered fire run on another target, or graded by another judge, was published under the page's text, which
+    names the target and says the same model graded it): the target Inspect resolved (models.target.inspect_name),
+    every model string the provider returned for it (models.target.served_model_strings, at least one) and the judge
+    of record (artifacts.judge_of_record.judge_model)."""
+    problems = []
+    roles = manifest.get("models")
+    target = roles.get("target") if isinstance(roles, dict) else None
+    if not isinstance(target, dict):
+        problems.append("the manifest records no models.target")
+    else:
+        name = target.get("inspect_name")
+        if name not in models.target:
+            problems.append(f"its target (models.target.inspect_name) is {name!r}, not a registered target "
+                            f"{list(models.target)}")
+        served = target.get("served_model_strings")
+        if not (isinstance(served, list) and served):
+            problems.append(f"models.target.served_model_strings is {served!r}, not the model strings the provider "
+                            f"returned")
+        else:
+            other = [s for s in served if s not in models.target_served]
+            if other:
+                problems.append(f"the provider served the target as {other!r} (models.target.served_model_strings), "
+                                f"not a registered model string {list(models.target_served)}")
+    art = manifest.get("artifacts") if isinstance(manifest.get("artifacts"), dict) else {}
+    of_record = art.get("judge_of_record")
+    judge = of_record.get("judge_model") if isinstance(of_record, dict) else None
+    if judge not in models.judge:
+        problems.append(f"its judge of record (artifacts.judge_of_record.judge_model) is {judge!r}, not a registered "
+                        f"judge {list(models.judge)}")
+    return problems
+
+
+def manifest_identity(manifest: Mapping[str, Any], where: str) -> str:
+    """The run manifest's identity digest (chain.identity_sha256), which every transcript record of the run names in
+    provenance.run_manifest.sha256; refused unless it is recorded and is the identity digest of the manifest body
+    (manifest.identity_digest), so a record bound to it is bound to this manifest."""
+    chain = manifest.get("chain")
+    recorded = chain.get("identity_sha256") if isinstance(chain, dict) else None
+    if not (isinstance(recorded, str) and re.fullmatch(r"[0-9a-f]{64}", recorded)):
+        raise ExportRefusal(f"run {where}: the manifest records no identity digest (chain.identity_sha256 "
+                            f"{recorded!r}), so its transcripts cannot be shown to be bound to it")
+    try:
+        body = identity_digest(dict(manifest))
+    except (TypeError, ValueError, AttributeError) as exc:
+        raise ExportRefusal(f"run {where}: the manifest's identity digest cannot be computed "
+                            f"({type(exc).__name__}: {exc})") from exc
+    if body != recorded:
+        raise ExportRefusal(f"run {where}: chain.identity_sha256 {recorded[:12]} is not the identity digest of the "
+                            f"manifest body ({body[:12]}), so a transcript bound to it is bound to no manifest here")
+    return recorded
+
+
+def _tool_calls_ok(calls: Any) -> bool:
+    return isinstance(calls, list) and all(
+        isinstance(c, dict) and _text(c.get("call_id")) and _text(c.get("name"))
+        and isinstance(c.get("arguments") or {}, dict) for c in calls)
+
+
+def transcript_problems(record: Mapping[str, Any], identity: str, models: CampaignModels) -> list[str]:
+    """Why one transcript record is not a record of this run that the exporter can read, or [] (Codex review of
+    2026-09-25: the records were read without checking that each is bound to its run).
+
+    - Its binding: provenance.run_manifest.sha256 must be the run manifest's identity digest, the pairing check
+      scripts/petri_audit/summary.py makes (a record naming another identity, or none, came from another manifest).
+    - Its source: source.model a registered target, and source.model_version, when the record carries one, a
+      registered served model string.
+    - Its shape, as far as the exporter and rules.rule_outcomes read it: a conversation id; a non-empty list of turns,
+      each with an integer turn_id unique in the record, a role of the transcript schema and a text; tool calls only
+      on an assistant turn, each with a call id, a name and object arguments; and the tool-call pairing
+      framework.tool_call_problems checks (every tool turn answers an earlier call, once; call ids unique)."""
+    problems: list[str] = []
+    if not _text(record.get("conversation_id")):
+        problems.append("no conversation_id")
+    prov = record.get("provenance")
+    run_manifest = prov.get("run_manifest") if isinstance(prov, dict) else None
+    bound = run_manifest.get("sha256") if isinstance(run_manifest, dict) else None
+    if bound != identity:
+        problems.append("provenance.run_manifest names " + ("no manifest identity" if bound is None else
+                                                            f"another manifest identity ({str(bound)[:12]})"))
+    source = record.get("source")
+    if not isinstance(source, dict):
+        problems.append("no source block, so the model it records cannot be checked")
+    else:
+        if source.get("model") not in models.target:
+            problems.append(f"source.model {source.get('model')!r} is not a registered target {list(models.target)}")
+        version = source.get("model_version")
+        if version is not None and version not in models.target_served:
+            problems.append(f"source.model_version {version!r} is not a registered model string "
+                            f"{list(models.target_served)}")
+    turns = record.get("turns")
+    if not (isinstance(turns, list) and turns):
+        return problems + ["no turns"]
+    shape: list[str] = []
+    for n, t in enumerate(turns, 1):
+        if not isinstance(t, dict):
+            shape.append(f"turn #{n} is not an object")
+            continue
+        if not _count(t.get("turn_id")):
+            shape.append(f"turn #{n}: turn_id {t.get('turn_id')!r} is not an integer")
+        if t.get("role") not in TRANSCRIPT_ROLES:
+            shape.append(f"turn #{n}: role {t.get('role')!r} is not one of {list(TRANSCRIPT_ROLES)}")
+        if not isinstance(t.get("text"), str):
+            shape.append(f"turn #{n}: text is not a string")
+        if t.get("tool_calls") is not None and not (t.get("role") == "assistant" and _tool_calls_ok(t["tool_calls"])):
+            shape.append(f"turn #{n}: tool_calls are not an assistant turn's list of {{call_id, name, arguments}}")
+    ids = [t.get("turn_id") for t in turns if isinstance(t, dict) and _count(t.get("turn_id"))]
+    if len(ids) != len(set(ids)):
+        shape.append(f"turn ids repeat: {sorted(k for k, n in Counter(ids).items() if n > 1)}")
+    # the pairing check reads the fields the shape check vouches for, so it runs only on a record that passes it
+    return problems + (shape or tool_call_problems(dict(record)))
+
+
 def collapse_retries(judgments: Sequence[dict]) -> tuple[list[dict], int]:
     """The latest judgment per `judge_runner.dedupe_key`, in file order, and how many it superseded: a retried null is
     decided by its retry, as the section 10 analysis and the run's own totals decide it."""
@@ -658,9 +819,11 @@ class RunData:
     trees: dict[str, tuple[dict, dict]]
 
 
-def load_run(path: Path, recorded: Mapping[str, Any], seeds: Mapping[str, dict]) -> RunData:
-    """One run directory, refused unless its publication conditions hold and its files are the bytes the artifact
-    and its own manifest bound; its analysis rows rebuilt as the section 10 analysis rebuilt them."""
+def load_run(path: Path, recorded: Mapping[str, Any], seeds: Mapping[str, dict], models: CampaignModels) -> RunData:
+    """One run directory, refused unless its publication conditions hold, its files are the bytes the artifact and
+    its own manifest bound, it records the campaign's registered models (model_problems; every judgment's judge_model;
+    every transcript's source) and every transcript record is bound to its manifest (transcript_problems); its analysis
+    rows rebuilt as the section 10 analysis rebuilt them."""
     path = Path(path)
     where = path.name
     if not path.is_dir():
@@ -677,6 +840,11 @@ def load_run(path: Path, recorded: Mapping[str, Any], seeds: Mapping[str, dict])
     if manifest.get("run_id") != recorded.get("run_id"):
         raise ExportRefusal(f"run {where}: run id {manifest.get('run_id')!r} is not the artifact's "
                             f"{recorded.get('run_id')!r}")
+    problems = model_problems(manifest, models)
+    if problems:
+        raise ExportRefusal(f"run {where} is not a run of the campaign's registered models, which the page names: "
+                            + "; ".join(problems))
+    identity = manifest_identity(manifest, where)
     art = manifest.get("artifacts") or {}
     files = {family: path / name for family, name in ARTIFACT_FILENAMES.items()}
     for family in ("judgments", "transcripts", "rule_outcomes"):
@@ -690,17 +858,33 @@ def load_run(path: Path, recorded: Mapping[str, Any], seeds: Mapping[str, dict])
     for family in ("judgments", "transcripts", "rule_outcomes"):
         if sha256_file(files[family]) != art.get(f"{family}_sha256"):
             raise ExportRefusal(f"run {where}: {files[family].name} is not the file its manifest binds")
-    collapsed, superseded = collapse_retries(_jsonl(files["judgments"], f"run {where}:"))
+    judgments = _jsonl(files["judgments"], f"run {where}:")
+    # every judgment, a superseded retry too: the file is the run's record of who graded it
+    judges = Counter(repr(j.get("judge_model")) for j in judgments if j.get("judge_model") not in models.judge)
+    if judges:
+        raise ExportRefusal(f"run {where}: {sum(judges.values())} judgment(s) record judge_model "
+                            f"{', '.join(sorted(judges))}, not a registered judge {list(models.judge)}, and the page "
+                            f"says the registered judge graded every reply")
+    collapsed, superseded = collapse_retries(judgments)
     try:
         rows = judge_runner.analysis_rows(collapsed, manifest, dict(seeds))
     except (ValueError, KeyError) as exc:
         raise ExportRefusal(f"run {where}: judge_runner.analysis_rows refused it: {exc}") from exc
     records: dict[str, dict] = {}
-    for rec in _jsonl(files["transcripts"], f"run {where}:"):
-        cid = rec.get("conversation_id")
+    bad: list[str] = []
+    for n, rec in enumerate(_jsonl(files["transcripts"], f"run {where}:"), 1):
+        found = transcript_problems(rec, identity, models)
+        if found:
+            bad.append(f"record {n} ({str(rec.get('conversation_id'))[:12]}): " + "; ".join(found[:3]))
+            continue
+        cid = rec["conversation_id"]
         if cid in records:
             raise ExportRefusal(f"run {where}: two transcript records for conversation {cid}")
         records[cid] = rec
+    if bad:
+        more = f"; and {len(bad) - 3} more" if len(bad) > 3 else ""
+        raise ExportRefusal(f"run {where}: {len(bad)} transcript record(s) are not records of this run the exporter "
+                            f"can read: " + "; ".join(bad[:3]) + more)
     rules: dict[str, dict] = {}
     for rule in _jsonl(files["rule_outcomes"], f"run {where}:"):
         cid = rule.get("conversation_id")
@@ -1139,7 +1323,7 @@ def export(run_dirs: Sequence[Path], artifact_path: Path, *, seeds_path: Path = 
     for contrast in (PRIMARY_CONTRAST, DECOMPOSITION_CONTRAST):
         if contrast == PRIMARY_CONTRAST or artifact["section_10_3"].get("status") != "refused":
             _check_window(artifact, contrast)
-    runs = _load_runs(run_dirs, artifact, seeds, checkout.runs_dir)
+    runs = _load_runs(run_dirs, artifact, seeds, checkout.runs_dir, vocab.models)
     # every file the export reads, and the exporter's own code: the commit recorded must name them all
     read = [Path(__file__), *sorted(Path(judge_runner.__file__).parent.glob("*.py")), Path(artifact_path),
             *(Path(x) for x in (seeds_path, rubric_path, registry_path, vocabulary_path, wording_path, design_note,
@@ -1209,8 +1393,10 @@ def export(run_dirs: Sequence[Path], artifact_path: Path, *, seeds_path: Path = 
 
 
 def _load_runs(run_dirs: Sequence[Path], artifact: Mapping[str, Any], seeds: Mapping[str, dict],
-               runs_dir: Path) -> dict[str, RunData]:
-    """Exactly the runs the artifact covers, each loaded and checked against the artifact's record of it."""
+               runs_dir: Path, models: CampaignModels) -> dict[str, RunData]:
+    """Exactly the runs the artifact covers: the chain that must name them verified first (a manifest edited after it
+    was sealed is refused as that, before its contents are read), then each loaded and checked against the artifact's
+    record of it and the campaign's registered models."""
     recorded = {r.get("run_stem"): r for r in artifact["coverage"].get("runs") or [] if isinstance(r, dict)}
     stems = [Path(p).name for p in run_dirs]
     if len(stems) != len(set(stems)):
@@ -1219,9 +1405,8 @@ def _load_runs(run_dirs: Sequence[Path], artifact: Mapping[str, Any], seeds: Map
         raise ExportRefusal(f"the runs given {sorted(stems)} are not the runs the section 10 artifact covers "
                             f"{sorted(recorded)}")
     _verify_command(run_dirs, runs_dir)
-    runs = {Path(p).name: load_run(Path(p), recorded[Path(p).name], seeds) for p in run_dirs}
     _check_chain(run_dirs, runs_dir)
-    return runs
+    return {Path(p).name: load_run(Path(p), recorded[Path(p).name], seeds, models) for p in run_dirs}
 
 
 def _plan_seeds(triples: Sequence[Any], seeds: Mapping[str, dict],
@@ -1929,7 +2114,9 @@ def sample_export(*, vocabulary_path: Path = VOCABULARY_FILE, seeds_path: Path =
                   seal_registry: Mapping[str, str] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     """The two sample fixtures, exported from a SYNTHETIC campaign (scripts/petri_multiturn_synthetic.py) built in a
     temporary directory from the vocabulary file's sample settings, with one triple of the last epoch left below its
-    floor so the page's not-eligible mark has a case; the generator seed is recorded in both files."""
+    floor so the page's not-eligible mark has a case; the generator seed is recorded in both files. The campaign records
+    the vocabulary's registered models (campaign_models), so the export's model check runs on it as on landed runs,
+    with no exemption for samples; no model string reaches the sample files."""
     from scripts import petri_multiturn_synthetic as synthetic
     rubric = _load(rubric_path, "the advice rubric")
     registry = _load(registry_path, "the outcome registry")
@@ -1940,7 +2127,7 @@ def sample_export(*, vocabulary_path: Path = VOCABULARY_FILE, seeds_path: Path =
         campaign = synthetic.build_campaign(
             Path(tmp), seeds=seeds, sets={"original": list(cfg["seed_ids"])},
             fires=synthetic.epoch_fires(cfg["epochs"], "original"), rubric=rubric, registry=registry,
-            rng_seed=cfg["rng_seed"], judgment_edit=synthetic.below_floor(cfg["epochs"]))
+            rng_seed=cfg["rng_seed"], judgment_edit=synthetic.below_floor(cfg["epochs"]), models=asdict(vocab.models))
         artifact = Path(tmp) / "artifact.json"
         artifact.write_text(json.dumps(synthetic.build_artifact(campaign)), encoding="utf-8")
         result = export(campaign.run_dirs, artifact, seeds_path=seeds_path, rubric_path=rubric_path,

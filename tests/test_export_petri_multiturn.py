@@ -574,6 +574,175 @@ def test_refuses_a_rule_outcome_the_transcript_does_not_give(tmp_path):
     assert "is not what scripts/petri_audit/rules.py" in msg and "they differ in ['tool_calls_total']" in msg
 
 
+# ------------------------------------------------------------------ the campaign's models, and transcripts bound to their run
+
+MODELS = VOCAB["campaign_models"]
+OTHER_TARGET, OTHER_SERVED, OTHER_JUDGE = "anthropic/another-model", "another-model-snapshot", "another-judge"
+
+
+def _in_run(k: int, edit):
+    """An edit hook applied to the k-th run only."""
+    def hook(stem, doc):
+        if stem == syn.run_stem(k):
+            edit(doc)
+        return doc
+    return hook
+
+
+def _first_judgment(judgments):
+    judgments[0]["judge_model"] = OTHER_JUDGE
+
+
+def _first_source(field, value):
+    def edit(records):
+        records[0]["source"][field] = value
+    return edit
+
+
+@pytest.mark.parametrize("hook, edit, says", [
+    ("manifest_edit", lambda m: m["models"]["target"].update(inspect_name=OTHER_TARGET),
+     f"its target (models.target.inspect_name) is '{OTHER_TARGET}', not a registered target {MODELS['target']}"),
+    ("manifest_edit", lambda m: m["models"]["target"]["served_model_strings"].append(OTHER_SERVED),
+     f"the provider served the target as ['{OTHER_SERVED}'] (models.target.served_model_strings), not a registered"),
+    ("manifest_edit", lambda m: m["models"]["target"].update(served_model_strings=[]),
+     "models.target.served_model_strings is [], not the model strings the provider returned"),
+    ("manifest_edit", lambda m: m.pop("models"), "the manifest records no models.target"),
+    ("manifest_edit", lambda m: m["artifacts"]["judge_of_record"].update(judge_model=OTHER_JUDGE),
+     f"its judge of record (artifacts.judge_of_record.judge_model) is '{OTHER_JUDGE}', not a registered judge"),
+    ("judgment_edit", _first_judgment,
+     f"1 judgment(s) record judge_model '{OTHER_JUDGE}', not a registered judge {MODELS['judge']}"),
+    ("transcript_edit", _first_source("model", OTHER_TARGET),
+     f"source.model '{OTHER_TARGET}' is not a registered target {MODELS['target']}"),
+    ("transcript_edit", _first_source("model_version", OTHER_SERVED),
+     f"source.model_version '{OTHER_SERVED}' is not a registered model string {MODELS['target_served']}"),
+])
+def test_refuses_a_run_of_another_target_or_judge(tmp_path, hook, edit, says):
+    """Regression (Codex review of 2026-09-25): the exporter never read which models produced the data, so a
+    registered fire run on another target, or graded by another judge, was published under the page's text, which
+    names the target and says the same model graded it. The manifest's target and served model strings, its judge of
+    record, every judgment's judge_model and every transcript's source must be the campaign's registered ones
+    (data/petri/multiturn_measures.json campaign_models), and the ones that are not are named."""
+    camp = build(tmp_path / "c", **{hook: _in_run(2, edit)})
+    msg = refused(camp, tmp_path)
+    assert syn.run_stem(2) in msg and says in msg, msg
+
+
+def test_a_transcript_without_a_model_version_is_read(tmp_path):
+    """The control for the test above: the adapter records no source.model_version when the provider served more than
+    one string in the run (the manifest's served_model_strings, all registered, then name them), and that is read."""
+    camp = build(tmp_path / "c", transcript_edit=_in_run(2, _first_source("model_version", None)))
+    assert export(camp, tmp_path).summary["provenance"]["runs"] == [r.stem for r in camp.runs]
+
+
+def test_a_vocabulary_without_well_formed_campaign_models_is_refused(shared, tmp_path):
+    """The registered models are read from the page vocabulary, and a vocabulary without them, or with a list that is
+    missing, empty or repeats a model, is refused by name (never read as 'any model')."""
+    camp, _ = shared
+    for change, says in ((lambda d: d.pop("campaign_models"), "campaign_models must be {target, target_served, judge}"),
+                         (lambda d: d["campaign_models"].update(judge=[]), "campaign_models.judge must be a non-empty"),
+                         (lambda d: d["campaign_models"].update(target=["a", "a"]), "campaign_models.target must be"),
+                         (lambda d: d["campaign_models"].pop("target_served"), "campaign_models.target_served must")):
+        doc = json.loads(json.dumps(VOCAB))
+        change(doc)
+        path = tmp_path / "vocabulary.json"
+        path.write_text(json.dumps(doc), encoding="utf-8")
+        assert says in refused(camp, tmp_path, vocabulary_path=path)
+
+
+def test_the_samples_are_built_from_the_vocabularys_registered_models(tmp_path):
+    """The sample path has no exemption from the model check: the SYNTHETIC campaign records the vocabulary's
+    registered models, so a vocabulary registering others still writes samples, and a campaign recording models the
+    vocabulary does not register is refused like a landed run."""
+    doc = json.loads(json.dumps(VOCAB))
+    doc["campaign_models"] = {"target": [OTHER_TARGET], "target_served": [OTHER_SERVED], "judge": [OTHER_JUDGE]}
+    path = tmp_path / "vocabulary.json"
+    path.write_text(json.dumps(doc), encoding="utf-8")
+    assert ex.sample_export(vocabulary_path=path, seal_registry=SEAL) == ex.sample_export(seal_registry=SEAL)
+    camp = build(tmp_path / "c", models=doc["campaign_models"])
+    assert f"its target (models.target.inspect_name) is '{OTHER_TARGET}'" in refused(camp, tmp_path)
+
+
+@pytest.mark.parametrize("case, says", [
+    ("another run's identity", "provenance.run_manifest names another manifest identity"),
+    ("no binding", "provenance.run_manifest names no manifest identity"),
+    ("no provenance", "provenance.run_manifest names no manifest identity"),
+])
+def test_refuses_a_transcript_not_bound_to_its_runs_manifest(tmp_path, case, says):
+    """Regression (Codex review of 2026-09-25): load_run read every transcript record without checking that it is
+    bound to its run. Each record's provenance.run_manifest.sha256 must be the manifest's identity digest, the pairing
+    check scripts/petri_audit/summary.py makes: a record of another run (here, one naming the first run's identity in
+    the second run's file) or one with no binding is refused."""
+    first: list[str] = []
+
+    def edit(stem, records):
+        first.append(records[0]["provenance"]["run_manifest"]["sha256"])
+        if stem == syn.run_stem(2):
+            if case == "another run's identity":
+                records[0]["provenance"]["run_manifest"]["sha256"] = first[0]
+            elif case == "no binding":
+                records[0]["provenance"]["run_manifest"] = None
+            else:
+                del records[0]["provenance"]
+        return records
+    camp = build(tmp_path / "c", transcript_edit=edit)
+    assert first[0] != first[1]
+    msg = refused(camp, tmp_path)
+    assert f"run {syn.run_stem(2)}: 1 transcript record(s) are not records of this run" in msg and says in msg, msg
+    if case == "another run's identity":
+        assert f"({first[0][:12]})" in msg
+
+
+def _first_record(change):
+    def edit(records):
+        change(records[0])
+    return edit
+
+
+def _tool_turn(record):
+    return next(t for t in record["turns"] if t["role"] == "tool")
+
+
+def _calling_turn(record):
+    return next(t for t in record["turns"] if t.get("tool_calls"))
+
+
+@pytest.mark.parametrize("change, says", [
+    (lambda r: r["turns"][0].pop("role"), "turn #1: role None is not one of ['user', 'assistant', 'system', 'tool']"),
+    (lambda r: r["turns"][0].update(text=None), "turn #1: text is not a string"),
+    (lambda r: r["turns"][1].update(turn_id="2"), "turn #2: turn_id '2' is not an integer"),
+    (lambda r: r["turns"][1].update(turn_id=1), "turn ids repeat: [1]"),
+    (lambda r: r["turns"][0].update(tool_calls=[]), "turn #1: tool_calls are not an assistant turn's list"),
+    (lambda r: _calling_turn(r)["tool_calls"][0].pop("name"), "tool_calls are not an assistant turn's list"),
+    (lambda r: _calling_turn(r)["tool_calls"][0].update(arguments=["q"]), "tool_calls are not an assistant turn's"),
+    (lambda r: _tool_turn(r).update(tool_call_id="call_elsewhere"), "names no tool call in this record"),
+    (lambda r: r.update(turns=[]), "no turns"),
+    (lambda r: r.pop("source"), "no source block"),
+])
+def test_refuses_a_transcript_record_the_exporter_cannot_read(tmp_path, change, says):
+    """Regression (Codex review of 2026-09-25): a transcript record's shape was never checked, so a turn without a
+    role or text, a repeated turn id or a malformed tool call raised a KeyError or was misread. Each record is checked
+    as far as the exporter and rules.rule_outcomes read it, and the problem is named."""
+    camp = build(tmp_path / "c", transcript_edit=_in_run(1, _first_record(change)))
+    msg = refused(camp, tmp_path)
+    assert f"run {syn.run_stem(1)}: 1 transcript record(s) are not records of this run" in msg and says in msg, msg
+
+
+def test_the_manifest_identity_must_be_the_digest_of_its_body(shared):
+    """The identity the records are held to is the manifest's own: chain.identity_sha256 recorded, and equal to the
+    identity digest of the manifest body, else refused (a record bound to a stale identity is bound to no manifest)."""
+    camp, _ = shared
+    manifest = json.loads((camp.run_dirs[0] / "manifest.json").read_text("utf-8"))
+    assert ex.manifest_identity(manifest, "r") == manifest["chain"]["identity_sha256"]
+    stale = json.loads(json.dumps(manifest))
+    stale["spend"]["journal_nonce"] = "edited"
+    with pytest.raises(ex.ExportRefusal, match="is not the identity digest of the manifest body"):
+        ex.manifest_identity(stale, "r")
+    for value in (None, "0" * 12):
+        stale["chain"]["identity_sha256"] = value
+        with pytest.raises(ex.ExportRefusal, match="records no identity digest"):
+            ex.manifest_identity(stale, "r")
+
+
 # ------------------------------------------------------------------ the registered wording, carried verbatim
 
 
