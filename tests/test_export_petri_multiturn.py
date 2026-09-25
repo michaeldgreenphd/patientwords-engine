@@ -13,6 +13,7 @@ adds, fails here. Seed ids come from data/petri/multiturn_measures.json, never f
 from __future__ import annotations
 
 import json
+from fractions import Fraction
 from pathlib import Path
 
 import pytest
@@ -311,6 +312,23 @@ def test_refuses_a_D_the_rows_do_not_reproduce(shared, tmp_path):
     prim = artifact["triples"][0]["contrasts"]["primary"]
     prim["sum"] += 1
     assert "the rows give D" in refused(camp, tmp_path, artifact)
+
+
+def test_scenario_means_are_the_checked_exact_means_never_the_unchecked_mirror(shared, tmp_path):
+    """Regression (Codex review of 2026-09-24): only scenario_means_exact was checked, and the page was given the
+    float mirror scenario_means, so a stale mirror entry was published and a missing one raised a KeyError."""
+    camp, _ = shared
+    artifact = syn.build_artifact(camp)
+    gate = artifact["section_10_2"]["scenario_gate"]
+    sid = next(iter(gate["scenario_means"]))
+    stale = json.loads(json.dumps(artifact))
+    stale["section_10_2"]["scenario_gate"]["scenario_means"][sid] += 0.5
+    assert "the artifact disagrees with itself" in refused(camp, tmp_path, stale)
+    missing = json.loads(json.dumps(artifact))
+    del missing["section_10_2"]["scenario_gate"]["scenario_means"][sid]
+    assert "the artifact disagrees with itself" in refused(camp, tmp_path, missing)
+    out = export(camp, tmp_path, artifact).summary["scenario_means"]
+    assert out == {SEEDS[s]["scenario"]["id"]: float(Fraction(m)) for s, m in gate["scenario_means_exact"].items()}
 
 
 def test_refuses_wording_that_differs_from_the_design_note(shared, tmp_path):

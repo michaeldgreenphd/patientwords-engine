@@ -1078,6 +1078,11 @@ def _primary(s102: Mapping[str, Any], entering: Sequence[tuple[dict, Fraction]],
     means = {s: sum(v, Fraction(0)) / len(v) for s, v in by_scenario.items()}
     if {s: str(m) for s, m in means.items()} != (gate.get("scenario_means_exact") or {}):
         raise ExportRefusal("the scenario gate's means are not the entering triples' means per scenario")
+    # the artifact's float mirror must be the floats of those exact means, as a triple's D is checked beside its
+    # D_exact: a stale or missing mirror entry means the artifact disagrees with itself (Codex review of 2026-09-24)
+    if gate.get("scenario_means") != {s: float(m) for s, m in means.items()}:
+        raise ExportRefusal("the scenario gate's scenario_means are not the floats of its scenario_means_exact, so "
+                            "the artifact disagrees with itself")
     scenario_of = {s: seeds[s]["scenario"]["id"] for s in seed_order}
     if len(set(scenario_of.values())) != len(scenario_of):
         raise ExportRefusal("two seeds share a scenario id, and the page keys scenario means by scenario id")
@@ -1086,7 +1091,8 @@ def _primary(s102: Mapping[str, Any], entering: Sequence[tuple[dict, Fraction]],
                "tied": pst["tied"], "p_two_sided": pst.get("p") if pst["non_tied"] > 0 else None,
                "gate_p": gate.get("p") if gate_ran else None,
                "gate_passed": bool(wording_row.get("gate_same_direction")) if gate_ran else None}
-    return (primary, {scenario_of[s]: gate["scenario_means"][s] for s in means},
+    # the page is given the recomputed means, the values checked above, never the artifact's mirror of them
+    return (primary, {scenario_of[s]: float(m) for s, m in means.items()},
             {"negative": -1, "positive": 1}.get(pst.get("direction")))
 
 
