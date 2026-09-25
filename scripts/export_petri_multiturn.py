@@ -118,8 +118,9 @@ SWAPS_FILE = ROOT / "data" / "petri" / "lay_careful_swaps.draft.json"
 DISCLOSURE_LOG = ROOT / "ops" / "disclosure_log.jsonl"
 DEFAULT_SITE = ROOT.parent / "patientwords"
 
-# the chain-verification command the page prints; the runs must sit in the repository's data/petri/runs
+# the chain-verification command the page prints; the runs must sit in this checkout's data/petri/runs
 RUNS_SUBPATH = ("data", "petri", "runs")
+RUNS_DIR = ROOT.joinpath(*RUNS_SUBPATH)
 VERIFY_COMMAND = "python -m scripts.petri_audit.cli verify-chain --data-dir " + "/".join(RUNS_SUBPATH)
 # the three wordings, in the page's order (the register ids of the framing registry)
 COLLOQUIAL, CAREFUL_LAY, CLINICAL = "colloquial", "lay_careful", "clinical"
@@ -820,15 +821,31 @@ class Export:
     notes: list[str] = field(default_factory=list)
 
 
-def _verify_command(run_dirs: Sequence[Path]) -> str:
-    """The chain-verification command the page prints, refused unless every run sits in one data/petri/runs."""
+@dataclass(frozen=True)
+class Checkout:
+    """Where an export's runs must sit: the directory the page's verify-chain command names, run from the root of the
+    repository it belongs to. For a real export this is the checkout's own data/petri/runs (RUNS_DIR)."""
+    runs_dir: Path
+
+
+REPOSITORY = Checkout(RUNS_DIR)
+
+
+def synthetic_checkout(root: Path) -> Checkout:
+    """For SYNTHETIC input only (the tests, --write-samples): runs under `<root>/data/petri/runs`, since synthetic run
+    directories are in no repository. The CLI never exports with it."""
+    return Checkout(Path(root).joinpath(*RUNS_SUBPATH))
+
+
+def _verify_command(run_dirs: Sequence[Path], runs_dir: Path) -> str:
+    """The chain-verification command the page prints, refused unless every run sits in `runs_dir` itself: a copy of
+    the runs in another data/petri/runs would be exported while the command verifies the checkout's own (Codex review
+    of 2026-09-24: a suffix check accepted any directory ending in data/petri/runs)."""
     parents = {Path(p).resolve().parent for p in run_dirs}
-    if len(parents) != 1:
-        raise ExportRefusal(f"the runs sit in {len(parents)} directories; the page's verify-chain command covers one")
-    parent = parents.pop()
-    if parent.parts[-len(RUNS_SUBPATH):] != RUNS_SUBPATH:
-        raise ExportRefusal(f"the runs sit in {parent}, not in a {'/'.join(RUNS_SUBPATH)} directory, so the page's "
-                            f"verify-chain command would not name them")
+    if parents != {Path(runs_dir).resolve()}:
+        raise ExportRefusal(f"the runs sit in {', '.join(sorted(map(str, parents)))}, not in {runs_dir}, the "
+                            f"directory the page's verify-chain command ({VERIFY_COMMAND}) names, so it would verify "
+                            f"other bytes than the ones exported")
     return VERIFY_COMMAND
 
 
@@ -836,10 +853,13 @@ def export(run_dirs: Sequence[Path], artifact_path: Path, *, seeds_path: Path = 
            rubric_path: Path = ADVICE_RUBRIC, registry_path: Path = OUTCOME_REGISTRY,
            vocabulary_path: Path = VOCABULARY_FILE, wording_path: Path = WORDING_FILE, design_note: Path = DESIGN_NOTE,
            swaps_path: Path = SWAPS_FILE, disclosure_log: Path = DISCLOSURE_LOG,
-           seal_registry: Mapping[str, str] | None = None, example: Mapping[str, Any] | None = None) -> Export:
+           seal_registry: Mapping[str, str] | None = None, example: Mapping[str, Any] | None = None,
+           checkout: Checkout | None = None) -> Export:
     """Build both files in memory from the run directories and the section 10 artifact; refuse by name on any
     problem. `seal_registry` (phrase -> label) defaults to the study's sealed set; `example` overrides the vocabulary
-    file's (the sample fixtures use it)."""
+    file's (the sample fixtures use it); `checkout` defaults to REPOSITORY (synthetic input passes
+    synthetic_checkout)."""
+    checkout = checkout or REPOSITORY
     artifact = load_artifact(Path(artifact_path))
     rubric = _load(rubric_path, "the advice rubric")
     registry = _load(registry_path, "the outcome registry")
@@ -853,7 +873,7 @@ def export(run_dirs: Sequence[Path], artifact_path: Path, *, seeds_path: Path = 
     if ranked_under != rubric_digest:
         raise ExportRefusal(f"the artifact ranked tiers under rubric digest {ranked_under!r}, the rubric in hand is "
                             f"{rubric_digest}")
-    runs = _load_runs(run_dirs, artifact, seeds)
+    runs = _load_runs(run_dirs, artifact, seeds, checkout.runs_dir)
     notes: Counter = Counter()
     for run in runs.values():
         notes["judgments superseded by a retry (the latest per key is read)"] += run.superseded_by_retry
@@ -878,7 +898,7 @@ def export(run_dirs: Sequence[Path], artifact_path: Path, *, seeds_path: Path = 
                "primary": primary, "triples": triples, "scenario_means": scenario_means,
                "repeats": _repeats(seed_order, entering, direction),
                "provenance": {"runs": [r.stem for r in order], "analysis_commit": artifact["identity"]["commit"],
-                              "verify": _verify_command(run_dirs)}}
+                              "verify": _verify_command(run_dirs, checkout.runs_dir)}}
     mechanisms = {mid: dict(v) for mid, v in vocab.mechanisms.items()
                   if any(vocab.mechanism_of[s] == mid for s in seed_order)}
     conversations = {"seed": None, "measures": [m.exported() for m in vocab.measures], "mechanisms": mechanisms,
@@ -903,7 +923,8 @@ def export(run_dirs: Sequence[Path], artifact_path: Path, *, seeds_path: Path = 
     return Export(summary, conversations, lines)
 
 
-def _load_runs(run_dirs: Sequence[Path], artifact: Mapping[str, Any], seeds: Mapping[str, dict]) -> dict[str, RunData]:
+def _load_runs(run_dirs: Sequence[Path], artifact: Mapping[str, Any], seeds: Mapping[str, dict],
+               runs_dir: Path) -> dict[str, RunData]:
     """Exactly the runs the artifact covers, each loaded and checked against the artifact's record of it."""
     recorded = {r.get("run_stem"): r for r in artifact["coverage"].get("runs") or [] if isinstance(r, dict)}
     stems = [Path(p).name for p in run_dirs]
@@ -912,7 +933,7 @@ def _load_runs(run_dirs: Sequence[Path], artifact: Mapping[str, Any], seeds: Map
     if set(stems) != set(recorded):
         raise ExportRefusal(f"the runs given {sorted(stems)} are not the runs the section 10 artifact covers "
                             f"{sorted(recorded)}")
-    _verify_command(run_dirs)
+    _verify_command(run_dirs, runs_dir)
     return {Path(p).name: load_run(Path(p), recorded[Path(p).name], seeds) for p in run_dirs}
 
 
@@ -1373,7 +1394,8 @@ def sample_export(*, vocabulary_path: Path = VOCABULARY_FILE, seeds_path: Path =
         result = export(campaign.run_dirs, artifact, seeds_path=seeds_path, rubric_path=rubric_path,
                         registry_path=registry_path, vocabulary_path=vocabulary_path,
                         disclosure_log=Path(tmp) / "no_disclosure_log.jsonl", seal_registry=seal_registry,
-                        example={"seed_id": cfg["seed_ids"][0], "turn": vocab.example["turn"]})
+                        example={"seed_id": cfg["seed_ids"][0], "turn": vocab.example["turn"]},
+                        checkout=synthetic_checkout(Path(tmp)))
     return samplify(result, cfg["rng_seed"])
 
 

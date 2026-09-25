@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 from fractions import Fraction
 from pathlib import Path
 
@@ -95,6 +96,7 @@ def export(camp: syn.Campaign, tmp: Path, artifact: dict | None = None, name: st
     path.write_text(json.dumps(artifact if artifact is not None else syn.build_artifact(camp)), encoding="utf-8")
     kw.setdefault("disclosure_log", tmp / "no_disclosure_log.jsonl")
     kw.setdefault("seal_registry", NO_SEAL)
+    kw.setdefault("checkout", ex.synthetic_checkout(camp.root))
     return ex.export(camp.run_dirs, path, **kw)
 
 
@@ -262,7 +264,7 @@ def test_refuses_runs_that_are_not_the_artifacts(shared, tmp_path):
     path = tmp_path / "artifact.json"
     path.write_text(json.dumps(artifact), encoding="utf-8")
     with pytest.raises(ex.ExportRefusal, match="not the runs the section 10 artifact covers"):
-        ex.export(camp.run_dirs[:1], path, seal_registry=NO_SEAL)
+        ex.export(camp.run_dirs[:1], path, seal_registry=NO_SEAL, checkout=ex.synthetic_checkout(camp.root))
     changed = json.loads(json.dumps(artifact))
     changed["coverage"]["runs"][0]["judgments_sha256"] = "0" * 64
     assert "judgments.jsonl is not the file the section 10 artifact read" in refused(camp, tmp_path, changed)
@@ -449,8 +451,9 @@ def test_diff_cells_names_every_changed_cell():
     assert ex.diff_cells(new, json.loads(json.dumps(new))) == []
 
 
-def test_cli_writes_both_files_and_prints_the_previous_diff(shared, tmp_path, capsys):
+def test_cli_writes_both_files_and_prints_the_previous_diff(shared, tmp_path, capsys, monkeypatch):
     camp, _ = shared
+    monkeypatch.setattr(ex, "REPOSITORY", ex.synthetic_checkout(camp.root))
     artifact = tmp_path / "artifact.json"
     artifact.write_text(json.dumps(syn.build_artifact(camp)), encoding="utf-8")
     site = tmp_path / "site"
@@ -470,6 +473,26 @@ def test_cli_writes_both_files_and_prints_the_previous_diff(shared, tmp_path, ca
     assert "--previous" in out and "2 changed cell(s)" in out
     assert "~ $.primary.p_two_sided: 0.123 -> " in out and "~ $.triples[2].D: 9.0 -> " in out
     assert "dry run: nothing written" in out
+
+
+def test_the_runs_must_be_this_checkouts_not_a_copy_in_another_data_petri_runs(shared, tmp_path, capsys):
+    """Regression (Codex review of 2026-09-24): any directory ending in data/petri/runs was accepted, so an export of
+    copied runs printed a verify-chain command that names the checkout's own runs, not the bytes exported."""
+    camp, _ = shared
+    artifact = tmp_path / "artifact.json"
+    artifact.write_text(json.dumps(syn.build_artifact(camp)), encoding="utf-8")
+    # the CLI exports only from this checkout's data/petri/runs; the synthetic runs sit in another one
+    assert ex.main(["--analysis", str(artifact), "--dry-run", "--disclosure-log", str(tmp_path / "none.jsonl"),
+                    *map(str, camp.run_dirs)]) == 2
+    err = capsys.readouterr().err
+    assert f"not in {ex.ROOT / 'data' / 'petri' / 'runs'}" in err and "would verify other bytes" in err
+    # and given the campaign's own runs directory, a copy of its runs elsewhere is refused just the same
+    copy = tmp_path / "copy" / "data" / "petri" / "runs"
+    for d in camp.run_dirs:
+        shutil.copytree(d, copy / d.name)
+    with pytest.raises(ex.ExportRefusal, match="the directory the page's verify-chain command"):
+        ex.export([copy / d.name for d in camp.run_dirs], artifact, disclosure_log=tmp_path / "none.jsonl",
+                  seal_registry=NO_SEAL, checkout=ex.synthetic_checkout(camp.root))
 
 
 def test_cli_refuses_with_exit_2_and_writes_nothing(shared, tmp_path, capsys):
