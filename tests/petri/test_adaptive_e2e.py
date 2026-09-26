@@ -182,3 +182,43 @@ def test_an_auditor_request_other_than_the_conversation_the_person_saw_fails_the
     _, _, bad = _run(tmp_path / "bad", [PLAIN], Auditor())
     check = bad.manifest["execution"]["contract_checks"]["stimulus_digest_identity"]
     assert check["status"] == "fail" and "was not sent the conversation the person had seen" in check["detail"], check
+
+
+class _Transient(Exception):
+    pass
+
+
+class _FlakyAuditor(Auditor):
+    """Raises a retryable error on its third call, which Inspect retries: the log then holds an auditor event with an
+    error beside the retried call's own."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.k = 0
+
+    def __call__(self, input, tools, tool_choice, config) -> ModelOutput:
+        self.k += 1
+        if self.k == 3:
+            raise _Transient("overloaded (simulated)")
+        return super().__call__(input, tools, tool_choice, config)
+
+
+def test_a_retried_auditor_call_still_verifies_and_is_booked(tmp_path):
+    """Review of PR #50: a retried attempt was read as an auditor call, shifting every later request onto the wrong
+    turn and failing the check for a correct run."""
+    seed_set = seeds.load_seed_file(adaptive.ADAPTIVE_SEED_FILE)
+    chosen = seeds.select_seeds(seed_set, [PLAIN])
+    target = get_model("mockllm/model", custom_outputs=Target(), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    auditor = get_model("mockllm/model", custom_outputs=_FlakyAuditor())
+    auditor.api.should_retry = lambda ex: isinstance(ex, _Transient)
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1, log_dir=tmp_path / "logs",
+                    token_limit=400000, cost_limit=0.01, auditor=auditor)
+    assert log.status == "success", log.error
+    result = adapt_run(Path(log.location), seed_set, tmp_path / "runs" / "run_a", custody="github_actions_artifact:90d",
+                       spend={"max_spend_usd": 0.01, "judge_max_spend_usd": None, "journal_nonce": None,
+                              "cost_limit_per_sample_usd": 0.01, "token_limit_per_sample": 400000},
+                       engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
+    assert result.manifest["execution"]["contract_checks"]["stimulus_digest_identity"]["status"] == "pass"
+    assert result.refused == []
+    by_role = {r["role"]: r for r in result.manifest["usage"]["by_role"]}
+    assert by_role["auditor"]["calls"] == 2 * 9 + 1, "the failed attempt is still booked"
