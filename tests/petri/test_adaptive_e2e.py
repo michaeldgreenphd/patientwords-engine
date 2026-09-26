@@ -107,6 +107,9 @@ def test_an_empty_or_unfinished_auditor_answer_stops_and_refuses_the_conversatio
     _, _, result = _run(tmp_path, [PLAIN], Auditor(fail_at=4, stop_reason=stop_reason))
     assert len(result.refused) == 2, result.refused
     assert all("auditor_turn limit" in r["reason"] for r in result.refused)
+    # the adapter stops at the same answer the controller did, so what the target received still verifies (review of
+    # PR #50: a non-empty unfinished answer was declared as a turn and failed the check for the whole run)
+    assert result.manifest["execution"]["contract_checks"]["stimulus_digest_identity"]["status"] == "pass"
     # the calls were made and are still booked
     by_role = {r["role"]: r for r in result.manifest["usage"]["by_role"]}
     assert by_role["auditor"]["calls"] == 2 * 3
@@ -155,3 +158,12 @@ def test_the_manifest_binds_the_prompt_file_the_run_recorded_and_refuses_another
     assert check["status"] == "fail"
     assert "not the one the run recorded" in check["detail"] and "rendered instructions" in check["detail"]
     assert again.manifest["execution"]["auditor_instruction_sha256"] == recorded, "the run's digest, not the file's"
+
+
+def test_the_auditor_model_carries_the_prompt_files_sampling_settings():
+    """Review of PR #50: models.auditor.config recorded {} while every call was sent the prompt file's settings."""
+    from scripts.petri_audit.task import build_auditor
+
+    gen = adaptive.load_adaptive_prompt()["generation"]
+    config = build_auditor("mockllm/model").config
+    assert (config.max_tokens, config.temperature) == (gen["max_tokens"], gen["temperature"])

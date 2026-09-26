@@ -395,13 +395,22 @@ def preflight_bound(*, samples: int, epochs: int, token_limit: int, price: Price
                           judge_reserve_usd=judge_reserve_usd, total_usd=total, max_spend_usd=max_spend_usd)
 
 
-def usage_from_samples(samples: Any, role: str = "target") -> dict[str, dict[str, Any]]:
+BOOKED_ROLES = ("target", "auditor")
+"""The model roles whose calls a run's target sidecar books: the target, and the adaptive lane's auditor
+(docs/petri_adaptive_design.md), which spends under the same max_spend and per-sample limits. A scripted run has no
+auditor calls, so its booking is unchanged."""
+
+
+def usage_from_samples(samples: Any, roles: tuple[str, ...] = BOOKED_ROLES) -> dict[str, dict[str, Any]]:
     """Per-model usage rows from Inspect samples (duck-typed, so the 3.11 suite
     can test it): token counts from the sample's aggregate `model_usage` when
     it has the model, else from the model event's own `output.usage` (Codex
     round 7: a failed eval can retain events with usage but no aggregate, and
     a row with calls and zero tokens priced a paid call at zero); calls
-    counted from the events of the given role; an event without a usage block
+    counted from the events of the booked roles (BOOKED_ROLES: the target and
+    the adaptive lane's auditor; review of PR #50, when this path counted the
+    target alone and under-booked an auditor run whose adaptation failed); an
+    event without a usage block
     counted in `calls_without_usage`, never priced as zero. Prompt-cache
     tokens are carried as the adapter carries them (None until a usage
     reports the field), because Inspect counts them outside `input_tokens`
@@ -427,7 +436,7 @@ def usage_from_samples(samples: Any, role: str = "target") -> dict[str, dict[str
         for model, usage in aggregate.items():
             add(row(model), usage)
         for e in getattr(sample, "events", None) or []:
-            if getattr(e, "event", None) != "model" or getattr(e, "role", None) != role:
+            if getattr(e, "event", None) != "model" or getattr(e, "role", None) not in roles:
                 continue
             r = row(e.model)
             r["calls"] += 1

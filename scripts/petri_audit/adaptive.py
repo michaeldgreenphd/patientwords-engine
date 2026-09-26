@@ -113,6 +113,16 @@ def auditor_turn_text(raw: str | None) -> str | None:
     return text or None
 
 
+def auditor_answer(output: Any) -> str | None:
+    """The one rule for what of an auditor call is staged, shared by the controller and the adapter (review of PR #50:
+    they disagreed on an unfinished answer, and the adapter then declared a turn the target never received): the
+    answer's text under `auditor_turn_text` when the call ended on its own (`stop_reason` "stop"), else None. A None
+    stops the conversation with a recorded limit. Duck-typed on `completion` and `stop_reason`."""
+    if output is None or getattr(output, "stop_reason", None) != "stop":
+        return None
+    return auditor_turn_text(getattr(output, "completion", None))
+
+
 def auditor_text_key(turn_index: int) -> str:
     return f"{AUDITOR_TEXT_PREFIX}{turn_index:02d}"
 
@@ -183,12 +193,6 @@ def adaptive_seed_file(source: dict, *, wave: int = 2) -> dict:
 
 
 def auditor_texts_from_events(events: list[Any]) -> list[str | None]:
-    """The auditor's answers in call order, from a sample's model events (duck-typed: `role`, `output.completion`),
-    each under `auditor_turn_text`."""
-    out: list[str | None] = []
-    for e in events:
-        if getattr(e, "role", None) != "auditor":
-            continue
-        output = getattr(e, "output", None)
-        out.append(auditor_turn_text(getattr(output, "completion", None) if output is not None else None))
-    return out
+    """The auditor's answers in call order, from a sample's model events (duck-typed: `role`, `output`), each under
+    `auditor_answer`, so an unfinished answer is None exactly where the controller stopped."""
+    return [auditor_answer(getattr(e, "output", None)) for e in events if getattr(e, "role", None) == "auditor"]

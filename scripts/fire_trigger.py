@@ -440,6 +440,38 @@ def petri_auditor_problems(params: dict) -> list[str]:
     return []
 
 
+def petri_seed_mode_problems(params: dict, repo: Path | None = None) -> list[str]:
+    """`cli preflight`'s one-mode rule, mirrored so a fire it would refuse never journals a reservation (review of PR
+    #50: a mistaken paid fire held its commitment against the day's ceiling, resolved or not, before CI refused it at
+    $0): the seeds the fire selects from its seeds file (its seed ids, else its wave, as the params job resolves them)
+    are all autonomous and name an auditor, or all scripted and name none. Read from the checkout the guard runs in; a
+    seeds file this cannot read or select from is left to the params job and preflight, which refuse it by name.
+    Rejudge reads no seed file this way."""
+    resolved = _petri_resolved(params)
+    if resolved["mode"] not in ("preflight", "dry_run", "run", PETRI_READAPT_MODE):
+        return []
+    try:
+        doc = json.loads((Path(repo) if repo else Path(__file__).resolve().parents[1]).joinpath(
+            resolved["seeds_file"]).read_text(encoding="utf-8"))
+        seeds = [s for s in doc["seeds"] if isinstance(s, dict)]
+    except (OSError, ValueError, KeyError, TypeError):
+        return []
+    ids = resolved["seed_ids"].split()
+    chosen = [s for s in seeds if s.get("seed_id") in ids] if ids else [
+        s for s in seeds if str(s.get("pilot_wave")) == resolved["wave"].strip()]
+    modes = {s.get("mode") for s in chosen}
+    auditor = resolved["auditor_model"]
+    if "autonomous" in modes and "scripted" in modes:
+        return [f"petri-audit seeds from {resolved['seeds_file']} mix scripted and autonomous seeds; a run executes one mode"]
+    if "autonomous" in modes and not auditor:
+        return [f"petri-audit autonomous seeds from {resolved['seeds_file']} need auditor_model (the adaptive auditor); "
+                "cli preflight would refuse the fire after it had journaled its reservation"]
+    if "scripted" in modes and auditor:
+        return [f"petri-audit scripted seeds from {resolved['seeds_file']} take no auditor_model (got {auditor!r}); cli "
+                "preflight would refuse the fire after it had journaled its reservation"]
+    return []
+
+
 def petri_params_problems(params: dict, registry: dict | None = None) -> list:
     """The petri-audit invariants every entry point must enforce before a paid
     step (fire_trigger's fire path, the server-side budget-gate a
@@ -519,6 +551,7 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
                 f"without one can never be reconciled, got {nonce!r}")
     problems.extend(petri_target_problems(params))
     problems.extend(petri_auditor_problems(params))
+    problems.extend(petri_seed_mode_problems(params))
     target_channel, judge_channel = petri_channels(params, registry)
     # a rejudge calls no target, so its one channel is its judge's (`_petri_lane`) and a target it does not call
     # cannot mix channels with it
