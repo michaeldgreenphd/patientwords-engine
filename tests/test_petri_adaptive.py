@@ -306,7 +306,15 @@ def test_the_fallback_spend_report_books_the_auditors_calls():
     ({"seeds_file": "docs/framework/petri_seeds.draft.json", "wave": "1"}, None),  # a scripted fire, as before
     ({"seed_ids": "pw-petri-w2a-tool-clarify", "auditor_model": "anthropic/claude-haiku-4-5"}, None),
     ({"mode": "rejudge", "source_runs": "run_1"}, None),                         # rejudge reads no seeds this way
-    ({"seeds_file": "docs/framework/no_such_file.json"}, None),                  # left to the params job and preflight
+    # a seed file preflight would refuse after the fire had journaled its reservation (Antigravity review of PR #50)
+    ({"seeds_file": "docs/framework/no_such_file.json"}, "cannot be read as a seed file"),
+    ({"seeds_file": None}, "names no file"),
+    ({"seeds_file": "/etc/hosts"}, "not an absolute one"),
+    ({"seeds_file": "../patientwords/README.md"}, "climbs out of the repository"),
+    ({"wave": "1", "auditor_model": "anthropic/claude-haiku-4-5"}, "selects no seed"),
+    ({"seed_ids": "pw-petri-w2a-nope", "auditor_model": "anthropic/claude-haiku-4-5"}, "are not in"),
+    ({"seed_ids": ["pw-petri-w2a-tool-clarify"], "auditor_model": "anthropic/claude-haiku-4-5"}, None),
+    ({"wave": 2, "auditor_model": "anthropic/claude-haiku-4-5"}, None),
 ])
 def test_the_fire_guard_refuses_a_seed_file_and_auditor_that_do_not_match(change, expect):
     """Review of PR #50: cli preflight's one-mode rule ran only in CI, after the fire had journaled a reservation that
@@ -371,3 +379,50 @@ def test_a_retried_auditor_attempt_is_booked_but_not_read_as_a_call():
 
     failed, done = NS(error="overloaded", role="auditor"), NS(error=None, role="auditor")
     assert adaptive.completed_calls([failed, done]) == [done]
+
+
+def _repo_with_run(tmp_path: Path, seeds_file: str) -> Path:
+    """A throwaway checkout holding both seed files and one landed run whose manifest recorded its seeds from
+    `seeds_file`, as the adapter records them."""
+    fw = tmp_path / "docs" / "framework"
+    fw.mkdir(parents=True)
+    for f in (framework.SEED_FILE, adaptive.ADAPTIVE_SEED_FILE):
+        (fw / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
+    doc = framework.load_json(tmp_path / seeds_file)
+    run = tmp_path / "data" / "petri" / "runs" / "run_1_1"
+    run.mkdir(parents=True)
+    framework.write_json(run / "manifest.json", {"seeds": [{"seed_id": s["seed_id"], "file": seeds_file}
+                                                          for s in doc["seeds"][:2]]})
+    return tmp_path
+
+
+def test_the_fire_guard_refuses_a_rejudge_whose_seed_file_lacks_the_runs_seeds(tmp_path):
+    """Antigravity review of PR #50: a rejudge plans from the seed file its fire names, which defaults to the scripted
+    one, so a rejudge of an autonomous run was refused by the plan after the fire had reserved the judge's ceiling."""
+    adaptive_rel = "docs/framework/" + adaptive.ADAPTIVE_SEED_FILE.name
+    repo = _repo_with_run(tmp_path, adaptive_rel)
+    params = {"mode": "rejudge", "source_runs": "run_1_1", "judge": "true", "judge_model": "claude-haiku-4-5",
+              "judge_max_spend": "1"}
+    problems = ft.petri_seed_mode_problems(params, repo=repo)
+    assert any("run_1_1" in p and adaptive_rel in p for p in problems), problems
+    assert ft.petri_seed_mode_problems({**params, "seeds_file": adaptive_rel}, repo=repo) == []
+    assert ft.petri_seed_mode_problems({**params, "source_runs": ["run_1_1"], "seeds_file": adaptive_rel}, repo=repo) == []
+    # a source run this checkout does not hold is left to the plan
+    assert ft.petri_seed_mode_problems({**params, "source_runs": "run_9_1"}, repo=repo) == []
+
+
+def test_the_rehearsal_plans_from_the_seed_file_the_run_recorded(tmp_path):
+    """Antigravity review of PR #50: rejudge-rehearse defaulted to the scripted seed file and refused every autonomous
+    run; it now reads the file the run's manifest recorded."""
+    from scripts.petri_audit import rejudge
+
+    adaptive_rel = "docs/framework/" + adaptive.ADAPTIVE_SEED_FILE.name
+    repo = _repo_with_run(tmp_path, adaptive_rel)
+    runs = repo / "data" / "petri" / "runs"
+    assert cli.recorded_seed_file(runs, "run_1_1") == str(framework.ROOT / adaptive_rel)
+    framework.write_json(runs / "run_1_1" / "manifest.json", {"seeds": []})
+    assert cli.recorded_seed_file(runs, "run_1_1") == str(framework.SEED_FILE)
+    framework.write_json(runs / "run_1_1" / "manifest.json", {"seeds": [{"seed_id": "a", "file": "x.json"},
+                                                                         {"seed_id": "b", "file": "y.json"}]})
+    with pytest.raises(rejudge.RejudgeError, match="more than one file"):
+        cli.recorded_seed_file(runs, "run_1_1")

@@ -891,6 +891,18 @@ def cmd_rejudge_summary(args: argparse.Namespace) -> int:
     return 0
 
 
+def recorded_seed_file(runs_dir: Path, stem: str) -> str:
+    """The seed file a landed run recorded for its seeds (manifest `seeds[].file`, repository-relative), or the
+    scripted seed file for a manifest that records none. A run whose seeds name more than one file is refused: no
+    single file can be the one it ran from."""
+    manifest = load_json(Path(runs_dir) / stem / "manifest.json")
+    files = {s.get("file") for s in manifest.get("seeds") or [] if isinstance(s, dict) and s.get("file")}
+    if len(files) > 1:
+        raise rejudge.RejudgeError(f"{stem}: its manifest records seeds from more than one file ({sorted(files)}); "
+                                   "pass --seeds")
+    return str(ROOT / files.pop()) if files else str(SEED_FILE)
+
+
 def cmd_rejudge_rehearse(args: argparse.Namespace) -> int:
     """The $0 rehearsal, locally: plan a rejudge of one landed run with the mock judge (every answer the first
     declared value), run it into --out-root (outside the repository), and verify the result. Makes no provider
@@ -906,9 +918,12 @@ def cmd_rejudge_rehearse(args: argparse.Namespace) -> int:
     try:
         source = rejudge.source_record(runs_dir, args.source_run)
         tokens = args.judge_max_tokens or source["judge_of_record"]["judge_max_tokens"]
+        # the seed file the run recorded, unless --seeds names one (review of PR #50: the scripted default refused
+        # every autonomous run, whose seeds live in the adaptive file)
+        seeds_file = args.seeds or recorded_seed_file(runs_dir, args.source_run)
         params = {"mode": rejudge.MODE, "source_runs": args.source_run, "judge": "true",
                   "judge_model": rejudge.MOCK_JUDGE, "judge_max_spend": "0.01", "judge_max_tokens": str(tokens),
-                  "commit_outputs": "false", "seeds_file": args.seeds, "_nonce": ""}
+                  "commit_outputs": "false", "seeds_file": seeds_file, "_nonce": ""}
         plan = rejudge.make_plan(params=params, runs_dir=runs_dir, rejudge_root=out_root, journal_entries=[],
                                  workflow_run_id="0", workflow_run_attempt="1", commit="0" * 40)
         out_root.mkdir(parents=True, exist_ok=True)
@@ -1150,7 +1165,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--source-run", required=True, help="a landed run stem under --runs-dir, e.g. run_36076994201_1")
     p.add_argument("--out-root", required=True, help="a directory outside the repository")
     p.add_argument("--runs-dir", default=str(DEFAULT_RUNS_DIR))
-    p.add_argument("--seeds", default=str(SEED_FILE))
+    p.add_argument("--seeds", default=None,
+                   help="the seed file to plan from (default: the one the source run recorded in its manifest)")
     p.add_argument("--judge-max-tokens", type=int, default=None,
                    help="default: the source run's judge of record's allowance (any other is refused by the plan)")
     p.set_defaults(func=cmd_rejudge_rehearse)
