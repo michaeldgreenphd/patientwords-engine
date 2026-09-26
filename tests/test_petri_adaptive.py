@@ -114,9 +114,14 @@ def test_the_auditor_text_rule_and_the_effective_seed(adaptive_set):
     assert seed["texts"] == adaptive_set.seeds["pw-petri-w2a-tool-clarify"]["texts"], "the seed in hand is untouched"
 
     class E:
-        def __init__(self, role, text):
-            self.role, self.output = role, type("O", (), {"completion": text})()
+        def __init__(self, role, text, stop="stop"):
+            self.role, self.output = role, type("O", (), {"completion": text, "stop_reason": stop})()
     assert adaptive.auditor_texts_from_events([E("target", "x"), E("auditor", " a "), E("auditor", "")]) == ["a", None]
+    # an unfinished answer is None exactly where the controller stopped, so the adapter never declares a turn the
+    # target did not receive (review of PR #50: a max_tokens answer failed the whole run's stimulus check)
+    assert adaptive.auditor_texts_from_events([E("auditor", "cut off", "max_tokens"),
+                                               E("auditor", "withheld", "content_filter")]) == [None, None]
+    assert adaptive.auditor_answer(None) is None
 
 
 def _record(seed: dict, cond: dict, user_texts: list[str]) -> dict:
@@ -273,3 +278,39 @@ def test_a_rejudge_binds_the_register_prompt_an_autonomous_runs_plans_carry(adap
     assert list(block["prompt_files"]) == [adaptive.REGISTER_PROMPT_REF]
     assert block["prompt_files"][adaptive.REGISTER_PROMPT_REF]["sha256"] == framework.sha256_file(
         framework.ROOT / adaptive.REGISTER_PROMPT_REF)
+
+
+def test_the_fallback_spend_report_books_the_auditors_calls():
+    """Review of PR #50: the no-adapted-report path counted target calls only, so an auditor call without usage was
+    never imputed and one with usage but no aggregate was dropped."""
+    from types import SimpleNamespace as NS
+
+    usage = NS(input_tokens=1000, output_tokens=100, total_tokens=1100, input_tokens_cache_read=None,
+               input_tokens_cache_write=None)
+    sample = NS(model_usage={}, events=[
+        NS(event="model", role="target", model="anthropic/claude-haiku-4-5", output=NS(usage=usage)),
+        NS(event="model", role="auditor", model="anthropic/claude-sonnet-5", output=NS(usage=usage)),
+        NS(event="model", role="auditor", model="anthropic/claude-sonnet-5", output=NS(usage=None))])
+    rows = spend.usage_from_samples([sample])
+    assert rows["anthropic/claude-sonnet-5"]["calls"] == 2 and rows["anthropic/claude-sonnet-5"]["calls_without_usage"] == 1
+    assert rows["anthropic/claude-sonnet-5"]["input_tokens"] == 1000
+    cost, priced = spend.reprice_usage(rows)
+    assert cost is None, "a priced auditor call without usage makes the total unknown, so the ceiling is imputed"
+
+
+@pytest.mark.parametrize("change, expect", [
+    ({}, "need auditor_model"),                                                  # adaptive seeds, no auditor
+    ({"auditor_model": "anthropic/claude-haiku-4-5"}, None),
+    ({"seeds_file": "docs/framework/petri_seeds.draft.json", "auditor_model": "anthropic/claude-haiku-4-5"},
+     "take no auditor_model"),
+    ({"seeds_file": "docs/framework/petri_seeds.draft.json", "wave": "1"}, None),  # a scripted fire, as before
+    ({"seed_ids": "pw-petri-w2a-tool-clarify", "auditor_model": "anthropic/claude-haiku-4-5"}, None),
+    ({"mode": "rejudge", "source_runs": "run_1"}, None),                         # rejudge reads no seeds this way
+    ({"seeds_file": "docs/framework/no_such_file.json"}, None),                  # left to the params job and preflight
+])
+def test_the_fire_guard_refuses_a_seed_file_and_auditor_that_do_not_match(change, expect):
+    """Review of PR #50: cli preflight's one-mode rule ran only in CI, after the fire had journaled a reservation that
+    holds the day's ceiling; the guard now refuses the mismatch before the push."""
+    problems = ft.petri_seed_mode_problems({**BASE, **change}, repo=ROOT)
+    assert (problems == []) if expect is None else any(expect in p for p in problems), problems
+    assert ft.petri_params_problems({"mode": "preflight"}) == [], "the park is unaffected"

@@ -131,9 +131,14 @@ def build_target(target: str | Model, seeds: list[dict]) -> Model:
 
 def build_auditor(auditor: str | Model) -> Model:
     """The auditor Model, built before anything is marked started, as the target is: construction raises for an
-    unknown provider or an empty key variable before any provider call. Its sampling settings are the prompt file's
-    and are passed on every call (controller.adaptive_auditor), so the Model carries none of its own."""
-    return get_model(auditor) if isinstance(auditor, str) else auditor
+    unknown provider or an empty key variable before any provider call. It carries the prompt file's sampling
+    settings as its role config, so the log (and models.auditor.config in the manifest) records what every call was
+    sent; the controller passes the same settings on each call (review of PR #50: the manifest recorded {})."""
+    if not isinstance(auditor, str):
+        return auditor
+    gen = load_adaptive_prompt()["generation"]
+    return get_model(auditor, config=GenerateConfig(max_tokens=int(gen["max_tokens"]),
+                                                    temperature=float(gen["temperature"])))
 
 
 def run_study(task: Task, *, target: str | Model, seeds: list[dict], epochs: int, log_dir: Path | str,

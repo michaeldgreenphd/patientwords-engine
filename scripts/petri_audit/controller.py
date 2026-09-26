@@ -21,7 +21,7 @@ from inspect_ai.log import transcript
 from inspect_ai.model import ChatMessageSystem, ChatMessageUser, GenerateConfig, get_model
 from inspect_petri.target import ResponseOutput, controller
 
-from .adaptive import auditor_text_key, auditor_turn_text, render_conversation, render_system, render_turn_request
+from .adaptive import auditor_answer, auditor_text_key, render_conversation, render_system, render_turn_request
 from .checks import MAX_TOOL_ROUNDS_PER_TURN, ROOT_BRANCH
 from .framework import sha256_text
 from .seeds import SeedSet, conditions, seed_digest, text_of, tool_result_for
@@ -216,11 +216,10 @@ def adaptive_auditor(seed_set: SeedSet, prompt: dict) -> Agent:
                 out = await auditor.generate([ChatMessageSystem(content=system_text), ChatMessageUser(content=request)],
                                              config=config)
                 counters["auditor_calls"] += 1
-                text = auditor_turn_text(out.completion)
-                if text is None or out.stop_reason != "stop":
+                text = auditor_answer(out)
+                if text is None:
                     _info({"pw": "limit", "kind": "auditor_turn", "limit": gen["max_tokens"],
-                           "reason": f"auditor answer {'empty' if text is None else 'not finished'} "
-                                     f"(stop_reason {out.stop_reason!r})",
+                           "reason": f"auditor answer empty or not finished (stop_reason {out.stop_reason!r})",
                            "branch_id": ROOT_BRANCH, "condition_id": cond["condition_id"], "turn_index": i})
                     counters["limits"] += 1
                     break
