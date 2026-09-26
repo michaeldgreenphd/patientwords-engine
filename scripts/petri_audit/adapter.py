@@ -58,6 +58,7 @@ from .checks import (
 from .adaptive import (
     ADAPTIVE_PROMPT,
     adaptive_prompt_digest,
+    auditor_request_problems,
     auditor_texts_from_events,
     effective_seed,
     load_adaptive_prompt,
@@ -240,6 +241,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             recorded_seeds.setdefault(str(smeta.get("seed_id")), []).append(smeta.get("seed_sha256"))
         observed = {"status": log.status, "eval_id": spec.eval_id,
                     "target": roles["target"].model if roles.get("target") else spec.model,
+                    "auditor": roles[AUDITOR_ROLE].model if roles.get(AUDITOR_ROLE) else None,
                     "seed_ids": list(meta["seed_ids"]) if isinstance(meta, dict) and isinstance(meta.get("seed_ids"), list) else None,
                     "epochs": getattr(spec.config, "epochs", None), "token_limit": getattr(spec.config, "token_limit", None),
                     "log_model_api": getattr(spec.config, "log_model_api", None), "seed_sha256": recorded_seeds}
@@ -424,6 +426,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                     checks["stimulus_digest_identity"].fail(
                         f"{tree_id}: an auditor call's system message is not this condition's rendered instructions")
                     break
+            auditor_total = min(seed["protocol"]["max_target_turns"], len(cond["turns"]))
             seed, cond = effective_seed(seed, cond, [t for t in finished if t is not None])
         # raw request bodies (per sample, every branch): each retained request's complete system/user sequence must be
         # a prefix of exactly the sequence one branch of this condition declares, never mere membership in a pool.
@@ -518,6 +521,12 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                 expected, staged_here = [], []
             for problem in stimulus_problems(expected, record["turns"], where=where):
                 checks["stimulus_digest_identity"].fail(problem)
+            if seed["mode"] == "autonomous":
+                # and every auditor call was sent the conversation the person had seen before its turn (Codex review
+                # of PR #50), recomputed from this record
+                for problem in auditor_request_problems(auditor_prompt, record["turns"], auditor_events, auditor_total,
+                                                        where=where):
+                    checks["stimulus_digest_identity"].fail(problem)
             staged_shas = [s.get("sha256") for s in staged
                            if s.get("kind") in ("user", "system") and s.get("branch_id") == branch_id]
             for problem in staging_problems(staged_here, staged_shas, where=where):

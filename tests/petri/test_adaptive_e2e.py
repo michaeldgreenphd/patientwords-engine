@@ -167,3 +167,18 @@ def test_the_auditor_model_carries_the_prompt_files_sampling_settings():
     gen = adaptive.load_adaptive_prompt()["generation"]
     config = build_auditor("mockllm/model").config
     assert (config.max_tokens, config.temperature) == (gen["max_tokens"], gen["temperature"])
+
+
+def test_an_auditor_request_other_than_the_conversation_the_person_saw_fails_the_check(tmp_path, monkeypatch):
+    """Codex review of PR #50: only the auditor's system message was checked, so a stale or malformed request could
+    stand behind a passing stimulus check. The adapter recomputes every request from the record."""
+    from scripts.petri_audit import controller
+
+    _, _, clean = _run(tmp_path / "clean", [PLAIN], Auditor())
+    assert clean.manifest["execution"]["contract_checks"]["stimulus_digest_identity"]["status"] == "pass"
+    real = controller.render_turn_request
+    # the controller sends the request for a later turn number than the one being written (a stale counter)
+    monkeypatch.setattr(controller, "render_turn_request", lambda prompt, conv, n, total: real(prompt, conv, n + 1, total + 1))
+    _, _, bad = _run(tmp_path / "bad", [PLAIN], Auditor())
+    check = bad.manifest["execution"]["contract_checks"]["stimulus_digest_identity"]
+    assert check["status"] == "fail" and "was not sent the conversation the person had seen" in check["detail"], check

@@ -192,6 +192,52 @@ def adaptive_seed_file(source: dict, *, wave: int = 2) -> dict:
             "seed_schema": source["seed_schema"], "seeds": seeds}
 
 
+def visible_turns(turns: list[dict]) -> list[tuple[str, str]]:
+    """What the person saw of a transcript: their own turns and the assistant's non-empty text, in order; tool calls
+    and tool results are not shown. The controller builds the same list as the conversation runs."""
+    return [(t["role"], t.get("text") or "") for t in turns
+            if t["role"] == "user" or (t["role"] == "assistant" and (t.get("text") or "").strip())]
+
+
+def expected_auditor_requests(prompt: dict, turns: list[dict], total: int) -> list[str]:
+    """The request each auditor call must have been sent, recomputed from a transcript record: for every user turn n
+    from 2 on, the conversation the person had seen before it, rendered under `render_turn_request(.., n, total)`."""
+    out: list[str] = []
+    seen: list[tuple[str, str]] = []
+    n = 0
+    for role, text in visible_turns(turns):
+        if role == "user":
+            n += 1
+            if n >= 2:
+                out.append(render_turn_request(prompt, render_conversation(prompt, seen), n, total))
+        seen.append((role, text))
+    return out
+
+
+def auditor_request_problems(prompt: dict, turns: list[dict], events: list[Any], total: int, *, where: str) -> list[str]:
+    """Each way the auditor calls of a sample differ from what the controller must have sent them, recomputed from the
+    record (Codex review of PR #50: only the system message was checked, so a stale or malformed request could stand
+    behind a passing stimulus check): one call per auditor-written turn, each sent exactly the rendered request, plus
+    at most one further call whose answer was not staged (the conversation then stops at a recorded limit and the
+    tree is refused). Duck-typed on `input` (messages with `role` and `text`)."""
+    import hashlib as _h
+
+    def digest(text: str | None) -> str | None:
+        return None if text is None else _h.sha256(text.encode("utf-8")).hexdigest()
+
+    expected = expected_auditor_requests(prompt, turns, total)
+    sent = [next((m.text for m in getattr(e, "input", []) or [] if getattr(m, "role", None) == "user"), None)
+            for e in events]
+    if len(sent) < len(expected):
+        return [f"{where}: {len(expected)} auditor-written turn(s) but {len(sent)} auditor call(s)"]
+    if len(sent) > len(expected) + 1:
+        return [f"{where}: {len(sent)} auditor calls for {len(expected)} auditor-written turn(s)"]
+    for n, (want, got) in enumerate(zip(expected, sent), 2):
+        if digest(got) != digest(want):
+            return [f"{where}: the auditor call for user turn {n} was not sent the conversation the person had seen"]
+    return []
+
+
 def auditor_texts_from_events(events: list[Any]) -> list[str | None]:
     """The auditor's answers in call order, from a sample's model events (duck-typed: `role`, `output`), each under
     `auditor_answer`, so an unfinished answer is None exactly where the controller stopped."""
