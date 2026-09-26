@@ -57,6 +57,10 @@ auditor loop, so realism rests on the agenda being the study's real stimuli and 
   the pre-flight bound prices every token at the dearer model's rate (`spend.dearest_price`).
 - The auditor bills the target's channel (the params job, `cli preflight` and `fire_trigger.py` all refuse a mixed
   fire), so the fire's lane and commitment are the target's.
+- A fire CI would refuse at $0 still holds its reservation for the day, so `fire_trigger.py` refuses it first: a seeds
+  file that is missing or outside the repository, a selection that is empty, unknown or mixes modes or disagrees with
+  `auditor_model`, and a rejudge whose seeds file lacks a source run's recorded seeds (`petri_seed_mode_problems`).
+  `cli rejudge-rehearse` plans from the seed file the run recorded.
 - The manifest records `execution.mode: autonomous`, `models.auditor`, and
   `execution.auditor_instruction_sha256`: the digest of the prompt file **the run recorded** in its task metadata,
   never the checkout's. The adapter refuses (fails the stimulus check) a prompt file in hand with another digest, and
