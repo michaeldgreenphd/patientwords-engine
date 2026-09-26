@@ -340,8 +340,11 @@ def expected_from_params(params: dict, seed_ids: list[str], seed_digests: dict[s
                            "so the log's record of the seed content the source run executed can be compared; got "
                            f"{sorted(seed_digests) if isinstance(seed_digests, dict) else seed_digests!r} for "
                            f"{sorted(seed_ids)}")
-    return {"target": target, "seed_ids": list(seed_ids), "epochs": epochs, "token_limit": token_limit,
-            "log_model_api": log_model_api == "true", "seed_sha256": dict(seed_digests)}
+    # the adaptive auditor the source run bound, as the readapt fire states it: None for a scripted run, so the log's
+    # auditor role is compared either way (Codex review of PR #50)
+    auditor = str(params.get("auditor_model") or "").strip() or None
+    return {"target": target, "auditor": auditor, "seed_ids": list(seed_ids), "epochs": epochs,
+            "token_limit": token_limit, "log_model_api": log_model_api == "true", "seed_sha256": dict(seed_digests)}
 
 
 def log_problems(expected: dict, observed: dict) -> list[str]:
@@ -369,6 +372,10 @@ def log_problems(expected: dict, observed: dict) -> list[str]:
             problems.append(f"the log records no {key}; it cannot be shown to be the run this readapt names")
         elif mine != theirs:
             problems.append(f"{key}: the log records {theirs!r}, the readapt states {mine!r}")
+    if "auditor" in expected and expected["auditor"] != observed.get("auditor"):
+        # None is a value here, not a gap: a scripted run binds no auditor, and a readapt of an autonomous one must
+        # state the auditor the log records (a plan written before the adaptive lane carries no key and is not checked)
+        problems.append(f"auditor: the log records {observed.get('auditor')!r}, the readapt states {expected['auditor']!r}")
     if "seed_ids" in expected:
         theirs = observed.get("seed_ids")
         if not isinstance(theirs, list):
