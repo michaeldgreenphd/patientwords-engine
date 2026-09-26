@@ -46,7 +46,9 @@ from .manifest import bind_judgments, reseal_problems, verify_chain, verify_run
 from .seal import sealed_registry, seed_texts_against_registry
 from .seeds import conditions, load_seed_file, seed_digest, select_seeds, target_visible_strings, validate_seed
 from .spend import (
+    billing_channel,
     cache_booking_problems,
+    dearest_price,
     judge_billing_channel,
     judge_key_routing_problems,
     openrouter_price_problems,
@@ -85,6 +87,23 @@ def cmd_validate_seeds(args: argparse.Namespace) -> int:
     return 0 if not bad else 4
 
 
+def cmd_build_adaptive_seeds(args: argparse.Namespace) -> int:
+    """Derive the adaptive-auditor seed file from the scripted one (adaptive.adaptive_seed_file) and write it, or with
+    --check compare it with the file on disk. The file is derived, never edited by hand."""
+    from . import adaptive
+
+    doc = adaptive.adaptive_seed_file(load_json(Path(args.source)), wave=args.wave)
+    text = json.dumps(doc, indent=2, ensure_ascii=False) + "\n"
+    out = Path(args.out)
+    if args.check:
+        same = out.is_file() and out.read_text(encoding="utf-8") == text
+        print(f"{out}: {'matches the derivation' if same else 'DIFFERS from the derivation; rebuild it'}")
+        return 0 if same else 1
+    out.write_text(text, encoding="utf-8")
+    print(f"wrote {out}: {len(doc['seeds'])} adaptive seed(s) from {args.source}")
+    return 0
+
+
 def cmd_verify_lock(args: argparse.Namespace) -> int:
     report = verify_lock(load_lock(args.lock), harness_commit_known=not args.no_harness_commit, lock_path=args.lock)
     print("\n".join(report_lines(report)))
@@ -109,6 +128,14 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
     # or a judge spec whose registry provider bills a third key (google:, GEMINI_API_KEY), bills its own vendor while
     # every spend guard books it to the Anthropic lane, so no amount of checking below makes it runnable (2026-09-23)
     routing_problems = target_provider_problems(args.target)
+    auditor = getattr(args, "auditor_model", None)
+    if auditor:
+        # the auditor is billed and booked exactly as a target is: its spelling names Anthropic or OpenRouter
+        routing_problems += [p.replace("target", "auditor", 1) for p in target_provider_problems(auditor)]
+        if billing_channel([auditor]) != billing_channel([args.target]):
+            routing_problems.append(f"auditor {auditor!r} bills the {billing_channel([auditor])} channel but target "
+                                    f"{args.target!r} bills {billing_channel([args.target])}: one fire carries one "
+                                    "commitment on one account")
     if args.judge_model:
         routing_problems += judge_key_routing_problems(args.judge_model)
     if routing_problems:
@@ -118,11 +145,18 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
     seed_set = load_seed_file(args.seeds)
     seeds = select_seeds(seed_set, args.seed_id or None, args.wave)
     problems = {s["seed_id"]: validate_seed(s, seed_set) for s in seeds}
+    modes = {s.get("mode") for s in seeds}
     for seed in seeds:
-        if seed.get("mode") != "scripted":
-            # the validator admits autonomous seeds as data; no task path executes them yet, and the scripted
-            # controller must never be handed one (Codex round 2)
-            problems[seed["seed_id"]].append(f"mode {seed.get('mode')!r} has no execution path; only scripted seeds run")
+        # each controller executes its own mode only (task.run_mode): an autonomous seed runs under the adaptive
+        # controller, which needs an auditor model, and a scripted one never meets an auditor (Codex round 2)
+        if len(modes) > 1:
+            problems[seed["seed_id"]].append(f"a run executes one mode; this selection mixes {sorted(map(str, modes))}")
+        elif seed.get("mode") == "autonomous" and not auditor:
+            problems[seed["seed_id"]].append("an autonomous seed needs --auditor-model (the adaptive auditor)")
+        elif seed.get("mode") == "scripted" and auditor:
+            problems[seed["seed_id"]].append("a scripted seed takes no auditor: nothing but data reaches the target")
+        elif seed.get("mode") not in ("scripted", "autonomous"):
+            problems[seed["seed_id"]].append(f"mode {seed.get('mode')!r} has no execution path")
     if any(problems.values()):
         for sid, ps in problems.items():
             for p in ps:
@@ -171,6 +205,8 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
     # an `openrouter/` target without a reviewed per-model price is refused before the bound is computed from the
     # catch-all (2026-09-23): the bound, Inspect's cost_limit and the sidecar would all rest on an unreviewed rate
     target_unpriced = openrouter_price_problems(args.target)
+    if auditor:
+        target_unpriced += [f"(auditor) {p}" for p in openrouter_price_problems(auditor)]
     if target_unpriced:
         for p in target_unpriced:
             print(f"pre-flight: REFUSED - target {p}", file=sys.stderr)
@@ -179,15 +215,24 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
     # reviewed price ~5% above list leaves no margin for them to be booked at $0 the way the catch-all did (review of
     # 2026-09-23). Not the judge: its per-call ceiling books OpenRouter's prompt_tokens, cached ones included
     target_cache = cache_booking_problems(args.target)
+    if auditor:
+        target_cache += [f"(auditor) {p}" for p in cache_booking_problems(auditor)]
     if target_cache:
         for p in target_cache:
             print(f"pre-flight: REFUSED - target {p}", file=sys.stderr)
         return 5, {}
     price = resolve_price(args.target)
+    print(f"price {args.target}: in {price.input_per_mtok}/Mtok out {price.output_per_mtok}/Mtok ({price.source})")
+    if auditor:
+        # Inspect's per-sample token limit counts the auditor's calls with the target's (task.run_study), so the
+        # bound prices every token at the dearest rate of either model
+        auditor_price = resolve_price(auditor)
+        print(f"price {auditor} (auditor): in {auditor_price.input_per_mtok}/Mtok out "
+              f"{auditor_price.output_per_mtok}/Mtok ({auditor_price.source})")
+        price = dearest_price(price, auditor_price)
     samples = sum(len(conditions(s)) for s in seeds)
     bound = preflight_bound(samples=samples, epochs=args.epochs, token_limit=args.token_limit, price=price,
                             judge_reserve_usd=args.judge_max_spend or 0.0, max_spend_usd=args.max_spend)
-    print(f"price {args.target}: in {price.input_per_mtok}/Mtok out {price.output_per_mtok}/Mtok ({price.source})")
     print(f"pre-flight bound: {samples} sample(s) x {args.epochs} epoch(s) x {args.token_limit} tokens -> "
           f"${bound.total_usd:.4f} against max_spend ${args.max_spend:.4f} (target calls); "
           f"judge ceiling ${bound.judge_reserve_usd:.4f} is its own commitment, enforced per call")
@@ -207,7 +252,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     code, facts = _preflight(args)
     if code:
         return code
-    from .task import build_target, run_study, study_task  # 3.12 only
+    from .task import build_auditor, build_target, run_study, study_task  # 3.12 only
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -216,23 +261,25 @@ def cmd_run(args: argparse.Namespace) -> int:
     per_sample_cost = args.max_spend / max(1, facts["samples"] * args.epochs)
     # the limits the run actually passes to Inspect, for `adapt --run-params` to record in the manifest
     write_json(out_dir / "run_params.json", {
-        "target": args.target, "max_spend_usd": args.max_spend, "judge_max_spend_usd": args.judge_max_spend,
+        "target": args.target, "auditor": args.auditor_model, "max_spend_usd": args.max_spend,
+        "judge_max_spend_usd": args.judge_max_spend,
         "cost_limit_per_sample_usd": per_sample_cost, "token_limit_per_sample": args.token_limit,
         "epochs": args.epochs, "samples": facts["samples"], "log_model_api": args.log_model_api == "true",
         "journal_nonce": args.journal_nonce or None,
         "seed_ids": [s["seed_id"] for s in facts["seeds"]]})
     try:
         target_model = build_target(args.target, facts["seeds"])
+        auditor_model = build_auditor(args.auditor_model) if args.auditor_model else None
     except Exception as exc:  # noqa: BLE001 - every construction failure precedes the first provider call
         # exit 11: nothing was called and the start marker was not written, so the workflow's fallback spend report
         # books nothing for this fire (2026-09-23: the marker used to be written before the model was built)
         reason = " ".join(str(exc).split())[:400]          # Inspect's messages span lines; the key variable is named late
-        print(f"target {args.target!r} could not be built ({type(exc).__name__}: {reason}); no provider call was made "
-              "and the start marker was not written", file=sys.stderr)
+        print(f"target {args.target!r} or auditor {args.auditor_model!r} could not be built ({type(exc).__name__}: "
+              f"{reason}); no provider call was made and the start marker was not written", file=sys.stderr)
         return 11
     log = run_study(task, target=target_model, seeds=facts["seeds"], epochs=args.epochs, log_dir=out_dir / "logs",
                     token_limit=args.token_limit, cost_limit=per_sample_cost, log_model_api=args.log_model_api == "true",
-                    started_marker=args.started_marker)
+                    started_marker=args.started_marker, auditor=auditor_model)
     print(f"eval {log.eval.eval_id} status {log.status}; log {log.location}")
     return 0 if log.status == "success" else 7
 
@@ -844,6 +891,18 @@ def cmd_rejudge_summary(args: argparse.Namespace) -> int:
     return 0
 
 
+def recorded_seed_file(runs_dir: Path, stem: str) -> str:
+    """The seed file a landed run recorded for its seeds (manifest `seeds[].file`, repository-relative), or the
+    scripted seed file for a manifest that records none. A run whose seeds name more than one file is refused: no
+    single file can be the one it ran from."""
+    manifest = load_json(Path(runs_dir) / stem / "manifest.json")
+    files = {s.get("file") for s in manifest.get("seeds") or [] if isinstance(s, dict) and s.get("file")}
+    if len(files) > 1:
+        raise rejudge.RejudgeError(f"{stem}: its manifest records seeds from more than one file ({sorted(files)}); "
+                                   "pass --seeds")
+    return str(ROOT / files.pop()) if files else str(SEED_FILE)
+
+
 def cmd_rejudge_rehearse(args: argparse.Namespace) -> int:
     """The $0 rehearsal, locally: plan a rejudge of one landed run with the mock judge (every answer the first
     declared value), run it into --out-root (outside the repository), and verify the result. Makes no provider
@@ -859,9 +918,12 @@ def cmd_rejudge_rehearse(args: argparse.Namespace) -> int:
     try:
         source = rejudge.source_record(runs_dir, args.source_run)
         tokens = args.judge_max_tokens or source["judge_of_record"]["judge_max_tokens"]
+        # the seed file the run recorded, unless --seeds names one (review of PR #50: the scripted default refused
+        # every autonomous run, whose seeds live in the adaptive file)
+        seeds_file = args.seeds or recorded_seed_file(runs_dir, args.source_run)
         params = {"mode": rejudge.MODE, "source_runs": args.source_run, "judge": "true",
                   "judge_model": rejudge.MOCK_JUDGE, "judge_max_spend": "0.01", "judge_max_tokens": str(tokens),
-                  "commit_outputs": "false", "seeds_file": args.seeds, "_nonce": ""}
+                  "commit_outputs": "false", "seeds_file": seeds_file, "_nonce": ""}
         plan = rejudge.make_plan(params=params, runs_dir=runs_dir, rejudge_root=out_root, journal_entries=[],
                                  workflow_run_id="0", workflow_run_attempt="1", commit="0" * 40)
         out_root.mkdir(parents=True, exist_ok=True)
@@ -922,10 +984,20 @@ def build_parser() -> argparse.ArgumentParser:
                        help="registry judge spec, resolved and priced before any target call when judging")
         p.add_argument("--epochs", type=int, default=1)
         p.add_argument("--token-limit", type=int, default=20000)
+        p.add_argument("--auditor-model", default=None,
+                       help="Inspect model string of the adaptive auditor; required for autonomous seeds and refused "
+                            "for scripted ones (docs/petri_adaptive_design.md)")
 
     p = sub.add_parser("validate-seeds")
     common_seeds(p)
     p.set_defaults(func=cmd_validate_seeds)
+
+    p = sub.add_parser("build-adaptive-seeds", help="derive the adaptive-auditor seed file from the scripted seed file")
+    p.add_argument("--source", default=str(SEED_FILE))
+    p.add_argument("--out", default=str(ROOT / "docs" / "framework" / "petri_seeds_adaptive.draft.json"))
+    p.add_argument("--wave", type=int, default=2)
+    p.add_argument("--check", action="store_true", help="compare with the file on disk instead of writing it")
+    p.set_defaults(func=cmd_build_adaptive_seeds)
 
     p = sub.add_parser("verify-lock")
     common_lock(p)
@@ -1093,7 +1165,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--source-run", required=True, help="a landed run stem under --runs-dir, e.g. run_36076994201_1")
     p.add_argument("--out-root", required=True, help="a directory outside the repository")
     p.add_argument("--runs-dir", default=str(DEFAULT_RUNS_DIR))
-    p.add_argument("--seeds", default=str(SEED_FILE))
+    p.add_argument("--seeds", default=None,
+                   help="the seed file to plan from (default: the one the source run recorded in its manifest)")
     p.add_argument("--judge-max-tokens", type=int, default=None,
                    help="default: the source run's judge of record's allowance (any other is refused by the plan)")
     p.set_defaults(func=cmd_rejudge_rehearse)

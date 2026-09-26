@@ -135,7 +135,8 @@ PARK_DEFAULTS = {
 PETRI_READAPT_MODE = "readapt"
 PETRI_PAID_MODES = ("run", PETRI_READAPT_MODE)
 PETRI_READAPT_MATCH_KEYS = ("seeds_file", "seed_ids", "wave", "target", "epochs", "token_limit", "max_spend",
-                            "judge", "judge_model", "judge_max_spend", "judge_max_tokens", "log_model_api")
+                            "judge", "judge_model", "judge_max_spend", "judge_max_tokens", "log_model_api",
+                            "auditor_model")
 PETRI_RUNS_RELPATH = Path("data") / "petri" / "runs"
 # mirrors of scripts/petri_audit/readapt.py (this script imports nothing from the lane; tests hold them equal): the
 # files adaptation writes, and the name after `<stem>` of an earlier readapt's judge sidecar in the source directory
@@ -413,6 +414,129 @@ def petri_target_problems(params: dict) -> list[str]:
     return []
 
 
+def petri_auditor_problems(params: dict) -> list[str]:
+    """The params job's `auditor_model` refusals (docs/petri_adaptive_design.md), mirrored so a fire the job would
+    refuse never journals a reservation: read by preflight, dry_run, run and readapt only (a readapt calls no auditor
+    but states its source run's, as it states the target, and PETRI_READAPT_MATCH_KEYS holds it equal to the source
+    fire's; Codex review of PR #50); the mock under dry_run; in the paid modes spelled as a paid target is and billed
+    on the target's channel, since one fire carries one commitment on one account and the lane is the target's
+    (_petri_lane). The job's value is `str(value)` of the trigger key, so a JSON null reads as "None" and is refused
+    as a spelling."""
+    auditor = _petri_job_value(params, "auditor_model", "")
+    if not auditor:
+        return []
+    mode = petri_resolved_mode(params)
+    if mode not in ("preflight", "dry_run", "run", PETRI_READAPT_MODE):
+        return [f"petri-audit auditor_model is read by preflight, dry_run, run and readapt only, got mode {mode!r}"]
+    if mode == "dry_run" and auditor != PETRI_MOCK_TARGET:
+        return [f"petri-audit dry_run runs its auditor against {PETRI_MOCK_TARGET!r} only, got {auditor!r}"]
+    if mode in PETRI_PAID_MODES:
+        if not PETRI_RUN_TARGET_RE.fullmatch(auditor):
+            return [f"petri-audit mode {mode} needs an auditor spelled anthropic/<model> or openrouter/<vendor>/<model>, "
+                    f"got {auditor!r}"]
+        if auditor.startswith("openrouter/") != petri_resolved_target(params).startswith("openrouter/"):
+            return [f"petri-audit auditor {auditor!r} and target {petri_resolved_target(params)!r} bill different "
+                    "channels; one fire carries one commitment on one account"]
+    return []
+
+
+def _petri_seed_doc(seeds_file: str, root: Path) -> tuple[list[dict] | None, str | None]:
+    """(seeds, problem) for the seed file a petri-audit fire names, read from the checkout the guard runs in: a
+    relative path inside the repository that exists and parses as a seed file. The params job passes the name through
+    unchecked and preflight refuses a bad one only after the fire has journaled its reservation, which holds the day's
+    ceiling (review of PR #50), so the guard refuses it first."""
+    name = str(seeds_file or "").strip()
+    if not name or name == "None":
+        return None, "petri-audit seeds_file names no file"
+    if Path(name).is_absolute():
+        return None, f"petri-audit seeds_file {name!r} must be a path inside the repository, not an absolute one"
+    path = (root / name).resolve()
+    if root not in path.parents:
+        return None, f"petri-audit seeds_file {name!r} climbs out of the repository"
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        seeds = [s for s in doc["seeds"] if isinstance(s, dict)]
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return None, (f"petri-audit seeds_file {name!r} cannot be read as a seed file ({type(exc).__name__}); cli "
+                      "preflight would refuse the fire after it had journaled its reservation")
+    return seeds, None
+
+
+def petri_seed_mode_problems(params: dict, repo: Path | None = None) -> list[str]:
+    """The seed-file refusals CI would make only after a fire had journaled its reservation, which holds the day's
+    ceiling resolved or not (review of PR #50), mirrored here so the fire is refused first. Read from the checkout
+    the guard runs in.
+
+    Modes that read seeds (preflight, dry_run, run, readapt): the seeds file exists inside the repository and parses
+    (_petri_seed_doc); the fire selects at least one seed (its seed ids, all known, else its wave, as the params job
+    resolves them), as cli preflight requires; and the selection is all autonomous and names an auditor, or all
+    scripted and names none (cli preflight's one-mode rule). Mode rejudge: the seeds file holds every seed each
+    source run recorded in its manifest, as the rejudge plan requires; a source run whose manifest is not in this
+    checkout is left to the plan."""
+    resolved = _petri_resolved(params)
+    root = (Path(repo) if repo else Path(__file__).resolve().parents[1]).resolve()
+    if resolved["mode"] == PETRI_REJUDGE_MODE:
+        return _petri_rejudge_seed_problems(resolved, root)
+    if resolved["mode"] not in ("preflight", "dry_run", "run", PETRI_READAPT_MODE):
+        return []
+    seeds, problem = _petri_seed_doc(resolved["seeds_file"], root)
+    if problem:
+        return [problem]
+    ids = resolved["seed_ids"].split()
+    if ids:
+        unknown = sorted(set(ids) - {s.get("seed_id") for s in seeds})
+        if unknown:
+            return [f"petri-audit seed_ids {unknown} are not in {resolved['seeds_file']}; cli preflight would refuse "
+                    "the fire after it had journaled its reservation"]
+        chosen = [s for s in seeds if s.get("seed_id") in ids]
+    else:
+        chosen = [s for s in seeds if str(s.get("pilot_wave")) == resolved["wave"].strip()]
+    if not chosen:
+        return [f"petri-audit wave {resolved['wave']!r} selects no seed from {resolved['seeds_file']}; cli preflight "
+                "would refuse the fire after it had journaled its reservation"]
+    modes = {s.get("mode") for s in chosen}
+    auditor = resolved["auditor_model"]
+    if "autonomous" in modes and "scripted" in modes:
+        return [f"petri-audit seeds from {resolved['seeds_file']} mix scripted and autonomous seeds; a run executes one mode"]
+    if "autonomous" in modes and not auditor:
+        return [f"petri-audit autonomous seeds from {resolved['seeds_file']} need auditor_model (the adaptive auditor); "
+                "cli preflight would refuse the fire after it had journaled its reservation"]
+    if "scripted" in modes and auditor:
+        return [f"petri-audit scripted seeds from {resolved['seeds_file']} take no auditor_model (got {auditor!r}); cli "
+                "preflight would refuse the fire after it had journaled its reservation"]
+    return []
+
+
+def _petri_rejudge_seed_problems(resolved: dict, root: Path) -> list[str]:
+    """A rejudge plans from the seed file the fire names (rejudge.make_plan), which defaults to the scripted seed
+    file; an autonomous source run recorded its seeds from the adaptive file, so its rejudge would be refused by the
+    plan after the fire had reserved the judge's ceiling (review of PR #50). Refused here when a source run's manifest
+    in this checkout records a seed the named file does not hold."""
+    stems = resolved.get("source_runs", "").split()
+    manifests = {}
+    for stem in stems:
+        path = root / PETRI_RUNS_RELPATH / stem / "manifest.json"
+        try:
+            manifests[stem] = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+    if not manifests:
+        return []
+    seeds, problem = _petri_seed_doc(resolved["seeds_file"], root)
+    if problem:
+        return [problem]
+    known = {s.get("seed_id") for s in seeds}
+    problems = []
+    for stem, manifest in manifests.items():
+        recorded = [s for s in manifest.get("seeds") or [] if isinstance(s, dict)]
+        missing = sorted({s.get("seed_id") for s in recorded} - known)
+        if missing:
+            files = sorted({str(s.get("file")) for s in recorded if s.get("seed_id") in missing})
+            problems.append(f"petri-audit rejudge of {stem}: its seeds {missing} are not in {resolved['seeds_file']}; "
+                            f"the run recorded them from {files}, so set seeds_file to that file")
+    return problems
+
+
 def petri_params_problems(params: dict, registry: dict | None = None) -> list:
     """The petri-audit invariants every entry point must enforce before a paid
     step (fire_trigger's fire path, the server-side budget-gate a
@@ -491,6 +615,8 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
                 "journal entry that reserves the spend and the cost sidecar the run lands, so a paid fire "
                 f"without one can never be reconciled, got {nonce!r}")
     problems.extend(petri_target_problems(params))
+    problems.extend(petri_auditor_problems(params))
+    problems.extend(petri_seed_mode_problems(params))
     target_channel, judge_channel = petri_channels(params, registry)
     # a rejudge calls no target, so its one channel is its judge's (`_petri_lane`) and a target it does not call
     # cannot mix channels with it
@@ -799,7 +925,7 @@ KNOWN_KEYS = {
     "petri-audit": frozenset({
         "seeds_file", "seed_ids", "wave", "target", "mode", "epochs", "token_limit",
         "max_spend", "judge", "judge_model", "judge_max_spend", "judge_max_tokens",
-        "log_model_api", "commit_outputs", "source_run_id", "source_runs",
+        "log_model_api", "commit_outputs", "source_run_id", "source_runs", "auditor_model",
     }),
     # pab_probe.yml `defaults` dict (verified 2026-08-04 against the params
     # heredoc by tests/test_pab_ci_staged.py): stage, fork_ref, cases_file,
@@ -2858,10 +2984,15 @@ def _petri_resolved(params):
     (the park, which tests/test_petri_audit_workflow.py pins to them) overlaid with the file's values, a list of
     seed ids joined with spaces, a JSON boolean lower-cased, everything a string."""
     resolved = dict(PARK_DEFAULTS["petri-audit"])
+    # the adaptive auditor is read by some modes only and is not a key of the park (docs/petri_adaptive_design.md);
+    # a readapt must state its source run's, empty for a scripted source, as the params job resolves it
+    resolved.setdefault("auditor_model", "")
+    # read by mode rejudge only and not a key of the park either; a list is joined as the params job joins it
+    resolved.setdefault("source_runs", "")
     for key, value in params.items():
         if key not in resolved:
             continue
-        if key == "seed_ids" and isinstance(value, list):
+        if key in ("seed_ids", "source_runs") and isinstance(value, list):
             value = " ".join(str(s) for s in value)
         resolved[key] = str(value).lower() if isinstance(value, bool) else str(value)
     return resolved

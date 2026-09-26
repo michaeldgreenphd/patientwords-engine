@@ -239,10 +239,11 @@ def test_every_declared_branch_must_be_exported_from_its_tree(seed_set):
     assert checks.missing_branch_refusals(h4, [], where="t")[0]["branch_id"] == "t:root"
 
 
-def test_preflight_refuses_a_seed_with_no_execution_path(tmp_path, seed_set, capsys):
-    """Codex round 2: the validator admits autonomous seeds as data, but the
-    only task path is the scripted controller, so preflight refuses them
-    before the lock or price checks."""
+def test_preflight_refuses_an_autonomous_seed_without_an_auditor(tmp_path, seed_set, capsys):
+    """Codex round 2, then the adaptive lane (docs/petri_adaptive_design.md): an
+    autonomous seed runs only under the adaptive controller, which needs an
+    auditor model, so preflight refuses one without --auditor-model before the
+    lock or price checks, and a scripted seed with one."""
     doc = framework.load_json(framework.SEED_FILE)
     h4 = next(s for s in doc["seeds"] if s["seed_id"] == "pw-petri-example-h4-persistence")
     h4["mode"], h4["claim_grade_eligible"], h4["auditor_instruction"] = "autonomous", False, "explore"
@@ -251,7 +252,10 @@ def test_preflight_refuses_a_seed_with_no_execution_path(tmp_path, seed_set, cap
     code = cli.main(["preflight", "--seeds", str(seed_file), "--seed-id", "pw-petri-example-h4-persistence",
                      "--target", "mockllm/model", "--max-spend", "0.01", "--no-harness-commit"])
     err = capsys.readouterr().err
-    assert code == 4 and "no execution path" in err
+    assert code == 4 and "an autonomous seed needs --auditor-model" in err
+    code = cli.main(["preflight", "--seed-id", "pw-petri-example-h4-persistence", "--target", "mockllm/model",
+                     "--auditor-model", "mockllm/model", "--max-spend", "0.01", "--no-harness-commit"])
+    assert code == 4 and "a scripted seed takes no auditor" in capsys.readouterr().err
 
 
 def test_coverage_check_names_absent_seeds_conditions_and_short_epochs(seed_set):

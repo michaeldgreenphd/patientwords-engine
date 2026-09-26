@@ -240,7 +240,7 @@
             "null"
           ],
           "pattern": "^[0-9a-f]{64}$",
-          "description": "sha256 of the rendered auditor system message for autonomous runs; null for scripted runs, which have no auditor model."
+          "description": "For autonomous runs, sha256 of the auditor instruction file the run recorded (the adaptive-auditor lane: the order-preserving canonical form of docs/framework/auditor_prompts/adaptive_user.draft.json, from the log's task metadata, never from the checkout); the adapter checks every auditor call's system message against the instructions rendered for its condition from that file and the seed, and refuses a file in hand with another digest. Null for scripted runs, which have no auditor model."
         },
         "log_model_api": {
           "type": [
