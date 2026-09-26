@@ -131,3 +131,27 @@ def test_the_cli_preflight_prices_the_bound_at_the_dearer_model(capsys):
                      "--max-spend", "50", "--token-limit", "60000", "--no-harness-commit"])
     out = capsys.readouterr().out
     assert code == 0 and "2 sample(s) x 1 epoch(s) x 60000 tokens -> $1.8000" in out, out
+
+
+def test_the_manifest_binds_the_prompt_file_the_run_recorded_and_refuses_another(tmp_path, monkeypatch):
+    """Codex review of PR #50: the manifest stored the checkout's prompt-file digest, so a readapt after the file
+    changed would have sealed instructions the auditor never received. The run records the digest; the adapter
+    carries that one, and a file in hand with another digest, or instructions rendered differently from what the
+    auditor was sent, fails the stimulus check."""
+    from scripts.petri_audit import adapter
+
+    seed_set, chosen, result = _run(tmp_path / "a", [PLAIN], Auditor())
+    recorded = result.manifest["execution"]["auditor_instruction_sha256"]
+    assert recorded == adaptive.adaptive_prompt_digest(adaptive.load_adaptive_prompt())
+    log_path = next((tmp_path / "a" / "logs").glob("*.eval"))
+    changed = adaptive.load_adaptive_prompt()
+    changed["register_directives"]["colloquial"] += " (edited after the run)"
+    monkeypatch.setattr(adapter, "load_adaptive_prompt", lambda *a, **k: changed)
+    again = adapt_run(log_path, seed_set, tmp_path / "b" / "run_b", custody="github_actions_artifact:90d",
+                      spend={"max_spend_usd": 0.01, "judge_max_spend_usd": None, "journal_nonce": None,
+                             "cost_limit_per_sample_usd": 0.01, "token_limit_per_sample": 200000},
+                      engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
+    check = again.manifest["execution"]["contract_checks"]["stimulus_digest_identity"]
+    assert check["status"] == "fail"
+    assert "not the one the run recorded" in check["detail"] and "rendered instructions" in check["detail"]
+    assert again.manifest["execution"]["auditor_instruction_sha256"] == recorded, "the run's digest, not the file's"

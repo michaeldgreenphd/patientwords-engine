@@ -208,10 +208,14 @@ BASE = {"seeds_file": "docs/framework/petri_seeds_adaptive.draft.json", "wave": 
         "judge_max_spend": "2", "commit_outputs": "true", "_nonce": "t"}
 CASES = [
     ({"auditor_model": "anthropic/claude-haiku-4-5"}, None),
+    # a readapt states its source run's auditor, as it states the target (Codex review of PR #50: the recovery mode
+    # refused every autonomous run)
+    ({"auditor_model": "anthropic/claude-haiku-4-5", "mode": "readapt", "source_run_id": "123"}, None),
+    ({"auditor_model": "haiku", "mode": "readapt", "source_run_id": "123"}, "spelled anthropic/<model>"),
     ({}, None),
     ({"auditor_model": "claude-haiku-4-5"}, "spelled anthropic/<model>"),
     ({"auditor_model": "openrouter/anthropic/claude-haiku-4.5"}, "bill different channels"),
-    ({"auditor_model": "anthropic/claude-haiku-4-5", "mode": "rejudge", "source_runs": "run_1"}, "read by preflight, dry_run and run only"),
+    ({"auditor_model": "anthropic/claude-haiku-4-5", "mode": "rejudge", "source_runs": "run_1"}, "read by preflight, dry_run, run and readapt only"),
     ({"auditor_model": "anthropic/claude-haiku-4-5", "mode": "dry_run", "target": "mockllm/model"}, "runs its auditor against"),
     ({"auditor_model": "mockllm/model", "mode": "dry_run", "target": "mockllm/model"}, None),
 ]
@@ -245,3 +249,27 @@ def test_the_params_job_applies_the_same_auditor_rules(tmp_path, change, message
         assert f"auditor_model={cfg.get('auditor_model', '')}\n" in out.read_text(encoding="utf-8")
     else:
         assert proc.returncode != 0 and message.split(" ")[0] in proc.stderr, proc.stderr
+
+
+def test_a_readapt_must_state_its_source_runs_auditor():
+    """The auditor is a readapt match key, resolved empty when a trigger file names none, so a scripted source and a
+    readapt that names no auditor still match, and an autonomous source's readapt must name the same auditor."""
+    assert "auditor_model" in ft.PETRI_READAPT_MATCH_KEYS
+    assert ft._petri_resolved({"mode": "readapt"})["auditor_model"] == ""
+    mine = ft._petri_resolved({"auditor_model": "anthropic/claude-haiku-4-5"})
+    theirs = ft._petri_resolved({"auditor_model": "anthropic/claude-sonnet-5"})
+    assert ft._petri_values_differ("auditor_model", mine["auditor_model"], theirs["auditor_model"])
+
+
+def test_a_rejudge_binds_the_register_prompt_an_autonomous_runs_plans_carry(adaptive_set):
+    """Codex review of PR #50: the rejudge instrument block bound outcome prompt files only, so a re-grade of an
+    adaptive run sealed no digest for the register prompt its new judge was sent."""
+    from scripts.petri_audit import rejudge
+
+    seed = adaptive_set.seeds["pw-petri-w2a-referral-specificity"]
+    cond = seeds.conditions(seed)[0]
+    plans = judge_runner.plan_register(_record(seed, cond, [seeds.text_of(seed, cond["turns"][0]["text_ref"]), "x"]))
+    block = rejudge.instrument_block(plans)
+    assert list(block["prompt_files"]) == [adaptive.REGISTER_PROMPT_REF]
+    assert block["prompt_files"][adaptive.REGISTER_PROMPT_REF]["sha256"] == framework.sha256_file(
+        framework.ROOT / adaptive.REGISTER_PROMPT_REF)

@@ -58,8 +58,12 @@ auditor loop, so realism rests on the agenda being the study's real stimuli and 
 - The auditor bills the target's channel (the params job, `cli preflight` and `fire_trigger.py` all refuse a mixed
   fire), so the fire's lane and commitment are the target's.
 - The manifest records `execution.mode: autonomous`, `models.auditor`, and
-  `execution.auditor_instruction_sha256` (the prompt file's digest; each sample's rendered system message is digested
-  on the controller's condition event). The export seal scan covers the auditor's turns.
+  `execution.auditor_instruction_sha256`: the digest of the prompt file **the run recorded** in its task metadata,
+  never the checkout's. The adapter refuses (fails the stimulus check) a prompt file in hand with another digest, and
+  checks each auditor call's system message against the instructions rendered for its condition. The export seal
+  scan covers the auditor's turns.
+- Recovery and re-grading: a `readapt` of an adaptive run states its source run's `auditor_model` (a match key, as
+  the target is) and calls no auditor; a `rejudge` of one binds the register prompt file in its instrument block.
 - **Budget**: $30 for the lane in total, owner-authorized, recorded for UTC 2026-09-26 in `ops/budget_overrides.json`
   (the anthropic lane; no other fire on that lane is planned that day). Commitments are worst cases, so the spend
   itself will be well below them.
@@ -85,7 +89,12 @@ outcomes. Cite directions only; no claim rests on this lane.
 ## Compatibility
 
 - One new `petri-audit` trigger key, `auditor_model`, empty by default and not part of the park, so the park file and
-  every scripted fire are unchanged (`docs/triggers.md`).
+  every scripted fire are unchanged (`docs/triggers.md`). It is a readapt match key; a scripted source resolves it
+  empty, so readapts of scripted runs are unchanged.
+- `docs/framework/petri_run_manifest.schema.json` now defines `auditor_instruction_sha256` as the recorded prompt
+  file's digest (it had said "the rendered system message", which cannot be one value when every condition renders
+  its own); the rejudge schema's `prompt_files` covers the register prompt. Both were null or absent on every landed
+  manifest, so no landed artifact changes meaning.
 - The scripted path is unchanged: a scripted seed with an auditor, an autonomous seed without one, and a selection
   mixing the two are refused before any call.
 - New judgment rows have `kind: "register"`, `assistant_turn_index: 0` and `final_in_exchange: false`; consumers that

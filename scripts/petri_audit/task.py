@@ -24,7 +24,7 @@ from inspect_ai.log import EvalLog
 from inspect_ai.model import GenerateConfig, Model, ModelCost, ModelInfo, get_model, set_model_info
 from inspect_petri import audit_solver, target_agent
 
-from .adaptive import load_adaptive_prompt
+from .adaptive import adaptive_prompt_digest, load_adaptive_prompt
 from .controller import AUDITOR_ROLE, adaptive_auditor, scripted_auditor
 from .seeds import SeedSet, conditions, seed_digest
 from .spend import Price, resolve_price
@@ -71,14 +71,20 @@ def samples_for(seed_set: SeedSet, seeds: list[dict], *, autonomous: bool = Fals
 def study_task(seed_set: SeedSet, seeds: list[dict], *, name: str = "patientwords-petri-audit") -> Task:
     """The Task: the scripted or the adaptive controller (run_mode), no-system-prompt-capable target, no scorer."""
     autonomous = run_mode(seeds) == "autonomous"
-    auditor = adaptive_auditor(seed_set, load_adaptive_prompt()) if autonomous else scripted_auditor(seed_set)
+    prompt = load_adaptive_prompt() if autonomous else None
+    auditor = adaptive_auditor(seed_set, prompt) if autonomous else scripted_auditor(seed_set)
+    meta: dict[str, Any] = {"seed_file": str(seed_set.path), "seed_file_sha256": seed_set.file_sha256,
+                            "seed_ids": [s["seed_id"] for s in seeds]}
+    if prompt is not None:
+        # the instruction file of record, as the run read it: the adapter binds the manifest to this digest and refuses
+        # a prompt file in hand that differs (Codex review of PR #50: a readapt would otherwise seal the checkout's)
+        meta["auditor_prompt_sha256"] = adaptive_prompt_digest(prompt)
     return Task(
         dataset=MemoryDataset(samples_for(seed_set, seeds, autonomous=autonomous), name=name),
         solver=audit_solver(auditor=auditor, target=target_agent(system_required=False, cache=False)),
         scorer=None,
         name=name,
-        metadata={"patientwords": {"seed_file": str(seed_set.path), "seed_file_sha256": seed_set.file_sha256,
-                                   "seed_ids": [s["seed_id"] for s in seeds]}},
+        metadata={"patientwords": meta},
     )
 
 
