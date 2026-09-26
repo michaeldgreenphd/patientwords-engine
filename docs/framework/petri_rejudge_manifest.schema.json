@@ -97,7 +97,7 @@
           "properties": {"ref": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/sha256"},
                          "digest": {"type": "string", "minLength": 1}}
         },
-        "prompt_files": {"type": "object", "description": "Outcome prompt file ref -> {digest (the canonical digest the rows carry), sha256 (the file)}."},
+        "prompt_files": {"type": "object", "description": "Prompt file ref -> {digest (the canonical digest the rows carry), sha256 (the file)}: every outcome prompt the plans use, and the register prompt an autonomous (adaptive-auditor) run's plans carry."},
         "plan_sha256": {"$ref": "#/$defs/sha256"},
         "planned": {"$ref": "#/$defs/count"},
         "parity_with_judge_of_record": {"type": "string", "enum": ["exact"], "description": "Every planned judgment is one the judge of record made, shown the same rendered prompt and context (by digest), and none is missing."}

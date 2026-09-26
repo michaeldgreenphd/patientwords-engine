@@ -55,7 +55,14 @@ from .checks import (
     uncarried_ending_refusal,
     upstream_provider_name,
 )
-from .adaptive import ADAPTIVE_PROMPT, adaptive_prompt_digest, auditor_texts_from_events, effective_seed, load_adaptive_prompt
+from .adaptive import (
+    ADAPTIVE_PROMPT,
+    adaptive_prompt_digest,
+    auditor_texts_from_events,
+    effective_seed,
+    load_adaptive_prompt,
+    render_system,
+)
 from .controller import AUDITOR_ROLE, INFO_SOURCE
 from .envlock import installed_harness_commit, load_lock
 from .framework import (
@@ -253,6 +260,11 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     auditor_role = (spec.model_roles or {}).get(AUDITOR_ROLE)
     has_auditor = auditor_role is not None
     auditor_served: set[str] = set()
+    # the auditor's instruction file of record is the one the run recorded (task.study_task); the manifest carries
+    # that digest, and a file in hand that differs cannot vouch for what the auditor was sent (Codex review of PR #50)
+    run_meta = (spec.metadata or {}).get("patientwords") if isinstance(spec.metadata, dict) else None
+    auditor_prompt = load_adaptive_prompt(ADAPTIVE_PROMPT) if has_auditor else None
+    recorded_prompt_sha = run_meta.get("auditor_prompt_sha256") if isinstance(run_meta, dict) else None
 
     checks = {k: Check() for k in ("stimulus_digest_identity", "arms_in_one_run", "generation_config_pinned",
                                    "no_prefill", "no_cache", "tool_results_from_data", "holdout_seal")}
@@ -404,6 +416,14 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             # unfinished answer stops the conversation with a recorded limit, which refuses the tree below
             auditor_texts = auditor_texts_from_events(auditor_events)
             finished = auditor_texts[: auditor_texts.index(None)] if None in auditor_texts else auditor_texts
+            # every auditor call was sent this condition's instructions, rendered from the seed and the prompt file
+            expected_system = sha256_text(render_system(auditor_prompt, seed, cond))
+            for e in auditor_events:
+                sent = next((m.text for m in e.input if getattr(m, "role", None) == "system"), None)
+                if sent is None or sha256_text(sent) != expected_system:
+                    checks["stimulus_digest_identity"].fail(
+                        f"{tree_id}: an auditor call's system message is not this condition's rendered instructions")
+                    break
             seed, cond = effective_seed(seed, cond, [t for t in finished if t is not None])
         # raw request bodies (per sample, every branch): each retained request's complete system/user sequence must be
         # a prefix of exactly the sequence one branch of this condition declares, never mere membership in a pool.
@@ -565,6 +585,15 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                           "survivor_exported": any(b["surviving"] for b in branches_out)})
 
     # contract check verdicts
+    if has_auditor:
+        in_hand = adaptive_prompt_digest(auditor_prompt)
+        if recorded_prompt_sha is None:
+            checks["stimulus_digest_identity"].fail("the run recorded no auditor prompt digest, so the instructions "
+                                                    "the auditor was sent cannot be bound")
+        elif recorded_prompt_sha != in_hand:
+            checks["stimulus_digest_identity"].fail(
+                f"the auditor prompt file in hand ({in_hand[:12]}) is not the one the run recorded "
+                f"({recorded_prompt_sha[:12]}); adapt with the prompt file of record")
     checks["stimulus_digest_identity"].ok("every record carries exactly the texts its condition and branch declare; "
                                           "staging records agree and every retained raw request is a branch prefix")
     epochs = int(getattr(spec.config, "epochs", None) or 1)
@@ -643,8 +672,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                       "epochs": epochs,
                       # the adaptive lane's instruction file (adaptive.adaptive_prompt_digest); each sample's rendered
                       # system message is digested on the controller's condition event in the sanitised log
-                      "auditor_instruction_sha256": (adaptive_prompt_digest(load_adaptive_prompt(ADAPTIVE_PROMPT))
-                                                     if has_auditor else None),
+                      "auditor_instruction_sha256": recorded_prompt_sha if has_auditor else None,
                       # the configured value as Inspect recorded it (True: every call retained; False: errors only;
                       # None: Inspect's default of the first few calls per model); request coverage is the
                       # generation_config_pinned check, never inferred into this field

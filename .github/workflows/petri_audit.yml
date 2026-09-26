@@ -260,20 +260,22 @@ jobs:
               raise SystemExit(f"mode {p['mode']} needs a target spelled anthropic/<model> or "
                                f"openrouter/<vendor>/<model>, got {p['target']!r}; a bare model name names no provider")
           # the adaptive auditor (docs/petri_adaptive_design.md) is billed and booked as the target is: the same
-          # spelling rules in mode run, the target's channel (one fire carries one commitment on one account), the
-          # mock under dry_run, and nothing in the modes that run no target. cli preflight refuses an autonomous seed
-          # without an auditor and a scripted seed with one, so the seed file decides whether it is read
+          # spelling rules in the paid modes, the target's channel (one fire carries one commitment on one account),
+          # the mock under dry_run, and nothing in rejudge. A readapt calls no auditor but states its source run's, as
+          # it states the target, and the fire guard holds it equal to the source fire's (Codex review of PR #50).
+          # cli preflight refuses an autonomous seed without an auditor and a scripted seed with one, so the seed file
+          # decides whether it is read
           if p["auditor_model"]:
-              if p["mode"] not in ("preflight", "dry_run", "run"):
-                  raise SystemExit(f"auditor_model is read by preflight, dry_run and run only, got mode {p['mode']!r}")
+              if p["mode"] not in ("preflight", "dry_run", "run", "readapt"):
+                  raise SystemExit(f"auditor_model is read by preflight, dry_run, run and readapt only, got mode {p['mode']!r}")
               if p["mode"] == "dry_run" and p["auditor_model"] != "mockllm/model":
                   raise SystemExit("dry_run runs its auditor against mockllm/model only")
-              if p["mode"] == "run" and not re.fullmatch(r"anthropic/[^/\s]+|openrouter/[^/\s]+/[^/\s]+",
-                                                         p["auditor_model"]):
-                  raise SystemExit(f"mode run needs an auditor spelled anthropic/<model> or openrouter/<vendor>/<model>, "
-                                   f"got {p['auditor_model']!r}")
-              if p["mode"] == "run" and (p["auditor_model"].startswith("openrouter/")
-                                         != p["target"].startswith("openrouter/")):
+              if p["mode"] in ("run", "readapt") and not re.fullmatch(r"anthropic/[^/\s]+|openrouter/[^/\s]+/[^/\s]+",
+                                                                      p["auditor_model"]):
+                  raise SystemExit(f"mode {p['mode']} needs an auditor spelled anthropic/<model> or "
+                                   f"openrouter/<vendor>/<model>, got {p['auditor_model']!r}")
+              if p["mode"] in ("run", "readapt") and (p["auditor_model"].startswith("openrouter/")
+                                                      != p["target"].startswith("openrouter/")):
                   raise SystemExit(f"auditor {p['auditor_model']!r} and target {p['target']!r} bill different channels; "
                                    "one fire carries one commitment on one account")
           # a paid run is admitted only from a push-to-run fire on its first attempt: the fire path journals the

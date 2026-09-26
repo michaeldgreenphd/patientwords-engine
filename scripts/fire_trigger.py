@@ -135,7 +135,8 @@ PARK_DEFAULTS = {
 PETRI_READAPT_MODE = "readapt"
 PETRI_PAID_MODES = ("run", PETRI_READAPT_MODE)
 PETRI_READAPT_MATCH_KEYS = ("seeds_file", "seed_ids", "wave", "target", "epochs", "token_limit", "max_spend",
-                            "judge", "judge_model", "judge_max_spend", "judge_max_tokens", "log_model_api")
+                            "judge", "judge_model", "judge_max_spend", "judge_max_tokens", "log_model_api",
+                            "auditor_model")
 PETRI_RUNS_RELPATH = Path("data") / "petri" / "runs"
 # mirrors of scripts/petri_audit/readapt.py (this script imports nothing from the lane; tests hold them equal): the
 # files adaptation writes, and the name after `<stem>` of an earlier readapt's judge sidecar in the source directory
@@ -415,21 +416,23 @@ def petri_target_problems(params: dict) -> list[str]:
 
 def petri_auditor_problems(params: dict) -> list[str]:
     """The params job's `auditor_model` refusals (docs/petri_adaptive_design.md), mirrored so a fire the job would
-    refuse never journals a reservation: read by preflight, dry_run and run only; the mock under dry_run; in mode run
-    spelled as a paid target is and billed on the target's channel, since one fire carries one commitment on one
-    account and the lane is the target's (_petri_lane). The job's value is `str(value)` of the trigger key, so a
-    JSON null reads as "None" and is refused as a spelling."""
+    refuse never journals a reservation: read by preflight, dry_run, run and readapt only (a readapt calls no auditor
+    but states its source run's, as it states the target, and PETRI_READAPT_MATCH_KEYS holds it equal to the source
+    fire's; Codex review of PR #50); the mock under dry_run; in the paid modes spelled as a paid target is and billed
+    on the target's channel, since one fire carries one commitment on one account and the lane is the target's
+    (_petri_lane). The job's value is `str(value)` of the trigger key, so a JSON null reads as "None" and is refused
+    as a spelling."""
     auditor = _petri_job_value(params, "auditor_model", "")
     if not auditor:
         return []
     mode = petri_resolved_mode(params)
-    if mode not in ("preflight", "dry_run", "run"):
-        return [f"petri-audit auditor_model is read by preflight, dry_run and run only, got mode {mode!r}"]
+    if mode not in ("preflight", "dry_run", "run", PETRI_READAPT_MODE):
+        return [f"petri-audit auditor_model is read by preflight, dry_run, run and readapt only, got mode {mode!r}"]
     if mode == "dry_run" and auditor != PETRI_MOCK_TARGET:
         return [f"petri-audit dry_run runs its auditor against {PETRI_MOCK_TARGET!r} only, got {auditor!r}"]
-    if mode == "run":
+    if mode in PETRI_PAID_MODES:
         if not PETRI_RUN_TARGET_RE.fullmatch(auditor):
-            return [f"petri-audit mode run needs an auditor spelled anthropic/<model> or openrouter/<vendor>/<model>, "
+            return [f"petri-audit mode {mode} needs an auditor spelled anthropic/<model> or openrouter/<vendor>/<model>, "
                     f"got {auditor!r}"]
         if auditor.startswith("openrouter/") != petri_resolved_target(params).startswith("openrouter/"):
             return [f"petri-audit auditor {auditor!r} and target {petri_resolved_target(params)!r} bill different "
@@ -2883,6 +2886,9 @@ def _petri_resolved(params):
     (the park, which tests/test_petri_audit_workflow.py pins to them) overlaid with the file's values, a list of
     seed ids joined with spaces, a JSON boolean lower-cased, everything a string."""
     resolved = dict(PARK_DEFAULTS["petri-audit"])
+    # the adaptive auditor is read by some modes only and is not a key of the park (docs/petri_adaptive_design.md);
+    # a readapt must state its source run's, empty for a scripted source, as the params job resolves it
+    resolved.setdefault("auditor_model", "")
     for key, value in params.items():
         if key not in resolved:
             continue
