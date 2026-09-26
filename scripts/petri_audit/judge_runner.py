@@ -34,6 +34,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Protocol
 
+from .adaptive import REGISTER_PROMPT_REF
 from .checks import ROOT_BRANCH
 from .framework import (
     sha256_file,
@@ -209,7 +210,7 @@ class JudgePlan:
     assistant_turn_index: int
     exchange_index: int             # the scripted user turn this reply answers; see plan_record
     final_in_exchange: bool         # the last assistant message of that exchange, so a join on it is one-to-one
-    kind: str                       # "outcome" | "tier"
+    kind: str                       # "outcome" | "tier" | "register" (a user turn, adaptive lane only)
     key: str                        # dimension id, or the tier instrument name
     prompt_ref: str | None          # outcome prompt file, or the rubric path
     prompt: str | None              # rendered prompt; None when not applicable
@@ -623,7 +624,7 @@ def parse_answer(text: str, allowed: list[str], kind: str,
     `flags` must name exactly the declared flag ids with JSON booleans: a quoted
     "false", a missing flag or an undeclared one is a null judgment with the
     error named, never coerced (Codex round 2)."""
-    if kind == "outcome":
+    if kind in ("outcome", "register"):
         value, _, error = parse_outcome_answer(text, allowed)
         return value, None, error
     ae = _advice_eval_module()
@@ -1071,11 +1072,41 @@ def plan_run(records: list[dict], manifest: dict, seeds: dict[str, dict], *, out
     for record in records:
         tree, branch = by_conv[record["conversation_id"]]
         seed = seeds[tree["seed_id"]]
-        evidence_ids = evidence_turn_ids_for(record, seed, branch["branch_id"], tree["arm"])
-        gated_ids = gated_turn_ids_for(record, seed, branch["branch_id"], tree["arm"])
+        if seed["mode"] == "autonomous":
+            # the auditor writes turns 2..N, so no user turn after the first carries a declared text to gate on; the
+            # lane judges no outcome dimension (seeds.seed_problems refuses one), so there is nothing to gate
+            evidence_ids, gated_ids = set(), {}
+        else:
+            evidence_ids = evidence_turn_ids_for(record, seed, branch["branch_id"], tree["arm"])
+            gated_ids = gated_turn_ids_for(record, seed, branch["branch_id"], tree["arm"])
         plans.extend(plan_record(record, seed, outcomes=outcomes, rubric=rubric,
                                  branched_from_turn_id=branch["branched_from_turn_id"],
                                  evidence_turn_ids=evidence_ids, gated_turn_ids=gated_ids))
+        if seed["mode"] == "autonomous":
+            plans.extend(plan_register(record))
+    return plans
+
+
+def plan_register(record: dict, prompt_ref: str = REGISTER_PROMPT_REF) -> list[JudgePlan]:
+    """The adaptive lane's manipulation check (docs/petri_adaptive_design.md): every user turn of an autonomous
+    record classified under the register prompt file. Turn 1 is the seed's own stimulus, whose register the seed
+    declares, so its rows measure the classifier; turns 2..N are the auditor's, so theirs measure whether the
+    auditor kept the arm's register. `exchange_index` is the user turn's own ordinal and `assistant_turn_index` is 0:
+    the row describes no reply, and `final_in_exchange` is False so no reply join can pick it up."""
+    prompt = load_prompt(prompt_ref)
+    digest = sha256_text(prompt_canonical(prompt))[:12]
+    values = list(prompt["values"])
+    plans: list[JudgePlan] = []
+    exchange_index = 0
+    for t in record["turns"]:
+        if t["role"] != "user":
+            continue
+        exchange_index += 1
+        text = t["text"] or ""
+        unavailable = not text.strip()
+        plans.append(JudgePlan(record["conversation_id"], t["turn_id"], 0, exchange_index, False, "register",
+                               "register", prompt_ref, None if unavailable else render_prompt(prompt, text), digest,
+                               None, "turn text unavailable" if unavailable else None, values))
     return plans
 
 

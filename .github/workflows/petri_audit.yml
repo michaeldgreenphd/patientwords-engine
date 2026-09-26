@@ -58,6 +58,10 @@ on:
         description: "Inspect target model string, e.g. anthropic/claude-haiku-4-5 (mockllm/model under dry_run)"
         type: string
         default: "mockllm/model"
+      auditor_model:
+        description: "Adaptive auditor model string for autonomous seeds (docs/petri_adaptive_design.md); empty for scripted seeds; mockllm/model under dry_run"
+        type: string
+        default: ""
       mode:
         description: "preflight (no calls), dry_run (mockllm, $0), run (paid), readapt (judge paid; push-to-run fires only), rejudge (judge paid; mockllm/judge rehearsal $0)"
         type: string
@@ -130,6 +134,7 @@ jobs:
       seed_ids: ${{ steps.params.outputs.seed_ids }}
       wave: ${{ steps.params.outputs.wave }}
       target: ${{ steps.params.outputs.target }}
+      auditor_model: ${{ steps.params.outputs.auditor_model }}
       mode: ${{ steps.params.outputs.mode }}
       epochs: ${{ steps.params.outputs.epochs }}
       token_limit: ${{ steps.params.outputs.token_limit }}
@@ -172,6 +177,7 @@ jobs:
           IN_SEED_IDS: ${{ inputs.seed_ids }}
           IN_WAVE: ${{ inputs.wave }}
           IN_TARGET: ${{ inputs.target }}
+          IN_AUDITOR_MODEL: ${{ inputs.auditor_model }}
           IN_MODE: ${{ inputs.mode }}
           IN_EPOCHS: ${{ inputs.epochs }}
           IN_TOKEN_LIMIT: ${{ inputs.token_limit }}
@@ -194,6 +200,7 @@ jobs:
                       "seed_ids": "",
                       "wave": "1",
                       "target": "mockllm/model",
+                      "auditor_model": "",
                       "mode": "preflight",
                       "epochs": "1",
                       "token_limit": "20000",
@@ -252,6 +259,23 @@ jobs:
                   and not re.fullmatch(r"anthropic/[^/\s]+|openrouter/[^/\s]+/[^/\s]+", p["target"])):
               raise SystemExit(f"mode {p['mode']} needs a target spelled anthropic/<model> or "
                                f"openrouter/<vendor>/<model>, got {p['target']!r}; a bare model name names no provider")
+          # the adaptive auditor (docs/petri_adaptive_design.md) is billed and booked as the target is: the same
+          # spelling rules in mode run, the target's channel (one fire carries one commitment on one account), the
+          # mock under dry_run, and nothing in the modes that run no target. cli preflight refuses an autonomous seed
+          # without an auditor and a scripted seed with one, so the seed file decides whether it is read
+          if p["auditor_model"]:
+              if p["mode"] not in ("preflight", "dry_run", "run"):
+                  raise SystemExit(f"auditor_model is read by preflight, dry_run and run only, got mode {p['mode']!r}")
+              if p["mode"] == "dry_run" and p["auditor_model"] != "mockllm/model":
+                  raise SystemExit("dry_run runs its auditor against mockllm/model only")
+              if p["mode"] == "run" and not re.fullmatch(r"anthropic/[^/\s]+|openrouter/[^/\s]+/[^/\s]+",
+                                                         p["auditor_model"]):
+                  raise SystemExit(f"mode run needs an auditor spelled anthropic/<model> or openrouter/<vendor>/<model>, "
+                                   f"got {p['auditor_model']!r}")
+              if p["mode"] == "run" and (p["auditor_model"].startswith("openrouter/")
+                                         != p["target"].startswith("openrouter/")):
+                  raise SystemExit(f"auditor {p['auditor_model']!r} and target {p['target']!r} bill different channels; "
+                                   "one fire carries one commitment on one account")
           # a paid run is admitted only from a push-to-run fire on its first attempt: the fire path journals the
           # reservation the daily ceiling counts, and neither a workflow_dispatch nor an Actions-tab re-run has one
           # of its own (Codex round 8); preflight and dry_run cost nothing and may run from anywhere. A readapt is
@@ -422,6 +446,7 @@ jobs:
           SEED_IDS: ${{ needs.params.outputs.seed_ids }}
           WAVE: ${{ needs.params.outputs.wave }}
           TARGET: ${{ needs.params.outputs.target }}
+          AUDITOR_MODEL: ${{ needs.params.outputs.auditor_model }}
           MAX_SPEND: ${{ needs.params.outputs.max_spend }}
           JUDGE: ${{ needs.params.outputs.judge }}
           JUDGE_MODEL: ${{ needs.params.outputs.judge_model }}
@@ -433,6 +458,7 @@ jobs:
           for s in $SEED_IDS; do ARGS="$ARGS --seed-id $s"; done
           if [ -z "$SEED_IDS" ]; then ARGS="--wave $WAVE"; fi
           if [ "$JUDGE" = "true" ]; then ARGS="$ARGS --judge-max-spend $JUDGE_MAX_SPEND --judge-model $JUDGE_MODEL"; fi
+          if [ -n "$AUDITOR_MODEL" ]; then ARGS="$ARGS --auditor-model $AUDITOR_MODEL"; fi
           python -m scripts.petri_audit.cli preflight --seeds "$SEEDS_FILE" $ARGS \
             --target "$TARGET" --max-spend "$MAX_SPEND" --epochs "$EPOCHS" --token-limit "$TOKEN_LIMIT"
 
@@ -487,6 +513,7 @@ jobs:
           SEED_IDS: ${{ needs.params.outputs.seed_ids }}
           WAVE: ${{ needs.params.outputs.wave }}
           TARGET: ${{ needs.params.outputs.target }}
+          AUDITOR_MODEL: ${{ needs.params.outputs.auditor_model }}
           MAX_SPEND: ${{ needs.params.outputs.max_spend }}
           JUDGE: ${{ needs.params.outputs.judge }}
           JUDGE_MODEL: ${{ needs.params.outputs.judge_model }}
@@ -510,6 +537,7 @@ jobs:
           for s in $SEED_IDS; do ARGS="$ARGS --seed-id $s"; done
           if [ -z "$SEED_IDS" ]; then ARGS="--wave $WAVE"; fi
           if [ "$JUDGE" = "true" ]; then ARGS="$ARGS --judge-max-spend $JUDGE_MAX_SPEND --judge-model $JUDGE_MODEL"; fi
+          if [ -n "$AUDITOR_MODEL" ]; then ARGS="$ARGS --auditor-model $AUDITOR_MODEL"; fi
           # The target-start marker, the twin of the judge's, marks the point from which a provider call can spend.
           # The always()-gated spend report runs even when a step BEFORE the call failed - seed validation, the
           # environment lock, preflight - and with no eval log it imputes the FULL target ceiling; since PR B binds

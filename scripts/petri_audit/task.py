@@ -4,8 +4,11 @@ invocation (design memo sections 5 and 13). Python 3.12 only.
 One Inspect Sample per (seed, arm, system-prompt variant) with an explicit id;
 repeats are epochs; the target is `target_agent(system_required=False)` so the
 conversation matches the engine's no-system-prompt elicitation unless the seed
-stages one; the auditor is the scripted controller, which calls no model; no
-scorer is attached (Petri's judge is not the judge of record). Prices reach
+stages one; the auditor is the scripted controller, which calls no model, or,
+for a run of autonomous seeds, the adaptive controller, which calls the model
+bound to the `auditor` role (docs/petri_adaptive_design.md); a run is one mode or
+the other, never both; no scorer is attached (Petri's judge is not the judge of
+record). Prices reach
 Inspect through `set_model_info` so `cost_limit` can start, including the
 `none/none` placeholder that role-only invocation resolves `task.model` to.
 """
@@ -21,7 +24,8 @@ from inspect_ai.log import EvalLog
 from inspect_ai.model import GenerateConfig, Model, ModelCost, ModelInfo, get_model, set_model_info
 from inspect_petri import audit_solver, target_agent
 
-from .controller import scripted_auditor
+from .adaptive import load_adaptive_prompt
+from .controller import AUDITOR_ROLE, adaptive_auditor, scripted_auditor
 from .seeds import SeedSet, conditions, seed_digest
 from .spend import Price, resolve_price
 
@@ -30,13 +34,24 @@ SEED_INSTRUCTION = ("PatientWords scripted protocol: the controller stages the s
 PLACEHOLDER_MODEL = "none/none"
 
 
-def samples_for(seed_set: SeedSet, seeds: list[dict]) -> list[Sample]:
+def run_mode(seeds: list[dict]) -> str:
+    """The one execution mode of a run: every seed scripted, or every seed autonomous. A mixed selection is refused:
+    the two controllers are different Tasks, and a manifest records one execution mode."""
+    modes = {s.get("mode") for s in seeds}
+    if len(modes) != 1 or not modes <= {"scripted", "autonomous"}:
+        raise ValueError(f"a run executes one mode, scripted or autonomous; the selection holds {sorted(map(str, modes))}")
+    return modes.pop()
+
+
+def samples_for(seed_set: SeedSet, seeds: list[dict], *, autonomous: bool = False) -> list[Sample]:
     samples: list[Sample] = []
     for seed in seeds:
-        if seed.get("mode") != "scripted":
-            # the scripted controller is the only task path; an autonomous seed (LLM auditor) has none yet and must
-            # never be executed as if it were scripted (Codex round 2)
-            raise ValueError(f"{seed['seed_id']}: mode {seed.get('mode')!r} has no execution path; only scripted seeds run")
+        if seed.get("mode") != ("autonomous" if autonomous else "scripted"):
+            # each controller executes its own mode only: a scripted seed handed to the adaptive controller would be
+            # rewritten by the auditor, an autonomous one handed to the scripted controller would run as a script
+            # (Codex round 2)
+            raise ValueError(f"{seed['seed_id']}: mode {seed.get('mode')!r} is not this run's "
+                             f"{'autonomous' if autonomous else 'scripted'} mode")
         for cond in conditions(seed):
             metadata: dict[str, Any] = {
                 "seed_id": seed["seed_id"], "seed_sha256": seed_digest(seed), "seed_file": str(seed_set.path),
@@ -54,10 +69,12 @@ def samples_for(seed_set: SeedSet, seeds: list[dict]) -> list[Sample]:
 
 
 def study_task(seed_set: SeedSet, seeds: list[dict], *, name: str = "patientwords-petri-audit") -> Task:
-    """The Task: scripted auditor, no-system-prompt-capable target, no scorer."""
+    """The Task: the scripted or the adaptive controller (run_mode), no-system-prompt-capable target, no scorer."""
+    autonomous = run_mode(seeds) == "autonomous"
+    auditor = adaptive_auditor(seed_set, load_adaptive_prompt()) if autonomous else scripted_auditor(seed_set)
     return Task(
-        dataset=MemoryDataset(samples_for(seed_set, seeds), name=name),
-        solver=audit_solver(auditor=scripted_auditor(seed_set), target=target_agent(system_required=False, cache=False)),
+        dataset=MemoryDataset(samples_for(seed_set, seeds, autonomous=autonomous), name=name),
+        solver=audit_solver(auditor=auditor, target=target_agent(system_required=False, cache=False)),
         scorer=None,
         name=name,
         metadata={"patientwords": {"seed_file": str(seed_set.path), "seed_file_sha256": seed_set.file_sha256,
@@ -106,10 +123,17 @@ def build_target(target: str | Model, seeds: list[dict]) -> Model:
     return get_model(target, config=generation_config(seeds[0])) if isinstance(target, str) else target
 
 
+def build_auditor(auditor: str | Model) -> Model:
+    """The auditor Model, built before anything is marked started, as the target is: construction raises for an
+    unknown provider or an empty key variable before any provider call. Its sampling settings are the prompt file's
+    and are passed on every call (controller.adaptive_auditor), so the Model carries none of its own."""
+    return get_model(auditor) if isinstance(auditor, str) else auditor
+
+
 def run_study(task: Task, *, target: str | Model, seeds: list[dict], epochs: int, log_dir: Path | str,
               token_limit: int | None, cost_limit: float | None, log_model_api: bool = True,
               fail_on_error: bool = False, max_retries: int = 2, registry: dict | None = None,
-              started_marker: Path | str | None = None) -> EvalLog:
+              started_marker: Path | str | None = None, auditor: str | Model | None = None) -> EvalLog:
     """Run the Task against the target under the seed's generation config with
     every layer of the spend discipline that lives on this side: prices
     registered, per-sample token and cost limits, raw calls logged, sample
@@ -118,7 +142,14 @@ def run_study(task: Task, *, target: str | Model, seeds: list[dict], epochs: int
     immediately before the eval, the first point at which a provider call can
     spend."""
     target_model = build_target(target, seeds)
-    register_prices([str(target_model)], registry)
+    autonomous = run_mode(seeds) == "autonomous"
+    if autonomous != (auditor is not None):
+        raise ValueError("an autonomous run needs an auditor model and a scripted run takes none")
+    roles: dict[str, Model] = {"target": target_model}
+    if auditor is not None:
+        # Inspect's per-sample token and cost limits count every role's calls, the auditor's included
+        roles[AUDITOR_ROLE] = build_auditor(auditor)
+    register_prices([str(m) for m in roles.values()], registry)
     if started_marker is not None:
         # the workflow's always()-gated fallback spend report imputes the full target ceiling when this marker exists
         # and no adapted report does; written before get_model, it booked max_spend for a missing key or an unknown
@@ -128,7 +159,7 @@ def run_study(task: Task, *, target: str | Model, seeds: list[dict], epochs: int
         marker.touch()
     [log] = inspect_eval(
         task,
-        model_roles={"target": target_model},
+        model_roles=roles,
         epochs=epochs,
         log_dir=str(log_dir),
         log_model_api=log_model_api,

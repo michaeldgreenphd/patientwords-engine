@@ -259,6 +259,15 @@ def pricing_source_digest(registry: dict | None = None) -> str:
                                   sort_keys=True, separators=(",", ":"), ensure_ascii=False))
 
 
+def dearest_price(*prices: Price) -> Price:
+    """The componentwise dearest of several prices: the rate a bound uses when one token limit covers calls to more
+    than one model (the adaptive lane's target and auditor share Inspect's per-sample limit). The cache rates follow
+    the input rate, so they are the dearest too."""
+    return Price(input_per_mtok=max(p.input_per_mtok for p in prices),
+                 output_per_mtok=max(p.output_per_mtok for p in prices),
+                 source=" + ".join(dict.fromkeys(p.source for p in prices)))
+
+
 def billing_channel(models: list[str]) -> str:
     """The prepaid account the target calls bill: OpenRouter only when every
     model routes there; anything else stays on the Anthropic channel, the one

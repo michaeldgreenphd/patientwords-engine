@@ -55,7 +55,8 @@ from .checks import (
     uncarried_ending_refusal,
     upstream_provider_name,
 )
-from .controller import INFO_SOURCE
+from .adaptive import ADAPTIVE_PROMPT, adaptive_prompt_digest, auditor_texts_from_events, effective_seed, load_adaptive_prompt
+from .controller import AUDITOR_ROLE, INFO_SOURCE
 from .envlock import installed_harness_commit, load_lock
 from .framework import (
     FRAMING_REGISTRY,
@@ -247,6 +248,11 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     target_role = (spec.model_roles or {}).get("target")
     target_name = target_role.model if target_role else spec.model
     target_provider = target_name.split("/", 1)[0] if "/" in target_name else "anthropic"
+    # the adaptive lane binds its auditor as its own role (task.run_study); its calls are counted and priced as the
+    # target's are, and never enter the target-only checks (_target_model_events filters on role)
+    auditor_role = (spec.model_roles or {}).get(AUDITOR_ROLE)
+    has_auditor = auditor_role is not None
+    auditor_served: set[str] = set()
 
     checks = {k: Check() for k in ("stimulus_digest_identity", "arms_in_one_run", "generation_config_pinned",
                                    "no_prefill", "no_cache", "tool_results_from_data", "holdout_seal")}
@@ -306,7 +312,10 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         # (spend.reprice_usage refuses a priced model with missing usage)
         aggregated = {id(model_usage): set((sample.model_usage or {}).keys()),
                       id(role_usage): set((sample.role_usage or {}).keys())}
-        for e in model_events:
+        # the adaptive auditor's calls are counted and booked exactly as the target's are (a call without usage is
+        # never priced as zero), though they never enter the target-only checks below
+        auditor_events = [e for e in sample.events if isinstance(e, ModelEvent) and e.role == AUDITOR_ROLE]
+        for e in model_events + auditor_events:
             usage = e.output.usage if e.output is not None else None
             for bucket, key in ((model_usage, e.model), (role_usage, e.role or "target")):
                 row = usage_row(bucket, key)
@@ -318,6 +327,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                     # and zero tokens, priced at zero (Codex round 7)
                     accumulate(bucket, key, usage)
         served = {e.output.model for e in model_events if e.output and e.output.model}
+        auditor_served.update(e.output.model for e in auditor_events if e.output and e.output.model)
         served_all |= served
         # how each target call ended, keyed by the id of the assistant message it produced: the timeline's messages
         # are those same objects (a replayed prefix included), so each record's assistant turn finds its own call
@@ -356,9 +366,12 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                             "reason": f"seed digest recorded by the run ({str(meta.get('seed_sha256'))[:12]}) differs from the "
                                       f"seed file in hand ({seed_digest(seed)[:12]}); use the seed file of record"})
             continue
-        if seed.get("mode") != "scripted":
+        if seed.get("mode") not in ("scripted", "autonomous") or (seed["mode"] == "autonomous") != has_auditor:
+            # an autonomous seed is executed only by the adaptive controller, which needs the auditor role; a scripted
+            # seed in a log with an auditor role was not run by the scripted controller (docs/petri_adaptive_design.md)
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}",
-                            "reason": f"seed mode {seed.get('mode')!r} has no execution path; only scripted seeds run"})
+                            "reason": f"seed mode {seed.get('mode')!r} in a log {'with' if has_auditor else 'without'} "
+                                      "an auditor role; each controller executes its own mode only"})
             continue
         seeds_used[seed_id] = seed
         max_turns = max(max_turns, seed["protocol"]["max_target_turns"])
@@ -384,6 +397,14 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             continue
         counts = seen_counts.setdefault(seed_id, {})
         counts[cond["condition_id"]] = counts.get(cond["condition_id"], 0) + 1
+        if seed["mode"] == "autonomous":
+            # what the target must have received: the seed's first turn, then the auditor's answers in call order
+            # under the one text rule the controller staged them with, recomputed from the auditor's own logged
+            # outputs (never from the controller's staging notes, which the checks below compare against). An
+            # unfinished answer stops the conversation with a recorded limit, which refuses the tree below
+            auditor_texts = auditor_texts_from_events(auditor_events)
+            finished = auditor_texts[: auditor_texts.index(None)] if None in auditor_texts else auditor_texts
+            seed, cond = effective_seed(seed, cond, [t for t in finished if t is not None])
         # raw request bodies (per sample, every branch): each retained request's complete system/user sequence must be
         # a prefix of exactly the sequence one branch of this condition declares, never mere membership in a pool.
         # Checked as soon as the condition is bound, before the error, limit and stray-ending refusals (the same review)
@@ -614,12 +635,16 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         "framework": {"transcript_schema_version": "0.2", "framing_registry_sha256": sha256_file(FRAMING_REGISTRY),
                       "outcome_registry_sha256": sha256_file(OUTCOME_REGISTRY),
                       "seed_schema_version": seed_set.schema["properties"]["schema_version"]["enum"][0]},
-        "execution": {"mode": "scripted", "claim_grade_eligible": False,
+        "execution": {"mode": "autonomous" if has_auditor else "scripted", "claim_grade_eligible": False,
                       "contract_checks": {k: v.as_dict() for k, v in checks.items()},
                       "prefill_enabled": False, "cache_enabled": False,
                       "target_tools_mode": "fixed" if any_tools else "none", "max_turns": max(max_turns, 1),
                       "max_tool_rounds_per_turn": MAX_TOOL_ROUNDS_PER_TURN,
-                      "epochs": epochs, "auditor_instruction_sha256": None,
+                      "epochs": epochs,
+                      # the adaptive lane's instruction file (adaptive.adaptive_prompt_digest); each sample's rendered
+                      # system message is digested on the controller's condition event in the sanitised log
+                      "auditor_instruction_sha256": (adaptive_prompt_digest(load_adaptive_prompt(ADAPTIVE_PROMPT))
+                                                     if has_auditor else None),
                       # the configured value as Inspect recorded it (True: every call retained; False: errors only;
                       # None: Inspect's default of the first few calls per model); request coverage is the
                       # generation_config_pinned check, never inferred into this field
@@ -638,7 +663,9 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                               "seed_requested": (seeds_used and next(iter(seeds_used.values()))["generation"]["seed_requested"]) or None,
                               "seed_forwarded_by_provider": seed_reaches_serving_provider(target_provider),
                               "seed_honored": None},
-                   "auditor": None, "judge_harness": None},
+                   "auditor": (_auditor_block(auditor_role.model, auditor_role, auditor_served, registry)
+                               if has_auditor else None),
+                   "judge_harness": None},
         "seeds": [{"seed_id": s["seed_id"], "seed_sha256": seed_digest(s), "file": repo_rel(seed_set.path),
                    "claim_grade_eligible": bool(s["claim_grade_eligible"])} for s in seeds_used.values()],
         "trees": trees,
@@ -703,6 +730,17 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     write_manifest(manifest_path, final)
     append_chain(out_dir.parent, final, manifest_path)
     return AdaptResult(out_dir=out_dir, manifest=final, records=bound, rule_records=rule_records, refused=refused)
+
+
+def _auditor_block(name: str, role: Any, served: set[str], registry: dict | None) -> dict:
+    """models.auditor for an adaptive run, in the role_model shape the target's block uses. The provider seed does not
+    apply: the auditor is sent the prompt file's sampling settings and no seed."""
+    return {"provider": name.split("/", 1)[0] if "/" in name else "anthropic",
+            "model": name.split("/", 1)[1] if "/" in name else name, "inspect_name": name,
+            "registry_spec": inspect_to_registry_spec(name, registry), "served_model_strings": sorted(served),
+            "config": {k: v for k, v in (role.config.model_dump(mode="json") if role is not None else {}).items()
+                       if v is not None},
+            "seed_requested": None, "seed_forwarded_by_provider": None, "seed_honored": None}
 
 
 def _version(dist: str) -> str:

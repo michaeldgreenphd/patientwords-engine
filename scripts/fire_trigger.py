@@ -413,6 +413,30 @@ def petri_target_problems(params: dict) -> list[str]:
     return []
 
 
+def petri_auditor_problems(params: dict) -> list[str]:
+    """The params job's `auditor_model` refusals (docs/petri_adaptive_design.md), mirrored so a fire the job would
+    refuse never journals a reservation: read by preflight, dry_run and run only; the mock under dry_run; in mode run
+    spelled as a paid target is and billed on the target's channel, since one fire carries one commitment on one
+    account and the lane is the target's (_petri_lane). The job's value is `str(value)` of the trigger key, so a
+    JSON null reads as "None" and is refused as a spelling."""
+    auditor = _petri_job_value(params, "auditor_model", "")
+    if not auditor:
+        return []
+    mode = petri_resolved_mode(params)
+    if mode not in ("preflight", "dry_run", "run"):
+        return [f"petri-audit auditor_model is read by preflight, dry_run and run only, got mode {mode!r}"]
+    if mode == "dry_run" and auditor != PETRI_MOCK_TARGET:
+        return [f"petri-audit dry_run runs its auditor against {PETRI_MOCK_TARGET!r} only, got {auditor!r}"]
+    if mode == "run":
+        if not PETRI_RUN_TARGET_RE.fullmatch(auditor):
+            return [f"petri-audit mode run needs an auditor spelled anthropic/<model> or openrouter/<vendor>/<model>, "
+                    f"got {auditor!r}"]
+        if auditor.startswith("openrouter/") != petri_resolved_target(params).startswith("openrouter/"):
+            return [f"petri-audit auditor {auditor!r} and target {petri_resolved_target(params)!r} bill different "
+                    "channels; one fire carries one commitment on one account"]
+    return []
+
+
 def petri_params_problems(params: dict, registry: dict | None = None) -> list:
     """The petri-audit invariants every entry point must enforce before a paid
     step (fire_trigger's fire path, the server-side budget-gate a
@@ -491,6 +515,7 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
                 "journal entry that reserves the spend and the cost sidecar the run lands, so a paid fire "
                 f"without one can never be reconciled, got {nonce!r}")
     problems.extend(petri_target_problems(params))
+    problems.extend(petri_auditor_problems(params))
     target_channel, judge_channel = petri_channels(params, registry)
     # a rejudge calls no target, so its one channel is its judge's (`_petri_lane`) and a target it does not call
     # cannot mix channels with it
@@ -799,7 +824,7 @@ KNOWN_KEYS = {
     "petri-audit": frozenset({
         "seeds_file", "seed_ids", "wave", "target", "mode", "epochs", "token_limit",
         "max_spend", "judge", "judge_model", "judge_max_spend", "judge_max_tokens",
-        "log_model_api", "commit_outputs", "source_run_id", "source_runs",
+        "log_model_api", "commit_outputs", "source_run_id", "source_runs", "auditor_model",
     }),
     # pab_probe.yml `defaults` dict (verified 2026-08-04 against the params
     # heredoc by tests/test_pab_ci_staged.py): stage, fork_ref, cases_file,
