@@ -214,20 +214,33 @@ def expected_auditor_requests(prompt: dict, turns: list[dict], total: int) -> li
     return out
 
 
+def completed_calls(events: list[Any]) -> list[Any]:
+    """The auditor calls that returned: an attempt Inspect recorded with an error (and then retried) is booked for spend
+    like any call, but it is not a call the controller received an answer from, so the text and request checks read
+    the completed calls only (review of PR #50: a retried call shifted every later request onto the wrong turn)."""
+    return [e for e in events if getattr(e, "error", None) is None]
+
+
 def auditor_request_problems(prompt: dict, turns: list[dict], events: list[Any], total: int, *, where: str) -> list[str]:
-    """Each way the auditor calls of a sample differ from what the controller must have sent them, recomputed from the
-    record (Codex review of PR #50: only the system message was checked, so a stale or malformed request could stand
-    behind a passing stimulus check): one call per auditor-written turn, each sent exactly the rendered request, plus
-    at most one further call whose answer was not staged (the conversation then stops at a recorded limit and the
-    tree is refused). Duck-typed on `input` (messages with `role` and `text`)."""
+    """Each way the completed auditor calls of a sample differ from what the controller must have sent them,
+    recomputed from the record (Codex review of PR #50: only the system message was checked, so a stale or malformed
+    request could stand behind a passing stimulus check): every call was sent exactly one system and one user message
+    and no tools; one call per auditor-written turn, each sent exactly the rendered request; and at most one further
+    call, sent the whole conversation as the request for the next turn, whose answer was not staged because it was
+    empty or unfinished (the conversation then stops at a recorded limit and the tree is refused). Duck-typed on
+    `input` (messages with `role` and `text`), `tools` and `output`."""
     import hashlib as _h
 
     def digest(text: str | None) -> str | None:
         return None if text is None else _h.sha256(text.encode("utf-8")).hexdigest()
 
     expected = expected_auditor_requests(prompt, turns, total)
-    sent = [next((m.text for m in getattr(e, "input", []) or [] if getattr(m, "role", None) == "user"), None)
-            for e in events]
+    for e in events:
+        roles = [getattr(m, "role", None) for m in getattr(e, "input", []) or []]
+        if roles != ["system", "user"] or getattr(e, "tools", None):
+            return [f"{where}: an auditor call was sent {roles} and {len(getattr(e, 'tools', None) or [])} tool(s), "
+                    "not one system and one user message and no tools"]
+    sent = [e.input[1].text for e in events]
     if len(sent) < len(expected):
         return [f"{where}: {len(expected)} auditor-written turn(s) but {len(sent)} auditor call(s)"]
     if len(sent) > len(expected) + 1:
@@ -235,6 +248,13 @@ def auditor_request_problems(prompt: dict, turns: list[dict], events: list[Any],
     for n, (want, got) in enumerate(zip(expected, sent), 2):
         if digest(got) != digest(want):
             return [f"{where}: the auditor call for user turn {n} was not sent the conversation the person had seen"]
+    if len(sent) == len(expected) + 1:
+        n = len(expected) + 2
+        want = render_turn_request(prompt, render_conversation(prompt, visible_turns(turns)), n, total)
+        if digest(sent[-1]) != digest(want):
+            return [f"{where}: the auditor call for user turn {n} was not sent the conversation the person had seen"]
+        if auditor_answer(getattr(events[-1], "output", None)) is not None:
+            return [f"{where}: the auditor call for user turn {n} returned a finished answer that was never staged"]
     return []
 
 

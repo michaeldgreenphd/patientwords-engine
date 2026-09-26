@@ -60,6 +60,7 @@ from .adaptive import (
     adaptive_prompt_digest,
     auditor_request_problems,
     auditor_texts_from_events,
+    completed_calls,
     effective_seed,
     load_adaptive_prompt,
     render_system,
@@ -416,11 +417,13 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             # under the one text rule the controller staged them with, recomputed from the auditor's own logged
             # outputs (never from the controller's staging notes, which the checks below compare against). An
             # unfinished answer stops the conversation with a recorded limit, which refuses the tree below
-            auditor_texts = auditor_texts_from_events(auditor_events)
+            # a retried attempt (recorded with an error) is booked above but answered nothing (adaptive.completed_calls)
+            answered = completed_calls(auditor_events)
+            auditor_texts = auditor_texts_from_events(answered)
             finished = auditor_texts[: auditor_texts.index(None)] if None in auditor_texts else auditor_texts
             # every auditor call was sent this condition's instructions, rendered from the seed and the prompt file
             expected_system = sha256_text(render_system(auditor_prompt, seed, cond))
-            for e in auditor_events:
+            for e in answered:
                 sent = next((m.text for m in e.input if getattr(m, "role", None) == "system"), None)
                 if sent is None or sha256_text(sent) != expected_system:
                     checks["stimulus_digest_identity"].fail(
@@ -524,7 +527,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             if seed["mode"] == "autonomous":
                 # and every auditor call was sent the conversation the person had seen before its turn (Codex review
                 # of PR #50), recomputed from this record
-                for problem in auditor_request_problems(auditor_prompt, record["turns"], auditor_events, auditor_total,
+                for problem in auditor_request_problems(auditor_prompt, record["turns"], answered, auditor_total,
                                                         where=where):
                     checks["stimulus_digest_identity"].fail(problem)
             staged_shas = [s.get("sha256") for s in staged

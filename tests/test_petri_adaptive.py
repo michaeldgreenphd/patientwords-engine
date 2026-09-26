@@ -314,3 +314,60 @@ def test_the_fire_guard_refuses_a_seed_file_and_auditor_that_do_not_match(change
     problems = ft.petri_seed_mode_problems({**BASE, **change}, repo=ROOT)
     assert (problems == []) if expect is None else any(expect in p for p in problems), problems
     assert ft.petri_params_problems({"mode": "preflight"}) == [], "the park is unaffected"
+
+
+def _turns() -> list[dict]:
+    """A record's turns: the person's first message, a reply that calls a tool with text, the tool result, a
+    whitespace-only reply, then the person's second message and a plain reply."""
+    return [{"turn_id": 1, "role": "user", "text": "first"},
+            {"turn_id": 2, "role": "assistant", "text": "let me look that up"},
+            {"turn_id": 3, "role": "tool", "text": "tool result the person never sees"},
+            {"turn_id": 4, "role": "assistant", "text": "   "},
+            {"turn_id": 5, "role": "user", "text": "second"},
+            {"turn_id": 6, "role": "assistant", "text": "a reply"}]
+
+
+def _call(prompt: dict, request: str, *, answer: str = "ok", stop: str = "stop", roles=("system", "user"), tools=None,
+          error=None):
+    from types import SimpleNamespace as NS
+    texts = {"system": "sys", "user": request, "assistant": "prefill"}
+    return NS(input=[NS(role=r, text=texts[r]) for r in roles], tools=tools or [], error=error,
+              output=NS(completion=answer, stop_reason=stop))
+
+
+def test_the_auditor_requests_are_recomputed_from_what_the_person_saw(prompt):
+    """Review of PR #50: the person sees their own messages and the assistant's non-empty text, never tool traffic;
+    the request for message 2 renders exactly that, with the controller's total."""
+    assert adaptive.visible_turns(_turns()) == [("user", "first"), ("assistant", "let me look that up"),
+                                                ("user", "second"), ("assistant", "a reply")]
+    [req] = adaptive.expected_auditor_requests(prompt, _turns(), 10)
+    assert req == adaptive.render_turn_request(
+        prompt, adaptive.render_conversation(prompt, [("user", "first"), ("assistant", "let me look that up")]), 2, 10)
+
+
+def test_the_auditor_request_check_refuses_every_departure(prompt):
+    [req2] = adaptive.expected_auditor_requests(prompt, _turns(), 10)
+    req3 = adaptive.render_turn_request(prompt, adaptive.render_conversation(prompt, adaptive.visible_turns(_turns())), 3, 10)
+    ok = _call(prompt, req2)
+    check = lambda calls: adaptive.auditor_request_problems(prompt, _turns(), calls, 10, where="t")  # noqa: E731
+    assert check([ok]) == []
+    assert "0 auditor call(s)" in check([])[0]
+    assert "auditor calls for 1" in check([ok, ok, ok])[0]
+    assert "was not sent the conversation" in check([_call(prompt, req3)])[0]
+    # exactly one system and one user message, and no tools (a prefill or an injected message passed before)
+    assert "not one system and one user message" in check([_call(prompt, req2, roles=("system", "user", "assistant"))])[0]
+    assert "not one system and one user message" in check([_call(prompt, req2, tools=["t"])])[0]
+    # the one further call is the refused one: the whole conversation as the next request, and an unfinished answer
+    assert check([ok, _call(prompt, req3, answer="", stop="stop")]) == []
+    assert check([ok, _call(prompt, req3, answer="cut", stop="max_tokens")]) == []
+    assert "was not sent the conversation" in check([ok, _call(prompt, req2, answer="", stop="stop")])[0]
+    assert "finished answer that was never staged" in check([ok, _call(prompt, req3, answer="done")])[0]
+
+
+def test_a_retried_auditor_attempt_is_booked_but_not_read_as_a_call():
+    """Review of PR #50: Inspect records an attempt that failed and was retried as its own event with an error; it is
+    not an answer the controller staged, so the text and request checks read completed calls only."""
+    from types import SimpleNamespace as NS
+
+    failed, done = NS(error="overloaded", role="auditor"), NS(error=None, role="auditor")
+    assert adaptive.completed_calls([failed, done]) == [done]
