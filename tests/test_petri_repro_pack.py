@@ -1208,6 +1208,85 @@ def test_the_cited_pack_must_be_built_from_the_analysis_the_page_publishes(world
     assert _check_cited(world, capsys, None, runs, "0" * 64)[0] == 4         # no pack of that analysis
 
 
+def _deviations(w, entries) -> Path:
+    path = w["repo"] / "deviations.json"
+    path.write_text(json.dumps({"deviations": entries}), encoding="utf-8")
+    return path
+
+
+def _waiver(version, **over) -> dict:
+    return {"id": "D3", "lane": "petri", "pack_version": version, "waives": "send_before_public",
+            "recorded_utc": "2026-09-27T18:50:00Z", "record": "docs/preregistration_advice.md, Deviation D3", **over}
+
+
+def _require_with(w, capsys, cited, deviations, runs=(), analysis=None) -> tuple[int, str]:
+    capsys.readouterr()
+    code = rp.check_packs(w["log"], require_sent=True, cited_version=cited, cited_runs=runs,
+                          cited_analysis_sha256=analysis, deviations=deviations)
+    return code, capsys.readouterr().out
+
+
+def test_a_recorded_deviation_waives_only_the_send_of_the_version_it_names(world, capsys):
+    """Deviation D3 (2026-09-27, owner): the Multi-turn page is published before its pack is sent. The recorded waiver
+    lets the cited version stand without a send record, and nothing else: another version, an uncited check, a pack of
+    other runs and a STALE pack are still refused, and a later send makes the waiver moot."""
+    runs = ["run_200_1", "run_300_1"]
+    v1 = _build(world, out="d1").name.rsplit("_", 1)[1]
+    assert _require_with(world, capsys, v1, world["repo"] / "no_deviations.json")[0] == rp.PUBLICATION_UNMET_EXIT
+    dev = _deviations(world, [_waiver(v1)])
+    code, out = _require_with(world, capsys, v1, dev, runs, sha256_file(world["analysis"]))
+    assert code == 0 and (f"publication: {v1} is FRESH; its send is not recorded, which deviation D3 waives "
+                          "(docs/preregistration_advice.md, Deviation D3)") in out
+    code, out = _require_with(world, capsys, v1, _deviations(world, [_waiver("petri-v000000000000")]))
+    assert code == 4 and f"cites {v1}, whose send is not recorded" in out                # another version
+    dev = _deviations(world, [_waiver(v1)])
+    assert _require_with(world, capsys, None, dev)[0] == 4                                 # uncited: no waiver
+    code, out = _require_with(world, capsys, v1, dev, ["run_200_1"])
+    assert code == 4 and "the page cites the pack of the runs and the analysis it publishes" in out
+    _refresh_artifact(world, bootstrap_seed=1)                                             # the analysis moved
+    code, out = _require_with(world, capsys, v1, dev)
+    assert code == 4 and f"cites {v1}, which is STALE" in out and "whose send is not recorded" not in out
+    _refresh_artifact(world)
+    rp.record_sent(world["log"], v1, "vendor safety team")
+    code, out = _require_with(world, capsys, v1, dev)
+    assert code == 0 and f"publication: {v1} is sent and FRESH" in out
+
+
+@pytest.mark.parametrize("case", ["unreadable", "not a list", "missing field", "other lane", "other waiver", "twice"])
+def test_a_deviation_file_that_cannot_waive_is_named_and_waives_nothing(world, capsys, case):
+    v1 = _build(world, out="d1").name.rsplit("_", 1)[1]
+    content = {"unreadable": "not json", "not a list": {"deviations": {"id": "D3"}},
+               "missing field": {"deviations": [{k: v for k, v in _waiver(v1).items() if k != "record"}]},
+               "other lane": {"deviations": [_waiver(v1, lane="advice")]},
+               "other waiver": {"deviations": [_waiver(v1, waives="stale_pack")]},
+               "twice": {"deviations": [_waiver(v1), _waiver(v1, id="D4")]}}[case]
+    path = world["repo"] / "deviations.json"
+    path.write_text(content if isinstance(content, str) else json.dumps(content), encoding="utf-8")
+    code, out = _require_with(world, capsys, v1, path)
+    assert code == rp.PUBLICATION_UNMET_EXIT and f"cites {v1}, whose send is not recorded" in out
+    named = [line for line in out.splitlines() if line.startswith("DEVIATIONS: ")]
+    assert len(named) == 1 and "waive" in named[0], out
+
+
+def test_the_committed_deviations_are_well_formed():
+    """data/petri/publication_deviations.json holds deviation D3 for the wave-2 Anthropic pack and nothing the reader
+    refuses."""
+    waivers, problems = rp.publication_waivers(rp.DEFAULT_DEVIATIONS)
+    assert problems == []
+    assert waivers["petri-ve6d4feb2f8d1"]["id"] == "D3"
+
+
+def test_cli_check_reads_the_deviations_file(world, monkeypatch, capsys):
+    monkeypatch.setattr(rp.seal, "sealed_registry", lambda: dict(REGISTRY))
+    log = ["--log", str(world["log"])]
+    assert cli.main(_cli_build(world, "--publication-state", "not_yet_public")) == 0
+    version = _log(world)[0]["pack_version"]
+    none = ["--deviations", str(world["repo"] / "none.json")]
+    assert cli.main(["repro-pack", "--check", "--cited-version", version, *log, *none]) == 4
+    dev = ["--deviations", str(_deviations(world, [_waiver(version)]))]
+    assert cli.main(["repro-pack", "--check", "--cited-version", version, *log, *dev]) == 0
+
+
 def test_cli_check_takes_the_publication_requirement(world, monkeypatch, capsys):
     monkeypatch.setattr(rp.seal, "sealed_registry", lambda: dict(REGISTRY))
     log = ["--log", str(world["log"])]

@@ -990,7 +990,7 @@ branch implements the ones that are code:
 | 13 | baseline persistence cannot code an escalation | add `escalated` to that dimension only | built, 2026-09-23 |
 | 14 | lay_careful diction in the original set | keep the original four as they ran; add a second scenario set that follows the rule | built, 2026-09-23 (§2) |
 | 15 | how the register contrast is tested | the conversation triple, once, on the final data, fixed at 35 triples with the 2026-09-25 fire committed in advance; any claim beyond these scenarios gated by an exact scenario-level permutation test; the style/vocabulary split as a pre-specified secondary test resting on the paired difference | written 2026-09-23 before the `w2e3` fire, revised the same day before it after an external statistical review (§10, §10.8) |
-| 16 | does the pre-registration's vendor-disclosure rule bind the Multi-turn page | yes: the rule (`docs/preregistration_advice.md`, vendor reproduction packs and sequencing) binds any public per-model claim, and this page names Claude Haiku 4.5; an Anthropic reproduction pack for the Petri runs is sent before the page is public, and the page cites its version. The same ruling records deviation D2 for the LLM page | ruled 2026-09-23; the pack tooling is fixed first (engine PR `claude/repro-pack-check-fixes`) |
+| 16 | does the pre-registration's vendor-disclosure rule bind the Multi-turn page | yes: the rule (`docs/preregistration_advice.md`, vendor reproduction packs and sequencing) binds any public per-model claim, and this page names Claude Haiku 4.5; an Anthropic reproduction pack for the Petri runs is sent before the page is public, and the page cites its version. The same ruling records deviation D2 for the LLM page | ruled 2026-09-23; the pack tooling is fixed first (engine PR `claude/repro-pack-check-fixes`). Owner deviation D3 (2026-09-27, `docs/preregistration_advice.md`): the page is published before the send, citing the pack as not yet sent |
 
 The original text of decisions 1 to 11 follows for the record; 12 to 14 are recorded in the
 handoff's §5a entry of 2026-09-23 and in §2 and §5 above, 15 in §10, and 16 in its table row.
@@ -1261,7 +1261,8 @@ digest or threshold (10.6).
     and does not call them evidence.
   - Nothing about this campaign goes on the public site before the final analysis.
   - Nor before the vendor reproduction pack has been sent and the page cites its version (decision 16). That is a
-    publication gate; the analysis is unchanged.
+    publication gate; the analysis is unchanged. The owner set the send aside on 2026-09-27 (deviation D3,
+    `docs/preregistration_advice.md`): the page cites the pack and shows it as not yet sent.
   - The scope is fixed at 35 triples (10.1), so the interim counts cannot steer the sample size.
 - **No claim about one pair, one exchange or one conversation** (AGENTS.md, Known measurement limitations). The
   "clearest case" on the page illustrates; it is not evidence.

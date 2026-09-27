@@ -684,6 +684,32 @@ def test_owner_run_multiturn_real_summary_cites_a_sent_pack(site, key, value):
     assert not any("petri_multiturn_summary.sample.json :: $.status.vendor_pack" in e for e in rep.errors)
 
 
+def test_owner_run_multiturn_real_summary_may_leave_the_send_to_a_recorded_deviation(site):
+    """Deviation D3 (2026-09-27, owner): the Multi-turn page is published before its pack is sent. A real summary citing
+    the one version a recorded deviation names may carry a null send date, with a note saying so; another version is
+    not covered, and a null version is never waived."""
+    summary, conversations = _multiturn_pair()
+    summary["status"]["vendor_pack"]["sent"] = None
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    version = summary["status"]["vendor_pack"]["version"]
+    waiver = {"id": "D3", "record": "docs/preregistration_advice.md, Deviation D3"}
+    rep = vfc.validate(site, engine=None, strict=True, send_waivers={version: waiver})
+    assert not [e for e in rep.errors if "vendor_pack" in e], rep.errors
+    assert any(f"null for {version}, accepted by recorded deviation D3" in n for n in rep.notes), rep.notes
+    rep = vfc.validate(site, engine=None, strict=True, send_waivers={"petri-v000000000999": waiver})
+    assert any("petri_multiturn_summary.json :: $.status.vendor_pack.sent" in e for e in rep.errors), rep.errors
+    summary["status"]["vendor_pack"]["version"] = None
+    _write_pair(site, (summary, conversations))
+    rep = vfc.validate(site, engine=None, strict=True, send_waivers={version: waiver})
+    assert any("petri_multiturn_summary.json :: $.status.vendor_pack.version" in e for e in rep.errors), rep.errors
+
+
+def test_the_shape_checks_send_waivers_are_the_pack_checks():
+    """The shape check reads the recorded deviations with the pack check's reader, so the two gates agree."""
+    assert vfc.petri_send_waivers(Path(vfc.__file__).resolve().parents[1])["petri-ve6d4feb2f8d1"]["id"] == "D3"
+
+
 @pytest.mark.parametrize("sample", [False, True])
 def test_owner_run_multiturn_summary_seed_is_required(site, sample):
     """Regression (Codex review of 2026-09-24): the summary's seed was nullable, so a published summary with its

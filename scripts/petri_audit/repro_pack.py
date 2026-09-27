@@ -83,7 +83,10 @@ cannot be read and nothing else fails; otherwise 0, with STALE-but-unsent report
 no petri-lane pack. The frontend contract gate (scripts/validate_frontend_contract.py `repro_pack_gate`) fails on any
 non-zero exit of this check, as it does for the advice lane's, and passes `--require-sent` (with the version the page
 cites and the runs it publishes) once the Multi-turn page's data files are on the site: before that nothing requires a send, because nothing is
-public. `--record-sent` appends a copy of the build entry stamped with the time it is run, so record a send on the day
+public. One requirement can be set aside by a recorded owner deviation: `data/petri/publication_deviations.json` names
+a pack version whose missing send record the requirement accepts (publication_waivers; deviation D3 of the
+pre-registration, 2026-09-27). It waives nothing else: the cited pack must still be the newest of its key, built over
+the published runs and analysis, and FRESH. `--record-sent` appends a copy of the build entry stamped with the time it is run, so record a send on the day
 it is made.
 """
 from __future__ import annotations
@@ -128,6 +131,10 @@ DEFAULT_CLAIMS = ROOT / "data" / "petri" / "w2_repro_pack_claims.json"
 README_TEMPLATE = ROOT / "docs" / "petri_repro_pack_readme_template.md"
 NOTE_TEMPLATE = ROOT / "docs" / "petri_repro_pack_disclosure_note_template.md"
 DEFAULT_LOG = ROOT / "ops" / "disclosure_log.jsonl"
+# recorded owner deviations from the publication rule (1), one pack version each (publication_waivers)
+DEFAULT_DEVIATIONS = ROOT / "data" / "petri" / "publication_deviations.json"
+SEND_WAIVER = "send_before_public"
+DEVIATION_FIELDS = ("id", "lane", "pack_version", "waives", "recorded_utc", "record")
 DEFAULT_OUT = ROOT / "dist"
 ANALYSIS_SCRIPT = "scripts/petri_w2_register_contrast.py"
 ANALYSIS_SEED = 20260923                      # design note 10.2; the only seed the analysis's --final accepts
@@ -1590,18 +1597,63 @@ def _append_build_entry(log: Path, manifest: Mapping[str, Any], note: str) -> No
           + (f" (supersedes {entry['supersedes']})" if entry["supersedes"] else ""))
 
 
+def publication_waivers(path: Path = DEFAULT_DEVIATIONS) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    """(waivers by pack version, problems) from the recorded deviations file.
+
+    A waiver names one petri-lane pack version whose missing send record the publication requirement accepts: the
+    owner set aside rule (1) of the pre-registration's Amendment 3 (the pack reaches the vendor before the page is
+    public) for that version, in a deviation recorded in docs/preregistration_advice.md. It waives nothing else; the
+    cited pack must still be the newest of its key, built over the published runs and analysis, and FRESH (rule (2)).
+    No file means no waivers. A file that cannot be read, an entry missing a field, an entry of another lane or another
+    waiver, and two entries naming one version are named problems, and none of them waives anything."""
+    if not path.is_file():
+        return {}, []
+    try:
+        entries = json.loads(path.read_text(encoding="utf-8"))["deviations"]
+        if not isinstance(entries, list):
+            raise TypeError("deviations is not a list")
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return {}, [f"the deviations file {_rel(path)} cannot be read ({type(exc).__name__}), so no waiver applies"]
+    waivers: dict[str, dict[str, Any]] = {}
+    problems: list[str] = []
+    named_twice: set[str] = set()
+    for n, e in enumerate(entries, 1):
+        if not isinstance(e, dict) or any(not isinstance(e.get(f), str) or not e[f].strip() for f in DEVIATION_FIELDS):
+            problems.append(f"deviation {n} in {_rel(path)} lacks one of {list(DEVIATION_FIELDS)}, so it waives nothing")
+            continue
+        if e["lane"] != LANE or e["waives"] != SEND_WAIVER:
+            problems.append(f"deviation {e['id']} in {_rel(path)} is lane {e['lane']!r}, waiver {e['waives']!r}; only a "
+                            f"{LANE}-lane {SEND_WAIVER!r} waiver is read, so it waives nothing")
+            continue
+        if e["pack_version"] in waivers or e["pack_version"] in named_twice:
+            named_twice.add(e["pack_version"])
+            continue
+        waivers[e["pack_version"]] = e
+    for version in sorted(named_twice):
+        waivers.pop(version, None)
+        problems.append(f"more than one deviation in {_rel(path)} names {version}, so none of them waives anything")
+    return waivers, problems
+
+
 def check_packs(log: Path = DEFAULT_LOG, *, require_sent: bool = False, cited_version: str | None = None,
-                cited_runs: Sequence[str] = (), cited_analysis_sha256: str | None = None) -> int:
+                cited_runs: Sequence[str] = (), cited_analysis_sha256: str | None = None,
+                deviations: Path = DEFAULT_DEVIATIONS) -> int:
     """FRESH/STALE for the newest Petri pack of every (vendor, analysis); exit codes as the module docstring states.
 
     `require_sent` (or `cited_version`, `cited_runs` or `cited_analysis_sha256`, which imply it) is the publication
     requirement: the frontend contract gate passes it once the Multi-turn page's data files are public on the site, and
     the check then also exits 4 unless a sent pack is FRESH and, when the page names them, built over exactly its runs
-    and from its analysis artifact (publication_problems). Without it the check is unchanged."""
+    and from its analysis artifact (publication_problems). A recorded deviation (`deviations`, publication_waivers)
+    lets the cited version stand without a recorded send, and nothing else. Without it the check is unchanged."""
     ae = _advice()
     entries = ae._log_entries(log)
     mine, other, unreadable = partition_log(entries)
     require = require_sent or bool(cited_version) or bool(cited_runs) or bool(cited_analysis_sha256)
+    waived: dict[str, dict[str, Any]] = {}
+    if require:
+        waived, waiver_problems = publication_waivers(deviations)
+        for problem in waiver_problems:
+            print(f"DEVIATIONS: {problem}")
     for lane, n in sorted(other.items()):
         print(f"skipped: {n} log entr{'y' if n == 1 else 'ies'} of lane {lane!r} (this check covers lane {LANE!r} only)")
     for problem in unreadable:
@@ -1643,11 +1695,17 @@ def check_packs(log: Path = DEFAULT_LOG, *, require_sent: bool = False, cited_ve
                   f"{e['pack_version']} (unsent) - send the superseding pack")
             escalate = True
     unmet = (publication_problems(mine, newest, sent_versions, statuses, cited_version, cited_runs,
-                                  cited_analysis_sha256) if require else [])
+                                  cited_analysis_sha256, waived) if require else [])
     for u in unmet:
         print(f"PUBLICATION: {u}")
     if require and not unmet:
-        print(f"publication: {cited_version or 'a sent pack'} is sent and FRESH")
+        sent_any = set().union(*sent_versions.values()) if sent_versions else set()
+        if cited_version and cited_version in waived and cited_version not in sent_any:
+            w = waived[cited_version]
+            print(f"publication: {cited_version} is FRESH; its send is not recorded, which deviation {w['id']} waives "
+                  f"({w['record']})")
+        else:
+            print(f"publication: {cited_version or 'a sent pack'} is sent and FRESH")
     if escalate:
         return 2
     if unmet:
@@ -1658,7 +1716,8 @@ def check_packs(log: Path = DEFAULT_LOG, *, require_sent: bool = False, cited_ve
 def publication_problems(mine: Sequence[Mapping[str, Any]], newest: Mapping[tuple[str, str], Mapping[str, Any]],
                          sent_versions: Mapping[tuple[str, str], set[str]], statuses: Mapping[tuple[str, str], str],
                          cited_version: str | None, cited_runs: Sequence[str] = (),
-                         cited_analysis_sha256: str | None = None) -> list[str]:
+                         cited_analysis_sha256: str | None = None,
+                         waived: Mapping[str, Mapping[str, Any]] | None = None) -> list[str]:
     """Why a public per-model claim from this lane is not yet allowed, or nothing. The pre-registration's rules (1) and
     (2), bound on the Multi-turn page by decision 16: the pack reaches the vendor before the page is public, and the
     page cites a version that is FRESH. With `cited_version` (the version the published summary cites) that pack must
@@ -1671,7 +1730,10 @@ def publication_problems(mine: Sequence[Mapping[str, Any]], newest: Mapping[tupl
     vendor with it, since a build refuses runs that name another vendor's model. `cited_analysis_sha256` (the summary's
     `provenance.analysis_sha256`) binds it to the analysis: two analyses of the same runs are two packs (pack_key), so
     the cited pack's build must have read that artifact (its log entry's `claim_ids.analysis_sha256`; Codex, PR #39).
-    Without a cited version both must still match, so no pack of other runs or another analysis can stand in."""
+    Without a cited version both must still match, so no pack of other runs or another analysis can stand in.
+
+    `waived` (publication_waivers) names the versions whose missing send record a recorded deviation accepts. It applies
+    to a cited version only, and to its send only."""
     runs = sorted(set(cited_runs))
 
     def built_over(entry: Mapping[str, Any]) -> Any:
@@ -1704,7 +1766,7 @@ def publication_problems(mine: Sequence[Mapping[str, Any]], newest: Mapping[tupl
             problems.append(f"the published page cites {cited_version}, which is built over runs "
                             f"{built_over(cited[0])!r}{of}, but the page publishes runs {runs}{page}; the page cites "
                             f"the pack of the runs and the analysis it publishes")
-        if cited_version not in sent_versions.get(key, set()):
+        if cited_version not in sent_versions.get(key, set()) and cited_version not in (waived or {}):
             problems.append(f"the published page cites {cited_version}, whose send is not recorded (--record-sent): "
                             f"the pack reaches the vendor before the page is public")
         if statuses.get(key) != "FRESH":
@@ -1780,6 +1842,8 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("--cited-analysis-sha256", metavar="SHA256", default=None,
                    help="--check: the sha256 of the analysis artifact the public page publishes from; the cited pack "
                         "must have been built from it (implies --require-sent)")
+    p.add_argument("--deviations", default=str(DEFAULT_DEVIATIONS),
+                   help="--check: the recorded deviations file (a waiver accepts one cited version's missing send record)")
     p.add_argument("--record-sent", metavar="PACK_VERSION", default=None,
                    help="append a send event for a built Petri pack, stamped now")
     p.add_argument("--sent-to", default="", help="role/channel reference only - never private contact details")
@@ -1796,7 +1860,8 @@ def cmd_repro_pack(args: argparse.Namespace) -> int:
         return REFUSED_EXIT
     if args.check:
         return check_packs(Path(args.log), require_sent=args.require_sent, cited_version=args.cited_version,
-                           cited_runs=args.cited_run, cited_analysis_sha256=args.cited_analysis_sha256)
+                           cited_runs=args.cited_run, cited_analysis_sha256=args.cited_analysis_sha256,
+                           deviations=Path(args.deviations))
     try:
         if args.require_sent or args.cited_version or args.cited_run or args.cited_analysis_sha256:
             raise PackRefusal(["--require-sent, --cited-version, --cited-run and --cited-analysis-sha256 apply to "
