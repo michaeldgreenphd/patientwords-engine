@@ -61,7 +61,7 @@ sys.path.insert(0, str(ROOT))
 from scripts.petri_audit import checks, cli, framework, judge_runner, sanitizer, seeds  # noqa: E402
 from scripts.petri_audit.adapter import AdapterError, adapt_run, read_records  # noqa: E402
 from scripts.petri_audit.manifest import bind_judgments, manifest_problems, reseal_problems, verify_chain, verify_run  # noqa: E402
-from scripts.petri_audit.task import run_study, study_task  # noqa: E402
+from scripts.petri_audit.task import run_study, samples_for, study_task  # noqa: E402
 from scripts.petri_audit.transcripts import record_problems  # noqa: E402
 
 WAVE1 = ["pw-petri-example-h4-persistence", "pw-petri-example-h1-sustained", "pw-petri-example-h6-evidence",
@@ -529,8 +529,12 @@ def test_a_seed_that_changed_since_the_run_is_refused_by_the_adapter_and_the_tas
     assert result.manifest["usage"] == run["r1"].manifest["usage"]
     autonomous = json.loads(json.dumps(seed_set.seeds[H4]))
     autonomous.update(mode="autonomous", claim_grade_eligible=False, auditor_instruction="explore")
-    with pytest.raises(ValueError, match="no execution path"):
-        study_task(seed_set, [autonomous])
+    # an autonomous seed runs only under the adaptive controller (docs/petri_adaptive_design.md): never handed to the
+    # scripted controller as if it were a script, and never in one run with scripted seeds
+    with pytest.raises(ValueError, match="not this run's scripted mode"):
+        samples_for(seed_set, [autonomous])
+    with pytest.raises(ValueError, match="one mode"):
+        study_task(seed_set, [autonomous, seed_set.seeds[H4]])
 
 
 def test_cli_preflight_refuses_an_unresolvable_judge_spec_before_any_call(capsys):

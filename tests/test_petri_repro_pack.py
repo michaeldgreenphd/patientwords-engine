@@ -675,6 +675,20 @@ def test_refuses_judgment_rows_that_are_not_objects_of_a_known_kind(world, bad):
                "['outcome', 'tier']" in p for p in problems), problems
 
 
+def test_refuses_an_adaptive_auditor_run_by_name(world):
+    """Codex on PR #50: an adaptive-auditor run's judgments.jsonl carries `register` rows, which the pack refused as
+    malformed; the run is exploratory and outside every published export, so it is refused by name instead."""
+    m = load_json(world["r1"] / "manifest.json")
+    m.setdefault("execution", {})["mode"] = "autonomous"
+    (world["r1"] / "manifest.json").write_text(json.dumps(m), encoding="utf-8")
+    _reseal(world["r1"])
+    _refresh_artifact(world)
+    problems = _refusal(world)
+    assert "run_200_1 is an adaptive-auditor run (execution.mode autonomous): exploratory, and a reproduction pack " \
+           "carries scripted runs only" in problems, problems
+    assert not any("judgments.jsonl line(s)" in p for p in problems), problems
+
+
 def test_refuses_a_plan_naming_one_fire_twice(world):
     """Regression (Codex, PR #39, round 4): the plan lookup kept the last entry per nonce, so a plan with conflicting
     metadata for one fire was accepted."""

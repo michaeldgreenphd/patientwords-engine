@@ -328,13 +328,14 @@ def plan_digest(plans: list) -> str:
 
 
 def instrument_block(plans: list) -> dict:
-    """The instrument a rejudge applied, by digest: the outcome registry, the advice rubric, every outcome prompt
-    file the plans use (its canonical digest, as the rows carry it, and its file digest), and the plan digest."""
+    """The instrument a rejudge applied, by digest: the outcome registry, the advice rubric, every prompt file the
+    plans use (outcome prompts, and the register prompt an autonomous run's plans carry; Codex review of PR #50),
+    with its canonical digest, as the rows carry it, and its file digest, and the plan digest."""
     from .judge_runner import load_rubric, rubric_digest
 
     prompts: dict[str, dict] = {}
     for p in plans:
-        if p.kind == "outcome" and p.prompt_ref and p.prompt_ref not in prompts:
+        if p.kind in ("outcome", "register") and p.prompt_ref and p.prompt_ref not in prompts:
             prompts[p.prompt_ref] = {"digest": p.prompt_file_digest, "sha256": sha256_file(ROOT / p.prompt_ref)}
     return {"outcome_registry": {"ref": OUTCOME_REGISTRY.relative_to(ROOT).as_posix(),
                                  "sha256": sha256_file(OUTCOME_REGISTRY)},

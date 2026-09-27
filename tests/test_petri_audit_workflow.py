@@ -194,11 +194,13 @@ def test_defaults_cover_every_trigger_key_and_dispatch_input(workflow, defaults)
     on = workflow.get("on") or workflow.get(True)
     inputs = set(on["workflow_dispatch"]["inputs"])
     assert set(defaults) == set(ft.KNOWN_KEYS[TRIGGER]) == inputs
-    # the park is unchanged by modes readapt and rejudge: source_run_id and source_runs are read by one mode each,
-    # empty by default, and not keys of the park, so the committed park file still equals PARK_DEFAULTS exactly
-    for mode_only in ("source_run_id", "source_runs"):
+    # the park is unchanged by modes readapt and rejudge and by the adaptive auditor: source_run_id, source_runs and
+    # auditor_model are read by some modes only, empty by default, and not keys of the park, so the committed park
+    # file still equals PARK_DEFAULTS exactly (docs/petri_adaptive_design.md)
+    mode_only_keys = ("source_run_id", "source_runs", "auditor_model")
+    for mode_only in mode_only_keys:
         assert defaults[mode_only] == "" and mode_only not in ft.PARK_DEFAULTS[TRIGGER], mode_only
-    assert {k: v for k, v in defaults.items() if k not in ("source_run_id", "source_runs")} == ft.PARK_DEFAULTS[TRIGGER], \
+    assert {k: v for k, v in defaults.items() if k not in mode_only_keys} == ft.PARK_DEFAULTS[TRIGGER], \
         "the heredoc defaults are the park: a bare re-fire is a no-op"
     assert defaults["mode"] == "preflight" and defaults["commit_outputs"] == "false" and defaults["judge"] == "false"
     assert defaults["target"] == "mockllm/model"

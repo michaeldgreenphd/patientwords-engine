@@ -540,6 +540,16 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
             problems.append("an autonomous (LLM-auditor) seed is exploratory and cannot be claim-grade eligible")
         if not seed.get("auditor_instruction"):
             problems.append("autonomous mode needs an auditor_instruction")
+        # the adaptive controller (docs/petri_adaptive_design.md) writes turns 2..N, so nothing after the first turn
+        # is a declared text: outcome dimensions gate on declared turns, branches anchor on a scripted reply, and a
+        # system prompt would be a second manipulation the auditor cannot see
+        if seed["judge"]["outcome_dimensions"] or seed["judge"]["supplied_contexts"]:
+            problems.append("an autonomous seed judges the advice tier and the register check only; outcome "
+                            "dimensions and supplied contexts need scripted turns")
+        if seed["protocol"]["branches"] or seed["protocol"]["branch_anchor"]:
+            problems.append("an autonomous seed declares no branches: the auditor's turns are not a shared prefix")
+        if seed["system_prompt"]["policy"] != "none":
+            problems.append("an autonomous seed stages no system prompt")
     else:
         if seed.get("auditor_instruction"):
             problems.append("a scripted seed carries no auditor instruction: nothing but data reaches the target")

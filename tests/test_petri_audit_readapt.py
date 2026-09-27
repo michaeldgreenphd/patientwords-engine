@@ -223,6 +223,24 @@ def test_the_log_must_record_what_the_readapt_fire_states():
     assert any("no seed selection" in p for p in readapt.log_problems(expected, dict(observed, seed_ids=None)))
 
 
+def test_the_log_must_record_the_auditor_the_readapt_states():
+    """Codex review of PR #50: a readapt states its source run's auditor_model, and the log's auditor role must be
+    that model; None is a value (a scripted run binds none), and a plan written before the key existed is not
+    checked for it."""
+    expected = {"eval_id": EVAL_ID, "target": "anthropic/claude-haiku-4-5", "auditor": "anthropic/claude-haiku-4-5",
+                "seed_ids": ["a"], "epochs": 1, "token_limit": 40000, "log_model_api": True}
+    observed = dict(expected, status="success")
+    assert readapt.log_problems(expected, observed) == []
+    assert readapt.log_problems(expected, dict(observed, auditor="anthropic/claude-sonnet-5")) == [
+        "auditor: the log records 'anthropic/claude-sonnet-5', the readapt states 'anthropic/claude-haiku-4-5'"]
+    assert readapt.log_problems(expected, dict(observed, auditor=None))[0].startswith("auditor:")
+    scripted = dict(expected, auditor=None)
+    assert readapt.log_problems(scripted, dict(observed, auditor=None)) == []
+    assert readapt.log_problems(scripted, observed)[0].startswith("auditor:")
+    old_plan = {k: v for k, v in expected.items() if k != "auditor"}
+    assert readapt.log_problems(old_plan, observed) == []
+
+
 def test_the_log_must_record_a_completed_eval_whatever_the_plan_states():
     """The log's own status is compared as well as the sidecar's record of it: `success` only, checked even when
     the expected values name no status, and a log that records none is refused rather than matched."""
@@ -249,7 +267,8 @@ def test_a_readapt_plan_binds_the_source_run_artifact_sidecar_and_journal_entry(
     assert plan["run_stem"] == STEM and plan["source_run_id"] == SRC
     assert plan["artifact"]["id"] == 9001 and plan["source_params_sha256"] == PARAMS_SHA
     assert plan["target_report"]["sha256"] == framework.sha256_file(sidecar)
-    assert plan["expected"] == {"target": "anthropic/claude-haiku-4-5", "seed_ids": _wave2_ids(), "epochs": 1,
+    # "auditor" is None for a scripted source run: the log's auditor role is compared either way (PR #50)
+    assert plan["expected"] == {"target": "anthropic/claude-haiku-4-5", "auditor": None, "seed_ids": _wave2_ids(), "epochs": 1,
                                 "token_limit": 40000, "log_model_api": True, "eval_id": EVAL_ID,
                                 "seed_sha256": _wave2_digests()}
     assert plan["readapt"] == {"workflow_run_id": "5555", "workflow_run_attempt": 1, "commit": COMMIT,
