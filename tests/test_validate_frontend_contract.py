@@ -939,9 +939,13 @@ def test_repro_pack_gate_end_to_end_on_public_multiturn_data_with_no_pack(tmp_pa
     log at all). Before the fix the gate skipped both checks and passed; now the Petri check runs with the requirement
     and fails (exit 4), and the gate names it."""
     _publish_multiturn(site)
-    out, errors = vfc.repro_pack_gate(_no_log_engine(tmp_path), site=site)
+    engine = _no_log_engine(tmp_path)
+    out, errors = vfc.repro_pack_gate(engine, site=site)
     assert "never-built" in out and "PUBLICATION:" in out
-    assert errors == [vfc.PETRI_PUBLICATION_UNMET_MSG]
+    # the missing log is named as a checkout gap too (2026-09-27: the site's CI checked out no ops/, so every public
+    # page read "never-built" whatever was sent)
+    assert errors == [vfc.PETRI_NO_LOG_MSG.format(root=engine), vfc.PETRI_PUBLICATION_UNMET_MSG]
+    assert "needs the engine's ops/ and docs/" in errors[0]
 
 
 def test_repro_pack_gate_end_to_end_on_public_multiturn_data_citing_an_unsent_pack(tmp_path, site):
@@ -970,4 +974,5 @@ def test_main_fails_when_the_multiturn_data_is_public_without_a_sent_pack(site, 
     _publish_multiturn(site)
     assert _main(monkeypatch, site, engine) == 1
     out = capsys.readouterr().out
-    assert f"FAIL: {vfc.PETRI_PUBLICATION_UNMET_MSG}" in out and "contract check: 1 error(s)" in out
+    assert f"FAIL: {vfc.PETRI_PUBLICATION_UNMET_MSG}" in out and "contract check: 2 error(s)" in out
+    assert f"FAIL: {vfc.PETRI_NO_LOG_MSG.format(root=engine)}" in out          # the checkout gap, named

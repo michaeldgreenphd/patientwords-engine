@@ -777,6 +777,10 @@ PETRI_PUBLICATION_UNMET_MSG = ("petri repro-pack --check --require-sent: the Mul
                                "the site, but the Petri vendor pack it cites is not sent and FRESH (see lines above) - "
                                "the pack reaches the vendor before the page is public, and the page cites its version "
                                "(pre-registration rules (1)-(2); Petri design note decision 16)")
+PETRI_NO_LOG_MSG = ("the Multi-turn page's data files are public on the site, but the engine checkout at {root} has no "
+                    "disclosure log (ops/disclosure_log.jsonl), so the Petri pack the page cites cannot be read and the "
+                    "check reports it as never built; a checkout for this gate needs the engine's ops/ and docs/ (the "
+                    "pack's state reads docs/framework), as well as scripts/ and data/")
 # The Multi-turn page's published data files (the site's data-contract table; written by the owner-run
 # scripts/export_petri_multiturn.py). The synthetic fixtures the page is built on are named *.sample.json and never
 # count: only a real file makes the page's per-model claim public.
@@ -907,6 +911,10 @@ def repro_pack_gate(engine_root: Path,
         return "", []
     outs: list[str] = []
     errors: list[str] = []
+    if public and not log.is_file():
+        # the site's CI checked out scripts/ and data/ only, so the gate always read "never-built" once the page's data
+        # was public, sent pack or not (found 2026-09-27 publishing under deviation D3); say which checkout is short
+        errors.append(PETRI_NO_LOG_MSG.format(root=engine_root))
     if has_log:
         advice_out, advice_errors = _pack_check(
             run, [sys.executable, str(engine_root / "scripts" / "advice_eval.py"), "repro-pack", "--check",
