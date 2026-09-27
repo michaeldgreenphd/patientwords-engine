@@ -515,6 +515,13 @@ def check_multiturn_summary(rep: Report, a: str, s: dict, sample: bool, send_wai
         if waived:
             rep.notes.append(f"{a} :: $.status.vendor_pack.sent :: null for {version}, accepted by recorded deviation "
                              f"{waiver['id']} ({waiver['record']}); the page shows the pack as not yet sent")
+        elif key == "sent" and waiver is not None and pack.get("sent") is not None:
+            # the waiver is in force only while the disclosure log records no send (active_send_waivers), so a send
+            # date here claims a send the log does not hold, which the pack check would pass under the same waiver
+            # (Codex on PR #51)
+            rep.err(a, "$.status.vendor_pack.sent", f"{pack.get('sent')!r} claims a send of {version} that the "
+                                                    f"disclosure log does not record (deviation {waiver['id']} is in "
+                                                    f"force); the summary shows it as not yet sent (null)")
     for block in ("headline", "style_sentence"):
         b = need(rep, a, s, block, dict, "$") or {}
         need(rep, a, b, "row_id", str, f"$.{block}")
@@ -531,7 +538,11 @@ def check_multiturn_summary(rep: Report, a: str, s: dict, sample: bool, send_wai
             need(rep, a, t, key, kinds, path)
         need(rep, a, t, "D", NUM, path, nullable=True)
         # the triple's speaker (identity seeds: two triples per seed and run), written by the exporter since
-        # 2026-09-27; the site's samples predate it, so it may be absent, and when present it is a name or null
+        # 2026-09-27: a real summary carries it, a name or null (Codex on PR #51: without it an identity seed's two
+        # triples of one run read the same on the page); the site's samples predate it, so a sample may omit it
+        if isinstance(t, dict) and not sample and "speaker" not in t:
+            rep.err(a, f"{path}.speaker", "missing: a published triple names its speaker (null for a seed without "
+                                          "speakers)")
         if isinstance(t, dict) and "speaker" in t and not (t["speaker"] is None or
                                                             (isinstance(t["speaker"], str) and t["speaker"].strip())):
             rep.err(a, f"{path}.speaker", "must be a name or null")

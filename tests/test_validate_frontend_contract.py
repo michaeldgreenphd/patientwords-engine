@@ -429,7 +429,7 @@ def _multiturn_pair(sample=False):
                "primary": {"triples": 1, "negative": 1, "positive": 0, "tied": 0, "p_two_sided": 1.0,
                            "gate_p": 1.0, "gate_passed": False},
                "triples": [{"seed_id": "s1", "scenario_id": "sc1", "epoch": 1, "D": -0.5,
-                            "partition": "prospective", "eligible": True}],
+                            "partition": "prospective", "eligible": True, **({} if sample else {"speaker": None})}],
                "scenario_means": {"sc1": -0.5}, "repeats": [{"seed_id": "s1", "epochs": 1, "same_direction": 1}],
                "provenance": {"runs": ["run_1"], "analysis_commit": "c" * 40, "analysis_sha256": "a" * 64,
                               "models": {"target": ["t/one"], "target_served": ["t-one-1"], "judge": ["j-one"],
@@ -703,6 +703,34 @@ def test_owner_run_multiturn_real_summary_may_leave_the_send_to_a_recorded_devia
     _write_pair(site, (summary, conversations))
     rep = vfc.validate(site, engine=None, strict=True, send_waivers={version: waiver})
     assert any("petri_multiturn_summary.json :: $.status.vendor_pack.version" in e for e in rep.errors), rep.errors
+
+
+def test_a_send_date_is_refused_while_the_waiver_is_in_force(site):
+    """Codex on PR #51: with the waiver in force (no send in the log), a summary claiming a send date passed the shape
+    check, and the pack check passed the missing send under the same waiver, so the page could claim a send nobody
+    recorded."""
+    summary, conversations = _multiturn_pair()
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    version = summary["status"]["vendor_pack"]["version"]
+    waiver = {"id": "D3", "record": "docs/preregistration_advice.md, Deviation D3"}
+    rep = vfc.validate(site, engine=None, strict=True, send_waivers={version: waiver})
+    assert any("$.status.vendor_pack.sent" in e and "does not record" in e for e in rep.errors), rep.errors
+    assert not [e for e in vfc.validate(site, engine=None, strict=True).errors if "vendor_pack" in e]
+
+
+@pytest.mark.parametrize("sample", [False, True])
+def test_a_published_triple_names_its_speaker(site, sample):
+    """Codex on PR #51: the speaker was optional everywhere, so a real summary from the previous exporter left an
+    identity seed's two triples of one run indistinguishable. A real summary carries it (null allowed); a sample,
+    which predates it, may omit it."""
+    pair = _multiturn_pair(sample=sample)
+    pair[0]["triples"][0].pop("speaker", None)
+    _write_pair(site, _multiturn_pair(), ".json") if sample else _write_pair(site, pair)
+    _write_pair(site, pair if sample else _multiturn_pair(sample=True), ".sample.json")
+    errors = [e for e in run(site, strict=True).errors if ".speaker" in e]
+    assert errors == ([] if sample else ["petri_multiturn_summary.json :: $.triples[0].speaker :: missing: a published "
+                                         "triple names its speaker (null for a seed without speakers)"]), errors
 
 
 def test_the_shape_checks_send_waivers_are_the_pack_checks():
