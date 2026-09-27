@@ -324,6 +324,41 @@ def test_the_fire_guard_refuses_a_seed_file_and_auditor_that_do_not_match(change
     assert ft.petri_params_problems({"mode": "preflight"}) == [], "the park is unaffected"
 
 
+@pytest.mark.parametrize("modes, expect", [
+    ([None, None], "has no execution path"),
+    (["interactive", "interactive"], "has no execution path"),
+    (["autonomous", None], "mix modes"),
+    (["autonomous", "interactive"], "mix modes"),
+])
+def test_the_fire_guard_refuses_a_seed_mode_preflight_would(tmp_path, capsys, modes, expect):
+    """Codex on PR #50 (1a058506): the guard refused only scripted beside autonomous seeds, so a missing or unknown
+    mode, alone or beside autonomous, passed it, and cli preflight refused the fire after it had journaled its
+    reservation."""
+    fw = tmp_path / "docs" / "framework"
+    fw.mkdir(parents=True)
+    doc = framework.load_json(adaptive.ADAPTIVE_SEED_FILE)
+    chosen = doc["seeds"][:2]
+    for seed, mode in zip(chosen, modes):
+        if mode is None:
+            seed.pop("mode", None)
+        else:
+            seed["mode"] = mode
+    path = fw / adaptive.ADAPTIVE_SEED_FILE.name
+    framework.write_json(path, doc)
+    ids = [s["seed_id"] for s in chosen]
+    problems = ft.petri_seed_mode_problems({**BASE, "auditor_model": "anthropic/claude-haiku-4-5",
+                                            "seed_ids": " ".join(ids)}, repo=tmp_path)
+    assert any(expect in p for p in problems), problems
+    # cli preflight refuses the same selection: the guard refuses nothing preflight would admit
+    argv = ["preflight", "--seeds", str(path), "--target", "mockllm/model", "--auditor-model", "mockllm/model",
+            "--max-spend", "0.01", "--no-harness-commit"]
+    for sid in ids:
+        argv += ["--seed-id", sid]
+    assert cli.main(argv) == 4
+    err = capsys.readouterr().err
+    assert "no execution path" in err or "mixes" in err, err
+
+
 def _turns() -> list[dict]:
     """A record's turns: the person's first message, a reply that calls a tool with text, the tool result, a
     whitespace-only reply, then the person's second message and a plain reply."""

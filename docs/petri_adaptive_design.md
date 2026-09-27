@@ -55,13 +55,16 @@ auditor loop, so realism rests on the agenda being the study's real stimuli and 
 - The auditor's calls are counted and priced under their own role (`usage.by_role`); a call without usage is never
   priced as zero. They count against the same per-sample token and cost limits and `max_spend` as the target's, and
   the pre-flight bound prices every token at the dearer model's rate (`spend.dearest_price`).
+- Each completed auditor call is held to the prompt file's generation block (`max_tokens`, `temperature`) in its
+  retained raw request, and to the target's rules on raw-request retention and the cache (`generation_config_pinned`,
+  `no_cache`).
 - The auditor bills the target's channel (the params job, `cli preflight` and `fire_trigger.py` all refuse a mixed
   fire), so the fire's lane and commitment are the target's.
 - A fire CI would refuse at $0 still holds its reservation for the day, so `fire_trigger.py` refuses it first: a seeds
-  file that is missing or outside the repository, a selection that is empty, unknown or mixes modes or disagrees with
-  `auditor_model`, and a rejudge whose seeds file lacks a source run's recorded seeds or holds one with another body
-  (`petri_seed_mode_problems`, digest for digest).
-  `cli rejudge-rehearse` plans from the seed file the run recorded.
+  file that is missing or outside the repository; a selection that is empty or unknown, whose seeds do not share one
+  mode (`scripted` or `autonomous`; a missing or unknown mode included), or that disagrees with `auditor_model`; and a
+  rejudge whose seeds file lacks a source run's recorded seeds or holds one with another body
+  (`petri_seed_mode_problems`, digest for digest). `cli rejudge-rehearse` plans from the seed file the run recorded.
 - The manifest records `execution.mode: autonomous`, `models.auditor`, and
   `execution.auditor_instruction_sha256`: the digest of the prompt file **the run recorded** in its task metadata,
   never the checkout's. The adapter refuses (fails the stimulus check) a prompt file in hand with another digest, and

@@ -496,8 +496,14 @@ def petri_seed_mode_problems(params: dict, repo: Path | None = None) -> list[str
                 "would refuse the fire after it had journaled its reservation"]
     modes = {s.get("mode") for s in chosen}
     auditor = resolved["auditor_model"]
-    if "autonomous" in modes and "scripted" in modes:
-        return [f"petri-audit seeds from {resolved['seeds_file']} mix scripted and autonomous seeds; a run executes one mode"]
+    # exactly one of the two modes a controller executes, as cli preflight requires of every seed: a missing or
+    # unknown mode, alone or beside a known one, passed the checks below (Codex on PR #50)
+    if len(modes) > 1:
+        return [f"petri-audit seeds from {resolved['seeds_file']} mix modes {sorted(map(str, modes))}; a run executes "
+                "one mode"]
+    if modes - {"scripted", "autonomous"}:
+        return [f"petri-audit seeds from {resolved['seeds_file']} have mode {next(iter(modes))!r}, which has no execution "
+                "path; cli preflight would refuse the fire after it had journaled its reservation"]
     if "autonomous" in modes and not auditor:
         return [f"petri-audit autonomous seeds from {resolved['seeds_file']} need auditor_model (the adaptive auditor); "
                 "cli preflight would refuse the fire after it had journaled its reservation"]

@@ -262,6 +262,8 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     # target's are, and never enter the target-only checks (_target_model_events filters on role)
     auditor_role = (spec.model_roles or {}).get(AUDITOR_ROLE)
     has_auditor = auditor_role is not None
+    auditor_name = auditor_role.model if has_auditor else ""
+    auditor_provider = auditor_name.split("/", 1)[0] if "/" in auditor_name else "anthropic"
     auditor_served: set[str] = set()
     # the auditor's instruction file of record is the one the run recorded (task.study_task); the manifest carries
     # that digest, and a file in hand that differs cannot vouch for what the auditor was sent (Codex review of PR #50)
@@ -288,7 +290,9 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     tool_calls_by_seed: dict[str, int] = {}       # target calls that made a tool call, per tool-declaring seed
     prefill_seen = False
     cache_seen = False
+    auditor_cache_seen = False
     calls_missing = 0
+    auditor_calls_missing = 0
     config_detail: list[str] = []
     seeds_used: dict[str, dict] = {}
     max_turns = 0
@@ -371,6 +375,18 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                 cache_seen = True
             if e.call is None or not isinstance(e.call.request, dict):
                 calls_missing += 1
+        # the auditor's completed calls under the same rules, their sampling settings against the prompt file's
+        # generation block, which needs no seed (Codex on PR #50: models.auditor.config reported the intended settings
+        # while nothing compared them with what each call was sent)
+        for e in completed_calls(auditor_events):
+            if e.cache:
+                auditor_cache_seen = True
+            if e.call is None or not isinstance(e.call.request, dict):
+                auditor_calls_missing += 1
+            elif auditor_prompt is not None:
+                config_detail.extend(f"auditor {p} (against the prompt file's generation block)"
+                                     for p in generation_problems(auditor_prompt["generation"], e.call.request,
+                                                                  forwards_seed=SEED_FORWARDING.get(auditor_provider)))
         if seed is None:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"sample metadata names no known seed ({seed_id!r})"})
             continue
@@ -616,17 +632,25 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     checks["arms_in_one_run"].ok(f"every condition of every selected seed ran {epochs} time(s) in this eval")
     if calls_missing:
         checks["generation_config_pinned"].fail(f"{calls_missing} target call(s) have no retained raw request (log_model_api off?)")
+    if auditor_calls_missing:
+        checks["generation_config_pinned"].fail(f"{auditor_calls_missing} auditor call(s) have no retained raw request "
+                                                "(log_model_api off?)")
     if config_detail:
         uniq = sorted(set(config_detail))
         checks["generation_config_pinned"].fail("; ".join(uniq[:6]))
     if len(served_all) > 1:
         checks["generation_config_pinned"].fail(f"more than one served model string across the run: {sorted(served_all)}")
-    checks["generation_config_pinned"].ok("every raw request carries the seed's sampling keys and one served model string")
+    checks["generation_config_pinned"].ok(
+        "every raw request carries the seed's sampling keys and one served model string" if not has_auditor else
+        "every raw request carries its sampling keys (the target's from the seed, the auditor's from its prompt file) "
+        "and one served model string")
     if prefill_seen:
         checks["no_prefill"].fail("a prefilled assistant message appears in a branch")
     checks["no_prefill"].ok("no prefill")
     if cache_seen:
         checks["no_cache"].fail("a target generation was served from Inspect's cache")
+    if auditor_cache_seen:
+        checks["no_cache"].fail("an auditor generation was served from Inspect's cache")
     checks["no_cache"].ok("no cached generation")
     tool_status, tool_detail = tool_results_verdict(tool_results_by_seed, tool_calls_by_seed)
     if tool_status == "pass":

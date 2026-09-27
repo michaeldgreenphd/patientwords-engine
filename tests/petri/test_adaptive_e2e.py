@@ -222,3 +222,57 @@ def test_a_retried_auditor_call_still_verifies_and_is_booked(tmp_path):
     assert result.refused == []
     by_role = {r["role"]: r for r in result.manifest["usage"]["by_role"]}
     assert by_role["auditor"]["calls"] == 2 * 9 + 1, "the failed attempt is still booked"
+
+
+
+def test_each_auditor_call_is_held_to_the_prompt_files_sampling_settings(tmp_path):
+    """Codex on PR #50 (1a058506): only the target's raw requests were checked for their sampling settings, so an
+    auditor call sent other settings, retaining no request, or served from the cache left the checks passing while
+    models.auditor.config reported the prompt file's. mockllm records a raw request without sampling keys, so each
+    recorded request is first given the settings Inspect sent (the event's config), as a real provider's request
+    carries them; each variant then changes the auditor's calls only."""
+    from inspect_ai.log import read_eval_log, write_eval_log
+
+    seed_set = seeds.load_seed_file(adaptive.ADAPTIVE_SEED_FILE)
+    chosen = seeds.select_seeds(seed_set, [PLAIN])
+    target = get_model("mockllm/model", custom_outputs=Target(), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1, log_dir=tmp_path / "logs",
+                    token_limit=200000, cost_limit=0.01, auditor=get_model("mockllm/model", custom_outputs=Auditor()))
+    assert log.status == "success", log.error
+    gen = adaptive.load_adaptive_prompt()["generation"]
+
+    def bump(e):
+        e.call.request["max_tokens"] += 1
+
+    variants = {
+        "clean": (None, {"generation_config_pinned": None, "no_cache": None}),
+        "other_settings": (bump, {"generation_config_pinned": f"auditor max_tokens: sent {gen['max_tokens'] + 1}, "}),
+        "no_request": (lambda e: setattr(e, "call", None),
+                       {"generation_config_pinned": "auditor call(s) have no retained raw request"}),
+        "cached": (lambda e: setattr(e, "cache", "read"), {"no_cache": "an auditor generation was served"}),
+    }
+    for label, (tamper, expect) in variants.items():
+        full = read_eval_log(log.location)
+        n = 0
+        for sample in full.samples:
+            for e in sample.events:
+                if getattr(e, "event", None) != "model":
+                    continue
+                e.call.request.update(max_tokens=e.config.max_tokens, temperature=e.config.temperature)
+                if e.role == "auditor" and tamper is not None:
+                    tamper(e)
+                    n += 1
+        assert tamper is None or n
+        path = tmp_path / label / Path(log.location).name
+        path.parent.mkdir(parents=True)
+        write_eval_log(full, str(path))
+        result = adapt_run(path, seed_set, tmp_path / label / "runs" / "run_a", custody="github_actions_artifact:90d",
+                           spend={"max_spend_usd": 0.01, "judge_max_spend_usd": None, "journal_nonce": None,
+                                  "cost_limit_per_sample_usd": 0.01, "token_limit_per_sample": 200000},
+                           engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
+        checks = result.manifest["execution"]["contract_checks"]
+        for name, text in expect.items():
+            if text is None:
+                assert checks[name]["status"] == "pass", (label, name, checks[name])
+            else:
+                assert checks[name]["status"] == "fail" and text in checks[name]["detail"], (label, name, checks[name])
