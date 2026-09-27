@@ -474,19 +474,21 @@ def _sample_flag(rep: Report, a: str, obj: dict, sample: bool):
 
 def petri_send_waivers(engine_root: Path) -> dict[str, dict]:
     """The Petri pack versions whose missing send record a recorded owner deviation accepts, read from the engine
-    checkout's data/petri/publication_deviations.json with the pack check's own reader (repro_pack.publication_waivers),
-    so the shape check and the pack check apply one set of waivers. An entry the reader refuses waives nothing, and the
-    pack check, which runs in the same gate, names it; a reader that cannot be imported gives no waiver, so the send is
-    required as before."""
+    checkout's data/petri/publication_deviations.json with the pack check's own reader (repro_pack.active_send_waivers),
+    so the shape check and the pack check apply one set of waivers. A version whose send the engine's disclosure log
+    records is no longer waived, so a summary still showing it as not yet sent fails until it is re-exported (Codex on
+    PR #51). An entry the reader refuses waives nothing, and the pack check, which runs in the same gate, names it; a
+    reader that cannot be imported gives no waiver, so the send is required as before."""
     root = str(Path(__file__).resolve().parents[1])
     if root not in sys.path:
         sys.path.insert(0, root)
     try:
-        from scripts.petri_audit.repro_pack import publication_waivers
+        from scripts.petri_audit.repro_pack import active_send_waivers
     except Exception:  # the pack check imports the same module and fails the gate by name
         return {}
-    waivers, _ = publication_waivers(Path(engine_root) / "data" / "petri" / "publication_deviations.json")
-    return waivers
+    engine = Path(engine_root)
+    return active_send_waivers(engine / "data" / "petri" / "publication_deviations.json",
+                               engine / "ops" / "disclosure_log.jsonl")
 
 
 def check_multiturn_summary(rep: Report, a: str, s: dict, sample: bool, send_waivers: dict | None = None):

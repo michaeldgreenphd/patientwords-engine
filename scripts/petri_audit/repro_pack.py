@@ -1635,6 +1635,22 @@ def publication_waivers(path: Path = DEFAULT_DEVIATIONS) -> tuple[dict[str, dict
     return waivers, problems
 
 
+def active_send_waivers(deviations: Path = DEFAULT_DEVIATIONS, log: Path = DEFAULT_LOG) -> dict[str, dict[str, Any]]:
+    """The waivers still in force: publication_waivers minus every version whose send the disclosure log records. A
+    recorded send makes a waiver moot (deviation D3), so a published summary that still shows that version as not yet
+    sent is refused until it is re-exported (Codex on PR #51). A log that cannot be read leaves the waivers as they are;
+    the pack check, which runs in the same gate, fails on it by name."""
+    waivers, _ = publication_waivers(deviations)
+    if not waivers:
+        return {}
+    try:
+        mine, _, _ = partition_log(_advice()._log_entries(log))
+    except (OSError, ValueError, TypeError, KeyError):
+        return waivers
+    sent = {e["pack_version"] for e in mine if e.get("sent_utc")}
+    return {version: w for version, w in waivers.items() if version not in sent}
+
+
 def check_packs(log: Path = DEFAULT_LOG, *, require_sent: bool = False, cited_version: str | None = None,
                 cited_runs: Sequence[str] = (), cited_analysis_sha256: str | None = None,
                 deviations: Path = DEFAULT_DEVIATIONS) -> int:

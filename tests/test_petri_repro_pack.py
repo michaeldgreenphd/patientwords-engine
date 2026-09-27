@@ -1268,6 +1268,17 @@ def test_a_deviation_file_that_cannot_waive_is_named_and_waives_nothing(world, c
     assert len(named) == 1 and "waive" in named[0], out
 
 
+def test_a_recorded_send_ends_the_waiver(world):
+    """Codex on PR #51: the waiver stayed in force after the send was recorded, so a summary still showing the pack as
+    not yet sent passed the shape check indefinitely. active_send_waivers drops a version once its send is recorded."""
+    v1 = _build(world, out="d1").name.rsplit("_", 1)[1]
+    dev = _deviations(world, [_waiver(v1)])
+    assert set(rp.active_send_waivers(dev, world["log"])) == {v1}
+    assert rp.active_send_waivers(world["repo"] / "none.json", world["log"]) == {}
+    rp.record_sent(world["log"], v1, "vendor safety team")
+    assert rp.active_send_waivers(dev, world["log"]) == {}
+
+
 def test_the_committed_deviations_are_well_formed():
     """data/petri/publication_deviations.json holds deviation D3 for the wave-2 Anthropic pack and nothing the reader
     refuses."""
