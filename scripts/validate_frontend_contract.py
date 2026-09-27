@@ -530,6 +530,11 @@ def check_multiturn_summary(rep: Report, a: str, s: dict, sample: bool, send_wai
         for key, kinds in (("seed_id", str), ("scenario_id", str), ("epoch", int), ("eligible", bool)):
             need(rep, a, t, key, kinds, path)
         need(rep, a, t, "D", NUM, path, nullable=True)
+        # the triple's speaker (identity seeds: two triples per seed and run), written by the exporter since
+        # 2026-09-27; the site's samples predate it, so it may be absent, and when present it is a name or null
+        if isinstance(t, dict) and "speaker" in t and not (t["speaker"] is None or
+                                                            (isinstance(t["speaker"], str) and t["speaker"].strip())):
+            rep.err(a, f"{path}.speaker", "must be a name or null")
         if isinstance(t, dict) and t.get("partition") not in MT_PARTITIONS:
             rep.err(a, f"{path}.partition", f"must be one of {list(MT_PARTITIONS)} (the figure's two panels)")
     for key, value in (need(rep, a, s, "scenario_means", dict, "$") or {}).items():

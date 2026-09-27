@@ -3,8 +3,8 @@
 The site's `multi-turn/index.html` reads two files, written here into `<site>/data/`:
 
 - `petri_multiturn_summary.json`: the headline and the style sentence (the design note's registered wording, verbatim),
-  the primary test's counts and p-values, the scenario gate, D per conversation triple with its partition and
-  eligibility, the scenario means, the "does it repeat" table, the status block and the provenance.
+  the primary test's counts and p-values, the scenario gate, D per conversation triple with its partition,
+  eligibility and speaker, the scenario means, the "does it repeat" table, the status block and the provenance.
 - `petri_multiturn_conversations.json`: the measures, the mechanisms, the seeds, every conversation exchange by exchange
   with its graded reply and grades, the rule outcomes, and one scripted turn in its three wordings.
 
@@ -1706,9 +1706,14 @@ def _triples(triples: Sequence[dict], seeds: Mapping[str, dict],
                                         f"exchanges, the artifact {prim.get('D_exact')} over {prim.get('n')}")
                 entering.append((t, exact))
             d = float(exact)
+        # an identity seed's two speakers are two triples of one seed and run, so the page tells their marks apart
+        # by speaker (Codex review of site PR #9); a seed without speakers records null
+        speaker = t.get("speaker")
+        if speaker is not None and not (isinstance(speaker, str) and speaker.strip()):
+            raise ExportRefusal(f"triple {t['triple']}: speaker {speaker!r} is neither a name nor null")
         out.append({"seed_id": t["seed_id"], "scenario_id": seeds[t["seed_id"]]["scenario"]["id"],
-                    "epoch": t["campaign_epoch"], "D": d, "partition": PARTITION_LABEL[t["partition"]],
-                    "eligible": enters})
+                    "epoch": t["campaign_epoch"], "speaker": speaker, "D": d,
+                    "partition": PARTITION_LABEL[t["partition"]], "eligible": enters})
     return out, entering
 
 
