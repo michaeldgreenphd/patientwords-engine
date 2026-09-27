@@ -59,8 +59,9 @@ ALTERNATIVES = {"$.conversations[].exchanges[].interim[]": {"fixture"},
                 "$.conversations[].exchanges[].vals{}": {"superseded"}}
 # keys and paths the exporter writes beyond the site's samples at the fixture's site commit. None since the fixture was
 # refreshed from patientwords PR #9 at 56fa5a1 (2026-09-25), whose samples carry exporter_commit, analysis_sha256 and
-# provenance.models; a key added later is listed here until the site's samples carry it
-ADDED: dict[str, set[str]] = {}
+# provenance.models; a key added later is listed here until the site's samples carry it. Each triple's speaker (Codex
+# review of site PR #9, 2026-09-27): the page reads it when present
+ADDED: dict[str, set[str]] = {"$.triples[]": {"speaker"}}
 ADDED_PATHS: dict[str, set[str]] = {}
 
 
@@ -924,6 +925,20 @@ def test_the_wording_file_is_the_design_notes(tmp_path):
 
 
 # ------------------------------------------------------------------ status, provenance, the diff
+
+
+def test_each_triple_carries_its_speaker(shared, tmp_path):
+    """Codex review of site PR #9: an identity seed's patient and clinician triples share a seed and run, and the
+    summary did not say which was which, so their two marks on the page read the same. Each triple now carries the
+    artifact's speaker: a name for an identity seed's two triples, null for a seed without speakers."""
+    camp, _ = shared
+    summary = export(camp, tmp_path).summary
+    by_run: dict[tuple, set] = {}
+    for t in summary["triples"]:
+        by_run.setdefault((t["seed_id"], t["epoch"]), set()).add(t["speaker"])
+    identity = [k for k in by_run if k[0] in MECH["identity-register"]]
+    assert identity and all(len(by_run[k]) == 2 and None not in by_run[k] for k in identity), by_run
+    assert all(by_run[k] == {None} for k in by_run if k[0] not in MECH["identity-register"]), by_run
 
 
 def test_vendor_pack_is_the_latest_petri_entry_for_anthropic(shared, tmp_path):

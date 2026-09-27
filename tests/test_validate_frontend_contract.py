@@ -429,7 +429,7 @@ def _multiturn_pair(sample=False):
                "primary": {"triples": 1, "negative": 1, "positive": 0, "tied": 0, "p_two_sided": 1.0,
                            "gate_p": 1.0, "gate_passed": False},
                "triples": [{"seed_id": "s1", "scenario_id": "sc1", "epoch": 1, "D": -0.5,
-                            "partition": "prospective", "eligible": True}],
+                            "partition": "prospective", "eligible": True, **({} if sample else {"speaker": None})}],
                "scenario_means": {"sc1": -0.5}, "repeats": [{"seed_id": "s1", "epochs": 1, "same_direction": 1}],
                "provenance": {"runs": ["run_1"], "analysis_commit": "c" * 40, "analysis_sha256": "a" * 64,
                               "models": {"target": ["t/one"], "target_served": ["t-one-1"], "judge": ["j-one"],
@@ -684,6 +684,60 @@ def test_owner_run_multiturn_real_summary_cites_a_sent_pack(site, key, value):
     assert not any("petri_multiturn_summary.sample.json :: $.status.vendor_pack" in e for e in rep.errors)
 
 
+def test_owner_run_multiturn_real_summary_may_leave_the_send_to_a_recorded_deviation(site):
+    """Deviation D3 (2026-09-27, owner): the Multi-turn page is published before its pack is sent. A real summary citing
+    the one version a recorded deviation names may carry a null send date, with a note saying so; another version is
+    not covered, and a null version is never waived."""
+    summary, conversations = _multiturn_pair()
+    summary["status"]["vendor_pack"]["sent"] = None
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    version = summary["status"]["vendor_pack"]["version"]
+    waiver = {"id": "D3", "record": "docs/preregistration_advice.md, Deviation D3"}
+    rep = vfc.validate(site, engine=None, strict=True, send_waivers={version: waiver})
+    assert not [e for e in rep.errors if "vendor_pack" in e], rep.errors
+    assert any(f"null for {version}, accepted by recorded deviation D3" in n for n in rep.notes), rep.notes
+    rep = vfc.validate(site, engine=None, strict=True, send_waivers={"petri-v000000000999": waiver})
+    assert any("petri_multiturn_summary.json :: $.status.vendor_pack.sent" in e for e in rep.errors), rep.errors
+    summary["status"]["vendor_pack"]["version"] = None
+    _write_pair(site, (summary, conversations))
+    rep = vfc.validate(site, engine=None, strict=True, send_waivers={version: waiver})
+    assert any("petri_multiturn_summary.json :: $.status.vendor_pack.version" in e for e in rep.errors), rep.errors
+
+
+def test_a_send_date_is_refused_while_the_waiver_is_in_force(site):
+    """Codex on PR #51: with the waiver in force (no send in the log), a summary claiming a send date passed the shape
+    check, and the pack check passed the missing send under the same waiver, so the page could claim a send nobody
+    recorded."""
+    summary, conversations = _multiturn_pair()
+    _write_pair(site, (summary, conversations))
+    _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
+    version = summary["status"]["vendor_pack"]["version"]
+    waiver = {"id": "D3", "record": "docs/preregistration_advice.md, Deviation D3"}
+    rep = vfc.validate(site, engine=None, strict=True, send_waivers={version: waiver})
+    assert any("$.status.vendor_pack.sent" in e and "does not record" in e for e in rep.errors), rep.errors
+    assert not [e for e in vfc.validate(site, engine=None, strict=True).errors if "vendor_pack" in e]
+
+
+@pytest.mark.parametrize("sample", [False, True])
+def test_a_published_triple_names_its_speaker(site, sample):
+    """Codex on PR #51: the speaker was optional everywhere, so a real summary from the previous exporter left an
+    identity seed's two triples of one run indistinguishable. A real summary carries it (null allowed); a sample,
+    which predates it, may omit it."""
+    pair = _multiturn_pair(sample=sample)
+    pair[0]["triples"][0].pop("speaker", None)
+    _write_pair(site, _multiturn_pair(), ".json") if sample else _write_pair(site, pair)
+    _write_pair(site, pair if sample else _multiturn_pair(sample=True), ".sample.json")
+    errors = [e for e in run(site, strict=True).errors if ".speaker" in e]
+    assert errors == ([] if sample else ["petri_multiturn_summary.json :: $.triples[0].speaker :: missing: a published "
+                                         "triple names its speaker (null for a seed without speakers)"]), errors
+
+
+def test_the_shape_checks_send_waivers_are_the_pack_checks():
+    """The shape check reads the recorded deviations with the pack check's reader, so the two gates agree."""
+    assert vfc.petri_send_waivers(Path(vfc.__file__).resolve().parents[1])["petri-ve6d4feb2f8d1"]["id"] == "D3"
+
+
 @pytest.mark.parametrize("sample", [False, True])
 def test_owner_run_multiturn_summary_seed_is_required(site, sample):
     """Regression (Codex review of 2026-09-24): the summary's seed was nullable, so a published summary with its
@@ -913,9 +967,13 @@ def test_repro_pack_gate_end_to_end_on_public_multiturn_data_with_no_pack(tmp_pa
     log at all). Before the fix the gate skipped both checks and passed; now the Petri check runs with the requirement
     and fails (exit 4), and the gate names it."""
     _publish_multiturn(site)
-    out, errors = vfc.repro_pack_gate(_no_log_engine(tmp_path), site=site)
+    engine = _no_log_engine(tmp_path)
+    out, errors = vfc.repro_pack_gate(engine, site=site)
     assert "never-built" in out and "PUBLICATION:" in out
-    assert errors == [vfc.PETRI_PUBLICATION_UNMET_MSG]
+    # the missing log is named as a checkout gap too (2026-09-27: the site's CI checked out no ops/, so every public
+    # page read "never-built" whatever was sent)
+    assert errors == [vfc.PETRI_NO_LOG_MSG.format(root=engine), vfc.PETRI_PUBLICATION_UNMET_MSG]
+    assert "needs the engine's ops/ and docs/" in errors[0]
 
 
 def test_repro_pack_gate_end_to_end_on_public_multiturn_data_citing_an_unsent_pack(tmp_path, site):
@@ -944,4 +1002,5 @@ def test_main_fails_when_the_multiturn_data_is_public_without_a_sent_pack(site, 
     _publish_multiturn(site)
     assert _main(monkeypatch, site, engine) == 1
     out = capsys.readouterr().out
-    assert f"FAIL: {vfc.PETRI_PUBLICATION_UNMET_MSG}" in out and "contract check: 1 error(s)" in out
+    assert f"FAIL: {vfc.PETRI_PUBLICATION_UNMET_MSG}" in out and "contract check: 2 error(s)" in out
+    assert f"FAIL: {vfc.PETRI_NO_LOG_MSG.format(root=engine)}" in out          # the checkout gap, named

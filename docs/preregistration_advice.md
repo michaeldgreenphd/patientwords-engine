@@ -503,3 +503,44 @@ analysis digest, and when the conversations file is on the site without the
 summary. Until those files exist
 nothing is required, so the gate is unchanged while the page is unpublished.
 The module docstring states what the pack holds and what makes it STALE.
+
+## Deviation D3 (2026-09-27, owner-directed): the Multi-turn page published before its Petri pack was sent
+
+Rule (1) of Amendment 3 (a reproduction pack reaches the affected vendor BEFORE
+any public per-model comparison is published) binds the Petri Multi-turn page
+through decision 16 of the wave-2 design note, as the scope ruling under D2
+records. On 2026-09-27, before the page was published, the owner set it aside
+for this page in these words: "ah i think i am okay posting this publicly since
+these are not definitive results yet. can you please procede without having
+sent the vendor pack out. They can still look at it later"
+
+What is set aside, and what is kept:
+
+- Set aside: rule (1), for one pack, `petri-ve6d4feb2f8d1` (Anthropic; the
+  section 10 analysis of wave 2). It was built on 2026-09-25, logged in
+  `ops/disclosure_log.jsonl` with `sent_utc: null`, and read FRESH when checked
+  on 2026-09-27.
+- Kept: rule (2). The page cites that version and shows it as not yet sent
+  (`status.vendor_pack`, which the exporter reads from the disclosure log). The
+  contract gate still requires the cited pack to be the newest of its (vendor,
+  analysis), built over exactly the runs and from the analysis the page
+  publishes, and FRESH.
+- Kept: rule (3). A sent pack is never rebuilt in place.
+
+How the gate reads it. `data/petri/publication_deviations.json` records the
+waiver for that one version, and `publication_waivers` in
+`scripts/petri_audit/repro_pack.py` reads it. A waiver covers one version's
+missing send record and nothing else. A pack built later, after anything that
+stales this one, needs its own send or its own recorded deviation. A
+deviations file the reader cannot read, or an entry it refuses, is reported by
+name and waives nothing.
+
+Still owed. The pack is sent with the note template's "already public" wording,
+as D2 prescribes for a pack sent after publication, and the send is recorded
+with `repro-pack --record-sent`; the page shows the send date from its next
+export. To fill at send time:
+
+- sent: `<date>`
+- cited on the page from: `<date, frontend commit>`
+
+No measurement or published number changes.

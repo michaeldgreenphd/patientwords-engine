@@ -472,7 +472,26 @@ def _sample_flag(rep: Report, a: str, obj: dict, sample: bool):
         rep.err(a, "$.sample", "a published file must not carry the sample flag or note")
 
 
-def check_multiturn_summary(rep: Report, a: str, s: dict, sample: bool):
+def petri_send_waivers(engine_root: Path) -> dict[str, dict]:
+    """The Petri pack versions whose missing send record a recorded owner deviation accepts, read from the engine
+    checkout's data/petri/publication_deviations.json with the pack check's own reader (repro_pack.active_send_waivers),
+    so the shape check and the pack check apply one set of waivers. A version whose send the engine's disclosure log
+    records is no longer waived, so a summary still showing it as not yet sent fails until it is re-exported (Codex on
+    PR #51). An entry the reader refuses waives nothing, and the pack check, which runs in the same gate, names it; a
+    reader that cannot be imported gives no waiver, so the send is required as before."""
+    root = str(Path(__file__).resolve().parents[1])
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    try:
+        from scripts.petri_audit.repro_pack import active_send_waivers
+    except Exception:  # the pack check imports the same module and fails the gate by name
+        return {}
+    engine = Path(engine_root)
+    return active_send_waivers(engine / "data" / "petri" / "publication_deviations.json",
+                               engine / "ops" / "disclosure_log.jsonl")
+
+
+def check_multiturn_summary(rep: Report, a: str, s: dict, sample: bool, send_waivers: dict | None = None):
     _sample_flag(rep, a, s, sample)
     known_keys(rep, a, s, MT_SUMMARY_KEYS | (MT_SAMPLE_KEYS if sample else set()))
     # the analysis's bootstrap seed (a sample: its generator seed); the exporter always records one, and a summary
@@ -483,11 +502,26 @@ def check_multiturn_summary(rep: Report, a: str, s: dict, sample: bool):
     need(rep, a, status, "clinician_review", str, "$.status")
     pack = need(rep, a, status, "vendor_pack", dict, "$.status") or {}
     # a sample has no pack; the real pair is public, so it cites the sent pack (pre-registration rules (1)-(2), design
-    # note decision 16): a null version or send date fails --strict and plain runs alike (Codex review of 2026-09-25)
+    # note decision 16): a null version or send date fails --strict and plain runs alike (Codex review of 2026-09-25).
+    # The one exception is a recorded owner deviation naming the cited version (petri_send_waivers; D3, 2026-09-27):
+    # its send date may be null, and nothing else about the pack may
+    version = pack.get("version")
+    waiver = (send_waivers or {}).get(version) if not sample and isinstance(version, str) else None
     for key in ("version", "sent"):
-        value = need(rep, a, pack, key, str, "$.status.vendor_pack", nullable=sample)
+        waived = key == "sent" and waiver is not None and pack.get("sent") is None
+        value = need(rep, a, pack, key, str, "$.status.vendor_pack", nullable=sample or waived)
         if not sample and isinstance(value, str) and not value.strip():
             rep.err(a, f"$.status.vendor_pack.{key}", "empty where the sent pack's value is required")
+        if waived:
+            rep.notes.append(f"{a} :: $.status.vendor_pack.sent :: null for {version}, accepted by recorded deviation "
+                             f"{waiver['id']} ({waiver['record']}); the page shows the pack as not yet sent")
+        elif key == "sent" and waiver is not None and pack.get("sent") is not None:
+            # the waiver is in force only while the disclosure log records no send (active_send_waivers), so a send
+            # date here claims a send the log does not hold, which the pack check would pass under the same waiver
+            # (Codex on PR #51)
+            rep.err(a, "$.status.vendor_pack.sent", f"{pack.get('sent')!r} claims a send of {version} that the "
+                                                    f"disclosure log does not record (deviation {waiver['id']} is in "
+                                                    f"force); the summary shows it as not yet sent (null)")
     for block in ("headline", "style_sentence"):
         b = need(rep, a, s, block, dict, "$") or {}
         need(rep, a, b, "row_id", str, f"$.{block}")
@@ -503,6 +537,15 @@ def check_multiturn_summary(rep: Report, a: str, s: dict, sample: bool):
         for key, kinds in (("seed_id", str), ("scenario_id", str), ("epoch", int), ("eligible", bool)):
             need(rep, a, t, key, kinds, path)
         need(rep, a, t, "D", NUM, path, nullable=True)
+        # the triple's speaker (identity seeds: two triples per seed and run), written by the exporter since
+        # 2026-09-27: a real summary carries it, a name or null (Codex on PR #51: without it an identity seed's two
+        # triples of one run read the same on the page); the site's samples predate it, so a sample may omit it
+        if isinstance(t, dict) and not sample and "speaker" not in t:
+            rep.err(a, f"{path}.speaker", "missing: a published triple names its speaker (null for a seed without "
+                                          "speakers)")
+        if isinstance(t, dict) and "speaker" in t and not (t["speaker"] is None or
+                                                            (isinstance(t["speaker"], str) and t["speaker"].strip())):
+            rep.err(a, f"{path}.speaker", "must be a name or null")
         if isinstance(t, dict) and t.get("partition") not in MT_PARTITIONS:
             rep.err(a, f"{path}.partition", f"must be one of {list(MT_PARTITIONS)} (the figure's two panels)")
     for key, value in (need(rep, a, s, "scenario_means", dict, "$") or {}).items():
@@ -640,7 +683,7 @@ def check_multiturn_conversations(rep: Report, a: str, c: dict, sample: bool):
         need(rep, a, example, key, str, "$.example")
 
 
-def check_owner_run(rep: Report, site: Path):
+def check_owner_run(rep: Report, site: Path, send_waivers: dict | None = None):
     """The owner-run Multi-turn pair: absent (the expected state until it is published) is a note; one file without
     the other is an error; present files are shape-checked. The .sample.json fixtures are checked the same way,
     because the page fetches them whenever the real pair is not published: with the page on the site and the real
@@ -675,7 +718,10 @@ def check_owner_run(rep: Report, site: Path):
             if not isinstance(data, dict):
                 rep.err(name, "$", f"expected object, got {type(data).__name__}")
                 continue
-            check(rep, name, data, sample)
+            if check is check_multiturn_summary:
+                check(rep, name, data, sample, send_waivers)
+            else:
+                check(rep, name, data, sample)
 
 
 # ------------------------------------------------------------------ cross-repo checks
@@ -721,7 +767,7 @@ def check_engine_copies(rep: Report, site: Path, engine: Path):
 
 # --------------------------------------------------------------------------- driver
 
-def validate(site: Path, engine: Path | None, strict: bool = False) -> Report:
+def validate(site: Path, engine: Path | None, strict: bool = False, send_waivers: dict | None = None) -> Report:
     rep = Report()
     payload = load(site, "simulated_scenarios.json", rep, required=True)
     joins = {"scenario_keys": set(), "batch_stems": set(), "meta_ids": set()}
@@ -731,7 +777,7 @@ def validate(site: Path, engine: Path | None, strict: bool = False) -> Report:
     if isinstance(urg, dict):
         check_urgency(rep, urg, joins)
     check_shapes(rep, site, joins)
-    check_owner_run(rep, site)
+    check_owner_run(rep, site, send_waivers)
     if engine is not None and engine.is_dir():
         check_engine_copies(rep, site, engine)
     if strict:
@@ -749,6 +795,10 @@ PETRI_PUBLICATION_UNMET_MSG = ("petri repro-pack --check --require-sent: the Mul
                                "the site, but the Petri vendor pack it cites is not sent and FRESH (see lines above) - "
                                "the pack reaches the vendor before the page is public, and the page cites its version "
                                "(pre-registration rules (1)-(2); Petri design note decision 16)")
+PETRI_NO_LOG_MSG = ("the Multi-turn page's data files are public on the site, but the engine checkout at {root} has no "
+                    "disclosure log (ops/disclosure_log.jsonl), so the Petri pack the page cites cannot be read and the "
+                    "check reports it as never built; a checkout for this gate needs the engine's ops/ and docs/ (the "
+                    "pack's state reads docs/framework), as well as scripts/ and data/")
 # The Multi-turn page's published data files (the site's data-contract table; written by the owner-run
 # scripts/export_petri_multiturn.py). The synthetic fixtures the page is built on are named *.sample.json and never
 # count: only a real file makes the page's per-model claim public.
@@ -879,6 +929,10 @@ def repro_pack_gate(engine_root: Path,
         return "", []
     outs: list[str] = []
     errors: list[str] = []
+    if public and not log.is_file():
+        # the site's CI checked out scripts/ and data/ only, so the gate always read "never-built" once the page's data
+        # was public, sent pack or not (found 2026-09-27 publishing under deviation D3); say which checkout is short
+        errors.append(PETRI_NO_LOG_MSG.format(root=engine_root))
     if has_log:
         advice_out, advice_errors = _pack_check(
             run, [sys.executable, str(engine_root / "scripts" / "advice_eval.py"), "repro-pack", "--check",
@@ -913,10 +967,12 @@ def main():
     if not (site / "data").is_dir():
         print(f"error: {site}/data is not a directory", file=sys.stderr)
         sys.exit(2)
-    rep = validate(site, Path(args.engine) if args.engine else None, strict=args.strict)
+    # the engine checkout whose disclosure log and recorded deviations the gate reads (repro_pack_gate)
+    engine_root = Path(args.engine) if args.engine else Path(__file__).resolve().parents[1]
+    rep = validate(site, Path(args.engine) if args.engine else None, strict=args.strict,
+                   send_waivers=petri_send_waivers(engine_root))
 
     # repro-pack currency: see repro_pack_gate
-    engine_root = Path(args.engine) if args.engine else Path(__file__).resolve().parents[1]
     pack_out, pack_errors = repro_pack_gate(engine_root, site=site)
     if not args.quiet and pack_out:
         print(pack_out)
