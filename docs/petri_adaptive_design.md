@@ -59,7 +59,8 @@ auditor loop, so realism rests on the agenda being the study's real stimuli and 
   fire), so the fire's lane and commitment are the target's.
 - A fire CI would refuse at $0 still holds its reservation for the day, so `fire_trigger.py` refuses it first: a seeds
   file that is missing or outside the repository, a selection that is empty, unknown or mixes modes or disagrees with
-  `auditor_model`, and a rejudge whose seeds file lacks a source run's recorded seeds (`petri_seed_mode_problems`).
+  `auditor_model`, and a rejudge whose seeds file lacks a source run's recorded seeds or holds one with another body
+  (`petri_seed_mode_problems`, digest for digest).
   `cli rejudge-rehearse` plans from the seed file the run recorded.
 - The manifest records `execution.mode: autonomous`, `models.auditor`, and
   `execution.auditor_instruction_sha256`: the digest of the prompt file **the run recorded** in its task metadata,
@@ -103,5 +104,7 @@ outcomes. Cite directions only; no claim rests on this lane.
   mixing the two are refused before any call.
 - New judgment rows have `kind: "register"`, `assistant_turn_index: 0` and `final_in_exchange: false`; consumers that
   filter on `kind`/`key` (the section 10 analysis, the exporter, the comparison scripts) never read them, and the
-  lane's runs live on a runs branch, outside every published export.
+  lane's runs live on a runs branch, outside every published export. The reproduction pack (`repro_pack`) refuses an
+  adaptive run by name: it has no packaging path for auditor turns or `register` judgments, and a pack carries scripted
+  runs only.
 - The scripted controller's staging events now carry `source: "seed"`; nothing reads the field on scripted runs.

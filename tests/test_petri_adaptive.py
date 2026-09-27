@@ -391,8 +391,8 @@ def _repo_with_run(tmp_path: Path, seeds_file: str) -> Path:
     doc = framework.load_json(tmp_path / seeds_file)
     run = tmp_path / "data" / "petri" / "runs" / "run_1_1"
     run.mkdir(parents=True)
-    framework.write_json(run / "manifest.json", {"seeds": [{"seed_id": s["seed_id"], "file": seeds_file}
-                                                          for s in doc["seeds"][:2]]})
+    framework.write_json(run / "manifest.json", {"seeds": [{"seed_id": s["seed_id"], "seed_sha256": seeds.seed_digest(s),
+                                                           "file": seeds_file} for s in doc["seeds"][:2]]})
     return tmp_path
 
 
@@ -409,6 +409,44 @@ def test_the_fire_guard_refuses_a_rejudge_whose_seed_file_lacks_the_runs_seeds(t
     assert ft.petri_seed_mode_problems({**params, "source_runs": ["run_1_1"], "seeds_file": adaptive_rel}, repo=repo) == []
     # a source run this checkout does not hold is left to the plan
     assert ft.petri_seed_mode_problems({**params, "source_runs": "run_9_1"}, repo=repo) == []
+
+
+def test_the_fire_guard_refuses_a_rejudge_whose_seed_file_changed_the_runs_seeds(tmp_path):
+    """Codex on PR #50 (7d5628a1): the guard checked seed ids only, so a seed file holding the recorded ids with other
+    bodies passed it, and the plan's seed_sha256 check (judge_runner._refuse_seed_drift) refused the fire after it had
+    reserved the judge's ceiling."""
+    adaptive_rel = "docs/framework/" + adaptive.ADAPTIVE_SEED_FILE.name
+    repo = _repo_with_run(tmp_path, adaptive_rel)
+    params = {"mode": "rejudge", "source_runs": "run_1_1", "seeds_file": adaptive_rel, "judge": "true",
+              "judge_model": "claude-haiku-4-5", "judge_max_spend": "1"}
+    assert ft.petri_seed_mode_problems(params, repo=repo) == []
+    path = repo / adaptive_rel
+    doc = framework.load_json(path)
+    changed = doc["seeds"][1]["seed_id"]
+    doc["seeds"][1]["title"] = str(doc["seeds"][1].get("title", "")) + " (edited)"
+    framework.write_json(path, doc)
+    problems = ft.petri_seed_mode_problems(params, repo=repo)
+    assert len(problems) == 1 and "run_1_1" in problems[0] and changed in problems[0] \
+        and doc["seeds"][0]["seed_id"] not in problems[0], problems
+    # the plan refuses the same file, so the guard and the plan agree
+    manifest = framework.load_json(repo / "data" / "petri" / "runs" / "run_1_1" / "manifest.json")
+    with pytest.raises(ValueError, match=changed):
+        judge_runner._refuse_seed_drift(manifest, {s["seed_id"]: s for s in doc["seeds"]})
+    # an entry recorded without a digest is left to the plan
+    for entry in manifest["seeds"]:
+        del entry["seed_sha256"]
+    framework.write_json(repo / "data" / "petri" / "runs" / "run_1_1" / "manifest.json", manifest)
+    assert ft.petri_seed_mode_problems(params, repo=repo) == []
+
+
+def test_the_fire_guards_seed_digest_is_the_lanes(adaptive_set):
+    """fire_trigger imports nothing from the lane, so its seed digest is a mirror of seeds.seed_digest: equal on
+    every seed of both committed seed files."""
+    scripted = seeds.load_seed_file(framework.SEED_FILE)
+    for seed_set in (scripted, adaptive_set):
+        assert seed_set.seeds
+        for seed in seed_set.seeds.values():
+            assert ft._petri_seed_digest(seed) == seeds.seed_digest(seed)
 
 
 def test_the_rehearsal_plans_from_the_seed_file_the_run_recorded(tmp_path):

@@ -1139,6 +1139,13 @@ def _collect(inputs: PackInputs) -> tuple[dict[str, Any], list[str], list[str]]:
             problems.append(f"{stem} does not pass verify-run: " + "; ".join(vr))
             continue
         manifest = load_json(run_dir / "manifest.json")
+        # an adaptive-auditor run is exploratory and stays outside every published export (docs/petri_adaptive_design.md);
+        # the pack has no packaging path for its auditor turns or its `register` judgments, so it is refused by name
+        # rather than as malformed judgment rows (Codex on PR #50)
+        if isinstance(manifest, dict) and (manifest.get("execution") or {}).get("mode") == "autonomous":
+            problems.append(f"{stem} is an adaptive-auditor run (execution.mode autonomous): exploratory, and a "
+                            "reproduction pack carries scripted runs only")
+            continue
         files, file_problems, hidden = classify_run_files(run_dir, manifest)
         problems += file_problems
         if hidden:

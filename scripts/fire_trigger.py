@@ -471,8 +471,8 @@ def petri_seed_mode_problems(params: dict, repo: Path | None = None) -> list[str
     (_petri_seed_doc); the fire selects at least one seed (its seed ids, all known, else its wave, as the params job
     resolves them), as cli preflight requires; and the selection is all autonomous and names an auditor, or all
     scripted and names none (cli preflight's one-mode rule). Mode rejudge: the seeds file holds every seed each
-    source run recorded in its manifest, as the rejudge plan requires; a source run whose manifest is not in this
-    checkout is left to the plan."""
+    source run recorded in its manifest, digest for digest, as the rejudge plan requires; a source run whose manifest
+    is not in this checkout is left to the plan."""
     resolved = _petri_resolved(params)
     root = (Path(repo) if repo else Path(__file__).resolve().parents[1]).resolve()
     if resolved["mode"] == PETRI_REJUDGE_MODE:
@@ -507,11 +507,20 @@ def petri_seed_mode_problems(params: dict, repo: Path | None = None) -> list[str
     return []
 
 
+def _petri_seed_digest(seed: dict) -> str:
+    """scripts/petri_audit/seeds.py seed_digest, mirrored (this script imports nothing from the lane; tests hold them
+    equal): sha256 of the seed's canonical JSON, sorted keys, no whitespace, UTF-8 preserved."""
+    text = json.dumps(seed, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
 def _petri_rejudge_seed_problems(resolved: dict, root: Path) -> list[str]:
     """A rejudge plans from the seed file the fire names (rejudge.make_plan), which defaults to the scripted seed
     file; an autonomous source run recorded its seeds from the adaptive file, so its rejudge would be refused by the
     plan after the fire had reserved the judge's ceiling (review of PR #50). Refused here when a source run's manifest
-    in this checkout records a seed the named file does not hold."""
+    in this checkout records a seed the named file does not hold, or holds with another body: the plan compares each
+    recorded seed_sha256 (judge_runner._refuse_seed_drift), so a matching id is not enough (Codex on PR #50). A
+    recorded entry without a digest is left to the plan."""
     stems = resolved.get("source_runs", "").split()
     manifests = {}
     for stem in stems:
@@ -525,15 +534,22 @@ def _petri_rejudge_seed_problems(resolved: dict, root: Path) -> list[str]:
     seeds, problem = _petri_seed_doc(resolved["seeds_file"], root)
     if problem:
         return [problem]
-    known = {s.get("seed_id") for s in seeds}
+    by_id = {s.get("seed_id"): s for s in seeds}
     problems = []
     for stem, manifest in manifests.items():
         recorded = [s for s in manifest.get("seeds") or [] if isinstance(s, dict)]
-        missing = sorted({s.get("seed_id") for s in recorded} - known)
+        missing = sorted({s.get("seed_id") for s in recorded} - set(by_id))
         if missing:
             files = sorted({str(s.get("file")) for s in recorded if s.get("seed_id") in missing})
             problems.append(f"petri-audit rejudge of {stem}: its seeds {missing} are not in {resolved['seeds_file']}; "
                             f"the run recorded them from {files}, so set seeds_file to that file")
+        changed = sorted(s["seed_id"] for s in recorded
+                         if s.get("seed_id") in by_id and isinstance(s.get("seed_sha256"), str)
+                         and _petri_seed_digest(by_id[s["seed_id"]]) != s["seed_sha256"])
+        if changed:
+            problems.append(f"petri-audit rejudge of {stem}: its seeds {changed} in {resolved['seeds_file']} differ "
+                            "from the ones the run recorded (seed_sha256); the rejudge plan would refuse the fire "
+                            "after it had reserved the judge's ceiling, so set seeds_file to the seed file of record")
     return problems
 
 
