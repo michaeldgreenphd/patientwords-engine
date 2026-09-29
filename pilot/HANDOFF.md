@@ -105,3 +105,10 @@ Each fix has a check in `scripts/selftest.py` (design factors load from data; a 
 10. `surface_key` keeps letters and digits of every script (Unicode-aware) and removes only casing, punctuation and spacing, as the protocol states; for this run's ASCII rows nothing changes (control fidelity and the checker set are byte-identical).
 11. The checker result-file contract in `build_api_requests.py` shows the verdict objects the parser needs and says an unsuccessful attempt sets `result` to null.
 12. Steps 2 and 3 above no longer present a local Workflow rerun as a route: this run's execution path is recorded as a fact (assumption 13), and any rerun waits for a pilot push-to-run lane. Whether the run already recorded here is acceptable as a pilot artifact under the execution model is a question put to Codex on the PR; the owner decides.
+
+## Review round 3 (PR #52, Codex on be2a6897)
+
+13. Both parsers check the whole result file before touching anything: a duplicate or unplanned call id or batch id is refused (never overwritten or ignored), and `parse_generation.py` validates the replacement result in full before `--replace` deletes a previous parse.
+14. `write_manifest.py` refuses to write over a manifest whose seed, design or prompt-template inputs have changed unless `--reset` is passed, which records `metadata_reset_utc` and starts the creation and finalization times and the run records afresh.
+15. `load_seeds` validates the seed contract before any plan (unique non-empty ids; non-empty `clinical_term`, `patient_term`, `template`, `specialty`, `swap_type`; exactly one blank marker); a malformed file is refused by seed and rule.
+16. Codex's answer on the recorded run: under the execution model as written, generation and checker artifacts produced outside a push-to-run lane should not be committed; remove them or reproduce them through a lane. The choice between removing this run's artifacts from the PR (keeping the protocol, scripts, tests and inputs) and amending `AGENTS.md` for labeled pilot artifacts is the owner's; the agent made no change for it.

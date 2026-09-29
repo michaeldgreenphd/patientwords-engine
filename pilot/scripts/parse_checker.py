@@ -15,13 +15,45 @@ from common import PILOT, read_jsonl, write_jsonl
 VALID = ("yes", "no", "unclear")
 
 
+def validate_result(result: object, planned: set[str]) -> dict[str, dict]:
+    """The result contract, checked in full before anything is written: an object with a `batches` list whose
+    entries are objects with a string batch_id that is planned and appears exactly once, and an `attempts` list of
+    objects with an integer `attempt` and a `result` that is an object or null. A planned batch may be absent (it is
+    recorded as no response); a duplicate or unplanned batch id is refused, never overwritten or ignored (Codex
+    review of PR #52)."""
+    if not isinstance(result, dict) or not isinstance(result.get("batches"), list):
+        raise SystemExit("parse_checker: the result must be an object with a 'batches' list; nothing was written")
+    by_id: dict[str, dict] = {}
+    problems = []
+    for i, b in enumerate(result["batches"]):
+        if not isinstance(b, dict) or not isinstance(b.get("batch_id"), str):
+            problems.append(f"batches[{i}]: not an object with a string batch_id")
+            continue
+        bid = b["batch_id"]
+        attempts = b.get("attempts")
+        if bid not in planned:
+            problems.append(f"batches[{i}]: batch_id {bid!r} is not a planned batch")
+        elif bid in by_id:
+            problems.append(f"batches[{i}]: batch_id {bid!r} appears more than once")
+        elif not isinstance(attempts, list) or not all(
+                isinstance(a, dict) and isinstance(a.get("attempt"), int)
+                and (a.get("result") is None or isinstance(a.get("result"), dict)) for a in attempts):
+            problems.append(f"batches[{i}] ({bid}): attempts must be a list of objects with an integer attempt and "
+                            f"an object or null result")
+        else:
+            by_id[bid] = b
+    if problems:
+        raise SystemExit("parse_checker: refusing the result file; nothing was written:\n  " + "\n  ".join(problems))
+    return by_id
+
+
 def main(result_path: str) -> None:
     result = json.loads(Path(result_path).read_text(encoding="utf-8"))
     batches = json.loads((PILOT / "checker_batches.json").read_text(encoding="utf-8"))["batches"]
+    by_id = validate_result(result, {b["batch_id"] for b in batches})
     blind = {x["id"]: x for x in read_jsonl(PILOT / "checker_set.jsonl")}
     truth = read_jsonl(PILOT / "checker_key.jsonl")
     verdicts, log = {}, []
-    by_id = {b["batch_id"]: b for b in result["batches"] if b}
     for meta in batches:
         b = by_id.get(meta["batch_id"])
         attempts = b["attempts"] if b else []

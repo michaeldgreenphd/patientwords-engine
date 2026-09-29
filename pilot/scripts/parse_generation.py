@@ -30,9 +30,43 @@ def previous_outputs(gen_dir: Path) -> list[Path]:
     return sorted(gen_dir.glob("*.jsonl")) + sorted((gen_dir / "raw").glob("*.txt"))
 
 
+def validate_result(result: object, planned: dict[str, dict]) -> dict[str, dict]:
+    """The result contract, checked in full before anything on disk is touched: an object with a `calls` list whose
+    entries are objects with a string id that is planned and appears exactly once, and an `attempts` list of objects
+    with an integer `attempt` and a `raw` that is a string or null. A planned call may be absent (it is recorded as
+    no response); a duplicate or unplanned id is refused, never overwritten or ignored (Codex review of PR #52)."""
+    if not isinstance(result, dict) or not isinstance(result.get("calls"), list):
+        raise SystemExit("parse_generation: the result must be an object with a 'calls' list; nothing on disk was changed")
+    by_id: dict[str, dict] = {}
+    problems = []
+    for i, c in enumerate(result["calls"]):
+        if not isinstance(c, dict) or not isinstance(c.get("id"), str):
+            problems.append(f"calls[{i}]: not an object with a string id")
+            continue
+        cid = c["id"]
+        attempts = c.get("attempts")
+        if cid not in planned:
+            problems.append(f"calls[{i}]: id {cid!r} is not a planned call")
+        elif cid in by_id:
+            problems.append(f"calls[{i}]: id {cid!r} appears more than once")
+        elif not isinstance(attempts, list) or not all(
+                isinstance(a, dict) and isinstance(a.get("attempt"), int) and (a.get("raw") is None
+                                                                                or isinstance(a.get("raw"), str))
+                for a in attempts):
+            problems.append(f"calls[{i}] ({cid}): attempts must be a list of objects with an integer attempt and a "
+                            f"string or null raw")
+        else:
+            by_id[cid] = c
+    if problems:
+        raise SystemExit("parse_generation: refusing the result file; nothing on disk was changed:\n  "
+                         + "\n  ".join(problems))
+    return by_id
+
+
 def main(result_path: str, replace: bool = False) -> None:
     result = json.loads(Path(result_path).read_text(encoding="utf-8"))
     calls_meta = {c["id"]: c for c in json.loads((PILOT / "calls.json").read_text(encoding="utf-8"))["calls"]}
+    by_id = validate_result(result, calls_meta)  # the whole file is checked before any previous output is removed
     cell_order = {cell_id(s, t): i for i, (s, t) in enumerate(cells())}
     gen_dir = PILOT / "generated"
     raw_dir = gen_dir / "raw"
@@ -46,7 +80,6 @@ def main(result_path: str, replace: bool = False) -> None:
     if stale:
         print(f"parse_generation: --replace removed {len(stale)} file(s) from the previous parse")
     all_rows, failures, log = [], [], []
-    by_id = {c["id"]: c for c in result["calls"] if c}
     for cid, meta in calls_meta.items():  # protocol order: cell order, A before B
         call = by_id.get(cid)
         attempts = call["attempts"] if call else []

@@ -67,9 +67,40 @@ def rng(purpose: str) -> random.Random:
     return random.Random(f"{MASTER_SEED}:{purpose}")
 
 
+SEED_TEXT_FIELDS = ("clinical_term", "patient_term", "template", "specialty", "swap_type")
+
+
+def validate_seeds(data: object) -> list[dict]:
+    """The seed contract, checked before any plan or call: a non-empty `seeds` list; every seed an object with a
+    unique non-empty `id`, non-empty string `clinical_term`, `patient_term`, `template`, `specialty` and
+    `swap_type` (the checker set files a seed under its cell), and exactly one blank marker in the template. A seed
+    without `provenance` is allowed and reported as MISSING by the manifest and the summary. A malformed file is
+    refused, naming the seed and the rule, rather than planned into prompts and known-good rows (Codex review of
+    PR #52)."""
+    seeds = data.get("seeds") if isinstance(data, dict) else None
+    if not isinstance(seeds, list) or not seeds:
+        raise SystemExit("seeds.json: 'seeds' must be a non-empty list")
+    seen: set[str] = set()
+    for i, s in enumerate(seeds):
+        where = f"seeds.json seed {i}"
+        if not isinstance(s, dict):
+            raise SystemExit(f"{where}: not an object")
+        sid = s.get("id")
+        if not isinstance(sid, str) or not sid.strip():
+            raise SystemExit(f"{where}: 'id' must be a non-empty string")
+        if sid in seen:
+            raise SystemExit(f"{where}: duplicate id {sid!r}")
+        seen.add(sid)
+        for k in SEED_TEXT_FIELDS:
+            if not isinstance(s.get(k), str) or not s[k].strip():
+                raise SystemExit(f"{where} ({sid}): '{k}' must be a non-empty string")
+        if s["template"].count(BLANK) != 1:
+            raise SystemExit(f"{where} ({sid}): 'template' must contain the blank marker {BLANK!r} exactly once")
+    return seeds
+
+
 def load_seeds() -> list[dict]:
-    data = json.loads((PILOT / "seeds.json").read_text(encoding="utf-8"))
-    return data["seeds"]
+    return validate_seeds(json.loads((PILOT / "seeds.json").read_text(encoding="utf-8")))
 
 
 def read_jsonl(path: Path) -> list[dict]:

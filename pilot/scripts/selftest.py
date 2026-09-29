@@ -58,6 +58,20 @@ def unit_tests() -> None:
           and common.surface_key("Пневмония, острая") == "пневмонияострая"
           and common.surface_key("Chest pain") == common.surface_key("chest  pain."),
           "surface_key keeps letters of every script and removes only casing, punctuation and spacing")
+    # the seed contract is checked before any plan (Codex on PR #52)
+    good_seed = {"id": "s1", "clinical_term": "a", "patient_term": "b", "template": "x ___ y", "specialty": "s",
+                 "swap_type": "t"}
+    check(common.validate_seeds({"seeds": [good_seed]})[0]["id"] == "s1", "a well-formed seed file validates")
+    for bad, label in (({"seeds": [good_seed, dict(good_seed)]}, "duplicate id"),
+                       ({"seeds": [dict(good_seed, template="x y")]}, "template without a blank"),
+                       ({"seeds": [dict(good_seed, patient_term=" ")]}, "blank patient_term"),
+                       ({"seeds": []}, "empty seed list")):
+        try:
+            common.validate_seeds(bad)
+            refused = False
+        except SystemExit:
+            refused = True
+        check(refused, f"seed file with a {label} is refused")
     bar = importlib.import_module("build_api_requests")
     verdict = bar.RESULT_SHAPES["checker"]["shape"]["batches"][0]["attempts"][0]["result"]["verdicts"][0]
     check(set(verdict) == {"id", "equivalent", "reason"}, "checker result contract shows verdict objects")
@@ -135,6 +149,18 @@ def dry_run() -> None:
         (tmp / "wf_gen.json").write_text(json.dumps(gen))
         run("parse_generation.py", str(tmp / "wf_gen.json"))
         run("parse_generation.py", str(tmp / "wf_gen.json"), expect_failure=True)  # outputs exist: refuse
+
+        def n_outputs() -> int:
+            return len(list((tmp / "generated").glob("*.jsonl"))) + len(list((tmp / "generated" / "raw").glob("*.txt")))
+        # a result file that fails the contract is refused with --replace too, and the previous outputs stay intact
+        # (Codex on PR #52): a duplicate call id, an unplanned id, and a file without a calls list
+        before = n_outputs()
+        for label, bad in (("duplicate call id", {"calls": gen["calls"] + [gen["calls"][0]]}),
+                           ("unplanned call id", {"calls": gen["calls"] + [dict(gen["calls"][0], id="not_planned")]}),
+                           ("no calls list", {"nope": []})):
+            (tmp / "wf_bad.json").write_text(json.dumps(bad))
+            run("parse_generation.py", str(tmp / "wf_bad.json"), "--replace", expect_failure=True)
+            check(n_outputs() == before, f"a result with a {label} is refused and leaves the previous outputs intact")
         run("parse_generation.py", str(tmp / "wf_gen.json"), "--replace")
         run("build_checker_set.py")
         # the request builder writes one body per call with the recorded prompt hash, and sends nothing
@@ -160,6 +186,8 @@ def dry_run() -> None:
                 verdicts.append({"id": iid, "equivalent": v, "reason": "fabricated for the self-test"})
             chk["batches"].append({"batch_id": b["batch_id"], "attempts": [{"attempt": 1, "result": {"verdicts": verdicts}}]})
         (tmp / "wf_chk.json").write_text(json.dumps(chk))
+        (tmp / "wf_chk_bad.json").write_text(json.dumps({"batches": chk["batches"] + [chk["batches"][0]]}))
+        run("parse_checker.py", str(tmp / "wf_chk_bad.json"), expect_failure=True)  # duplicate batch id: refuse
         run("parse_checker.py", str(tmp / "wf_chk.json"))
         run("make_review_sheet.py")
         run("compute_summary.py")
@@ -184,6 +212,16 @@ def dry_run() -> None:
         check(m["design"]["seed_provenance"]["values"] == ["selftest provenance, not study data"]
               and m["design"]["seed_provenance"]["n_seeds_without_provenance"] == 0,
               "manifest records the seed file's provenance")
+        # a rerun whose inputs changed must not inherit the previous manifest's metadata (Codex on PR #52)
+        seeds_doc["seeds"][0]["clinical_term"] = "changed for the rerun check"
+        (tmp / "seeds.json").write_text(json.dumps(seeds_doc, ensure_ascii=False), encoding="utf-8")
+        run("plan_calls.py")
+        run("write_manifest.py", expect_failure=True)  # seeds changed: refuse
+        run("write_manifest.py", "--reset")
+        m2 = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        check(isinstance(m2.get("metadata_reset_utc"), str) and m2["runs"] == {} and m2["finalized_utc"] is None
+              and m2["seeds_json_sha256"] != m["seeds_json_sha256"],
+              "write_manifest refuses changed inputs and starts fresh metadata with --reset")
         md = (tmp / "summary.md").read_text()
         check("Estimand 5" in md and "\u2014" not in md, "summary.md rendered, no em-dash")
         print("dry run summary.md head:\n" + "\n".join(md.splitlines()[:6]))
