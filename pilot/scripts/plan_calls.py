@@ -17,6 +17,7 @@ from common import (
     cells,
     load_seeds,
     rng,
+    sha256_file,
     sha256_text,
 )
 
@@ -46,7 +47,12 @@ def main() -> None:
                           "exemplar_ids": [e["id"] for e in exemplars], "prompt_sha256": sha256_text(prompt),
                           "prompt": prompt})
     out = {"master_seed": MASTER_SEED, "n_seeds": n, "k_exemplars_used": k, "k_exemplars_requested": K_EXEMPLARS,
-           "generation_prompt_template_sha256": sha256_text(template), "calls": calls}
+           "generation_prompt_template_sha256": sha256_text(template),
+           # the inputs this plan was rendered from: write_manifest.py refuses a plan whose inputs have since changed
+           "input_hashes": {"seeds_json_sha256": sha256_file(PILOT / "seeds.json"),
+                            "design_json_sha256": sha256_file(PILOT / "design.json"),
+                            "generation_prompt_template_sha256": sha256_text(template)},
+           "calls": calls}
     (PILOT / "calls.json").write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"calls.json: {len(calls)} calls, n_seeds={n}, k_exemplars={k} (requested {K_EXEMPLARS})")
     for c in calls:

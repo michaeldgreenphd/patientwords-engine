@@ -13,6 +13,7 @@ from pathlib import Path
 
 from common import (
     CONTROLS_PER_CALL,
+    MAX_ATTEMPTS,
     PILOT,
     ROWS_PER_CALL,
     cell_id,
@@ -30,11 +31,15 @@ def previous_outputs(gen_dir: Path) -> list[Path]:
     return sorted(gen_dir.glob("*.jsonl")) + sorted((gen_dir / "raw").glob("*.txt"))
 
 
-def validate_result(result: object, planned: dict[str, dict]) -> dict[str, dict]:
+def validate_result(result: object, planned: dict[str, dict], unbound: bool = False) -> dict[str, dict]:
     """The result contract, checked in full before anything on disk is touched: an object with a `calls` list whose
-    entries are objects with a string id that is planned and appears exactly once, and an `attempts` list of objects
-    with an integer `attempt` and a `raw` that is a string or null. A planned call may be absent (it is recorded as
-    no response); a duplicate or unplanned id is refused, never overwritten or ignored (Codex review of PR #52)."""
+    entries are objects with a string id that is planned and appears exactly once, an `attempts` list of objects
+    with a `raw` that is a string or null, numbered 1..n in order with n at most MAX_ATTEMPTS (the protocol's one
+    retry), and a `prompt_sha256` equal to the planned prompt's, so a result answers the plan it was run from and
+    not an earlier one with the same ids. A planned call may be absent (it is recorded as no response); a duplicate
+    or unplanned id, a repeated or out-of-order attempt number, or a foreign prompt hash is refused, never
+    overwritten or ignored. --unbound skips the hash check only for a result recorded before the binding existed,
+    and the call log says so (Codex review of PR #52)."""
     if not isinstance(result, dict) or not isinstance(result.get("calls"), list):
         raise SystemExit("parse_generation: the result must be an object with a 'calls' list; nothing on disk was changed")
     by_id: dict[str, dict] = {}
@@ -55,6 +60,13 @@ def validate_result(result: object, planned: dict[str, dict]) -> dict[str, dict]
                 for a in attempts):
             problems.append(f"calls[{i}] ({cid}): attempts must be a list of objects with an integer attempt and a "
                             f"string or null raw")
+        elif [a["attempt"] for a in attempts] != list(range(1, len(attempts) + 1)) or len(attempts) > MAX_ATTEMPTS:
+            problems.append(f"calls[{i}] ({cid}): attempts must be numbered 1..n in order with n <= {MAX_ATTEMPTS}; "
+                            f"got {[a['attempt'] for a in attempts]}")
+        elif not unbound and c.get("prompt_sha256") != planned[cid]["prompt_sha256"]:
+            problems.append(f"calls[{i}] ({cid}): prompt_sha256 {str(c.get('prompt_sha256'))[:12]!r} is not the "
+                            f"planned prompt's {planned[cid]['prompt_sha256'][:12]!r}; a result answers one plan "
+                            f"(pass --unbound only for a result recorded before the binding existed)")
         else:
             by_id[cid] = c
     if problems:
@@ -63,10 +75,11 @@ def validate_result(result: object, planned: dict[str, dict]) -> dict[str, dict]
     return by_id
 
 
-def main(result_path: str, replace: bool = False) -> None:
+def main(result_path: str, replace: bool = False, unbound: bool = False) -> None:
     result = json.loads(Path(result_path).read_text(encoding="utf-8"))
     calls_meta = {c["id"]: c for c in json.loads((PILOT / "calls.json").read_text(encoding="utf-8"))["calls"]}
-    by_id = validate_result(result, calls_meta)  # the whole file is checked before any previous output is removed
+    by_id = validate_result(result, calls_meta, unbound)  # checked in full before any previous output is removed
+    binding = "prompt_sha256" if not unbound else "none (--unbound: result recorded before the binding existed)"
     cell_order = {cell_id(s, t): i for i, (s, t) in enumerate(cells())}
     gen_dir = PILOT / "generated"
     raw_dir = gen_dir / "raw"
@@ -89,7 +102,7 @@ def main(result_path: str, replace: bool = False) -> None:
             log.append({"call_id": cid, "arm": meta["arm"], "cell": meta["cell"], "attempt": 0, "is_final": True,
                         "null_return": True, "n_lines": 0, "n_valid": 0, "n_invalid": 0, "n_control": 0,
                         "n_noncontrol": 0, "expected_lines": ROWS_PER_CALL, "expected_controls": CONTROLS_PER_CALL,
-                        "reasons": {}, "status": "no_response_recorded"})
+                        "reasons": {}, "status": "no_response_recorded", "plan_binding": binding})
             write_jsonl(gen_dir / f"{cid}.jsonl", [])
             continue
         for a in attempts:
@@ -121,7 +134,7 @@ def main(result_path: str, replace: bool = False) -> None:
                         "n_valid": len(rows), "n_invalid": len(lines) - len(rows), "n_control": n_ctrl,
                         "n_noncontrol": len(rows) - n_ctrl, "expected_lines": ROWS_PER_CALL,
                         "expected_controls": CONTROLS_PER_CALL, "reasons": dict(reasons),
-                        "status": "ok" if rows else "failed"})
+                        "status": "ok" if rows else "failed", "plan_binding": binding})
             if is_final:
                 write_jsonl(PILOT / "generated" / f"{cid}.jsonl", rows)
                 all_rows.extend(rows)
@@ -136,4 +149,4 @@ def main(result_path: str, replace: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], replace="--replace" in sys.argv[2:])
+    main(sys.argv[1], replace="--replace" in sys.argv[2:], unbound="--unbound" in sys.argv[2:])

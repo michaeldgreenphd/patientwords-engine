@@ -7,6 +7,10 @@ consume, without the raw text passing through anyone's hands. The journal holds 
 
 An agent that started but has no result record is recorded as a null return. Every record type seen is counted so
 an unexpected journal shape is visible rather than silently dropped.
+
+A label of the form `<id> attempt <n> sha256=<hash>` (workflow scripts generated since the binding was added) yields
+the item's `prompt_sha256`, which the parsers check against the plan; a label without it yields null, and such a
+result parses only with the parsers' --unbound flag (Codex review of PR #52).
 """
 from __future__ import annotations
 
@@ -18,7 +22,7 @@ from pathlib import Path
 
 from common import PILOT
 
-LABEL = re.compile(r"^(?P<id>.+?) attempt (?P<n>\d+)$")
+LABEL = re.compile(r"^(?P<id>.+?) attempt (?P<n>\d+)(?: sha256=(?P<sha>[0-9a-f]{64}))?$")
 
 
 def main(which: str, journal_path: str) -> None:
@@ -33,6 +37,7 @@ def main(which: str, journal_path: str) -> None:
         elif o.get("type") == "result":
             results[(o.get("key"), o.get("agentId"))] = o.get("result")
     per_item: dict[str, dict[int, dict]] = {}
+    shas: dict[str, set] = {}
     unlabeled = 0
     for k, s in started.items():
         m = LABEL.match(s.get("label") or "")
@@ -40,6 +45,7 @@ def main(which: str, journal_path: str) -> None:
             unlabeled += 1
             continue
         item_id, n = m.group("id"), int(m.group("n"))
+        shas.setdefault(item_id, set()).add(m.group("sha"))
         res = results.get(k)
         if which == "generation":
             text = res if isinstance(res, str) else (json.dumps(res) if res is not None else None)
@@ -54,24 +60,34 @@ def main(which: str, journal_path: str) -> None:
                     obj = None
             per_item.setdefault(item_id, {})[n] = {"attempt": n, "result": obj if isinstance(obj, dict) else None,
                                                    "null_return": res is None, "agent_id": s.get("agentId")}
+    conflicting = {i: sorted(str(x) for x in v) for i, v in shas.items() if len(v) > 1}
+    if conflicting:
+        raise SystemExit(f"{journal_path}: an item's attempts carry different prompt hashes, which no single run "
+                         f"produces: {conflicting}")
+
+    def sha_of(i: str) -> str | None:
+        return next(iter(shas[i])) if i in shas else None
     if which == "generation":
         meta = {c["id"]: c for c in json.loads((PILOT / "calls.json").read_text(encoding="utf-8"))["calls"]}
-        items = [{"id": i, "arm": meta[i]["arm"], "cell": meta[i]["cell"],
+        items = [{"id": i, "arm": meta[i]["arm"], "cell": meta[i]["cell"], "prompt_sha256": sha_of(i),
                   "attempts": [per_item[i][n] for n in sorted(per_item[i])]} for i in meta if i in per_item]
         out = {"source": journal_path, "record_types": dict(types), "unlabeled_agents": unlabeled, "calls": items}
         path = PILOT / "workflow_generation_result.json"
         missing = [i for i in meta if i not in per_item]
     else:
         ids = [b["batch_id"] for b in json.loads((PILOT / "checker_batches.json").read_text(encoding="utf-8"))["batches"]]
-        items = [{"batch_id": i, "attempts": [per_item[i][n] for n in sorted(per_item[i])]} for i in ids if i in per_item]
+        items = [{"batch_id": i, "prompt_sha256": sha_of(i), "attempts": [per_item[i][n] for n in sorted(per_item[i])]}
+                 for i in ids if i in per_item]
         out = {"source": journal_path, "record_types": dict(types), "unlabeled_agents": unlabeled, "batches": items}
         path = PILOT / "workflow_checker_result.json"
         missing = [i for i in ids if i not in per_item]
     out["items_without_any_agent"] = missing
     path.write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     n_attempts = sum(len(x["attempts"]) for x in items)
+    n_bound = sum(1 for x in items if x["prompt_sha256"])
     print(f"{path.name}: {len(items)} items, {n_attempts} attempts, record types {dict(types)}, "
-          f"unlabeled {unlabeled}, missing {missing}")
+          f"unlabeled {unlabeled}, missing {missing}, items with a prompt hash {n_bound}"
+          + ("" if n_bound == len(items) else " (the parsers need --unbound for the rest)"))
 
 
 if __name__ == "__main__":

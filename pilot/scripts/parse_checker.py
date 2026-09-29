@@ -10,17 +10,19 @@ import json
 import sys
 from pathlib import Path
 
-from common import PILOT, read_jsonl, write_jsonl
+from common import MAX_ATTEMPTS, PILOT, read_jsonl, write_jsonl
 
 VALID = ("yes", "no", "unclear")
 
 
-def validate_result(result: object, planned: set[str]) -> dict[str, dict]:
+def validate_result(result: object, planned: dict[str, str], unbound: bool = False) -> dict[str, dict]:
     """The result contract, checked in full before anything is written: an object with a `batches` list whose
-    entries are objects with a string batch_id that is planned and appears exactly once, and an `attempts` list of
-    objects with an integer `attempt` and a `result` that is an object or null. A planned batch may be absent (it is
-    recorded as no response); a duplicate or unplanned batch id is refused, never overwritten or ignored (Codex
-    review of PR #52)."""
+    entries are objects with a string batch_id that is planned and appears exactly once, an `attempts` list of
+    objects with a `result` that is an object or null, numbered 1..n in order with n at most MAX_ATTEMPTS, and a
+    `prompt_sha256` equal to the planned batch prompt's. A planned batch may be absent (recorded as no response); a
+    duplicate or unplanned batch id, a repeated or out-of-order attempt number, or a foreign prompt hash is refused,
+    never overwritten or ignored. --unbound skips the hash check only for a result recorded before the binding
+    existed, and the checker log says so (Codex review of PR #52)."""
     if not isinstance(result, dict) or not isinstance(result.get("batches"), list):
         raise SystemExit("parse_checker: the result must be an object with a 'batches' list; nothing was written")
     by_id: dict[str, dict] = {}
@@ -40,6 +42,13 @@ def validate_result(result: object, planned: set[str]) -> dict[str, dict]:
                 and (a.get("result") is None or isinstance(a.get("result"), dict)) for a in attempts):
             problems.append(f"batches[{i}] ({bid}): attempts must be a list of objects with an integer attempt and "
                             f"an object or null result")
+        elif [a["attempt"] for a in attempts] != list(range(1, len(attempts) + 1)) or len(attempts) > MAX_ATTEMPTS:
+            problems.append(f"batches[{i}] ({bid}): attempts must be numbered 1..n in order with n <= {MAX_ATTEMPTS}; "
+                            f"got {[a['attempt'] for a in attempts]}")
+        elif not unbound and b.get("prompt_sha256") != planned[bid]:
+            problems.append(f"batches[{i}] ({bid}): prompt_sha256 {str(b.get('prompt_sha256'))[:12]!r} is not the "
+                            f"planned batch prompt's {planned[bid][:12]!r}; a result answers one plan (pass "
+                            f"--unbound only for a result recorded before the binding existed)")
         else:
             by_id[bid] = b
     if problems:
@@ -47,10 +56,11 @@ def validate_result(result: object, planned: set[str]) -> dict[str, dict]:
     return by_id
 
 
-def main(result_path: str) -> None:
+def main(result_path: str, unbound: bool = False) -> None:
     result = json.loads(Path(result_path).read_text(encoding="utf-8"))
     batches = json.loads((PILOT / "checker_batches.json").read_text(encoding="utf-8"))["batches"]
-    by_id = validate_result(result, {b["batch_id"] for b in batches})
+    by_id = validate_result(result, {b["batch_id"]: b["prompt_sha256"] for b in batches}, unbound)
+    binding = "prompt_sha256" if not unbound else "none (--unbound: result recorded before the binding existed)"
     blind = {x["id"]: x for x in read_jsonl(PILOT / "checker_set.jsonl")}
     truth = read_jsonl(PILOT / "checker_key.jsonl")
     verdicts, log = {}, []
@@ -58,7 +68,8 @@ def main(result_path: str) -> None:
         b = by_id.get(meta["batch_id"])
         attempts = b["attempts"] if b else []
         if not attempts:
-            log.append({"batch_id": meta["batch_id"], "attempt": 0, "status": "no_response_recorded"})
+            log.append({"batch_id": meta["batch_id"], "attempt": 0, "status": "no_response_recorded",
+                        "plan_binding": binding})
             continue
         for idx, a in enumerate(attempts):
             is_final = idx == len(attempts) - 1
@@ -84,7 +95,7 @@ def main(result_path: str) -> None:
                         "null_return": res is None, "n_items": len(meta["item_ids"]),
                         "n_entries": len(entries) if isinstance(entries, list) else 0,
                         "n_used": n_ok, "n_invalid_value": n_bad, "n_duplicate_id": n_dup, "n_foreign_id": n_foreign,
-                        "status": "ok" if isinstance(entries, list) else "failed"})
+                        "status": "ok" if isinstance(entries, list) else "failed", "plan_binding": binding})
     checked = []
     for t in truth:
         v = verdicts.get(t["id"], {"verdict": "missing", "reason": "", "batch_id": None})
@@ -98,4 +109,4 @@ def main(result_path: str) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main(sys.argv[1], unbound="--unbound" in sys.argv[2:])

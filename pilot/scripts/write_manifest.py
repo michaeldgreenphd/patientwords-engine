@@ -33,6 +33,7 @@ from common import (
     SPECIALTIES,
     SWAP_TYPES,
     sha256_file,
+    sha256_text,
 )
 
 INPUT_HASH_KEYS = ("seeds_json_sha256", "design_json_sha256")
@@ -71,6 +72,19 @@ def main(finalize: bool, reset: bool = False) -> None:
     cbdata = json.loads(cb.read_text(encoding="utf-8")) if cb.exists() else None
     if cbdata:
         current["prompt_hashes"]["checker_prompt_template"] = cbdata["checker_prompt_template_sha256"]
+    # the plan itself must have been rendered from the inputs on disk: a changed seed or design file with a stale
+    # calls.json would pair new input hashes with old prompts (Codex review of PR #52)
+    planned = calls.get("input_hashes")
+    if not isinstance(planned, dict):
+        raise SystemExit("write_manifest: calls.json records no input_hashes; re-run plan_calls.py so the plan is "
+                         "bound to its inputs")
+    template_now = sha256_text((PILOT / "prompts" / "generation_prompt.txt").read_text(encoding="utf-8"))
+    stale = [k for k in INPUT_HASH_KEYS if planned.get(k) != current[k]]
+    if planned.get("generation_prompt_template_sha256") != template_now:
+        stale.append("generation_prompt_template_sha256")
+    if stale:
+        raise SystemExit(f"write_manifest: calls.json was planned from different inputs ({', '.join(stale)} changed "
+                         f"since plan_calls.py ran); re-run plan_calls.py before writing the manifest")
     changes = input_changes(old, current) if old else []
     if changes and not reset:
         raise SystemExit(f"write_manifest: {', '.join(changes)} changed since manifest.json was written (created "

@@ -122,7 +122,12 @@ def main() -> None:
     failures = read_jsonl(PILOT / "generated" / "format_failures.jsonl")
     checked = read_jsonl(PILOT / "checked.jsonl")
     checker_meta = json.loads((PILOT / "checker_batches.json").read_text(encoding="utf-8"))
-    review = json.loads((PILOT / "review_map.json").read_text(encoding="utf-8")) if (PILOT / "review_map.json").exists() else {}
+    if len(checked) != checker_meta["n_items"]:
+        raise SystemExit(f"compute_summary: checked.jsonl holds {len(checked)} items, checker_batches.json plans "
+                         f"{checker_meta['n_items']}; re-run parse_checker.py on the complete result")
+    if not (PILOT / "review_map.json").exists():
+        raise SystemExit("compute_summary: review_map.json is missing; run make_review_sheet.py first")
+    review = json.loads((PILOT / "review_map.json").read_text(encoding="utf-8"))
     cell_ids = [cell_id(s, t) for s, t in cells()]
     S: dict = {"n_seeds": len(seeds), "k_exemplars_used": calls["k_exemplars_used"],
                "k_exemplars_requested": calls["k_exemplars_requested"],

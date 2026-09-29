@@ -50,18 +50,25 @@ VERDICT_SCHEMA = {
 RESULT_SHAPES = {
     "generation": {"file": "workflow_generation_result.json or any name passed to parse_generation.py",
                    "shape": {"calls": [{"id": "<call id>", "arm": "<A|B>", "cell": "<cell id>",
+                                        "prompt_sha256": "<this request's prompt_sha256, copied from this file>",
                                         "attempts": [{"attempt": 1, "raw": "<the response text verbatim, or null>",
-                                                      "null_return": False}]}]}},
+                                                      "null_return": False}]}]},
+                   "notes": "attempts are numbered 1..n in order with n at most 2 (one retry); prompt_sha256 must "
+                            "equal the planned prompt's hash, or parse_generation.py refuses the whole file before "
+                            "touching anything on disk."},
     "checker": {"file": "workflow_checker_result.json or any name passed to parse_checker.py",
                 "shape": {"batches": [{"batch_id": "<batch id>",
+                                       "prompt_sha256": "<this request's prompt_sha256, copied from this file>",
                                        "attempts": [{"attempt": 1,
                                                      "result": {"verdicts": [{"id": "<item id from the batch>",
                                                                               "equivalent": "yes | no | unclear",
                                                                               "reason": "<one line>"}]}}]}]},
                 "notes": "result is the parsed JSON object the model returned, with one verdict object per item id; "
                          "for an unsuccessful attempt set result to null (not an empty or string-valued verdicts "
-                         "list). parse_checker.py ignores an entry that is not an object with a known id and a "
-                         "verdict in {yes, no, unclear}, and records ids without a usable verdict as missing."},
+                         "list). Attempts are numbered 1..n in order with n at most 2, and prompt_sha256 must equal "
+                         "the planned batch prompt's hash. parse_checker.py ignores an entry that is not an object "
+                         "with a known id and a verdict in {yes, no, unclear}, and records ids without a usable "
+                         "verdict as missing."},
 }
 RETRY_RULES = {
     "generation": f"retry once, with the identical request, when the response is empty or no returned line parses as "

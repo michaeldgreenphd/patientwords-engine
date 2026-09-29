@@ -5,13 +5,30 @@ Writes review_sheet.csv, review_key.csv, review_map.json (review id to generated
 """
 from __future__ import annotations
 
+import csv
 import json
 import math
+from pathlib import Path
 
 from common import ARMS, N_REVIEW, PILOT, read_jsonl, rng, write_csv
 
 
+def annotated_rows(sheet_path: Path) -> list[str]:
+    """Ids of rows in an existing review sheet that carry a label or a note: human work that no rerun may erase
+    (Codex review of PR #52)."""
+    if not sheet_path.exists():
+        return []
+    with sheet_path.open(newline="", encoding="utf-8") as fh:
+        return [row.get("id", "?") for row in csv.DictReader(fh)
+                if (row.get("my_label") or "").strip() or (row.get("my_notes") or "").strip()]
+
+
 def main() -> None:
+    sheet_path = PILOT / "review_sheet.csv"
+    done = annotated_rows(sheet_path)
+    if done:
+        raise SystemExit(f"make_review_sheet: review_sheet.csv holds annotations on {len(done)} row(s) (first: "
+                         f"{done[0]}); a sheet with human work is not regenerated. Move it aside to draw a new one.")
     checked = [c for c in read_jsonl(PILOT / "checked.jsonl") if c["source"] == "generated"]
     by_arm = {a: [c for c in checked if c["arm"] == a] for a in ARMS}
     total = sum(len(v) for v in by_arm.values())
@@ -32,7 +49,7 @@ def main() -> None:
                       "template": c["template"], "my_label": "", "my_notes": ""})
         key.append({"id": rid, "arm": c["arm"], "cell": c["cell"], "checker_verdict": c["verdict"]})
         mapping[rid] = c["row_id"]
-    write_csv(PILOT / "review_sheet.csv", sheet, ["id", "clinical_term", "patient_term", "template", "my_label", "my_notes"])
+    write_csv(sheet_path, sheet, ["id", "clinical_term", "patient_term", "template", "my_label", "my_notes"])
     write_csv(PILOT / "review_key.csv", key, ["id", "arm", "cell", "checker_verdict"])
     (PILOT / "review_map.json").write_text(json.dumps({"allocation": alloc, "n_checked_by_arm":
                                                        {a: len(v) for a, v in by_arm.items()}, "map": mapping},

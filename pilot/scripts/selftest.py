@@ -144,7 +144,7 @@ def dry_run() -> None:
         r = random.Random(1)
         # the last planned call is left out of the result: a planned call with no response record must stay in
         # every call-level denominator (Codex on PR #52)
-        gen = {"calls": [{"id": c["id"], "arm": c["arm"], "cell": c["cell"],
+        gen = {"calls": [{"id": c["id"], "arm": c["arm"], "cell": c["cell"], "prompt_sha256": c["prompt_sha256"],
                           "attempts": fake_response(c, r, broken_first=(c["id"] == calls[3]["id"]))} for c in calls[:-1]]}
         (tmp / "wf_gen.json").write_text(json.dumps(gen))
         run("parse_generation.py", str(tmp / "wf_gen.json"))
@@ -152,16 +152,36 @@ def dry_run() -> None:
 
         def n_outputs() -> int:
             return len(list((tmp / "generated").glob("*.jsonl"))) + len(list((tmp / "generated" / "raw").glob("*.txt")))
+
+        def with_attempts(numbers: list[int]) -> dict:
+            first = gen["calls"][0]
+            atts = [dict(first["attempts"][0], attempt=n) for n in numbers]
+            return {"calls": [dict(first, attempts=atts)] + gen["calls"][1:]}
         # a result file that fails the contract is refused with --replace too, and the previous outputs stay intact
-        # (Codex on PR #52): a duplicate call id, an unplanned id, and a file without a calls list
+        # (Codex on PR #52): duplicate or unplanned ids, no calls list, repeated or reversed or too many attempt
+        # numbers, and a prompt hash that is not the plan's (or none at all)
         before = n_outputs()
+        first = gen["calls"][0]
+        unhashed = {k: v for k, v in first.items() if k != "prompt_sha256"}
         for label, bad in (("duplicate call id", {"calls": gen["calls"] + [gen["calls"][0]]}),
                            ("unplanned call id", {"calls": gen["calls"] + [dict(gen["calls"][0], id="not_planned")]}),
-                           ("no calls list", {"nope": []})):
+                           ("no calls list", {"nope": []}),
+                           ("repeated attempt number", with_attempts([1, 1])),
+                           ("reversed attempt numbers", with_attempts([2, 1])),
+                           ("three attempts", with_attempts([1, 2, 3])),
+                           ("foreign prompt hash", {"calls": [dict(first, prompt_sha256="0" * 64)] + gen["calls"][1:]}),
+                           ("missing prompt hash", {"calls": [unhashed] + gen["calls"][1:]})):
             (tmp / "wf_bad.json").write_text(json.dumps(bad))
             run("parse_generation.py", str(tmp / "wf_bad.json"), "--replace", expect_failure=True)
             check(n_outputs() == before, f"a result with a {label} is refused and leaves the previous outputs intact")
+        (tmp / "wf_unbound.json").write_text(json.dumps({"calls": [unhashed] + gen["calls"][1:]}))
+        run("parse_generation.py", str(tmp / "wf_unbound.json"), "--replace", "--unbound")  # legacy result: allowed
+        log = common.read_jsonl(tmp / "call_log.jsonl")
+        check(all(e["plan_binding"].startswith("none") for e in log), "an --unbound parse says so in every call log entry")
         run("parse_generation.py", str(tmp / "wf_gen.json"), "--replace")
+        check(all(e["plan_binding"] == "prompt_sha256" for e in common.read_jsonl(tmp / "call_log.jsonl")),
+              "a bound parse records the binding in every call log entry")
+        run("compute_summary.py", expect_failure=True)  # checked.jsonl does not exist yet: refuse, no partial summary
         run("build_checker_set.py")
         # the request builder writes one body per call with the recorded prompt hash, and sends nothing
         run("build_api_requests.py", "generation", "--model", "example-model")
@@ -184,12 +204,25 @@ def dry_run() -> None:
                 src = key[iid]["source"]
                 v = "no" if src == "broken" else ("yes" if r.random() < 0.9 else "unclear")
                 verdicts.append({"id": iid, "equivalent": v, "reason": "fabricated for the self-test"})
-            chk["batches"].append({"batch_id": b["batch_id"], "attempts": [{"attempt": 1, "result": {"verdicts": verdicts}}]})
+            chk["batches"].append({"batch_id": b["batch_id"], "prompt_sha256": b["prompt_sha256"],
+                                   "attempts": [{"attempt": 1, "result": {"verdicts": verdicts}}]})
         (tmp / "wf_chk.json").write_text(json.dumps(chk))
-        (tmp / "wf_chk_bad.json").write_text(json.dumps({"batches": chk["batches"] + [chk["batches"][0]]}))
-        run("parse_checker.py", str(tmp / "wf_chk_bad.json"), expect_failure=True)  # duplicate batch id: refuse
+        b0 = chk["batches"][0]
+        for label, bad in (("duplicate batch id", {"batches": chk["batches"] + [b0]}),
+                           ("repeated attempt number", {"batches": [dict(b0, attempts=b0["attempts"] * 2)] + chk["batches"][1:]}),
+                           ("foreign prompt hash", {"batches": [dict(b0, prompt_sha256="0" * 64)] + chk["batches"][1:]})):
+            (tmp / "wf_chk_bad.json").write_text(json.dumps(bad))
+            run("parse_checker.py", str(tmp / "wf_chk_bad.json"), expect_failure=True)
+            check(not (tmp / "checked.jsonl").exists(), f"a checker result with a {label} is refused and writes nothing")
         run("parse_checker.py", str(tmp / "wf_chk.json"))
         run("make_review_sheet.py")
+        # a sheet carrying human annotations is never regenerated (Codex on PR #52)
+        original_sheet = (tmp / "review_sheet.csv").read_text(encoding="utf-8")
+        lines = original_sheet.splitlines()
+        lines[1] = lines[1][: lines[1].rfind(",,")] + ",reviewed,a note"  # fill my_label and my_notes on row 1
+        (tmp / "review_sheet.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        run("make_review_sheet.py", expect_failure=True)
+        (tmp / "review_sheet.csv").write_text(original_sheet, encoding="utf-8")
         run("compute_summary.py")
         s = json.loads((tmp / "summary.json").read_text())
         check(s["run"]["n_retried_calls"] == 1, "one retried call recorded")
@@ -212,9 +245,23 @@ def dry_run() -> None:
         check(m["design"]["seed_provenance"]["values"] == ["selftest provenance, not study data"]
               and m["design"]["seed_provenance"]["n_seeds_without_provenance"] == 0,
               "manifest records the seed file's provenance")
-        # a rerun whose inputs changed must not inherit the previous manifest's metadata (Codex on PR #52)
+        # the journal extractor reads the prompt hash from a labelled agent and leaves it null for a legacy label
+        journal = [{"type": "launched"},
+                   {"type": "started", "key": "k1", "agentId": "a1",
+                    "label": f"{calls[0]['id']} attempt 1 sha256={calls[0]['prompt_sha256']}"},
+                   {"type": "result", "key": "k1", "agentId": "a1", "result": "{}"},
+                   {"type": "started", "key": "k2", "agentId": "a2", "label": f"{calls[1]['id']} attempt 1"},
+                   {"type": "result", "key": "k2", "agentId": "a2", "result": "{}"}]
+        (tmp / "journal.jsonl").write_text("".join(json.dumps(j) + "\n" for j in journal), encoding="utf-8")
+        run("extract_workflow_journal.py", "generation", str(tmp / "journal.jsonl"))
+        ext = {c["id"]: c for c in json.loads((tmp / "workflow_generation_result.json").read_text(encoding="utf-8"))["calls"]}
+        check(ext[calls[0]["id"]]["prompt_sha256"] == calls[0]["prompt_sha256"] and ext[calls[1]["id"]]["prompt_sha256"] is None,
+              "the journal extractor carries the prompt hash from the agent label and null without it")
+        # a rerun whose inputs changed must not inherit the previous manifest's metadata (Codex on PR #52), and a
+        # plan that was not re-rendered after the inputs changed is refused even with --reset
         seeds_doc["seeds"][0]["clinical_term"] = "changed for the rerun check"
         (tmp / "seeds.json").write_text(json.dumps(seeds_doc, ensure_ascii=False), encoding="utf-8")
+        run("write_manifest.py", "--reset", expect_failure=True)  # calls.json still from the old seeds: refuse
         run("plan_calls.py")
         run("write_manifest.py", expect_failure=True)  # seeds changed: refuse
         run("write_manifest.py", "--reset")

@@ -28,6 +28,7 @@ ARMS = ["A", "B"]  # A: exemplars sampled per call; B: the same fixed exemplars 
 K_EXEMPLARS = 8
 ROWS_PER_CALL = 20
 CONTROLS_PER_CALL = 4
+MAX_ATTEMPTS = 2  # the protocol's retry rule: one attempt, at most one retry (PROTOCOL.md 3 and 6)
 BLANK = "___"
 REQUIRED_FIELDS = ["clinical_term", "patient_term", "template", "control"]
 CONTROL_VALUES = ("none", "negative")
@@ -104,8 +105,11 @@ def load_seeds() -> list[dict]:
 
 
 def read_jsonl(path: Path) -> list[dict]:
+    """A required JSONL input. A missing file is refused by name: an absent artifact must never read as an empty
+    dataset and yield a plausible partial number (Codex review of PR #52)."""
     if not path.exists():
-        return []
+        shown = path.relative_to(PILOT) if path.is_relative_to(PILOT) else path
+        raise SystemExit(f"{shown}: required input is missing; run the step that writes it first")
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
