@@ -122,7 +122,7 @@ def fake_rows(call: dict, r: random.Random) -> str:
 def dry_run() -> None:
     tmp = Path(tempfile.mkdtemp(prefix="pilot_selftest_"))
     try:
-        for name in ("seeds.json", "design.json", "manifest_model.json", "PROTOCOL.md", "prompts"):
+        for name in ("seeds.json", "design.json", "manifest_model.json", "PROTOCOL.md", "HANDOFF.md", "prompts"):
             src = HERE.parent / name
             (shutil.copytree if src.is_dir() else shutil.copy)(src, tmp / name)
         # the temporary seed file states its own provenance; the summary and the manifest must repeat it, not the
@@ -215,6 +215,17 @@ def dry_run() -> None:
             run("parse_checker.py", str(tmp / "wf_chk_bad.json"), expect_failure=True)
             check(not (tmp / "checked.jsonl").exists(), f"a checker result with a {label} is refused and writes nothing")
         run("parse_checker.py", str(tmp / "wf_chk.json"))
+        # a previous checker parse is never written over without --replace, and every row carries the plan's hash
+        # (Codex on PR #52)
+        checked_text = (tmp / "checked.jsonl").read_text(encoding="utf-8")
+        run("parse_checker.py", str(tmp / "wf_chk.json"), expect_failure=True)
+        check((tmp / "checked.jsonl").read_text(encoding="utf-8") == checked_text,
+              "a second checker parse without --replace is refused and leaves checked.jsonl intact")
+        run("parse_checker.py", str(tmp / "wf_chk.json"), "--replace")
+        plan_sha = common.sha256_file(tmp / "checker_batches.json")
+        check((tmp / "checked.jsonl").read_text(encoding="utf-8") == checked_text
+              and all(c["checker_plan_sha256"] == plan_sha for c in common.read_jsonl(tmp / "checked.jsonl")),
+              "--replace rewrites the same verdicts, each row stamped with the checker plan's hash")
         run("make_review_sheet.py")
         # a sheet carrying human annotations is never regenerated (Codex on PR #52)
         original_sheet = (tmp / "review_sheet.csv").read_text(encoding="utf-8")
@@ -240,11 +251,65 @@ def dry_run() -> None:
         check(s["E4"]["checker_specificity_broken"]["unclear_counts_as_miss"]["p"] == 1.0, "specificity computed")
         check(s["review"]["n"] == 40, "review sheet has 40 rows")
         check(s["seed_provenance"] == ["selftest provenance, not study data"], "summary records the seed file's provenance")
+        # checked.jsonl must be the parse of the checker plan on disk, and the plan must come from the rows on disk:
+        # a foreign plan stamp, an altered item, a missing item, or a plan built from other rows is refused and the
+        # summary already written stays as it was (Codex on PR #52)
+        summary_text = (tmp / "summary.json").read_text(encoding="utf-8")
+        checked_rows = common.read_jsonl(tmp / "checked.jsonl")
+        swapped = [dict(c) for c in checked_rows]
+        swapped[0]["patient_term"], swapped[1]["patient_term"] = swapped[1]["patient_term"], swapped[0]["patient_term"]
+        for label, rows_ in (("foreign plan stamp", [dict(checked_rows[0], checker_plan_sha256="0" * 64)] + checked_rows[1:]),
+                             ("altered item", swapped),
+                             ("missing item", checked_rows[:-1])):
+            common.write_jsonl(tmp / "checked.jsonl", rows_)
+            run("compute_summary.py", expect_failure=True)
+            check((tmp / "summary.json").read_text(encoding="utf-8") == summary_text,
+                  f"a checked.jsonl with a {label} is refused and the summary on disk is unchanged")
+        (tmp / "checked.jsonl").write_text(checked_text, encoding="utf-8")
+        plan_text = (tmp / "checker_batches.json").read_text(encoding="utf-8")
+        plan_doc = json.loads(plan_text)
+        plan_doc["input_hashes"]["all_rows_jsonl_sha256"] = "0" * 64
+        (tmp / "checker_batches.json").write_text(json.dumps(plan_doc), encoding="utf-8")
+        run("compute_summary.py", expect_failure=True)
+        (tmp / "checker_batches.json").write_text(plan_text, encoding="utf-8")
+        check((tmp / "summary.json").read_text(encoding="utf-8") == summary_text,
+              "a checker plan built from other generation rows is refused and the summary on disk is unchanged")
         run("write_manifest.py")
         m = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
         check(m["design"]["seed_provenance"]["values"] == ["selftest provenance, not study data"]
               and m["design"]["seed_provenance"]["n_seeds_without_provenance"] == 0,
               "manifest records the seed file's provenance")
+        # finalize hashes every required output and refuses a missing one; a plan-time rewrite after finalize keeps
+        # the hashes only while the outputs are unchanged (Codex on PR #52)
+        run("write_manifest.py", "finalize")
+        mf = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        check(isinstance(mf["finalized_utc"], str)
+              and {"checked.jsonl", "summary.json", "HANDOFF.md", f"generated/{calls[-1]['id']}.jsonl",
+                   f"generated/raw/{calls[0]['id']}__attempt1.txt"} <= set(mf["output_hashes"]),
+              "finalize hashes every required output, per-call files included")
+        (tmp / "summary.json").rename(tmp / "summary.json.aside")
+        run("write_manifest.py", "finalize", expect_failure=True)
+        (tmp / "summary.json.aside").rename(tmp / "summary.json")
+        check(json.loads((tmp / "manifest.json").read_text(encoding="utf-8")) == mf,
+              "a missing required output refuses finalize and leaves the manifest as it was")
+        run("write_manifest.py")
+        m3 = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        check(m3["finalized_utc"] == mf["finalized_utc"] and m3["output_hashes"] == mf["output_hashes"],
+              "a plan-time rewrite keeps the finalization time and output hashes while the outputs are unchanged")
+        md_text = (tmp / "summary.md").read_text(encoding="utf-8")
+        (tmp / "summary.md").write_text(md_text + "edited after finalize\n", encoding="utf-8")
+        run("write_manifest.py")
+        m4 = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        check(m4["finalized_utc"] is None and "output_hashes" not in m4,
+              "a plan-time rewrite after an output changed clears the finalization time and the hashes")
+        (tmp / "summary.md").write_text(md_text, encoding="utf-8")
+        run("write_manifest.py", "finalize")
+        # a checker template edited after batching is refused: the manifest must not record a stale checker plan
+        tpl = tmp / "prompts" / "checker_prompt.txt"
+        tpl_text = tpl.read_text(encoding="utf-8")
+        tpl.write_text(tpl_text + "\nedited after batching\n", encoding="utf-8")
+        run("write_manifest.py", expect_failure=True)
+        tpl.write_text(tpl_text, encoding="utf-8")
         # the journal extractor reads the prompt hash from a labelled agent and leaves it null for a legacy label
         journal = [{"type": "launched"},
                    {"type": "started", "key": "k1", "agentId": "a1",
@@ -257,6 +322,15 @@ def dry_run() -> None:
         ext = {c["id"]: c for c in json.loads((tmp / "workflow_generation_result.json").read_text(encoding="utf-8"))["calls"]}
         check(ext[calls[0]["id"]]["prompt_sha256"] == calls[0]["prompt_sha256"] and ext[calls[1]["id"]]["prompt_sha256"] is None,
               "the journal extractor carries the prompt hash from the agent label and null without it")
+        # two agents carrying one label would collapse into one attempt: the journal is refused (Codex on PR #52)
+        dup = journal + [{"type": "started", "key": "k3", "agentId": "a3",
+                          "label": f"{calls[0]['id']} attempt 1 sha256={calls[0]['prompt_sha256']}"},
+                         {"type": "result", "key": "k3", "agentId": "a3", "result": "{}"}]
+        (tmp / "journal_dup.jsonl").write_text("".join(json.dumps(j) + "\n" for j in dup), encoding="utf-8")
+        result_text = (tmp / "workflow_generation_result.json").read_text(encoding="utf-8")
+        run("extract_workflow_journal.py", "generation", str(tmp / "journal_dup.jsonl"), expect_failure=True)
+        check((tmp / "workflow_generation_result.json").read_text(encoding="utf-8") == result_text,
+              "a journal with two agents on one label is refused and the previous result file is untouched")
         # a rerun whose inputs changed must not inherit the previous manifest's metadata (Codex on PR #52), and a
         # plan that was not re-rendered after the inputs changed is refused even with --reset
         seeds_doc["seeds"][0]["clinical_term"] = "changed for the rerun check"
@@ -264,6 +338,10 @@ def dry_run() -> None:
         run("write_manifest.py", "--reset", expect_failure=True)  # calls.json still from the old seeds: refuse
         run("plan_calls.py")
         run("write_manifest.py", expect_failure=True)  # seeds changed: refuse
+        # the previous run's checker plan was built from the old seeds: refused even with --reset until it is
+        # rebuilt after the new generation or moved aside (Codex on PR #52)
+        run("write_manifest.py", "--reset", expect_failure=True)
+        (tmp / "checker_batches.json").unlink()
         run("write_manifest.py", "--reset")
         m2 = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
         check(isinstance(m2.get("metadata_reset_utc"), str) and m2["runs"] == {} and m2["finalized_utc"] is None

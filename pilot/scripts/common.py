@@ -276,3 +276,30 @@ def bootstrap_mean(stat, items: list, r: random.Random, n_boot: int = N_BOOT) ->
     if not vals:
         return {"lo": None, "hi": None, "n_boot": 0}
     return {"lo": percentile(vals, 0.025), "hi": percentile(vals, 0.975), "n_boot": len(vals)}
+
+
+def checked_problems(checked: list[dict], key: list[dict], blind: list[dict], plan_sha256: str) -> list[str]:
+    """Why checked.jsonl does not belong to the checker plan on disk: an item set that differs from the truth key's
+    (an item absent, unknown or repeated), an item whose fields differ from the key and the blind set, or a row
+    stamped with another plan's hash (parse_checker.py writes `checker_plan_sha256`, the hash of the
+    checker_batches.json it parsed against, on every row). A count-only check let a previous run's checked.jsonl
+    pass beside a rebuilt checker set and mix its verdicts into a new run's summary (Codex review of PR #52).
+    Empty when checked.jsonl is that plan's parse."""
+    by_key = {t["id"]: t for t in key}
+    by_blind = {b["id"]: b for b in blind}
+    ids = [c.get("id") for c in checked]
+    problems = []
+    if sorted(ids, key=str) != sorted(by_key):
+        problems.append(f"item ids differ from checker_key.jsonl: {len(set(ids) - set(by_key))} unknown, "
+                        f"{len(set(by_key) - set(ids))} absent, {len(ids) - len(set(ids))} repeated")
+    for c in checked:
+        cid = c.get("id")
+        if cid not in by_key or cid not in by_blind:
+            continue
+        expected = {**by_key[cid], **by_blind[cid]}
+        if any(c.get(k) != v for k, v in expected.items()):
+            problems.append(f"item {cid}: fields differ from checker_key.jsonl and checker_set.jsonl")
+        if c.get("checker_plan_sha256") != plan_sha256:
+            problems.append(f"item {cid}: checker_plan_sha256 {str(c.get('checker_plan_sha256'))[:12]!r} is not "
+                            f"the plan on disk ({plan_sha256[:12]})")
+    return problems

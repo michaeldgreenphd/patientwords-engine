@@ -19,6 +19,7 @@ from common import (
     load_seeds,
     read_jsonl,
     rng,
+    sha256_file,
     sha256_text,
     surface_key,
     write_jsonl,
@@ -102,7 +103,13 @@ def main() -> None:
         prompt = template.replace("{{ITEMS}}", "\n".join(json.dumps(x, ensure_ascii=False) for x in chunk))
         batches.append({"batch_id": f"batch{len(batches) + 1:02d}", "item_ids": [x["id"] for x in chunk],
                         "prompt_sha256": sha256_text(prompt), "prompt": prompt})
-    out = {"checker_prompt_template_sha256": sha256_text(template), "batch_size": CHECKER_BATCH,
+    out = {"checker_prompt_template_sha256": sha256_text(template),
+           # the inputs this plan was built from: a later step refuses a plan whose template, seeds or generation
+           # rows have changed since, instead of recording a stale plan (Codex review of PR #52)
+           "input_hashes": {"checker_prompt_template_sha256": sha256_text(template),
+                            "seeds_json_sha256": sha256_file(PILOT / "seeds.json"),
+                            "all_rows_jsonl_sha256": sha256_file(PILOT / "generated" / "all_rows.jsonl")},
+           "batch_size": CHECKER_BATCH,
            "n_items": len(blind), "n_generated": len(rows), "n_known_good": n_good, "n_broken": n_broken,
            "notes": notes, "batches": batches}
     (PILOT / "checker_batches.json").write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

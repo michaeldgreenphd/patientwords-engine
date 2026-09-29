@@ -15,6 +15,7 @@ from common import (
     Tfidf,
     cell_id,
     cells,
+    checked_problems,
     cosine,
     dup_key,
     load_seeds,
@@ -24,6 +25,7 @@ from common import (
     percentile,
     read_jsonl,
     rng,
+    sha256_file,
     wilson,
 )
 
@@ -121,10 +123,27 @@ def main() -> None:
     rows = read_jsonl(PILOT / "generated" / "all_rows.jsonl")
     failures = read_jsonl(PILOT / "generated" / "format_failures.jsonl")
     checked = read_jsonl(PILOT / "checked.jsonl")
-    checker_meta = json.loads((PILOT / "checker_batches.json").read_text(encoding="utf-8"))
-    if len(checked) != checker_meta["n_items"]:
-        raise SystemExit(f"compute_summary: checked.jsonl holds {len(checked)} items, checker_batches.json plans "
-                         f"{checker_meta['n_items']}; re-run parse_checker.py on the complete result")
+    plan_path = PILOT / "checker_batches.json"
+    checker_meta = json.loads(plan_path.read_text(encoding="utf-8"))
+    # the checker plan must have been built from the generation rows and seeds on disk, and checked.jsonl must be
+    # that plan's parse: a count-only check let a previous run's verdicts join a new run's rows (Codex review of
+    # PR #52)
+    planned_inputs = checker_meta.get("input_hashes")
+    if not isinstance(planned_inputs, dict):
+        raise SystemExit("compute_summary: checker_batches.json records no input_hashes; re-run build_checker_set.py "
+                         "so the checker plan is bound to its inputs")
+    live = {"seeds_json_sha256": sha256_file(PILOT / "seeds.json"),
+            "all_rows_jsonl_sha256": sha256_file(PILOT / "generated" / "all_rows.jsonl")}
+    stale = [k for k, v in live.items() if planned_inputs.get(k) != v]
+    if stale:
+        raise SystemExit(f"compute_summary: checker_batches.json was built from different inputs ({', '.join(stale)} "
+                         f"changed since build_checker_set.py ran); rebuild the checker set and re-run the checker")
+    problems = checked_problems(checked, read_jsonl(PILOT / "checker_key.jsonl"),
+                                read_jsonl(PILOT / "checker_set.jsonl"), sha256_file(plan_path))
+    if problems:
+        shown = problems[:5] + ([f"... and {len(problems) - 5} more"] if len(problems) > 5 else [])
+        raise SystemExit("compute_summary: checked.jsonl is not the parse of the checker plan on disk; re-run "
+                         "parse_checker.py on that plan's result:\n  " + "\n  ".join(shown))
     if not (PILOT / "review_map.json").exists():
         raise SystemExit("compute_summary: review_map.json is missing; run make_review_sheet.py first")
     review = json.loads((PILOT / "review_map.json").read_text(encoding="utf-8"))

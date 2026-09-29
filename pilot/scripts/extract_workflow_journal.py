@@ -6,7 +6,9 @@ consume, without the raw text passing through anyone's hands. The journal holds 
   python3 scripts/extract_workflow_journal.py checker    <journal.jsonl> -> workflow_checker_result.json
 
 An agent that started but has no result record is recorded as a null return. Every record type seen is counted so
-an unexpected journal shape is visible rather than silently dropped.
+an unexpected journal shape is visible rather than silently dropped. Two agents carrying one `<id> attempt <n>`
+label, or two result records for one agent, would collapse into one attempt and the overwritten response would
+leave the provenance unseen, so such a journal is refused before anything is written (Codex review of PR #52).
 
 A label of the form `<id> attempt <n> sha256=<hash>` (workflow scripts generated since the binding was added) yields
 the item's `prompt_sha256`, which the parsers check against the plan; a label without it yields null, and such a
@@ -26,27 +28,35 @@ LABEL = re.compile(r"^(?P<id>.+?) attempt (?P<n>\d+)(?: sha256=(?P<sha>[0-9a-f]{
 
 
 def main(which: str, journal_path: str) -> None:
-    started, results, types = {}, {}, Counter()
+    started: list[dict] = []
+    results: dict[tuple, object] = {}
+    types: Counter = Counter()
+    repeated_results = []
     for line in Path(journal_path).read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         o = json.loads(line)
         types[o.get("type")] += 1
         if o.get("type") == "started":
-            started[(o.get("key"), o.get("agentId"))] = o
+            started.append(o)
         elif o.get("type") == "result":
-            results[(o.get("key"), o.get("agentId"))] = o.get("result")
+            k = (o.get("key"), o.get("agentId"))
+            if k in results:
+                repeated_results.append(k)
+            results[k] = o.get("result")
     per_item: dict[str, dict[int, dict]] = {}
     shas: dict[str, set] = {}
+    agents_by_label: dict[tuple[str, int], list] = {}
     unlabeled = 0
-    for k, s in started.items():
+    for s in started:
         m = LABEL.match(s.get("label") or "")
         if not m:
             unlabeled += 1
             continue
         item_id, n = m.group("id"), int(m.group("n"))
+        agents_by_label.setdefault((item_id, n), []).append(s.get("agentId"))
         shas.setdefault(item_id, set()).add(m.group("sha"))
-        res = results.get(k)
+        res = results.get((s.get("key"), s.get("agentId")))
         if which == "generation":
             text = res if isinstance(res, str) else (json.dumps(res) if res is not None else None)
             per_item.setdefault(item_id, {})[n] = {"attempt": n, "raw": text, "null_return": res is None,
@@ -60,6 +70,10 @@ def main(which: str, journal_path: str) -> None:
                     obj = None
             per_item.setdefault(item_id, {})[n] = {"attempt": n, "result": obj if isinstance(obj, dict) else None,
                                                    "null_return": res is None, "agent_id": s.get("agentId")}
+    repeated = {f"{i} attempt {n}": a for (i, n), a in agents_by_label.items() if len(a) > 1}
+    if repeated or repeated_results:
+        raise SystemExit(f"{journal_path}: refusing the journal; nothing was written: agents sharing one label "
+                         f"{repeated}; agents with more than one result record {repeated_results}")
     conflicting = {i: sorted(str(x) for x in v) for i, v in shas.items() if len(v) > 1}
     if conflicting:
         raise SystemExit(f"{journal_path}: an item's attempts carry different prompt hashes, which no single run "

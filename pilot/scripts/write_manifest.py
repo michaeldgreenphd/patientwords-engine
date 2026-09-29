@@ -10,6 +10,14 @@ A manifest already on disk lends its creation time, finalization time and run re
 planned inputs have changed since it was written (the seed file, the design file or a prompt template), keeping
 those would pair new prompts with the previous run's provenance, so the write is refused unless --reset is passed;
 --reset records metadata_reset_utc and starts the timestamps and run records afresh (Codex review of PR #52).
+
+Both plans must have been built from the files on disk: calls.json from the seed file, the design file and the
+generation template, and checker_batches.json from the checker template, the seed file and the parsed generation
+rows; a stale plan is refused with or without --reset. `finalize` requires every output of a complete run (the fixed
+list below, one generated/<call>.jsonl per planned call, one raw file per logged attempt), no file under generated/
+that belongs to no planned call, and a checked.jsonl that is the parse of the checker plan on disk. A plan-time
+rewrite of a finalized manifest keeps finalized_utc and output_hashes only while every hashed output is unchanged;
+otherwise both are cleared and the message says to finalize again (Codex review of PR #52).
 """
 from __future__ import annotations
 
@@ -32,12 +40,19 @@ from common import (
     ROWS_PER_CALL,
     SPECIALTIES,
     SWAP_TYPES,
+    checked_problems,
+    read_jsonl,
     sha256_file,
     sha256_text,
 )
 
 INPUT_HASH_KEYS = ("seeds_json_sha256", "design_json_sha256")
 TEMPLATE_KEYS = ("generation_prompt_template", "checker_prompt_template")
+# every output of a complete run, before the per-call files; finalize refuses while any is missing
+REQUIRED_OUTPUTS = ("calls.json", "call_log.jsonl", "generated/all_rows.jsonl", "generated/format_failures.jsonl",
+                    "checker_set.jsonl", "checker_key.jsonl", "checker_batches.json", "checked.jsonl",
+                    "checker_log.jsonl", "review_sheet.csv", "review_key.csv", "review_map.json", "summary.json",
+                    "summary.md", "seeds.json", "design.json", "PROTOCOL.md", "HANDOFF.md", "manifest_model.json")
 
 
 def seed_provenance() -> dict:
@@ -58,6 +73,37 @@ def input_changes(old: dict, current: dict) -> list[str]:
     return changes
 
 
+def finalize_hashes(calls: dict) -> dict[str, str]:
+    """Hashes of every output of a complete run. Every expected file must exist, nothing unexpected may sit under
+    generated/, and checked.jsonl must be the parse of the checker plan on disk; a manifest finalized over a missing
+    or foreign artifact would claim a complete bundle (Codex review of PR #52)."""
+    expected = list(REQUIRED_OUTPUTS)
+    missing = [o for o in expected if not (PILOT / o).exists()]
+    if missing:
+        raise SystemExit(f"write_manifest: cannot finalize, {len(missing)} required output(s) missing: "
+                         f"{', '.join(missing)}; run the steps that write them first")
+    expected += [f"generated/{c['id']}.jsonl" for c in calls["calls"]]
+    expected += [f"generated/raw/{e['call_id']}__attempt{e['attempt']}.txt"
+                 for e in read_jsonl(PILOT / "call_log.jsonl") if e.get("attempt", 0) >= 1]
+    missing = [o for o in expected if not (PILOT / o).exists()]
+    if missing:
+        raise SystemExit(f"write_manifest: cannot finalize, {len(missing)} per-call output(s) missing (first: "
+                         f"{missing[0]}); re-run parse_generation.py on the complete result")
+    present = ({f"generated/{p.name}" for p in (PILOT / "generated").glob("*.jsonl")}
+               | {f"generated/raw/{p.name}" for p in (PILOT / "generated" / "raw").glob("*.txt")})
+    unexpected = sorted(present - set(expected))
+    if unexpected:
+        raise SystemExit(f"write_manifest: cannot finalize, {len(unexpected)} file(s) under generated/ belong to no "
+                         f"planned call or logged attempt (first: {unexpected[0]}); parse_generation.py --replace "
+                         f"clears a previous parse")
+    problems = checked_problems(read_jsonl(PILOT / "checked.jsonl"), read_jsonl(PILOT / "checker_key.jsonl"),
+                                read_jsonl(PILOT / "checker_set.jsonl"), sha256_file(PILOT / "checker_batches.json"))
+    if problems:
+        raise SystemExit("write_manifest: cannot finalize, checked.jsonl is not the parse of the checker plan on "
+                         "disk:\n  " + "\n  ".join(problems[:5]))
+    return {o: sha256_file(PILOT / o) for o in expected}
+
+
 def main(finalize: bool, reset: bool = False) -> None:
     path = PILOT / "manifest.json"
     old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
@@ -70,10 +116,9 @@ def main(finalize: bool, reset: bool = False) -> None:
                "prompt_hashes": {"generation_prompt_template": calls["generation_prompt_template_sha256"]}}
     cb = PILOT / "checker_batches.json"
     cbdata = json.loads(cb.read_text(encoding="utf-8")) if cb.exists() else None
-    if cbdata:
-        current["prompt_hashes"]["checker_prompt_template"] = cbdata["checker_prompt_template_sha256"]
-    # the plan itself must have been rendered from the inputs on disk: a changed seed or design file with a stale
-    # calls.json would pair new input hashes with old prompts (Codex review of PR #52)
+    # both plans must have been rendered from the inputs on disk: a changed seed or design file with a stale
+    # calls.json would pair new input hashes with old prompts, and a checker template edited after batching, or a
+    # re-parsed generation, would be recorded under a stale checker plan's hashes (Codex review of PR #52)
     planned = calls.get("input_hashes")
     if not isinstance(planned, dict):
         raise SystemExit("write_manifest: calls.json records no input_hashes; re-run plan_calls.py so the plan is "
@@ -85,17 +130,40 @@ def main(finalize: bool, reset: bool = False) -> None:
     if stale:
         raise SystemExit(f"write_manifest: calls.json was planned from different inputs ({', '.join(stale)} changed "
                          f"since plan_calls.py ran); re-run plan_calls.py before writing the manifest")
+    if cbdata:
+        cplanned = cbdata.get("input_hashes")
+        if not isinstance(cplanned, dict):
+            raise SystemExit("write_manifest: checker_batches.json records no input_hashes; re-run "
+                             "build_checker_set.py so the checker plan is bound to its inputs")
+        all_rows = PILOT / "generated" / "all_rows.jsonl"
+        clive = {"checker_prompt_template_sha256":
+                 sha256_text((PILOT / "prompts" / "checker_prompt.txt").read_text(encoding="utf-8")),
+                 "seeds_json_sha256": current["seeds_json_sha256"],
+                 "all_rows_jsonl_sha256": sha256_file(all_rows) if all_rows.exists() else None}
+        cstale = [k for k, v in clive.items() if cplanned.get(k) != v]
+        if cstale:
+            raise SystemExit(f"write_manifest: checker_batches.json was built from different inputs "
+                             f"({', '.join(cstale)} changed since build_checker_set.py ran); rebuild the checker set "
+                             f"after the new generation, or move the stale plan aside for a plan-time manifest")
+        current["prompt_hashes"]["checker_prompt_template"] = clive["checker_prompt_template_sha256"]
     changes = input_changes(old, current) if old else []
     if changes and not reset:
         raise SystemExit(f"write_manifest: {', '.join(changes)} changed since manifest.json was written (created "
                          f"{old.get('created_utc')}, runs {sorted(old.get('runs', {}))}); a rerun with new inputs must "
                          f"not keep the previous run's timestamps and run records: pass --reset to start fresh metadata")
     base = {} if (reset or not old) else old  # the metadata carried forward, none after a reset
+    # a plan-time rewrite after finalize keeps the finalization time and the output hashes only while every hashed
+    # output is unchanged on disk; a finalization time without the hashes it vouched for would claim a verified
+    # bundle (Codex review of PR #52)
+    carried = base.get("output_hashes") if not finalize else None
+    changed_outputs = ([o for o, h in carried.items() if not (PILOT / o).exists() or sha256_file(PILOT / o) != h]
+                       if carried else [])
+    keep_final = bool(carried) and not changed_outputs
     m = {
         "pilot": "stimulus-generation measurement-validity pilot",
         "date_utc": base.get("date_utc", now[:10]),
         "created_utc": base.get("created_utc", now),
-        "finalized_utc": now if finalize else base.get("finalized_utc"),
+        "finalized_utc": now if finalize else (base.get("finalized_utc") if keep_final else None),
         "metadata_reset_utc": now if (reset and old) else base.get("metadata_reset_utc"),
         "model": model,
         "python": platform.python_version(),
@@ -121,22 +189,19 @@ def main(finalize: bool, reset: bool = False) -> None:
         "workflow_script_hashes": {p.name: sha256_file(p) for p in sorted((PILOT / "workflows").glob("*.js"))} if (PILOT / "workflows").exists() else {},
     }
     if cbdata:
-        m["prompt_hashes"]["checker_prompt_template"] = cbdata["checker_prompt_template_sha256"]
+        # the value checked against the live template above, not the plan file's own copy of it
+        m["prompt_hashes"]["checker_prompt_template"] = current["prompt_hashes"]["checker_prompt_template"]
         m["prompt_hashes"]["checker_batches"] = {x["batch_id"]: x["prompt_sha256"] for x in cbdata["batches"]}
     m["runs"] = base.get("runs", {})
+    if keep_final:
+        m["output_hashes"] = carried
     if finalize:
-        outputs = ["calls.json", "call_log.jsonl", "checker_set.jsonl", "checker_key.jsonl", "checker_batches.json",
-                   "checked.jsonl", "checker_log.jsonl", "review_sheet.csv", "review_key.csv", "review_map.json",
-                   "summary.json", "summary.md", "seeds.json", "design.json", "PROTOCOL.md", "HANDOFF.md",
-                   "manifest_model.json"]
-        m["output_hashes"] = {o: sha256_file(PILOT / o) for o in outputs if (PILOT / o).exists()}
-        gen = sorted((PILOT / "generated").glob("*.jsonl"))
-        m["output_hashes"].update({f"generated/{p.name}": sha256_file(p) for p in gen})
-        raw = sorted((PILOT / "generated" / "raw").glob("*.txt"))
-        m["output_hashes"].update({f"generated/raw/{p.name}": sha256_file(p) for p in raw})
+        m["output_hashes"] = finalize_hashes(calls)  # refuses an incomplete bundle before anything is written
     path.write_text(json.dumps(m, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    note = (f"; finalization cleared: {len(changed_outputs)} hashed output(s) changed or missing since finalize "
+            f"(first: {changed_outputs[0]}), re-run write_manifest.py finalize") if changed_outputs else ""
     print(f"manifest.json written ({'finalized' if finalize else 'planned'}"
-          f"{', metadata reset' if (reset and old) else ''}); protocol unchanged: {m['protocol_unchanged']}")
+          f"{', metadata reset' if (reset and old) else ''}){note}; protocol unchanged: {m['protocol_unchanged']}")
 
 
 if __name__ == "__main__":
