@@ -5,6 +5,7 @@ Run: python3 scripts/selftest.py. It never touches the real pilot outputs.
 """
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import random
@@ -16,7 +17,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import common
+common = importlib.import_module("common")  # the scripts import each other by bare name
 
 
 def check(cond: bool, msg: str) -> None:
