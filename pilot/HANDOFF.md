@@ -82,3 +82,19 @@ None. 0 retries, 0 null returns, 0 format failures, 0 missing verdicts, 0 subage
 ## Post-run edits (2026-09-29, before code review)
 
 After the run, and before this directory was committed for review, the scripts were linted against the engine repository's ruff configuration: import order, `ValueError` instead of a blind `Exception` around JSON parsing, file reads through `pathlib`, one dictionary iteration, one unused variable, and an explicit `check` flag on `subprocess.run`. The bootstrap correction of Deviations item 1 gained a regression check in `scripts/selftest.py` (each bootstrap interval must contain its point estimate), `tests/test_pilot_selftest.py` runs the self-test inside the engine's pytest suite with `PILOT_N_BOOT=200`, and `common.py` reads that variable (default 2000, the protocol's value). No computation changed: `summary.md` was recomputed after the edits and is byte-identical to the run's, and `manifest.json` was re-finalized so its script hashes match the committed files.
+
+## Review round 1 (PR #52, Codex on 4f6c028e)
+
+Seven findings were verified against the files and fixed; every number in `summary.json` is unchanged (checked field by field), and `summary.md` differs only by the lines the fixes add.
+
+1. The design factors (specialties, swap types and their prompt definitions) moved from `scripts/common.py` to `design.json`, which `common.py` loads; the rendered prompts and their hashes in `calls.json` are byte-identical. `manifest.json` records the file's hash.
+2. A planned call with no response record is now a final, failed call in `call_log.jsonl` (zero lines, status `no_response_recorded`), so it stays in the call-level denominators and appears in the per-call table; `compute_summary.py` refuses a call log whose final records do not match the planned calls.
+3. `summary.json` records the master seed and every named random stream (`seeds`), and `summary.md` names the bootstrap stream.
+4. `parse_generation.py` refuses to write over outputs of a previous parse unless `--replace` is passed, which deletes them first and reports the count; a stale attempt file can no longer be hashed into a later manifest.
+5. Broken-pair targets are sampled only from rows that have an eligible donor; this run's checker set, key and batches are byte-identical under the new rule.
+6. The bootstrap for estimand 3 keeps the cell set fixed (cells with at least two rows); a replicate in which a cell resamples to copies of one row is skipped and counted (`n_undefined_replicates`, reported in the summary) instead of being averaged over fewer cells. In this run every cell has 16 rows and no replicate was undefined.
+7. The summary's markdown helpers carry type annotations.
+
+Each fix has a check in `scripts/selftest.py` (design factors load from data; a call left out of the result counts 17 / 18; a second parse is refused without `--replace`; the eligible-target rule on a three-row example; a two-row cell producing undefined replicates that are counted, with the cell set fixed).
+
+One finding is open as a question rather than a change: whether `scripts/run_api.py` may reach the Messages API from a laptop at all, given the engine's rule that paid generation runs through push-to-run CI. The task that produced this pilot asked for a laptop rerun; the decision is the owner's and is recorded on the PR thread.

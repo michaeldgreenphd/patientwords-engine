@@ -18,17 +18,13 @@ PILOT = Path(os.environ.get("PILOT_DIR") or Path(__file__).resolve().parent.pare
 
 # Design constants (fixed by PROTOCOL.md).
 MASTER_SEED = 20260929
-SPECIALTIES = ["cardiology", "neurology", "gastroenterology"]
-SWAP_TYPES = ["symptom description", "body part", "medication"]
-SWAP_DEFINITIONS = {
-    "symptom description": "the swapped phrase describes a symptom or complaint (the clinical term versus how a patient "
-                           "would describe the same symptom)",
-    "body part": "the swapped phrase names an anatomical structure or location (the clinical name versus the everyday "
-                 "name for the same place)",
-    "medication": "the swapped phrase names a medicine, drug class, or treatment (the clinical or generic name versus "
-                  "how a patient refers to the same medicine)",
-}
-ARMS = ["A", "B"]
+# The design factors are data, not code (engine AGENTS.md: medical vocabulary lives in data files, never in Python
+# source): design.json holds the specialties and the swap types with the definition each prompt shows.
+DESIGN: dict = json.loads((PILOT / "design.json").read_text(encoding="utf-8"))
+SPECIALTIES: list[str] = list(DESIGN["specialties"])
+SWAP_TYPES: list[str] = [t["name"] for t in DESIGN["swap_types"]]
+SWAP_DEFINITIONS: dict[str, str] = {t["name"]: t["definition"] for t in DESIGN["swap_types"]}
+ARMS = ["A", "B"]  # A: exemplars sampled per call; B: the same fixed exemplars in every call (plan_calls.py)
 K_EXEMPLARS = 8
 ROWS_PER_CALL = 20
 CONTROLS_PER_CALL = 4

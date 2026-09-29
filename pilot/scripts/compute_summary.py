@@ -4,10 +4,12 @@ summary.md is typed by hand: the markdown is rendered from the same dictionaries
 from __future__ import annotations
 
 import json
+import random
 from collections import Counter
 
 from common import (
     ARMS,
+    MASTER_SEED,
     N_BOOT,
     PILOT,
     Tfidf,
@@ -19,13 +21,17 @@ from common import (
     mean_cross,
     mean_pairwise,
     newcombe_diff,
+    percentile,
     read_jsonl,
     rng,
     wilson,
 )
 
+Vector = dict[str, float]
 
-def fmt(v, nd=3):
+
+def fmt(v: object, nd: int = 3) -> str:
+    """A value for the markdown: floats to nd decimals, None as n/a."""
     if v is None:
         return "n/a"
     if isinstance(v, float):
@@ -33,15 +39,79 @@ def fmt(v, nd=3):
     return str(v)
 
 
-def ci(w):
+def ci(w: dict) -> str:
+    """The [lo, hi] of an interval record, or n/a when it has none."""
     if w.get("p") is None and w.get("mean") is None and w.get("diff") is None:
         return "n/a"
     lo, hi = w.get("lo"), w.get("hi")
     return f"[{fmt(lo)}, {fmt(hi)}]" if lo is not None else "n/a"
 
 
-def prop_row(label, w):
+def prop_row(label: str, w: dict) -> str:
+    """One markdown table row for a Wilson record."""
     return f"| {label} | {w['x']} / {w['n']} | {fmt(w['p'])} | {ci(w)} |"
+
+
+def mean_pairwise_distinct(vecs: list[Vector], idx: list[int]) -> float | None:
+    """Mean cosine over unordered pairs of DISTINCT original rows among the resampled indices idx. A bootstrap
+    resample repeats rows; a pair of two copies of one row is not a pair of distinct rows (PROTOCOL.md 5.3) and
+    would contribute a cosine of 1, so such pairs are excluded. None when no such pair exists."""
+    total, pairs = 0.0, 0
+    for i in range(len(idx)):
+        for j in range(i + 1, len(idx)):
+            if idx[i] != idx[j]:
+                total += cosine(vecs[idx[i]], vecs[idx[j]])
+                pairs += 1
+    return total / pairs if pairs else None
+
+
+def bootstrap_diversity(by_arm_cell: dict[str, dict[str, list[Vector]]], seed_vecs: list[Vector],
+                        r: random.Random, n_boot: int) -> dict:
+    """Percentile-bootstrap replicates for estimand 3. Rows are resampled with replacement within each cell, jointly
+    for both arms in each replicate (the same replicate feeds the arm intervals and the A minus B interval).
+
+    The cell set is fixed: an arm's statistic is the unweighted mean over the cells that have at least two rows in
+    the point estimate, in every replicate. A replicate in which one of those cells resamples to copies of a single
+    row has no defined within-cell statistic; it is then skipped for that arm (and for the difference) and counted in
+    n_undefined, never computed over a different set of cells (Codex review of PR #52)."""
+    arms = list(by_arm_cell)
+    fixed = {a: [c for c, v in by_arm_cell[a].items() if len(v) >= 2] for a in arms}
+    boot: dict[str, list[float]] = {a: [] for a in arms}
+    boot_cross: dict[str, list[float]] = {a: [] for a in arms}
+    undefined = {a: 0 for a in arms}
+    boot_diff: list[float] = []
+    boot_cross_diff: list[float] = []
+    undefined_diff = 0
+    for _ in range(n_boot):
+        st: dict[str, float | None] = {}
+        cr: dict[str, float | None] = {}
+        for a in arms:
+            idx = {c: [r.randrange(len(v)) for _ in v] for c, v in by_arm_cell[a].items()}
+            vals = [mean_pairwise_distinct(by_arm_cell[a][c], idx[c]) for c in fixed[a]]
+            st[a] = sum(vals) / len(vals) if vals and all(v is not None for v in vals) else None
+            allv = [by_arm_cell[a][c][i] for c in by_arm_cell[a] for i in idx[c]]
+            cr[a] = mean_cross(allv, seed_vecs)[0]
+            if st[a] is None:
+                undefined[a] += 1
+            else:
+                boot[a].append(st[a])
+            if cr[a] is not None:
+                boot_cross[a].append(cr[a])
+        if len(arms) == 2:
+            a0, a1 = arms
+            if st[a0] is not None and st[a1] is not None:
+                boot_diff.append(st[a0] - st[a1])
+            else:
+                undefined_diff += 1
+            if cr[a0] is not None and cr[a1] is not None:
+                boot_cross_diff.append(cr[a0] - cr[a1])
+    return {"fixed_cells": fixed, "boot": boot, "boot_cross": boot_cross, "boot_diff": boot_diff,
+            "boot_cross_diff": boot_cross_diff, "n_undefined": undefined, "n_undefined_diff": undefined_diff}
+
+
+def pct(vals: list[float]) -> dict:
+    """The 2.5th and 97.5th percentiles of bootstrap replicates, or None when there are none."""
+    return {"lo": percentile(vals, 0.025), "hi": percentile(vals, 0.975)} if vals else {"lo": None, "hi": None}
 
 
 def main() -> None:
@@ -55,15 +125,27 @@ def main() -> None:
     review = json.loads((PILOT / "review_map.json").read_text(encoding="utf-8")) if (PILOT / "review_map.json").exists() else {}
     cell_ids = [cell_id(s, t) for s, t in cells()]
     S: dict = {"n_seeds": len(seeds), "k_exemplars_used": calls["k_exemplars_used"],
-               "k_exemplars_requested": calls["k_exemplars_requested"]}
+               "k_exemplars_requested": calls["k_exemplars_requested"],
+               # the seeds behind every random draw, so the intervals are reproducible from this file alone
+               "seeds": {"master_seed": MASTER_SEED, "exemplar_sampling": f"random.Random({MASTER_SEED})",
+                         "bootstrap": f"random.Random('{MASTER_SEED}:bootstrap')", "n_boot": N_BOOT,
+                         "broken_pairs": f"random.Random('{MASTER_SEED}:broken')",
+                         "checker_shuffle": f"random.Random('{MASTER_SEED}:checker_shuffle')",
+                         "review_sample": f"random.Random('{MASTER_SEED}:review')"}}
 
     # ---- run overview
     finals = [e for e in call_log if e.get("is_final")]
+    planned = {c["id"] for c in calls["calls"]}
+    if {e["call_id"] for e in finals} != planned or len(finals) != len(planned):
+        raise SystemExit(f"compute_summary: call_log.jsonl holds final records for {len(finals)} calls, calls.json "
+                         f"plans {len(planned)}; re-run parse_generation.py on the complete result before summarizing")
     S["run"] = {"n_calls": len(calls["calls"]), "n_attempts": len(call_log),
                 "n_retried_calls": sum(1 for e in call_log if e.get("is_final") is False),
                 "calls_with_valid_rows": wilson(sum(1 for e in finals if e["n_valid"] > 0), len(finals)),
+                "calls_without_response": sum(1 for e in finals if e.get("status") == "no_response_recorded"),
                 "per_call": [{k: e[k] for k in ("call_id", "arm", "cell", "attempt", "n_lines", "n_valid",
-                                                 "n_invalid", "n_control", "n_noncontrol", "reasons")} for e in finals],
+                                                 "n_invalid", "n_control", "n_noncontrol", "reasons", "status")}
+                             for e in finals],
                 "non_final_attempts": [{k: e.get(k) for k in ("call_id", "attempt", "n_lines", "n_valid", "reasons",
                                                                "null_return")} for e in call_log
                                        if e.get("is_final") is False]}
@@ -114,67 +196,31 @@ def main() -> None:
     vec = {r["id"]: tf.vector(r["template"]) for r in gen}
     seed_vecs = [tf.vector(s["template"]) for s in seeds]
     by_arm_cell = {a: {c: [vec[r["id"]] for r in gen if r["arm"] == a and r["cell"] == c] for c in cell_ids} for a in ARMS}
-    r_boot = rng("bootstrap")
-    E3 = {"within_cell": {a: {} for a in ARMS}, "arm_mean_of_cells": {}, "vs_seeds": {}, "diff_A_minus_B": {},
-          "n_boot": N_BOOT, "tfidf_fit_docs": tf.n}
+    E3: dict = {"within_cell": {a: {} for a in ARMS}, "arm_mean_of_cells": {}, "vs_seeds": {}, "diff_A_minus_B": {},
+                "n_boot": N_BOOT, "bootstrap_seed": S["seeds"]["bootstrap"], "tfidf_fit_docs": tf.n}
     for a in ARMS:
         for c in cell_ids:
             m, pairs = mean_pairwise(by_arm_cell[a][c])
             E3["within_cell"][a][c] = {"n_rows": len(by_arm_cell[a][c]), "n_pairs": pairs, "mean": m}
-
-    def mean_pairwise_distinct(vecs, idx):
-        """Mean cosine over unordered pairs of DISTINCT original rows among the resampled indices idx. A bootstrap
-        resample repeats rows; a pair of two copies of one row is not a pair of distinct rows (section 5.3) and
-        would contribute a cosine of 1, so such pairs are excluded."""
-        total, pairs = 0.0, 0
-        for i in range(len(idx)):
-            for j in range(i + 1, len(idx)):
-                if idx[i] != idx[j]:
-                    total += cosine(vecs[idx[i]], vecs[idx[j]])
-                    pairs += 1
-        return total / pairs if pairs else None
-
-    def arm_stat(cellvecs, cellidx):
-        vals = [mean_pairwise_distinct(cellvecs[c], cellidx[c]) for c in cell_ids]
-        vals = [v for v in vals if v is not None]
-        return sum(vals) / len(vals) if vals else None
-
-    def resample_idx(n):
-        return [r_boot.randrange(n) for _ in range(n)] if n else []
-    point = {a: arm_stat(by_arm_cell[a], {c: list(range(len(by_arm_cell[a][c]))) for c in cell_ids}) for a in ARMS}
+    B = bootstrap_diversity(by_arm_cell, seed_vecs, rng("bootstrap"), N_BOOT)
+    # the point estimate over the same fixed cell set the replicates use (cells with at least two rows)
+    point = {}
+    for a in ARMS:
+        vals = [E3["within_cell"][a][c]["mean"] for c in B["fixed_cells"][a]]
+        point[a] = sum(vals) / len(vals) if vals else None
     cross_point = {a: mean_cross([v for c in cell_ids for v in by_arm_cell[a][c]], seed_vecs) for a in ARMS}
-    boot = {a: [] for a in ARMS}
-    boot_cross = {a: [] for a in ARMS}
-    boot_diff, boot_cross_diff = [], []
-    for _ in range(N_BOOT):
-        st, cr = {}, {}
-        for a in ARMS:
-            idx = {c: resample_idx(len(by_arm_cell[a][c])) for c in cell_ids}
-            st[a] = arm_stat(by_arm_cell[a], idx)
-            allv = [by_arm_cell[a][c][i] for c in cell_ids for i in idx[c]]
-            cr[a] = mean_cross(allv, seed_vecs)[0]
-            if st[a] is not None:
-                boot[a].append(st[a])
-            if cr[a] is not None:
-                boot_cross[a].append(cr[a])
-        if st["A"] is not None and st["B"] is not None:
-            boot_diff.append(st["A"] - st["B"])
-        if cr["A"] is not None and cr["B"] is not None:
-            boot_cross_diff.append(cr["A"] - cr["B"])
-    from common import percentile
-
-    def pct(vals):
-        return {"lo": percentile(vals, 0.025), "hi": percentile(vals, 0.975)} if vals else {"lo": None, "hi": None}
     for a in ARMS:
         E3["arm_mean_of_cells"][a] = {"mean": point[a], "n_rows": sum(len(v) for v in by_arm_cell[a].values()),
-                                      "n_cells_with_pairs": sum(1 for v in by_arm_cell[a].values() if len(v) >= 2),
-                                      **pct(boot[a])}
-        E3["vs_seeds"][a] = {"mean": cross_point[a][0], "n_pairs": cross_point[a][1], **pct(boot_cross[a])}
+                                      "n_cells_with_pairs": len(B["fixed_cells"][a]),
+                                      "n_boot_effective": len(B["boot"][a]),
+                                      "n_undefined_replicates": B["n_undefined"][a], **pct(B["boot"][a])}
+        E3["vs_seeds"][a] = {"mean": cross_point[a][0], "n_pairs": cross_point[a][1], **pct(B["boot_cross"][a])}
     E3["diff_A_minus_B"] = {"within_cell": {"diff": (point["A"] - point["B"]) if None not in point.values() else None,
-                                            **pct(boot_diff)},
+                                            "n_boot_effective": len(B["boot_diff"]),
+                                            "n_undefined_replicates": B["n_undefined_diff"], **pct(B["boot_diff"])},
                             "vs_seeds": {"diff": (cross_point["A"][0] - cross_point["B"][0])
                                          if None not in (cross_point["A"][0], cross_point["B"][0]) else None,
-                                         **pct(boot_cross_diff)}}
+                                         **pct(B["boot_cross_diff"])}}
     S["E3"] = E3
 
     # ---- E4 semantic equivalence, with checker sensitivity and specificity
@@ -223,8 +269,10 @@ def main() -> None:
     L.append("")
     L.append(f"Seeds: {S['n_seeds']} (synthetic placeholders; see HANDOFF.md). Exemplars per call: "
              f"{S['k_exemplars_used']} used, {S['k_exemplars_requested']} requested. Proportions carry 95% Wilson "
-             f"intervals; means carry 95% percentile bootstrap intervals ({N_BOOT} resamples); differences of "
-             f"proportions carry Newcombe score intervals. Values are shown to 3 decimals.")
+             f"intervals; means carry 95% percentile bootstrap intervals ({N_BOOT} resamples, stream "
+             f"{S['seeds']['bootstrap']}); differences of proportions carry Newcombe score intervals. Master seed "
+             f"{S['seeds']['master_seed']}; every named stream is listed under seeds in summary.json. Values are shown "
+             f"to 3 decimals.")
     L.append("")
     L.append("## Run overview")
     L.append("")
@@ -232,12 +280,16 @@ def main() -> None:
     L.append(f"| Quantity | Value |\n|---|---|\n| Generation calls | {R['n_calls']} |\n| Attempts (including retries) | "
              f"{R['n_attempts']} |\n| Calls retried | {R['n_retried_calls']} |\n| Calls with at least one valid row | "
              f"{R['calls_with_valid_rows']['x']} / {R['calls_with_valid_rows']['n']} "
-             f"(Wilson {ci(R['calls_with_valid_rows'])}) |")
+             f"(Wilson {ci(R['calls_with_valid_rows'])}) |\n| Calls with no response record | "
+             f"{R['calls_without_response']} |")
     L.append("")
     L.append("| Call | Attempt | Lines | Valid | Invalid | Controls | Non-control | Failure reasons |\n|---|---|---|---|---|---|---|---|")
     for e in R["per_call"]:
+        reasons = ', '.join(f'{k}: {v}' for k, v in e['reasons'].items() if k != 'ok') or 'none'
+        if e["status"] == "no_response_recorded":
+            reasons = "no response record"
         L.append(f"| {e['call_id']} | {e['attempt']} | {e['n_lines']} | {e['n_valid']} | {e['n_invalid']} | "
-                 f"{e['n_control']} | {e['n_noncontrol']} | {', '.join(f'{k}: {v}' for k, v in e['reasons'].items() if k != 'ok') or 'none'} |")
+                 f"{e['n_control']} | {e['n_noncontrol']} | {reasons} |")
     if R["non_final_attempts"]:
         L.append("")
         L.append("Non-final (retried) attempts:")
@@ -291,10 +343,16 @@ def main() -> None:
             e = E3["within_cell"][a][c]
             L.append(f"| {a} | {c} | {e['n_rows']} | {e['n_pairs']} | {fmt(e['mean'])} |")
     L.append("")
-    L.append("| Arm | Mean of cell means | 95% bootstrap | Rows | Cells with pairs |\n|---|---|---|---|---|")
+    L.append("| Arm | Mean of cell means | 95% bootstrap | Rows | Cells with pairs | Replicates used | Undefined replicates |\n"
+             "|---|---|---|---|---|---|---|")
     for a in ARMS:
         e = E3["arm_mean_of_cells"][a]
-        L.append(f"| {a} | {fmt(e['mean'])} | {ci(e)} | {e['n_rows']} | {e['n_cells_with_pairs']} |")
+        L.append(f"| {a} | {fmt(e['mean'])} | {ci(e)} | {e['n_rows']} | {e['n_cells_with_pairs']} | "
+                 f"{e['n_boot_effective']} | {e['n_undefined_replicates']} |")
+    L.append("")
+    L.append("The cell set is fixed across replicates (cells with at least two rows). A replicate in which a cell "
+             "resamples to copies of one row has no within-cell statistic; it is skipped and counted, never computed "
+             "over fewer cells.")
     L.append("")
     L.append("| Arm | Generated vs seed templates, mean cosine | 95% bootstrap | Pairs |\n|---|---|---|---|")
     for a in ARMS:
@@ -330,7 +388,8 @@ def main() -> None:
              f"{fmt(E5['novelty_pair']['diff'])} | {ci(E5['novelty_pair'])} (Newcombe) |")
     L.append(f"| 3 within-cell diversity (mean cosine) | {fmt(E3['arm_mean_of_cells']['A']['mean'])} | "
              f"{fmt(E3['arm_mean_of_cells']['B']['mean'])} | {fmt(E5['diversity_within_cell']['diff'])} | "
-             f"{ci(E5['diversity_within_cell'])} (bootstrap) |")
+             f"{ci(E5['diversity_within_cell'])} (bootstrap, {E5['diversity_within_cell']['n_boot_effective']} replicates, "
+             f"{E5['diversity_within_cell']['n_undefined_replicates']} undefined) |")
     L.append(f"| 3 generated vs seeds (mean cosine) | {fmt(E3['vs_seeds']['A']['mean'])} | {fmt(E3['vs_seeds']['B']['mean'])} | "
              f"{fmt(E5['diversity_vs_seeds']['diff'])} | {ci(E5['diversity_vs_seeds'])} (bootstrap) |")
     L.append(f"| 4 equivalence (yes / answered) | {fmt(E4['by_arm']['A']['yes_over_answered']['p'])} | "

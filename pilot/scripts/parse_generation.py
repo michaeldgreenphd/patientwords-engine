@@ -24,19 +24,40 @@ from common import (
 )
 
 
-def main(result_path: str) -> None:
+def previous_outputs(gen_dir: Path) -> list[Path]:
+    """Files an earlier parse left under generated/: the manifest hashes every one of them, so a rerun must not
+    leave a stale attempt file beside the new ones (Codex review of PR #52)."""
+    return sorted(gen_dir.glob("*.jsonl")) + sorted((gen_dir / "raw").glob("*.txt"))
+
+
+def main(result_path: str, replace: bool = False) -> None:
     result = json.loads(Path(result_path).read_text(encoding="utf-8"))
     calls_meta = {c["id"]: c for c in json.loads((PILOT / "calls.json").read_text(encoding="utf-8"))["calls"]}
     cell_order = {cell_id(s, t): i for i, (s, t) in enumerate(cells())}
-    raw_dir = PILOT / "generated" / "raw"
+    gen_dir = PILOT / "generated"
+    raw_dir = gen_dir / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
+    stale = previous_outputs(gen_dir)
+    if stale and not replace:
+        raise SystemExit(f"parse_generation: {len(stale)} file(s) from a previous parse exist under generated/ "
+                         f"(first: {stale[0].relative_to(PILOT)}); pass --replace to delete them before parsing")
+    for p in stale:
+        p.unlink()
+    if stale:
+        print(f"parse_generation: --replace removed {len(stale)} file(s) from the previous parse")
     all_rows, failures, log = [], [], []
     by_id = {c["id"]: c for c in result["calls"] if c}
     for cid, meta in calls_meta.items():  # protocol order: cell order, A before B
         call = by_id.get(cid)
         attempts = call["attempts"] if call else []
         if not attempts:
-            log.append({"call_id": cid, "attempt": 0, "status": "no_response_recorded"})
+            # a planned call with no response record is a final, failed call with zero lines: it stays in every
+            # denominator that counts calls, and the run's call-level success rate shows it (Codex review of PR #52)
+            log.append({"call_id": cid, "arm": meta["arm"], "cell": meta["cell"], "attempt": 0, "is_final": True,
+                        "null_return": True, "n_lines": 0, "n_valid": 0, "n_invalid": 0, "n_control": 0,
+                        "n_noncontrol": 0, "expected_lines": ROWS_PER_CALL, "expected_controls": CONTROLS_PER_CALL,
+                        "reasons": {}, "status": "no_response_recorded"})
+            write_jsonl(gen_dir / f"{cid}.jsonl", [])
             continue
         for a in attempts:
             raw = a.get("raw")
@@ -77,8 +98,9 @@ def main(result_path: str) -> None:
     finals = [e for e in log if e.get("is_final")]
     print(f"calls={len(calls_meta)} attempts={len(log)} retried={sum(1 for e in log if not e.get('is_final'))} "
           f"final_lines={sum(e['n_lines'] for e in finals)} valid_rows={len(all_rows)} "
-          f"failures={len(failures)} calls_with_zero_valid={sum(1 for e in finals if e['n_valid'] == 0)}")
+          f"failures={len(failures)} calls_with_zero_valid={sum(1 for e in finals if e['n_valid'] == 0)} "
+          f"no_response={sum(1 for e in finals if e['status'] == 'no_response_recorded')}")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main(sys.argv[1], replace="--replace" in sys.argv[2:])

@@ -56,6 +56,7 @@ def main(finalize: bool) -> None:
         "protocol_sha256_now": protocol_now,
         "protocol_unchanged": old.get("protocol_sha256_at_write", protocol_now) == protocol_now,
         "seeds_json_sha256": sha256_file(PILOT / "seeds.json"),
+        "design_json_sha256": sha256_file(PILOT / "design.json"),
         "prompt_hashes": {
             "generation_prompt_template": calls["generation_prompt_template_sha256"],
             "generation_calls": {c["id"]: {"prompt_sha256": c["prompt_sha256"], "exemplar_ids": c["exemplar_ids"]} for c in calls["calls"]},
@@ -72,7 +73,8 @@ def main(finalize: bool) -> None:
     if finalize:
         outputs = ["calls.json", "call_log.jsonl", "checker_set.jsonl", "checker_key.jsonl", "checker_batches.json",
                    "checked.jsonl", "checker_log.jsonl", "review_sheet.csv", "review_key.csv", "review_map.json",
-                   "summary.json", "summary.md", "seeds.json", "PROTOCOL.md", "HANDOFF.md", "manifest_model.json"]
+                   "summary.json", "summary.md", "seeds.json", "design.json", "PROTOCOL.md", "HANDOFF.md",
+                   "manifest_model.json"]
         m["output_hashes"] = {o: sha256_file(PILOT / o) for o in outputs if (PILOT / o).exists()}
         gen = sorted((PILOT / "generated").glob("*.jsonl"))
         m["output_hashes"].update({f"generated/{p.name}": sha256_file(p) for p in gen})

@@ -52,6 +52,26 @@ def unit_tests() -> None:
           == "missing_field:control", "missing control is a format failure")
     check(common.validate_line("```json")[1] == "not_json", "a fence line is a format failure")
     check(common.control_is_faithful({"clinical_term": "Chest pain", "patient_term": "chest  pain."}), "control fidelity")
+    check(len(common.SPECIALTIES) == 3 and len(common.SWAP_DEFINITIONS) == 3, "design factors load from design.json")
+    # broken pairs: targets come only from rows that have a donor (Codex on PR #52); with (A,X), (A,Y), (B,X) the
+    # row (A,X) has none, while (A,Y) and (B,X) can be re-paired with each other
+    bcs = importlib.import_module("build_checker_set")
+    rows = [{"id": "ax", "clinical_term": "A", "patient_term": "X"}, {"id": "ay", "clinical_term": "A", "patient_term": "Y"},
+            {"id": "bx", "clinical_term": "B", "patient_term": "X"}]
+    elig = bcs.eligible_targets(rows)
+    check(set(elig) == {"ay", "bx"} and [d["id"] for d in elig["ay"]] == ["bx"] and [d["id"] for d in elig["bx"]] == ["ay"],
+          "eligible broken-pair targets exclude the row with no donor")
+    # bootstrap: a two-row cell resamples to copies of one row in about half the replicates; the replicate is then
+    # undefined and counted, and the cell set stays fixed (Codex on PR #52)
+    cs = importlib.import_module("compute_summary")
+    tf = common.Tfidf(["one ___ two", "three ___ four", "five ___ six"])
+    v1, v2, v3 = (tf.vector(x) for x in ["one ___ two", "three ___ four", "five ___ six"])
+    boot = cs.bootstrap_diversity({"A": {"c1": [v1, v2], "c2": [v1, v2, v3]}, "B": {"c1": [v1, v3], "c2": [v2, v3, v1]}},
+                                  [v1], random.Random(3), 200)
+    check(boot["fixed_cells"] == {"A": ["c1", "c2"], "B": ["c1", "c2"]}, "bootstrap cell set is the fixed set")
+    check(boot["n_undefined"]["A"] > 0 and len(boot["boot"]["A"]) + boot["n_undefined"]["A"] == 200,
+          f"undefined replicates are skipped and counted ({boot['n_undefined']['A']} of 200 for arm A)")
+    check(len(boot["boot_diff"]) + boot["n_undefined_diff"] == 200, "difference replicates account for every draw")
 
 
 def fake_response(call: dict, r: random.Random, broken_first: bool) -> list[dict]:
@@ -80,23 +100,28 @@ def fake_rows(call: dict, r: random.Random) -> str:
 def dry_run() -> None:
     tmp = Path(tempfile.mkdtemp(prefix="pilot_selftest_"))
     try:
-        for name in ("seeds.json", "prompts"):
+        for name in ("seeds.json", "design.json", "prompts"):
             src = HERE.parent / name
             (shutil.copytree if src.is_dir() else shutil.copy)(src, tmp / name)
         env = {**os.environ, "PILOT_DIR": str(tmp)}
 
-        def run(script: str, *args: str) -> str:
+        def run(script: str, *args: str, expect_failure: bool = False) -> str:
             out = subprocess.run([sys.executable, str(HERE / script), *args], env=env, capture_output=True, text=True,
                                  check=False)
-            check(out.returncode == 0, f"{script} {' '.join(args)}\n{out.stdout}{out.stderr}")
+            check((out.returncode != 0) if expect_failure else (out.returncode == 0),
+                  f"{script} {' '.join(args)}{' (expected to refuse)' if expect_failure else ''}\n{out.stdout}{out.stderr}")
             return out.stdout
         run("plan_calls.py")
         calls = json.loads((tmp / "calls.json").read_text())["calls"]
         r = random.Random(1)
+        # the last planned call is left out of the result: a planned call with no response record must stay in
+        # every call-level denominator (Codex on PR #52)
         gen = {"calls": [{"id": c["id"], "arm": c["arm"], "cell": c["cell"],
-                          "attempts": fake_response(c, r, broken_first=(c["id"] == calls[3]["id"]))} for c in calls]}
+                          "attempts": fake_response(c, r, broken_first=(c["id"] == calls[3]["id"]))} for c in calls[:-1]]}
         (tmp / "wf_gen.json").write_text(json.dumps(gen))
         run("parse_generation.py", str(tmp / "wf_gen.json"))
+        run("parse_generation.py", str(tmp / "wf_gen.json"), expect_failure=True)  # outputs exist: refuse
+        run("parse_generation.py", str(tmp / "wf_gen.json"), "--replace")
         run("build_checker_set.py")
         batches = json.loads((tmp / "checker_batches.json").read_text())["batches"]
         key = {k["id"]: k for k in common.read_jsonl(tmp / "checker_key.jsonl")}
@@ -114,6 +139,10 @@ def dry_run() -> None:
         run("compute_summary.py")
         s = json.loads((tmp / "summary.json").read_text())
         check(s["run"]["n_retried_calls"] == 1, "one retried call recorded")
+        cw = s["run"]["calls_with_valid_rows"]
+        check(cw["n"] == 18 and cw["x"] == 17 and s["run"]["calls_without_response"] == 1
+              and len(s["run"]["per_call"]) == 18 and s["run"]["per_call"][-1]["status"] == "no_response_recorded",
+              "a planned call with no response record counts as a failed final call (17 / 18)")
         for a in ("A", "B"):  # regression: a bootstrap that counted copy pairs put the interval above the estimate
             e = s["E3"]["arm_mean_of_cells"][a]
             check(e["lo"] <= e["mean"] <= e["hi"], f"arm {a} within-cell bootstrap interval contains the point estimate")
@@ -124,7 +153,7 @@ def dry_run() -> None:
         check(s["E4"]["checker_specificity_broken"]["unclear_counts_as_miss"]["p"] == 1.0, "specificity computed")
         check(s["review"]["n"] == 40, "review sheet has 40 rows")
         md = (tmp / "summary.md").read_text()
-        check("Estimand 5" in md and "—" not in md, "summary.md rendered, no em-dash")
+        check("Estimand 5" in md and "\u2014" not in md, "summary.md rendered, no em-dash")
         print("dry run summary.md head:\n" + "\n".join(md.splitlines()[:6]))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

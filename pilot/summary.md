@@ -1,6 +1,6 @@
 # Pilot summary (computed by scripts/compute_summary.py)
 
-Seeds: 6 (synthetic placeholders; see HANDOFF.md). Exemplars per call: 6 used, 8 requested. Proportions carry 95% Wilson intervals; means carry 95% percentile bootstrap intervals (2000 resamples); differences of proportions carry Newcombe score intervals. Values are shown to 3 decimals.
+Seeds: 6 (synthetic placeholders; see HANDOFF.md). Exemplars per call: 6 used, 8 requested. Proportions carry 95% Wilson intervals; means carry 95% percentile bootstrap intervals (2000 resamples, stream random.Random('20260929:bootstrap')); differences of proportions carry Newcombe score intervals. Master seed 20260929; every named stream is listed under seeds in summary.json. Values are shown to 3 decimals.
 
 ## Run overview
 
@@ -10,6 +10,7 @@ Seeds: 6 (synthetic placeholders; see HANDOFF.md). Exemplars per call: 6 used, 8
 | Attempts (including retries) | 18 |
 | Calls retried | 0 |
 | Calls with at least one valid row | 18 / 18 (Wilson [0.824, 1.000]) |
+| Calls with no response record | 0 |
 
 | Call | Attempt | Lines | Valid | Invalid | Controls | Non-control | Failure reasons |
 |---|---|---|---|---|---|---|---|
@@ -101,10 +102,12 @@ TF-IDF fitted on 294 templates (all non-control generated rows plus the seeds).
 | B | gastroenterology__body_part | 16 | 120 | 0.081 |
 | B | gastroenterology__medication | 16 | 120 | 0.072 |
 
-| Arm | Mean of cell means | 95% bootstrap | Rows | Cells with pairs |
-|---|---|---|---|---|
-| A | 0.070 | [0.061, 0.081] | 144 | 9 |
-| B | 0.075 | [0.065, 0.087] | 144 | 9 |
+| Arm | Mean of cell means | 95% bootstrap | Rows | Cells with pairs | Replicates used | Undefined replicates |
+|---|---|---|---|---|---|---|
+| A | 0.070 | [0.061, 0.081] | 144 | 9 | 2000 | 0 |
+| B | 0.075 | [0.065, 0.087] | 144 | 9 | 2000 | 0 |
+
+The cell set is fixed across replicates (cells with at least two rows). A replicate in which a cell resamples to copies of one row has no within-cell statistic; it is skipped and counted, never computed over fewer cells.
 
 | Arm | Generated vs seed templates, mean cosine | 95% bootstrap | Pairs |
 |---|---|---|---|
@@ -142,7 +145,7 @@ Checker set: 314 items = 288 generated + 6 known-good seed rows + 20 broken pair
 | Estimand | Arm A | Arm B | A minus B | 95% interval for the difference |
 |---|---|---|---|---|
 | 2 novelty (pair) | 0.993 | 1.000 | -0.007 | [-0.038, 0.020] (Newcombe) |
-| 3 within-cell diversity (mean cosine) | 0.070 | 0.075 | -0.005 | [-0.019, 0.009] (bootstrap) |
+| 3 within-cell diversity (mean cosine) | 0.070 | 0.075 | -0.005 | [-0.019, 0.009] (bootstrap, 2000 replicates, 0 undefined) |
 | 3 generated vs seeds (mean cosine) | 0.060 | 0.065 | -0.005 | [-0.013, 0.002] (bootstrap) |
 | 4 equivalence (yes / answered) | 0.986 | 0.958 | 0.028 | [-0.014, 0.075] (Newcombe) |
 

@@ -25,6 +25,25 @@ from common import (
 )
 
 
+def donors_for(target: dict, cand: list[dict]) -> list[dict]:
+    """Rows of the same cell whose clinical and patient terms both differ from the target's after removing casing,
+    punctuation and spacing: re-pairing the target with any of them gives a pair generated for a different concept."""
+    return [d for d in cand if d["id"] != target["id"]
+            and surface_key(d["clinical_term"]) != surface_key(target["clinical_term"])
+            and surface_key(d["patient_term"]) != surface_key(target["patient_term"])]
+
+
+def eligible_targets(cand: list[dict]) -> dict[str, list[dict]]:
+    """Target row id to its donors, for the rows that have at least one donor. Targets are sampled from these, so a
+    cell never falls short of its quota while eligible rows remain (Codex review of PR #52)."""
+    out = {}
+    for t in cand:
+        donors = donors_for(t, cand)
+        if donors:
+            out[t["id"]] = donors
+    return out
+
+
 def main() -> None:
     rows = [r for r in read_jsonl(PILOT / "generated" / "all_rows.jsonl") if r["control"] == "none"]
     seeds = load_seeds()
@@ -52,17 +71,13 @@ def main() -> None:
     n_broken = 0
     for c in cell_ids:
         cand = pool[c]
-        if len(cand) < alloc[c]:
-            notes.append(f"broken pairs: cell {c} has {len(cand)} rows, {alloc[c]} wanted")
-        targets = r.sample(cand, min(alloc[c], len(cand)))
+        elig = eligible_targets(cand)
+        eligible = [t for t in cand if t["id"] in elig]  # cell order preserved, so the draw is reproducible
+        if len(eligible) < alloc[c]:
+            notes.append(f"broken pairs: cell {c} has {len(eligible)} eligible rows of {len(cand)}, {alloc[c]} wanted")
+        targets = r.sample(eligible, min(alloc[c], len(eligible)))
         for t in targets:
-            donors = [d for d in cand if d["id"] != t["id"]
-                      and surface_key(d["clinical_term"]) != surface_key(t["clinical_term"])
-                      and surface_key(d["patient_term"]) != surface_key(t["patient_term"])]
-            if not donors:
-                notes.append(f"broken pairs: no eligible donor for {t['id']} in {c}")
-                continue
-            d = r.choice(donors)
+            d = r.choice(elig[t["id"]])
             items.append({"clinical_term": t["clinical_term"], "patient_term": d["patient_term"],
                           "template": t["template"]})
             key.append({"source": "broken", "row_id": t["id"], "arm": t["arm"], "cell": c, "donor_row_id": d["id"]})
