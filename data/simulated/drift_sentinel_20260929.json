@@ -1,0 +1,107 @@
+[
+  {
+    "top_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+    "bottom_prompt": "She just can't switch her brain off at bedtime lately, so before turning in she takes a",
+    "target_clinical_token": " sedative",
+    "generation": {
+      "patient_term": "can't switch her brain off at bedtime",
+      "clinical_term": "dealing with sleep-onset insomnia",
+      "expected_clinical_continuations": [
+        "sedative",
+        "sleeping",
+        "pill"
+      ],
+      "rationale": "The colloquial 'can't switch her brain off' invites a warm bath or tea, while 'sleep-onset insomnia' shifts the token after 'a' toward a sedative or sleeping pill.",
+      "swap_spans": {
+        "patient_span": "She just can't switch her brain off at bedtime",
+        "clinical_span": "She's been dealing with sleep-onset insomnia"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ],
+      "downgrade_source": {
+        "batch": "pairs_20260706T201750Z",
+        "index": 8,
+        "models": [
+          "qwen3-1.7b"
+        ]
+      }
+    }
+  },
+  {
+    "top_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+    "bottom_prompt": "Because my ticker's been acting funny lately, I finally went to see a",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "ticker's been acting funny",
+      "clinical_term": "arrhythmia symptoms",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "The colloquial 'ticker' phrase keeps the reading casual, whereas the clinical term for irregular heartbeat pushes strongly toward seeking a doctor.",
+      "topic": "heart and blood pressure",
+      "swap_spans": {
+        "patient_span": "my ticker's been acting funny",
+        "clinical_span": "I've had arrhythmia symptoms"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ],
+      "downgrade_source": {
+        "batch": "pairs_20260707T023704Z",
+        "index": 12,
+        "models": [
+          "gemma-2-2b"
+        ]
+      }
+    }
+  },
+  {
+    "top_prompt": "Because I have somniloquy, my roommate says I should see a",
+    "bottom_prompt": "Because I keep talking in my sleep, my roommate says I should see a",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "talking in my sleep",
+      "clinical_term": "somniloquy",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "The colloquial phrase for talking during sleep is replaced by its clinical name; the frame's next token plausibly differs between a mundane 'friend' reading and a care-seeking 'doctor' reading.",
+      "topic": "sleep problems",
+      "swap_spans": {
+        "patient_span": "keep talking in my sleep,",
+        "clinical_span": "have somniloquy,"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ],
+      "downgrade_source": {
+        "batch": "pairs_20260707T023704Z",
+        "index": 17,
+        "models": [
+          "gemma-2-2b"
+        ]
+      }
+    }
+  }
+]
