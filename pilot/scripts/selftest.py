@@ -108,7 +108,7 @@ def fake_rows(call: dict, r: random.Random) -> str:
 def dry_run() -> None:
     tmp = Path(tempfile.mkdtemp(prefix="pilot_selftest_"))
     try:
-        for name in ("seeds.json", "design.json", "manifest_model.json", "prompts"):
+        for name in ("seeds.json", "design.json", "manifest_model.json", "PROTOCOL.md", "prompts"):
             src = HERE.parent / name
             (shutil.copytree if src.is_dir() else shutil.copy)(src, tmp / name)
         # the temporary seed file states its own provenance; the summary and the manifest must repeat it, not the
