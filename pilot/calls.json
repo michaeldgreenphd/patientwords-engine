@@ -1,0 +1,333 @@
+{
+  "master_seed": 20260929,
+  "n_seeds": 6,
+  "k_exemplars_used": 6,
+  "k_exemplars_requested": 8,
+  "generation_prompt_template_sha256": "3b5a0f6c406d86868aca72dc03679f29890496ded59ab8b3840554be20fa4060",
+  "calls": [
+    {
+      "id": "A__cardiology__symptom_description",
+      "arm": "A",
+      "specialty": "cardiology",
+      "swap_type": "symptom description",
+      "cell": "cardiology__symptom_description",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_04",
+        "seed_synth_05",
+        "seed_synth_03",
+        "seed_synth_06",
+        "seed_synth_02",
+        "seed_synth_01"
+      ],
+      "prompt_sha256": "17f5c6e2d5d9120fb1c5f6095b48de70e110d510982f6bcc29a4d468cdaa9bcb",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: cardiology\nswap type: symptom description\nswap type definition: the swapped phrase describes a symptom or complaint (the clinical term versus how a patient would describe the same symptom)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "B__cardiology__symptom_description",
+      "arm": "B",
+      "specialty": "cardiology",
+      "swap_type": "symptom description",
+      "cell": "cardiology__symptom_description",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_01",
+        "seed_synth_02",
+        "seed_synth_03",
+        "seed_synth_04",
+        "seed_synth_05",
+        "seed_synth_06"
+      ],
+      "prompt_sha256": "ccb8216215c7cd4aa01bb1ed38f93b34b4f5e932577443a23fdec17bbc4e126d",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: cardiology\nswap type: symptom description\nswap type definition: the swapped phrase describes a symptom or complaint (the clinical term versus how a patient would describe the same symptom)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "A__cardiology__body_part",
+      "arm": "A",
+      "specialty": "cardiology",
+      "swap_type": "body part",
+      "cell": "cardiology__body_part",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_04",
+        "seed_synth_02",
+        "seed_synth_03",
+        "seed_synth_05",
+        "seed_synth_01",
+        "seed_synth_06"
+      ],
+      "prompt_sha256": "2d0f63da4ce8ac95910f92c7c71de8329bf1c7d5fb3c6a292e5d29aea28c148d",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: cardiology\nswap type: body part\nswap type definition: the swapped phrase names an anatomical structure or location (the clinical name versus the everyday name for the same place)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "B__cardiology__body_part",
+      "arm": "B",
+      "specialty": "cardiology",
+      "swap_type": "body part",
+      "cell": "cardiology__body_part",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_01",
+        "seed_synth_02",
+        "seed_synth_03",
+        "seed_synth_04",
+        "seed_synth_05",
+        "seed_synth_06"
+      ],
+      "prompt_sha256": "11440dfa9ca97cd509948385c3ae6378ac92f7e89e6f4a6471f77083958498c6",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: cardiology\nswap type: body part\nswap type definition: the swapped phrase names an anatomical structure or location (the clinical name versus the everyday name for the same place)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "A__cardiology__medication",
+      "arm": "A",
+      "specialty": "cardiology",
+      "swap_type": "medication",
+      "cell": "cardiology__medication",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_03",
+        "seed_synth_05",
+        "seed_synth_04",
+        "seed_synth_02",
+        "seed_synth_06",
+        "seed_synth_01"
+      ],
+      "prompt_sha256": "2c8237b668c4063d11599df0eda072622062ad69caeab89fbaf3bbdddf4f96da",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: cardiology\nswap type: medication\nswap type definition: the swapped phrase names a medicine, drug class, or treatment (the clinical or generic name versus how a patient refers to the same medicine)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "B__cardiology__medication",
+      "arm": "B",
+      "specialty": "cardiology",
+      "swap_type": "medication",
+      "cell": "cardiology__medication",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_01",
+        "seed_synth_02",
+        "seed_synth_03",
+        "seed_synth_04",
+        "seed_synth_05",
+        "seed_synth_06"
+      ],
+      "prompt_sha256": "8bb241150f0f5a1932267abe91eb05dbf45769ff8132f239632cbbba3b1f6e1a",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: cardiology\nswap type: medication\nswap type definition: the swapped phrase names a medicine, drug class, or treatment (the clinical or generic name versus how a patient refers to the same medicine)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "A__neurology__symptom_description",
+      "arm": "A",
+      "specialty": "neurology",
+      "swap_type": "symptom description",
+      "cell": "neurology__symptom_description",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_06",
+        "seed_synth_02",
+        "seed_synth_01",
+        "seed_synth_04",
+        "seed_synth_05",
+        "seed_synth_03"
+      ],
+      "prompt_sha256": "c92048dac49b36ee62c1543a8b60675d7c82fef74d03e0c37d8992fcc1414e46",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: neurology\nswap type: symptom description\nswap type definition: the swapped phrase describes a symptom or complaint (the clinical term versus how a patient would describe the same symptom)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "B__neurology__symptom_description",
+      "arm": "B",
+      "specialty": "neurology",
+      "swap_type": "symptom description",
+      "cell": "neurology__symptom_description",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_01",
+        "seed_synth_02",
+        "seed_synth_03",
+        "seed_synth_04",
+        "seed_synth_05",
+        "seed_synth_06"
+      ],
+      "prompt_sha256": "b57e8c9ae2550f49e0140f2911c2b99bf8ee7a09670934110c7dc6276ca02d8f",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: neurology\nswap type: symptom description\nswap type definition: the swapped phrase describes a symptom or complaint (the clinical term versus how a patient would describe the same symptom)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "A__neurology__body_part",
+      "arm": "A",
+      "specialty": "neurology",
+      "swap_type": "body part",
+      "cell": "neurology__body_part",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_02",
+        "seed_synth_06",
+        "seed_synth_03",
+        "seed_synth_04",
+        "seed_synth_05",
+        "seed_synth_01"
+      ],
+      "prompt_sha256": "f97b03f149606e4383c3d7d185681b1b16f9c50de5e1c54c3a05a83ca35d45ba",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: neurology\nswap type: body part\nswap type definition: the swapped phrase names an anatomical structure or location (the clinical name versus the everyday name for the same place)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "B__neurology__body_part",
+      "arm": "B",
+      "specialty": "neurology",
+      "swap_type": "body part",
+      "cell": "neurology__body_part",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_01",
+        "seed_synth_02",
+        "seed_synth_03",
+        "seed_synth_04",
+        "seed_synth_05",
+        "seed_synth_06"
+      ],
+      "prompt_sha256": "b3bfb6c4bfd97cbb8b54f05c82d15d59100ab5aeb0c7b5767ab8f646d7117056",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: neurology\nswap type: body part\nswap type definition: the swapped phrase names an anatomical structure or location (the clinical name versus the everyday name for the same place)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "A__neurology__medication",
+      "arm": "A",
+      "specialty": "neurology",
+      "swap_type": "medication",
+      "cell": "neurology__medication",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_02",
+        "seed_synth_01",
+        "seed_synth_06",
+        "seed_synth_03",
+        "seed_synth_04",
+        "seed_synth_05"
+      ],
+      "prompt_sha256": "8bf5f83904342fdca80a7373f55b15ef8ec28856413a73155d7fcbfdf864d936",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: neurology\nswap type: medication\nswap type definition: the swapped phrase names a medicine, drug class, or treatment (the clinical or generic name versus how a patient refers to the same medicine)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "B__neurology__medication",
+      "arm": "B",
+      "specialty": "neurology",
+      "swap_type": "medication",
+      "cell": "neurology__medication",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_01",
+        "seed_synth_02",
+        "seed_synth_03",
+        "seed_synth_04",
+        "seed_synth_05",
+        "seed_synth_06"
+      ],
+      "prompt_sha256": "cdbb9caf48ef59db46e3d51674d8b6c91ba553d99877ccbbd298fa6da09fc21d",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: neurology\nswap type: medication\nswap type definition: the swapped phrase names a medicine, drug class, or treatment (the clinical or generic name versus how a patient refers to the same medicine)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "A__gastroenterology__symptom_description",
+      "arm": "A",
+      "specialty": "gastroenterology",
+      "swap_type": "symptom description",
+      "cell": "gastroenterology__symptom_description",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_06",
+        "seed_synth_03",
+        "seed_synth_05",
+        "seed_synth_01",
+        "seed_synth_02",
+        "seed_synth_04"
+      ],
+      "prompt_sha256": "d895b5fbc706aa006f1bcbbbda3fa7cdbd209dfe5820faa3f5af4e11b3c2adcc",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: gastroenterology\nswap type: symptom description\nswap type definition: the swapped phrase describes a symptom or complaint (the clinical term versus how a patient would describe the same symptom)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "B__gastroenterology__symptom_description",
+      "arm": "B",
+      "specialty": "gastroenterology",
+      "swap_type": "symptom description",
+      "cell": "gastroenterology__symptom_description",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_01",
+        "seed_synth_02",
+        "seed_synth_03",
+        "seed_synth_04",
+        "seed_synth_05",
+        "seed_synth_06"
+      ],
+      "prompt_sha256": "0b6b7f46de35d8b5e04cc1b6c896a9ab69e7bcfc991b351c772cd6a699e06e06",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: gastroenterology\nswap type: symptom description\nswap type definition: the swapped phrase describes a symptom or complaint (the clinical term versus how a patient would describe the same symptom)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "A__gastroenterology__body_part",
+      "arm": "A",
+      "specialty": "gastroenterology",
+      "swap_type": "body part",
+      "cell": "gastroenterology__body_part",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_02",
+        "seed_synth_01",
+        "seed_synth_03",
+        "seed_synth_05",
+        "seed_synth_06",
+        "seed_synth_04"
+      ],
+      "prompt_sha256": "fa1980e80f1c6f24bb61987e287e907fdcc8ebc6e7eb4284c0aef9dff752745c",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: gastroenterology\nswap type: body part\nswap type definition: the swapped phrase names an anatomical structure or location (the clinical name versus the everyday name for the same place)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "B__gastroenterology__body_part",
+      "arm": "B",
+      "specialty": "gastroenterology",
+      "swap_type": "body part",
+      "cell": "gastroenterology__body_part",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_01",
+        "seed_synth_02",
+        "seed_synth_03",
+        "seed_synth_04",
+        "seed_synth_05",
+        "seed_synth_06"
+      ],
+      "prompt_sha256": "d35937770003c7691826e382e5db33dbf9ee549258e850f346f237458a776182",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: gastroenterology\nswap type: body part\nswap type definition: the swapped phrase names an anatomical structure or location (the clinical name versus the everyday name for the same place)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "A__gastroenterology__medication",
+      "arm": "A",
+      "specialty": "gastroenterology",
+      "swap_type": "medication",
+      "cell": "gastroenterology__medication",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_05",
+        "seed_synth_06",
+        "seed_synth_02",
+        "seed_synth_04",
+        "seed_synth_03",
+        "seed_synth_01"
+      ],
+      "prompt_sha256": "256a6a705999d2b135277a7f9f919f9b3c9be13bdacecac6883eaffda8e16cef",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: gastroenterology\nswap type: medication\nswap type definition: the swapped phrase names a medicine, drug class, or treatment (the clinical or generic name versus how a patient refers to the same medicine)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n"
+    },
+    {
+      "id": "B__gastroenterology__medication",
+      "arm": "B",
+      "specialty": "gastroenterology",
+      "swap_type": "medication",
+      "cell": "gastroenterology__medication",
+      "k_exemplars": 6,
+      "exemplar_ids": [
+        "seed_synth_01",
+        "seed_synth_02",
+        "seed_synth_03",
+        "seed_synth_04",
+        "seed_synth_05",
+        "seed_synth_06"
+      ],
+      "prompt_sha256": "bb30196b622bc34ef2a5efaab5a4f0be81096216a7f4d1a7bc5d182104294a6f",
+      "prompt": "You are generating stimulus pairs for a study of how clinical vocabulary versus everyday patient (lay) vocabulary changes a language model's next-token predictions. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.\n\nCELL FOR THIS CALL\nspecialty: gastroenterology\nswap type: medication\nswap type definition: the swapped phrase names a medicine, drug class, or treatment (the clinical or generic name versus how a patient refers to the same medicine)\n\nWHAT ONE ROW IS\nA row pairs a clinical-register phrase (clinical_term) with the everyday phrase a patient would use for the same concept (patient_term), plus a template: a short English context with exactly one blank written as ___ where either phrase can be inserted. The template must read naturally with either phrase in the blank. Keep the template under 25 words. Both phrases must fit the same grammatical slot. Every row must belong to the cell above.\n\nOUTPUT FORMAT (strict)\nReturn exactly 20 lines. Each line is one JSON object with exactly these keys: \"clinical_term\", \"patient_term\", \"template\", \"control\".\n- 16 lines have \"control\": \"none\". These are new pairs in different concepts within the cell. Do not copy the example rows below; produce new concepts.\n- 4 lines have \"control\": \"negative\". A negative-control row holds the SAME concept in the SAME register in both fields, differing only in surface form: casing, punctuation, or spacing. Example of the shape of a negative control (do not copy it): {\"clinical_term\": \"Chest pain\", \"patient_term\": \"chest pain.\", \"template\": \"The patient reports ___ when climbing stairs, and\", \"control\": \"negative\"}\nReturn JSON lines only: no code fences, no numbering, no commentary, no blank lines, nothing before the first line or after the last line.\n\nEXAMPLE ROWS FROM THE SEED SET (format examples only)\n{\"clinical_term\": \"dyspnea on exertion\", \"patient_term\": \"getting out of breath when I walk up stairs\", \"template\": \"The patient describes ___ over the past month, and\", \"control\": \"none\"}\n{\"clinical_term\": \"antihypertensive\", \"patient_term\": \"blood pressure pill\", \"template\": \"She takes one ___ every morning, and\", \"control\": \"none\"}\n{\"clinical_term\": \"paresthesia in the left hand\", \"patient_term\": \"pins and needles in my left hand\", \"template\": \"He reports ___ that started yesterday, so\", \"control\": \"none\"}\n{\"clinical_term\": \"lumbar spine\", \"patient_term\": \"lower back\", \"template\": \"Pain in the ___ gets worse when bending forward, which\", \"control\": \"none\"}\n{\"clinical_term\": \"hematochezia\", \"patient_term\": \"bright red blood in my poo\", \"template\": \"The patient noticed ___ this morning and\", \"control\": \"none\"}\n{\"clinical_term\": \"proton pump inhibitor\", \"patient_term\": \"acid reflux tablet\", \"template\": \"He was started on a ___ for his symptoms, and\", \"control\": \"none\"}\n"
+    }
+  ]
+}
