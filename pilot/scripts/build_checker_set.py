@@ -9,8 +9,20 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 
-from common import (CHECKER_BATCH, N_BROKEN, N_KNOWN_GOOD, PILOT, cell_id, cells, load_seeds, read_jsonl, rng,
-                    sha256_text, surface_key, write_jsonl)
+from common import (
+    CHECKER_BATCH,
+    N_BROKEN,
+    N_KNOWN_GOOD,
+    PILOT,
+    cell_id,
+    cells,
+    load_seeds,
+    read_jsonl,
+    rng,
+    sha256_text,
+    surface_key,
+    write_jsonl,
+)
 
 
 def main() -> None:

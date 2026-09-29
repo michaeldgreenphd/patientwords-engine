@@ -7,8 +7,18 @@ from __future__ import annotations
 
 import json
 
-from common import (K_EXEMPLARS, MASTER_SEED, PILOT, SWAP_DEFINITIONS, call_id, cell_id, cells, load_seeds, rng,
-                    sha256_text)
+from common import (
+    K_EXEMPLARS,
+    MASTER_SEED,
+    PILOT,
+    SWAP_DEFINITIONS,
+    call_id,
+    cell_id,
+    cells,
+    load_seeds,
+    rng,
+    sha256_text,
+)
 
 
 def render_exemplars(rows: list[dict]) -> str:

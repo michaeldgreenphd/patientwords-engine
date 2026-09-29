@@ -11,8 +11,17 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from common import (CONTROLS_PER_CALL, PILOT, ROWS_PER_CALL, cell_id, cells, control_is_faithful, lines_of,
-                    validate_line, write_jsonl)
+from common import (
+    CONTROLS_PER_CALL,
+    PILOT,
+    ROWS_PER_CALL,
+    cell_id,
+    cells,
+    control_is_faithful,
+    lines_of,
+    validate_line,
+    write_jsonl,
+)
 
 
 def main(result_path: str) -> None:

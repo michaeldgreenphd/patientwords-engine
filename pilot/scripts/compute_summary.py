@@ -6,8 +6,23 @@ from __future__ import annotations
 import json
 from collections import Counter
 
-from common import (ARMS, N_BOOT, PILOT, Tfidf, cell_id, cells, cosine, dup_key, load_seeds, mean_cross, mean_pairwise,
-                    newcombe_diff, read_jsonl, rng, wilson)
+from common import (
+    ARMS,
+    N_BOOT,
+    PILOT,
+    Tfidf,
+    cell_id,
+    cells,
+    cosine,
+    dup_key,
+    load_seeds,
+    mean_cross,
+    mean_pairwise,
+    newcombe_diff,
+    read_jsonl,
+    rng,
+    wilson,
+)
 
 
 def fmt(v, nd=3):

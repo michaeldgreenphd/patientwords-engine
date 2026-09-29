@@ -12,8 +12,22 @@ import json
 import platform
 import sys
 
-from common import (ARMS, CHECKER_BATCH, CONTROLS_PER_CALL, K_EXEMPLARS, MASTER_SEED, N_BOOT, N_BROKEN, N_KNOWN_GOOD,
-                    N_REVIEW, PILOT, ROWS_PER_CALL, SPECIALTIES, SWAP_TYPES, sha256_file)
+from common import (
+    ARMS,
+    CHECKER_BATCH,
+    CONTROLS_PER_CALL,
+    K_EXEMPLARS,
+    MASTER_SEED,
+    N_BOOT,
+    N_BROKEN,
+    N_KNOWN_GOOD,
+    N_REVIEW,
+    PILOT,
+    ROWS_PER_CALL,
+    SPECIALTIES,
+    SWAP_TYPES,
+    sha256_file,
+)
 
 
 def main(finalize: bool) -> None:
