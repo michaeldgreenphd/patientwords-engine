@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "updated_utc": "2026-09-29T12:37:24Z",
+ "updated_utc": "2026-09-29T13:35:17Z",
  "updated_by": "routine",
  "queue": {
   "circuit-trace": {
@@ -29,9 +29,9 @@
   },
   "archive-renders": {
    "running": {
-    "fired_utc": "2026-09-25T12:38:38Z",
+    "fired_utc": "2026-09-29T12:38:48Z",
     "commit": "",
-    "note": "PNG sweep (maintenance item 3d, $0): archive+prune the one eligible unarchived run. drift_sentinel_20260925 is excluded by 3d's own rule. archive-renders lane 0 active at fire time (the opening-backstop re-park, run 36135943388, was GitHub-confirmed terminal and resolved first). Harvest and re-park next cycle, not this one."
+    "note": "PNG sweep (maintenance item 3d, $0): archive+prune the one eligible unarchived run. drift_sentinel_20260929 is excluded by 3d's own rule. archive-renders lane 0 active at fire time (the opening-backstop re-park, run 36569430431, was GitHub-confirmed terminal and resolved first). Harvest and re-park next cycle, not this one."
    },
    "pending": null
   },
@@ -45,6 +45,41 @@
   }
  },
  "runs_recent": [
+  {
+   "workflow": "circuit_trace_evaluation",
+   "run_id": 36574396184,
+   "fired_utc": "2026-09-29T13:20:35Z",
+   "status": "completed/success",
+   "note": "Item 3c re-park of circuit-trace after the sentinel resolved, --ignore-settle (terminality of runs 36569414257 and 36569416060 GitHub-confirmed first). GitHub-confirmed completed/success 13:20:40Z -> 13:26:38Z. $0, commit_outputs false. Resolved in-cycle."
+  },
+  {
+   "workflow": "circuit_trace_evaluation",
+   "run_id": 36569416060,
+   "fired_utc": "2026-09-29T12:37:56Z",
+   "status": "completed/success",
+   "note": "DUPLICATE of the 09-29 sentinel: a second push-event run for the same commit a6f1c6fa, created the same second as 36569414257, with no second fire (one journal entry, one push). It waited in the concurrency group's pending slot and ran 12:54:48Z -> 13:14:19Z; its commit 5626d305 overwrote the sentinel outputs. Probabilities and language_penalty identical to the first run; feature masses differ by <=0.0003. $0 here, but the same doubling on a paid lane would double spend and would occupy the pending slot the journal thinks is free."
+  },
+  {
+   "workflow": "circuit_trace_evaluation",
+   "run_id": 36569414257,
+   "fired_utc": "2026-09-29T12:37:56Z",
+   "status": "completed/success",
+   "note": "Drift sentinel 2026-09-29, the only measurement fire this cycle. GitHub-confirmed completed/success 12:38:02Z -> 12:54:26Z (16m24s). Outputs verified: batch_summary.part_01.json, backend hosted, source_set gemmascope-transcoder-16k, 3 rows, language_penalty on all three (0.045, 0.369, -0.046). Verdict vs 20260925: max |dp| 0.0, top words unchanged; 43 measured days. Resolved in-cycle."
+  },
+  {
+   "workflow": "archive_renders",
+   "run_id": 36569526880,
+   "fired_utc": "2026-09-29T12:38:48Z",
+   "status": "completed/success",
+   "note": "Item 3d PNG sweep, $0. tag renders-20260929, runs ['trace_out/drift_sentinel_20260925'], prune true. First push rejected (CI outputs moved main); recovered with fire_trigger.py publish (a9e0ab4a), no re-fire. GitHub-confirmed completed/success 12:39:03Z -> 12:39:17Z. Journal entry left active by rule: harvest and re-park next cycle."
+  },
+  {
+   "workflow": "archive_renders",
+   "run_id": 36569430431,
+   "fired_utc": "2026-09-29T12:38:06Z",
+   "status": "completed/success",
+   "note": "Opening-backstop re-park of archive-renders (the 09-25 sweep 36136113865 GitHub-confirmed completed/success, manifest renders-20260925 with Release URL on main). Completed 12:38:10Z -> 12:38:29Z; resolved in-cycle before the sweep fire."
+  },
   {
    "workflow": "circuit_trace_evaluation",
    "run_id": 36139735132,
@@ -725,7 +760,7 @@
   "generation_status": "COMPLETE 2026-08-06: 1,600/1,600 accepted across the 20 cadence batches. The validator-yield stopping rule never tripped. Generation spend closed at $2.7678 of the $8 pre-registered ceiling (35%). No further scenario-generation fire is warranted - priority-1 of the standing prompt is retired for this campaign."
  },
  "verdicts": [
-  "INSTRUMENT HEALTHY, twelfth consecutive measured sentinel since the 08-22..08-25 outage. The 2026-09-25 drift sentinel succeeded (circuit-trace run 36135966611, GitHub-confirmed completed/success, 33m57s). 3 rows verified, language_penalty present on all three. data/drift_series.json now holds 42 measured days ending 20260925 (published to the live site as patientwords a809c34). Delta against 20260922: max |dp| 0.0 at pair 1 clinical, all six top words unchanged; the three readings are byte-identical to every measured day since 20260814. The two historic DRIFT days (20260715 max |dp| 0.027, 20260814 max |dp| 0.023, both pair 2 patient, top words unchanged) are unchanged; threshold 0.01. 09-23 and 09-24 are Tue/Fri cadence gaps, not holes."
+  "INSTRUMENT HEALTHY, thirteenth consecutive measured sentinel since the 08-22..08-25 outage. The 2026-09-29 drift sentinel succeeded (circuit-trace run 36569414257, GitHub-confirmed completed/success, 16m24s; a duplicate run 36569416060 for the same push re-measured the same three pairs with identical probabilities). 3 rows verified, language_penalty present on all three (0.045, 0.369, -0.046). data/drift_series.json now holds 43 measured days ending 20260929 (published to the live site as patientwords aa53544). Delta against 20260925: max |dp| 0.0, all six top words unchanged. The two historic DRIFT days (20260715 max |dp| 0.027, 20260814 max |dp| 0.023, both pair 2 patient, top words unchanged) are unchanged; threshold 0.01. 09-26..09-28 are Tue/Fri cadence gaps, not holes."
  ],
  "findings_delta": [
   {
@@ -819,6 +854,10 @@
   {
    "date": "2026-09-25",
    "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 36135966611, 33m57s, GitHub-confirmed) - twelfth healthy day since the 08-22..25 outage. Series 41 -> 42 days, readings byte-identical since 20260814. Nothing spent this cycle. Ledger fold restored: 15 sidecars folded, lifetime $78.06; 09-23 ($3.81) and 09-24 ($2.56) owner-approved Petri spend exceeded the $2/day figure without raising a fold alert."
+  },
+  {
+   "date": "2026-09-29",
+   "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 36569414257, 16m24s, GitHub-confirmed) - thirteenth healthy day since the 08-22..25 outage; series 42 -> 43 days, max |dp| 0.0 vs 09-25. GitHub started a DUPLICATE run (36569416060) for the one sentinel push; $0 here, identical probabilities, but on a paid lane it would double spend. Ledger: 2 Petri sidecars folded, lifetime $80.60. Nothing spent this cycle."
   }
  ],
  "decisions_pending": [
@@ -1012,8 +1051,8 @@
   {
    "id": "JOURNAL-EXPIRED-PARKS-20260902",
    "recorded_utc": "2026-09-04T15:00:00Z",
-   "updated_utc": "2026-09-25T13:30:00Z",
-   "what": "Standing journal-expiry record, re-verified 2026-09-25 and grown by exactly one entry, as predicted. Recomputed this cycle: 148 of 929 journal lines are unresolved-and-expired (was 147 of 915 on 09-22); all 929 lines parse as JSON. The one new entry is the 09-22 cycle's own item-3d PNG sweep (archive-renders, fired 2026-09-22T12:41:26Z), whose run 35728710223 this cycle GitHub-confirmed completed/success. fire_trigger.py resolve declined it ('no active journal entries for archive-renders') because it is past the 8h expiry; it is recorded here, not hand-edited into the journal. Nothing was lost: its outputs landed and this cycle re-parked the lane. The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-09-25T12:38:38Z), deliberately left for the next cycle. See ITEM-3D-EXPIRY-COLLISION-20260918."
+   "updated_utc": "2026-09-29T13:45:00Z",
+   "what": "Standing journal-expiry record, re-verified 2026-09-25 and grown by exactly one entry, as predicted. Recomputed this cycle: 148 of 929 journal lines are unresolved-and-expired (was 147 of 915 on 09-22); all 929 lines parse as JSON. The one new entry is the 09-22 cycle's own item-3d PNG sweep (archive-renders, fired 2026-09-22T12:41:26Z), whose run 35728710223 this cycle GitHub-confirmed completed/success. fire_trigger.py resolve declined it ('no active journal entries for archive-renders') because it is past the 8h expiry; it is recorded here, not hand-edited into the journal. Nothing was lost: its outputs landed and this cycle re-parked the lane. The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-09-25T12:38:38Z), deliberately left for the next cycle. See ITEM-3D-EXPIRY-COLLISION-20260918. || 2026-09-29: recomputed 149 of 935 journal lines unresolved-and-expired (was 148 of 929); all 935 parse. The one new entry is the 09-25 item-3d sweep (archive-renders, 2026-09-25T12:38:38Z), run 36136113865 GitHub-confirmed completed/success; resolve declined it as expired, lane re-parked this cycle (da032048). The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-09-29T12:38:48Z, run 36569526880 already completed/success), left for the next cycle."
   },
   {
    "id": "sentinel-overran-window-20260829",
@@ -1052,6 +1091,11 @@
   }
  ],
  "notes": [
+  "2026-09-29 cycle: section 0 cadence gate did NOT trip - newest brief was brief_20260925.md at 4 days old.",
+  "2026-09-29 bootstrap: both repos arrived clean on session branches (claude/vigilant-lovelace-ifldid, claude/loving-tesla-ifldid) whose tips equalled origin/main (engine 6f76ce01, site 05fd1d3; ls-remote). Engine clone is shallow with full blobs (Variant C shape) but already at the live tip, so nothing was fetched or deepened: local main was set to HEAD and origin/main pointed at the ls-remote-confirmed sha. All four preflight gates passed: main in both, dashboard identical to origin/main, seal_check CLEAN (183 sealed phrases), push --dry-run clean.",
+  "2026-09-29 harvest: terminality GitHub-confirmed per entry. The 09-25 sweep run 36136113865 completed/success; resolve declined it as expired (>8h, see JOURNAL-EXPIRED-PARKS). No run was in_progress repo-wide at cycle open (latest activity: petri-audit runs on claude/petri-* branches, all completed by 2026-09-26T02:57Z).",
+  "2026-09-29 section 2a: ledger_update.py folded 2 sidecars (Petri w2e4 run_36076994201_1 run $0.9294 + judge $1.6108 = $2.5402 on 2026-09-25) into the dashboard and docs/overnight_ledger_20260708.md as one commit (1d3fb4dd). Lifetime $80.604; 2026-09-25 by_day $2.5402 exceeds the $2/day operational figure (owner-approved w2e4 fire). No WARNING lines. The 2026-09-26 adaptive-auditor and cross-judge Petri runs fired from claude/petri-* branches have no sidecars on main yet, so they are not in the fold.",
+  "2026-09-29 sentinel: fired once; GitHub created TWO runs for the one push (see runs_recent 36569416060). Resolved after both were terminal; verdict stable (max |dp| 0.0 vs 20260925). Site data/drift_series.json published (aa53544) after contract gate 0 errors / 1 warning (urgency_shift dead-weight rows, pre-existing) and seal CLEAN.",
   "2026-09-25 cycle: section 0 cadence gate did NOT trip - newest brief was brief_20260922.md at 3 days old and no journal-active entry was under 8 hours old. 09-23 and 09-24 are scheduled Tue/Fri gaps.",
   "2026-09-25 bootstrap: both repos arrived clean on session branches (claude/vigilant-lovelace-79i7v9, claude/loving-tesla-79i7v9) whose tips equalled origin/main (engine 50f26ed8, site d04ab5a, confirmed with ls-remote). Engine clone is shallow; local main already equalled origin/main, so nothing was deepened - checkout main only. Site was not sparse. All four preflight gates passed: main in both repos, dashboard identical to origin/main, seal_check CLEAN with 183 sealed phrases, git push --dry-run clean.",
   "2026-09-25 harvest: terminality GitHub-confirmed per entry (never resolve --all). The 09-22 sweep run 35728710223 completed/success; resolve declined it as expired (see JOURNAL-EXPIRED-PARKS). No run was in_progress repo-wide at cycle open.",
