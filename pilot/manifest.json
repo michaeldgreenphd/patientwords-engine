@@ -2,7 +2,7 @@
   "pilot": "stimulus-generation measurement-validity pilot",
   "date_utc": "2026-09-29",
   "created_utc": "2026-09-29T21:43:06Z",
-  "finalized_utc": "2026-09-29T22:33:34Z",
+  "finalized_utc": "2026-09-29T22:42:24Z",
   "model": {
     "execution_path": "Claude Code subagents launched by the Workflow tool inside a claude.ai cloud session (session_013KH1iaG3RoTUJVtwHkoiVz). Subagents inherit the session model. Their system prompt and any repository instructions injected by the harness are outside this pilot's control; prompt hashes cover only the user-turn prompt.",
     "session_model_at_run": "claude-fable-5-1",
@@ -47,7 +47,13 @@
     "k_exemplars_requested": 8,
     "k_exemplars_used": 6,
     "n_seed_cases": 6,
-    "seed_provenance": "synthetic placeholders written by the agent; nothing was attached",
+    "seed_provenance": {
+      "values": [
+        "synthetic placeholder, not study data"
+      ],
+      "n_seeds_without_provenance": 0,
+      "file_note": "SYNTHETIC PLACEHOLDERS. Nothing was attached to the task, so these six seed cases were written by the agent on 2026-09-29 to exercise the pipeline. They are NOT study data. Replace this file with the real seed cases before any run whose numbers matter. Field mapping used by the scripts: clinical_term, patient_term, template (blank marker '___'). Extra fields (id, specialty, swap_type, provenance) are used for labeling only."
+    },
     "checker_batch": 30,
     "n_broken": 20,
     "n_known_good_requested": 10,
@@ -277,10 +283,10 @@
     }
   },
   "script_hashes": {
-    "build_api_requests.py": "8fd5928ec66017940ddaccf2a02f47ab999bf03c2af6c2ae8d3aa9a09d79dfad",
+    "build_api_requests.py": "bc90ba997150e2f66961fc71531d3365f070eab334ea388d634c1b3ad90c6276",
     "build_checker_set.py": "5de5aee5713d5a70f7208291e72b9887a6df9a1f8a9854f4e9ac835efc5616d0",
-    "common.py": "cd9ebc66aad245fa61e69bdf76961ddbd2ec54a0b8fd0713a8390ccde2139ed8",
-    "compute_summary.py": "50a06e26c93c7c9eaddce4267a9220be4beaedb827032df0374cd66aff01a1a6",
+    "common.py": "f29249bf0496f4b1dd1cb475a7154f5d46c18647e4486a048a7e1dba03a634c3",
+    "compute_summary.py": "6ae0dc6e6c0d1b8e7dd413bba3bd48b45e24f6b17ab5df76a165bf9a5994f233",
     "extract_workflow_journal.py": "50fbeefd7a7312f3cc3be823f4c4b83642aefe0a39c300ed7f1d1e47c0e35ad9",
     "make_review_sheet.py": "141da37573edbc24422b6e22efb282c1e712a891dc309bde9c4786c5391e80ca",
     "make_workflow_scripts.py": "3e52140b52c7487b5376455a320aa61febce7dba43cc6967d3348d952d930056",
@@ -288,8 +294,8 @@
     "parse_generation.py": "3855b765f3231067736c595987b1a8d15b0485ce788825e2a81a480c43737569",
     "plan_calls.py": "a9f49a224389b7296263c2fa1aec68c0d0ac50e7896fdf78aa21a70ccd65c243",
     "record_run.py": "50481eaa07261ec835e887c3577fe17ebf6f23cdc07375e01ee6068a64243206",
-    "selftest.py": "ed325f412504a808b6ccc1f72aec2ce380927014876b7eea3204acb5aa12d94e",
-    "write_manifest.py": "00ebd4a7196a156ce9299261ffd975221a5d5b6db4727cb8bca496bf2820269b"
+    "selftest.py": "c3baaf9ed3c8baffc0680eead45f9be88266c211fbe184cf3bef1b53738675e8",
+    "write_manifest.py": "d9bf8a4d9d87d00654b2cb15d39cb2bae0acccde6a5e086a4e7ecce154c2751f"
   },
   "workflow_script_hashes": {
     "checker.workflow.js": "85204a2387e2bc88ced5557f293bd5e4ae65f9afa3df9ae35653951e10cd6a1c",
@@ -357,12 +363,12 @@
     "review_sheet.csv": "5d8d6f76b3b8a50a59b7dfefee3022354191a81d9a46ec91e2f7c826b30ad83a",
     "review_key.csv": "ea7e9d9bb875b30006bfcf769c33ff2875f782aec210c7bb94c3cdca1feed744",
     "review_map.json": "22dc9f135134d1c7583d978c18d395a36eb3b88254d8723f742b8a0e5ad4378d",
-    "summary.json": "cca11c4deaac8415b62cf5340a2d609a198789a40d2b2508ef02e9cc68d2d29a",
-    "summary.md": "fb1637205a980d5482ad169b6f2850c51c93f21a6bd9dedd6b9de3ac0852c847",
+    "summary.json": "a8af20a728165f809a14099f4e65ee28fd2c99f303b126cfafd2229fc22f4e96",
+    "summary.md": "dfd878c557228ae22a3050f13e15e26edfdcb5ce46801f061d801af428a29717",
     "seeds.json": "593e2b7b6d25d78ed5f8adfa7fe02d5d0e4aef5574c0c6c08a8b6937e6399884",
     "design.json": "6ebbfb8c5396c817c246068da3757d0b70101350df417063be18f4c27eab661f",
     "PROTOCOL.md": "8dd838105e94a03190e81c841474479c8a27517553bdeabf9678f3550da5d969",
-    "HANDOFF.md": "8fc087415460f9f5195f5a30da255326b825abf1f791427771d914430b85f191",
+    "HANDOFF.md": "ad282f37f3853c6eed3e98d9059ec39c2b94bea3cede14483b6070c1cbf3d95e",
     "manifest_model.json": "4417730fd80e518fd98b35083a7f812295c17fa73d59358662f9c0764c11f3bb",
     "generated/A__cardiology__body_part.jsonl": "3966136c0d2f5a1f1985298579ce7ffb55b3a62bdacb16a986d48b393b9b31a9",
     "generated/A__cardiology__medication.jsonl": "09574c72cdf5a0ccdbe34c575aee3d967e810b4b8ed7a692dbc2d10726348ca3",

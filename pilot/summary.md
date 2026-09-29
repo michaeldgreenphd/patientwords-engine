@@ -1,6 +1,6 @@
 # Pilot summary (computed by scripts/compute_summary.py)
 
-Seeds: 6 (synthetic placeholders; see HANDOFF.md). Exemplars per call: 6 used, 8 requested. Proportions carry 95% Wilson intervals; means carry 95% percentile bootstrap intervals (2000 resamples, stream random.Random('20260929:bootstrap')); differences of proportions carry Newcombe score intervals. Master seed 20260929; every named stream is listed under seeds in summary.json. Values are shown to 3 decimals.
+Seeds: 6 (provenance as the seed file states it: synthetic placeholder, not study data). Exemplars per call: 6 used, 8 requested. Proportions carry 95% Wilson intervals; means carry 95% percentile bootstrap intervals (2000 resamples, stream random.Random('20260929:bootstrap')); differences of proportions carry Newcombe score intervals. Master seed 20260929; every named stream is listed under seeds in summary.json. Values are shown to 3 decimals.
 
 ## Run overview
 

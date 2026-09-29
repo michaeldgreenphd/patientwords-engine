@@ -30,6 +30,15 @@ from common import (
 )
 
 
+def seed_provenance() -> dict:
+    """The provenance the seed file itself states: the distinct `provenance` values across its seeds (a seed without
+    one is reported as MISSING, never assumed) and the file's own note."""
+    data = json.loads((PILOT / "seeds.json").read_text(encoding="utf-8"))
+    values = sorted({s.get("provenance", "MISSING") for s in data["seeds"]})
+    return {"values": values, "n_seeds_without_provenance": sum(1 for s in data["seeds"] if "provenance" not in s),
+            "file_note": data.get("_note")}
+
+
 def main(finalize: bool) -> None:
     path = PILOT / "manifest.json"
     old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
@@ -49,7 +58,8 @@ def main(finalize: bool) -> None:
         "design": {"specialties": SPECIALTIES, "swap_types": SWAP_TYPES, "arms": ARMS, "rows_per_call": ROWS_PER_CALL,
                    "controls_per_call": CONTROLS_PER_CALL, "k_exemplars_requested": K_EXEMPLARS,
                    "k_exemplars_used": calls["k_exemplars_used"], "n_seed_cases": calls["n_seeds"],
-                   "seed_provenance": "synthetic placeholders written by the agent; nothing was attached",
+                   # read from the seed file in use, never fixed here: a rerun with real seeds must record theirs
+                   "seed_provenance": seed_provenance(),
                    "checker_batch": CHECKER_BATCH, "n_broken": N_BROKEN, "n_known_good_requested": N_KNOWN_GOOD,
                    "n_review": N_REVIEW, "n_boot": N_BOOT},
         "protocol_sha256_at_write": old.get("protocol_sha256_at_write", protocol_now),

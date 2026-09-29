@@ -53,6 +53,14 @@ def unit_tests() -> None:
     check(common.validate_line("```json")[1] == "not_json", "a fence line is a format failure")
     check(common.control_is_faithful({"clinical_term": "Chest pain", "patient_term": "chest  pain."}), "control fidelity")
     check(len(common.SPECIALTIES) == 3 and len(common.SWAP_DEFINITIONS) == 3, "design factors load from design.json")
+    # surface form: casing, punctuation and spacing removed, letters of every script kept (Codex on PR #52)
+    check(common.surface_key("Café au lait") == "caféaulait"
+          and common.surface_key("Пневмония, острая") == "пневмонияострая"
+          and common.surface_key("Chest pain") == common.surface_key("chest  pain."),
+          "surface_key keeps letters of every script and removes only casing, punctuation and spacing")
+    bar = importlib.import_module("build_api_requests")
+    verdict = bar.RESULT_SHAPES["checker"]["shape"]["batches"][0]["attempts"][0]["result"]["verdicts"][0]
+    check(set(verdict) == {"id", "equivalent", "reason"}, "checker result contract shows verdict objects")
     # broken pairs: targets come only from rows that have a donor (Codex on PR #52); with (A,X), (A,Y), (B,X) the
     # row (A,X) has none, while (A,Y) and (B,X) can be re-paired with each other
     bcs = importlib.import_module("build_checker_set")
@@ -100,9 +108,15 @@ def fake_rows(call: dict, r: random.Random) -> str:
 def dry_run() -> None:
     tmp = Path(tempfile.mkdtemp(prefix="pilot_selftest_"))
     try:
-        for name in ("seeds.json", "design.json", "prompts"):
+        for name in ("seeds.json", "design.json", "manifest_model.json", "prompts"):
             src = HERE.parent / name
             (shutil.copytree if src.is_dir() else shutil.copy)(src, tmp / name)
+        # the temporary seed file states its own provenance; the summary and the manifest must repeat it, not the
+        # original run's label (Codex on PR #52)
+        seeds_doc = json.loads((tmp / "seeds.json").read_text(encoding="utf-8"))
+        for sd in seeds_doc["seeds"]:
+            sd["provenance"] = "selftest provenance, not study data"
+        (tmp / "seeds.json").write_text(json.dumps(seeds_doc, ensure_ascii=False), encoding="utf-8")
         env = {**os.environ, "PILOT_DIR": str(tmp)}
 
         def run(script: str, *args: str, expect_failure: bool = False) -> str:
@@ -164,6 +178,12 @@ def dry_run() -> None:
               f"format failures counted: {s['E1']['failure_reasons']}")
         check(s["E4"]["checker_specificity_broken"]["unclear_counts_as_miss"]["p"] == 1.0, "specificity computed")
         check(s["review"]["n"] == 40, "review sheet has 40 rows")
+        check(s["seed_provenance"] == ["selftest provenance, not study data"], "summary records the seed file's provenance")
+        run("write_manifest.py")
+        m = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        check(m["design"]["seed_provenance"]["values"] == ["selftest provenance, not study data"]
+              and m["design"]["seed_provenance"]["n_seeds_without_provenance"] == 0,
+              "manifest records the seed file's provenance")
         md = (tmp / "summary.md").read_text()
         check("Estimand 5" in md and "\u2014" not in md, "summary.md rendered, no em-dash")
         print("dry run summary.md head:\n" + "\n".join(md.splitlines()[:6]))

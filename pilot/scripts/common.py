@@ -122,8 +122,10 @@ def lines_of(text: str | None) -> list[str]:
 
 
 def surface_key(s: str) -> str:
-    """Casing, punctuation and spacing removed: two strings with the same key differ only in surface form."""
-    return re.sub(r"[^a-z0-9]", "", s.lower())
+    """Casing, punctuation and spacing removed: two strings with the same key differ only in surface form. Letters
+    and digits of every script are kept (str.isalnum is Unicode-aware), so an accented or non-Latin term keeps its
+    letters instead of collapsing to nothing (Codex review of PR #52)."""
+    return "".join(ch for ch in s.lower() if ch.isalnum())
 
 
 def control_is_faithful(row: dict) -> bool:

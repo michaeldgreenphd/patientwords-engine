@@ -126,6 +126,8 @@ def main() -> None:
     cell_ids = [cell_id(s, t) for s, t in cells()]
     S: dict = {"n_seeds": len(seeds), "k_exemplars_used": calls["k_exemplars_used"],
                "k_exemplars_requested": calls["k_exemplars_requested"],
+               # what the seed file says about itself; a seed without a provenance field is reported, not assumed
+               "seed_provenance": sorted({s.get("provenance", "MISSING") for s in seeds}),
                # the seeds behind every random draw, so the intervals are reproducible from this file alone
                "seeds": {"master_seed": MASTER_SEED, "exemplar_sampling": f"random.Random({MASTER_SEED})",
                          "bootstrap": f"random.Random('{MASTER_SEED}:bootstrap')", "n_boot": N_BOOT,
@@ -267,7 +269,7 @@ def main() -> None:
     L = []
     L.append("# Pilot summary (computed by scripts/compute_summary.py)")
     L.append("")
-    L.append(f"Seeds: {S['n_seeds']} (synthetic placeholders; see HANDOFF.md). Exemplars per call: "
+    L.append(f"Seeds: {S['n_seeds']} (provenance as the seed file states it: {'; '.join(S['seed_provenance'])}). Exemplars per call: "
              f"{S['k_exemplars_used']} used, {S['k_exemplars_requested']} requested. Proportions carry 95% Wilson "
              f"intervals; means carry 95% percentile bootstrap intervals ({N_BOOT} resamples, stream "
              f"{S['seeds']['bootstrap']}); differences of proportions carry Newcombe score intervals. Master seed "

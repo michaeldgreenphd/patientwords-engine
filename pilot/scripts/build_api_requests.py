@@ -54,7 +54,14 @@ RESULT_SHAPES = {
                                                       "null_return": False}]}]}},
     "checker": {"file": "workflow_checker_result.json or any name passed to parse_checker.py",
                 "shape": {"batches": [{"batch_id": "<batch id>",
-                                       "attempts": [{"attempt": 1, "result": {"verdicts": ["<parsed JSON, or null>"]}}]}]}},
+                                       "attempts": [{"attempt": 1,
+                                                     "result": {"verdicts": [{"id": "<item id from the batch>",
+                                                                              "equivalent": "yes | no | unclear",
+                                                                              "reason": "<one line>"}]}}]}]},
+                "notes": "result is the parsed JSON object the model returned, with one verdict object per item id; "
+                         "for an unsuccessful attempt set result to null (not an empty or string-valued verdicts "
+                         "list). parse_checker.py ignores an entry that is not an object with a known id and a "
+                         "verdict in {yes, no, unclear}, and records ids without a usable verdict as missing."},
 }
 RETRY_RULES = {
     "generation": f"retry once, with the identical request, when the response is empty or no returned line parses as "
