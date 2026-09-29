@@ -123,6 +123,18 @@ def dry_run() -> None:
         run("parse_generation.py", str(tmp / "wf_gen.json"), expect_failure=True)  # outputs exist: refuse
         run("parse_generation.py", str(tmp / "wf_gen.json"), "--replace")
         run("build_checker_set.py")
+        # the request builder writes one body per call with the recorded prompt hash, and sends nothing
+        run("build_api_requests.py", "generation", "--model", "example-model")
+        reqs = json.loads((tmp / "api_requests_generation.json").read_text())["requests"]
+        by_id = {c["id"]: c for c in calls}
+        check(len(reqs) == 18 and all(x["prompt_sha256"] == by_id[x["id"]]["prompt_sha256"]
+                                      and x["request"]["messages"][0]["content"] == by_id[x["id"]]["prompt"]
+                                      for x in reqs) and "output_config" not in reqs[0]["request"],
+              "api request bodies match calls.json prompts and carry no output schema for generation")
+        run("build_api_requests.py", "checker", "--model", "example-model")
+        creqs = json.loads((tmp / "api_requests_checker.json").read_text())["requests"]
+        check(len(creqs) >= 1 and creqs[0]["request"]["output_config"]["format"]["type"] == "json_schema",
+              "checker request bodies carry the verdict schema")
         batches = json.loads((tmp / "checker_batches.json").read_text())["batches"]
         key = {k["id"]: k for k in common.read_jsonl(tmp / "checker_key.jsonl")}
         chk = {"batches": []}
