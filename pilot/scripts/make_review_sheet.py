@@ -1,7 +1,8 @@
 """Draw the human review sample: 40 checked generated rows, allocated to arms in proportion to their checked row
 counts (largest remainder), sampled and ordered with a named seed, checker verdict withheld from the sheet.
 
-Writes review_sheet.csv, review_key.csv, review_map.json (review id to generated row id).
+Writes review_sheet.csv, review_key.csv, review_map.json (review id to generated row id, stamped with the hash of
+the checker plan whose parse the sheet samples, so a later step can refuse a stale bundle; Codex review of PR #52).
 """
 from __future__ import annotations
 
@@ -10,7 +11,7 @@ import json
 import math
 from pathlib import Path
 
-from common import ARMS, N_REVIEW, PILOT, read_jsonl, rng, write_csv
+from common import ARMS, N_REVIEW, PILOT, checked_problems, read_jsonl, rng, sha256_file, write_csv
 
 
 def annotated_rows(sheet_path: Path) -> list[str]:
@@ -29,7 +30,14 @@ def main() -> None:
     if done:
         raise SystemExit(f"make_review_sheet: review_sheet.csv holds annotations on {len(done)} row(s) (first: "
                          f"{done[0]}); a sheet with human work is not regenerated. Move it aside to draw a new one.")
-    checked = [c for c in read_jsonl(PILOT / "checked.jsonl") if c["source"] == "generated"]
+    all_checked = read_jsonl(PILOT / "checked.jsonl")
+    plan_sha = sha256_file(PILOT / "checker_batches.json")
+    problems = checked_problems(all_checked, read_jsonl(PILOT / "checker_key.jsonl"),
+                                read_jsonl(PILOT / "checker_set.jsonl"), plan_sha)
+    if problems:  # the sheet samples the plan's parse and nothing else (Codex review of PR #52)
+        raise SystemExit("make_review_sheet: checked.jsonl is not the parse of the checker plan on disk; re-run "
+                         "parse_checker.py on that plan's result:\n  " + "\n  ".join(problems[:5]))
+    checked = [c for c in all_checked if c["source"] == "generated"]
     by_arm = {a: [c for c in checked if c["arm"] == a] for a in ARMS}
     total = sum(len(v) for v in by_arm.values())
     n = min(N_REVIEW, total)
@@ -52,7 +60,9 @@ def main() -> None:
     write_csv(sheet_path, sheet, ["id", "clinical_term", "patient_term", "template", "my_label", "my_notes"])
     write_csv(PILOT / "review_key.csv", key, ["id", "arm", "cell", "checker_verdict"])
     (PILOT / "review_map.json").write_text(json.dumps({"allocation": alloc, "n_checked_by_arm":
-                                                       {a: len(v) for a, v in by_arm.items()}, "map": mapping},
+                                                       {a: len(v) for a, v in by_arm.items()},
+                                                       # the checker plan whose parse this sheet samples
+                                                       "checker_plan_sha256": plan_sha, "map": mapping},
                                                       indent=2) + "\n", encoding="utf-8")
     print(f"review sheet: {len(sheet)} rows, allocation {alloc}, checked rows by arm "
           f"{ {a: len(v) for a, v in by_arm.items()} }")

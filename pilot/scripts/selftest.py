@@ -51,6 +51,13 @@ def unit_tests() -> None:
     check(common.validate_line('{"clinical_term": "a", "patient_term": "b", "template": "x ___ y"}')[1]
           == "missing_field:control", "missing control is a format failure")
     check(common.validate_line("```json")[1] == "not_json", "a fence line is a format failure")
+    keyed = '{"clinical_term": "a", "patient_term": "b", "template": "no blank", "control": "none"}'
+    check(common.attempt_failed(None) and common.attempt_failed("Sorry, prose only")
+          and not common.attempt_failed("prose\n" + keyed),
+          "generation retry rule: an empty response or one with no line carrying the keys fails; a keyed line does not")
+    check(common.checker_attempt_failed(None) and common.checker_attempt_failed({"verdicts": []})
+          and not common.checker_attempt_failed({"verdicts": [{"id": "c1", "equivalent": "yes", "reason": ""}]}),
+          "checker retry rule: nothing or an empty verdict list fails; a verdict list does not")
     check(common.control_is_faithful({"clinical_term": "Chest pain", "patient_term": "chest  pain."}), "control fidelity")
     check(len(common.SPECIALTIES) == 3 and len(common.SWAP_DEFINITIONS) == 3, "design factors load from design.json")
     # surface form: casing, punctuation and spacing removed, letters of every script kept (Codex on PR #52)
@@ -169,6 +176,7 @@ def dry_run() -> None:
                            ("repeated attempt number", with_attempts([1, 1])),
                            ("reversed attempt numbers", with_attempts([2, 1])),
                            ("three attempts", with_attempts([1, 2, 3])),
+                           ("retry after a valid first attempt", with_attempts([1, 2])),
                            ("foreign prompt hash", {"calls": [dict(first, prompt_sha256="0" * 64)] + gen["calls"][1:]}),
                            ("missing prompt hash", {"calls": [unhashed] + gen["calls"][1:]})):
             (tmp / "wf_bad.json").write_text(json.dumps(bad))
@@ -181,6 +189,11 @@ def dry_run() -> None:
         run("parse_generation.py", str(tmp / "wf_gen.json"), "--replace")
         check(all(e["plan_binding"] == "prompt_sha256" for e in common.read_jsonl(tmp / "call_log.jsonl")),
               "a bound parse records the binding in every call log entry")
+        by_id = {c["id"]: c for c in calls}
+        check(all(e["prompt_sha256"] == by_id[e["call_id"]]["prompt_sha256"] for e in common.read_jsonl(tmp / "call_log.jsonl"))
+              and all(r["prompt_sha256"] == by_id[r["call_id"]]["prompt_sha256"]
+                      for r in common.read_jsonl(tmp / "generated" / "all_rows.jsonl")),
+              "every call log entry and every row carries its planned prompt's hash")
         run("compute_summary.py", expect_failure=True)  # checked.jsonl does not exist yet: refuse, no partial summary
         run("build_checker_set.py")
         # the request builder writes one body per call with the recorded prompt hash, and sends nothing
@@ -210,6 +223,8 @@ def dry_run() -> None:
         b0 = chk["batches"][0]
         for label, bad in (("duplicate batch id", {"batches": chk["batches"] + [b0]}),
                            ("repeated attempt number", {"batches": [dict(b0, attempts=b0["attempts"] * 2)] + chk["batches"][1:]}),
+                           ("retry after a verdict list", {"batches": [dict(b0, attempts=[b0["attempts"][0], dict(b0["attempts"][0], attempt=2)])]
+                                                           + chk["batches"][1:]}),
                            ("foreign prompt hash", {"batches": [dict(b0, prompt_sha256="0" * 64)] + chk["batches"][1:]})):
             (tmp / "wf_chk_bad.json").write_text(json.dumps(bad))
             run("parse_checker.py", str(tmp / "wf_chk_bad.json"), expect_failure=True)
@@ -274,6 +289,36 @@ def dry_run() -> None:
         (tmp / "checker_batches.json").write_text(plan_text, encoding="utf-8")
         check((tmp / "summary.json").read_text(encoding="utf-8") == summary_text,
               "a checker plan built from other generation rows is refused and the summary on disk is unchanged")
+        # the parsed generation must be the call plan's: a re-planned prompt hash with the old outputs in place is
+        # refused by the summary and by the checker-set builder (Codex on PR #52)
+        calls_text = (tmp / "calls.json").read_text(encoding="utf-8")
+        calls_doc = json.loads(calls_text)
+        calls_doc["calls"][0]["prompt_sha256"] = "0" * 64
+        (tmp / "calls.json").write_text(json.dumps(calls_doc), encoding="utf-8")
+        run("compute_summary.py", expect_failure=True)
+        run("build_checker_set.py", expect_failure=True)
+        (tmp / "calls.json").write_text(calls_text, encoding="utf-8")
+        check((tmp / "summary.json").read_text(encoding="utf-8") == summary_text,
+              "outputs parsed under another prompt hash are refused by the summary and the checker-set builder")
+        # the review bundle must sample these checked rows: a map stamped with another plan, or a key verdict that
+        # differs from the checked row, is refused (Codex on PR #52)
+        map_text = (tmp / "review_map.json").read_text(encoding="utf-8")
+        map_doc = json.loads(map_text)
+        check(map_doc["checker_plan_sha256"] == plan_sha, "review_map.json is stamped with the checker plan's hash")
+        map_doc["checker_plan_sha256"] = "0" * 64
+        (tmp / "review_map.json").write_text(json.dumps(map_doc), encoding="utf-8")
+        run("compute_summary.py", expect_failure=True)
+        (tmp / "review_map.json").write_text(map_text, encoding="utf-8")
+        key_text = (tmp / "review_key.csv").read_text(encoding="utf-8")
+        klines = key_text.splitlines()
+        klines[1] = klines[1][: klines[1].rfind(",") + 1] + ("no" if klines[1].endswith("yes") else "yes")
+        (tmp / "review_key.csv").write_text("\n".join(klines) + "\n", encoding="utf-8")
+        run("compute_summary.py", expect_failure=True)
+        (tmp / "review_key.csv").write_text(key_text, encoding="utf-8")
+        check((tmp / "summary.json").read_text(encoding="utf-8") == summary_text,
+              "a review bundle from another plan, or a key verdict that differs from the checked row, is refused")
+        (tmp / "scripts").mkdir()  # a stand-in for the code the manifest hashes; the dry run itself runs HERE's scripts
+        (tmp / "scripts" / "marker.py").write_text("# selftest marker\n", encoding="utf-8")
         run("write_manifest.py")
         m = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
         check(m["design"]["seed_provenance"]["values"] == ["selftest provenance, not study data"]
@@ -296,6 +341,13 @@ def dry_run() -> None:
         m3 = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
         check(m3["finalized_utc"] == mf["finalized_utc"] and m3["output_hashes"] == mf["output_hashes"],
               "a plan-time rewrite keeps the finalization time and output hashes while the outputs are unchanged")
+        # a script edited since finalize clears the finalization too (Codex on PR #52)
+        (tmp / "scripts" / "marker.py").write_text("# selftest marker, edited after finalize\n", encoding="utf-8")
+        run("write_manifest.py")
+        m3b = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        check(m3b["finalized_utc"] is None and "output_hashes" not in m3b,
+              "a plan-time rewrite after a script changed clears the finalization time and the hashes")
+        run("write_manifest.py", "finalize")
         md_text = (tmp / "summary.md").read_text(encoding="utf-8")
         (tmp / "summary.md").write_text(md_text + "edited after finalize\n", encoding="utf-8")
         run("write_manifest.py")
@@ -316,16 +368,23 @@ def dry_run() -> None:
                     "label": f"{calls[0]['id']} attempt 1 sha256={calls[0]['prompt_sha256']}"},
                    {"type": "result", "key": "k1", "agentId": "a1", "result": "{}"},
                    {"type": "started", "key": "k2", "agentId": "a2", "label": f"{calls[1]['id']} attempt 1"},
-                   {"type": "result", "key": "k2", "agentId": "a2", "result": "{}"}]
+                   {"type": "result", "key": "k2", "agentId": "a2", "result": "{}"},
+                   {"type": "started", "key": "k3", "agentId": "a3",
+                    "label": f"{calls[2]['id']} attempt 1 sha256={calls[2]['prompt_sha256']}"},
+                   {"type": "result", "key": "k3", "agentId": "a3",
+                    "result": {"clinical_term": "a", "patient_term": "b", "template": "x ___ y", "control": "none"}}]
         (tmp / "journal.jsonl").write_text("".join(json.dumps(j) + "\n" for j in journal), encoding="utf-8")
         run("extract_workflow_journal.py", "generation", str(tmp / "journal.jsonl"))
         ext = {c["id"]: c for c in json.loads((tmp / "workflow_generation_result.json").read_text(encoding="utf-8"))["calls"]}
         check(ext[calls[0]["id"]]["prompt_sha256"] == calls[0]["prompt_sha256"] and ext[calls[1]["id"]]["prompt_sha256"] is None,
               "the journal extractor carries the prompt hash from the agent label and null without it")
+        a3 = ext[calls[2]["id"]]["attempts"][0]
+        check(a3["raw"] is None and a3["unexpected_result_type"] == "dict" and a3["null_return"] is False,
+              "a non-text generation result is recorded as no text with its type, never serialized into a response")
         # two agents carrying one label would collapse into one attempt: the journal is refused (Codex on PR #52)
-        dup = journal + [{"type": "started", "key": "k3", "agentId": "a3",
+        dup = journal + [{"type": "started", "key": "k4", "agentId": "a4",
                           "label": f"{calls[0]['id']} attempt 1 sha256={calls[0]['prompt_sha256']}"},
-                         {"type": "result", "key": "k3", "agentId": "a3", "result": "{}"}]
+                         {"type": "result", "key": "k4", "agentId": "a4", "result": "{}"}]
         (tmp / "journal_dup.jsonl").write_text("".join(json.dumps(j) + "\n" for j in dup), encoding="utf-8")
         result_text = (tmp / "workflow_generation_result.json").read_text(encoding="utf-8")
         run("extract_workflow_journal.py", "generation", str(tmp / "journal_dup.jsonl"), expect_failure=True)
@@ -337,6 +396,8 @@ def dry_run() -> None:
         (tmp / "seeds.json").write_text(json.dumps(seeds_doc, ensure_ascii=False), encoding="utf-8")
         run("write_manifest.py", "--reset", expect_failure=True)  # calls.json still from the old seeds: refuse
         run("plan_calls.py")
+        run("compute_summary.py", expect_failure=True)  # the previous parse under re-planned prompts: refuse
+        run("build_checker_set.py", expect_failure=True)
         run("write_manifest.py", expect_failure=True)  # seeds changed: refuse
         # the previous run's checker plan was built from the old seeds: refused even with --reset until it is
         # rebuilt after the new generation or moved aside (Codex on PR #52)

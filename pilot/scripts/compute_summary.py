@@ -18,12 +18,15 @@ from common import (
     checked_problems,
     cosine,
     dup_key,
+    generation_problems,
     load_seeds,
     mean_cross,
     mean_pairwise,
     newcombe_diff,
     percentile,
+    read_csv,
     read_jsonl,
+    review_problems,
     rng,
     sha256_file,
     wilson,
@@ -144,9 +147,24 @@ def main() -> None:
         shown = problems[:5] + ([f"... and {len(problems) - 5} more"] if len(problems) > 5 else [])
         raise SystemExit("compute_summary: checked.jsonl is not the parse of the checker plan on disk; re-run "
                          "parse_checker.py on that plan's result:\n  " + "\n  ".join(shown))
+    # the parsed generation must be the call plan's: final records and rows carry the planned prompt's hash, so a
+    # previous run's responses cannot be summarized under re-planned prompts (Codex review of PR #52)
+    gen_problems = generation_problems(calls, call_log, rows)
+    if gen_problems:
+        shown = gen_problems[:5] + ([f"... and {len(gen_problems) - 5} more"] if len(gen_problems) > 5 else [])
+        raise SystemExit("compute_summary: call_log.jsonl and generated/all_rows.jsonl are not the parse of the call "
+                         "plan on disk; re-run parse_generation.py on that plan's result:\n  " + "\n  ".join(shown))
     if not (PILOT / "review_map.json").exists():
         raise SystemExit("compute_summary: review_map.json is missing; run make_review_sheet.py first")
     review = json.loads((PILOT / "review_map.json").read_text(encoding="utf-8"))
+    # the review bundle must sample these checked rows: stamped with the plan and equal field for field (Codex
+    # review of PR #52)
+    rev_problems = review_problems(review, read_csv(PILOT / "review_sheet.csv"), read_csv(PILOT / "review_key.csv"),
+                                   checked, sha256_file(plan_path))
+    if rev_problems:
+        shown = rev_problems[:5] + ([f"... and {len(rev_problems) - 5} more"] if len(rev_problems) > 5 else [])
+        raise SystemExit("compute_summary: the review bundle does not sample the checked rows on disk; re-run "
+                         "make_review_sheet.py (move a sheet with annotations aside first):\n  " + "\n  ".join(shown))
     cell_ids = [cell_id(s, t) for s, t in cells()]
     S: dict = {"n_seeds": len(seeds), "k_exemplars_used": calls["k_exemplars_used"],
                "k_exemplars_requested": calls["k_exemplars_requested"],
@@ -160,11 +178,7 @@ def main() -> None:
                          "review_sample": f"random.Random('{MASTER_SEED}:review')"}}
 
     # ---- run overview
-    finals = [e for e in call_log if e.get("is_final")]
-    planned = {c["id"] for c in calls["calls"]}
-    if {e["call_id"] for e in finals} != planned or len(finals) != len(planned):
-        raise SystemExit(f"compute_summary: call_log.jsonl holds final records for {len(finals)} calls, calls.json "
-                         f"plans {len(planned)}; re-run parse_generation.py on the complete result before summarizing")
+    finals = [e for e in call_log if e.get("is_final")]  # one per planned call, checked by generation_problems
     S["run"] = {"n_calls": len(calls["calls"]), "n_attempts": len(call_log),
                 "n_retried_calls": sum(1 for e in call_log if e.get("is_final") is False),
                 "calls_with_valid_rows": wilson(sum(1 for e in finals if e["n_valid"] > 0), len(finals)),

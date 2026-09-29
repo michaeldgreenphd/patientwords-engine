@@ -303,3 +303,88 @@ def checked_problems(checked: list[dict], key: list[dict], blind: list[dict], pl
             problems.append(f"item {cid}: checker_plan_sha256 {str(c.get('checker_plan_sha256'))[:12]!r} is not "
                             f"the plan on disk ({plan_sha256[:12]})")
     return problems
+
+
+def read_csv(path: Path) -> list[dict]:
+    """A required CSV input, as dictionaries; a missing file is refused by name, like read_jsonl."""
+    if not path.exists():
+        shown = path.relative_to(PILOT) if path.is_relative_to(PILOT) else path
+        raise SystemExit(f"{shown}: required input is missing; run the step that writes it first")
+    with path.open(newline="", encoding="utf-8") as fh:
+        return list(csv.DictReader(fh))
+
+
+def attempt_failed(raw: str | None) -> bool:
+    """PROTOCOL.md 3: a generation call has failed, and may be retried once, when the response is empty or no
+    returned line parses as a JSON object carrying the four required keys. Fewer than 20 rows, or some invalid rows,
+    is not a failure. The parser refuses a second attempt whose first did not fail (Codex review of PR #52)."""
+    for line in lines_of(raw):
+        try:
+            obj = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(obj, dict) and all(k in obj for k in REQUIRED_FIELDS):
+            return False
+    return True
+
+
+def checker_attempt_failed(result: object) -> bool:
+    """PROTOCOL.md 6: a checker batch is retried once when its subagent returns nothing: no result object, no
+    `verdicts` list, or an empty one."""
+    return not isinstance(result, dict) or not isinstance(result.get("verdicts"), list) or not result["verdicts"]
+
+
+def generation_problems(calls: dict, call_log: list[dict], rows: list[dict]) -> list[str]:
+    """Why call_log.jsonl and the parsed rows do not belong to the call plan on disk: final records whose call ids
+    differ from the plan's, or a final record or row whose `prompt_sha256` (stamped by parse_generation.py from the
+    plan it parsed against) is not the planned prompt's. Call ids are stable across plans, so without the hash a
+    previous run's responses would pass under re-planned prompts (Codex review of PR #52). Empty when they belong."""
+    planned = {c["id"]: c["prompt_sha256"] for c in calls["calls"]}
+    finals = [e for e in call_log if e.get("is_final")]
+    ids = [e.get("call_id") for e in finals]
+    problems = []
+    if sorted(ids, key=str) != sorted(planned):
+        problems.append(f"call_log.jsonl holds final records for {len(ids)} calls ({len(set(ids) - set(planned))} "
+                        f"unplanned), calls.json plans {len(planned)}")
+    for e in finals:
+        cid = e.get("call_id")
+        if cid in planned and e.get("prompt_sha256") != planned[cid]:
+            problems.append(f"{cid}: call_log prompt_sha256 {str(e.get('prompt_sha256'))[:12]!r} is not the planned "
+                            f"prompt's ({planned[cid][:12]})")
+    for r in rows:
+        cid = r.get("call_id")
+        if cid not in planned:
+            problems.append(f"row {r.get('id')}: call {cid!r} is not planned")
+        elif r.get("prompt_sha256") != planned[cid]:
+            problems.append(f"row {r.get('id')}: prompt_sha256 is not the planned prompt's for {cid}")
+    return problems
+
+
+def review_problems(review_map: dict, sheet: list[dict], key: list[dict], checked: list[dict],
+                    plan_sha256: str) -> list[str]:
+    """Why the human-review bundle (review_map.json, review_sheet.csv, review_key.csv) does not sample the checked
+    rows on disk: a map stamped with another checker plan, review ids that differ between the three files, a mapped
+    row that is not a checked generated row, or sheet terms or key fields that differ from that row. Generated row
+    ids are stable across runs, so ids alone would not show changed terms or verdicts (Codex review of PR #52)."""
+    problems = []
+    if review_map.get("checker_plan_sha256") != plan_sha256:
+        problems.append(f"review_map.json checker_plan_sha256 {str(review_map.get('checker_plan_sha256'))[:12]!r} is "
+                        f"not the plan on disk ({plan_sha256[:12]})")
+    mapping = review_map.get("map", {})
+    sheet_by = {r.get("id"): r for r in sheet}
+    key_by = {r.get("id"): r for r in key}
+    if not (sorted(mapping) == sorted(sheet_by, key=str) == sorted(key_by, key=str)):
+        problems.append("review ids differ between review_map.json, review_sheet.csv and review_key.csv")
+    by_row = {c["row_id"]: c for c in checked if c.get("source") == "generated"}
+    for rid, row_id in mapping.items():
+        c = by_row.get(row_id)
+        if c is None:
+            problems.append(f"{rid}: row {row_id} is not a checked generated row")
+            continue
+        s, k = sheet_by.get(rid), key_by.get(rid)
+        if s and any(s.get(f) != c.get(f) for f in ("clinical_term", "patient_term", "template")):
+            problems.append(f"{rid}: review_sheet.csv terms differ from checked row {row_id}")
+        if k and (k.get("arm") != c.get("arm") or k.get("cell") != c.get("cell")
+                  or k.get("checker_verdict") != c.get("verdict")):
+            problems.append(f"{rid}: review_key.csv fields differ from checked row {row_id}")
+    return problems

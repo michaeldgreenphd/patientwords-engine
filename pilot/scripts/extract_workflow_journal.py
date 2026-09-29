@@ -47,7 +47,7 @@ def main(which: str, journal_path: str) -> None:
     per_item: dict[str, dict[int, dict]] = {}
     shas: dict[str, set] = {}
     agents_by_label: dict[tuple[str, int], list] = {}
-    unlabeled = 0
+    unlabeled = non_text = 0
     for s in started:
         m = LABEL.match(s.get("label") or "")
         if not m:
@@ -58,9 +58,14 @@ def main(which: str, journal_path: str) -> None:
         shas.setdefault(item_id, set()).add(m.group("sha"))
         res = results.get((s.get("key"), s.get("agentId")))
         if which == "generation":
-            text = res if isinstance(res, str) else (json.dumps(res) if res is not None else None)
-            per_item.setdefault(item_id, {})[n] = {"attempt": n, "raw": text, "null_return": res is None,
-                                                   "agent_id": s.get("agentId")}
+            # the model's raw text is the input to estimand 1; a result that is not text is recorded as no text,
+            # never serialized into a response that never existed (Codex review of PR #52)
+            text = res if isinstance(res, str) else None
+            entry = {"attempt": n, "raw": text, "null_return": res is None, "agent_id": s.get("agentId")}
+            if res is not None and text is None:
+                entry["unexpected_result_type"] = type(res).__name__
+                non_text += 1
+            per_item.setdefault(item_id, {})[n] = entry
         else:
             obj = res
             if isinstance(res, str):
@@ -85,7 +90,8 @@ def main(which: str, journal_path: str) -> None:
         meta = {c["id"]: c for c in json.loads((PILOT / "calls.json").read_text(encoding="utf-8"))["calls"]}
         items = [{"id": i, "arm": meta[i]["arm"], "cell": meta[i]["cell"], "prompt_sha256": sha_of(i),
                   "attempts": [per_item[i][n] for n in sorted(per_item[i])]} for i in meta if i in per_item]
-        out = {"source": journal_path, "record_types": dict(types), "unlabeled_agents": unlabeled, "calls": items}
+        out = {"source": journal_path, "record_types": dict(types), "unlabeled_agents": unlabeled,
+               "non_text_results": non_text, "calls": items}
         path = PILOT / "workflow_generation_result.json"
         missing = [i for i in meta if i not in per_item]
     else:
@@ -100,7 +106,7 @@ def main(which: str, journal_path: str) -> None:
     n_attempts = sum(len(x["attempts"]) for x in items)
     n_bound = sum(1 for x in items if x["prompt_sha256"])
     print(f"{path.name}: {len(items)} items, {n_attempts} attempts, record types {dict(types)}, "
-          f"unlabeled {unlabeled}, missing {missing}, items with a prompt hash {n_bound}"
+          f"unlabeled {unlabeled}, non-text results {non_text}, missing {missing}, items with a prompt hash {n_bound}"
           + ("" if n_bound == len(items) else " (the parsers need --unbound for the rest)"))
 
 

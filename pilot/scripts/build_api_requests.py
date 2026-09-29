@@ -53,9 +53,10 @@ RESULT_SHAPES = {
                                         "prompt_sha256": "<this request's prompt_sha256, copied from this file>",
                                         "attempts": [{"attempt": 1, "raw": "<the response text verbatim, or null>",
                                                       "null_return": False}]}]},
-                   "notes": "attempts are numbered 1..n in order with n at most 2 (one retry); prompt_sha256 must "
-                            "equal the planned prompt's hash, or parse_generation.py refuses the whole file before "
-                            "touching anything on disk."},
+                   "notes": "attempts are numbered 1..n in order with n at most 2 (one retry), and attempt 2 is "
+                            "accepted only when attempt 1 met the retry rule below; prompt_sha256 must equal the "
+                            "planned prompt's hash, or parse_generation.py refuses the whole file before touching "
+                            "anything on disk."},
     "checker": {"file": "workflow_checker_result.json or any name passed to parse_checker.py",
                 "shape": {"batches": [{"batch_id": "<batch id>",
                                        "prompt_sha256": "<this request's prompt_sha256, copied from this file>",
@@ -65,16 +66,17 @@ RESULT_SHAPES = {
                                                                               "reason": "<one line>"}]}}]}]},
                 "notes": "result is the parsed JSON object the model returned, with one verdict object per item id; "
                          "for an unsuccessful attempt set result to null (not an empty or string-valued verdicts "
-                         "list). Attempts are numbered 1..n in order with n at most 2, and prompt_sha256 must equal "
-                         "the planned batch prompt's hash. parse_checker.py ignores an entry that is not an object "
+                         "list). Attempts are numbered 1..n in order with n at most 2, attempt 2 is accepted only "
+                         "when attempt 1 met the retry rule below, and prompt_sha256 must equal the planned batch "
+                         "prompt's hash. parse_checker.py ignores an entry that is not an object "
                          "with a known id and a verdict in {yes, no, unclear}, and records ids without a usable "
                          "verdict as missing."},
 }
 RETRY_RULES = {
     "generation": f"retry once, with the identical request, when the response is empty or no returned line parses as "
                   f"a JSON object carrying the keys {REQUIRED_FIELDS}; keep both attempts verbatim (PROTOCOL.md 3)",
-    "checker": "retry once, with the identical request, when no verdict list comes back; ids still without a usable "
-               "verdict are recorded as missing (PROTOCOL.md 6)",
+    "checker": "retry once, with the identical request, when no verdict list, or an empty one, comes back; ids still "
+               "without a usable verdict are recorded as missing (PROTOCOL.md 6)",
 }
 
 

@@ -18,7 +18,7 @@ import json
 import sys
 from pathlib import Path
 
-from common import MAX_ATTEMPTS, PILOT, read_jsonl, sha256_file, write_jsonl
+from common import MAX_ATTEMPTS, PILOT, checker_attempt_failed, read_jsonl, sha256_file, write_jsonl
 
 VALID = ("yes", "no", "unclear")
 
@@ -53,6 +53,9 @@ def validate_result(result: object, planned: dict[str, str], unbound: bool = Fal
         elif [a["attempt"] for a in attempts] != list(range(1, len(attempts) + 1)) or len(attempts) > MAX_ATTEMPTS:
             problems.append(f"batches[{i}] ({bid}): attempts must be numbered 1..n in order with n <= {MAX_ATTEMPTS}; "
                             f"got {[a['attempt'] for a in attempts]}")
+        elif len(attempts) == MAX_ATTEMPTS and not checker_attempt_failed(attempts[0].get("result")):
+            problems.append(f"batches[{i}] ({bid}): attempt 2 recorded although attempt 1 returned a verdict list "
+                            f"(PROTOCOL.md 6: only a batch returning nothing is retried)")
         elif not unbound and b.get("prompt_sha256") != planned[bid]:
             problems.append(f"batches[{i}] ({bid}): prompt_sha256 {str(b.get('prompt_sha256'))[:12]!r} is not the "
                             f"planned batch prompt's {planned[bid][:12]!r}; a result answers one plan (pass "

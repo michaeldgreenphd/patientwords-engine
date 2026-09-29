@@ -3,6 +3,11 @@
 Input: a JSON file {"calls": [{"id", "arm", "cell", "attempts": [{"attempt", "raw", "null_return"}]}]}.
 Writes generated/raw/<call>__attempt<N>.txt (verbatim), generated/<call>.jsonl (format-valid rows of the final
 attempt), generated/all_rows.jsonl (the same rows in protocol order), generated/format_failures.jsonl, call_log.jsonl.
+
+Every call-log entry, row and format failure carries `prompt_sha256`, the planned prompt's hash from the calls.json
+it was parsed against, so build_checker_set.py, compute_summary.py and write_manifest.py can refuse a parse that
+belongs to another plan; a second attempt is accepted only when the first met the protocol's retry rule (Codex
+review of PR #52).
 """
 from __future__ import annotations
 
@@ -16,6 +21,7 @@ from common import (
     MAX_ATTEMPTS,
     PILOT,
     ROWS_PER_CALL,
+    attempt_failed,
     cell_id,
     cells,
     control_is_faithful,
@@ -63,6 +69,10 @@ def validate_result(result: object, planned: dict[str, dict], unbound: bool = Fa
         elif [a["attempt"] for a in attempts] != list(range(1, len(attempts) + 1)) or len(attempts) > MAX_ATTEMPTS:
             problems.append(f"calls[{i}] ({cid}): attempts must be numbered 1..n in order with n <= {MAX_ATTEMPTS}; "
                             f"got {[a['attempt'] for a in attempts]}")
+        elif len(attempts) == MAX_ATTEMPTS and not attempt_failed(attempts[0]["raw"]):
+            problems.append(f"calls[{i}] ({cid}): attempt 2 recorded although attempt 1 met no retry condition "
+                            f"(PROTOCOL.md 3: only an empty response, or one with no line carrying the required "
+                            f"keys, is retried); the final attempt would replace a valid first response")
         elif not unbound and c.get("prompt_sha256") != planned[cid]["prompt_sha256"]:
             problems.append(f"calls[{i}] ({cid}): prompt_sha256 {str(c.get('prompt_sha256'))[:12]!r} is not the "
                             f"planned prompt's {planned[cid]['prompt_sha256'][:12]!r}; a result answers one plan "
@@ -102,7 +112,8 @@ def main(result_path: str, replace: bool = False, unbound: bool = False) -> None
             log.append({"call_id": cid, "arm": meta["arm"], "cell": meta["cell"], "attempt": 0, "is_final": True,
                         "null_return": True, "n_lines": 0, "n_valid": 0, "n_invalid": 0, "n_control": 0,
                         "n_noncontrol": 0, "expected_lines": ROWS_PER_CALL, "expected_controls": CONTROLS_PER_CALL,
-                        "reasons": {}, "status": "no_response_recorded", "plan_binding": binding})
+                        "reasons": {}, "status": "no_response_recorded", "plan_binding": binding,
+                        "prompt_sha256": meta["prompt_sha256"]})
             write_jsonl(gen_dir / f"{cid}.jsonl", [])
             continue
         for a in attempts:
@@ -124,17 +135,20 @@ def main(result_path: str, replace: bool = False, unbound: bool = False) -> None
                                  "attempt": a["attempt"], "clinical_term": row["clinical_term"],
                                  "patient_term": row["patient_term"], "template": row["template"],
                                  "control": row["control"],
-                                 "control_faithful": control_is_faithful(row) if row["control"] == "negative" else None})
+                                 "control_faithful": control_is_faithful(row) if row["control"] == "negative" else None,
+                                 "prompt_sha256": meta["prompt_sha256"]})
                 elif is_final:
                     failures.append({"call_id": cid, "arm": meta["arm"], "cell": meta["cell"], "attempt": a["attempt"],
-                                     "line_index": li + 1, "reason": reason, "line": line})
+                                     "line_index": li + 1, "reason": reason, "line": line,
+                                     "prompt_sha256": meta["prompt_sha256"]})
             n_ctrl = sum(1 for r in rows if r["control"] == "negative")
             log.append({"call_id": cid, "arm": meta["arm"], "cell": meta["cell"], "attempt": a["attempt"],
                         "is_final": is_final, "null_return": bool(a.get("null_return")), "n_lines": len(lines),
                         "n_valid": len(rows), "n_invalid": len(lines) - len(rows), "n_control": n_ctrl,
                         "n_noncontrol": len(rows) - n_ctrl, "expected_lines": ROWS_PER_CALL,
                         "expected_controls": CONTROLS_PER_CALL, "reasons": dict(reasons),
-                        "status": "ok" if rows else "failed", "plan_binding": binding})
+                        "status": "ok" if rows else "failed", "plan_binding": binding,
+                        "prompt_sha256": meta["prompt_sha256"]})
             if is_final:
                 write_jsonl(PILOT / "generated" / f"{cid}.jsonl", rows)
                 all_rows.extend(rows)

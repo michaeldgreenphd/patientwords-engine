@@ -16,8 +16,8 @@ generation template, and checker_batches.json from the checker template, the see
 rows; a stale plan is refused with or without --reset. `finalize` requires every output of a complete run (the fixed
 list below, one generated/<call>.jsonl per planned call, one raw file per logged attempt), no file under generated/
 that belongs to no planned call, and a checked.jsonl that is the parse of the checker plan on disk. A plan-time
-rewrite of a finalized manifest keeps finalized_utc and output_hashes only while every hashed output is unchanged;
-otherwise both are cleared and the message says to finalize again (Codex review of PR #52).
+rewrite of a finalized manifest keeps finalized_utc and output_hashes only while every hashed output and every
+script hash is unchanged; otherwise both are cleared and the message says to finalize again (Codex review of PR #52).
 """
 from __future__ import annotations
 
@@ -41,7 +41,10 @@ from common import (
     SPECIALTIES,
     SWAP_TYPES,
     checked_problems,
+    generation_problems,
+    read_csv,
     read_jsonl,
+    review_problems,
     sha256_file,
     sha256_text,
 )
@@ -96,10 +99,23 @@ def finalize_hashes(calls: dict) -> dict[str, str]:
         raise SystemExit(f"write_manifest: cannot finalize, {len(unexpected)} file(s) under generated/ belong to no "
                          f"planned call or logged attempt (first: {unexpected[0]}); parse_generation.py --replace "
                          f"clears a previous parse")
-    problems = checked_problems(read_jsonl(PILOT / "checked.jsonl"), read_jsonl(PILOT / "checker_key.jsonl"),
-                                read_jsonl(PILOT / "checker_set.jsonl"), sha256_file(PILOT / "checker_batches.json"))
+    call_log = read_jsonl(PILOT / "call_log.jsonl")
+    problems = generation_problems(calls, call_log, read_jsonl(PILOT / "generated" / "all_rows.jsonl"))
+    if problems:
+        raise SystemExit("write_manifest: cannot finalize, call_log.jsonl and generated/all_rows.jsonl are not the "
+                         "parse of the call plan on disk:\n  " + "\n  ".join(problems[:5]))
+    checked = read_jsonl(PILOT / "checked.jsonl")
+    plan_sha = sha256_file(PILOT / "checker_batches.json")
+    problems = checked_problems(checked, read_jsonl(PILOT / "checker_key.jsonl"),
+                                read_jsonl(PILOT / "checker_set.jsonl"), plan_sha)
     if problems:
         raise SystemExit("write_manifest: cannot finalize, checked.jsonl is not the parse of the checker plan on "
+                         "disk:\n  " + "\n  ".join(problems[:5]))
+    problems = review_problems(json.loads((PILOT / "review_map.json").read_text(encoding="utf-8")),
+                               read_csv(PILOT / "review_sheet.csv"), read_csv(PILOT / "review_key.csv"), checked,
+                               plan_sha)
+    if problems:
+        raise SystemExit("write_manifest: cannot finalize, the review bundle does not sample the checked rows on "
                          "disk:\n  " + "\n  ".join(problems[:5]))
     return {o: sha256_file(PILOT / o) for o in expected}
 
@@ -155,10 +171,20 @@ def main(finalize: bool, reset: bool = False) -> None:
     # a plan-time rewrite after finalize keeps the finalization time and the output hashes only while every hashed
     # output is unchanged on disk; a finalization time without the hashes it vouched for would claim a verified
     # bundle (Codex review of PR #52)
+    scripts_now = {p.name: sha256_file(p) for p in sorted((PILOT / "scripts").glob("*.py"))}
+    workflows_now = ({p.name: sha256_file(p) for p in sorted((PILOT / "workflows").glob("*.js"))}
+                     if (PILOT / "workflows").exists() else {})
     carried = base.get("output_hashes") if not finalize else None
     changed_outputs = ([o for o, h in carried.items() if not (PILOT / o).exists() or sha256_file(PILOT / o) != h]
                        if carried else [])
-    keep_final = bool(carried) and not changed_outputs
+    # a finalized manifest also names the code its outputs stand under: a script edited since finalize clears the
+    # finalization too, or the rewrite would attribute the outputs to code that never produced them (Codex review
+    # of PR #52)
+    changed_scripts = ([n for n in sorted(set(base.get("script_hashes", {})) | set(scripts_now))
+                        if base.get("script_hashes", {}).get(n) != scripts_now.get(n)]
+                       + [n for n in sorted(set(base.get("workflow_script_hashes", {})) | set(workflows_now))
+                          if base.get("workflow_script_hashes", {}).get(n) != workflows_now.get(n)]) if carried else []
+    keep_final = bool(carried) and not changed_outputs and not changed_scripts
     m = {
         "pilot": "stimulus-generation measurement-validity pilot",
         "date_utc": base.get("date_utc", now[:10]),
@@ -185,8 +211,8 @@ def main(finalize: bool, reset: bool = False) -> None:
             "generation_prompt_template": calls["generation_prompt_template_sha256"],
             "generation_calls": {c["id"]: {"prompt_sha256": c["prompt_sha256"], "exemplar_ids": c["exemplar_ids"]} for c in calls["calls"]},
         },
-        "script_hashes": {p.name: sha256_file(p) for p in sorted((PILOT / "scripts").glob("*.py"))},
-        "workflow_script_hashes": {p.name: sha256_file(p) for p in sorted((PILOT / "workflows").glob("*.js"))} if (PILOT / "workflows").exists() else {},
+        "script_hashes": scripts_now,
+        "workflow_script_hashes": workflows_now,
     }
     if cbdata:
         # the value checked against the live template above, not the plan file's own copy of it
@@ -198,8 +224,10 @@ def main(finalize: bool, reset: bool = False) -> None:
     if finalize:
         m["output_hashes"] = finalize_hashes(calls)  # refuses an incomplete bundle before anything is written
     path.write_text(json.dumps(m, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    note = (f"; finalization cleared: {len(changed_outputs)} hashed output(s) changed or missing since finalize "
-            f"(first: {changed_outputs[0]}), re-run write_manifest.py finalize") if changed_outputs else ""
+    cleared = ([f"{len(changed_outputs)} hashed output(s) changed or missing (first: {changed_outputs[0]})"]
+               if changed_outputs else []) + ([f"{len(changed_scripts)} script(s) changed (first: {changed_scripts[0]})"]
+                                             if changed_scripts else [])
+    note = f"; finalization cleared: {' and '.join(cleared)} since finalize, re-run write_manifest.py finalize" if cleared else ""
     print(f"manifest.json written ({'finalized' if finalize else 'planned'}"
           f"{', metadata reset' if (reset and old) else ''}){note}; protocol unchanged: {m['protocol_unchanged']}")
 
