@@ -5,20 +5,26 @@ the files cannot drift. The line above imports it into every Claude Code session
 
 ## Claude Code specifics
 
-- After opening a pull request, subscribe to its activity
-  (`subscribe_pr_activity`) so Codex's review wakes the session, and schedule a
-  fallback check-in about an hour out (`send_later`) until the PR is merged or
-  closed; re-arm it silently if nothing changed. (The daily-cycle session is the
+- After opening a pull request, follow it until it is merged or closed. The
+  tools depend on where the session runs. (The daily-cycle session is the
   exception: it opens no PRs and schedules nothing.)
+  - Cloud session (it has both tools): subscribe to the PR's activity
+    (`subscribe_pr_activity`) so Codex's review wakes the session, and schedule
+    a fallback check-in about an hour out (`send_later`) until the PR is merged
+    or closed; re-arm it silently if nothing changed.
+  - Local session (it has neither tool, so nothing wakes it): before ending a
+    turn, check the PR with
+    `~/.local/bin/gh pr view <n> --json reviews,comments,headRefOid,mergeStateStatus`
+    (or `~/.local/bin/gh pr checks <n>`), and tell the owner when to check again.
 - The procedures behind the rules in `AGENTS.md` are skills under
   `.claude/skills/`. Invoke the matching one rather than improvising its steps.
-- `.claude/settings.json` installs guard hooks (`.claude/hooks/README.md`). A
-  refusal is the rule working: do not route around it, and never edit
-  `.claude/settings.json`, `.claude/hooks/`, `.githooks/`, or the user-level
-  `~/.claude/settings.json` the environment writes, from a session — the owner
-  edits those by hand.
+- `.claude/settings.json` installs guard hooks (`.claude/hooks/README.md`) that
+  refuse some tool calls. A refusal is the rule working: do not route around
+  it. From a session, never edit the guard files (`.claude/settings.json`,
+  `.claude/hooks/`, `.githooks/`) or the user-level `~/.claude/settings.json`
+  the environment writes; `AGENTS.md` says who changes them.
 
-## Shared conventions (identical across my repos; edit in all three)
+## Shared conventions (identical in patientwords-engine and patientwords; edit both)
 
 Writing to the owner:
 
