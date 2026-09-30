@@ -58,16 +58,25 @@ python scripts/export_frontend_simulated.py --frontend ../patientwords \
 ```
 python scripts/urgency_shift.py --publish ../patientwords
 ```
-Writes the site's `data/urgency_shift.json`. Tier vocabulary is a draft data file; the
-site's "draft pending domain review" labels stay exactly as they are.
+Writes the site's `data/urgency_shift.json`. Until the tier vocabulary
+(`data/urgency_tiers.draft.json`) passes domain review, the site's urgency-tier
+content carries a label that says so. The label is data, not a fixed
+string: it is the vocabulary file's `status`, published as `vocabulary_status` (in
+`urgency_shift.json` and in the payload's `urgency_meta`); read it there rather than
+quoting it from memory. It stays exactly as the data sets it until the vocabulary is
+approved (`docs/tier_review_checklist.md`), and `claim_check.py` (step 8) ties the
+pages' pending-review wording to that field through `data/claims_manifest.json`.
 
-**3. Wired j-lens exporters — these five ONLY, in this order.**
+**3. Wired exporters — these seven ONLY, in this order** (five j-lens exporters, then
+the tag-mass and J-space exporters).
 ```
 python scripts/jlens_insights.py --site ../patientwords
 python scripts/export_jlens_depth.py --block ... --exemplar-stem ... --exemplar-index ... --site ../patientwords
 python scripts/export_jlens_transport.py --site ../patientwords
 python scripts/export_jlens_loglens.py --site ../patientwords
 python scripts/export_pair_swaps.py --site ../patientwords --depth ../patientwords/data/jlens_depth.json
+python scripts/export_tag_mass.py --site ../patientwords
+python scripts/export_jspace.py --site ../patientwords
 ```
 - For `export_jlens_depth.py`, reuse the pins of the committed
   `../patientwords/data/jlens_depth.json` (same `--block` stems, same exemplar
@@ -91,7 +100,26 @@ python scripts/export_pair_swaps.py --site ../patientwords --depth ../patientwor
   25/25 `save_raw` JACOBIAN_LENS runs and its `__loglens_` LOGIT_LENS runs both landed
   on this branch, and each exporter's regen reproduced its committed site file
   byte-identically except `generated_utc` (identical census numbers, exemplars, and
-  agreement counts). All five j-lens exporters now run in the cycle.
+  agreement counts). Both have run in the cycle since.
+- **Tag mass and J-space joined 2026-07-29 (owner directive)**, after
+  `export_pair_swaps.py`. Both are $0 and offline. `export_jspace.py` refuses (exit 3,
+  site file untouched) when a source raw is missing: success-with-no-change, as above.
+
+**3b. Page joins — mandatory after every export.**
+```
+python scripts/embed_scenario_joins.py --site ../patientwords
+```
+Step 1's exporter rebuilds `data/simulated_scenarios.json` from scratch and drops what
+this pass adds: each scenario's `urgency` and `depth_class`, and the payload's
+`urgency_meta`, `depth_model` and `featured` (the home demo, the start-here care
+ladder, the redirect gallery). It joins them back from the site's
+`data/urgency_shift.json` (step 2) and `data/jlens_depth.json` (step 3's depth
+exporter), so it runs after both; it is idempotent. Report the `embedded:` line it
+prints. 0 urgency joins or 0 depth classes means that input was absent, unreadable, or
+joined nothing, which the script does not treat as an error: find out why before
+pushing. Exit 3 (`refused: no payload ...`) means step 1 wrote no payload: stop. The
+contract gate (step 7) allows these keys but does not require them, so it passes a
+payload this step never touched while the pages fall back to their own in-page picks.
 
 **4. Trace-URL restamp.** `python scripts/export_traces_site.py --stamp-only`
 Re-stamps every scenario's `trace_url` in the payload for the self-building
@@ -141,16 +169,8 @@ never delete the file to get past it), or a sparse site checkout (precondition 3
 
 - Never edit page HTML, page text, figures, or labels — data files only, without exception.
 - Never publish a scale-framing sentence, or any new prose, without explicit owner approval.
-- Never remove or soften "draft pending domain review" labels.
+- Never remove or soften the urgency-tier review label. It comes from
+  `vocabulary_status` in the data (step 2), and only the vocabulary's approval changes it.
 - Never hand-edit an exported payload, invent a number, or patch past an exporter refusal.
 - Never change depth-exporter pins or render-cap/PNG defaults without owner instruction.
 - Never let holdout phrase text reach any output or committed file.
-
-**Addendum (2026-07-29, owner directive):** step 3's exporter list gains two
-more, run after `export_pair_swaps.py`:
-```
-python scripts/export_tag_mass.py --site ../patientwords
-python scripts/export_jspace.py --site ../patientwords
-```
-Both $0/offline; `export_jspace.py` refuses (exit 3, site untouched) when a
-source raw is missing — treat as success-with-no-change.
