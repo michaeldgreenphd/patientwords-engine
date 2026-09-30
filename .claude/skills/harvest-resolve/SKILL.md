@@ -40,32 +40,115 @@ model list, and every offset/chunk fired.
 
 ## Step 3 — What landing looks like, per lane
 
-- **circuit-trace / logits-eval** (dispatched branch): part files under
+- **circuit-trace / logits-eval**: part files under
   `trace_out/<pairs-stem>/` (non-default models: `trace_out/<stem>__<model>/`).
   CI renames each chunk's summary to `batch_summary.part_NN.json`, NN = 1-based
   start offset. Expect ONE part per fired offset, per model. Always glob
   `batch_summary*.json`; `results[i]["index"]` is the global 1-based join key
   back into the batch file — use it to confirm per-pair coverage (mid-batch
   failures truncate `results` with no per-pair error records).
-- **jlens-readout** (dispatched branch): part files under
+- **jlens-readout**: part files under
   `trace_out/<stem>__jlens_<model>/` for each fired offset/limit chunk. The
   part is written only at chunk end — a missing part means the whole chunk was
   lost; refire that chunk, do not hunt for partial output.
-- **scenario-generation / model-evaluation** (paid): `data/simulated/<batch>.json`
+- **scenario-generation** (paid): `data/simulated/<batch>.json`
   PLUS its `<batch>.report.json` cost sidecar — both must exist on `main`.
+- **model-evaluation** (paid; `model_evaluation.yml`) writes no batch. It commits a
+  cost sidecar `data/simulated/modeleval_<stamp>.report.json` straight to `main`
+  (`Model-evaluation cost sidecar`), even when the run crashed, in which case the
+  sidecar books `max_spend` and carries an `estimated` note; and, when the run
+  produced results, it updates `data/evaluations/model_evaluations_frontend.json`
+  (`Model evaluation frontend export (<stamp>)`) when the table changed. Both
+  steps run with `always()`, so neither commit proves success: landed = the sidecar
+  on `main` without the `estimated` note, and a `success` conclusion (Step 4).
 - **archive-renders**: the workflow commits
   `render_archives/<tag>.manifest.json` with the Release URL filled in, and the
   Release holds the zip. Manifest committed + Release present = landed.
 - **activation-patching**: harvest like any other lane (part files under `trace_out/`).
+- **advice-eval** (paid; `advice_evaluation.yml`). With `commit_outputs: true` one
+  CI commit, `Advice eval: <stimuli stem> (append-only archive + sidecars)`, stages
+  all of `data/advice/`: for an elicitation fire the archive
+  `responses_<stem>.jsonl` and its cost sidecar `responses_<stem>.report.json`, and
+  with `judge: true` also `judgments_<stem>.jsonl`, `judgments_<stem>.report.json`
+  and `analysis_<stem>.json` (`data/advice/README.md`); a `gen_config` fire skips
+  elicitation and commits the stimuli it generated, with their cost sidecar. The archive is append-only and
+  shared by every fire on the same stimuli file, so the files existing proves
+  nothing: look for this run's commit after the fire commit. That commit step runs
+  with `always()`, so a run that failed mid-elicitation still commits what it
+  appended: landed = this run's commit AND a `success` conclusion (Step 4). With
+  `commit_outputs: false` nothing is committed, the cost sidecar included; the
+  run's `data/advice/` is kept only as its `advice-eval-outputs` artifact, which a
+  recovery fire merges back with `restore_artifact_run_id`. The park plans zero
+  calls, so its landing is its conclusion alone.
+- **petri-audit** (`petri_audit.yml`; paid in `mode: run`, `readapt`, and
+  `rejudge` with a real judge). What lands depends on the fire's `mode`, `judge`
+  and `commit_outputs`, and on the workflow run id (Step 4 finds the run). A paid
+  run is refused on any attempt but the first, so its directory is
+  `data/petri/runs/run_<run id>_1/`.
+  - `preflight` (the park) commits and uploads nothing: landed = its conclusion.
+    `dry_run` commits nothing either; when every gate passed it uploads the
+    artifact `petri-audit-exports-<run id>-<attempt>` (30 days) beside the raw log
+    artifact: landed = `success` and the exports artifact present.
+  - `run`: the cost sidecars `run_<id>_1.report.json` (once the target run started)
+    and `run_<id>_1.judge.report.json` (once the judge started) are committed
+    even when the run failed, either inside the outputs commit or on their own as
+    `Petri audit: run_<id>_1 cost sidecars`, so a sidecar alone is not a
+    landing. With `commit_outputs: true` the outputs commit,
+    `Petri audit: run_<id>_1 (sanitised export, transcripts, manifest)`, is made
+    only when every earlier step passed (the seal check, `verify-chain` and
+    `verify-run` included) and adds `manifest.json` and the other adapted files
+    (`PETRI_ADAPTED_FILES` in `scripts/fire_trigger.py`): landed = that commit and
+    `success`. With `commit_outputs: false` only the sidecars are committed and the
+    outputs survive as the 30-day exports artifact: landed = sidecars, `success`,
+    and that artifact.
+  - `readapt` writes into the SOURCE run's directory,
+    `data/petri/runs/run_<source_run_id>_1/`, beside its landed target sidecar,
+    which is never rewritten. Its own judge sidecar,
+    `run_<source_run_id>_1.readapt_<this run id>.judge.report.json`, is committed
+    once its judge started, failure or not; with `commit_outputs: true` the adapted
+    files commit as `Petri audit: run_<source_run_id>_1 (sanitised export,
+    transcripts, manifest; re-adapted by workflow run <this run id>)`. Landed =
+    that commit, the readapt's judge sidecar, and `success` (with
+    `commit_outputs: false`: the judge sidecar, `success`, and the exports
+    artifact).
+  - `rejudge` with a real judge writes one directory per stem in `source_runs`:
+    `data/petri/rejudge/<judge slug>/<stem>/` with `judgments.jsonl`,
+    `analysis_rows.jsonl`, `rejudge_manifest.json` and the judge sidecar
+    `<stem>.rejudge_<run id>.judge.report.json`. The sidecars are committed
+    whenever a judge started (`Petri rejudge: cost sidecars (workflow run <id>)`).
+    With `commit_outputs: true` the verified re-grades commit as
+    `Petri rejudge (exploratory): <judge> over <stems> (workflow run <id>)`; that
+    step runs with `always()` once verification passed, so it can land some stems
+    after a later stem's judge aborted. Landed = a `rejudge_manifest.json` for EVERY
+    stem the fire named, and `success`; fewer is partial landing. With
+    `commit_outputs: false` only the sidecars are committed and the verified
+    re-grades survive as the 30-day artifact `petri-audit-rejudge-<run id>-<attempt>`:
+    landed = the sidecars, `success`, and that artifact.
+  - `rejudge` with `judge_model: mockllm/judge` (the free rehearsal) commits
+    nothing: landed = `success` and the artifact
+    `petri-audit-rejudge-<run id>-<attempt>`.
 
 ## Step 4 — Verify terminality before resolving
 
-Landed-locally is not terminal. Confirm the GitHub run itself concluded, via:
+Landed-locally is not terminal. Confirm the GitHub run itself concluded. The run
+for a fire is the push run created just after the entry's `fired_utc`, on the
+lane's workflow (`docs/triggers.md` names it); its head commit is the fire commit
+(`git log -n 5 --format='%H %s' -- .github/trigger/<name>.json`), or the journal
+correction that `fire_trigger.py publish` pushed on top of it. Check it via:
 
-- the GitHub Actions API (the `actions_list` / `actions_get` MCP tools; `gh` is not
-  installed in remote sessions): the run for this fire shows `completed`; or
+- the GitHub CLI, where it is installed: `gh run list --workflow <workflow>.yml
+  --branch main --event push --limit 10 --json
+  databaseId,headSha,status,conclusion,createdAt` finds the run, `gh run view
+  <databaseId>` shows its status, conclusion and jobs, and `gh api
+  repos/{owner}/{repo}/actions/runs/<databaseId>/artifacts` lists its artifacts; or
+- the GitHub Actions API through the `actions_list` / `actions_get` MCP tools, in
+  remote sessions, where `gh` is not installed: the same run, `completed`; or
 - the landing commit — `git log origin/<branch> -- 'trace_out/<stem>*'` shows
-  the CI commit containing the LAST expected part (the final offset).
+  the CI commit containing the LAST expected part (the final offset). Not for
+  advice-eval, petri-audit or model-evaluation: their cost-sidecar commits (and
+  advice-eval's and model-evaluation's output commits, and a petri rejudge's
+  re-grade commit) run under `always()` and are made even when the run failed, so
+  for those lanes only the run's conclusion shows that it succeeded.
 
 Resolve ONLY when ALL expected outputs for that fire have landed — every offset
 times every model. Partial landing: do NOT resolve, AND do not fire anything new
@@ -108,15 +191,16 @@ the result.
 ## Exit codes, settle window, journal repair
 
 Defined once, in fire-trigger-safe (§3–§4); apply them as written there. The only
-permitted hand edit to `ops/trigger_journal.jsonl` is repairing the single corrupt
-line the script names, exactly as its error message instructs; record the repair.
+permitted hand edits to `ops/trigger_journal.jsonl` are repairing the single corrupt
+line the script names, exactly as its error message instructs, and the ORDERED UNION
+that resolves a pull, rebase or merge conflict (fire-trigger-safe §8); record either.
 
 ## Never
 
 - Never resolve on partial landing — that is the eviction seam.
 - Never resolve to free a queue slot. (Resolving cannot free budget either: a paid
   fire holds its commitment for its whole UTC day.)
-- Never hand-edit `ops/trigger_journal.jsonl`, anything under
-  `.github/trigger/`, or spend numbers (`fire_trigger.py` and
+- Never hand-edit `ops/trigger_journal.jsonl` (beyond the two exceptions above),
+  anything under `.github/trigger/`, or spend numbers (`fire_trigger.py` and
   `ledger_update.py` are the only writers).
 - Never treat a silent queue or an expired entry as success.

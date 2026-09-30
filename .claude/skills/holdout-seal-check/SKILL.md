@@ -31,16 +31,35 @@ The sealed set derives from `tierb.start_utc` in `ops/dashboard.json`. Live ops
 state lives on `main` since 2026-09-04 (engine PR #6 merged and retired the
 former working branch; see the state note in `ops/routines.md`). A stale or
 wrong checkout has a null `tierb.start_utc`, so the sealed set computes
-**EMPTY** and the check is meaningless (audit drift-register 1). From the
-engine repo root:
+**EMPTY** and the check is meaningless (audit drift-register 1); a checkout
+behind `origin/main` can also miss a batch or a dashboard change that `main`
+has. From the engine repo root, compare against `origin/main`:
 
 ```bash
-git rev-parse --abbrev-ref HEAD   # must be main, current with origin/main
-python -c "from scripts.tierb_split import tierb_start_stamp; s=tierb_start_stamp(); print(s or 'NULL start_utc - wrong branch'); raise SystemExit(0 if s else 1)"
+git fetch origin main
+git rev-parse --abbrev-ref HEAD                 # must print main
+git merge-base --is-ancestor origin/main HEAD   # exit 0: HEAD holds all of origin/main; exit 1: behind
+python - <<'EOF'
+import subprocess, tempfile
+from pathlib import Path
+from scripts.tierb_split import tierb_start_stamp
+local = tierb_start_stamp()                     # the dashboard seal_check.py reads by default
+shown = subprocess.run(["git", "show", "origin/main:ops/dashboard.json"],
+                       check=True, capture_output=True, text=True).stdout
+with tempfile.TemporaryDirectory() as tmp:
+    copy = Path(tmp) / "dashboard.json"
+    copy.write_text(shown, encoding="utf-8")
+    remote = tierb_start_stamp(copy)
+print(f"local {local or 'NULL start_utc - wrong branch'} | origin/main {remote or 'NULL'}")
+raise SystemExit(0 if local and local == remote else 1)
+EOF
 ```
 
-If that exits 1, fetch and check out current `main` (or pass
-`--dashboard <path-to-working-branch-dashboard>`) before proceeding.
+All three must pass: the branch is `main`, the ancestor check exits 0, and the
+script exits 0 (a non-null start that equals `origin/main`'s). A local commit
+not yet pushed passes; uncommitted queue edits to the dashboard do not affect
+the comparison. If any check fails, check out `main`, `git pull --rebase origin
+main`, and run Step 1 again before proceeding.
 
 ## Step 2 — Run the sweep
 
