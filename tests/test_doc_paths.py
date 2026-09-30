@@ -36,8 +36,13 @@ cannot be told apart from a model id or a branch name.
 
 Paths that are named but do not exist on purpose (runtime outputs, other
 repositories, files removed by design) are listed in ``ALLOWED_MISSING`` with
-the reason, per document. An entry that starts to resolve, or that its document
-stops naming, fails too, so the allowlist cannot quietly outlive its reason.
+the reason, per document. An entry that its document stops naming fails, and so
+does an entry that starts to resolve, so the allowlist cannot quietly outlive
+its reason. The exception is ``MAY_APPEAR``: runtime outputs that a CI commit or
+a documented command puts in the tree (a paid rejudge commits its re-grades to
+main; ``render_archive.py fetch --in-place`` writes an untracked, unignored PNG).
+Those may start to resolve without failing, because failing would turn the
+suite red on a data commit or a local fetch, not on a change to the docs.
 
 The root README.md is out of scope until it is rewritten: it names about
 thirty runtime and upstream paths (eval_out/, medlang_out/, apps/...).
@@ -88,6 +93,15 @@ ALLOWED_MISSING: dict[tuple[str, str], str] = {
     ("docs/README.md", ".github/workflows/build.yml"):
         "the traces site build, in michaeldgreenphd/patientwords-traces, which the index points to",
 }
+
+# ALLOWED_MISSING keys whose path is a runtime output that may legitimately appear in the tree: the stale check
+# below does not fail when one of these starts to resolve. Every other entry must stay missing.
+MAY_APPEAR: frozenset[tuple[str, str]] = frozenset({
+    ("AGENTS.md", "data/petri/rejudge/"),
+    ("docs/triggers.md", "data/petri/rejudge/*/*/"),
+    ("docs/routine_standing_prompt.md", "data/petri/rejudge/*/*/"),
+    ("docs/archiving.md", "trace_out/pairs_20260707T215921Z/index_07.png"),
+})
 
 _FENCE = re.compile(r"^\s*(```|~~~)")
 _INLINE = re.compile(r"`([^`]+)`")
@@ -214,6 +228,15 @@ def missing_paths(text: str, repo: Repo) -> list[str]:
     return [p for p in named_paths(text, repo.top_level) if not resolves(p, repo)]
 
 
+def stale_allowlist_entries(doc: str, text: str, repo: Repo, allowed: dict[tuple[str, str], str],
+                            may_appear: frozenset[tuple[str, str]]) -> list[str]:
+    """The allowlisted paths for `doc` that its text no longer names, or that now resolve and are not in
+    `may_appear`."""
+    named = set(named_paths(text, repo.top_level))
+    return [p for (d, p) in allowed
+            if d == doc and (p not in named or ((d, p) not in may_appear and resolves(p, repo)))]
+
+
 @pytest.fixture(scope="module")
 def repo() -> Repo:
     return make_repo(_listed_paths())
@@ -231,8 +254,7 @@ def test_every_named_path_exists(doc: str, repo: Repo) -> None:
 @pytest.mark.parametrize("doc", DOCS)
 def test_allowlist_entries_are_still_needed(doc: str, repo: Repo) -> None:
     text = (ROOT / doc).read_text(encoding="utf-8")
-    named = set(named_paths(text, repo.top_level))
-    stale = [p for (d, p) in ALLOWED_MISSING if d == doc and (p not in named or resolves(p, repo))]
+    stale = stale_allowlist_entries(doc, text, repo, ALLOWED_MISSING, MAY_APPEAR)
     assert not stale, (
         f"ALLOWED_MISSING entries for {doc} that the document no longer names, or that now exist: {stale}. "
         "Remove them from the allowlist.")
@@ -240,6 +262,7 @@ def test_allowlist_entries_are_still_needed(doc: str, repo: Repo) -> None:
 
 def test_allowlist_names_only_scanned_documents() -> None:
     assert {d for d, _ in ALLOWED_MISSING} <= set(DOCS)
+    assert MAY_APPEAR <= set(ALLOWED_MISSING)
 
 
 # ---- the extractor itself, on synthetic text, so a failure above can be trusted
@@ -278,3 +301,18 @@ def test_a_moved_file_is_reported_at_its_old_path() -> None:
     """The case this test exists for: a doc still names a file after it moved."""
     text = "Read `HANDOFF.md` and `docs/HANDOFF_20260804.md`, not `docs/archive/HANDOFF_20260709.md`."
     assert missing_paths(text, _FAKE) == ["HANDOFF.md", "docs/HANDOFF_20260804.md"]
+
+
+def test_a_runtime_output_that_lands_does_not_make_its_entry_stale() -> None:
+    """A CI commit of a runtime output (a paid rejudge's re-grades) must not turn the suite red, while an entry
+    outside MAY_APPEAR that starts to exist, or that its document stops naming, is still reported."""
+    allowed = {("d.md", "data/petri/rejudge/*/*/"): "runtime output", ("d.md", "scripts/gone.py"): "removed",
+               ("d.md", "docs/unnamed.md"): "no longer named"}
+    may_appear = frozenset({("d.md", "data/petri/rejudge/*/*/")})
+    text = "`data/petri/rejudge/<judge>/<run>/` and `scripts/gone.py`"
+    before = make_repo(list(_FAKE.files))
+    assert stale_allowlist_entries("d.md", text, before, allowed, may_appear) == ["docs/unnamed.md"]
+    landed = make_repo(list(_FAKE.files) + ["data/petri/rejudge/judge-a/run-1/grades.json", "scripts/gone.py"])
+    assert stale_allowlist_entries("d.md", text, landed, allowed, may_appear) == ["scripts/gone.py", "docs/unnamed.md"]
+    assert stale_allowlist_entries("d.md", "nothing named", landed, allowed, may_appear) == [
+        "data/petri/rejudge/*/*/", "scripts/gone.py", "docs/unnamed.md"]
