@@ -18,8 +18,7 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from tierb_split import (  # noqa: E402  (script-style module)
-    accepted_prompt_map, is_holdout, is_tierb_batch, tierb_start_stamp)
+from tierb_split import SealError, seal_config_error, sealed_pair  # noqa: E402  (script-style module)
 
 CREDIT = ("Jacobian lens: Gurnee et al., Transformer Circuits (2026); hosted by "
           "Neuronpedia. Readout = per-layer top-8 of the forming next-token "
@@ -72,12 +71,18 @@ def collect(trace_root: Path):
     """{model: [pair rows]}, holdout_excluded across every landed lens summary.
 
     Amendment 1/3: confirmatory-holdout pairs never enter interim analyses or
-    public data files. Sealed on the ACCEPTED batch prompt (probe-extended
-    trace prompts hash differently), and on the trace-time prompt as a backstop.
+    public data files. The seal is tierb_split.sealed_pair, stamp_rows' rule for
+    one row: a registered holdout phrase on any stem (alias and re-run stems
+    included), and on a Tier B stem the ACCEPTED batch prompt (probe-extended
+    trace prompts hash differently) or the trace-time prompt hashing holdout.
+    It is asked only of rows that would enter the census, and holdout_excluded
+    counts those it seals. It raises SealError when the rule cannot be
+    evaluated, and main then writes nothing (exit 2).
+
+    The stem exclusions below are a separate rule: they keep rows that are not
+    patient wordings out of the census, sealed or not.
     """
     per_model = defaultdict(list)
-    start = tierb_start_stamp()
-    accept = accepted_prompt_map()
     holdout_excluded = 0
     for part in sorted(trace_root.glob("*__jlens_*/jlens_summary.part_*.json")):
         dataset = part.parent.name.split("__jlens_")[0]
@@ -111,9 +116,7 @@ def collect(trace_root: Path):
             clin, pat = depth.get("clinical") or [], depth.get("patient") or []
             if not clin or not pat:
                 continue
-            if is_tierb_batch(dataset, start) and (
-                    is_holdout(accept.get((dataset, r.get("index"))))
-                    or is_holdout((r.get("prompts") or {}).get("clinical"))):
+            if sealed_pair(dataset, r.get("index"), (r.get("prompts") or {}).get("clinical")):
                 holdout_excluded += 1
                 continue
             row = {
@@ -328,7 +331,7 @@ def analyze(per_model, base_model, it_model, exemplar_count, render_map=None):
     return out
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--trace-root", default="trace_out")
     parser.add_argument("--base-model", default="gemma-2-2b")
@@ -340,9 +343,12 @@ def main():
     parser.add_argument("--scenarios", default=None,
                         help="site simulated_scenarios.json for exemplar trace deep-links "
                              "(defaults to <site>/data/simulated_scenarios.json)")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
-    per_model, holdout_excluded = collect(Path(args.trace_root))
+    try:
+        per_model, holdout_excluded = collect(Path(args.trace_root))
+    except SealError as exc:
+        return seal_config_error(exc)  # exit 2: the publish chain stops
     if not per_model.get(args.base_model):
         # F-H08 (audit 1, 2026-07-17): a sparse checkout must never overwrite
         # the committed census (ops + site copies) with an empty one.

@@ -33,7 +33,7 @@ ENGINE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ENGINE))
 sys.path.insert(0, str(ENGINE / "scripts"))
 
-from tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp  # noqa: E402
+from tierb_split import SEAL_CONFIG_EXIT, SealError, sealed_pair  # noqa: E402
 from medlang_circuits import evaluate_models as em  # noqa: E402
 from medlang_circuits.llm_client import _get_client, _translate_system  # noqa: E402
 
@@ -45,8 +45,12 @@ DEFAULT_MODEL = "claude-haiku-4-5"
 
 def collect_corpus(simulated_dir: Path, dashboard_path: Path) -> list[dict]:
     """Unique patient sentences from observational batches, holdout withheld,
-    first occurrence wins (keeps the earliest batch's provenance)."""
-    start = tierb_start_stamp(str(dashboard_path))
+    first occurrence wins (keeps the earliest batch's provenance).
+
+    The holdout rule is tierb_split.sealed_pair over the given dashboard and
+    batch directory: a registered holdout phrase is withheld from any batch,
+    not only Tier B ones. SealError (no Tier B start, empty phrase set,
+    unreadable Tier B batch) propagates, so nothing is translated."""
     seen: set[str] = set()
     corpus: list[dict] = []
     for batch_path in sorted(simulated_dir.glob("pairs_*.json")):
@@ -61,7 +65,7 @@ def collect_corpus(simulated_dir: Path, dashboard_path: Path) -> list[dict]:
             clinical = pair.get("top_prompt")
             if not patient or not clinical:
                 continue
-            if is_tierb_batch(stem, start) and is_holdout(clinical):
+            if sealed_pair(stem, i, clinical, dashboard_path=dashboard_path, simulated_dir=simulated_dir):
                 continue  # sealed: never sent anywhere, translated or not
             if patient in seen:
                 continue
@@ -86,7 +90,11 @@ def main(argv=None) -> int:
     parser.add_argument("--dashboard", default=str(ENGINE / "ops/dashboard.json"))
     args = parser.parse_args(argv)
 
-    corpus = collect_corpus(Path(args.simulated_dir), Path(args.dashboard))
+    try:
+        corpus = collect_corpus(Path(args.simulated_dir), Path(args.dashboard))
+    except SealError as exc:
+        print(f"CONFIG ERROR: {exc}. Refusing to translate; nothing was sent or written", file=sys.stderr)
+        return SEAL_CONFIG_EXIT
     if args.limit:
         corpus = corpus[:args.limit]
     print(f"corpus: {len(corpus)} unique patient sentences "

@@ -1,8 +1,21 @@
 """Formation-depth analytics: trajectory metrics and the failure taxonomy."""
+import functools
 import json
 from pathlib import Path
 
+import pytest
+
+import scripts.jlens_insights as ji
 from scripts.jlens_insights import analyze, classify, collect, formation_layer, lock_in_layer
+
+_REAL_SEALED_PAIR = ji.sealed_pair
+
+
+@pytest.fixture(autouse=True)
+def _seal_open(monkeypatch):
+    """The census tests use synthetic stems the seal has no batch data for; the seal's
+    wiring is pinned by the tests at the end of this file with a synthetic fixture."""
+    monkeypatch.setattr(ji, "sealed_pair", lambda batch, index, prompt: False)
 
 
 def layers(spec):
@@ -125,3 +138,61 @@ def test_drift_sentinel_dirs_excluded_from_census(tmp_path):
     ])
     per_model, _holdout_excluded = collect(root)
     assert len(per_model["gemma-2-2b"]) == 1  # only the real census row survives
+
+
+# --- holdout seal wiring (tierb_split.sealed_pair), synthetic prompts only ---------------
+# tests/test_tierb_split.py pins these hashes: symptom 4 and 13 hash holdout, 0 and 1 explore.
+HOLD_A, HOLD_B = "The patient reports symptom 4.", "The patient reports symptom 13."
+EXPLORE_A, EXPLORE_B = "The patient reports symptom 0.", "The patient reports symptom 1."
+TIERB = "pairs_20260711T000000Z"
+FORMS = [(None, "x"), (1, "y"), (1, "y"), (1, "y")]
+
+
+def _use_real_seal(monkeypatch, tmp_path, start="2026-07-10T01:14:38Z"):
+    """The real seal over a synthetic dashboard and batch directory; the Tier B batch
+    registers HOLD_A (pair 1) and holds one explore pair (pair 2)."""
+    fx = tmp_path / "fixture"
+    (fx / "simulated").mkdir(parents=True)
+    (fx / "dashboard.json").write_text(json.dumps({"tierb": {"start_utc": start}}))
+    (fx / "simulated" / f"{TIERB}.json").write_text(json.dumps(
+        [{"top_prompt": HOLD_A}, {"top_prompt": EXPLORE_A}]))
+    monkeypatch.setattr(ji, "sealed_pair", functools.partial(
+        _REAL_SEALED_PAIR, dashboard_path=fx / "dashboard.json", simulated_dir=fx / "simulated"))
+
+
+def _prompted(index, clinical, status="ok"):
+    return result(index, FORMS, FORMS, status=status, prompts={"clinical": clinical, "patient": "PT"})
+
+
+def test_collect_seals_by_the_shared_rule(tmp_path, monkeypatch):
+    _use_real_seal(monkeypatch, tmp_path)
+    root = tmp_path / "trace_out"
+    # Amendment 3: a registered phrase on a re-run stem is sealed (the old Tier-B-only
+    # check kept it); an explore phrase on the same stem stays
+    write_summary(root, "repeatability_r1", "gemma-2-2b", [_prompted(1, HOLD_A), _prompted(2, EXPLORE_B)])
+    # Tier B: the accepted prompt hashes holdout (pair 1), or the trace-time prompt does (pair 2)
+    write_summary(root, TIERB, "gemma-2-2b", [_prompted(1, EXPLORE_B), _prompted(2, HOLD_B)])
+    # a row that never enters the census is not put to the seal: this stem has no batch
+    # file and the row no prompt, so asking would raise SealError
+    write_summary(root, "setA", "gemma-2-2b", [result(1, FORMS, FORMS, status="error")])
+    # an arm stem stays out of the census by its own rule, and is not counted as sealed
+    write_summary(root, f"{TIERB}_txopus", "gemma-2-2b", [_prompted(1, HOLD_A)])
+    per_model, holdout_excluded = collect(root)
+    assert [(r["dataset"], r["index"]) for r in per_model["gemma-2-2b"]] == [("repeatability_r1", 2)]
+    assert holdout_excluded == 3
+
+
+def test_main_exit_2_when_seal_cannot_be_evaluated(tmp_path, monkeypatch, capsys):
+    _use_real_seal(monkeypatch, tmp_path, start=None)
+    root = tmp_path / "trace_out"
+    write_summary(root, "setA", "gemma-2-2b", [_prompted(1, EXPLORE_B)])
+    out = tmp_path / "census.json"
+    out.write_text('{"n_pairs": 42}', encoding="utf-8")
+    site = tmp_path / "site"
+    (site / "data").mkdir(parents=True)
+    rc = ji.main(["--trace-root", str(root), "--out", str(out), "--site", str(site)])
+    assert rc == 2                                  # SEAL_CONFIG_EXIT; not 3, which the chain reads as a refusal
+    printed = capsys.readouterr().out
+    assert "CONFIG ERROR" in printed and "not a refusal: stop the publish chain" in printed
+    assert out.read_text(encoding="utf-8") == '{"n_pairs": 42}'
+    assert not (site / "data" / "jlens_insights.json").exists()

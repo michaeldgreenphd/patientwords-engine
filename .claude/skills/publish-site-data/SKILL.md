@@ -75,7 +75,8 @@ python scripts/export_pair_swaps.py --site ../patientwords --depth ../patientwor
   silently churns the published figure and breaks manifest-guarded prose.
 - Exit 3 from `export_jlens_depth.py` = degenerate-exemplar refusal; the good file is
   untouched. Treat any exporter refusal as success-with-no-change. Never hand-patch a
-  payload past a refusal.
+  payload past a refusal. Exit 2 (`CONFIG ERROR`) from any exporter in this chain is
+  not a refusal: stop the publish, as for `seal_check.py` exit 2.
 - `export_pair_swaps.py` runs AFTER depth/insights so its `<batch>#<index>` join is
   current; new batches show target-only until it re-runs. That is expected. It
   withholds Tier B holdout rows (count in the payload's `holdout_withheld`), and exits

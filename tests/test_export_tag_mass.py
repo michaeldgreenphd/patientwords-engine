@@ -4,6 +4,7 @@ Pins the three-way partition math, the featured-model + holdout gating in collec
 the sum-to-100 rounding, and the empty-input placeholder guard. No network.
 """
 
+import functools
 import importlib.util
 import json
 from pathlib import Path
@@ -36,17 +37,46 @@ def _summary(root, batch, source_set, results):
         encoding="utf-8")
 
 
+# Synthetic seal fixture (tests/test_tierb_split.py pins these hashes): symptom 4 and 13
+# hash holdout, symptom 0 and 1 explore. The Tier B batch registers symptom 4.
+HOLD_A, HOLD_B = "The patient reports symptom 4.", "The patient reports symptom 13."
+EXPLORE_A, EXPLORE_B = "The patient reports symptom 0.", "The patient reports symptom 1."
+TIERB = "pairs_20260711T000000Z"
+FEATURED = "gemmascope-transcoder-16k"
+
+
+def _seal_paths(tmp_path, start="2026-07-10T01:14:38Z"):
+    dash = tmp_path / "dashboard.json"
+    dash.write_text(json.dumps({"tierb": {"start_utc": start}}), encoding="utf-8")
+    sim = tmp_path / "simulated"
+    sim.mkdir()
+    (sim / f"{TIERB}.json").write_text(json.dumps(
+        [{"top_prompt": HOLD_A}, {"top_prompt": EXPLORE_A}]), encoding="utf-8")
+    return {"dashboard_path": dash, "simulated_dir": sim}
+
+
+def _row(index, clinical_prompt, mass=0.30):
+    return {"index": index, "prompts": {"clinical": clinical_prompt, "patient": "PT"},
+            "clinical_mass": {"clinical": mass, "patient": mass - 0.06},
+            "error_share": {"clinical": 0.10, "patient": 0.10}}
+
+
 def test_collect_gates_featured_and_holdout(tmp_path, monkeypatch):
-    monkeypatch.setattr(ext, "ENGINE", tmp_path)
+    # the real seal (tierb_split.sealed_pair) over a synthetic dashboard and batch directory
+    monkeypatch.setattr(ext, "sealed_pair", functools.partial(ext.sealed_pair, **_seal_paths(tmp_path)))
     root = tmp_path / "trace_out"
     # featured gemma pair (source_set set) with both phrasings -> counted
-    _summary(root, "pairs_F", "gemmascope-transcoder-16k", [
-        {"index": 1, "clinical_mass": {"clinical": 0.30, "patient": 0.24},
-         "error_share": {"clinical": 0.10, "patient": 0.10}}])
+    _summary(root, "pairs_F", FEATURED, [_row(1, EXPLORE_B)])
     # non-featured model (source_set null) -> its mass is a NullFetcher artifact, excluded
     _summary(root, "pairs_F__qwen3-4b", None, [
         {"index": 1, "clinical_mass": {"clinical": 0.99, "patient": 0.99},
          "error_share": {"clinical": 0.0, "patient": 0.0}}])
+    # Amendment 3: a registered phrase on a re-run stem is sealed (the old copy missed it)
+    _summary(root, "repeatability_r1", FEATURED, [_row(1, HOLD_A, mass=0.9)])
+    # Tier B: accepted prompt hashes holdout (pair 1), or trace-time prompt does (pair 2)
+    _summary(root, TIERB, FEATURED, [_row(1, EXPLORE_B, mass=0.9), _row(2, HOLD_B, mass=0.9)])
+    # a row with no value to add is never put to the seal (it has no prompt to check)
+    _summary(root, "dialects_X", FEATURED, [{"index": 1, "variants": []}])
     acc = ext.collect(str(root))
     assert len(acc["clinical"]) == 1 and len(acc["patient"]) == 1   # only the featured pair
     payload = ext.build_payload(acc)
@@ -54,3 +84,17 @@ def test_collect_gates_featured_and_holdout(tmp_path, monkeypatch):
     assert payload["clinical"]["clin"] > payload["patient"]["clin"]  # clinical share falls
     # no featured/measured pair anywhere -> placeholder preserved (None)
     assert ext.build_payload({"clinical": [], "patient": []}) is None
+
+
+def test_main_refuses_when_seal_cannot_be_evaluated(tmp_path, monkeypatch, capsys):
+    # a dashboard with no Tier B start: the seal raises and nothing is written (exit 2)
+    monkeypatch.setattr(ext, "sealed_pair",
+                        functools.partial(ext.sealed_pair, **_seal_paths(tmp_path, start=None)))
+    root = tmp_path / "trace_out"
+    _summary(root, "pairs_F", FEATURED, [_row(1, EXPLORE_B)])
+    out = tmp_path / "tag_mass.json"
+    rc = ext.main(["--trace-root", str(root), "--out", str(out), "--site", ""])
+    assert rc == 2
+    printed = capsys.readouterr().out                 # the shared stop line (tierb_split.seal_config_error)
+    assert "CONFIG ERROR" in printed and "not a refusal: stop the publish chain" in printed
+    assert not out.exists()
