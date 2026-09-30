@@ -14,7 +14,10 @@ through the API is a pilot push-to-run lane, which does not exist yet. Until it 
 Each file lists one request body per call or batch ({model, max_tokens, messages, output_config}) beside the id and
 the prompt's SHA-256 from calls.json or checker_batches.json, the retry rule the protocol fixes, and the result-file
 shape parse_generation.py and parse_checker.py consume, so a lane that sends these requests can hand its responses
-straight to the parsers. Checker requests carry an output_config.format JSON schema; generation requests carry none,
+straight to the parsers; the bundle records the frozen protocol's hash, which the result file must carry as
+protocol_sha256 (Codex review of PR #52). A lane's result has no Workflow-tool journal or transcripts, so
+record_run.py and finalize, which bind a run to those, need a lane-side recorder before such a run can be sealed;
+that is the lane's to add. Checker requests carry an output_config.format JSON schema; generation requests carry none,
 because format validity (estimand 1) measures the raw text. The model is a required argument: this run's model is in
 manifest.json, and choosing another is a decision about the execution path, not a default to bury here.
 """
@@ -24,7 +27,7 @@ import argparse
 import datetime as dt
 import json
 
-from common import PILOT, REQUIRED_FIELDS, load_calls, load_checker_batches
+from common import PILOT, REQUIRED_FIELDS, load_calls, load_checker_batches, sha256_file
 
 VERDICT_SCHEMA = {
     "type": "object",
@@ -49,16 +52,19 @@ VERDICT_SCHEMA = {
 
 RESULT_SHAPES = {
     "generation": {"file": "workflow_generation_result.json or any name passed to parse_generation.py",
-                   "shape": {"calls": [{"id": "<call id>", "arm": "<A|B>", "cell": "<cell id>",
+                   "shape": {"protocol_sha256": "<this file's protocol_sha256, copied verbatim>",
+                             "calls": [{"id": "<call id>", "arm": "<A|B>", "cell": "<cell id>",
                                         "prompt_sha256": "<this request's prompt_sha256, copied from this file>",
                                         "attempts": [{"attempt": 1, "raw": "<the response text verbatim, or null>",
                                                       "null_return": False}]}]},
                    "notes": "attempts are numbered 1..n in order with n at most 2 (one retry), and attempt 2 is "
                             "accepted only when attempt 1 met the retry rule below; prompt_sha256 must equal the "
-                            "planned prompt's hash, or parse_generation.py refuses the whole file before touching "
+                            "planned prompt's hash and the top-level protocol_sha256 the frozen protocol's (both "
+                            "recorded in this file), or parse_generation.py refuses the whole file before touching "
                             "anything on disk."},
     "checker": {"file": "workflow_checker_result.json or any name passed to parse_checker.py",
-                "shape": {"batches": [{"batch_id": "<batch id>",
+                "shape": {"protocol_sha256": "<this file's protocol_sha256, copied verbatim>",
+                          "batches": [{"batch_id": "<batch id>",
                                        "prompt_sha256": "<this request's prompt_sha256, copied from this file>",
                                        "attempts": [{"attempt": 1,
                                                      "result": {"verdicts": [{"id": "<item id from the batch>",
@@ -67,8 +73,9 @@ RESULT_SHAPES = {
                 "notes": "result is the parsed JSON object the model returned, with one verdict object per item id; "
                          "for an unsuccessful attempt set result to null (not an empty or string-valued verdicts "
                          "list). Attempts are numbered 1..n in order with n at most 2, attempt 2 is accepted only "
-                         "when attempt 1 met the retry rule below, and prompt_sha256 must equal the planned batch "
-                         "prompt's hash. parse_checker.py ignores an entry that is not an object "
+                         "when attempt 1 met the retry rule below, prompt_sha256 must equal the planned batch "
+                         "prompt's hash, and the top-level protocol_sha256 the frozen protocol's (both recorded in "
+                         "this file). parse_checker.py ignores an entry that is not an object "
                          "with a known id and a verdict in {yes, no, unclear}, and records ids without a usable "
                          "verdict as missing."},
 }
@@ -112,6 +119,7 @@ def main() -> None:
     out = {"api_meta": {"purpose": "request bodies only; nothing was sent (engine execution model: paid generation "
                                    "runs through push-to-run CI)",
                         "model_requested": a.model, "effort": a.effort, "max_tokens": a.max_tokens, "built_utc": built,
+                        "protocol_sha256": sha256_file(PILOT / "PROTOCOL.md"),  # the lane copies it into its result
                         "retry_rule": RETRY_RULES[a.which], "result_file": RESULT_SHAPES[a.which]},
            "requests": requests}
     path = PILOT / f"api_requests_{a.which}.json"

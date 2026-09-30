@@ -9,20 +9,54 @@ from __future__ import annotations
 import json
 
 import build_checker_set
+import extract_workflow_journal
 import make_review_sheet
 import parse_checker
 import parse_generation
 from common import PILOT, load_seeds, log_binding, read_csv, read_jsonl, sha256_file
 
+JOURNAL_COPIES = {"generation": "workflows/generation.journal.jsonl", "checker": "workflows/checker.journal.jsonl"}
+
+
+def extraction_problems() -> list[str]:
+    """Why a recorded result file is not what the copied journal under workflows/ yields: the copy missing, no longer
+    extracting, or extracting to a document that differs from the result file in anything but the journal's path
+    (`source`). A result edited while keeping its self-declared source_sha256 would otherwise be re-parsed, recomputed
+    and sealed as that run's (Codex review of PR #52). Empty when both result files are the copies' extractions."""
+    problems = []
+    for stage, rel in JOURNAL_COPIES.items():
+        result_path = PILOT / f"workflow_{stage}_result.json"
+        copy = PILOT / rel
+        if not result_path.exists():
+            problems.append(f"{result_path.name} is missing")
+            continue
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+        if not copy.exists():
+            problems.append(f"{rel} is missing; copy the run's journal.jsonl there (the result is extracted again from it)")
+            continue
+        try:
+            doc = extract_workflow_journal.extract(stage, str(copy),
+                                                   allow_missing=bool(result.get("agents_without_result_record")))
+        except SystemExit as e:
+            problems.append(f"{rel} no longer extracts: {e}")
+            continue
+        if {k: v for k, v in doc.items() if k != "source"} != {k: v for k, v in result.items() if k != "source"}:
+            problems.append(f"{result_path.name} is not what the current code extracts from {rel} (a response or a "
+                            f"field differs); re-extract it with --replace from the run's journal")
+    return problems
+
 
 def rederive_problems(calls: dict) -> list[str]:
     """Every derived artifact derived again, with the current code, from the two recorded result files and compared
-    with the file on disk: rows, failures, call log and raw texts from workflow_generation_result.json; the checker
-    set, key and plan from those rows, the seeds and the checker template; checked rows and checker log from
+    with the file on disk: first the two result files from the copied journals under workflows/
+    (extraction_problems); then rows, failures, call log and raw texts from workflow_generation_result.json; the
+    checker set, key and plan from those rows, the seeds and the checker template; checked rows and checker log from
     workflow_checker_result.json; the review sheet, key and map from the checked rows (the sheet's own two
     annotation columns excepted). A bundle whose stored responses no longer reproduce its files, or whose files were
     written by earlier code, is refused (Codex review of PR #52). Empty when everything reproduces."""
-    problems: list[str] = []
+    problems = extraction_problems()
+    if problems:
+        return problems
     calls_meta = {c["id"]: c for c in calls["calls"]}
     call_log = read_jsonl(PILOT / "call_log.jsonl")
     unbound = log_binding(call_log)

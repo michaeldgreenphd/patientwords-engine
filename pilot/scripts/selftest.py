@@ -162,14 +162,12 @@ def dry_run() -> None:
         # transcript fixtures, named by run id as the Workflow tool names them; each result file records the hash of
         # the journal it was extracted from, and record_run.py binds the record to it (Codex on PR #52)
         gdir, cdir, odir = tmp / "wf_selftest_gen", tmp / "wf_selftest_chk", tmp / "wf_selftest_other"
-        for d, note in ((gdir, "generation"), (cdir, "checker"), (odir, "other")):
+        for d in (gdir, cdir, odir):
             d.mkdir()
-            (d / "journal.jsonl").write_text(f'{{"type": "launched"}}\n'
-                                             f'{{"type": "started", "key": "k1", "agentId": "a1", "label": "{note} 1"}}\n'
-                                             f'{{"type": "started", "key": "k2", "agentId": "a2", "label": "{note} 2"}}\n',
-                                             encoding="utf-8")
-            for agent in ("a1", "a2"):  # the Workflow tool names each transcript agent-<agentId>.jsonl
-                (d / f"agent-{agent}.jsonl").write_text('{"model":"selftest-model"}\n', encoding="utf-8")
+        # another run's journal, for the refusal checks: its hash is no result file's source
+        (odir / "journal.jsonl").write_text('{"type": "launched"}\n{"type": "started", "key": "k1", "agentId": "a1", '
+                                            '"label": "other 1"}\n', encoding="utf-8")
+        (odir / "agent-a1.jsonl").write_text('{"model":"selftest-model"}\n', encoding="utf-8")
         proto = common.sha256_file(tmp / "PROTOCOL.md")  # the frozen protocol's hash, as the agent labels carry it
         env = {**os.environ, "PILOT_DIR": str(tmp)}
 
@@ -194,12 +192,28 @@ def dry_run() -> None:
               "a plan edited together with its hashes is refused by every reader before anything is written")
         calls = json.loads((tmp / "calls.json").read_text())["calls"]
         r = random.Random(1)
-        # the last planned call is left out of the result: a planned call with no response record must stay in
-        # every call-level denominator (Codex on PR #52)
-        gen = {"source_sha256": common.sha256_file(gdir / "journal.jsonl"), "protocol_sha256": proto,
-               "calls": [{"id": c["id"], "arm": c["arm"], "cell": c["cell"], "prompt_sha256": c["prompt_sha256"],
-                          "attempts": fake_response(c, r, broken_first=(c["id"] == calls[3]["id"]))} for c in calls[:-1]]}
-        (tmp / "workflow_generation_result.json").write_text(json.dumps(gen))
+        # the fabricated run as a journal in the Workflow tool's shape (a started and a result record per attempt,
+        # labels carrying the prompt and protocol hashes, a transcript per agent), extracted like a real run's, so
+        # the summary and finalize can extract the result again from the copied journal (Codex on PR #52); the
+        # last planned call is left out: a planned call with no response record must stay in every denominator
+        records = [{"type": "launched"}]
+        n_gen_agents = 0
+        for c in calls[:-1]:
+            for a in fake_response(c, r, broken_first=(c["id"] == calls[3]["id"])):
+                n_gen_agents += 1
+                key, agent = f"gk{n_gen_agents}", f"g{n_gen_agents:02d}"
+                records.append({"type": "started", "key": key, "agentId": agent,
+                                "label": f"{c['id']} attempt {a['attempt']} sha256={c['prompt_sha256']} protocol={proto}"})
+                records.append({"type": "result", "key": key, "agentId": agent, "result": a["raw"]})
+                (gdir / f"agent-{agent}.jsonl").write_text('{"model":"selftest-model"}\n', encoding="utf-8")
+        (gdir / "journal.jsonl").write_text("".join(json.dumps(x) + "\n" for x in records), encoding="utf-8")
+        run("extract_workflow_journal.py", "generation", str(gdir / "journal.jsonl"))
+        gen = json.loads((tmp / "workflow_generation_result.json").read_text(encoding="utf-8"))
+        check(len(gen["calls"]) == 17 and gen["protocol_sha256"] == proto
+              and gen["source_sha256"] == common.sha256_file(gdir / "journal.jsonl"),
+              "the fabricated journal extracts to 17 calls carrying the protocol and journal hashes")
+        (tmp / "workflows").mkdir(exist_ok=True)  # the copy the summary and finalize extract the result from again
+        shutil.copy(gdir / "journal.jsonl", tmp / "workflows" / "generation.journal.jsonl")
         keyed_line = '{"clinical_term": "extra", "patient_term": "line", "template": "added ___ later", "control": "none"}'
         run("parse_generation.py", str(tmp / "workflow_generation_result.json"))
         run("parse_generation.py", str(tmp / "workflow_generation_result.json"), expect_failure=True)  # outputs exist: refuse
@@ -268,16 +282,22 @@ def dry_run() -> None:
               "checker request bodies carry the verdict schema")
         batches = json.loads((tmp / "checker_batches.json").read_text())["batches"]
         key = {k["id"]: k for k in common.read_jsonl(tmp / "checker_key.jsonl")}
-        chk = {"source_sha256": common.sha256_file(cdir / "journal.jsonl"), "protocol_sha256": proto, "batches": []}
-        for b in batches:
+        crecords = [{"type": "launched"}]
+        for i, b in enumerate(batches, 1):
             verdicts = []
             for iid in b["item_ids"]:
                 src = key[iid]["source"]
                 v = "no" if src == "broken" else ("yes" if r.random() < 0.9 else "unclear")
                 verdicts.append({"id": iid, "equivalent": v, "reason": "fabricated for the self-test"})
-            chk["batches"].append({"batch_id": b["batch_id"], "prompt_sha256": b["prompt_sha256"],
-                                   "attempts": [{"attempt": 1, "result": {"verdicts": verdicts}}]})
-        (tmp / "workflow_checker_result.json").write_text(json.dumps(chk))
+            agent = f"c{i:02d}"
+            crecords.append({"type": "started", "key": f"ck{i}", "agentId": agent,
+                             "label": f"{b['batch_id']} attempt 1 sha256={b['prompt_sha256']} protocol={proto}"})
+            crecords.append({"type": "result", "key": f"ck{i}", "agentId": agent, "result": {"verdicts": verdicts}})
+            (cdir / f"agent-{agent}.jsonl").write_text('{"model":"selftest-model"}\n', encoding="utf-8")
+        (cdir / "journal.jsonl").write_text("".join(json.dumps(x) + "\n" for x in crecords), encoding="utf-8")
+        run("extract_workflow_journal.py", "checker", str(cdir / "journal.jsonl"))
+        chk = json.loads((tmp / "workflow_checker_result.json").read_text(encoding="utf-8"))
+        shutil.copy(cdir / "journal.jsonl", tmp / "workflows" / "checker.journal.jsonl")
         b0 = chk["batches"][0]
         for label, bad in (("duplicate batch id", {"batches": chk["batches"] + [b0]}),
                            ("repeated attempt number", {"batches": [dict(b0, attempts=b0["attempts"] * 2)] + chk["batches"][1:]}),
@@ -486,9 +506,9 @@ def dry_run() -> None:
         (gdir / "agent-zz.jsonl").write_text('{"model":"selftest-model"}\n', encoding="utf-8")
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir), expect_failure=True)
         (gdir / "agent-zz.jsonl").unlink()
-        (gdir / "agent-a2.jsonl").rename(gdir / "agent-a2.jsonl.aside")
+        (gdir / "agent-g02.jsonl").rename(gdir / "agent-g02.jsonl.aside")
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir), expect_failure=True)
-        (gdir / "agent-a2.jsonl.aside").rename(gdir / "agent-a2.jsonl")
+        (gdir / "agent-g02.jsonl.aside").rename(gdir / "agent-g02.jsonl")
         check("runs" not in json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
               or "generation" not in json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))["runs"],
               "a transcript of an agent the journal did not start, or a started agent without one, is refused")
@@ -500,22 +520,20 @@ def dry_run() -> None:
             expect_failure=True)
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir), '{"operator_note": "kept"}', "--replace")
         mr = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))["runs"]["generation"]
-        check(mr["run_id"] == "wf_selftest_gen" and mr["agents_started"] == 2 and mr["agent_transcripts"] == 2
+        check(mr["run_id"] == "wf_selftest_gen" and mr["agents_started"] == n_gen_agents
+              and mr["agent_transcripts"] == n_gen_agents
               and mr["operator_note"] == "kept"
               and mr["agents_without_model_id"] == []
               and mr["journal_sha256"] == common.sha256_file(gdir / "journal.jsonl")
-              and mr["model_evidence"]["model_strings_in_transcripts"] == {"selftest-model": 2},
+              and mr["model_evidence"]["model_strings_in_transcripts"] == {"selftest-model": n_gen_agents},
               "record_run binds the record to the journal the result was extracted from, matches every started agent's "
               "transcript, and replaces a record only with --replace")
         # finalize needs both subagent runs recorded: the run records carry the model evidence read from the
         # transcripts (Codex on PR #52)
         run("write_manifest.py", "finalize", expect_failure=True)
         run("record_run.py", "checker", "wf_selftest_chk", str(cdir))
-        # the copied journals under workflows/ are required outputs compared with the run records (Codex on PR #52)
-        run("write_manifest.py", "finalize", expect_failure=True)  # no copies yet
-        (tmp / "workflows").mkdir(exist_ok=True)
-        shutil.copy(gdir / "journal.jsonl", tmp / "workflows" / "generation.journal.jsonl")
-        shutil.copy(cdir / "journal.jsonl", tmp / "workflows" / "checker.journal.jsonl")
+        # the copied journals under workflows/ (in place since the extractions) are required outputs compared with
+        # the run records, and the result files are extracted again from them (Codex on PR #52)
         # finalize hashes every required output and refuses a missing one; a plan-time rewrite after finalize keeps
         # the hashes only while the outputs are unchanged (Codex on PR #52)
         run("write_manifest.py", "finalize")
@@ -555,21 +573,21 @@ def dry_run() -> None:
         copy_path.unlink()
         run("write_manifest.py", "finalize", expect_failure=True)
         copy_path.write_bytes(copy_bytes)
-        agent_bytes = (gdir / "agent-a1.jsonl").read_bytes()
-        (gdir / "agent-a1.jsonl").write_text('{"model":"another-model"}\n', encoding="utf-8")
+        agent_bytes = (gdir / "agent-g01.jsonl").read_bytes()
+        (gdir / "agent-g01.jsonl").write_text('{"model":"another-model"}\n', encoding="utf-8")
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir), "--replace")
         run("write_manifest.py", "finalize", expect_failure=True)
-        (gdir / "agent-a1.jsonl").write_text('{"type":"no model string here"}\n', encoding="utf-8")  # a2 still reports one
+        (gdir / "agent-g01.jsonl").write_text('{"type":"no model string here"}\n', encoding="utf-8")  # the rest report one
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir), "--replace")
         run("write_manifest.py", "finalize", expect_failure=True)
-        (gdir / "agent-a1.jsonl").write_bytes(agent_bytes)
+        (gdir / "agent-g01.jsonl").write_bytes(agent_bytes)
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir), "--replace")
         m_after = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
         check(m_after["finalized_utc"] is None and "output_hashes" not in m_after,
               "replacing a run record clears the finalization until the next finalize (Codex on PR #52)")
         run("write_manifest.py", "finalize")
         mf = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
-        check(mf["runs"]["generation"]["model_evidence"]["model_strings_in_transcripts"] == {"selftest-model": 2},
+        check(mf["runs"]["generation"]["model_evidence"]["model_strings_in_transcripts"] == {"selftest-model": n_gen_agents},
               "finalize refuses a record bound to another journal, a transcript model the facts do not declare, and "
               "an agent transcript with no model id; it passes once the record agrees again")
         # the bundle must reproduce from the recorded result files under the current code: a changed response, a
@@ -579,6 +597,13 @@ def dry_run() -> None:
         gdoc["calls"][0]["attempts"][0]["raw"] += "\n" + keyed_line
         (tmp / "workflow_generation_result.json").write_text(json.dumps(gdoc), encoding="utf-8")
         run("write_manifest.py", "finalize", expect_failure=True)
+        # a result edited in a field no downstream file derives from, its source_sha256 kept, is refused too: the
+        # result is extracted again from the copied journal by the summary and by finalize (Codex on PR #52)
+        gdoc = json.loads(gen_bytes.decode("utf-8"))
+        gdoc["calls"][0]["attempts"][0]["agent_id"] = "forged"
+        (tmp / "workflow_generation_result.json").write_text(json.dumps(gdoc), encoding="utf-8")
+        run("write_manifest.py", "finalize", expect_failure=True)
+        run("compute_summary.py", expect_failure=True)
         (tmp / "workflow_generation_result.json").write_bytes(gen_bytes)
         chk_bytes = (tmp / "workflow_checker_result.json").read_bytes()
         cdoc = json.loads(chk_bytes.decode("utf-8"))
@@ -753,6 +778,15 @@ def dry_run() -> None:
         run("extract_workflow_journal.py", "generation", str(tmp / "journal_nokey.jsonl"), "--replace", expect_failure=True)
         check((tmp / "workflow_generation_result.json").read_text(encoding="utf-8") == result_text,
               "a journal with two started records on one agent identity, or a started record without one, is refused")
+        # two started records reusing one agent id, whatever their keys, are refused: one agent's response and
+        # transcript would stand for two calls (Codex on PR #52)
+        reuse = journal + [{"type": "started", "key": "k9", "agentId": "a1",
+                            "label": f"{calls[6]['id']} attempt 1 sha256={calls[6]['prompt_sha256']} protocol={proto}"},
+                           {"type": "result", "key": "k9", "agentId": "a1", "result": "{}"}]
+        (tmp / "journal_reuse.jsonl").write_text("".join(json.dumps(j) + "\n" for j in reuse), encoding="utf-8")
+        run("extract_workflow_journal.py", "generation", str(tmp / "journal_reuse.jsonl"), "--replace", expect_failure=True)
+        check((tmp / "workflow_generation_result.json").read_text(encoding="utf-8") == result_text,
+              "a journal with two started records reusing one agent id is refused and the previous result file is untouched")
         # a started agent with no result record is not a null return: refused unless --allow-missing-results, which
         # leaves the attempt out and lists the agent; labels with differing protocol hashes are refused (Codex on PR #52)
         trunc = journal + [{"type": "started", "key": "k7", "agentId": "a7",
