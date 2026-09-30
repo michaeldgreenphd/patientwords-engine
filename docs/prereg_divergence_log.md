@@ -131,3 +131,57 @@ reports CLEAN; the fixed checker with the allowlist reports the #44 render
 (exit 1) on `0756f2a` and CLEAN on site PR #8's branch, where without the
 allowlist it reports #17 in the three data files. The analysis-side seal is
 unaffected: no interim aggregate included a holdout row.
+
+## 2026-09-30 — holdout rows in `data/tag_mass.json`; the exporters' seal fails closed
+
+Counts, stems and paths only; this entry quotes no sealed phrase and no
+holdout-row text.
+
+**Defect.** The four exporters that published per-pair aggregates
+(`export_tag_mass.py`, `export_jlens_depth.py`, `export_jlens_loglens.py`,
+`export_jlens_transport.py`) each carried their own copy of the seal
+(`_sealed`), and `export_jlens_depth.load_summary` and
+`translate_corpus.collect_corpus` a Tier-B-only check. None applied Amendment 3:
+each sealed a row only when its batch was a `pairs_<STAMP>` Tier B batch and the
+batch file's accepted prompt hashed holdout, so rows on alias and re-run stems
+(`pairs_<STAMP>_txopus`, `_txplacebo`, `repeatability_r*`) whose clinical prompt
+is a registered holdout phrase passed, as did Tier B rows whose trace-time
+prompt hashes holdout while the accepted one does not (row 2026-07-17's
+conservative union). The copies also read the dashboard, and three of them the
+batch files, relative to the working directory, and treated an unreadable file
+as "not sealed": run from outside the engine root, `export_tag_mass.collect`
+admitted 2,919 clinical / 2,504 patient rows against 2,723 / 2,338 from the
+root, with no warning.
+
+**Affected rows.** `data/tag_mass.json` (engine and site copies, the methods
+page's Step-3 tagging bars; n 2,693 clinical / 2,308 patient as published
+2026-08-29) counts 18 clinical and 11 patient rows the registered rule seals:
+12 / 8 from `pairs_<STAMP>_txopus` and `_txplacebo` and 3 / 3 from
+`repeatability_r1`–`r3` (the phrase clause), and 3 / 0 from Tier B
+`pairs_<STAMP>` rows (the trace-time clause). The 14 summary files carrying
+them are byte-identical at the 2026-08-29 generating commit (`6884692f`) and
+on main, under the same exporter code, so the published file holds all 29;
+that the site versions since the file first carried empirical values
+(2026-07-29) held them too is inferred, not recounted. No clinical phrase or
+per-row value was ever in the file: it publishes two means and two counts per
+phrasing. The J-lens exporters admitted 12 such rows (all `_txopus` /
+`_txplacebo`), but no published J-lens number included them: the depth
+blocks, the loglens agreement (its join runs on the logit-lens rows) and the
+transport census (one pinned batch) do not read those stems, and each payload
+rebuilds identically under the fixed seal. `translate_corpus` would have sent
+none: no Tier A pair's accepted prompt is a registered phrase. The 2026-09-23
+entry's closing sentence ("no interim aggregate included a holdout row") was
+therefore wrong about this file.
+
+**Fix.** `tierb_split.sealed_pair(batch, index, clinical_prompt)` applies
+`stamp_rows`' rule to one row, reads the dashboard and `data/simulated` from
+the repository root, and raises `SealError` when the rule cannot be evaluated
+(no Tier B start stamp, an empty phrase set, an unreadable Tier B batch file,
+a Tier B row whose batch has no file or whose index is outside it); each
+exporter then writes nothing and exits 2. All six call sites use it. The
+engine's `data/tag_mass.json` is regenerated: n 2,693 / 2,308 becomes
+2,705 / 2,327 (the seal removes 18 / 11 rows; 30 / 30 rows traced since
+2026-08-29 are added); the clinical shares are unchanged and the patient
+shares move by 0.1 percentage point (off-target 66.1 to 66.2, structural 10.0
+to 9.9). The site copy is replaced at the next run of the publish chain. No
+endpoint changes; disclose in the endpoint writeup.
