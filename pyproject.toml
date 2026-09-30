@@ -20,10 +20,13 @@ llm = ["anthropic"]
 sheets = ["openpyxl"]
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.0.0"
-ruff = "^0.9.0"
-# tests/ parses the workflow YAML (nine test files import yaml); nothing under
-# medlang_circuits/ does, so it is a dev dependency, not a runtime one.
+# Pinned to the minor versions the suite and lint last passed on (pytest 9.1.1,
+# ruff 0.16.9, pyyaml 6.0.3, 2026-09-30); a ruff bump can add findings, so
+# widen these on purpose, not by accident.
+pytest = "~9.1"
+ruff = "~0.16"
+# tests/ parses the workflow YAML with pyyaml; nothing under medlang_circuits/ does,
+# so it is a dev dependency, not a runtime one.
 pyyaml = "^6.0"
 
 [tool.poetry.scripts]
@@ -35,6 +38,12 @@ medlang-generate = "medlang_circuits.scenario_gen:main"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+# Import the checkout's own packages (medlang_circuits, scripts) ahead of any
+# installed copy, so the bare `pytest` command tests this tree, as
+# `python -m pytest` already does.
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 120

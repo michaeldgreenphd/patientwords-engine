@@ -13,14 +13,13 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from scripts import fire_trigger as ft  # noqa: E402
 from scripts.petri_audit import adaptive, cli, framework, judge_runner, seeds, spend  # noqa: E402
-
-yaml = pytest.importorskip("yaml")
 
 
 @pytest.fixture(scope="module")
