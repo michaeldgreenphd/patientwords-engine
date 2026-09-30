@@ -44,7 +44,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import jlens_insights as ji  # noqa: E402  (formation_layer, classify, quantiles, PERSISTENCE)
-from tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp  # noqa: E402
+from tierb_split import SealError, sealed_pair  # noqa: E402
 
 METHOD_CREDIT_FALLBACK = (
     "Jacobian lens: Gurnee et al., Transformer Circuits, 2026; reference "
@@ -62,27 +62,6 @@ FRONTEND_CONTRACT = {
     "<lens>": ("formation.median", "never_formed"),
     "agreement": ("n_paired", "formed_agree", "class_agree"),
 }
-
-_TIERB_START = tierb_start_stamp()
-_ACCEPT_CACHE = {}
-
-
-def _sealed(batch, index):
-    """Tier B holdout seal (mirrors the other exporters)."""
-    if not is_tierb_batch(batch or "", _TIERB_START):
-        return False
-    if batch not in _ACCEPT_CACHE:
-        fp = Path("data/simulated") / f"{batch}.json"
-        try:
-            _ACCEPT_CACHE[batch] = json.loads(fp.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            _ACCEPT_CACHE[batch] = None
-    pairs = _ACCEPT_CACHE[batch]
-    idx = index or 0
-    if not pairs or not (0 < idx <= len(pairs)):
-        return False
-    return is_holdout(pairs[idx - 1].get("top_prompt"))
-
 
 # --------------------------------------------------------------------------- #
 # Pure functions (unit-tested offline)
@@ -161,7 +140,8 @@ def summarize_agreement(per_pair):
 
 def collect_rows(kind, model, trace_root):
     """{batch: {index: row}} across every committed summary for a lens kind
-    ('jlens' = Jacobian, 'loglens' = logit), sealed holdout pairs dropped."""
+    ('jlens' = Jacobian, 'loglens' = logit), sealed holdout pairs dropped by
+    tierb_split.sealed_pair (stamp_rows' rule; SealError when it cannot apply)."""
     by_batch = {}
     marker = f"__{kind}_"
     for part in sorted(Path(trace_root).glob(f"*{marker}{model}/jlens_summary.part_*.json")):
@@ -170,8 +150,10 @@ def collect_rows(kind, model, trace_root):
             summary = json.loads(part.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
+        prompts = {r.get("index"): (r.get("prompts") or {}).get("clinical")
+                   for r in summary.get("results", [])}
         for idx, row in rows_from_summary(summary).items():
-            if _sealed(batch, idx):
+            if sealed_pair(batch, idx, prompts.get(idx)):
                 continue
             by_batch.setdefault(batch, {})[idx] = row
     return by_batch
@@ -249,7 +231,11 @@ def main(argv=None):
     parser.add_argument("--site", default="../patientwords", help="'' skips the site copy")
     args = parser.parse_args(argv)
 
-    payload = build_payload(args.trace_root, args.model)
+    try:
+        payload = build_payload(args.trace_root, args.model)
+    except SealError as exc:
+        print(f"CONFIG ERROR: {exc}. Refusing to publish; nothing was written")
+        return 2
     if payload is None:
         print(f"refused: no committed logit-lens (__loglens_{args.model}) runs under "
               f"{args.trace_root} - not writing the robustness arm")

@@ -99,7 +99,7 @@ def _write_summary(root, kind, model, batch, results):
 
 
 def test_build_payload_end_to_end(tmp_path, monkeypatch):
-    monkeypatch.setattr(ext, "_sealed", lambda batch, index: False)
+    monkeypatch.setattr(ext, "sealed_pair", lambda batch, index, prompt: False)
     root = tmp_path / "trace_out"
     results = [_result(1, {2, 3}, {2, 3}), _result(2, {2, 3}, set())]
     _write_summary(root, "jlens", "gemma-2-2b", "b", results)
@@ -116,7 +116,7 @@ def test_build_payload_end_to_end(tmp_path, monkeypatch):
 def test_build_payload_distributions_over_common_pairs(tmp_path, monkeypatch):
     # jlens measured pairs 1,2; loglens only measured pair 1 -> both per-lens
     # distributions must cover just the common pair (1), never the unshared one.
-    monkeypatch.setattr(ext, "_sealed", lambda batch, index: False)
+    monkeypatch.setattr(ext, "sealed_pair", lambda batch, index, prompt: False)
     root = tmp_path / "trace_out"
     _write_summary(root, "jlens", "gemma-2-2b", "b",
                    [_result(1, {2, 3}, {2, 3}), _result(2, {2, 3}, set())])
@@ -128,10 +128,39 @@ def test_build_payload_distributions_over_common_pairs(tmp_path, monkeypatch):
 
 
 def test_build_payload_refuses_without_loglens(tmp_path, monkeypatch):
-    monkeypatch.setattr(ext, "_sealed", lambda batch, index: False)
+    monkeypatch.setattr(ext, "sealed_pair", lambda batch, index, prompt: False)
     root = tmp_path / "trace_out"
     _write_summary(root, "jlens", "gemma-2-2b", "b", [_result(1, {2, 3}, {2, 3})])
     assert ext.build_payload(str(root), "gemma-2-2b") is None      # no __loglens_ committed
+
+
+def test_collect_rows_puts_each_rows_own_prompt_to_the_seal(tmp_path, monkeypatch):
+    calls = []
+
+    def seal(batch, index, prompt):
+        calls.append((batch, index, prompt))
+        return prompt == "CL-SEALED"
+    monkeypatch.setattr(ext, "sealed_pair", seal)
+    root = tmp_path / "trace_out"
+    results = [dict(_result(1, {2, 3}, {2, 3}), prompts={"clinical": "CL-SEALED", "patient": "p"}),
+               dict(_result(2, {2, 3}, set()), prompts={"clinical": "CL-KEPT", "patient": "p"})]
+    _write_summary(root, "jlens", "gemma-2-2b", "b_txopus", results)
+    rows = ext.collect_rows("jlens", "gemma-2-2b", str(root))
+    assert sorted(calls) == [("b_txopus", 1, "CL-SEALED"), ("b_txopus", 2, "CL-KEPT")]
+    assert set(rows["b_txopus"]) == {2}
+
+
+def test_main_exit_2_when_seal_cannot_be_evaluated(tmp_path, monkeypatch, capsys):
+    def seal(batch, index, prompt):
+        raise ext.SealError("no tierb.start_utc")
+    monkeypatch.setattr(ext, "sealed_pair", seal)
+    root = tmp_path / "trace_out"
+    _write_summary(root, "loglens", "gemma-2-2b", "b", [_result(1, {2, 3}, {2, 3})])
+    out = tmp_path / "jlens_loglens.json"
+    rc = ext.main(["--trace-root", str(root), "--out", str(out), "--site", ""])
+    assert rc == 2
+    assert "CONFIG ERROR" in capsys.readouterr().out
+    assert not out.exists()
 
 
 def test_main_refuses_without_overwriting(tmp_path, capsys):

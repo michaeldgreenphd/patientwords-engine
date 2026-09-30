@@ -34,29 +34,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp  # noqa: E402
-
-_TIERB_START = tierb_start_stamp()
-_ACCEPT_CACHE = {}
-
-
-def _sealed(dataset, index):
-    """Amendment 1/3 phrase-keyed holdout seal for every published aggregate:
-    True iff (dataset, index) is a Tier B pair whose ACCEPTED prompt hashes
-    holdout. Applied at every export surface (blocks, translation, steering)."""
-    if not is_tierb_batch(dataset or "", _TIERB_START):
-        return False
-    if dataset not in _ACCEPT_CACHE:
-        fp = Path("data/simulated") / f"{dataset}.json"
-        try:
-            _ACCEPT_CACHE[dataset] = json.loads(fp.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            _ACCEPT_CACHE[dataset] = None
-    pairs = _ACCEPT_CACHE[dataset]
-    idx = index or 0
-    if not pairs or not (0 < idx <= len(pairs)):
-        return False
-    return is_holdout(pairs[idx - 1].get("top_prompt"))
+# Amendment 1/3 holdout seal for every export surface (blocks, translation,
+# examples, steering): tierb_split.sealed_pair applies stamp_rows' rule and
+# raises SealError when it cannot, and main then writes nothing (exit 2).
+from tierb_split import SealError, sealed_pair  # noqa: E402
 
 CLASS_LABELS = {"retained": "kept", "suppressed": "lost late", "absent": "never formed"}
 METHOD_CREDIT = ("Jacobian lens: Gurnee et al., Transformer Circuits, 2026; reference "
@@ -82,10 +63,11 @@ def load_summary(stem, model="gemma-2-2b"):
     for extra in parts[1:]:
         summary["results"].extend(json.loads(extra.read_text(encoding="utf-8"))["results"])
     # Amendment 1/3: sealed holdout pairs never enter blocks, counts, examples,
-    # or the translation class join (this reader feeds all of them).
-    if is_tierb_batch(stem, _TIERB_START):
-        summary["results"] = [r for r in summary["results"]
-                              if not _sealed(stem, r.get("index"))]
+    # or the translation class join (this reader feeds all of them). Every stem
+    # is checked, not only Tier B ones: a registered phrase is sealed anywhere.
+    summary["results"] = [r for r in summary["results"]
+                          if not sealed_pair(stem, r.get("index"),
+                                             (r.get("prompts") or {}).get("clinical"))]
     return summary, str(root / parts[0].name if len(parts) == 1 else root)
 
 
@@ -256,8 +238,10 @@ def steering_split(trace_root=Path("trace_out")):
         except (OSError, json.JSONDecodeError):
             continue
         for r in summary.get("results", []):
-            if _sealed(r.get("dataset"), r.get("spec_index")):
-                continue  # Amendment 1/3: sealed holdout out of the steering aggregate
+            # Amendment 1/3: sealed holdout out of the steering aggregate. Steering
+            # rows carry no prompt, so the seal reads the dataset's accepted one.
+            if sealed_pair(r.get("dataset"), r.get("spec_index"), None):
+                continue
             key = (r.get("dataset"), r.get("spec_index"))
             e = pairs.setdefault(key, {"class": r.get("class"), "unres": False,
                                        "restored": False, "measured": False})
@@ -412,6 +396,9 @@ def main(argv=None):
     try:
         payload = build_payload(blocks_spec, args.exemplar_stem, args.exemplar_index,
                                 annotate=annotate)
+    except SealError as exc:  # a RuntimeError, so never mistaken for the exit-3 refusal
+        print(f"CONFIG ERROR: {exc}. Refusing to publish; nothing was written")
+        return 2
     except ValueError as exc:
         print(f"refused: {exc}")
         return 3

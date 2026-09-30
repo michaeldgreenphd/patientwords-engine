@@ -40,11 +40,7 @@ except ImportError:
     from provenance_stamp import provenance
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp  # noqa: E402
-
-ENGINE = Path(__file__).resolve().parents[1]
-_TIERB_START = tierb_start_stamp()
-_ACCEPT_CACHE = {}
+from tierb_split import SealError, sealed_pair  # noqa: E402
 
 
 def three_way(c, e):
@@ -53,27 +49,13 @@ def three_way(c, e):
     return feat * c, feat * (1.0 - c), e
 
 
-def _sealed(batch, index):
-    """True iff (batch, index) is a Tier B pair whose accepted prompt hashes holdout -
-    mirrors export_jlens_transport so sealed pairs never enter this public aggregate."""
-    if not is_tierb_batch(batch or "", _TIERB_START):
-        return False
-    if batch not in _ACCEPT_CACHE:
-        fp = ENGINE / "data/simulated" / f"{batch}.json"
-        try:
-            _ACCEPT_CACHE[batch] = json.loads(fp.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            _ACCEPT_CACHE[batch] = None
-    pairs = _ACCEPT_CACHE[batch]
-    idx = index or 0
-    if not pairs or not (0 < idx <= len(pairs)):
-        return False
-    return is_holdout(pairs[idx - 1].get("top_prompt"))
-
-
 def collect(trace_root):
     """{'clinical': [(clin,off,struct),...], 'patient': [...]} over every FEATURED
-    (source_set set), non-holdout pair with both scalars for that phrasing."""
+    (source_set set), non-holdout pair with both scalars for that phrasing.
+
+    The holdout seal is tierb_split.sealed_pair (stamp_rows' rule, Amendments 1
+    and 3), asked only of rows that would add a value; it raises SealError when
+    the rule cannot be evaluated, and main then writes nothing."""
     acc = {"clinical": [], "patient": []}
     for path in glob.glob(str(Path(trace_root) / "*" / "batch_summary*.json")):
         try:
@@ -84,14 +66,19 @@ def collect(trace_root):
             continue  # only gemma-2-2b's transcoder mass is meaningful
         batch = Path(path).parent.name
         for r in summ.get("results", []):
-            if _sealed(batch, r.get("index")):
-                continue
             cmass = r.get("clinical_mass") or {}
             eshare = r.get("error_share") or {}
+            triples = {}
             for phrasing in ("clinical", "patient"):
                 c, e = cmass.get(phrasing), eshare.get(phrasing)
                 if isinstance(c, (int, float)) and isinstance(e, (int, float)):
-                    acc[phrasing].append(three_way(c, e))
+                    triples[phrasing] = three_way(c, e)
+            if not triples:
+                continue
+            if sealed_pair(batch, r.get("index"), (r.get("prompts") or {}).get("clinical")):
+                continue
+            for phrasing, triple in triples.items():
+                acc[phrasing].append(triple)
     return acc
 
 
@@ -131,7 +118,12 @@ def main(argv=None):
     parser.add_argument("--site", default="../patientwords", help="'' skips the site copy")
     args = parser.parse_args(argv)
 
-    payload = build_payload(collect(args.trace_root))
+    try:
+        acc = collect(args.trace_root)
+    except SealError as exc:
+        print(f"CONFIG ERROR: {exc}. Refusing to publish; nothing was written")
+        return 2
+    payload = build_payload(acc)
     if payload is None:
         print("note: no measured featured pairs; leaving the empirical:false placeholder untouched")
         return 0
