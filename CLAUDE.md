@@ -14,16 +14,20 @@ the files cannot drift. The line above imports it into every Claude Code session
     a fallback check-in about an hour out (`send_later`) until the PR is merged
     or closed; re-arm it silently if nothing changed.
   - Local session (it has neither, so no PR event wakes it): before ending a
-    turn, check the PR with
-    `~/.local/bin/gh pr view <n> --json reviews,comments,headRefOid,mergeStateStatus`
-    (or `~/.local/bin/gh pr checks <n>`), and tell the owner when to check again.
+    turn, read all of the PR's feedback and its CI, then tell the owner when to
+    check again. Run all three commands; none of them replaces another:
+    `gh pr view <n> --json reviews,comments,headRefOid,mergeStateStatus`
+    (review bodies, conversation comments, head commit, merge state);
+    `gh api --paginate 'repos/{owner}/{repo}/pulls/<n>/comments'` (inline
+    review comments, which `gh pr view` does not return; `gh` fills in
+    `{owner}` and `{repo}` from the checkout); and `gh pr checks <n>` (CI).
 - The procedures behind the rules in `AGENTS.md` are skills under
   `.claude/skills/`. Invoke the matching one rather than improvising its steps.
 - `.claude/settings.json` installs guard hooks (`.claude/hooks/README.md`) that
   refuse some tool calls. A refusal is the rule working: do not route around
   it. From a session, never edit the guard files (`.claude/settings.json`,
   `.claude/hooks/`, `.githooks/`) or the user-level `~/.claude/settings.json`
-  the environment writes; `AGENTS.md` says who changes them.
+  the environment writes; the owner edits those by hand.
 
 ## Shared conventions (identical in patientwords-engine and patientwords; edit both)
 
