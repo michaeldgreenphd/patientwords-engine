@@ -110,7 +110,7 @@ balance is a sampling decision, not an afterthought.
 
 **7. Contract gate.** `python scripts/validate_frontend_contract.py --site ../patientwords`
 Exit 0 = holds; 1 = violations; 2 = payload missing/unreadable. Report mode (no
-`--strict`) until F-M27's orphan-row trim lands. New ERRORS mean an export broke the
+`--strict`) until F-L33's orphan-row trim lands. New ERRORS mean an export broke the
 page contract: fix the export and re-run before pushing the site. Never push over errors.
 
 **8. Claim gate.** `python scripts/claim_check.py`

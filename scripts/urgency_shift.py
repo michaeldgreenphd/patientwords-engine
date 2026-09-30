@@ -33,7 +33,8 @@ parser.add_argument("--min-coverage", type=float, default=0.3,
 parser.add_argument("--out", default="urgency_shift.json")
 parser.add_argument("--publish", default="",
                     help="frontend repo root: also write a trimmed data/urgency_shift.json "
-                         "for the site (summary + join-keyed rows + vocabulary status)")
+                         "for the site (summary + join-keyed rows + vocabulary status + the count "
+                         "of rows joining no scenario in the --frontend payload, which must be readable)")
 args = parser.parse_args()
 
 vocab = json.loads(Path(args.tiers).read_text(encoding="utf-8"))["tokens"]
@@ -190,8 +191,19 @@ for part in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):
             seen.add((model, stem, r["index"]))
 
 # site payload fills anything the engine tree lacks
-if site.is_file():
+payload = None
+if args.publish:
+    # --publish records how many published rows join no scenario in this
+    # payload (unjoinable_rows, below). It cannot count against a payload it
+    # cannot read, so that is a refusal here, before anything is written.
+    from urgency_unjoinable import PayloadRefusal, count_unjoinable, read_payload  # noqa: E402
+    try:
+        payload = read_payload(site)
+    except PayloadRefusal as err:
+        raise SystemExit(f"urgency_shift: refusing --publish, nothing written: {err}")
+elif site.is_file():
     payload = json.loads(site.read_text(encoding="utf-8"))
+if payload is not None:
     for s in payload.get("scenarios", []):
         for mid, m in (s.get("models") or {}).items():
             if (mid, s.get("batch"), s.get("batch_index")) in seen:
@@ -428,6 +440,15 @@ if args.publish:
             tier_counts[str(tr_)][tok] = tier_counts[str(tr_)].get(tok, 0) + 1
     tier_examples = {t: [w for w, _ in sorted(c.items(), key=lambda kv: -kv[1])[:3]]
                      for t, c in tier_counts.items()}
+    # Every trimmed row ships, including rows that join no published scenario
+    # (re-traces, sentinels, unpublished batches and pairs): the clinical page
+    # counts them. Record how many there are and why, counts and stems only,
+    # so the contract check can fail when the rows and the payload drift apart
+    # (scripts/urgency_unjoinable.py has the join rule and the causes).
+    try:
+        unjoinable = count_unjoinable(trimmed, payload)
+    except PayloadRefusal as err:
+        raise SystemExit(f"urgency_shift: refusing --publish, site copy not written: {err}")
     site_payload = {
         "vocabulary_status": vocab_meta.get("status", "draft pending domain review"),
         # Audit 2026-07-28 L1: per-model cells with fewer phrases than this
@@ -439,11 +460,14 @@ if args.publish:
                                             "per_model", "per_model_deduped",
                                             "concordance", "mitigation")
                     if k in summary},
+        "unjoinable_rows": unjoinable,
         "rows": trimmed,
     }
     site_path = Path(args.publish) / "data/urgency_shift.json"
     site_path.write_text(json.dumps(site_payload, indent=1) + "\n", encoding="utf-8")
     print(f"site copy -> {site_path} ({len(trimmed)} rows)")
+    causes = ", ".join(f"{cause} {rec['n']}" for cause, rec in unjoinable["by_cause"].items())
+    print(f"unjoinable rows (join no scenario in {site}): {unjoinable['n']}/{len(trimmed)} ({causes})")
 print(json.dumps(summary, indent=1))
 print(f"\nDowngrade flips ({len(down)}), most confident first:")
 for r in sorted(down, key=lambda r: -(r["p_top_patient"] or 0))[:20]:

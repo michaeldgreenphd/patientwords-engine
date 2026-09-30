@@ -206,16 +206,113 @@ def test_duplicate_urgency_join_key(site):
     assert any("duplicate join key" in e for e in rep.errors)
 
 
+ORPHAN_ROW = {"batch": "pairs_GONE", "index": 9, "model": BASE,
+              "flip_class": None, "tier_shift": None,
+              "tier_top_clinical": None, "tier_top_patient": None,
+              "urgency_recovery": None}
+
+
+def unjoinable_record(n=1):
+    """The collector's unjoinable_rows record (scripts/urgency_unjoinable.py) with n rows under one cause."""
+    return {"n": n, "by_cause": {
+        "not_a_generation_batch": {"n": n, "stems": {"pairs_GONE": n} if n else {}},
+        "batch_not_in_payload": {"n": 0, "stems": {}},
+        "pair_not_in_payload": {"n": 0, "stems": {}},
+    }}
+
+
+def write_urgency(site, u):
+    (site / "data" / "urgency_shift.json").write_text(json.dumps(u), encoding="utf-8")
+
+
 def test_orphan_urgency_rows_warn(site):
-    rows = urgency()["rows"] + [{"batch": "pairs_GONE", "index": 9, "model": BASE,
-                                 "flip_class": None, "tier_shift": None,
-                                 "tier_top_clinical": None, "tier_top_patient": None,
-                                 "urgency_recovery": None}]
-    (site / "data" / "urgency_shift.json").write_text(
-        json.dumps(urgency(rows)), encoding="utf-8")
+    # a file published before the collector recorded unjoinable_rows (the live file as of 2026-09-30): the standing
+    # warning, never an error, so site CI and the Routine's gate stay green
+    write_urgency(site, urgency(urgency()["rows"] + [ORPHAN_ROW]))
     rep = run(site)
     assert rep.errors == []
-    assert any("join no published scenario" in w for w in rep.warnings)
+    warning = next(w for w in rep.warnings if "join no published scenario" in w)
+    assert "1/2 rows" in warning
+    assert "clinical/index.html counts them" in warning
+    assert "dead weight" not in warning
+
+
+def urgency_findings(rep):
+    """Errors and warnings about urgency_shift.json (the minimal fixture site lacks other optional artifacts)."""
+    return [m for m in rep.errors + rep.warnings if m.startswith("urgency_shift.json")]
+
+
+def test_recorded_unjoinable_total_that_matches_is_a_note(site):
+    u = urgency(urgency()["rows"] + [ORPHAN_ROW])
+    u["unjoinable_rows"] = unjoinable_record(1)
+    write_urgency(site, u)
+    rep = run(site, strict=True)
+    assert urgency_findings(rep) == []
+    assert any("1/2 rows join no published scenario, as $.unjoinable_rows records" in n for n in rep.notes)
+
+
+def test_recorded_unjoinable_total_of_zero_with_no_orphans_says_nothing(site):
+    u = urgency()
+    u["unjoinable_rows"] = unjoinable_record(0)
+    write_urgency(site, u)
+    rep = run(site, strict=True)
+    assert urgency_findings(rep) == []
+    assert not any("join no published scenario" in n for n in rep.notes)
+
+
+@pytest.mark.parametrize("recorded, extra_orphans", [(2, 1), (0, 1), (1, 0), (1, 2)])
+def test_recorded_unjoinable_total_that_differs_is_an_error(site, recorded, extra_orphans):
+    rows = urgency()["rows"] + [dict(ORPHAN_ROW, index=9 + k) for k in range(extra_orphans)]
+    u = urgency(rows)
+    u["unjoinable_rows"] = unjoinable_record(recorded)
+    write_urgency(site, u)
+    rep = run(site)
+    assert any(f"records {recorded} rows joining no published scenario, but {extra_orphans}/{len(rows)} do" in e
+               for e in rep.errors)
+    assert not any("join no published scenario" in w for w in rep.warnings)
+
+
+def _broken(change):
+    rec = unjoinable_record(1)
+    change(rec)
+    return rec
+
+
+@pytest.mark.parametrize("rec, says", [
+    ([], "$.unjoinable_rows :: must be an object"),
+    (_broken(lambda r: r.pop("n")), "$.unjoinable_rows.n :: missing required key"),
+    (_broken(lambda r: r.update(n="1")), "$.unjoinable_rows.n :: wrong type str"),
+    (_broken(lambda r: r.update(n=True)), "$.unjoinable_rows.n :: wrong type bool"),
+    (_broken(lambda r: r.pop("by_cause")), "$.unjoinable_rows.by_cause :: missing required key"),
+    (_broken(lambda r: r["by_cause"].pop("pair_not_in_payload")), "$.unjoinable_rows.by_cause :: must hold exactly"),
+    (_broken(lambda r: r["by_cause"].update(other={"n": 0, "stems": {}})), "must hold exactly"),
+    (_broken(lambda r: r["by_cause"].update(pair_not_in_payload=[])),
+     "$.unjoinable_rows.by_cause.pair_not_in_payload :: must be an object"),
+    (_broken(lambda r: r["by_cause"]["batch_not_in_payload"].pop("stems")),
+     "by_cause.batch_not_in_payload.stems :: missing required key"),
+    (_broken(lambda r: r["by_cause"]["not_a_generation_batch"].update(stems={"pairs_GONE": 2})),
+     "per-stem counts must be integers summing to n = 1"),
+    (_broken(lambda r: r["by_cause"]["not_a_generation_batch"].update(stems={"pairs_GONE": "1"})),
+     "per-stem counts must be integers"),
+    (_broken(lambda r: r["by_cause"]["batch_not_in_payload"].update(n=1, stems={"pairs_X": 1})),
+     "$.unjoinable_rows.n :: is 1, but by_cause sums to 2"),
+])
+def test_malformed_unjoinable_record_is_an_error(site, rec, says):
+    u = urgency(urgency()["rows"] + [ORPHAN_ROW])
+    u["unjoinable_rows"] = rec
+    write_urgency(site, u)
+    rep = run(site)
+    assert any(says in e for e in rep.errors), rep.errors
+    # a malformed record is not compared, so no mismatch is claimed on top of the shape error
+    assert not any("rows joining no published scenario, but" in e for e in rep.errors)
+
+
+def test_unjoinable_rows_is_an_audited_key(site):
+    u = urgency()
+    u["unjoinable_rows"] = unjoinable_record(0)
+    write_urgency(site, u)
+    rep = run(site, strict=True)
+    assert urgency_findings(rep) == []
 
 
 def test_empty_vocabulary_status(site):
