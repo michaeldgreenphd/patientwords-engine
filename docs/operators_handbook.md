@@ -3,9 +3,10 @@
 Written 2026-08-29, at the close of the active-measurement phase, as the
 institutional memory of the long-running ops sessions. Audience: any future
 session or human maintaining this repo. `AGENTS.md` states the conventions
-(the root `CLAUDE.md` only imports it); this book is the *procedures and
-case law* — what actually breaks and the exact drills that fix it. When this book and observed reality disagree,
-trust reality, then fix the book.
+(the root `CLAUDE.md` imports it and adds only Claude Code mechanics and
+the owner's writing conventions); this book is the *procedures and case
+law* — what actually breaks and the exact drills that fix it. When this
+book and observed reality disagree, trust reality, then fix the book.
 
 ## 1 · The system in one paragraph
 

@@ -39,7 +39,7 @@ trips; it exists for a manual re-fire on the same day as a completed cycle.
 ## 1 · Orient
 
 1. `AGENTS.md` (both repos) — hard conventions, queue discipline. Read it
-   directly: each repo's `CLAUDE.md` only imports it (`@./AGENTS.md`), and a
+   directly: each repo's `CLAUDE.md` imports it with `@./AGENTS.md`, and a
    file read does not expand the import.
 2. `docs/operators_handbook.md` — procedures, degradation drills, incident
    case law. Follow its drills verbatim when git or the queue misbehaves.
