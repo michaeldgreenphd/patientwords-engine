@@ -139,6 +139,13 @@ def dry_run() -> None:
         for sd in seeds_doc["seeds"]:
             sd["provenance"] = "selftest provenance, not study data"
         (tmp / "seeds.json").write_text(json.dumps(seeds_doc, ensure_ascii=False), encoding="utf-8")
+        # a run writes its own protocol and handoff before planning (Codex on PR #52); the dry run's say what they are
+        proto = (tmp / "PROTOCOL.md").read_text(encoding="utf-8")
+        (tmp / "PROTOCOL.md").write_text("# Dry run of scripts/selftest.py\n\nFabricated responses in a temporary "
+                                         "directory; the recorded protocol follows for the script contract.\n\n" + proto,
+                                         encoding="utf-8")
+        (tmp / "HANDOFF.md").write_text("# Self-test dry run\n\nFabricated responses; no assumptions, results or review "
+                                        "rounds are recorded here.\n", encoding="utf-8")
         env = {**os.environ, "PILOT_DIR": str(tmp)}
 
         def run(script: str, *args: str, expect_failure: bool = False) -> str:
@@ -359,13 +366,13 @@ def dry_run() -> None:
         (tmp / "review_key.csv").write_bytes(key_bytes)
         check((tmp / "summary.json").read_text(encoding="utf-8") == summary_text,
               "a review bundle from another plan, or a key verdict that differs from the checked row, is refused")
-        (tmp / "scripts").mkdir()  # a stand-in for the code the manifest hashes; the dry run itself runs HERE's scripts
-        (tmp / "scripts" / "marker.py").write_text("# selftest marker\n", encoding="utf-8")
         run("write_manifest.py")
         m = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
         check(m["design"]["seed_provenance"]["values"] == ["selftest provenance, not study data"]
               and m["design"]["seed_provenance"]["n_seeds_without_provenance"] == 0,
               "manifest records the seed file's provenance")
+        check(m["script_hashes"] == common.script_hashes() and len(m["script_hashes"]) > 0,
+              "the manifest hashes the executing scripts, not a scripts directory under the run (Codex on PR #52)")
         # record_run refuses a directory that is not a run's transcripts, and never writes over a recorded run
         # without --replace (Codex on PR #52)
         tdir = tmp / "transcripts_gen"
@@ -455,11 +462,15 @@ def dry_run() -> None:
         m3 = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
         check(m3["finalized_utc"] == mf["finalized_utc"] and m3["output_hashes"] == mf["output_hashes"],
               "a plan-time rewrite keeps the finalization time and output hashes while the outputs are unchanged")
-        # a script edited since finalize clears the finalization too (Codex on PR #52)
-        (tmp / "scripts" / "marker.py").write_text("# selftest marker, edited after finalize\n", encoding="utf-8")
+        # a script edited since finalize clears the finalization too (Codex on PR #52): the manifest on disk
+        # records the scripts as they were, so one recorded hash is made stale, as an edit since would make it
+        stale_m = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        first_script = sorted(stale_m["script_hashes"])[0]
+        stale_m["script_hashes"][first_script] = "0" * 64
+        (tmp / "manifest.json").write_text(json.dumps(stale_m, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         run("write_manifest.py")
         m3b = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
-        check(m3b["finalized_utc"] is None and "output_hashes" not in m3b,
+        check(m3b["finalized_utc"] is None and "output_hashes" not in m3b and m3b["script_hashes"][first_script] != "0" * 64,
               "a plan-time rewrite after a script changed clears the finalization time and the hashes")
         run("write_manifest.py", "finalize")
         md_text = (tmp / "summary.md").read_text(encoding="utf-8")
@@ -516,6 +527,12 @@ def dry_run() -> None:
         run("extract_workflow_journal.py", "generation", str(tmp / "journal_foreign.jsonl"), "--replace", expect_failure=True)
         check((tmp / "workflow_generation_result.json").read_text(encoding="utf-8") == result_text,
               "a journal with an agent outside the plan is refused and the previous result file is untouched")
+        # a result record with no started agent refuses the journal instead of reading as no response (Codex on PR #52)
+        orphan = journal + [{"type": "result", "key": "k9", "agentId": "a9", "result": "{}"}]
+        (tmp / "journal_orphan.jsonl").write_text("".join(json.dumps(j) + "\n" for j in orphan), encoding="utf-8")
+        run("extract_workflow_journal.py", "generation", str(tmp / "journal_orphan.jsonl"), "--replace", expect_failure=True)
+        check((tmp / "workflow_generation_result.json").read_text(encoding="utf-8") == result_text,
+              "a journal with a result record for no started agent is refused and the previous result file is untouched")
         (tmp / "workflow_generation_result.json").write_bytes(result_backup)
         # a rerun whose inputs changed must not inherit the previous manifest's metadata (Codex on PR #52), and a
         # plan that was not re-rendered after the inputs changed is refused even with --reset

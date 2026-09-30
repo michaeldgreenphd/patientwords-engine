@@ -56,6 +56,7 @@ from common import (
     read_csv,
     read_jsonl,
     review_problems,
+    script_hashes,
     sha256_file,
     sha256_text,
     summary_problems,
@@ -269,7 +270,7 @@ def main(finalize: bool, reset: bool = False) -> None:
     # a plan-time rewrite after finalize keeps the finalization time and the output hashes only while every hashed
     # output is unchanged on disk; a finalization time without the hashes it vouched for would claim a verified
     # bundle (Codex review of PR #52)
-    scripts_now = {p.name: sha256_file(p) for p in sorted((PILOT / "scripts").glob("*.py"))}
+    scripts_now = script_hashes()  # the executing scripts, wherever the run directory is (Codex review of PR #52)
     workflows_now = ({p.name: sha256_file(p) for p in sorted((PILOT / "workflows").glob("*.js"))}
                      if (PILOT / "workflows").exists() else {})
     carried = base.get("output_hashes") if not finalize else None

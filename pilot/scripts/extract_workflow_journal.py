@@ -78,6 +78,10 @@ def main(which: str, journal_path: str, replace: bool = False) -> None:
                     obj = None
             per_item.setdefault(item_id, {})[n] = {"attempt": n, "result": obj if isinstance(obj, dict) else None,
                                                    "null_return": res is None, "agent_id": s.get("agentId")}
+    unused = sorted(str(k) for k in set(results) - {(s.get("key"), s.get("agentId")) for s in started})
+    if unused:  # a truncated or malformed journal would otherwise read as no response for that item
+        raise SystemExit(f"{journal_path}: refusing the journal; nothing was written: {len(unused)} result record(s) "
+                         f"have no started agent (first: {unused[0]}) (Codex review of PR #52)")
     repeated = {f"{i} attempt {n}": a for (i, n), a in agents_by_label.items() if len(a) > 1}
     if repeated or repeated_results:
         raise SystemExit(f"{journal_path}: refusing the journal; nothing was written: agents sharing one label "
