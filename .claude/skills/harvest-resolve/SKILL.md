@@ -71,7 +71,7 @@ model list, and every offset/chunk fired.
   `responses_<stem>.jsonl` and its cost sidecar `responses_<stem>.report.json`, and
   with `judge: true` also `judgments_<stem>.jsonl`, `judgments_<stem>.report.json`
   and `analysis_<stem>.json` (`data/advice/README.md`); a `gen_config` fire skips
-  elicitation and commits the stimuli it generated. The archive is append-only and
+  elicitation and commits the stimuli it generated, with their cost sidecar. The archive is append-only and
   shared by every fire on the same stimuli file, so the files existing proves
   nothing: look for this run's commit after the fire commit. That commit step runs
   with `always()`, so a run that failed mid-elicitation still commits what it
@@ -91,7 +91,7 @@ model list, and every offset/chunk fired.
     artifact: landed = `success` and the exports artifact present.
   - `run`: the cost sidecars `run_<id>_1.report.json` (once the target run started)
     and `run_<id>_1.judge.report.json` (once the judge started) are committed
-    failed runs included, inside the outputs commit or on their own as
+    even when the run failed, either inside the outputs commit or on their own as
     `Petri audit: run_<id>_1 cost sidecars`, so a sidecar alone is not a
     landing. With `commit_outputs: true` the outputs commit,
     `Petri audit: run_<id>_1 (sanitised export, transcripts, manifest)`, is made
@@ -120,7 +120,10 @@ model list, and every offset/chunk fired.
     `Petri rejudge (exploratory): <judge> over <stems> (workflow run <id>)`; that
     step runs with `always()` once verification passed, so it can land some stems
     after a later stem's judge aborted. Landed = a `rejudge_manifest.json` for EVERY
-    stem the fire named, and `success`; fewer is partial landing.
+    stem the fire named, and `success`; fewer is partial landing. With
+    `commit_outputs: false` only the sidecars are committed and the verified
+    re-grades survive as the 30-day artifact `petri-audit-rejudge-<run id>-<attempt>`:
+    landed = the sidecars, `success`, and that artifact.
   - `rejudge` with `judge_model: mockllm/judge` (the free rehearsal) commits
     nothing: landed = `success` and the artifact
     `petri-audit-rejudge-<run id>-<attempt>`.
@@ -142,9 +145,10 @@ correction that `fire_trigger.py publish` pushed on top of it. Check it via:
   remote sessions, where `gh` is not installed: the same run, `completed`; or
 - the landing commit — `git log origin/<branch> -- 'trace_out/<stem>*'` shows
   the CI commit containing the LAST expected part (the final offset). Not for
-  advice-eval, petri-audit or model-evaluation: their sidecar commits, and
-  advice-eval's and model-evaluation's output commits, are made even when the run
-  failed, so for those lanes only the run's conclusion shows that it succeeded.
+  advice-eval, petri-audit or model-evaluation: their cost-sidecar commits (and
+  advice-eval's and model-evaluation's output commits, and a petri rejudge's
+  re-grade commit) run under `always()` and are made even when the run failed, so
+  for those lanes only the run's conclusion shows that it succeeded.
 
 Resolve ONLY when ALL expected outputs for that fire have landed — every offset
 times every model. Partial landing: do NOT resolve, AND do not fire anything new

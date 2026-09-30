@@ -151,10 +151,12 @@ python scripts/fire_trigger.py park --trigger <name> --ignore-settle
   a fresh `_nonce`, goes through `fire`'s guards (queue, settle, keys, budget),
   journals an entry, and runs the lane's no-op once. Resolve that entry like any other.
   Most parks commit nothing (`commit_outputs` is false wherever the lane has the key),
-  so their landing is the run's conclusion in GitHub Actions. The
-  `scenario-generation` and `model-evaluation` lanes have no commit flag, so their
-  parks land what those lanes always land (a one-pair batch with its sidecar; a cost
-  sidecar and the evaluation export: harvest-resolve Step 3).
+  so their landing is the run's conclusion in GitHub Actions. Three lanes have no
+  commit flag, so their parks land what those lanes always land (harvest-resolve
+  Step 3): `scenario-generation` a one-pair batch with its sidecar,
+  `model-evaluation` a cost sidecar and the evaluation export, and `archive-renders`
+  the `park-noop` Release zip plus `render_archives/park-noop.manifest.json`,
+  committed when it changed.
 - A full day's ceiling does not refuse a park (§5, the one exception).
 - Park only a lane that is not parked already (§8 step 4 lists them): the fresh
   `_nonce` makes every park a change, so parking a parked lane runs its no-op again
@@ -174,13 +176,15 @@ For a merge into `main`, or into whichever branch you will push:
 
 1. **Trigger files: the target's, unchanged.** Merge onto a freshly fetched tip, from a
    clean tree (`git checkout -- ops/dashboard.json` drops any queue side effect a
-   `--keep-dashboard` run left). Before committing the merge, run `git checkout HEAD -- .github/trigger/`;
-   then `git diff --cached --name-status HEAD -- .github/trigger/` must print nothing.
+   `--keep-dashboard` run left). Before committing the merge, run
+   `git checkout HEAD -- .github/trigger/`; then
+   `git diff --cached --name-status HEAD -- .github/trigger/` must print nothing.
    A line starting `A` is a trigger file only the other side has: stop and ask the owner
    rather than deleting it.
 2. **Journal: ORDERED UNION** (`docs/operators_handbook.md` §4, *Journal conflict*):
    every entry of both sides once, deduplicated on `(fired_utc, trigger)` preferring the
-   target's copy, sorted by `fired_utc`, every line valid JSON. Never lose a resolution:
+   target's copy (the handbook's "remote" copy: the branch you will push to), sorted by
+   `fired_utc`, every line valid JSON. Never lose a resolution:
    `resolved` and `evicted` only go from false to true and `resolved_utc` never changes
    (`journal_drops_remote_entries`), so where two copies of one entry differ, keep those
    fields from the copy that set them. Afterwards `python scripts/fire_trigger.py status`
