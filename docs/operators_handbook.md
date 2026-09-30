@@ -2,9 +2,9 @@
 
 Written 2026-08-29, at the close of the active-measurement phase, as the
 institutional memory of the long-running ops sessions. Audience: any future
-session or human maintaining this repo. `CLAUDE.md` states the conventions;
-this book is the *procedures and case law* — what actually breaks and the
-exact drills that fix it. When this book and observed reality disagree,
+session or human maintaining this repo. `AGENTS.md` states the conventions
+(the root `CLAUDE.md` only imports it); this book is the *procedures and
+case law* — what actually breaks and the exact drills that fix it. When this book and observed reality disagree,
 trust reality, then fix the book.
 
 ## 1 · The system in one paragraph
@@ -28,7 +28,11 @@ cycles per `docs/routine_standing_prompt.md` (MAINTENANCE MODE since
   batches (`docs/coordination/backfill_8b_complete_20260826.md`); gemma
   trace and j-lens axes done; Tier B generation done (endpoint pending
   owner sign-off).
-- **All eight trigger lanes are PARKED** (`fire_trigger.py park`): each
+- **All nine trigger lanes are PARKED** (`fire_trigger.py park`; eight on
+  this date, and `petri-audit`, added 2026-09-16, since 2026-09-18).
+  The standing exception is `archive-renders`: it stays un-parked from the cycle
+  that fires its PNG sweep until the next cycle re-parks it
+  (`docs/routine_standing_prompt.md` §3d). Each
   trigger file's resting content is a cheap no-op, so merges, rebases, and
   branch creations that touch them re-run pennies, not the last expensive
   fire. Keep it that way: after any real fire lands, re-park that lane.
@@ -43,9 +47,12 @@ cycles per `docs/routine_standing_prompt.md` (MAINTENANCE MODE since
 **Fire.** `python scripts/fire_trigger.py fire --trigger <t> --params
 '<json>' --note '<why, with settle-bypass evidence if used>'`. Params must
 match the workflow's key set exactly (the tool hard-errors on unknown
-keys); `commit_outputs` must be stated wherever supported. Paid fires
-(scenario-generation, model-evaluation, advice-eval) happen ONLY on the
-owner's explicit words in a live chat, with `max_spend` matching the quote.
+keys); `commit_outputs` must be stated wherever supported. Paid fires (the
+lanes in `PAID_TRIGGERS`, which `docs/triggers.md` marks **paid**, other than
+a lane's park default, plus circuit-trace with `show_mitigation: true` or
+`mode: translation`) happen ONLY on the owner's explicit words in a live
+chat, with `max_spend` matching the quote on every lane that takes it
+(circuit-trace does not).
 
 **Queue.** One running + one pending per lane; a third push silently
 evicts the pending run. Chain fires, never stack. After a `resolve`, a
@@ -70,8 +77,8 @@ config at rest. The waiver applies to the lane's exact park content only
 has no waiver, so on that day it refuses the park's own run, which spends
 nothing. That red run is expected; resolve it like any other.
 
-**Publish site data.** Only the sanctioned exporter chain (site
-CLAUDE.md's data-contract table names every writer); then
+**Publish site data.** Only the sanctioned exporter chain (the
+*Data contracts* section of the site's `AGENTS.md` names every writer); then
 `python scripts/validate_frontend_contract.py --site ../patientwords`
 (0 errors required) and `python scripts/seal_check.py --site
 ../patientwords --extra docs,ops` (CLEAN required) before pushing. Data
@@ -163,10 +170,12 @@ say in any record which evidence was used.
 
 - **2026-07-09 queue eviction:** resolving on partial landing let a new
   fire silently supersede a pending run → the settle window exists.
-- **2026-07-12 batch-7 failures:** generation archives land on `main`,
-  measurement checks out the branch — copy pairs files across
-  (`git checkout origin/main -- data/simulated/<batch>*.json`) before any
-  measurement fire.
+- **2026-07-12 batch-7 failures** (*obsolete since 2026-09-04*: generation
+  archives and trace outputs both commit to `main`, the only working branch,
+  so there is nothing to copy): generation archives landed on `main` while
+  measurement checked out the ops branch, so pairs files had to be copied
+  across (`git checkout origin/main -- data/simulated/<batch>*.json`) before
+  any measurement fire.
 - **2026-08-23 anthropic SDK `temperature` removal:** two $0 failed runs;
   fixed at the `_send` seam in `scripts/advice_eval.py` with
   retry-without + regression test. Pattern: SDK breakage fails fast and
@@ -233,7 +242,7 @@ say in any record which evidence was used.
 | Operational state (Routine-written) | `ops/dashboard.json` |
 | Routine authority | `docs/routine_standing_prompt.md` |
 | Fresh-container bootstrap | `docs/fresh_session_bootstrap.md` |
-| Site data contract + validator | site `CLAUDE.md` + `scripts/validate_frontend_contract.py` |
+| Site data contract + validator | site `AGENTS.md` (*Data contracts*) + `scripts/validate_frontend_contract.py` |
 | Holdout seal check | `scripts/seal_check.py` |
 | Advice pipeline (elicit/judge/analyze) | `scripts/advice_eval.py` |
 | Judge agreement exporter | `scripts/export_judge_agreement.py` |
