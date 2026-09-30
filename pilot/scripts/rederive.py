@@ -18,13 +18,15 @@ from common import PILOT, load_seeds, log_binding, read_csv, read_jsonl, sha256_
 JOURNAL_COPIES = {"generation": "workflows/generation.journal.jsonl", "checker": "workflows/checker.journal.jsonl"}
 
 
-def extraction_problems() -> list[str]:
+def extraction_problems(stages: tuple[str, ...] = ("generation", "checker")) -> list[str]:
     """Why a recorded result file is not what the copied journal under workflows/ yields: the copy missing, no longer
     extracting, or extracting to a document that differs from the result file in anything but the journal's path
     (`source`). A result edited while keeping its self-declared source_sha256 would otherwise be re-parsed, recomputed
-    and sealed as that run's (Codex review of PR #52). Empty when both result files are the copies' extractions."""
+    and sealed as that run's (Codex review of PR #52). Empty when the named stages' result files are the copies'
+    extractions."""
     problems = []
-    for stage, rel in JOURNAL_COPIES.items():
+    for stage in stages:
+        rel = JOURNAL_COPIES[stage]
         result_path = PILOT / f"workflow_{stage}_result.json"
         copy = PILOT / rel
         if not result_path.exists():
@@ -46,15 +48,14 @@ def extraction_problems() -> list[str]:
     return problems
 
 
-def rederive_problems(calls: dict) -> list[str]:
-    """Every derived artifact derived again, with the current code, from the two recorded result files and compared
-    with the file on disk: first the two result files from the copied journals under workflows/
-    (extraction_problems); then rows, failures, call log and raw texts from workflow_generation_result.json; the
-    checker set, key and plan from those rows, the seeds and the checker template; checked rows and checker log from
-    workflow_checker_result.json; the review sheet, key and map from the checked rows (the sheet's own two
-    annotation columns excepted). A bundle whose stored responses no longer reproduce its files, or whose files were
-    written by earlier code, is refused (Codex review of PR #52). Empty when everything reproduces."""
-    problems = extraction_problems()
+def generation_rederive_problems(calls: dict) -> list[str]:
+    """The generation stage alone: workflow_generation_result.json extracted again from the copied journal, then rows,
+    failures, call log and raw texts derived again from it with the current code and compared with the files on
+    disk. build_checker_set.py and load_checker_batches (every reader of the checker plan) run it before any checker
+    work is built or emitted: a row whose text was edited under intact ids, attempts and prompt hashes passed
+    generation_problems, and checker work was emitted for data absent from the recorded journal, caught only at the
+    summary, after the checker agents had run (Codex review of PR #52). Empty when the generation reproduces."""
+    problems = extraction_problems(("generation",))
     if problems:
         return problems
     calls_meta = {c["id"]: c for c in calls["calls"]}
@@ -78,8 +79,25 @@ def rederive_problems(calls: dict) -> list[str]:
         p = PILOT / "generated" / "raw" / name
         if not p.exists() or p.read_text(encoding="utf-8") != text:
             problems.append(f"generated/raw/{name} differs from the response recorded in workflow_generation_result.json")
+    return problems
+
+
+def rederive_problems(calls: dict) -> list[str]:
+    """Every derived artifact derived again, with the current code, from the two recorded result files and compared
+    with the file on disk: first the generation stage (generation_rederive_problems: the result file from the copied
+    journal under workflows/, then rows, failures, call log and raw texts from it); then the checker result file
+    from its copied journal (extraction_problems); the checker set, key and plan from the rows, the seeds and the
+    checker template; checked rows and checker log from workflow_checker_result.json; the review sheet, key and map
+    from the checked rows (the sheet's own two annotation columns excepted). A bundle whose stored responses no
+    longer reproduce its files, or whose files were written by earlier code, is refused (Codex review of PR #52).
+    Empty when everything reproduces."""
+    problems = generation_rederive_problems(calls)
     if problems:
         return problems
+    problems = extraction_problems(("checker",))
+    if problems:
+        return problems
+    rows = read_jsonl(PILOT / "generated" / "all_rows.jsonl")  # proven above to be what the recorded result derives
     template = (PILOT / "prompts" / "checker_prompt.txt").read_text(encoding="utf-8")
     blind, truth, plan_doc = build_checker_set.derive(rows, load_seeds(), template, sha256_file(PILOT / "seeds.json"),
                                                       sha256_file(PILOT / "generated" / "all_rows.jsonl"))

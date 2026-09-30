@@ -135,6 +135,15 @@ def main() -> None:
     if problems:  # rows from another plan must not enter the checker set (Codex review of PR #52)
         raise SystemExit("build_checker_set: the parsed generation is not the call plan's; re-run parse_generation.py "
                          "on that plan's result:\n  " + "\n  ".join(problems[:5]))
+    import rederive  # the scripts import each other by bare name; rederive imports this module for derive
+
+    # the structural check above passes rows whose text was edited under intact ids, attempts and prompt hashes;
+    # the rows must be what the recorded generation journal derives before any checker work is built from them,
+    # not only at the summary, after the checker agents have run (Codex review of PR #52)
+    problems = rederive.generation_rederive_problems(calls)
+    if problems:
+        raise SystemExit("build_checker_set: the rows on disk are not what the recorded generation journal derives; "
+                         "re-run parse_generation.py --replace on its extraction:\n  " + "\n  ".join(problems[:5]))
     template = (PILOT / "prompts" / "checker_prompt.txt").read_text(encoding="utf-8")
     blind, truth, out = derive(all_rows, load_seeds(), template, sha256_file(PILOT / "seeds.json"),
                                sha256_file(PILOT / "generated" / "all_rows.jsonl"))

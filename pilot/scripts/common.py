@@ -41,6 +41,10 @@ LEGACY_UNBOUND_SOURCES = {
     "faadf0993b9f9df16833db11e08c0656def1baa3719eaede59162905ec69c621": "generation journal, run wf_028d99f0-c28",
     "f5a81e6edf37cb8a9fc3825808275fd50ac9d41311333858c53a90cfc183d3f4": "checker journal, run wf_453aa937-aff",
 }
+# the protocol those two journals ran under (PROTOCOL.md at the run, 2026-09-29). A legacy result is parsed, and
+# sealed, only while the frozen protocol is this one: a protocol rewritten after the run and re-baselined with
+# --reset could otherwise be finalized over the recorded outputs as "protocol_unchanged" (Codex review of PR #52).
+LEGACY_PROTOCOL_SHA256 = "8dd838105e94a03190e81c841474479c8a27517553bdeabf9678f3550da5d969"
 CHECKER_BATCH = 30
 N_BROKEN = 20
 N_KNOWN_GOOD = 10
@@ -352,12 +356,28 @@ def resolve_input(path_str: str, script: str) -> Path:
     raise SystemExit(f"{script}: {path_str} not found in the current directory or under {PILOT}")
 
 
+def legacy_protocol_problems(result: dict, protocol_sha256: str) -> list[str]:
+    """Why one of the recorded run's legacy results (no protocol stamp, `source_sha256` in LEGACY_UNBOUND_SOURCES)
+    may not be attributed to the protocol `protocol_sha256`: it ran under LEGACY_PROTOCOL_SHA256 and no other. Empty
+    for a result that is not legacy, and for the protocol it ran under. The parsers ask about the protocol on disk;
+    write_manifest.py finalize asks about the protocol it is sealing (Codex review of PR #52)."""
+    source = result.get("source_sha256")
+    if result.get("protocol_sha256") is not None or source not in LEGACY_UNBOUND_SOURCES:
+        return []
+    if protocol_sha256 != LEGACY_PROTOCOL_SHA256:
+        return [f"a legacy result of the recorded run ({LEGACY_UNBOUND_SOURCES[source]}) was produced under protocol "
+                f"{LEGACY_PROTOCOL_SHA256[:12]}, not {str(protocol_sha256)[:12]}; it cannot be parsed or sealed as that "
+                f"protocol's"]
+    return []
+
+
 def result_binding_problems(result: dict, unbound: bool) -> list[str]:
     """Why a recorded result file may not be parsed against this run: bound, its `protocol_sha256` (copied by the
     extractor from the agent labels the workflow script wrote) must be the frozen protocol on disk, so responses
     produced under another protocol, or by a script written before the protocol label, are refused; --unbound is
     accepted only for the recorded run's two result files (LEGACY_UNBOUND_SOURCES by `source_sha256`), which carry
-    no hashes at all (Codex review of PR #52). Empty when the result may be parsed."""
+    no hashes at all, and only under the protocol they ran under (LEGACY_PROTOCOL_SHA256) (Codex review of PR #52).
+    Empty when the result may be parsed."""
     stamp, source = result.get("protocol_sha256"), result.get("source_sha256")
     if unbound:
         if source not in LEGACY_UNBOUND_SOURCES:
@@ -366,7 +386,7 @@ def result_binding_problems(result: dict, unbound: bool) -> list[str]:
                     f"parses bound"]
         if stamp is not None:
             return ["a legacy result carries no protocol hash; this one does, so parse it bound"]
-        return []
+        return legacy_protocol_problems(result, sha256_file(PILOT / "PROTOCOL.md"))
     current = sha256_file(PILOT / "PROTOCOL.md")
     if stamp != current:
         return [f"protocol_sha256 {str(stamp)[:12]!r} is not the frozen protocol on disk ({current[:12]}): the workflow "
@@ -580,7 +600,12 @@ def load_checker_batches() -> dict:
     if isinstance(ih, dict) and ih.get("checker_prompt_template_sha256") != plan.get("checker_prompt_template_sha256"):
         problems.append("checker_prompt_template_sha256 differs from input_hashes.checker_prompt_template_sha256")
     import build_checker_set  # the scripts import each other by bare name; build_checker_set imports this module
+    import rederive  # likewise: rederive imports this module and build_checker_set
 
+    # the rows the bundle derives from must be the recorded generation journal's: a row whose text was edited under
+    # intact ids, attempts and prompt hashes passed generation_problems, and checker work was emitted for data absent
+    # from the journal, caught only at the summary (Codex review of PR #52)
+    problems += rederive.generation_rederive_problems(load_calls())
     all_rows_path = PILOT / "generated" / "all_rows.jsonl"
     template = (PILOT / "prompts" / "checker_prompt.txt").read_text(encoding="utf-8")
     blind, truth, expected = build_checker_set.derive(read_jsonl(all_rows_path), load_seeds(), template,
@@ -601,7 +626,8 @@ def load_checker_batches() -> dict:
     if read_jsonl(PILOT / "checker_key.jsonl") != truth:
         problems.append("checker_key.jsonl is not the truth key the rows, seed file and checker template on disk derive")
     if problems:
-        raise SystemExit("checker_batches.json: refusing an inconsistent plan; re-run build_checker_set.py:\n  "
+        raise SystemExit("checker_batches.json: refusing a plan that is not what the recorded generation and the inputs "
+                         "on disk derive; re-run parse_generation.py --replace and build_checker_set.py:\n  "
                          + "\n  ".join(problems[:5]))
     return plan
 

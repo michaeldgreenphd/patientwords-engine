@@ -61,6 +61,7 @@ from common import (
     SWAP_TYPES,
     checked_problems,
     generation_problems,
+    legacy_protocol_problems,
     load_calls,
     load_checker_batches,
     read_csv,
@@ -121,7 +122,9 @@ def run_problems(model: dict, runs: dict, protocol_sha256: str) -> list[str]:
     """Why the run records do not vouch for the recorded results (Codex review of PR #52): a stage not recorded; a
     record whose journal_sha256 is not the source_sha256 of the stage's result file (the record describes another
     run); a copied journal under workflows/ missing or not the recorded one; a result file whose protocol_sha256
-    (from the agent labels) is not the frozen protocol, unless it is one of the recorded run's legacy results; a
+    (from the agent labels) is not the frozen protocol, unless it is one of the recorded run's legacy results, which
+    are sealed only under the protocol they ran under (LEGACY_PROTOCOL_SHA256, so a protocol rewritten and
+    re-baselined with --reset cannot be finalized over them); a
     record from before the transcripts were matched to the journal's agents, or one in which a started agent's
     transcript reports no model id; or a reported model id that is not the model the model facts declare
     (MODEL_KEYS, a bracketed suffix disregarded). Empty when both records bind and agree."""
@@ -161,7 +164,9 @@ def run_problems(model: dict, runs: dict, protocol_sha256: str) -> list[str]:
             if rendered is not None and script.read_text(encoding="utf-8") != rendered:
                 problems.append(f"workflows/{stage}.workflow.js is not what the current code renders from the plan "
                                 f"and the frozen protocol")
-        if not (stamp == protocol_sha256 or (stamp is None and source in LEGACY_UNBOUND_SOURCES)):
+        if stamp is None and source in LEGACY_UNBOUND_SOURCES:  # the recorded run's: only under its own protocol
+            problems += [f"{result_path.name}: {p}" for p in legacy_protocol_problems(result, protocol_sha256)]
+        elif stamp != protocol_sha256:
             problems.append(f"{result_path.name}: protocol_sha256 {str(stamp)[:12]!r} is not the frozen protocol "
                             f"({protocol_sha256[:12]}); the responses were produced under another protocol")
         seen = (rec.get("model_evidence") or {}).get("model_strings_in_transcripts") or {}

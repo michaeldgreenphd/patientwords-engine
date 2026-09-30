@@ -172,9 +172,12 @@ def dry_run() -> None:
         proto = common.sha256_file(tmp / "PROTOCOL.md")  # the frozen protocol's hash, as the agent labels carry it
         env = {**os.environ, "PILOT_DIR": str(tmp)}
 
+        last_err = [""]  # the last script's stderr, so a check can name the refusal that fired
+
         def run(script: str, *args: str, expect_failure: bool = False) -> str:
             out = subprocess.run([sys.executable, str(HERE / script), *args], env=env, capture_output=True, text=True,
                                  check=False)
+            last_err[0] = out.stderr
             check((out.returncode != 0) if expect_failure else (out.returncode == 0),
                   f"{script} {' '.join(args)}{' (expected to refuse)' if expect_failure else ''}\n{out.stdout}{out.stderr}")
             return out.stdout
@@ -265,10 +268,18 @@ def dry_run() -> None:
         fab_bytes = (tmp / "workflow_generation_result.json").read_bytes()
         run("extract_workflow_journal.py", "generation", str(HERE.parent / "workflows" / "generation.journal.jsonl"), "--replace")
         run("parse_generation.py", str(tmp / "workflow_generation_result.json"), "--replace", expect_failure=True)  # no hashes
+        # ... and only under the protocol the recorded run ran under: the dry run's protocol is another, so --unbound
+        # is refused here too, and accepted once that protocol is on disk (Codex on PR #52)
+        run("parse_generation.py", str(tmp / "workflow_generation_result.json"), "--replace", "--unbound", expect_failure=True)
+        check(n_outputs() == before and "was produced under protocol" in last_err[0],
+              "the recorded run's result is refused with --unbound under a protocol it did not run under")
+        dry_proto_bytes = (tmp / "PROTOCOL.md").read_bytes()
+        (tmp / "PROTOCOL.md").write_bytes((HERE.parent / "PROTOCOL.md").read_bytes())
         run("parse_generation.py", str(tmp / "workflow_generation_result.json"), "--replace", "--unbound")
+        (tmp / "PROTOCOL.md").write_bytes(dry_proto_bytes)
         log = common.read_jsonl(tmp / "call_log.jsonl")
         check(all(e["plan_binding"].startswith("none") for e in log),
-              "the recorded run's journal parses only with --unbound, and the call log says so in every entry")
+              "the recorded run's journal parses only with --unbound and under its own protocol, and the call log says so")
         (tmp / "workflow_generation_result.json").write_bytes(fab_bytes)
         run("parse_generation.py", str(tmp / "workflow_generation_result.json"), "--replace")
         check(all(e["plan_binding"] == "prompt_sha256" for e in common.read_jsonl(tmp / "call_log.jsonl")),
@@ -286,6 +297,35 @@ def dry_run() -> None:
         cp.write_text(cp_text, encoding="utf-8")
         check(not (tmp / "checker_batches.json").exists(), "a checker template without its marker is refused before batching")
         run("build_checker_set.py")
+        # a row whose text was edited under intact ids, attempts and prompt hashes passes the structural check; the
+        # builder derives the generation again from the copied journal and refuses, and so does every reader of a
+        # checker plan built over such rows, before any checker work is emitted (Codex on PR #52)
+        cb_files = ("checker_batches.json", "checker_set.jsonl", "checker_key.jsonl")
+        cb_bytes = {n: (tmp / n).read_bytes() for n in cb_files}
+        rows_bytes = (tmp / "generated" / "all_rows.jsonl").read_bytes()
+        edited_rows = common.read_jsonl(tmp / "generated" / "all_rows.jsonl")
+        edited_rows[0]["clinical_term"] += " edited after the run"
+        common.write_jsonl(tmp / "generated" / "all_rows.jsonl", edited_rows)
+        run("build_checker_set.py", expect_failure=True)
+        check(all((tmp / n).read_bytes() == cb_bytes[n] for n in cb_files)
+              and "all_rows.jsonl is not what the current code derives" in last_err[0],
+              "a row edited under intact ids and hashes is refused by the checker-set builder, which writes nothing")
+        # the plan derived by hand from the edited rows (build_checker_set.derive is pure) is self-consistent, and
+        # every reader of the checker plan still refuses it, since the rows are not the recorded journal's
+        bcs = importlib.import_module("build_checker_set")
+        blind_e, truth_e, plan_e = bcs.derive(edited_rows, seeds_doc["seeds"], cp_text, common.sha256_file(tmp / "seeds.json"),
+                                              common.sha256_file(tmp / "generated" / "all_rows.jsonl"))
+        common.write_jsonl(tmp / "checker_set.jsonl", blind_e)
+        common.write_jsonl(tmp / "checker_key.jsonl", truth_e)
+        (tmp / "checker_batches.json").write_text(json.dumps(plan_e, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        run("make_workflow_scripts.py", "checker", expect_failure=True)
+        check("all_rows.jsonl is not what the current code derives" in last_err[0], "the workflow-script writer names the rows")
+        run("build_api_requests.py", "checker", "--model", "example-model", expect_failure=True)
+        check(not (tmp / "workflows" / "checker.workflow.js").exists() and not (tmp / "api_requests_checker.json").exists(),
+              "a checker plan built over rows that are not the recorded journal's is refused before any checker work is emitted")
+        (tmp / "generated" / "all_rows.jsonl").write_bytes(rows_bytes)
+        for n in cb_files:
+            (tmp / n).write_bytes(cb_bytes[n])
         # the request builder writes one body per call with the recorded prompt hash, and sends nothing
         run("build_api_requests.py", "generation", "--model", "example-model")
         reqs = json.loads((tmp / "api_requests_generation.json").read_text())["requests"]
@@ -772,6 +812,28 @@ def dry_run() -> None:
         m_proto = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
         check(m_proto["protocol_unchanged"] is True and isinstance(m_proto["finalized_utc"], str),
               "a changed protocol refuses every write and the stamped results; restored, the finalization stands")
+        # the recorded run's two legacy results (no protocol stamp) are sealed only under the protocol they ran under:
+        # a protocol rewritten and re-baselined with --reset cannot be finalized over them (Codex on PR #52)
+        wm = importlib.import_module("write_manifest")
+        legacy_gen = next(k for k, v in common.LEGACY_UNBOUND_SOURCES.items() if v.startswith("generation"))
+        legacy_result = {"source_sha256": legacy_gen, "protocol_sha256": None, "calls": []}
+        check(common.legacy_protocol_problems(legacy_result, "1" * 64)
+              and not common.legacy_protocol_problems(legacy_result, common.LEGACY_PROTOCOL_SHA256)
+              and not common.legacy_protocol_problems({"source_sha256": legacy_gen, "protocol_sha256": proto}, "1" * 64)
+              and not common.legacy_protocol_problems({"source_sha256": "0" * 64, "protocol_sha256": None}, "1" * 64),
+              "a legacy result is attributed to the protocol it ran under and to no other; stamped or foreign results are not its concern")
+        result_path = tmp / "workflow_generation_result.json"
+        result_bytes_legacy = result_path.read_bytes()
+        result_path.write_text(json.dumps(legacy_result), encoding="utf-8")
+        wm.PILOT = tmp  # run_problems reads the result files and the copies under the directory the name binds to
+        runs_now = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))["runs"]
+        under_reset = wm.run_problems(model_doc, runs_now, "1" * 64)
+        under_own = wm.run_problems(model_doc, runs_now, common.LEGACY_PROTOCOL_SHA256)
+        wm.PILOT = common.PILOT
+        result_path.write_bytes(result_bytes_legacy)
+        check(any("was produced under protocol" in p for p in under_reset)
+              and not any("was produced under protocol" in p for p in under_own),
+              "finalize refuses a legacy result under a reset protocol and accepts it under the one it ran under")
         # manifest_model.json is frozen from the first manifest that recorded its hash: an edit after the run is
         # refused without --reset, and --reset clears the run records, so finalize needs them recorded again
         # (Codex on PR #52)
@@ -888,6 +950,9 @@ def dry_run() -> None:
                               {"type": "result", "key": "k8", "agentId": "a8", "result": "{}"}]
         (tmp / "journal_conflict.jsonl").write_text("".join(json.dumps(j) + "\n" for j in conflict), encoding="utf-8")
         run("extract_workflow_journal.py", "generation", str(tmp / "journal_conflict.jsonl"), "--replace", expect_failure=True)
+        # the run's own result back in place: every reader of the checker plan derives the generation from the copied
+        # journal first, so the checker extraction below needs the result the copy extracts to (Codex on PR #52)
+        (tmp / "workflow_generation_result.json").write_bytes(result_backup)
         # a checker result that is not an object (a non-JSON string, a number) is kept verbatim with its type and
         # counted by the extractor, and the parser logs it as a malformed return, not a null one (Codex on PR #52)
         cb = json.loads((tmp / "checker_batches.json").read_text(encoding="utf-8"))["batches"]
@@ -920,7 +985,6 @@ def dry_run() -> None:
         (tmp / "workflow_checker_result.json").write_bytes(chk_backup)
         (tmp / "checked.jsonl").write_bytes(checked_backup)
         (tmp / "checker_log.jsonl").write_bytes(chklog_backup)
-        (tmp / "workflow_generation_result.json").write_bytes(result_backup)
         # a rerun whose inputs changed must not inherit the previous manifest's metadata (Codex on PR #52), and a
         # plan that was not re-rendered after the inputs changed is refused even with --reset
         seeds_doc["seeds"][0]["clinical_term"] = "changed for the rerun check"
