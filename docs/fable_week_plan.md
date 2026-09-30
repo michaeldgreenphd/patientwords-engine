@@ -1,3 +1,5 @@
+> **Superseded by** `docs/model_matrix.md` (the model set) and `docs/operators_handbook.md` (current state). This is the plan for the week of 2026-07-09 to 2026-07-19. Kept at this path because `tests/test_logits_registry.py` and other docs cite it.
+
 # Fable week plan — owner-approved 2026-07-09 (FABLE PLAN paste)
 
 Owner decisions: A1 nightly · A2 approve · A3 approve · A4 keep ops light ·

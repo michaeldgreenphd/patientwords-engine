@@ -1,3 +1,5 @@
+> **Superseded by** later analyses: the counts below are from 2026-07-09, before the measurement axes were complete, and current per-model statistics are in `paired_stats_rigor.json`. Kept at this path because dated decks and briefs cite it.
+
 # Skeptic's read + functionality audit — 2026-07-09 (autonomous batch 1)
 
 Two adversarial agents audited every claim/number on the 10 site pages and
