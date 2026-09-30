@@ -1,12 +1,12 @@
 ---
 name: pr-review-response
-description: Work the Codex and Copilot review threads on a pull request in either patientwords repo — use for "handle the review", "what did the bots say", "address the PR feedback", after opening a PR, or on any review-comment wake.
+description: Work the Codex review threads on a pull request in either patientwords repo — use for "handle the review", "what did the bots say", "address the PR feedback", after opening a PR, or on any review-comment wake.
 ---
 
 # Work a pull request's review threads
 
-Codex and Copilot both review every pull request in `patientwords` and
-`patientwords-engine`. Their findings are **hypotheses, not defects**. The first
+Codex reviews every pull request in `patientwords` and
+`patientwords-engine`. Its findings are **hypotheses, not defects**. The first
 reviewed pull request (`patientwords#4`, 2026-09-04) produced five findings across
 two rounds on a two-file documentation change: four were real, one was a misreading. Plan for that
 rate. Both failure modes cost — applying a wrong finding puts a defect into the
@@ -70,9 +70,8 @@ workflow item 4) and act on its answer; then reply on the thread with the dispos
 ## 5 · Ask for the re-review — a push does not trigger one
 
 **Codex reviews on pull-request open, draft-ready, and an `@codex review` comment.
-Nothing else.** A push, however large, does not re-trigger it. Copilot likewise
-needs `request_copilot_review`. So after pushing review fixes, the new commits
-are unreviewed until someone asks, and a pull request can sit looking reviewed
+Nothing else.** A push, however large, does not re-trigger it. So after pushing
+review fixes, the new commits are unreviewed until someone asks, and a pull request can sit looking reviewed
 while its largest commit has never been read. (Observed on `patientwords#4`,
 2026-09-04: the reviewed commit was the original two-file version; the fixes and
 ~120 lines of new rules after it had no automatic trigger.)
@@ -82,7 +81,6 @@ After any push that answers a review:
 - comment `@codex review` on the pull request, naming which commits are new and
   what in them is worth checking — a specific pointer gets a better read than a
   bare re-request;
-- call `request_copilot_review` for the other one;
 - prefer claims a reviewer can check against the tree. Assertions about the
   repository ("this repo has no Python", "this file is the complete set") are
   where a fresh read pays; on 2026-09-04 pointing at three such claims returned
