@@ -140,8 +140,8 @@ holdout-row text.
 **Defect.** The four exporters that published per-pair aggregates
 (`export_tag_mass.py`, `export_jlens_depth.py`, `export_jlens_loglens.py`,
 `export_jlens_transport.py`) each carried their own copy of the seal
-(`_sealed`), and `export_jlens_depth.load_summary` and
-`translate_corpus.collect_corpus` a Tier-B-only check. None applied Amendment 3:
+(`_sealed`), and `export_jlens_depth.load_summary`, `jlens_insights.collect`
+and `translate_corpus.collect_corpus` a Tier-B-only check. None applied Amendment 3:
 each sealed a row only when its batch was a `pairs_<STAMP>` Tier B batch and the
 batch file's accepted prompt hashed holdout, so rows on alias and re-run stems
 (`pairs_<STAMP>_txopus`, `_txplacebo`, `repeatability_r*`) whose clinical prompt
@@ -151,7 +151,10 @@ conservative union). The copies also read the dashboard, and three of them the
 batch files, relative to the working directory, and treated an unreadable file
 as "not sealed": run from outside the engine root, `export_tag_mass.collect`
 admitted 2,919 clinical / 2,504 patient rows against 2,723 / 2,338 from the
-root, with no warning.
+root, with no warning. `jlens_insights.collect` applied the trace-time clause,
+but on Tier B stems only, and read both files relative to the working directory:
+run from outside the root it sealed nothing (2,317 census pairs and
+`holdout_excluded` 0, against 2,133 and 190 from the root).
 
 **Affected rows.** `data/tag_mass.json` (engine and site copies, the methods
 page's Step-3 tagging bars; n 2,693 clinical / 2,308 patient as published
@@ -168,7 +171,10 @@ phrasing. The J-lens exporters admitted 12 such rows (all `_txopus` /
 `_txplacebo`), but no published J-lens number included them: the depth
 blocks, the loglens agreement (its join runs on the logit-lens rows) and the
 transport census (one pinned batch) do not read those stems, and each payload
-rebuilds identically under the fixed seal. `translate_corpus` would have sent
+rebuilds identically under the fixed seal. The formation census
+(`jlens_insights.json`) held none: no row it reads outside Tier B carries a
+registered phrase (the arm stems, whose rows do, it excludes as rewrites), and
+it rebuilds byte-identically under the fixed seal (2,133 pairs, 190 sealed). `translate_corpus` would have sent
 none: no Tier A pair's accepted prompt is a registered phrase. The 2026-09-23
 entry's closing sentence ("no interim aggregate included a holdout row") was
 therefore wrong about this file.
@@ -178,7 +184,9 @@ therefore wrong about this file.
 the repository root, and raises `SealError` when the rule cannot be evaluated
 (no Tier B start stamp, an empty phrase set, an unreadable Tier B batch file,
 a Tier B row whose batch has no file or whose index is outside it); each
-exporter then writes nothing and exits 2. All six call sites use it. The
+exporter then writes nothing and exits 2 with one shared `CONFIG ERROR` line
+that says it is not a refusal, and the publish skill reads exit 2 from any
+exporter in its chain as a stop. All seven call sites use it. The
 engine's `data/tag_mass.json` is regenerated: n 2,693 / 2,308 becomes
 2,705 / 2,327 (the seal removes 18 / 11 rows; 30 / 30 rows traced since
 2026-08-29 are added); the clinical shares are unchanged and the patient
