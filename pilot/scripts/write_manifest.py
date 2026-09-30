@@ -41,8 +41,9 @@ that belongs to no planned call, a checked.jsonl that is the parse of the checke
 samples it, a summary.json whose recorded input and script hashes match the files and code on disk (with
 summary.md its recorded rendering), and every derived file equal to what the current code derives again from the two
 recorded result files. A plan-time
-rewrite of a finalized manifest keeps finalized_utc and output_hashes only while every hashed output and every
-script hash is unchanged; otherwise both are cleared and the message says to finalize again (Codex review of PR #52).
+rewrite of a finalized manifest keeps finalized_utc and output_hashes only while every hashed output, every
+script hash and the interpreter version are unchanged; otherwise both are cleared and the message says to finalize
+again (Codex review of PR #52).
 """
 from __future__ import annotations
 
@@ -71,6 +72,7 @@ from common import (
     SWAP_TYPES,
     checked_problems,
     generation_problems,
+    legacy_plan_problems,
     legacy_protocol_problems,
     load_calls,
     load_checker_batches,
@@ -165,13 +167,15 @@ def model_id(s: str) -> str:
     return re.sub(r"\[[^\]]*\]$", "", s.strip())
 
 
-def run_problems(model: dict, runs: dict, protocol_sha256: str) -> list[str]:
+def run_problems(model: dict, runs: dict, protocol_sha256: str, plans: dict[str, dict[str, str]]) -> list[str]:
     """Why the run records do not vouch for the recorded results (Codex review of PR #52): a stage not recorded; a
     record whose journal_sha256 is not the source_sha256 of the stage's result file (the record describes another
     run); a copied journal under workflows/ missing or not the recorded one; a result file whose protocol_sha256
     (from the agent labels) is not the frozen protocol, unless it is one of the recorded run's legacy results, which
     are sealed only under the protocol they ran under (LEGACY_PROTOCOL_SHA256, so a protocol rewritten and
-    re-baselined with --reset cannot be finalized over them); a
+    re-baselined with --reset cannot be finalized over them) and only against the plan they answered
+    (LEGACY_PLAN_FINGERPRINTS against `plans`, the id-to-prompt-hash map of each stage's plan on disk, so a re-plan
+    under changed inputs cannot be sealed over them either); a
     record from before the transcripts were matched to the journal's agents, or one in which a started agent's
     transcript reports no model id; or a reported model id that is not the model the model facts declare
     (MODEL_KEYS, a bracketed suffix disregarded). Empty when both records bind and agree."""
@@ -213,6 +217,8 @@ def run_problems(model: dict, runs: dict, protocol_sha256: str) -> list[str]:
                                 f"and the frozen protocol")
         if stamp is None and source in LEGACY_UNBOUND_SOURCES:  # the recorded run's: only under its own protocol
             problems += [f"{result_path.name}: {p}" for p in legacy_protocol_problems(result, protocol_sha256)]
+            # ... and only against the plan it answered (Codex review of PR #52)
+            problems += [f"{result_path.name}: {p}" for p in legacy_plan_problems(result, plans.get(stage, {}))]
         elif stamp != protocol_sha256:
             problems.append(f"{result_path.name}: protocol_sha256 {str(stamp)[:12]!r} is not the frozen protocol "
                             f"({protocol_sha256[:12]}); the responses were produced under another protocol")
@@ -386,7 +392,13 @@ def main(finalize: bool, reset: bool = False, refactor: str | None = None) -> No
                         if base.get("script_hashes", {}).get(n) != scripts_now.get(n)]
                        + [n for n in sorted(set(base.get("workflow_script_hashes", {})) | set(workflows_now))
                           if base.get("workflow_script_hashes", {}).get(n) != workflows_now.get(n)]) if carried else []
-    keep_final = bool(carried) and not changed_outputs and not changed_scripts
+    # the interpreter is part of what the sealed outputs stand under (seeded sampling can differ between releases):
+    # a rewrite under another Python clears the finalization instead of attributing the outputs to an interpreter
+    # that did not produce them (Codex review of PR #52)
+    runtime_now = platform.python_version()
+    changed_runtime = ([f"python {base.get('python')} then, {runtime_now} now"]
+                       if carried and base.get("python") not in (None, runtime_now) else [])
+    keep_final = bool(carried) and not changed_outputs and not changed_scripts and not changed_runtime
     m = {
         "pilot": "stimulus-generation measurement-validity pilot",
         "date_utc": base.get("date_utc", now[:10]),
@@ -395,7 +407,7 @@ def main(finalize: bool, reset: bool = False, refactor: str | None = None) -> No
         "metadata_reset_utc": now if (reset and old) else base.get("metadata_reset_utc"),
         "model": model,
         "manifest_model_sha256": current["manifest_model_sha256"],
-        "python": platform.python_version(),
+        "python": runtime_now,  # the interpreter this write, and on finalize the sealing, ran under
         "seeds": {"master_seed": MASTER_SEED, "exemplar_sampling": "random.Random(20260929), one draw of K per cell in cell order",
                   "named_streams": {p: f"random.Random('{MASTER_SEED}:{p}')" for p in ("broken", "checker_shuffle", "review", "bootstrap")}},
         "design": {"specialties": SPECIALTIES, "swap_types": SWAP_TYPES, "arms": ARMS, "rows_per_call": ROWS_PER_CALL,
@@ -431,7 +443,9 @@ def main(finalize: bool, reset: bool = False, refactor: str | None = None) -> No
         # the run records carry the model evidence read from the transcripts and the journal each result came
         # from; without both, bound to the result files and agreeing with the declared model, the model facts
         # above would stand alone (Codex review of PR #52); a --reset clears them so they are recorded again
-        problems = run_problems(model, m["runs"], protocol_now)
+        plans = {"generation": {c["id"]: c["prompt_sha256"] for c in calls["calls"]},
+                 "checker": {b["batch_id"]: b["prompt_sha256"] for b in cbdata["batches"]} if cbdata else {}}
+        problems = run_problems(model, m["runs"], protocol_now, plans)
         if problems:
             raise SystemExit("write_manifest: cannot finalize, the run records do not vouch for the recorded "
                              "results:\n  " + "\n  ".join(problems[:5]))
@@ -439,7 +453,7 @@ def main(finalize: bool, reset: bool = False, refactor: str | None = None) -> No
     path.write_text(json.dumps(m, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     cleared = ([f"{len(changed_outputs)} hashed output(s) changed or missing (first: {changed_outputs[0]})"]
                if changed_outputs else []) + ([f"{len(changed_scripts)} script(s) changed (first: {changed_scripts[0]})"]
-                                             if changed_scripts else [])
+                                             if changed_scripts else []) + changed_runtime
     note = f"; finalization cleared: {' and '.join(cleared)} since finalize, re-run write_manifest.py finalize" if cleared else ""
     print(f"manifest.json written ({'finalized' if finalize else 'planned'}"
           f"{', metadata reset' if (reset and old) else ''}{', input refactor recorded' if refactor_record else ''})"

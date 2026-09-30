@@ -49,7 +49,7 @@ def validate_result(result: object, planned: dict[str, str], unbound: bool = Fal
     if not isinstance(result, dict) or not isinstance(result.get("batches"), list):
         raise SystemExit("parse_checker: the result must be an object with a 'batches' list; nothing was written")
     by_id: dict[str, dict] = {}
-    problems = result_binding_problems(result, unbound)
+    problems = result_binding_problems(result, unbound, planned)
     for i, b in enumerate(result["batches"]):
         if not isinstance(b, dict) or not isinstance(b.get("batch_id"), str):
             problems.append(f"batches[{i}]: not an object with a string batch_id")
@@ -60,11 +60,13 @@ def validate_result(result: object, planned: dict[str, str], unbound: bool = Fal
             problems.append(f"batches[{i}]: batch_id {bid!r} is not a planned batch")
         elif bid in by_id:
             problems.append(f"batches[{i}]: batch_id {bid!r} appears more than once")
-        elif not isinstance(attempts, list) or not all(
-                isinstance(a, dict) and isinstance(a.get("attempt"), int)
+        elif not isinstance(attempts, list) or not attempts or not all(
+                isinstance(a, dict) and isinstance(a.get("attempt"), int) and not isinstance(a.get("attempt"), bool)
                 and (a.get("result") is None or isinstance(a.get("result"), dict)) for a in attempts):
-            problems.append(f"batches[{i}] ({bid}): attempts must be a list of objects with an integer attempt and "
-                            f"an object or null result")
+            # an empty list is not "no response" (an absent batch is), and a boolean is not an attempt number
+            # (Codex review of PR #52)
+            problems.append(f"batches[{i}] ({bid}): attempts must be a non-empty list of objects with an integer "
+                            f"attempt (not a boolean) and an object or null result")
         elif [a["attempt"] for a in attempts] != list(range(1, len(attempts) + 1)) or len(attempts) > MAX_ATTEMPTS:
             problems.append(f"batches[{i}] ({bid}): attempts must be numbered 1..n in order with n <= {MAX_ATTEMPTS}; "
                             f"got {[a['attempt'] for a in attempts]}")

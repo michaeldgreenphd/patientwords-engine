@@ -53,7 +53,7 @@ def validate_result(result: object, planned: dict[str, dict], unbound: bool = Fa
     if not isinstance(result, dict) or not isinstance(result.get("calls"), list):
         raise SystemExit("parse_generation: the result must be an object with a 'calls' list; nothing on disk was changed")
     by_id: dict[str, dict] = {}
-    problems = result_binding_problems(result, unbound)
+    problems = result_binding_problems(result, unbound, {k: v["prompt_sha256"] for k, v in planned.items()})
     for i, c in enumerate(result["calls"]):
         if not isinstance(c, dict) or not isinstance(c.get("id"), str):
             problems.append(f"calls[{i}]: not an object with a string id")
@@ -64,12 +64,14 @@ def validate_result(result: object, planned: dict[str, dict], unbound: bool = Fa
             problems.append(f"calls[{i}]: id {cid!r} is not a planned call")
         elif cid in by_id:
             problems.append(f"calls[{i}]: id {cid!r} appears more than once")
-        elif not isinstance(attempts, list) or not all(
-                isinstance(a, dict) and isinstance(a.get("attempt"), int) and (a.get("raw") is None
-                                                                                or isinstance(a.get("raw"), str))
+        elif not isinstance(attempts, list) or not attempts or not all(
+                isinstance(a, dict) and isinstance(a.get("attempt"), int) and not isinstance(a.get("attempt"), bool)
+                and (a.get("raw") is None or isinstance(a.get("raw"), str))
                 for a in attempts):
-            problems.append(f"calls[{i}] ({cid}): attempts must be a list of objects with an integer attempt and a "
-                            f"string or null raw")
+            # an empty list is not "no response" (an absent call is), and a boolean is not an attempt number
+            # although Python counts it as an int (Codex review of PR #52)
+            problems.append(f"calls[{i}] ({cid}): attempts must be a non-empty list of objects with an integer attempt "
+                            f"(not a boolean) and a string or null raw")
         elif [a["attempt"] for a in attempts] != list(range(1, len(attempts) + 1)) or len(attempts) > MAX_ATTEMPTS:
             problems.append(f"calls[{i}] ({cid}): attempts must be numbered 1..n in order with n <= {MAX_ATTEMPTS}; "
                             f"got {[a['attempt'] for a in attempts]}")

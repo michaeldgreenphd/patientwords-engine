@@ -12,7 +12,6 @@ from collections import defaultdict
 from common import (
     CHECKER_BATCH,
     CHECKER_MARKERS,
-    MARKER_RE,
     N_BROKEN,
     N_KNOWN_GOOD,
     PILOT,
@@ -25,6 +24,7 @@ from common import (
     rng,
     sha256_file,
     sha256_text,
+    stray_marker,
     surface_key,
     template_problems,
     write_jsonl,
@@ -110,9 +110,9 @@ def derive(all_rows: list[dict], seeds: list[dict], template: str, seeds_sha: st
     for b in range(0, len(blind), CHECKER_BATCH):
         chunk = blind[b:b + CHECKER_BATCH]
         prompt = template.replace("{{ITEMS}}", "\n".join(json.dumps(x, ensure_ascii=False) for x in chunk))
-        if MARKER_RE.search(prompt):  # a marker carried in by an item's own text
-            raise SystemExit(f"a rendered checker prompt still carries a marker {MARKER_RE.search(prompt).group(0)}; "
-                             f"refusing to batch")
+        stray = stray_marker(prompt)  # a marker or a brace carried in by an item's own text
+        if stray is not None:
+            raise SystemExit(f"a rendered checker prompt still carries a marker or stray braces {stray!r}; refusing to batch")
         batches.append({"batch_id": f"batch{len(batches) + 1:02d}", "item_ids": [x["id"] for x in chunk],
                         "prompt_sha256": sha256_text(prompt), "prompt": prompt})
     out = {"checker_prompt_template_sha256": sha256_text(template),

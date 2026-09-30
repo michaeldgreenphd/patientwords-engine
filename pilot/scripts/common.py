@@ -45,6 +45,16 @@ LEGACY_UNBOUND_SOURCES = {
 # sealed, only while the frozen protocol is this one: a protocol rewritten after the run and re-baselined with
 # --reset could otherwise be finalized over the recorded outputs as "protocol_unchanged" (Codex review of PR #52).
 LEGACY_PROTOCOL_SHA256 = "8dd838105e94a03190e81c841474479c8a27517553bdeabf9678f3550da5d969"
+# the plans those two journals answered: the recorded run's per-call and per-batch prompt hashes, fingerprinted by
+# plan_fingerprint (one hash over the sorted (id, prompt_sha256) pairs). A legacy result is parsed, and sealed, only
+# against a plan with this fingerprint: a re-plan under changed inputs, --reset and a re-recording of the old
+# transcripts could otherwise seal the responses under prompts they did not answer (Codex review of PR #52).
+LEGACY_PLAN_FINGERPRINTS = {
+    "faadf0993b9f9df16833db11e08c0656def1baa3719eaede59162905ec69c621":
+        "86d00bb143d9448286540077e6e2e42988e798fc420965d7c2354fbb979e96ab",  # 18 generation calls
+    "f5a81e6edf37cb8a9fc3825808275fd50ac9d41311333858c53a90cfc183d3f4":
+        "6c20906c249a597a12cde35a5893008407d4e4abbacee386d98f412065dda6a0",  # 11 checker batches
+}
 CHECKER_BATCH = 30
 N_BROKEN = 20
 N_KNOWN_GOOD = 10
@@ -356,6 +366,28 @@ def resolve_input(path_str: str, script: str) -> Path:
     raise SystemExit(f"{script}: {path_str} not found in the current directory or under {PILOT}")
 
 
+def plan_fingerprint(prompt_hashes: dict[str, str]) -> str:
+    """One hash over a plan's (id, prompt_sha256) pairs sorted by id: the generation calls or the checker batches."""
+    return sha256_text(json.dumps(sorted(prompt_hashes.items())))
+
+
+def legacy_plan_problems(result: dict, planned_hashes: dict[str, str]) -> list[str]:
+    """Why one of the recorded run's legacy results (no protocol stamp, `source_sha256` in LEGACY_UNBOUND_SOURCES)
+    may not be parsed against, or sealed under, the plan whose prompt hashes are `planned_hashes`: it answered the
+    plan LEGACY_PLAN_FINGERPRINTS names and no other. Empty for a result that is not legacy, and for that plan. The
+    parsers ask about the plan on disk; write_manifest.py finalize asks about the plan it is sealing (Codex review
+    of PR #52)."""
+    source = result.get("source_sha256")
+    if result.get("protocol_sha256") is not None or source not in LEGACY_UNBOUND_SOURCES:
+        return []
+    want, got = LEGACY_PLAN_FINGERPRINTS[source], plan_fingerprint(planned_hashes)
+    if got != want:
+        return [f"a legacy result of the recorded run ({LEGACY_UNBOUND_SOURCES[source]}) answered the plan whose prompt "
+                f"hashes fingerprint {want[:12]}; the plan on disk fingerprints {got[:12]} ({len(planned_hashes)} "
+                f"prompts), so these responses did not answer these prompts"]
+    return []
+
+
 def legacy_protocol_problems(result: dict, protocol_sha256: str) -> list[str]:
     """Why one of the recorded run's legacy results (no protocol stamp, `source_sha256` in LEGACY_UNBOUND_SOURCES)
     may not be attributed to the protocol `protocol_sha256`: it ran under LEGACY_PROTOCOL_SHA256 and no other. Empty
@@ -371,13 +403,14 @@ def legacy_protocol_problems(result: dict, protocol_sha256: str) -> list[str]:
     return []
 
 
-def result_binding_problems(result: dict, unbound: bool) -> list[str]:
+def result_binding_problems(result: dict, unbound: bool, planned_hashes: dict[str, str]) -> list[str]:
     """Why a recorded result file may not be parsed against this run: bound, its `protocol_sha256` (copied by the
     extractor from the agent labels the workflow script wrote) must be the frozen protocol on disk, so responses
     produced under another protocol, or by a script written before the protocol label, are refused; --unbound is
     accepted only for the recorded run's two result files (LEGACY_UNBOUND_SOURCES by `source_sha256`), which carry
-    no hashes at all, and only under the protocol they ran under (LEGACY_PROTOCOL_SHA256) (Codex review of PR #52).
-    Empty when the result may be parsed."""
+    no hashes at all, and only under the protocol they ran under (LEGACY_PROTOCOL_SHA256) and against the plan they
+    answered (LEGACY_PLAN_FINGERPRINTS, compared with `planned_hashes`, the plan on disk's id-to-prompt-hash map)
+    (Codex review of PR #52). Empty when the result may be parsed."""
     stamp, source = result.get("protocol_sha256"), result.get("source_sha256")
     if unbound:
         if source not in LEGACY_UNBOUND_SOURCES:
@@ -386,7 +419,8 @@ def result_binding_problems(result: dict, unbound: bool) -> list[str]:
                     f"parses bound"]
         if stamp is not None:
             return ["a legacy result carries no protocol hash; this one does, so parse it bound"]
-        return legacy_protocol_problems(result, sha256_file(PILOT / "PROTOCOL.md"))
+        return (legacy_protocol_problems(result, sha256_file(PILOT / "PROTOCOL.md"))
+                + legacy_plan_problems(result, planned_hashes))
     current = sha256_file(PILOT / "PROTOCOL.md")
     if stamp != current:
         return [f"protocol_sha256 {str(stamp)[:12]!r} is not the frozen protocol on disk ({current[:12]}): the workflow "
@@ -499,9 +533,31 @@ def plan_hash_problems(items: list[dict], id_key: str) -> list[str]:
             for it in items if not isinstance(it.get("prompt"), str) or sha256_text(it["prompt"]) != it.get("prompt_sha256")]
 
 
-MARKER_RE = re.compile(r"\{\{[A-Z_]+\}\}")
+MARKER_RE = re.compile(r"\{\{.*?\}\}", re.DOTALL)  # any double-brace span, whatever it holds (Codex review of PR #52)
 GENERATION_MARKERS = ("{{SPECIALTY}}", "{{SWAP_TYPE}}", "{{SWAP_DEFINITION}}", "{{CONTROL_EXAMPLE}}", "{{EXEMPLARS}}")
 CHECKER_MARKERS = ("{{ITEMS}}",)
+
+
+def design_problems(specialties: list, swap_types: list) -> list[str]:
+    """Why the design factors cannot be planned from: a specialty or swap type that is not a non-empty string, a
+    repeated one, or two whose derived cell or call ids collide (cell_id replaces spaces with underscores, so two
+    swap types that differ only there would name one cell). Duplicate ids would launch duplicate agents that the
+    journal extractor refuses only after the run (Codex review of PR #52). Empty when every id is distinct."""
+    problems = []
+    for label, values in (("specialties", specialties), ("swap_types", swap_types)):
+        if not isinstance(values, list) or not values or not all(isinstance(v, str) and v.strip() for v in values):
+            problems.append(f"design.json: {label} must be a non-empty list of non-empty strings")
+        elif len(set(values)) != len(values):
+            problems.append(f"design.json: {label} repeat {sorted({v for v in values if values.count(v) > 1})}")
+    if problems:
+        return problems
+    ids = [cell_id(s, t) for s in specialties for t in swap_types]
+    if len(set(ids)) != len(ids):
+        problems.append(f"design.json: two cells derive one id {sorted({i for i in ids if ids.count(i) > 1})}")
+    cids = [call_id(a, s, t) for s in specialties for t in swap_types for a in ARMS]
+    if len(set(cids)) != len(cids):
+        problems.append(f"design.json: two calls derive one id {sorted({i for i in cids if cids.count(i) > 1})}")
+    return problems
 
 
 def template_problems(template: str, markers: tuple[str, ...], name: str) -> list[str]:
@@ -513,7 +569,19 @@ def template_problems(template: str, markers: tuple[str, ...], name: str) -> lis
     unknown = sorted(set(MARKER_RE.findall(template)) - set(markers))
     if unknown:
         problems.append(f"{name}: unknown marker(s) {unknown}")
+    rest = MARKER_RE.sub("", template)
+    if "{{" in rest or "}}" in rest:
+        problems.append(f"{name}: stray '{{{{' or '}}}}' outside the markers (a malformed marker would render as literal text)")
     return problems
+
+
+def stray_marker(text: str) -> str | None:
+    """The first marker or stray double brace a rendered prompt still carries, or None: nothing that could be read as
+    a placeholder may reach a subagent (Codex review of PR #52)."""
+    found = MARKER_RE.search(text)
+    if found:
+        return found.group(0)
+    return next((s for s in ("{{", "}}") if s in text), None)
 
 
 def render_exemplars(rows: list[dict]) -> str:
@@ -542,10 +610,11 @@ def derive_plan(seeds: list[dict], template: str, seeds_sha256: str, design_sha2
     """The generation plan, pure and deterministic: Arm A exemplars drawn once per cell from the named stream in
     cell order, Arm B the first K seeds in file order, every prompt rendered from the template and hashed. plan_calls.py
     writes exactly this; load_calls derives it again and refuses a calls.json that differs (Codex review of PR #52)."""
-    problems = template_problems(template, GENERATION_MARKERS, "prompts/generation_prompt.txt")
+    problems = design_problems(SPECIALTIES, SWAP_TYPES) + template_problems(template, GENERATION_MARKERS,
+                                                                             "prompts/generation_prompt.txt")
     if problems:
-        raise SystemExit("the generation prompt template cannot be rendered; fix it before planning:\n  "
-                         + "\n  ".join(problems))
+        raise SystemExit("the design or the generation prompt template cannot be planned from; fix it before planning:"
+                         "\n  " + "\n  ".join(problems))
     example = control_example_text(DESIGN)
     n = len(seeds)
     k = min(K_EXEMPLARS, n)
@@ -560,9 +629,10 @@ def derive_plan(seeds: list[dict], template: str, seeds_sha256: str, design_sha2
                       .replace("{{SWAP_DEFINITION}}", SWAP_DEFINITIONS[swap_type])
                       .replace("{{CONTROL_EXAMPLE}}", example)
                       .replace("{{EXEMPLARS}}", render_exemplars(exemplars)))
-            if MARKER_RE.search(prompt):  # a marker carried in by an exemplar's own text
-                raise SystemExit(f"a rendered prompt ({call_id(arm, specialty, swap_type)}) still carries a marker "
-                                 f"{MARKER_RE.search(prompt).group(0)}; refusing to plan")
+            stray = stray_marker(prompt)  # a marker or a brace carried in by an exemplar's or the example's own text
+            if stray is not None:
+                raise SystemExit(f"a rendered prompt ({call_id(arm, specialty, swap_type)}) still carries a marker or "
+                                 f"stray braces {stray!r}; refusing to plan")
             calls.append({"id": call_id(arm, specialty, swap_type), "arm": arm, "specialty": specialty,
                           "swap_type": swap_type, "cell": cell_id(specialty, swap_type), "k_exemplars": k,
                           "exemplar_ids": [e["id"] for e in exemplars], "prompt_sha256": sha256_text(prompt),

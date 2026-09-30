@@ -203,12 +203,16 @@ def dry_run() -> None:
         gp = tmp / "prompts" / "generation_prompt.txt"
         gp_text = gp.read_text(encoding="utf-8")
         for bad in (gp_text.replace("{{SPECIALTY}}", ""), gp_text + "\n{{SPECIALTY}}",
-                    gp_text.replace("{{SWAP_TYPE}}", "{{SWAP_TYPO}}"), gp_text.replace("{{CONTROL_EXAMPLE}}", "")):
+                    gp_text.replace("{{SWAP_TYPE}}", "{{SWAP_TYPO}}"), gp_text.replace("{{CONTROL_EXAMPLE}}", ""),
+                    # any other double-brace form, whatever it holds, and a stray brace pair (Codex on PR #52)
+                    gp_text + "\n{{ SPECIALTY }}", gp_text + "\n{{specialty}}", gp_text + "\n{{SPECIALTY2}}",
+                    gp_text.replace("{{SPECIALTY}}", "{{{SPECIALTY}}}"), gp_text + "\n}}"):
             gp.write_text(bad, encoding="utf-8")
             run("plan_calls.py", expect_failure=True)
         gp.write_text(gp_text, encoding="utf-8")
         check(not (tmp / "calls.json").exists(),
-              "a generation template missing, repeating or misspelling a marker is refused before planning")
+              "a generation template missing, repeating or misspelling a marker, or carrying any other double-brace form, "
+              "is refused before planning")
         # a design file whose control example is not a negative control (two concepts) cannot be planned from
         design_bytes0 = (tmp / "design.json").read_bytes()
         ddoc0 = json.loads(design_bytes0.decode("utf-8"))
@@ -217,6 +221,21 @@ def dry_run() -> None:
         run("plan_calls.py", expect_failure=True)
         (tmp / "design.json").write_bytes(design_bytes0)
         check(not (tmp / "calls.json").exists(), "a design file whose control example is not a negative control is refused")
+        # design factors that repeat, or two swap types that derive one cell id (differing only by a space), are refused
+        # before any plan, instead of launching duplicate agents (Codex on PR #52)
+        ddoc1 = json.loads(design_bytes0.decode("utf-8"))
+        ddoc1["specialties"].append(ddoc1["specialties"][0])
+        (tmp / "design.json").write_text(json.dumps(ddoc1, ensure_ascii=False), encoding="utf-8")
+        run("plan_calls.py", expect_failure=True)
+        check("repeat" in last_err[0], "a repeated design factor is refused before planning")
+        ddoc2 = json.loads(design_bytes0.decode("utf-8"))
+        spaced = next(t for t in ddoc2["swap_types"] if " " in t["name"])
+        ddoc2["swap_types"].append({"name": spaced["name"].replace(" ", "_"), "definition": "collides with " + spaced["name"]})
+        (tmp / "design.json").write_text(json.dumps(ddoc2, ensure_ascii=False), encoding="utf-8")
+        run("plan_calls.py", expect_failure=True)
+        check("derive one id" in last_err[0] and not (tmp / "calls.json").exists(),
+              "two swap types that derive one cell id are refused before planning")
+        (tmp / "design.json").write_bytes(design_bytes0)
         run("plan_calls.py")
         # a prompt edited together with its stored hash is self-consistent but not the plan the inputs derive:
         # every reader of calls.json derives the plan again and refuses it (Codex on PR #52)
@@ -277,6 +296,9 @@ def dry_run() -> None:
                            ("repeated attempt number", with_attempts([1, 1])),
                            ("reversed attempt numbers", with_attempts([2, 1])),
                            ("three attempts", with_attempts([1, 2, 3])),
+                           ("no attempts", with_attempts([])),  # an empty list is not an absent call (Codex on PR #52)
+                           ("boolean attempt number", {"calls": [dict(first, attempts=[dict(first["attempts"][0], attempt=True)])]
+                                                       + gen["calls"][1:]}),
                            ("retry after a valid first attempt", with_attempts([1, 2])),
                            ("foreign prompt hash", {"calls": [dict(first, prompt_sha256="0" * 64)] + gen["calls"][1:]}),
                            ("missing prompt hash", {"calls": [unhashed] + gen["calls"][1:]}),
@@ -305,6 +327,20 @@ def dry_run() -> None:
         log = common.read_jsonl(tmp / "call_log.jsonl")
         check(all(e["plan_binding"].startswith("none") for e in log),
               "the recorded run's journal parses only with --unbound and under its own protocol, and the call log says so")
+        # ... and only against the plan it answered: under a changed design the re-planned prompts differ, and the
+        # recorded result is refused with --unbound even under its own protocol (Codex on PR #52)
+        design_bytes_u = (tmp / "design.json").read_bytes()
+        ddoc_u = json.loads(design_bytes_u.decode("utf-8"))
+        ddoc_u["swap_types"][0]["definition"] += " (edited)"
+        (tmp / "design.json").write_text(json.dumps(ddoc_u, ensure_ascii=False), encoding="utf-8")
+        run("plan_calls.py")
+        (tmp / "PROTOCOL.md").write_bytes((HERE.parent / "PROTOCOL.md").read_bytes())
+        run("parse_generation.py", str(tmp / "workflow_generation_result.json"), "--replace", "--unbound", expect_failure=True)
+        check("did not answer these prompts" in last_err[0],
+              "the recorded run's result is refused with --unbound against a plan it did not answer")
+        (tmp / "PROTOCOL.md").write_bytes(dry_proto_bytes)
+        (tmp / "design.json").write_bytes(design_bytes_u)
+        run("plan_calls.py")
         (tmp / "workflow_generation_result.json").write_bytes(fab_bytes)
         run("parse_generation.py", str(tmp / "workflow_generation_result.json"), "--replace")
         check(all(e["plan_binding"] == "prompt_sha256" for e in common.read_jsonl(tmp / "call_log.jsonl")),
@@ -318,6 +354,8 @@ def dry_run() -> None:
         cp = tmp / "prompts" / "checker_prompt.txt"
         cp_text = cp.read_text(encoding="utf-8")
         cp.write_text(cp_text.replace("{{ITEMS}}", "{{ITEM}}"), encoding="utf-8")
+        run("build_checker_set.py", expect_failure=True)
+        cp.write_text(cp_text + "\n{{items}}", encoding="utf-8")  # any other double-brace form (Codex on PR #52)
         run("build_checker_set.py", expect_failure=True)
         cp.write_text(cp_text, encoding="utf-8")
         check(not (tmp / "checker_batches.json").exists(), "a checker template without its marker is refused before batching")
@@ -383,6 +421,9 @@ def dry_run() -> None:
         shutil.copy(cdir / "journal.jsonl", tmp / "workflows" / "checker.journal.jsonl")
         b0 = chk["batches"][0]
         for label, bad in (("duplicate batch id", {"batches": chk["batches"] + [b0]}),
+                           ("no attempts", {"batches": [dict(b0, attempts=[])] + chk["batches"][1:]}),
+                           ("boolean attempt number", {"batches": [dict(b0, attempts=[dict(b0["attempts"][0], attempt=True)])]
+                                                       + chk["batches"][1:]}),
                            ("repeated attempt number", {"batches": [dict(b0, attempts=b0["attempts"] * 2)] + chk["batches"][1:]}),
                            ("retry after a verdict list", {"batches": [dict(b0, attempts=[b0["attempts"][0], dict(b0["attempts"][0], attempt=2)])]
                                                            + chk["batches"][1:]}),
@@ -810,6 +851,16 @@ def dry_run() -> None:
         check(m3b["finalized_utc"] is None and "output_hashes" not in m3b and m3b["script_hashes"][first_script] != "0" * 64,
               "a plan-time rewrite after a script changed clears the finalization time and the hashes")
         run("write_manifest.py", "finalize")
+        # a plain rewrite under another interpreter clears the finalization instead of attributing the sealed
+        # outputs to an interpreter that did not produce them (Codex on PR #52)
+        py_m = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        py_m["python"] = "0.0.0"
+        (tmp / "manifest.json").write_text(json.dumps(py_m, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        run("write_manifest.py")
+        py_m2 = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        check(py_m2["finalized_utc"] is None and "output_hashes" not in py_m2 and py_m2["python"] != "0.0.0",
+              "a plain rewrite under another interpreter clears the finalization and records the interpreter")
+        run("write_manifest.py", "finalize")
         md_text = (tmp / "summary.md").read_text(encoding="utf-8")
         (tmp / "summary.md").write_text(md_text + "edited after finalize\n", encoding="utf-8")
         run("write_manifest.py")
@@ -921,13 +972,21 @@ def dry_run() -> None:
         result_path.write_text(json.dumps(legacy_result), encoding="utf-8")
         wm.PILOT = tmp  # run_problems reads the result files and the copies under the directory the name binds to
         runs_now = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))["runs"]
-        under_reset = wm.run_problems(model_doc, runs_now, "1" * 64)
-        under_own = wm.run_problems(model_doc, runs_now, common.LEGACY_PROTOCOL_SHA256)
+        plans_own = {"generation": {c["id"]: c["prompt_sha256"]
+                                    for c in json.loads((HERE.parent / "calls.json").read_text(encoding="utf-8"))["calls"]},
+                     "checker": {}}
+        under_reset = wm.run_problems(model_doc, runs_now, "1" * 64, plans_own)
+        under_own = wm.run_problems(model_doc, runs_now, common.LEGACY_PROTOCOL_SHA256, plans_own)
+        under_other_plan = wm.run_problems(model_doc, runs_now, common.LEGACY_PROTOCOL_SHA256,
+                                           {"generation": {"x": "0" * 64}, "checker": {}})
         wm.PILOT = common.PILOT
         result_path.write_bytes(result_bytes_legacy)
         check(any("was produced under protocol" in p for p in under_reset)
-              and not any("was produced under protocol" in p for p in under_own),
-              "finalize refuses a legacy result under a reset protocol and accepts it under the one it ran under")
+              and not any("was produced under protocol" in p for p in under_own)
+              and any("did not answer these prompts" in p for p in under_other_plan)
+              and not any("did not answer these prompts" in p for p in under_own),
+              "finalize refuses a legacy result under a reset protocol or against another plan, and accepts it under its "
+              "own protocol and plan")
         # manifest_model.json is frozen from the first manifest that recorded its hash: an edit after the run is
         # refused without --reset, and --reset clears the run records, so finalize needs them recorded again
         # (Codex on PR #52)
