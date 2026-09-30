@@ -54,6 +54,21 @@ changes on any pushed branch. A machine that *can* run inference locally (yours,
 GPU) still commits no locally produced measurement: every committed summary records
 `inference.environment`, and only CI-produced summaries are measurements.
 
+**One exception, for pilots of the generation loop** (owner decision of 2026-09-30 on
+PR #52, after Codex read the rule above as excluding them). A measurement-validity pilot
+of the stimulus-generation loop may run as Claude Code subagents inside the owner's own
+interactive Claude Code session (the Workflow tool, in a cloud session or on the owner's
+machine), on that session's subscription and with no repository key, and its artifacts
+may be committed under `pilot/`, on four conditions: the run's `PROTOCOL.md`,
+`HANDOFF.md` and `manifest.json` state that execution path; nothing it produces is
+written under `data/` or `trace_out/`, counted as a measurement, or published to the
+site; no script in this repository calls a paid provider API for it
+(`pilot/scripts/build_api_requests.py` writes request bodies and sends nothing); and the
+holdout seal check is CLEAN over the pilot directory before the commit. Subscription
+usage in the owner's session is not provider spend, so `fire_trigger.py`'s journal and
+ceiling do not apply to it. A pilot run through a push-to-run lane, once one exists,
+needs no exception.
+
 | Trigger file | Workflow | What it does |
 |---|---|---|
 | `circuit-trace.json` | `circuit_trace_evaluation.yml` | hosted attribution graphs (matrix: `graph_models` × `offsets`) |
@@ -288,6 +303,13 @@ know them will pass a change that is destructive in this repo's terms:
   Routine session (other sessions revert `fire_trigger.py`'s queue side effect before
   committing); `scripts/ledger_update.py` is the only writer of spend numbers. A
   second committer is a data-loss bug even when each write looks correct.
+* **Pilot artifacts are labeled pilot outputs, not measurements:** files under
+  `pilot/` come from the exception in *Execution model* and say so in their protocol,
+  handoff and manifest. They are stored data all the same: a change to any of them is
+  a data change, the chain is re-run from the recorded result files and the summary
+  compared, and `pilot/scripts/write_manifest.py finalize` refuses a bundle whose
+  files do not agree with each other. Their numbers are checks of the pipeline, never
+  claims about the study's stimuli or its models.
 
 ## Coding constraints
 
