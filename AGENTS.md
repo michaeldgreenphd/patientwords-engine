@@ -333,8 +333,9 @@ know them will pass a change that is destructive in this repo's terms:
   changes site CI; moving either fails every site push.
 * **`patientwords-traces`** (GitHub Pages) serves the traces the site does not ship:
   payload `trace_url` links (`scripts/export_traces_site.py`) point there, and its nightly
-  build copies engine `main`'s `trace_out/<batch>/index_NN.html`. Moving or pruning those
-  renders, or changing the URL scheme, breaks published links.
+  build copies engine `main`'s `trace_out/<batch>/index_NN.html`. Both skip a missing
+  render, so moving or pruning those renders drops links at the next publish; changing
+  the URL scheme on one side breaks published links.
 
 ## Coding constraints
 
