@@ -71,7 +71,8 @@ workflow item 4) and act on its answer; then reply on the thread with the dispos
 
 **Codex reviews on pull-request open, draft-ready, and an `@codex review` comment.
 Nothing else.** A push, however large, does not re-trigger it. So after pushing
-review fixes, the new commits are unreviewed until someone asks, and a pull request can sit looking reviewed
+review fixes, the new commits
+are unreviewed until someone asks, and a pull request can sit looking reviewed
 while its largest commit has never been read. (Observed on `patientwords#4`,
 2026-09-04: the reviewed commit was the original two-file version; the fixes and
 ~120 lines of new rules after it had no automatic trigger.)
