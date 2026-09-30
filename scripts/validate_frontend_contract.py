@@ -272,8 +272,10 @@ UNJOINABLE_CAUSES = ("not_a_generation_batch", "batch_not_in_payload", "pair_not
 
 def unjoinable_total(rep: Report, a: str, rec: object) -> int | None:
     """The total of the collector's unjoinable_rows record, or None (errors recorded) when the record is malformed:
-    an integer n, and by_cause holding exactly the three causes, each an integer n equal to the sum of its per-stem
-    counts, the causes summing to the total."""
+    a nonnegative integer n, and by_cause holding exactly the three causes, each a nonnegative integer n equal to the
+    sum of its per-stem counts, the causes summing to the total. Every stored per-stem count is a positive integer:
+    the collector lists a stem only when at least one row falls under it. Sums alone would pass impossible counts
+    (a total of 1 from causes -1, 2 and 0; Codex review of PR #57)."""
     p = "$.unjoinable_rows"
     if not isinstance(rec, dict):
         rep.err(a, p, "must be an object")
@@ -283,6 +285,9 @@ def unjoinable_total(rep: Report, a: str, rec: object) -> int | None:
     if total is None or by_cause is None:
         return None
     ok = True
+    if total < 0:
+        rep.err(a, f"{p}.n", f"is {total}, must be nonnegative")
+        ok = False
     if set(by_cause) != set(UNJOINABLE_CAUSES):
         rep.err(a, f"{p}.by_cause", f"must hold exactly {list(UNJOINABLE_CAUSES)}, has {sorted(by_cause)}")
         ok = False
@@ -297,8 +302,11 @@ def unjoinable_total(rep: Report, a: str, rec: object) -> int | None:
                 rep.err(a, cp, "must be an object")
             ok = False
             continue
-        if not all(_is(v, int) for v in stems.values()) or sum(stems.values()) != n:
-            rep.err(a, f"{cp}.stems", f"per-stem counts must be integers summing to n = {n}")
+        if n < 0:
+            rep.err(a, f"{cp}.n", f"is {n}, must be nonnegative")
+            ok = False
+        if not all(_is(v, int) and v > 0 for v in stems.values()) or sum(stems.values()) != n:
+            rep.err(a, f"{cp}.stems", f"per-stem counts must be positive integers summing to n = {n}")
             ok = False
         cause_sum += n
     if ok and cause_sum != total:

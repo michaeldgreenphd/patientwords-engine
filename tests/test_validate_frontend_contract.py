@@ -291,11 +291,22 @@ def _broken(change):
     (_broken(lambda r: r["by_cause"]["batch_not_in_payload"].pop("stems")),
      "by_cause.batch_not_in_payload.stems :: missing required key"),
     (_broken(lambda r: r["by_cause"]["not_a_generation_batch"].update(stems={"pairs_GONE": 2})),
-     "per-stem counts must be integers summing to n = 1"),
+     "per-stem counts must be positive integers summing to n = 1"),
     (_broken(lambda r: r["by_cause"]["not_a_generation_batch"].update(stems={"pairs_GONE": "1"})),
-     "per-stem counts must be integers"),
+     "per-stem counts must be positive integers"),
     (_broken(lambda r: r["by_cause"]["batch_not_in_payload"].update(n=1, stems={"pairs_X": 1})),
      "$.unjoinable_rows.n :: is 1, but by_cause sums to 2"),
+    # impossible counts whose sums still agree (Codex review of PR #57): a negative total, a negative cause, a
+    # stored stem with a negative or zero count
+    (_broken(lambda r: (r.update(n=-1),
+                        r["by_cause"]["not_a_generation_batch"].update(n=-1, stems={"pairs_GONE": -1}))),
+     "$.unjoinable_rows.n :: is -1, must be nonnegative"),
+    (_broken(lambda r: r["by_cause"]["batch_not_in_payload"].update(n=-1, stems={})),
+     "$.unjoinable_rows.by_cause.batch_not_in_payload.n :: is -1, must be nonnegative"),
+    (_broken(lambda r: r["by_cause"]["not_a_generation_batch"].update(stems={"pairs_GONE": 2, "pairs_X": -1})),
+     "by_cause.not_a_generation_batch.stems :: per-stem counts must be positive integers summing to n = 1"),
+    (_broken(lambda r: r["by_cause"]["not_a_generation_batch"].update(stems={"pairs_GONE": 1, "pairs_X": 0})),
+     "by_cause.not_a_generation_batch.stems :: per-stem counts must be positive integers summing to n = 1"),
 ])
 def test_malformed_unjoinable_record_is_an_error(site, rec, says):
     u = urgency(urgency()["rows"] + [ORPHAN_ROW])
@@ -305,6 +316,25 @@ def test_malformed_unjoinable_record_is_an_error(site, rec, says):
     assert any(says in e for e in rep.errors), rep.errors
     # a malformed record is not compared, so no mismatch is claimed on top of the shape error
     assert not any("rows joining no published scenario, but" in e for e in rep.errors)
+
+
+def test_negative_cause_counts_that_sum_to_the_observed_total_are_an_error(site):
+    # Codex's example on PR #57: one orphan row observed, causes recorded as -1, 2 and 0. Every sum agrees (per-stem
+    # counts with their causes, causes with the total, the total with the observed count), so a sums-only check
+    # passed it; the counts are impossible, so the gate must fail and must not report the total as matching.
+    u = urgency(urgency()["rows"] + [ORPHAN_ROW])
+    u["unjoinable_rows"] = {"n": 1, "by_cause": {
+        "not_a_generation_batch": {"n": -1, "stems": {"pairs_GONE": -1}},
+        "batch_not_in_payload": {"n": 2, "stems": {"pairs_X": 2}},
+        "pair_not_in_payload": {"n": 0, "stems": {}},
+    }}
+    write_urgency(site, u)
+    rep = run(site, strict=True)
+    assert any("$.unjoinable_rows.by_cause.not_a_generation_batch.n :: is -1, must be nonnegative" in e
+               for e in rep.errors), rep.errors
+    assert any("by_cause.not_a_generation_batch.stems :: per-stem counts must be positive integers" in e
+               for e in rep.errors), rep.errors
+    assert not any("as $.unjoinable_rows records" in n for n in rep.notes)
 
 
 def test_unjoinable_rows_is_an_audited_key(site):
