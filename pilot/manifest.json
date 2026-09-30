@@ -2,7 +2,7 @@
   "pilot": "stimulus-generation measurement-validity pilot",
   "date_utc": "2026-09-29",
   "created_utc": "2026-09-29T21:43:06Z",
-  "finalized_utc": "2026-09-30T06:33:07Z",
+  "finalized_utc": "2026-09-30T13:51:52Z",
   "metadata_reset_utc": null,
   "model": {
     "execution_path": "Claude Code subagents launched by the Workflow tool inside a claude.ai cloud session (session_013KH1iaG3RoTUJVtwHkoiVz). Subagents inherit the session model. Their system prompt and any repository instructions injected by the harness are outside this pilot's control; prompt hashes cover only the user-turn prompt.",
@@ -66,9 +66,28 @@
   "protocol_sha256_now": "8dd838105e94a03190e81c841474479c8a27517553bdeabf9678f3550da5d969",
   "protocol_unchanged": true,
   "seeds_json_sha256": "593e2b7b6d25d78ed5f8adfa7fe02d5d0e4aef5574c0c6c08a8b6937e6399884",
-  "design_json_sha256": "6ebbfb8c5396c817c246068da3757d0b70101350df417063be18f4c27eab661f",
+  "design_json_sha256": "bd6d87f895e2b583de312cedc1da3084eab8adfde6dfcff01ab23222820a145b",
+  "input_refactors": [
+    {
+      "utc": "2026-09-30T13:45:10Z",
+      "reason": "the example negative control the generation prompt shows moved from prompts/generation_prompt.txt into design.json (control_example), rendered through the {{CONTROL_EXAMPLE}} marker; every rendered prompt byte-identical (Codex review of PR #52, round 17; owner decision of 2026-09-30 to proceed)",
+      "changed": [
+        "design_json_sha256",
+        "prompt_hashes.generation_prompt_template"
+      ],
+      "before": {
+        "design_json_sha256": "6ebbfb8c5396c817c246068da3757d0b70101350df417063be18f4c27eab661f",
+        "generation_prompt_template_sha256": "3b5a0f6c406d86868aca72dc03679f29890496ded59ab8b3840554be20fa4060"
+      },
+      "after": {
+        "design_json_sha256": "bd6d87f895e2b583de312cedc1da3084eab8adfde6dfcff01ab23222820a145b",
+        "generation_prompt_template_sha256": "c2ec45942e46f0bc4e5fd68979ef365c64d3801c3c36689323487f04047a7506"
+      },
+      "generation_calls_unchanged": 18
+    }
+  ],
   "prompt_hashes": {
-    "generation_prompt_template": "3b5a0f6c406d86868aca72dc03679f29890496ded59ab8b3840554be20fa4060",
+    "generation_prompt_template": "c2ec45942e46f0bc4e5fd68979ef365c64d3801c3c36689323487f04047a7506",
     "generation_calls": {
       "A__cardiology__symptom_description": {
         "prompt_sha256": "17f5c6e2d5d9120fb1c5f6095b48de70e110d510982f6bcc29a4d468cdaa9bcb",
@@ -287,7 +306,7 @@
   "script_hashes": {
     "build_api_requests.py": "27903effe7faedfc850e593ef757e5a56b3a498f234569c29653e5b7913e15e4",
     "build_checker_set.py": "8b4a7f388b7ced3e7d0cd9206a3117a63c7f6f65f75647cfa37559da1921a456",
-    "common.py": "2d8b1884024794b1ce7729329872a762331427bd4a08128ec6e0f4a5b5f94383",
+    "common.py": "b78ddc756cbf4a8cacea322cf0df02de5458ba3e2bab63b0fff50174b36b620e",
     "compute_summary.py": "a44974d3052b621df0f42cddaf11cdcdb8a84440e73c53921c09b743946335dc",
     "extract_workflow_journal.py": "46fc5f7730100d4d3a63ef7b3b9a2e396128b26e48d735f72be23525c6a9aeb4",
     "make_review_sheet.py": "abc9a6335f48c3dd1ac8b118f63874b26f0106a85276bc7335ae812dc3dd6346",
@@ -297,8 +316,8 @@
     "plan_calls.py": "2b33628901241602c9a38057690a6651ec239a6ae3c54a0180276fa71507c315",
     "record_run.py": "9e3f6276e1fa5d052953a679eec58b9650375dcc39d48a32477e95e922be9a25",
     "rederive.py": "30132c7aee314a24b748d0223cee576a241b21d59785adc3bdc8c877147354d0",
-    "selftest.py": "fb03b888a3c59b473a88204a7f21cca1a2653827cbbfae3205085a1b36ebd3ad",
-    "write_manifest.py": "37c704a68ee85be04d2f563546752e78d945e5e802cc21c92186f53dab550e9a"
+    "selftest.py": "16538a2849068d640fb45b5ce88cea316bf7762c98c4d04dfd9124a2e0590fcb",
+    "write_manifest.py": "db95604fc4b651e3463f925369f39ce743eb4bc97292298f57baffe640b17673"
   },
   "workflow_script_hashes": {
     "checker.workflow.js": "85204a2387e2bc88ced5557f293bd5e4ae65f9afa3df9ae35653951e10cd6a1c",
@@ -364,7 +383,7 @@
     }
   },
   "output_hashes": {
-    "calls.json": "9c79265d338540d6c68a4292691c976bec439343cd2a435ae844030f14d96ad4",
+    "calls.json": "11fa15906907ee7cb7d8c2af48b8436fdd2d500aac7c6e489a3a4029cd2adc33",
     "workflow_generation_result.json": "88904336854f8254dea8517654b6a31671688586397365cf97cd942d6e86ad65",
     "workflow_checker_result.json": "a5715c73461f6cb446a990d89d586197fa12b2c5185dbb7b417afc5497dd6a34",
     "call_log.jsonl": "7c37aeedd9af9013e1b211c544cf14431dd630daabb3e4996704011d507120f4",
@@ -378,12 +397,12 @@
     "review_sheet.csv": "5d8d6f76b3b8a50a59b7dfefee3022354191a81d9a46ec91e2f7c826b30ad83a",
     "review_key.csv": "ea7e9d9bb875b30006bfcf769c33ff2875f782aec210c7bb94c3cdca1feed744",
     "review_map.json": "caa96fcb4b5cea4aa29c7e62e7076669b1f002b30956e7dd5f4b5f34354c2ff8",
-    "summary.json": "efd94b406cbc54f8066cf1caf01dda70743d0238b19df17671709085ca5ad313",
+    "summary.json": "f702db87bb4bf82276295fdf6c21b34bcfe747214e81f85acd3e7e8cfbf80284",
     "summary.md": "1875fd8b3c2020d89c8d64a7778f375db220c4312b9277398f35850082763c2a",
     "seeds.json": "593e2b7b6d25d78ed5f8adfa7fe02d5d0e4aef5574c0c6c08a8b6937e6399884",
-    "design.json": "6ebbfb8c5396c817c246068da3757d0b70101350df417063be18f4c27eab661f",
+    "design.json": "bd6d87f895e2b583de312cedc1da3084eab8adfde6dfcff01ab23222820a145b",
     "PROTOCOL.md": "8dd838105e94a03190e81c841474479c8a27517553bdeabf9678f3550da5d969",
-    "HANDOFF.md": "528e158860a1e070044acb01234cbfca8cfbc476190827a124f7c0e2db57da40",
+    "HANDOFF.md": "0b25a2e6a43bf45397aaf738bac037cf98cdc5b30fa3747028aa6e7305f8bfc7",
     "manifest_model.json": "4417730fd80e518fd98b35083a7f812295c17fa73d59358662f9c0764c11f3bb",
     "workflows/generation.journal.jsonl": "faadf0993b9f9df16833db11e08c0656def1baa3719eaede59162905ec69c621",
     "workflows/checker.journal.jsonl": "f5a81e6edf37cb8a9fc3825808275fd50ac9d41311333858c53a90cfc183d3f4",

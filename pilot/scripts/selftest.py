@@ -45,6 +45,23 @@ def unit_tests() -> None:
     r1, r2 = random.Random(common.MASTER_SEED), random.Random(common.MASTER_SEED)
     s1, s2 = r1.sample(dummies, 8), r2.sample(dummies, 8)
     check(len(s1) == 8 and len({d["id"] for d in s1}) == 8 and s1 == s2, "8 of 12 sampled without replacement, deterministic")
+    # the example negative control the generation prompt shows comes from design.json, rendered as one JSON object and
+    # refused unless it is a negative control of the required shape (Codex on PR #52)
+    good = dict(common.DESIGN["control_example"])
+    check(common.control_example_text({"control_example": good}) == json.dumps(good, ensure_ascii=False),
+          "the control example renders from design.json as one compact JSON object")
+    for label, bad in (("missing", None),
+                       ("in another key order", {"patient_term": good["patient_term"], "clinical_term": good["clinical_term"],
+                                                 "template": good["template"], "control": "negative"}),
+                       ("not marked negative", dict(good, control="none")),
+                       ("without a blank", dict(good, template="no blank here")),
+                       ("two concepts", dict(good, patient_term=good["patient_term"] + " and more"))):
+        try:
+            common.control_example_text({"control_example": bad})
+            refused = False
+        except SystemExit:
+            refused = True
+        check(refused, f"a control example that is {label} is refused before planning")
     row, reason = common.validate_line('{"clinical_term": "a", "patient_term": "b", "template": "x ___ y", "control": "none"}')
     check(row is not None and reason == "ok", "valid line validates")
     check(common.validate_line('{"clinical_term": "a", "patient_term": "b", "template": "x y", "control": "none"}')[1]
@@ -186,12 +203,20 @@ def dry_run() -> None:
         gp = tmp / "prompts" / "generation_prompt.txt"
         gp_text = gp.read_text(encoding="utf-8")
         for bad in (gp_text.replace("{{SPECIALTY}}", ""), gp_text + "\n{{SPECIALTY}}",
-                    gp_text.replace("{{SWAP_TYPE}}", "{{SWAP_TYPO}}")):
+                    gp_text.replace("{{SWAP_TYPE}}", "{{SWAP_TYPO}}"), gp_text.replace("{{CONTROL_EXAMPLE}}", "")):
             gp.write_text(bad, encoding="utf-8")
             run("plan_calls.py", expect_failure=True)
         gp.write_text(gp_text, encoding="utf-8")
         check(not (tmp / "calls.json").exists(),
               "a generation template missing, repeating or misspelling a marker is refused before planning")
+        # a design file whose control example is not a negative control (two concepts) cannot be planned from
+        design_bytes0 = (tmp / "design.json").read_bytes()
+        ddoc0 = json.loads(design_bytes0.decode("utf-8"))
+        ddoc0["control_example"]["patient_term"] += " and more"
+        (tmp / "design.json").write_text(json.dumps(ddoc0, ensure_ascii=False), encoding="utf-8")
+        run("plan_calls.py", expect_failure=True)
+        (tmp / "design.json").write_bytes(design_bytes0)
+        check(not (tmp / "calls.json").exists(), "a design file whose control example is not a negative control is refused")
         run("plan_calls.py")
         # a prompt edited together with its stored hash is self-consistent but not the plan the inputs derive:
         # every reader of calls.json derives the plan again and refuses it (Codex on PR #52)
@@ -793,6 +818,75 @@ def dry_run() -> None:
               "a plan-time rewrite after an output changed clears the finalization time and the hashes")
         (tmp / "summary.md").write_text(md_text, encoding="utf-8")
         run("write_manifest.py", "finalize")
+        # an input refactor: text moved between the generation template and design.json with no rendered prompt
+        # changed (Codex on PR #52). A plain write refuses the changed input; --refactor-inputs accepts it only with a
+        # reason, not combined with --reset, and only when the re-planned calls carry the recorded prompt hashes; it
+        # is recorded under input_refactors with the run records kept and the finalization cleared; nothing to
+        # record, a refactor that changes a prompt, and a changed seed file are refused
+        design_bytes = (tmp / "design.json").read_bytes()
+        ddoc = json.loads(design_bytes.decode("utf-8"))
+        (tmp / "design.json").write_text(json.dumps(ddoc, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
+        run("write_manifest.py", expect_failure=True)  # calls.json was planned from the previous design file
+        run("plan_calls.py")
+        run("write_manifest.py", expect_failure=True)  # a changed input without --reset
+        run("write_manifest.py", "--refactor-inputs", "", expect_failure=True)
+        run("write_manifest.py", "--refactor-inputs", "self-test", "--reset", expect_failure=True)
+        m_before = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        run("write_manifest.py", "--refactor-inputs", "self-test: design.json re-serialized, no prompt changed")
+        m_ref = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        ref = m_ref["input_refactors"]
+        check(len(ref) == 1 and ref[0]["before"]["design_json_sha256"] == m_before["design_json_sha256"]
+              and ref[0]["after"]["design_json_sha256"] == m_ref["design_json_sha256"] != m_before["design_json_sha256"]
+              and ref[0]["changed"] == ["design_json_sha256"] and ref[0]["generation_calls_unchanged"] == 18
+              and m_ref["runs"] == m_before["runs"] and m_ref["created_utc"] == m_before["created_utc"]
+              and m_ref["finalized_utc"] is None and "output_hashes" not in m_ref
+              and m_ref["prompt_hashes"]["generation_calls"] == m_before["prompt_hashes"]["generation_calls"],
+              "an input refactor with every prompt unchanged is recorded with its hashes, keeps the run records, clears the finalization")
+        run("write_manifest.py", "--refactor-inputs", "again", expect_failure=True)  # nothing changed since
+        run("write_manifest.py", "finalize", expect_failure=True)  # summary.json still records the previous design hash
+        s_prev = json.loads((tmp / "summary.json").read_text(encoding="utf-8"))
+        run("compute_summary.py")
+        s_now = json.loads((tmp / "summary.json").read_text(encoding="utf-8"))
+        check(all(s_now[k] == s_prev[k] for k in ("E1", "E2", "E3", "E4", "E5", "controls", "run")),
+              "the recomputation after an input refactor changes no number")
+        run("write_manifest.py", "finalize")
+        check(isinstance(json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))["finalized_utc"], str),
+              "the refactored bundle finalizes again")
+        ddoc2 = json.loads((tmp / "design.json").read_text(encoding="utf-8"))
+        ddoc2["swap_types"][0]["definition"] += " (edited)"  # a change that alters a prompt is not a refactor
+        (tmp / "design.json").write_text(json.dumps(ddoc2, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
+        run("plan_calls.py")
+        run("write_manifest.py", "--refactor-inputs", "a prompt changed", expect_failure=True)
+        check(any(s in last_err[0] for s in ("not the recorded run's", "no longer validates against the plan",
+                                             "is not what the current code derives")),
+              "a refactor that changes a rendered prompt is refused: the recorded responses no longer validate against the plan")
+        # the manifest's own comparison, in-process: the re-planned calls must carry the recorded prompt hashes
+        wm0 = importlib.import_module("write_manifest")
+        rec = {"c1": {"prompt_sha256": "a" * 64, "exemplar_ids": ["s1"]}}
+        old0 = {"design_json_sha256": "d" * 64, "prompt_hashes": {"generation_prompt_template": "t" * 64, "generation_calls": rec}}
+        cur0 = {"design_json_sha256": "e" * 64, "prompt_hashes": {"generation_prompt_template": "t" * 64}}
+        same = {"calls": [{"id": "c1", "prompt_sha256": "a" * 64, "exemplar_ids": ["s1"]}]}
+        other = {"calls": [{"id": "c1", "prompt_sha256": "b" * 64, "exemplar_ids": ["s1"]}]}
+        okrec = wm0.input_refactor_record(old0, cur0, same, ["design_json_sha256"], "r", "now")
+        try:
+            wm0.input_refactor_record(old0, cur0, other, ["design_json_sha256"], "r", "now")
+            refused = False
+        except SystemExit as e:
+            refused = "not the recorded run's" in str(e)
+        check(okrec["generation_calls_unchanged"] == 1 and okrec["before"]["design_json_sha256"] == "d" * 64 and refused,
+              "the manifest records a refactor whose calls match the recorded prompt hashes and refuses one whose do not")
+        (tmp / "design.json").write_text(json.dumps(ddoc, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
+        run("plan_calls.py")
+        seeds_bytes = (tmp / "seeds.json").read_bytes()  # the seed file is not refactorable
+        (tmp / "seeds.json").write_text(json.dumps(json.loads(seeds_bytes.decode("utf-8")), indent=4, ensure_ascii=False) + "\n",
+                                        encoding="utf-8")
+        run("plan_calls.py")
+        run("write_manifest.py", "--refactor-inputs", "seeds re-serialized", expect_failure=True)
+        (tmp / "seeds.json").write_bytes(seeds_bytes)
+        run("plan_calls.py")
+        run("write_manifest.py")
+        check(isinstance(json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))["finalized_utc"], str),
+              "with the inputs back as sealed, a plain rewrite keeps the finalization")
         # a checker template edited after batching is refused: the manifest must not record a stale checker plan
         tpl = tmp / "prompts" / "checker_prompt.txt"
         tpl_text = tpl.read_text(encoding="utf-8")

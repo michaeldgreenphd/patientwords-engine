@@ -500,7 +500,7 @@ def plan_hash_problems(items: list[dict], id_key: str) -> list[str]:
 
 
 MARKER_RE = re.compile(r"\{\{[A-Z_]+\}\}")
-GENERATION_MARKERS = ("{{SPECIALTY}}", "{{SWAP_TYPE}}", "{{SWAP_DEFINITION}}", "{{EXEMPLARS}}")
+GENERATION_MARKERS = ("{{SPECIALTY}}", "{{SWAP_TYPE}}", "{{SWAP_DEFINITION}}", "{{CONTROL_EXAMPLE}}", "{{EXEMPLARS}}")
 CHECKER_MARKERS = ("{{ITEMS}}",)
 
 
@@ -522,6 +522,22 @@ def render_exemplars(rows: list[dict]) -> str:
                                  "template": r["template"], "control": "none"}, ensure_ascii=False) for r in rows)
 
 
+def control_example_text(design: dict) -> str:
+    """The example negative control the generation prompt shows, rendered from design.json's `control_example` as
+    one JSON object (the vocabulary lives in the data file, not in the template or the code: engine AGENTS.md; moved
+    out of the template on Codex's review of PR #52, every rendered prompt byte-identical). Refused unless it is a
+    row of the required shape, in key order, marked "negative", whose two terms are the same concept in the same
+    register (surface form only), as the prompt says a negative control is."""
+    ex = design.get("control_example")
+    row = validate_line(json.dumps(ex, ensure_ascii=False))[0] if isinstance(ex, dict) else None
+    if (row is None or list(ex) != REQUIRED_FIELDS or ex.get("control") != "negative"
+            or not control_is_faithful(ex)):
+        raise SystemExit("design.json: control_example must be an object with exactly the keys clinical_term, "
+                         "patient_term, template (one ___) and control, in that order, control \"negative\", and the "
+                         "two terms the same concept in the same register; refusing to plan")
+    return json.dumps(ex, ensure_ascii=False)
+
+
 def derive_plan(seeds: list[dict], template: str, seeds_sha256: str, design_sha256: str) -> dict:
     """The generation plan, pure and deterministic: Arm A exemplars drawn once per cell from the named stream in
     cell order, Arm B the first K seeds in file order, every prompt rendered from the template and hashed. plan_calls.py
@@ -530,6 +546,7 @@ def derive_plan(seeds: list[dict], template: str, seeds_sha256: str, design_sha2
     if problems:
         raise SystemExit("the generation prompt template cannot be rendered; fix it before planning:\n  "
                          + "\n  ".join(problems))
+    example = control_example_text(DESIGN)
     n = len(seeds)
     k = min(K_EXEMPLARS, n)
     r = rng("exemplars")
@@ -541,6 +558,7 @@ def derive_plan(seeds: list[dict], template: str, seeds_sha256: str, design_sha2
             prompt = (template.replace("{{SPECIALTY}}", specialty)
                       .replace("{{SWAP_TYPE}}", swap_type)
                       .replace("{{SWAP_DEFINITION}}", SWAP_DEFINITIONS[swap_type])
+                      .replace("{{CONTROL_EXAMPLE}}", example)
                       .replace("{{EXEMPLARS}}", render_exemplars(exemplars)))
             if MARKER_RE.search(prompt):  # a marker carried in by an exemplar's own text
                 raise SystemExit(f"a rendered prompt ({call_id(arm, specialty, swap_type)}) still carries a marker "

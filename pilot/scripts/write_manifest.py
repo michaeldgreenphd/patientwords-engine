@@ -5,6 +5,7 @@ keep that value and add protocol_sha256_now so a change to the frozen protocol i
   python3 scripts/write_manifest.py                    # plan-time manifest
   python3 scripts/write_manifest.py finalize           # adds output hashes and the finalize timestamp
   python3 scripts/write_manifest.py [finalize] --reset # start fresh metadata after the inputs changed
+  python3 scripts/write_manifest.py --refactor-inputs "<reason>"  # record an input refactor that changed no prompt
 
 A manifest already on disk lends its creation time, finalization time and run records to the next write. When the
 planned inputs have changed since it was written (the seed file, the design file or a prompt template), keeping
@@ -22,6 +23,15 @@ record_run.py matches the transcripts to the journal's started agents, so that e
 copied journals under workflows/ are required outputs whose hashes must be the run records', and each result file's
 protocol_sha256 (from the agent labels) must be the frozen protocol's; a PROTOCOL.md changed since the first
 manifest refuses every write except --reset, which starts a new run (Codex review of PR #52).
+
+An input refactor moves text between the generation template and design.json without changing any rendered prompt
+(the example negative control the prompt shows moved into the data file on Codex's review of PR #52). --refactor-inputs
+accepts a changed design file or generation template only when the re-planned calls.json carries exactly the call
+ids, prompt hashes and exemplar ids the manifest already records, records the refactor under input_refactors with
+its own timestamp, the reason and the hashes before and after, and keeps the creation time and the run records; the
+finalization is cleared as for any changed output, and finalize seals the bundle again once compute_summary.py has
+recorded the new input hashes. A changed seed file, checker template or model file is not a refactor (the checker
+plan and the run's provenance depend on them) and still needs --reset or a new run.
 
 Both plans must have been built from the files on disk: calls.json from the seed file, the design file and the
 generation template, and checker_batches.json from the checker template, the seed file and the parsed generation
@@ -107,6 +117,43 @@ def input_changes(old: dict, current: dict) -> list[str]:
     if "manifest_model_sha256" in old and old["manifest_model_sha256"] != current.get("manifest_model_sha256"):
         changes.append("manifest_model_sha256")
     return changes
+
+
+REFACTORABLE = ("design_json_sha256", "prompt_hashes.generation_prompt_template")
+
+
+def input_refactor_record(old: dict, current: dict, calls: dict, changes: list[str], reason: str, now: str) -> dict:
+    """The record of an input refactor, or a refusal: --refactor-inputs needs a reason and a manifest on disk, accepts
+    only the design file and the generation template as changed inputs (REFACTORABLE), and proves that no rendered
+    prompt changed by requiring the re-planned calls to carry exactly the call ids, prompt hashes and exemplar ids the
+    manifest already records (Codex review of PR #52)."""
+    if not reason.strip():
+        raise SystemExit("write_manifest: --refactor-inputs needs a reason (what moved between the files, and why)")
+    if not old:
+        raise SystemExit("write_manifest: --refactor-inputs records a change to an existing manifest's inputs; none is on disk")
+    if not changes:
+        raise SystemExit("write_manifest: --refactor-inputs: no planned input changed since manifest.json was written; "
+                         "nothing to record")
+    other = [c for c in changes if c not in REFACTORABLE]
+    if other:
+        raise SystemExit(f"write_manifest: --refactor-inputs accepts only the design file and the generation template; "
+                         f"{', '.join(other)} changed too, which needs --reset or a new run")
+    recorded = (old.get("prompt_hashes") or {}).get("generation_calls")
+    if not isinstance(recorded, dict) or not recorded:
+        raise SystemExit("write_manifest: --refactor-inputs: the manifest on disk records no per-call prompt hashes to "
+                         "compare with; the prompts cannot be proven unchanged")
+    planned = {c["id"]: {"prompt_sha256": c["prompt_sha256"], "exemplar_ids": c["exemplar_ids"]} for c in calls["calls"]}
+    if planned != recorded:
+        differing = sorted(i for i in set(planned) | set(recorded) if planned.get(i) != recorded.get(i))
+        raise SystemExit(f"write_manifest: --refactor-inputs: the re-planned prompts are not the recorded run's "
+                         f"({len(differing)} call(s) differ, first {differing[0]}); a refactor changes no rendered prompt, "
+                         f"so this is a new plan: --reset and a new run")
+    return {"utc": now, "reason": reason.strip(), "changed": list(changes),
+            "before": {"design_json_sha256": old.get("design_json_sha256"),
+                       "generation_prompt_template_sha256": (old.get("prompt_hashes") or {}).get("generation_prompt_template")},
+            "after": {"design_json_sha256": current["design_json_sha256"],
+                      "generation_prompt_template_sha256": current["prompt_hashes"]["generation_prompt_template"]},
+            "generation_calls_unchanged": len(planned)}
 
 
 MODEL_KEYS = ("session_model_at_run", "session_last_served_model_at_run")
@@ -263,7 +310,7 @@ def finalize_hashes(calls: dict) -> dict[str, str]:
     return {o: sha256_file(PILOT / o) for o in expected}
 
 
-def main(finalize: bool, reset: bool = False) -> None:
+def main(finalize: bool, reset: bool = False, refactor: str | None = None) -> None:
     path = PILOT / "manifest.json"
     old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -314,10 +361,14 @@ def main(finalize: bool, reset: bool = False) -> None:
                          f"({old['protocol_sha256_at_write'][:12]} then, {protocol_now[:12]} now); the protocol is frozen "
                          f"and a change invalidates the run: restore it, or start a new run in a fresh directory")
     changes = input_changes(old, current) if old else []
-    if changes and not reset:
+    if refactor is not None and (reset or finalize):
+        raise SystemExit("write_manifest: --refactor-inputs is a plain write; it cannot be combined with --reset or finalize")
+    refactor_record = input_refactor_record(old, current, calls, changes, refactor, now) if refactor is not None else None
+    if changes and not reset and refactor_record is None:
         raise SystemExit(f"write_manifest: {', '.join(changes)} changed since manifest.json was written (created "
                          f"{old.get('created_utc')}, runs {sorted(old.get('runs', {}))}); a rerun with new inputs must "
-                         f"not keep the previous run's timestamps and run records: pass --reset to start fresh metadata")
+                         f"not keep the previous run's timestamps and run records: pass --reset to start fresh metadata, "
+                         f"or --refactor-inputs when no rendered prompt changed")
     base = {} if (reset or not old) else old  # the metadata carried forward, none after a reset
     # a plan-time rewrite after finalize keeps the finalization time and the output hashes only while every hashed
     # output is unchanged on disk; a finalization time without the hashes it vouched for would claim a verified
@@ -359,6 +410,9 @@ def main(finalize: bool, reset: bool = False) -> None:
         "protocol_unchanged": base.get("protocol_sha256_at_write", protocol_now) == protocol_now,
         "seeds_json_sha256": current["seeds_json_sha256"],
         "design_json_sha256": current["design_json_sha256"],
+        # input refactors (text moved between the template and the design file, no prompt changed), each with its
+        # timestamp and the hashes before and after; none after a reset, which starts a new run
+        "input_refactors": base.get("input_refactors", []) + ([refactor_record] if refactor_record else []),
         "prompt_hashes": {
             "generation_prompt_template": calls["generation_prompt_template_sha256"],
             "generation_calls": {c["id"]: {"prompt_sha256": c["prompt_sha256"], "exemplar_ids": c["exemplar_ids"]} for c in calls["calls"]},
@@ -388,8 +442,16 @@ def main(finalize: bool, reset: bool = False) -> None:
                                              if changed_scripts else [])
     note = f"; finalization cleared: {' and '.join(cleared)} since finalize, re-run write_manifest.py finalize" if cleared else ""
     print(f"manifest.json written ({'finalized' if finalize else 'planned'}"
-          f"{', metadata reset' if (reset and old) else ''}){note}; protocol unchanged: {m['protocol_unchanged']}")
+          f"{', metadata reset' if (reset and old) else ''}{', input refactor recorded' if refactor_record else ''})"
+          f"{note}; protocol unchanged: {m['protocol_unchanged']}")
 
 
 if __name__ == "__main__":
-    main(finalize="finalize" in sys.argv[1:], reset="--reset" in sys.argv[1:])
+    argv = sys.argv[1:]
+    reason = None
+    if "--refactor-inputs" in argv:
+        i = argv.index("--refactor-inputs")
+        if i + 1 >= len(argv) or argv[i + 1].startswith("--") or argv[i + 1] == "finalize":
+            raise SystemExit('usage: write_manifest.py --refactor-inputs "<reason>"')
+        reason = argv[i + 1]
+    main(finalize="finalize" in argv, reset="--reset" in argv, refactor=reason)
