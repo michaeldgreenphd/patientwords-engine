@@ -36,6 +36,7 @@ from common import (
     script_hashes,
     sha256_file,
     wilson,
+    write_results_block,
 )
 from rederive import rederive_problems
 
@@ -480,7 +481,8 @@ def main() -> None:
     (PILOT / "summary.md").write_text("\n".join(L), encoding="utf-8")
     S["summary_md_sha256"] = sha256_file(PILOT / "summary.md")  # the rendering this summary stands for
     (PILOT / "summary.json").write_text(json.dumps(S, indent=2) + "\n", encoding="utf-8")
-    print("summary.json and summary.md written")
+    write_results_block(S)  # the handoff's Results section, from the same dictionaries (Codex review of PR #52)
+    print("summary.json and summary.md written; results block written into HANDOFF.md")
 
 
 if __name__ == "__main__":

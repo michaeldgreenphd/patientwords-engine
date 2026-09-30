@@ -587,6 +587,85 @@ SUMMARY_INPUTS = ("seeds.json", "design.json", "calls.json", "call_log.jsonl", "
                   "checked.jsonl", "review_map.json", "review_sheet.csv", "review_key.csv")
 
 
+RESULTS_BEGIN = "<!-- results:begin -->"
+RESULTS_END = "<!-- results:end -->"
+
+
+def results_block(summary: dict) -> str:
+    """The handoff's Results section, rendered from summary.json's dictionaries so it cannot drift from the computed
+    artifact: compute_summary.py writes it between RESULTS_BEGIN and RESULTS_END in HANDOFF.md, and summary_problems
+    (finalize) refuses a handoff whose block differs from this rendering (Codex review of PR #52)."""
+    def w(d: dict) -> str:
+        return "0 / 0 (undefined)" if d["n"] == 0 else f"{d['x']} / {d['n']} = {d['p']:.3f} [{d['lo']:.3f}, {d['hi']:.3f}]"
+
+    def m(d: dict) -> str:
+        return f"{d['mean']:.3f} [{d['lo']:.3f}, {d['hi']:.3f}]" if d.get("mean") is not None else "undefined"
+
+    def sd(d: dict) -> str:
+        return f"{d['diff']:+.3f} [{d['lo']:+.3f}, {d['hi']:+.3f}]" if d.get("diff") is not None else "undefined"
+
+    run, e1, c, e2, e3, e4, e5 = (summary[k] for k in ("run", "E1", "controls", "E2", "E3", "E4", "E5"))
+    g = e4["generated"]
+    sens = e4["checker_sensitivity_known_good"]["unclear_counts_as_miss"]
+    spec = e4["checker_specificity_broken"]["unclear_counts_as_miss"]
+    return "\n".join([
+        "(written by `scripts/compute_summary.py` from `summary.json`; finalize refuses a handoff whose block differs)",
+        "",
+        f"- **Run:** {run['n_calls']} calls, {run['n_attempts']} attempts, {run['n_retried_calls']} retried, "
+        f"{run['calls_without_response']} without a response record; calls with a valid row "
+        f"{w(run['calls_with_valid_rows'])}.",
+        f"- **Estimand 1, format validity (final attempts):** {w(e1['overall'])}; Arm A {w(e1['by_arm']['A'])}; "
+        f"Arm B {w(e1['by_arm']['B'])}.",
+        f"- **Negative controls:** {c['n_control_rows']} returned ({c['expected']} expected), {c['unmeasurable']} "
+        f"unmeasurable; faithful {w(c['faithful'])}.",
+        f"- **Estimand 2, novelty (pair key):** Arm A {w(e2['by_arm']['A']['pair'])}; Arm B {w(e2['by_arm']['B']['pair'])}; "
+        f"pooled {w(e2['pooled']['pair'])}; {e2['duplicates_of_seeds']} rows duplicate a seed pair.",
+        f"- **Estimand 3, diversity (mean pairwise TF-IDF cosine of templates; lower is more diverse):** within cells "
+        f"Arm A {m(e3['arm_mean_of_cells']['A'])}, Arm B {m(e3['arm_mean_of_cells']['B'])}; generated versus seed "
+        f"templates Arm A {m(e3['vs_seeds']['A'])}, Arm B {m(e3['vs_seeds']['B'])}; {e3['n_boot']} bootstrap resamples.",
+        f"- **Estimand 4, semantic equivalence:** judged yes {w(g['yes_over_answered'])}; verdict counts "
+        f"{json.dumps(g['counts'], sort_keys=True)}; missing {g['missing']}; Arm A {w(e4['by_arm']['A']['yes_over_answered'])}; "
+        f"Arm B {w(e4['by_arm']['B']['yes_over_answered'])}. Checker sensitivity on known-good rows {w(sens)}; "
+        f"specificity on broken pairs {w(spec)} (unclear counts as a miss).",
+        f"- **Estimand 5, Arm A minus Arm B:** novelty {sd(e5['novelty_pair'])} (Newcombe); within-cell similarity "
+        f"{sd(e5['diversity_within_cell'])} (bootstrap); similarity to seeds {sd(e5['diversity_vs_seeds'])} (bootstrap); "
+        f"equivalence {sd(e5['equivalence_yes'])} (Newcombe).",
+    ])
+
+
+def split_results_block(text: str) -> tuple[str, str, str] | None:
+    """(before, inside, after) around the one results block in a handoff, or None when the markers are not there
+    exactly once and in order."""
+    if text.count(RESULTS_BEGIN) != 1 or text.count(RESULTS_END) != 1 or text.index(RESULTS_BEGIN) > text.index(RESULTS_END):
+        return None
+    before, rest = text.split(RESULTS_BEGIN, 1)
+    inside, after = rest.split(RESULTS_END, 1)
+    return before, inside, after
+
+
+def write_results_block(summary: dict) -> None:
+    """Write the results block into HANDOFF.md between its markers; refused when the handoff has no such block."""
+    path = PILOT / "HANDOFF.md"
+    parts = split_results_block(path.read_text(encoding="utf-8") if path.exists() else "")
+    if parts is None:
+        raise SystemExit(f"HANDOFF.md must carry one results block for compute_summary.py to write the Results section "
+                         f"into: the lines {RESULTS_BEGIN} and {RESULTS_END}, in that order")
+    before, _, after = parts
+    path.write_text(before + RESULTS_BEGIN + "\n" + results_block(summary) + "\n" + RESULTS_END + after, encoding="utf-8")
+
+
+def results_block_problems(summary: dict) -> list[str]:
+    """Why HANDOFF.md's Results section is not the summary's: no block, or a block that differs from the rendering."""
+    path = PILOT / "HANDOFF.md"
+    parts = split_results_block(path.read_text(encoding="utf-8") if path.exists() else "")
+    if parts is None:
+        return ["HANDOFF.md carries no results block (the RESULTS_BEGIN and RESULTS_END markers, once, in order)"]
+    if parts[1].strip("\n") != results_block(summary):
+        return ["HANDOFF.md's results block is not what summary.json renders; re-run compute_summary.py, and put "
+                "hand-written text outside the markers"]
+    return []
+
+
 def summary_problems(summary: dict) -> list[str]:
     """Why summary.json does not stand for the files on disk: an input whose hash differs from the one the summary
     recorded when it was computed (or none recorded), or a summary.md that is not the rendering the summary recorded.
@@ -611,6 +690,7 @@ def summary_problems(summary: dict) -> list[str]:
     md = PILOT / "summary.md"
     if summary.get("summary_md_sha256") != (sha256_file(md) if md.exists() else None):
         problems.append("summary.md is not the rendering recorded in summary.json")
+    problems += results_block_problems(summary)  # the handoff's numbers are the summary's (Codex review of PR #52)
     return problems
 
 

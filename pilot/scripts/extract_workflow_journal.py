@@ -12,8 +12,11 @@ and load_checker_batches, which refuse a plan whose stored prompt hashes are not
 
 A started agent with no result record at all (a journal truncated before the workflow finished) is not a null
 return: the journal is refused unless --allow-missing-results is passed, which leaves those attempts out of the items
-(their calls then read as no response) and lists the agents under `agents_without_result_record` (Codex review of
-PR #52). Every record type seen is counted so an unexpected journal shape is visible rather than silently dropped. Two agents carrying one `<id> attempt <n>`
+(their calls then read as no response) and lists the agents under `agents_without_result_record`; that check comes
+before the label is read, so a truncated record with a malformed label is listed too. A started record whose label
+is not in the run's form refuses the journal, since every agent of a run is labelled by the workflow script (Codex
+review of PR #52). Every record type seen is counted so an unexpected journal shape is visible rather than silently
+dropped. Two agents carrying one `<id> attempt <n>`
 label, or two result records for one agent, would collapse into one attempt and the overwritten response would
 leave the provenance unseen, so such a journal is refused before anything is written; so is one in which two
 "started" records reuse one agent id (whatever their keys), or a "started" record lacks key or agentId, since one
@@ -78,21 +81,23 @@ def extract(which: str, journal_path: str, allow_missing: bool = False) -> dict:
     protos: set = set()
     agents_by_label: dict[tuple[str, int], list] = {}
     no_result: list[dict] = []
-    unlabeled = non_text = non_object = 0
+    non_text = non_object = 0
     for s in started:
-        m = LABEL.match(s.get("label") or "")
-        if not m:
-            unlabeled += 1
+        if (s["key"], s["agentId"]) not in results:
+            # absent, not null: the workflow never recorded a result for this agent, whatever its label says
+            # (Codex review of PR #52)
+            no_result.append({"agent_id": s["agentId"], "label": s.get("label")})
             continue
+        m = LABEL.match(s.get("label") or "")
+        if not m:  # every agent of a run is labelled in the run's form; anything else is not this run's journal
+            raise SystemExit(f"{journal_path}: refusing the journal; nothing was written: a started record's label "
+                             f"{s.get('label')!r} is not in the form '<id> attempt <n> [sha256=<hash>] "
+                             f"[protocol=<hash>]' (Codex review of PR #52)")
         item_id, n = m.group("id"), int(m.group("n"))
-        agents_by_label.setdefault((item_id, n), []).append(s.get("agentId"))
+        agents_by_label.setdefault((item_id, n), []).append(s["agentId"])
         shas.setdefault(item_id, set()).add(m.group("sha"))
         protos.add(m.group("proto"))
-        if (s.get("key"), s.get("agentId")) not in results:
-            # absent, not null: the workflow never recorded a result for this agent (Codex review of PR #52)
-            no_result.append({"agent_id": s.get("agentId"), "label": s.get("label")})
-            continue
-        res = results[(s.get("key"), s.get("agentId"))]
+        res = results[(s["key"], s["agentId"])]
         if which == "generation":
             # the model's raw text is the input to estimand 1; a result that is not text is recorded as no text,
             # never serialized into a response that never existed (Codex review of PR #52)
@@ -149,7 +154,7 @@ def extract(which: str, journal_path: str, allow_missing: bool = False) -> dict:
         items = [{"id": i, "arm": meta[i]["arm"], "cell": meta[i]["cell"], "prompt_sha256": sha_of(i),
                   "attempts": [per_item[i][n] for n in sorted(per_item[i])]} for i in meta if i in per_item]
         out = {"source": journal_path, "source_sha256": sha256_file(Path(journal_path)), "protocol_sha256": protocol,
-               "record_types": dict(types), "unlabeled_agents": unlabeled, "non_text_results": non_text,
+               "record_types": dict(types), "non_text_results": non_text,
                "agents_without_result_record": no_result, "calls": items}
         missing = [i for i in meta if i not in per_item]
     else:
@@ -158,7 +163,7 @@ def extract(which: str, journal_path: str, allow_missing: bool = False) -> dict:
         items = [{"batch_id": i, "prompt_sha256": sha_of(i), "attempts": [per_item[i][n] for n in sorted(per_item[i])]}
                  for i in ids if i in per_item]
         out = {"source": journal_path, "source_sha256": sha256_file(Path(journal_path)), "protocol_sha256": protocol,
-               "record_types": dict(types), "unlabeled_agents": unlabeled, "non_object_results": non_object,
+               "record_types": dict(types), "non_object_results": non_object,
                "agents_without_result_record": no_result, "batches": items}
         missing = [i for i in ids if i not in per_item]
     out["items_without_any_agent"] = missing
@@ -180,7 +185,7 @@ def main(which: str, journal_path: str, replace: bool = False, allow_missing: bo
     n_attempts = sum(len(x["attempts"]) for x in items)
     n_bound = sum(1 for x in items if x["prompt_sha256"])
     print(f"{path.name}: {len(items)} items, {n_attempts} attempts, record types {out['record_types']}, "
-          f"unlabeled {out['unlabeled_agents']}, non-text results {out.get('non_text_results', 0)}, non-object results "
+          f"non-text results {out.get('non_text_results', 0)}, non-object results "
           f"{out.get('non_object_results', 0)}, missing {out['items_without_any_agent']}, agents without a result "
           f"record {len(out['agents_without_result_record'])}, items with a prompt hash {n_bound}, protocol "
           f"{str(out['protocol_sha256'])[:12]}"

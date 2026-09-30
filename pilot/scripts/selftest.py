@@ -152,7 +152,8 @@ def dry_run() -> None:
                                          "directory; the recorded protocol follows for the script contract.\n\n" + proto,
                                          encoding="utf-8")
         (tmp / "HANDOFF.md").write_text("# Self-test dry run\n\nFabricated responses; no assumptions, results or review "
-                                        "rounds are recorded here.\n", encoding="utf-8")
+                                        "rounds are recorded here.\n\n<!-- results:begin -->\n<!-- results:end -->\n",
+                                        encoding="utf-8")
         # the model facts must name the model the fabricated transcripts report, or finalize refuses (Codex on PR #52)
         model_path = tmp / "manifest_model.json"
         model_doc = json.loads(model_path.read_text(encoding="utf-8"))
@@ -347,8 +348,17 @@ def dry_run() -> None:
         (tmp / "call_log.jsonl").write_bytes(log_bytes)
         check(not (tmp / "summary.json").exists(),
               "a call log whose non-final attempt differs from the recorded result refuses the summary")
+        # the handoff must carry the results block for the summary to write into (Codex on PR #52)
+        handoff_bytes = (tmp / "HANDOFF.md").read_bytes()
+        (tmp / "HANDOFF.md").write_text("# Self-test dry run\n\nNo markers here.\n", encoding="utf-8")
+        run("compute_summary.py", expect_failure=True)
+        (tmp / "HANDOFF.md").write_bytes(handoff_bytes)
         run("compute_summary.py")
         s = json.loads((tmp / "summary.json").read_text())
+        yes = s["E4"]["generated"]["yes_over_answered"]
+        check(f"judged yes {yes['x']} / {yes['n']} = {yes['p']:.3f}" in (tmp / "HANDOFF.md").read_text(encoding="utf-8")
+              and (tmp / "HANDOFF.md").read_text(encoding="utf-8").startswith("# Self-test dry run\n\nFabricated"),
+              "compute_summary writes the results block into the handoff, leaving the text outside the markers")
         check(s["run"]["n_retried_calls"] == 1, "one retried call recorded")
         cw = s["run"]["calls_with_valid_rows"]
         check(cw["n"] == 18 and cw["x"] == 17 and s["run"]["calls_without_response"] == 1
@@ -638,6 +648,18 @@ def dry_run() -> None:
         (tmp / "checked.jsonl").write_text(checked_now, encoding="utf-8")
         check(json.loads((tmp / "manifest.json").read_text(encoding="utf-8")) == mf,
               "finalize refuses a summary computed from earlier inputs and leaves the manifest as it was")
+        # a handoff whose results block is not the summary's rendering is refused at finalize (Codex on PR #52)
+        hand_bytes = (tmp / "HANDOFF.md").read_bytes()
+        hand_text = hand_bytes.decode("utf-8")
+        edited = hand_text.replace(f"judged yes {yes['x']} / {yes['n']}", f"judged yes {yes['x'] + 1} / {yes['n']}")
+        check(edited != hand_text, "the results block holds the equivalence count to edit")
+        (tmp / "HANDOFF.md").write_text(edited, encoding="utf-8")
+        run("write_manifest.py", "finalize", expect_failure=True)
+        (tmp / "HANDOFF.md").write_text(hand_text.replace("<!-- results:end -->", ""), encoding="utf-8")
+        run("write_manifest.py", "finalize", expect_failure=True)
+        (tmp / "HANDOFF.md").write_bytes(hand_bytes)
+        check(json.loads((tmp / "manifest.json").read_text(encoding="utf-8")) == mf,
+              "a handoff whose results block differs from the summary, or lacks a marker, refuses finalize")
         # a summary whose recorded input hashes omit one of the inputs is refused, not validated on the rest
         summary_bytes = (tmp / "summary.json").read_bytes()
         sdoc = json.loads(summary_bytes.decode("utf-8"))
@@ -778,6 +800,17 @@ def dry_run() -> None:
         run("extract_workflow_journal.py", "generation", str(tmp / "journal_nokey.jsonl"), "--replace", expect_failure=True)
         check((tmp / "workflow_generation_result.json").read_text(encoding="utf-8") == result_text,
               "a journal with two started records on one agent identity, or a started record without one, is refused")
+        # a started record whose label is not in the run's form refuses the journal; a truncated record with such a
+        # label is listed as without a result rather than skipped as unlabelled (Codex on PR #52)
+        badlabel = journal + [{"type": "started", "key": "k10", "agentId": "a10", "label": "not a label"},
+                              {"type": "result", "key": "k10", "agentId": "a10", "result": "{}"}]
+        (tmp / "journal_badlabel.jsonl").write_text("".join(json.dumps(j) + "\n" for j in badlabel), encoding="utf-8")
+        run("extract_workflow_journal.py", "generation", str(tmp / "journal_badlabel.jsonl"), "--replace", expect_failure=True)
+        badtrunc = journal + [{"type": "started", "key": "k11", "agentId": "a11", "label": "not a label"}]
+        (tmp / "journal_badtrunc.jsonl").write_text("".join(json.dumps(j) + "\n" for j in badtrunc), encoding="utf-8")
+        run("extract_workflow_journal.py", "generation", str(tmp / "journal_badtrunc.jsonl"), "--replace", expect_failure=True)
+        check((tmp / "workflow_generation_result.json").read_text(encoding="utf-8") == result_text,
+              "a started record with a malformed label is refused, with or without a result, and the result file is untouched")
         # two started records reusing one agent id, whatever their keys, are refused: one agent's response and
         # transcript would stand for two calls (Codex on PR #52)
         reuse = journal + [{"type": "started", "key": "k9", "agentId": "a1",
