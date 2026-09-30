@@ -154,8 +154,9 @@ containers that hold both repos start with the parent folder as the project dire
 where project settings do not load (found 2026-09-08: the Routine committed the
 dashboard with no hook in the way), so the environment's setup script installs the
 same hooks user-level with `.claude/hooks/install_user_settings.py`
-(`.claude/hooks/README.md`). Paid lanes are additionally ceiling-gated server-side
-in their own workflows (`fire_trigger.py budget-gate`).
+(`.claude/hooks/README.md`). Paid lanes, and circuit-trace's two Anthropic paths
+(`show_mitigation: true`, `mode: translation`), are additionally ceiling-gated
+server-side in their own workflows (`fire_trigger.py budget-gate`).
 
 ## Architecture
 

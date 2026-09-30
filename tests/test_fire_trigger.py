@@ -3174,7 +3174,7 @@ def test_the_push_bindings_read_an_unfetchable_journal_as_unreadable_not_empty(r
 
 
 G4_WORKFLOWS = {"scenario-generation": "scenario_generation.yml", "model-evaluation": "model_evaluation.yml",
-                "advice-eval": "advice_evaluation.yml"}
+                "advice-eval": "advice_evaluation.yml", "circuit-trace": "circuit_trace_evaluation.yml"}
 
 
 @pytest.mark.parametrize("trigger", sorted(G4_WORKFLOWS))
@@ -3203,6 +3203,165 @@ def test_the_paid_workflows_hand_the_gate_the_push_binding(trigger):
     assert checkout["with"]["fetch-depth"] == 0, f"{name}: a shallow clone cannot read the previous tip's journal"
     assert checkout["with"]["filter"] == "blob:none"
     assert job["if"] == "${{ !github.event.created }}", "the ref-creation guard is untouched"
+
+
+# ------------------------------------------------------------------ circuit-trace: two Anthropic paths, one gate
+
+# Review B4 (2026-09-29; findings tests-08, config-02 and config's missed item). circuit-trace calls Anthropic on two
+# paths: 2panel's --show-mitigation third panel, and mode translation, which LLM-translates every pair
+# (batch_eval.evaluate_translation; the workflow never passes --no-llm-translation). is_paid_fire counted only the
+# first, so a translation fire held no commitment and met no ceiling, and circuit_trace_evaluation.yml ran no
+# budget-gate for either.
+
+CIRCUIT_TRACE_WORKFLOW = "circuit_trace_evaluation.yml"
+
+
+def _circuit_trace_jobs() -> dict:
+    import yaml
+
+    path = _MODULE_PATH.parents[1] / ".github" / "workflows" / CIRCUIT_TRACE_WORKFLOW
+    return yaml.safe_load(path.read_text(encoding="utf-8"))["jobs"]
+
+
+def _circuit_trace_resolved(**over: str) -> dict:
+    """The `config` output the params job hands the gate: the workflow's own push-path `defaults` dict, read from its
+    heredoc, with the fire's keys over it, every value a string."""
+    import ast
+
+    run = next(s["run"] for s in _circuit_trace_jobs()["params"]["steps"] if s.get("id") == "params")
+    block = run[run.index("defaults = {") + len("defaults = "):]
+    defaults = ast.literal_eval(block[:block.index("}") + 1])
+    return {**defaults, **{key: str(value) for key, value in over.items()}}
+
+
+def _gate_step_runs(condition: str, config: dict) -> bool:
+    """The gate step's `if:` evaluated for a resolved config, as GitHub evaluates the one form it takes here: a
+    disjunction of `fromJson(steps.params.outputs.config).<key> == '<value>'`, where `==` on strings ignores case.
+    Any other form fails the test instead of being guessed at."""
+    expr = condition.strip()
+    assert expr.startswith("${{") and expr.endswith("}}"), condition
+    terms = []
+    for term in expr[3:-2].split("||"):
+        m = re.fullmatch(r"fromJson\(steps\.params\.outputs\.config\)\.(\w+) == '([^']*)'", term.strip())
+        assert m, f"the gate condition changed form ({term.strip()!r}); update this evaluator with it"
+        terms.append((m.group(1), m.group(2)))
+    return any(str(config.get(key, "")).lower() == value.lower() for key, value in terms)
+
+
+def test_circuit_trace_translation_mode_is_a_paid_fire_priced_like_mitigation():
+    for mode in ("translation", "Translation", " translation "):
+        params = {"mode": mode, "commit_outputs": "false"}
+        assert ft.is_translation_fire("circuit-trace", params), mode
+        assert ft.is_paid_fire("circuit-trace", params) is True, mode
+        # no max_spend key on this lane: the imputed flat commitment is what the fire and the gate price
+        assert ft.fire_commitment(ft.paid_budget_params("circuit-trace", params)) == (ft.MITIGATION_IMPUTED_USD, None)
+    assert ft.is_paid_fire("circuit-trace", {"mode": "2panel", "show_mitigation": "true"}) is True
+    for free in ({"mode": "2panel"}, {"mode": "4quadrant"}, {"mode": "dialect"}, {}, ft.PARK_DEFAULTS["circuit-trace"]):
+        assert not ft.is_translation_fire("circuit-trace", free), free
+        assert ft.is_paid_fire("circuit-trace", free) is False, free
+    # the mode is circuit-trace's; a `mode` of the same name on another lane is not this path
+    assert not ft.is_translation_fire("logits-eval", {"mode": "translation"})
+    assert ft.is_paid_fire("logits-eval", {"mode": "translation"}) is False
+
+
+def test_a_circuit_trace_translation_fire_is_held_against_the_daily_ceiling(repo, capsys):
+    params = {"graph_model": "gemma-2-2b", "mode": "translation", "sample_size": "1", "offsets": "0"}
+    write_dashboard(repo, spent=1.90)
+    assert fire(repo, params=params) == 4
+    assert "max_spend 0.15 + today's committed 1.90" in capsys.readouterr().err
+    assert not trigger_path(repo).exists(), "a refused fire writes nothing"
+    assert not journal_path(repo).exists() or journal_path(repo).read_text(encoding="utf-8").strip() == ""
+
+    write_dashboard(repo, spent=0.0)
+    assert fire(repo, params=params) == 0
+    entry = ft.load_journal(journal_path(repo))[-1]
+    assert entry["max_spend"] == ft.MITIGATION_IMPUTED_USD and entry["lane"] == "anthropic"
+    assert ft.entry_holds_spend(entry, ft.utc_now().strftime("%Y-%m-%d")), "the commitment holds for its UTC day"
+
+
+def test_the_circuit_trace_gate_runs_for_every_config_whose_run_calls_anthropic():
+    """The workflow gates with a step condition, and the gate decides with is_paid_fire; this holds the two together.
+    The run step spends when MITIGATE is exactly "true" in 2panel (bash `=`; batch_eval passes show_mitigation to
+    2panel's evaluate_pair only) or the mode is exactly "translation" (medlang-batch-eval's --mode choices). Every
+    such config must reach the gate and be priced there, and a $0 trace - the park, the 2panel default - must never
+    reach it, so a ceiling refusal can never stop one."""
+    jobs = _circuit_trace_jobs()
+    steps = jobs["params"]["steps"]
+    at = [i for i, s in enumerate(steps) if "budget-gate" in str(s.get("run", ""))]
+    assert len(at) == 1, at
+    gate = steps[at[0]]
+    assert at[0] > next(i for i, s in enumerate(steps) if s.get("id") == "params"), "the gate reads the resolved config"
+    assert gate["env"]["GATE_PARAMS"] == "${{ steps.params.outputs.config }}"
+    # a refused gate fails the params job, and the trace job, which needs it, never starts
+    assert jobs["trace"]["needs"] in ("params", ["params"])
+
+    for show in ("true", "false", "TRUE", "1", ""):
+        for mode in ("2panel", "4quadrant", "translation", "dialect"):
+            config = _circuit_trace_resolved(show_mitigation=show, mode=mode)
+            runs = _gate_step_runs(gate["if"], config)
+            if (show == "true" and mode == "2panel") or mode == "translation":
+                assert runs, config
+            if runs:
+                assert ft.is_paid_fire("circuit-trace", config), f"the gate would wave through as free: {config}"
+    for free in (_circuit_trace_resolved(), _circuit_trace_resolved(**ft.PARK_DEFAULTS["circuit-trace"])):
+        assert not _gate_step_runs(gate["if"], free), free
+        assert not ft.is_paid_fire("circuit-trace", free), free
+
+
+def test_budget_gate_prices_both_circuit_trace_paths_and_clears_a_free_trace_on_a_full_day(repo, tmp_path, capsys):
+    pf = tmp_path / "gate_params.json"
+
+    def gate(config):
+        pf.write_text(json.dumps(config), encoding="utf-8")
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", "circuit-trace", "--params-file", str(pf)])
+
+    paid = (_circuit_trace_resolved(show_mitigation="true"), _circuit_trace_resolved(mode="translation"))
+    write_dashboard(repo, spent=2.0)
+    for config in paid:
+        assert gate(config) == 6, config
+        assert "REFUSED - max_spend 0.15 + today's committed 2.00" in capsys.readouterr().err
+    # a free config handed to the gate (by hand, or were the step's condition ever widened) is cleared before any
+    # ceiling is read
+    for config in (_circuit_trace_resolved(), _circuit_trace_resolved(**ft.PARK_DEFAULTS["circuit-trace"])):
+        assert gate(config) == 0, config
+        assert "circuit-trace is a free fire; clear" in capsys.readouterr().out
+
+    write_dashboard(repo, spent=1.85)
+    for config in paid:
+        assert gate(config) == 0, config
+        assert "budget-gate: clear - max_spend 0.15 + today's committed 1.85" in capsys.readouterr().out
+
+
+def test_budget_gate_counts_a_circuit_trace_translation_fire_once(repo, tmp_path, capsys, monkeypatch):
+    """The G4 binding (2026-09-23) on this lane: the entry this push added for this fire is left out of the day's held
+    sum, so the imputed 0.15 is counted once. A later attempt of the same run keeps the entry counting beside its own
+    commitment, as on the other paid lanes."""
+    monkeypatch.setattr(ft, "utc_now", lambda: datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc))
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    git = _git_repo(repo)
+    journal_path(repo).write_text("", encoding="utf-8")
+    write_dashboard(repo, spent=1.80, date="2026-09-23")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    before = git("rev-parse", "HEAD").stdout.strip()
+    fired = {"graph_model": "gemma-2-2b", "mode": "translation", "sample_size": "1", "offsets": "0"}
+    assert fire(repo, params=fired, note="translation") == 0
+    git("add", "-A")
+    git("commit", "-qm", "Fire circuit-trace: translation")
+    pf = tmp_path / "gate_params.json"
+    pf.write_text(json.dumps(_circuit_trace_resolved(commit_outputs="true", **fired)), encoding="utf-8")
+    capsys.readouterr()
+
+    def gate(*extra):
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", "circuit-trace", "--params-file", str(pf),
+                        *extra])
+
+    assert gate("--push-before", before, "--ref", "main", "--run-attempt", "1") == 0, capsys.readouterr().err
+    out = capsys.readouterr().out
+    assert "this push's own circuit-trace journal entry (fired 2026-09-23T12:00:00Z)" in out
+    assert "max_spend 0.15 + today's committed 1.80 (landed 1.80 + held today 0.00)" in out
+    assert gate("--push-before", before, "--ref", "main", "--run-attempt", "2") == 6
+    assert "max_spend 0.15 + today's committed 1.95 (landed 1.80 + held today 0.15)" in capsys.readouterr().err
 
 
 # ------------------------------------------------------------------ G1 review: a park on a day the ceiling is full
