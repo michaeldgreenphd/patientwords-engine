@@ -244,6 +244,20 @@ def test_publish_records_unjoinable_rows_and_keeps_every_row(engine_root, tmp_pa
     assert any("5/8 rows join no published scenario" in n for n in rep.notes)
 
 
+def test_publish_without_frontend_counts_against_the_published_sites_payload(engine_root, tmp_path):
+    # --publish alone reads the payload of the site it writes into; before, it read ../patientwords, which
+    # here does not exist, so the count could describe a different payload than the one published beside it
+    site = _site(tmp_path, _site_payload())
+    assert not (engine_root.parent / "patientwords").exists()
+    cmd = [sys.executable, str(_SCRIPTS / "urgency_shift.py"), "--tiers", "tiers.json",
+           "--out", str(engine_root.parent / "rows.json"), "--publish", str(site)]
+    proc = subprocess.run(cmd, cwd=engine_root, capture_output=True, text=True, timeout=120)
+    assert proc.returncode == 0, proc.stderr
+    data = json.loads((site / "data" / "urgency_shift.json").read_text(encoding="utf-8"))
+    assert data["unjoinable_rows"]["n"] == 5
+    assert str(site) in proc.stdout
+
+
 @pytest.mark.parametrize("payload", [None, {"scenarios": []}])
 def test_publish_refuses_without_a_readable_payload_and_writes_nothing(engine_root, tmp_path, payload):
     site = _site(tmp_path, payload)

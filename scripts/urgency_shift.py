@@ -15,7 +15,8 @@ data file - no medical vocabulary lives in this script):
 
 Usage:
   python scripts/urgency_shift.py [--tiers data/urgency_tiers.draft.json]
-      [--frontend ../patientwords] [--min-coverage 0.3] [--out urgency_shift.json]
+      [--frontend <site root>] [--min-coverage 0.3] [--out urgency_shift.json] [--publish <site root>]
+  --frontend defaults to the --publish root when --publish is given, else ../patientwords.
 """
 
 import argparse
@@ -27,7 +28,9 @@ from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
 parser.add_argument("--tiers", default="data/urgency_tiers.draft.json")
-parser.add_argument("--frontend", default="../patientwords")
+parser.add_argument("--frontend", default=None,
+                    help="frontend repo root whose data/simulated_scenarios.json is read "
+                         "(default: the --publish root when --publish is given, else ../patientwords)")
 parser.add_argument("--min-coverage", type=float, default=0.3,
                     help="minimum share of a spread's mass that must be tier-assigned")
 parser.add_argument("--out", default="urgency_shift.json")
@@ -36,6 +39,12 @@ parser.add_argument("--publish", default="",
                          "for the site (summary + join-keyed rows + vocabulary status + the count "
                          "of rows joining no scenario in the --frontend payload, which must be readable)")
 args = parser.parse_args()
+# unjoinable_rows is counted against the --frontend payload and written into the --publish root; with no
+# explicit --frontend, read the payload of the site being published, so the recorded count describes the
+# payload the contract check will compare it with (Antigravity review of PR #57). The publish chain passes
+# --publish ../patientwords, which gives the same default as before; an explicit --frontend is kept as given.
+if args.frontend is None:
+    args.frontend = args.publish or "../patientwords"
 
 vocab = json.loads(Path(args.tiers).read_text(encoding="utf-8"))["tokens"]
 
