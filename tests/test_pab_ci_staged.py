@@ -21,8 +21,7 @@ import re
 from pathlib import Path
 
 import pytest
-
-yaml = pytest.importorskip("yaml")
+import yaml
 
 _ROOT = Path(__file__).resolve().parents[1]
 STAGED_DIR = _ROOT / "ops" / "pab_ci"

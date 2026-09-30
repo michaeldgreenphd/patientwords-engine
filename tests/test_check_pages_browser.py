@@ -4,8 +4,12 @@ The offline tests in test_check_pages.py test a local copy of the verdict rule
 and never call the script -- which is how a dead branch shipped: the
 "empty while visible" verdict asked the tbody for visibility, and an empty
 tbody has a zero-height box, so it could never fire. These drive the real
-function against three minimal pages. Skipped where no Chromium is available.
+function against three minimal pages. Skipped where Playwright is not installed
+or no Chromium exists. The browser launched is the first that exists of: the
+sandbox's pinned build at CHROME, the build `playwright install chromium` puts
+in Playwright's own cache, and a `chromium` on PATH.
 """
+from __future__ import annotations
 
 import importlib.util
 import shutil
@@ -17,10 +21,13 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 CHROME = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"
 
-pytest.importorskip("playwright")
-pytestmark = pytest.mark.skipif(
-    not (Path(CHROME).exists() or shutil.which("chromium")),
-    reason="no Chromium available for a browser-driven test")
+
+def pick_chromium(pinned: str, managed: str | None, on_path: str | None) -> str | None:
+    """The first candidate that exists on disk, in the order given, or None."""
+    for candidate in (pinned, managed, on_path):
+        if candidate and Path(candidate).exists():
+            return candidate
+    return None
 
 
 def _load(name):
@@ -53,22 +60,43 @@ def site(tmp_path_factory):
 
 @pytest.fixture(scope="module")
 def results(site):
+    pytest.importorskip("playwright")
     from playwright.sync_api import sync_playwright
     port = 8933
-    server = cp.serve(site, port)
     out = {}
-    try:
-        with sync_playwright() as pw:
-            launch = {"executable_path": CHROME} if Path(CHROME).exists() else {}
-            browser = pw.chromium.launch(**launch)
+    with sync_playwright() as pw:
+        chrome = pick_chromium(CHROME, pw.chromium.executable_path, shutil.which("chromium"))
+        if chrome is None:
+            pytest.skip("no Chromium available for a browser-driven test")
+        server = cp.serve(site, port)
+        try:
+            browser = pw.chromium.launch(executable_path=chrome)
             for name in PAGES:
                 page = browser.new_page()
                 out[name] = cp.check_page(page, f"http://127.0.0.1:{port}", "/" + name)
                 page.close()
             browser.close()
-    finally:
-        server.terminate()
+        finally:
+            server.terminate()
     return out
+
+
+def test_pick_chromium_accepts_playwrights_own_build(tmp_path):
+    """`playwright install chromium` leaves its build in Playwright's cache, which is
+    neither the pinned path nor on PATH; the browser tests must run on it, not skip."""
+    managed = tmp_path / "managed-chrome"
+    on_path = tmp_path / "path-chromium"
+    missing = str(tmp_path / "absent")
+    assert pick_chromium(missing, None, None) is None
+    assert pick_chromium(missing, missing, missing) is None
+    managed.touch()
+    assert pick_chromium(missing, str(managed), None) == str(managed)
+    on_path.touch()
+    assert pick_chromium(missing, str(managed), str(on_path)) == str(managed)
+    assert pick_chromium(missing, missing, str(on_path)) == str(on_path)
+    pinned = tmp_path / "pinned-chrome"
+    pinned.touch()
+    assert pick_chromium(str(pinned), str(managed), str(on_path)) == str(pinned)
 
 
 def test_empty_table_on_screen_is_a_finding(results):
