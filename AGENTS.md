@@ -121,7 +121,7 @@ in `fire_trigger.py`'s `PAID_TRIGGERS` (the source of truth) spend provider cred
 `main`, `scenario-generation`, `model-evaluation`, `advice-eval`, and
 `petri-audit` when `mode: run` (or `mode: readapt` or `mode: rejudge`, whose judge alone spends; a rejudge with the `mockllm/judge` rehearsal spends nothing) —
 and so does `circuit-trace` with `show_mitigation: true` (a flat $0.15 imputed per fire)
-or `mode: translation` (which `is_paid_fire` does not count). Measured per accepted pair
+or `mode: translation`. Measured per accepted pair
 across the landed `.report.json` sidecars (2026-09-04): opus **$0.020**, haiku $0.0017,
 sonnet $0.060. Every paid generation run writes `<batch>.report.json` (one archived
 batch, `pairs_20260706T172135Z` — the park default — has none); mitigation runs write
