@@ -11,7 +11,9 @@ recorded as the provenance of the stored responses; `journal_sha256` is recorded
 The transcripts are matched to the journal's started agents: every started agent must have its agent-<id>.jsonl
 and no transcript may belong to an agent the journal did not start, so one unrelated transcript cannot stand as the
 model evidence for every agent; the model ids are counted per agent, and agents whose transcript reports none are
-listed for finalize to refuse (Codex review of PR #52).
+listed for finalize to refuse. The extra JSON may not carry any key the script computes (they are the evidence),
+and every record write clears the manifest's finalization, since a replaced record is unverified until the next
+finalize (Codex review of PR #52).
 """
 from __future__ import annotations
 
@@ -25,6 +27,8 @@ from common import PILOT, sha256_file
 
 MODEL_RE = re.compile(r'"model":"([^"]+)"')
 STAGES = ("generation", "checker")
+RESERVED = ("run_id", "transcript_dir", "journal_sha256", "agents_started", "agent_transcripts",
+            "agents_without_model_id", "journal_record_types", "model_evidence")
 
 
 def main(name: str, run_id: str, transcript_dir: str, extra_json: str, replace: bool = False) -> None:
@@ -50,6 +54,10 @@ def main(name: str, run_id: str, transcript_dir: str, extra_json: str, replace: 
                          f"extracted from (source_sha256 {str(recorded)[:12]!r}); a run record must describe the run "
                          f"that produced the recorded result (re-extract with --replace if the result predates the "
                          f"binding); nothing was recorded")
+    extra = json.loads(extra_json or "{}")
+    if not isinstance(extra, dict) or any(k in RESERVED for k in extra):
+        raise SystemExit(f"record_run: the extra JSON must be an object without the computed keys {list(RESERVED)}; "
+                         f"got {sorted(extra) if isinstance(extra, dict) else type(extra).__name__}; nothing was recorded")
     path = PILOT / "manifest.json"
     m = json.loads(path.read_text(encoding="utf-8"))
     if name in m.get("runs", {}) and not replace:
@@ -83,17 +91,21 @@ def main(name: str, run_id: str, transcript_dir: str, extra_json: str, replace: 
             without.append(agent_id)
         for mm in found:
             models[mm] += 1
-    m.setdefault("runs", {})[name] = {"run_id": run_id, "transcript_dir": str(tdir), "journal_sha256": journal_sha,
+    m.setdefault("runs", {})[name] = {**extra,  # the computed evidence last, so nothing in the extras can shadow it
+                                       "run_id": run_id, "transcript_dir": str(tdir), "journal_sha256": journal_sha,
                                        "agents_started": len(started), "agent_transcripts": len(started),
                                        "agents_without_model_id": without,
                                        "journal_record_types": dict(types),
                                        "model_evidence": {"model_strings_in_transcripts": dict(models),
                                                           "note": "counts of \"model\":\"...\" strings across the "
-                                                                  "started agents' transcripts; API response records"},
-                                       **json.loads(extra_json or "{}")}
+                                                                  "started agents' transcripts; API response records"}}
+    cleared = m.get("finalized_utc") is not None or "output_hashes" in m
+    m["finalized_utc"] = None  # a replaced record is unverified until the next finalize (Codex review of PR #52)
+    m.pop("output_hashes", None)
     path.write_text(json.dumps(m, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"manifest runs.{name}: {len(started)} agents with transcripts, models {dict(models)}, "
-          f"agents without a model id {without}, journal {dict(types)}")
+          f"agents without a model id {without}, journal {dict(types)}"
+          + ("; finalization cleared, re-run write_manifest.py finalize" if cleared else ""))
 
 
 if __name__ == "__main__":

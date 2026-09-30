@@ -8,7 +8,7 @@ The generation script runs one subagent per call with no output schema (format v
 call once when no returned line carries the four required keys, and returns every attempt verbatim. The checker
 script runs one subagent per batch with a structured-output schema and retries once on an empty return.
 
-Every agent label carries the prompt's SHA-256 (`<id> attempt <n> sha256=<hash>`), which the run's journal records
+Every agent label carries the prompt's SHA-256 and the frozen protocol's (`<id> attempt <n> sha256=<hash> protocol=<hash>`), which the run's journal records
 and extract_workflow_journal.py copies into the result file, so parse_generation.py and parse_checker.py can bind
 a result to the plan it answered (Codex review of PR #52). The scripts under workflows/ that produced the recorded
 run predate this label and carry no hash.
@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import sys
 
-from common import PILOT, REQUIRED_FIELDS, load_calls, load_checker_batches
+from common import PILOT, REQUIRED_FIELDS, load_calls, load_checker_batches, sha256_file
 
 GENERATION = """export const meta = {
   name: 'pilot-generation',
@@ -26,6 +26,7 @@ GENERATION = """export const meta = {
   phases: [{ title: 'Generate', detail: 'one subagent per call, no shared outputs, retry once' }],
 }
 const REQUIRED = __REQUIRED__
+const PROTOCOL = __PROTOCOL__
 const CALLS = __CALLS__
 function nValid(text) {
   if (typeof text !== 'string') return 0
@@ -44,7 +45,7 @@ phase('Generate')
 const results = await pipeline(CALLS, async (call) => {
   const attempts = []
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const raw = await agent(call.prompt, { label: `${call.id} attempt ${attempt} sha256=${call.prompt_sha256}`, phase: 'Generate' })
+    const raw = await agent(call.prompt, { label: `${call.id} attempt ${attempt} sha256=${call.prompt_sha256} protocol=${PROTOCOL}`, phase: 'Generate' })
     const text = typeof raw === 'string' ? raw : null
     const v = nValid(text)
     const lines = text === null ? 0 : text.split('\\n').filter(l => l.trim()).length
@@ -62,6 +63,7 @@ CHECKER = """export const meta = {
   description: 'Stimulus pilot: blind semantic-equivalence checker, one isolated subagent per batch of 30',
   phases: [{ title: 'Check', detail: 'one subagent per batch, structured output, retry once' }],
 }
+const PROTOCOL = __PROTOCOL__
 const BATCHES = __BATCHES__
 const SCHEMA = {
   type: 'object',
@@ -85,7 +87,7 @@ phase('Check')
 const results = await pipeline(BATCHES, async (b) => {
   const attempts = []
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const res = await agent(b.prompt, { label: `${b.batch_id} attempt ${attempt} sha256=${b.prompt_sha256}`, phase: 'Check', schema: SCHEMA })
+    const res = await agent(b.prompt, { label: `${b.batch_id} attempt ${attempt} sha256=${b.prompt_sha256} protocol=${PROTOCOL}`, phase: 'Check', schema: SCHEMA })
     const ok = !!(res && Array.isArray(res.verdicts) && res.verdicts.length)
     attempts.push({ attempt, result: ok ? res : null, null_return: res === null })
     log(`${b.batch_id} attempt ${attempt}: ${ok ? res.verdicts.length + ' verdicts' : 'no usable return'}`)
@@ -114,6 +116,9 @@ def main(which: str) -> None:
         path = out_dir / "checker.workflow.js"
     else:
         raise SystemExit("usage: make_workflow_scripts.py generation|checker")
+    # the frozen protocol's hash rides in every agent label, so the run's journal records which protocol it ran
+    # under and the parsers refuse a result from another (Codex review of PR #52)
+    text = text.replace("__PROTOCOL__", json.dumps(sha256_file(PILOT / "PROTOCOL.md")))
     out_dir.mkdir(exist_ok=True)  # only once the plan has loaded: a refused plan writes nothing
     path.write_text(text, encoding="utf-8")
     print(f"{path} ({len(payload)} items, {len(text)} bytes)")

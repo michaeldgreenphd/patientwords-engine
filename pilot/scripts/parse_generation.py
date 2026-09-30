@@ -28,6 +28,7 @@ from common import (
     lines_of,
     load_calls,
     resolve_input,
+    result_binding_problems,
     validate_line,
     write_jsonl,
 )
@@ -46,12 +47,13 @@ def validate_result(result: object, planned: dict[str, dict], unbound: bool = Fa
     retry), and a `prompt_sha256` equal to the planned prompt's, so a result answers the plan it was run from and
     not an earlier one with the same ids. A planned call may be absent (it is recorded as no response); a duplicate
     or unplanned id, a repeated or out-of-order attempt number, or a foreign prompt hash is refused, never
-    overwritten or ignored. --unbound skips the hash check only for a result recorded before the binding existed,
+    overwritten or ignored. The result's `protocol_sha256` must be the frozen protocol on disk; --unbound skips the
+    prompt-hash and protocol checks only for the recorded run's own result file (common.LEGACY_UNBOUND_SOURCES),
     and the call log says so (Codex review of PR #52)."""
     if not isinstance(result, dict) or not isinstance(result.get("calls"), list):
         raise SystemExit("parse_generation: the result must be an object with a 'calls' list; nothing on disk was changed")
     by_id: dict[str, dict] = {}
-    problems = []
+    problems = result_binding_problems(result, unbound)
     for i, c in enumerate(result["calls"]):
         if not isinstance(c, dict) or not isinstance(c.get("id"), str):
             problems.append(f"calls[{i}]: not an object with a string id")

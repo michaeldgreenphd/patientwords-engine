@@ -170,6 +170,7 @@ def dry_run() -> None:
                                              encoding="utf-8")
             for agent in ("a1", "a2"):  # the Workflow tool names each transcript agent-<agentId>.jsonl
                 (d / f"agent-{agent}.jsonl").write_text('{"model":"selftest-model"}\n', encoding="utf-8")
+        proto = common.sha256_file(tmp / "PROTOCOL.md")  # the frozen protocol's hash, as the agent labels carry it
         env = {**os.environ, "PILOT_DIR": str(tmp)}
 
         def run(script: str, *args: str, expect_failure: bool = False) -> str:
@@ -195,7 +196,7 @@ def dry_run() -> None:
         r = random.Random(1)
         # the last planned call is left out of the result: a planned call with no response record must stay in
         # every call-level denominator (Codex on PR #52)
-        gen = {"source_sha256": common.sha256_file(gdir / "journal.jsonl"),
+        gen = {"source_sha256": common.sha256_file(gdir / "journal.jsonl"), "protocol_sha256": proto,
                "calls": [{"id": c["id"], "arm": c["arm"], "cell": c["cell"], "prompt_sha256": c["prompt_sha256"],
                           "attempts": fake_response(c, r, broken_first=(c["id"] == calls[3]["id"]))} for c in calls[:-1]]}
         (tmp / "workflow_generation_result.json").write_text(json.dumps(gen))
@@ -224,14 +225,25 @@ def dry_run() -> None:
                            ("three attempts", with_attempts([1, 2, 3])),
                            ("retry after a valid first attempt", with_attempts([1, 2])),
                            ("foreign prompt hash", {"calls": [dict(first, prompt_sha256="0" * 64)] + gen["calls"][1:]}),
-                           ("missing prompt hash", {"calls": [unhashed] + gen["calls"][1:]})):
-            (tmp / "wf_bad.json").write_text(json.dumps(bad))
+                           ("missing prompt hash", {"calls": [unhashed] + gen["calls"][1:]}),
+                           ("foreign protocol hash", {"protocol_sha256": "0" * 64, "calls": gen["calls"]}),
+                           ("missing protocol hash", {"protocol_sha256": None, "calls": gen["calls"]})):
+            (tmp / "wf_bad.json").write_text(json.dumps({"source_sha256": gen["source_sha256"], "protocol_sha256": proto, **bad}))
             run("parse_generation.py", str(tmp / "wf_bad.json"), "--replace", expect_failure=True)
             check(n_outputs() == before, f"a result with a {label} is refused and leaves the previous outputs intact")
+        # --unbound is accepted only for the recorded run's own result files (by source_sha256): a hashless result
+        # of any other origin is refused with it, and the recorded run's journal parses only with it (Codex on PR #52)
         (tmp / "wf_unbound.json").write_text(json.dumps({"calls": [unhashed] + gen["calls"][1:]}))
-        run("parse_generation.py", str(tmp / "wf_unbound.json"), "--replace", "--unbound")  # legacy result: allowed
+        run("parse_generation.py", str(tmp / "wf_unbound.json"), "--replace", "--unbound", expect_failure=True)
+        check(n_outputs() == before, "--unbound on a result that is not the recorded run's is refused")
+        fab_bytes = (tmp / "workflow_generation_result.json").read_bytes()
+        run("extract_workflow_journal.py", "generation", str(HERE.parent / "workflows" / "generation.journal.jsonl"), "--replace")
+        run("parse_generation.py", str(tmp / "workflow_generation_result.json"), "--replace", expect_failure=True)  # no hashes
+        run("parse_generation.py", str(tmp / "workflow_generation_result.json"), "--replace", "--unbound")
         log = common.read_jsonl(tmp / "call_log.jsonl")
-        check(all(e["plan_binding"].startswith("none") for e in log), "an --unbound parse says so in every call log entry")
+        check(all(e["plan_binding"].startswith("none") for e in log),
+              "the recorded run's journal parses only with --unbound, and the call log says so in every entry")
+        (tmp / "workflow_generation_result.json").write_bytes(fab_bytes)
         run("parse_generation.py", str(tmp / "workflow_generation_result.json"), "--replace")
         check(all(e["plan_binding"] == "prompt_sha256" for e in common.read_jsonl(tmp / "call_log.jsonl")),
               "a bound parse records the binding in every call log entry")
@@ -256,7 +268,7 @@ def dry_run() -> None:
               "checker request bodies carry the verdict schema")
         batches = json.loads((tmp / "checker_batches.json").read_text())["batches"]
         key = {k["id"]: k for k in common.read_jsonl(tmp / "checker_key.jsonl")}
-        chk = {"source_sha256": common.sha256_file(cdir / "journal.jsonl"), "batches": []}
+        chk = {"source_sha256": common.sha256_file(cdir / "journal.jsonl"), "protocol_sha256": proto, "batches": []}
         for b in batches:
             verdicts = []
             for iid in b["item_ids"]:
@@ -272,9 +284,11 @@ def dry_run() -> None:
                            ("retry after a verdict list", {"batches": [dict(b0, attempts=[b0["attempts"][0], dict(b0["attempts"][0], attempt=2)])]
                                                            + chk["batches"][1:]}),
                            ("foreign prompt hash", {"batches": [dict(b0, prompt_sha256="0" * 64)] + chk["batches"][1:]})):
-            (tmp / "wf_chk_bad.json").write_text(json.dumps(bad))
+            (tmp / "wf_chk_bad.json").write_text(json.dumps({"source_sha256": chk["source_sha256"], "protocol_sha256": proto, **bad}))
             run("parse_checker.py", str(tmp / "wf_chk_bad.json"), expect_failure=True)
             check(not (tmp / "checked.jsonl").exists(), f"a checker result with a {label} is refused and writes nothing")
+        run("parse_checker.py", str(tmp / "wf_chk_bad.json"), "--unbound", expect_failure=True)
+        check(not (tmp / "checked.jsonl").exists(), "--unbound on a checker result that is not the recorded run's is refused")
         run("parse_checker.py", str(tmp / "workflow_checker_result.json"))
         # a previous checker parse is never written over without --replace, and every row carries the plan's hash
         # (Codex on PR #52)
@@ -303,6 +317,16 @@ def dry_run() -> None:
         (tmp / "review_sheet.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
         run("make_review_sheet.py", expect_failure=True)
         (tmp / "review_sheet.csv").write_bytes(original_sheet)
+        # every attempt, final or not, must be what the recorded result derives: a stale non-final entry (the
+        # retried call's first attempt) refuses the summary before any number is computed (Codex on PR #52)
+        log_bytes = (tmp / "call_log.jsonl").read_bytes()
+        log_rows = common.read_jsonl(tmp / "call_log.jsonl")
+        next(e for e in log_rows if e.get("is_final") is False)["n_lines"] += 1
+        common.write_jsonl(tmp / "call_log.jsonl", log_rows)
+        run("compute_summary.py", expect_failure=True)
+        (tmp / "call_log.jsonl").write_bytes(log_bytes)
+        check(not (tmp / "summary.json").exists(),
+              "a call log whose non-final attempt differs from the recorded result refuses the summary")
         run("compute_summary.py")
         s = json.loads((tmp / "summary.json").read_text())
         check(s["run"]["n_retried_calls"] == 1, "one retried call recorded")
@@ -414,6 +438,9 @@ def dry_run() -> None:
         run("make_workflow_scripts.py", "generation")
         run("make_workflow_scripts.py", "checker")
         check(len(list((tmp / "workflows").glob("*.js"))) == 2, "consistent plans yield the two workflow scripts")
+        wf_text = (tmp / "workflows" / "generation.workflow.js").read_text(encoding="utf-8")
+        check(json.dumps(proto) in wf_text and "protocol=${PROTOCOL}" in wf_text,
+              "the workflow scripts put the frozen protocol's hash in every agent label")
         # the review bundle must sample these checked rows: a map stamped with another plan, or a key verdict that
         # differs from the checked row, is refused (Codex on PR #52)
         map_text = (tmp / "review_map.json").read_text(encoding="utf-8")
@@ -468,8 +495,13 @@ def dry_run() -> None:
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir))
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir), expect_failure=True)
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir), "--replace")
+        # the extra JSON may not carry a computed key, which could otherwise replace the evidence (Codex on PR #52)
+        run("record_run.py", "generation", "wf_selftest_gen", str(gdir), '{"agents_without_model_id": []}', "--replace",
+            expect_failure=True)
+        run("record_run.py", "generation", "wf_selftest_gen", str(gdir), '{"operator_note": "kept"}', "--replace")
         mr = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))["runs"]["generation"]
         check(mr["run_id"] == "wf_selftest_gen" and mr["agents_started"] == 2 and mr["agent_transcripts"] == 2
+              and mr["operator_note"] == "kept"
               and mr["agents_without_model_id"] == []
               and mr["journal_sha256"] == common.sha256_file(gdir / "journal.jsonl")
               and mr["model_evidence"]["model_strings_in_transcripts"] == {"selftest-model": 2},
@@ -479,6 +511,11 @@ def dry_run() -> None:
         # transcripts (Codex on PR #52)
         run("write_manifest.py", "finalize", expect_failure=True)
         run("record_run.py", "checker", "wf_selftest_chk", str(cdir))
+        # the copied journals under workflows/ are required outputs compared with the run records (Codex on PR #52)
+        run("write_manifest.py", "finalize", expect_failure=True)  # no copies yet
+        (tmp / "workflows").mkdir(exist_ok=True)
+        shutil.copy(gdir / "journal.jsonl", tmp / "workflows" / "generation.journal.jsonl")
+        shutil.copy(cdir / "journal.jsonl", tmp / "workflows" / "checker.journal.jsonl")
         # finalize hashes every required output and refuses a missing one; a plan-time rewrite after finalize keeps
         # the hashes only while the outputs are unchanged (Codex on PR #52)
         run("write_manifest.py", "finalize")
@@ -511,6 +548,13 @@ def dry_run() -> None:
         (tmp / "manifest.json").write_text(json.dumps(mdoc_runs, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         run("write_manifest.py", "finalize", expect_failure=True)
         (tmp / "manifest.json").write_bytes(manifest_bytes)
+        copy_path = tmp / "workflows" / "checker.journal.jsonl"
+        copy_bytes = copy_path.read_bytes()
+        copy_path.write_bytes(copy_bytes + b'{"type": "extra"}\n')
+        run("write_manifest.py", "finalize", expect_failure=True)
+        copy_path.unlink()
+        run("write_manifest.py", "finalize", expect_failure=True)
+        copy_path.write_bytes(copy_bytes)
         agent_bytes = (gdir / "agent-a1.jsonl").read_bytes()
         (gdir / "agent-a1.jsonl").write_text('{"model":"another-model"}\n', encoding="utf-8")
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir), "--replace")
@@ -520,6 +564,9 @@ def dry_run() -> None:
         run("write_manifest.py", "finalize", expect_failure=True)
         (gdir / "agent-a1.jsonl").write_bytes(agent_bytes)
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir), "--replace")
+        m_after = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        check(m_after["finalized_utc"] is None and "output_hashes" not in m_after,
+              "replacing a run record clears the finalization until the next finalize (Codex on PR #52)")
         run("write_manifest.py", "finalize")
         mf = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
         check(mf["runs"]["generation"]["model_evidence"]["model_strings_in_transcripts"] == {"selftest-model": 2},
@@ -615,6 +662,19 @@ def dry_run() -> None:
         tpl.write_text(tpl_text + "\nedited after batching\n", encoding="utf-8")
         run("write_manifest.py", expect_failure=True)
         tpl.write_text(tpl_text, encoding="utf-8")
+        # the protocol is frozen: a change after the first manifest refuses every write instead of sealing
+        # protocol_unchanged: false, and the recorded results, stamped with the protocol they ran under, are refused
+        # by the parsers; restored, the finalization stands (Codex on PR #52)
+        proto_bytes = (tmp / "PROTOCOL.md").read_bytes()
+        (tmp / "PROTOCOL.md").write_bytes(proto_bytes + b"\nEdited after the run.\n")
+        run("write_manifest.py", expect_failure=True)
+        run("write_manifest.py", "finalize", expect_failure=True)
+        run("parse_generation.py", str(tmp / "workflow_generation_result.json"), "--replace", expect_failure=True)
+        (tmp / "PROTOCOL.md").write_bytes(proto_bytes)
+        run("write_manifest.py")
+        m_proto = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        check(m_proto["protocol_unchanged"] is True and isinstance(m_proto["finalized_utc"], str),
+              "a changed protocol refuses every write and the stamped results; restored, the finalization stands")
         # manifest_model.json is frozen from the first manifest that recorded its hash: an edit after the run is
         # refused without --reset, and --reset clears the run records, so finalize needs them recorded again
         # (Codex on PR #52)
@@ -639,12 +699,12 @@ def dry_run() -> None:
         # the journal extractor reads the prompt hash from a labelled agent and leaves it null for a legacy label
         journal = [{"type": "launched"},
                    {"type": "started", "key": "k1", "agentId": "a1",
-                    "label": f"{calls[0]['id']} attempt 1 sha256={calls[0]['prompt_sha256']}"},
+                    "label": f"{calls[0]['id']} attempt 1 sha256={calls[0]['prompt_sha256']} protocol={proto}"},
                    {"type": "result", "key": "k1", "agentId": "a1", "result": "{}"},
-                   {"type": "started", "key": "k2", "agentId": "a2", "label": f"{calls[1]['id']} attempt 1"},
+                   {"type": "started", "key": "k2", "agentId": "a2", "label": f"{calls[1]['id']} attempt 1 protocol={proto}"},
                    {"type": "result", "key": "k2", "agentId": "a2", "result": "{}"},
                    {"type": "started", "key": "k3", "agentId": "a3",
-                    "label": f"{calls[2]['id']} attempt 1 sha256={calls[2]['prompt_sha256']}"},
+                    "label": f"{calls[2]['id']} attempt 1 sha256={calls[2]['prompt_sha256']} protocol={proto}"},
                    {"type": "result", "key": "k3", "agentId": "a3",
                     "result": {"clinical_term": "a", "patient_term": "b", "template": "x ___ y", "control": "none"}}]
         (tmp / "journal.jsonl").write_text("".join(json.dumps(j) + "\n" for j in journal), encoding="utf-8")
@@ -662,7 +722,7 @@ def dry_run() -> None:
               "a non-text generation result is recorded as no text with its type, never serialized into a response")
         # two agents carrying one label would collapse into one attempt: the journal is refused (Codex on PR #52)
         dup = journal + [{"type": "started", "key": "k4", "agentId": "a4",
-                          "label": f"{calls[0]['id']} attempt 1 sha256={calls[0]['prompt_sha256']}"},
+                          "label": f"{calls[0]['id']} attempt 1 sha256={calls[0]['prompt_sha256']} protocol={proto}"},
                          {"type": "result", "key": "k4", "agentId": "a4", "result": "{}"}]
         (tmp / "journal_dup.jsonl").write_text("".join(json.dumps(j) + "\n" for j in dup), encoding="utf-8")
         result_text = (tmp / "workflow_generation_result.json").read_text(encoding="utf-8")
@@ -684,7 +744,7 @@ def dry_run() -> None:
               "a journal with a result record for no started agent is refused and the previous result file is untouched")
         # two started records sharing one (key, agentId) under two labels would read one response as two calls, and
         # a started record without key or agentId could match no result: both refused (Codex on PR #52)
-        twin_label = f"{calls[3]['id']} attempt 1 sha256={calls[3]['prompt_sha256']}"
+        twin_label = f"{calls[3]['id']} attempt 1 sha256={calls[3]['prompt_sha256']} protocol={proto}"
         twin = journal + [{"type": "started", "key": "k1", "agentId": "a1", "label": twin_label}]
         (tmp / "journal_twin.jsonl").write_text("".join(json.dumps(j) + "\n" for j in twin), encoding="utf-8")
         run("extract_workflow_journal.py", "generation", str(tmp / "journal_twin.jsonl"), "--replace", expect_failure=True)
@@ -693,15 +753,34 @@ def dry_run() -> None:
         run("extract_workflow_journal.py", "generation", str(tmp / "journal_nokey.jsonl"), "--replace", expect_failure=True)
         check((tmp / "workflow_generation_result.json").read_text(encoding="utf-8") == result_text,
               "a journal with two started records on one agent identity, or a started record without one, is refused")
+        # a started agent with no result record is not a null return: refused unless --allow-missing-results, which
+        # leaves the attempt out and lists the agent; labels with differing protocol hashes are refused (Codex on PR #52)
+        trunc = journal + [{"type": "started", "key": "k7", "agentId": "a7",
+                            "label": f"{calls[4]['id']} attempt 1 sha256={calls[4]['prompt_sha256']} protocol={proto}"}]
+        (tmp / "journal_trunc.jsonl").write_text("".join(json.dumps(j) + "\n" for j in trunc), encoding="utf-8")
+        run("extract_workflow_journal.py", "generation", str(tmp / "journal_trunc.jsonl"), "--replace", expect_failure=True)
+        check((tmp / "workflow_generation_result.json").read_text(encoding="utf-8") == result_text,
+              "a started agent without a result record refuses the journal and leaves the previous result file untouched")
+        run("extract_workflow_journal.py", "generation", str(tmp / "journal_trunc.jsonl"), "--replace", "--allow-missing-results")
+        ext2 = json.loads((tmp / "workflow_generation_result.json").read_text(encoding="utf-8"))
+        check(ext2["agents_without_result_record"] == [{"agent_id": "a7", "label": trunc[-1]["label"]}]
+              and calls[4]["id"] not in {c["id"] for c in ext2["calls"]} and ext2["protocol_sha256"] == proto,
+              "--allow-missing-results leaves the attempt out, lists the agent, and the result carries the protocol hash")
+        conflict = journal + [{"type": "started", "key": "k8", "agentId": "a8",
+                               "label": f"{calls[5]['id']} attempt 1 sha256={calls[5]['prompt_sha256']} protocol={'1' * 64}"},
+                              {"type": "result", "key": "k8", "agentId": "a8", "result": "{}"}]
+        (tmp / "journal_conflict.jsonl").write_text("".join(json.dumps(j) + "\n" for j in conflict), encoding="utf-8")
+        run("extract_workflow_journal.py", "generation", str(tmp / "journal_conflict.jsonl"), "--replace", expect_failure=True)
         # a checker result that is not an object (a non-JSON string, a number) is kept verbatim with its type and
         # counted by the extractor, and the parser logs it as a malformed return, not a null one (Codex on PR #52)
         cb = json.loads((tmp / "checker_batches.json").read_text(encoding="utf-8"))["batches"]
         cj = [{"type": "launched"},
-              {"type": "started", "key": "c1", "agentId": "ca1", "label": f"{cb[0]['batch_id']} attempt 1 sha256={cb[0]['prompt_sha256']}"},
+              {"type": "started", "key": "c1", "agentId": "ca1", "label": f"{cb[0]['batch_id']} attempt 1 sha256={cb[0]['prompt_sha256']} protocol={proto}"},
               {"type": "result", "key": "c1", "agentId": "ca1", "result": "Sorry, no verdicts, just prose."},
-              {"type": "started", "key": "c2", "agentId": "ca2", "label": f"{cb[1]['batch_id']} attempt 1 sha256={cb[1]['prompt_sha256']}"},
+              {"type": "started", "key": "c2", "agentId": "ca2", "label": f"{cb[1]['batch_id']} attempt 1 sha256={cb[1]['prompt_sha256']} protocol={proto}"},
               {"type": "result", "key": "c2", "agentId": "ca2", "result": 42},
-              {"type": "started", "key": "c3", "agentId": "ca3", "label": f"{cb[2]['batch_id']} attempt 1 sha256={cb[2]['prompt_sha256']}"}]
+              {"type": "started", "key": "c3", "agentId": "ca3", "label": f"{cb[2]['batch_id']} attempt 1 sha256={cb[2]['prompt_sha256']} protocol={proto}"},
+              {"type": "result", "key": "c3", "agentId": "ca3", "result": None}]  # an explicit null return
         (tmp / "journal_chk.jsonl").write_text("".join(json.dumps(j) + "\n" for j in cj), encoding="utf-8")
         chk_backup = (tmp / "workflow_checker_result.json").read_bytes()
         checked_backup = (tmp / "checked.jsonl").read_bytes()

@@ -34,6 +34,13 @@ REQUIRED_FIELDS = ["clinical_term", "patient_term", "template", "control"]
 CONTROL_VALUES = ("none", "negative")
 CHECKER_VERDICTS = ("yes", "no", "unclear")  # what the checker may answer (parse_checker.py)
 VERDICT_VALUES = CHECKER_VERDICTS + ("missing",)  # what a checked row may carry; anything else is refused
+# the recorded run's two journals (2026-09-29; their labels predate the prompt-hash and protocol-hash bindings): the
+# only results the parsers accept with --unbound, so the escape hatch cannot parse a new run's responses against
+# another plan or protocol (Codex review of PR #52)
+LEGACY_UNBOUND_SOURCES = {
+    "faadf0993b9f9df16833db11e08c0656def1baa3719eaede59162905ec69c621": "generation journal, run wf_028d99f0-c28",
+    "f5a81e6edf37cb8a9fc3825808275fd50ac9d41311333858c53a90cfc183d3f4": "checker journal, run wf_453aa937-aff",
+}
 CHECKER_BATCH = 30
 N_BROKEN = 20
 N_KNOWN_GOOD = 10
@@ -343,6 +350,29 @@ def resolve_input(path_str: str, script: str) -> Path:
         print(f"{script}: {path_str} read from the run directory ({PILOT / p})")
         return PILOT / p
     raise SystemExit(f"{script}: {path_str} not found in the current directory or under {PILOT}")
+
+
+def result_binding_problems(result: dict, unbound: bool) -> list[str]:
+    """Why a recorded result file may not be parsed against this run: bound, its `protocol_sha256` (copied by the
+    extractor from the agent labels the workflow script wrote) must be the frozen protocol on disk, so responses
+    produced under another protocol, or by a script written before the protocol label, are refused; --unbound is
+    accepted only for the recorded run's two result files (LEGACY_UNBOUND_SOURCES by `source_sha256`), which carry
+    no hashes at all (Codex review of PR #52). Empty when the result may be parsed."""
+    stamp, source = result.get("protocol_sha256"), result.get("source_sha256")
+    if unbound:
+        if source not in LEGACY_UNBOUND_SOURCES:
+            return [f"--unbound is accepted only for the recorded run's result files (source_sha256 one of "
+                    f"{[k[:12] for k in LEGACY_UNBOUND_SOURCES]}), not this one ({str(source)[:12]!r}); a new run "
+                    f"parses bound"]
+        if stamp is not None:
+            return ["a legacy result carries no protocol hash; this one does, so parse it bound"]
+        return []
+    current = sha256_file(PILOT / "PROTOCOL.md")
+    if stamp != current:
+        return [f"protocol_sha256 {str(stamp)[:12]!r} is not the frozen protocol on disk ({current[:12]}): the workflow "
+                f"ran under another protocol, or from a script written before the protocol label, and its responses "
+                f"are not this protocol's"]
+    return []
 
 
 def attempt_failed(raw: str | None) -> bool:

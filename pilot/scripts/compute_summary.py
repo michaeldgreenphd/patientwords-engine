@@ -37,6 +37,7 @@ from common import (
     sha256_file,
     wilson,
 )
+from rederive import rederive_problems
 
 Vector = dict[str, float]
 
@@ -188,6 +189,13 @@ def main() -> None:
     S["script_hashes"] = script_hashes()  # the code this summary stands under; finalize refuses a later edit
 
     # ---- run overview
+    # every attempt, final or not, must be what the recorded result files derive under the current code: a call log
+    # left by an interrupted --replace could carry a stale first attempt into the retry and pooled-attempt numbers,
+    # and finalize would catch it only afterwards (Codex review of PR #52)
+    problems = rederive_problems(calls)
+    if problems:
+        raise SystemExit("compute_summary: the files on disk are not what the current code derives from the two "
+                         "recorded result files; re-run the chain from parse_generation.py:\n  " + "\n  ".join(problems[:5]))
     finals = [e for e in call_log if e.get("is_final")]  # one per planned call, checked by generation_problems
     S["run"] = {"n_calls": len(calls["calls"]), "n_attempts": len(call_log),
                 "n_retried_calls": sum(1 for e in call_log if e.get("is_final") is False),

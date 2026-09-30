@@ -28,6 +28,7 @@ from common import (
     load_checker_batches,
     read_jsonl,
     resolve_input,
+    result_binding_problems,
     sha256_file,
     write_jsonl,
 )
@@ -41,12 +42,13 @@ def validate_result(result: object, planned: dict[str, str], unbound: bool = Fal
     objects with a `result` that is an object or null, numbered 1..n in order with n at most MAX_ATTEMPTS, and a
     `prompt_sha256` equal to the planned batch prompt's. A planned batch may be absent (recorded as no response); a
     duplicate or unplanned batch id, a repeated or out-of-order attempt number, or a foreign prompt hash is refused,
-    never overwritten or ignored. --unbound skips the hash check only for a result recorded before the binding
-    existed, and the checker log says so (Codex review of PR #52)."""
+    never overwritten or ignored. The result's `protocol_sha256` must be the frozen protocol on disk; --unbound
+    skips the prompt-hash and protocol checks only for the recorded run's own result file
+    (common.LEGACY_UNBOUND_SOURCES), and the checker log says so (Codex review of PR #52)."""
     if not isinstance(result, dict) or not isinstance(result.get("batches"), list):
         raise SystemExit("parse_checker: the result must be an object with a 'batches' list; nothing was written")
     by_id: dict[str, dict] = {}
-    problems = []
+    problems = result_binding_problems(result, unbound)
     for i, b in enumerate(result["batches"]):
         if not isinstance(b, dict) or not isinstance(b.get("batch_id"), str):
             problems.append(f"batches[{i}]: not an object with a string batch_id")

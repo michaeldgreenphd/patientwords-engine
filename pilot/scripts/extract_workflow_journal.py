@@ -2,14 +2,18 @@
 consume, without the raw text passing through anyone's hands. The journal holds one "started" record per agent
 (label "<id> attempt <n>", key, agentId) and one "result" record per finished agent (key, agentId, result).
 
-  python3 scripts/extract_workflow_journal.py generation <journal.jsonl> [--replace] -> workflow_generation_result.json
-  python3 scripts/extract_workflow_journal.py checker    <journal.jsonl> [--replace] -> workflow_checker_result.json
+  python3 scripts/extract_workflow_journal.py generation <journal.jsonl> [--replace] [--allow-missing-results]
+      -> workflow_generation_result.json
+  python3 scripts/extract_workflow_journal.py checker    <journal.jsonl> [--replace] [--allow-missing-results]
+      -> workflow_checker_result.json
 
 An existing result file is never written over without --replace. The plan files are read through common.load_calls
 and load_checker_batches, which refuse a plan whose stored prompt hashes are not the hashes of its prompts.
 
-An agent that started but has no result record is recorded as a null return. Every record type seen is counted so
-an unexpected journal shape is visible rather than silently dropped. Two agents carrying one `<id> attempt <n>`
+A started agent with no result record at all (a journal truncated before the workflow finished) is not a null
+return: the journal is refused unless --allow-missing-results is passed, which leaves those attempts out of the items
+(their calls then read as no response) and lists the agents under `agents_without_result_record` (Codex review of
+PR #52). Every record type seen is counted so an unexpected journal shape is visible rather than silently dropped. Two agents carrying one `<id> attempt <n>`
 label, or two result records for one agent, would collapse into one attempt and the overwritten response would
 leave the provenance unseen, so such a journal is refused before anything is written; so is one in which two
 "started" records share one (key, agentId) identity, or a "started" record lacks either, since one response would
@@ -20,9 +24,12 @@ A checker result that is not an object (a string that is not JSON, or another va
 a malformed return. The result file records `source_sha256`, the journal's hash, which record_run.py requires of the
 transcript directory it records for the stage (Codex review of PR #52).
 
-A label of the form `<id> attempt <n> sha256=<hash>` (workflow scripts generated since the binding was added) yields
-the item's `prompt_sha256`, which the parsers check against the plan; a label without it yields null, and such a
-result parses only with the parsers' --unbound flag (Codex review of PR #52).
+A label of the form `<id> attempt <n> sha256=<hash> protocol=<hash>` (workflow scripts generated since the bindings
+were added) yields the item's `prompt_sha256`, which the parsers check against the plan, and the run's
+`protocol_sha256`, which they check against the frozen protocol; every labelled agent of a run carries the same
+protocol hash, so differing ones refuse the journal. A label without the hashes yields null, and such a result
+parses only with the parsers' --unbound flag, which accepts only the recorded run's own journals (Codex review of
+PR #52).
 """
 from __future__ import annotations
 
@@ -34,10 +41,10 @@ from pathlib import Path
 
 from common import PILOT, load_calls, load_checker_batches, sha256_file
 
-LABEL = re.compile(r"^(?P<id>.+?) attempt (?P<n>\d+)(?: sha256=(?P<sha>[0-9a-f]{64}))?$")
+LABEL = re.compile(r"^(?P<id>.+?) attempt (?P<n>\d+)(?: sha256=(?P<sha>[0-9a-f]{64}))?(?: protocol=(?P<proto>[0-9a-f]{64}))?$")
 
 
-def main(which: str, journal_path: str, replace: bool = False) -> None:
+def main(which: str, journal_path: str, replace: bool = False, allow_missing: bool = False) -> None:
     started: list[dict] = []
     results: dict[tuple, object] = {}
     types: Counter = Counter()
@@ -65,7 +72,9 @@ def main(which: str, journal_path: str, replace: bool = False) -> None:
             results[k] = o.get("result")
     per_item: dict[str, dict[int, dict]] = {}
     shas: dict[str, set] = {}
+    protos: set = set()
     agents_by_label: dict[tuple[str, int], list] = {}
+    no_result: list[dict] = []
     unlabeled = non_text = non_object = 0
     for s in started:
         m = LABEL.match(s.get("label") or "")
@@ -75,7 +84,12 @@ def main(which: str, journal_path: str, replace: bool = False) -> None:
         item_id, n = m.group("id"), int(m.group("n"))
         agents_by_label.setdefault((item_id, n), []).append(s.get("agentId"))
         shas.setdefault(item_id, set()).add(m.group("sha"))
-        res = results.get((s.get("key"), s.get("agentId")))
+        protos.add(m.group("proto"))
+        if (s.get("key"), s.get("agentId")) not in results:
+            # absent, not null: the workflow never recorded a result for this agent (Codex review of PR #52)
+            no_result.append({"agent_id": s.get("agentId"), "label": s.get("label")})
+            continue
+        res = results[(s.get("key"), s.get("agentId"))]
         if which == "generation":
             # the model's raw text is the input to estimand 1; a result that is not text is recorded as no text,
             # never serialized into a response that never existed (Codex review of PR #52)
@@ -114,6 +128,15 @@ def main(which: str, journal_path: str, replace: bool = False) -> None:
     if conflicting:
         raise SystemExit(f"{journal_path}: an item's attempts carry different prompt hashes, which no single run "
                          f"produces: {conflicting}")
+    if len(protos) > 1:
+        raise SystemExit(f"{journal_path}: the agent labels carry different protocol hashes, which no single run "
+                         f"produces: {sorted(str(p) for p in protos)}")
+    if no_result and not allow_missing:
+        raise SystemExit(f"{journal_path}: refusing the journal; nothing was written: {len(no_result)} started agent(s) "
+                         f"have no result record (first: {no_result[0]['label']!r}); the workflow did not finish or "
+                         f"the journal is truncated; resume the run, or pass --allow-missing-results to leave those "
+                         f"attempts out and list the agents (Codex review of PR #52)")
+    protocol = next(iter(protos)) if protos else None
 
     def sha_of(i: str) -> str | None:
         return next(iter(shas[i])) if i in shas else None
@@ -122,8 +145,9 @@ def main(which: str, journal_path: str, replace: bool = False) -> None:
         planned_ids = set(meta)
         items = [{"id": i, "arm": meta[i]["arm"], "cell": meta[i]["cell"], "prompt_sha256": sha_of(i),
                   "attempts": [per_item[i][n] for n in sorted(per_item[i])]} for i in meta if i in per_item]
-        out = {"source": journal_path, "source_sha256": sha256_file(Path(journal_path)), "record_types": dict(types),
-               "unlabeled_agents": unlabeled, "non_text_results": non_text, "calls": items}
+        out = {"source": journal_path, "source_sha256": sha256_file(Path(journal_path)), "protocol_sha256": protocol,
+               "record_types": dict(types), "unlabeled_agents": unlabeled, "non_text_results": non_text,
+               "agents_without_result_record": no_result, "calls": items}
         path = PILOT / "workflow_generation_result.json"
         missing = [i for i in meta if i not in per_item]
     else:
@@ -131,8 +155,9 @@ def main(which: str, journal_path: str, replace: bool = False) -> None:
         planned_ids = set(ids)
         items = [{"batch_id": i, "prompt_sha256": sha_of(i), "attempts": [per_item[i][n] for n in sorted(per_item[i])]}
                  for i in ids if i in per_item]
-        out = {"source": journal_path, "source_sha256": sha256_file(Path(journal_path)), "record_types": dict(types),
-               "unlabeled_agents": unlabeled, "non_object_results": non_object, "batches": items}
+        out = {"source": journal_path, "source_sha256": sha256_file(Path(journal_path)), "protocol_sha256": protocol,
+               "record_types": dict(types), "unlabeled_agents": unlabeled, "non_object_results": non_object,
+               "agents_without_result_record": no_result, "batches": items}
         path = PILOT / "workflow_checker_result.json"
         missing = [i for i in ids if i not in per_item]
     out["items_without_any_agent"] = missing
@@ -148,9 +173,11 @@ def main(which: str, journal_path: str, replace: bool = False) -> None:
     n_bound = sum(1 for x in items if x["prompt_sha256"])
     print(f"{path.name}: {len(items)} items, {n_attempts} attempts, record types {dict(types)}, "
           f"unlabeled {unlabeled}, non-text results {non_text}, non-object results {non_object}, missing {missing}, "
-          f"items with a prompt hash {n_bound}"
+          f"agents without a result record {len(no_result)}, items with a prompt hash {n_bound}, protocol "
+          f"{str(protocol)[:12]}"
           + ("" if n_bound == len(items) else " (the parsers need --unbound for the rest)"))
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2], replace="--replace" in sys.argv[3:])
+    main(sys.argv[1], sys.argv[2], replace="--replace" in sys.argv[3:],
+         allow_missing="--allow-missing-results" in sys.argv[3:])
