@@ -289,6 +289,13 @@ know them will pass a change that is destructive in this repo's terms:
   archives with a `.report.json` cost sidecar; a landed batch is never rewritten.
   `trace_out/` summaries are measurements, not caches — a change that regenerates
   them differently is new data, not a refresh.
+* **Pilot artifacts are labeled pilot outputs, not measurements:** files under
+  `pilot/` come from the exception in *Execution model* and say so in their protocol,
+  handoff and manifest. They are stored data all the same: a change to any of them is
+  a data change, the chain is re-run from the recorded result files and the summary
+  compared, and `pilot/scripts/write_manifest.py finalize` refuses a bundle whose
+  files do not agree with each other. Their numbers are checks of the pipeline, never
+  claims about the study's stimuli or its models.
 * **Irreversible spend:** any change to a file under `.github/trigger/` fires its
   workflow on push, including a merge that carries one. Four of those lanes can spend
   provider credits (`PAID_TRIGGERS` plus mitigation on circuit-trace). A trigger file changed incidentally — by a merge, rebase, or
@@ -303,13 +310,6 @@ know them will pass a change that is destructive in this repo's terms:
   Routine session (other sessions revert `fire_trigger.py`'s queue side effect before
   committing); `scripts/ledger_update.py` is the only writer of spend numbers. A
   second committer is a data-loss bug even when each write looks correct.
-* **Pilot artifacts are labeled pilot outputs, not measurements:** files under
-  `pilot/` come from the exception in *Execution model* and say so in their protocol,
-  handoff and manifest. They are stored data all the same: a change to any of them is
-  a data change, the chain is re-run from the recorded result files and the summary
-  compared, and `pilot/scripts/write_manifest.py finalize` refuses a bundle whose
-  files do not agree with each other. Their numbers are checks of the pipeline, never
-  claims about the study's stimuli or its models.
 
 ## Coding constraints
 
