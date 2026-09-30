@@ -178,6 +178,17 @@ def dry_run() -> None:
             check((out.returncode != 0) if expect_failure else (out.returncode == 0),
                   f"{script} {' '.join(args)}{' (expected to refuse)' if expect_failure else ''}\n{out.stdout}{out.stderr}")
             return out.stdout
+        # a template missing a marker, repeating one, or carrying an unknown one cannot launch an experiment
+        # (Codex on PR #52)
+        gp = tmp / "prompts" / "generation_prompt.txt"
+        gp_text = gp.read_text(encoding="utf-8")
+        for bad in (gp_text.replace("{{SPECIALTY}}", ""), gp_text + "\n{{SPECIALTY}}",
+                    gp_text.replace("{{SWAP_TYPE}}", "{{SWAP_TYPO}}")):
+            gp.write_text(bad, encoding="utf-8")
+            run("plan_calls.py", expect_failure=True)
+        gp.write_text(gp_text, encoding="utf-8")
+        check(not (tmp / "calls.json").exists(),
+              "a generation template missing, repeating or misspelling a marker is refused before planning")
         run("plan_calls.py")
         # a prompt edited together with its stored hash is self-consistent but not the plan the inputs derive:
         # every reader of calls.json derives the plan again and refuses it (Codex on PR #52)
@@ -268,6 +279,12 @@ def dry_run() -> None:
                       for r in common.read_jsonl(tmp / "generated" / "all_rows.jsonl")),
               "every call log entry and every row carries its planned prompt's hash")
         run("compute_summary.py", expect_failure=True)  # checked.jsonl does not exist yet: refuse, no partial summary
+        cp = tmp / "prompts" / "checker_prompt.txt"
+        cp_text = cp.read_text(encoding="utf-8")
+        cp.write_text(cp_text.replace("{{ITEMS}}", "{{ITEM}}"), encoding="utf-8")
+        run("build_checker_set.py", expect_failure=True)
+        cp.write_text(cp_text, encoding="utf-8")
+        check(not (tmp / "checker_batches.json").exists(), "a checker template without its marker is refused before batching")
         run("build_checker_set.py")
         # the request builder writes one body per call with the recorded prompt hash, and sends nothing
         run("build_api_requests.py", "generation", "--model", "example-model")
@@ -322,6 +339,21 @@ def dry_run() -> None:
         check((tmp / "checked.jsonl").read_text(encoding="utf-8") == checked_text
               and all(c["checker_plan_sha256"] == plan_sha for c in common.read_jsonl(tmp / "checked.jsonl")),
               "--replace rewrites the same verdicts, each row stamped with the checker plan's hash")
+        # a verdict entry whose reason is missing or not text is invalid: counted, its item recorded as missing,
+        # never coerced into a string (Codex on PR #52)
+        cdoc_r = json.loads((tmp / "workflow_checker_result.json").read_text(encoding="utf-8"))
+        first_v = cdoc_r["batches"][0]["attempts"][0]["result"]["verdicts"]
+        first_v[0]["reason"] = 42
+        del first_v[1]["reason"]
+        (tmp / "wf_chk_reason.json").write_text(json.dumps(cdoc_r), encoding="utf-8")
+        run("parse_checker.py", str(tmp / "wf_chk_reason.json"), "--replace")
+        rows_r = {c["id"]: c for c in common.read_jsonl(tmp / "checked.jsonl")}
+        log_r = {e["batch_id"]: e for e in common.read_jsonl(tmp / "checker_log.jsonl")}
+        check(rows_r[first_v[0]["id"]]["verdict"] == "missing" and rows_r[first_v[1]["id"]]["verdict"] == "missing"
+              and log_r[cdoc_r["batches"][0]["batch_id"]]["n_invalid_value"] == 2,
+              "a verdict with a non-text or missing reason is counted as invalid and its item recorded as missing")
+        run("parse_checker.py", str(tmp / "workflow_checker_result.json"), "--replace")
+        check((tmp / "checked.jsonl").read_text(encoding="utf-8") == checked_text, "the real checker parse is restored")
         # a bare result-file name is looked up under the run directory when the current directory has none, and a
         # name found in neither is refused (a laptop rerun on 2026-09-30 ran the documented command from the checkout)
         bare = subprocess.run([sys.executable, str(HERE / "parse_checker.py"), "workflow_checker_result.json", "--replace"],
@@ -583,6 +615,17 @@ def dry_run() -> None:
         copy_path.unlink()
         run("write_manifest.py", "finalize", expect_failure=True)
         copy_path.write_bytes(copy_bytes)
+        # the workflow scripts are required outputs, bound to the run records and rendered again from the plan and
+        # the protocol at finalize (Codex on PR #52)
+        wf_path = tmp / "workflows" / "generation.workflow.js"
+        wf_bytes = wf_path.read_bytes()
+        check(json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))["runs"]["generation"]["workflow_script_sha256"]
+              == common.sha256_file(wf_path), "the run record carries the hash of the workflow script that ran")
+        wf_path.write_bytes(wf_bytes + b"\n// edited after the run\n")
+        run("write_manifest.py", "finalize", expect_failure=True)
+        wf_path.unlink()
+        run("write_manifest.py", "finalize", expect_failure=True)
+        wf_path.write_bytes(wf_bytes)
         agent_bytes = (gdir / "agent-g01.jsonl").read_bytes()
         (gdir / "agent-g01.jsonl").write_text('{"model":"another-model"}\n', encoding="utf-8")
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir), "--replace")
@@ -633,6 +676,13 @@ def dry_run() -> None:
         sdoc0 = json.loads(summary_bytes0.decode("utf-8"))
         sdoc0["script_hashes"]["common.py"] = "0" * 64
         (tmp / "summary.json").write_text(json.dumps(sdoc0, indent=2) + "\n", encoding="utf-8")
+        run("write_manifest.py", "finalize", expect_failure=True)
+        (tmp / "summary.json").write_bytes(summary_bytes0)
+        # a value edited in summary.json under unchanged hashes is refused: finalize computes the summary again and
+        # compares it (Codex on PR #52)
+        sdoc1 = json.loads(summary_bytes0.decode("utf-8"))
+        sdoc1["E1"]["overall"]["x"] = 999
+        (tmp / "summary.json").write_text(json.dumps(sdoc1, indent=2) + "\n", encoding="utf-8")
         run("write_manifest.py", "finalize", expect_failure=True)
         (tmp / "summary.json").write_bytes(summary_bytes0)
         check(json.loads((tmp / "manifest.json").read_text(encoding="utf-8")) == mf,

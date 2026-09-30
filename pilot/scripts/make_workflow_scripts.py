@@ -99,29 +99,34 @@ return { batches: results.filter(Boolean) }
 """
 
 
-def main(which: str) -> None:
-    out_dir = PILOT / "workflows"
+def render(which: str) -> tuple[str, int]:
+    """The workflow script for a stage, pure: (text, item count). main writes it; write_manifest.py finalize renders
+    it again and refuses a script on disk that differs (Codex review of PR #52)."""
     if which == "generation":
         calls = load_calls()["calls"]  # refused unless every prompt hashes to its stored prompt_sha256
         payload = [{"id": c["id"], "arm": c["arm"], "cell": c["cell"], "prompt_sha256": c["prompt_sha256"],
                     "prompt": c["prompt"]} for c in calls]
         text = GENERATION.replace("__REQUIRED__", json.dumps(REQUIRED_FIELDS)).replace(
             "__CALLS__", json.dumps(payload, ensure_ascii=False))
-        path = out_dir / "generation.workflow.js"
     elif which == "checker":
         batches = load_checker_batches()["batches"]
         payload = [{"batch_id": b["batch_id"], "prompt_sha256": b["prompt_sha256"], "prompt": b["prompt"]}
                    for b in batches]
         text = CHECKER.replace("__BATCHES__", json.dumps(payload, ensure_ascii=False))
-        path = out_dir / "checker.workflow.js"
     else:
         raise SystemExit("usage: make_workflow_scripts.py generation|checker")
     # the frozen protocol's hash rides in every agent label, so the run's journal records which protocol it ran
     # under and the parsers refuse a result from another (Codex review of PR #52)
-    text = text.replace("__PROTOCOL__", json.dumps(sha256_file(PILOT / "PROTOCOL.md")))
+    return text.replace("__PROTOCOL__", json.dumps(sha256_file(PILOT / "PROTOCOL.md"))), len(payload)
+
+
+def main(which: str) -> None:
+    text, n_items = render(which)
+    out_dir = PILOT / "workflows"
     out_dir.mkdir(exist_ok=True)  # only once the plan has loaded: a refused plan writes nothing
+    path = out_dir / f"{which}.workflow.js"
     path.write_text(text, encoding="utf-8")
-    print(f"{path} ({len(payload)} items, {len(text)} bytes)")
+    print(f"{path} ({n_items} items, {len(text)} bytes)")
 
 
 if __name__ == "__main__":

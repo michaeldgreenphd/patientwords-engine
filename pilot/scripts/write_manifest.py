@@ -42,6 +42,8 @@ import platform
 import re
 import sys
 
+import compute_summary
+import make_workflow_scripts
 from common import (
     ARMS,
     CHECKER_BATCH,
@@ -79,8 +81,10 @@ REQUIRED_OUTPUTS = ("calls.json", "workflow_generation_result.json", "workflow_c
                     "checker_set.jsonl", "checker_key.jsonl", "checker_batches.json", "checked.jsonl",
                     "checker_log.jsonl", "review_sheet.csv", "review_key.csv", "review_map.json", "summary.json",
                     "summary.md", "seeds.json", "design.json", "PROTOCOL.md", "HANDOFF.md", "manifest_model.json",
-                    # the copied journals: the record of how the run was produced, compared with the run records
-                    "workflows/generation.journal.jsonl", "workflows/checker.journal.jsonl")
+                    # the copied journals and the scripts that ran: the record of how the run was produced, compared
+                    # with the run records
+                    "workflows/generation.journal.jsonl", "workflows/checker.journal.jsonl",
+                    "workflows/generation.workflow.js", "workflows/checker.workflow.js")
 
 
 def seed_provenance() -> dict:
@@ -141,6 +145,22 @@ def run_problems(model: dict, runs: dict, protocol_sha256: str) -> list[str]:
         if not copy.exists() or sha256_file(copy) != rec.get("journal_sha256"):
             problems.append(f"workflows/{stage}.journal.jsonl is missing or is not the journal runs.{stage} records; "
                             f"copy the run's journal.jsonl there")
+        script = PILOT / "workflows" / f"{stage}.workflow.js"
+        if not rec.get("workflow_script_sha256"):
+            problems.append(f"runs.{stage}: recorded before the workflow script was bound; run record_run.py --replace")
+        elif not script.exists() or sha256_file(script) != rec["workflow_script_sha256"]:
+            problems.append(f"workflows/{stage}.workflow.js is missing or is not the script runs.{stage} recorded")
+        elif source not in LEGACY_UNBOUND_SOURCES:
+            # the script is a function of the plan and the frozen protocol: rendered again, it must be the file that
+            # ran; the recorded run's scripts predate the label form and stand as the record of what ran
+            try:
+                rendered, _ = make_workflow_scripts.render(stage)
+            except SystemExit as e:
+                rendered = None
+                problems.append(f"workflows/{stage}.workflow.js cannot be rendered again from the plan: {e}")
+            if rendered is not None and script.read_text(encoding="utf-8") != rendered:
+                problems.append(f"workflows/{stage}.workflow.js is not what the current code renders from the plan "
+                                f"and the frozen protocol")
         if not (stamp == protocol_sha256 or (stamp is None and source in LEGACY_UNBOUND_SOURCES)):
             problems.append(f"{result_path.name}: protocol_sha256 {str(stamp)[:12]!r} is not the frozen protocol "
                             f"({protocol_sha256[:12]}); the responses were produced under another protocol")
@@ -157,6 +177,23 @@ def run_problems(model: dict, runs: dict, protocol_sha256: str) -> list[str]:
             if foreign:
                 problems.append(f"runs.{stage}: transcripts report model(s) {foreign} but manifest_model.json declares "
                                 f"{sorted(declared)}; record the model that served the run before finalizing")
+    return problems
+
+
+def summary_recompute_problems() -> list[str]:
+    """summary.json and summary.md compared with a fresh computation from the files on disk (compute_summary.compute),
+    not with the hashes the summary itself declares: a value edited in summary.json under unchanged hashes was sealed
+    (Codex review of PR #52). Empty when both are what the current code computes now."""
+    try:
+        s_now, md_now = compute_summary.compute()
+    except SystemExit as e:
+        return [f"the summary no longer computes from the files on disk: {e}"]
+    s_now["summary_md_sha256"] = sha256_text(md_now)
+    problems = []
+    if json.loads((PILOT / "summary.json").read_text(encoding="utf-8")) != json.loads(json.dumps(s_now)):
+        problems.append("summary.json is not what compute_summary.py computes from the files on disk now")
+    if (PILOT / "summary.md").read_text(encoding="utf-8") != md_now:
+        problems.append("summary.md is not what compute_summary.py renders from the files on disk now")
     return problems
 
 
@@ -214,6 +251,10 @@ def finalize_hashes(calls: dict) -> dict[str, str]:
         raise SystemExit("write_manifest: cannot finalize, the bundle does not reproduce from its recorded result "
                          "files under the current code; re-run the chain from parse_generation.py:\n  "
                          + "\n  ".join(problems[:5]))
+    problems = summary_recompute_problems()  # the numbers themselves, computed again (Codex review of PR #52)
+    if problems:
+        raise SystemExit("write_manifest: cannot finalize, the summary on disk is not what the current code computes "
+                         "from the files on disk; re-run compute_summary.py:\n  " + "\n  ".join(problems[:5]))
     return {o: sha256_file(PILOT / o) for o in expected}
 
 

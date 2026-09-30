@@ -11,7 +11,9 @@ recorded as the provenance of the stored responses; `journal_sha256` is recorded
 The transcripts are matched to the journal's started agents: every started agent must have its agent-<id>.jsonl
 and no transcript may belong to an agent the journal did not start, so one unrelated transcript cannot stand as the
 model evidence for every agent; the model ids are counted per agent, and agents whose transcript reports none are
-listed for finalize to refuse. The extra JSON may not carry any key the script computes (they are the evidence),
+listed for finalize to refuse. The record also carries the hash of workflows/<stage>.workflow.js, the script that
+ran, which finalize compares with the file again. The extra JSON may not carry any key the script computes (they are
+the evidence),
 and every record write clears the manifest's finalization, since a replaced record is unverified until the next
 finalize (Codex review of PR #52).
 """
@@ -27,8 +29,8 @@ from common import PILOT, sha256_file
 
 MODEL_RE = re.compile(r'"model":"([^"]+)"')
 STAGES = ("generation", "checker")
-RESERVED = ("run_id", "transcript_dir", "journal_sha256", "agents_started", "agent_transcripts",
-            "agents_without_model_id", "journal_record_types", "model_evidence")
+RESERVED = ("run_id", "transcript_dir", "journal_sha256", "workflow_script_sha256", "agents_started",
+            "agent_transcripts", "agents_without_model_id", "journal_record_types", "model_evidence")
 
 
 def main(name: str, run_id: str, transcript_dir: str, extra_json: str, replace: bool = False) -> None:
@@ -54,6 +56,11 @@ def main(name: str, run_id: str, transcript_dir: str, extra_json: str, replace: 
                          f"extracted from (source_sha256 {str(recorded)[:12]!r}); a run record must describe the run "
                          f"that produced the recorded result (re-extract with --replace if the result predates the "
                          f"binding); nothing was recorded")
+    script = PILOT / "workflows" / f"{name}.workflow.js"
+    if not script.exists():  # the script that ran is part of the run's record (Codex review of PR #52)
+        raise SystemExit(f"record_run: {script} does not exist; the run's workflow script is part of its record; "
+                         f"nothing was recorded")
+    script_sha = sha256_file(script)
     extra = json.loads(extra_json or "{}")
     if not isinstance(extra, dict) or any(k in RESERVED for k in extra):
         raise SystemExit(f"record_run: the extra JSON must be an object without the computed keys {list(RESERVED)}; "
@@ -93,6 +100,7 @@ def main(name: str, run_id: str, transcript_dir: str, extra_json: str, replace: 
             models[mm] += 1
     m.setdefault("runs", {})[name] = {**extra,  # the computed evidence last, so nothing in the extras can shadow it
                                        "run_id": run_id, "transcript_dir": str(tdir), "journal_sha256": journal_sha,
+                                       "workflow_script_sha256": script_sha,
                                        "agents_started": len(started), "agent_transcripts": len(started),
                                        "agents_without_model_id": without,
                                        "journal_record_types": dict(types),

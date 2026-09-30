@@ -479,6 +479,23 @@ def plan_hash_problems(items: list[dict], id_key: str) -> list[str]:
             for it in items if not isinstance(it.get("prompt"), str) or sha256_text(it["prompt"]) != it.get("prompt_sha256")]
 
 
+MARKER_RE = re.compile(r"\{\{[A-Z_]+\}\}")
+GENERATION_MARKERS = ("{{SPECIALTY}}", "{{SWAP_TYPE}}", "{{SWAP_DEFINITION}}", "{{EXEMPLARS}}")
+CHECKER_MARKERS = ("{{ITEMS}}",)
+
+
+def template_problems(template: str, markers: tuple[str, ...], name: str) -> list[str]:
+    """Why a prompt template cannot be rendered: a required marker absent or repeated, or a marker the renderer does
+    not know (a misspelt one would survive rendering as literal text and the experiment would run without that
+    condition) (Codex review of PR #52). Empty when every marker occurs exactly once and no other marker appears."""
+    problems = [f"{name}: marker {m} occurs {template.count(m)} times, not once" for m in markers
+                if template.count(m) != 1]
+    unknown = sorted(set(MARKER_RE.findall(template)) - set(markers))
+    if unknown:
+        problems.append(f"{name}: unknown marker(s) {unknown}")
+    return problems
+
+
 def render_exemplars(rows: list[dict]) -> str:
     """The exemplar block a generation prompt shows: one JSON object per seed row, in the order drawn."""
     return "\n".join(json.dumps({"clinical_term": r["clinical_term"], "patient_term": r["patient_term"],
@@ -489,6 +506,10 @@ def derive_plan(seeds: list[dict], template: str, seeds_sha256: str, design_sha2
     """The generation plan, pure and deterministic: Arm A exemplars drawn once per cell from the named stream in
     cell order, Arm B the first K seeds in file order, every prompt rendered from the template and hashed. plan_calls.py
     writes exactly this; load_calls derives it again and refuses a calls.json that differs (Codex review of PR #52)."""
+    problems = template_problems(template, GENERATION_MARKERS, "prompts/generation_prompt.txt")
+    if problems:
+        raise SystemExit("the generation prompt template cannot be rendered; fix it before planning:\n  "
+                         + "\n  ".join(problems))
     n = len(seeds)
     k = min(K_EXEMPLARS, n)
     r = rng("exemplars")
@@ -501,6 +522,9 @@ def derive_plan(seeds: list[dict], template: str, seeds_sha256: str, design_sha2
                       .replace("{{SWAP_TYPE}}", swap_type)
                       .replace("{{SWAP_DEFINITION}}", SWAP_DEFINITIONS[swap_type])
                       .replace("{{EXEMPLARS}}", render_exemplars(exemplars)))
+            if MARKER_RE.search(prompt):  # a marker carried in by an exemplar's own text
+                raise SystemExit(f"a rendered prompt ({call_id(arm, specialty, swap_type)}) still carries a marker "
+                                 f"{MARKER_RE.search(prompt).group(0)}; refusing to plan")
             calls.append({"id": call_id(arm, specialty, swap_type), "arm": arm, "specialty": specialty,
                           "swap_type": swap_type, "cell": cell_id(specialty, swap_type), "k_exemplars": k,
                           "exemplar_ids": [e["id"] for e in exemplars], "prompt_sha256": sha256_text(prompt),

@@ -1,8 +1,9 @@
 """Join the checker's verdicts to the truth key. Writes checked.jsonl and checker_log.jsonl.
 
 Input: a JSON file {"batches": [{"batch_id", "prompt_sha256", "attempts": [{"attempt", "result": {"verdicts":
-[...]} | null}]}]}. A verdict outside {yes, no, unclear}, a duplicate id, or an id outside the batch is logged and
-ignored; an item with no usable verdict is recorded as verdict "missing". An attempt the extractor recorded with a
+[...]} | null}]}]}. A verdict outside {yes, no, unclear}, a reason that is missing or not text, a duplicate id, or
+an id outside the batch is logged and ignored (never coerced); an item with no usable verdict is recorded as verdict
+"missing". An attempt the extractor recorded with a
 `raw_return` (a result that was not an object) is logged as `malformed_return`, distinct from a null return (Codex
 review of PR #52).
 
@@ -117,12 +118,12 @@ def derive(by_id: dict[str, dict], batches: list[dict], blind: dict[str, dict], 
                     iid, eq = e.get("id"), e.get("equivalent")
                     if iid not in meta["item_ids"]:
                         n_foreign += 1
-                    elif eq not in VALID:
-                        n_bad += 1
+                    elif eq not in VALID or not isinstance(e.get("reason"), str):
+                        n_bad += 1  # a missing or non-text reason is a malformed entry, not a blank (Codex, PR #52)
                     elif iid in verdicts:
                         n_dup += 1
                     else:
-                        verdicts[iid] = {"verdict": eq, "reason": str(e.get("reason", "")), "batch_id": meta["batch_id"]}
+                        verdicts[iid] = {"verdict": eq, "reason": e["reason"], "batch_id": meta["batch_id"]}
                         n_ok += 1
             log.append({"batch_id": meta["batch_id"], "attempt": a["attempt"], "is_final": is_final,
                         "null_return": res is None and "raw_return" not in a, "malformed_return": "raw_return" in a,

@@ -35,6 +35,7 @@ from common import (
     rng,
     script_hashes,
     sha256_file,
+    sha256_text,
     wilson,
     write_results_block,
 )
@@ -127,7 +128,9 @@ def pct(vals: list[float]) -> dict:
     return {"lo": percentile(vals, 0.025), "hi": percentile(vals, 0.975)} if vals else {"lo": None, "hi": None}
 
 
-def main() -> None:
+def compute() -> tuple[dict, str]:
+    """Every estimand and the markdown rendering, pure: (summary, summary.md text). main writes them; write_manifest.py
+    finalize computes them again and refuses a summary on disk that differs (Codex review of PR #52)."""
     seeds = load_seeds()
     calls = load_calls()  # every prompt verified against its stored hash
     call_log = read_jsonl(PILOT / "call_log.jsonl")
@@ -478,8 +481,13 @@ def main() -> None:
     L.append(f"review_sheet.csv holds {S['review']['n']} rows; allocation by arm {S['review']['allocation']} from checked rows "
              f"by arm {S['review']['checked_by_arm']}. Agreement is not computed here.")
     L.append("")
-    (PILOT / "summary.md").write_text("\n".join(L), encoding="utf-8")
-    S["summary_md_sha256"] = sha256_file(PILOT / "summary.md")  # the rendering this summary stands for
+    return S, "\n".join(L)
+
+
+def main() -> None:
+    S, md = compute()
+    (PILOT / "summary.md").write_text(md, encoding="utf-8", newline="\n")
+    S["summary_md_sha256"] = sha256_text(md)  # the rendering this summary stands for (equal to the file's hash)
     (PILOT / "summary.json").write_text(json.dumps(S, indent=2) + "\n", encoding="utf-8")
     write_results_block(S)  # the handoff's Results section, from the same dictionaries (Codex review of PR #52)
     print("summary.json and summary.md written; results block written into HANDOFF.md")
