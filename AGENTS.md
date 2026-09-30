@@ -244,11 +244,11 @@ suite stays green: `pip install -e ".[llm]" pytest ruff pyyaml` installs everyth
 `matplotlib` and `networkx` are declared dependencies, not extras, and `pyyaml` (the tests
 that parse workflow YAML need it) is in the poetry dev group, which pip's extra syntax does not
 install, so it is named on the command line. A container that skipped the install shows
-`ModuleNotFoundError` failures that are the environment's, not the code's. One
-known failure as of 2026-09-06: `tests/test_specialty_map.py::test_covers_live_payload_topics`
-— `data/specialty_map.draft.json` (290 topics) trails the live payload (419 topics; 145
-unmapped against a ceiling of 20). That is an owner-review data task, not a threshold to
-relax; anything else red is the change's. Every bug fix gets a regression test. CI-side behavior (workflow YAML, hosted API quirks) can't
+`ModuleNotFoundError` failures that are the environment's, not the code's. With the site
+checked out as `../patientwords` the suite passes in full (the specialty-map gap closed
+2026-09-30, PR #63), so anything red is the change's. When new live topics outrun
+`data/specialty_map.draft.json`, mapping them is an owner-review data task, not a
+threshold to relax. Every bug fix gets a regression test. CI-side behavior (workflow YAML, hosted API quirks) can't
 be tested here — validate YAML with `yaml.safe_load` and verify wiring by reading the
 params heredoc, which has its own pitfalls (push-path `defaults` dict must contain every
 trigger key; JSON lists must be normalized to CSV before `str()`).
