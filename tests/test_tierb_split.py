@@ -259,6 +259,26 @@ def test_seal_error_is_not_a_value_error():
     assert not issubclass(tierb_split.SealError, ValueError)
 
 
+def test_seal_config_error_prints_the_stop_line_and_returns_2(capsys):
+    # every exporter that calls sealed_pair returns this on SealError: the status
+    # export_pair_swaps.py and seal_check.py return when the holdout rule cannot be
+    # applied, never 3, the status the publish chain reads as a refusal (Codex, PR #62)
+    rc = tierb_split.seal_config_error(tierb_split.SealError("no tierb.start_utc in x"))
+    assert rc == tierb_split.SEAL_CONFIG_EXIT == 2
+    out = capsys.readouterr().out
+    assert out.startswith("CONFIG ERROR: no tierb.start_utc in x.")
+    assert "not a refusal: stop the publish chain" in out and "nothing was written" in out
+
+
+def test_publish_skill_reads_exit_2_from_any_exporter_as_a_stop():
+    # the publish chain is run from this skill, which treats an exporter's refusal as
+    # success with no change; exit 2 from the seal must be named as a stop for every
+    # exporter in the chain, not for export_pair_swaps.py alone (Codex, PR #62)
+    skill = Path(__file__).resolve().parents[1] / ".claude" / "skills" / "publish-site-data" / "SKILL.md"
+    text = " ".join(skill.read_text(encoding="utf-8").split())
+    assert "Exit 2 (`CONFIG ERROR`) from any exporter in this chain is not a refusal: stop the publish" in text
+
+
 def test_sealed_pair_defaults_are_repo_rooted_not_cwd(tmp_path, monkeypatch):
     root = Path(tierb_split.__file__).resolve().parents[1]
     assert tierb_split.DASHBOARD_PATH == root / "ops" / "dashboard.json"

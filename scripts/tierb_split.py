@@ -19,8 +19,10 @@ batches carry no flag.
 Exporters that publish per-pair rows ask ``sealed_pair`` whether one row is
 sealed. It applies ``stamp_rows``' rule to a single row, reads the dashboard
 and batch files from this repository (not the working directory), and raises
-``SealError`` when the rule cannot be evaluated, so an exporter refuses
-instead of publishing rows the seal never checked.
+``SealError`` when the rule cannot be evaluated. The exporter then writes
+nothing and returns ``seal_config_error``'s status (2, ``SEAL_CONFIG_EXIT``),
+which stops the publish chain: it is a configuration error, not a refusal, and
+rows the seal never checked are never published.
 """
 
 from __future__ import annotations
@@ -29,7 +31,9 @@ import functools
 import hashlib
 import json
 import re
+import sys
 from pathlib import Path
+from typing import TextIO
 
 _BATCH_RE = re.compile(r"pairs_(\d{8}T\d{6}Z)")
 
@@ -155,6 +159,28 @@ class SealError(RuntimeError):
     while an unevaluable seal is a configuration error. Messages name batches,
     indices and paths only, never prompt text.
     """
+
+
+# The exit status of every script that calls sealed_pair when the seal cannot be
+# evaluated. It is the status export_pair_swaps.py and seal_check.py already return
+# when they cannot apply the holdout rule, and the publish chain stops on it
+# (.claude/skills/publish-site-data/SKILL.md, step 3). It is never 3: the chain
+# reads an exporter's exit 3 as a refusal, success with no change.
+SEAL_CONFIG_EXIT = 2
+
+
+def seal_config_error(exc: SealError, *, stream: TextIO | None = None) -> int:
+    """Print the stop line for a seal that could not be evaluated; return SEAL_CONFIG_EXIT.
+
+    One line for every exporter, so no exporter's wording reads as a refusal: the
+    line says the holdout rule was not applied and the publish chain must stop.
+    The caller returns the status before it writes anything. ``stream`` defaults
+    to standard output.
+    """
+    print(f"CONFIG ERROR: {exc}. The holdout seal could not be applied and nothing was "
+          "written. This is not a refusal: stop the publish chain and fix the cause.",
+          file=stream if stream is not None else sys.stdout)
+    return SEAL_CONFIG_EXIT
 
 
 def _read_pairs(path: Path) -> list:

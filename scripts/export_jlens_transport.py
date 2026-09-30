@@ -57,7 +57,7 @@ from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import jlens_position_scan as jps  # noqa: E402  (script-style; imports jlens_readout as jps.jr)
-from tierb_split import SealError, sealed_pair  # noqa: E402
+from tierb_split import SealError, seal_config_error, sealed_pair  # noqa: E402
 
 METHOD_CREDIT_FALLBACK = (
     "Jacobian lens: Gurnee et al., Transformer Circuits, 2026; reference "
@@ -551,8 +551,7 @@ def main(argv=None):
                                 render_map=render_map, census_batch=args.census_batch,
                                 exemplar_pins=_parse_pins(args.exemplar_pins))
     except SealError as exc:
-        print(f"CONFIG ERROR: {exc}. Refusing to publish; nothing was written")
-        return 2
+        return seal_config_error(exc)  # exit 2: the publish chain stops
     if payload is None:
         # Mirror jlens_insights F-H08: a sparse checkout with no committed raw
         # must never overwrite the published transport payload with an empty one.

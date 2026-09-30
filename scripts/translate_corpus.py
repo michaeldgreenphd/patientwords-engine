@@ -33,7 +33,7 @@ ENGINE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ENGINE))
 sys.path.insert(0, str(ENGINE / "scripts"))
 
-from tierb_split import SealError, sealed_pair  # noqa: E402
+from tierb_split import SEAL_CONFIG_EXIT, SealError, sealed_pair  # noqa: E402
 from medlang_circuits import evaluate_models as em  # noqa: E402
 from medlang_circuits.llm_client import _get_client, _translate_system  # noqa: E402
 
@@ -94,7 +94,7 @@ def main(argv=None) -> int:
         corpus = collect_corpus(Path(args.simulated_dir), Path(args.dashboard))
     except SealError as exc:
         print(f"CONFIG ERROR: {exc}. Refusing to translate; nothing was sent or written", file=sys.stderr)
-        return 2
+        return SEAL_CONFIG_EXIT
     if args.limit:
         corpus = corpus[:args.limit]
     print(f"corpus: {len(corpus)} unique patient sentences "

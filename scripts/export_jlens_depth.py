@@ -37,7 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # Amendment 1/3 holdout seal for every export surface (blocks, translation,
 # examples, steering): tierb_split.sealed_pair applies stamp_rows' rule and
 # raises SealError when it cannot, and main then writes nothing (exit 2).
-from tierb_split import SealError, sealed_pair  # noqa: E402
+from tierb_split import SealError, seal_config_error, sealed_pair  # noqa: E402
 
 CLASS_LABELS = {"retained": "kept", "suppressed": "lost late", "absent": "never formed"}
 METHOD_CREDIT = ("Jacobian lens: Gurnee et al., Transformer Circuits, 2026; reference "
@@ -397,8 +397,7 @@ def main(argv=None):
         payload = build_payload(blocks_spec, args.exemplar_stem, args.exemplar_index,
                                 annotate=annotate)
     except SealError as exc:  # a RuntimeError, so never mistaken for the exit-3 refusal
-        print(f"CONFIG ERROR: {exc}. Refusing to publish; nothing was written")
-        return 2
+        return seal_config_error(exc)  # exit 2: the publish chain stops
     except ValueError as exc:
         print(f"refused: {exc}")
         return 3

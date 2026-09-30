@@ -44,7 +44,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import jlens_insights as ji  # noqa: E402  (formation_layer, classify, quantiles, PERSISTENCE)
-from tierb_split import SealError, sealed_pair  # noqa: E402
+from tierb_split import SealError, seal_config_error, sealed_pair  # noqa: E402
 
 METHOD_CREDIT_FALLBACK = (
     "Jacobian lens: Gurnee et al., Transformer Circuits, 2026; reference "
@@ -234,8 +234,7 @@ def main(argv=None):
     try:
         payload = build_payload(args.trace_root, args.model)
     except SealError as exc:
-        print(f"CONFIG ERROR: {exc}. Refusing to publish; nothing was written")
-        return 2
+        return seal_config_error(exc)  # exit 2: the publish chain stops
     if payload is None:
         print(f"refused: no committed logit-lens (__loglens_{args.model}) runs under "
               f"{args.trace_root} - not writing the robustness arm")

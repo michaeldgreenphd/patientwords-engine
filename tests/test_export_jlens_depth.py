@@ -260,5 +260,6 @@ def test_main_exit_2_when_seal_cannot_be_evaluated(tmp_path, monkeypatch, capsys
     rc = exporter.main(["--block", "s=set s", "--exemplar-stem", "s",
                         "--exemplar-index", "1", "--out", "out.json", "--site", ""])
     assert rc == 2                                    # not 3: a seal failure is no data refusal
-    assert "CONFIG ERROR" in capsys.readouterr().out
+    printed = capsys.readouterr().out                 # the shared stop line (tierb_split.seal_config_error)
+    assert "CONFIG ERROR" in printed and "not a refusal: stop the publish chain" in printed
     assert not (tmp_path / "out.json").exists()

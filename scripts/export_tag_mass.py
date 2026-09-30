@@ -40,7 +40,7 @@ except ImportError:
     from provenance_stamp import provenance
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from tierb_split import SealError, sealed_pair  # noqa: E402
+from tierb_split import SealError, seal_config_error, sealed_pair  # noqa: E402
 
 
 def three_way(c, e):
@@ -121,8 +121,7 @@ def main(argv=None):
     try:
         acc = collect(args.trace_root)
     except SealError as exc:
-        print(f"CONFIG ERROR: {exc}. Refusing to publish; nothing was written")
-        return 2
+        return seal_config_error(exc)  # exit 2: the publish chain stops
     payload = build_payload(acc)
     if payload is None:
         print("note: no measured featured pairs; leaving the empirical:false placeholder untouched")

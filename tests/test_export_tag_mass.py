@@ -95,5 +95,6 @@ def test_main_refuses_when_seal_cannot_be_evaluated(tmp_path, monkeypatch, capsy
     out = tmp_path / "tag_mass.json"
     rc = ext.main(["--trace-root", str(root), "--out", str(out), "--site", ""])
     assert rc == 2
-    assert "CONFIG ERROR" in capsys.readouterr().out
+    printed = capsys.readouterr().out                 # the shared stop line (tierb_split.seal_config_error)
+    assert "CONFIG ERROR" in printed and "not a refusal: stop the publish chain" in printed
     assert not out.exists()
