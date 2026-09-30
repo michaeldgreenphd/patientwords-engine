@@ -33,6 +33,25 @@ RESERVED = ("run_id", "transcript_dir", "journal_sha256", "workflow_script_sha25
             "agent_transcripts", "agents_without_model_id", "journal_record_types", "model_evidence")
 
 
+def journal_facts(journal: Path) -> tuple[list[str], dict[str, int]]:
+    """What a journal says about its run, read again wherever a run record is checked: the started agents' ids in
+    order, and the count of records by type. Refuses a started record without an agent id (the transcripts could not
+    be matched to it). record_run.py records these; write_manifest.py finalize computes them again from the copied
+    journal and refuses a record that disagrees (Codex review of PR #52)."""
+    types: Counter = Counter()
+    started: list[str] = []
+    for line in journal.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            o = json.loads(line)
+            types[o.get("type")] += 1
+            if o.get("type") == "started":
+                if not isinstance(o.get("agentId"), str) or not o["agentId"]:
+                    raise SystemExit(f"record_run: a started record in {journal} has no agentId; the transcripts cannot "
+                                     f"be matched to the run's agents; nothing was recorded")
+                started.append(o["agentId"])
+    return started, dict(types)
+
+
 def main(name: str, run_id: str, transcript_dir: str, extra_json: str, replace: bool = False) -> None:
     if name not in STAGES:
         raise SystemExit(f"record_run: stage must be one of {list(STAGES)}, not {name!r}; nothing was recorded")
@@ -70,17 +89,7 @@ def main(name: str, run_id: str, transcript_dir: str, extra_json: str, replace: 
     if name in m.get("runs", {}) and not replace:
         raise SystemExit(f"record_run: manifest runs.{name} already records run "
                          f"{m['runs'][name].get('run_id')!r}; pass --replace to write over it")
-    types = Counter()
-    started: list[str] = []
-    for line in journal.read_text(encoding="utf-8").splitlines():
-        if line.strip():
-            o = json.loads(line)
-            types[o.get("type")] += 1
-            if o.get("type") == "started":
-                if not isinstance(o.get("agentId"), str) or not o["agentId"]:
-                    raise SystemExit(f"record_run: a started record in {journal} has no agentId; the transcripts cannot "
-                                     f"be matched to the run's agents; nothing was recorded")
-                started.append(o["agentId"])
+    started, types = journal_facts(journal)
     # every started agent's transcript, and no other: one unrelated transcript reporting the declared model would
     # otherwise stand as the evidence for every response-producing agent (Codex review of PR #52)
     missing = sorted(set(started) - set(transcripts))
@@ -103,7 +112,7 @@ def main(name: str, run_id: str, transcript_dir: str, extra_json: str, replace: 
                                        "workflow_script_sha256": script_sha,
                                        "agents_started": len(started), "agent_transcripts": len(started),
                                        "agents_without_model_id": without,
-                                       "journal_record_types": dict(types),
+                                       "journal_record_types": types,
                                        "model_evidence": {"model_strings_in_transcripts": dict(models),
                                                           "note": "counts of \"model\":\"...\" strings across the "
                                                                   "started agents' transcripts; API response records"}}

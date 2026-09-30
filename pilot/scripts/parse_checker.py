@@ -67,6 +67,9 @@ def validate_result(result: object, planned: dict[str, str], unbound: bool = Fal
             # (Codex review of PR #52)
             problems.append(f"batches[{i}] ({bid}): attempts must be a non-empty list of objects with an integer "
                             f"attempt (not a boolean) and an object or null result")
+        elif any(null_flag_problem(a, "result") for a in attempts):
+            problems.append(f"batches[{i}] ({bid}): "
+                            f"{next(p for p in (null_flag_problem(a, 'result') for a in attempts) if p)}")
         elif [a["attempt"] for a in attempts] != list(range(1, len(attempts) + 1)) or len(attempts) > MAX_ATTEMPTS:
             problems.append(f"batches[{i}] ({bid}): attempts must be numbered 1..n in order with n <= {MAX_ATTEMPTS}; "
                             f"got {[a['attempt'] for a in attempts]}")
@@ -82,6 +85,25 @@ def validate_result(result: object, planned: dict[str, str], unbound: bool = Fal
     if problems:
         raise SystemExit("parse_checker: refusing the result file; nothing was written:\n  " + "\n  ".join(problems))
     return by_id
+
+
+def null_flag_problem(attempt: dict, field: str) -> str | None:
+    """Why an attempt's `null_return` does not describe its `field`: a boolean, true exactly when the field is null
+    and no non-object return is recorded (`unexpected_result_type`, with `raw_return` holding it verbatim), false
+    otherwise (Codex review of PR #52). None when the flag describes the field."""
+    flag, unexpected = attempt.get("null_return"), attempt.get("unexpected_result_type")
+    if not isinstance(flag, bool):
+        return f"attempt {attempt.get('attempt')}: null_return must be a boolean, got {flag!r}"
+    if unexpected is not None and (not isinstance(unexpected, str) or not unexpected):
+        return f"attempt {attempt.get('attempt')}: unexpected_result_type must be a non-empty string when present"
+    if (unexpected is None) != ("raw_return" not in attempt):
+        return f"attempt {attempt.get('attempt')}: raw_return and unexpected_result_type must be recorded together"
+    expected = attempt.get(field) is None and unexpected is None
+    if flag != expected:
+        return (f"attempt {attempt.get('attempt')}: null_return {flag} does not describe {field} "
+                f"({'null' if attempt.get(field) is None else 'present'}"
+                f"{', non-object return ' + unexpected if unexpected else ''})")
+    return None
 
 
 def previous_outputs() -> list[Path]:

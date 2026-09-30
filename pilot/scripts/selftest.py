@@ -235,6 +235,12 @@ def dry_run() -> None:
         run("plan_calls.py", expect_failure=True)
         check("derive one id" in last_err[0] and not (tmp / "calls.json").exists(),
               "two swap types that derive one cell id are refused before planning")
+        ddoc3 = json.loads(design_bytes0.decode("utf-8"))  # a factor that is not a safe file name (Codex on PR #52)
+        ddoc3["specialties"].append(ddoc3["specialties"][0] + "/copy")
+        (tmp / "design.json").write_text(json.dumps(ddoc3, ensure_ascii=False), encoding="utf-8")
+        run("plan_calls.py", expect_failure=True)
+        check("not safe single file names" in last_err[0] and not (tmp / "calls.json").exists(),
+              "a design factor carrying a path separator is refused before planning")
         (tmp / "design.json").write_bytes(design_bytes0)
         run("plan_calls.py")
         # a prompt edited together with its stored hash is self-consistent but not the plan the inputs derive:
@@ -299,6 +305,13 @@ def dry_run() -> None:
                            ("no attempts", with_attempts([])),  # an empty list is not an absent call (Codex on PR #52)
                            ("boolean attempt number", {"calls": [dict(first, attempts=[dict(first["attempts"][0], attempt=True)])]
                                                        + gen["calls"][1:]}),
+                           # the null flag must describe raw (Codex on PR #52)
+                           ("null flag on a present raw", {"calls": [dict(first, attempts=[dict(first["attempts"][0], null_return=True)])]
+                                                          + gen["calls"][1:]}),
+                           ("null raw without the flag", {"calls": [dict(first, attempts=[{"attempt": 1, "raw": None, "null_return": False}])]
+                                                         + gen["calls"][1:]}),
+                           ("non-boolean null flag", {"calls": [dict(first, attempts=[dict(first["attempts"][0], null_return="no")])]
+                                                     + gen["calls"][1:]}),
                            ("retry after a valid first attempt", with_attempts([1, 2])),
                            ("foreign prompt hash", {"calls": [dict(first, prompt_sha256="0" * 64)] + gen["calls"][1:]}),
                            ("missing prompt hash", {"calls": [unhashed] + gen["calls"][1:]}),
@@ -307,6 +320,12 @@ def dry_run() -> None:
             (tmp / "wf_bad.json").write_text(json.dumps({"source_sha256": gen["source_sha256"], "protocol_sha256": proto, **bad}))
             run("parse_generation.py", str(tmp / "wf_bad.json"), "--replace", expect_failure=True)
             check(n_outputs() == before, f"a result with a {label} is refused and leaves the previous outputs intact")
+        pg = importlib.import_module("parse_generation")  # the three shapes the flag may describe, in-process
+        check(pg.null_flag_problem({"attempt": 1, "raw": "text", "null_return": False}, "raw") is None
+              and pg.null_flag_problem({"attempt": 1, "raw": None, "null_return": True}, "raw") is None
+              and pg.null_flag_problem({"attempt": 1, "raw": None, "null_return": False, "unexpected_result_type": "dict"}, "raw") is None
+              and pg.null_flag_problem({"attempt": 1, "raw": None, "null_return": True, "unexpected_result_type": "dict"}, "raw"),
+              "null_return describes raw: false with text, true with null, false with a recorded non-text return")
         # --unbound is accepted only for the recorded run's own result files (by source_sha256): a hashless result
         # of any other origin is refused with it, and the recorded run's journal parses only with it (Codex on PR #52)
         (tmp / "wf_unbound.json").write_text(json.dumps({"calls": [unhashed] + gen["calls"][1:]}))
@@ -422,6 +441,10 @@ def dry_run() -> None:
         b0 = chk["batches"][0]
         for label, bad in (("duplicate batch id", {"batches": chk["batches"] + [b0]}),
                            ("no attempts", {"batches": [dict(b0, attempts=[])] + chk["batches"][1:]}),
+                           ("null flag on a present result", {"batches": [dict(b0, attempts=[dict(b0["attempts"][0], null_return=True)])]
+                                                             + chk["batches"][1:]}),
+                           ("null result without the flag", {"batches": [dict(b0, attempts=[{"attempt": 1, "result": None, "null_return": False}])]
+                                                            + chk["batches"][1:]}),
                            ("boolean attempt number", {"batches": [dict(b0, attempts=[dict(b0["attempts"][0], attempt=True)])]
                                                        + chk["batches"][1:]}),
                            ("repeated attempt number", {"batches": [dict(b0, attempts=b0["attempts"] * 2)] + chk["batches"][1:]}),
@@ -685,6 +708,23 @@ def dry_run() -> None:
         # finalize hashes every required output and refuses a missing one; a plan-time rewrite after finalize keeps
         # the hashes only while the outputs are unchanged (Codex on PR #52)
         run("write_manifest.py", "finalize")
+        # a run record edited after record_run.py (agent counts, record types, the transcript match) is refused at
+        # finalize: the journal-derived facts are computed again from the copied journal (Codex on PR #52)
+        m_ok = (tmp / "manifest.json").read_bytes()
+        m_t = json.loads(m_ok.decode("utf-8"))
+        m_t["runs"]["generation"]["agents_started"] = 999
+        m_t["runs"]["generation"]["agent_transcripts"] = 1
+        m_t["runs"]["generation"]["journal_record_types"] = {"started": 999, "result": 0}
+        (tmp / "manifest.json").write_text(json.dumps(m_t, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        run("write_manifest.py", "finalize", expect_failure=True)
+        check("is not what the copied journal says" in last_err[0],
+              "a run record whose counts contradict the copied journal is refused at finalize")
+        m_t = json.loads(m_ok.decode("utf-8"))
+        m_t["runs"]["checker"]["agents_without_model_id"] = ["nobody"]
+        (tmp / "manifest.json").write_text(json.dumps(m_t, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        run("write_manifest.py", "finalize", expect_failure=True)
+        check("the journal did not start" in last_err[0], "a run record naming an agent the journal did not start is refused")
+        (tmp / "manifest.json").write_bytes(m_ok)
         # the review sheet is a summary input: filled after the summary, it refuses finalize until the summary is
         # computed again, and no number changes since the summary reads no annotation (Codex on PR #52)
         s_before = json.loads((tmp / "summary.json").read_text(encoding="utf-8"))

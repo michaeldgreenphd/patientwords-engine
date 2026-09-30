@@ -55,6 +55,7 @@ import sys
 
 import compute_summary
 import make_workflow_scripts
+import record_run
 from common import (
     ARMS,
     CHECKER_BATCH,
@@ -177,8 +178,10 @@ def run_problems(model: dict, runs: dict, protocol_sha256: str, plans: dict[str,
     (LEGACY_PLAN_FINGERPRINTS against `plans`, the id-to-prompt-hash map of each stage's plan on disk, so a re-plan
     under changed inputs cannot be sealed over them either); a
     record from before the transcripts were matched to the journal's agents, or one in which a started agent's
-    transcript reports no model id; or a reported model id that is not the model the model facts declare
-    (MODEL_KEYS, a bracketed suffix disregarded). Empty when both records bind and agree."""
+    transcript reports no model id; a record whose journal-derived facts (agents started, transcripts matched,
+    record types, the agents listed without a model id, the directory named by the run id) are not what the copied
+    journal says again (record_run.journal_facts); or a reported model id that is not the model the model facts
+    declare (MODEL_KEYS, a bracketed suffix disregarded). Empty when both records bind and agree."""
     problems = []
     declared = {model_id(model[k]) for k in MODEL_KEYS if isinstance(model.get(k), str) and model[k].strip()}
     if not isinstance(model.get("session_model_at_run"), str) or not model["session_model_at_run"].strip():
@@ -199,6 +202,28 @@ def run_problems(model: dict, runs: dict, protocol_sha256: str, plans: dict[str,
         if not copy.exists() or sha256_file(copy) != rec.get("journal_sha256"):
             problems.append(f"workflows/{stage}.journal.jsonl is missing or is not the journal runs.{stage} records; "
                             f"copy the run's journal.jsonl there")
+        else:
+            # the record's journal-derived facts, computed again from the copy: a record edited after record_run.py
+            # (agent counts, record types, the transcript match) would otherwise be sealed as the run's evidence
+            # (Codex review of PR #52)
+            try:
+                started, types = record_run.journal_facts(copy)
+            except SystemExit as e:
+                started, types = None, None
+                problems.append(f"workflows/{stage}.journal.jsonl: {e}")
+            if started is not None:
+                facts = {"agents_started": len(started), "agent_transcripts": len(started), "journal_record_types": types}
+                for key, want in facts.items():
+                    if rec.get(key) != want:
+                        problems.append(f"runs.{stage}.{key} {rec.get(key)!r} is not what the copied journal says "
+                                        f"({want!r}); run record_run.py --replace for it")
+                stray = [a for a in (rec.get("agents_without_model_id") or []) if a not in started]
+                if stray:
+                    problems.append(f"runs.{stage}.agents_without_model_id names agent(s) the journal did not start "
+                                    f"{stray[:3]}")
+        if rec.get("transcript_dir") and rec["transcript_dir"].rstrip("/").rsplit("/", 1)[-1] != rec.get("run_id"):
+            problems.append(f"runs.{stage}.transcript_dir {rec['transcript_dir']!r} is not named by run_id "
+                            f"{rec.get('run_id')!r}")
         script = PILOT / "workflows" / f"{stage}.workflow.js"
         if not rec.get("workflow_script_sha256"):
             problems.append(f"runs.{stage}: recorded before the workflow script was bound; run record_run.py --replace")

@@ -72,6 +72,9 @@ def validate_result(result: object, planned: dict[str, dict], unbound: bool = Fa
             # although Python counts it as an int (Codex review of PR #52)
             problems.append(f"calls[{i}] ({cid}): attempts must be a non-empty list of objects with an integer attempt "
                             f"(not a boolean) and a string or null raw")
+        elif any(null_flag_problem(a, "raw") for a in attempts):
+            problems.append(f"calls[{i}] ({cid}): "
+                            f"{next(p for p in (null_flag_problem(a, 'raw') for a in attempts) if p)}")
         elif [a["attempt"] for a in attempts] != list(range(1, len(attempts) + 1)) or len(attempts) > MAX_ATTEMPTS:
             problems.append(f"calls[{i}] ({cid}): attempts must be numbered 1..n in order with n <= {MAX_ATTEMPTS}; "
                             f"got {[a['attempt'] for a in attempts]}")
@@ -89,6 +92,24 @@ def validate_result(result: object, planned: dict[str, dict], unbound: bool = Fa
         raise SystemExit("parse_generation: refusing the result file; nothing on disk was changed:\n  "
                          + "\n  ".join(problems))
     return by_id
+
+
+def null_flag_problem(attempt: dict, field: str) -> str | None:
+    """Why an attempt's `null_return` does not describe its response `field`: the flag must be a boolean, true exactly
+    when the field is null and no non-text return is recorded (`unexpected_result_type`, a non-empty string, names
+    one kept as no text), false otherwise. A lane writing null with the flag false would otherwise record a null
+    response as a non-null failed attempt (Codex review of PR #52). None when the flag describes the field."""
+    flag, unexpected = attempt.get("null_return"), attempt.get("unexpected_result_type")
+    if not isinstance(flag, bool):
+        return f"attempt {attempt.get('attempt')}: null_return must be a boolean, got {flag!r}"
+    if unexpected is not None and (not isinstance(unexpected, str) or not unexpected):
+        return f"attempt {attempt.get('attempt')}: unexpected_result_type must be a non-empty string when present"
+    expected = attempt.get(field) is None and unexpected is None
+    if flag != expected:
+        return (f"attempt {attempt.get('attempt')}: null_return {flag} does not describe {field} "
+                f"({'null' if attempt.get(field) is None else 'present'}"
+                f"{', non-text return ' + unexpected if unexpected else ''})")
+    return None
 
 
 def binding_label(unbound: bool) -> str:

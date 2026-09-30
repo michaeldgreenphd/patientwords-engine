@@ -538,11 +538,16 @@ GENERATION_MARKERS = ("{{SPECIALTY}}", "{{SWAP_TYPE}}", "{{SWAP_DEFINITION}}", "
 CHECKER_MARKERS = ("{{ITEMS}}",)
 
 
+SAFE_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9 _.-]*")  # one file-name component, no separator, not hidden
+
+
 def design_problems(specialties: list, swap_types: list) -> list[str]:
     """Why the design factors cannot be planned from: a specialty or swap type that is not a non-empty string, a
     repeated one, or two whose derived cell or call ids collide (cell_id replaces spaces with underscores, so two
-    swap types that differ only there would name one cell). Duplicate ids would launch duplicate agents that the
-    journal extractor refuses only after the run (Codex review of PR #52). Empty when every id is distinct."""
+    swap types that differ only there would name one cell), or a derived call id that is not a safe single file name.
+    Duplicate ids would launch duplicate agents that the journal extractor refuses only after the run, and an unsafe
+    id would break the parse after the previous one was removed (Codex review of PR #52). Empty when every id is
+    distinct and safe."""
     problems = []
     for label, values in (("specialties", specialties), ("swap_types", swap_types)):
         if not isinstance(values, list) or not values or not all(isinstance(v, str) and v.strip() for v in values):
@@ -557,6 +562,13 @@ def design_problems(specialties: list, swap_types: list) -> list[str]:
     cids = [call_id(a, s, t) for s in specialties for t in swap_types for a in ARMS]
     if len(set(cids)) != len(cids):
         problems.append(f"design.json: two calls derive one id {sorted({i for i in cids if cids.count(i) > 1})}")
+    # call ids name files (generated/<id>.jsonl, generated/raw/<id>__attemptN.txt): a factor carrying a path
+    # separator or another unsafe character would plan, run, and then break the parse after the previous one was
+    # removed (Codex review of PR #52)
+    unsafe = sorted({i for i in cids if not SAFE_ID_RE.fullmatch(i) or ".." in i})
+    if unsafe:
+        problems.append(f"design.json: call id(s) {unsafe[:3]} are not safe single file names (letters, digits, spaces, "
+                        f"underscores, dots and hyphens only, not starting with a dot or a hyphen)")
     return problems
 
 

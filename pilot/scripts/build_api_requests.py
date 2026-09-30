@@ -61,7 +61,10 @@ RESULT_SHAPES = {
                             "accepted only when attempt 1 met the retry rule below; prompt_sha256 must equal the "
                             "planned prompt's hash and the top-level protocol_sha256 the frozen protocol's (both "
                             "recorded in this file), or parse_generation.py refuses the whole file before touching "
-                            "anything on disk."},
+                            "anything on disk. null_return is a boolean that describes raw: true exactly when raw is "
+                            "null and no non-text return is recorded; a non-text return is kept as raw null, "
+                            "null_return false and unexpected_result_type naming its type; a flag that does not "
+                            "describe raw refuses the file."},
     "checker": {"file": "workflow_checker_result.json or any name passed to parse_checker.py",
                 "shape": {"protocol_sha256": "<this file's protocol_sha256, copied verbatim>",
                           "batches": [{"batch_id": "<batch id>",
@@ -77,7 +80,10 @@ RESULT_SHAPES = {
                          "prompt's hash, and the top-level protocol_sha256 the frozen protocol's (both recorded in "
                          "this file). parse_checker.py ignores an entry that is not an object "
                          "with a known id and a verdict in {yes, no, unclear}, and records ids without a usable "
-                         "verdict as missing."},
+                         "verdict as missing. null_return is a boolean that describes result: true exactly when "
+                         "result is null and no non-object return is recorded; a non-object return is kept as "
+                         "result null, null_return false, raw_return holding it verbatim and unexpected_result_type "
+                         "naming its type; a flag that does not describe result refuses the file."},
 }
 RETRY_RULES = {
     "generation": f"retry once, with the identical request, when the response is empty or no returned line parses as "
