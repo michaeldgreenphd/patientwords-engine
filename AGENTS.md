@@ -80,7 +80,8 @@ GPU) still commits no locally produced measurement: every committed summary reco
 
 Nine lanes. `scripts/fire_trigger.py` also knows `pab-probe`, whose
 workflow exists only on the PAB branch. The fact-check of 2026-09-04 found this table
-one lane behind and `.github/trigger/README.md` six behind. That README predates the
+one lane behind; `.github/trigger/README.md` documents only the `scenario-generation`
+and `circuit-trace` lanes. That README predates the
 ops system and cannot be edited from a session (the guard hooks refuse every write
 under `.github/trigger/`), so the lane reference with every lane's exact key set is
 `docs/triggers.md`, and since 2026-09-09 `tests/test_trigger_docs.py` checks it and
@@ -115,21 +116,26 @@ fires each lane's no-op default from `PARK_DEFAULTS`. All nine lanes are parked 
 it (`docs/routine_standing_prompt.md` §3d); after any real fire lands, re-park that lane
 (`docs/operators_handbook.md` §3).
 
-**Cost discipline:** Neuronpedia tracing, CPU logits, and all analysis are $0. Five
-lanes spend provider credits — `scenario-generation`, `model-evaluation`, `advice-eval`,
-`petri-audit` when `mode: run` (or `mode: readapt` or `mode: rejudge`, whose judge alone spends; a rejudge with the `mockllm/judge` rehearsal spends nothing), and `circuit-trace` when `show_mitigation: true` (a flat $0.15 imputed per fire);
-`fire_trigger.py`'s `PAID_TRIGGERS` is the source of truth. Measured per accepted pair
+**Cost discipline:** Neuronpedia tracing, CPU logits, and all analysis are $0. The lanes
+in `fire_trigger.py`'s `PAID_TRIGGERS` (the source of truth) spend provider credits — on
+`main`, `scenario-generation`, `model-evaluation`, `advice-eval`, and
+`petri-audit` when `mode: run` (or `mode: readapt` or `mode: rejudge`, whose judge alone spends; a rejudge with the `mockllm/judge` rehearsal spends nothing) —
+and so does `circuit-trace` with `show_mitigation: true` (a flat $0.15 imputed per fire)
+or `mode: translation` (which `is_paid_fire` does not count). Measured per accepted pair
 across the landed `.report.json` sidecars (2026-09-04): opus **$0.020**, haiku $0.0017,
 sonnet $0.060. Every paid generation run writes `<batch>.report.json` (one archived
 batch, `pairs_20260706T172135Z` — the park default — has none); mitigation runs write
-`mitigation.part_NN.report.json` under the trace dir. Session
-ledgers live in `docs/` when an overnight run is active.
+`mitigation.part_NN.report.json` under the trace dir. The spend ledger is
+`docs/overnight_ledger_20260708.md`: `scripts/ledger_update.py` appends to the newest
+`docs/*ledger*.md`, so a new one sorting after it would silently take over.
 
 **Ops tooling (required path):** fire triggers ONLY via `scripts/fire_trigger.py` — it
 journals every fire (`ops/trigger_journal.jsonl`), mechanically enforces the
 one-running + one-pending discipline, hard-errors on unknown trigger keys (CI silently
-ignores them), and refuses paid fires that would breach the $2/day operational ceiling
-counting landed spend **and** the `max_spend` every paid fire made that UTC day still
+ignores them), and refuses paid fires that would breach the daily operational ceiling
+($2 unless `ops/budget_overrides.json` holds a dated raise for that UTC day; $10 for a
+fire billed only to OpenRouter), counting landed spend **and** the `max_spend` every
+paid fire made that UTC day still
 holds — resolved or expired alike; only eviction releases it (`entry_holds_spend`,
 since 2026-09-23, when resolve-released holds let the guard report $0 committed on a
 day two resolved fires had committed $12.70). Once the ledger folds a run's cost into
@@ -234,8 +240,8 @@ palette, and every mark must survive gallery-thumbnail scale. When in doubt, rem
 
 Offline and fast (`tests/`, `conftest.py` provides fixtures; no network, no keys), and the
 suite stays green: `pip install -e ".[llm]" pytest ruff pyyaml` installs everything it needs —
-`matplotlib` and `networkx` are declared dependencies, not extras, and `pyyaml` (nine test
-files parse workflow YAML) is in the poetry dev group, which pip's extra syntax does not
+`matplotlib` and `networkx` are declared dependencies, not extras, and `pyyaml` (the tests
+that parse workflow YAML need it) is in the poetry dev group, which pip's extra syntax does not
 install, so it is named on the command line. A container that skipped the install shows
 `ModuleNotFoundError` failures that are the environment's, not the code's. One
 known failure as of 2026-09-06: `tests/test_specialty_map.py::test_covers_live_payload_topics`
@@ -304,8 +310,9 @@ know them will pass a change that is destructive in this repo's terms:
   `trace_out/` summaries are measurements, not caches — a change that regenerates
   them differently is new data, not a refresh.
 * **Irreversible spend:** any change to a file under `.github/trigger/` fires its
-  workflow on push, including a merge that carries one. Four of those lanes can spend
-  provider credits (`PAID_TRIGGERS` plus mitigation on circuit-trace). A trigger file changed incidentally — by a merge, rebase, or
+  workflow on push, including a merge that carries one. The lanes in `PAID_TRIGGERS` can
+  spend provider credits, and so can circuit-trace with `show_mitigation: true` or
+  `mode: translation`. A trigger file changed incidentally — by a merge, rebase, or
   branch creation — is a defect, not a formatting detail.
 * **The compatibility path that matters most:** `batch_summary*.json` is a shared
   schema across the hosted and logits paths, and the frontend exporter and every
@@ -314,9 +321,20 @@ know them will pass a change that is destructive in this repo's terms:
   but not a filename, and `backend_agreement.py` is the only reader of both. A field added, renamed, or given a new
   meaning needs the consumers named in the Architecture section checked.
 * **Single-writer invariants:** `ops/dashboard.json` is committed only by the daily
-  Routine session (other sessions revert `fire_trigger.py`'s queue side effect before
-  committing); `scripts/ledger_update.py` is the only writer of spend numbers. A
+  Routine session (`fire_trigger.py` restores it for every other caller; a
+  `scripts/ledger_update.py` run outside the Routine is reverted, not committed);
+  `scripts/ledger_update.py` is the only writer of spend numbers. A
   second committer is a data-loss bug even when each write looks correct.
+* **Owner-only files:** `.claude/settings.json`, `.claude/hooks/` and `.githooks/` are
+  edited only by the owner, by hand; an agent pull request that touches them is a finding.
+* **The site's CI runs engine code:** site `site_checks.yml` runs
+  `scripts/validate_frontend_contract.py` and `scripts/check_pages.py` from engine `main`
+  (or a same-named branch). Changing them, their imports or the engine files they read
+  changes site CI; moving either fails every site push.
+* **`patientwords-traces`** (GitHub Pages) serves the traces the site does not ship:
+  payload `trace_url` links (`scripts/export_traces_site.py`) point there, and its nightly
+  build copies engine `main`'s `trace_out/<batch>/index_NN.html`. Moving or pruning those
+  renders, or changing the URL scheme, breaks published links.
 
 ## Coding constraints
 
@@ -335,9 +353,7 @@ know them will pass a change that is destructive in this repo's terms:
   is worse than a crash. `expected_tier`'s coverage floor and `verify_probs.py`'s
   `token_parity` are the pattern: measure it, report it, refuse rather than guess.
 * **Type hints on new modules and new public functions.** Not a retrofit rule.
-  The scripts the Architecture section names carry none (50 functions, 0 hinted,
-  2026-09-04), while newer scripts mostly do (40 of 73 files in `scripts/` have at
-  least one hinted function; `advice_eval.py` 52 of 61). Requiring hints everywhere
+  Many older scripts carry none; most newer ones have them. Requiring hints everywhere
   would turn every pull request into a typing project and train everyone to dismiss
   the reviewer. New files
   and new entry points, yes; matching the surrounding style in an old file is not
