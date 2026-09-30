@@ -14,7 +14,10 @@ manifest_model.json, the operator's statement of the session and model that serv
 way: its hash is recorded at the first write, an edit after that is refused unless --reset is passed, and since
 --reset clears the run records and `finalize` requires both subagent runs recorded (record_run.py, which takes the
 model evidence from the transcripts), the outputs cannot be finalized under model facts written after the run
-without a visible reset and re-recording (Codex review of PR #52).
+without a visible reset and re-recording (Codex review of PR #52). `finalize` further requires each run record's
+journal_sha256 to be the source_sha256 of the stage's result file, every transcript to report a model id, and every
+reported id to be the model the facts declare (session_model_at_run or session_last_served_model_at_run, a bracketed
+suffix such as [1m] disregarded), so the results cannot be sealed under a model their own transcripts contradict.
 
 Both plans must have been built from the files on disk: calls.json from the seed file, the design file and the
 generation template, and checker_batches.json from the checker template, the seed file and the parsed generation
@@ -32,6 +35,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import platform
+import re
 import sys
 
 import build_checker_set
@@ -96,6 +100,47 @@ def input_changes(old: dict, current: dict) -> list[str]:
     if "manifest_model_sha256" in old and old["manifest_model_sha256"] != current.get("manifest_model_sha256"):
         changes.append("manifest_model_sha256")
     return changes
+
+
+MODEL_KEYS = ("session_model_at_run", "session_last_served_model_at_run")
+
+
+def model_id(s: str) -> str:
+    """A model id with a bracketed context suffix (claude-x[1m]) dropped, for comparing the declared model with the
+    ids the transcripts report."""
+    return re.sub(r"\[[^\]]*\]$", "", s.strip())
+
+
+def run_problems(model: dict, runs: dict) -> list[str]:
+    """Why the run records do not vouch for the recorded results (Codex review of PR #52): a stage not recorded; a
+    record whose journal_sha256 is not the source_sha256 of the stage's result file (the record describes another
+    run); transcripts that report no model id; or a reported model id that is not the model the model facts declare
+    (MODEL_KEYS, a bracketed suffix disregarded). Empty when both records bind and agree."""
+    problems = []
+    declared = {model_id(model[k]) for k in MODEL_KEYS if isinstance(model.get(k), str) and model[k].strip()}
+    if not isinstance(model.get("session_model_at_run"), str) or not model["session_model_at_run"].strip():
+        problems.append("manifest_model.json declares no session_model_at_run to reconcile the transcripts against")
+    for stage in ("generation", "checker"):
+        rec = runs.get(stage)
+        if not isinstance(rec, dict) or not rec.get("run_id"):
+            problems.append(f"runs.{stage} not recorded; run record_run.py for it (a --reset clears the run records)")
+            continue
+        result_path = PILOT / f"workflow_{stage}_result.json"
+        source = (json.loads(result_path.read_text(encoding="utf-8")).get("source_sha256")
+                  if result_path.exists() else None)
+        if not rec.get("journal_sha256") or rec.get("journal_sha256") != source:
+            problems.append(f"runs.{stage}.journal_sha256 {str(rec.get('journal_sha256'))[:12]!r} is not the "
+                            f"source_sha256 of {result_path.name} ({str(source)[:12]!r}); record the run that produced "
+                            f"the recorded result")
+        seen = (rec.get("model_evidence") or {}).get("model_strings_in_transcripts") or {}
+        if not seen:
+            problems.append(f"runs.{stage}: the transcripts report no model id; the results cannot be attributed")
+        elif declared:
+            foreign = sorted(mid for mid in seen if model_id(mid) not in declared)
+            if foreign:
+                problems.append(f"runs.{stage}: transcripts report model(s) {foreign} but manifest_model.json declares "
+                                f"{sorted(declared)}; record the model that served the run before finalizing")
+    return problems
 
 
 def rederive_problems(calls: dict) -> list[str]:
@@ -331,13 +376,13 @@ def main(finalize: bool, reset: bool = False) -> None:
     if keep_final:
         m["output_hashes"] = carried
     if finalize:
-        # the run records carry the model evidence read from the transcripts; without both, the model facts above
-        # would stand alone, and a --reset clears them so they are recorded again (Codex review of PR #52)
-        absent = [n for n in ("generation", "checker")
-                  if not isinstance(m["runs"].get(n), dict) or not m["runs"][n].get("run_id")]
-        if absent:
-            raise SystemExit(f"write_manifest: cannot finalize, runs.{' and runs.'.join(absent)} not recorded; run "
-                             f"record_run.py for each subagent stage (a --reset clears the run records)")
+        # the run records carry the model evidence read from the transcripts and the journal each result came
+        # from; without both, bound to the result files and agreeing with the declared model, the model facts
+        # above would stand alone (Codex review of PR #52); a --reset clears them so they are recorded again
+        problems = run_problems(model, m["runs"])
+        if problems:
+            raise SystemExit("write_manifest: cannot finalize, the run records do not vouch for the recorded "
+                             "results:\n  " + "\n  ".join(problems[:5]))
         m["output_hashes"] = finalize_hashes(calls)  # refuses an incomplete bundle before anything is written
     path.write_text(json.dumps(m, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     cleared = ([f"{len(changed_outputs)} hashed output(s) changed or missing (first: {changed_outputs[0]})"]

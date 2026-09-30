@@ -2,7 +2,9 @@
 
 Input: a JSON file {"batches": [{"batch_id", "prompt_sha256", "attempts": [{"attempt", "result": {"verdicts":
 [...]} | null}]}]}. A verdict outside {yes, no, unclear}, a duplicate id, or an id outside the batch is logged and
-ignored; an item with no usable verdict is recorded as verdict "missing".
+ignored; an item with no usable verdict is recorded as verdict "missing". An attempt the extractor recorded with a
+`raw_return` (a result that was not an object) is logged as `malformed_return`, distinct from a null return (Codex
+review of PR #52).
 
   python3 scripts/parse_checker.py <result file> [--replace] [--unbound]
 
@@ -121,7 +123,8 @@ def derive(by_id: dict[str, dict], batches: list[dict], blind: dict[str, dict], 
                         verdicts[iid] = {"verdict": eq, "reason": str(e.get("reason", "")), "batch_id": meta["batch_id"]}
                         n_ok += 1
             log.append({"batch_id": meta["batch_id"], "attempt": a["attempt"], "is_final": is_final,
-                        "null_return": res is None, "n_items": len(meta["item_ids"]),
+                        "null_return": res is None and "raw_return" not in a, "malformed_return": "raw_return" in a,
+                        "n_items": len(meta["item_ids"]),
                         "n_entries": len(entries) if isinstance(entries, list) else 0,
                         "n_used": n_ok, "n_invalid_value": n_bad, "n_duplicate_id": n_dup, "n_foreign_id": n_foreign,
                         "status": "ok" if isinstance(entries, list) else "failed", "plan_binding": binding,

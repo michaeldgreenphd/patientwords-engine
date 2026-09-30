@@ -18,6 +18,7 @@ from common import (
     cell_id,
     cells,
     checked_problems,
+    control_measurable,
     cosine,
     dup_key,
     generation_problems,
@@ -209,10 +210,14 @@ def main() -> None:
 
     # ---- controls (secondary)
     ctrl = [r for r in rows if r["control"] == "negative"]
+    # a control whose term keeps no letter or digit has no lexical content to compare: excluded from the fidelity
+    # denominator and counted, never scored as faithful (Codex review of PR #52)
+    meas = [r for r in ctrl if control_measurable(r)]
     S["controls"] = {"n_control_rows": len(ctrl), "expected": 4 * len(calls["calls"]),
-                     "faithful": wilson(sum(1 for r in ctrl if r["control_faithful"]), len(ctrl)),
-                     "by_arm": {a: wilson(sum(1 for r in ctrl if r["arm"] == a and r["control_faithful"]),
-                                          sum(1 for r in ctrl if r["arm"] == a)) for a in ARMS}}
+                     "unmeasurable": len(ctrl) - len(meas),
+                     "faithful": wilson(sum(1 for r in meas if r["control_faithful"]), len(meas)),
+                     "by_arm": {a: wilson(sum(1 for r in meas if r["arm"] == a and r["control_faithful"]),
+                                          sum(1 for r in meas if r["arm"] == a)) for a in ARMS}}
 
     # ---- E2 novelty (non-control rows; per arm in protocol order; vs seeds and earlier rows of the same arm)
     gen = [r for r in rows if r["control"] == "none"]
@@ -371,6 +376,8 @@ def main() -> None:
     L.append("")
     C = S["controls"]
     L.append(f"Control rows returned and valid: {C['n_control_rows']} (expected {C['expected']}).")
+    L.append(f"Controls with no lexical content in a term (no letter or digit after normalization; excluded from the "
+             f"fidelity denominator and counted): {C['unmeasurable']}.")
     L.append("")
     L.append("| Scope | Faithful (surface form only) / controls | Proportion | 95% Wilson |\n|---|---|---|---|")
     L.append(prop_row("Both arms", C["faithful"]))

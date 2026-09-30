@@ -38,7 +38,7 @@ CHECKER_BATCH = 30
 N_BROKEN = 20
 N_KNOWN_GOOD = 10
 N_REVIEW = 40
-N_BOOT = int(os.environ.get("PILOT_N_BOOT", "2000"))  # the protocol fixes 2000; the test wrapper lowers it
+N_BOOT = 2000  # PROTOCOL.md fixes 2000; no override: one that leaked into a real run could finalize fewer (Codex review of PR #52)
 Z = 1.959964
 
 
@@ -165,8 +165,17 @@ def surface_key(s: str) -> str:
     return "".join(ch for ch in s.lower() if ch.isalnum())
 
 
+def control_measurable(row: dict) -> bool:
+    """A negative control can be judged only when both terms keep a letter or digit after normalization: two terms
+    of punctuation alone both normalize to "" and would count as faithful with no lexical content compared (Codex
+    review of PR #52). The summary excludes and counts such rows."""
+    return bool(surface_key(row["clinical_term"])) and bool(surface_key(row["patient_term"]))
+
+
 def control_is_faithful(row: dict) -> bool:
-    return surface_key(row["clinical_term"]) == surface_key(row["patient_term"])
+    """A negative control changed surface form only: same key on both sides, and a key to compare (a row that
+    control_measurable rejects is never faithful)."""
+    return control_measurable(row) and surface_key(row["clinical_term"]) == surface_key(row["patient_term"])
 
 
 def dup_key(row: dict) -> tuple[str, str]:
@@ -440,14 +449,66 @@ def plan_hash_problems(items: list[dict], id_key: str) -> list[str]:
             for it in items if not isinstance(it.get("prompt"), str) or sha256_text(it["prompt"]) != it.get("prompt_sha256")]
 
 
+def render_exemplars(rows: list[dict]) -> str:
+    """The exemplar block a generation prompt shows: one JSON object per seed row, in the order drawn."""
+    return "\n".join(json.dumps({"clinical_term": r["clinical_term"], "patient_term": r["patient_term"],
+                                 "template": r["template"], "control": "none"}, ensure_ascii=False) for r in rows)
+
+
+def derive_plan(seeds: list[dict], template: str, seeds_sha256: str, design_sha256: str) -> dict:
+    """The generation plan, pure and deterministic: Arm A exemplars drawn once per cell from the named stream in
+    cell order, Arm B the first K seeds in file order, every prompt rendered from the template and hashed. plan_calls.py
+    writes exactly this; load_calls derives it again and refuses a calls.json that differs (Codex review of PR #52)."""
+    n = len(seeds)
+    k = min(K_EXEMPLARS, n)
+    r = rng("exemplars")
+    fixed = seeds[:k]  # Arm B: the first k seeds in file order, identical in every call
+    calls = []
+    for specialty, swap_type in cells():
+        sampled = r.sample(seeds, k)  # Arm A: one draw per cell, consumed in fixed cell order
+        for arm, exemplars in (("A", sampled), ("B", fixed)):
+            prompt = (template.replace("{{SPECIALTY}}", specialty)
+                      .replace("{{SWAP_TYPE}}", swap_type)
+                      .replace("{{SWAP_DEFINITION}}", SWAP_DEFINITIONS[swap_type])
+                      .replace("{{EXEMPLARS}}", render_exemplars(exemplars)))
+            calls.append({"id": call_id(arm, specialty, swap_type), "arm": arm, "specialty": specialty,
+                          "swap_type": swap_type, "cell": cell_id(specialty, swap_type), "k_exemplars": k,
+                          "exemplar_ids": [e["id"] for e in exemplars], "prompt_sha256": sha256_text(prompt),
+                          "prompt": prompt})
+    return {"master_seed": MASTER_SEED, "n_seeds": n, "k_exemplars_used": k, "k_exemplars_requested": K_EXEMPLARS,
+            "generation_prompt_template_sha256": sha256_text(template),
+            # the inputs this plan was rendered from: write_manifest.py refuses a plan whose inputs have since changed
+            "input_hashes": {"seeds_json_sha256": seeds_sha256, "design_json_sha256": design_sha256,
+                             "generation_prompt_template_sha256": sha256_text(template)},
+            "calls": calls}
+
+
 def load_calls() -> dict:
-    """calls.json, refused unless every call's prompt hashes to its stored prompt_sha256 and the template hash agrees
-    with the input hashes it records. Every reader of the plan goes through here."""
+    """calls.json, refused unless it is exactly the plan derive_plan renders from the seed file, the design file and
+    the generation template on disk. Self-consistency alone (every prompt hashing to its stored prompt_sha256) let a
+    prompt edited together with its hash, or a planner that rendered the wrong prompt, run and finalize under the
+    live input hashes (Codex review of PR #52). Every reader of the plan goes through here."""
     calls = json.loads((PILOT / "calls.json").read_text(encoding="utf-8"))
     problems = plan_hash_problems(calls.get("calls", []), "id")
     ih = calls.get("input_hashes")
     if isinstance(ih, dict) and ih.get("generation_prompt_template_sha256") != calls.get("generation_prompt_template_sha256"):
         problems.append("generation_prompt_template_sha256 differs from input_hashes.generation_prompt_template_sha256")
+    template = (PILOT / "prompts" / "generation_prompt.txt").read_text(encoding="utf-8")
+    expected = derive_plan(load_seeds(), template, sha256_file(PILOT / "seeds.json"), sha256_file(PILOT / "design.json"))
+    if calls != expected:
+        top = sorted(k for k in set(calls) | set(expected) if k != "calls" and calls.get(k) != expected.get(k))
+        where = f"top-level {top}" if top else "calls"
+        if not top:
+            got, want = calls.get("calls", []), expected["calls"]
+            for i, (g, w) in enumerate(zip(got, want)):
+                if g != w:
+                    fields = sorted(k for k in set(g) | set(w) if g.get(k) != w.get(k))
+                    where = f"call {i} ({w['id']}): {fields}"
+                    break
+            else:
+                where = f"{len(got)} calls on disk, {len(want)} derived"
+        problems.append(f"calls.json is not the plan the seed file, design file and template on disk derive "
+                        f"(first difference: {where})")
     if problems:
         raise SystemExit("calls.json: refusing an inconsistent plan; re-run plan_calls.py:\n  " + "\n  ".join(problems[:5]))
     return calls

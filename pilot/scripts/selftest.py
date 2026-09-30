@@ -60,6 +60,11 @@ def unit_tests() -> None:
           and not common.checker_attempt_failed({"verdicts": [{"id": "c1", "equivalent": "yes", "reason": ""}]}),
           "checker retry rule: nothing or an empty verdict list fails; a verdict list does not")
     check(common.control_is_faithful({"clinical_term": "Alpha beta", "patient_term": "alpha  beta."}), "control fidelity")
+    # two terms of punctuation alone both normalize to "": no lexical content to compare, never faithful (Codex on PR #52)
+    check(not common.control_measurable({"clinical_term": "...", "patient_term": "??"})
+          and not common.control_is_faithful({"clinical_term": "...", "patient_term": "??"})
+          and common.control_measurable({"clinical_term": "a.", "patient_term": "A"}),
+          "a control whose term keeps no letter or digit is unmeasurable, not faithful")
     check(len(common.SPECIALTIES) == 3 and len(common.SWAP_DEFINITIONS) == 3, "design factors load from design.json")
     # surface form: casing, punctuation and spacing removed, letters of every script kept (Codex on PR #52)
     check(common.surface_key("Résumé, naïve") == "résuménaïve"
@@ -124,6 +129,8 @@ def fake_rows(call: dict, r: random.Random) -> str:
     if call["arm"] == "A" and call["specialty"] == common.SPECIALTIES[1]:  # the specialty name stays in design.json
         lines.append('{"clinical_term": "x", "patient_term": "y", "template": "no blank here", "control": "none"}')
         lines.append("not json at all")
+        # format-valid, but neither term keeps a letter or digit: counted as unmeasurable, not faithful
+        lines.append('{"clinical_term": "...", "patient_term": "??", "template": "She points to ___ and", "control": "negative"}')
     return "\n".join(lines)
 
 
@@ -146,6 +153,20 @@ def dry_run() -> None:
                                          encoding="utf-8")
         (tmp / "HANDOFF.md").write_text("# Self-test dry run\n\nFabricated responses; no assumptions, results or review "
                                         "rounds are recorded here.\n", encoding="utf-8")
+        # the model facts must name the model the fabricated transcripts report, or finalize refuses (Codex on PR #52)
+        model_path = tmp / "manifest_model.json"
+        model_doc = json.loads(model_path.read_text(encoding="utf-8"))
+        model_doc["session_model_at_run"] = "selftest-model[test]"  # the bracketed suffix is disregarded
+        model_doc["session_last_served_model_at_run"] = "selftest-model"
+        model_path.write_text(json.dumps(model_doc, indent=2) + "\n", encoding="utf-8")
+        # transcript fixtures, named by run id as the Workflow tool names them; each result file records the hash of
+        # the journal it was extracted from, and record_run.py binds the record to it (Codex on PR #52)
+        gdir, cdir, odir = tmp / "wf_selftest_gen", tmp / "wf_selftest_chk", tmp / "wf_selftest_other"
+        for d, note in ((gdir, "generation"), (cdir, "checker"), (odir, "other")):
+            d.mkdir()
+            (d / "journal.jsonl").write_text(f'{{"type": "launched"}}\n{{"type": "started", "label": "{note}"}}\n',
+                                             encoding="utf-8")
+            (d / "agent-1.jsonl").write_text('{"model":"selftest-model"}\n', encoding="utf-8")
         env = {**os.environ, "PILOT_DIR": str(tmp)}
 
         def run(script: str, *args: str, expect_failure: bool = False) -> str:
@@ -155,11 +176,24 @@ def dry_run() -> None:
                   f"{script} {' '.join(args)}{' (expected to refuse)' if expect_failure else ''}\n{out.stdout}{out.stderr}")
             return out.stdout
         run("plan_calls.py")
+        # a prompt edited together with its stored hash is self-consistent but not the plan the inputs derive:
+        # every reader of calls.json derives the plan again and refuses it (Codex on PR #52)
+        plan_bytes = (tmp / "calls.json").read_bytes()
+        pdoc = json.loads(plan_bytes.decode("utf-8"))
+        pdoc["calls"][0]["prompt"] += "\nEdited after planning."
+        pdoc["calls"][0]["prompt_sha256"] = common.sha256_text(pdoc["calls"][0]["prompt"])
+        (tmp / "calls.json").write_text(json.dumps(pdoc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        run("write_manifest.py", expect_failure=True)
+        run("make_workflow_scripts.py", "generation", expect_failure=True)
+        (tmp / "calls.json").write_bytes(plan_bytes)
+        check(not (tmp / "manifest.json").exists() and not (tmp / "workflows").exists(),
+              "a plan edited together with its hashes is refused by every reader before anything is written")
         calls = json.loads((tmp / "calls.json").read_text())["calls"]
         r = random.Random(1)
         # the last planned call is left out of the result: a planned call with no response record must stay in
         # every call-level denominator (Codex on PR #52)
-        gen = {"calls": [{"id": c["id"], "arm": c["arm"], "cell": c["cell"], "prompt_sha256": c["prompt_sha256"],
+        gen = {"source_sha256": common.sha256_file(gdir / "journal.jsonl"),
+               "calls": [{"id": c["id"], "arm": c["arm"], "cell": c["cell"], "prompt_sha256": c["prompt_sha256"],
                           "attempts": fake_response(c, r, broken_first=(c["id"] == calls[3]["id"]))} for c in calls[:-1]]}
         (tmp / "workflow_generation_result.json").write_text(json.dumps(gen))
         keyed_line = '{"clinical_term": "extra", "patient_term": "line", "template": "added ___ later", "control": "none"}'
@@ -219,7 +253,7 @@ def dry_run() -> None:
               "checker request bodies carry the verdict schema")
         batches = json.loads((tmp / "checker_batches.json").read_text())["batches"]
         key = {k["id"]: k for k in common.read_jsonl(tmp / "checker_key.jsonl")}
-        chk = {"batches": []}
+        chk = {"source_sha256": common.sha256_file(cdir / "journal.jsonl"), "batches": []}
         for b in batches:
             verdicts = []
             for iid in b["item_ids"]:
@@ -280,6 +314,12 @@ def dry_run() -> None:
             check(e["lo"] <= e["mean"] <= e["hi"], f"arm {a} vs-seeds bootstrap interval contains the point estimate")
         check(s["E1"]["failure_reasons"].get("template_blank_count_not_1") == 3 and s["E1"]["failure_reasons"].get("not_json") == 3,
               f"format failures counted: {s['E1']['failure_reasons']}")
+        C = s["controls"]
+        n_unmeasurable = sum(1 for c in calls[:-1] if c["arm"] == "A" and c["specialty"] == common.SPECIALTIES[1])
+        check(n_unmeasurable > 0 and C["unmeasurable"] == n_unmeasurable
+              and C["faithful"]["n"] == C["n_control_rows"] - n_unmeasurable and C["faithful"]["x"] == C["faithful"]["n"],
+              f"{n_unmeasurable} control(s) with no lexical content counted as unmeasurable and excluded from the "
+              f"fidelity denominator")
         check(s["E4"]["checker_specificity_broken"]["unclear_counts_as_miss"]["p"] == 1.0, "specificity computed")
         check(s["review"]["n"] == 40, "review sheet has 40 rows")
         check(s["seed_provenance"] == ["selftest provenance, not study data"], "summary records the seed file's provenance")
@@ -391,24 +431,24 @@ def dry_run() -> None:
               "manifest records the seed file's provenance")
         check(m["script_hashes"] == common.script_hashes() and len(m["script_hashes"]) > 0,
               "the manifest hashes the executing scripts, not a scripts directory under the run (Codex on PR #52)")
-        # record_run refuses a directory that is not a run's transcripts, and never writes over a recorded run
+        # record_run refuses a directory that is not a run's transcripts, a run id that is not the directory's name,
+        # a journal that is not the one the stage's result was extracted from, and never writes over a recorded run
         # without --replace (Codex on PR #52)
-        tdir = tmp / "transcripts_gen"
-        tdir.mkdir()
-        (tdir / "journal.jsonl").write_text('{"type": "launched"}\n{"type": "started"}\n', encoding="utf-8")
-        (tdir / "agent-1.jsonl").write_text('{"model":"selftest-model"}\n', encoding="utf-8")
-        run("record_run.py", "generation", "run-1", str(tmp / "no_such_dir"), expect_failure=True)
-        run("record_run.py", "generation", "run-1", str(tdir))
-        run("record_run.py", "generation", "run-2", str(tdir), expect_failure=True)
-        run("record_run.py", "generation", "run-2", str(tdir), "--replace")
+        run("record_run.py", "generation", "wf_selftest_gen", str(tmp / "no_such_dir"), expect_failure=True)
+        run("record_run.py", "generation", "some-other-id", str(gdir), expect_failure=True)
+        run("record_run.py", "generation", "wf_selftest_other", str(odir), expect_failure=True)  # another run's journal
+        run("record_run.py", "generation", "wf_selftest_gen", str(gdir))
+        run("record_run.py", "generation", "wf_selftest_gen", str(gdir), expect_failure=True)
+        run("record_run.py", "generation", "wf_selftest_gen", str(gdir), "--replace")
         mr = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))["runs"]["generation"]
-        check(mr["run_id"] == "run-2" and mr["agent_transcripts"] == 1
+        check(mr["run_id"] == "wf_selftest_gen" and mr["agent_transcripts"] == 1
+              and mr["journal_sha256"] == common.sha256_file(gdir / "journal.jsonl")
               and mr["model_evidence"]["model_strings_in_transcripts"] == {"selftest-model": 1},
-              "record_run validates the transcript directory and replaces a recorded run only with --replace")
+              "record_run binds the record to the journal the result was extracted from and replaces it only with --replace")
         # finalize needs both subagent runs recorded: the run records carry the model evidence read from the
         # transcripts (Codex on PR #52)
         run("write_manifest.py", "finalize", expect_failure=True)
-        run("record_run.py", "checker", "run-c", str(tdir))
+        run("record_run.py", "checker", "wf_selftest_chk", str(cdir))
         # finalize hashes every required output and refuses a missing one; a plan-time rewrite after finalize keeps
         # the hashes only while the outputs are unchanged (Codex on PR #52)
         run("write_manifest.py", "finalize")
@@ -433,6 +473,28 @@ def dry_run() -> None:
               "finalize hashes every required output, per-call files included")
         check({"workflow_generation_result.json", "workflow_checker_result.json"} <= set(mf["output_hashes"]),
               "finalize hashes the two recorded result files")
+        # the run records must vouch for the results: a record bound to another journal, transcripts that report a
+        # model the facts do not declare, or transcripts that report none, refuse finalize (Codex on PR #52)
+        manifest_bytes = (tmp / "manifest.json").read_bytes()
+        mdoc_runs = json.loads(manifest_bytes.decode("utf-8"))
+        mdoc_runs["runs"]["generation"]["journal_sha256"] = "0" * 64
+        (tmp / "manifest.json").write_text(json.dumps(mdoc_runs, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        run("write_manifest.py", "finalize", expect_failure=True)
+        (tmp / "manifest.json").write_bytes(manifest_bytes)
+        agent_bytes = (gdir / "agent-1.jsonl").read_bytes()
+        (gdir / "agent-1.jsonl").write_text('{"model":"another-model"}\n', encoding="utf-8")
+        run("record_run.py", "generation", "wf_selftest_gen", str(gdir), "--replace")
+        run("write_manifest.py", "finalize", expect_failure=True)
+        (gdir / "agent-1.jsonl").write_text('{"type":"no model string here"}\n', encoding="utf-8")
+        run("record_run.py", "generation", "wf_selftest_gen", str(gdir), "--replace")
+        run("write_manifest.py", "finalize", expect_failure=True)
+        (gdir / "agent-1.jsonl").write_bytes(agent_bytes)
+        run("record_run.py", "generation", "wf_selftest_gen", str(gdir), "--replace")
+        run("write_manifest.py", "finalize")
+        mf = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        check(mf["runs"]["generation"]["model_evidence"]["model_strings_in_transcripts"] == {"selftest-model": 1},
+              "finalize refuses a record bound to another journal, a transcript model the facts do not declare, and "
+              "transcripts with no model id; it passes once the record agrees again")
         # the bundle must reproduce from the recorded result files under the current code: a changed response, a
         # changed verdict, or a review map that is not the draw refuses finalize (Codex on PR #52)
         gen_bytes = (tmp / "workflow_generation_result.json").read_bytes()
@@ -526,24 +588,23 @@ def dry_run() -> None:
         # manifest_model.json is frozen from the first manifest that recorded its hash: an edit after the run is
         # refused without --reset, and --reset clears the run records, so finalize needs them recorded again
         # (Codex on PR #52)
-        model_path = tmp / "manifest_model.json"
         model_doc = json.loads(model_path.read_text(encoding="utf-8"))
-        model_doc["session_model_at_run"] = "edited after the run"
+        model_doc["harness_version"] = "edited after the run"
         model_path.write_text(json.dumps(model_doc, indent=2) + "\n", encoding="utf-8")
         run("write_manifest.py", expect_failure=True)
         run("write_manifest.py", "finalize", expect_failure=True)
         m_kept = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
         run("write_manifest.py", "--reset")
         m_reset = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
-        check(m_kept["model"]["session_model_at_run"] != "edited after the run"
-              and m_reset["model"]["session_model_at_run"] == "edited after the run"
+        check(m_kept["model"]["harness_version"] != "edited after the run"
+              and m_reset["model"]["harness_version"] == "edited after the run"
               and m_reset["manifest_model_sha256"] == common.sha256_file(model_path)
               and m_reset["runs"] == {} and m_reset["finalized_utc"] is None
               and isinstance(m_reset["metadata_reset_utc"], str),
               "an edited manifest_model.json is refused without --reset; --reset records it and clears the run records")
         run("write_manifest.py", "finalize", expect_failure=True)  # no run records after the reset
-        run("record_run.py", "generation", "run-2", str(tdir))
-        run("record_run.py", "checker", "run-c", str(tdir))
+        run("record_run.py", "generation", "wf_selftest_gen", str(gdir))
+        run("record_run.py", "checker", "wf_selftest_chk", str(cdir))
         run("write_manifest.py", "finalize")
         # the journal extractor reads the prompt hash from a labelled agent and leaves it null for a legacy label
         journal = [{"type": "launched"},
@@ -602,6 +663,37 @@ def dry_run() -> None:
         run("extract_workflow_journal.py", "generation", str(tmp / "journal_nokey.jsonl"), "--replace", expect_failure=True)
         check((tmp / "workflow_generation_result.json").read_text(encoding="utf-8") == result_text,
               "a journal with two started records on one agent identity, or a started record without one, is refused")
+        # a checker result that is not an object (a non-JSON string, a number) is kept verbatim with its type and
+        # counted by the extractor, and the parser logs it as a malformed return, not a null one (Codex on PR #52)
+        cb = json.loads((tmp / "checker_batches.json").read_text(encoding="utf-8"))["batches"]
+        cj = [{"type": "launched"},
+              {"type": "started", "key": "c1", "agentId": "ca1", "label": f"{cb[0]['batch_id']} attempt 1 sha256={cb[0]['prompt_sha256']}"},
+              {"type": "result", "key": "c1", "agentId": "ca1", "result": "Sorry, no verdicts, just prose."},
+              {"type": "started", "key": "c2", "agentId": "ca2", "label": f"{cb[1]['batch_id']} attempt 1 sha256={cb[1]['prompt_sha256']}"},
+              {"type": "result", "key": "c2", "agentId": "ca2", "result": 42},
+              {"type": "started", "key": "c3", "agentId": "ca3", "label": f"{cb[2]['batch_id']} attempt 1 sha256={cb[2]['prompt_sha256']}"}]
+        (tmp / "journal_chk.jsonl").write_text("".join(json.dumps(j) + "\n" for j in cj), encoding="utf-8")
+        chk_backup = (tmp / "workflow_checker_result.json").read_bytes()
+        checked_backup = (tmp / "checked.jsonl").read_bytes()
+        chklog_backup = (tmp / "checker_log.jsonl").read_bytes()
+        run("extract_workflow_journal.py", "checker", str(tmp / "journal_chk.jsonl"), "--replace")
+        ex = json.loads((tmp / "workflow_checker_result.json").read_text(encoding="utf-8"))
+        exb = {b["batch_id"]: b["attempts"][0] for b in ex["batches"]}
+        a1, a2, a3 = exb[cb[0]["batch_id"]], exb[cb[1]["batch_id"]], exb[cb[2]["batch_id"]]
+        check(ex["non_object_results"] == 2 and ex["source_sha256"] == common.sha256_file(tmp / "journal_chk.jsonl")
+              and a1["result"] is None and a1["raw_return"] == "Sorry, no verdicts, just prose." and a1["unexpected_result_type"] == "str"
+              and a1["null_return"] is False and a2["raw_return"] == "42" and a2["unexpected_result_type"] == "int"
+              and a3["result"] is None and a3["null_return"] is True and "raw_return" not in a3,
+              "a non-object checker result is kept verbatim with its type and counted; a null return stays a null return")
+        run("parse_checker.py", str(tmp / "workflow_checker_result.json"), "--replace")
+        clog = {e["batch_id"]: e for e in common.read_jsonl(tmp / "checker_log.jsonl")}
+        e1, e3 = clog[cb[0]["batch_id"]], clog[cb[2]["batch_id"]]
+        check(e1["malformed_return"] is True and e1["null_return"] is False and e1["status"] == "failed"
+              and e3["malformed_return"] is False and e3["null_return"] is True and e3["status"] == "failed",
+              "the checker log tells a malformed return from a null return")
+        (tmp / "workflow_checker_result.json").write_bytes(chk_backup)
+        (tmp / "checked.jsonl").write_bytes(checked_backup)
+        (tmp / "checker_log.jsonl").write_bytes(chklog_backup)
         (tmp / "workflow_generation_result.json").write_bytes(result_backup)
         # a rerun whose inputs changed must not inherit the previous manifest's metadata (Codex on PR #52), and a
         # plan that was not re-rendered after the inputs changed is refused even with --reset

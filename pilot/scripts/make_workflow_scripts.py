@@ -99,7 +99,6 @@ return { batches: results.filter(Boolean) }
 
 def main(which: str) -> None:
     out_dir = PILOT / "workflows"
-    out_dir.mkdir(exist_ok=True)
     if which == "generation":
         calls = load_calls()["calls"]  # refused unless every prompt hashes to its stored prompt_sha256
         payload = [{"id": c["id"], "arm": c["arm"], "cell": c["cell"], "prompt_sha256": c["prompt_sha256"],
@@ -115,6 +114,7 @@ def main(which: str) -> None:
         path = out_dir / "checker.workflow.js"
     else:
         raise SystemExit("usage: make_workflow_scripts.py generation|checker")
+    out_dir.mkdir(exist_ok=True)  # only once the plan has loaded: a refused plan writes nothing
     path.write_text(text, encoding="utf-8")
     print(f"{path} ({len(payload)} items, {len(text)} bytes)")
 

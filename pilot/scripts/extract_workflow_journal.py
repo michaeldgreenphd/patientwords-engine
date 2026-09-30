@@ -15,6 +15,11 @@ leave the provenance unseen, so such a journal is refused before anything is wri
 "started" records share one (key, agentId) identity, or a "started" record lacks either, since one response would
 then be read under two labels as two independent calls (Codex review of PR #52).
 
+A checker result that is not an object (a string that is not JSON, or another value) is kept verbatim as
+`raw_return` with its type and counted (`non_object_results`), never folded into a null return; the parser logs it as
+a malformed return. The result file records `source_sha256`, the journal's hash, which record_run.py requires of the
+transcript directory it records for the stage (Codex review of PR #52).
+
 A label of the form `<id> attempt <n> sha256=<hash>` (workflow scripts generated since the binding was added) yields
 the item's `prompt_sha256`, which the parsers check against the plan; a label without it yields null, and such a
 result parses only with the parsers' --unbound flag (Codex review of PR #52).
@@ -27,7 +32,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from common import PILOT, load_calls, load_checker_batches
+from common import PILOT, load_calls, load_checker_batches, sha256_file
 
 LABEL = re.compile(r"^(?P<id>.+?) attempt (?P<n>\d+)(?: sha256=(?P<sha>[0-9a-f]{64}))?$")
 
@@ -61,7 +66,7 @@ def main(which: str, journal_path: str, replace: bool = False) -> None:
     per_item: dict[str, dict[int, dict]] = {}
     shas: dict[str, set] = {}
     agents_by_label: dict[tuple[str, int], list] = {}
-    unlabeled = non_text = 0
+    unlabeled = non_text = non_object = 0
     for s in started:
         m = LABEL.match(s.get("label") or "")
         if not m:
@@ -87,8 +92,15 @@ def main(which: str, journal_path: str, replace: bool = False) -> None:
                     obj = json.loads(res)
                 except ValueError:
                     obj = None
-            per_item.setdefault(item_id, {})[n] = {"attempt": n, "result": obj if isinstance(obj, dict) else None,
-                                                   "null_return": res is None, "agent_id": s.get("agentId")}
+            entry = {"attempt": n, "result": obj if isinstance(obj, dict) else None, "null_return": res is None,
+                     "agent_id": s.get("agentId")}
+            if res is not None and not isinstance(obj, dict):
+                # a non-JSON string or a non-object value: kept verbatim and counted, never recorded as a null
+                # return, which would make a format failure read as no response (Codex review of PR #52)
+                entry["raw_return"] = res if isinstance(res, str) else json.dumps(res, ensure_ascii=False)
+                entry["unexpected_result_type"] = type(res).__name__
+                non_object += 1
+            per_item.setdefault(item_id, {})[n] = entry
     unused = sorted(str(k) for k in set(results) - {(s.get("key"), s.get("agentId")) for s in started})
     if unused:  # a truncated or malformed journal would otherwise read as no response for that item
         raise SystemExit(f"{journal_path}: refusing the journal; nothing was written: {len(unused)} result record(s) "
@@ -110,8 +122,8 @@ def main(which: str, journal_path: str, replace: bool = False) -> None:
         planned_ids = set(meta)
         items = [{"id": i, "arm": meta[i]["arm"], "cell": meta[i]["cell"], "prompt_sha256": sha_of(i),
                   "attempts": [per_item[i][n] for n in sorted(per_item[i])]} for i in meta if i in per_item]
-        out = {"source": journal_path, "record_types": dict(types), "unlabeled_agents": unlabeled,
-               "non_text_results": non_text, "calls": items}
+        out = {"source": journal_path, "source_sha256": sha256_file(Path(journal_path)), "record_types": dict(types),
+               "unlabeled_agents": unlabeled, "non_text_results": non_text, "calls": items}
         path = PILOT / "workflow_generation_result.json"
         missing = [i for i in meta if i not in per_item]
     else:
@@ -119,7 +131,8 @@ def main(which: str, journal_path: str, replace: bool = False) -> None:
         planned_ids = set(ids)
         items = [{"batch_id": i, "prompt_sha256": sha_of(i), "attempts": [per_item[i][n] for n in sorted(per_item[i])]}
                  for i in ids if i in per_item]
-        out = {"source": journal_path, "record_types": dict(types), "unlabeled_agents": unlabeled, "batches": items}
+        out = {"source": journal_path, "source_sha256": sha256_file(Path(journal_path)), "record_types": dict(types),
+               "unlabeled_agents": unlabeled, "non_object_results": non_object, "batches": items}
         path = PILOT / "workflow_checker_result.json"
         missing = [i for i in ids if i not in per_item]
     out["items_without_any_agent"] = missing
@@ -134,7 +147,8 @@ def main(which: str, journal_path: str, replace: bool = False) -> None:
     n_attempts = sum(len(x["attempts"]) for x in items)
     n_bound = sum(1 for x in items if x["prompt_sha256"])
     print(f"{path.name}: {len(items)} items, {n_attempts} attempts, record types {dict(types)}, "
-          f"unlabeled {unlabeled}, non-text results {non_text}, missing {missing}, items with a prompt hash {n_bound}"
+          f"unlabeled {unlabeled}, non-text results {non_text}, non-object results {non_object}, missing {missing}, "
+          f"items with a prompt hash {n_bound}"
           + ("" if n_bound == len(items) else " (the parsers need --unbound for the rest)"))
 
 

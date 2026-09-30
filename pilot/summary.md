@@ -56,6 +56,7 @@ Failure reasons (final attempts): none
 ## Negative controls (secondary)
 
 Control rows returned and valid: 72 (expected 72).
+Controls with no lexical content in a term (no letter or digit after normalization; excluded from the fidelity denominator and counted): 0.
 
 | Scope | Faithful (surface form only) / controls | Proportion | 95% Wilson |
 |---|---|---|---|
