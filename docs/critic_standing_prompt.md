@@ -1,3 +1,5 @@
+> **Superseded by** the maintenance-mode `docs/routine_standing_prompt.md` (2026-08-29), which replaced the active-study cycle this critic pass belonged to; the last critic report is `docs/critic/critic_20260828.md`, and the ops branch this file names was retired on 2026-09-04. Kept at this path because `ops/dashboard.json`, briefs and critic reports cite it.
+
 # PatientWords study — CRITIC standing prompt
 
 This is the exact scope for the independent **critic** review pass. It is committed

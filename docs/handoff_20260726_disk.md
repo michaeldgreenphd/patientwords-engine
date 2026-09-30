@@ -1,3 +1,5 @@
+> **Superseded by** `docs/fresh_session_bootstrap.md` (checkout repair and sparse patterns) and `docs/archiving.md` (PNG renders have lived in GitHub Releases, not in git, since 2026-09-08). The disk problem below was resolved on 2026-07-28. Kept at this path because a dated deck, briefs and a critic report cite it.
+
 # Handoff: disk pressure (2026-07-26, weekend babysitter)
 
 At ~21:00 UTC Sun the dev container's disk hit 100% (74M free) and blocked a

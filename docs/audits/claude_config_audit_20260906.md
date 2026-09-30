@@ -1,3 +1,5 @@
+Historical: applied in 0cb2e5a3, e9a818b2 and 7f50ef5f; the hooks as landed differ from section 5.3 (`.claude/hooks/README.md` describes them), and section R3 rejected the `PW_ALLOW_TRIGGER` bypass proposed earlier in this report. Moved here from `.claude/audit-patientwords-engine-2026-09-06.md` on 2026-09-30.
+
 # Claude Code configuration audit — patientwords-engine — 2026-09-06
 
 Read-only audit. Nothing in this report has been applied. Token counts are

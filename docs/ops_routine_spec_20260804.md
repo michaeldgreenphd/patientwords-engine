@@ -1,3 +1,5 @@
+> **Superseded by** `docs/routine_standing_prompt.md`, which the Routine re-reads at every firing. The Routine id below was deleted on 2026-08-05 (see the status note), and the ops branch this file names was retired on 2026-09-04. Kept at this path because `docs/decisions_20260816_owner.md` and a dated audit cite it.
+
 # Ops Routine — creation spec (fresh session per firing)
 
 > **STATUS: CREATED 2026-08-04, owner-approved.** Routine id

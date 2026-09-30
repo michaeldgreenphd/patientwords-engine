@@ -23,6 +23,11 @@ keeps the durable full copy reachable without bloating the site or git.
 
 ## Archiving a run
 
+The tag `renders-20260707` in the steps below is an example, and no Release has
+that name: the real Release holding these two runs (with eleven others) is
+`renders-20260707-fullrun`, whose manifest is
+`render_archives/renders-20260707-fullrun.manifest.json`.
+
 1. **Bundle** (local, testable — no network):
 
    ```bash
