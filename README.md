@@ -307,8 +307,14 @@ today's batches so they stay distinguishable).
 **USD spent vs. the `--max-spend` ceiling**, full token usage, and
 accept/reject counts with reasons. The CLI prints the same `cost_usd`
 figure, the Scenario Generation workflow headlines it on the run page and
-commits the sidecar into `data/simulated/` with the batch. Generation and
-translation are the only paid steps (Anthropic tokens); Neuronpedia graph
+commits the sidecar into `data/simulated/` with the batch. The paid steps
+are the lanes in `scripts/fire_trigger.py`'s `PAID_TRIGGERS`
+(`docs/triggers.md` marks them **paid**; the advice and Petri lanes also
+bill providers other than Anthropic) plus the Anthropic translation calls
+of a circuit-trace run with `show_mitigation: true` or `mode: translation`.
+Every lane is fired only through `scripts/fire_trigger.py`, which journals
+each fire and enforces the daily spend ceiling on the fires it counts as
+paid (it does not count `mode: translation`). Neuronpedia graph
 generation and feature lookups are free with an account key, rate limits
 aside.
 

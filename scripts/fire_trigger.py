@@ -9,7 +9,9 @@ journals every fire to ops/trigger_journal.jsonl, refuses a third stacked fire,
 validates parameter keys against the workflow inputs (CI silently ignores
 unknown keys, so a typo means a run with defaults - catching it locally is the
 whole point), and enforces the daily spend ceiling from ops/dashboard.json for
-the paid triggers (scenario-generation, model-evaluation).
+paid fires as is_paid_fire defines them: the PAID_TRIGGERS lanes (docs/triggers.md
+marks them paid; petri-audit only in its paid modes) and a circuit-trace fire with
+show_mitigation.
 
 Usage:
   python scripts/fire_trigger.py fire --trigger circuit-trace \
