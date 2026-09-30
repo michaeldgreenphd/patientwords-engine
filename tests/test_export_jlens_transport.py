@@ -185,7 +185,7 @@ def test_lens_trace_url_encodes_prompt():
 
 def test_collect_pairs_groups_sides_and_respects_seal(monkeypatch):
     # two pairs, both sides each; seal drops index 1 entirely.
-    monkeypatch.setattr(ext, "_sealed", lambda batch, index: index == 1)
+    monkeypatch.setattr(ext, "sealed_pair", lambda batch, index, prompt: index == 1)
     scans = []
     for idx in (1, 2):
         for side in ("clinical", "patient"):
@@ -200,8 +200,37 @@ def test_collect_pairs_groups_sides_and_respects_seal(monkeypatch):
     assert per_pair[0]["target"] == "tgt"
 
 
+def test_collect_pairs_seal_reads_the_accepted_prompt(monkeypatch):
+    # scan records carry no prompt: the seal is asked with None and reads the batch file
+    calls = []
+    monkeypatch.setattr(ext, "sealed_pair",
+                        lambda batch, index, prompt: calls.append((batch, index, prompt)) or False)
+    scans = [{"batch": "b", "index": 3, "side": "clinical", "model": "m", "target_token": " t",
+              "final_readable": True, "n_non_final_readable_positions": 0,
+              "transport_gap": False, "windows_first_layer": {}}]
+    assert len(ext.collect_pairs({"scans": scans}, "m")) == 1
+    assert calls == [("b", 3, None)]
+
+
+def test_main_exit_2_when_seal_cannot_be_evaluated(tmp_path, monkeypatch, capsys):
+    def seal(batch, index, prompt):
+        raise ext.SealError("no tierb.start_utc")
+    monkeypatch.setattr(ext, "sealed_pair", seal)
+    scans = [{"batch": "b", "index": 1, "side": "clinical", "model": "gemma-2-2b",
+              "target_token": " t", "final_readable": True,
+              "n_non_final_readable_positions": 0, "transport_gap": False,
+              "windows_first_layer": {}}]
+    monkeypatch.setattr(ext.jps, "scan", lambda root: {"scans": scans, "windows": ["1"]})
+    out = tmp_path / "jlens_transport.json"
+    rc = ext.main(["--trace-root", str(tmp_path), "--scenarios", "", "--out", str(out), "--site", ""])
+    assert rc == 2
+    printed = capsys.readouterr().out                 # the shared stop line (tierb_split.seal_config_error)
+    assert "CONFIG ERROR" in printed and "not a refusal: stop the publish chain" in printed
+    assert not out.exists()
+
+
 def test_collect_pairs_filters_by_model(monkeypatch):
-    monkeypatch.setattr(ext, "_sealed", lambda batch, index: False)
+    monkeypatch.setattr(ext, "sealed_pair", lambda batch, index, prompt: False)
     scans = [{"batch": "b", "index": 1, "side": "clinical", "model": "other",
               "target_token": " t", "final_readable": True,
               "n_non_final_readable_positions": 0, "transport_gap": False,

@@ -9,8 +9,9 @@ the next firing. Since 2026-09-04 `main` is the only working branch in both
 repos: engine PR #6 merged and retired the former ops branch
 `claude/gemma-clinical-colloquial-interp-mavx04`.
 The previous ACTIVE-STUDY version of this prompt (Tier B generation,
-tracing priorities, watchdog, critic) is preserved in git history at tag
-`pre-maintenance` context — see `git log -- docs/routine_standing_prompt.md`.
+tracing priorities, watchdog, critic) is preserved in git history as the
+parent of the 2026-08-29 maintenance rewrite:
+`git show fd5304c9^:docs/routine_standing_prompt.md`.
 
 **Why maintenance mode:** every measurement axis is complete (all six
 claim-grade models at 39/39 batches, backfill closed 2026-08-26 —
@@ -37,7 +38,9 @@ trips; it exists for a manual re-fire on the same day as a completed cycle.
 
 ## 1 · Orient
 
-1. `CLAUDE.md` (both repos) — hard conventions, queue discipline.
+1. `AGENTS.md` (both repos) — hard conventions, queue discipline. Read it
+   directly: each repo's `CLAUDE.md` imports it with `@./AGENTS.md`, and a
+   file read does not expand the import.
 2. `docs/operators_handbook.md` — procedures, degradation drills, incident
    case law. Follow its drills verbatim when git or the queue misbehaves.
 3. `ops/dashboard.json` — operational state. 4. `ops/trigger_journal.jsonl`.
@@ -154,23 +157,29 @@ was left un-parked by a stray fire, re-park that lane too once terminal.
 
 ## 4 · No other fires
 
-Maintenance mode fires NOTHING but the sentinel and re-parks. The paid
-triggers (scenario-generation, model-evaluation, advice-eval) never fire
-without the owner's explicit words in a live chat. Measurement lanes stay
-parked; there is no backlog to advance.
+Maintenance mode fires NOTHING but the sentinel, the §3d PNG sweep and
+re-parks. Paid fires (`PAID_TRIGGERS`, `docs/triggers.md`) other than a
+lane's park default, plus circuit-trace with `show_mitigation: true` or
+`mode: translation`, need the owner's explicit words in a live chat.
+Measurement lanes stay parked; there is no backlog to advance.
 
 ## 5 · Publish data, never text
 
 Only when NEW measurement landed this cycle (a stray run, a sentinel with a
-drift verdict): run the sanctioned export chain per `CLAUDE.md` §Publishing
-and the site's data-contract table, then
+drift verdict): run the sanctioned export chain through the
+`publish-site-data` skill (`.claude/skills/publish-site-data/SKILL.md`; the
+exporter is described under *Publishing* in `AGENTS.md`, and each site data
+file's writer in the *Data contracts* section of the site's `AGENTS.md`),
+then its gates before pushing data payloads only:
 `python scripts/validate_frontend_contract.py --site ../patientwords` (must
-be 0 errors) and `python scripts/seal_check.py --site ../patientwords
---extra docs,ops` (must be CLEAN) before pushing data payloads only. Never
-edit page HTML, text, figures, or labels. When nothing landed, skip this
+be 0 errors), `python scripts/claim_check.py` (a `FAIL:` or `warn:` line
+goes in the digest headline and `decisions_pending`; never edit the prose
+to clear it) and `python scripts/seal_check.py --site ../patientwords
+--extra docs,ops` (must be CLEAN). Never edit page HTML, text, figures, or
+labels. When nothing landed, skip this
 section entirely — do not republish unchanged data. The site checkout is
 `main`, which GitHub Pages serves: a data-payload push there is a live
-publish, so the two gates above are the last check before the public sees
+publish, so the gates above are the last check before the public sees
 it. (This closes SITE-MAIN-LAG-20260904 by construction — there is no longer
 a separate site branch to merge.)
 

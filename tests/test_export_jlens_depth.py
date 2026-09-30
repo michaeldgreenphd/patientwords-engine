@@ -1,5 +1,6 @@
 """Site depth dataset exporter (scripts/export_jlens_depth.py) - offline."""
 
+import functools
 import importlib.util
 import json
 from pathlib import Path
@@ -10,6 +11,14 @@ _MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "export_jlens_d
 _SPEC = importlib.util.spec_from_file_location("export_jlens_depth", _MODULE_PATH)
 exporter = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(exporter)
+_REAL_SEALED_PAIR = exporter.sealed_pair
+
+
+@pytest.fixture(autouse=True)
+def _seal_open(monkeypatch):
+    """The layout tests use synthetic stems the seal has no batch data for; the seal's
+    wiring is pinned by the tests at the end of this file with a synthetic fixture."""
+    monkeypatch.setattr(exporter, "sealed_pair", lambda batch, index, prompt: False)
 
 
 def test_contrast_labels_pick_the_differing_spans():
@@ -191,3 +200,66 @@ def test_load_summary_merges_all_parts(tmp_path, monkeypatch):
         json.dumps({"results": [result(1)]}))
     _, single_source = exporter.load_summary("single")
     assert single_source.endswith("jlens_summary.part_01.json")
+
+
+# --- holdout seal wiring (tierb_split.sealed_pair), synthetic prompts only ---------------
+# tests/test_tierb_split.py pins these hashes: symptom 4 and 13 hash holdout, 0 and 1 explore.
+HOLD_A, EXPLORE_A = "The patient reports symptom 4.", "The patient reports symptom 0."
+EXPLORE_B = "The patient reports symptom 1."
+TIERB = "pairs_20260711T000000Z"
+
+
+def _use_real_seal(monkeypatch, tmp_path, start="2026-07-10T01:14:38Z"):
+    """The real seal over a synthetic dashboard and batch directory (outside the cwd)."""
+    fx = tmp_path / "fixture"
+    (fx / "simulated").mkdir(parents=True)
+    (fx / "dashboard.json").write_text(json.dumps({"tierb": {"start_utc": start}}))
+    (fx / "simulated" / f"{TIERB}.json").write_text(json.dumps(
+        [{"top_prompt": HOLD_A}, {"top_prompt": EXPLORE_A}]))
+    monkeypatch.setattr(exporter, "sealed_pair", functools.partial(
+        _REAL_SEALED_PAIR, dashboard_path=fx / "dashboard.json", simulated_dir=fx / "simulated"))
+
+
+def _lens(tmp_path, stem, prompts_by_index):
+    d = tmp_path / "trace_out" / f"{stem}__jlens_gemma-2-2b"
+    d.mkdir(parents=True)
+    results = [{"index": i, "patient_depth_class": "absent", "target_token": " t",
+                "prompts": {"clinical": p, "patient": "PT"},
+                "depth": {"clinical": [], "patient": []}} for i, p in prompts_by_index.items()]
+    (d / "jlens_summary.part_01.json").write_text(json.dumps({"results": results}))
+
+
+def test_load_summary_seals_every_stem(tmp_path, monkeypatch):
+    # Amendment 3 on an alias stem (the old Tier-B-only check skipped these stems)
+    # and Amendment 1 on a Tier B stem via the accepted prompt
+    monkeypatch.chdir(tmp_path)
+    _use_real_seal(monkeypatch, tmp_path)
+    _lens(tmp_path, f"{TIERB}_txopus", {1: HOLD_A, 2: EXPLORE_B})
+    _lens(tmp_path, TIERB, {1: EXPLORE_B, 2: EXPLORE_A})
+    assert [r["index"] for r in exporter.load_summary(f"{TIERB}_txopus")[0]["results"]] == [2]
+    assert [r["index"] for r in exporter.load_summary(TIERB)[0]["results"]] == [2]
+
+
+def test_steering_split_seals_by_the_datasets_accepted_prompt(tmp_path, monkeypatch):
+    _use_real_seal(monkeypatch, tmp_path)
+    d = tmp_path / "trace_out" / "spec__jsteer_gemma-2-2b"
+    d.mkdir(parents=True)
+    rows = [{"dataset": TIERB, "spec_index": 1, "class": "hijack",           # accepted prompt holdout
+             "calls": {"l1_swap": {"final_rank": 1}}},
+            {"dataset": TIERB, "spec_index": 2, "class": "capture",
+             "calls": {"l1_swap": {"final_rank": 3}}}]
+    (d / "jsteer_summary.part_01.json").write_text(json.dumps({"results": rows}))
+    out = exporter.steering_split(tmp_path / "trace_out")
+    assert out["by_class"] == {"absent": {"n": 1, "restored": 0, "unresolvable": 0}}
+
+
+def test_main_exit_2_when_seal_cannot_be_evaluated(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    _use_real_seal(monkeypatch, tmp_path, start=None)
+    _lens(tmp_path, "s", {1: EXPLORE_B})
+    rc = exporter.main(["--block", "s=set s", "--exemplar-stem", "s",
+                        "--exemplar-index", "1", "--out", "out.json", "--site", ""])
+    assert rc == 2                                    # not 3: a seal failure is no data refusal
+    printed = capsys.readouterr().out                 # the shared stop line (tierb_split.seal_config_error)
+    assert "CONFIG ERROR" in printed and "not a refusal: stop the publish chain" in printed
+    assert not (tmp_path / "out.json").exists()

@@ -6,6 +6,7 @@ import importlib.util
 import json
 from pathlib import Path
 
+import pytest
 import yaml
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -53,6 +54,42 @@ def test_collect_corpus_scope_holdout_dedupe(tmp_path):
     patients = [c["patient_prompt"] for c in corpus]
     assert patients == ["PT1", "PT4"]
     assert corpus[0]["source_batch"] == "pairs_20260707T000000Z"  # first occurrence wins
+
+
+def test_collect_corpus_withholds_registered_phrase_from_any_batch(tmp_path):
+    # Amendment 3 through tierb_split.sealed_pair: a Tier A pair whose accepted prompt is a
+    # registered holdout phrase is withheld too (the old Tier-B-only check sent it)
+    sim = tmp_path / "simulated"
+    sim.mkdir()
+    dash = tmp_path / "dashboard.json"
+    dash.write_text(json.dumps({"tierb": {"start_utc": "2026-07-10T01:14:38Z"}}))
+    _write_batch(sim, "pairs_20260707T000000Z", [
+        {"top_prompt": "The patient reports symptom 4.", "bottom_prompt": "PT-A",
+         "target_clinical_token": "t1"},
+        {"top_prompt": "CL2", "bottom_prompt": "PT2", "target_clinical_token": "t2"},
+    ])
+    _write_batch(sim, "pairs_20260711T000000Z", [
+        {"top_prompt": "The patient reports symptom 4.", "bottom_prompt": "PT-B",
+         "target_clinical_token": "t1"},
+    ])
+    assert [c["patient_prompt"] for c in tc.collect_corpus(sim, dash)] == ["PT2"]
+
+
+def test_collect_corpus_and_main_refuse_without_tierb_start(tmp_path, capsys):
+    sim = tmp_path / "simulated"
+    sim.mkdir()
+    dash = tmp_path / "dashboard.json"
+    dash.write_text(json.dumps({"tierb": {"start_utc": None}}))
+    _write_batch(sim, "pairs_20260707T000000Z", [
+        {"top_prompt": "CL1", "bottom_prompt": "PT1", "target_clinical_token": "t1"}])
+    with pytest.raises(tc.SealError):
+        tc.collect_corpus(sim, dash)
+    out = tmp_path / "txcorpus_x.json"
+    rc = tc.main(["--out", str(out), "--max-spend", "0.01", "--simulated-dir", str(sim),
+                  "--dashboard", str(dash)])
+    assert rc == 2                         # before any client is built: nothing sent
+    assert "CONFIG ERROR" in capsys.readouterr().err
+    assert not out.exists()
 
 
 def test_workflow_translate_corpus_branch():

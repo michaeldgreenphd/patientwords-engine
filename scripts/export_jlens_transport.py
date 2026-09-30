@@ -57,7 +57,7 @@ from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import jlens_position_scan as jps  # noqa: E402  (script-style; imports jlens_readout as jps.jr)
-from tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp  # noqa: E402
+from tierb_split import SealError, seal_config_error, sealed_pair  # noqa: E402
 
 METHOD_CREDIT_FALLBACK = (
     "Jacobian lens: Gurnee et al., Transformer Circuits, 2026; reference "
@@ -77,29 +77,6 @@ FRONTEND_CONTRACT = {
                                  "answer.token", "answer.prob", "answer.on_target",
                                  "answer.trace_url", "readout[].{layer,final,tokens}"),
 }
-
-_TIERB_START = tierb_start_stamp()
-_ACCEPT_CACHE = {}
-
-
-def _sealed(batch, index):
-    """Amendment 1/3 holdout seal (mirrors export_jlens_depth): True iff
-    (batch, index) is a Tier B pair whose ACCEPTED prompt hashes holdout, so
-    confirmatory-holdout pairs never enter this exported census or exemplar."""
-    if not is_tierb_batch(batch or "", _TIERB_START):
-        return False
-    if batch not in _ACCEPT_CACHE:
-        fp = Path("data/simulated") / f"{batch}.json"
-        try:
-            _ACCEPT_CACHE[batch] = json.loads(fp.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            _ACCEPT_CACHE[batch] = None
-    pairs = _ACCEPT_CACHE[batch]
-    idx = index or 0
-    if not pairs or not (0 < idx <= len(pairs)):
-        return False
-    return is_holdout(pairs[idx - 1].get("top_prompt"))
-
 
 # --------------------------------------------------------------------------- #
 # Pure functions (unit-tested offline against fake raw responses)
@@ -348,10 +325,14 @@ def rank_exemplars(per_pair, limit=5):
 def collect_pairs(scan_result, model):
     """Per-pair transport records for `model` from a jps.scan() result, sealed
     Tier B holdout pairs dropped. Each entry: {batch, index, target,
-    clinical|patient: side-summary or None}."""
+    clinical|patient: side-summary or None}.
+
+    The seal is tierb_split.sealed_pair (Amendments 1/3; SealError when it
+    cannot apply). Scan records carry no prompt, so it reads the accepted
+    prompt from the batch file the scan itself took the target from."""
     by_pair = {}
     for s in scan_result.get("scans", []):
-        if s.get("model") != model or _sealed(s.get("batch"), s.get("index")):
+        if s.get("model") != model or sealed_pair(s.get("batch"), s.get("index"), None):
             continue
         by_pair.setdefault((s["batch"], s["index"]), {})[s["side"]] = s
     per_pair = []
@@ -563,11 +544,14 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     render_map = load_render_map(args.scenarios) if args.scenarios else {}
-    payload = build_payload(args.trace_root, args.model,
-                            args.exemplar_batch, args.exemplar_index,
-                            max_exemplars=args.max_exemplars,
-                            render_map=render_map, census_batch=args.census_batch,
-                            exemplar_pins=_parse_pins(args.exemplar_pins))
+    try:
+        payload = build_payload(args.trace_root, args.model,
+                                args.exemplar_batch, args.exemplar_index,
+                                max_exemplars=args.max_exemplars,
+                                render_map=render_map, census_batch=args.census_batch,
+                                exemplar_pins=_parse_pins(args.exemplar_pins))
+    except SealError as exc:
+        return seal_config_error(exc)  # exit 2: the publish chain stops
     if payload is None:
         # Mirror jlens_insights F-H08: a sparse checkout with no committed raw
         # must never overwrite the published transport payload with an empty one.

@@ -5,6 +5,89 @@ Private operator surface for the autonomous daily cycle. One page
 Routine session). Nothing in this directory is published; the public site
 lives in the sibling `patientwords` repo.
 
+## Layout
+
+What `ops/` holds, grouped by how each file is used (`git ls-files ops`,
+2026-09-30). A file a script names as its default path must stay where it is;
+the writer column says which script that is.
+
+**Live state and operating files.** Current; the tooling or the operator
+reads each of them. None of these is archived.
+
+| Path | What it is | Written by |
+|---|---|---|
+| `dashboard.json` | the dashboard's data (contract below) | the Routine only (single-writer rule below) |
+| `trigger_journal.jsonl` | one row per fire, parks included; `resolve` marks a row resolved in place, and rows are never deleted | `scripts/fire_trigger.py` |
+| `budget_overrides.json` | owner-authorized ceiling raises, each for one UTC day, with the authorization quoted | by hand, on the owner's words; read by `scripts/fire_trigger.py` |
+| `disclosure_log.jsonl` | append-only log of every vendor reproducibility pack version | `scripts/advice_eval.py repro-pack`, `scripts/petri_audit/repro_pack.py` |
+| `dashboard.html` | the dashboard page | hand edits |
+| `dashboard.sample.json` | a fully populated example of the contract; `tests/test_ledger_update.py` reads it | hand edits |
+| `routines.md` | registry of every scheduled automation and its standing prompt's hash | the session that changes a schedule or standing prompt, in the same commit |
+| `environment_setup.sh` | the reviewed copy of the cloud environments' setup script; each environment's setup script is a pasted copy of it | by hand |
+
+**Reading the journal.** A row is in flight only while it is unresolved,
+not evicted, and younger than the expiry window (8 hours,
+`DEFAULT_EXPIRE_HOURS` in `scripts/fire_trigger.py`, overridable with
+`MEDLANG_TRIGGER_EXPIRE_HOURS`). An unresolved row older than that is
+**expired and unharvested**, not in flight: it no longer holds a queue slot,
+`fire_trigger.py resolve` declines it (resolve acts only on in-flight rows),
+and a paid row's `max_spend` still counts against the ceiling until its UTC day
+ends. Whether its run landed is answered by the run's outputs on `main` or its
+GitHub run, not by the row. On 2026-09-30, 150 of the journal's 935 rows were
+unresolved, all of them past the window; the Routine's archive-renders sweep
+(`docs/routine_standing_prompt.md` §3d, "harvest and re-park it the next
+cycle") adds one each time it fires, because the next cycle always comes after
+the window. The journal is not rewritten to resolve them.
+
+**Analysis outputs.** Regenerable from committed data by the script named.
+Where the site's `data/` holds a file of the same name, **the site copy is the
+published one** and the file here is the engine-side output.
+
+| Path | Written by | Site copy |
+|---|---|---|
+| `drift_series.json` | `scripts/drift_sentinel.py` (Routine §3) | `data/drift_series.json`, identical |
+| `jlens_insights.json` | `scripts/jlens_insights.py` (publish chain) | `data/jlens_insights.json`, identical |
+| `translation_scale.json` | `scripts/translation_scale.py` (publish chain) | `data/translation_scale.json`, identical |
+| `retrace_consistency.json` | `scripts/retrace_consistency.py` | `data/retrace_consistency.json`, **differs**: the site copy (2026-08-20, 87 pairs) is newer than this one (2026-07-17, 72 pairs) |
+| `specialty_breakdown.json` | `scripts/specialty_breakdown.py` | `data/specialty_breakdown.json`, **differs**: this copy (2026-07-16) is newer than the site's (2026-07-14) |
+| `coverage_gaps.json` | `scripts/coverage_gaps.py` (publish chain) | none |
+| `lens_sentinel_series.json` | `scripts/lens_sentinel_check.py` | none |
+| `jlens_position_scan.json` | `scripts/jlens_position_scan.py` | none |
+| `screen_sensitivity.json` | `scripts/screen_sensitivity.py` | none |
+| `tier_sensitivity.json` | `scripts/tier_sensitivity.py` | none |
+| `pab_tier_scenario.json` | `scripts/pab_tier_scenario.py` | none |
+| `negative_control_20260904.json` | `scripts/negative_control_stats.py`; `docs/negative_control_20260904.md` cites it and `tests/test_negative_control_stats.py` reads it | none |
+| `backend_agreement_20260903.json`, `backend_agreement_interp_vs_{hosted,local}_20260904.json` | `scripts/backend_agreement.py`; `docs/backend_agreement_20260903.md` cites them | none |
+| `site_text_outline.Rmd` | `scripts/extract_site_text.py` (its default output) | none |
+
+The engine's root `urgency_shift.json` is not a copy of the site's
+`data/urgency_shift.json` and is not meant to match it: the root file is the
+collector's row file (`scripts/urgency_shift.py`, keys `summary` and `rows`),
+and the site file is the `--publish` format, which adds `tiers`,
+`tier_examples`, `vocabulary_status` and `render_min_n`. The difference is by
+design.
+
+**Subdirectories.**
+
+| Path | What it is |
+|---|---|
+| `decks/` | owner decision decks and demo notes, 2026-07-11..08-29; `docs/` and the holdout-seal-check skill cite them by path, and `scripts/seal_check.py` sweeps them with the rest of `ops/` |
+| `referee/` | the 2026-07-14 referee panel's reports and verdicts (`docs/referee_panel_20260714.md`) |
+| `replication/` | the 2026-07-14 cross-model replication outputs and `comparison_20260714.md` |
+| `pab_ci/` | a staged, not live, copy of the PAB branch's `pab_probe.yml` workflow (its README says what landing it takes); `tests/test_pab_ci_staged.py` reads it |
+| `prototypes/` | a 2026-07-11 j-lens page prototype |
+| `archive/` | dated one-off snapshots that nothing reads (below) |
+
+**`archive/`.** Moved here on 2026-09-30 after a search of both repositories,
+their workflows, skills, tests and docs found no reference to any of them:
+`display_rankings_20260716.json` (a snapshot for the 2026-07-17 deck),
+`neuronpedia_issue_prefill.txt` (2026-07-12 issue text for Neuronpedia),
+`site_text_outline_20260717.md` and `site_text_outline_full_20260717.md`
+(dated site-text outlines; the current one is `site_text_outline.Rmd`), and
+`evidence_power_audit_20260728.Rmd` (the owner's decision copy of
+`docs/audits/evidence_power_audit_20260728.md`). `git log --follow` on the new
+path shows each file's history.
+
 ## Opening the dashboard
 
 From the repo root:
@@ -90,8 +173,9 @@ twice for the rest of its day, which fails closed.
 ## Single-writer rule
 
 `ops/dashboard.json` is written **only by the daily Routine's session** (a
-fresh session per firing since the 2026-08-04 cutover,
-`trig_01H9YrMSHEDkyXWT4bxttihq` — see `docs/ops_routine_spec_20260804.md`;
+fresh session per firing since the 2026-08-04 cutover; the Routine is
+configured in the claude.ai Routines UI, and what each firing does is set by
+`docs/routine_standing_prompt.md`, registered in `ops/routines.md`;
 2026-07-10..08-03 it was the orchestrator session the old Routine fired
 into), through exactly three paths: `scripts/fire_trigger.py` (queue slots
 and the trigger journal), `scripts/ledger_update.py` (spend accounting from

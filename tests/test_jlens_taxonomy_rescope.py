@@ -177,10 +177,13 @@ def test_unresolvable_steer_token_is_item_level(tmp_path, monkeypatch):
     assert probe["steering_supported"] is True
 
 
-def test_insights_census_skips_txcorpus_lens_dirs(tmp_path):
+def test_insights_census_skips_txcorpus_lens_dirs(tmp_path, monkeypatch):
     # translated-side lens profiles must never enter the patient formation
     # census (2026-07-15): the census would count haiku rewrites as patient
     # wordings.
+    # The stems are synthetic, with no batch files for the holdout seal to read;
+    # tests/test_jlens_insights.py pins the seal's wiring.
+    monkeypatch.setattr(ji, "sealed_pair", lambda batch, index, prompt: False)
     troot = tmp_path / "trace_out"
     def mk(stem):
         d = troot / f"{stem}__jlens_gemma-2-2b"
