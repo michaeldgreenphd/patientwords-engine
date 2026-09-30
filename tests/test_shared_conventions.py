@@ -17,18 +17,28 @@ while they existed in this repository alone.
    which is repository-specific on purpose and is not compared.
 
 Extraction rules, the same for both files: headings are ATX headings (up to
-three spaces, one to six `#`, then a space, a tab or the end of the line);
-lines inside fenced code blocks are never headings; the heading must occur
-exactly once at its level, and a missing or repeated heading is a failure, not
-a skip; trailing blank lines are dropped from a section, so a section at the
-end of a file compares equal to one followed by another heading. Everything
-else, including trailing spaces and line endings, is compared byte for byte.
+three spaces, one to six `#`, then a space, a tab or the end of the line), and
+the target heading is matched after that indentation; lines inside fenced code
+blocks are never headings; the heading must occur exactly once at its level,
+and a missing or repeated heading is a failure, not a skip; trailing blank
+lines are dropped from a section, so a section at the end of a file compares
+equal to one followed by another heading. Everything else, including trailing
+spaces and line endings, is compared byte for byte.
+
+Fences follow CommonMark as far as these files need: a fence opens at the start
+of a line (up to three spaces) or right after a list marker (`- `, `1. `); a
+backtick fence whose info string contains a backtick is not a fence; the
+closing fence is at least as long, of the same character, and indented at most
+three spaces past the content of the list item that holds it, if any. A fence
+opened after a list marker also ends at the first non-blank line indented less
+than that item's content, because the item ends there. Block quotes need no
+handling: their lines start with `>` and so never look like headings.
 
 The site checkout is `$PW_SITE_ROOT` when that variable is set (it must then be
-a directory, or the comparison fails), and `../patientwords` next to this
-repository otherwise. When the default sibling is absent the two cross-repository
-tests skip with a visible reason; the extraction tests and the engine-side checks
-still run.
+a directory, or the comparison fails; an empty value counts as set), and
+`../patientwords` next to this repository otherwise. When the default sibling
+is absent the two cross-repository tests skip with a visible reason; the
+extraction tests and the engine-side checks still run.
 """
 from __future__ import annotations
 
@@ -45,7 +55,9 @@ CONVENTIONS_HEADING = "## Shared conventions"
 REVIEW_RULES_HEADING = "## Code Review Rules"
 
 _HEADING = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]|$)")
-_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+# A fence opener, either on its own (`lead` is up to three spaces) or right after a list
+# marker (`lead` ends with the marker and the one to four spaces that follow it).
+_FENCE = re.compile(r"^(?P<lead> {0,3}(?:[-+*]|\d{1,9}[.)]) {1,4}| {0,3})(?P<fence>`{3,}|~{3,})(?P<info>.*)")
 
 
 class SectionError(ValueError):
@@ -55,18 +67,22 @@ class SectionError(ValueError):
 def heading_levels(lines: list[str]) -> list[int | None]:
     """The ATX heading level of each line, or None; fenced code is never a heading."""
     levels: list[int | None] = []
-    fence: str | None = None
+    fence: str | None = None  # the open fence's characters, e.g. "```"
+    column = 0  # the content column of the list item holding the open fence; 0 outside a list
     for line in lines:
-        fence_match = _FENCE.match(line)
+        indent = len(line) - len(line.lstrip(" "))
+        if fence is not None and line.strip() and indent < column:
+            fence = None  # the list item holding the fence ends here, and the fence with it
         if fence is not None:
-            closing = line.strip()
-            if (fence_match and fence_match.group(1)[0] == fence[0]
-                    and len(fence_match.group(1)) >= len(fence) and set(closing) == {fence[0]}):
+            body = line[indent:].rstrip()
+            if column <= indent <= column + 3 and len(body) >= len(fence) and set(body) == {fence[0]}:
                 fence = None
             levels.append(None)
             continue
-        if fence_match:
-            fence = fence_match.group(1)
+        opener = _FENCE.match(line)
+        if opener and not (opener["fence"][0] == "`" and "`" in opener["info"]):
+            fence = opener["fence"]
+            column = len(opener["lead"]) if opener["lead"].strip() else 0
             levels.append(None)
             continue
         heading = _HEADING.match(line)
@@ -85,9 +101,10 @@ def extract_section(text: str, heading_prefix: str, *, stop_at_any_heading: bool
     if prefix_match is None:
         raise SectionError(f"{heading_prefix!r} is not a Markdown heading")
     level = len(prefix_match.group(1))
+    target = heading_prefix.lstrip(" ")
     lines = text.split("\n")
     levels = heading_levels(lines)
-    starts = [i for i, lvl in enumerate(levels) if lvl == level and lines[i].startswith(heading_prefix)]
+    starts = [i for i, lvl in enumerate(levels) if lvl == level and lines[i].lstrip(" ").startswith(target)]
     if len(starts) != 1:
         found = "no" if not starts else f"{len(starts)}"
         raise SectionError(f"expected exactly one heading starting {heading_prefix!r}, found {found}")
@@ -127,18 +144,24 @@ def _diff(engine: str, site: str, name: str) -> str:
         fromfile=f"patientwords-engine/{name}", tofile=f"patientwords/{name}"))
 
 
-@pytest.fixture
-def site_root() -> Path:
+def site_checkout() -> Path:
+    """The site checkout to compare against, per the module docstring; fails or skips otherwise."""
     override = os.environ.get("PW_SITE_ROOT")
-    if override:
+    if override is not None:
         root = Path(override).expanduser()
-        if not root.is_dir():
+        # An empty value is set, not absent; Path("") would also resolve to the working directory.
+        if not override or not root.is_dir():
             pytest.fail(f"PW_SITE_ROOT={override!r} is not a directory")
         return root
     root = ROOT.parent / "patientwords"
     if not root.is_dir():
         pytest.skip(f"site checkout not found at {root}; set PW_SITE_ROOT to compare the shared text")
     return root
+
+
+@pytest.fixture
+def site_root() -> Path:
+    return site_checkout()
 
 
 # --- extraction ---------------------------------------------------------------------------
@@ -187,6 +210,27 @@ def test_fence_closes_only_on_a_matching_fence() -> None:
     assert extract_section(text, "## A") == "## A\n````\n```\n## still fenced\n````\n"
 
 
+def test_backtick_fence_with_a_backtick_in_its_info_string_is_not_a_fence() -> None:
+    text = "## A\n```js`x```\n## B\n"
+    assert extract_section(text, "## A") == "## A\n```js`x```\n"
+    text = "## A\n~~~ a`b\n## not a heading\n~~~\n## B\n"
+    assert extract_section(text, "## A") == "## A\n~~~ a`b\n## not a heading\n~~~\n"
+
+
+def test_fence_opened_on_a_list_marker_hides_its_headings() -> None:
+    text = "## A\n- ```bash\n  # a shell comment\n  ```\nstill A\n1. ~~~\n   ## not a heading\n   ~~~\n## B\n"
+    assert extract_section(text, "## A") == (
+        "## A\n- ```bash\n  # a shell comment\n  ```\nstill A\n1. ~~~\n   ## not a heading\n   ~~~\n")
+
+
+def test_fence_opened_on_a_list_marker_ends_with_its_item() -> None:
+    assert extract_section("## A\n- ```\n  code\n## B\n", "## A") == "## A\n- ```\n  code\n"
+
+
+def test_indented_target_heading_is_found() -> None:
+    assert extract_section("# T\n   ## A\nbody\n## B\n", "## A") == "   ## A\nbody\n"
+
+
 def test_heading_must_be_at_the_requested_level() -> None:
     with pytest.raises(SectionError, match="found no"):
         extract_section("### Shared conventions\nbody\n", "## Shared conventions")
@@ -207,6 +251,15 @@ def test_prefix_must_be_a_heading() -> None:
 def test_byte_differences_inside_a_section_are_kept() -> None:
     assert extract_section("## A\nline \n", "## A") != extract_section("## A\nline\n", "## A")
     assert extract_section("## A\r\nline\r\n", "## A").endswith("line\r\n")
+
+
+def test_site_root_override_must_name_a_directory(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("PW_SITE_ROOT", str(tmp_path))
+    assert site_checkout() == tmp_path
+    for value in ("", str(tmp_path / "absent")):
+        monkeypatch.setenv("PW_SITE_ROOT", value)
+        with pytest.raises(pytest.fail.Exception, match="is not a directory"):
+            site_checkout()
 
 
 # --- this repository ----------------------------------------------------------------------
