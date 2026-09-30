@@ -8,11 +8,15 @@ collector output.
 """
 import importlib.util
 import json
+import math
+import re
+from fractions import Fraction
 from pathlib import Path
 
 import pytest
 
-_SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "paired_stats_rigor.py"
+_SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
+_SCRIPT = _SCRIPTS / "paired_stats_rigor.py"
 _SPEC = importlib.util.spec_from_file_location("paired_stats_rigor", _SCRIPT)
 psr = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(psr)
@@ -223,9 +227,61 @@ def test_bh_families_split_by_registration(rows):
     assert bundle["per_model"]["m1"]["registration"] == "post-registration exploratory"
 
 
-def test_sign_test_p_is_unrounded_nonzero():
-    p = psr.sign_test(46, 7)
-    assert p is not None and 0 < p < 1e-5  # an exact test never returns 0
+def _load_by_path(name, filename):
+    spec = importlib.util.spec_from_file_location(name, _SCRIPTS / filename)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _exact_two_sided(k_down, k_up):
+    """Independent reference: 2 * P(X <= min) for X ~ Binomial(n, 1/2), capped at 1."""
+    n = k_down + k_up
+    tail = Fraction(sum(math.comb(n, i) for i in range(min(k_down, k_up) + 1)), 2 ** n)
+    return float(min(Fraction(1), 2 * tail))
+
+
+def test_sign_test_p_is_unrounded_nonzero(monkeypatch):
+    # One exact test (scripts/sign_test.py) behind all three scripts. The collector
+    # and tier_sensitivity copies used to round to 5 decimals, which published
+    # sign_test_p = 0.0 for most models; rigor dropped the rounding on 2026-07-14.
+    shared = _load_by_path("sign_test_shared", "sign_test.py").sign_test
+    ts = _load_by_path("tier_sensitivity_for_sign_test", "tier_sensitivity.py")
+
+    # urgency_shift.py runs its analysis at import, so read its source: it must keep
+    # no private copy, take sign_test from the shared module, and publish that value.
+    src = (_SCRIPTS / "urgency_shift.py").read_text(encoding="utf-8")
+    assert "def sign_test(" not in src
+    assert "round(min(1.0" not in src
+    imports = [ln for ln in src.splitlines() if re.match(r"from (scripts\.)?sign_test import sign_test\b", ln)]
+    assert len(imports) == 1
+    assert '"sign_test_p": sign_test(d, u),' in src
+    monkeypatch.syspath_prepend(str(_SCRIPTS))
+    ns = {}
+    exec(imports[0], ns)  # noqa: S102 - our own repo's source
+    collector = ns["sign_test"]
+
+    for name, fn in (("shared", shared), ("urgency_shift", collector),
+                     ("tier_sensitivity", ts.sign_test), ("paired_stats_rigor", psr.sign_test)):
+        # 46/7 and 281/46 both rounded to 0.0 at 5 decimals
+        for k_down, k_up in ((46, 7), (281, 46), (7, 46)):
+            p = fn(k_down, k_up)
+            assert p is not None and 0 < p < 1e-5, name  # an exact test never returns 0
+            assert p == _exact_two_sided(k_down, k_up), name
+
+    # tier_sensitivity publishes the unrounded value in its scenario output
+    rows = [{"model": "m1", "flipped": True, "top_clinical": "alpha", "top_patient": "beta"}] * 30
+    nt = ts.next_token_scenarios(rows, {"alpha": {"tier": 3}, "beta": {"tier": 1}},
+                                 {"deciders": [], "blockers": []})
+    assert nt["baseline"]["m1"] == {"downgrades": 30, "upgrades": 0, "sign_p": 2 / 2 ** 30}
+
+
+def test_shared_sign_test_edges():
+    st = _load_by_path("sign_test_edges", "sign_test.py").sign_test
+    assert st(0, 0) is None  # no directional flips: undefined, not p = 1.0
+    assert st(3, 3) == 1.0 and st(1, 2) == 1.0  # doubled tail capped at 1
+    assert st(0, 5) == st(5, 0) == 2 / 32
+    assert st(2, 8) == 2 * (1 + 10 + 45) / 1024
 
 
 def test_simultaneous_interval_is_at_least_as_wide(rows):

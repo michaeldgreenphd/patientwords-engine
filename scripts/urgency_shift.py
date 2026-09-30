@@ -228,15 +228,9 @@ summary = {
     "tier_shift_n": len(shifts),
     "per_model": {},
 }
-def sign_test(k_down, k_up):
-    """Two-sided exact sign test: is the downgrade/upgrade split consistent with 50/50?"""
-    import math
-    n = k_down + k_up
-    if n == 0:
-        return None
-    k = min(k_down, k_up)
-    p = sum(math.comb(n, i) for i in range(0, k + 1)) / 2 ** n
-    return round(min(1.0, 2 * p), 5)
+# Two-sided exact sign test, unrounded, None when there are no directional flips.
+# Shared with tier_sensitivity.py and paired_stats_rigor.py (scripts/sign_test.py).
+from sign_test import sign_test  # noqa: E402  (script-style module)
 
 
 for model in sorted({r["model"] for r in arows}):
