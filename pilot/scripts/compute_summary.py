@@ -31,6 +31,7 @@ from common import (
     read_jsonl,
     review_problems,
     rng,
+    script_hashes,
     sha256_file,
     wilson,
 )
@@ -182,6 +183,7 @@ def main() -> None:
     # the files this summary was computed from, so finalize can refuse a summary that predates any of them (Codex
     # review of PR #52)
     S["input_hashes"] = {name: sha256_file(PILOT / name) for name in SUMMARY_INPUTS}
+    S["script_hashes"] = script_hashes()  # the code this summary stands under; finalize refuses a later edit
 
     # ---- run overview
     finals = [e for e in call_log if e.get("is_final")]  # one per planned call, checked by generation_problems

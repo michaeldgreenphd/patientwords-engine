@@ -363,6 +363,14 @@ def generation_problems(calls: dict, call_log: list[dict], rows: list[dict], fai
             problems.append(f"row {r.get('id')}: call {cid!r} is not planned")
         elif r.get("prompt_sha256") != planned[cid]:
             problems.append(f"row {r.get('id')}: prompt_sha256 is not the planned prompt's for {cid}")
+    final_attempt = {e.get("call_id"): e.get("attempt") for e in finals}
+    for f in failures:  # every failure belongs to one planned final attempt and carries its prompt's hash
+        cid = f.get("call_id")
+        if cid not in planned or f.get("attempt") != final_attempt.get(cid):
+            problems.append(f"failure at {cid} attempt {f.get('attempt')} line {f.get('line_index')}: belongs to no "
+                            f"planned final attempt")
+        elif f.get("prompt_sha256") != planned[cid]:
+            problems.append(f"failure at {cid} line {f.get('line_index')}: prompt_sha256 is not the planned prompt's")
     for e in finals:
         cid, att = e.get("call_id"), e.get("attempt")
         mine = [r for r in rows if r.get("call_id") == cid]
@@ -460,7 +468,34 @@ def summary_problems(summary: dict) -> list[str]:
                 f"{unexpected}); re-run compute_summary.py"]
     problems = [f"{name}: changed since compute_summary.py ran (or missing)" for name, h in recorded.items()
                 if not (PILOT / name).exists() or sha256_file(PILOT / name) != h]
+    now = script_hashes()
+    changed = sorted(n for n in set(now) | set(summary.get("script_hashes") or {})
+                     if (summary.get("script_hashes") or {}).get(n) != now.get(n))
+    if changed:  # the summary stands under the code that computed it; a script edit since means a recompute
+        problems.append(f"{len(changed)} script(s) changed since compute_summary.py ran (first: {changed[0]}); "
+                        f"re-run compute_summary.py")
     md = PILOT / "summary.md"
     if summary.get("summary_md_sha256") != (sha256_file(md) if md.exists() else None):
         problems.append("summary.md is not the rendering recorded in summary.json")
     return problems
+
+
+SCRIPTS_DIR = Path(__file__).resolve().parent
+
+
+def script_hashes() -> dict[str, str]:
+    """SHA-256 of every pilot script, by file name: what compute_summary.py records in summary.json and what
+    summary_problems compares, so a summary never stands under code that did not compute it (Codex review of
+    PR #52)."""
+    return {p.name: sha256_file(p) for p in sorted(SCRIPTS_DIR.glob("*.py"))}
+
+
+def log_binding(entries: list[dict]) -> bool | None:
+    """Whether a parse was made with --unbound, read from the `plan_binding` every log entry records: False for a
+    bound parse, True for an unbound one, None when the entries disagree or carry none (a parse to redo)."""
+    values = {e.get("plan_binding") for e in entries}
+    if values == {"prompt_sha256"}:
+        return False
+    if len(values) == 1 and isinstance(next(iter(values)), str) and next(iter(values)).startswith("none"):
+        return True
+    return None

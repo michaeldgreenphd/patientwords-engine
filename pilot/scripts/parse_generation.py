@@ -86,24 +86,18 @@ def validate_result(result: object, planned: dict[str, dict], unbound: bool = Fa
     return by_id
 
 
-def main(result_path: str, replace: bool = False, unbound: bool = False) -> None:
-    result = json.loads(Path(result_path).read_text(encoding="utf-8"))
-    calls_meta = {c["id"]: c for c in load_calls()["calls"]}  # every prompt verified against its stored hash
-    by_id = validate_result(result, calls_meta, unbound)  # checked in full before any previous output is removed
-    binding = "prompt_sha256" if not unbound else "none (--unbound: result recorded before the binding existed)"
+def binding_label(unbound: bool) -> str:
+    """The `plan_binding` every log entry records."""
+    return "prompt_sha256" if not unbound else "none (--unbound: result recorded before the binding existed)"
+
+
+def derive(by_id: dict[str, dict], calls_meta: dict[str, dict],
+           binding: str) -> tuple[list[dict], list[dict], list[dict], dict[str, str]]:
+    """The parse itself, pure: (rows in protocol order, format failures, call log, raw response text by file name)
+    for a validated result. main writes these; write_manifest.py finalize derives them again from the recorded
+    result file and refuses a bundle whose files differ (Codex review of PR #52)."""
     cell_order = {cell_id(s, t): i for i, (s, t) in enumerate(cells())}
-    gen_dir = PILOT / "generated"
-    raw_dir = gen_dir / "raw"
-    raw_dir.mkdir(parents=True, exist_ok=True)
-    stale = previous_outputs(gen_dir)
-    if stale and not replace:
-        raise SystemExit(f"parse_generation: {len(stale)} file(s) from a previous parse exist under generated/ "
-                         f"(first: {stale[0].relative_to(PILOT)}); pass --replace to delete them before parsing")
-    for p in stale:
-        p.unlink()
-    if stale:
-        print(f"parse_generation: --replace removed {len(stale)} file(s) from the previous parse")
-    all_rows, failures, log = [], [], []
+    all_rows, failures, log, raw_texts = [], [], [], {}
     for cid, meta in calls_meta.items():  # protocol order: cell order, A before B
         call = by_id.get(cid)
         attempts = call["attempts"] if call else []
@@ -115,12 +109,10 @@ def main(result_path: str, replace: bool = False, unbound: bool = False) -> None
                         "n_noncontrol": 0, "expected_lines": ROWS_PER_CALL, "expected_controls": CONTROLS_PER_CALL,
                         "reasons": {}, "status": "no_response_recorded", "plan_binding": binding,
                         "prompt_sha256": meta["prompt_sha256"]})
-            write_jsonl(gen_dir / f"{cid}.jsonl", [])
             continue
         for a in attempts:
             raw = a.get("raw")
-            (raw_dir / f"{cid}__attempt{a['attempt']}.txt").write_text(raw if raw is not None else "",
-                                                                        encoding="utf-8")
+            raw_texts[f"{cid}__attempt{a['attempt']}.txt"] = raw if raw is not None else ""
         for idx, a in enumerate(attempts):
             is_final = idx == len(attempts) - 1
             lines = lines_of(a.get("raw"))
@@ -151,10 +143,32 @@ def main(result_path: str, replace: bool = False, unbound: bool = False) -> None
                         "status": "ok" if rows else "failed", "plan_binding": binding,
                         "prompt_sha256": meta["prompt_sha256"]})
             if is_final:
-                write_jsonl(PILOT / "generated" / f"{cid}.jsonl", rows)
                 all_rows.extend(rows)
-    write_jsonl(PILOT / "generated" / "all_rows.jsonl", all_rows)
-    write_jsonl(PILOT / "generated" / "format_failures.jsonl", failures)
+    return all_rows, failures, log, raw_texts
+
+
+def main(result_path: str, replace: bool = False, unbound: bool = False) -> None:
+    result = json.loads(Path(result_path).read_text(encoding="utf-8"))
+    calls_meta = {c["id"]: c for c in load_calls()["calls"]}  # every prompt verified against its stored hash
+    by_id = validate_result(result, calls_meta, unbound)  # checked in full before any previous output is removed
+    gen_dir = PILOT / "generated"
+    raw_dir = gen_dir / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    stale = previous_outputs(gen_dir)
+    if stale and not replace:
+        raise SystemExit(f"parse_generation: {len(stale)} file(s) from a previous parse exist under generated/ "
+                         f"(first: {stale[0].relative_to(PILOT)}); pass --replace to delete them before parsing")
+    for p in stale:
+        p.unlink()
+    if stale:
+        print(f"parse_generation: --replace removed {len(stale)} file(s) from the previous parse")
+    all_rows, failures, log, raw_texts = derive(by_id, calls_meta, binding_label(unbound))
+    for name, text in raw_texts.items():
+        (raw_dir / name).write_text(text, encoding="utf-8")
+    for cid in calls_meta:  # one file per planned call, empty for a call with no response
+        write_jsonl(gen_dir / f"{cid}.jsonl", [r for r in all_rows if r["call_id"] == cid])
+    write_jsonl(gen_dir / "all_rows.jsonl", all_rows)
+    write_jsonl(gen_dir / "format_failures.jsonl", failures)
     write_jsonl(PILOT / "call_log.jsonl", log)
     finals = [e for e in log if e.get("is_final")]
     print(f"calls={len(calls_meta)} attempts={len(log)} retried={sum(1 for e in log if not e.get('is_final'))} "

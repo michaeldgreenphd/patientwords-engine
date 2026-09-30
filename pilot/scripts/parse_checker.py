@@ -80,19 +80,16 @@ def previous_outputs() -> list[Path]:
     return [p for p in (PILOT / "checked.jsonl", PILOT / "checker_log.jsonl") if p.exists()]
 
 
-def main(result_path: str, replace: bool = False, unbound: bool = False) -> None:
-    result = json.loads(Path(result_path).read_text(encoding="utf-8"))
-    plan_path = PILOT / "checker_batches.json"
-    batches = load_checker_batches()["batches"]  # every prompt verified against its stored hash
-    by_id = validate_result(result, {b["batch_id"]: b["prompt_sha256"] for b in batches}, unbound)
-    stale = previous_outputs()
-    if stale and not replace:
-        raise SystemExit(f"parse_checker: {' and '.join(p.name for p in stale)} from a previous parse exist; pass "
-                         f"--replace to write over them (the result file passed validation; nothing was written)")
-    plan_sha = sha256_file(plan_path)  # every row and log entry names the plan it was parsed against
-    binding = "prompt_sha256" if not unbound else "none (--unbound: result recorded before the binding existed)"
-    blind = {x["id"]: x for x in read_jsonl(PILOT / "checker_set.jsonl")}
-    truth = read_jsonl(PILOT / "checker_key.jsonl")
+def binding_label(unbound: bool) -> str:
+    """The `plan_binding` every log entry records."""
+    return "prompt_sha256" if not unbound else "none (--unbound: result recorded before the binding existed)"
+
+
+def derive(by_id: dict[str, dict], batches: list[dict], blind: dict[str, dict], truth: list[dict], binding: str,
+           plan_sha: str) -> tuple[list[dict], list[dict]]:
+    """The join itself, pure: (checked rows in key order, checker log) for a validated result. main writes these;
+    write_manifest.py finalize derives them again from the recorded result file and refuses a bundle whose files
+    differ (Codex review of PR #52)."""
     verdicts, log = {}, []
     for meta in batches:
         b = by_id.get(meta["batch_id"])
@@ -131,6 +128,22 @@ def main(result_path: str, replace: bool = False, unbound: bool = False) -> None
     for t in truth:
         v = verdicts.get(t["id"], {"verdict": "missing", "reason": "", "batch_id": None})
         checked.append({**t, **blind[t["id"]], **v, "checker_plan_sha256": plan_sha})
+    return checked, log
+
+
+def main(result_path: str, replace: bool = False, unbound: bool = False) -> None:
+    result = json.loads(Path(result_path).read_text(encoding="utf-8"))
+    plan_path = PILOT / "checker_batches.json"
+    batches = load_checker_batches()["batches"]  # every prompt verified against its stored hash
+    by_id = validate_result(result, {b["batch_id"]: b["prompt_sha256"] for b in batches}, unbound)
+    stale = previous_outputs()
+    if stale and not replace:
+        raise SystemExit(f"parse_checker: {' and '.join(p.name for p in stale)} from a previous parse exist; pass "
+                         f"--replace to write over them (the result file passed validation; nothing was written)")
+    blind = {x["id"]: x for x in read_jsonl(PILOT / "checker_set.jsonl")}
+    truth = read_jsonl(PILOT / "checker_key.jsonl")
+    # every row and log entry names the plan it was parsed against
+    checked, log = derive(by_id, batches, blind, truth, binding_label(unbound), sha256_file(plan_path))
     write_jsonl(PILOT / "checked.jsonl", checked)
     write_jsonl(PILOT / "checker_log.jsonl", log)
     counts = {}

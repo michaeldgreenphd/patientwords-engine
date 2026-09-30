@@ -16,8 +16,9 @@ generation template, and checker_batches.json from the checker template, the see
 rows; a stale plan is refused with or without --reset. `finalize` requires every output of a complete run (the fixed
 list below, one generated/<call>.jsonl per planned call, one raw file per logged attempt), no file under generated/
 that belongs to no planned call, a checked.jsonl that is the parse of the checker plan on disk, a review bundle that
-samples it, and a summary.json whose recorded input hashes match the files on disk (with summary.md its recorded
-rendering). A plan-time
+samples it, a summary.json whose recorded input and script hashes match the files and code on disk (with
+summary.md its recorded rendering), and every derived file equal to what the current code derives again from the two
+recorded result files. A plan-time
 rewrite of a finalized manifest keeps finalized_utc and output_hashes only while every hashed output and every
 script hash is unchanged; otherwise both are cleared and the message says to finalize again (Codex review of PR #52).
 """
@@ -28,6 +29,10 @@ import json
 import platform
 import sys
 
+import build_checker_set
+import make_review_sheet
+import parse_checker
+import parse_generation
 from common import (
     ARMS,
     CHECKER_BATCH,
@@ -46,6 +51,8 @@ from common import (
     generation_problems,
     load_calls,
     load_checker_batches,
+    load_seeds,
+    log_binding,
     read_csv,
     read_jsonl,
     review_problems,
@@ -57,7 +64,8 @@ from common import (
 INPUT_HASH_KEYS = ("seeds_json_sha256", "design_json_sha256")
 TEMPLATE_KEYS = ("generation_prompt_template", "checker_prompt_template")
 # every output of a complete run, before the per-call files; finalize refuses while any is missing
-REQUIRED_OUTPUTS = ("calls.json", "call_log.jsonl", "generated/all_rows.jsonl", "generated/format_failures.jsonl",
+REQUIRED_OUTPUTS = ("calls.json", "workflow_generation_result.json", "workflow_checker_result.json", "call_log.jsonl",
+                    "generated/all_rows.jsonl", "generated/format_failures.jsonl",
                     "checker_set.jsonl", "checker_key.jsonl", "checker_batches.json", "checked.jsonl",
                     "checker_log.jsonl", "review_sheet.csv", "review_key.csv", "review_map.json", "summary.json",
                     "summary.md", "seeds.json", "design.json", "PROTOCOL.md", "HANDOFF.md", "manifest_model.json")
@@ -79,6 +87,78 @@ def input_changes(old: dict, current: dict) -> list[str]:
     op, cp = old.get("prompt_hashes", {}), current.get("prompt_hashes", {})
     changes += [f"prompt_hashes.{k}" for k in TEMPLATE_KEYS if k in op and k in cp and op[k] != cp[k]]
     return changes
+
+
+def rederive_problems(calls: dict) -> list[str]:
+    """Every derived artifact derived again, with the current code, from the two recorded result files and compared
+    with the file on disk: rows, failures, call log and raw texts from workflow_generation_result.json; the checker
+    set, key and plan from those rows, the seeds and the checker template; checked rows and checker log from
+    workflow_checker_result.json; the review sheet, key and map from the checked rows (the sheet's own two
+    annotation columns excepted). A bundle whose stored responses no longer reproduce its files, or whose files were
+    written by earlier code, is refused (Codex review of PR #52). Empty when everything reproduces."""
+    problems: list[str] = []
+    calls_meta = {c["id"]: c for c in calls["calls"]}
+    call_log = read_jsonl(PILOT / "call_log.jsonl")
+    unbound = log_binding(call_log)
+    if unbound is None:
+        return ["call_log.jsonl: plan_binding is missing or mixed across its entries; re-run parse_generation.py"]
+    gen_result = json.loads((PILOT / "workflow_generation_result.json").read_text(encoding="utf-8"))
+    try:
+        by_id = parse_generation.validate_result(gen_result, calls_meta, unbound)
+    except SystemExit as e:
+        return [f"workflow_generation_result.json no longer validates against the plan: {e}"]
+    rows, failures, log, raw_texts = parse_generation.derive(by_id, calls_meta, parse_generation.binding_label(unbound))
+    if rows != read_jsonl(PILOT / "generated" / "all_rows.jsonl"):
+        problems.append("generated/all_rows.jsonl is not what the current code derives from workflow_generation_result.json")
+    if failures != read_jsonl(PILOT / "generated" / "format_failures.jsonl"):
+        problems.append("generated/format_failures.jsonl is not what the current code derives from the recorded result")
+    if log != call_log:
+        problems.append("call_log.jsonl is not what the current code derives from workflow_generation_result.json")
+    for name, text in raw_texts.items():
+        p = PILOT / "generated" / "raw" / name
+        if not p.exists() or p.read_text(encoding="utf-8") != text:
+            problems.append(f"generated/raw/{name} differs from the response recorded in workflow_generation_result.json")
+    if problems:
+        return problems
+    template = (PILOT / "prompts" / "checker_prompt.txt").read_text(encoding="utf-8")
+    blind, truth, plan_doc = build_checker_set.derive(rows, load_seeds(), template, sha256_file(PILOT / "seeds.json"),
+                                                      sha256_file(PILOT / "generated" / "all_rows.jsonl"))
+    if blind != read_jsonl(PILOT / "checker_set.jsonl"):
+        problems.append("checker_set.jsonl is not what the current code derives from the rows and seeds")
+    if truth != read_jsonl(PILOT / "checker_key.jsonl"):
+        problems.append("checker_key.jsonl is not what the current code derives from the rows and seeds")
+    if plan_doc != json.loads((PILOT / "checker_batches.json").read_text(encoding="utf-8")):
+        problems.append("checker_batches.json is not what the current code derives from the rows, seeds and template")
+    if problems:
+        return problems
+    checker_log = read_jsonl(PILOT / "checker_log.jsonl")
+    cunbound = log_binding(checker_log)
+    if cunbound is None:
+        return ["checker_log.jsonl: plan_binding is missing or mixed across its entries; re-run parse_checker.py"]
+    chk_result = json.loads((PILOT / "workflow_checker_result.json").read_text(encoding="utf-8"))
+    try:
+        cby = parse_checker.validate_result(chk_result, {b["batch_id"]: b["prompt_sha256"] for b in plan_doc["batches"]},
+                                            cunbound)
+    except SystemExit as e:
+        return [f"workflow_checker_result.json no longer validates against the checker plan: {e}"]
+    plan_sha = sha256_file(PILOT / "checker_batches.json")
+    checked, clog = parse_checker.derive(cby, plan_doc["batches"], {x["id"]: x for x in blind}, truth,
+                                         parse_checker.binding_label(cunbound), plan_sha)
+    if checked != read_jsonl(PILOT / "checked.jsonl"):
+        problems.append("checked.jsonl is not what the current code derives from workflow_checker_result.json")
+    if clog != checker_log:
+        problems.append("checker_log.jsonl is not what the current code derives from workflow_checker_result.json")
+    if problems:
+        return problems
+    sheet, key, rmap = make_review_sheet.derive(checked, plan_sha)
+    term_cols = ("id", "clinical_term", "patient_term", "template")
+    if [{k: r[k] for k in term_cols} for r in sheet] != [{k: r.get(k) for k in term_cols} for r in read_csv(PILOT / "review_sheet.csv")]:
+        problems.append("review_sheet.csv (its term columns) is not the draw the current code makes from checked.jsonl")
+    if key != read_csv(PILOT / "review_key.csv"):
+        problems.append("review_key.csv is not the draw the current code makes from checked.jsonl")
+    if rmap != json.loads((PILOT / "review_map.json").read_text(encoding="utf-8")):
+        problems.append("review_map.json is not the draw the current code makes from checked.jsonl")
+    return problems
 
 
 def finalize_hashes(calls: dict) -> dict[str, str]:
@@ -128,8 +208,13 @@ def finalize_hashes(calls: dict) -> dict[str, str]:
                          "disk:\n  " + "\n  ".join(problems[:5]))
     problems = summary_problems(json.loads((PILOT / "summary.json").read_text(encoding="utf-8")))
     if problems:
-        raise SystemExit("write_manifest: cannot finalize, summary.json was not computed from the files on disk; "
-                         "re-run compute_summary.py:\n  " + "\n  ".join(problems[:5]))
+        raise SystemExit("write_manifest: cannot finalize, summary.json was not computed from the files on disk or "
+                         "under the current code; re-run compute_summary.py:\n  " + "\n  ".join(problems[:5]))
+    problems = rederive_problems(calls)
+    if problems:
+        raise SystemExit("write_manifest: cannot finalize, the bundle does not reproduce from its recorded result "
+                         "files under the current code; re-run the chain from parse_generation.py:\n  "
+                         + "\n  ".join(problems[:5]))
     return {o: sha256_file(PILOT / o) for o in expected}
 
 

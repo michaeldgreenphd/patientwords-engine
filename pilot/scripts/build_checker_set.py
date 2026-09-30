@@ -47,16 +47,12 @@ def eligible_targets(cand: list[dict]) -> dict[str, list[dict]]:
     return out
 
 
-def main() -> None:
-    all_rows = read_jsonl(PILOT / "generated" / "all_rows.jsonl")
-    calls = load_calls()
-    problems = generation_problems(calls, read_jsonl(PILOT / "call_log.jsonl"), all_rows,
-                                   read_jsonl(PILOT / "generated" / "format_failures.jsonl"))
-    if problems:  # rows from another plan must not enter the checker set (Codex review of PR #52)
-        raise SystemExit("build_checker_set: the parsed generation is not the call plan's; re-run parse_generation.py "
-                         "on that plan's result:\n  " + "\n  ".join(problems[:5]))
+def derive(all_rows: list[dict], seeds: list[dict], template: str, seeds_sha: str,
+           all_rows_sha: str) -> tuple[list[dict], list[dict], dict]:
+    """The construction itself, pure and deterministic under the named seeds: (blind set, truth key, the
+    checker_batches.json document). main writes these; write_manifest.py finalize derives them again from the files
+    on disk and refuses a bundle whose files differ (Codex review of PR #52)."""
     rows = [r for r in all_rows if r["control"] == "none"]
-    seeds = load_seeds()
     items, key, notes = [], [], []
 
     for r in rows:
@@ -102,10 +98,7 @@ def main() -> None:
         cid = f"c{pos + 1:04d}"
         blind.append({"id": cid, **items[i]})
         truth.append({"id": cid, **key[i]})
-    write_jsonl(PILOT / "checker_set.jsonl", blind)
-    write_jsonl(PILOT / "checker_key.jsonl", truth)
 
-    template = (PILOT / "prompts" / "checker_prompt.txt").read_text(encoding="utf-8")
     batches = []
     for b in range(0, len(blind), CHECKER_BATCH):
         chunk = blind[b:b + CHECKER_BATCH]
@@ -116,15 +109,31 @@ def main() -> None:
            # the inputs this plan was built from: a later step refuses a plan whose template, seeds or generation
            # rows have changed since, instead of recording a stale plan (Codex review of PR #52)
            "input_hashes": {"checker_prompt_template_sha256": sha256_text(template),
-                            "seeds_json_sha256": sha256_file(PILOT / "seeds.json"),
-                            "all_rows_jsonl_sha256": sha256_file(PILOT / "generated" / "all_rows.jsonl")},
+                            "seeds_json_sha256": seeds_sha,
+                            "all_rows_jsonl_sha256": all_rows_sha},
            "batch_size": CHECKER_BATCH,
            "n_items": len(blind), "n_generated": len(rows), "n_known_good": n_good, "n_broken": n_broken,
            "notes": notes, "batches": batches}
+    return blind, truth, out
+
+
+def main() -> None:
+    all_rows = read_jsonl(PILOT / "generated" / "all_rows.jsonl")
+    calls = load_calls()
+    problems = generation_problems(calls, read_jsonl(PILOT / "call_log.jsonl"), all_rows,
+                                   read_jsonl(PILOT / "generated" / "format_failures.jsonl"))
+    if problems:  # rows from another plan must not enter the checker set (Codex review of PR #52)
+        raise SystemExit("build_checker_set: the parsed generation is not the call plan's; re-run parse_generation.py "
+                         "on that plan's result:\n  " + "\n  ".join(problems[:5]))
+    template = (PILOT / "prompts" / "checker_prompt.txt").read_text(encoding="utf-8")
+    blind, truth, out = derive(all_rows, load_seeds(), template, sha256_file(PILOT / "seeds.json"),
+                               sha256_file(PILOT / "generated" / "all_rows.jsonl"))
+    write_jsonl(PILOT / "checker_set.jsonl", blind)
+    write_jsonl(PILOT / "checker_key.jsonl", truth)
     (PILOT / "checker_batches.json").write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"checker set: {len(blind)} items = {len(rows)} generated + {n_good} known-good + {n_broken} broken; "
-          f"{len(batches)} batches of <= {CHECKER_BATCH}")
-    for n in notes:
+    print(f"checker set: {len(blind)} items = {out['n_generated']} generated + {out['n_known_good']} known-good + "
+          f"{out['n_broken']} broken; {len(out['batches'])} batches of <= {CHECKER_BATCH}")
+    for n in out["notes"]:
         print("  note:", n)
 
 

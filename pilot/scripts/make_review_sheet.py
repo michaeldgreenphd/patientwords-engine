@@ -37,6 +37,18 @@ def main() -> None:
     if problems:  # the sheet samples the plan's parse and nothing else (Codex review of PR #52)
         raise SystemExit("make_review_sheet: checked.jsonl is not the parse of the checker plan on disk; re-run "
                          "parse_checker.py on that plan's result:\n  " + "\n  ".join(problems[:5]))
+    sheet, key, review_map = derive(all_checked, plan_sha)
+    write_csv(sheet_path, sheet, ["id", "clinical_term", "patient_term", "template", "my_label", "my_notes"])
+    write_csv(PILOT / "review_key.csv", key, ["id", "arm", "cell", "checker_verdict"])
+    (PILOT / "review_map.json").write_text(json.dumps(review_map, indent=2) + "\n", encoding="utf-8")
+    print(f"review sheet: {len(sheet)} rows, allocation {review_map['allocation']}, checked rows by arm "
+          f"{review_map['n_checked_by_arm']}")
+
+
+def derive(all_checked: list[dict], plan_sha: str) -> tuple[list[dict], list[dict], dict]:
+    """The draw itself, pure and deterministic under the named seed: (sheet rows, key rows, the review_map.json
+    document). main writes these; write_manifest.py finalize derives them again from the checked rows and refuses a
+    bundle whose files differ (Codex review of PR #52)."""
     checked = [c for c in all_checked if c["source"] == "generated"]
     by_arm = {a: [c for c in checked if c["arm"] == a] for a in ARMS}
     total = sum(len(v) for v in by_arm.values())
@@ -57,15 +69,10 @@ def main() -> None:
                       "template": c["template"], "my_label": "", "my_notes": ""})
         key.append({"id": rid, "arm": c["arm"], "cell": c["cell"], "checker_verdict": c["verdict"]})
         mapping[rid] = c["row_id"]
-    write_csv(sheet_path, sheet, ["id", "clinical_term", "patient_term", "template", "my_label", "my_notes"])
-    write_csv(PILOT / "review_key.csv", key, ["id", "arm", "cell", "checker_verdict"])
-    (PILOT / "review_map.json").write_text(json.dumps({"allocation": alloc, "n_checked_by_arm":
-                                                       {a: len(v) for a, v in by_arm.items()},
-                                                       # the checker plan whose parse this sheet samples
-                                                       "checker_plan_sha256": plan_sha, "map": mapping},
-                                                      indent=2) + "\n", encoding="utf-8")
-    print(f"review sheet: {len(sheet)} rows, allocation {alloc}, checked rows by arm "
-          f"{ {a: len(v) for a, v in by_arm.items()} }")
+    review_map = {"allocation": alloc, "n_checked_by_arm": {a: len(v) for a, v in by_arm.items()},
+                  # the checker plan whose parse this sheet samples
+                  "checker_plan_sha256": plan_sha, "map": mapping}
+    return sheet, key, review_map
 
 
 if __name__ == "__main__":
