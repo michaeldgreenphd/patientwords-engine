@@ -93,6 +93,7 @@ default (`--site ../patientwords`), and `--site ''` skips it.
 | Script | What it does | Status | Writes | Who runs it |
 |---|---|---|---|---|
 | `tierb_split.py` | The single implementation of the Tier B holdout split | live | nothing | imported by the exporters, the collector, `seal_check.py` and every script that excludes holdout rows |
+| `sign_test_exact.py` | The exact two-sided sign test shared by the urgency analyses, unrounded, None when there are no directional pairs | live | nothing | imported by `urgency_shift.py`, `tier_sensitivity.py` and `paired_stats_rigor.py` (and through it `negative_control_stats.py`) |
 | `provenance_stamp.py` | Adds a `_provenance` block (script, engine commit with a `+dirty` marker, UTC time) to a payload | live | nothing itself | imported by 13 generators, among them `drift_sentinel.py`, `paired_stats_rigor.py` and `convergence_tracker.py` |
 | `payload_summary.py` | The one definition of the site payload's headline `summary` | live | nothing itself | imported by `export_frontend_simulated.py` |
 | `render_prune.py` | Chooses and deletes site renders that no export lists | live | deletes files under the site's `modes/simulated/` | imported by `export_frontend_simulated.py` |
