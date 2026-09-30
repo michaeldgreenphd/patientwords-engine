@@ -515,13 +515,37 @@ def load_calls() -> dict:
 
 
 def load_checker_batches() -> dict:
-    """checker_batches.json, refused unless every batch's prompt hashes to its stored prompt_sha256 and the template
-    hash agrees with the input hashes it records. Every reader of the checker plan goes through here."""
+    """checker_batches.json, refused unless it, checker_set.jsonl and checker_key.jsonl are exactly what
+    build_checker_set.derive renders from generated/all_rows.jsonl, seeds.json and the checker template on disk.
+    Self-consistency alone (every batch prompt hashing to its stored prompt_sha256 under unchanged input hashes) let
+    a prompt edited together with its hash reach the checker subagents before finalize caught it (Codex review of
+    PR #52). Every reader of the checker plan goes through here."""
     plan = json.loads((PILOT / "checker_batches.json").read_text(encoding="utf-8"))
     problems = plan_hash_problems(plan.get("batches", []), "batch_id")
     ih = plan.get("input_hashes")
     if isinstance(ih, dict) and ih.get("checker_prompt_template_sha256") != plan.get("checker_prompt_template_sha256"):
         problems.append("checker_prompt_template_sha256 differs from input_hashes.checker_prompt_template_sha256")
+    import build_checker_set  # the scripts import each other by bare name; build_checker_set imports this module
+
+    all_rows_path = PILOT / "generated" / "all_rows.jsonl"
+    template = (PILOT / "prompts" / "checker_prompt.txt").read_text(encoding="utf-8")
+    blind, truth, expected = build_checker_set.derive(read_jsonl(all_rows_path), load_seeds(), template,
+                                                      sha256_file(PILOT / "seeds.json"), sha256_file(all_rows_path))
+    if plan != expected:
+        top = sorted(k for k in set(plan) | set(expected) if k != "batches" and plan.get(k) != expected.get(k))
+        where = (f"top-level {top}" if top
+                 else f"{len(plan.get('batches', []))} batches on disk, {len(expected['batches'])} derived")
+        if not top:
+            for i, (g, w) in enumerate(zip(plan.get("batches", []), expected["batches"])):
+                if g != w:
+                    where = f"batch {i} ({w['batch_id']}): {sorted(k for k in set(g) | set(w) if g.get(k) != w.get(k))}"
+                    break
+        problems.append(f"checker_batches.json is not the plan the rows, seed file and checker template on disk "
+                        f"derive (first difference: {where})")
+    if read_jsonl(PILOT / "checker_set.jsonl") != blind:
+        problems.append("checker_set.jsonl is not the blind set the rows, seed file and checker template on disk derive")
+    if read_jsonl(PILOT / "checker_key.jsonl") != truth:
+        problems.append("checker_key.jsonl is not the truth key the rows, seed file and checker template on disk derive")
     if problems:
         raise SystemExit("checker_batches.json: refusing an inconsistent plan; re-run build_checker_set.py:\n  "
                          + "\n  ".join(problems[:5]))

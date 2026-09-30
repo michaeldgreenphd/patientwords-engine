@@ -7,8 +7,11 @@ The directory must be a run's transcripts (journal.jsonl and at least one agent-
 a run already recorded under the name is never written over without --replace. The record is bound to the stage's
 recorded result: the directory's name must be the run id (the Workflow tool names it so), and its journal's hash must
 be the `source_sha256` of workflow_<stage>_result.json, so an unrelated run's id and model evidence cannot be
-recorded as the provenance of the stored responses; `journal_sha256` is recorded and finalize compares it again
-(Codex review of PR #52).
+recorded as the provenance of the stored responses; `journal_sha256` is recorded and finalize compares it again.
+The transcripts are matched to the journal's started agents: every started agent must have its agent-<id>.jsonl
+and no transcript may belong to an agent the journal did not start, so one unrelated transcript cannot stand as the
+model evidence for every agent; the model ids are counted per agent, and agents whose transcript reports none are
+listed for finalize to refuse (Codex review of PR #52).
 """
 from __future__ import annotations
 
@@ -29,7 +32,7 @@ def main(name: str, run_id: str, transcript_dir: str, extra_json: str, replace: 
         raise SystemExit(f"record_run: stage must be one of {list(STAGES)}, not {name!r}; nothing was recorded")
     tdir = Path(transcript_dir)
     journal = tdir / "journal.jsonl"
-    transcripts = sorted(tdir.glob("agent-*.jsonl")) if tdir.is_dir() else []
+    transcripts = {p.name[len("agent-"):-len(".jsonl")]: p for p in tdir.glob("agent-*.jsonl")} if tdir.is_dir() else {}
     if not tdir.is_dir() or not journal.exists() or not transcripts:
         raise SystemExit(f"record_run: {tdir} is not a run's transcript directory (it needs journal.jsonl and at "
                          f"least one agent-*.jsonl); nothing was recorded")
@@ -52,25 +55,45 @@ def main(name: str, run_id: str, transcript_dir: str, extra_json: str, replace: 
     if name in m.get("runs", {}) and not replace:
         raise SystemExit(f"record_run: manifest runs.{name} already records run "
                          f"{m['runs'][name].get('run_id')!r}; pass --replace to write over it")
-    models = Counter()
-    n_transcripts = 0
-    for p in transcripts:
-        n_transcripts += 1
-        for mm in MODEL_RE.findall(p.read_text(encoding="utf-8", errors="replace")):
-            models[mm] += 1
     types = Counter()
+    started: list[str] = []
     for line in journal.read_text(encoding="utf-8").splitlines():
         if line.strip():
-            types[json.loads(line).get("type")] += 1
+            o = json.loads(line)
+            types[o.get("type")] += 1
+            if o.get("type") == "started":
+                if not isinstance(o.get("agentId"), str) or not o["agentId"]:
+                    raise SystemExit(f"record_run: a started record in {journal} has no agentId; the transcripts cannot "
+                                     f"be matched to the run's agents; nothing was recorded")
+                started.append(o["agentId"])
+    # every started agent's transcript, and no other: one unrelated transcript reporting the declared model would
+    # otherwise stand as the evidence for every response-producing agent (Codex review of PR #52)
+    missing = sorted(set(started) - set(transcripts))
+    foreign = sorted(set(transcripts) - set(started))
+    if not started or missing or foreign:
+        raise SystemExit(f"record_run: the transcripts in {tdir} do not match the journal's started agents "
+                         f"({len(started)} started; missing transcripts {missing[:3]}{'...' if len(missing) > 3 else ''}; "
+                         f"transcripts of agents the journal did not start {foreign[:3]}"
+                         f"{'...' if len(foreign) > 3 else ''}); nothing was recorded")
+    models = Counter()
+    without = []
+    for agent_id in started:
+        found = MODEL_RE.findall(transcripts[agent_id].read_text(encoding="utf-8", errors="replace"))
+        if not found:
+            without.append(agent_id)
+        for mm in found:
+            models[mm] += 1
     m.setdefault("runs", {})[name] = {"run_id": run_id, "transcript_dir": str(tdir), "journal_sha256": journal_sha,
-                                       "agent_transcripts": n_transcripts,
+                                       "agents_started": len(started), "agent_transcripts": len(started),
+                                       "agents_without_model_id": without,
                                        "journal_record_types": dict(types),
                                        "model_evidence": {"model_strings_in_transcripts": dict(models),
                                                           "note": "counts of \"model\":\"...\" strings across the "
-                                                                  "subagent transcripts; API response records"},
+                                                                  "started agents' transcripts; API response records"},
                                        **json.loads(extra_json or "{}")}
     path.write_text(json.dumps(m, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"manifest runs.{name}: {n_transcripts} transcripts, models {dict(models)}, journal {dict(types)}")
+    print(f"manifest runs.{name}: {len(started)} agents with transcripts, models {dict(models)}, "
+          f"agents without a model id {without}, journal {dict(types)}")
 
 
 if __name__ == "__main__":

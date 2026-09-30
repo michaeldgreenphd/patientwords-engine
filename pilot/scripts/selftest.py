@@ -164,9 +164,12 @@ def dry_run() -> None:
         gdir, cdir, odir = tmp / "wf_selftest_gen", tmp / "wf_selftest_chk", tmp / "wf_selftest_other"
         for d, note in ((gdir, "generation"), (cdir, "checker"), (odir, "other")):
             d.mkdir()
-            (d / "journal.jsonl").write_text(f'{{"type": "launched"}}\n{{"type": "started", "label": "{note}"}}\n',
+            (d / "journal.jsonl").write_text(f'{{"type": "launched"}}\n'
+                                             f'{{"type": "started", "key": "k1", "agentId": "a1", "label": "{note} 1"}}\n'
+                                             f'{{"type": "started", "key": "k2", "agentId": "a2", "label": "{note} 2"}}\n',
                                              encoding="utf-8")
-            (d / "agent-1.jsonl").write_text('{"model":"selftest-model"}\n', encoding="utf-8")
+            for agent in ("a1", "a2"):  # the Workflow tool names each transcript agent-<agentId>.jsonl
+                (d / f"agent-{agent}.jsonl").write_text('{"model":"selftest-model"}\n', encoding="utf-8")
         env = {**os.environ, "PILOT_DIR": str(tmp)}
 
         def run(script: str, *args: str, expect_failure: bool = False) -> str:
@@ -391,7 +394,21 @@ def dry_run() -> None:
         (tmp / "checker_batches.json").write_text(json.dumps(plan_doc, ensure_ascii=False), encoding="utf-8")
         run("make_workflow_scripts.py", "checker", expect_failure=True)
         run("parse_checker.py", str(tmp / "workflow_checker_result.json"), "--replace", expect_failure=True)
+        # a checker prompt edited together with its hash is self-consistent but not what the rows, seeds and template
+        # derive: refused by every reader before a workflow script or request bundle is written (Codex on PR #52)
+        plan_doc = json.loads(plan_text)
+        plan_doc["batches"][0]["prompt"] += "\nEdited after batching."
+        plan_doc["batches"][0]["prompt_sha256"] = common.sha256_text(plan_doc["batches"][0]["prompt"])
+        (tmp / "checker_batches.json").write_text(json.dumps(plan_doc, ensure_ascii=False), encoding="utf-8")
+        run("make_workflow_scripts.py", "checker", expect_failure=True)
+        run("build_api_requests.py", "checker", "--model", "example-model", expect_failure=True)
         (tmp / "checker_batches.json").write_text(plan_text, encoding="utf-8")
+        key_text = (tmp / "checker_key.jsonl").read_bytes()
+        key_rows = common.read_jsonl(tmp / "checker_key.jsonl")
+        key_rows[0]["source"] = "edited"
+        common.write_jsonl(tmp / "checker_key.jsonl", key_rows)
+        run("make_workflow_scripts.py", "checker", expect_failure=True)  # the key is part of the derived bundle
+        (tmp / "checker_key.jsonl").write_bytes(key_text)
         check(not list((tmp / "workflows").glob("*.js")) if (tmp / "workflows").exists() else True,
               "an inconsistent plan is refused by the workflow-script and request builders and the parsers; nothing written")
         run("make_workflow_scripts.py", "generation")
@@ -437,14 +454,27 @@ def dry_run() -> None:
         run("record_run.py", "generation", "wf_selftest_gen", str(tmp / "no_such_dir"), expect_failure=True)
         run("record_run.py", "generation", "some-other-id", str(gdir), expect_failure=True)
         run("record_run.py", "generation", "wf_selftest_other", str(odir), expect_failure=True)  # another run's journal
+        # the transcripts must be exactly the journal's started agents: one unrelated transcript would otherwise
+        # stand as the model evidence for every agent (Codex on PR #52)
+        (gdir / "agent-zz.jsonl").write_text('{"model":"selftest-model"}\n', encoding="utf-8")
+        run("record_run.py", "generation", "wf_selftest_gen", str(gdir), expect_failure=True)
+        (gdir / "agent-zz.jsonl").unlink()
+        (gdir / "agent-a2.jsonl").rename(gdir / "agent-a2.jsonl.aside")
+        run("record_run.py", "generation", "wf_selftest_gen", str(gdir), expect_failure=True)
+        (gdir / "agent-a2.jsonl.aside").rename(gdir / "agent-a2.jsonl")
+        check("runs" not in json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+              or "generation" not in json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))["runs"],
+              "a transcript of an agent the journal did not start, or a started agent without one, is refused")
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir))
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir), expect_failure=True)
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir), "--replace")
         mr = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))["runs"]["generation"]
-        check(mr["run_id"] == "wf_selftest_gen" and mr["agent_transcripts"] == 1
+        check(mr["run_id"] == "wf_selftest_gen" and mr["agents_started"] == 2 and mr["agent_transcripts"] == 2
+              and mr["agents_without_model_id"] == []
               and mr["journal_sha256"] == common.sha256_file(gdir / "journal.jsonl")
-              and mr["model_evidence"]["model_strings_in_transcripts"] == {"selftest-model": 1},
-              "record_run binds the record to the journal the result was extracted from and replaces it only with --replace")
+              and mr["model_evidence"]["model_strings_in_transcripts"] == {"selftest-model": 2},
+              "record_run binds the record to the journal the result was extracted from, matches every started agent's "
+              "transcript, and replaces a record only with --replace")
         # finalize needs both subagent runs recorded: the run records carry the model evidence read from the
         # transcripts (Codex on PR #52)
         run("write_manifest.py", "finalize", expect_failure=True)
@@ -481,20 +511,20 @@ def dry_run() -> None:
         (tmp / "manifest.json").write_text(json.dumps(mdoc_runs, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         run("write_manifest.py", "finalize", expect_failure=True)
         (tmp / "manifest.json").write_bytes(manifest_bytes)
-        agent_bytes = (gdir / "agent-1.jsonl").read_bytes()
-        (gdir / "agent-1.jsonl").write_text('{"model":"another-model"}\n', encoding="utf-8")
+        agent_bytes = (gdir / "agent-a1.jsonl").read_bytes()
+        (gdir / "agent-a1.jsonl").write_text('{"model":"another-model"}\n', encoding="utf-8")
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir), "--replace")
         run("write_manifest.py", "finalize", expect_failure=True)
-        (gdir / "agent-1.jsonl").write_text('{"type":"no model string here"}\n', encoding="utf-8")
+        (gdir / "agent-a1.jsonl").write_text('{"type":"no model string here"}\n', encoding="utf-8")  # a2 still reports one
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir), "--replace")
         run("write_manifest.py", "finalize", expect_failure=True)
-        (gdir / "agent-1.jsonl").write_bytes(agent_bytes)
+        (gdir / "agent-a1.jsonl").write_bytes(agent_bytes)
         run("record_run.py", "generation", "wf_selftest_gen", str(gdir), "--replace")
         run("write_manifest.py", "finalize")
         mf = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
-        check(mf["runs"]["generation"]["model_evidence"]["model_strings_in_transcripts"] == {"selftest-model": 1},
+        check(mf["runs"]["generation"]["model_evidence"]["model_strings_in_transcripts"] == {"selftest-model": 2},
               "finalize refuses a record bound to another journal, a transcript model the facts do not declare, and "
-              "transcripts with no model id; it passes once the record agrees again")
+              "an agent transcript with no model id; it passes once the record agrees again")
         # the bundle must reproduce from the recorded result files under the current code: a changed response, a
         # changed verdict, or a review map that is not the draw refuses finalize (Codex on PR #52)
         gen_bytes = (tmp / "workflow_generation_result.json").read_bytes()

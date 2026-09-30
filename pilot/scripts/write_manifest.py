@@ -17,7 +17,8 @@ model evidence from the transcripts), the outputs cannot be finalized under mode
 without a visible reset and re-recording (Codex review of PR #52). `finalize` further requires each run record's
 journal_sha256 to be the source_sha256 of the stage's result file, every transcript to report a model id, and every
 reported id to be the model the facts declare (session_model_at_run or session_last_served_model_at_run, a bracketed
-suffix such as [1m] disregarded), so the results cannot be sealed under a model their own transcripts contradict.
+suffix such as [1m] disregarded), so the results cannot be sealed under a model their own transcripts contradict;
+record_run.py matches the transcripts to the journal's started agents, so that evidence is every agent's.
 
 Both plans must have been built from the files on disk: calls.json from the seed file, the design file and the
 generation template, and checker_batches.json from the checker template, the seed file and the parsed generation
@@ -114,7 +115,8 @@ def model_id(s: str) -> str:
 def run_problems(model: dict, runs: dict) -> list[str]:
     """Why the run records do not vouch for the recorded results (Codex review of PR #52): a stage not recorded; a
     record whose journal_sha256 is not the source_sha256 of the stage's result file (the record describes another
-    run); transcripts that report no model id; or a reported model id that is not the model the model facts declare
+    run); a record from before the transcripts were matched to the journal's agents, or one in which a started
+    agent's transcript reports no model id; or a reported model id that is not the model the model facts declare
     (MODEL_KEYS, a bracketed suffix disregarded). Empty when both records bind and agree."""
     problems = []
     declared = {model_id(model[k]) for k in MODEL_KEYS if isinstance(model.get(k), str) and model[k].strip()}
@@ -133,8 +135,13 @@ def run_problems(model: dict, runs: dict) -> list[str]:
                             f"source_sha256 of {result_path.name} ({str(source)[:12]!r}); record the run that produced "
                             f"the recorded result")
         seen = (rec.get("model_evidence") or {}).get("model_strings_in_transcripts") or {}
-        if not seen:
-            problems.append(f"runs.{stage}: the transcripts report no model id; the results cannot be attributed")
+        without = rec.get("agents_without_model_id")
+        if not isinstance(without, list):
+            problems.append(f"runs.{stage}: recorded before the transcripts were matched to the journal's agents; "
+                            f"run record_run.py --replace for it")
+        elif without or not seen:
+            problems.append(f"runs.{stage}: {len(without) or 'the'} agent transcript(s) report no model id "
+                            f"({without[:3]}); the results cannot be attributed")
         elif declared:
             foreign = sorted(mid for mid in seen if model_id(mid) not in declared)
             if foreign:
