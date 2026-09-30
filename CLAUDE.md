@@ -5,20 +5,31 @@ the files cannot drift. The line above imports it into every Claude Code session
 
 ## Claude Code specifics
 
-- After opening a pull request, subscribe to its activity
-  (`subscribe_pr_activity`) so Codex's review wakes the session, and schedule a
-  fallback check-in about an hour out (`send_later`) until the PR is merged or
-  closed; re-arm it silently if nothing changed. (The daily-cycle session is the
-  exception: it opens no PRs and schedules nothing.)
+- After opening a pull request, follow it until it is merged or closed. How
+  depends on whether the session has the cloud tools `subscribe_pr_activity`
+  and `send_later`. (The daily-cycle session is the exception: it opens no PRs
+  and schedules nothing.)
+  - Cloud session (it has both): subscribe to the PR's activity
+    (`subscribe_pr_activity`) so Codex's review wakes the session, and schedule
+    a fallback check-in about an hour out (`send_later`) until the PR is merged
+    or closed; re-arm it silently if nothing changed.
+  - Local session (it has neither, so no PR event wakes it): before ending a
+    turn, read all of the PR's feedback and its CI, then tell the owner when to
+    check again. Run all three commands; none of them replaces another:
+    `gh pr view <n> --json reviews,comments,headRefOid,mergeStateStatus`
+    (review bodies, conversation comments, head commit, merge state);
+    `gh api --paginate 'repos/{owner}/{repo}/pulls/<n>/comments'` (inline
+    review comments, which `gh pr view` does not return; `gh` fills in
+    `{owner}` and `{repo}` from the checkout); and `gh pr checks <n>` (CI).
 - The procedures behind the rules in `AGENTS.md` are skills under
   `.claude/skills/`. Invoke the matching one rather than improvising its steps.
-- `.claude/settings.json` installs guard hooks (`.claude/hooks/README.md`). A
-  refusal is the rule working: do not route around it, and never edit
-  `.claude/settings.json`, `.claude/hooks/`, `.githooks/`, or the user-level
-  `~/.claude/settings.json` the environment writes, from a session — the owner
-  edits those by hand.
+- `.claude/settings.json` installs guard hooks (`.claude/hooks/README.md`) that
+  refuse some tool calls. A refusal is the rule working: do not route around
+  it. From a session, never edit the guard files (`.claude/settings.json`,
+  `.claude/hooks/`, `.githooks/`) or the user-level `~/.claude/settings.json`
+  the environment writes; the owner edits those by hand.
 
-## Shared conventions (identical across my repos; edit in all three)
+## Shared conventions (identical in patientwords-engine and patientwords; edit both)
 
 Writing to the owner:
 
