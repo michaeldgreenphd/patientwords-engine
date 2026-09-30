@@ -249,10 +249,18 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/evaluations/model_evaluations_frontend.json
           git commit -m "Model evaluation frontend export ($(date -u +%Y%m%dT%H%M%SZ))" || exit 0
-          for i in 1 2 3; do
-            git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH" && break
+          # Same loop as advice_evaluation.yml's commit step. A failed pull --rebase can leave a rebase in progress,
+          # so it is aborted before the next attempt, and when no attempt pushed the step fails. The earlier
+          # three-attempt loop ended on sleep, so the step passed after three failed pushes (audit tests-04).
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
             sleep $((i * 2))
           done
+          echo "::error::frontend export push to $BRANCH failed after 5 attempts"
+          exit 1
 
       - name: Publish summary to run page
         if: always()
