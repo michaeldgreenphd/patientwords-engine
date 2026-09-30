@@ -266,10 +266,59 @@ def check_simulated(rep: Report, site: Path, payload: dict) -> dict:
 
 # ---------------------------------------------------------------------- urgency_shift
 
+# The causes scripts/urgency_unjoinable.py files an unjoinable row under, in its record's by_cause.
+UNJOINABLE_CAUSES = ("not_a_generation_batch", "batch_not_in_payload", "pair_not_in_payload")
+
+
+def unjoinable_total(rep: Report, a: str, rec: object) -> int | None:
+    """The total of the collector's unjoinable_rows record, or None (errors recorded) when the record is malformed:
+    a nonnegative integer n, and by_cause holding exactly the three causes, each a nonnegative integer n equal to the
+    sum of its per-stem counts, the causes summing to the total. Every stored per-stem count is a positive integer:
+    the collector lists a stem only when at least one row falls under it. Sums alone would pass impossible counts
+    (a total of 1 from causes -1, 2 and 0; Codex review of PR #57)."""
+    p = "$.unjoinable_rows"
+    if not isinstance(rec, dict):
+        rep.err(a, p, "must be an object")
+        return None
+    total = need(rep, a, rec, "n", int, p)
+    by_cause = need(rep, a, rec, "by_cause", dict, p)
+    if total is None or by_cause is None:
+        return None
+    ok = True
+    if total < 0:
+        rep.err(a, f"{p}.n", f"is {total}, must be nonnegative")
+        ok = False
+    if set(by_cause) != set(UNJOINABLE_CAUSES):
+        rep.err(a, f"{p}.by_cause", f"must hold exactly {list(UNJOINABLE_CAUSES)}, has {sorted(by_cause)}")
+        ok = False
+    cause_sum = 0
+    for cause in UNJOINABLE_CAUSES:
+        entry = by_cause.get(cause)
+        cp = f"{p}.by_cause.{cause}"
+        n = need(rep, a, entry, "n", int, cp) if isinstance(entry, dict) else None
+        stems = need(rep, a, entry, "stems", dict, cp) if isinstance(entry, dict) else None
+        if n is None or stems is None:
+            if not isinstance(entry, dict) and cause in by_cause:
+                rep.err(a, cp, "must be an object")
+            ok = False
+            continue
+        if n < 0:
+            rep.err(a, f"{cp}.n", f"is {n}, must be nonnegative")
+            ok = False
+        if not all(_is(v, int) and v > 0 for v in stems.values()) or sum(stems.values()) != n:
+            rep.err(a, f"{cp}.stems", f"per-stem counts must be positive integers summing to n = {n}")
+            ok = False
+        cause_sum += n
+    if ok and cause_sum != total:
+        rep.err(a, f"{p}.n", f"is {total}, but by_cause sums to {cause_sum}")
+        ok = False
+    return total if ok else None
+
+
 def check_urgency(rep: Report, data: dict, joins: dict):
     a = "urgency_shift.json"
     known_keys(rep, a, data, {"rows", "summary", "tiers", "tier_examples",
-                              "vocabulary_status", "render_min_n"})
+                              "vocabulary_status", "render_min_n", "unjoinable_rows"})
     # render gate (2026-07-28): pages pend any per-model cell below this n
     rmn = data.get("render_min_n")
     if rmn is not None and (not isinstance(rmn, int) or rmn < 1):
@@ -300,10 +349,25 @@ def check_urgency(rep: Report, data: dict, joins: dict):
             seen.add(key)
             if joins and (stem, idx) not in joins["scenario_keys"]:
                 orphans += 1
-    if orphans:
+    # Rows that join no published scenario still count on the site: clinical/index.html computes its headline
+    # figures over every row. Since the collector records their count (unjoinable_rows, written by
+    # scripts/urgency_unjoinable.py at --publish), the check compares that total with what it finds here and fails
+    # on any difference: rows or payload changed after the collector ran, or the two join rules drifted. A file
+    # published before that key existed keeps the standing warning.
+    if "unjoinable_rows" in data:
+        recorded = unjoinable_total(rep, a, data["unjoinable_rows"])
+        if recorded is not None and recorded != orphans:
+            rep.err(a, "$.unjoinable_rows.n",
+                    f"records {recorded} rows joining no published scenario, but {orphans}/{len(rows)} do "
+                    "(rows or payload changed after the collector ran: re-run urgency_shift.py --publish)")
+        elif recorded is not None and orphans:
+            rep.notes.append(f"{a} :: $.rows :: {orphans}/{len(rows)} rows join no published scenario, as "
+                             "$.unjoinable_rows records (clinical/index.html counts them)")
+    elif orphans:
         rep.warn(a, "$.rows",
                  f"{orphans}/{len(rows)} rows join no published scenario "
-                 "(dead weight in the public payload)")
+                 "(clinical/index.html counts them in its headline figures; no unjoinable_rows record to check "
+                 "them against)")
 
 
 # ------------------------------------------------------------------- small artifacts

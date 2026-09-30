@@ -111,7 +111,10 @@ balance is a sampling decision, not an afterthought.
 
 **7. Contract gate.** `python scripts/validate_frontend_contract.py --site ../patientwords`
 Exit 0 = holds; 1 = violations; 2 = payload missing/unreadable. Report mode (no
-`--strict`) until F-M27's orphan-row trim lands. New ERRORS mean an export broke the
+`--strict`) only until the next urgency publish writes `unjoinable_rows` into the site's
+`data/urgency_shift.json` (step 2 writes it; until then the orphan-row warning is
+expected). After that publish, including step 7 of that same run, add `--strict`, so
+any warning fails the gate. New ERRORS mean an export broke the
 page contract: fix the export and re-run before pushing the site. Never push over errors.
 
 **8. Claim gate.** `python scripts/claim_check.py`
