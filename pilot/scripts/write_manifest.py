@@ -10,6 +10,11 @@ A manifest already on disk lends its creation time, finalization time and run re
 planned inputs have changed since it was written (the seed file, the design file or a prompt template), keeping
 those would pair new prompts with the previous run's provenance, so the write is refused unless --reset is passed;
 --reset records metadata_reset_utc and starts the timestamps and run records afresh (Codex review of PR #52).
+manifest_model.json, the operator's statement of the session and model that served the run, is frozen the same
+way: its hash is recorded at the first write, an edit after that is refused unless --reset is passed, and since
+--reset clears the run records and `finalize` requires both subagent runs recorded (record_run.py, which takes the
+model evidence from the transcripts), the outputs cannot be finalized under model facts written after the run
+without a visible reset and re-recording (Codex review of PR #52).
 
 Both plans must have been built from the files on disk: calls.json from the seed file, the design file and the
 generation template, and checker_batches.json from the checker template, the seed file and the parsed generation
@@ -87,6 +92,9 @@ def input_changes(old: dict, current: dict) -> list[str]:
     changes = [k for k in INPUT_HASH_KEYS if old.get(k) != current.get(k)]
     op, cp = old.get("prompt_hashes", {}), current.get("prompt_hashes", {})
     changes += [f"prompt_hashes.{k}" for k in TEMPLATE_KEYS if k in op and k in cp and op[k] != cp[k]]
+    # the model facts are frozen from the first manifest that recorded their hash (Codex review of PR #52)
+    if "manifest_model_sha256" in old and old["manifest_model_sha256"] != current.get("manifest_model_sha256"):
+        changes.append("manifest_model_sha256")
     return changes
 
 
@@ -228,6 +236,7 @@ def main(finalize: bool, reset: bool = False) -> None:
     protocol_now = sha256_file(PILOT / "PROTOCOL.md")
     current = {"seeds_json_sha256": sha256_file(PILOT / "seeds.json"),
                "design_json_sha256": sha256_file(PILOT / "design.json"),
+               "manifest_model_sha256": sha256_file(PILOT / "manifest_model.json"),
                "prompt_hashes": {"generation_prompt_template": calls["generation_prompt_template_sha256"]}}
     cb = PILOT / "checker_batches.json"
     cbdata = load_checker_batches() if cb.exists() else None
@@ -291,6 +300,7 @@ def main(finalize: bool, reset: bool = False) -> None:
         "finalized_utc": now if finalize else (base.get("finalized_utc") if keep_final else None),
         "metadata_reset_utc": now if (reset and old) else base.get("metadata_reset_utc"),
         "model": model,
+        "manifest_model_sha256": current["manifest_model_sha256"],
         "python": platform.python_version(),
         "seeds": {"master_seed": MASTER_SEED, "exemplar_sampling": "random.Random(20260929), one draw of K per cell in cell order",
                   "named_streams": {p: f"random.Random('{MASTER_SEED}:{p}')" for p in ("broken", "checker_shuffle", "review", "bootstrap")}},
@@ -321,6 +331,13 @@ def main(finalize: bool, reset: bool = False) -> None:
     if keep_final:
         m["output_hashes"] = carried
     if finalize:
+        # the run records carry the model evidence read from the transcripts; without both, the model facts above
+        # would stand alone, and a --reset clears them so they are recorded again (Codex review of PR #52)
+        absent = [n for n in ("generation", "checker")
+                  if not isinstance(m["runs"].get(n), dict) or not m["runs"][n].get("run_id")]
+        if absent:
+            raise SystemExit(f"write_manifest: cannot finalize, runs.{' and runs.'.join(absent)} not recorded; run "
+                             f"record_run.py for each subagent stage (a --reset clears the run records)")
         m["output_hashes"] = finalize_hashes(calls)  # refuses an incomplete bundle before anything is written
     path.write_text(json.dumps(m, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     cleared = ([f"{len(changed_outputs)} hashed output(s) changed or missing (first: {changed_outputs[0]})"]

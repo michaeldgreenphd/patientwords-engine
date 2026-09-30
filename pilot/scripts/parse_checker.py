@@ -19,16 +19,18 @@ import sys
 from pathlib import Path
 
 from common import (
+    CHECKER_VERDICTS,
     MAX_ATTEMPTS,
     PILOT,
     checker_attempt_failed,
     load_checker_batches,
     read_jsonl,
+    resolve_input,
     sha256_file,
     write_jsonl,
 )
 
-VALID = ("yes", "no", "unclear")
+VALID = CHECKER_VERDICTS
 
 
 def validate_result(result: object, planned: dict[str, str], unbound: bool = False) -> dict[str, dict]:
@@ -132,7 +134,7 @@ def derive(by_id: dict[str, dict], batches: list[dict], blind: dict[str, dict], 
 
 
 def main(result_path: str, replace: bool = False, unbound: bool = False) -> None:
-    result = json.loads(Path(result_path).read_text(encoding="utf-8"))
+    result = json.loads(resolve_input(result_path, "parse_checker").read_text(encoding="utf-8"))
     plan_path = PILOT / "checker_batches.json"
     batches = load_checker_batches()["batches"]  # every prompt verified against its stored hash
     by_id = validate_result(result, {b["batch_id"]: b["prompt_sha256"] for b in batches}, unbound)

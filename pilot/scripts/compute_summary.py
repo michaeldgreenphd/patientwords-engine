@@ -9,6 +9,7 @@ from collections import Counter
 
 from common import (
     ARMS,
+    CHECKER_VERDICTS,
     MASTER_SEED,
     N_BOOT,
     PILOT,
@@ -286,7 +287,7 @@ def main() -> None:
         return dict(Counter(i["verdict"] for i in items))
 
     def p_yes(items):
-        answered = [i for i in items if i["verdict"] in ("yes", "no", "unclear")]
+        answered = [i for i in items if i["verdict"] in CHECKER_VERDICTS]  # checked_problems admits nothing else
         return {"yes_over_answered": wilson(sum(1 for i in answered if i["verdict"] == "yes"), len(answered)),
                 "unclear_over_answered": wilson(sum(1 for i in answered if i["verdict"] == "unclear"), len(answered)),
                 "missing": sum(1 for i in items if i["verdict"] == "missing"), "counts": verdict_counts(items)}

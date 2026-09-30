@@ -27,6 +27,7 @@ from common import (
     control_is_faithful,
     lines_of,
     load_calls,
+    resolve_input,
     validate_line,
     write_jsonl,
 )
@@ -148,7 +149,7 @@ def derive(by_id: dict[str, dict], calls_meta: dict[str, dict],
 
 
 def main(result_path: str, replace: bool = False, unbound: bool = False) -> None:
-    result = json.loads(Path(result_path).read_text(encoding="utf-8"))
+    result = json.loads(resolve_input(result_path, "parse_generation").read_text(encoding="utf-8"))
     calls_meta = {c["id"]: c for c in load_calls()["calls"]}  # every prompt verified against its stored hash
     by_id = validate_result(result, calls_meta, unbound)  # checked in full before any previous output is removed
     gen_dir = PILOT / "generated"

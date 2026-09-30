@@ -11,7 +11,9 @@ and load_checker_batches, which refuse a plan whose stored prompt hashes are not
 An agent that started but has no result record is recorded as a null return. Every record type seen is counted so
 an unexpected journal shape is visible rather than silently dropped. Two agents carrying one `<id> attempt <n>`
 label, or two result records for one agent, would collapse into one attempt and the overwritten response would
-leave the provenance unseen, so such a journal is refused before anything is written (Codex review of PR #52).
+leave the provenance unseen, so such a journal is refused before anything is written; so is one in which two
+"started" records share one (key, agentId) identity, or a "started" record lacks either, since one response would
+then be read under two labels as two independent calls (Codex review of PR #52).
 
 A label of the form `<id> attempt <n> sha256=<hash>` (workflow scripts generated since the binding was added) yields
 the item's `prompt_sha256`, which the parsers check against the plan; a label without it yields null, and such a
@@ -35,12 +37,21 @@ def main(which: str, journal_path: str, replace: bool = False) -> None:
     results: dict[tuple, object] = {}
     types: Counter = Counter()
     repeated_results = []
+    repeated_started = []
+    started_ids: set[tuple] = set()
     for line in Path(journal_path).read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         o = json.loads(line)
         types[o.get("type")] += 1
         if o.get("type") == "started":
+            ident = (o.get("key"), o.get("agentId"))
+            if None in ident:  # a result could match no such agent, and its label would read as no response
+                raise SystemExit(f"{journal_path}: refusing the journal; nothing was written: a started record lacks "
+                                 f"key or agentId ({o.get('label')!r}) (Codex review of PR #52)")
+            if ident in started_ids:  # one response read under two labels as two independent calls or batches
+                repeated_started.append(ident)
+            started_ids.add(ident)
             started.append(o)
         elif o.get("type") == "result":
             k = (o.get("key"), o.get("agentId"))
@@ -83,9 +94,10 @@ def main(which: str, journal_path: str, replace: bool = False) -> None:
         raise SystemExit(f"{journal_path}: refusing the journal; nothing was written: {len(unused)} result record(s) "
                          f"have no started agent (first: {unused[0]}) (Codex review of PR #52)")
     repeated = {f"{i} attempt {n}": a for (i, n), a in agents_by_label.items() if len(a) > 1}
-    if repeated or repeated_results:
+    if repeated or repeated_results or repeated_started:
         raise SystemExit(f"{journal_path}: refusing the journal; nothing was written: agents sharing one label "
-                         f"{repeated}; agents with more than one result record {repeated_results}")
+                         f"{repeated}; agents with more than one result record {repeated_results}; started records "
+                         f"sharing one (key, agentId) identity {repeated_started}")
     conflicting = {i: sorted(str(x) for x in v) for i, v in shas.items() if len(v) > 1}
     if conflicting:
         raise SystemExit(f"{journal_path}: an item's attempts carry different prompt hashes, which no single run "

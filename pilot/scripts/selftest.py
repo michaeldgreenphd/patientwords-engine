@@ -250,6 +250,14 @@ def dry_run() -> None:
         check((tmp / "checked.jsonl").read_text(encoding="utf-8") == checked_text
               and all(c["checker_plan_sha256"] == plan_sha for c in common.read_jsonl(tmp / "checked.jsonl")),
               "--replace rewrites the same verdicts, each row stamped with the checker plan's hash")
+        # a bare result-file name is looked up under the run directory when the current directory has none, and a
+        # name found in neither is refused (a laptop rerun on 2026-09-30 ran the documented command from the checkout)
+        bare = subprocess.run([sys.executable, str(HERE / "parse_checker.py"), "workflow_checker_result.json", "--replace"],
+                              env=env, capture_output=True, text=True, check=False, cwd=str(HERE))
+        check(bare.returncode == 0 and "read from the run directory" in bare.stdout
+              and (tmp / "checked.jsonl").read_text(encoding="utf-8") == checked_text,
+              "a bare result-file name is resolved under PILOT_DIR and parses the same verdicts")
+        run("parse_checker.py", "no_such_result.json", "--replace", expect_failure=True)
         run("make_review_sheet.py")
         # a sheet carrying human annotations is never regenerated (Codex on PR #52)
         original_sheet = (tmp / "review_sheet.csv").read_bytes()  # bytes, so the restore is exact
@@ -366,6 +374,16 @@ def dry_run() -> None:
         (tmp / "review_key.csv").write_bytes(key_bytes)
         check((tmp / "summary.json").read_text(encoding="utf-8") == summary_text,
               "a review bundle from another plan, or a key verdict that differs from the checked row, is refused")
+        # a verdict outside {yes, no, unclear, missing} would leave both the answered and the missing counts and
+        # shrink every denominator unseen: refused by checked_problems (Codex on PR #52)
+        checked_bytes = (tmp / "checked.jsonl").read_bytes()
+        rows_v = common.read_jsonl(tmp / "checked.jsonl")
+        rows_v[0]["verdict"] = "maybe"
+        common.write_jsonl(tmp / "checked.jsonl", rows_v)
+        run("compute_summary.py", expect_failure=True)
+        (tmp / "checked.jsonl").write_bytes(checked_bytes)
+        check((tmp / "summary.json").read_text(encoding="utf-8") == summary_text,
+              "a checked row with a verdict outside the set is refused and the summary stays as it was")
         run("write_manifest.py")
         m = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
         check(m["design"]["seed_provenance"]["values"] == ["selftest provenance, not study data"]
@@ -387,8 +405,26 @@ def dry_run() -> None:
         check(mr["run_id"] == "run-2" and mr["agent_transcripts"] == 1
               and mr["model_evidence"]["model_strings_in_transcripts"] == {"selftest-model": 1},
               "record_run validates the transcript directory and replaces a recorded run only with --replace")
+        # finalize needs both subagent runs recorded: the run records carry the model evidence read from the
+        # transcripts (Codex on PR #52)
+        run("write_manifest.py", "finalize", expect_failure=True)
+        run("record_run.py", "checker", "run-c", str(tdir))
         # finalize hashes every required output and refuses a missing one; a plan-time rewrite after finalize keeps
         # the hashes only while the outputs are unchanged (Codex on PR #52)
+        run("write_manifest.py", "finalize")
+        # the review sheet is a summary input: filled after the summary, it refuses finalize until the summary is
+        # computed again, and no number changes since the summary reads no annotation (Codex on PR #52)
+        s_before = json.loads((tmp / "summary.json").read_text(encoding="utf-8"))
+        sheet_lines = (tmp / "review_sheet.csv").read_bytes().decode("utf-8").splitlines()
+        sheet_lines[1] = sheet_lines[1][: sheet_lines[1].rfind(",,")] + ",reviewed,filled after the summary"
+        (tmp / "review_sheet.csv").write_text("\n".join(sheet_lines) + "\n", encoding="utf-8")
+        run("write_manifest.py", "finalize", expect_failure=True)
+        run("compute_summary.py")
+        s_after = json.loads((tmp / "summary.json").read_text(encoding="utf-8"))
+        check({k: v for k, v in s_after.items() if k != "input_hashes"}
+              == {k: v for k, v in s_before.items() if k != "input_hashes"}
+              and s_after["input_hashes"]["review_sheet.csv"] != s_before["input_hashes"]["review_sheet.csv"],
+              "a review sheet filled after the summary refuses finalize; recomputing changes only its input hash")
         run("write_manifest.py", "finalize")
         mf = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
         check(isinstance(mf["finalized_utc"], str)
@@ -487,6 +523,28 @@ def dry_run() -> None:
         tpl.write_text(tpl_text + "\nedited after batching\n", encoding="utf-8")
         run("write_manifest.py", expect_failure=True)
         tpl.write_text(tpl_text, encoding="utf-8")
+        # manifest_model.json is frozen from the first manifest that recorded its hash: an edit after the run is
+        # refused without --reset, and --reset clears the run records, so finalize needs them recorded again
+        # (Codex on PR #52)
+        model_path = tmp / "manifest_model.json"
+        model_doc = json.loads(model_path.read_text(encoding="utf-8"))
+        model_doc["session_model_at_run"] = "edited after the run"
+        model_path.write_text(json.dumps(model_doc, indent=2) + "\n", encoding="utf-8")
+        run("write_manifest.py", expect_failure=True)
+        run("write_manifest.py", "finalize", expect_failure=True)
+        m_kept = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        run("write_manifest.py", "--reset")
+        m_reset = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        check(m_kept["model"]["session_model_at_run"] != "edited after the run"
+              and m_reset["model"]["session_model_at_run"] == "edited after the run"
+              and m_reset["manifest_model_sha256"] == common.sha256_file(model_path)
+              and m_reset["runs"] == {} and m_reset["finalized_utc"] is None
+              and isinstance(m_reset["metadata_reset_utc"], str),
+              "an edited manifest_model.json is refused without --reset; --reset records it and clears the run records")
+        run("write_manifest.py", "finalize", expect_failure=True)  # no run records after the reset
+        run("record_run.py", "generation", "run-2", str(tdir))
+        run("record_run.py", "checker", "run-c", str(tdir))
+        run("write_manifest.py", "finalize")
         # the journal extractor reads the prompt hash from a labelled agent and leaves it null for a legacy label
         journal = [{"type": "launched"},
                    {"type": "started", "key": "k1", "agentId": "a1",
@@ -533,6 +591,17 @@ def dry_run() -> None:
         run("extract_workflow_journal.py", "generation", str(tmp / "journal_orphan.jsonl"), "--replace", expect_failure=True)
         check((tmp / "workflow_generation_result.json").read_text(encoding="utf-8") == result_text,
               "a journal with a result record for no started agent is refused and the previous result file is untouched")
+        # two started records sharing one (key, agentId) under two labels would read one response as two calls, and
+        # a started record without key or agentId could match no result: both refused (Codex on PR #52)
+        twin_label = f"{calls[3]['id']} attempt 1 sha256={calls[3]['prompt_sha256']}"
+        twin = journal + [{"type": "started", "key": "k1", "agentId": "a1", "label": twin_label}]
+        (tmp / "journal_twin.jsonl").write_text("".join(json.dumps(j) + "\n" for j in twin), encoding="utf-8")
+        run("extract_workflow_journal.py", "generation", str(tmp / "journal_twin.jsonl"), "--replace", expect_failure=True)
+        nokey = journal + [{"type": "started", "label": twin_label}]
+        (tmp / "journal_nokey.jsonl").write_text("".join(json.dumps(j) + "\n" for j in nokey), encoding="utf-8")
+        run("extract_workflow_journal.py", "generation", str(tmp / "journal_nokey.jsonl"), "--replace", expect_failure=True)
+        check((tmp / "workflow_generation_result.json").read_text(encoding="utf-8") == result_text,
+              "a journal with two started records on one agent identity, or a started record without one, is refused")
         (tmp / "workflow_generation_result.json").write_bytes(result_backup)
         # a rerun whose inputs changed must not inherit the previous manifest's metadata (Codex on PR #52), and a
         # plan that was not re-rendered after the inputs changed is refused even with --reset

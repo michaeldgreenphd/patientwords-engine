@@ -32,6 +32,8 @@ MAX_ATTEMPTS = 2  # the protocol's retry rule: one attempt, at most one retry (P
 BLANK = "___"
 REQUIRED_FIELDS = ["clinical_term", "patient_term", "template", "control"]
 CONTROL_VALUES = ("none", "negative")
+CHECKER_VERDICTS = ("yes", "no", "unclear")  # what the checker may answer (parse_checker.py)
+VERDICT_VALUES = CHECKER_VERDICTS + ("missing",)  # what a checked row may carry; anything else is refused
 CHECKER_BATCH = 30
 N_BROKEN = 20
 N_KNOWN_GOOD = 10
@@ -285,9 +287,10 @@ def checked_problems(checked: list[dict], key: list[dict], blind: list[dict], pl
     """Why checked.jsonl does not belong to the checker plan on disk: an item set that differs from the truth key's
     (an item absent, unknown or repeated), an item whose fields differ from the key and the blind set, or a row
     stamped with another plan's hash (parse_checker.py writes `checker_plan_sha256`, the hash of the
-    checker_batches.json it parsed against, on every row). A count-only check let a previous run's checked.jsonl
-    pass beside a rebuilt checker set and mix its verdicts into a new run's summary (Codex review of PR #52).
-    Empty when checked.jsonl is that plan's parse."""
+    checker_batches.json it parsed against, on every row), or a verdict outside VERDICT_VALUES (a value such as
+    "maybe" would leave both the answered and the missing counts and shrink every denominator unseen). A count-only
+    check let a previous run's checked.jsonl pass beside a rebuilt checker set and mix its verdicts into a new run's
+    summary (Codex review of PR #52). Empty when checked.jsonl is that plan's parse."""
     by_key = {t["id"]: t for t in key}
     by_blind = {b["id"]: b for b in blind}
     ids = [c.get("id") for c in checked]
@@ -297,6 +300,9 @@ def checked_problems(checked: list[dict], key: list[dict], blind: list[dict], pl
                         f"{len(set(by_key) - set(ids))} absent, {len(ids) - len(set(ids))} repeated")
     for c in checked:
         cid = c.get("id")
+        if c.get("verdict") not in VERDICT_VALUES or not isinstance(c.get("reason"), str):
+            problems.append(f"item {cid}: verdict {c.get('verdict')!r} is not one of {list(VERDICT_VALUES)} with a "
+                            f"text reason")
         if cid not in by_key or cid not in by_blind:
             continue
         expected = {**by_key[cid], **by_blind[cid]}
@@ -315,6 +321,19 @@ def read_csv(path: Path) -> list[dict]:
         raise SystemExit(f"{shown}: required input is missing; run the step that writes it first")
     with path.open(newline="", encoding="utf-8") as fh:
         return list(csv.DictReader(fh))
+
+
+def resolve_input(path_str: str, script: str) -> Path:
+    """A result-file argument: the path as given when it exists; otherwise a relative name looked up under the run
+    directory (PILOT_DIR), since the documented commands name the file bare while the scripts run from the checkout
+    (a laptop rerun on 2026-09-30 failed on this); refused by name when neither exists, never read as empty."""
+    p = Path(path_str)
+    if p.exists():
+        return p
+    if not p.is_absolute() and (PILOT / p).exists():
+        print(f"{script}: {path_str} read from the run directory ({PILOT / p})")
+        return PILOT / p
+    raise SystemExit(f"{script}: {path_str} not found in the current directory or under {PILOT}")
 
 
 def attempt_failed(raw: str | None) -> bool:
