@@ -15,7 +15,9 @@ Both plans must have been built from the files on disk: calls.json from the seed
 generation template, and checker_batches.json from the checker template, the seed file and the parsed generation
 rows; a stale plan is refused with or without --reset. `finalize` requires every output of a complete run (the fixed
 list below, one generated/<call>.jsonl per planned call, one raw file per logged attempt), no file under generated/
-that belongs to no planned call, and a checked.jsonl that is the parse of the checker plan on disk. A plan-time
+that belongs to no planned call, a checked.jsonl that is the parse of the checker plan on disk, a review bundle that
+samples it, and a summary.json whose recorded input hashes match the files on disk (with summary.md its recorded
+rendering). A plan-time
 rewrite of a finalized manifest keeps finalized_utc and output_hashes only while every hashed output and every
 script hash is unchanged; otherwise both are cleared and the message says to finalize again (Codex review of PR #52).
 """
@@ -42,11 +44,14 @@ from common import (
     SWAP_TYPES,
     checked_problems,
     generation_problems,
+    load_calls,
+    load_checker_batches,
     read_csv,
     read_jsonl,
     review_problems,
     sha256_file,
     sha256_text,
+    summary_problems,
 )
 
 INPUT_HASH_KEYS = ("seeds_json_sha256", "design_json_sha256")
@@ -117,6 +122,10 @@ def finalize_hashes(calls: dict) -> dict[str, str]:
     if problems:
         raise SystemExit("write_manifest: cannot finalize, the review bundle does not sample the checked rows on "
                          "disk:\n  " + "\n  ".join(problems[:5]))
+    problems = summary_problems(json.loads((PILOT / "summary.json").read_text(encoding="utf-8")))
+    if problems:
+        raise SystemExit("write_manifest: cannot finalize, summary.json was not computed from the files on disk; "
+                         "re-run compute_summary.py:\n  " + "\n  ".join(problems[:5]))
     return {o: sha256_file(PILOT / o) for o in expected}
 
 
@@ -125,13 +134,13 @@ def main(finalize: bool, reset: bool = False) -> None:
     old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     model = json.loads((PILOT / "manifest_model.json").read_text(encoding="utf-8"))
-    calls = json.loads((PILOT / "calls.json").read_text(encoding="utf-8"))
+    calls = load_calls()  # every prompt verified against its stored hash
     protocol_now = sha256_file(PILOT / "PROTOCOL.md")
     current = {"seeds_json_sha256": sha256_file(PILOT / "seeds.json"),
                "design_json_sha256": sha256_file(PILOT / "design.json"),
                "prompt_hashes": {"generation_prompt_template": calls["generation_prompt_template_sha256"]}}
     cb = PILOT / "checker_batches.json"
-    cbdata = json.loads(cb.read_text(encoding="utf-8")) if cb.exists() else None
+    cbdata = load_checker_batches() if cb.exists() else None
     # both plans must have been rendered from the inputs on disk: a changed seed or design file with a stale
     # calls.json would pair new input hashes with old prompts, and a checker template edited after batching, or a
     # re-parsed generation, would be recorded under a stale checker plan's hashes (Codex review of PR #52)

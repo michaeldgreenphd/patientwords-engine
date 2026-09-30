@@ -38,6 +38,7 @@ def unit_tests() -> None:
     a, b, c = (tf.vector(x) for x in ["the patient has ___ today", "the patient has ___ today", "unrelated words here"])
     check(abs(common.cosine(a, b) - 1.0) < 1e-12 and common.cosine(a, c) == 0.0, "tfidf cosine: identical 1, disjoint 0")
     check("___" not in tf.idf, "blank marker is not a token")
+    check(tf.vector("___") is None and tf.vector("a") is None, "a template with no TF-IDF token yields no vector, not zeros")
     m, pairs = common.mean_pairwise([a, b, c])
     check(pairs == 3 and abs(m - 1 / 3) < 1e-12, "mean pairwise over 3 vectors uses 3 pairs")
     dummies = [{"id": f"d{i}"} for i in range(12)]
@@ -58,12 +59,12 @@ def unit_tests() -> None:
     check(common.checker_attempt_failed(None) and common.checker_attempt_failed({"verdicts": []})
           and not common.checker_attempt_failed({"verdicts": [{"id": "c1", "equivalent": "yes", "reason": ""}]}),
           "checker retry rule: nothing or an empty verdict list fails; a verdict list does not")
-    check(common.control_is_faithful({"clinical_term": "Chest pain", "patient_term": "chest  pain."}), "control fidelity")
+    check(common.control_is_faithful({"clinical_term": "Alpha beta", "patient_term": "alpha  beta."}), "control fidelity")
     check(len(common.SPECIALTIES) == 3 and len(common.SWAP_DEFINITIONS) == 3, "design factors load from design.json")
     # surface form: casing, punctuation and spacing removed, letters of every script kept (Codex on PR #52)
-    check(common.surface_key("Café au lait") == "caféaulait"
-          and common.surface_key("Пневмония, острая") == "пневмонияострая"
-          and common.surface_key("Chest pain") == common.surface_key("chest  pain."),
+    check(common.surface_key("Résumé, naïve") == "résuménaïve"
+          and common.surface_key("Слово, второе") == "слововторое"
+          and common.surface_key("Alpha beta") == common.surface_key("alpha  beta."),
           "surface_key keeps letters of every script and removes only casing, punctuation and spacing")
     # the seed contract is checked before any plan (Codex on PR #52)
     good_seed = {"id": "s1", "clinical_term": "a", "patient_term": "b", "template": "x ___ y", "specialty": "s",
@@ -120,7 +121,7 @@ def fake_rows(call: dict, r: random.Random) -> str:
     for i in range(4):
         lines.append(json.dumps({"clinical_term": f"Concept {i}", "patient_term": f"concept {i}.",
                                  "template": "She describes ___ at night, and", "control": "negative"}))
-    if call["arm"] == "A" and call["cell"].startswith("neurology"):
+    if call["arm"] == "A" and call["specialty"] == common.SPECIALTIES[1]:  # the specialty name stays in design.json
         lines.append('{"clinical_term": "x", "patient_term": "y", "template": "no blank here", "control": "none"}')
         lines.append("not json at all")
     return "\n".join(lines)
@@ -243,12 +244,12 @@ def dry_run() -> None:
               "--replace rewrites the same verdicts, each row stamped with the checker plan's hash")
         run("make_review_sheet.py")
         # a sheet carrying human annotations is never regenerated (Codex on PR #52)
-        original_sheet = (tmp / "review_sheet.csv").read_text(encoding="utf-8")
-        lines = original_sheet.splitlines()
+        original_sheet = (tmp / "review_sheet.csv").read_bytes()  # bytes, so the restore is exact
+        lines = original_sheet.decode("utf-8").splitlines()
         lines[1] = lines[1][: lines[1].rfind(",,")] + ",reviewed,a note"  # fill my_label and my_notes on row 1
         (tmp / "review_sheet.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
         run("make_review_sheet.py", expect_failure=True)
-        (tmp / "review_sheet.csv").write_text(original_sheet, encoding="utf-8")
+        (tmp / "review_sheet.csv").write_bytes(original_sheet)
         run("compute_summary.py")
         s = json.loads((tmp / "summary.json").read_text())
         check(s["run"]["n_retried_calls"] == 1, "one retried call recorded")
@@ -293,13 +294,34 @@ def dry_run() -> None:
         # refused by the summary and by the checker-set builder (Codex on PR #52)
         calls_text = (tmp / "calls.json").read_text(encoding="utf-8")
         calls_doc = json.loads(calls_text)
-        calls_doc["calls"][0]["prompt_sha256"] = "0" * 64
-        (tmp / "calls.json").write_text(json.dumps(calls_doc), encoding="utf-8")
+        calls_doc["calls"][0]["prompt"] += "\nedited after the run"  # a consistent re-plan: prompt and hash agree
+        calls_doc["calls"][0]["prompt_sha256"] = common.sha256_text(calls_doc["calls"][0]["prompt"])
+        (tmp / "calls.json").write_text(json.dumps(calls_doc, ensure_ascii=False), encoding="utf-8")
         run("compute_summary.py", expect_failure=True)
         run("build_checker_set.py", expect_failure=True)
         (tmp / "calls.json").write_text(calls_text, encoding="utf-8")
         check((tmp / "summary.json").read_text(encoding="utf-8") == summary_text,
               "outputs parsed under another prompt hash are refused by the summary and the checker-set builder")
+        # a plan whose stored hash is not the hash of its prompt is refused by every reader, before any workflow
+        # script or request bundle is written (Codex on PR #52)
+        calls_doc = json.loads(calls_text)
+        calls_doc["calls"][0]["prompt_sha256"] = "0" * 64
+        (tmp / "calls.json").write_text(json.dumps(calls_doc, ensure_ascii=False), encoding="utf-8")
+        run("make_workflow_scripts.py", "generation", expect_failure=True)
+        run("build_api_requests.py", "generation", "--model", "example-model", expect_failure=True)
+        run("compute_summary.py", expect_failure=True)
+        (tmp / "calls.json").write_text(calls_text, encoding="utf-8")
+        plan_doc = json.loads(plan_text)
+        plan_doc["batches"][0]["prompt_sha256"] = "0" * 64
+        (tmp / "checker_batches.json").write_text(json.dumps(plan_doc, ensure_ascii=False), encoding="utf-8")
+        run("make_workflow_scripts.py", "checker", expect_failure=True)
+        run("parse_checker.py", str(tmp / "wf_chk.json"), "--replace", expect_failure=True)
+        (tmp / "checker_batches.json").write_text(plan_text, encoding="utf-8")
+        check(not list((tmp / "workflows").glob("*.js")) if (tmp / "workflows").exists() else True,
+              "an inconsistent plan is refused by the workflow-script and request builders and the parsers; nothing written")
+        run("make_workflow_scripts.py", "generation")
+        run("make_workflow_scripts.py", "checker")
+        check(len(list((tmp / "workflows").glob("*.js"))) == 2, "consistent plans yield the two workflow scripts")
         # the review bundle must sample these checked rows: a map stamped with another plan, or a key verdict that
         # differs from the checked row, is refused (Codex on PR #52)
         map_text = (tmp / "review_map.json").read_text(encoding="utf-8")
@@ -309,12 +331,12 @@ def dry_run() -> None:
         (tmp / "review_map.json").write_text(json.dumps(map_doc), encoding="utf-8")
         run("compute_summary.py", expect_failure=True)
         (tmp / "review_map.json").write_text(map_text, encoding="utf-8")
-        key_text = (tmp / "review_key.csv").read_text(encoding="utf-8")
-        klines = key_text.splitlines()
+        key_bytes = (tmp / "review_key.csv").read_bytes()  # bytes: the CSV's CRLF endings must survive the restore
+        klines = key_bytes.decode("utf-8").splitlines()
         klines[1] = klines[1][: klines[1].rfind(",") + 1] + ("no" if klines[1].endswith("yes") else "yes")
         (tmp / "review_key.csv").write_text("\n".join(klines) + "\n", encoding="utf-8")
         run("compute_summary.py", expect_failure=True)
-        (tmp / "review_key.csv").write_text(key_text, encoding="utf-8")
+        (tmp / "review_key.csv").write_bytes(key_bytes)
         check((tmp / "summary.json").read_text(encoding="utf-8") == summary_text,
               "a review bundle from another plan, or a key verdict that differs from the checked row, is refused")
         (tmp / "scripts").mkdir()  # a stand-in for the code the manifest hashes; the dry run itself runs HERE's scripts
@@ -332,6 +354,16 @@ def dry_run() -> None:
               and {"checked.jsonl", "summary.json", "HANDOFF.md", f"generated/{calls[-1]['id']}.jsonl",
                    f"generated/raw/{calls[0]['id']}__attempt1.txt"} <= set(mf["output_hashes"]),
               "finalize hashes every required output, per-call files included")
+        # a summary that predates a change to one of its inputs is refused at finalize, even when every other
+        # validator passes: a verdict's reason is compared by none of them (Codex on PR #52)
+        checked_now = (tmp / "checked.jsonl").read_text(encoding="utf-8")
+        rows_now = common.read_jsonl(tmp / "checked.jsonl")
+        rows_now[0]["reason"] = "edited after the summary was computed"
+        common.write_jsonl(tmp / "checked.jsonl", rows_now)
+        run("write_manifest.py", "finalize", expect_failure=True)
+        (tmp / "checked.jsonl").write_text(checked_now, encoding="utf-8")
+        check(json.loads((tmp / "manifest.json").read_text(encoding="utf-8")) == mf,
+              "finalize refuses a summary computed from earlier inputs and leaves the manifest as it was")
         (tmp / "summary.json").rename(tmp / "summary.json.aside")
         run("write_manifest.py", "finalize", expect_failure=True)
         (tmp / "summary.json.aside").rename(tmp / "summary.json")
@@ -374,7 +406,11 @@ def dry_run() -> None:
                    {"type": "result", "key": "k3", "agentId": "a3",
                     "result": {"clinical_term": "a", "patient_term": "b", "template": "x ___ y", "control": "none"}}]
         (tmp / "journal.jsonl").write_text("".join(json.dumps(j) + "\n" for j in journal), encoding="utf-8")
-        run("extract_workflow_journal.py", "generation", str(tmp / "journal.jsonl"))
+        run("extract_workflow_journal.py", "generation", str(tmp / "journal.jsonl"), "--replace")  # the run's file exists
+        extracted = (tmp / "workflow_generation_result.json").read_text(encoding="utf-8")
+        run("extract_workflow_journal.py", "generation", str(tmp / "journal.jsonl"), expect_failure=True)
+        check((tmp / "workflow_generation_result.json").read_text(encoding="utf-8") == extracted,
+              "a second extraction without --replace is refused and the result file is untouched")
         ext = {c["id"]: c for c in json.loads((tmp / "workflow_generation_result.json").read_text(encoding="utf-8"))["calls"]}
         check(ext[calls[0]["id"]]["prompt_sha256"] == calls[0]["prompt_sha256"] and ext[calls[1]["id"]]["prompt_sha256"] is None,
               "the journal extractor carries the prompt hash from the agent label and null without it")
@@ -387,7 +423,7 @@ def dry_run() -> None:
                          {"type": "result", "key": "k4", "agentId": "a4", "result": "{}"}]
         (tmp / "journal_dup.jsonl").write_text("".join(json.dumps(j) + "\n" for j in dup), encoding="utf-8")
         result_text = (tmp / "workflow_generation_result.json").read_text(encoding="utf-8")
-        run("extract_workflow_journal.py", "generation", str(tmp / "journal_dup.jsonl"), expect_failure=True)
+        run("extract_workflow_journal.py", "generation", str(tmp / "journal_dup.jsonl"), "--replace", expect_failure=True)
         check((tmp / "workflow_generation_result.json").read_text(encoding="utf-8") == result_text,
               "a journal with two agents on one label is refused and the previous result file is untouched")
         # a rerun whose inputs changed must not inherit the previous manifest's metadata (Codex on PR #52), and a

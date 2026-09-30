@@ -24,7 +24,7 @@ import argparse
 import datetime as dt
 import json
 
-from common import PILOT, REQUIRED_FIELDS
+from common import PILOT, REQUIRED_FIELDS, load_calls, load_checker_batches
 
 VERDICT_SCHEMA = {
     "type": "object",
@@ -102,11 +102,11 @@ def main() -> None:
     a = ap.parse_args()
     built = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     if a.which == "generation":
-        items = json.loads((PILOT / "calls.json").read_text(encoding="utf-8"))["calls"]
+        items = load_calls()["calls"]  # refused unless every prompt hashes to its stored prompt_sha256
         requests = [{"id": c["id"], "arm": c["arm"], "cell": c["cell"], "prompt_sha256": c["prompt_sha256"],
                      "request": build_request(a.model, c["prompt"], a.max_tokens, a.effort, None)} for c in items]
     else:
-        items = json.loads((PILOT / "checker_batches.json").read_text(encoding="utf-8"))["batches"]
+        items = load_checker_batches()["batches"]
         requests = [{"batch_id": b["batch_id"], "item_ids": b["item_ids"], "prompt_sha256": b["prompt_sha256"],
                      "request": build_request(a.model, b["prompt"], a.max_tokens, a.effort, VERDICT_SCHEMA)} for b in items]
     out = {"api_meta": {"purpose": "request bodies only; nothing was sent (engine execution model: paid generation "

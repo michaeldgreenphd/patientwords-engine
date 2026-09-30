@@ -80,6 +80,7 @@ Rows that exactly duplicate a seed pair (case-insensitive): 0.
 ## Estimand 3: diversity (mean pairwise TF-IDF cosine of templates; lower means more diverse)
 
 TF-IDF fitted on 294 templates (all non-control generated rows plus the seeds).
+Templates with no TF-IDF token (no measurable similarity; excluded from every cosine and counted): 0 generated (Arm A 0, Arm B 0), 0 seed.
 
 | Arm | Cell | Rows | Pairs | Mean cosine |
 |---|---|---|---|---|

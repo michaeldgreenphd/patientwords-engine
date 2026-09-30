@@ -228,13 +228,16 @@ class Tfidf:
                 df[t] = df.get(t, 0) + 1
         self.idf = {t: math.log((1 + self.n) / (1 + c)) + 1.0 for t, c in df.items()}
 
-    def vector(self, doc: str) -> dict[str, float]:
+    def vector(self, doc: str) -> dict[str, float] | None:
+        """The L2-normalised TF-IDF vector of doc, or None when doc has no token of two or more word characters:
+        such a template has no measurable similarity, and an empty vector would score 0 against everything and
+        pass as maximally diverse (Codex review of PR #52). Callers exclude and count None."""
         counts: dict[str, int] = {}
         for t in tokenize(doc):
             counts[t] = counts.get(t, 0) + 1
         vec = {t: c * self.idf.get(t, math.log((1 + self.n) / 1) + 1.0) for t, c in counts.items()}
         norm = math.sqrt(sum(v * v for v in vec.values()))
-        return {t: v / norm for t, v in vec.items()} if norm > 0 else {}
+        return {t: v / norm for t, v in vec.items()} if norm > 0 else None
 
 
 def cosine(a: dict[str, float], b: dict[str, float]) -> float:
@@ -387,4 +390,60 @@ def review_problems(review_map: dict, sheet: list[dict], key: list[dict], checke
         if k and (k.get("arm") != c.get("arm") or k.get("cell") != c.get("cell")
                   or k.get("checker_verdict") != c.get("verdict")):
             problems.append(f"{rid}: review_key.csv fields differ from checked row {row_id}")
+    return problems
+
+
+def plan_hash_problems(items: list[dict], id_key: str) -> list[str]:
+    """Items of a plan whose stored `prompt_sha256` is not the SHA-256 of their `prompt`: an edited or inconsistently
+    produced plan would otherwise send one text under another text's hash, and every binding downstream would carry
+    the stale hash (Codex review of PR #52)."""
+    return [f"{it.get(id_key)}: prompt_sha256 {str(it.get('prompt_sha256'))[:12]!r} is not the hash of its prompt"
+            for it in items if not isinstance(it.get("prompt"), str) or sha256_text(it["prompt"]) != it.get("prompt_sha256")]
+
+
+def load_calls() -> dict:
+    """calls.json, refused unless every call's prompt hashes to its stored prompt_sha256 and the template hash agrees
+    with the input hashes it records. Every reader of the plan goes through here."""
+    calls = json.loads((PILOT / "calls.json").read_text(encoding="utf-8"))
+    problems = plan_hash_problems(calls.get("calls", []), "id")
+    ih = calls.get("input_hashes")
+    if isinstance(ih, dict) and ih.get("generation_prompt_template_sha256") != calls.get("generation_prompt_template_sha256"):
+        problems.append("generation_prompt_template_sha256 differs from input_hashes.generation_prompt_template_sha256")
+    if problems:
+        raise SystemExit("calls.json: refusing an inconsistent plan; re-run plan_calls.py:\n  " + "\n  ".join(problems[:5]))
+    return calls
+
+
+def load_checker_batches() -> dict:
+    """checker_batches.json, refused unless every batch's prompt hashes to its stored prompt_sha256 and the template
+    hash agrees with the input hashes it records. Every reader of the checker plan goes through here."""
+    plan = json.loads((PILOT / "checker_batches.json").read_text(encoding="utf-8"))
+    problems = plan_hash_problems(plan.get("batches", []), "batch_id")
+    ih = plan.get("input_hashes")
+    if isinstance(ih, dict) and ih.get("checker_prompt_template_sha256") != plan.get("checker_prompt_template_sha256"):
+        problems.append("checker_prompt_template_sha256 differs from input_hashes.checker_prompt_template_sha256")
+    if problems:
+        raise SystemExit("checker_batches.json: refusing an inconsistent plan; re-run build_checker_set.py:\n  "
+                         + "\n  ".join(problems[:5]))
+    return plan
+
+
+SUMMARY_INPUTS = ("seeds.json", "design.json", "calls.json", "call_log.jsonl", "generated/all_rows.jsonl",
+                  "generated/format_failures.jsonl", "checker_batches.json", "checker_set.jsonl", "checker_key.jsonl",
+                  "checked.jsonl", "review_map.json", "review_sheet.csv", "review_key.csv")
+
+
+def summary_problems(summary: dict) -> list[str]:
+    """Why summary.json does not stand for the files on disk: an input whose hash differs from the one the summary
+    recorded when it was computed (or none recorded), or a summary.md that is not the rendering the summary recorded.
+    A finalize that only hashed the summary files would seal a summary computed from earlier inputs (Codex review of
+    PR #52)."""
+    recorded = summary.get("input_hashes")
+    if not isinstance(recorded, dict):
+        return ["summary.json records no input_hashes; re-run compute_summary.py"]
+    problems = [f"{name}: changed since compute_summary.py ran (or missing)" for name, h in recorded.items()
+                if not (PILOT / name).exists() or sha256_file(PILOT / name) != h]
+    md = PILOT / "summary.md"
+    if summary.get("summary_md_sha256") != (sha256_file(md) if md.exists() else None):
+        problems.append("summary.md is not the rendering recorded in summary.json")
     return problems

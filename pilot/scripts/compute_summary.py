@@ -12,6 +12,7 @@ from common import (
     MASTER_SEED,
     N_BOOT,
     PILOT,
+    SUMMARY_INPUTS,
     Tfidf,
     cell_id,
     cells,
@@ -19,6 +20,8 @@ from common import (
     cosine,
     dup_key,
     generation_problems,
+    load_calls,
+    load_checker_batches,
     load_seeds,
     mean_cross,
     mean_pairwise,
@@ -121,13 +124,13 @@ def pct(vals: list[float]) -> dict:
 
 def main() -> None:
     seeds = load_seeds()
-    calls = json.loads((PILOT / "calls.json").read_text(encoding="utf-8"))
+    calls = load_calls()  # every prompt verified against its stored hash
     call_log = read_jsonl(PILOT / "call_log.jsonl")
     rows = read_jsonl(PILOT / "generated" / "all_rows.jsonl")
     failures = read_jsonl(PILOT / "generated" / "format_failures.jsonl")
     checked = read_jsonl(PILOT / "checked.jsonl")
     plan_path = PILOT / "checker_batches.json"
-    checker_meta = json.loads(plan_path.read_text(encoding="utf-8"))
+    checker_meta = load_checker_batches()
     # the checker plan must have been built from the generation rows and seeds on disk, and checked.jsonl must be
     # that plan's parse: a count-only check let a previous run's verdicts join a new run's rows (Codex review of
     # PR #52)
@@ -176,6 +179,9 @@ def main() -> None:
                          "broken_pairs": f"random.Random('{MASTER_SEED}:broken')",
                          "checker_shuffle": f"random.Random('{MASTER_SEED}:checker_shuffle')",
                          "review_sample": f"random.Random('{MASTER_SEED}:review')"}}
+    # the files this summary was computed from, so finalize can refuse a summary that predates any of them (Codex
+    # review of PR #52)
+    S["input_hashes"] = {name: sha256_file(PILOT / name) for name in SUMMARY_INPUTS}
 
     # ---- run overview
     finals = [e for e in call_log if e.get("is_final")]  # one per planned call, checked by generation_problems
@@ -233,11 +239,21 @@ def main() -> None:
 
     # ---- E3 diversity: TF-IDF fit on all non-control templates plus seed templates
     tf = Tfidf([r["template"] for r in gen] + [s["template"] for s in seeds])
-    vec = {r["id"]: tf.vector(r["template"]) for r in gen}
-    seed_vecs = [tf.vector(s["template"]) for s in seeds]
-    by_arm_cell = {a: {c: [vec[r["id"]] for r in gen if r["arm"] == a and r["cell"] == c] for c in cell_ids} for a in ARMS}
+    # a template with no TF-IDF token has no measurable similarity: it is excluded from every cosine and counted,
+    # never scored as 0 against everything and passed as maximally diverse (Codex review of PR #52)
+    vec_all = {r["id"]: tf.vector(r["template"]) for r in gen}
+    unmeasurable = [r for r in gen if vec_all[r["id"]] is None]
+    vec = {k: v for k, v in vec_all.items() if v is not None}
+    seed_vec_all = [(s["id"], tf.vector(s["template"])) for s in seeds]
+    seed_vecs = [v for _, v in seed_vec_all if v is not None]
+    by_arm_cell = {a: {c: [vec[r["id"]] for r in gen if r["arm"] == a and r["cell"] == c and r["id"] in vec]
+                       for c in cell_ids} for a in ARMS}
     E3: dict = {"within_cell": {a: {} for a in ARMS}, "arm_mean_of_cells": {}, "vs_seeds": {}, "diff_A_minus_B": {},
-                "n_boot": N_BOOT, "bootstrap_seed": S["seeds"]["bootstrap"], "tfidf_fit_docs": tf.n}
+                "n_boot": N_BOOT, "bootstrap_seed": S["seeds"]["bootstrap"], "tfidf_fit_docs": tf.n,
+                "unmeasurable_templates": {"n": len(unmeasurable),
+                                           "by_arm": {a: sum(1 for r in unmeasurable if r["arm"] == a) for a in ARMS},
+                                           "row_ids": [r["id"] for r in unmeasurable]},
+                "unmeasurable_seed_templates": [sid for sid, v in seed_vec_all if v is None]}
     for a in ARMS:
         for c in cell_ids:
             m, pairs = mean_pairwise(by_arm_cell[a][c])
@@ -301,9 +317,7 @@ def main() -> None:
     S["review"] = {"n": len(review.get("map", {})), "allocation": review.get("allocation"),
                    "checked_by_arm": review.get("n_checked_by_arm")}
 
-    (PILOT / "summary.json").write_text(json.dumps(S, indent=2) + "\n", encoding="utf-8")
-
-    # ---- markdown, rendered from S only
+    # ---- markdown, rendered from S only (summary.json is written after it, carrying the rendering's hash)
     L = []
     L.append("# Pilot summary (computed by scripts/compute_summary.py)")
     L.append("")
@@ -376,6 +390,10 @@ def main() -> None:
     L.append("## Estimand 3: diversity (mean pairwise TF-IDF cosine of templates; lower means more diverse)")
     L.append("")
     L.append(f"TF-IDF fitted on {E3['tfidf_fit_docs']} templates (all non-control generated rows plus the seeds).")
+    U = E3["unmeasurable_templates"]
+    L.append(f"Templates with no TF-IDF token (no measurable similarity; excluded from every cosine and counted): "
+             f"{U['n']} generated (Arm A {U['by_arm']['A']}, Arm B {U['by_arm']['B']}), "
+             f"{len(E3['unmeasurable_seed_templates'])} seed.")
     L.append("")
     L.append("| Arm | Cell | Rows | Pairs | Mean cosine |\n|---|---|---|---|---|")
     for a in ARMS:
@@ -442,6 +460,8 @@ def main() -> None:
              f"by arm {S['review']['checked_by_arm']}. Agreement is not computed here.")
     L.append("")
     (PILOT / "summary.md").write_text("\n".join(L), encoding="utf-8")
+    S["summary_md_sha256"] = sha256_file(PILOT / "summary.md")  # the rendering this summary stands for
+    (PILOT / "summary.json").write_text(json.dumps(S, indent=2) + "\n", encoding="utf-8")
     print("summary.json and summary.md written")
 
 

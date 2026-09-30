@@ -17,6 +17,7 @@ from common import (
     cell_id,
     cells,
     generation_problems,
+    load_calls,
     load_seeds,
     read_jsonl,
     rng,
@@ -48,7 +49,7 @@ def eligible_targets(cand: list[dict]) -> dict[str, list[dict]]:
 
 def main() -> None:
     all_rows = read_jsonl(PILOT / "generated" / "all_rows.jsonl")
-    calls = json.loads((PILOT / "calls.json").read_text(encoding="utf-8"))
+    calls = load_calls()
     problems = generation_problems(calls, read_jsonl(PILOT / "call_log.jsonl"), all_rows)
     if problems:  # rows from another plan must not enter the checker set (Codex review of PR #52)
         raise SystemExit("build_checker_set: the parsed generation is not the call plan's; re-run parse_generation.py "

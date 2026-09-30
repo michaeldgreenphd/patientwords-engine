@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import sys
 
-from common import PILOT, REQUIRED_FIELDS
+from common import PILOT, REQUIRED_FIELDS, load_calls, load_checker_batches
 
 GENERATION = """export const meta = {
   name: 'pilot-generation',
@@ -101,14 +101,14 @@ def main(which: str) -> None:
     out_dir = PILOT / "workflows"
     out_dir.mkdir(exist_ok=True)
     if which == "generation":
-        calls = json.loads((PILOT / "calls.json").read_text(encoding="utf-8"))["calls"]
+        calls = load_calls()["calls"]  # refused unless every prompt hashes to its stored prompt_sha256
         payload = [{"id": c["id"], "arm": c["arm"], "cell": c["cell"], "prompt_sha256": c["prompt_sha256"],
                     "prompt": c["prompt"]} for c in calls]
         text = GENERATION.replace("__REQUIRED__", json.dumps(REQUIRED_FIELDS)).replace(
             "__CALLS__", json.dumps(payload, ensure_ascii=False))
         path = out_dir / "generation.workflow.js"
     elif which == "checker":
-        batches = json.loads((PILOT / "checker_batches.json").read_text(encoding="utf-8"))["batches"]
+        batches = load_checker_batches()["batches"]
         payload = [{"batch_id": b["batch_id"], "prompt_sha256": b["prompt_sha256"], "prompt": b["prompt"]}
                    for b in batches]
         text = CHECKER.replace("__BATCHES__", json.dumps(payload, ensure_ascii=False))

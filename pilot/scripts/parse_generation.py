@@ -26,6 +26,7 @@ from common import (
     cells,
     control_is_faithful,
     lines_of,
+    load_calls,
     validate_line,
     write_jsonl,
 )
@@ -87,7 +88,7 @@ def validate_result(result: object, planned: dict[str, dict], unbound: bool = Fa
 
 def main(result_path: str, replace: bool = False, unbound: bool = False) -> None:
     result = json.loads(Path(result_path).read_text(encoding="utf-8"))
-    calls_meta = {c["id"]: c for c in json.loads((PILOT / "calls.json").read_text(encoding="utf-8"))["calls"]}
+    calls_meta = {c["id"]: c for c in load_calls()["calls"]}  # every prompt verified against its stored hash
     by_id = validate_result(result, calls_meta, unbound)  # checked in full before any previous output is removed
     binding = "prompt_sha256" if not unbound else "none (--unbound: result recorded before the binding existed)"
     cell_order = {cell_id(s, t): i for i, (s, t) in enumerate(cells())}

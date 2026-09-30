@@ -18,7 +18,15 @@ import json
 import sys
 from pathlib import Path
 
-from common import MAX_ATTEMPTS, PILOT, checker_attempt_failed, read_jsonl, sha256_file, write_jsonl
+from common import (
+    MAX_ATTEMPTS,
+    PILOT,
+    checker_attempt_failed,
+    load_checker_batches,
+    read_jsonl,
+    sha256_file,
+    write_jsonl,
+)
 
 VALID = ("yes", "no", "unclear")
 
@@ -75,7 +83,7 @@ def previous_outputs() -> list[Path]:
 def main(result_path: str, replace: bool = False, unbound: bool = False) -> None:
     result = json.loads(Path(result_path).read_text(encoding="utf-8"))
     plan_path = PILOT / "checker_batches.json"
-    batches = json.loads(plan_path.read_text(encoding="utf-8"))["batches"]
+    batches = load_checker_batches()["batches"]  # every prompt verified against its stored hash
     by_id = validate_result(result, {b["batch_id"]: b["prompt_sha256"] for b in batches}, unbound)
     stale = previous_outputs()
     if stale and not replace:

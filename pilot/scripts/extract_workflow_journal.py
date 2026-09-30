@@ -2,8 +2,11 @@
 consume, without the raw text passing through anyone's hands. The journal holds one "started" record per agent
 (label "<id> attempt <n>", key, agentId) and one "result" record per finished agent (key, agentId, result).
 
-  python3 scripts/extract_workflow_journal.py generation <journal.jsonl> -> workflow_generation_result.json
-  python3 scripts/extract_workflow_journal.py checker    <journal.jsonl> -> workflow_checker_result.json
+  python3 scripts/extract_workflow_journal.py generation <journal.jsonl> [--replace] -> workflow_generation_result.json
+  python3 scripts/extract_workflow_journal.py checker    <journal.jsonl> [--replace] -> workflow_checker_result.json
+
+An existing result file is never written over without --replace. The plan files are read through common.load_calls
+and load_checker_batches, which refuse a plan whose stored prompt hashes are not the hashes of its prompts.
 
 An agent that started but has no result record is recorded as a null return. Every record type seen is counted so
 an unexpected journal shape is visible rather than silently dropped. Two agents carrying one `<id> attempt <n>`
@@ -22,12 +25,12 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from common import PILOT
+from common import PILOT, load_calls, load_checker_batches
 
 LABEL = re.compile(r"^(?P<id>.+?) attempt (?P<n>\d+)(?: sha256=(?P<sha>[0-9a-f]{64}))?$")
 
 
-def main(which: str, journal_path: str) -> None:
+def main(which: str, journal_path: str, replace: bool = False) -> None:
     started: list[dict] = []
     results: dict[tuple, object] = {}
     types: Counter = Counter()
@@ -87,7 +90,7 @@ def main(which: str, journal_path: str) -> None:
     def sha_of(i: str) -> str | None:
         return next(iter(shas[i])) if i in shas else None
     if which == "generation":
-        meta = {c["id"]: c for c in json.loads((PILOT / "calls.json").read_text(encoding="utf-8"))["calls"]}
+        meta = {c["id"]: c for c in load_calls()["calls"]}
         items = [{"id": i, "arm": meta[i]["arm"], "cell": meta[i]["cell"], "prompt_sha256": sha_of(i),
                   "attempts": [per_item[i][n] for n in sorted(per_item[i])]} for i in meta if i in per_item]
         out = {"source": journal_path, "record_types": dict(types), "unlabeled_agents": unlabeled,
@@ -95,13 +98,16 @@ def main(which: str, journal_path: str) -> None:
         path = PILOT / "workflow_generation_result.json"
         missing = [i for i in meta if i not in per_item]
     else:
-        ids = [b["batch_id"] for b in json.loads((PILOT / "checker_batches.json").read_text(encoding="utf-8"))["batches"]]
+        ids = [b["batch_id"] for b in load_checker_batches()["batches"]]
         items = [{"batch_id": i, "prompt_sha256": sha_of(i), "attempts": [per_item[i][n] for n in sorted(per_item[i])]}
                  for i in ids if i in per_item]
         out = {"source": journal_path, "record_types": dict(types), "unlabeled_agents": unlabeled, "batches": items}
         path = PILOT / "workflow_checker_result.json"
         missing = [i for i in ids if i not in per_item]
     out["items_without_any_agent"] = missing
+    if path.exists() and not replace:  # a partial extraction must not replace a complete one (Codex review of PR #52)
+        raise SystemExit(f"{path.name} exists from a previous extraction; pass --replace to write over it (the journal "
+                         f"was read and checked; nothing was written)")
     path.write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     n_attempts = sum(len(x["attempts"]) for x in items)
     n_bound = sum(1 for x in items if x["prompt_sha256"])
@@ -111,4 +117,4 @@ def main(which: str, journal_path: str) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], replace="--replace" in sys.argv[3:])
