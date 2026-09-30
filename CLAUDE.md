@@ -5,14 +5,15 @@ the files cannot drift. The line above imports it into every Claude Code session
 
 ## Claude Code specifics
 
-- After opening a pull request, follow it until it is merged or closed. The
-  tools depend on where the session runs. (The daily-cycle session is the
-  exception: it opens no PRs and schedules nothing.)
-  - Cloud session (it has both tools): subscribe to the PR's activity
+- After opening a pull request, follow it until it is merged or closed. How
+  depends on whether the session has the cloud tools `subscribe_pr_activity`
+  and `send_later`. (The daily-cycle session is the exception: it opens no PRs
+  and schedules nothing.)
+  - Cloud session (it has both): subscribe to the PR's activity
     (`subscribe_pr_activity`) so Codex's review wakes the session, and schedule
     a fallback check-in about an hour out (`send_later`) until the PR is merged
     or closed; re-arm it silently if nothing changed.
-  - Local session (it has neither tool, so nothing wakes it): before ending a
+  - Local session (it has neither, so no PR event wakes it): before ending a
     turn, check the PR with
     `~/.local/bin/gh pr view <n> --json reviews,comments,headRefOid,mergeStateStatus`
     (or `~/.local/bin/gh pr checks <n>`), and tell the owner when to check again.
