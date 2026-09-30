@@ -91,6 +91,7 @@ def main(which: str, journal_path: str, replace: bool = False) -> None:
         return next(iter(shas[i])) if i in shas else None
     if which == "generation":
         meta = {c["id"]: c for c in load_calls()["calls"]}
+        planned_ids = set(meta)
         items = [{"id": i, "arm": meta[i]["arm"], "cell": meta[i]["cell"], "prompt_sha256": sha_of(i),
                   "attempts": [per_item[i][n] for n in sorted(per_item[i])]} for i in meta if i in per_item]
         out = {"source": journal_path, "record_types": dict(types), "unlabeled_agents": unlabeled,
@@ -99,12 +100,17 @@ def main(which: str, journal_path: str, replace: bool = False) -> None:
         missing = [i for i in meta if i not in per_item]
     else:
         ids = [b["batch_id"] for b in load_checker_batches()["batches"]]
+        planned_ids = set(ids)
         items = [{"batch_id": i, "prompt_sha256": sha_of(i), "attempts": [per_item[i][n] for n in sorted(per_item[i])]}
                  for i in ids if i in per_item]
         out = {"source": journal_path, "record_types": dict(types), "unlabeled_agents": unlabeled, "batches": items}
         path = PILOT / "workflow_checker_result.json"
         missing = [i for i in ids if i not in per_item]
     out["items_without_any_agent"] = missing
+    foreign = sorted(set(per_item) - planned_ids)
+    if foreign:  # a misspelled or foreign id would otherwise vanish and its planned item read as no response
+        raise SystemExit(f"{journal_path}: refusing the journal; nothing was written: {len(foreign)} labelled "
+                         f"agent(s) belong to no planned item (first: {foreign[0]!r}) (Codex review of PR #52)")
     if path.exists() and not replace:  # a partial extraction must not replace a complete one (Codex review of PR #52)
         raise SystemExit(f"{path.name} exists from a previous extraction; pass --replace to write over it (the journal "
                          f"was read and checked; nothing was written)")

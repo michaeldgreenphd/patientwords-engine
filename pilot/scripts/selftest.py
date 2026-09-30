@@ -302,6 +302,15 @@ def dry_run() -> None:
         (tmp / "calls.json").write_text(calls_text, encoding="utf-8")
         check((tmp / "summary.json").read_text(encoding="utf-8") == summary_text,
               "outputs parsed under another prompt hash are refused by the summary and the checker-set builder")
+        # a log that names the right plan beside rows it did not count (a parse interrupted between the two
+        # writes) is refused (Codex on PR #52)
+        rows_bytes = (tmp / "generated" / "all_rows.jsonl").read_bytes()
+        common.write_jsonl(tmp / "generated" / "all_rows.jsonl", common.read_jsonl(tmp / "generated" / "all_rows.jsonl")[:-1])
+        run("compute_summary.py", expect_failure=True)
+        run("build_checker_set.py", expect_failure=True)
+        (tmp / "generated" / "all_rows.jsonl").write_bytes(rows_bytes)
+        check((tmp / "summary.json").read_text(encoding="utf-8") == summary_text,
+              "rows that do not match the final log records' counts are refused by the summary and the checker-set builder")
         # a plan whose stored hash is not the hash of its prompt is refused by every reader, before any workflow
         # script or request bundle is written (Codex on PR #52)
         calls_doc = json.loads(calls_text)
@@ -364,6 +373,21 @@ def dry_run() -> None:
         (tmp / "checked.jsonl").write_text(checked_now, encoding="utf-8")
         check(json.loads((tmp / "manifest.json").read_text(encoding="utf-8")) == mf,
               "finalize refuses a summary computed from earlier inputs and leaves the manifest as it was")
+        # a summary whose recorded input hashes omit one of the inputs is refused, not validated on the rest
+        summary_bytes = (tmp / "summary.json").read_bytes()
+        sdoc = json.loads(summary_bytes.decode("utf-8"))
+        del sdoc["input_hashes"]["checked.jsonl"]
+        (tmp / "summary.json").write_text(json.dumps(sdoc, indent=2) + "\n", encoding="utf-8")
+        run("write_manifest.py", "finalize", expect_failure=True)
+        (tmp / "summary.json").write_bytes(summary_bytes)
+        # a per-call file that does not hold its call's rows from all_rows.jsonl is refused at finalize
+        first_call_file = tmp / "generated" / f"{calls[0]['id']}.jsonl"
+        call_bytes = first_call_file.read_bytes()
+        first_call_file.write_bytes(b"")
+        run("write_manifest.py", "finalize", expect_failure=True)
+        first_call_file.write_bytes(call_bytes)
+        check(json.loads((tmp / "manifest.json").read_text(encoding="utf-8")) == mf,
+              "finalize refuses a summary missing an input hash and a per-call file that differs from all_rows.jsonl")
         (tmp / "summary.json").rename(tmp / "summary.json.aside")
         run("write_manifest.py", "finalize", expect_failure=True)
         (tmp / "summary.json.aside").rename(tmp / "summary.json")
@@ -426,6 +450,13 @@ def dry_run() -> None:
         run("extract_workflow_journal.py", "generation", str(tmp / "journal_dup.jsonl"), "--replace", expect_failure=True)
         check((tmp / "workflow_generation_result.json").read_text(encoding="utf-8") == result_text,
               "a journal with two agents on one label is refused and the previous result file is untouched")
+        # a well-formed label whose id is not in the plan refuses the journal instead of vanishing (Codex on PR #52)
+        foreign = journal + [{"type": "started", "key": "k5", "agentId": "a5", "label": "not_a_planned_call attempt 1"},
+                             {"type": "result", "key": "k5", "agentId": "a5", "result": "{}"}]
+        (tmp / "journal_foreign.jsonl").write_text("".join(json.dumps(j) + "\n" for j in foreign), encoding="utf-8")
+        run("extract_workflow_journal.py", "generation", str(tmp / "journal_foreign.jsonl"), "--replace", expect_failure=True)
+        check((tmp / "workflow_generation_result.json").read_text(encoding="utf-8") == result_text,
+              "a journal with an agent outside the plan is refused and the previous result file is untouched")
         # a rerun whose inputs changed must not inherit the previous manifest's metadata (Codex on PR #52), and a
         # plan that was not re-rendered after the inputs changed is refused even with --reset
         seeds_doc["seeds"][0]["clinical_term"] = "changed for the rerun check"

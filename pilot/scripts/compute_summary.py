@@ -152,7 +152,7 @@ def main() -> None:
                          "parse_checker.py on that plan's result:\n  " + "\n  ".join(shown))
     # the parsed generation must be the call plan's: final records and rows carry the planned prompt's hash, so a
     # previous run's responses cannot be summarized under re-planned prompts (Codex review of PR #52)
-    gen_problems = generation_problems(calls, call_log, rows)
+    gen_problems = generation_problems(calls, call_log, rows, failures)
     if gen_problems:
         shown = gen_problems[:5] + ([f"... and {len(gen_problems) - 5} more"] if len(gen_problems) > 5 else [])
         raise SystemExit("compute_summary: call_log.jsonl and generated/all_rows.jsonl are not the parse of the call "

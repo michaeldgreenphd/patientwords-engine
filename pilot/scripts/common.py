@@ -337,11 +337,14 @@ def checker_attempt_failed(result: object) -> bool:
     return not isinstance(result, dict) or not isinstance(result.get("verdicts"), list) or not result["verdicts"]
 
 
-def generation_problems(calls: dict, call_log: list[dict], rows: list[dict]) -> list[str]:
+def generation_problems(calls: dict, call_log: list[dict], rows: list[dict], failures: list[dict]) -> list[str]:
     """Why call_log.jsonl and the parsed rows do not belong to the call plan on disk: final records whose call ids
-    differ from the plan's, or a final record or row whose `prompt_sha256` (stamped by parse_generation.py from the
-    plan it parsed against) is not the planned prompt's. Call ids are stable across plans, so without the hash a
-    previous run's responses would pass under re-planned prompts (Codex review of PR #52). Empty when they belong."""
+    differ from the plan's, a final record or row whose `prompt_sha256` (stamped by parse_generation.py from the
+    plan it parsed against) is not the planned prompt's, or a final record whose valid and invalid line counts and
+    attempt number do not match the rows and format failures on disk for its call. Call ids are stable across
+    plans, so without the hash a previous run's responses would pass under re-planned prompts; and a parse
+    interrupted between writing the rows and the log would leave a log that names the right plan beside rows it did
+    not count (Codex review of PR #52). Empty when they belong."""
     planned = {c["id"]: c["prompt_sha256"] for c in calls["calls"]}
     finals = [e for e in call_log if e.get("is_final")]
     ids = [e.get("call_id") for e in finals]
@@ -360,6 +363,15 @@ def generation_problems(calls: dict, call_log: list[dict], rows: list[dict]) -> 
             problems.append(f"row {r.get('id')}: call {cid!r} is not planned")
         elif r.get("prompt_sha256") != planned[cid]:
             problems.append(f"row {r.get('id')}: prompt_sha256 is not the planned prompt's for {cid}")
+    for e in finals:
+        cid, att = e.get("call_id"), e.get("attempt")
+        mine = [r for r in rows if r.get("call_id") == cid]
+        other_attempt = sum(1 for r in mine if r.get("attempt") != att)
+        n_fail = sum(1 for f in failures if f.get("call_id") == cid and f.get("attempt") == att)
+        if len(mine) != e.get("n_valid") or n_fail != e.get("n_invalid") or other_attempt:
+            problems.append(f"{cid}: the final log record counts {e.get('n_valid')} valid and {e.get('n_invalid')} "
+                            f"invalid lines (attempt {att}); the parsed files hold {len(mine)} rows "
+                            f"({other_attempt} from another attempt) and {n_fail} failures")
     return problems
 
 
@@ -441,6 +453,11 @@ def summary_problems(summary: dict) -> list[str]:
     recorded = summary.get("input_hashes")
     if not isinstance(recorded, dict):
         return ["summary.json records no input_hashes; re-run compute_summary.py"]
+    missing = sorted(set(SUMMARY_INPUTS) - set(recorded))
+    unexpected = sorted(set(recorded) - set(SUMMARY_INPUTS))
+    if missing or unexpected:  # every input, not only the ones that happen to be recorded
+        return [f"summary.json input_hashes do not cover exactly the summary's inputs (missing {missing}, unexpected "
+                f"{unexpected}); re-run compute_summary.py"]
     problems = [f"{name}: changed since compute_summary.py ran (or missing)" for name, h in recorded.items()
                 if not (PILOT / name).exists() or sha256_file(PILOT / name) != h]
     md = PILOT / "summary.md"

@@ -105,7 +105,11 @@ def finalize_hashes(calls: dict) -> dict[str, str]:
                          f"planned call or logged attempt (first: {unexpected[0]}); parse_generation.py --replace "
                          f"clears a previous parse")
     call_log = read_jsonl(PILOT / "call_log.jsonl")
-    problems = generation_problems(calls, call_log, read_jsonl(PILOT / "generated" / "all_rows.jsonl"))
+    all_rows = read_jsonl(PILOT / "generated" / "all_rows.jsonl")
+    problems = generation_problems(calls, call_log, all_rows, read_jsonl(PILOT / "generated" / "format_failures.jsonl"))
+    for c in calls["calls"]:  # each per-call file holds exactly its call's rows from all_rows.jsonl
+        if read_jsonl(PILOT / "generated" / f"{c['id']}.jsonl") != [r for r in all_rows if r.get("call_id") == c["id"]]:
+            problems.append(f"generated/{c['id']}.jsonl differs from the rows for {c['id']} in generated/all_rows.jsonl")
     if problems:
         raise SystemExit("write_manifest: cannot finalize, call_log.jsonl and generated/all_rows.jsonl are not the "
                          "parse of the call plan on disk:\n  " + "\n  ".join(problems[:5]))

@@ -50,7 +50,8 @@ def eligible_targets(cand: list[dict]) -> dict[str, list[dict]]:
 def main() -> None:
     all_rows = read_jsonl(PILOT / "generated" / "all_rows.jsonl")
     calls = load_calls()
-    problems = generation_problems(calls, read_jsonl(PILOT / "call_log.jsonl"), all_rows)
+    problems = generation_problems(calls, read_jsonl(PILOT / "call_log.jsonl"), all_rows,
+                                   read_jsonl(PILOT / "generated" / "format_failures.jsonl"))
     if problems:  # rows from another plan must not enter the checker set (Codex review of PR #52)
         raise SystemExit("build_checker_set: the parsed generation is not the call plan's; re-run parse_generation.py "
                          "on that plan's result:\n  " + "\n  ".join(problems[:5]))

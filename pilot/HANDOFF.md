@@ -147,3 +147,9 @@ Each fix has a check in `scripts/selftest.py` (design factors load from data; a 
 37. `extract_workflow_journal.py` refuses to write over an existing result file unless `--replace` is passed, after the journal has been read and checked, so a partial extraction cannot replace a complete one before the parsers' own guard applies.
 
 After this round the recorded run's `summary.json` was recomputed (new keys `input_hashes`, `summary_md_sha256` and estimand 3's unmeasurable counts; every number compared field by field and unchanged) and `summary.md` differs from the run's by the one added line of item 34; `manifest.json` was re-finalized.
+
+## Review round 8 (PR #52, Codex on fd9a8a1d)
+
+38. `extract_workflow_journal.py` refuses a journal in which a well-formed label names an item outside the plan (a misspelled or foreign id), instead of dropping that agent and letting its planned item read as no response.
+39. `common.summary_problems` requires `summary.json`'s recorded input hashes to cover exactly the summary's inputs (`SUMMARY_INPUTS`), refusing a missing or unexpected entry before comparing values, so an omitted input cannot escape the finalize check.
+40. `common.generation_problems` also cross-checks every final log record against the parsed files: the rows for its call must number `n_valid` and carry its attempt, and the format failures for its call and attempt must number `n_invalid`; `write_manifest.py finalize` additionally requires each `generated/<call>.jsonl` to hold exactly its call's rows from `generated/all_rows.jsonl`. A parse interrupted between writing the rows and the log, or a hand-edited file, is refused by the checker-set builder, the summary and finalize. The recorded run passes; no output changed, and `manifest.json` was re-finalized for the script hashes.
