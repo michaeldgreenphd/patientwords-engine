@@ -39,11 +39,11 @@ from pathlib import Path
 # Two-sided exact sign test, unrounded, None when there are no directional flips.
 # The same function urgency_shift.py and paired_stats_rigor.py use.
 try:  # repo root on sys.path (tests) vs sibling import (python scripts/tier_sensitivity.py)
-    from scripts.sign_test import sign_test
+    from scripts.sign_test_exact import sign_test
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from sign_test import sign_test
+    from sign_test_exact import sign_test
 
 
 def perturbed_vocab(vocab: dict, spec: dict, scenario: str) -> dict:

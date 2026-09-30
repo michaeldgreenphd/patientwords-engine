@@ -229,8 +229,8 @@ summary = {
     "per_model": {},
 }
 # Two-sided exact sign test, unrounded, None when there are no directional flips.
-# Shared with tier_sensitivity.py and paired_stats_rigor.py (scripts/sign_test.py).
-from sign_test import sign_test  # noqa: E402  (script-style module)
+# Shared with tier_sensitivity.py and paired_stats_rigor.py (scripts/sign_test_exact.py).
+from sign_test_exact import sign_test  # noqa: E402  (script-style module)
 
 
 for model in sorted({r["model"] for r in arows}):

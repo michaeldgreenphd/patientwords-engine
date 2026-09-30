@@ -5,8 +5,11 @@ drift apart again:
 
   scripts/urgency_shift.py       summary.per_model.<model>.sign_test_p (row level)
   scripts/tier_sensitivity.py    sign_p under each vocabulary scenario
-  scripts/paired_stats_rigor.py  per_model.<model>.sign_test.p (phrase level,
+  scripts/paired_stats_rigor.py  per_model.<model>.sign_test.p_raw (phrase level,
                                  before Benjamini-Hochberg)
+
+scripts/negative_control_stats.py takes it through paired_stats_rigor for its
+sign_test_two_sided_p (negative versus positive pair counts).
 
 Method. Each directional flip is a downgrade or an upgrade; lateral and
 uninformative flips are ties and the callers leave them out of both counts.
@@ -33,6 +36,10 @@ purpose: it takes (k, n), returns 1.0 at n = 0, and the preregistered W2 design
 and its tests pin it.
 
 Deterministic and exact: there is no seed to record.
+
+The file is sign_test_exact.py, not sign_test.py, on purpose: the repository
+sets no pytest testpaths, so a bare `python -m pytest` collects every *_test.py
+file in the tree, and a script with that name would be imported as a test module.
 """
 
 from __future__ import annotations

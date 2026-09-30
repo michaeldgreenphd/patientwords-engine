@@ -242,10 +242,10 @@ def _exact_two_sided(k_down, k_up):
 
 
 def test_sign_test_p_is_unrounded_nonzero(monkeypatch):
-    # One exact test (scripts/sign_test.py) behind all three scripts. The collector
+    # One exact test (scripts/sign_test_exact.py) behind all three scripts. The collector
     # and tier_sensitivity copies used to round to 5 decimals, which published
     # sign_test_p = 0.0 for most models; rigor dropped the rounding on 2026-07-14.
-    shared = _load_by_path("sign_test_shared", "sign_test.py").sign_test
+    shared = _load_by_path("sign_test_shared", "sign_test_exact.py").sign_test
     ts = _load_by_path("tier_sensitivity_for_sign_test", "tier_sensitivity.py")
 
     # urgency_shift.py runs its analysis at import, so read its source: it must keep
@@ -253,7 +253,7 @@ def test_sign_test_p_is_unrounded_nonzero(monkeypatch):
     src = (_SCRIPTS / "urgency_shift.py").read_text(encoding="utf-8")
     assert "def sign_test(" not in src
     assert "round(min(1.0" not in src
-    imports = [ln for ln in src.splitlines() if re.match(r"from (scripts\.)?sign_test import sign_test\b", ln)]
+    imports = [ln for ln in src.splitlines() if re.match(r"from (scripts\.)?sign_test_exact import sign_test\b", ln)]
     assert len(imports) == 1
     assert '"sign_test_p": sign_test(d, u),' in src
     monkeypatch.syspath_prepend(str(_SCRIPTS))
@@ -277,7 +277,7 @@ def test_sign_test_p_is_unrounded_nonzero(monkeypatch):
 
 
 def test_shared_sign_test_edges():
-    st = _load_by_path("sign_test_edges", "sign_test.py").sign_test
+    st = _load_by_path("sign_test_edges", "sign_test_exact.py").sign_test
     assert st(0, 0) is None  # no directional flips: undefined, not p = 1.0
     assert st(3, 3) == 1.0 and st(1, 2) == 1.0  # doubled tail capped at 1
     assert st(0, 5) == st(5, 0) == 2 / 32

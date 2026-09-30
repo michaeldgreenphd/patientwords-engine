@@ -55,12 +55,12 @@ from pathlib import Path
 
 try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
     from scripts.provenance_stamp import provenance
-    from scripts.sign_test import sign_test  # exact, unrounded; shared with urgency_shift.py
+    from scripts.sign_test_exact import sign_test  # exact, unrounded; shared with urgency_shift.py
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from provenance_stamp import provenance
-    from sign_test import sign_test
+    from sign_test_exact import sign_test
 
 # Observational generation batches: the confirmatory population. Everything
 # else (steered runs, outcome-selected sets, imports, re-traces, sentinels)
@@ -319,7 +319,7 @@ def clopper_pearson(k, n, alpha=0.05):
 
 
 # sign_test (two-sided exact, unrounded since 2026-07-14, None when there are no
-# directional flips) is imported above from scripts/sign_test.py, the same function
+# directional flips) is imported above from scripts/sign_test_exact.py, the same function
 # urgency_shift.py uses, so the deduped p is comparable to the collector's row-level
 # one. negative_control_stats.py imports it from this module.
 
