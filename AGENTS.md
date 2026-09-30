@@ -55,19 +55,19 @@ GPU) still commits no locally produced measurement: every committed summary reco
 `inference.environment`, and only CI-produced summaries are measurements.
 
 **One exception, for pilots of the generation loop** (owner decision of 2026-09-30 on
-PR #52, after Codex read the rule above as excluding them). A measurement-validity pilot
-of the stimulus-generation loop may run as Claude Code subagents inside the owner's own
-interactive Claude Code session (the Workflow tool, in a cloud session or on the owner's
-machine), on that session's subscription and with no repository key, and its artifacts
-may be committed under `pilot/`, on four conditions: the run's `PROTOCOL.md`,
-`HANDOFF.md` and `manifest.json` state that execution path; nothing it produces is
-written under `data/` or `trace_out/`, counted as a measurement, or published to the
-site; no script in this repository calls a paid provider API for it
-(`pilot/scripts/build_api_requests.py` writes request bodies and sends nothing); and the
-holdout seal check is CLEAN over the pilot directory before the commit. Subscription
-usage in the owner's session is not provider spend, so `fire_trigger.py`'s journal and
-ceiling do not apply to it. A pilot run through a push-to-run lane, once one exists,
-needs no exception.
+PR #52, after Codex read the rule above as excluding them). A measurement-validity
+pilot of the stimulus-generation loop may run as Claude Code subagents inside the
+owner's own interactive Claude Code session (the Workflow tool, in a cloud session or
+on the owner's machine), on that session's subscription and with no repository key, and
+its artifacts may be committed under `pilot/`, on four conditions: the run's
+`pilot/PROTOCOL.md`, `pilot/HANDOFF.md` and `pilot/manifest.json` state that execution
+path; nothing it produces is written under `data/` or `trace_out/`, counted as a
+measurement, or published to the site; no script in this repository calls a paid
+provider API for it (`pilot/scripts/build_api_requests.py` writes request bodies and
+sends nothing); and the holdout seal check is CLEAN over the pilot directory before the
+commit. Subscription usage in the owner's session is not provider spend, so
+`fire_trigger.py`'s journal and ceiling do not apply to it. A pilot run through a
+push-to-run lane, once one exists, needs no exception.
 
 | Trigger file | Workflow | What it does |
 |---|---|---|
