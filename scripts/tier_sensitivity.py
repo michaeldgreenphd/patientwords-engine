@@ -33,19 +33,17 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 from collections import defaultdict
 from pathlib import Path
 
-
-def sign_test(k_down: int, k_up: int):
-    """Two-sided exact sign test (mirrors scripts/urgency_shift.py)."""
-    n = k_down + k_up
-    if n == 0:
-        return None
-    k = min(k_down, k_up)
-    p = sum(math.comb(n, i) for i in range(0, k + 1)) / 2 ** n
-    return round(min(1.0, 2 * p), 5)
+# Two-sided exact sign test, unrounded, None when there are no directional flips.
+# The same function urgency_shift.py and paired_stats_rigor.py use.
+try:  # repo root on sys.path (tests) vs sibling import (python scripts/tier_sensitivity.py)
+    from scripts.sign_test_exact import sign_test
+except ImportError:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from sign_test_exact import sign_test
 
 
 def perturbed_vocab(vocab: dict, spec: dict, scenario: str) -> dict:

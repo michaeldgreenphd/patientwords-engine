@@ -9,7 +9,9 @@ journals every fire to ops/trigger_journal.jsonl, refuses a third stacked fire,
 validates parameter keys against the workflow inputs (CI silently ignores
 unknown keys, so a typo means a run with defaults - catching it locally is the
 whole point), and enforces the daily spend ceiling from ops/dashboard.json for
-the paid triggers (scenario-generation, model-evaluation).
+paid fires as is_paid_fire defines them: the PAID_TRIGGERS lanes (docs/triggers.md
+marks them paid; petri-audit only in its paid modes) and a circuit-trace fire with
+show_mitigation.
 
 Usage:
   python scripts/fire_trigger.py fire --trigger circuit-trace \
@@ -79,10 +81,14 @@ TRIGGERS = (
 # dry_run cost nothing but the lane is counted paid so every fire goes through
 # the ceiling.
 PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval", "petri-audit", "pab-probe"})
-# A circuit-trace fire with show_mitigation=true makes Anthropic translation
-# calls (the only paid path outside PAID_TRIGGERS). Its cost has no max_spend
-# param, so the guard imputes a conservative flat commitment per fire.
+# Two circuit-trace paths make Anthropic translation calls, the only paid paths
+# outside PAID_TRIGGERS: show_mitigation=true (2panel's LLM-translated third
+# panel) and mode translation (every pair's patient prompt is LLM-translated,
+# then traced; the workflow never passes --no-llm-translation). Neither has a
+# max_spend param, so the guard imputes the same flat commitment per fire for
+# both, and circuit_trace_evaluation.yml runs budget-gate for both.
 MITIGATION_IMPUTED_USD = 0.15
+CIRCUIT_TRACE_TRANSLATION_MODE = "translation"
 
 # Resting-state parks: the cheapest legitimate stage per trigger, with
 # commit_outputs false wherever the workflow supports the key. A trigger file
@@ -168,6 +174,17 @@ def is_mitigation_fire(trigger, params):
     return trigger == "circuit-trace" and str(params.get("show_mitigation", "")).lower() in ("true", "1")
 
 
+def is_translation_fire(trigger: str, params: dict) -> bool:
+    """Whether this is a circuit-trace `mode: translation` fire, which sends every
+    pair's patient prompt to the Anthropic API (batch_eval.evaluate_translation).
+    The mode is read trimmed and lower-cased, as petri_mode reads petri-audit's,
+    so a variant spelling also counts as paid. That fails closed:
+    medlang-batch-eval's --mode choices accept only the exact name, so such a
+    fire reserves spend it cannot make."""
+    return (trigger == "circuit-trace"
+            and str(params.get("mode", "")).strip().lower() == CIRCUIT_TRACE_TRANSLATION_MODE)
+
+
 def petri_mode(params):
     """A petri-audit fire's mode as the workflow reads it (absent is its preflight default)."""
     return str(params.get("mode", "preflight")).strip().lower()
@@ -175,16 +192,18 @@ def petri_mode(params):
 
 def is_paid_fire(trigger, params):
     """Whether this fire can spend, so the daily ceiling must count it: a
-    PAID_TRIGGERS lane, or a circuit-trace fire with show_mitigation. The one
-    exemption is petri-audit outside its paid modes (`run`, and `readapt`,
-    whose judge spends): preflight and dry_run make no paid call, and counting
+    PAID_TRIGGERS lane, or a circuit-trace fire with show_mitigation or with
+    mode translation (translation was counted free until 2026-09-30, though it
+    calls Anthropic for every pair). The one exemption is petri-audit outside
+    its paid modes (`run`, and `readapt`, whose judge spends): preflight and
+    dry_run make no paid call, and counting
     them paid refused the lane's park once the ceiling was reached, leaving the
     last paid configuration at rest where a branch operation could re-fire it
     (Codex round 8 on PR #26). Mode is read trimmed and lower-cased so that a
     spelling like "RUN" or "READAPT" counts as paid (fail closed);
     validate_params refuses every spelling the params job would refuse
     (petri_params_problems), so none reaches the journal."""
-    if is_mitigation_fire(trigger, params):
+    if is_mitigation_fire(trigger, params) or is_translation_fire(trigger, params):
         return True
     if trigger not in PAID_TRIGGERS:
         return False
@@ -204,7 +223,8 @@ def petri_rejudge_is_rehearsal(params):
 
 def paid_budget_params(trigger, params):
     """The params budget_check prices for a paid fire: the fire's own for a
-    PAID_TRIGGERS lane, the flat imputed commitment for a mitigation fire."""
+    PAID_TRIGGERS lane, the flat imputed commitment for a paid circuit-trace fire
+    (show_mitigation or mode translation; neither carries a max_spend key)."""
     return params if trigger in PAID_TRIGGERS else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
 DEFAULT_EXPIRE_HOURS = 8.0
 DEFAULT_SETTLE_MINUTES = 15.0
@@ -1243,8 +1263,8 @@ def fire_commitment(params):
 
 def entry_holds_spend(entry, today, lane="anthropic"):
     """Whether this journal entry's commitment counts against `today`'s ceiling
-    (YYYY-MM-DD, UTC) on `lane`: a paid entry (a PAID_TRIGGERS fire, or a
-    mitigation circuit-trace fire with its imputed commitment) on that lane,
+    (YYYY-MM-DD, UTC) on `lane`: a paid entry (a PAID_TRIGGERS fire, or a paid
+    circuit-trace fire with its imputed commitment) on that lane,
     with a usable max_spend, not evicted, and fired on `today` in UTC.
 
     Deliberately NOT a function of `resolved` or of the expiry window. Until
@@ -1266,8 +1286,8 @@ def entry_holds_spend(entry, today, lane="anthropic"):
     `cmd_fire` always writes a parseable stamp, and `publish` restamps an
     entry whose stamp does not parse before it pushes it.
     """
-    # paid triggers always record max_spend; mitigation circuit-trace entries record their imputed commitment
-    # the same way, and every other entry records none
+    # paid triggers always record max_spend; paid circuit-trace entries (show_mitigation, mode translation) record
+    # their imputed commitment the same way, and every other entry records none
     if entry.get("trigger") not in PAID_TRIGGERS and entry.get("max_spend") is None:
         return False
     if entry.get("lane", "anthropic") != lane:
@@ -1856,7 +1876,7 @@ def cmd_fire(args):
         return 3
 
     # 4. Budget guard for the paid triggers: committed = landed + the max_spend every paid entry fired today holds.
-    # Mitigation circuit-trace fires are paid too (Anthropic translation calls);
+    # circuit-trace fires with show_mitigation or mode translation are paid too (Anthropic translation calls);
     # they carry no max_spend param, so a flat imputed commitment is used.
     max_spend = None
     if is_paid_fire(args.trigger, params):
