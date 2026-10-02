@@ -2,14 +2,17 @@
 every marker the renderer fills appears exactly once and no unknown marker appears, a rendered generation prompt
 carries no leftover marker, and the output contract the parser enforces (rows and negative controls per call) is the
 one the prompt asks for. The codebook they rest on must parse and cite only reviewed examples."""
+import importlib.util
 import json
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "pilot" / "scripts"))
 
-import common
+# Load the harness module under a unique name rather than putting pilot/scripts on sys.path, so a bare `common`
+# elsewhere can never shadow it or be shadowed by it (Copilot review of PR #69).
+_spec = importlib.util.spec_from_file_location("pilot_common_v2_test", ROOT / "pilot" / "scripts" / "common.py")
+common = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(common)
 
 V2 = ROOT / "pilot" / "prompts_v2"
 
