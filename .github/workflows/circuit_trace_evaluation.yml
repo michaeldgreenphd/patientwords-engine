@@ -18,10 +18,13 @@ name: Circuit Trace Evaluation (medlang-circuits)
 # collide on index numbering. The trigger key output_root (2026-10-01) has one
 # other accepted value, "pilot/traces": a pairs file under pilot/ is traced
 # into pilot/traces/<pairs-file-stem>/, which no collector reads, and only
-# with it. A pilot trace is a $0 plain pipeline check, never a measurement:
-# the params job refuses show_mitigation, mode translation, steering and
-# generate_explanations under it, it commits only the summary parts, and a
-# fail-closed holdout seal check runs before that commit.
+# with it, and that pairs file must sit under pilot/runs/, the one pilot
+# directory either job checks out (pilot/traces never is, so no cell's
+# workspace holds an earlier pilot part). A pilot trace is a $0 plain
+# pipeline check, never a measurement: the params job refuses
+# show_mitigation, mode translation, steering and generate_explanations under
+# it, it commits only the summary parts, and a fail-closed holdout seal check
+# runs before that commit.
 
 on:
   workflow_dispatch:
@@ -119,6 +122,8 @@ jobs:
           # this fire, and a depth-1 clone has no commit to read it at; blobless keeps full history cheap
           # (petri_audit.yml's pattern, G4 2026-09-23)
           fetch-depth: 0
+          # pilot/runs, not all of pilot/: pilot-root pairs files live there (screen_targets reads one below), and
+          # pilot/traces, where earlier pilot parts are committed, stays out of the checkout as trace_out/ does
           sparse-checkout: |
             .github
             scripts
@@ -127,7 +132,7 @@ jobs:
             docs
             ops
             tests
-            pilot
+            pilot/runs
 
       - name: Resolve run parameters
         id: params
@@ -182,13 +187,19 @@ jobs:
           if not offsets:
               raise SystemExit("no offsets to trace")
           # output_root: "" keeps trace_out/<stem>; "pilot/traces" is the pilot root, which no collector reads. A
-          # pairs file under pilot/ goes with the pilot root and only with it, and a pilot trace is $0 and plain.
+          # pairs file under pilot/ goes with the pilot root and only with it, under that root it must sit under
+          # pilot/runs/ (the one pilot directory either job checks out), and a pilot trace is $0 and plain.
           # scripts/fire_trigger.py (circuit_trace_params_problems, circuit_trace_pilot_source_problems) refuses
           # the same before a fire is journaled; a workflow_dispatch has no output_root input, so it keeps "".
           root = params["output_root"]
           if root not in ("", "pilot/traces"):
               raise SystemExit(f"output_root {root!r}: only '' (trace_out) or 'pilot/traces' is accepted")
           pairs_path = params["pairs_file"] or f"medlang_circuits/data/ci_pairs_{params['mode']}.json"
+          if "\\" in pairs_path:
+              # posixpath reads a backslash as part of a file name, so the pilot/ and absolute-path tests below would
+              # not see a Windows spelling (pilot\runs\x.json, C:\...); every pairs_file fired to date uses /
+              raise SystemExit(f"pairs_file {pairs_path!r} contains a backslash; give a repo-relative path "
+                               "with / separators")
           norm_pairs = posixpath.normpath(pairs_path)
           if norm_pairs.startswith("/") or norm_pairs == ".." or norm_pairs.startswith("../"):
               # an absolute or ..-escaping path can name pilot/ without the pilot/ prefix tested below
@@ -200,8 +211,9 @@ jobs:
                                "output_root 'pilot/traces', so their outputs never enter trace_out/")
           if root == "pilot/traces":
               refused = []
-              if not in_pilot:
-                  refused.append(f"pairs_file {pairs_path!r} is not under pilot/")
+              if not norm_pairs.startswith("pilot/runs/"):
+                  # both jobs check out pilot/runs and never pilot/traces, so pilot pairs trace from there only
+                  refused.append(f"pairs_file {pairs_path!r} is not under pilot/runs/")
               if "," in pairs_path:  # the seal step's --extra list splits on commas
                   refused.append(f"pairs_file {pairs_path!r} contains a comma")
               if params["show_mitigation"].strip().lower() not in ("", "false", "0"):
@@ -294,6 +306,10 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           filter: blob:none
+          # pilot/runs, not all of pilot/: a pilot cell reads its pairs file from there, while pilot/traces stays out
+          # as trace_out/ does, so neither root's OUT_DIR starts with earlier committed parts in it and the commit
+          # step's rebase does not write other cells' parts into it; that step stages this cell's new part outside
+          # the sparse checkout with `git add --sparse`, for both roots
           sparse-checkout: |
             .github
             scripts
@@ -302,7 +318,7 @@ jobs:
             docs
             ops
             tests
-            pilot
+            pilot/runs
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -479,11 +495,25 @@ jobs:
       # created), so a pilot cell whose seal check did not succeed publishes neither; the default root is unchanged.
       - name: Publish summary to run page
         if: ${{ always() && (fromJson(needs.params.outputs.config).output_root != 'pilot/traces' || steps.seal.outcome == 'success') }}
+        env:
+          OFFSET: ${{ matrix.offset }}
+          MODEL: ${{ matrix.model }}
+          MODE: ${{ fromJson(needs.params.outputs.config).mode }}
         run: |
-          SUMMARY=$(ls "$OUT_DIR"/batch_summary*.json 2>/dev/null | head -1 || true)
+          # This cell's own summary, named rather than listed: batch_summary.json until the commit step renames it
+          # batch_summary.part_NN.json (NN = OFFSET + 1, as there). The checkout leaves both roots' output directories
+          # out, so OUT_DIR should hold no other cell's part; naming this cell's keeps any other part from appearing
+          # under this cell's heading.
+          PART="$OUT_DIR/batch_summary.part_$(printf '%02d' "$((OFFSET + 1))").json"
+          SUMMARY=""
+          if [ -f "$OUT_DIR/batch_summary.json" ]; then
+            SUMMARY="$OUT_DIR/batch_summary.json"
+          elif [ -f "$PART" ]; then
+            SUMMARY="$PART"
+          fi
           if [ -n "$SUMMARY" ]; then
             {
-              echo "## Circuit trace batch summary (${{ matrix.model }}, ${{ fromJson(needs.params.outputs.config).mode }}, offset ${{ matrix.offset }})"
+              echo "## Circuit trace batch summary ($MODEL, $MODE, offset $OFFSET)"
               echo '```json'
               cat "$SUMMARY"
               echo '```'

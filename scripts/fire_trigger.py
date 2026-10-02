@@ -50,6 +50,7 @@ import hashlib
 import json
 import math
 import os
+import posixpath
 import contextlib
 import re
 import secrets
@@ -91,12 +92,15 @@ MITIGATION_IMPUTED_USD = 0.15
 CIRCUIT_TRACE_TRANSLATION_MODE = "translation"
 # circuit-trace `output_root` (2026-10-01): "" keeps today's trace_out/<stem> exactly; the one other accepted value
 # writes pilot stimulus pairs' outputs to pilot/traces/<stem>, which no collector reads. A pairs file under
-# pilot/ is traced if and only if the root is the pilot root, and a pilot trace is always $0 and plain.
-# circuit_trace_evaluation.yml's params job refuses the same; tests/test_circuit_trace_pilot_root.py holds the two
-# together.
+# pilot/ is traced if and only if the root is the pilot root, under that root it must sit under pilot/runs/, and a
+# pilot trace is always $0 and plain. circuit_trace_evaluation.yml's params job refuses the same;
+# tests/test_circuit_trace_pilot_root.py holds the two together.
 CIRCUIT_TRACE_PILOT_ROOT = "pilot/traces"
 CIRCUIT_TRACE_OUTPUT_ROOTS = ("", CIRCUIT_TRACE_PILOT_ROOT)
 CIRCUIT_TRACE_PILOT_PAIRS_PREFIX = "pilot/"
+# the one pilot directory the workflow's jobs check out: pilot/traces never is, so no cell's workspace, run-page
+# summary or artifact holds an earlier committed pilot part
+CIRCUIT_TRACE_PILOT_RUNS_PREFIX = "pilot/runs/"
 # the workflow's push-path defaults for the keys the pilot rules read
 CIRCUIT_TRACE_JOB_DEFAULTS = {
     "mode": "2panel", "pairs_file": "", "offsets": "0", "sample_size": "1", "screen_targets": "",
@@ -898,8 +902,10 @@ def circuit_trace_pairs_path(params: dict) -> str:
 
 
 def _circuit_trace_normpath(path: str) -> str:
-    """A pairs path normalised the way the params job reads it (POSIX separators, `.` and `..` folded)."""
-    return os.path.normpath(path).replace(os.sep, "/")
+    """A pairs path normalised exactly as the params job reads it on its Linux runner (`posixpath.normpath`: `.` and
+    `..` folded, a backslash part of a name), whatever OS this host runs. A path with a backslash is refused before
+    it is read here (circuit_trace_params_problems)."""
+    return posixpath.normpath(path)
 
 
 def circuit_trace_pairs_in_pilot(path: str) -> bool:
@@ -908,25 +914,37 @@ def circuit_trace_pairs_in_pilot(path: str) -> bool:
     return _circuit_trace_normpath(path).startswith(CIRCUIT_TRACE_PILOT_PAIRS_PREFIX)
 
 
+def circuit_trace_pairs_in_pilot_runs(path: str) -> bool:
+    """Whether a pairs path is under pilot/runs/, the one pilot directory the workflow checks out, read after the
+    same normalisation (so `pilot/runs/../traces/x` is not)."""
+    return _circuit_trace_normpath(path).startswith(CIRCUIT_TRACE_PILOT_RUNS_PREFIX)
+
+
 def circuit_trace_pairs_outside_checkout(path: str) -> bool:
     """Whether a pairs path is absolute or climbs out of the checkout (`..`). Either can name the checkout's own
     pilot/ directory without the `pilot/` prefix the pilot rule tests, so the params job and the fire path refuse
-    both for every root; every pairs_file ever journaled is repo-relative."""
+    both for every root; every pairs_file fired to date is repo-relative."""
     norm = _circuit_trace_normpath(path)
     return norm.startswith("/") or norm == ".." or norm.startswith("../")
 
 
 def circuit_trace_params_problems(params: dict) -> list[str]:
     """circuit-trace's `output_root` rules, as the workflow's params job applies them: the root is "" or
-    pilot/traces; a pairs file under pilot/ goes with the pilot root and only with it; and under the pilot root
-    nothing paid or altering runs (show_mitigation, mode translation, any steering, generate_explanations), so a
-    pilot trace is a $0 plain trace. The screen_targets rule needs the pairs file and is
+    pilot/traces; for either root the pairs path has no backslash and stays inside the checkout; a pairs file under
+    pilot/ goes with the pilot root and only with it, and under that root sits under pilot/runs/; and under the pilot
+    root nothing paid or altering runs (show_mitigation, mode translation, any steering, generate_explanations), so
+    a pilot trace is a $0 plain trace. The screen_targets rule needs the pairs file and is
     circuit_trace_pilot_source_problems."""
     root = _circuit_trace_job_value(params, "output_root")
     if root not in CIRCUIT_TRACE_OUTPUT_ROOTS:
         return [f"circuit-trace output_root {root!r}: only \"\" (trace_out) or {CIRCUIT_TRACE_PILOT_ROOT!r} is "
                 "accepted"]
     path = circuit_trace_pairs_path(params)
+    if "\\" in path:
+        # the Linux runner reads a backslash as part of a file name, so a Windows spelling (pilot\runs\x.json, C:\...)
+        # would slip past the pilot/ and absolute-path tests; every pairs_file fired to date uses / separators
+        return [f"circuit-trace pairs_file {path!r} contains a backslash; give a repo-relative path with / "
+                "separators"]
     if circuit_trace_pairs_outside_checkout(path):
         return [f"circuit-trace pairs_file {path!r} is absolute or leaves the checkout; give a repo-relative path "
                 "(an absolute path into pilot/ would trace pilot pairs into trace_out/)"]
@@ -938,9 +956,11 @@ def circuit_trace_params_problems(params: dict) -> list[str]:
                             f"output_root {CIRCUIT_TRACE_PILOT_ROOT!r}, so their outputs never enter trace_out/, "
                             "where every collector reads measurements")
         return problems
-    if not in_pilot:
+    if not circuit_trace_pairs_in_pilot_runs(path):
+        # the workflow checks out pilot/runs and never pilot/traces, where earlier pilot parts are committed
         problems.append(f"circuit-trace output_root {CIRCUIT_TRACE_PILOT_ROOT!r} traces only a pairs_file under "
-                        f"pilot/, not {path!r}")
+                        f"{CIRCUIT_TRACE_PILOT_RUNS_PREFIX}, not {path!r}: pilot/runs is the one pilot directory the "
+                        "workflow checks out")
     if "," in path:
         # the seal step passes "$OUT_DIR,$PAIRS_FILE" to seal_check.py --extra, which splits on commas; a comma in
         # the name would turn both into paths that do not exist, and the check would pass having scanned nothing
@@ -961,7 +981,7 @@ def circuit_trace_params_problems(params: dict) -> list[str]:
     return problems
 
 
-def circuit_trace_pilot_source_problems(repo, trigger: str, params: dict) -> list[str]:
+def circuit_trace_pilot_source_problems(repo: str | Path, trigger: str, params: dict) -> list[str]:
     """Why a pilot-root circuit-trace fire cannot screen its pairs, as a list of refusals; empty for every other
     fire. `--screen-targets` measures each pair's `target_clinical_token` on the clinical side, and a pair without
     one is always screened out and its patient side never traced, so screening is refused when any pair in the
