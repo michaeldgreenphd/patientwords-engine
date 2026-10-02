@@ -4,7 +4,7 @@ Seeds: 26 (provenance as the seed file states it: hand-built dataset from real p
 
 Harness version 2: rows carry next_word, the checker also answers relation, sentence_natural and patient_realism, and the sections marked version 2 report descriptives outside the protocol's estimands.
 
-Intervals under the variant design (version 2): the intervals of estimands 2 to 5 are computed over rows, as the protocol fixes them (Wilson and Newcombe intervals count rows; the estimand 3 bootstrap resamples rows within cells). By design 8 of every 16 non-control rows of a call belong to 4 two-row concepts, whose two rows share the clinical term and the template, so the rows are not independent draws: read these intervals as descriptive. This run's non-control rows cover 216 concepts in 288 rows (Arm A 108 in 144, Arm B 108 in 144).
+Intervals under the variant design (version 2): the intervals of estimands 1 to 5 are computed over rows, as the protocol fixes them (Wilson and Newcombe intervals count rows; the estimand 3 bootstrap resamples rows within cells). The rows are not independent draws: the rows of one call come from a single generation, and by design 8 of every 16 non-control rows of a call belong to 4 two-row concepts, whose two rows share the clinical term and the template. Read these intervals as descriptive. This run's non-control rows cover 216 concepts in 288 rows (Arm A 108 in 144, Arm B 108 in 144).
 
 ## Run overview
 
