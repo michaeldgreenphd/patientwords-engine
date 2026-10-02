@@ -173,12 +173,20 @@ def verdict_inconsistent(equivalent: str, relation: str) -> bool:
     return equivalent in ("yes", "no") and RELATION_EQUIVALENT[relation] != equivalent
 
 
-NEXT_WORD_RE = re.compile(r"[^\W\d_]+(?:[-'’][^\W\d_]+)?")  # letters, at most one internal hyphen or apostrophe
+# The version-2 next_word pattern. [^\W\d_] is \w without the decimal digits (Unicode Nd) and the underscore: letters
+# of any script, and also numerals that are not decimal digits (Unicode No and Nl, such as superscript digits,
+# fractions, circled numbers and Roman numerals). One internal hyphen or apostrophe (straight or typographic) may join
+# two runs of them.
+NEXT_WORD_RE = re.compile(r"[^\W\d_]+(?:[-'’][^\W\d_]+)?")
 
 
 def next_word_ok(value: object) -> bool:
-    """A version-2 row's next_word: a non-empty lowercase word of letters (any script), optionally with one internal
-    hyphen or apostrophe (straight or typographic), and nothing else: no space, digit or other punctuation."""
+    """A version-2 row's next_word: a string that NEXT_WORD_RE matches in full and that lower() leaves unchanged.
+    This is the check behind the protocol's "a non-empty lowercase word of letters (one internal hyphen or apostrophe
+    allowed)": it refuses a space, a decimal digit, the underscore, an uppercase letter that has a lowercase form, and
+    any punctuation or symbol but that one hyphen or apostrophe. It is broader than that wording in two ways: the
+    pattern also admits numerals that are not decimal digits (NEXT_WORD_RE), and the lowercase test admits an
+    uppercase letter that has no lowercase form."""
     return isinstance(value, str) and NEXT_WORD_RE.fullmatch(value) is not None and value == value.lower()
 
 
