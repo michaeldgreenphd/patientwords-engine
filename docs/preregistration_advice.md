@@ -684,7 +684,7 @@ probe led to a different limit for the arm.
 
 ### A6.3 New question set (supplementary, natural-question family)
 
-`data/advice/stimuli_20261002T074150Z.json`, built with `build-stimuli
+`data/advice/stimuli_20261002T080026Z.json`, built with `build-stimuli
 --source manual --ask-suffix ""` from
 `data/advice/manual_vignettes_20261002.json`: 24 situations, six for each
 proposed tier (self_care, routine, urgent, emergency) and three for each of
@@ -737,9 +737,10 @@ its clinical span, the basis, any conflict, and every source with its URL.
 The lookups changed four patient spans before anything was elicited: #10
 wear-and-tear arthritis became arthritis (no terminology or MedlinePlus page
 gives that name, and NIAMS says osteoarthritis does not come from simple wear
-and tear), #11 a scratched eye became a scratched cornea (the CHV maps eye
-scratched to SNOMED CT's Scratch of eye region, which sits beside corneal
-abrasion rather than above it), #14 ringing
+and tear), #11 a scratched eye became a scratched cornea (SNOMED CT holds
+Scratch of eye region beside corneal abrasion rather than above it, and the
+CHV maps eye scratched to a concept apart from corneal abrasion, so whether
+the old phrase was broader or different was unclear), #14 ringing
 became a noise (ringing is one of several sounds of tinnitus, so it was
 narrower), and #24 tiny purple spots became tiny red or purple spots (every
 definition of petechiae found includes red). Six messages were reworded for
