@@ -544,3 +544,345 @@ export. To fill at send time:
 - cited on the page from: `<date, frontend commit>`
 
 No measurement or published number changes.
+
+## Amendment 6 — PROPOSED (2026-10-02), NOT IN FORCE: October roster, a new question set, and a post-hoc replication of the most-downgraded earlier stimuli
+
+**Status: PROPOSED. Not in force.** An agent session drafted this amendment on
+2026-10-02 for the owner's review. Nothing in it binds, and no fire under it
+may run, until the owner approves it in writing (a recorded instruction that
+names this amendment). At approval the record at the end of this section is
+filled and the words "PROPOSED" and "NOT IN FORCE" are removed from its
+heading. Approval of the amendment does not authorise spending: every fire
+still needs the owner's explicit dollar authorisation, line by line, from
+`docs/advice_fire_plan_20261002.md`.
+
+**Why.** No advice model has been elicited since 2026-08-27, and every vendor
+in the registry has released newer models since the July arms were chosen.
+The frozen design's 1024 output tokens truncated the reasoning models: 858 of
+884 `openrouter:google/gemini-3.5-flash` and 291 of 294
+`openrouter:google/gemini-3.1-pro-preview` responses stopped at the limit (so
+the site withholds every Gemini arm), as did 105 of 581
+`deepseek:deepseek/deepseek-v4-flash` and 43 of 581
+`moonshot:moonshotai/kimi-k2.5` responses (`stop_reason` in
+`data/advice/responses_*.jsonl`). No stimulus file carries a reference tier,
+so Amendment 1's primary endpoint has never been computable.
+
+### A6.1 Roster
+
+Each arm is named by its full spec in the fire parameters; this amendment
+does not change any `consumer_default` in the registry. Model ids come from
+the OpenRouter catalogue read on 2026-10-01 and the Anthropic model table
+(the roster map of that day); which model each vendor's free consumer tier
+serves today is not verified, so the new arms are labelled "the vendor's
+current API model", not "the free-tier default".
+
+| Vendor | Newest arm (new set and rerun) | Original arm kept (rerun only) | Path and key |
+|---|---|---|---|
+| Anthropic | `anthropic:claude-sonnet-5-5` | `anthropic:claude-sonnet-5`; `anthropic:claude-haiku-4-5` stays in both waves as the cost floor | direct, `ANTHROPIC_API_KEY` |
+| OpenAI | `openai:openai/gpt-chat-latest` | `openai:openai/gpt-5.5`, `openai:openai/gpt-5.4-mini` (overflow arm) | OpenRouter, `OPENROUTER_API_KEY` |
+| Google | `openrouter:google/gemini-3.8-flash` | none: the original Gemini arms are truncated, so there is nothing valid to replicate (optional: `openrouter:google/gemini-3.5-flash` re-elicited at the new limit) | OpenRouter |
+| xAI | `xai:x-ai/grok-4.7` | `xai:x-ai/grok-4.3` | OpenRouter |
+| DeepSeek | `deepseek:deepseek/deepseek-v4.1-flash` | `deepseek:deepseek/deepseek-v4-flash` | OpenRouter |
+| Moonshot | `moonshot:moonshotai/kimi-k3` (cheaper like-for-like alternative: `moonshotai/kimi-k2.6`) | `moonshot:moonshotai/kimi-k2.5` | OpenRouter |
+
+Not added: `claude-opus-5-5` and `claude-fable-5-1` (Anthropic's model
+documentation, as summarised in the 2026-10-01 roster map and not tested
+here, says they reject sampling parameters, and the advice path sends
+`temperature`); `meta/muse-spark-1.3` (whether it is the model behind the
+Meta AI app is unverified; `meta_ai` stays `manual_ui`); Mistral, Qwen and
+Z.ai (not in the registry's consumer-product scope).
+
+**Access mode (the note `_alias_vs_snapshot` requires).** The recorded
+decision stands: an arm may be a rolling alias where that is what the
+consumer product serves, and the served build is pinned per record
+(`model_returned`, `build_fingerprint`, `request_id`). Under it:
+
+- `openai/gpt-chat-latest` is a rolling alias (OpenRouter's description: it
+  points to OpenAI's `chat-latest`, the Instant model ChatGPT uses; canonical
+  build on 2026-10-01 dated 2026-05-05). Phase 2 of the access disclosure
+  and the registry's `openai` note named this alias, reached with a direct
+  OpenAI key, as the higher-fidelity upgrade from `openai/gpt-5.5`, because
+  OpenRouter did not list it in July. OpenRouter lists it now, so it is
+  reached through the existing OpenRouter path, with no new key. Switching
+  the OpenAI arm to it is recorded here as an access-mode change, and the
+  registry note that says OpenRouter does not list it is out of date.
+- Every other new arm is requested by its undated OpenRouter or Anthropic
+  slug, which the vendor maps to a dated build; the dated build is read from
+  `model_returned` per record. The `~vendor/...-latest` aliases are not used.
+- Paths are unchanged: Anthropic direct; OpenAI, xAI, DeepSeek and Moonshot
+  through OpenRouter (Phase 2); Google through OpenRouter (the 2026-07-22
+  reroute). `google:gemini-3.8-flash` on the direct Gemini API is unverified
+  and not used.
+- Inferred, not verified: OpenRouter drops a sampling parameter that a model
+  does not support. The OpenAI GPT-5.x and GPT-6 rows list no `temperature`,
+  so those arms probably sample at the vendor's default whatever the request
+  says; the archived request records what was sent, not what was applied.
+  This applies equally to the July OpenAI records.
+
+**Prices.** The reviewed per-model prices for the new slugs land in a
+separate roster pull request. Until it merges, the spend meter would price
+`grok-4.7`, `deepseek-v4.1-flash` and `kimi-k3` at their vendor block's
+`default_pricing`, below list price, so `max_spend` would not bound the real
+bill; no fire of a new slug runs before that pull request merges. The
+registry sha256 after it merges is recorded here at approval. At this
+revision it is unchanged:
+`654959bbdc131ac2a056023ab3fdd6dff69f6d88629fd50527c088fc7b870a4a`.
+
+### A6.2 Output tokens
+
+`max_tokens` stays 1024 for every arm except the newest reasoning arms
+(`gemini-3.8-flash`, `deepseek-v4.1-flash`, `kimi-k3`), which run at 4096, or
+at the per-model minimum the roster pull request sets if that is higher. A
+fire has one `max_tokens`, so fires are grouped by limit. Original arms in
+the rerun keep 1024, so their rerun repeats the original protocol, including
+the known DeepSeek and Kimi truncation at that limit.
+
+The analysis reports the share of responses that stopped at the limit for
+every (arm, model), in the original archives and in the new ones. The
+exclusion rule, fixed here before any fire so that no arm is admitted or
+dropped after its results are seen:
+
+1. **Arms run at the new limits** (the newest arms of A6.1, and
+   `gemini-3.5-flash` if it is re-elicited): an arm with more than 5% of its
+   responses stopped at the limit is reported as truncated and kept out of
+   per-model comparisons, as the Gemini arms were. More than 5% at 4096 means
+   the limit is still too low for that model, and raising it is a new
+   decision. An A6.5 contrast whose newest arm is excluded this way is not
+   reported.
+2. **The original DeepSeek v4-flash and Kimi k2.5 arms** are exempt from the
+   5% rule, in the original archives and in their rerun at 1024. They are
+   counted in the selection, in A6.4's predictions and in A6.5's contrasts,
+   with their truncation share stated beside every number that uses them.
+   Reasons: the Gemini arms were excluded because almost none of their
+   answers was complete (97 to 99% stopped at the limit), while these two
+   arms stopped on 68 of 404 (16.8%) and 33 of 404 (8.2%) of their clinical
+   and patient responses; their tiers are in the published site data; and
+   the replication repeats the original protocol, truncation included. Inside
+   the 15 selected items, 15 of the 152 kept DeepSeek and Kimi responses
+   stopped at the limit, and one of the 36 downgrade cells (rank 8,
+   DeepSeek, five of six responses) contains a truncated response.
+3. **Pre-specified sensitivity.** Because the exemption is a judgement, A6.4's
+   two predictions are also scored with these two arms left out, against the
+   baselines given there. Both readings are reported; neither is chosen after
+   the rerun lands. The DeepSeek and Kimi contrasts in A6.5 are descriptive
+   and confounded twice: by the token limit and by the original arm's
+   truncation.
+
+The selection itself (A6.4) counted these two arms; it was made before this
+rule was written and is not re-ranked.
+
+**Probes.** Before the full fires, the fire plan's five probe fires (A0a to
+A0c, R0a, R0b) call each model they name once, clinical arm only, against
+`data/advice/stimuli_20261002T074159Z.json`, a one-item probe file built from
+`data/advice/manual_probe_20261002.json` that repeats item #01's messages.
+The probe archive is committed, so its spend is booked, but it is never
+judged, analysed, exported or pooled, and no truncation share above counts
+it. The probes stay out of the analysed archives because `elicit` resumes by
+(stimulus, arm, model, sample), not by `max_tokens`: inside an analysed
+archive, a probe record would make the full fire skip that cell even after a
+probe led to a different limit for the arm.
+
+### A6.3 New question set (supplementary, natural-question family)
+
+`data/advice/stimuli_20261002T080026Z.json`, built with `build-stimuli
+--source manual --ask-suffix ""` from
+`data/advice/manual_vignettes_20261002.json`: 24 situations, six for each
+proposed tier (self_care, routine, urgent, emergency) and three for each of
+the eight registered syntax styles, interleaved by tier so that any
+`offset`/`limit` chunk holds every tier. Every style appears in three of the
+four tiers and every tier holds six different styles, so no style is confined
+to one tier; with three items a style, Amendment 5's by-`syntax_style`
+contrast is descriptive only on this set, as Deviation D1 says of the earlier
+one. Each pair is one complete question whose two versions differ in a single
+span of at most six words. All 24 pass `validate_advice_nat_pair` with its
+dedupe set seeded by every earlier advice stimulus. A Claude session wrote
+them; the earlier natural-question pairs were also Claude-authored.
+
+**Spans and how they were checked.** The clinical span is a standard clinical
+term: for 21 items the preferred term of at least one of MeSH, SNOMED CT, the
+NCI Thesaurus or RxNorm; for #01 (aphthous ulcer) and #24 (petechial rash) an
+entry term or synonym; for #16 the verb ingested, which the NCI Thesaurus lists
+under Ingestion. The patient span is the everyday name for the same thing or a
+broader everyday version of it. Whether the two name the same thing was looked
+up item by item on 2026-10-02 in SNOMED CT (International edition 2025-02-01,
+served by tx.fhir.org), MeSH, the NCI Thesaurus, RxNorm and RxClass,
+MedlinePlus and the UMLS Consumer Health Vocabulary (2011 open-access file),
+and ruled by the lexicon rules of the stimulus codebook v0.2. That codebook is
+in the pilot pull request (#69), not yet on `main`; the rules used here, in
+brief:
+
+- L0: inflection, part of speech, articles and number are normalised before
+  comparing.
+- L1, same: the two phrases resolve to one concept in at least one
+  terminology (a synonym or entry term, or a consumer term mapped to the same
+  concept), or a consumer reference such as MedlinePlus defines the clinical
+  term with the patient phrase, and no reference puts them in different
+  concepts. A plain paraphrase of a definition counts and is recorded as one.
+- L2, same (brand): a single-ingredient brand name of the clinical drug (no
+  item here).
+- L3, broader: the patient phrase names an IS-A ancestor of the clinical
+  concept, or a drug class that contains the drug. Not the same concept, but
+  equivalent for a stimulus and labelled vaguer.
+- L4, narrower, and L5, different: not equivalent; such a pair is fixed
+  before use, never kept.
+- L6: when references disagree and none puts the two in unrelated concepts,
+  rule same and record the conflict. Never rule same on general knowledge
+  alone; record such a pair as unresolved.
+
+Rulings: 14 same under L1 (#03 and #24 as paraphrases of a definition), 4
+same under L6 with the conflict recorded (#06, #16, #17, #21), and 6 broader
+under L3 (#07, #10, #12, #19, #22, and #23 by drug class); none narrower,
+different or unresolved. Each item's notes give its relation, the status of
+its clinical span, the basis, any conflict, and every source with its URL.
+The lookups changed four patient spans before anything was elicited: #10
+wear-and-tear arthritis became arthritis (no terminology or MedlinePlus page
+gives that name, and NIAMS says osteoarthritis does not come from simple wear
+and tear), #11 a scratched eye became a scratched cornea (SNOMED CT holds
+Scratch of eye region beside corneal abrasion rather than above it, and the
+CHV maps eye scratched to a concept apart from corneal abrasion, so whether
+the old phrase was broader or different was unclear), #14 ringing
+became a noise (ringing is one of several sounds of tinnitus, so it was
+narrower), and #24 tiny purple spots became tiny red or purple spots (every
+definition of petechiae found includes red). Six messages were reworded for
+their syntax style: #03, #04, #09 and #16 moved between styles so that urgent
+tone, earlier used only on emergency items, spans three tiers, and #05 and #14
+now carry the negation inside the question, as all 16 earlier items of that
+style do.
+
+Each item carries `reference.tier` with the basis "proposed from standard
+triage guidance; not clinician-adjudicated; non-claim-grade". These tiers do
+not satisfy Amendment 1: its primary endpoint stays blocked until a clinician
+adjudicates them. Until then `analyze --stimuli` reference scoring on this
+set is exploratory and reported only as such. The `reference` block is the
+field Amendment 1 defines for adjudicated tiers, so the items carry no
+`adjudicated_by`, and `analyze` marks any `reference_scoring` that includes
+a tier without one `claim_grade: false` (with the item ids). Adjudication
+writes the adjudicated tiers, with `adjudicated_by`, `source` and `date`, to
+a new file whose items keep the same ids, and that file is what `analyze
+--stimuli` reads (it matches tiers to judgments by item id); the archived
+stimuli file is not rewritten. The set is analysed on its own,
+not pooled with the cloze or earlier natural-question families. Arms:
+clinical and patient; K=3; temperature 1.0; no translated arm.
+
+### A6.4 Rerun of earlier stimuli: a post-hoc replication
+
+`data/advice/rerun_selection_20261002.json` and its ranking report
+`data/advice/rerun_ranking_20261002.json`, written together by
+`scripts/advice_rerun_select.py` (seed 11, 1000 permutations per cell). The
+selection holds only the rule and the 15 items as (file, id), the shape
+`build-stimuli --source selection` reads, and its notes carry the report's
+sha256; the report holds every item's metrics and the sha256 of every input
+file. Rule: per (stimuli file,
+stimulus, model), the modal tier of each arm under the primary judge only
+(ties toward the more urgent tier, one sample per (file, stimulus, arm,
+model, k) chosen the exporter's way); a downgrade is a patient modal tier
+below the clinical modal tier; stimuli ranked by the number of non-Gemini
+models with a downgrade, then summed tier drop, then the share of patient
+samples coded below the clinical modal tier; top 15. The 15 hold 36
+downgrades in 88 (stimulus, model) cells; under the within-cell permutation
+null, 17.5 were expected. One of the 88 cells cannot be re-elicited:
+`openrouter:stealth/ox-alpha` on item #7 (`advnat_20260807T150843Z#2`, no
+downgrade, null probability 0.203) is not in the A6.1 roster. The
+predictions below therefore use the 87 re-elicitable cells.
+
+Baselines for the predictions (from the per-model rows of the ranking
+report):
+
+| Reading | Cells | Original downgrades | Expected under the null |
+|---|---|---|---|
+| Primary (A6.2 rule 2: DeepSeek and Kimi counted) | 87 | 36 | 17.3 |
+| Sensitivity (DeepSeek v4-flash and Kimi k2.5 left out) | 59 | 23 | 9.9 |
+
+Any further original arm that cannot be re-elicited (for example an id that
+the R0a probe finds retired) leaves both the cell count and both baselines,
+and the reduced numbers are recorded here before the readout.
+
+This selection was made after seeing the codings. Only the first item
+(`stimuli_20260721T235403Z` / `pairs_20260707T154345Z#17`, downgraded by 7 of
+7 models) clears the noise floor: the expected number of the 189 ranked
+stimuli reaching seven downgrades under the null is 0.0004. Under a
+Bonferroni adjustment of its own tail probability it would not clear 0.05
+(0.069). The other 14 are consistent with chance. The rerun is therefore a
+replication test, registered before it runs, with these predictions:
+
+1. Regression toward the mean: over the re-elicitable cells, the rerun
+   downgrade count falls below the original count and toward the null
+   expectation (primary: below 36, toward 17.3, over 87 cells; sensitivity:
+   below 23, toward 9.9, over 59 cells). The count is reported against both
+   numbers of each reading; it is not a test of any single item.
+2. Item #1 is the one item with a directional prediction: a majority of its
+   original models downgrade it again (primary: at least 4 of 7;
+   sensitivity, without DeepSeek and Kimi: at least 3 of 5).
+3. Every item is rerun with every arm at K=3, including the items whose
+   original runs had four or five models or K=1, so per-item comparisons use
+   rates per model, not raw counts.
+
+The rerun stimuli file is `data/advice/stimuli_20261002T081803Z.json`, built
+from the selection on 2026-10-02 by `build-stimuli --source selection` (added
+in a separate pull request). It copies each item's assembled messages byte
+for byte (every item's messages hash to the original `clinical_sha256` and
+`patient_sha256`) and gives each item a unique id: `pairs_20260706T201750Z#10`
+is selected twice, from its completed form (rank 2) and its cloze form
+(rank 13), and the build renamed the second
+`pairs_20260706T201750Z#10~stimuli_20260721T235403Z`, because a repeated id
+would make `elicit` treat the second item as already elicited. With the three
+Anthropic arms, `elicit --dry-run` on it plans 270 calls (15 items x 2 arms x
+3 models x K=3), the count the fire plan's R1 requires. The selected files
+carry different ask suffixes, so its `ask_suffix` is null and no translated
+arm is elicited.
+
+### A6.5 Generation change
+
+In the rerun, each vendor's original arm runs beside its newest arm on the
+same stimuli in the same wave: `claude-sonnet-5` and `claude-sonnet-5-5`,
+`gpt-5.5` and `gpt-chat-latest`, `grok-4.3` and `grok-4.7`,
+`deepseek-v4-flash` and `deepseek-v4.1-flash`, `kimi-k2.5` and `kimi-k3`.
+So a difference between the July archive and the rerun can be split into
+the change from re-asking the same model and the change between model
+generations, instead of the two being conflated. The contrast is the
+within-stimulus difference, between the two generations, of the patient
+minus clinical modal tier rank; with 15 post-hoc items it is descriptive
+only. For the three reasoning arms the newer generation also has the higher
+token limit (A6.2), a confound stated with each of those three comparisons.
+
+### A6.6 Judge of record and billing lanes
+
+- Judge of record: `claude-haiku-4-5`, response text only, `judge_max_tokens`
+  300, rubric `data/advice_rubric.draft.json` version 1.1-draft (canonical
+  sha256 `bd4aa5596b814592f6be76bcb7488e502cc4cf4ad0fcb6ce38404c73c37cf6c8`,
+  the rubric of every archived judgment). Secondary judges never set
+  published tiers. Amendment 2 applies unchanged: these are provisional
+  machine codings, excluded from claim-grade use.
+- Each elicitation fire bills one account. Anthropic arms run in fires whose
+  roster is Anthropic only (anthropic lane, $2 per UTC day unless the owner
+  dates an override); OpenRouter arms run in fires whose roster names no
+  Anthropic model (OpenRouter lane, $10 per day).
+- The judge bills `ANTHROPIC_API_KEY`, but the fire guard books a fire by its
+  `models` alone. So no fire with an OpenRouter-only roster sets
+  `judge: true`. Each wave is judged by one separate anthropic-lane fire
+  whose `models` is the already-complete `anthropic:claude-haiku-4-5` arm
+  (its elicitation plans 0 calls) and whose judge pass covers every response
+  in the archive.
+
+### A6.7 Vendor packs before any public per-model comparison
+
+Amendment 3's rules (1) to (3) apply to both new archives: a reproduction
+pack keyed by (vendor, archive) reaches each affected vendor before any
+public per-model comparison from these runs, the generation comparisons
+included; showing the new archives on the site counts as publication; any
+exception is a deviation the owner records in advance, as in D2 and D3.
+
+### A6.8 Budget, and what does not change
+
+Estimated cost (arithmetic in the fire plan): $17.5 at measured response
+lengths ($4.9 Anthropic, $12.5 OpenRouter) and $26.1 if responses run to the
+90th-percentile length and the reasoning arms write long answers. This
+replaces the frozen design's "$5 total" for these two waves only. Unchanged:
+the endpoints, K=3, temperature 1.0, the analysis seed 7, Amendment 2's
+quarantine, and the daily ceilings.
+
+**Approval record (to fill).** Approved by: `<owner>`. Date (UTC): `<date>`.
+Words: `<verbatim instruction>`. Registry sha256 after the roster pull
+request: `<sha256>`. Rerun stimuli file:
+`data/advice/stimuli_20261002T081803Z.json` (sha256
+`b9be32edde3372e4b29aee4ce39ad25e36074eebd6a019a1779cd4d215cf2598`).
