@@ -15,6 +15,71 @@ nothing here is ever rewritten, and every response record is hash-chained.
 | `judgments_<stem>.report.json` | `judge` | judge cost sidecar |
 | `analysis_<stem>.json` | `analyze` | offline paired stats: modal tiers, rank diffs, downgrade/upgrade classes, translation recovery, within-prompt variance, cluster bootstrap CIs |
 
+## Re-running chosen items (`--source selection`)
+
+To send items of earlier stimuli files to other models, list them in a selection
+file and build a new stimuli file from it:
+
+```bash
+python scripts/advice_eval.py build-stimuli --source selection --selection <selection>.json
+```
+
+The selection file is JSON:
+
+```json
+{"rule": "how the items were chosen, in plain words (stated as post hoc if it was)",
+ "items": [{"file": "data/advice/stimuli_<STAMP>.json", "id": "<item id>"}],
+ "notes": "optional"}
+```
+
+- Each selected item is copied **verbatim**: bodies, assembled messages, sha256
+  values, `source_ref`, `meta` and any other field. The build adds only
+  `meta.rerun_of = {file, id, file_sha256}`; an item that already had a
+  `rerun_of` keeps it under `rerun_of.prior`.
+- Each copied message must still hash to its recorded `clinical_sha256` /
+  `patient_sha256`; a mismatch is refused.
+- A missing file, a missing id, an entry listed twice (also when the same file
+  is named two ways, such as an absolute and a relative path), two entries
+  that send the same two messages (one stimulus copied into two files), an
+  unknown key, an empty `rule` and `--ask-suffix` are refused, and nothing is
+  written.
+- Items that name one source pair (`source_ref` batch and index) with
+  different messages, such as one pair built with two ask suffixes, are kept,
+  and `source.shared_source_pairs` lists their output ids. `analyze` treats
+  each id as its own cluster, so read its bootstrap intervals with that list.
+- Output ids stay unique. When an id was already taken by an earlier entry, the
+  later item becomes `<id>~<file stem>`; `source.renamed_ids` lists each one,
+  and `meta.rerun_of.id` keeps the original id.
+- The holdout seal applies to every item: `tierb_split.sealed_pair`, the
+  one-row form of the rule the collector stamps, which is wider than the
+  `--source pairs` guard. An item is refused when its clinical body is a
+  registered holdout phrase anywhere (Amendment 3: under an alias stem such as
+  `pairs_<STAMP>_txopus`, a re-run stem, a non-Tier-B batch, or with no
+  `source_ref` at all), or when it comes from a Tier B batch whose `top_prompt`
+  or its own clinical body hashes holdout. When an item names a non-Tier-B
+  batch whose file is in `--simulated-dir`, that batch's accepted prompt is
+  checked too (a payload item completed with its target word has a body that
+  differs from the registered prompt). When the seal cannot be evaluated (no
+  `tierb.start_utc` in `--dashboard`, no Tier B batch files in
+  `--simulated-dir`, a Tier B pair with no `top_prompt`, an index outside its
+  batch) the build is refused. A sealed item is refused, not dropped, so the
+  output never silently covers fewer items than the selection names.
+- The output's `source` block records `kind: "selection"`, the selection file's
+  `path` and `sha256`, the `rule`, each source file's sha256 (`files`), ask
+  suffix (`ask_suffixes`) and own source kind and paths (`file_sources`),
+  `renamed_ids`, `shared_source_pairs`, and the seal's counts: every item (`seal_items_checked`), the
+  Tier B items (`tierb_items_checked`) and the items whose batch file's
+  accepted prompt was checked as well (`accepted_prompt_items_checked`).
+- `export_advice_scenarios.py` labels a selection file's family from
+  `file_sources` (an `advnat_` batch behind a source file is the
+  natural-question family), and refuses a selection that mixes the two
+  families, because the label is per stimuli file: build one selection per
+  family.
+- `ask_suffix` is the selected files' common suffix. When they differ it is
+  `null`, and `elicit` refuses the translated arm for that file, because that
+  arm appends the file-level suffix to each translation. The clinical and
+  patient arms send the copied messages unchanged.
+
 ## The audit chain
 
 Each `responses_*.jsonl` record carries `prev_sha256` (the previous record's hash)
@@ -42,6 +107,9 @@ and the engine git sha.
   construction (the payload withholds sealed rows). The `--source pairs` path
   excludes holdout pairs via `tierb_split.py` and hard-errors when the holdout set
   cannot be computed (null `tierb.start_utc` — use the ops-truth dashboard copy).
+  The `--source selection` path applies `tierb_split.sealed_pair` (Amendment 3,
+  wider than the pairs guard) to each selected item and refuses a sealed one, or
+  the whole build when the seal cannot be evaluated.
 - **Judge blinding.** The judge sees response text only — never the prompt or arm.
 - **Vocabulary is data.** Tier definitions and judge wording live in the rubric
   JSON (`data/advice_rubric.json`, domain-reviewed; `.example` is the skeleton).
