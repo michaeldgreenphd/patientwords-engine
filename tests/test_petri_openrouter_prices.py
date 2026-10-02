@@ -579,3 +579,116 @@ def test_the_usage_replica_matches_inspects_own_openrouter_mapping(monkeypatch):
         api = inspect_model.get_model(f"openrouter/{slug}", api_key="offline-test-key-never-sent", memoize=False).api
         assert api._cache_prompt_enabled(inspect_model.GenerateConfig()) is slug.startswith("anthropic/"), slug
     assert openrouter._ephemeral() == {"type": "ephemeral"}
+
+
+# ------------------------------------------------------------------ the October 2026 roster (review of 2026-10-01)
+
+CAPTURE_20261001 = ROOT / "data" / "pab" / "openrouter_catalogue_20261002T053607Z.json"
+REVIEWED_20261001 = {
+    "anthropic/claude-sonnet-5.5", "anthropic/claude-opus-5.5", "openai/gpt-chat-latest", "openai/gpt-5.6-luna",
+    "openai/gpt-6-astra", "openai/gpt-6.1-sol", "google/gemini-3.8-flash", "google/gemini-3.1-pro-preview",
+    "x-ai/grok-4.7", "deepseek/deepseek-v4.1-flash", "deepseek/deepseek-v4-pro-0813", "moonshotai/kimi-k3",
+    "moonshotai/kimi-k2.6", "meta/muse-spark-1.3"}
+# the OpenRouter-routed vendor blocks and the slug prefix each one's advice specs carry
+VENDOR_BLOCKS = {"openai": "openai/", "xai": "x-ai/", "deepseek": "deepseek/", "moonshot": "moonshotai/"}
+# slugs with registered advice arms: a minimum output budget would change those arms' requests mid-archive
+REGISTERED_ARMS = {"openai/gpt-5.5", "openai/gpt-5.4-mini", "google/gemini-3.5-flash", "x-ai/grok-4.3",
+                   "deepseek/deepseek-v4-flash", "moonshotai/kimi-k2.5"}
+
+
+@pytest.fixture(scope="module")
+def capture_20261001() -> dict:
+    return json.loads(CAPTURE_20261001.read_text(encoding="utf-8"))
+
+
+def test_the_2026_10_01_capture_holds_exactly_the_reviewed_rows_and_its_source(capture_20261001):
+    rows = capture_20261001["resolved"]
+    assert set(rows) == REVIEWED_20261001 | {"deepseek/deepseek-v4.1-flash:batch"}
+    assert capture_20261001["source"] == "https://openrouter.ai/api/v1/models"
+    assert capture_20261001["catalogue_size"] == 464 and len(capture_20261001["response_sha256"]) == 64
+    assert all(r["slug"] == slug and r["priced"] is True for slug, r in rows.items())
+
+
+def test_every_2026_10_01_entry_is_reviewed_and_priced_in_its_own_vendor_block(registry, capture_20261001):
+    """Each new slug has an openrouter entry at least list x 1.05 (the evidence test above also checks it), and the
+    vendor block an advice spec of that vendor resolves through carries the same entry, so the advice spend meter
+    never meters it at that block's default_pricing, which sits below list for xai, deepseek and moonshot."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("advice_eval_prices", ROOT / "scripts" / "advice_eval.py")
+    ae = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ae)
+    table = registry["openrouter"]["pricing"]
+    assert REVIEWED_20261001 <= set(table)
+    for slug in REVIEWED_20261001:
+        row = capture_20261001["resolved"][slug]
+        assert table[slug][0] >= row["input_price_per_1m"] * MARKUP - 1e-9, slug
+        assert table[slug][1] >= row["output_price_per_1m"] * MARKUP - 1e-9, slug
+        assert spend.resolve_price(f"openrouter/{slug}").source == "registry:openrouter:pricing", slug
+        for block, prefix in VENDOR_BLOCKS.items():
+            if slug.startswith(prefix):
+                rate, source = ae._registry_rate(registry[block], slug)
+                assert (source, list(rate)) == ("pricing", list(table[slug])), (block, slug)
+    # every entry a vendor block carries equals the openrouter entry for the slug (one reviewed price per slug)
+    for block in VENDOR_BLOCKS:
+        for slug, rate in (registry[block].get("pricing") or {}).items():
+            assert list(rate) == list(table[slug]), (block, slug)
+
+
+def test_the_two_deepseek_prices_take_the_dearer_listed_rate(registry, capture_20261001):
+    """v4.1-flash lists input 0.03 on its standard row and 0.112 on its :batch row: the entry prices input from the
+    higher. v4-pro-0813 bills twice its base rate in weekday UTC windows: the entry prices from the dearest row."""
+    rows, table = capture_20261001["resolved"], registry["openrouter"]["pricing"]
+    flash, batch = rows["deepseek/deepseek-v4.1-flash"], rows["deepseek/deepseek-v4.1-flash:batch"]
+    assert batch["input_price_per_1m"] > flash["input_price_per_1m"]
+    assert table["deepseek/deepseek-v4.1-flash"][0] >= batch["input_price_per_1m"] * MARKUP - 1e-9
+    pro = rows["deepseek/deepseek-v4-pro-0813"]
+    dearest_in = max([pro["input_price_per_1m"]] + [o["prompt_price_per_1m"] for o in pro["price_overrides_per_1m"]])
+    dearest_out = max([pro["output_price_per_1m"]] + [o["completion_price_per_1m"] for o in pro["price_overrides_per_1m"]])
+    assert (dearest_in, dearest_out) == (1.32, 3.96)
+    assert table["deepseek/deepseek-v4-pro-0813"][0] >= dearest_in * MARKUP - 1e-9
+    assert table["deepseek/deepseek-v4-pro-0813"][1] >= dearest_out * MARKUP - 1e-9
+
+
+def test_the_long_prompt_tiers_left_unpriced_start_above_200000_prompt_tokens(capture_20261001):
+    """The entries price the base row; the long-prompt override rows they leave out apply only from 200000 prompt
+    tokens (the registry note says a Petri fire at that --token-limit would need the tier rate)."""
+    for slug, row in capture_20261001["resolved"].items():
+        for o in row.get("price_overrides_per_1m", []):
+            if "min_prompt_tokens" in o:
+                assert o["min_prompt_tokens"] >= 200000, slug
+
+
+def test_min_output_tokens_lists_exactly_the_reviewed_reasoning_models(registry, capture_20261001):
+    budgets = registry["openrouter"]["min_output_tokens"]
+    reasoning = {slug for slug, row in capture_20261001["resolved"].items()
+                 if slug in REVIEWED_20261001 and "reasoning" in row["supported_parameters"]}
+    assert reasoning == REVIEWED_20261001 - {"openai/gpt-chat-latest"}
+    assert set(budgets) == reasoning | {"openai/gpt-6-luna"}      # gpt-6-luna from the 2026-09-25 capture
+    luna = json.loads((ROOT / "data" / "pab" / "openrouter_catalogue_20260925T125150Z.json")
+                      .read_text(encoding="utf-8"))["resolved"]["openai/gpt-6-luna"]
+    assert "reasoning" in luna["supported_parameters"]
+    assert all(isinstance(v, int) and v >= 4096 for v in budgets.values())
+    assert not set(budgets) & REGISTERED_ARMS, "a registered arm's request must not change mid-archive"
+    assert not set(registry["anthropic"]["min_output_tokens"]) & {"claude-haiku-4-5", "claude-sonnet-5"}
+    for block, prefix in VENDOR_BLOCKS.items():
+        mine = registry[block].get("min_output_tokens") or {}
+        assert mine == {s: v for s, v in budgets.items() if s.startswith(prefix)}, block
+
+
+def test_the_openai_note_records_that_chat_latest_is_now_listed_and_its_build(registry, capture_20261001):
+    row = capture_20261001["resolved"]["openai/gpt-chat-latest"]
+    assert row["canonical_slug"] == "openai/gpt-chat-latest-20260505"
+    note = registry["openai"]["consumer_proxy_note"]
+    assert "UPDATE 2026-10-01" in note and "openai/gpt-chat-latest-20260505" in note
+    assert registry["openai"]["consumer_default"] == "openai/gpt-5.5", "consumer defaults are the owner's decision"
+
+
+def test_the_engine_prices_the_new_direct_anthropic_models_at_list():
+    from medlang_circuits.evaluate_models import PRICING
+
+    assert PRICING["claude-opus-5-5"] == (4.0, 20.0) and PRICING["claude-sonnet-5-5"] == (2.0, 10.0)
+    assert PRICING["claude-fable-5-1"] == (10.0, 50.0)
+    assert PRICING["claude-sonnet-5"] == (2.0, 10.0), "the claude-api skill lists Sonnet 5 at 2/10, not 3/15"
+    for model in ("claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1"):
+        assert spend.resolve_price(f"anthropic/{model}").source == "engine:evaluate_models.PRICING", model

@@ -57,10 +57,17 @@ from medlang_circuits.llm_client import _CLASSIFY_SYSTEM, _TRANSLATE_SYSTEM, _ge
 logger = logging.getLogger(__name__)
 
 # USD per million tokens: model -> (input, output)
+# Reviewed 2026-10-01 against the claude-api skill bundled with Claude Code 2.1.285 (shared/models.md and
+# shared/model-migration.md): claude-opus-5-5, claude-sonnet-5-5 and claude-fable-5-1 added at their list prices, and
+# claude-sonnet-5 corrected from (3.0, 15.0), the Sonnet 4.6 price, to (2.0, 10.0) ("per-token pricing is also lower
+# than Sonnet 4.6: $2/$10 vs $3/$15 per MTok"; Sonnet 5.5 is "at the same prices ($2 / $10 per MTok)").
 PRICING: dict[str, tuple[float, float]] = {
+    "claude-fable-5-1": (10.0, 50.0),
+    "claude-opus-5-5": (4.0, 20.0),
+    "claude-sonnet-5-5": (2.0, 10.0),
     "claude-opus-4-8": (5.0, 25.0),
     "claude-opus-4-7": (5.0, 25.0),
-    "claude-sonnet-5": (3.0, 15.0),
+    "claude-sonnet-5": (2.0, 10.0),
     "claude-sonnet-4-6": (3.0, 15.0),
     "claude-haiku-4-5": (1.0, 5.0),
     "claude-fable-5": (10.0, 50.0),

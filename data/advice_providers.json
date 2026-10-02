@@ -5,14 +5,29 @@
   "consumer_product": "Claude (claude.ai) free tier",
   "consumer_default": "claude-haiku-4-5",
   "consumer_proxy_note": "VERIFIED 2026-07-21: claude.ai's free tier defaults to Claude Sonnet 5 (free/Pro default since 2026-07-01), with Haiku 4.5 selectable. haiku stays set here as the pilot's cost floor per owner decision 2026-07-21 \u2014 a deliberate mismatch with the free-tier default, recorded in the pre-registration; the consumer-proxy arm proper should run anthropic:claude-sonnet-5 as an override. No default_pricing on purpose: the script's conservative built-in fallback prices Anthropic calls for the ceiling reserve (deliberate, matches the example; the ceiling test pins this). UPDATE 2026-07-23 (owner-directed): the sonnet-5 arm now runs the full registered design as the true free-tier default; haiku records stand as the labeled cost-floor arm.",
-  "key_env": "ANTHROPIC_API_KEY"
+  "key_env": "ANTHROPIC_API_KEY",
+  "omit_temperature": {
+   "claude-fable-5-1": "Claude Fable 5.1 takes no sampling parameters (claude-api skill, shared/models.md); a request carrying temperature is rejected",
+   "claude-opus-5-5": "Claude Opus 5.5 rejects any sampling parameter, the default value included, with a 400 (claude-api skill, python/claude-api/sdk-upgrade.md: Opus 4.7 and later)",
+   "claude-sonnet-5-5": "Claude Sonnet 5.5 rejects a non-default temperature with a 400 (claude-api skill, python/claude-api/sdk-upgrade.md); omitted, it samples at the API default, 1.0",
+   "anthropic/claude-fable-5.1": "Claude Fable 5.1 takes no sampling parameters (claude-api skill, shared/models.md); a request carrying temperature is rejected (OpenRouter spelling of claude-fable-5-1)",
+   "anthropic/claude-opus-5.5": "Claude Opus 5.5 rejects any sampling parameter, the default value included, with a 400 (claude-api skill, python/claude-api/sdk-upgrade.md: Opus 4.7 and later) (OpenRouter spelling of claude-opus-5-5)",
+   "anthropic/claude-sonnet-5.5": "Claude Sonnet 5.5 rejects a non-default temperature with a 400 (claude-api skill, python/claude-api/sdk-upgrade.md); omitted, it samples at the API default, 1.0 (OpenRouter spelling of claude-sonnet-5-5)"
+  },
+  "omit_temperature_note": "ADDED 2026-10-01 (registry change ahead of any fire; nothing fired). Models whose requests must not carry temperature, keyed by every spelling a lane sends: the direct Anthropic id (advice anthropic:<id>, Petri anthropic/<id>) and the OpenRouter slug (advice openrouter:<slug>, Petri openrouter/<slug>). Read by scripts/advice_eval.py temperature_omission for every call it sends (elicit, translation, judge, and the Petri judge through the same clients) and by the Petri target and auditor GenerateConfig (scripts/petri_audit). The temperature is then left out of the request, and the record says so: advice records carry request.temperature null plus a request_adjustments entry with the requested value and this reason; Petri judgment rows carry temperature_sent null and temperature_omitted; a Petri manifest carries models.target.sampling_omitted. Source: the claude-api skill bundled with Claude Code 2.1.285 (shared/models.md, python/claude-api/sdk-upgrade.md, shared/model-migration.md), read 2026-10-01. That source also says Claude Sonnet 5 rejects non-default values; claude-sonnet-5 is NOT listed, so its registered advice arm keeps sending 1.0 (the default, accepted) unchanged - a Sonnet 5 judge at temperature 0.0 would be rejected, an owner decision recorded in the PR. Whether OpenRouter forwards temperature for these slugs is not established: the anthropic/claude-opus-5.5 and claude-sonnet-5.5 catalogue rows list temperature as supported, the fable-5.1 row does not.",
+  "min_output_tokens": {
+   "claude-fable-5-1": 4096,
+   "claude-opus-5-5": 4096,
+   "claude-sonnet-5-5": 4096
+  },
+  "min_output_tokens_note": "See openrouter.min_output_tokens_note. These three think by default (claude-api skill shared/models.md: Fable 5.1 thinking always on, Opus 5.5 thinking cannot be disabled, Sonnet 5.5 adaptive thinking on by default), and their OpenRouter rows list reasoning. claude-sonnet-5 and claude-haiku-4-5 are not listed: their registered arms keep their 1024-token requests."
  },
  "openai": {
   "api": "openai-compat",
   "base_url": "https://openrouter.ai/api/v1",
   "consumer_product": "ChatGPT free tier",
   "consumer_default": "openai/gpt-5.5",
-  "consumer_proxy_note": "PHASE 2 (2026-07-22, owner decision): routed via OpenRouter with the owner's prepaid key. ChatGPT's free tier serves GPT-5.5 Instant; OpenAI's chat-latest alias (the exact product-tuned Instant model) is NOT listed on OpenRouter, so openai/gpt-5.5 is the stated approximation - the same model family without the ChatGPT product tune. Recorded fidelity gap; a direct OPENAI_API_KEY pointing at chat-latest is the higher-fidelity upgrade path. Pricing = GPT-5.5 rate + ~5% aggregator margin, worst case for the ceiling math.",
+  "consumer_proxy_note": "PHASE 2 (2026-07-22, owner decision): routed via OpenRouter with the owner's prepaid key. ChatGPT's free tier serves GPT-5.5 Instant; OpenAI's chat-latest alias (the exact product-tuned Instant model) is NOT listed on OpenRouter, so openai/gpt-5.5 is the stated approximation - the same model family without the ChatGPT product tune. Recorded fidelity gap; a direct OPENAI_API_KEY pointing at chat-latest is the higher-fidelity upgrade path. Pricing = GPT-5.5 rate + ~5% aggregator margin, worst case for the ceiling math. UPDATE 2026-10-01: OpenRouter now lists openai/gpt-chat-latest, so the statement above that chat-latest is not listed is out of date. Its catalogue row (data/pab/openrouter_catalogue_20261002T053607Z.json) describes it as OpenAI's chat-latest alias for the latest Instant chat model used in ChatGPT; it is a rolling alias that on 2026-10-01 resolved to the canonical build openai/gpt-chat-latest-20260505, list 5/30, and it lists neither temperature nor reasoning. consumer_default is unchanged (owner decision): switching this arm to the alias is an access-mode change that _alias_vs_snapshot requires recorded in the pre-registration before the fire, and its records would pin the served build per call as every record does. openai/gpt-6-luna is mirrored here from openrouter.pricing (2026-09-25 review) for the same reason as the new entries.",
   "key_env": "OPENROUTER_API_KEY",
   "default_pricing": [
    5.25,
@@ -22,9 +37,36 @@
    "openai/gpt-5.4-mini": [
     0.8,
     4.75
+   ],
+   "openai/gpt-5.6-luna": [
+    0.212,
+    1.272
+   ],
+   "openai/gpt-6-astra": [
+    10.6,
+    53.0
+   ],
+   "openai/gpt-6-luna": [
+    0.106,
+    0.53
+   ],
+   "openai/gpt-6.1-sol": [
+    2.12,
+    10.6
+   ],
+   "openai/gpt-chat-latest": [
+    5.3,
+    31.8
    ]
   },
-  "fallback_note": "mini fallback arm (owner-directed 2026-07-23): the free ChatGPT tier falls back to a mini-class model once a session exhausts its GPT-5.5 message quota, so the mini arm measures the OVERFLOW experience of a non-paying user - labeled as the fallback arm, never as the default. SLUG CORRECTION (first fire, 2026-07-23): openai/gpt-5.5-mini does NOT exist on OpenRouter (400 Bad Request, run 30011607927, $0 spent); the arm runs openai/gpt-5.4-mini, the newest mini generation OpenRouter lists (verified via OpenRouter's public model pages). The exact mini variant the consumer product falls back to is unpublished and public sources conflict - recorded approximation; the manual_ui calibration subset measures the gap. Pricing = gpt-5.4-mini list ($0.75/$4.50) + ~5% markup + margin."
+  "fallback_note": "mini fallback arm (owner-directed 2026-07-23): the free ChatGPT tier falls back to a mini-class model once a session exhausts its GPT-5.5 message quota, so the mini arm measures the OVERFLOW experience of a non-paying user - labeled as the fallback arm, never as the default. SLUG CORRECTION (first fire, 2026-07-23): openai/gpt-5.5-mini does NOT exist on OpenRouter (400 Bad Request, run 30011607927, $0 spent); the arm runs openai/gpt-5.4-mini, the newest mini generation OpenRouter lists (verified via OpenRouter's public model pages). The exact mini variant the consumer product falls back to is unpublished and public sources conflict - recorded approximation; the manual_ui calibration subset measures the gap. Pricing = gpt-5.4-mini list ($0.75/$4.50) + ~5% markup + margin.",
+  "pricing_note": "REVIEWED 2026-10-01: the per-model entries for this vendor's slugs equal openrouter.pricing (see its pricing_note for list prices and the review), so an advice spec in this block's spelling never meters at default_pricing below list. min_output_tokens: see openrouter.min_output_tokens_note.",
+  "min_output_tokens": {
+   "openai/gpt-5.6-luna": 4096,
+   "openai/gpt-6-astra": 4096,
+   "openai/gpt-6.1-sol": 4096,
+   "openai/gpt-6-luna": 4096
+  }
  },
  "google": {
   "api": "openai-compat",
@@ -49,7 +91,17 @@
   "default_pricing": [
    1.32,
    2.63
-  ]
+  ],
+  "pricing": {
+   "x-ai/grok-4.7": [
+    2.12,
+    6.36
+   ]
+  },
+  "pricing_note": "REVIEWED 2026-10-01: the per-model entries for this vendor's slugs equal openrouter.pricing (see its pricing_note for list prices and the review), so an advice spec in this block's spelling never meters at default_pricing below list. min_output_tokens: see openrouter.min_output_tokens_note.",
+  "min_output_tokens": {
+   "x-ai/grok-4.7": 4096
+  }
  },
  "deepseek": {
   "api": "openai-compat",
@@ -61,7 +113,22 @@
   "default_pricing": [
    0.15,
    0.3
-  ]
+  ],
+  "pricing": {
+   "deepseek/deepseek-v4-pro-0813": [
+    1.3992,
+    4.1976
+   ],
+   "deepseek/deepseek-v4.1-flash": [
+    0.1188,
+    0.795
+   ]
+  },
+  "pricing_note": "REVIEWED 2026-10-01: the per-model entries for this vendor's slugs equal openrouter.pricing (see its pricing_note for list prices and the review), so an advice spec in this block's spelling never meters at default_pricing below list. min_output_tokens: see openrouter.min_output_tokens_note.",
+  "min_output_tokens": {
+   "deepseek/deepseek-v4.1-flash": 4096,
+   "deepseek/deepseek-v4-pro-0813": 4096
+  }
  },
  "moonshot": {
   "api": "openai-compat",
@@ -73,7 +140,22 @@
   "default_pricing": [
    0.63,
    3.15
-  ]
+  ],
+  "pricing": {
+   "moonshotai/kimi-k2.6": [
+    0.4602,
+    1.9377
+   ],
+   "moonshotai/kimi-k3": [
+    2.862,
+    14.31
+   ]
+  },
+  "pricing_note": "REVIEWED 2026-10-01: the per-model entries for this vendor's slugs equal openrouter.pricing (see its pricing_note for list prices and the review), so an advice spec in this block's spelling never meters at default_pricing below list. min_output_tokens: see openrouter.min_output_tokens_note.",
+  "min_output_tokens": {
+   "moonshotai/kimi-k3": 4096,
+   "moonshotai/kimi-k2.6": 4096
+  }
  },
  "openrouter": {
   "api": "openai-compat",
@@ -85,29 +167,102 @@
    5.0,
    30.0
   ],
-  "pricing_note": "default_pricing is a GPT-tier catch-all for arbitrary openrouter:<vendor/model> specs. Flash-tier reroutes need a per-model entry or the ceiling meter bills them ~12x real and chokes the run mid-flight (2026-07-22: runs 1c and hedge-resume archived openrouter gemini records at the catch-all rate - archived cost_usd stands, overstatement documented in the pre-registration). Rates below: vendor list price + OpenRouter ~5% markup + margin. || stealth/ox-alpha REMOVED 2026-08-24 (owner-directed) after its free window closed: without a per-model entry any accidental post-window call bills at the GPT-tier catch-all, so the spend ceiling stops it fast instead of booking $0 against real charges. The window's archived records keep their 0/0 cost_usd. || REVIEWED 2026-09-23 (Petri OpenRouter targets and judges): every entry below is checked against the OpenRouter catalogue captured 2026-08-04 (data/pab/openrouter_catalogue_20260804T025116Z.json) and, where the advice archives hold calls, against OpenRouter's own bill (response_raw.usage.cost), which equals the catalogue rate on every such call, so OpenRouter adds no per-token markup (gpt-5.4-mini 744 of 744 calls, gemini-3.5-flash 884 of 884; grok-4.3 at or below list on all 581, the difference being cache discounts). Each entry sits 5-7% above list: the ~5% markup plus margin. openai/gpt-5.4-mini [0.8, 4.75]: list 0.75/4.5, the openai entry's own rate. x-ai/grok-4.3 [1.32, 2.63]: list 1.25/2.5, the xai entry's own rate. anthropic/claude-haiku-4.5 [1.06, 5.3]: list 1.0/5.0 (catalogue only, no archived OpenRouter call; the direct Anthropic rate in medlang_circuits.evaluate_models.PRICING is also 1.0/5.0). google/gemini-3.5-flash CORRECTED from [0.35, 2.75] to [1.6, 9.5]: list 1.5/9.0 (catalogue, and google.default_pricing above). The old entry was below list from the day it was added (commit 59268abf, 2026-07-22): the 864 calls it metered (sent 2026-07-23 to 2026-08-23) booked $2.4307 against $7.9638 billed, a 3.28x understatement, and the ~12x above was really 3.33x (5/30 over 1.5/9.0). Archived cost_usd stands as recorded; metering note in docs/preregistration_advice.md. tests/test_petri_openrouter_prices.py holds every entry to at least list x 1.05 and to at least every archived OpenRouter bill for its slug. The Petri lane (scripts/petri_audit) refuses at pre-flight any openrouter/ target or openrouter: judge with no entry here: default_pricing stays the advice lane's fallback, never a Petri price. || ADDED 2026-09-25 (owner-directed, the exploratory Petri cross-model run's GPT target): openai/gpt-6-luna [0.106, 0.53]: list 0.10/0.50 (catalogue capture data/pab/openrouter_catalogue_20260925T125150Z.json; cache reads list 0.01), 6% above list like the entries above. No archived call yet. It lists no temperature parameter: a reasoning model, served at its own sampling.",
+  "pricing_note": "default_pricing is a GPT-tier catch-all for arbitrary openrouter:<vendor/model> specs. Flash-tier reroutes need a per-model entry or the ceiling meter bills them ~12x real and chokes the run mid-flight (2026-07-22: runs 1c and hedge-resume archived openrouter gemini records at the catch-all rate - archived cost_usd stands, overstatement documented in the pre-registration). Rates below: vendor list price + OpenRouter ~5% markup + margin. || stealth/ox-alpha REMOVED 2026-08-24 (owner-directed) after its free window closed: without a per-model entry any accidental post-window call bills at the GPT-tier catch-all, so the spend ceiling stops it fast instead of booking $0 against real charges. The window's archived records keep their 0/0 cost_usd. || REVIEWED 2026-09-23 (Petri OpenRouter targets and judges): every entry below is checked against the OpenRouter catalogue captured 2026-08-04 (data/pab/openrouter_catalogue_20260804T025116Z.json) and, where the advice archives hold calls, against OpenRouter's own bill (response_raw.usage.cost), which equals the catalogue rate on every such call, so OpenRouter adds no per-token markup (gpt-5.4-mini 744 of 744 calls, gemini-3.5-flash 884 of 884; grok-4.3 at or below list on all 581, the difference being cache discounts). Each entry sits 5-7% above list: the ~5% markup plus margin. openai/gpt-5.4-mini [0.8, 4.75]: list 0.75/4.5, the openai entry's own rate. x-ai/grok-4.3 [1.32, 2.63]: list 1.25/2.5, the xai entry's own rate. anthropic/claude-haiku-4.5 [1.06, 5.3]: list 1.0/5.0 (catalogue only, no archived OpenRouter call; the direct Anthropic rate in medlang_circuits.evaluate_models.PRICING is also 1.0/5.0). google/gemini-3.5-flash CORRECTED from [0.35, 2.75] to [1.6, 9.5]: list 1.5/9.0 (catalogue, and google.default_pricing above). The old entry was below list from the day it was added (commit 59268abf, 2026-07-22): the 864 calls it metered (sent 2026-07-23 to 2026-08-23) booked $2.4307 against $7.9638 billed, a 3.28x understatement, and the ~12x above was really 3.33x (5/30 over 1.5/9.0). Archived cost_usd stands as recorded; metering note in docs/preregistration_advice.md. tests/test_petri_openrouter_prices.py holds every entry to at least list x 1.05 and to at least every archived OpenRouter bill for its slug. The Petri lane (scripts/petri_audit) refuses at pre-flight any openrouter/ target or openrouter: judge with no entry here: default_pricing stays the advice lane's fallback, never a Petri price. || ADDED 2026-09-25 (owner-directed, the exploratory Petri cross-model run's GPT target): openai/gpt-6-luna [0.106, 0.53]: list 0.10/0.50 (catalogue capture data/pab/openrouter_catalogue_20260925T125150Z.json; cache reads list 0.01), 6% above list like the entries above. No archived call yet. It lists no temperature parameter: a reasoning model, served at its own sampling. || REVIEWED 2026-10-01 (the October 2026 roster; a registry change ahead of any fire, nothing fired): 14 entries from the OpenRouter catalogue captured that day (data/pab/openrouter_catalogue_20261002T053607Z.json), each list x 1.06 rounded up at the fourth decimal, the margin of the entries above. List prices (input/output USD per Mtok): anthropic/claude-sonnet-5.5 2/10; anthropic/claude-opus-5.5 4/20; openai/gpt-chat-latest 5/30; openai/gpt-5.6-luna 0.2/1.2; openai/gpt-6-astra 10/50; openai/gpt-6.1-sol 2/10; google/gemini-3.8-flash 0.75/3.75; google/gemini-3.1-pro-preview 2/12; x-ai/grok-4.7 2/6; moonshotai/kimi-k3 2.7/13.5; moonshotai/kimi-k2.6 0.43415/1.828; meta/muse-spark-1.3 1.25/4.25. Two depart from the base row: deepseek/deepseek-v4.1-flash input is priced from 0.112, its :batch row's input, not the standard row's 0.03 (the standard row lists input below the batch row, which is unusual; the higher of the two keeps the ceiling from understating if 0.03 is a listing error or a promotion), output from the standard 0.75 (batch lists 0.336). deepseek/deepseek-v4-pro-0813 is priced from 1.32/3.96, the dearer of its weekday UTC time-of-day rows (base 0.66/1.98): a call sent in those windows bills twice the base. Long-prompt tiers are NOT priced: gpt-5.6-luna, gpt-6-astra and gpt-6.1-sol list a dearer rate from 272000 prompt tokens, gemini-3.1-pro-preview and grok-4.7 from 200000; advice prompts are a few hundred tokens, and a Petri fire stays below while its --token-limit does (a fire at 200000 or more on these slugs would need the tier rate). google/gemini-3.1-pro-preview has archived calls (responses_stimuli_20260807T153329Z, metered at the 5/30 catch-all, which overstated them; archived cost_usd stands); tests/test_petri_openrouter_prices.py checks the new entry against their OpenRouter bills. The OpenRouter-routed vendor blocks (openai, xai, deepseek, moonshot) carry the same entry for each of their slugs, so an advice spec in their spelling never meters at a default_pricing below list (xai 1.32/2.63 against grok-4.7's 2/6, moonshot 0.63/3.15 against kimi-k3's 2.7/13.5, deepseek 0.15/0.3 against v4.1-flash's 0.75 output, openai 5.25/31.5 against gpt-6-astra's 10/50). anthropic/claude-fable-5.1 is not priced here (no OpenRouter arm planned); the direct claude-fable-5-1 is priced in medlang_circuits.evaluate_models.PRICING.",
   "pricing": {
    "anthropic/claude-haiku-4.5": [
     1.06,
     5.3
    ],
+   "anthropic/claude-opus-5.5": [
+    4.24,
+    21.2
+   ],
+   "anthropic/claude-sonnet-5.5": [
+    2.12,
+    10.6
+   ],
+   "deepseek/deepseek-v4-pro-0813": [
+    1.3992,
+    4.1976
+   ],
+   "deepseek/deepseek-v4.1-flash": [
+    0.1188,
+    0.795
+   ],
+   "google/gemini-3.1-pro-preview": [
+    2.12,
+    12.72
+   ],
    "google/gemini-3.5-flash": [
     1.6,
     9.5
+   ],
+   "google/gemini-3.8-flash": [
+    0.795,
+    3.975
+   ],
+   "meta/muse-spark-1.3": [
+    1.325,
+    4.505
+   ],
+   "moonshotai/kimi-k2.6": [
+    0.4602,
+    1.9377
+   ],
+   "moonshotai/kimi-k3": [
+    2.862,
+    14.31
    ],
    "openai/gpt-5.4-mini": [
     0.8,
     4.75
    ],
+   "openai/gpt-5.6-luna": [
+    0.212,
+    1.272
+   ],
+   "openai/gpt-6-astra": [
+    10.6,
+    53.0
+   ],
    "openai/gpt-6-luna": [
     0.106,
     0.53
    ],
+   "openai/gpt-6.1-sol": [
+    2.12,
+    10.6
+   ],
+   "openai/gpt-chat-latest": [
+    5.3,
+    31.8
+   ],
    "x-ai/grok-4.3": [
     1.32,
     2.63
+   ],
+   "x-ai/grok-4.7": [
+    2.12,
+    6.36
    ]
-  }
+  },
+  "min_output_tokens": {
+   "anthropic/claude-opus-5.5": 4096,
+   "anthropic/claude-sonnet-5.5": 4096,
+   "deepseek/deepseek-v4-pro-0813": 4096,
+   "deepseek/deepseek-v4.1-flash": 4096,
+   "google/gemini-3.1-pro-preview": 4096,
+   "google/gemini-3.8-flash": 4096,
+   "meta/muse-spark-1.3": 4096,
+   "moonshotai/kimi-k2.6": 4096,
+   "moonshotai/kimi-k3": 4096,
+   "openai/gpt-5.6-luna": 4096,
+   "openai/gpt-6-astra": 4096,
+   "openai/gpt-6-luna": 4096,
+   "openai/gpt-6.1-sol": 4096,
+   "x-ai/grok-4.7": 4096
+  },
+  "min_output_tokens_note": "ADDED 2026-10-01. Per-model minimum output budget, in tokens, for reasoning models: scripts/advice_eval.py sends max(the fire's --max-tokens, this value) for the model (elicit and translation calls, and the advice judge's --judge-max-tokens), records the value sent in request.max_tokens with a request_adjustments entry when it differs from the fire's, and sizes the spend ceiling's worst case with it. Listed: every slug priced in this block whose catalogue row lists reasoning in supported_parameters (data/pab/openrouter_catalogue_20261002T053607Z.json; openai/gpt-6-luna from data/pab/openrouter_catalogue_20260925T125150Z.json); openai/gpt-chat-latest lists no reasoning parameter. 4096 is a starting value, not a measured one: at 1024 tokens, 291 of the 294 openrouter:google/gemini-3.1-pro-preview calls in responses_stimuli_20260807T153329Z stopped at length. Slugs with registered advice arms (openai/gpt-5.5, openai/gpt-5.4-mini, google/gemini-3.5-flash, x-ai/grok-4.3, deepseek/deepseek-v4-flash, moonshotai/kimi-k2.5) are deliberately not listed: a minimum would change the request of an arm part-way through its archives. gemini-3.1-pro-preview is listed although it has an archive: its arm there is complete, so only a new fire (or a raised --samples on that archive) would send the larger budget, and its records say so. The Petri lane does not read this field: its seeds carry their own max_tokens."
  },
  "copilot": {
   "api": "manual_ui",

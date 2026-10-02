@@ -1345,3 +1345,254 @@ def test_parse_generated_pairs_salvages_truncated_array():
             ' {"topic": "t", "clinical": "Cut off mid')
     items = _parse_generated_pairs(text)
     assert [i["clinical"] for i in items] == ["Full first", "Full second"]
+
+
+# ------------------------------------------- sampling and output budget per model (registry revision 2026-10-01)
+
+LIVE_REGISTRY = json.loads((Path(__file__).resolve().parents[1] / "data" / "advice_providers.json")
+                           .read_text(encoding="utf-8"))
+# a registry in the live file's shape: model-r is listed in both tables, model-x (the suite's usual model) in neither
+ROSTER_REGISTRY = {
+    "anthropic": {"api": "anthropic", "omit_temperature": {"model-r": "model-r rejects temperature (test)"},
+                  "min_output_tokens": {"model-r": 4096}},
+    "fakeai": {**REGISTRY["fakeai"], "min_output_tokens": {"model-z": 3000}},
+}
+
+
+def _roster_registry(tmp_path, registry=None):
+    path = tmp_path / "providers_roster.json"
+    path.write_text(json.dumps(registry or ROSTER_REGISTRY), encoding="utf-8")
+    return path
+
+
+@pytest.mark.parametrize("spelling", [
+    "claude-opus-5-5", "anthropic:claude-opus-5-5", "anthropic/claude-opus-5-5",
+    "openrouter:anthropic/claude-opus-5.5", "openrouter/anthropic/claude-opus-5.5", " claude-opus-5-5 ",
+    "claude-fable-5-1", "anthropic:claude-fable-5-1", "openrouter/anthropic/claude-fable-5.1",
+    "claude-sonnet-5-5", "openrouter:anthropic/claude-sonnet-5.5",
+])
+def test_the_live_registry_withholds_temperature_from_every_spelling_of_the_new_anthropic_models(spelling):
+    reason = ae.temperature_omission(spelling, LIVE_REGISTRY)
+    assert reason and "claude-api skill" in reason
+
+
+@pytest.mark.parametrize("spelling", [
+    "claude-haiku-4-5", "anthropic:claude-haiku-4-5", "openrouter/anthropic/claude-haiku-4.5",
+    # Sonnet 5 rejects non-default values too, but its registered arm sends the default and is left unchanged
+    "claude-sonnet-5", "anthropic:claude-sonnet-5",
+    "openai:openai/gpt-5.5", "openrouter:openai/gpt-6-luna", "mockllm/model", "",
+    # the match is exact after one provider prefix: a near spelling is not the model
+    "claude-opus-5.5", "claude-opus-5-5-20260921", "openrouter:anthropic/claude-opus-5-5",
+])
+def test_temperature_is_left_alone_for_every_other_model(spelling):
+    assert ae.temperature_omission(spelling, LIVE_REGISTRY) is None
+
+
+def test_a_malformed_omission_map_is_refused_not_ignored():
+    assert ae.temperature_omission("m", {}) is None and ae.temperature_omission("m", {"anthropic": {}}) is None
+    for bad in (["claude-opus-5-5"], {"claude-opus-5-5": ""}, {"claude-opus-5-5": None}, "claude-opus-5-5"):
+        with pytest.raises(ValueError, match="omit_temperature"):
+            ae.temperature_omission("claude-opus-5-5", {"anthropic": {"omit_temperature": bad}})
+
+
+def test_min_output_tokens_reads_positive_integers_and_refuses_anything_else():
+    assert ae.min_output_tokens({}, "m") is None
+    assert ae.min_output_tokens({"min_output_tokens": {"m": 4096}}, "m") == 4096
+    assert ae.min_output_tokens({"min_output_tokens": {"m": 4096}}, "other") is None
+    for bad in (0, -1, True, "4096", 4096.0):
+        with pytest.raises(ValueError, match="positive integer"):
+            ae.min_output_tokens({"min_output_tokens": {"m": bad}}, "m")
+    with pytest.raises(ValueError, match="must be an object"):
+        ae.min_output_tokens({"min_output_tokens": [4096]}, "m")
+
+
+def test_call_settings_raise_the_budget_and_drop_temperature_only_where_the_registry_says():
+    cfg = ROSTER_REGISTRY["anthropic"]
+    sent_max, sent_t, adj = ae.call_settings(ROSTER_REGISTRY, cfg, "model-r", 1024, 1.0)
+    assert (sent_max, sent_t) == (4096, None)
+    assert [(a["field"], a["requested"], a["sent"]) for a in adj] == [("max_tokens", 1024, 4096),
+                                                                       ("temperature", 1.0, None)]
+    assert "model-r rejects temperature (test)" in adj[1]["reason"]
+    # a fire budget above the minimum stands; only the temperature departs
+    sent_max, sent_t, adj = ae.call_settings(ROSTER_REGISTRY, cfg, "model-r", 8192, 0.0)
+    assert (sent_max, sent_t, [a["field"] for a in adj]) == (8192, None, ["temperature"])
+    assert ae.call_settings(ROSTER_REGISTRY, cfg, "model-x", 1024, 1.0) == (1024, 1.0, [])
+
+
+def test_send_leaves_temperature_out_of_the_anthropic_request_when_given_none(monkeypatch):
+    monkeypatch.setattr(ae, "_ANTHROPIC_NO_TEMPERATURE", False)
+    seen = []
+
+    class Parsed:
+        content, usage = [], type("U", (), {"input_tokens": 1, "output_tokens": 1})()
+
+        def model_dump(self):
+            return {"model": "m"}
+
+    class Wrapped:
+        headers: dict = {}
+
+        def parse(self):
+            return Parsed()
+
+    class RawAPI:
+        def create(self, **kw):
+            seen.append(kw)
+            return Wrapped()
+
+    class Client:
+        messages = type("M", (), {"with_raw_response": RawAPI()})()
+
+    ae._send(Client(), "m", None, "u", 64, None)
+    ae._send(Client(), "m", None, "u", 64, 0.0)
+    assert "temperature" not in seen[0] and seen[1]["temperature"] == 0.0
+    assert seen[0]["max_tokens"] == 64
+
+
+def test_send_compat_leaves_temperature_out_of_the_body_when_given_none(monkeypatch):
+    bodies = []
+
+    class Resp:
+        status_code, headers = 200, {}
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"choices": [{"message": {"content": "ok"}}], "usage": {"prompt_tokens": 1, "completion_tokens": 1}}
+
+    class FakeRequests:
+        @staticmethod
+        def post(url, **kw):
+            bodies.append(kw["json"])
+            return Resp()
+
+    monkeypatch.setitem(__import__("sys").modules, "requests", FakeRequests)
+    monkeypatch.setenv("FAKE_KEY", "k")
+    cfg = {"api": "openai-compat", "base_url": "https://x.example/v1", "key_env": "FAKE_KEY"}
+    ae._send_compat(cfg, "m", None, "hello", 4096, None)
+    ae._send_compat(cfg, "m", None, "hello", 64, 1.0)
+    assert "temperature" not in bodies[0] and bodies[0]["max_tokens"] == 4096
+    assert bodies[1]["temperature"] == 1.0
+
+
+def test_elicit_sends_and_records_the_registry_settings_for_a_listed_model(tmp_path, monkeypatch):
+    """model-r (listed) is sent no temperature and a 4096-token budget, and each record says so; the translator
+    (model-y, unlisted) is sent the fire's values with no adjustment; the compat model-z gets its own minimum."""
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    calls = []
+
+    def send(client, model, system, user_text, max_tokens, temperature):
+        calls.append((model, max_tokens, temperature))
+        return _stub_send(client, model, system, user_text, max_tokens, temperature)
+
+    def compat(cfg, model, system, user_text, max_tokens, temperature):
+        calls.append((model, max_tokens, temperature))
+        return "compat advice text", 10, 20, {"model": "model-z-live"}
+
+    monkeypatch.setattr(ae, "_client", lambda: object())
+    monkeypatch.setattr(ae, "_send", send)
+    monkeypatch.setattr(ae, "_send_compat", compat)
+    monkeypatch.setattr(ae, "_ANTHROPIC_NO_TEMPERATURE", False)
+    ae.main(["elicit", "--stimuli", str(stim_path), "--models", "model-r,fakeai", "--providers",
+             str(_roster_registry(tmp_path)), "--arms", "clinical,translated", "--samples", "1",
+             "--translator-model", "model-y", "--max-spend", "5.0", "--out-dir", str(stim_path.parent)])
+    assert ("model-y", 1024, 0.0) in calls and ("model-r", 4096, None) in calls and ("model-z", 3000, 1.0) in calls
+    rows = [json.loads(x) for x in (stim_path.parent / f"responses_{stim_path.stem}.jsonl")
+            .read_text(encoding="utf-8").splitlines()]
+    ok, msg = ae.verify_chain(rows)
+    assert ok, msg
+    translation = next(r for r in rows if r["record_type"] == "translation")
+    assert translation["request"]["temperature"] == 0.0 and translation["request"]["max_tokens"] == 1024
+    assert "request_adjustments" not in translation["request"]
+    listed = [r for r in rows if r.get("model_requested") == "anthropic:model-r"]
+    assert len(listed) == 2
+    for r in listed:
+        assert r["request"]["temperature"] is None and r["request"]["max_tokens"] == 4096
+        assert [(a["field"], a["requested"], a["sent"]) for a in r["request"]["request_adjustments"]] == [
+            ("max_tokens", 1024, 4096), ("temperature", 1.0, None)]
+    compat_rows = [r for r in rows if r.get("model_requested") == "fakeai:model-z"]
+    assert all(r["request"]["temperature"] == 1.0 and r["request"]["max_tokens"] == 3000 for r in compat_rows)
+    side = json.loads((stim_path.parent / f"responses_{stim_path.stem}.report.json").read_text(encoding="utf-8"))
+    assert side["max_tokens"] == 1024 and side["temperature"] == 1.0
+    assert side["max_tokens_by_model"] == {"anthropic:model-r": 4096, "fakeai:model-z": 3000}
+    assert side["temperature_omitted_for"] == {"anthropic:model-r": "model-r rejects temperature (test)"}
+
+
+def test_an_unaffected_elicit_record_keeps_its_shape(tmp_path, monkeypatch):
+    """Records and the sidecar of a model the registry lists in neither table carry no new field."""
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    monkeypatch.setattr(ae, "_ANTHROPIC_NO_TEMPERATURE", False)
+    resp, sidecar = _elicit(tmp_path, monkeypatch, stim_path, samples="1")
+    rows = [json.loads(x) for x in resp.read_text(encoding="utf-8").splitlines()]
+    advice = [r for r in rows if r["record_type"] == "advice"]
+    assert all(list(r["request"]) == ["system", "message", "temperature", "max_tokens"] for r in advice)
+    assert all(r["request"]["temperature"] == 1.0 and r["request"]["max_tokens"] == 1024 for r in advice)
+    side = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert "max_tokens_by_model" not in side and "temperature_omitted_for" not in side
+
+
+def test_the_spend_ceiling_sizes_a_listed_model_by_its_raised_budget(tmp_path, monkeypatch):
+    """Fallback-priced (10/50): an unlisted call's worst case is 400*10/1e6 + 1024*50/1e6 = 0.0552, a listed one's
+    400*10/1e6 + 4096*50/1e6 = 0.2088. A 0.15 ceiling admits the first and stops the second before any call."""
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    reg = _roster_registry(tmp_path)
+    monkeypatch.setattr(ae, "_client", lambda: object())
+    monkeypatch.setattr(ae, "_send", _stub_send)
+    tracker = ae.CostTracker(0.15, 1024, output_budget={"anthropic:model-r": 4096})
+    assert tracker.max_output_for("anthropic:model-r") == 4096 and tracker.max_output_for("model-x") == 1024
+    assert tracker.can_afford("model-x") and not tracker.can_afford("anthropic:model-r")
+    ae.main(["elicit", "--stimuli", str(stim_path), "--models", "model-r", "--providers", str(reg),
+             "--arms", "clinical", "--samples", "1", "--max-spend", "0.15", "--out-dir", str(stim_path.parent)])
+    side = json.loads((stim_path.parent / f"responses_{stim_path.stem}.report.json").read_text(encoding="utf-8"))
+    assert side["records_appended"] == 0 and side["truncated"] is True and "ceiling" in side["stopped_reason"]
+
+
+def test_an_sdk_that_drops_temperature_is_recorded_not_silent(tmp_path, monkeypatch):
+    """Since 2026-08-23 an installed SDK that rejects the keyword made _send stop sending temperature while the
+    records kept saying 1.0; the record now says the call carried none, and why."""
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    monkeypatch.setattr(ae, "_ANTHROPIC_NO_TEMPERATURE", True)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path, samples="1")
+    advice = [json.loads(x) for x in resp.read_text(encoding="utf-8").splitlines()
+              if json.loads(x)["record_type"] == "advice"]
+    assert advice and all(r["request"]["temperature"] is None for r in advice)
+    assert all(r["request"]["request_adjustments"] == [{"field": "temperature", "requested": 1.0, "sent": None,
+                                                        "reason": ae.SDK_DROPPED_TEMPERATURE}] for r in advice)
+
+
+def test_the_judge_sends_and_records_the_registry_settings_for_a_listed_judge(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    monkeypatch.setattr(ae, "_ANTHROPIC_NO_TEMPERATURE", False)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path, samples="1")
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(json.dumps(RUBRIC), encoding="utf-8")
+    seen = []
+
+    def send(client, model, system, user_text, max_tokens, temperature):
+        seen.append((model, max_tokens, temperature))
+        return _stub_send(client, model, system, user_text, max_tokens, temperature)
+
+    monkeypatch.setattr(ae, "_send", send)
+    ae.main(["judge", "--responses", str(resp), "--rubric", str(rubric_path), "--judge-model", "model-r",
+             "--providers", str(_roster_registry(tmp_path)), "--max-spend", "5.0"])
+    ae.main(["judge", "--responses", str(resp), "--rubric", str(rubric_path), "--judge-model", "judge-x",
+             "--providers", str(_roster_registry(tmp_path)), "--max-spend", "5.0"])
+    assert {s for s in seen} == {("model-r", 4096, None), ("judge-x", 300, 0.0)}
+    jpath = resp.with_name(resp.stem.replace("responses_", "judgments_") + ".jsonl")
+    rows = [json.loads(x) for x in jpath.read_text(encoding="utf-8").splitlines()]
+    listed = [r for r in rows if r["judge_model"] == "model-r"]
+    assert listed and all([(a["field"], a["requested"], a["sent"]) for a in r["request_adjustments"]]
+                          == [("max_tokens", 300, 4096), ("temperature", 0.0, None)] for r in listed)
+    assert all("request_adjustments" not in r for r in rows if r["judge_model"] == "judge-x")
+
+
+def test_a_pack_scope_keeps_only_its_own_models_output_budgets():
+    """min_output_tokens is cut to the vendor's models as pricing is, so another vendor's new entry does not stale a
+    pack whose records it never touched; a malformed table is kept whole."""
+    block = {"api": "openai-compat", "pricing": {"a/x": [1, 2], "b/y": [3, 4]},
+             "min_output_tokens": {"a/x": 4096, "b/y": 4096}}
+    scoped = ae._scope_block("openrouter", block, "a", {"a/x"})
+    assert scoped["min_output_tokens"] == {"a/x": 4096} and scoped["pricing"] == {"a/x": [1, 2]}
+    assert "min_output_tokens" not in ae._scope_block("openrouter", block, "c", {"c/z"})
+    assert ae._scope_block("openrouter", {**block, "min_output_tokens": [1]}, "c", {"c/z"})["min_output_tokens"] == [1]

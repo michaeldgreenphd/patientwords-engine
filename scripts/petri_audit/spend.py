@@ -360,6 +360,22 @@ def inspect_to_registry_spec(model: str, registry: dict | None = None) -> str | 
     return f"{provider}:{name}" if isinstance(registry, dict) and isinstance(registry.get(provider), dict) else None
 
 
+def sampling_omissions(model: str, registry: dict | None = None) -> dict[str, str]:
+    """The sampling parameters a model's requests must not carry, as {parameter: reason}: {"temperature": reason}
+    when the registry's anthropic `omit_temperature` map lists the model (Claude Fable 5.1, Opus 5.5 and Sonnet 5.5
+    reject temperature, 2026-10-01), {} otherwise. `model` is an Inspect name (`anthropic/claude-opus-5-5`,
+    `openrouter/anthropic/claude-opus-5.5`) or a registry spec (a judge's). One rule for both lanes: the match is
+    scripts/advice_eval.py `temperature_omission`, loaded as the judge loads that module, so the Petri target, the
+    auditor, the judge and the advice lane cannot disagree about a model. A malformed map raises ValueError."""
+    if not str(model or "").strip() or str(model).strip() in ZERO_PRICE_MODELS:
+        return {}
+    registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
+    from .judge_runner import _advice_eval_module  # lazy: judge_runner imports this module
+
+    reason = _advice_eval_module().temperature_omission(str(model).strip(), registry)
+    return {"temperature": reason} if reason else {}
+
+
 @dataclass(frozen=True)
 class PreflightBound:
     samples: int

@@ -84,6 +84,9 @@ class JudgeReply:
     served_model: str | None
     request_id: str | None = None
     usage_missing: bool = False     # the provider returned no usage block: the counts above are not measurements
+    # why the call went out without the instrument's temperature (the registry's omit_temperature models, or an
+    # installed SDK that rejects the keyword); None when it carried TIER_TEMPERATURE (2026-10-01)
+    temperature_omitted: str | None = None
 
 
 def _usage_missing(raw: Any) -> bool:
@@ -151,6 +154,9 @@ class RegistryJudge:
         registry = ae._load_providers(providers_path or ae.DEFAULT_PROVIDERS)
         self.spec = ae._resolve_spec(model_spec, registry)
         self.is_anthropic = self.spec["provider"] == "anthropic"
+        # a judge model the registry says rejects temperature (Claude Fable 5.1, Opus 5.5, Sonnet 5.5; 2026-10-01) is
+        # sent none, and every row and the sidecar say so (temperature_sent null, temperature_omitted the reason)
+        self.temperature_omitted: str | None = ae.temperature_omission(self.spec["spec"], registry)
         self.client = ae._client() if self.is_anthropic else None
 
     def complete(self, prompt: str, *, max_tokens: int, temperature: float,
@@ -161,12 +167,16 @@ class RegistryJudge:
         affordable; a refusal ends the call with the provider's error."""
         ae = self.ae
         before_retry = (lambda attempt, status: attempt_gate(attempt + 1)) if attempt_gate is not None else None
+        sent_temperature = None if self.temperature_omitted else temperature
+        omitted = self.temperature_omitted
         if self.is_anthropic:
-            res = ae._send_anthropic_retrying(self.client, self.spec["model"], None, prompt, max_tokens, temperature,
-                                              before_retry=before_retry)
+            res = ae._send_anthropic_retrying(self.client, self.spec["model"], None, prompt, max_tokens,
+                                              sent_temperature, before_retry=before_retry)
+            if sent_temperature is not None and ae._ANTHROPIC_NO_TEMPERATURE:
+                omitted = ae.SDK_DROPPED_TEMPERATURE
         else:
             ae._pace(self.spec["provider"], self.spec["cfg"])
-            res = ae._send_compat(self.spec["cfg"], self.spec["model"], None, prompt, max_tokens, temperature,
+            res = ae._send_compat(self.spec["cfg"], self.spec["model"], None, prompt, max_tokens, sent_temperature,
                                   before_retry=before_retry)
         text, in_tok, out_tok, raw = res[:4]
         headers = res[4] if len(res) > 4 else {}
@@ -175,7 +185,8 @@ class RegistryJudge:
         # the advice clients return 0 tokens when the provider omitted usage; that is not a measurement, so the
         # reply says so and the ceiling charges the call's worst case instead (Codex round 2)
         return JudgeReply(text=text, input_tokens=int(in_tok or 0), output_tokens=int(out_tok or 0),
-                          served_model=served, request_id=info.get("request_id"), usage_missing=_usage_missing(raw))
+                          served_model=served, request_id=info.get("request_id"), usage_missing=_usage_missing(raw),
+                          temperature_omitted=omitted)
 
 
 # --------------------------------------------------------------- planning
@@ -734,6 +745,9 @@ def _sidecar(out_path: Path, client: JudgeClient, ceiling: SpendCeiling, counts:
             # the generation settings every call used, and the judgments file this invocation left behind, so a
             # resumed pass can tell rows a judge invocation wrote from rows written by anything else (Codex round 7)
             "judge_max_tokens": judge_max_tokens, "temperature": TIER_TEMPERATURE,
+            # `temperature` above is the instrument's setting; a judge model the registry says rejects it was sent
+            # none, recorded here and on every row (present only then, so other sidecars keep their shape)
+            **_omission_fields(getattr(client, "temperature_omitted", None)),
             "judgments_sha256": sha256_file(out_path) if out_path.is_file() else None,
             # cumulative over every row in the file (cost_basis the ledger knows: it books run_cost_usd to the day
             # on first sight and each later growth as a delta), never this invocation alone
@@ -749,6 +763,14 @@ def _sidecar(out_path: Path, client: JudgeClient, ceiling: SpendCeiling, counts:
             "aborted": abort_error is not None, "abort_error": abort_error,
             "cumulative": cumulative_counts(rows),
             **counts, **(sidecar_extra or {})}
+
+
+def _omission_fields(reason: str | None) -> dict[str, Any]:
+    """The fields a judgment row and the sidecar carry when the call went out without the instrument's temperature:
+    `temperature_sent` null and `temperature_omitted` the reason. Empty otherwise, so a row whose call carried
+    TIER_TEMPERATURE keeps the shape every earlier row has; `temperature` itself stays the instrument's setting, which
+    judge_settings_problems and the rejudge compare (2026-10-01)."""
+    return {"temperature_sent": None, "temperature_omitted": reason} if reason else {}
 
 
 def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeiling, judge_max_tokens: int,
@@ -803,6 +825,7 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                        "input_tokens": None, "output_tokens": None, "usage_missing": True,
                        "cost_basis": "imputed_worst_case:call_failed", "cost_usd": round(cost, 8),
                        "max_tokens": judge_max_tokens, "temperature": TIER_TEMPERATURE,
+                       **_omission_fields(getattr(client, "temperature_omitted", None)),
                        "retry_attempts_charged": len(retry_charges),
                        # the requests the provider received for this row: each charged retry followed one, and a refused
                        # retry was never sent, so the summary reads the count here instead of deriving `retries + 1`
@@ -829,6 +852,7 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                    "usage_missing": reply.usage_missing,
                    "cost_basis": "imputed_worst_case" if reply.usage_missing else "actual_usage",
                    "cost_usd": round(cost, 8), "max_tokens": judge_max_tokens, "temperature": TIER_TEMPERATURE,
+                   **_omission_fields(reply.temperature_omitted),
                    "retry_attempts_charged": len(retry_charges), "provider_attempts": len(retry_charges) + 1,
                    "answer_form": answer_form(reply.text, p.allowed_values, p.kind, value),
                    "judge_error": error}

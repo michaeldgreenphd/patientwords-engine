@@ -56,6 +56,7 @@ from .spend import (
     registry_spec_to_inspect,
     resolve_price,
     resolve_registry_price,
+    sampling_omissions,
     target_provider_problems,
     usage_from_samples,
     write_report_sidecar,
@@ -202,6 +203,8 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
         judge_price = resolve_registry_price(args.judge_model)
         print(f"judge {args.judge_model}: {judge_billing_channel(args.judge_model)} channel, in {judge_price.input_per_mtok}/Mtok "
               f"out {judge_price.output_per_mtok}/Mtok ({judge_price.source})")
+        for param, reason in sampling_omissions(args.judge_model).items():
+            print(f"judge {args.judge_model}: {param} omitted from every call ({reason})")
     # an `openrouter/` target without a reviewed per-model price is refused before the bound is computed from the
     # catch-all (2026-09-23): the bound, Inspect's cost_limit and the sidecar would all rest on an unreviewed rate
     target_unpriced = openrouter_price_problems(args.target)
@@ -223,6 +226,11 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
         return 5, {}
     price = resolve_price(args.target)
     print(f"price {args.target}: in {price.input_per_mtok}/Mtok out {price.output_per_mtok}/Mtok ({price.source})")
+    # a sampling parameter the registry says the model rejects is left out of every call (task.generation_config,
+    # task.build_auditor) and recorded in the manifest as the role's sampling_omitted (2026-10-01)
+    for role, name in (("target", args.target), ("auditor", auditor)):
+        for param, reason in (sampling_omissions(name).items() if name else ()):
+            print(f"{role} {name}: {param} omitted from every call ({reason})")
     if auditor:
         # Inspect's per-sample token limit counts the auditor's calls with the target's (task.run_study), so the
         # bound prices every token at the dearest rate of either model

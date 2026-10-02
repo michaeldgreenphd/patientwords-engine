@@ -171,6 +171,57 @@ cross-model run. No advice-lane stimulus, fire or archive uses the slug, and
 nothing else in the registry changes. Registry sha256 at this revision:
 `654959bbdc131ac2a056023ab3fdd6dff69f6d88629fd50527c088fc7b870a4a`
 
+**Registry revision of 2026-10-01: a registry change ahead of any new
+fire.** Nothing was fired, and none is implied. The revision makes the
+registry correct for the October 2026 model roster before any arm uses it.
+No consumer default changes, and no archived record is rewritten or
+re-priced.
+
+- **Prices.** It adds reviewed OpenRouter entries for 14 slugs, each at list
+  x 1.06, rounded up at the fourth decimal. The list prices come from the
+  OpenRouter catalogue fetched 2026-10-01
+  (`data/pab/openrouter_catalogue_20261002T053607Z.json`; its captured_utc
+  is the saved response's modification time in UTC). The slugs:
+  - `anthropic/claude-sonnet-5.5`, `anthropic/claude-opus-5.5`
+  - `openai/gpt-chat-latest`, `openai/gpt-5.6-luna`, `openai/gpt-6-astra`,
+    `openai/gpt-6.1-sol`
+  - `google/gemini-3.8-flash`, `google/gemini-3.1-pro-preview`
+  - `x-ai/grok-4.7`
+  - `deepseek/deepseek-v4.1-flash`, `deepseek/deepseek-v4-pro-0813`
+  - `moonshotai/kimi-k3`, `moonshotai/kimi-k2.6`
+  - `meta/muse-spark-1.3`
+- **Two DeepSeek exceptions.** `deepseek-v4.1-flash` input is priced from
+  its batch row's 0.112, not its standard row's 0.03. `deepseek-v4-pro-0813`
+  is priced from 1.32/3.96, the rate it bills during weekday UTC windows,
+  twice its 0.66/1.98 base. The registry's `pricing_note` gives the reasons.
+- **Vendor blocks.** The `openai`, `xai`, `deepseek` and `moonshot` blocks
+  carry the same entries for their own slugs. Without them, an advice spec
+  in their spelling would meter at a `default_pricing` below list.
+- **`openai` note.** It now records that OpenRouter lists
+  `openai/gpt-chat-latest`. That slug is a rolling alias whose build on
+  2026-10-01 was `openai/gpt-chat-latest-20260505`. Switching the openai arm
+  to it is still an access-mode change under `_alias_vs_snapshot`, to be
+  recorded here before that fire.
+- **Two new per-model fields.**
+  - `anthropic.omit_temperature` lists Claude Fable 5.1, Opus 5.5 and
+    Sonnet 5.5, which reject temperature (the claude-api skill bundled with
+    Claude Code 2.1.285). Their requests are sent without it, and each
+    record says so.
+  - `min_output_tokens` gives 4096 for the reasoning models priced here.
+    The advice lane sends the larger of the fire's `--max-tokens` and that
+    value, and records the value sent. No registered arm is listed, so no
+    archive's requests change part-way.
+- **Direct Anthropic rates.** `medlang_circuits.evaluate_models.PRICING`
+  adds `claude-opus-5-5` (4/20), `claude-sonnet-5-5` (2/10) and
+  `claude-fable-5-1` (10/50). It corrects `claude-sonnet-5` from 3/15 to
+  2/10, the price the same skill gives. The sonnet-5 records already
+  archived keep the `cost_usd` they were metered at, 1.5 times the 2/10
+  list rate. Anthropic does not return a per-call bill, so the archives
+  cannot confirm what was actually charged.
+
+Registry sha256 at this revision:
+`b952a88dcc01c9163a65b6d2f4ab39fb93bda002552e70109885d5360f54ae7b`
+
 ## The consumer-proxy caveat (repeat in every writeup)
 
 API models are proxies for consumer products: no product system prompt, no

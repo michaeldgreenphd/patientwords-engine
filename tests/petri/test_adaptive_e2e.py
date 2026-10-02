@@ -133,7 +133,7 @@ def test_the_cli_preflight_prices_the_bound_at_the_dearer_model(capsys):
                      "--target", "anthropic/claude-haiku-4-5", "--auditor-model", "anthropic/claude-sonnet-5",
                      "--max-spend", "50", "--token-limit", "60000", "--no-harness-commit"])
     out = capsys.readouterr().out
-    assert code == 0 and "2 sample(s) x 1 epoch(s) x 60000 tokens -> $1.8000" in out, out
+    assert code == 0 and "2 sample(s) x 1 epoch(s) x 60000 tokens -> $1.2000" in out, out
 
 
 def test_the_manifest_binds_the_prompt_file_the_run_recorded_and_refuses_another(tmp_path, monkeypatch):

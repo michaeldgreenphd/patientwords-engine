@@ -150,6 +150,93 @@ def _registry_rate(cfg: dict, model: str) -> tuple[object, str]:
     return cfg.get("default_pricing"), "default_pricing"
 
 
+# The registry field (anthropic block) naming the models whose requests must not carry `temperature`, and the reason
+# recorded when it is left out. Added 2026-10-01 for Claude Fable 5.1, Opus 5.5 and Sonnet 5.5 (registry note).
+OMIT_TEMPERATURE_FIELD = "omit_temperature"
+# The registry field (any block) giving a per-model minimum output budget for reasoning models (registry note).
+MIN_OUTPUT_TOKENS_FIELD = "min_output_tokens"
+SDK_DROPPED_TEMPERATURE = ("the installed anthropic SDK rejects the temperature keyword, so the request was sent "
+                           "without it (_send)")
+
+
+def temperature_omission(model: str, registry: dict) -> str | None:
+    """The reason `model`'s requests must not carry `temperature`, or None.
+
+    Reads the anthropic block's `omit_temperature` map (model name -> reason). `model` may be spelled as any lane
+    sends it: a bare Anthropic id (`claude-opus-5-5`), an advice spec (`anthropic:claude-opus-5-5`,
+    `openrouter:anthropic/claude-opus-5.5`), or a Petri Inspect name (`anthropic/claude-opus-5-5`,
+    `openrouter/anthropic/claude-opus-5.5`); the map lists each model under its direct id and its OpenRouter slug, so
+    the match is exact after one provider prefix is removed, never fuzzy. A malformed map is refused, not ignored:
+    ignoring it would send the parameter the map exists to withhold."""
+    block = registry.get("anthropic") if isinstance(registry, dict) else None
+    rules = block.get(OMIT_TEMPERATURE_FIELD) if isinstance(block, dict) else None
+    if rules is None:
+        return None
+    if not isinstance(rules, dict) or not all(isinstance(k, str) and isinstance(v, str) and v.strip()
+                                              for k, v in rules.items()):
+        raise ValueError(f"registry anthropic.{OMIT_TEMPERATURE_FIELD} must map model names to non-empty reason "
+                         f"strings; got {rules!r}")
+    name = str(model or "").strip()
+    candidates = [name]
+    if ":" in name:                                   # advice spec: provider:model
+        candidates.append(name.split(":", 1)[1])
+    else:                                             # Inspect name: provider/model
+        candidates += [name[len(p):] for p in ("openrouter/", "anthropic/") if name.startswith(p)]
+    for candidate in candidates:
+        if candidate in rules:
+            return rules[candidate]
+    return None
+
+
+def min_output_tokens(cfg: dict, model: str) -> int | None:
+    """The registry block's minimum output budget for `model` (the part of the spec after the provider prefix, as
+    `pricing` is keyed), or None when the block lists none. A listed value that is not a positive integer is
+    refused: a silently ignored minimum would send the fire's smaller budget to a reasoning model."""
+    table = cfg.get(MIN_OUTPUT_TOKENS_FIELD) if isinstance(cfg, dict) else None
+    if table is None:
+        return None
+    if not isinstance(table, dict):
+        raise ValueError(f"registry {MIN_OUTPUT_TOKENS_FIELD} must be an object of model -> tokens; got {table!r}")
+    value = table.get(model)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ValueError(f"registry {MIN_OUTPUT_TOKENS_FIELD}[{model!r}] must be a positive integer; got {value!r}")
+    return value
+
+
+def call_settings(registry: dict, cfg: dict, model: str, max_tokens: int,
+                  temperature: float | None) -> tuple[int, float | None, list[dict]]:
+    """What one call sends, from the fire's settings and the registry: (max_tokens to send, temperature to send or
+    None to leave it out, the adjustments made). `model` is the part of the spec after the provider prefix (the key
+    of `cfg`'s per-model tables). Each adjustment is {field, requested, sent, reason}; the caller records the list
+    in the record, so a departure from the fire's settings is never silent."""
+    adjustments: list[dict] = []
+    floor = min_output_tokens(cfg, model)
+    sent_max = max(int(max_tokens), floor) if floor else int(max_tokens)
+    if sent_max != int(max_tokens):
+        adjustments.append({"field": "max_tokens", "requested": int(max_tokens), "sent": sent_max,
+                            "reason": f"registry {MIN_OUTPUT_TOKENS_FIELD} for {model}: {floor} (reasoning model)"})
+    sent_temperature = temperature
+    reason = temperature_omission(model, registry) if temperature is not None else None
+    if reason is not None:
+        sent_temperature = None
+        adjustments.append({"field": "temperature", "requested": temperature, "sent": None,
+                            "reason": f"registry anthropic.{OMIT_TEMPERATURE_FIELD}: {reason}"})
+    return sent_max, sent_temperature, adjustments
+
+
+def note_sdk_temperature_drop(sent_temperature: float | None, requested: float | None,
+                              adjustments: list[dict]) -> float | None:
+    """After an Anthropic call: when `_send` found the installed SDK rejects `temperature` (it then stops sending
+    it), the call went out without one. Records that in `adjustments` and returns the temperature actually sent."""
+    if sent_temperature is not None and _ANTHROPIC_NO_TEMPERATURE:
+        adjustments.append({"field": "temperature", "requested": requested, "sent": None,
+                            "reason": SDK_DROPPED_TEMPERATURE})
+        return None
+    return sent_temperature
+
+
 # --------------------------------------------------------------------------- utils
 
 
@@ -214,12 +301,16 @@ def _read_jsonl(path: str | Path) -> list[dict]:
 class CostTracker:
     """Hard spend ceiling; sized to this pipeline's max_tokens rather than the eval defaults."""
 
-    def __init__(self, max_spend: float, max_output_tokens: int, custom_pricing: dict | None = None):
+    def __init__(self, max_spend: float, max_output_tokens: int, custom_pricing: dict | None = None,
+                 output_budget: dict | None = None):
         if not (max_spend > 0) or max_spend != max_spend or max_spend == float("inf"):
             raise SystemExit("--max-spend must be a finite positive number")
         self.max_spend = float(max_spend)
         self.max_output_tokens = int(max_output_tokens)
         self.custom_pricing = dict(custom_pricing or {})  # spec/model -> (in, out) USD per Mtok
+        # spec -> the output budget its calls are sent with when the registry raises it above max_output_tokens
+        # (call_settings); the worst case of such a call is sized by that budget, never the fire's smaller one
+        self.output_budget = {k: int(v) for k, v in (output_budget or {}).items()}
         self.spent = 0.0
         self.truncated = False
         self.per_model: dict[str, dict] = {}
@@ -232,9 +323,12 @@ class CostTracker:
                 return _PRICING[candidate]
         return _FALLBACK_PRICING
 
+    def max_output_for(self, model: str) -> int:
+        return max(self.max_output_tokens, self.output_budget.get(model, 0))
+
     def can_afford(self, model: str) -> bool:
         in_p, out_p = self._price(model)
-        worst = EST_INPUT_TOKENS * in_p / 1e6 + self.max_output_tokens * out_p / 1e6
+        worst = EST_INPUT_TOKENS * in_p / 1e6 + self.max_output_for(model) * out_p / 1e6
         if self.spent + worst > self.max_spend:
             self.truncated = True
             return False
@@ -272,8 +366,11 @@ def _client():
 _ANTHROPIC_NO_TEMPERATURE = False
 
 
-def _send(client, model: str, system: str | None, user_text: str, max_tokens: int, temperature: float):
+def _send(client, model: str, system: str | None, user_text: str, max_tokens: int, temperature: float | None):
     """One Messages call. Returns (text, input_tokens, output_tokens, raw_dict, headers).
+
+    `temperature` None leaves the parameter out of the request (the registry's omit_temperature models, via
+    call_settings, which records the omission).
 
     Module-level seam: tests monkeypatch this; nothing else in the module touches the
     network. Headers ride along for build forensics (request id, api version) - the
@@ -292,7 +389,7 @@ def _send(client, model: str, system: str | None, user_text: str, max_tokens: in
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": user_text}],
     )
-    if not _ANTHROPIC_NO_TEMPERATURE:
+    if temperature is not None and not _ANTHROPIC_NO_TEMPERATURE:
         kwargs["temperature"] = temperature
     if system:
         kwargs["system"] = system
@@ -389,7 +486,7 @@ def _finish_reason(raw) -> str | None:
 
 
 def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
-                 max_tokens: int, temperature: float, before_retry=None):
+                 max_tokens: int, temperature: float | None, before_retry=None):
     """One OpenAI-compatible chat call (OpenAI, Gemini, xAI, DeepSeek, Moonshot,
     OpenRouter, ... all expose this shape). Same return tuple as _send; same
     monkeypatch seam for tests. The provider's key comes from the env var named
@@ -403,7 +500,8 @@ def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
     retries under the same policy. Anything else, or exhaustion, raises: the
     elicit loop archives what landed and a re-fire resumes past it.
     `before_retry(attempt, status)`, when given, is consulted before each
-    retry and may refuse it by returning False (the Petri judge's ceiling)."""
+    retry and may refuse it by returning False (the Petri judge's ceiling).
+    `temperature` None leaves the parameter out of the body (call_settings)."""
     try:
         import requests
     except ImportError as exc:  # pragma: no cover
@@ -417,11 +515,14 @@ def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
     messages = ([{"role": "system", "content": system}] if system else []) + [
         {"role": "user", "content": user_text}
     ]
+    body = {"model": model, "messages": messages, "max_tokens": max_tokens}
+    if temperature is not None:
+        body["temperature"] = temperature
     for attempt in range(COMPAT_RETRIES + 1):
         resp = requests.post(
             f"{base_url}/chat/completions",
             headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-            json={"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature},
+            json=body,
             timeout=180,
         )
         if resp.status_code in RETRYABLE_STATUSES and attempt < COMPAT_RETRIES:
@@ -964,7 +1065,16 @@ def elicit(args) -> Path:
     if args.dry_run:
         return out_path
 
-    tracker = CostTracker(args.max_spend, args.max_tokens, custom_pricing)
+    # what each spec's calls send (call_settings): a reasoning model's registry minimum raises max_tokens, and the
+    # spend ceiling's worst case is sized by the raised budget; the translator is a bare Anthropic id
+    def spec_route(spec_key: str) -> tuple[dict, str]:
+        r = resolved.get(spec_key)
+        return (r["cfg"], r["model"]) if r is not None else (registry.get("anthropic", {}), spec_key)
+
+    budgets = {spec: call_settings(registry, *spec_route(spec), args.max_tokens, None)[0]
+               for spec in [*models, *([args.translator_model] if "translated" in arms else [])]}
+    tracker = CostTracker(args.max_spend, args.max_tokens, custom_pricing,
+                          output_budget={s: b for s, b in budgets.items() if b != args.max_tokens})
     client_box: list = []  # Anthropic client, created only when an anthropic-api call happens
 
     def anthropic_client():
@@ -987,31 +1097,39 @@ def elicit(args) -> Path:
         n_written += 1
 
     def timed_send(spec_key, system, text, max_tokens, temperature):
+        """One call under call_settings; returns (text, raw, env, request settings). The settings are what the
+        request carried: `max_tokens` and `temperature` as sent (temperature None when left out), and
+        `request_adjustments` (only when non-empty) naming every departure from the fire's values and why."""
         r = resolved.get(spec_key)  # None for the bare-model translator: anthropic path
+        cfg, model = spec_route(spec_key)
+        sent_max, sent_temperature, adjustments = call_settings(registry, cfg, model, max_tokens, temperature)
         if r is not None:
             _pace(r["provider"], r["cfg"])
         sent = utc_now_iso()
         t0 = time.monotonic()
         if r is None or r["cfg"].get("api", "anthropic") == "anthropic":
             endpoint = "anthropic"
-            model = r["model"] if r else spec_key
             res = _send_anthropic_retrying(
-                anthropic_client(), model, system, text, max_tokens, temperature)
+                anthropic_client(), model, system, text, sent_max, sent_temperature)
+            sent_temperature = note_sdk_temperature_drop(sent_temperature, temperature, adjustments)
         else:
             endpoint = r["cfg"].get("base_url", "")
             res = _send_compat(r["cfg"], r["model"], system, text,
-                               max_tokens, temperature)
+                               sent_max, sent_temperature)
         out_text, in_tok, out_tok, raw = res[:4]
         headers = res[4] if len(res) > 4 else {}
         latency_ms = int((time.monotonic() - t0) * 1000)
         cost = tracker.record(spec_key, in_tok, out_tok)
+        settings = {"temperature": sent_temperature, "max_tokens": sent_max}
+        if adjustments:
+            settings["request_adjustments"] = adjustments
         return out_text, raw, {
             "sent_utc": sent, "received_utc": utc_now_iso(), "latency_ms": latency_ms,
             "input_tokens": in_tok, "output_tokens": out_tok, "cost_usd": round(cost, 6),
             "model_returned": raw.get("model"),
             "provider": (r or {}).get("provider", "anthropic"), "endpoint": endpoint,
             **_build_info(raw, headers),
-        }
+        }, settings
 
     try:
         for kind, item, arm, extra in planned:
@@ -1020,14 +1138,13 @@ def elicit(args) -> Path:
                 if not tracker.can_afford(model):
                     stopped_reason = f"max_spend ceiling (${args.max_spend}) before translation of {item['id']}"
                     break
-                text, raw, env = timed_send(
+                text, raw, env, settings = timed_send(
                     model, _translate_system(), item["patient_body"], args.max_tokens, args.translation_temperature
                 )
                 record = {
                     "record_type": "translation", "stimulus_id": item["id"],
                     "model_requested": model, "arm": None, "sample_k": None,
-                    "request": {"system": "translate", "input_body": item["patient_body"],
-                                "temperature": args.translation_temperature, "max_tokens": args.max_tokens},
+                    "request": {"system": "translate", "input_body": item["patient_body"], **settings},
                     "output_text": text, "output_sha256": sha256_text(text),
                     "response_raw": raw, **env, **base_env,
                 }
@@ -1053,12 +1170,11 @@ def elicit(args) -> Path:
             if not tracker.can_afford(model):
                 stopped_reason = f"max_spend ceiling (${args.max_spend}) at {item['id']}/{arm}/{model}/k{k}"
                 break
-            text, raw, env = timed_send(model, None, message, args.max_tokens, args.temperature)
+            text, raw, env, settings = timed_send(model, None, message, args.max_tokens, args.temperature)
             append({
                 "record_type": "advice", "stimulus_id": item["id"], "arm": arm,
                 "model_requested": model, "sample_k": k,
-                "request": {"system": None, "message": message, "temperature": args.temperature,
-                            "max_tokens": args.max_tokens},
+                "request": {"system": None, "message": message, **settings},
                 "response_text": text, "response_sha256": sha256_text(text),
                 "stop_reason": _finish_reason(raw), "response_raw": raw,
                 "translation_sha256": (translations.get((item["id"], args.translator_model)) or {}).get(
@@ -1068,12 +1184,23 @@ def elicit(args) -> Path:
     finally:
         all_rows = _read_jsonl(out_path)
         cum_cost, cum_per_model = _cumulative_from_records(all_rows)
+        # the fire's settings stand in `temperature` and `max_tokens`; a spec the registry sends otherwise is named
+        # here (each record carries its own request_adjustments). Absent when nothing departs, so a sidecar of an
+        # unaffected fire keeps the shape consumers already read
+        departures: dict = {}
+        raised = {s: b for s, b in budgets.items() if b != args.max_tokens}
+        if raised:
+            departures["max_tokens_by_model"] = raised
+        omitted = {s: reason for s in budgets if (reason := temperature_omission(spec_route(s)[1], registry))}
+        if omitted:
+            departures["temperature_omitted_for"] = omitted
         _write_json(sidecar_path, {
             "run_utc": utc_now_iso(), "engine_sha": base_env["engine_sha"],
             "stimuli_file": str(args.stimuli), "models": models, "arms": arms,
             "providers_registry": str(args.providers),
             "providers": {spec: r["provider"] for spec, r in resolved.items()},
             "samples": args.samples, "temperature": args.temperature, "max_tokens": args.max_tokens,
+            **departures,
             "translator_model": args.translator_model if "translated" in arms else None,
             "max_spend_usd": args.max_spend,
             "cost_usd": cum_cost, "cost_basis": "cumulative_from_records",
@@ -1272,11 +1399,16 @@ def judge(args) -> Path:
     spec = _resolve_spec(args.judge_model, registry)
     is_anthropic = spec["provider"] == "anthropic"
     judge_max_tokens = int(getattr(args, "judge_max_tokens", 300) or 300)
+    # a reasoning judge gets the registry's minimum output budget and a listed model no temperature (call_settings);
+    # the ceiling's worst case uses the budget sent, and each judgment records any departure from the fire's values
+    judge_sent_max, judge_temperature, judge_adjustments = call_settings(
+        registry, spec["cfg"], spec["model"], judge_max_tokens, 0.0)
     custom_pricing = {}
     pricing = (spec["cfg"].get("pricing") or {}).get(spec["model"])
     if pricing:
         custom_pricing[args.judge_model] = (float(pricing[0]), float(pricing[1]))
-    tracker = CostTracker(args.max_spend, judge_max_tokens, custom_pricing)
+    tracker = CostTracker(args.max_spend, judge_max_tokens, custom_pricing,
+                          output_budget={args.judge_model: judge_sent_max})
     client = _client() if is_anthropic else None
     n = 0
     try:
@@ -1286,15 +1418,17 @@ def judge(args) -> Path:
                     print(f"STOPPED EARLY: judge max_spend ceiling (${args.max_spend})")
                     break
                 # Blinding: the judge sees the response text only - never the prompt or arm.
+                adjustments = [dict(a) for a in judge_adjustments]
                 if is_anthropic:
                     res = _send_anthropic_retrying(
                         client, spec["model"], None,
-                        _judge_prompt(rubric, r["response_text"]), judge_max_tokens, 0.0)
+                        _judge_prompt(rubric, r["response_text"]), judge_sent_max, judge_temperature)
+                    note_sdk_temperature_drop(judge_temperature, 0.0, adjustments)
                 else:
                     _pace(spec["provider"], spec["cfg"])
                     res = _send_compat(
                         spec["cfg"], spec["model"], None,
-                        _judge_prompt(rubric, r["response_text"]), judge_max_tokens, 0.0)
+                        _judge_prompt(rubric, r["response_text"]), judge_sent_max, judge_temperature)
                 raw_text, in_tok, out_tok, raw = res[:4]
                 judge_headers = res[4] if len(res) > 4 else {}
                 tracker.record(args.judge_model, in_tok, out_tok)
@@ -1307,6 +1441,10 @@ def judge(args) -> Path:
                     "judge_raw": raw_text,
                     "judge_request_id": _build_info(raw, judge_headers).get("request_id"),
                 }
+                if adjustments:
+                    # only when the call departed from --judge-max-tokens or temperature 0.0, so every other
+                    # judgment keeps the shape consumers already read
+                    entry["request_adjustments"] = adjustments
                 if parsed and parsed.get("tier") in tier_ids:
                     entry["tier"] = parsed["tier"]
                     entry["flags"] = {k: bool(v) for k, v in (parsed.get("flags") or {}).items()}
@@ -1818,7 +1956,16 @@ def _scope_block(key: str, block: object, vendor: str, models: set[str]) -> obje
         return block  # absent (null) or malformed: hashed as it stands
     own = _is_vendor_block(key, block, vendor)
     out = {f: v for f, v in block.items()
-           if f not in ("pricing", "default_pricing") and (own or not _is_note_field(f))}
+           if f not in ("pricing", "default_pricing", MIN_OUTPUT_TOKENS_FIELD) and (own or not _is_note_field(f))}
+    # the output-budget table changes only its own models' requests, so it is cut to the vendor's models as the
+    # price table is (2026-10-01); a malformed table is kept whole, so any edit to it moves the digest
+    budgets = block.get(MIN_OUTPUT_TOKENS_FIELD)
+    if isinstance(budgets, dict):
+        kept_budgets = {m: budgets[m] for m in sorted(models) if m in budgets}
+        if kept_budgets:
+            out[MIN_OUTPUT_TOKENS_FIELD] = kept_budgets
+    elif budgets is not None:
+        out[MIN_OUTPUT_TOKENS_FIELD] = budgets
     pricing = block.get("pricing")
     if isinstance(pricing, dict):
         kept = {m: pricing[m] for m in sorted(models) if m in pricing}
@@ -1848,6 +1995,8 @@ def _registry_scope(registry_path: str | Path, vendor: str, rows: list[dict]) ->
       those models' entries, and `default_pricing` is kept only when one of those
       models has no entry of its own. Another model's price, or a default no
       record of the vendor's falls back to, is out of scope.
+    - Output budgets: the `min_output_tokens` map is cut to the same models'
+      entries (2026-10-01), since an entry changes only its own model's requests.
     - A block that is the vendor's own (`_is_vendor_block`) keeps every other
       field, notes included: the whole block is about the vendor's route.
     - A block shared with other vendors (`openrouter`) keeps every other field

@@ -1230,6 +1230,15 @@
             }
           },
           "description": "Adapter 0.2 (2026-09-23): for an openrouter/ target, the upstream host OpenRouter named in each call's raw response (its top-level `provider` field), counted per host and sorted by name, over every call of the run, refused trees included. OpenRouter routes one model to several hosts, so served_model_strings and generation_config_pinned certify only what was sent to OpenRouter; this records who served it. Only the host's name is copied out of the raw response, which the sanitiser never publishes. calls_unrecorded counts calls whose raw response was not retained (log_model_api off, or an error) or named no plain host. null for a target not routed through OpenRouter. Absent only in manifests written by adapter 0.1."
+        },
+        "sampling_omitted": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "2026-10-01: the sampling parameters left out of this role's requests because the provider registry (data/advice_providers.json anthropic.omit_temperature) says the model rejects them, each with the registry's reason, e.g. {\"temperature\": \"...\"} for Claude Fable 5.1, Opus 5.5 and Sonnet 5.5. generation_config_pinned then requires the parameter ABSENT from every raw request instead of equal to the seed's value, and `config` carries no value for it. Absent when nothing is withheld, which is every manifest written before this field existed."
         }
       }
     },
@@ -1414,6 +1423,15 @@
             }
           },
           "description": "Adapter 0.2 (2026-09-23): for an openrouter/ target, the upstream host OpenRouter named in each call's raw response (its top-level `provider` field), counted per host and sorted by name, over every call of the run, refused trees included. OpenRouter routes one model to several hosts, so served_model_strings and generation_config_pinned certify only what was sent to OpenRouter; this records who served it. Only the host's name is copied out of the raw response, which the sanitiser never publishes. calls_unrecorded counts calls whose raw response was not retained (log_model_api off, or an error) or named no plain host. null for a target not routed through OpenRouter. Absent only in manifests written by adapter 0.1."
+        },
+        "sampling_omitted": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "2026-10-01: the sampling parameters left out of this role's requests because the provider registry (data/advice_providers.json anthropic.omit_temperature) says the model rejects them, each with the registry's reason, e.g. {\"temperature\": \"...\"} for Claude Fable 5.1, Opus 5.5 and Sonnet 5.5. generation_config_pinned then requires the parameter ABSENT from every raw request instead of equal to the seed's value, and `config` carries no value for it. Absent when nothing is withheld, which is every manifest written before this field existed."
         }
       }
     },
