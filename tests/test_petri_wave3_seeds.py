@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import copy
 import csv
+import functools
 import re
 import sys
+from collections.abc import Iterable
 from pathlib import Path
 
 import pytest
@@ -20,13 +22,15 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from scripts.build_patient_lexicon import CONCEPTS, INCORRECT, STOP, read_incorrect, read_stop_cuis  # noqa: E402
 from scripts.petri_audit import cli, seal, seeds  # noqa: E402
 from scripts.petri_audit.framework import SEED_FILE, load_json, sha256_text, validate  # noqa: E402
 
 W3_FILE = ROOT / "docs" / "framework" / "petri_seeds_w3.draft.json"
 W3_SWAPS = ROOT / "data" / "petri" / "lay_careful_swaps_w3.draft.json"
 W3_PLAN = ROOT / "data" / "petri" / "w3_register_contrast_plan.json"
-CHV_FILE = ROOT / "data" / "chv" / "CHV_concepts_terms_flatfile_20110204.tsv"
+CHV_DIR = ROOT / "data" / "chv"
+CHV_FILE = CHV_DIR / CONCEPTS
 RUNS_DIR = ROOT / "data" / "petri" / "runs"
 ARMS = ("clinical", "colloquial", "lay_careful")
 TURNS = 10
@@ -189,8 +193,8 @@ def _tokens(text: str) -> list[str]:
 
 def _token_matches(a: str, b: str) -> bool:
     """Codebook rule L0 ignores inflection and part of speech: two tokens match when equal, or when both have at least
-    four letters and share a prefix no more than two letters shorter than the shorter token (tender / tenderness,
-    throw / thrown, dyspnoea / dyspnoeic)."""
+    four letters and share a prefix no more than two letters shorter than the shorter token (dark / darkness,
+    grow / grown, drama / dramatic). Medical examples stay in the data files (AGENTS.md hard conventions)."""
     if a == b:
         return True
     if min(len(a), len(b)) < 4:
@@ -205,30 +209,41 @@ def _term_in_span(term: str, span: str) -> bool:
     return all(any(_token_matches(t, s) for s in span_tokens) for t in _tokens(term))
 
 
-def _chv_rows(terms: set[str]) -> dict[tuple[str, str], bool]:
-    """(term, CUI) -> whether CHV has a row for it that is not marked disparaged (column 8 of the flat file, the flag
-    scripts/build_patient_lexicon.py drops)."""
+def _chv_rows(terms: Iterable[str]) -> dict[tuple[str, str], bool]:
+    """(term, CUI) -> whether CHV has a row for it that scripts/build_patient_lexicon.py would use: not marked
+    disparaged (column 8 of the flat file), not a published incorrect mapping, and not a stop concept."""
+    return _chv_rows_cached(frozenset(t.lower() for t in terms))
+
+
+@functools.lru_cache(maxsize=None)
+def _chv_rows_cached(terms: frozenset[str]) -> dict[tuple[str, str], bool]:
+    incorrect, stop = read_incorrect(CHV_DIR / INCORRECT), read_stop_cuis(CHV_DIR / STOP)
     rows: dict[tuple[str, str], bool] = {}
     with CHV_FILE.open(encoding="utf-8", errors="replace") as fh:
         for row in csv.reader(fh, delimiter="\t"):
             if len(row) > 7 and row[1].strip().lower() in terms:
                 key = (row[1].strip().lower(), row[0].strip())
-                rows[key] = rows.get(key, False) or row[7].strip().lower() != "yes"
+                usable = row[7].strip().lower() != "yes" and key[::-1] not in incorrect and key[1] not in stop
+                rows[key] = rows.get(key, False) or usable
     return rows
 
 
 def test_the_l0_token_match_is_neither_too_loose_nor_too_strict():
-    assert _term_in_span("throw up", "thrown up") and _term_in_span("tenderness", "tender")
-    assert _term_in_span("shortness of breath", "short of breath")
-    assert not _term_in_span("throw up", "thrown out") and not _term_in_span("neck lump", "neck mass")
-    assert not _token_matches("to", "too") and not _token_matches("nausea", "neck")
+    """The matcher on everyday words, so no medical term is written in Python: an inflection, a noun against its
+    adjective and a multi-word term match; a different word, a short near-miss and a short shared prefix do not."""
+    assert _term_in_span("grow up", "grown up") and _term_in_span("darkness", "dark")
+    assert _term_in_span("kindness of strangers", "kind of strangers")
+    assert not _term_in_span("grow up", "grown out") and not _term_in_span("table leg", "table top")
+    assert not _token_matches("to", "too") and not _token_matches("garden", "gate")
 
 
 def test_every_swap_has_a_lexicon_entry_and_its_chv_lookups_hold(swaps):
     """Each distinct (clinical span, lay span) pair records why the two name the same thing; every (term, CUI) lookup
-    a basis relies on is re-read from the repository's CHV file. A pair called same_concept must have one lookup whose
-    term is in the clinical span and one whose term is in the lay span, sharing a CUI, both on CHV rows not marked
-    disparaged: two lookups of the same side, or a disparaged mapping, do not make the two spans one concept."""
+    a basis relies on is re-read from the repository's CHV file. A pair called same_concept must have two lookups of
+    different terms, one whose term is in the clinical span and one whose term is in the lay span, sharing a CUI, both
+    on CHV rows the lexicon builder would use: lookups of one side only (which rule L0's matching of an adjective
+    against its noun can place in both spans), or a disparaged or incorrect mapping, do not make the two spans one
+    concept."""
     used = {tuple(p) for per_seed in swaps["seeds"].values() for pairs in per_seed.values() for p in pairs}
     entries = {(e["clinical"], e["lay"]): e for e in swaps["lexicon"]}
     assert len(entries) == len(swaps["lexicon"]), "one lexicon entry per pair"
@@ -241,23 +256,31 @@ def test_every_swap_has_a_lexicon_entry_and_its_chv_lookups_hold(swaps):
             assert (lookup["term"].lower(), lookup["cui"]) in rows, (clinical, lookup)
         if entry["relation"] == "same_concept":
             usable = [lk for lk in entry["chv"] if rows[(lk["term"].lower(), lk["cui"])]]
-            clinical_cuis = {lk["cui"] for lk in usable if _term_in_span(lk["term"], clinical)}
-            lay_cuis = {lk["cui"] for lk in usable if _term_in_span(lk["term"], lay)}
-            assert clinical_cuis & lay_cuis, f"{clinical!r} / {lay!r}: no non-disparaged concept shared by both sides"
+            witnesses = [(a["term"], b["term"]) for a in usable for b in usable
+                         if a["cui"] == b["cui"] and a["term"].lower() != b["term"].lower()
+                         and _term_in_span(a["term"], clinical) and _term_in_span(b["term"], lay)]
+            assert witnesses, (f"{clinical!r} / {lay!r}: no non-disparaged concept shared by two lookups of "
+                               "different terms, one in each span")
 
 
 def test_the_same_concept_check_refuses_one_sided_and_disparaged_lookups(swaps):
-    """The check above is live: the erythema pair's disparaged lookup, or a same_concept entry whose two lookups both
-    name the clinical side, fails it."""
-    entry = next(e for e in swaps["lexicon"] if e["relation"] == "same_concept")
-    one_sided = copy.deepcopy(swaps)
-    target = next(e for e in one_sided["lexicon"] if e["clinical"] == entry["clinical"])
-    target["chv"] = [entry["chv"][0], entry["chv"][0]]
-    with pytest.raises(AssertionError, match="no non-disparaged concept"):
-        test_every_swap_has_a_lexicon_entry_and_its_chv_lookups_hold(one_sided)
+    """The check above is live for every same_concept entry: its lookups replaced by two copies of its clinical-side
+    lookup fail it, including the entries whose clinical term also matches the lay span under rule L0; and an entry
+    resting on the lexicon's disparaged lookup fails it too."""
+    same = [e for e in swaps["lexicon"] if e["relation"] == "same_concept"]
+    assert same
+    for entry in same:
+        clinical_side = next(lk for lk in entry["chv"] if _term_in_span(lk["term"], entry["clinical"]))
+        one_sided = copy.deepcopy(swaps)
+        target = next(e for e in one_sided["lexicon"] if (e["clinical"], e["lay"]) == (entry["clinical"], entry["lay"]))
+        target["chv"] = [clinical_side, clinical_side]
+        with pytest.raises(AssertionError, match="no non-disparaged concept"):
+            test_every_swap_has_a_lexicon_entry_and_its_chv_lookups_hold(one_sided)
+    assert any(_term_in_span(lk["term"], e["lay"]) for e in same for lk in e["chv"]
+               if _term_in_span(lk["term"], e["clinical"])), "the L0 case the loop exists for is present"
     disparaged = copy.deepcopy(swaps)
-    red = next(e for e in disparaged["lexicon"] if any(
-        not _chv_rows({lk["term"].lower()}).get((lk["term"].lower(), lk["cui"]), True) for lk in e["chv"]))
+    rows = _chv_rows({lk["term"] for e in swaps["lexicon"] for lk in e["chv"]})
+    red = next(e for e in disparaged["lexicon"] if any(not rows[(lk["term"].lower(), lk["cui"])] for lk in e["chv"]))
     red["relation"] = "same_concept"
     with pytest.raises(AssertionError, match="no non-disparaged concept"):
         test_every_swap_has_a_lexicon_entry_and_its_chv_lookups_hold(disparaged)
@@ -272,6 +295,32 @@ def test_paraphrase_and_unverified_relations_match_their_bases(swaps):
             assert entry["relation"] == "unverified", entry["clinical"]
         if f"'{entry['lay'].lower()}' is not in chv" in basis or "nor the lay span is in chv" in basis:
             assert entry["relation"] not in {"same_concept", "paraphrase"}, entry["clinical"]
+
+
+def test_every_term_a_basis_says_chv_lacks_is_absent_from_chv(swaps):
+    """A basis that says CHV lacks a term lists the term under not_in_chv, and the CHV file is read to confirm it:
+    one basis said CHV lacked a term the file holds as a row of its own. A listed term is never also a lookup."""
+    listed = {t.lower() for e in swaps["lexicon"] for t in e.get("not_in_chv", [])}
+    assert listed, "no absence claim is recorded: the check establishes nothing"
+    present = sorted({term for term, _ in _chv_rows(listed)})
+    assert not present, f"CHV holds terms a basis says it lacks: {present}"
+    for entry in swaps["lexicon"]:
+        if "not in chv" in entry["basis"].lower():
+            assert entry.get("not_in_chv"), f"{entry['clinical']!r}: an absence claim without its terms"
+        lookups = {lk["term"].lower() for lk in entry["chv"]}
+        assert not lookups & {t.lower() for t in entry.get("not_in_chv", [])}, entry["clinical"]
+    held = next(lk["term"] for e in swaps["lexicon"] for lk in e["chv"])
+    assert _chv_rows({held}), "the reader finds a term CHV holds, so an empty result above is a real absence"
+
+
+def test_every_codebook_rule_the_swaps_file_cites_is_quoted_in_it(swaps):
+    """The stimulus pilot's codebook is in pull request #69 and not on main, so the swaps file defines every rule its
+    bases or its _readme cite by quoting it, the rules named inside those quotations included."""
+    readme = swaps["_readme"]
+    assert "pull request #69" in readme
+    quoted = set(re.findall(r"\b([LR]\d): '", readme))
+    cited = set(re.findall(r"\b([LR]\d)\b", readme + " " + " ".join(e["basis"] for e in swaps["lexicon"])))
+    assert cited and cited <= quoted, f"cited but not quoted: {sorted(cited - quoted)}"
 
 
 _NUMBER_WORDS = {w: str(i) for i, w in enumerate(
@@ -299,7 +348,8 @@ def test_numbers_in_a_clinical_turn_are_the_numbers_of_its_other_arms(w3_doc):
     assert _numbers("for 10 days") != _numbers("for 1 day"), "a digit inside a longer number is not a match"
 
 
-def _care_settings(text: str, terms: list[str]) -> list[str]:
+def _occurrences(text: str, terms: list[str]) -> list[str]:
+    """Each listed term as often as the text names it, as a whole word or phrase."""
     lowered = text.lower()
     return sorted(t for t in terms for _ in re.finditer(r"(?<![\w&])" + re.escape(t) + r"(?![\w&])", lowered))
 
@@ -314,11 +364,30 @@ def test_every_arm_of_a_turn_names_the_same_care_settings(w3_doc, swaps):
     for seed in w3_doc["seeds"]:
         text = _texts(seed)
         for i in range(1, TURNS + 1):
-            found = {arm: _care_settings(text[f"t{i:02d}_{arm}"], terms) for arm in ARMS}
+            found = {arm: _occurrences(text[f"t{i:02d}_{arm}"], terms) for arm in ARMS}
             assert len({tuple(v) for v in found.values()}) == 1, (seed["seed_id"], i, found)
             seen += bool(found["clinical"])
     assert seen > 0, "no turn names a care setting: the check establishes nothing"
-    assert _care_settings(f"waiting in {terms[0]}", terms) != _care_settings(f"waiting in {terms[1]}", terms)
+    assert _occurrences(f"waiting in {terms[0]}", terms) != _occurrences(f"waiting in {terms[1]}", terms)
+
+
+def test_every_arm_of_a_turn_keeps_the_terms_the_lay_arm_keeps(w3_doc, swaps):
+    """A medical term that is already the plain word is not swapped, and the colloquial arm must not reword it either,
+    or the style contrast would carry a change of term: every term in the swaps file's kept_terms is named as often
+    in each arm of a turn. Every listed term occurs in some clinical turn, none is part of a swapped span, and the
+    check is live: a colloquial turn that rewords a kept term fails it."""
+    terms = swaps["kept_terms"]
+    swapped_spans = {span for e in swaps["lexicon"] for span in (e["clinical"], e["lay"])}
+    assert terms and not [span for span in swapped_spans if _occurrences(span, terms)], "a kept term is swapped"
+    seen: set[str] = set()
+    for seed in w3_doc["seeds"]:
+        text = _texts(seed)
+        for i in range(1, TURNS + 1):
+            found = {arm: _occurrences(text[f"t{i:02d}_{arm}"], terms) for arm in ARMS}
+            assert len({tuple(v) for v in found.values()}) == 1, (seed["seed_id"], i, found)
+            seen |= set(found["clinical"])
+    assert seen == set(terms), f"listed but never used: {sorted(set(terms) - seen)}"
+    assert _occurrences(f"i have {terms[0]}", terms) != _occurrences("i have it", terms)
 
 
 # ------------------------------------------------------------------ the holdout seal
@@ -454,6 +523,27 @@ def test_the_plan_fixes_one_judge_route_for_every_fire(plan):
     assert "one judge route" in plan["judge"]["one_route"]
     assert any(rule.startswith("No pooling across judge routes") for rule in plan["rules"])
     assert any("judge_model" in item for item in plan["analysis_script"]["wave2_assumptions_to_change"])
+
+
+def test_the_judge_route_decides_which_targets_are_judged_in_their_own_fires(plan):
+    """A fire whose target and judge bill different channels is refused (fire_trigger.petri_params_problems before
+    the push, and the workflow's budget gate), so under one judge route a target is judged in its own fire only
+    through a target spec on the judge's channel. The plan's list of routes that judge every registered target that
+    way is recomputed with the lane's own classifiers (spend.billing_channel, spend.judge_billing_channel), so a target
+    or route added without updating it fails here; the route itself is set by the dated approval."""
+    from scripts.petri_audit import spend
+
+    judge = plan["judge"]
+    routes = judge["routes"]
+    assert len(routes) == 2 and judge["judge_model"] in (None, *routes)
+    if plan["approval"]["approved"]:
+        assert judge["judge_model"] in routes, "the dated approval records the one judge route"
+    channels = {route: spend.judge_billing_channel(route) for route in routes}
+    assert sorted(channels.values()) == ["anthropic", "openrouter"], "the two routes bill the two channels"
+    every = sorted(route for route in routes if all(
+        any(spend.billing_channel([spec]) == channels[route] for spec in target["target_specs"])
+        for target in plan["targets"]))
+    assert every == sorted(judge["routes_judging_every_target_in_its_own_fire"])
 
 
 def test_the_plan_pins_the_instruments_the_seeds_are_judged_under(plan, w3_doc):

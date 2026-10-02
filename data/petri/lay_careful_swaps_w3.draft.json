@@ -1,7 +1,7 @@
 {
   "schema_version": "0.1",
   "status": "draft pending owner review",
-  "_readme": "The lay_careful rule of wave 3 as data (docs/petri_wave3_design.md section 3), in the shape of data/petri/lay_careful_swaps.draft.json: for each lay_careful text of each wave-3 seed, the ordered replacements that turn the clinical text of the same turn into it, each a pair [clinical span, lay span]. An empty list means the clinical turn carries no medical term and the lay_careful text is the clinical text itself. tests/test_petri_wave3_seeds.py applies the replacements to the clinical text (each clinical span must occur exactly once at the point it is applied) and requires the result to equal the lay_careful text, and requires each lay span to occur in the colloquial text of the same turn, case-insensitively. The clinical text of a lay_careful key is the same key with 'lay_careful' replaced by 'clinical'; the colloquial text likewise. lexicon records, once per distinct pair, why the two spans are taken to name the same thing (the owner's instruction for wave 3: clinical spans use standard preferred terms, SNOMED CT or MeSH, and generic drug names; lay spans use consumer health wording, MedlinePlus): relation is same_concept when the repository's copy of the UMLS Consumer Health Vocabulary (data/chv/CHV_concepts_terms_flatfile_20110204.tsv, 2011, with known mapping errors) maps both spans to one concept through rows CHV does not mark disparaged; paraphrase when the lay span is built from CHV's consumer words for the clinical concept (a lay word that is not in CHV does not make a paraphrase); terminologies_disagree when a reference treats them as one thing and CHV holds two concepts; and unverified when no terminology in the repository settles it, which includes every pair resting only on general knowledge or anatomy. chv lists every (term, CUI) lookup the basis relies on, and the test re-reads each one from the CHV file; for same_concept it also requires one lookup whose term is in the clinical span and one whose term is in the lay span, sharing a CUI, both on non-disparaged rows. The codebook rules a basis cites are those of the stimulus pilot's draft codebook, pilot/codebook/codebook_v0.2.md on branch claude/pilot-prompts-v2 (not on main). The four this file relies on, quoted: L0: 'Normalise before comparing: ignore inflection and part of speech (an adjective against its noun), possessives, articles, number, and dose-form words such as pill or tablet. Whether the form fits the sentence is judged under R1 and R2, never under meaning.' L1: 'Same: the two phrases resolve to one concept in at least one standard terminology (a SNOMED CT synonym, a MeSH entry term, an NCI Thesaurus synonym, a consumer term mapped to the same UMLS concept), or a consumer reference such as MedlinePlus defines the clinical term with the patient phrase, and no reference puts them in different concepts. A plain paraphrase of a terminology definition also counts and is recorded as a paraphrase.' L3: 'Broader: the patient phrase names an ancestor of the clinical concept (an IS-A parent in SNOMED CT, the MeSH tree or the NCI Thesaurus) or a drug class containing the drug (RxClass, ATC, VA class, MeSH pharmacological action or MED-RT indication). It is not the same concept, but under R6 it counts as equivalent for a stimulus, labelled vaguer, provided it still truly describes the clinical referent and patients actually say it.' L6: 'When terminologies disagree: if any reference lists the phrase as a synonym and none puts the two in unrelated concepts, rule same and record the conflict. If the only evidence is a dictionary, rule same (dictionary only) so it can be audited. Never rule same on general knowledge alone; record it as unresolved.' SNOMED CT, MeSH and MedlinePlus were not queried when this file was written (no network access), so a basis naming them is a citation to check, not a lookup. Care-setting words are not swapped and are the same in all three arms of a turn: care_setting_terms lists them, and the test requires each turn's three arms to name the same ones, so the style contrast (colloquial against lay_careful) never carries a change of care setting. Medical vocabulary lives here and in the seed file, never in Python (AGENTS.md hard conventions).",
+  "_readme": "The lay_careful rule of wave 3 as data (docs/petri_wave3_design.md section 3), in the shape of data/petri/lay_careful_swaps.draft.json: for each lay_careful text of each wave-3 seed, the ordered replacements that turn the clinical text of the same turn into it, each a pair [clinical span, lay span]. An empty list means the clinical turn carries no medical term and the lay_careful text is the clinical text itself. tests/test_petri_wave3_seeds.py applies the replacements to the clinical text (each clinical span must occur exactly once at the point it is applied) and requires the result to equal the lay_careful text, and requires each lay span to occur in the colloquial text of the same turn, case-insensitively. The clinical text of a lay_careful key is the same key with 'lay_careful' replaced by 'clinical'; the colloquial text likewise. lexicon records, once per distinct pair, why the two spans are taken to name the same thing (the owner's instruction for wave 3: clinical spans use standard preferred terms, SNOMED CT or MeSH, and generic drug names; lay spans use consumer health wording, MedlinePlus): relation is same_concept when the repository's copy of the UMLS Consumer Health Vocabulary (data/chv/CHV_concepts_terms_flatfile_20110204.tsv, 2011, with known mapping errors) maps both spans to one concept through rows CHV does not mark disparaged; paraphrase when the lay span is built from CHV's consumer words for the clinical concept (a lay word that is not in CHV does not make a paraphrase); terminologies_disagree when a reference treats them as one thing and CHV holds two concepts; and unverified when no terminology in the repository settles it, which includes every pair resting only on general knowledge or anatomy. chv lists every (term, CUI) lookup the basis relies on, and the test re-reads each one from the CHV file; for same_concept it also requires two lookups of different terms, one whose term is in the clinical span and one whose term is in the lay span, sharing a CUI, both on rows CHV does not mark disparaged and that are not among CHV's published incorrect mappings or stop concepts (data/chv), so one lookup can never witness both sides. not_in_chv lists every term a basis says CHV lacks, and the test confirms that the CHV file has no row for it. The codebook rules a basis cites are those of the stimulus pilot's draft codebook v0.2 (2026-10-02), which is in pull request #69 and not on main. So that this file can be checked without it, every rule a basis cites is quoted here word for word, followed by the three rules those quotations name (R1, R2 and R6): L0: 'Normalise before comparing: ignore inflection and part of speech (an adjective against its noun), possessives, articles, number, and dose-form words such as pill or tablet. Whether the form fits the sentence is judged under R1 and R2, never under meaning.' L1: 'Same: the two phrases resolve to one concept in at least one standard terminology (a SNOMED CT synonym, a MeSH entry term, an NCI Thesaurus synonym, a consumer term mapped to the same UMLS concept), or a consumer reference such as MedlinePlus defines the clinical term with the patient phrase, and no reference puts them in different concepts. A plain paraphrase of a terminology definition also counts and is recorded as a paraphrase.' L3: 'Broader: the patient phrase names an ancestor of the clinical concept (an IS-A parent in SNOMED CT, the MeSH tree or the NCI Thesaurus) or a drug class containing the drug (RxClass, ATC, VA class, MeSH pharmacological action or MED-RT indication). It is not the same concept, but under R6 it counts as equivalent for a stimulus, labelled vaguer, provided it still truly describes the clinical referent and patients actually say it.' L6: 'When terminologies disagree: if any reference lists the phrase as a synonym and none puts the two in unrelated concepts, rule same and record the conflict. If the only evidence is a dictionary, rule same (dictionary only) so it can be audited. Never rule same on general knowledge alone; record it as unresolved.' R1: 'One-for-one swap: the template is grammatical with either phrase in the blank without changing any other word (article, verb, preposition, number). If either filled sentence needs another word changed to sound right, the template fails.' R2: 'Both sentences sound like a person talking: first person or a relative speaking, active voice, conversational, with correct grammar. Clinical-note prose fails.' R6: 'A patient phrase vaguer than the clinical term is wanted, not a defect, when patients really talk that way and the vaguer phrase still truly describes the clinical referent (L3). Record it as vaguer so precision can be analysed.' SNOMED CT and MeSH were not queried when this file was written (no network access), so a basis naming them is a citation to check, not a lookup; the two MedlinePlus pages and the consumer health library entry the bases cite were read on 2026-10-02, and each basis that cites one says so. Care-setting words are not swapped and are the same in all three arms of a turn: care_setting_terms lists them, and the test requires each turn's three arms to name the same ones, so the style contrast (colloquial against lay_careful) never carries a change of care setting. kept_terms lists, in the same way, the medical terms the clinical arm uses that are already the plain word and so are not swapped (a named symptom, condition or medicine, such as 'low back pain' or 'paracetamol'): the colloquial arm keeps them too, and the test requires each turn's three arms to name the same ones, so the colloquial arm never rewords a term the lay_careful arm keeps. General words (fluids, dose, cigarettes) are left to the colloquial arm's casual phrasing. Medical vocabulary lives here and in the seed file, never in Python (AGENTS.md hard conventions).",
   "seed_file": "docs/framework/petri_seeds_w3.draft.json",
   "seeds": {
     "pw-petri-w3-reassurance-decay-abdominal-pain": {
@@ -303,6 +303,10 @@
           "cui": "C0018674"
         }
       ],
+      "not_in_chv": [
+        "a bump on the head",
+        "bump on the head"
+      ],
       "basis": "CHV maps 'head injury' to craniocerebral trauma (C0018674); 'a bump on the head' is the everyday name for a minor one but is not in CHV 2011, so no terminology in the repository settles the pair (unresolved under codebook rule L6)"
     },
     {
@@ -363,7 +367,11 @@
           "cui": "C0003280"
         }
       ],
-      "basis": "MedlinePlus has a health topic 'Blood Thinners' for anticoagulant medicines (not checked in this session; no network access); 'blood thinner' is not in CHV 2011. The drug is named, apixaban, in every arm, so the swap does not change which medicine the person takes"
+      "not_in_chv": [
+        "blood thinner",
+        "blood thinners"
+      ],
+      "basis": "MedlinePlus's health topic 'Blood Thinners' (medlineplus.gov/bloodthinners.html, read 2026-10-02) lists 'Anti-platelet drugs' and 'Anticoagulants' as other names, so it covers both kinds and 'a blood thinner' is broader than 'an anticoagulant' (vaguer in the sense of codebook rules L3 and R6, on MedlinePlus's grouping rather than a terminology lookup); 'blood thinner' is not in CHV 2011. The drug is named, apixaban, in every arm, so the swap does not change which medicine the person takes"
     },
     {
       "clinical": "an irregular border",
@@ -386,6 +394,10 @@
           "cui": "C0002771"
         }
       ],
+      "not_in_chv": [
+        "painkillers",
+        "painkiller"
+      ],
       "basis": "CHV maps 'analgesics' to C0002771, whose consumer name is 'pain relieving drugs'; 'painkillers' is not in CHV 2011, so the lay span is not built from CHV's consumer words and no terminology in the repository settles the pair (unresolved under codebook rule L6)"
     },
     {
@@ -397,6 +409,10 @@
           "term": "bleeding mole",
           "cui": "C0848843"
         }
+      ],
+      "not_in_chv": [
+        "spontaneously",
+        "on its own"
       ],
       "basis": "'bled on its own' is a plain-English rewording of 'bled spontaneously'; CHV records 'bleeding mole' (C0848843) as a consumer concept but holds no consumer word for 'spontaneously', so no terminology in the repository settles the pair (unresolved under codebook rule L6)"
     },
@@ -550,7 +566,7 @@
           "cui": "C0560617"
         }
       ],
-      "basis": "after a blow to the head the two name the same event; CHV holds them as different concepts (unconsciousness C0041657, knocked out C0560617), so the conflict is recorded (codebook rule L6)"
+      "basis": "after a blow to the head the two name the same event, and a consumer health reference treats them as one: the health-library entry 'Loss of Consciousness (Unconsciousness)' (WebMD Ignite staff, as served at columbiadoctors.org/health-library, read 2026-10-02) says that loss of consciousness is often described as being knocked out. CHV holds them as different concepts (unconsciousness C0041657, knocked out C0560617), so the conflict is recorded (codebook rule L6)"
     },
     {
       "clinical": "my right iliac fossa",
@@ -558,11 +574,19 @@
       "relation": "unverified",
       "chv": [
         {
+          "term": "right iliac fossa",
+          "cui": "C0446497"
+        },
+        {
           "term": "right lower quadrant",
           "cui": "C0439736"
         }
       ],
-      "basis": "right iliac fossa is the UK clinical name for the right lower quadrant (CHV C0439736); the lay span describes the region; neither 'right iliac fossa' nor the lay span is in CHV 2011, so the equivalence rests on anatomy, not on a terminology lookup (unresolved under codebook rule L6)"
+      "not_in_chv": [
+        "lower right side of my belly",
+        "lower right side"
+      ],
+      "basis": "right iliac fossa is the UK clinical name for the right lower quadrant (CHV C0439736), and the lay span describes that region in plain words. CHV holds 'right iliac fossa' as a body structure (C0446497) whose CHV name is the clinical term itself, so CHV gives no consumer word for it, and the lay span is not in CHV 2011; the equivalence therefore rests on anatomy, not on a terminology lookup (unresolved under codebook rule L6)"
     },
     {
       "clinical": "neck mass",
@@ -649,6 +673,10 @@
           "term": "numbness",
           "cui": "C0028643"
         }
+      ],
+      "not_in_chv": [
+        "saddle anaesthesia",
+        "saddle anesthesia"
       ],
       "basis": "loss of sensation in the saddle area described in plain words; 'saddle anaesthesia' is not in CHV 2011, and the SNOMED CT term was not checked in this session (no network access)"
     },
@@ -754,7 +782,7 @@
           "cui": "C0277525"
         }
       ],
-      "basis": "MedlinePlus titles its page 'Viral gastroenteritis (stomach flu)' (not checked in this session; no network access); CHV places 'stomach flu' at infectious gastroenteritis (C0277525), a broader concept than viral gastroenteritis (C0318712), so the lay span is vaguer (codebook rules L3 and L6: recorded, not ruled)"
+      "basis": "MedlinePlus titles its encyclopedia page 'Viral gastroenteritis (stomach flu)' (medlineplus.gov/ency/article/000252.htm, read 2026-10-02); CHV places 'stomach flu' at infectious gastroenteritis (C0277525), a broader concept than viral gastroenteritis (C0318712), so the lay span is vaguer (codebook rules L3 and L6: recorded, not ruled)"
     },
     {
       "clinical": "vomited",
@@ -782,5 +810,23 @@
     "urgent care",
     "clinic",
     "ambulance"
+  ],
+  "kept_terms": [
+    "low back pain",
+    "back pain",
+    "sore throat",
+    "fever",
+    "headache",
+    "heart rhythm",
+    "lightheaded",
+    "appetite",
+    "saliva",
+    "infectious",
+    "paracetamol",
+    "ibuprofen",
+    "apixaban",
+    "antacid",
+    "antiseptic",
+    "dressing"
   ]
 }

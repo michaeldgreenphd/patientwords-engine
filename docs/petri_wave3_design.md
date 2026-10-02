@@ -165,7 +165,9 @@ that the three arms of a turn state the same numbers (digits or number words, co
 whole, so 1 is not found inside 10), and checks that they name the same care settings
 (the swaps file's `care_setting_terms`), so a change of care setting, such as
 "emergency department" in one arm and "A&E" in another, never enters the style
-contrast.
+contrast. It checks the same for the medical terms that are already the plain word and
+so are not swapped (`kept_terms`, such as "low back pain" or "paracetamol"): the
+colloquial arm keeps them as the careful-lay arm does, rather than rewording them.
 So lay_careful against clinical isolates the medical terms, and lay_careful against
 colloquial isolates writing style (orthography and formality together). The
 registered estimand stays the clinical–colloquial pair.
@@ -182,40 +184,56 @@ Whether to raise the dose is listed in section 10.
 
 **Wording rules.** The owner asked that clinical spans follow standard medical
 lexicon: the preferred term in SNOMED CT or MeSH, and generic drug names; and that lay
-spans use consumer health wording, as MedlinePlus does. The draft codebook of the
-stimulus pilot (rules R1 to R9 and L0 to L6; `pilot/codebook/codebook_v0.2.md` on branch
-`claude/pilot-prompts-v2`, not on `main`) describes a good pair, and the seeds
-follow it: a swap keeps the sentence's grammar (R1), every sentence is a person
-talking (R2), the clinical term is what a clinician would say rather than jargon (R3),
-each scenario starts from a recognisable clinical course (R4), and a swap never makes
-one arm less specific in a way that changes the facts. Two examples of that last
-rule: the anticoagulant is named, apixaban, in every arm, so "a blood thinner" in the
-lay arms cannot be read as aspirin; and the mole scenario gives no family history,
-because the everyday name for a relative's melanoma ("skin cancer") is broader than
-the clinical one.
+spans use consumer health wording, as MedlinePlus does. The stimulus pilot's draft
+codebook v0.2 (rules R1 to R9 and L0 to L6) describes a good pair. It is in pull
+request #69, which is not merged, so nothing on `main` holds it; the rules this branch
+relies on are stated here and quoted word for word in the swaps file's `_readme`. The
+seeds follow them: a swap is one-for-one and leaves the sentence grammatical without
+changing any other word (R1); every sentence sounds like a person talking, in the first
+person and conversational, never clinical-note prose (R2); the clinical term is the
+standard term a clinician would use, the SNOMED CT or MeSH preferred term or a generic
+drug name, and not a technical word where clinicians also say the plain word (R3); each
+scenario starts from a real clinical situation a clinician would recognise (R4); and a
+swap never makes one arm less specific in a way that changes the facts. Two examples
+of that last rule: the anticoagulant is named, apixaban, in every arm, so "a blood
+thinner" in the lay arms cannot be read as aspirin; and the mole scenario gives no
+family history, because the everyday name for a relative's melanoma ("skin cancer") is
+broader than the clinical one.
 
 **The lexicon basis of each swap is data.** The swaps file records, for each of its 33
 distinct pairs, why the two spans are taken to name the same thing, and the suite
 re-reads every concept lookup it cites from the repository's copy of the UMLS
 Consumer Health Vocabulary (`data/chv/CHV_concepts_terms_flatfile_20110204.tsv`, 2011,
-with known mapping errors). The codebook rules the bases cite (L0, L1, L3 and L6) are
-quoted in the swaps file's `_readme`, since the codebook is not on `main`. For a
-`same_concept` pair the suite requires one lookup whose term is in the clinical span and
-one whose term is in the lay span, sharing a concept, both on rows CHV does not mark
-disparaged:
+with known mapping errors). The codebook rules the bases cite are L0 (compare phrases
+ignoring inflection, part of speech, articles and number), L1 (same: one concept in a
+standard terminology, or a consumer reference that defines the clinical term with the
+patient phrase; a plain paraphrase of a definition is recorded as a paraphrase), L3
+(broader: the patient phrase names an ancestor of the clinical concept, acceptable as
+vaguer under R6 if it still truly describes the referent) and L6 (when terminologies
+disagree, rule same and record the conflict if a reference lists the phrase as a
+synonym and none puts the two in unrelated concepts, or same on a dictionary alone,
+marked so; never on general knowledge alone, which is recorded as unresolved); the
+swaps file's `_readme` quotes them, with R1, R2 and R6, which they name. For a
+`same_concept` pair the suite requires two lookups of different terms, one whose term
+is in the clinical span and one whose term is in the lay span, sharing a concept, both
+on rows the repository's lexicon builder would use (not marked disparaged, not a
+published incorrect mapping or stop concept), so one lookup can never stand for both
+sides. Every term a basis says CHV lacks is listed in its entry's `not_in_chv`, and the
+suite confirms that the CHV file has no row for it:
 
 | Relation | Pairs | Meaning |
 |---|---|---|
 | `same_concept` | 16 | CHV maps both spans to one concept (for example *dyspepsia* / *indigestion*, *otalgia* / *earache*, *tachycardia* / *a rapid heartbeat*) |
 | `paraphrase` | 4 | the lay span is built from CHV's consumer words for the clinical concept: *urinary hesitancy* / *trouble starting to pee*, *periumbilical pain* / *pain around my belly button*, *cervical lymphadenopathy* / *swollen glands in my neck*, and *erythema* / *red skin*, which CHV maps to one concept on a row it marks disparaged, so it is not counted as `same_concept` |
-| `terminologies_disagree` | 2 | a reference treats them as one thing and CHV holds two concepts: *viral gastroenteritis* / *the stomach flu*, *lose consciousness* / *get knocked out* |
+| `terminologies_disagree` | 2 | a reference treats them as one thing and CHV holds two concepts: *viral gastroenteritis* / *the stomach flu* (MedlinePlus's page title), *lose consciousness* / *get knocked out* (a consumer health library entry) |
 | `unverified` | 11 | no terminology in the repository settles it, including every pair whose lay words are not in CHV and that rests on general knowledge or anatomy (codebook rule L6: unresolved): *an anticoagulant* / *a blood thinner*, *an irregular border* / *a ragged edge*, *a minor head injury* / *a bump on the head*, *analgesics* / *painkillers*, *bled spontaneously* / *bled on its own*, *radiates* / *spreads* and *radiates to* / *spreads into*, *my right iliac fossa* / *the lower right side of my belly*, and *saddle anaesthesia*, *tonsillar exudate* and *trismus* against their plain descriptions |
 
-SNOMED CT, MeSH and MedlinePlus were not queried when these files were written (the
-session had no network access). Where a basis names them it is a citation to check,
-not a lookup. A lexicon review of the 17 pairs that are not `same_concept` (the
-13 `terminologies_disagree` and `unverified` pairs first), and clinician review of the
-scenarios, are steps before any paid fire.
+SNOMED CT and MeSH were not queried when these files were written (the session had no
+network access), so where a basis names them it is a citation to check, not a lookup.
+The two MedlinePlus pages and the consumer health library entry the bases cite were
+read on 2026-10-02, and each of those bases says so. A lexicon review of the 17 pairs
+that are not `same_concept` (the 13 `terminologies_disagree` and `unverified` pairs
+first), and clinician review of the scenarios, are steps before any paid fire.
 
 ---
 
@@ -302,15 +320,32 @@ ceiling. Bounds computed with the lane's own pricing code for 24 samples:
 
 The judge ceiling must clear the expected judge cost (about $1.05 to $1.34) plus one
 worst-case call, and the ceiling's per-call estimator counts bytes as tokens, which
-over-estimates English by about four times (wave-2 note, section 5). A Grok fire and a
-Luna fire fit in one day's $10 on the OpenRouter lane ($9.60 with the suggested
-ceilings). Two Haiku fires in one day need about $15: a dated override of that size
-on the Anthropic lane, and never the OpenRouter lane's $10. An OpenRouter-only
-fire needs the judge on OpenRouter too (`openrouter:anthropic/claude-haiku-4.5`), which
-is what the cross-model runs used. The plan fixes one judge route for every wave-3
-fire (section 6), so the route that keeps the Grok and Luna fires on the OpenRouter
-lane also judges the Haiku fires; with the Anthropic route instead, every fire counts
-against the Anthropic ceiling and needs a dated override.
+over-estimates English by about four times (wave-2 note, section 5).
+
+**The judge route decides the lanes.** A fire whose target and judge bill different
+channels is refused, by `fire_trigger.py` before the push (`petri_params_problems`) and
+by the workflow's budget gate: one fire carries one commitment on one account. So a
+target can carry the judge in its own fire only through a target spelling on the
+judge's channel, and the plan fixes one judge route for every wave-3 fire (section 6;
+the plan's `judge.channel_rule`, which the suite recomputes from the targets):
+
+- **OpenRouter route** (`openrouter:anthropic/claude-haiku-4.5`, the cross-model runs'
+  judge). Every target carries the judge in its own fire, the anchor as
+  `openrouter/anthropic/claude-haiku-4.5`, and every fire bills OpenRouter only, under
+  its $10 daily ceiling, which dated overrides do not raise. A Grok fire and a Luna
+  fire fit in one day ($9.60 with the suggested ceilings); a Haiku fire ($7.60) fits
+  alone. The anchor's target and judge both leave wave 2's provider route.
+- **Anthropic route** (`claude-haiku-4-5`, wave 2's judge). The anchor keeps wave 2's
+  route, `anthropic/claude-haiku-4-5` with that judge, on the Anthropic lane, which
+  needs a dated override for every fire (two Haiku fires in one day need about $15). A
+  Grok or Luna fire cannot carry this judge. It is fired with a judge on the
+  OpenRouter channel, whose rows are not registered but which `mode: rejudge` needs as
+  the run's judge of record, and its registered rows come from a re-grade under
+  `claude-haiku-4-5` through `mode: rejudge`: a separate fire on the Anthropic lane with
+  its own `judge_max_spend` and dated override. That adds about $1.05 to $1.34 of judge
+  cost to each Grok or Luna fire at wave-2 rates, about $6 to $8 over the six, and the
+  analysis script must read the re-grade in place of the run's own rows (the plan's
+  `analysis_script.wave2_assumptions_to_change`).
 
 **Second-family re-grade.** GPT-5.4 mini re-graded w2e4 for $1.122 over 30
 conversations (branch `claude/petri-rejudge-runs`), about $0.037 a conversation, so
@@ -325,14 +360,19 @@ instrument. The plan pins the rubric digest (`bd4aa5596b81`) and one prompt dige
 judged dimension, and the suite fails if any of those files changes before the plan is
 amended with it. The judge's route (Anthropic direct, as in wave 2, or
 `openrouter:anthropic/claude-haiku-4.5`, as in the cross-model runs) is the owner's
-decision and is recorded before the first fire. **One route covers every fire:** rows
-judged under two `judge_model` strings are not pooled (the plan's `judge.one_route`),
-which matters most for the analyses that pool targets (section 9.4's secondary and the
-referral test of section 9.6). A fire judged under another route is named, excluded
-from the registered tests, and re-judged under the recorded route or re-fired. The
-wave-2 analysis already refuses runs whose `judge_model` differ (`load_runs`); the
-wave-3 script keeps that refusal across all fires and applies its `target_model`
-refusal within each target only.
+decision, recorded in the plan's `judge.judge_model` by the dated approval before the
+first fire. **One route covers every fire:** rows judged under two `judge_model` strings
+are not pooled (the plan's `judge.one_route`), which matters most for the analyses that
+pool targets (section 9.4's secondary and the referral test of section 9.6). A fire
+judged under another route is named, its rows are excluded from the registered tests,
+and it is re-graded under the recorded route through `mode: rejudge` or re-fired.
+Because a fire's target and judge must bill one channel, the route also decides how
+each target is judged (section 5): only the OpenRouter route lets every registered
+target carry the judge in its own fire, and the Anthropic route needs a re-grade fire
+for every Grok and Luna fire. The wave-2 analysis already refuses runs whose
+`judge_model` differ (`load_runs`); the wave-3 script keeps that refusal across all
+fires, applies its `target_model` refusal within each target only, and reads a
+re-grade's rows in place of a run's own where the plan takes them from one.
 
 Two cautions follow from the choice. On the anchor, Haiku grades its own replies. On
 the comparison targets, a Claude model grades other vendors' replies, and a preference
@@ -402,8 +442,9 @@ session.
    replies, token use, judge cost); compute no contrast. The pilot epoch counts as
    epoch 1 unless it is voided for an operational defect named before any contrast
    is computed.
-6. The remaining fires: anchor epochs 2 and 3; Grok and Luna epochs 1 to 3, each fire
-   recorded in the plan by a dated amendment before it is made.
+6. The remaining fires: anchor epochs 2 and 3; Grok and Luna epochs 1 to 3, and under
+   the Anthropic judge route a re-grade fire for each Grok and Luna fire (section 5),
+   each fire recorded in the plan by a dated amendment before it is made.
 7. The final analysis, once, after every registered target has landed or been
    declared administratively truncated.
 8. The second-family re-grade.
@@ -558,9 +599,13 @@ redefinition after the data; nothing public before the final analysis and the ve
 2. **Any paid fire and its dollar amount,** including the dated budget override a Haiku
    fire on the Anthropic lane needs, and the per-fire `max_spend`, `judge_max_spend` and
    `token_limit` (section 5 suggests values).
-3. **The routes:** Haiku as target through Anthropic or OpenRouter, and the judge of
-   record through Anthropic or OpenRouter, one judge route for every fire (section 6).
-   The OpenRouter route changes the provider route from wave 2 for that model.
+3. **The routes:** the judge of record through Anthropic or OpenRouter, one judge route
+   for every fire (section 6), recorded in the plan's `judge.judge_model`. A fire's
+   target and judge must bill one channel, so the choice also sets the anchor's target
+   route (section 5): the OpenRouter route moves the anchor's target and judge off wave
+   2's provider route and puts every fire on the OpenRouter lane; the Anthropic route
+   keeps the anchor on wave 2's route, with a dated override for every Haiku fire, and
+   needs a re-grade fire on the Anthropic lane for every Grok and Luna fire.
 4. **Reference tiers and warning signs** (decision 6 of the wave-2 note): still open;
    every wave-3 seed leaves `scenario.reference` null.
 5. **The persistence judge's context limitation** (wave-2 note, section 10.5): keep the
