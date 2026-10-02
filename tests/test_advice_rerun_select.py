@@ -5,9 +5,13 @@ file and a stimuli file into tmp_path, then ranks it. Covers the modal tie rule,
 the exporter-style dedupe, the excluded-model rule, determinism under the seed,
 the noise-floor decision (expected count at the item's own downgrade count, over
 every ranked stimulus, and the Bonferroni figures),
-row accounting, and refusal (not skipping) of malformed rows.
+row accounting, refusal (not skipping) of malformed rows, and the two files the
+CLI writes: the ranking report, unchanged in content, and the selection in
+exactly the shape build-stimuli --source selection reads, whose notes carry the
+report's sha256.
 """
 
+import hashlib
 import importlib.util
 import json
 import sys
@@ -50,7 +54,11 @@ def _write_archive(adir, samples, extra_judgments=()):
     judge, sent and text. Returns the response sha256 of each sample, in order."""
     adir.mkdir(parents=True, exist_ok=True)
     ids = sorted({s["sid"] for s in samples})
-    (adir / f"{STEM}.json").write_text(json.dumps({"items": [{"id": i} for i in ids]}), encoding="utf-8")
+    # complete stimuli (bodies, messages, hashes), so build-stimuli's selection reader can load them too
+    items = [ae._stimulus(i, f"placeholder clinical {i}", f"placeholder patient {i}", "placeholder ask?")
+             for i in ids]
+    (adir / f"{STEM}.json").write_text(json.dumps({"ask_suffix": "placeholder ask?", "items": items}),
+                                       encoding="utf-8")
     prev, lines, judgments, shas = None, [], [], []
     for n, s in enumerate(samples):
         text = s.get("text", f"placeholder response {n}")
@@ -79,8 +87,8 @@ def _rubric(tmp_path):
 
 
 def _build(tmp_path, exclude=("gemini",), seed=11, permutations=200, top=15):
-    return sel.build_selection(tmp_path / "advice", [STEM], _rubric(tmp_path), PRIMARY, list(exclude),
-                               "test note", top, seed, permutations)
+    return sel.build_report(tmp_path / "advice", [STEM], _rubric(tmp_path), PRIMARY, list(exclude),
+                            "test note", top, seed, permutations)
 
 
 def _run(tmp_path, samples, extra=(), **kw):
@@ -278,22 +286,112 @@ def test_broken_chain_is_refused(tmp_path):
 # --------------------------------------------------------------------- CLI
 
 
-def test_cli_writes_the_selection_shape_and_refuses_to_overwrite(tmp_path):
-    _write_archive(tmp_path / "advice", _cell("s1", "a:m1", ["urgent"] * 3, ["self_care"] * 3))
-    out = tmp_path / "advice" / "rerun_selection_test.json"
-    args = ["--advice-dir", str(tmp_path / "advice"), "--rubric", str(_rubric(tmp_path)),
-            "--permutations", "50", "--out", str(out)]
-    sel.main(args)
-    written = json.loads(out.read_text(encoding="utf-8"))
-    assert isinstance(written["rule"], str) and "post hoc" in written["rule"].lower()
+# Every key the report carried before the builder-ready selection was split out of it (2026-10-02): the split
+# moved nothing out of the report.
+REPORT_KEYS = {"rule", "items", "selection", "seed", "permutations", "judge_model", "excluded_models", "rubric",
+               "display_aliases", "inputs", "row_accounting", "per_model", "generated_utc", "engine_sha", "script",
+               "command"}
+REPORT_ITEM_KEYS = {"file", "id", "rank", "downgrades", "models_counted", "sum_drop", "severe_downgrades", "upgrades",
+                    "patient_samples_below_clinical_modal", "patient_samples",
+                    "share_patient_samples_below_clinical_modal", "downgrades_with_excluded_models",
+                    "models_with_excluded_models", "null_expected_downgrades", "p_tail", "p_tail_bonferroni",
+                    "null_expected_stimuli_at_or_above", "observed_stimuli_at_or_above", "clears_noise_floor",
+                    "per_model"}
+
+
+def _two_stimuli(tmp_path):
+    _write_archive(tmp_path / "advice", _cell("s1", "a:m1", ["urgent"] * 3, ["self_care"] * 3)
+                   + _cell("s2", "a:m1", ["routine"] * 3, ["self_care"] * 3))
+
+
+def _cli_args(tmp_path):
+    """(report path, selection path, the arguments without outputs, the arguments with both outputs)."""
+    report = tmp_path / "advice" / "rerun_ranking_test.json"
+    selection = tmp_path / "advice" / "rerun_selection_test.json"
+    base = ["--advice-dir", str(tmp_path / "advice"), "--rubric", str(_rubric(tmp_path)), "--permutations", "50"]
+    return report, selection, base, base + ["--report-out", str(report), "--selection-out", str(selection)]
+
+
+def test_cli_writes_the_ranking_report_unchanged_in_content(tmp_path):
+    _two_stimuli(tmp_path)
+    report_path, _, _, args = _cli_args(tmp_path)
+    returned = sel.main(args)
+    written = json.loads(report_path.read_text(encoding="utf-8"))
+    assert written == json.loads(json.dumps(returned))   # the file holds what the run computed
+    assert set(written) == REPORT_KEYS
+    assert [it["id"] for it in written["items"]] == ["s1", "s2"]
+    assert all(set(it) == REPORT_ITEM_KEYS for it in written["items"])
     assert written["items"][0]["file"].endswith(f"{STEM}.json")
-    assert written["items"][0]["id"] == "s1"
-    assert written["seed"] == sel.DEFAULT_SEED
+    assert (written["seed"], written["permutations"]) == (sel.DEFAULT_SEED, 50)
     assert {i["path"].rsplit("/", 1)[-1] for i in written["inputs"]} >= {
         f"{STEM}.json", f"responses_{STEM}.jsonl", f"judgments_{STEM}.jsonl", "rubric.json"}
     assert all(len(i["sha256"]) == 64 for i in written["inputs"])
+    # and it is what build_report computes from the same inputs: writing it adds and drops nothing
+    direct = sel.build_report(tmp_path / "advice", [STEM], _rubric(tmp_path), PRIMARY, list(sel.DEFAULT_EXCLUDE),
+                              sel.DEFAULT_EXCLUDE_NOTE, sel.DEFAULT_TOP, sel.DEFAULT_SEED, 50)
+    for doc in (written, direct):
+        doc.pop("generated_utc")
+        doc.pop("command")
+    assert written == json.loads(json.dumps(direct))
+
+
+def test_cli_writes_the_selection_in_exactly_the_shape_build_stimuli_reads(tmp_path):
+    _two_stimuli(tmp_path)
+    report_path, selection_path, _, args = _cli_args(tmp_path)
+    sel.main(args)
+    report_bytes = report_path.read_bytes()
+    report = json.loads(report_bytes)
+    selection = json.loads(selection_path.read_text(encoding="utf-8"))
+    # build-stimuli --source selection refuses any other key, at either level
+    assert set(selection) == {"rule", "items", "notes"} == ae.SELECTION_KEYS
+    assert all(set(entry) == {"file", "id"} == ae.SELECTION_ENTRY_KEYS for entry in selection["items"])
+    assert selection["rule"] == report["rule"]
+    ranked = sorted(report["items"], key=lambda it: it["rank"])
+    assert selection["items"] == [{"file": it["file"], "id": it["id"]} for it in ranked]
+    notes = selection["notes"]
+    assert isinstance(notes, str)
+    # the report by path and by the sha256 of the file as written
+    assert f"{report_path} (sha256 {hashlib.sha256(report_bytes).hexdigest()})" in notes
+    assert f"seed {sel.DEFAULT_SEED}" in notes and "50 permutations" in notes and "post hoc" in notes
+
+
+def test_the_selection_is_accepted_by_build_stimulis_reader(tmp_path, monkeypatch):
+    # The holdout seal is build-stimuli's own step (tested in test_advice_eval.py) and needs a dashboard and Tier B
+    # batch files; it is stubbed so this test checks only that the reader accepts the file the ranker writes.
+    monkeypatch.setattr(ae, "_selection_seal_check", lambda *a, **k: {"tierb": False, "accepted_prompt": False})
+    _two_stimuli(tmp_path)
+    _, selection_path, _, args = _cli_args(tmp_path)
+    report = sel.main(args)
+    items, source, ask = ae.select_stimuli(selection_path, tmp_path / "no_dashboard.json", tmp_path / "no_sim")
+    assert [it["meta"]["rerun_of"]["id"] for it in items] == [it["id"] for it in report["items"]]
+    assert source["rule"] == report["rule"]
+    assert source["notes"] == json.loads(selection_path.read_text(encoding="utf-8"))["notes"]
+    assert ask == "placeholder ask?"
+
+
+def test_cli_refuses_to_overwrite_either_file(tmp_path):
+    _two_stimuli(tmp_path)
+    report_path, _, _, args = _cli_args(tmp_path)
+    sel.main(args)
     with pytest.raises(SystemExit, match="append-only"):
         sel.main(args)
+    # with only the selection left the run is refused before anything is written, so no report is written again
+    report_path.unlink()
+    with pytest.raises(SystemExit, match="append-only"):
+        sel.main(args)
+    assert not report_path.exists()
+
+
+def test_cli_writes_the_two_files_together_or_not_at_all(tmp_path):
+    _two_stimuli(tmp_path)
+    report_path, selection_path, base, _ = _cli_args(tmp_path)
+    with pytest.raises(SystemExit, match="written together"):
+        sel.main(base + ["--report-out", str(report_path)])
+    with pytest.raises(SystemExit, match="written together"):
+        sel.main(base + ["--selection-out", str(selection_path)])
+    with pytest.raises(SystemExit, match="same file"):
+        sel.main(base + ["--report-out", str(report_path), "--selection-out", str(report_path)])
+    assert not report_path.exists() and not selection_path.exists()
 
 
 # ----------------------------------------------------------------- noise floor

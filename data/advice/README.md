@@ -32,6 +32,11 @@ The selection file is JSON:
  "notes": "optional"}
 ```
 
+`scripts/advice_rerun_select.py --report-out <report> --selection-out <selection>`
+writes a selection in this shape together with its ranking report. Every metric
+stays in the report, and the selection's `notes` name the report by path and
+sha256 (`rerun_ranking_20261002.json` and `rerun_selection_20261002.json`).
+
 - Each selected item is copied **verbatim**: bodies, assembled messages, sha256
   values, `source_ref`, `meta` and any other field. The build adds only
   `meta.rerun_of = {file, id, file_sha256}`; an item that already had a

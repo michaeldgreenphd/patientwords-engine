@@ -1,20 +1,31 @@
 """Rank earlier advice stimuli by how many models downgraded them, and write a rerun selection.
 
 Offline and $0: reads only the committed archives under ``data/advice/`` and writes
-one new selection file (refusing to overwrite an existing one, because
-``data/advice/`` is append-only). The selection file has the shape that a
-planned ``build-stimuli --source selection`` reader is to read (a separate pull
-request; on this branch ``build-stimuli`` has no such source, so nothing here
-consumes or validates the file yet):
+two new files from one run, refusing to overwrite either (``data/advice/`` is
+append-only):
 
-    {"rule": <text>, "items": [{"file": "data/advice/stimuli_<stamp>.json",
-                                "id": "<stimulus id>", ...per-item metrics}], ...}
+- the ranking report (``--report-out``): the selection rule, each selected item
+  with its metrics (rank, downgrade counts, null probabilities, the noise-floor
+  decision, the per-model cells), the null's expected and observed counts, the
+  seed and permutations, the judge, the excluded models, the rubric, the sha256
+  of every input file, the row accounting and the per-model summary;
+- the selection (``--selection-out``): exactly the shape that
+  ``advice_eval.py build-stimuli --source selection`` reads, which refuses any
+  other key (``SELECTION_KEYS`` and ``SELECTION_ENTRY_KEYS`` there):
+
+      {"rule": <the report's rule text>,
+       "items": [{"file": "data/advice/stimuli_<stamp>.json", "id": "<stimulus id>"}, ...],
+       "notes": <the report's path and sha256, the seed, the permutations, and that the selection is post hoc>}
+
+  Items are in rank order. The report is written first and the sha256 in the
+  notes is that of the report file as written, so a selection names exactly one
+  report.
 
 The unique key of an item is the pair (file, id), not the id alone: the same
 stimulus id can be selected from two stimuli files (two forms of one
-situation), and such items carry ``same_situation_also_selected_from``. A
-reader that builds one stimuli file from the selection must give each item a
-unique id there.
+situation), and in the report such items carry
+``same_situation_also_selected_from``. ``build-stimuli --source selection``
+keeps the output ids unique by renaming the later item ``<id>~<file stem>``.
 
 Methodology (every step is the repository's own definition, restated here so a
 reader of the output can reconstruct it without reading the caller):
@@ -470,9 +481,11 @@ def per_model_summary(cells: list[PairedCell]) -> dict[str, dict[str, Any]]:
 # ------------------------------------------------------------------------- output
 
 
-def build_selection(advice_dir: Path, stems: list[str], rubric_path: Path, judge_model: str,
-                    exclude: list[str], exclude_note: str, top: int, seed: int,
-                    permutations: int, command: str = "") -> dict[str, Any]:
+def build_report(advice_dir: Path, stems: list[str], rubric_path: Path, judge_model: str,
+                 exclude: list[str], exclude_note: str, top: int, seed: int,
+                 permutations: int, command: str = "") -> dict[str, Any]:
+    """The ranking report: the rule, the selected items with their metrics, and everything needed to recompute
+    them (seed, permutations, judge, exclusions, rubric, input sha256s, row accounting)."""
     if permutations < 1:
         raise SystemExit("--permutations must be at least 1")
     if top < 1:
@@ -605,6 +618,27 @@ def _bonferroni_phrase(items: list[dict[str, Any]]) -> str:
             f"item #{best['rank']})")
 
 
+def selection_for_builder(report: dict[str, Any], report_path: str, report_sha256: str) -> dict[str, Any]:
+    """The selection file that ``advice_eval.py build-stimuli --source selection`` reads: exactly
+    {rule, items: [{file, id}], notes}, the items in rank order. The builder refuses any other key, so every
+    metric stays in the report, which the notes name by path and sha256."""
+    notes = (f"Items in rank order from the ranking report {report_path} (sha256 {report_sha256}), written in the "
+             f"same run of {report['script']} with seed {report['seed']} and {report['permutations']} permutations "
+             "per cell; that report holds each item's metrics, the null, the noise-floor decision and the sha256 of "
+             "every input. The selection is post hoc: the items were chosen after seeing these codings, so a rerun "
+             "of them is a replication test.")
+    ranked = sorted(report["items"], key=lambda it: it["rank"])
+    return {"rule": report["rule"], "items": [{"file": it["file"], "id": it["id"]} for it in ranked], "notes": notes}
+
+
+def _write_new(path: Path, doc: dict[str, Any]) -> None:
+    """Write a JSON document to a file that must not exist yet (mode "x"; data/advice/ is append-only)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "x", encoding="utf-8") as f:
+        json.dump(doc, f, indent=1, ensure_ascii=False)
+        f.write("\n")
+
+
 def discover_stems(advice_dir: Path) -> list[str]:
     stems = sorted(p.name[len("judgments_"):-len(".jsonl")] for p in advice_dir.glob("judgments_*.jsonl"))
     if not stems:
@@ -612,17 +646,17 @@ def discover_stems(advice_dir: Path) -> list[str]:
     return stems
 
 
-def _print_table(sel: dict[str, Any]) -> None:
+def _print_table(report: dict[str, Any]) -> None:
     print(f"{'#':>2} {'stimuli file':34} {'stimulus id':36} {'down/n':>7} {'drop':>4} {'sev':>3} {'up':>3} "
           f"{'below':>6} {'+excl':>6} {'p_tail':>8} {'E(k)':>8} clears")
-    for it in sel["items"]:
+    for it in report["items"]:
         print(f"{it['rank']:>2} {Path(it['file']).stem:34} {it['id']:36} "
               f"{it['downgrades']:>3}/{it['models_counted']:<3} {it['sum_drop']:>4} {it['severe_downgrades']:>3} "
               f"{it['upgrades']:>3} {it['share_patient_samples_below_clinical_modal']:>6.3f} "
               f"{it['downgrades_with_excluded_models']:>2}/{it['models_with_excluded_models']:<3} "
               f"{it['p_tail']:>8.4f} {it['null_expected_stimuli_at_or_above']:>8.4f} {it['clears_noise_floor']}")
-    print("ranked:", sel["selection"]["n_stimuli_ranked"],
-          "| distribution:", sel["selection"]["downgrade_count_distribution"])
+    print("ranked:", report["selection"]["n_stimuli_ranked"],
+          "| distribution:", report["selection"]["downgrade_count_distribution"])
 
 
 def main(argv: list[str] | None = None) -> dict[str, Any]:
@@ -638,30 +672,44 @@ def main(argv: list[str] | None = None) -> dict[str, Any]:
     parser.add_argument("--top", type=int, default=DEFAULT_TOP)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--permutations", type=int, default=DEFAULT_PERMUTATIONS)
-    parser.add_argument("--out", default=None,
-                        help="selection file to write (refused if it exists: data/advice/ is append-only)")
+    parser.add_argument("--report-out", default=None,
+                        help="ranking report to write: the rule, each item's metrics, the null and the inputs' "
+                             "sha256 (refused if it exists: data/advice/ is append-only)")
+    parser.add_argument("--selection-out", default=None,
+                        help="selection to write for advice_eval.py build-stimuli --source selection, exactly "
+                             "{rule, items: [{file, id}], notes} (refused if it exists); requires --report-out, "
+                             "whose path and sha256 its notes carry")
     parser.add_argument("--print-table", action="store_true", help="print the ranked items (ids and metrics only)")
     args = parser.parse_args(argv)
 
     advice_dir = Path(args.advice_dir)
-    out = Path(args.out) if args.out else None
-    if out is not None and out.exists():
-        raise SystemExit(f"{out}: exists; data/advice/ is append-only, so write a new file instead")
+    report_out = Path(args.report_out) if args.report_out else None
+    selection_out = Path(args.selection_out) if args.selection_out else None
+    if (report_out is None) != (selection_out is None):
+        raise SystemExit("--report-out and --selection-out are written together: the selection's notes name the "
+                         "report by path and sha256")
+    if report_out is not None and selection_out is not None:
+        if report_out.resolve() == selection_out.resolve():
+            raise SystemExit("--report-out and --selection-out name the same file")
+        # both checked before anything is computed or written, so a refusal leaves no half-written pair
+        for out in (report_out, selection_out):
+            if out.exists():
+                raise SystemExit(f"{out}: exists; data/advice/ is append-only, so write a new file instead")
     stems = args.stem or discover_stems(advice_dir)
     exclude = list(args.exclude_model) if args.exclude_model is not None else list(DEFAULT_EXCLUDE)
     cli_args = list(argv) if argv is not None else sys.argv[1:]
-    sel = build_selection(advice_dir, stems, Path(args.rubric), args.judge_model, exclude,
+    report = build_report(advice_dir, stems, Path(args.rubric), args.judge_model, exclude,
                           args.exclude_note, args.top, args.seed, args.permutations,
                           command="python scripts/advice_rerun_select.py " + " ".join(cli_args))
-    if args.print_table or out is None:
-        _print_table(sel)
-    if out is not None:
-        out.parent.mkdir(parents=True, exist_ok=True)
-        with open(out, "x", encoding="utf-8") as f:
-            json.dump(sel, f, indent=1, ensure_ascii=False)
-            f.write("\n")
-        print(f"wrote {len(sel['items'])} selected item(s) -> {out}")
-    return sel
+    if args.print_table or report_out is None:
+        _print_table(report)
+    if report_out is not None and selection_out is not None:
+        _write_new(report_out, report)
+        report_sha256 = _sha256_file(report_out)   # the file as written, so the notes name exactly these bytes
+        _write_new(selection_out, selection_for_builder(report, _display_path(report_out), report_sha256))
+        print(f"wrote the ranking report ({len(report['items'])} item(s)) -> {report_out}")
+        print(f"wrote the selection for build-stimuli -> {selection_out} (report sha256 {report_sha256})")
+    return report
 
 
 if __name__ == "__main__":
