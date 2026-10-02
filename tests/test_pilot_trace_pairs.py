@@ -131,15 +131,15 @@ OUTSIDE_THE_RULE = {"capital": WORD.capitalize(), "all capitals": WORD.upper(), 
                     "two hyphens": f"{WORD}-{WORD}-{WORD}", "hyphen and apostrophe": f"{WORD}-{WORD}'{WORD}",
                     "leading hyphen": "-" + WORD, "trailing hyphen": WORD + "-", "leading apostrophe": "'" + WORD,
                     "space": f"{WORD} {WORD}", "leading space": " " + WORD, "newline": WORD + "\n", "empty": "",
-                    "uppercase roman numeral": "Ⅻ", "roman numeral inside a word": WORD + "Ⅰ" + WORD,
-                    "decomposed accent": WORD + "é"}
+                    "uppercase roman numeral": "\u216b", "roman numeral inside a word": WORD + "\u2160" + WORD,
+                    "decomposed accent": WORD + "e\u0301"}
 INSIDE_THE_RULE = {"plain": WORD, "one hyphen": f"{WORD}-{WORD}", "one apostrophe": f"{WORD}'{WORD}",
                    "one typographic apostrophe": f"{WORD}’{WORD}", "letters of another script": "été"}
 # outside the protocol's wording, but the parser's check accepts them, in the two ways next_word_ok's docstring
 # names: numerals that are not decimal digits, and an uppercase letter that has no lowercase form
-BROADER_THAN_THE_WORDING = {"superscript digit": WORD + "²", "fraction": "½",
-                            "small roman numeral": "ⅻ", "circled digit": "①",
-                            "uppercase letter without a lowercase form": "ϒ"}
+BROADER_THAN_THE_WORDING = {"superscript digit": WORD + "\u00b2", "fraction": "\u00bd",
+                            "small roman numeral": "\u217b", "circled digit": "\u2460",
+                            "uppercase letter without a lowercase form": "\u03d2"}
 
 
 def test_refuses_a_next_word_outside_the_protocol_rule(tmp_path):
