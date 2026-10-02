@@ -15,7 +15,16 @@ name: Circuit Trace Evaluation (medlang-circuits)
 #     output numbering and per-chunk committed checkpoints.
 #
 # Outputs land in trace_out/<pairs-file-stem>/ so different batches never
-# collide on index numbering.
+# collide on index numbering. The trigger key output_root (2026-10-01) has one
+# other accepted value, "pilot/traces": a pairs file under pilot/ is traced
+# into pilot/traces/<pairs-file-stem>/, which no collector reads, and only
+# with it, and that pairs file must sit under pilot/runs/, the one pilot
+# directory either job checks out (pilot/traces never is, so no cell's
+# workspace holds an earlier pilot part). A pilot trace is a $0 plain
+# pipeline check, never a measurement: the params job refuses
+# show_mitigation, mode translation, steering and generate_explanations under
+# it, it commits only the summary parts, and a fail-closed holdout seal check
+# runs before that commit.
 
 on:
   workflow_dispatch:
@@ -113,6 +122,8 @@ jobs:
           # this fire, and a depth-1 clone has no commit to read it at; blobless keeps full history cheap
           # (petri_audit.yml's pattern, G4 2026-09-23)
           fetch-depth: 0
+          # pilot/runs, not all of pilot/: pilot-root pairs files live there (screen_targets reads one below), and
+          # pilot/traces, where earlier pilot parts are committed, stays out of the checkout as trace_out/ does
           sparse-checkout: |
             .github
             scripts
@@ -121,6 +132,7 @@ jobs:
             docs
             ops
             tests
+            pilot/runs
 
       - name: Resolve run parameters
         id: params
@@ -141,7 +153,7 @@ jobs:
           IN_MAX_FEATURE_NODES: ${{ inputs.max_feature_nodes }}
         run: |
           python - <<'EOF'
-          import json, os
+          import json, os, posixpath
           defaults = {
               "graph_model": "gemma-2-2b", "graph_models": "", "mode": "2panel",
               "pairs_file": "", "offsets": "0", "sample_size": "1",
@@ -152,6 +164,7 @@ jobs:
               "steer_validate": "0", "steer_boost": "0", "steer_placebo": "0",
               "steer_strength": "", "steer_boost_strength": "", "steer_rank_offset": "",
               "translation_model": "", "translation_placebo": "0",
+              "output_root": "",
           }
           params = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
@@ -173,6 +186,58 @@ jobs:
           offsets = sorted({int(x) for x in params["offsets"].replace(",", " ").split()})
           if not offsets:
               raise SystemExit("no offsets to trace")
+          # output_root: "" keeps trace_out/<stem>; "pilot/traces" is the pilot root, which no collector reads. A
+          # pairs file under pilot/ goes with the pilot root and only with it, under that root it must sit under
+          # pilot/runs/ (the one pilot directory either job checks out), and a pilot trace is $0 and plain.
+          # scripts/fire_trigger.py (circuit_trace_params_problems, circuit_trace_pilot_source_problems) refuses
+          # the same before a fire is journaled; a workflow_dispatch has no output_root input, so it keeps "".
+          root = params["output_root"]
+          if root not in ("", "pilot/traces"):
+              raise SystemExit(f"output_root {root!r}: only '' (trace_out) or 'pilot/traces' is accepted")
+          pairs_path = params["pairs_file"] or f"medlang_circuits/data/ci_pairs_{params['mode']}.json"
+          if "\\" in pairs_path:
+              # posixpath reads a backslash as part of a file name, so the pilot/ and absolute-path tests below would
+              # not see a Windows spelling (pilot\runs\x.json, C:\...); every pairs_file fired to date uses /
+              raise SystemExit(f"pairs_file {pairs_path!r} contains a backslash; give a repo-relative path "
+                               "with / separators")
+          norm_pairs = posixpath.normpath(pairs_path)
+          if norm_pairs.startswith("/") or norm_pairs == ".." or norm_pairs.startswith("../"):
+              # an absolute or ..-escaping path can name pilot/ without the pilot/ prefix tested below
+              raise SystemExit(f"pairs_file {pairs_path!r} is absolute or leaves the checkout; "
+                               "give a repo-relative path")
+          in_pilot = norm_pairs.startswith("pilot/")
+          if root != "pilot/traces" and in_pilot:
+              raise SystemExit(f"pairs_file {pairs_path!r} is under pilot/: pilot pairs trace only with "
+                               "output_root 'pilot/traces', so their outputs never enter trace_out/")
+          if root == "pilot/traces":
+              refused = []
+              if not norm_pairs.startswith("pilot/runs/"):
+                  # both jobs check out pilot/runs and never pilot/traces, so pilot pairs trace from there only
+                  refused.append(f"pairs_file {pairs_path!r} is not under pilot/runs/")
+              if "," in pairs_path:  # the seal step's --extra list splits on commas
+                  refused.append(f"pairs_file {pairs_path!r} contains a comma")
+              if params["show_mitigation"].strip().lower() not in ("", "false", "0"):
+                  refused.append(f"show_mitigation {params['show_mitigation']!r}")
+              if params["mode"].strip().lower() == "translation":
+                  refused.append(f"mode {params['mode']!r}")
+              for key in ("generate_explanations", "steer_validate", "steer_boost", "steer_placebo"):
+                  if params[key] not in ("", "0"):  # the run step passes any other value on
+                      refused.append(f"{key} {params[key]!r}")
+              if refused:
+                  raise SystemExit("output_root 'pilot/traces' is a $0 plain trace; refused: " + "; ".join(refused))
+              if params["screen_targets"]:
+                  # screening measures each pair's target_clinical_token; a pair without one is always screened
+                  # out and its patient side never traced
+                  with open(pairs_path, encoding="utf-8") as f:
+                      pairs = json.load(f)
+                  if not isinstance(pairs, list):
+                      raise SystemExit(f"{pairs_path} is not a JSON array")
+                  size = int(params["sample_size"])
+                  missing = sorted({o + i + 1 for o in offsets for i, pair in enumerate(pairs[o:o + size])
+                                    if not (isinstance(pair, dict) and pair.get("target_clinical_token"))})
+                  if missing:
+                      raise SystemExit(f"screen_targets refused: {len(missing)} selected pair(s) of {pairs_path} "
+                                       f"carry no target_clinical_token (1-based indices {missing[:10]})")
           # graph_models (list/space/comma) fans the trace out over models; "all"
           # expands to every hosted model. Falls back to the single graph_model,
           # so a legacy single-model trigger behaves exactly as before.
@@ -241,6 +306,10 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           filter: blob:none
+          # pilot/runs, not all of pilot/: a pilot cell reads its pairs file from there, while pilot/traces stays out
+          # as trace_out/ does, so neither root's OUT_DIR starts with earlier committed parts in it and the commit
+          # step's rebase does not write other cells' parts into it; that step stages this cell's new part outside
+          # the sparse checkout with `git add --sparse`, for both roots
           sparse-checkout: |
             .github
             scripts
@@ -249,6 +318,7 @@ jobs:
             docs
             ops
             tests
+            pilot/runs
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -262,6 +332,7 @@ jobs:
           MODE: ${{ fromJson(needs.params.outputs.config).mode }}
           SAMPLE_SIZE: ${{ fromJson(needs.params.outputs.config).sample_size }}
           PAIRS_FILE: ${{ fromJson(needs.params.outputs.config).pairs_file }}
+          OUTPUT_ROOT: ${{ fromJson(needs.params.outputs.config).output_root }}
           GRAPH_MODEL: ${{ matrix.model }}
           OFFSET: ${{ matrix.offset }}
         run: |
@@ -281,10 +352,17 @@ jobs:
           model = os.environ.get("GRAPH_MODEL", "gemma-2-2b")
           if model != "gemma-2-2b":  # cross-model runs get their own dir
               stem = f"{stem}__{model}"
+          root = os.environ.get("OUTPUT_ROOT", "")
+          if root == "":
+              out_dir = f"trace_out/{stem}"
+          elif root == "pilot/traces":  # pilot pairs: outside trace_out/, where every collector reads
+              out_dir = f"pilot/traces/{stem}"
+          else:  # the params job admits only these two
+              raise SystemExit(f"output_root {root!r}: only '' or 'pilot/traces' is accepted")
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
-              env.write(f"OUT_DIR=trace_out/{stem}\n")
+              env.write(f"OUT_DIR={out_dir}\n")
           print(f"Selected pairs {offset + 1}-{offset + len(selected)} of {len(pairs)} "
-                f"from {path} -> trace_out/{stem}")
+                f"from {path} -> {out_dir}")
           EOF
 
       - name: Run batch evaluation against the hosted backend
@@ -343,11 +421,30 @@ jobs:
           [ "$MEDLANG_TRANSLATION_PLACEBO" = "0" ] && unset MEDLANG_TRANSLATION_PLACEBO
           medlang-batch-eval "${ARGS[@]}"
 
+      # Pilot root only: pilot pairs come from the pilot generator, not the study's batches, so everything this cell
+      # wrote and the pairs file it read are swept for sealed holdout phrases before anything is committed (the
+      # petri_audit.yml pattern: no site checkout, the sealed set computed from data/ and ops/). Runs after a failed
+      # trace too, as the commit step does, so a partial cell is checked before its checkpoint lands; the commit,
+      # run-page summary and artifact-upload steps below act on a pilot cell only when this step succeeded.
+      - name: Holdout seal check over the pilot trace outputs (pilot root only; fails closed)
+        id: seal
+        if: ${{ always() && fromJson(needs.params.outputs.config).output_root == 'pilot/traces' }}
+        env:
+          PAIRS_FILE: ${{ fromJson(needs.params.outputs.config).pairs_file }}
+        run: |
+          set -euo pipefail
+          # seal_check.py reads a root that does not exist as zero files and passes, so a pairs file that is not
+          # there fails here rather than letting the check pass over nothing (a comma in the name is refused at fire
+          # time and in the params job for the same reason: --extra splits on commas)
+          test -f "$PAIRS_FILE" || { echo "pilot seal check: pairs file $PAIRS_FILE not found"; exit 1; }
+          python scripts/seal_check.py --site "$RUNNER_TEMP/no-site" --extra "$OUT_DIR,$PAIRS_FILE"
+
       - name: Commit trace outputs to the dispatched branch
-        if: ${{ always() && fromJson(needs.params.outputs.config).commit_outputs == 'true' }}
+        if: ${{ always() && fromJson(needs.params.outputs.config).commit_outputs == 'true' && (fromJson(needs.params.outputs.config).output_root != 'pilot/traces' || steps.seal.outcome == 'success') }}
         env:
           OFFSET: ${{ matrix.offset }}
           BRANCH: ${{ github.ref_name }}
+          OUTPUT_ROOT: ${{ fromJson(needs.params.outputs.config).output_root }}
         run: |
           set -euo pipefail
           # Checkpoint whatever finished (the per-pair batch_summary.json
@@ -366,7 +463,12 @@ jobs:
             mv "$OUT_DIR/mitigation.report.json" "$OUT_DIR/mitigation.part_$(printf '%02d' "$START").report.json"
           fi
           shopt -s nullglob
-          FILES=("$OUT_DIR"/index_*.html "$OUT_DIR"/index_*.png "$OUT_DIR"/multi_*.html "$OUT_DIR"/multi_*.png "$OUT_DIR"/batch_summary.part_*.json "$OUT_DIR"/mitigation.part_*.report.json)
+          if [ "$OUTPUT_ROOT" = "pilot/traces" ]; then
+            # a pilot trace commits its summary parts only; renders and tagged graphs stay in the workflow artifact
+            FILES=("$OUT_DIR"/batch_summary.part_*.json)
+          else
+            FILES=("$OUT_DIR"/index_*.html "$OUT_DIR"/index_*.png "$OUT_DIR"/multi_*.html "$OUT_DIR"/multi_*.png "$OUT_DIR"/batch_summary.part_*.json "$OUT_DIR"/mitigation.part_*.report.json)
+          fi
           if [ ${#FILES[@]} -eq 0 ]; then
             echo "No trace outputs to commit"
             exit 0
@@ -389,13 +491,29 @@ jobs:
           done
           [ "$PUSHED" -eq 1 ]
 
+      # Under the pilot root the run page and the artifact are publications too (an artifact cannot be retracted once
+      # created), so a pilot cell whose seal check did not succeed publishes neither; the default root is unchanged.
       - name: Publish summary to run page
-        if: always()
+        if: ${{ always() && (fromJson(needs.params.outputs.config).output_root != 'pilot/traces' || steps.seal.outcome == 'success') }}
+        env:
+          OFFSET: ${{ matrix.offset }}
+          MODEL: ${{ matrix.model }}
+          MODE: ${{ fromJson(needs.params.outputs.config).mode }}
         run: |
-          SUMMARY=$(ls "$OUT_DIR"/batch_summary*.json 2>/dev/null | head -1 || true)
+          # This cell's own summary, named rather than listed: batch_summary.json until the commit step renames it
+          # batch_summary.part_NN.json (NN = OFFSET + 1, as there). The checkout leaves both roots' output directories
+          # out, so OUT_DIR should hold no other cell's part; naming this cell's keeps any other part from appearing
+          # under this cell's heading.
+          PART="$OUT_DIR/batch_summary.part_$(printf '%02d' "$((OFFSET + 1))").json"
+          SUMMARY=""
+          if [ -f "$OUT_DIR/batch_summary.json" ]; then
+            SUMMARY="$OUT_DIR/batch_summary.json"
+          elif [ -f "$PART" ]; then
+            SUMMARY="$PART"
+          fi
           if [ -n "$SUMMARY" ]; then
             {
-              echo "## Circuit trace batch summary (${{ matrix.model }}, ${{ fromJson(needs.params.outputs.config).mode }}, offset ${{ matrix.offset }})"
+              echo "## Circuit trace batch summary ($MODEL, $MODE, offset $OFFSET)"
               echo '```json'
               cat "$SUMMARY"
               echo '```'
@@ -403,7 +521,7 @@ jobs:
           fi
 
       - name: Upload trace outputs
-        if: always()
+        if: ${{ always() && (fromJson(needs.params.outputs.config).output_root != 'pilot/traces' || steps.seal.outcome == 'success') }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: circuit-trace-${{ matrix.model }}-${{ fromJson(needs.params.outputs.config).mode }}-${{ github.run_number }}-offset${{ matrix.offset }}
