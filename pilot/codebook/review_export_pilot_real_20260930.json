@@ -1,0 +1,1531 @@
+{
+ "what": "The owner's blind review of the 40-row review sample of pilot run pilot_real_20260930, exported from the private review page's database on 2026-10-01, joined to the run's items and checker verdicts. Owner answers are copied as stored; nothing is recoded.",
+ "run": "pilot_real_20260930",
+ "exported_utc": "2026-10-01",
+ "provenance": {
+  "run_directory": "owner's laptop, outside the repository (see pilot/prompts_v2/README.md); not a recorded run under the AGENTS.md pilot exception",
+  "sha256": {
+   "manifest.json": "1bc448bd8b90e459b8f049f6cc036fd21e65dbaa229688d7021097dd7ee8ae8a",
+   "generated/all_rows.jsonl": "20e94da2d4e8335db62bac04d152f941804692ac003f176763c62c56c674cc07",
+   "checked.jsonl": "2ef546eb6eaa56f175613da5869ab69419df20bd8f42c8ec9eeba278a023a8ed",
+   "review_map.json": "11c5f1730cafc0161e77c8c2774db2b3bce9034e22491e9e71762442670b3507",
+   "review_sheet.csv": "5b0c73aa708a72b02b71005bd2b9a7a423ebbbcf91a678b6e7e4348eceac12c8"
+  },
+  "review_page_questions": {
+   "same": [
+    "yes",
+    "no",
+    "unclear"
+   ],
+   "patient_real": [
+    "real",
+    "textbook",
+    "unlikely"
+   ],
+   "clinical_right": [
+    "yes",
+    "close",
+    "no"
+   ],
+   "sentence": [
+    "both",
+    "clinical_only",
+    "patient_only",
+    "neither"
+   ],
+   "keep": [
+    "keep",
+    "edit",
+    "drop"
+   ]
+  },
+  "blinding": "the checker verdict was hidden until the owner saved an item; first_answers are the answers saved first; checker_shown_before_first_answer is false for every row"
+ },
+ "lessons": [
+  {
+   "text": "One of the primary lessons I had from this review is that I think that having clinical grammar that is proper and then having a patient scenario that can be proper grammar too but with a plausible swap for a colloquial language are really the situations we are looking for. Often times the clinical word is forced into a sentence that is not how a doctor would describe it and often creates a mismatch with the patient. If you can create an active and conversational tone for both, but with good grammar, and word swaps that'd be ideal for steering.",
+   "created_utc": "2026-10-02T05:02:26Z",
+   "run": "pilot_real_20260930"
+  }
+ ],
+ "rows": [
+  {
+   "sample_id": "r001",
+   "item": "B__gastroenterology__symptom_description__L14",
+   "cell": "gastroenterology__symptom_description",
+   "arm": "B",
+   "specialty": "gastroenterology",
+   "swap_type": "symptom description",
+   "clinical_term": "tenesmus",
+   "patient_term": "that feeling like I still need to go",
+   "template": "I keep having ___ even after using the bathroom, so I'm going to see",
+   "checker": {
+    "verdict": "yes",
+    "reason": "Tenesmus is the feeling of incomplete evacuation, the feeling that you still need to go."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "patient_only"
+    },
+    "answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "patient_only"
+    },
+    "notes": "I have tenesmus, instead of keep having. In this instance the grammar is incorrect for the patient thing. The ideal similuli is a one for one swap where the grammar does not need to change.",
+    "first_utc": "2026-10-02T04:34:39Z",
+    "updated_utc": "2026-10-02T04:34:39Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r002",
+   "item": "A__gastroenterology__medication__L04",
+   "cell": "gastroenterology__medication",
+   "arm": "A",
+   "specialty": "gastroenterology",
+   "swap_type": "medication",
+   "clinical_term": "loperamide",
+   "patient_term": "Imodium",
+   "template": "Before the long bus ride I took some ___ so I",
+   "checker": {
+    "verdict": "yes",
+    "reason": "Imodium is the brand name for loperamide."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "close",
+     "keep": "drop",
+     "patient_real": "textbook",
+     "same": "unclear",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "close",
+     "keep": "drop",
+     "patient_real": "textbook",
+     "same": "unclear",
+     "sentence": "both"
+    },
+    "notes": "This is a good example of the word swap but it feels like a weird pairing. Maybe swap with a different medicine",
+    "first_utc": "2026-10-02T04:37:26Z",
+    "updated_utc": "2026-10-02T04:37:26Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r003",
+   "item": "A__cardiology__body_part__L15",
+   "cell": "cardiology__body_part",
+   "arm": "A",
+   "specialty": "cardiology",
+   "swap_type": "body part",
+   "clinical_term": "femoral artery",
+   "patient_term": "artery in my groin",
+   "template": "For the catheter procedure they will go in through the ___, so afterward I have to",
+   "checker": {
+    "verdict": "yes",
+    "reason": "The femoral artery is the artery in the groin used for catheter access."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "maybe even doing this by saying \"blood vessel\" or just \"vessel\" instead of artery for the patient version that way you can also show what happens when patients are being imprecise.",
+    "first_utc": "2026-10-02T04:38:41Z",
+    "updated_utc": "2026-10-02T04:38:41Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r004",
+   "item": "B__gastroenterology__medication__L15",
+   "cell": "gastroenterology__medication",
+   "arm": "B",
+   "specialty": "gastroenterology",
+   "swap_type": "medication",
+   "clinical_term": "an infliximab infusion",
+   "patient_term": "my Crohn's drip",
+   "template": "Every eight weeks I go to the clinic for ___, and afterwards I",
+   "checker": {
+    "verdict": "unclear",
+    "reason": "An infusion for Crohn's every eight weeks fits infliximab but also vedolizumab, so 'my Crohn's drip' does not uniquely identify the drug."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "drop",
+     "patient_real": "unlikely",
+     "same": "no",
+     "sentence": "clinical_only"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "drop",
+     "patient_real": "unlikely",
+     "same": "no",
+     "sentence": "clinical_only"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:39:09Z",
+    "updated_utc": "2026-10-02T04:39:09Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r005",
+   "item": "B__neurology__medication__L01",
+   "cell": "neurology__medication",
+   "arm": "B",
+   "specialty": "neurology",
+   "swap_type": "medication",
+   "clinical_term": "anticonvulsant",
+   "patient_term": "seizure medicine",
+   "template": "I forgot to take my ___ this morning, so now I'm worried I might",
+   "checker": {
+    "verdict": "yes",
+    "reason": "Both phrases name the same drug class; anticonvulsant is the clinical word for seizure medicine."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:39:35Z",
+    "updated_utc": "2026-10-02T04:39:35Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r006",
+   "item": "A__cardiology__body_part__L07",
+   "cell": "cardiology__body_part",
+   "arm": "A",
+   "specialty": "cardiology",
+   "swap_type": "body part",
+   "clinical_term": "mitral valve",
+   "patient_term": "heart valve",
+   "template": "My ___ is leaking a little, so every year I have to",
+   "checker": {
+    "verdict": "no",
+    "reason": "The heart has four valves, and 'heart valve' does not say that the mitral valve is the one meant."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "drop",
+     "patient_real": "unlikely",
+     "same": "unclear",
+     "sentence": "patient_only"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "drop",
+     "patient_real": "unlikely",
+     "same": "unclear",
+     "sentence": "patient_only"
+    },
+    "notes": "This does not really seem like a plausible clinical scenario. Again think about generation by drawing on clinical cases that are in the real world then reverse engineer that to ways tha ta patient might inaccurately describe it.",
+    "first_utc": "2026-10-02T04:40:34Z",
+    "updated_utc": "2026-10-02T04:40:34Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r007",
+   "item": "B__neurology__symptom_description__L05",
+   "cell": "neurology__symptom_description",
+   "arm": "B",
+   "specialty": "neurology",
+   "swap_type": "symptom description",
+   "clinical_term": "a migraine with aura",
+   "patient_term": "a bad headache with flashing lights",
+   "template": "I think I'm getting ___, so I need to lie down in a",
+   "checker": {
+    "verdict": "yes",
+    "reason": "A bad headache with flashing lights is the lay description of migraine with aura."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "no",
+     "keep": "drop",
+     "patient_real": "unlikely",
+     "same": "no",
+     "sentence": "patient_only"
+    },
+    "answers": {
+     "clinical_right": "no",
+     "keep": "drop",
+     "patient_real": "unlikely",
+     "same": "no",
+     "sentence": "patient_only"
+    },
+    "notes": "This does not feel like a clinical classification. The description on the patient side is interesting though",
+    "first_utc": "2026-10-02T04:41:17Z",
+    "updated_utc": "2026-10-02T04:41:17Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r008",
+   "item": "A__gastroenterology__body_part__L15",
+   "cell": "gastroenterology__body_part",
+   "arm": "A",
+   "specialty": "gastroenterology",
+   "swap_type": "body part",
+   "clinical_term": "sigmoid colon",
+   "patient_term": "lower bowel",
+   "template": "The scan showed a problem in his ___, so he needs to",
+   "checker": {
+    "verdict": "no",
+    "reason": "'Lower bowel' is broader than the sigmoid colon: it also covers the descending colon and rectum, so the specific segment cannot be recovered."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "close",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "close",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "In these scenarios if you could show various levels of precision around what the \"problem\" is that could be cool",
+    "first_utc": "2026-10-02T04:42:20Z",
+    "updated_utc": "2026-10-02T04:42:20Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r009",
+   "item": "A__neurology__medication__L08",
+   "cell": "neurology__medication",
+   "arm": "A",
+   "specialty": "neurology",
+   "swap_type": "medication",
+   "clinical_term": "donepezil",
+   "patient_term": "memory pill",
+   "template": "Grandma forgets to take her ___ unless someone reminds her, so every evening I",
+   "checker": {
+    "verdict": "unclear",
+    "reason": "'Memory pill' could be donepezil, memantine, galantamine or rivastigmine; the template does not say which."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:43:27Z",
+    "updated_utc": "2026-10-02T04:43:27Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r010",
+   "item": "B__neurology__medication__L02",
+   "cell": "neurology__medication",
+   "arm": "B",
+   "specialty": "neurology",
+   "swap_type": "medication",
+   "clinical_term": "sumatriptan",
+   "patient_term": "my migraine pill",
+   "template": "When the headache started, I took ___ and went to lie down in",
+   "checker": {
+    "verdict": "no",
+    "reason": "'My migraine pill' names a class of drug and could be any triptan, NSAID or combination product, so it does not identify sumatriptan."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:43:52Z",
+    "updated_utc": "2026-10-02T04:43:52Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r011",
+   "item": "A__neurology__symptom_description__L01",
+   "cell": "neurology__symptom_description",
+   "arm": "A",
+   "specialty": "neurology",
+   "swap_type": "symptom description",
+   "clinical_term": "vertigo",
+   "patient_term": "the spins",
+   "template": "Every time I roll over in bed I get ___, so I need to see a",
+   "checker": {
+    "verdict": "yes",
+    "reason": "'The spins' is the everyday word for vertigo, including positional vertigo."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "textbook",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "textbook",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "in these scenarios maybe having the clinical phrase be met with multiple different patient phrases",
+    "first_utc": "2026-10-02T04:44:39Z",
+    "updated_utc": "2026-10-02T04:44:39Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r012",
+   "item": "A__neurology__medication__L14",
+   "cell": "neurology__medication",
+   "arm": "A",
+   "specialty": "neurology",
+   "swap_type": "medication",
+   "clinical_term": "pyridostigmine",
+   "patient_term": "Mestinon",
+   "template": "When her eyelids start drooping in the evening, she takes another ___ and within half an hour",
+   "checker": {
+    "verdict": "yes",
+    "reason": "Mestinon is the brand name for pyridostigmine."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "drop",
+     "patient_real": "unlikely",
+     "same": "unclear",
+     "sentence": "clinical_only"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "drop",
+     "patient_real": "unlikely",
+     "same": "unclear",
+     "sentence": "clinical_only"
+    },
+    "notes": "I feel like in these scenarios using things like slang for the patients is beneficial. Source from those areas of lexicon if possible",
+    "first_utc": "2026-10-02T04:46:17Z",
+    "updated_utc": "2026-10-02T04:46:17Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r013",
+   "item": "A__cardiology__body_part__L05",
+   "cell": "cardiology__body_part",
+   "arm": "A",
+   "specialty": "cardiology",
+   "swap_type": "body part",
+   "clinical_term": "left ventricle",
+   "patient_term": "main pumping chamber",
+   "template": "The echo showed my ___ is weaker than it should be, so I need to",
+   "checker": {
+    "verdict": "yes",
+    "reason": "The left ventricle is the heart's main pumping chamber, and an echo showing it is weak refers to it directly."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "yes",
+     "sentence": "clinical_only"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "yes",
+     "sentence": "clinical_only"
+    },
+    "notes": "maybe something like left side of heart, or something more colloquial.",
+    "first_utc": "2026-10-02T04:47:08Z",
+    "updated_utc": "2026-10-02T04:47:08Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r014",
+   "item": "B__neurology__symptom_description__L06",
+   "cell": "neurology__symptom_description",
+   "arm": "B",
+   "specialty": "neurology",
+   "swap_type": "symptom description",
+   "clinical_term": "a tremor",
+   "patient_term": "the shakes",
+   "template": "My hands have ___ whenever I hold a cup, so I asked my",
+   "checker": {
+    "verdict": "yes",
+    "reason": "'The shakes' in the hands is the lay term for a tremor."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:47:19Z",
+    "updated_utc": "2026-10-02T04:47:19Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r015",
+   "item": "B__gastroenterology__symptom_description__L03",
+   "cell": "gastroenterology__symptom_description",
+   "arm": "B",
+   "specialty": "gastroenterology",
+   "swap_type": "symptom description",
+   "clinical_term": "hematochezia",
+   "patient_term": "blood on the toilet paper",
+   "template": "This morning I noticed ___, so I think I should call",
+   "checker": {
+    "verdict": "yes",
+    "reason": "Blood on the toilet paper is bright red rectal bleeding, which is hematochezia, though usually a milder, anorectal form."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "unclear",
+     "sentence": "patient_only"
+    },
+    "answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "unclear",
+     "sentence": "patient_only"
+    },
+    "notes": "the grammar for the clinical one is not a natural flowing sentence, again these things should be proper grammar but stream of conscious and active voice.",
+    "first_utc": "2026-10-02T04:48:13Z",
+    "updated_utc": "2026-10-02T04:48:13Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r016",
+   "item": "B__gastroenterology__symptom_description__L12",
+   "cell": "gastroenterology__symptom_description",
+   "arm": "B",
+   "specialty": "gastroenterology",
+   "swap_type": "symptom description",
+   "clinical_term": "odynophagia",
+   "patient_term": "pain when I swallow",
+   "template": "Since starting the new pill I've had ___, so I called my",
+   "checker": {
+    "verdict": "yes",
+    "reason": "Odynophagia means painful swallowing."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "textbook",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "textbook",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "not as natural sounding but probably worth keeping",
+    "first_utc": "2026-10-02T04:49:19Z",
+    "updated_utc": "2026-10-02T04:49:19Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r017",
+   "item": "B__neurology__body_part__L11",
+   "cell": "neurology__body_part",
+   "arm": "B",
+   "specialty": "neurology",
+   "swap_type": "body part",
+   "clinical_term": "plantar surface of my feet",
+   "patient_term": "bottoms of my feet",
+   "template": "The burning on the ___ keeps me awake at night, so I asked about",
+   "checker": {
+    "verdict": "yes",
+    "reason": "The plantar surface is the bottom (sole) of the foot."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "drop",
+     "patient_real": "unlikely",
+     "same": "yes",
+     "sentence": "neither"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "drop",
+     "patient_real": "unlikely",
+     "same": "yes",
+     "sentence": "neither"
+    },
+    "notes": "Both non-specific and somewhat different meanings here",
+    "first_utc": "2026-10-02T04:49:54Z",
+    "updated_utc": "2026-10-02T04:49:54Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r018",
+   "item": "A__neurology__body_part__L12",
+   "cell": "neurology__body_part",
+   "arm": "A",
+   "specialty": "neurology",
+   "swap_type": "body part",
+   "clinical_term": "plantar surface of the foot",
+   "patient_term": "sole of the foot",
+   "template": "There is a burning feeling on the ___ every night, so she should",
+   "checker": {
+    "verdict": "yes",
+    "reason": "The plantar surface of the foot is the sole."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "close",
+     "keep": "drop",
+     "patient_real": "textbook",
+     "same": "unclear",
+     "sentence": "neither"
+    },
+    "answers": {
+     "clinical_right": "close",
+     "keep": "drop",
+     "patient_real": "textbook",
+     "same": "unclear",
+     "sentence": "neither"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:50:06Z",
+    "updated_utc": "2026-10-02T04:50:06Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r019",
+   "item": "B__neurology__symptom_description__L02",
+   "cell": "neurology__symptom_description",
+   "arm": "B",
+   "specialty": "neurology",
+   "swap_type": "symptom description",
+   "clinical_term": "paresthesia in my hands",
+   "patient_term": "pins and needles in my hands",
+   "template": "Lately I get ___ at night, so I think I should see a",
+   "checker": {
+    "verdict": "yes",
+    "reason": "'Pins and needles' is the standard lay description of paresthesia."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "Again think about the grammar being right for the clinical phrase",
+    "first_utc": "2026-10-02T04:50:38Z",
+    "updated_utc": "2026-10-02T04:50:38Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r020",
+   "item": "A__gastroenterology__medication__L12",
+   "cell": "gastroenterology__medication",
+   "arm": "A",
+   "specialty": "gastroenterology",
+   "swap_type": "medication",
+   "clinical_term": "mesalamine",
+   "patient_term": "colitis pills",
+   "template": "I ran out of my ___ last week, and now I",
+   "checker": {
+    "verdict": "yes",
+    "reason": "Mesalamine is the standard oral colitis medicine, so 'colitis pills' refers to it at the lay level."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:50:55Z",
+    "updated_utc": "2026-10-02T04:50:55Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r021",
+   "item": "A__neurology__medication__L13",
+   "cell": "neurology__medication",
+   "arm": "A",
+   "specialty": "neurology",
+   "swap_type": "medication",
+   "clinical_term": "CGRP monoclonal antibody",
+   "patient_term": "monthly migraine shot",
+   "template": "Her insurance finally approved the ___ for her headaches, so now every month she has to",
+   "checker": {
+    "verdict": "yes",
+    "reason": "The monthly injectable migraine preventives are the CGRP monoclonal antibodies, the same class the clinical term names."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:51:07Z",
+    "updated_utc": "2026-10-02T04:51:07Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r022",
+   "item": "B__cardiology__medication__L11",
+   "cell": "cardiology__medication",
+   "arm": "B",
+   "specialty": "cardiology",
+   "swap_type": "medication",
+   "clinical_term": "ACE inhibitor",
+   "patient_term": "pressure medicine",
+   "template": "My ___ gives me a dry cough at night, so I asked the",
+   "checker": {
+    "verdict": "no",
+    "reason": "'Pressure medicine' covers every antihypertensive, while an ACE inhibitor is one class, so the patient phrase is broader and loses the specificity."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "More like this for common medicines, stressing a few different phrases that are common in clinical lexicon but have a ton of ways patients might refer to them is interesting to me",
+    "first_utc": "2026-10-02T04:51:46Z",
+    "updated_utc": "2026-10-02T04:51:46Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r023",
+   "item": "A__gastroenterology__medication__L15",
+   "cell": "gastroenterology__medication",
+   "arm": "A",
+   "specialty": "gastroenterology",
+   "swap_type": "medication",
+   "clinical_term": "lactase enzyme tablet",
+   "patient_term": "Lactaid pill",
+   "template": "Before eating ice cream I take a ___ so that I",
+   "checker": {
+    "verdict": "yes",
+    "reason": "Lactaid is a brand of lactase enzyme tablet."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:51:53Z",
+    "updated_utc": "2026-10-02T04:51:53Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r024",
+   "item": "A__gastroenterology__body_part__L09",
+   "cell": "gastroenterology__body_part",
+   "arm": "A",
+   "specialty": "gastroenterology",
+   "swap_type": "body part",
+   "clinical_term": "gastrointestinal tract",
+   "patient_term": "guts",
+   "template": "The doctor thinks the infection is somewhere in my ___, so I need to",
+   "checker": {
+    "verdict": "yes",
+    "reason": "'Guts' is the colloquial word for the gastrointestinal tract."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:52:06Z",
+    "updated_utc": "2026-10-02T04:52:06Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r025",
+   "item": "B__neurology__medication__L07",
+   "cell": "neurology__medication",
+   "arm": "B",
+   "specialty": "neurology",
+   "swap_type": "medication",
+   "clinical_term": "tissue plasminogen activator",
+   "patient_term": "the clot-buster drug",
+   "template": "At the hospital they gave her ___ for the stroke, and within an hour she could",
+   "checker": {
+    "verdict": "yes",
+    "reason": "In a stroke setting, 'the clot-buster drug' refers to tPA (alteplase), the standard thrombolytic."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "unclear",
+     "sentence": "clinical_only"
+    },
+    "answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "unclear",
+     "sentence": "clinical_only"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:52:23Z",
+    "updated_utc": "2026-10-02T04:52:23Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r026",
+   "item": "A__cardiology__body_part__L01",
+   "cell": "cardiology__body_part",
+   "arm": "A",
+   "specialty": "cardiology",
+   "swap_type": "body part",
+   "clinical_term": "myocardium",
+   "patient_term": "heart muscle",
+   "template": "The doctor said my ___ was damaged by the attack, so now I need to",
+   "checker": {
+    "verdict": "yes",
+    "reason": "Myocardium is the heart muscle; this is only a difference in register."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "yes",
+     "sentence": "clinical_only"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "yes",
+     "sentence": "clinical_only"
+    },
+    "notes": "I feel like patients are generally more vague, so maybe in cases when someone would say heart muscle you can just say the more general thing as well as an opton",
+    "first_utc": "2026-10-02T04:53:17Z",
+    "updated_utc": "2026-10-02T04:53:17Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r027",
+   "item": "B__cardiology__body_part__L12",
+   "cell": "cardiology__body_part",
+   "arm": "B",
+   "specialty": "cardiology",
+   "swap_type": "body part",
+   "clinical_term": "jugular veins",
+   "patient_term": "neck veins",
+   "template": "The nurse noticed my ___ were bulging, so she called the",
+   "checker": {
+    "verdict": "yes",
+    "reason": "The jugular veins are the neck veins."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "yes",
+     "sentence": "neither"
+    },
+    "answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "yes",
+     "sentence": "neither"
+    },
+    "notes": "Both somewhat choppy prose",
+    "first_utc": "2026-10-02T04:53:39Z",
+    "updated_utc": "2026-10-02T04:53:39Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r028",
+   "item": "B__gastroenterology__body_part__L09",
+   "cell": "gastroenterology__body_part",
+   "arm": "B",
+   "specialty": "gastroenterology",
+   "swap_type": "body part",
+   "clinical_term": "right upper quadrant",
+   "patient_term": "upper right side of my belly",
+   "template": "The pain sits in the ___ and gets worse after fatty food, so I should",
+   "checker": {
+    "verdict": "yes",
+    "reason": "The right upper quadrant is the upper right side of the abdomen."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "unclear",
+     "sentence": "neither"
+    },
+    "answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "unclear",
+     "sentence": "neither"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:54:43Z",
+    "updated_utc": "2026-10-02T04:54:43Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r029",
+   "item": "B__gastroenterology__symptom_description__L07",
+   "cell": "gastroenterology__symptom_description",
+   "arm": "B",
+   "specialty": "gastroenterology",
+   "swap_type": "symptom description",
+   "clinical_term": "nauseated",
+   "patient_term": "queasy",
+   "template": "I feel ___ every morning, so I think I should try",
+   "checker": {
+    "verdict": "yes",
+    "reason": "Queasy is the lay word for nauseated."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:54:57Z",
+    "updated_utc": "2026-10-02T04:54:57Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r030",
+   "item": "A__gastroenterology__body_part__L14",
+   "cell": "gastroenterology__body_part",
+   "arm": "A",
+   "specialty": "gastroenterology",
+   "swap_type": "body part",
+   "clinical_term": "oral cavity",
+   "patient_term": "mouth",
+   "template": "I've got painful sores all over my ___, so I'm going to try some",
+   "checker": {
+    "verdict": "yes",
+    "reason": "Oral cavity is the clinical term for the mouth."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "patient_only"
+    },
+    "answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "patient_only"
+    },
+    "notes": "feels like using clinical jargon just to use jargon in this case",
+    "first_utc": "2026-10-02T04:56:02Z",
+    "updated_utc": "2026-10-02T04:56:02Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r031",
+   "item": "A__gastroenterology__symptom_description__L03",
+   "cell": "gastroenterology__symptom_description",
+   "arm": "A",
+   "specialty": "gastroenterology",
+   "swap_type": "symptom description",
+   "clinical_term": "hematemesis",
+   "patient_term": "blood in his throw-up",
+   "template": "This morning he had ___, so his wife drove him straight to the",
+   "checker": {
+    "verdict": "yes",
+    "reason": "'Blood in his throw-up' is vomiting blood, which is hematemesis."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "yes",
+     "sentence": "neither"
+    },
+    "answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "yes",
+     "sentence": "neither"
+    },
+    "notes": "maybe add specificity to the clinical version",
+    "first_utc": "2026-10-02T04:56:59Z",
+    "updated_utc": "2026-10-02T04:56:59Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r032",
+   "item": "B__cardiology__symptom_description__L07",
+   "cell": "cardiology__symptom_description",
+   "arm": "B",
+   "specialty": "cardiology",
+   "swap_type": "symptom description",
+   "clinical_term": "presyncopal",
+   "patient_term": "woozy",
+   "template": "When I stand up too fast I get ___, so I sit down and",
+   "checker": {
+    "verdict": "yes",
+    "reason": "When standing up quickly, 'woozy' is the lay description of the near-faint lightheadedness that presyncope names. 'Woozy' is vaguer in general use."
+   },
+   "owner": {
+    "first_answers": {
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "unclear",
+     "sentence": "patient_only"
+    },
+    "answers": {
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "unclear",
+     "sentence": "patient_only"
+    },
+    "notes": "the tense and context for the clinical one feels a little odd",
+    "first_utc": "2026-10-02T04:57:28Z",
+    "updated_utc": "2026-10-02T04:57:28Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r033",
+   "item": "B__neurology__body_part__L04",
+   "cell": "neurology__body_part",
+   "arm": "B",
+   "specialty": "neurology",
+   "swap_type": "body part",
+   "clinical_term": "lumbar spine",
+   "patient_term": "lower back",
+   "template": "The shooting pain from my ___ down into my leg is getting worse, so I",
+   "checker": {
+    "verdict": "yes",
+    "reason": "Lower back is the lay term for the lumbar spine region."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:57:34Z",
+    "updated_utc": "2026-10-02T04:57:34Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r034",
+   "item": "A__neurology__body_part__L01",
+   "cell": "neurology__body_part",
+   "arm": "A",
+   "specialty": "neurology",
+   "swap_type": "body part",
+   "clinical_term": "occipital region",
+   "patient_term": "back of the head",
+   "template": "The headache starts in the ___ and then spreads forward, so I should",
+   "checker": {
+    "verdict": "yes",
+    "reason": "The occipital region is the back of the head."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "unclear",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "textbook",
+     "same": "unclear",
+     "sentence": "both"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:57:47Z",
+    "updated_utc": "2026-10-02T04:57:47Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r035",
+   "item": "B__neurology__body_part__L03",
+   "cell": "neurology__body_part",
+   "arm": "B",
+   "specialty": "neurology",
+   "swap_type": "body part",
+   "clinical_term": "cervical spine",
+   "patient_term": "neck",
+   "template": "The doctor said the pinched nerve in my ___ is why my hand feels",
+   "checker": {
+    "verdict": "yes",
+    "reason": "In the context of a pinched nerve, 'neck' refers to the cervical spine."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "close",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "close",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:58:11Z",
+    "updated_utc": "2026-10-02T04:58:11Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r036",
+   "item": "A__gastroenterology__body_part__L04",
+   "cell": "gastroenterology__body_part",
+   "arm": "A",
+   "specialty": "gastroenterology",
+   "swap_type": "body part",
+   "clinical_term": "epigastrium",
+   "patient_term": "pit of my stomach",
+   "template": "I get a burning pain in the ___ after meals, so I've started taking",
+   "checker": {
+    "verdict": "yes",
+    "reason": "The epigastrium is the pit of the stomach."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "close",
+     "keep": "drop",
+     "patient_real": "unlikely",
+     "same": "unclear",
+     "sentence": "neither"
+    },
+    "answers": {
+     "clinical_right": "close",
+     "keep": "drop",
+     "patient_real": "unlikely",
+     "same": "unclear",
+     "sentence": "neither"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:58:40Z",
+    "updated_utc": "2026-10-02T04:58:40Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r037",
+   "item": "B__gastroenterology__body_part__L11",
+   "cell": "gastroenterology__body_part",
+   "arm": "B",
+   "specialty": "gastroenterology",
+   "swap_type": "body part",
+   "clinical_term": "gastric mucosa",
+   "patient_term": "stomach lining",
+   "template": "The ibuprofen has irritated my ___, so the pharmacist told me to take",
+   "checker": {
+    "verdict": "yes",
+    "reason": "Gastric mucosa is the stomach lining."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "close",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "close",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:59:00Z",
+    "updated_utc": "2026-10-02T04:59:00Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r038",
+   "item": "A__cardiology__symptom_description__L13",
+   "cell": "cardiology__symptom_description",
+   "arm": "A",
+   "specialty": "cardiology",
+   "swap_type": "symptom description",
+   "clinical_term": "exertional fatigue",
+   "patient_term": "no energy",
+   "template": "Since his valve got worse, he has ___ on his walks, so the cardiologist",
+   "checker": {
+    "verdict": "yes",
+    "reason": "'No energy on his walks' describes fatigue brought on by exertion; the template supplies the exertional context."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "patient_only"
+    },
+    "answers": {
+     "clinical_right": "close",
+     "keep": "edit",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "patient_only"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T04:59:18Z",
+    "updated_utc": "2026-10-02T04:59:18Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r039",
+   "item": "B__cardiology__body_part__L05",
+   "cell": "cardiology__body_part",
+   "arm": "B",
+   "specialty": "cardiology",
+   "swap_type": "body part",
+   "clinical_term": "carotid artery",
+   "patient_term": "neck artery",
+   "template": "The ultrasound showed plaque in my ___, so the doctor told me to",
+   "checker": {
+    "verdict": "yes",
+    "reason": "The carotid artery is the main artery in the neck."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "answers": {
+     "clinical_right": "yes",
+     "keep": "keep",
+     "patient_real": "real",
+     "same": "yes",
+     "sentence": "both"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T05:00:11Z",
+    "updated_utc": "2026-10-02T05:00:11Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  },
+  {
+   "sample_id": "r040",
+   "item": "A__gastroenterology__medication__L07",
+   "cell": "gastroenterology__medication",
+   "arm": "A",
+   "specialty": "gastroenterology",
+   "swap_type": "medication",
+   "clinical_term": "docusate sodium",
+   "patient_term": "a stool softener",
+   "template": "After the surgery the nurse told me to take ___ so that",
+   "checker": {
+    "verdict": "yes",
+    "reason": "Docusate sodium is the standard stool softener given after surgery; the patient term names its drug class and label."
+   },
+   "owner": {
+    "first_answers": {
+     "clinical_right": "close",
+     "keep": "drop",
+     "patient_real": "textbook",
+     "same": "unclear",
+     "sentence": "neither"
+    },
+    "answers": {
+     "clinical_right": "close",
+     "keep": "drop",
+     "patient_real": "textbook",
+     "same": "unclear",
+     "sentence": "neither"
+    },
+    "notes": "",
+    "first_utc": "2026-10-02T05:00:21Z",
+    "updated_utc": "2026-10-02T05:00:21Z",
+    "checker_shown_before_first_answer": false,
+    "n_updates": 0,
+    "page_version": 2
+   }
+  }
+ ]
+}
