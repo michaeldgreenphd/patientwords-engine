@@ -45,14 +45,16 @@ class Target:
 
 class Auditor:
     """Answers with padding around the message number it is asked for, so the strip rule is exercised; `fail_at`
-    returns an empty answer or an unfinished one at that message number."""
+    returns an empty answer or an unfinished one at that message number. `configs` keeps the GenerateConfig each call
+    received."""
 
     def __init__(self, fail_at: int | None = None, stop_reason: str = "stop") -> None:
-        self.fail_at, self.stop_reason, self.requests = fail_at, stop_reason, []
+        self.fail_at, self.stop_reason, self.requests, self.configs = fail_at, stop_reason, [], []
 
     def __call__(self, input, tools, tool_choice, config) -> ModelOutput:
         request = input[-1].text
         self.requests.append((input[0].text, request))
+        self.configs.append(config)
         n = int(re.search(r"message (\d+) of", request).group(1))
         if n == self.fail_at:
             return ModelOutput.from_content("mockllm/model", "" if self.stop_reason == "stop" else "cut off mid",
@@ -210,6 +212,26 @@ def test_a_withheld_parameter_is_left_out_of_both_roles_under_the_name_the_adapt
             assert (model.config.temperature is None) is withheld, name
         per_call = generate_config_kwargs(gen, sampling_omissions(str(auditor)))  # controller.adaptive_auditor
         assert ("temperature" in per_call) is not withheld, name
+
+
+def test_the_controller_leaves_a_withheld_parameter_out_of_every_auditor_call(tmp_path, monkeypatch):
+    """Review of PR #71: the test above reproduces the controller's per-call expression; this one runs
+    controller.adaptive_auditor. The mock auditor model here carries no config of its own, so each call receives the
+    controller's per-call config. With controller.sampling_omissions patched to list the mock (as test_zero_cost_e2e
+    patches the adapter's), every auditor call receives the prompt file's max_tokens and no temperature; without
+    the patch, both."""
+    from scripts.petri_audit import controller
+
+    gen = adaptive.load_adaptive_prompt()["generation"]
+    sent = Auditor()
+    _run(tmp_path / "sent", [PLAIN], sent)
+    assert sent.configs and {(c.temperature, c.max_tokens) for c in sent.configs} == {(gen["temperature"], gen["max_tokens"])}
+    monkeypatch.setattr(controller, "sampling_omissions",
+                        lambda name, registry=None: {"temperature": "rejects temperature (test)"} if name == "mockllm/model" else {})
+    withheld = Auditor()
+    _run(tmp_path / "withheld", [PLAIN], withheld)
+    assert len(withheld.configs) == len(sent.configs)
+    assert {(c.temperature, c.max_tokens) for c in withheld.configs} == {(None, gen["max_tokens"])}
 
 
 def test_an_auditor_request_other_than_the_conversation_the_person_saw_fails_the_check(tmp_path, monkeypatch):
