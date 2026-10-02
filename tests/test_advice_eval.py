@@ -1370,22 +1370,54 @@ def _roster_registry(tmp_path, registry=None):
     "openrouter:anthropic/claude-opus-5.5", "openrouter/anthropic/claude-opus-5.5", " claude-opus-5-5 ",
     "claude-fable-5-1", "anthropic:claude-fable-5-1", "openrouter/anthropic/claude-fable-5.1",
     "claude-sonnet-5-5", "openrouter:anthropic/claude-sonnet-5.5",
+    # review of 2026-10-01: the skill's rule covers every Claude model from Opus 4.7 on, and Sonnet 5 (non-default
+    # values; omitting it samples at the default 1.0, as its registered arm's 1.0 does)
+    "claude-opus-4-7", "openrouter:anthropic/claude-opus-4.7", "claude-opus-4-8", "anthropic/claude-opus-4-8",
+    "openrouter/anthropic/claude-opus-4.8", "claude-opus-5", "openrouter:anthropic/claude-opus-5",
+    "claude-fable-5", "openrouter/anthropic/claude-fable-5", "claude-sonnet-5", "anthropic:claude-sonnet-5",
+    "anthropic/claude-sonnet-5", "openrouter:anthropic/claude-sonnet-5",
 ])
 def test_the_live_registry_withholds_temperature_from_every_spelling_of_the_new_anthropic_models(spelling):
     reason = ae.temperature_omission(spelling, LIVE_REGISTRY)
     assert reason and "claude-api skill" in reason
 
 
+def test_every_claude_model_the_engine_prices_that_rejects_temperature_is_listed():
+    """The registry's list against the engine's own Anthropic price table: every model evaluate_models.PRICING
+    names is either listed (the skill says it rejects temperature) or one of the models the skill says accept it.
+    A Claude model added to PRICING later fails here until someone decides which it is."""
+    from medlang_circuits.evaluate_models import PRICING
+
+    accepts = {"claude-haiku-4-5", "claude-sonnet-4-6"}  # the 4.6/4.5 line (python/claude-api/sdk-upgrade.md)
+    for model in PRICING:
+        listed = ae.temperature_omission(model, LIVE_REGISTRY) is not None
+        assert listed != (model in accepts), model
+
+
 @pytest.mark.parametrize("spelling", [
     "claude-haiku-4-5", "anthropic:claude-haiku-4-5", "openrouter/anthropic/claude-haiku-4.5",
-    # Sonnet 5 rejects non-default values too, but its registered arm sends the default and is left unchanged
-    "claude-sonnet-5", "anthropic:claude-sonnet-5",
+    "claude-sonnet-4-6", "openrouter:anthropic/claude-sonnet-4.6",
     "openai:openai/gpt-5.5", "openrouter:openai/gpt-6-luna", "mockllm/model", "",
     # the match is exact after one provider prefix: a near spelling is not the model
     "claude-opus-5.5", "claude-opus-5-5-20260921", "openrouter:anthropic/claude-opus-5-5",
 ])
 def test_temperature_is_left_alone_for_every_other_model(spelling):
     assert ae.temperature_omission(spelling, LIVE_REGISTRY) is None
+
+
+@pytest.mark.parametrize("model", ["gemini-3.1-pro-preview", "gemini-3.8-flash"])
+def test_a_direct_google_spec_is_metered_and_budgeted_as_its_openrouter_spelling(model):
+    """Review of 2026-10-01: the new Gemini models were priced and given a minimum output budget only under their
+    OpenRouter slugs, so `google:gemini-3.1-pro-preview` metered at google.default_pricing (75% of its list) and was
+    sent the fire's 1024 tokens, which 291 of 294 archived calls of that model ran out of."""
+    google, router = LIVE_REGISTRY["google"], LIVE_REGISTRY["openrouter"]
+    assert ae._registry_rate(google, model) == ae._registry_rate(router, f"google/{model}")
+    assert ae._registry_rate(google, model)[1] == "pricing"
+    assert ae.call_settings(LIVE_REGISTRY, google, model, 1024, 1.0)[:2] == (4096, 1.0)
+    assert ae.call_settings(LIVE_REGISTRY, router, f"google/{model}", 1024, 1.0)[:2] == (4096, 1.0)
+    # the registered direct arm's model is untouched
+    assert ae._registry_rate(google, "gemini-3.5-flash") == (google["default_pricing"], "default_pricing")
+    assert ae.call_settings(LIVE_REGISTRY, google, "gemini-3.5-flash", 1024, 1.0) == (1024, 1.0, [])
 
 
 def test_a_malformed_omission_map_is_refused_not_ignored():

@@ -362,11 +362,16 @@ def inspect_to_registry_spec(model: str, registry: dict | None = None) -> str | 
 
 def sampling_omissions(model: str, registry: dict | None = None) -> dict[str, str]:
     """The sampling parameters a model's requests must not carry, as {parameter: reason}: {"temperature": reason}
-    when the registry's anthropic `omit_temperature` map lists the model (Claude Fable 5.1, Opus 5.5 and Sonnet 5.5
-    reject temperature, 2026-10-01), {} otherwise. `model` is an Inspect name (`anthropic/claude-opus-5-5`,
-    `openrouter/anthropic/claude-opus-5.5`) or a registry spec (a judge's). One rule for both lanes: the match is
-    scripts/advice_eval.py `temperature_omission`, loaded as the judge loads that module, so the Petri target, the
-    auditor, the judge and the advice lane cannot disagree about a model. A malformed map raises ValueError."""
+    when the registry's anthropic `omit_temperature` map lists the model (the Claude models that reject temperature:
+    Opus 4.7 and later, Fable 5 and 5.1, Sonnet 5 and 5.5; 2026-10-01), {} otherwise. `model` is an Inspect name
+    (`anthropic/claude-opus-5-5`, `openrouter/anthropic/claude-opus-5.5`) or a registry spec (a judge's). One rule
+    for both lanes: the match is scripts/advice_eval.py `temperature_omission`, loaded as the judge loads that
+    module, so what this lane leaves out of the GenerateConfig and what the advice lane and the judge leave out of
+    their requests come from the same entries. Inspect decides on its own as well: its anthropic provider drops
+    temperature, with a warning, for every Claude model it classes as 4.7 or later (inspect-ai 0.3.237), whatever
+    the config says. The map lists every such model the registry knows of; a model Inspect drops it for that the map
+    does not list (a new Claude name) is not covered here, and the adapter's generation_config_pinned check then
+    fails on `temperature: not_sent` rather than passing. A malformed map raises ValueError."""
     if not str(model or "").strip() or str(model).strip() in ZERO_PRICE_MODELS:
         return {}
     registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})

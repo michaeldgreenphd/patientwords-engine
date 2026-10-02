@@ -108,8 +108,8 @@ def register_prices(models: list[str], registry: dict | None = None) -> dict[str
 
 def generation_config(seed: dict, target: str | None = None, registry: dict | None = None) -> GenerateConfig:
     """The target's GenerateConfig from the seed's generation block. With `target`, a sampling parameter the
-    registry says the model rejects is left out (spend.sampling_omissions: Claude Fable 5.1, Opus 5.5 and Sonnet
-    5.5 reject temperature, 2026-10-01); the adapter records it as models.target.sampling_omitted and its
+    registry says the model rejects is left out (spend.sampling_omissions: the Claude models that reject
+    temperature, 2026-10-01); the adapter records it as models.target.sampling_omitted and its
     generation_config_pinned check then requires the parameter absent from every raw request."""
     omitted = sampling_omissions(target, registry) if target else {}
     return GenerateConfig(**generate_config_kwargs(seed["generation"], omitted))

@@ -196,21 +196,69 @@ re-priced.
   twice its 0.66/1.98 base. The registry's `pricing_note` gives the reasons.
 - **Vendor blocks.** The `openai`, `xai`, `deepseek` and `moonshot` blocks
   carry the same entries for their own slugs. Without them, an advice spec
-  in their spelling would meter at a `default_pricing` below list.
+  in their spelling would meter at a `default_pricing` below list. The
+  direct `google` block carries `gemini-3.1-pro-preview` and
+  `gemini-3.8-flash` at the same rates and the same 4096-token minimum
+  (added after review the same day). Without them, a `google:` spec of
+  either model would meter at `google.default_pricing`, 1.5/9.0, which is
+  75% of gemini-3.1-pro-preview's 2/12 list, and would be sent the fire's
+  1024 tokens.
 - **`openai` note.** It now records that OpenRouter lists
   `openai/gpt-chat-latest`. That slug is a rolling alias whose build on
   2026-10-01 was `openai/gpt-chat-latest-20260505`. Switching the openai arm
   to it is still an access-mode change under `_alias_vs_snapshot`, to be
   recorded here before that fire.
 - **Two new per-model fields.**
-  - `anthropic.omit_temperature` lists Claude Fable 5.1, Opus 5.5 and
-    Sonnet 5.5, which reject temperature (the claude-api skill bundled with
-    Claude Code 2.1.285). Their requests are sent without it, and each
-    record says so.
+  - `anthropic.omit_temperature` lists every Claude model that the
+    claude-api skill bundled with Claude Code 2.1.285 says rejects
+    temperature, under its direct id and its OpenRouter slug. Opus 4.7,
+    Opus 4.8, Opus 5, Opus 5.5, Fable 5 and Fable 5.1 reject any value,
+    the default included. Sonnet 5 and Sonnet 5.5 reject non-default
+    values. Their requests are sent without temperature, and each record
+    says so. For Sonnet 5, leaving temperature out samples at the API
+    default, 1.0, which is the value its registered advice arm requests.
+    The first version of this revision listed only Fable 5.1, Opus 5.5 and
+    Sonnet 5.5. A review the same day found that the skill's rule covers
+    the others, and that the locked Inspect (inspect-ai 0.3.237) already
+    drops temperature on its Anthropic route for every Claude model it
+    classes as 4.7 or later, Sonnet 5 included.
   - `min_output_tokens` gives 4096 for the reasoning models priced here.
     The advice lane sends the larger of the fire's `--max-tokens` and that
-    value, and records the value sent. No registered arm is listed, so no
-    archive's requests change part-way.
+    value, and records the value sent. No model whose archive is
+    incomplete is listed, so no archive's requests change part-way. The
+    Petri judge cannot raise its allowance, because the allowance is part
+    of its instrument and a rejudge must match its judge of record's. Its
+    `judge` step and a rejudge plan therefore refuse a listed judge model
+    whose `judge_max_tokens` is below the minimum, before any call.
+- **What the direct Anthropic path already sent.** The anthropic Python SDK
+  that CI installs unpinned stopped accepting the temperature keyword
+  (`scripts/advice_eval.py` `_send`, first seen in run 32610000348 on
+  2026-08-23). `_send` then retries without it and stops sending it for
+  the rest of the process. So since that date every `anthropic:` call in
+  CI has gone out without temperature, whatever the fire set. That covers
+  advice elicitation, translation, the advice judge and the Petri judge.
+  This is inferred from `_send`'s code and docstring; it was not checked
+  against a CI log for this revision. The local venv's anthropic 1.7.0
+  also lacks the keyword. Archived records state the fire's value either
+  way (1.0, or 0.0 for a translation), so an archived `request.temperature`
+  is the requested value, not evidence of what was sent.
+- **What changes in the records.** From this revision on, a call sent
+  without temperature records it, whether the registry or the SDK left it
+  out. An advice record carries `request.temperature` null and a
+  `request_adjustments` entry. An advice judgment carries the
+  `request_adjustments` entry. A Petri judgment row, the judge sidecar,
+  the run manifest's `artifacts.judge_of_record` and a rejudge manifest's
+  `judge` block carry `temperature_sent` null and `temperature_omitted`;
+  their `temperature` stays the instrument's 0.0. New records of the
+  registered `anthropic:claude-haiku-4-5` and `anthropic:claude-sonnet-5`
+  arms, and new judgments of the `claude-haiku-4-5` advice judge of
+  record, therefore have this shape when run in CI. An archive resumed
+  after this revision will mix earlier records that say 1.0 with new ones
+  that say null. The sampling is the same in both, because the earlier
+  calls in CI after 2026-08-23 also went out without temperature. Listing
+  Sonnet 5 changes what is sent only on a route that still forwards
+  temperature: `openrouter:anthropic/claude-sonnet-5`, which has no
+  archived record, and a Petri `openrouter/` target or auditor.
 - **Direct Anthropic rates.** `medlang_circuits.evaluate_models.PRICING`
   adds `claude-opus-5-5` (4/20), `claude-sonnet-5-5` (2/10) and
   `claude-fable-5-1` (10/50). It corrects `claude-sonnet-5` from 3/15 to
@@ -219,8 +267,12 @@ re-priced.
   list rate. Anthropic does not return a per-call bill, so the archives
   cannot confirm what was actually charged.
 
-Registry sha256 at this revision:
-`b952a88dcc01c9163a65b6d2f4ab39fb93bda002552e70109885d5360f54ae7b`
+Registry sha256 of this revision's first version, which was committed on
+the branch but never fired against (commit be78199e):
+`b952a88dcc01c9163a65b6d2f4ab39fb93bda002552e70109885d5360f54ae7b`.
+Registry sha256 after the same-day review (the wider `omit_temperature`
+list, the `google` block entries and the corrected notes):
+`629984ab07a18f04692ce28f0480edd2489215ab7d2727da0978d311766dd1d3`
 
 ## The consumer-proxy caveat (repeat in every writeup)
 

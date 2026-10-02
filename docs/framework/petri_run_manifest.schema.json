@@ -817,7 +817,16 @@
             "temperature": {
               "type": "number",
               "minimum": 0,
-              "description": "The sampling temperature every judge call was made with."
+              "description": "The judge instrument's sampling temperature (TIER_TEMPERATURE), which every judge call was made with unless temperature_omitted says the calls went out without one."
+            },
+            "temperature_sent": {
+              "type": "null",
+              "description": "2026-10-01: present, and null, only beside temperature_omitted: the judge calls carried no temperature."
+            },
+            "temperature_omitted": {
+              "type": "string",
+              "minLength": 1,
+              "description": "2026-10-01: why the judge calls went out without the instrument's temperature: the provider registry's reason (data/advice_providers.json anthropic.omit_temperature) or the installed anthropic SDK's refusal of the keyword, copied from the judge sidecar. Absent when the calls carried it, which is every manifest written before this field existed."
             },
             "billing_channel": {
               "type": "string",
@@ -1238,7 +1247,7 @@
             "type": "string",
             "minLength": 1
           },
-          "description": "2026-10-01: the sampling parameters left out of this role's requests because the provider registry (data/advice_providers.json anthropic.omit_temperature) says the model rejects them, each with the registry's reason, e.g. {\"temperature\": \"...\"} for Claude Fable 5.1, Opus 5.5 and Sonnet 5.5. generation_config_pinned then requires the parameter ABSENT from every raw request instead of equal to the seed's value, and `config` carries no value for it. Absent when nothing is withheld, which is every manifest written before this field existed."
+          "description": "2026-10-01: the sampling parameters left out of this role's requests because the provider registry (data/advice_providers.json anthropic.omit_temperature) says the model rejects them, each with the registry's reason, e.g. {\"temperature\": \"...\"} for the Claude models that reject temperature (Opus 4.7 and later, Fable 5 and 5.1, Sonnet 5 and 5.5). generation_config_pinned then requires the parameter ABSENT from every raw request instead of equal to the seed's value, and `config` carries no value for it. Absent when nothing is withheld, which is every manifest written before this field existed."
         }
       }
     },
@@ -1431,7 +1440,7 @@
             "type": "string",
             "minLength": 1
           },
-          "description": "2026-10-01: the sampling parameters left out of this role's requests because the provider registry (data/advice_providers.json anthropic.omit_temperature) says the model rejects them, each with the registry's reason, e.g. {\"temperature\": \"...\"} for Claude Fable 5.1, Opus 5.5 and Sonnet 5.5. generation_config_pinned then requires the parameter ABSENT from every raw request instead of equal to the seed's value, and `config` carries no value for it. Absent when nothing is withheld, which is every manifest written before this field existed."
+          "description": "2026-10-01: the sampling parameters left out of this role's requests because the provider registry (data/advice_providers.json anthropic.omit_temperature) says the model rejects them, each with the registry's reason, e.g. {\"temperature\": \"...\"} for the Claude models that reject temperature (Opus 4.7 and later, Fable 5 and 5.1, Sonnet 5 and 5.5). generation_config_pinned then requires the parameter ABSENT from every raw request instead of equal to the seed's value, and `config` carries no value for it. Absent when nothing is withheld, which is every manifest written before this field existed."
         }
       }
     },

@@ -151,7 +151,7 @@ def _registry_rate(cfg: dict, model: str) -> tuple[object, str]:
 
 
 # The registry field (anthropic block) naming the models whose requests must not carry `temperature`, and the reason
-# recorded when it is left out. Added 2026-10-01 for Claude Fable 5.1, Opus 5.5 and Sonnet 5.5 (registry note).
+# recorded when it is left out. Added 2026-10-01 for the Claude models that reject temperature (registry note).
 OMIT_TEMPERATURE_FIELD = "omit_temperature"
 # The registry field (any block) giving a per-model minimum output budget for reasoning models (registry note).
 MIN_OUTPUT_TOKENS_FIELD = "min_output_tokens"
@@ -159,8 +159,8 @@ SDK_DROPPED_TEMPERATURE = ("the installed anthropic SDK rejects the temperature 
                            "without it (_send)")
 
 
-def temperature_omission(model: str, registry: dict) -> str | None:
-    """The reason `model`'s requests must not carry `temperature`, or None.
+def temperature_omission_entry(model: str, registry: dict) -> tuple[str, str] | None:
+    """The `omit_temperature` entry that matches `model`, as (the key it is listed under, the reason), or None.
 
     Reads the anthropic block's `omit_temperature` map (model name -> reason). `model` may be spelled as any lane
     sends it: a bare Anthropic id (`claude-opus-5-5`), an advice spec (`anthropic:claude-opus-5-5`,
@@ -184,8 +184,14 @@ def temperature_omission(model: str, registry: dict) -> str | None:
         candidates += [name[len(p):] for p in ("openrouter/", "anthropic/") if name.startswith(p)]
     for candidate in candidates:
         if candidate in rules:
-            return rules[candidate]
+            return candidate, rules[candidate]
     return None
+
+
+def temperature_omission(model: str, registry: dict) -> str | None:
+    """The reason `model`'s requests must not carry `temperature`, or None (`temperature_omission_entry`)."""
+    entry = temperature_omission_entry(model, registry)
+    return entry[1] if entry else None
 
 
 def min_output_tokens(cfg: dict, model: str) -> int | None:
@@ -1997,6 +2003,11 @@ def _registry_scope(registry_path: str | Path, vendor: str, rows: list[dict]) ->
       record of the vendor's falls back to, is out of scope.
     - Output budgets: the `min_output_tokens` map is cut to the same models'
       entries (2026-10-01), since an entry changes only its own model's requests.
+    - Temperature omissions: the `anthropic.omit_temperature` entries matching a
+      record requested through another block (`openrouter:anthropic/...`) are
+      hashed under the key `anthropic.omit_temperature` (`_omission_scope`),
+      since such an entry decides whether those records' calls carried a
+      temperature. Absent when no such record matches an entry.
     - A block that is the vendor's own (`_is_vendor_block`) keeps every other
       field, notes included: the whole block is about the vendor's route.
     - A block shared with other vendors (`openrouter`) keeps every other field
@@ -2020,7 +2031,36 @@ def _registry_scope(registry_path: str | Path, vendor: str, rows: list[dict]) ->
         return {"registry_scope": keys, "registry_scope_sha256": None}
     registry = json.loads(reg_path.read_text(encoding="utf-8"))
     scoped = {key: _scope_block(key, registry.get(key), vendor, models_by_key[key]) for key in keys}
+    omissions = _omission_scope(registry, models_by_key)
+    if omissions is not None:
+        # a key no registry block can carry (block names have no dot), so it never collides with a block's scope
+        scoped[f"anthropic.{OMIT_TEMPERATURE_FIELD}"] = omissions
     return {"registry_scope": keys, "registry_scope_sha256": sha256_text(canonical_json(scoped))}
+
+
+def _omission_scope(registry: dict, models_by_key: dict[str, set[str]]) -> object:
+    """The `anthropic.omit_temperature` entries that decide whether in-scope records routed through another block
+    carried a temperature (an `openrouter:anthropic/claude-opus-5.5` record is in the `openrouter` block's scope,
+    but whether its calls were sent a temperature is the anthropic block's entry for that slug; review of
+    2026-10-01). None when no such record matches an entry, so a pack whose records match none keeps the digest
+    it had. Records requested through the anthropic block itself are not repeated here: that block is the anthropic
+    vendor's own and is hashed whole. A malformed map is hashed as it stands, so any edit to it moves the digest."""
+    block = registry.get("anthropic")
+    rules = block.get(OMIT_TEMPERATURE_FIELD) if isinstance(block, dict) else None
+    if rules is None:
+        return None
+    try:
+        matched = {}
+        for key, models in models_by_key.items():
+            if key == "anthropic":
+                continue
+            for model in models:
+                entry = temperature_omission_entry(model, registry)
+                if entry:
+                    matched[entry[0]] = entry[1]
+    except ValueError:
+        return rules
+    return {k: matched[k] for k in sorted(matched)} or None
 
 
 def pack_state(stimuli_path, rubric_path, registry_path, seed, vendor: str | None = None) -> dict:

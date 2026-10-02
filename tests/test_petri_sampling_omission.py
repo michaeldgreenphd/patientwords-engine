@@ -1,7 +1,7 @@
 """Sampling parameters the Petri lane withholds (registry revision of 2026-10-01).
 
-Claude Fable 5.1, Opus 5.5 and Sonnet 5.5 reject temperature (the registry's anthropic `omit_temperature` map, from
-the claude-api skill). The lane must leave it out of the target's and the auditor's GenerateConfig, the adapter must
+The Claude models that reject temperature (Opus 4.7 and later, Fable 5 and 5.1, Sonnet 5 and 5.5: the registry's
+anthropic `omit_temperature` map, from the claude-api skill). The lane must leave it out of the target's and the auditor's GenerateConfig, the adapter must
 then require it ABSENT from every raw request and record it in the manifest, and the judge must send none and record
 that on every row and in its sidecar. Offline and Inspect-free: the GenerateConfig arguments are built by a pure
 function (checks.generate_config_kwargs) that task.py and controller.py call; the judge's provider calls are fakes.
@@ -27,13 +27,18 @@ OMITTED = {"temperature": "rejects temperature (test)"}
 @pytest.mark.parametrize("name", ["anthropic/claude-opus-5-5", "openrouter/anthropic/claude-opus-5.5",
                                   "anthropic/claude-fable-5-1", "anthropic/claude-sonnet-5-5",
                                   "openrouter/anthropic/claude-sonnet-5.5", "claude-opus-5-5",
-                                  "openrouter:anthropic/claude-opus-5.5"])
+                                  "openrouter:anthropic/claude-opus-5.5",
+                                  # the models Inspect's anthropic provider already drops it for (4.7 or later), so the
+                                  # manifest records what Inspect did (review of 2026-10-01)
+                                  "anthropic/claude-sonnet-5", "anthropic/claude-opus-4-8", "anthropic/claude-opus-4-7",
+                                  "anthropic/claude-opus-5", "anthropic/claude-fable-5",
+                                  "openrouter/anthropic/claude-sonnet-5"])
 def test_the_new_anthropic_models_have_temperature_withheld_in_every_spelling(name):
     assert set(spend.sampling_omissions(name)) == {"temperature"}
 
 
 @pytest.mark.parametrize("name", ["anthropic/claude-haiku-4-5", "openrouter/anthropic/claude-haiku-4.5",
-                                  "anthropic/claude-sonnet-5", "openrouter/openai/gpt-5.4-mini", "mockllm/model",
+                                  "anthropic/claude-sonnet-4-6", "openrouter/openai/gpt-5.4-mini", "mockllm/model",
                                   "mockllm/judge", "none/none", ""])
 def test_every_other_model_keeps_its_sampling_settings(name):
     assert spend.sampling_omissions(name) == {}
@@ -136,6 +141,8 @@ def test_an_unlisted_judge_is_sent_the_instruments_temperature(monkeypatch, tmp_
     # an installed SDK that drops the keyword is recorded on the reply, not hidden
     monkeypatch.setattr(ae, "_ANTHROPIC_NO_TEMPERATURE", True)
     assert client.complete("prompt", max_tokens=300, temperature=0.0).temperature_omitted == ae.SDK_DROPPED_TEMPERATURE
+    # and on the client, which the sidecar and so the manifest's judge of record read (review of 2026-10-01)
+    assert client.temperature_omitted == ae.SDK_DROPPED_TEMPERATURE
 
 
 class _OmittingJudge(judge_runner.MockJudge):
@@ -194,6 +201,68 @@ def test_the_preflight_names_the_withheld_parameter_for_target_and_judge(monkeyp
     assert "target anthropic/claude-opus-5-5: temperature omitted from every call (Claude Opus 5.5" in out
     assert "judge claude-sonnet-5-5: temperature omitted from every call (Claude Sonnet 5.5" in out
     assert "price anthropic/claude-opus-5-5: in 4.0/Mtok out 20.0/Mtok (engine:evaluate_models.PRICING)" in out
+    assert "judge claude-sonnet-5-5: the registry's min_output_tokens is 4096; the judge step refuses" in out
     code = cli.main([a if a != "anthropic/claude-opus-5-5" else "anthropic/claude-haiku-4-5" for a in args])
     out = capsys.readouterr().out
     assert code == 0 and "target anthropic/claude-haiku-4-5: temperature omitted" not in out
+
+
+# ------------------------------------------------------------------ the judge of record (review of 2026-10-01)
+
+
+def test_the_manifests_judge_of_record_records_an_omitted_temperature_and_validates():
+    """The sealed manifest's judge of record said temperature 0.0 with no marker although no call carried one, and
+    its closed schema had nowhere to say so."""
+    sidecar = {"run_utc": "2026-10-01T00:00:00Z", "cost_usd": 0.01, "truncated": False, "planned": 3,
+               "temperature_sent": None, "temperature_omitted": "rejects temperature (test)"}
+    totals = {"judged": 3, "null": 0, "not_applicable": 0}
+    block = cli.judge_of_record_block("claude-opus-5-5", "anthropic", "engine", sidecar, totals, 4096)
+    assert block["temperature"] == judge_runner.TIER_TEMPERATURE, "the instrument's setting stays recorded"
+    assert block["temperature_sent"] is None and block["temperature_omitted"] == "rejects temperature (test)"
+    plain = cli.judge_of_record_block("claude-haiku-4-5", "anthropic", "engine",
+                                      {k: v for k, v in sidecar.items() if not k.startswith("temperature_")}, totals, 300)
+    assert "temperature_sent" not in plain and "temperature_omitted" not in plain
+    schema = framework.load_json(framework.MANIFEST_SCHEMA)
+    for jor in (block, plain):
+        base = json.loads(json.dumps(schema["examples"][0]))
+        base["artifacts"]["judge_of_record"] = {**jor, "report_path": "run_1_1/run_1_1.judge.report.json",
+                                                "report_sha256": "0" * 64}
+        assert framework.validate_with_refs(base, schema) == []
+    base["artifacts"]["judge_of_record"]["temperature_sent"] = 0.0
+    assert framework.validate_with_refs(base, schema) != []
+
+
+def test_the_fallback_judge_sidecar_records_a_registry_omission(tmp_path):
+    run_dir = tmp_path / "runs" / "run_9_1"
+    run_dir.mkdir(parents=True)
+    argv = ["judge-spend-report", "--run-dir", str(run_dir), "--judge-model", "claude-opus-5-5", "--judge-max-spend",
+            "1.5", "--judge-max-tokens", "4096"]
+    assert cli.main(argv) == 0
+    side = framework.load_json(run_dir / "run_9_1.judge.report.json")
+    assert side["temperature"] == judge_runner.TIER_TEMPERATURE and side["temperature_sent"] is None
+    assert "Opus 5.5" in side["temperature_omitted"] and side["cost_usd"] == 1.5
+    other = tmp_path / "runs" / "run_9_2"
+    other.mkdir()
+    assert cli.main(["judge-spend-report", "--run-dir", str(other), "--judge-model", "claude-haiku-4-5",
+                     "--judge-max-spend", "1.5"]) == 0
+    side = framework.load_json(other / "run_9_2.judge.report.json")
+    assert "temperature_sent" not in side and "temperature_omitted" not in side
+
+
+# ------------------------------------------------------------------ the judge's output allowance
+
+
+@pytest.mark.parametrize("spec,tokens,refused", [
+    ("claude-opus-5-5", 300, True), ("claude-opus-5-5", 4095, True), ("claude-opus-5-5", 4096, False),
+    ("anthropic:claude-fable-5-1", 300, True), ("openrouter:google/gemini-3.1-pro-preview", 300, True),
+    ("claude-haiku-4-5", 300, False), ("openrouter:openai/gpt-5.4-mini", 300, False),
+    ("mockllm/judge", 1, False), ("nosuchprovider:model", 1, False),
+])
+def test_a_thinking_judge_below_the_registry_minimum_is_refused(spec, tokens, refused):
+    """Review of 2026-10-01: the advice judge raises its allowance to the registry's min_output_tokens; the Petri
+    judge sent its 300-token default to models that think before answering. Its allowance is part of the
+    instrument, so it is refused rather than raised."""
+    problems = judge_runner.judge_budget_problems(spec, tokens)
+    assert bool(problems) is refused, problems
+    if refused:
+        assert "min_output_tokens" in problems[0] and str(judge_runner.judge_min_output_tokens(spec)) in problems[0]
