@@ -4,11 +4,18 @@ unknown marker appears, a rendered generation prompt carries no leftover marker,
 with its version-2 data, the generation prompt asks for the five keys and the row and concept counts the parser and
 the summary expect, and the checker prompt offers every answer value the version-2 schema accepts. Version 2 needs the
 harness change that reads harness_version; the prompts do not run under the recorded run's version-1 design. The
-codebook they rest on is checked by tests/test_pilot_codebook.py."""
+codebook they rest on is checked by tests/test_pilot_codebook.py.
+
+The example words the generation prompt's rules show live in design.json's prompt_examples and render through
+markers, so the template holds no example vocabulary (Codex review of PR #69). Every prompt rendered from the
+refactored template is byte-identical to the one rendered from the template run pilot_v2_20261002 planned from, kept
+as a JSON fixture (tests/fixtures/pilot_v2_generation_prompt_before_refactor.json)."""
 import importlib.util
 import json
 import re
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -23,11 +30,33 @@ V2 = ROOT / "pilot" / "prompts_v2"
 GEN = (V2 / "generation_prompt.txt").read_text(encoding="utf-8")
 CHK = (V2 / "checker_prompt.txt").read_text(encoding="utf-8")
 DESIGN = json.loads((V2 / "design.json").read_text(encoding="utf-8"))
+BEFORE = json.loads((ROOT / "tests" / "fixtures" / "pilot_v2_generation_prompt_before_refactor.json")
+                    .read_text(encoding="utf-8"))
+SEEDS = json.loads((ROOT / "pilot" / "seeds.json").read_text(encoding="utf-8"))["seeds"]
+
+
+def render(template: str, specialty: str, swap_type: str, exemplars: list[dict]) -> str:
+    return common.render_generation_prompt(template, DESIGN, specialty, swap_type, exemplars)
 
 
 def test_v2_templates_have_exactly_the_renderer_markers():
-    assert common.template_problems(GEN, common.GENERATION_MARKERS, "generation_prompt.txt") == []
+    assert common.template_problems(GEN, common.generation_markers(2), "generation_prompt.txt") == []
     assert common.template_problems(CHK, common.CHECKER_MARKERS, "checker_prompt.txt") == []
+    # the version-2 markers are version 2's: a version-1 template carrying them is refused as naming unknown markers
+    assert any("unknown marker" in p for p in common.template_problems(GEN, common.generation_markers(1), "g"))
+    assert common.generation_markers(1) == common.GENERATION_MARKERS
+
+
+def test_v2_example_markers_are_checked_like_the_others():
+    marker = "{{NEXT_WORD_EXAMPLES}}"
+    assert GEN.count(marker) == 1
+    missing = common.template_problems(GEN.replace(marker, "x"), common.generation_markers(2), "g")
+    repeated = common.template_problems(GEN.replace(marker, marker + " " + marker), common.generation_markers(2), "g")
+    unknown = common.template_problems(GEN.replace(marker, "{{NEXT_WORD_EXAMPLE}}"), common.generation_markers(2), "g")
+    assert missing == [f"g: marker {marker} occurs 0 times, not once"]
+    assert repeated == [f"g: marker {marker} occurs 2 times, not once"]
+    assert f"g: marker {marker} occurs 0 times, not once" in unknown
+    assert "g: unknown marker(s) ['{{NEXT_WORD_EXAMPLE}}']" in unknown
 
 
 def test_v2_generation_prompt_renders_clean_for_every_cell():
@@ -35,12 +64,59 @@ def test_v2_generation_prompt_renders_clean_for_every_cell():
     assert json.loads(example)["next_word"] and list(json.loads(example)) == common.REQUIRED_FIELDS_V2
     for specialty in DESIGN["specialties"]:
         for t in DESIGN["swap_types"]:
-            prompt = (GEN.replace("{{SPECIALTY}}", specialty).replace("{{SWAP_TYPE}}", t["name"])
-                      .replace("{{SWAP_DEFINITION}}", t["definition"]).replace("{{CONTROL_EXAMPLE}}", example)
-                      .replace("{{EXEMPLARS}}", "{}"))
+            prompt = render(GEN, specialty, t["name"], SEEDS[:8])
             assert common.stray_marker(prompt) is None, (specialty, t["name"])
+            assert example in prompt and t["definition"] in prompt
     checker = CHK.replace("{{ITEMS}}", "{}")
     assert common.stray_marker(checker) is None
+
+
+def test_v2_refactor_renders_every_prompt_byte_identical():
+    """The example words moved from the template into design.json; nothing a subagent reads changed. The fixture is
+    the template run pilot_v2_20261002 planned from (its hash the one that run recorded)."""
+    before = BEFORE["template"]
+    assert common.sha256_text(before) == BEFORE["sha256"] == (
+        "a1431f41e06cc4ca74490254ce5c215856f0d57f37337f9776ac36bc51f81883")
+    # the example markers alone, rendered from design.json, give back that template byte for byte
+    examples_only = GEN
+    for marker, text in common.prompt_example_texts(DESIGN).items():
+        examples_only = examples_only.replace(marker, text)
+    assert examples_only == before
+    # and every prompt of every cell, with either arm's kind of exemplar block, renders to the same text from both
+    for specialty in DESIGN["specialties"]:
+        for t in DESIGN["swap_types"]:
+            for exemplars in (SEEDS[:8], SEEDS[-8:]):
+                assert render(GEN, specialty, t["name"], exemplars) == render(before, specialty, t["name"], exemplars)
+
+
+def test_v2_template_holds_no_example_words():
+    examples = DESIGN["prompt_examples"]
+    assert set(examples) == set(common.V2_PROMPT_EXAMPLES)
+    words = [v for value in examples.values() for v in (value if isinstance(value, list) else [value])]
+    assert words and all(w not in GEN for w in words)
+    assert all(w in BEFORE["template"] for w in words)  # each was in the template before the move
+
+
+def test_v2_prompt_examples_are_validated():
+    ex = DESIGN["prompt_examples"]
+    for bad in ({k: v for k, v in ex.items() if k != "next_words"},  # a field missing
+                dict(ex, extra="x"),  # a field the renderer does not know
+                dict(ex, technical_term=""),  # empty
+                dict(ex, plain_word=' padded '),  # surrounding space
+                dict(ex, leaflet_wording='a "quoted" phrase'),  # a double quote inside the template's quotes
+                dict(ex, vaguer_patient_term="{{EXEMPLARS}}"),  # a marker riding in
+                dict(ex, patient_phrases=[]),  # an empty list
+                dict(ex, clinical_note_phrases=["x", "x"]),  # a repeat
+                dict(ex, next_words=["Two words"]),  # not a next word rule 7 allows
+                dict(ex, probe_point_examples=["... and then"])):  # not ending on a probe ending
+        with pytest.raises(SystemExit):
+            common.prompt_example_texts(dict(DESIGN, prompt_examples=bad))
+    with pytest.raises(SystemExit):
+        common.prompt_example_texts({k: v for k, v in DESIGN.items() if k != "prompt_examples"})
+    # the prompt examples are version-2 data: a version-1 design carrying them is refused like the other version-2 keys
+    v1 = json.loads((ROOT / "pilot" / "design.json").read_text(encoding="utf-8"))
+    assert common.version_design_problems(dict(v1, prompt_examples=ex))
+    assert common.version_design_problems({k: v for k, v in DESIGN.items() if k != "prompt_examples"})
 
 
 def test_v2_design_selects_harness_version_2_with_its_data():
@@ -49,11 +125,11 @@ def test_v2_design_selects_harness_version_2_with_its_data():
     assert DESIGN["probe_endings"] == ["a", "an", "the", "my", "his", "her", "their", "your", "our"]
     assert (DESIGN["concepts_per_call"], DESIGN["variant_pairs_per_call"]) == (12, 4)
     assert DESIGN["review_sampling"] == "one_row_per_concept"
-    # a copy of the recorded run's design: the same cells in the same order (only the control example and the
-    # version-2 keys differ)
+    # a copy of the recorded run's design: the same cells in the same order (only the control example, the prompt
+    # examples and the version-2 keys differ)
     v1 = json.loads((ROOT / "pilot" / "design.json").read_text(encoding="utf-8"))
     assert (DESIGN["specialties"], DESIGN["swap_types"]) == (v1["specialties"], v1["swap_types"])
-    assert "harness_version" not in v1  # the recorded run stays version 1
+    assert "harness_version" not in v1 and "prompt_examples" not in v1  # the recorded run stays version 1
 
 
 def test_v2_generation_prompt_asks_for_the_five_keys():
@@ -74,7 +150,9 @@ def test_v2_generation_prompt_asks_for_the_parsed_row_and_concept_counts():
 
 
 def test_v2_generation_prompt_lists_the_probe_endings():
-    listed = re.search(r"End the template right after an article or a possessive \(([^)]*)\)", GEN)
+    assert "End the template right after an article or a possessive ({{PROBE_ENDINGS}})" in GEN
+    prompt = render(GEN, DESIGN["specialties"][0], DESIGN["swap_types"][0]["name"], SEEDS[:8])
+    listed = re.search(r"End the template right after an article or a possessive \(([^)]*)\)", prompt)
     assert listed is not None
     assert [w.strip() for w in listed.group(1).split(",")] == DESIGN["probe_endings"]
 

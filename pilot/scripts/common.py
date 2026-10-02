@@ -12,6 +12,7 @@ import math
 import os
 import random
 import re
+from collections.abc import Iterable
 from pathlib import Path
 
 # The pilot directory: the parent of scripts/, or PILOT_DIR when set (used by the self-test's temporary copy).
@@ -47,6 +48,10 @@ VERDICT_VALUES = CHECKER_VERDICTS + ("missing",)  # what a checked row may carry
 # the same file. Not to be confused with manifest_model.json's `harness_version`, the Claude Code version string.
 HARNESS_VERSIONS = (1, 2)
 V2_DESIGN_KEYS = ("probe_endings", "concepts_per_call", "variant_pairs_per_call", "review_sampling")
+# version-2 prompt data: the example words the generation template's rules show (prompt_example_texts). Required and
+# refused like V2_DESIGN_KEYS, but not recorded in the manifest's design block, which records the summary's design
+# data; the prompts that show the examples are hashed one by one.
+V2_PROMPT_DESIGN_KEYS = ("prompt_examples",)
 REVIEW_SAMPLINGS = ("one_row_per_concept",)
 # the version-2 checker's three further answers, each a closed set; the checker prompt must name every value
 # (checker_enum_problems), so prompt and schema cannot drift apart
@@ -80,13 +85,15 @@ def version_design_problems(design: dict) -> list[str]:
     that names probe endings but no harness_version 2 would run version 1 and drop next_word without a word. Version 2
     must carry all of them: `probe_endings`, a non-empty list of distinct lowercase words; `concepts_per_call` and
     `variant_pairs_per_call`, integers that add up to the non-control rows a call asks for (each variant pair adds one
-    row to a concept); `review_sampling`, one of REVIEW_SAMPLINGS. Empty when the design can be used."""
+    row to a concept); `review_sampling`, one of REVIEW_SAMPLINGS; `prompt_examples`, whose shape
+    prompt_example_texts checks before planning. Empty when the design can be used."""
     version = harness_version(design)
+    keys = V2_DESIGN_KEYS + V2_PROMPT_DESIGN_KEYS
     if version < 2:
-        present = [k for k in V2_DESIGN_KEYS if k in design]
+        present = [k for k in keys if k in design]
         return [f"design.json carries the version-2 key(s) {present} but no harness_version 2; add it, or remove them"] \
             if present else []
-    problems = [f"design.json (harness_version 2) is missing {k!r}" for k in V2_DESIGN_KEYS if k not in design]
+    problems = [f"design.json (harness_version 2) is missing {k!r}" for k in keys if k not in design]
     if problems:
         return problems
     ends = design["probe_endings"]
@@ -119,8 +126,17 @@ VARIANT_PAIRS_PER_CALL: int | None = DESIGN.get("variant_pairs_per_call")  # ver
 def plan_version(plan: dict) -> int:
     """The harness version a plan (calls.json, checker_batches.json) was derived under: the `harness_version` it
     records, which derive_plan and build_checker_set.derive write only for version 2 or later, so a version-1 plan
-    stays byte-identical to the recorded run's."""
-    return plan.get("harness_version", 1)
+    stays byte-identical to the recorded run's. Anything other than an integer in HARNESS_VERSIONS (a string, a
+    boolean, a null, an unknown number) is refused, as harness_version refuses it in design.json, never returned: a
+    corrupted plan would otherwise raise a TypeError at the first `version >= 2` or select a contract no plan was
+    derived under. make_review_sheet.py reads the checker plan's version from the file as it stands (Copilot review
+    of PR #69)."""
+    v = plan.get("harness_version", 1)
+    if isinstance(v, bool) or not isinstance(v, int) or v not in HARNESS_VERSIONS:
+        raise SystemExit(f"a plan file (calls.json or checker_batches.json) records harness_version {v!r}: it must be "
+                         f"an integer in {list(HARNESS_VERSIONS)} (absent means 1); refusing to read the plan, re-run "
+                         f"the step that wrote it")
+    return v
 
 
 def required_fields(version: int = HARNESS_VERSION) -> list[str]:
@@ -166,12 +182,18 @@ def next_word_ok(value: object) -> bool:
     return isinstance(value, str) and NEXT_WORD_RE.fullmatch(value) is not None and value == value.lower()
 
 
-def probe_point_ok(template: str, endings: tuple[str, ...] | list[str]) -> bool:
-    """Whether a template, stripped, ends on one of the probe endings: its last whitespace-separated word, compared
-    case-insensitively, is in `endings`. A word with punctuation attached ("my,") does not match. Version 2 reports
-    this as a descriptive; it is not a format failure."""
+def probe_endings_set(endings: Iterable[str]) -> frozenset[str]:
+    """The probe endings lowercased, once: what probe_point_ok compares a template's last word with. A caller that
+    tests many templates builds it once rather than per row (Copilot review of PR #69)."""
+    return frozenset(e.lower() for e in endings)
+
+
+def probe_point_ok(template: str, endings: frozenset[str]) -> bool:
+    """Whether a template, stripped, ends on one of the probe endings: its last whitespace-separated word, lowercased,
+    is in `endings`, the set probe_endings_set builds, so the comparison is case-insensitive. A word with punctuation
+    attached ("my,") does not match. Version 2 reports this as a descriptive; it is not a format failure."""
     words = template.strip().split()
-    return bool(words) and words[-1].lower() in {e.lower() for e in endings}
+    return bool(words) and words[-1].lower() in endings
 # the recorded run's two journals (2026-09-29; their labels predate the prompt-hash and protocol-hash bindings): the
 # only results the parsers accept with --unbound, so the escape hatch cannot parse a new run's responses against
 # another plan or protocol (Codex review of PR #52)
@@ -723,6 +745,32 @@ def plan_hash_problems(items: list[dict], id_key: str) -> list[str]:
 MARKER_RE = re.compile(r"\{\{.*?\}\}", re.DOTALL)  # any double-brace span, whatever it holds (Codex review of PR #52)
 GENERATION_MARKERS = ("{{SPECIALTY}}", "{{SWAP_TYPE}}", "{{SWAP_DEFINITION}}", "{{CONTROL_EXAMPLE}}", "{{EXEMPLARS}}")
 CHECKER_MARKERS = ("{{ITEMS}}",)
+# Version 2: the example words and phrases the generation template's rules show live in design.json's
+# `prompt_examples` and render into markers of their own, so no example vocabulary sits in the template or the code
+# (engine AGENTS.md; moved out of the version-2 template on Codex's review of PR #69 with every rendered prompt
+# byte-identical, as the example negative control moved on PR #52). Each field renders into one marker as "text"
+# (verbatim), "list" (joined by ", ") or "alternatives" (each in double quotes, joined by " or "). {{PROBE_ENDINGS}}
+# renders design.json's probe_endings as a list, so the prompt names exactly the endings the probe-point descriptive
+# counts.
+V2_PROMPT_EXAMPLES: dict[str, tuple[str, str]] = {
+    "clinical_note_phrases": ("{{CLINICAL_NOTE_EXAMPLES}}", "alternatives"),  # rule 3: clinical-note prose
+    "technical_term": ("{{TECHNICAL_TERM_EXAMPLE}}", "text"),  # rule 4: a technical term never used for ...
+    "plain_word": ("{{PLAIN_WORD_EXAMPLE}}", "text"),  # ... a plain word clinicians also say
+    "patient_phrases": ("{{PATIENT_PHRASE_EXAMPLES}}", "alternatives"),  # rule 5: what patients say, not ...
+    "leaflet_wording": ("{{LEAFLET_WORDING_EXAMPLE}}", "text"),  # ... a health leaflet's wording
+    "vaguer_patient_term": ("{{VAGUER_PATIENT_TERM_EXAMPLE}}", "text"),  # rule 6: a vaguer patient term for ...
+    "vaguer_clinical_phrase": ("{{VAGUER_CLINICAL_PHRASE_EXAMPLE}}", "text"),  # ... a clinical term, with its article
+    "probe_point_examples": ("{{PROBE_POINT_EXAMPLES}}", "alternatives"),  # rule 7: template endings
+    "next_words": ("{{NEXT_WORD_EXAMPLES}}", "list"),  # rule 7: words that come next
+}
+V2_GENERATION_MARKERS = ("{{PROBE_ENDINGS}}", *(marker for marker, _ in V2_PROMPT_EXAMPLES.values()))
+
+
+def generation_markers(version: int = HARNESS_VERSION) -> tuple[str, ...]:
+    """The markers a generation template must carry, each exactly once and no other: version 1's five, and under
+    version 2 also the probe endings and the rules' example words (V2_GENERATION_MARKERS), so a version-2 template is
+    checked like a version-1 one and a version-1 template naming a version-2 marker is refused as unknown."""
+    return GENERATION_MARKERS + V2_GENERATION_MARKERS if version >= 2 else GENERATION_MARKERS
 
 
 SAFE_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9 _.-]*")  # one file-name component, no separator, not hidden
@@ -843,25 +891,91 @@ def control_example_text(design: dict) -> str:
                          "clinical_term, patient_term, template (one ___), next_word (one lowercase word) and control, in "
                          "that order, control \"negative\", and the two terms the same concept in the same register; "
                          "refusing to plan")
-    if version >= 2 and not probe_point_ok(ex["template"], design.get("probe_endings") or ()):
+    if version >= 2 and not probe_point_ok(ex["template"], probe_endings_set(design.get("probe_endings") or ())):
         raise SystemExit("design.json (harness_version 2): control_example's template must end on one of probe_endings, "
                          "as the prompt asks of every row; refusing to plan")
     return json.dumps(ex, ensure_ascii=False)
+
+
+def prompt_example_texts(design: dict) -> dict[str, str]:
+    """What each version-2 example marker renders to, from the design passed: {{PROBE_ENDINGS}} the probe endings
+    joined by ", ", and each marker of V2_PROMPT_EXAMPLES its field of `prompt_examples`. Refused unless the design is
+    a usable version-2 design (version_design_problems) whose `prompt_examples` is an object with exactly those
+    fields; each text, and each item of a list, a non-empty single line with no surrounding space, no double quote
+    (the template quotes several of them) and no brace (an example cannot carry a marker); each list non-empty with
+    no repeat; every next-word example a word next_word_ok accepts, and every probe-point example ending on a probe
+    ending, since the prompt shows them as instances of rule 7. derive_plan calls it before rendering any prompt."""
+    problems = version_design_problems(design)
+    if not problems and harness_version(design) < 2:
+        problems.append("prompt_examples are version-2 data; this design is harness version 1")
+    ex = design.get("prompt_examples")
+    if not problems and (not isinstance(ex, dict) or set(ex) != set(V2_PROMPT_EXAMPLES)):
+        got = sorted(ex) if isinstance(ex, dict) else type(ex).__name__
+        problems.append(f"prompt_examples must be an object with exactly the fields {sorted(V2_PROMPT_EXAMPLES)}, "
+                        f"got {got}")
+    texts: dict[str, str] = {}
+    if not problems:
+        def one_line(s: object) -> bool:
+            return isinstance(s, str) and bool(s) and s == s.strip() and not any(c in s for c in '"{}\n\r')
+        texts["{{PROBE_ENDINGS}}"] = ", ".join(design["probe_endings"])
+        for field, (marker, form) in V2_PROMPT_EXAMPLES.items():
+            v = ex[field]
+            if form == "text" and not one_line(v):
+                problems.append(f"prompt_examples.{field} must be one non-empty line of text with no surrounding "
+                                f"space, double quote or brace")
+            elif form != "text" and not (isinstance(v, list) and v and all(one_line(s) for s in v)
+                                         and len(set(v)) == len(v)):
+                problems.append(f"prompt_examples.{field} must be a non-empty list of distinct lines of text, each "
+                                f"with no surrounding space, double quote or brace")
+            else:
+                texts[marker] = (v if form == "text" else ", ".join(v) if form == "list"
+                                 else " or ".join(f'"{s}"' for s in v))
+    if not problems:
+        ends = probe_endings_set(design["probe_endings"])
+        problems += [f"prompt_examples.next_words: {w!r} is not a next word rule 7 allows (one lowercase word)"
+                     for w in ex["next_words"] if not next_word_ok(w)]
+        problems += [f"prompt_examples.probe_point_examples: {s!r} does not end on one of probe_endings"
+                     for s in ex["probe_point_examples"] if not probe_point_ok(s, ends)]
+    if problems:
+        raise SystemExit("design.json (harness_version 2) cannot render the generation prompt's examples; refusing to "
+                         "plan:\n  " + "\n  ".join(problems))
+    return texts
+
+
+def render_generation_prompt(template: str, design: dict, specialty: str, swap_type: str,
+                             exemplars: list[dict]) -> str:
+    """One generation prompt from the template and the design passed, its markers replaced in a fixed order: the
+    cell's specialty, swap type and definition; under harness version 2 the probe endings and the rules' example
+    words (prompt_example_texts); the example negative control (control_example_text); the exemplar rows last, so no
+    exemplar text is read as a marker. Under version 1 this is the recorded run's order exactly. derive_plan renders
+    every call here."""
+    definitions = {t["name"]: t["definition"] for t in design["swap_types"]}
+    prompt = (template.replace("{{SPECIALTY}}", specialty)
+              .replace("{{SWAP_TYPE}}", swap_type)
+              .replace("{{SWAP_DEFINITION}}", definitions[swap_type]))
+    if harness_version(design) >= 2:
+        for marker, text in prompt_example_texts(design).items():
+            prompt = prompt.replace(marker, text)
+    return (prompt.replace("{{CONTROL_EXAMPLE}}", control_example_text(design))
+            .replace("{{EXEMPLARS}}", render_exemplars(exemplars)))
 
 
 def derive_plan(seeds: list[dict], template: str, seeds_sha256: str, design_sha256: str) -> dict:
     """The generation plan, pure and deterministic: Arm A exemplars drawn once per cell from the named stream in
     cell order, Arm B the first K seeds in file order, every prompt rendered from the template and hashed. plan_calls.py
     writes exactly this; load_calls derives it again and refuses a calls.json that differs (Codex review of PR #52).
-    Under harness version 2 the plan records `harness_version`, and the template must name every version-2 key; a
-    version-1 plan carries no version key, byte-identical to the recorded run's."""
+    Under harness version 2 the plan records `harness_version`, the template must name every version-2 key and carry
+    the version-2 markers, and the examples they show render from design.json; a version-1 plan carries no version
+    key, byte-identical to the recorded run's."""
     problems = (design_problems(SPECIALTIES, SWAP_TYPES)
-                + template_problems(template, GENERATION_MARKERS, "prompts/generation_prompt.txt")
+                + template_problems(template, generation_markers(HARNESS_VERSION), "prompts/generation_prompt.txt")
                 + version_template_problems(template, "generation", HARNESS_VERSION))
     if problems:
         raise SystemExit("the design or the generation prompt template cannot be planned from; fix it before planning:"
                          "\n  " + "\n  ".join(problems))
-    example = control_example_text(DESIGN)
+    control_example_text(DESIGN)  # the design data a prompt shows, refused before any prompt is rendered
+    if HARNESS_VERSION >= 2:
+        prompt_example_texts(DESIGN)
     n = len(seeds)
     k = min(K_EXEMPLARS, n)
     r = rng("exemplars")
@@ -870,11 +984,7 @@ def derive_plan(seeds: list[dict], template: str, seeds_sha256: str, design_sha2
     for specialty, swap_type in cells():
         sampled = r.sample(seeds, k)  # Arm A: one draw per cell, consumed in fixed cell order
         for arm, exemplars in (("A", sampled), ("B", fixed)):
-            prompt = (template.replace("{{SPECIALTY}}", specialty)
-                      .replace("{{SWAP_TYPE}}", swap_type)
-                      .replace("{{SWAP_DEFINITION}}", SWAP_DEFINITIONS[swap_type])
-                      .replace("{{CONTROL_EXAMPLE}}", example)
-                      .replace("{{EXEMPLARS}}", render_exemplars(exemplars)))
+            prompt = render_generation_prompt(template, DESIGN, specialty, swap_type, exemplars)
             stray = stray_marker(prompt)  # a marker or a brace carried in by an exemplar's or the example's own text
             if stray is not None:
                 raise SystemExit(f"a rendered prompt ({call_id(arm, specialty, swap_type)}) still carries a marker or "
@@ -996,21 +1106,30 @@ def results_block(summary: dict) -> str:
     spec = e4["checker_specificity_broken"]["unclear_counts_as_miss"]
     v2_lines = []
     if summary.get("harness_version", 1) >= 2:  # version 1 renders exactly the recorded block
-        cv, pp, vd, nw = (summary[k] for k in ("checker_v2", "probe_point", "variant_design", "next_word"))
+        cv, pp, vd, nw, iv = (summary[k] for k in ("checker_v2", "probe_point", "variant_design", "next_word",
+                                                   "row_level_intervals"))
         prec = cv["precision"]["generated"]
         top = ", ".join("{} ({})".format(x["word"], x["n"]) for x in nw["most_common"]) or "none"
         v2_lines = [
-            (f"- **Checker relation (version 2), generated rows:** {json.dumps(cv['relation']['generated'])}; "
-             f"precision as precise {prec['as_precise']}, vaguer {prec['vaguer']}, more specific "
-             f"{prec['more_specific']}, not applicable {prec['not_applicable']}; answers whose equivalent contradicts "
-             f"their relation (kept, flagged inconsistent) {cv['inconsistent']['total']}."),
+            (f"- **Intervals (version 2):** computed over rows, as the protocol fixes them; by design "
+             f"{iv['rows_in_two_row_concepts_per_call']} of every {iv['non_control_rows_per_call']} non-control rows "
+             f"of a call belong to {iv['two_row_concepts_per_call']} two-row concepts ({iv['concepts']['total']} "
+             f"concepts in {iv['non_control_rows']['total']} non-control rows here), so the rows are not independent "
+             f"draws: read the intervals of estimands 2 to 5 as descriptive."),
+            (f"- **Checker relation (version 2), generated rows with a yes or no verdict:** "
+             f"{json.dumps(cv['relation']['generated'])}; precision as precise {prec['as_precise']}, vaguer "
+             f"{prec['vaguer']}, more specific {prec['more_specific']}, not applicable {prec['not_applicable']}; "
+             f"unclear verdicts, whose relation is not counted, {cv['unclear_relation']['n']['generated']}; answers "
+             f"whose equivalent contradicts their relation (kept, flagged inconsistent) "
+             f"{cv['inconsistent']['total']}."),
             (f"- **Checker sentence and realism (version 2), generated rows:** sentence_natural "
              f"{json.dumps(cv['sentence_natural']['generated'])}; patient_realism "
              f"{json.dumps(cv['patient_realism']['generated'])}."),
             (f"- **Probe point (descriptive, not a format failure):** templates ending on a probe word "
              f"{w(pp['overall'])}; Arm A {w(pp['by_arm']['A'])}; Arm B {w(pp['by_arm']['B'])}."),
-            (f"- **Variant design (descriptive):** calls with exactly {vd['expected_pairs_per_call']} adjacent variant "
-             f"pairs and {vd['expected_concepts_per_call']} concepts {w(vd['calls_compliant'])}; Arm A "
+            (f"- **Variant design (descriptive):** calls with exactly {vd['expected_rows_per_call']} rows and "
+             f"{vd['expected_concepts_per_call']} concepts, {vd['expected_pairs_per_call']} adjacent variant pairs, "
+             f"and no concept split or run over three or more rows {w(vd['calls_compliant'])}; Arm A "
              f"{w(vd['by_arm']['A'])}; Arm B {w(vd['by_arm']['B'])}; adjacent variant pairs {vd['pairs_exact']} "
              f"(clinical term exact), {vd['pairs_clinical_surface']} (clinical term equal in surface form); "
              f"{len(vd['flagged_calls'])} call(s) flagged."),
