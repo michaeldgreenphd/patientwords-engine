@@ -84,6 +84,9 @@ class JudgeReply:
     served_model: str | None
     request_id: str | None = None
     usage_missing: bool = False     # the provider returned no usage block: the counts above are not measurements
+    # why the call went out without the instrument's temperature (the registry's omit_temperature models, or an
+    # installed SDK that rejects the keyword); None when it carried TIER_TEMPERATURE (2026-10-01)
+    temperature_omitted: str | None = None
 
 
 def _usage_missing(raw: Any) -> bool:
@@ -151,7 +154,23 @@ class RegistryJudge:
         registry = ae._load_providers(providers_path or ae.DEFAULT_PROVIDERS)
         self.spec = ae._resolve_spec(model_spec, registry)
         self.is_anthropic = self.spec["provider"] == "anthropic"
+        # a judge model the registry says rejects temperature (anthropic.omit_temperature; 2026-10-01) is sent none,
+        # and every row, the sidecar and the manifest's judge of record say so (temperature_sent null,
+        # temperature_omitted the reason). judge_sampling_omissions repeats this resolution and match for the
+        # pre-flight and the fallback sidecars; change both together (tests/test_petri_sampling_omission.py)
+        self.registry_temperature_omitted: str | None = ae.temperature_omission(self.spec["spec"], registry)
         self.client = ae._client() if self.is_anthropic else None
+
+    @property
+    def temperature_omitted(self) -> str | None:
+        """Why this judge's calls go out without the instrument's temperature, or None when they carry it: the
+        registry's reason, or, on the Anthropic path, the installed SDK's refusal of the keyword (advice_eval._send
+        then stops sending it for the rest of the process, so once seen it holds for every later call)."""
+        if self.registry_temperature_omitted:
+            return self.registry_temperature_omitted
+        if self.is_anthropic and self.ae._ANTHROPIC_NO_TEMPERATURE:
+            return self.ae.SDK_DROPPED_TEMPERATURE
+        return None
 
     def complete(self, prompt: str, *, max_tokens: int, temperature: float,
                  attempt_gate: Callable[[int], bool] | None = None) -> JudgeReply:
@@ -161,12 +180,16 @@ class RegistryJudge:
         affordable; a refusal ends the call with the provider's error."""
         ae = self.ae
         before_retry = (lambda attempt, status: attempt_gate(attempt + 1)) if attempt_gate is not None else None
+        sent_temperature = None if self.registry_temperature_omitted else temperature
+        omitted = self.registry_temperature_omitted
         if self.is_anthropic:
-            res = ae._send_anthropic_retrying(self.client, self.spec["model"], None, prompt, max_tokens, temperature,
-                                              before_retry=before_retry)
+            res = ae._send_anthropic_retrying(self.client, self.spec["model"], None, prompt, max_tokens,
+                                              sent_temperature, before_retry=before_retry)
+            if sent_temperature is not None and ae._ANTHROPIC_NO_TEMPERATURE:
+                omitted = ae.SDK_DROPPED_TEMPERATURE
         else:
             ae._pace(self.spec["provider"], self.spec["cfg"])
-            res = ae._send_compat(self.spec["cfg"], self.spec["model"], None, prompt, max_tokens, temperature,
+            res = ae._send_compat(self.spec["cfg"], self.spec["model"], None, prompt, max_tokens, sent_temperature,
                                   before_retry=before_retry)
         text, in_tok, out_tok, raw = res[:4]
         headers = res[4] if len(res) > 4 else {}
@@ -175,7 +198,8 @@ class RegistryJudge:
         # the advice clients return 0 tokens when the provider omitted usage; that is not a measurement, so the
         # reply says so and the ceiling charges the call's worst case instead (Codex round 2)
         return JudgeReply(text=text, input_tokens=int(in_tok or 0), output_tokens=int(out_tok or 0),
-                          served_model=served, request_id=info.get("request_id"), usage_missing=_usage_missing(raw))
+                          served_model=served, request_id=info.get("request_id"), usage_missing=_usage_missing(raw),
+                          temperature_omitted=omitted)
 
 
 # --------------------------------------------------------------- planning
@@ -734,6 +758,9 @@ def _sidecar(out_path: Path, client: JudgeClient, ceiling: SpendCeiling, counts:
             # the generation settings every call used, and the judgments file this invocation left behind, so a
             # resumed pass can tell rows a judge invocation wrote from rows written by anything else (Codex round 7)
             "judge_max_tokens": judge_max_tokens, "temperature": TIER_TEMPERATURE,
+            # `temperature` above is the instrument's setting; a judge model the registry says rejects it was sent
+            # none, recorded here and on every row (present only then, so other sidecars keep their shape)
+            **omission_fields(getattr(client, "temperature_omitted", None)),
             "judgments_sha256": sha256_file(out_path) if out_path.is_file() else None,
             # cumulative over every row in the file (cost_basis the ledger knows: it books run_cost_usd to the day
             # on first sight and each later growth as a delta), never this invocation alone
@@ -749,6 +776,15 @@ def _sidecar(out_path: Path, client: JudgeClient, ceiling: SpendCeiling, counts:
             "aborted": abort_error is not None, "abort_error": abort_error,
             "cumulative": cumulative_counts(rows),
             **counts, **(sidecar_extra or {})}
+
+
+def omission_fields(reason: str | None) -> dict[str, Any]:
+    """The fields a judgment row, the sidecar, the run manifest's judge of record and a rejudge manifest's judge block
+    carry when the call went out without the instrument's temperature:
+    `temperature_sent` null and `temperature_omitted` the reason. Empty otherwise, so a row whose call carried
+    TIER_TEMPERATURE keeps the shape every earlier row has; `temperature` itself stays the instrument's setting, which
+    judge_settings_problems and the rejudge compare (2026-10-01)."""
+    return {"temperature_sent": None, "temperature_omitted": reason} if reason else {}
 
 
 def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeiling, judge_max_tokens: int,
@@ -803,6 +839,7 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                        "input_tokens": None, "output_tokens": None, "usage_missing": True,
                        "cost_basis": "imputed_worst_case:call_failed", "cost_usd": round(cost, 8),
                        "max_tokens": judge_max_tokens, "temperature": TIER_TEMPERATURE,
+                       **omission_fields(getattr(client, "temperature_omitted", None)),
                        "retry_attempts_charged": len(retry_charges),
                        # the requests the provider received for this row: each charged retry followed one, and a refused
                        # retry was never sent, so the summary reads the count here instead of deriving `retries + 1`
@@ -829,6 +866,7 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                    "usage_missing": reply.usage_missing,
                    "cost_basis": "imputed_worst_case" if reply.usage_missing else "actual_usage",
                    "cost_usd": round(cost, 8), "max_tokens": judge_max_tokens, "temperature": TIER_TEMPERATURE,
+                   **omission_fields(reply.temperature_omitted),
                    "retry_attempts_charged": len(retry_charges), "provider_attempts": len(retry_charges) + 1,
                    "answer_form": answer_form(reply.text, p.allowed_values, p.kind, value),
                    "judge_error": error}
@@ -961,6 +999,67 @@ def judge_spec_problems(model_spec: str, providers_path: str | Path | None = Non
         ae._resolve_spec(model_spec, ae._load_providers(providers_path or ae.DEFAULT_PROVIDERS))
     except SystemExit as exc:
         return [f"judge spec {model_spec!r}: {exc}"]
+    return []
+
+
+def judge_min_output_tokens(model_spec: str, providers_path: str | Path | None = None) -> int | None:
+    """The provider registry's `min_output_tokens` for a judge spec (scripts/advice_eval.py min_output_tokens, read
+    from the block the spec resolves to), or None when it lists none. None also for the zero-price sentinels, which
+    are never registry models, and for a spec the registry cannot resolve, which judge_spec_problems reports."""
+    if model_spec.strip() in ZERO_PRICE_MODELS:
+        return None
+    ae = _advice_eval_module()
+    try:
+        spec = ae._resolve_spec(model_spec, ae._load_providers(providers_path or ae.DEFAULT_PROVIDERS))
+    except SystemExit:
+        return None
+    return ae.min_output_tokens(spec["cfg"], spec["model"])
+
+
+def judge_sampling_omissions(model_spec: str, providers_path: str | Path | None = None) -> dict[str, str]:
+    """The sampling parameters RegistryJudge leaves out of every call for `model_spec` because the registry lists the
+    model, as {parameter: reason}, the shape spend.sampling_omissions returns: {"temperature": reason} or {}. The
+    pre-flight's judge line and the two fallback judge sidecars (`cli judge-spend-report`,
+    rejudge.impute_missing_reports) record this, so they say what the judge's own rows and sidecar say.
+
+    The spec is resolved as RegistryJudge.__init__ resolves it (scripts/advice_eval.py `_resolve_spec` over
+    `_load_providers`), and the resolved `provider:model` is matched as RegistryJudge matches it
+    (`temperature_omission`). That resolver reads a colon-free spec naming no registry provider as a bare Anthropic
+    id, `anthropic/claude-sonnet-5` and `openrouter/openai/gpt-6-luna` included, which the judge sends to the
+    Anthropic API as written. Until the review of 2026-10-02 these records used spend.sampling_omissions, which reads
+    such a string as a target's Inspect name and so could name an entry the judge's rows did not: at the reviewed
+    head, `openrouter/openai/gpt-6-luna` took the slug's entry and `anthropic/claude-opus-5-5` the direct id's, so the
+    records said temperature was withheld where the judge matches neither and sends it.
+
+    {} for the zero-price sentinels (RegistryJudge refuses them; MockJudge sends the instrument's temperature) and
+    for a spec the registry cannot resolve (judge_spec_problems reports it and RegistryJudge refuses it, so no call
+    goes out under it). An installed SDK's refusal of the keyword is not visible here; the judge's rows record it
+    (RegistryJudge.temperature_omitted). A malformed map raises ValueError."""
+    if model_spec.strip() in ZERO_PRICE_MODELS:
+        return {}
+    ae = _advice_eval_module()
+    registry = ae._load_providers(providers_path or ae.DEFAULT_PROVIDERS)
+    try:
+        spec = ae._resolve_spec(model_spec, registry)
+    except SystemExit:
+        return {}
+    reason = ae.temperature_omission(spec["spec"], registry)
+    return {"temperature": reason} if reason else {}
+
+
+def judge_budget_problems(model_spec: str, judge_max_tokens: int, providers_path: str | Path | None = None) -> list[str]:
+    """Why `model_spec` may not judge at `judge_max_tokens`: the registry's minimum output budget for the judge model
+    (judge_min_output_tokens) is larger. Those are thinking models (Claude Opus 5.5 cannot turn thinking off, Fable
+    5.1 always thinks), whose thinking counts against max_tokens, so a smaller allowance can end a judgment before any
+    answer is written. The advice judge raises its allowance to the minimum; the Petri judge cannot, because its
+    allowance is part of the instrument (one per run, and a rejudge must match its judge of record's), so it refuses
+    before any call instead (review of 2026-10-01)."""
+    floor = judge_min_output_tokens(model_spec, providers_path)
+    if floor is not None and int(judge_max_tokens) < floor:
+        return [f"judge {model_spec!r} at judge_max_tokens {judge_max_tokens}: the provider registry's "
+                f"min_output_tokens for this model is {floor} (a thinking model's reasoning counts against "
+                "max_tokens, so a smaller allowance can stop a judgment before it answers); judge it at "
+                f"judge_max_tokens {floor} or more, or choose another judge"]
     return []
 
 

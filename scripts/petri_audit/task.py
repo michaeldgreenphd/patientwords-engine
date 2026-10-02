@@ -27,7 +27,8 @@ from inspect_petri import audit_solver, target_agent
 from .adaptive import adaptive_prompt_digest, load_adaptive_prompt
 from .controller import AUDITOR_ROLE, adaptive_auditor, scripted_auditor
 from .seeds import SeedSet, conditions, seed_digest
-from .spend import Price, resolve_price
+from .checks import generate_config_kwargs
+from .spend import Price, resolve_price, sampling_omissions
 
 SEED_INSTRUCTION = ("PatientWords scripted protocol: the controller stages the seed's texts verbatim and writes "
                     "nothing of its own (docs/framework/petri_seeds.draft.json).")
@@ -105,14 +106,13 @@ def register_prices(models: list[str], registry: dict | None = None) -> dict[str
     return out
 
 
-def generation_config(seed: dict) -> GenerateConfig:
-    gen = seed["generation"]
-    kwargs: dict[str, Any] = {"max_tokens": int(gen["max_tokens"])}
-    if gen.get("temperature") is not None:
-        kwargs["temperature"] = float(gen["temperature"])
-    if gen.get("seed_requested") is not None:
-        kwargs["seed"] = int(gen["seed_requested"])
-    return GenerateConfig(**kwargs)
+def generation_config(seed: dict, target: str | None = None, registry: dict | None = None) -> GenerateConfig:
+    """The target's GenerateConfig from the seed's generation block. With `target`, a sampling parameter the
+    registry says the model rejects is left out (spend.sampling_omissions: the Claude models that reject
+    temperature, 2026-10-01, and the OpenRouter OpenAI slugs that list none, 2026-10-02); the adapter records it as models.target.sampling_omitted and its
+    generation_config_pinned check then requires the parameter absent from every raw request."""
+    omitted = sampling_omissions(target, registry) if target else {}
+    return GenerateConfig(**generate_config_kwargs(seed["generation"], omitted))
 
 
 def build_target(target: str | Model, seeds: list[dict]) -> Model:
@@ -126,7 +126,7 @@ def build_target(target: str | Model, seeds: list[dict]) -> Model:
     configs = {seed["seed_id"]: seed["generation"] for seed in seeds}
     if len({(c["temperature"], c["max_tokens"], c["seed_requested"]) for c in configs.values()}) != 1:
         raise ValueError("every seed in one run must share the same generation block; split the run")
-    return get_model(target, config=generation_config(seeds[0])) if isinstance(target, str) else target
+    return get_model(target, config=generation_config(seeds[0], target)) if isinstance(target, str) else target
 
 
 def build_auditor(auditor: str | Model) -> Model:
@@ -137,8 +137,9 @@ def build_auditor(auditor: str | Model) -> Model:
     if not isinstance(auditor, str):
         return auditor
     gen = load_adaptive_prompt()["generation"]
-    return get_model(auditor, config=GenerateConfig(max_tokens=int(gen["max_tokens"]),
-                                                    temperature=float(gen["temperature"])))
+    # a parameter the registry says the auditor model rejects is left out here and in the controller's per-call
+    # config alike (spend.sampling_omissions), and recorded as models.auditor.sampling_omitted (2026-10-01)
+    return get_model(auditor, config=GenerateConfig(**generate_config_kwargs(gen, sampling_omissions(auditor))))
 
 
 def run_study(task: Task, *, target: str | Model, seeds: list[dict], epochs: int, log_dir: Path | str,

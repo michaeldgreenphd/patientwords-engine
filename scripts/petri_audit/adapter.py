@@ -81,7 +81,7 @@ from .rules import rule_record
 from .sanitizer import _project_eval, allowlist_digest, load_allowlist, sanitise_log
 from .seal import scan_strings, sealed_registry, seed_texts_against_registry
 from .seeds import SeedSet, conditions, seed_digest, target_visible_strings, text_of, tool_result_for
-from .spend import inspect_to_registry_spec, pricing_source_digest, reprice_usage
+from .spend import inspect_to_registry_spec, pricing_source_digest, reprice_usage, sampling_omissions
 from .transcripts import bind_manifest, build_record, conversation_id, record_problems
 
 ADAPTER_NAME = "petri_audit.adapter"
@@ -265,6 +265,11 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     auditor_name = auditor_role.model if has_auditor else ""
     auditor_provider = auditor_name.split("/", 1)[0] if "/" in auditor_name else "anthropic"
     auditor_served: set[str] = set()
+    # the sampling parameters the registry says each role's model rejects (spend.sampling_omissions): the run left them
+    # out (task.generation_config, task.build_auditor), so the generation check requires them absent, and the manifest
+    # records them as the role's sampling_omitted (2026-10-01)
+    target_omitted = sampling_omissions(target_name, registry)
+    auditor_omitted = sampling_omissions(auditor_name, registry) if has_auditor else {}
     # the auditor's instruction file of record is the one the run recorded (task.study_task); the manifest carries
     # that digest, and a file in hand that differs cannot vouch for what the auditor was sent (Codex review of PR #50)
     run_meta = (spec.metadata or {}).get("patientwords") if isinstance(spec.metadata, dict) else None
@@ -386,7 +391,8 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             elif auditor_prompt is not None:
                 config_detail.extend(f"auditor {p} (against the prompt file's generation block)"
                                      for p in generation_problems(auditor_prompt["generation"], e.call.request,
-                                                                  forwards_seed=SEED_FORWARDING.get(auditor_provider)))
+                                                                  forwards_seed=SEED_FORWARDING.get(auditor_provider),
+                                                                  omitted=auditor_omitted))
         if seed is None:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"sample metadata names no known seed ({seed_id!r})"})
             continue
@@ -413,7 +419,8 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         for e in model_events:
             if e.call is not None and isinstance(e.call.request, dict):
                 config_detail.extend(generation_problems(seed["generation"], e.call.request,
-                                                         forwards_seed=SEED_FORWARDING.get(target_provider)))
+                                                         forwards_seed=SEED_FORWARDING.get(target_provider),
+                                                         omitted=target_omitted))
         if seed.get("tools"):
             any_tools = True
             tool_results_by_seed.setdefault(seed_id, 0)
@@ -726,8 +733,11 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                               "config": {k: v for k, v in (target_role.config.model_dump(mode="json") if target_role else {}).items() if v is not None},
                               "seed_requested": (seeds_used and next(iter(seeds_used.values()))["generation"]["seed_requested"]) or None,
                               "seed_forwarded_by_provider": seed_reaches_serving_provider(target_provider),
-                              "seed_honored": None},
-                   "auditor": (_auditor_block(auditor_role.model, auditor_role, auditor_served, registry)
+                              "seed_honored": None,
+                              # present only when the registry withholds a parameter, so every other manifest (and a
+                              # readapt of one) keeps its exact shape and digests
+                              **({"sampling_omitted": dict(target_omitted)} if target_omitted else {})},
+                   "auditor": (_auditor_block(auditor_role.model, auditor_role, auditor_served, registry, auditor_omitted)
                                if has_auditor else None),
                    "judge_harness": None},
         "seeds": [{"seed_id": s["seed_id"], "seed_sha256": seed_digest(s), "file": repo_rel(seed_set.path),
@@ -796,15 +806,18 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     return AdaptResult(out_dir=out_dir, manifest=final, records=bound, rule_records=rule_records, refused=refused)
 
 
-def _auditor_block(name: str, role: Any, served: set[str], registry: dict | None) -> dict:
+def _auditor_block(name: str, role: Any, served: set[str], registry: dict | None,
+                   omitted: dict[str, str] | None = None) -> dict:
     """models.auditor for an adaptive run, in the role_model shape the target's block uses. The provider seed does not
-    apply: the auditor is sent the prompt file's sampling settings and no seed."""
+    apply: the auditor is sent the prompt file's sampling settings and no seed. `sampling_omitted` appears only when
+    the registry withholds a parameter from the auditor model (2026-10-01)."""
     return {"provider": name.split("/", 1)[0] if "/" in name else "anthropic",
             "model": name.split("/", 1)[1] if "/" in name else name, "inspect_name": name,
             "registry_spec": inspect_to_registry_spec(name, registry), "served_model_strings": sorted(served),
             "config": {k: v for k, v in (role.config.model_dump(mode="json") if role is not None else {}).items()
                        if v is not None},
-            "seed_requested": None, "seed_forwarded_by_provider": None, "seed_honored": None}
+            "seed_requested": None, "seed_forwarded_by_provider": None, "seed_honored": None,
+            **({"sampling_omitted": dict(omitted)} if omitted else {})}
 
 
 def _version(dist: str) -> str:

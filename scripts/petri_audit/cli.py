@@ -56,6 +56,7 @@ from .spend import (
     registry_spec_to_inspect,
     resolve_price,
     resolve_registry_price,
+    sampling_omissions,
     target_provider_problems,
     usage_from_samples,
     write_report_sidecar,
@@ -185,7 +186,7 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
         return 3, {}
     if args.judge_model:
         # a judge spec the registry cannot resolve must fail here, before the target spends (Codex round 2)
-        from .judge_runner import judge_spec_problems
+        from .judge_runner import judge_sampling_omissions, judge_spec_problems
 
         judge_problems = judge_spec_problems(args.judge_model)
         if judge_problems:
@@ -202,6 +203,18 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
         judge_price = resolve_registry_price(args.judge_model)
         print(f"judge {args.judge_model}: {judge_billing_channel(args.judge_model)} channel, in {judge_price.input_per_mtok}/Mtok "
               f"out {judge_price.output_per_mtok}/Mtok ({judge_price.source})")
+        # the spec as RegistryJudge resolves it, so the line names what the judge's rows will record; a target's
+        # Inspect-name reading (spend.sampling_omissions) differs for colon-free specs containing "/" (2026-10-02)
+        for param, reason in judge_sampling_omissions(args.judge_model).items():
+            print(f"judge {args.judge_model}: {param} omitted from every call ({reason})")
+        # the pre-flight is not given the judge's allowance, so it names the registry minimum the judge step will
+        # hold the allowance to (judge_runner.judge_budget_problems refuses a smaller one before any judge call)
+        from .judge_runner import judge_min_output_tokens
+
+        judge_floor = judge_min_output_tokens(args.judge_model)
+        if judge_floor is not None:
+            print(f"judge {args.judge_model}: the registry's min_output_tokens is {judge_floor}; the judge step refuses "
+                  f"a --judge-max-tokens below it before any judge call")
     # an `openrouter/` target without a reviewed per-model price is refused before the bound is computed from the
     # catch-all (2026-09-23): the bound, Inspect's cost_limit and the sidecar would all rest on an unreviewed rate
     target_unpriced = openrouter_price_problems(args.target)
@@ -223,6 +236,11 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
         return 5, {}
     price = resolve_price(args.target)
     print(f"price {args.target}: in {price.input_per_mtok}/Mtok out {price.output_per_mtok}/Mtok ({price.source})")
+    # a sampling parameter the registry says the model rejects is left out of every call (task.generation_config,
+    # task.build_auditor) and recorded in the manifest as the role's sampling_omitted (2026-10-01)
+    for role, name in (("target", args.target), ("auditor", auditor)):
+        for param, reason in (sampling_omissions(name).items() if name else ()):
+            print(f"{role} {name}: {param} omitted from every call ({reason})")
     if auditor:
         # Inspect's per-sample token limit counts the auditor's calls with the target's (task.run_study), so the
         # bound prices every token at the dearest rate of either model
@@ -500,7 +518,7 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
     under `can_afford`, so the judge ceiling bounds the total: a priced judge
     is booked at its ceiling with the surviving rows' sum recorded beside it,
     a zero-price judge at zero (Codex rounds 4 and 5)."""
-    from .judge_runner import TIER_TEMPERATURE, cumulative_counts, read_jsonl
+    from .judge_runner import TIER_TEMPERATURE, cumulative_counts, judge_sampling_omissions, omission_fields, read_jsonl
 
     run_dir = Path(args.run_dir)
     # a readapt's judge was reserved by the readapt fire, not the source fire its directory names; the sidecar carries
@@ -541,12 +559,31 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
                "abort_error": None, "spend_report_reason": reason, "cumulative": cumulative_counts(rows),
                "judgments_sha256": sha256_file(judgments_path) if judgments_path.is_file() else None,
                "judge_max_tokens": args.judge_max_tokens, "temperature": TIER_TEMPERATURE,
+               # a judge model the registry withholds temperature from was sent none, for the spec as RegistryJudge
+               # resolves it (this process cannot see an installed SDK's refusal; the surviving rows record their own)
+               **omission_fields(judge_sampling_omissions(args.judge_model).get("temperature")),
                "task": "petri-audit-judge", "run_id": run_dir.name, "billing_channel": channel,
                "price_source": price.source, "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok}
     sidecar.update(identity)
     write_json(report_path, sidecar)
     print(f"judge spend report {report_path}: cost_usd {cost} ({basis}); {reason}")
     return 0
+
+
+def judge_of_record_block(judge_model: str, channel: str, price_source: str, sidecar: dict, totals: dict,
+                          judge_max_tokens: int) -> dict:
+    """The manifest's artifacts.judge_of_record for a judge pass that wrote `sidecar` (bind_judgments adds the report
+    path and digest). `temperature` is the instrument's setting (TIER_TEMPERATURE), which judge_settings_problems and
+    a rejudge compare; when the calls went out without it the block also carries temperature_sent null and
+    temperature_omitted, copied from the sidecar (judge_runner.omission_fields; review of 2026-10-01), and is
+    otherwise the shape every earlier manifest has."""
+    from .judge_runner import TIER_TEMPERATURE, omission_fields
+
+    return {"judge_model": judge_model, "billing_channel": channel, "price_source": price_source,
+            "judged_utc": sidecar["run_utc"], "cost_usd": sidecar["cost_usd"], "truncated": sidecar["truncated"],
+            "planned": sidecar["planned"], "judged": totals["judged"], "null": totals["null"],
+            "not_applicable": totals["not_applicable"], "judge_max_tokens": judge_max_tokens,
+            "temperature": TIER_TEMPERATURE, **omission_fields(sidecar.get("temperature_omitted"))}
 
 
 def cmd_judge(args: argparse.Namespace) -> int:
@@ -569,11 +606,11 @@ def cmd_judge(args: argparse.Namespace) -> int:
 
     from .adapter import read_records
     from .judge_runner import (
-        TIER_TEMPERATURE,
         JudgeAborted,
         RegistryJudge,
         SpendCeiling,
         cumulative_counts,
+        judge_budget_problems,
         judge_settings_problems,
         labels_from_manifest,
         load_rubric,
@@ -603,6 +640,8 @@ def cmd_judge(args: argparse.Namespace) -> int:
     # spec or token allowance refuse the pass before any call, because dedupe_key carries the spec and a second
     # spec would re-judge every plan, and a second allowance would mix caps under one provenance (Codex rounds 7, 8)
     pinned = judge_settings_problems(run_dir, manifest, args.judge_model, args.judge_max_tokens)
+    # a thinking judge below the registry's minimum output budget would spend the allowance before answering
+    pinned += judge_budget_problems(args.judge_model, args.judge_max_tokens)
     if pinned:
         for p in pinned:
             print(f"refused before any judge call: {p}", file=sys.stderr)
@@ -634,12 +673,8 @@ def cmd_judge(args: argparse.Namespace) -> int:
     # are the run's, from the complete file, never this invocation's alone (Codex round 4)
     totals = cumulative_counts(read_jsonl(judgments_path))
     sealed = bind_judgments(run_dir, judgments_path=judgments_path, report_path=report_path,
-                            judge_of_record={"judge_model": args.judge_model, "billing_channel": channel,
-                                             "price_source": price.source, "judged_utc": sidecar["run_utc"],
-                                             "cost_usd": sidecar["cost_usd"], "truncated": sidecar["truncated"],
-                                             "planned": sidecar["planned"], "judged": totals["judged"],
-                                             "null": totals["null"], "not_applicable": totals["not_applicable"],
-                                             "judge_max_tokens": args.judge_max_tokens, "temperature": TIER_TEMPERATURE})
+                            judge_of_record=judge_of_record_block(args.judge_model, channel, price.source, sidecar,
+                                                                  totals, args.judge_max_tokens))
     print(json.dumps(sidecar, indent=2))
     print(f"manifest resealed: judgments bound ({sealed['artifacts']['judgments_sha256'][:12]}), "
           f"identity {sealed['chain']['identity_sha256'][:12]} unchanged")

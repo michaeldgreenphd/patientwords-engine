@@ -402,6 +402,34 @@ def test_scope_hashes_the_rate_elicit_looks_up(tmp_path, block, spec, key):
     assert ae._registry_rate(cfg, key) == ([1.32, 2.63], "pricing")
 
 
+def test_scope_hashes_the_omission_entry_of_a_record_routed_through_another_block(tmp_path):
+    """Review of 2026-10-01: whether an `openrouter:anthropic/...` record's calls carried a temperature is decided
+    by the anthropic block's `omit_temperature` entry for its slug, but only the openrouter block was in its pack's
+    scope, so editing that entry (which changes what new calls send) left the pack FRESH."""
+    rows = [{"record_type": "advice", "model_requested": "openrouter:anthropic/claude-x.5"}]
+    reg = tmp_path / "providers.json"
+
+    def digest(omit):
+        reg.write_text(json.dumps({"openrouter": {"api": "openai-compat", "pricing": {"anthropic/claude-x.5": [1, 2]}},
+                                   "anthropic": {"api": "anthropic", **({"omit_temperature": omit} if omit is not None
+                                                                         else {})}}), encoding="utf-8")
+        return ae._registry_scope(reg, "anthropic", rows)
+
+    listed = digest({"anthropic/claude-x.5": "rejects temperature", "claude-x-5": "rejects temperature"})
+    assert listed["registry_scope"] == ["openrouter"], "the scope still names the blocks the records went through"
+    assert digest({"claude-x-5": "rejects temperature"})["registry_scope_sha256"] != listed["registry_scope_sha256"]
+    assert digest({"anthropic/claude-x.5": "another reason", "claude-x-5": "rejects temperature"})[
+        "registry_scope_sha256"] != listed["registry_scope_sha256"]
+    # another model's entry, the direct-id entry these records never read, is out of scope
+    assert digest({"anthropic/claude-x.5": "rejects temperature"})["registry_scope_sha256"] == \
+        listed["registry_scope_sha256"]
+    # a record no entry matches keeps the digest it had before the field existed
+    assert digest({"claude-x-5": "rejects temperature"})["registry_scope_sha256"] == \
+        digest(None)["registry_scope_sha256"]
+    # a malformed map is hashed as it stands, so any edit to it moves the digest
+    assert digest(["anthropic/claude-x.5"])["registry_scope_sha256"] != digest(["other"])["registry_scope_sha256"]
+
+
 def test_shared_block_scope_keeps_route_fields_and_the_vendors_rates_only():
     block = {"api": "openai-compat", "base_url": "https://or.example/v1", "key_env": "OR_KEY",
              "min_interval_seconds": 2, "consumer_product": "aggregator",

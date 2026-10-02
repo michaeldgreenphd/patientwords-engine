@@ -15,6 +15,7 @@ nothing to examine.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from typing import Any
 
 from .framework import sha256_text
@@ -317,16 +318,39 @@ def request_generation(request: Any) -> dict[str, Any]:
     return out
 
 
-def generation_problems(expected: dict, request: Any, *, forwards_seed: bool | None) -> list[str]:
+def generate_config_kwargs(generation: dict, omitted: Mapping[str, str] | None = None) -> dict[str, Any]:
+    """The GenerateConfig keyword arguments for a role from its generation block (a seed's, or the auditor prompt
+    file's): max_tokens always, temperature and seed when the block sets them, except a parameter `omitted` names
+    (spend.sampling_omissions: the registry's models that reject it). Pure, so the 3.11 suite tests what the target,
+    the auditor role and the adaptive controller's per-call config send."""
+    omitted = omitted or {}
+    kwargs: dict[str, Any] = {"max_tokens": int(generation["max_tokens"])}
+    if generation.get("temperature") is not None and "temperature" not in omitted:
+        kwargs["temperature"] = float(generation["temperature"])
+    if generation.get("seed_requested") is not None and "seed" not in omitted:
+        kwargs["seed"] = int(generation["seed_requested"])
+    return kwargs
+
+
+def generation_problems(expected: dict, request: Any, *, forwards_seed: bool | None,
+                        omitted: Mapping[str, str] | None = None) -> list[str]:
     """The seed's generation block against one raw request: temperature and
     max_tokens must be sent (and equal when the seed sets them); the requested
     seed must be sent and equal when the provider forwards seeds, while a
     provider that never forwards them is not asked (the manifest records
-    `seed_forwarded_by_provider`)."""
+    `seed_forwarded_by_provider`). A parameter `omitted` names (the registry's
+    models that reject it, spend.sampling_omissions; the manifest records it as
+    the role's `sampling_omitted`) must NOT be sent (2026-10-01)."""
     got = request_generation(request)
     problems: list[str] = []
+    omitted = omitted or {}
     for field in ("temperature", "max_tokens"):
         want = expected.get(field)
+        if field in omitted:
+            if got[field] is not None:
+                problems.append(f"{field}: sent {got[field]!r} although the registry omits it for this model "
+                                f"({omitted[field]})")
+            continue
         if got[field] is None:
             problems.append(f"{field}: not_sent")
         elif want is not None and got[field] != want:

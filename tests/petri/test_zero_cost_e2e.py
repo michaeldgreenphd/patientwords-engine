@@ -866,6 +866,53 @@ def _crossed(samples) -> None:
     first.call.request = json.loads(json.dumps(other.call.request))
 
 
+def _with_sampling_keys(seed_set, *, temperature: bool):
+    """A mutation giving every retained target request the seed's max_tokens, and its temperature when
+    `temperature`: the mock provider's raw request carries neither, so the generation check is otherwise always a
+    not_sent failure and could not show what a registry omission changes."""
+    def mutate(samples) -> None:
+        for sample in samples:
+            gen = seed_set.seeds[sample.metadata["seed_id"]]["generation"]
+            for e in _target_calls(sample):
+                if e.call is not None and isinstance(e.call.request, dict):
+                    e.call.request["max_tokens"] = gen["max_tokens"]
+                    e.call.request.pop("temperature", None)
+                    if temperature:
+                        e.call.request["temperature"] = gen["temperature"]
+    return mutate
+
+
+def test_a_registry_omission_reaches_the_generation_check_and_the_manifest(run, tmp_path_factory, monkeypatch):
+    """Review of 2026-10-01: nothing ran adapt_run's omission wiring. With the registry saying the target model
+    rejects temperature (spend.sampling_omissions, patched here for the mock model), a request that still carries
+    it fails generation_config_pinned by name, one without it passes, and the manifest records the omission as
+    models.target.sampling_omitted; without the omission the manifest keeps its shape."""
+    import scripts.petri_audit.adapter as adapter_mod
+
+    seed_set = run["seed_set"]
+    omitted = {"temperature": "rejects temperature (test)"}
+    sent = _rewritten_log(run["eval_path"], tmp_path_factory.mktemp("omit-sent-log"),
+                          _with_sampling_keys(seed_set, temperature=True))
+    absent = _rewritten_log(run["eval_path"], tmp_path_factory.mktemp("omit-absent-log"),
+                            _with_sampling_keys(seed_set, temperature=False))
+    # the baseline: no omission, every request carries the seed's keys, so the check passes and nothing is recorded
+    plain = _adapt(sent, seed_set, tmp_path_factory.mktemp("omit-plain") / "run").manifest
+    assert plain["execution"]["contract_checks"]["generation_config_pinned"]["status"] == "pass", \
+        plain["execution"]["contract_checks"]["generation_config_pinned"]
+    assert "sampling_omitted" not in plain["models"]["target"]
+    monkeypatch.setattr(adapter_mod, "sampling_omissions",
+                        lambda name, registry=None: dict(omitted) if name == "mockllm/model" else {})
+    m = _adapt(sent, seed_set, tmp_path_factory.mktemp("omit-sent") / "run").manifest
+    pinned = m["execution"]["contract_checks"]["generation_config_pinned"]
+    assert pinned["status"] == "fail" and "although the registry omits it" in pinned["detail"], pinned
+    assert m["models"]["target"]["sampling_omitted"] == omitted
+    m = _adapt(absent, seed_set, tmp_path_factory.mktemp("omit-absent") / "run").manifest
+    pinned = m["execution"]["contract_checks"]["generation_config_pinned"]
+    assert pinned["status"] == "pass", pinned
+    assert m["models"]["target"]["sampling_omitted"] == omitted
+    assert manifest_problems(m) == []
+
+
 def test_a_halted_sample_s_calls_still_reach_the_call_level_checks(run, tmp_path_factory):
     """Codex review of PR #37 (2026-09-23): the limit refusal ran before the
     raw-request, sampling-config and cache checks and the request-prefix
