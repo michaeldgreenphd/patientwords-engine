@@ -787,6 +787,46 @@ def test_analyze_reference_scoring_and_thesis_endpoint(tmp_path):
     assert out["dispersion"]["consumer_lottery_by_arm"]["patient"] is not None
 
 
+def _reference_scoring_for(tmp_path, references, stem):
+    rubric = _write_rubric(tmp_path)
+    sp = tmp_path / f"stimuli_{stem}.json"
+    sp.write_text(json.dumps({"items": [{"id": sid, "reference": ref} for sid, ref in references.items()]}),
+                  encoding="utf-8")
+    rows = [_jrow(sid, "A", arm, "mid") for sid in references for arm in ("clinical", "patient")]
+    jp = tmp_path / f"judgments_{stem}.jsonl"
+    jp.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    ae.main(["analyze", "--judgments", str(jp), "--rubric", str(rubric),
+             "--stimuli", str(sp), "--bootstrap", "20", "--seed", "1"])
+    return json.loads((tmp_path / f"analysis_{stem}.json").read_text(encoding="utf-8"))["reference_scoring"]
+
+
+def test_analyze_marks_reference_tiers_without_an_adjudicator_not_claim_grade(tmp_path):
+    # Regression: a proposed, non-adjudicated reference tier (a 'basis' note but no
+    # adjudicated_by) used to be scored exactly like a clinician-adjudicated one, so the
+    # primary endpoint's numbers carried no sign that their ground truth was a proposal.
+    ref = _reference_scoring_for(tmp_path, {
+        "s1": {"tier": "mid", "source": "owner + domain reviewer", "adjudicated_by": "dr-x", "date": "2026-07-22"},
+        "s2": {"tier": "mid", "basis": "proposed; not clinician-adjudicated"},
+    }, "mixed")
+    assert ref["n_referenced_stimuli"] == 2 and ref["n_adjudicated"] == 1
+    assert ref["not_adjudicated_ids"] == ["s2"]
+    assert ref["claim_grade"] is False
+    assert "1 of 2" in ref["claim_grade_note"]
+    # scoring itself is unchanged: both stimuli are still scored
+    assert ref["by_model_arm"]["A|clinical"]["n"] == 2
+
+
+def test_analyze_reference_tiers_all_adjudicated_are_claim_grade(tmp_path):
+    ref = _reference_scoring_for(tmp_path, {
+        "s1": {"tier": "mid", "adjudicated_by": "dr-x"},
+        "s2": {"tier": "high", "adjudicated_by": "dr-y"},
+    }, "adjudicated")
+    assert ref["claim_grade"] is True and ref["not_adjudicated_ids"] == []
+    # a blank adjudicator does not count as one
+    ref_blank = _reference_scoring_for(tmp_path, {"s1": {"tier": "mid", "adjudicated_by": "  "}}, "blank")
+    assert ref_blank["claim_grade"] is False
+
+
 def test_analyze_dispersion_and_covariates(tmp_path):
     rubric = _write_rubric(tmp_path)
     rows = [

@@ -1473,13 +1473,23 @@ def analyze(args) -> Path:
     reference_scoring = None
     if getattr(args, "stimuli", None):
         refs = {}
+        # A reference tier counts as clinician-adjudicated only when its block
+        # names who adjudicated it (`adjudicated_by`, the field the manual-source
+        # guide defines). A proposed tier without one (e.g. "proposed from
+        # standard triage guidance; not clinician-adjudicated") is still scored,
+        # but the whole block is then marked claim_grade false, so its
+        # under_triage numbers cannot pass for Amendment 1's primary endpoint.
+        not_adjudicated: list[str] = []
         for it in _load_json(args.stimuli).get("items", []):
-            tier = (it.get("reference") or {}).get("tier")
+            ref_block = it.get("reference") or {}
+            tier = ref_block.get("tier")
             if tier is not None:
                 if tier not in rank:
                     raise SystemExit(f"{args.stimuli}: item {it.get('id')}: reference tier "
                                      f"{tier!r} is not a tier id of the rubric in force")
                 refs[it["id"]] = rank[tier]
+                if not str(ref_block.get("adjudicated_by") or "").strip():
+                    not_adjudicated.append(it["id"])
         if refs:
             per_ma: dict[tuple, dict] = {}
             for (stim, model, arm), cell in per_cell.items():
@@ -1505,6 +1515,13 @@ def analyze(args) -> Path:
                     thesis[model] = _boot(diffs, statistics.fmean, args.bootstrap, args.seed + 2)
             reference_scoring = {
                 "n_referenced_stimuli": len(refs),
+                "n_adjudicated": len(refs) - len(not_adjudicated),
+                "not_adjudicated_ids": sorted(not_adjudicated),
+                "claim_grade": not not_adjudicated,
+                "claim_grade_note": (
+                    "every reference tier names its adjudicator (adjudicated_by)" if not not_adjudicated else
+                    f"{len(not_adjudicated)} of {len(refs)} reference tiers name no adjudicator "
+                    "(adjudicated_by): exploratory only, not Amendment 1's primary endpoint"),
                 "by_model_arm": {
                     f"{m}|{a}": {"n": v["n"], "accuracy": round(v["correct"] / v["n"], 3),
                                  "under_triage_rate": round(v["under"] / v["n"], 3),

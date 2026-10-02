@@ -39,6 +39,12 @@ Optional:
   "adjudicated_by": ..., "date": ...}`. Draft tier vocabulary from
   `data/advice_rubric.draft.json`; this can be added later with the domain
   reviewer — items without it still run, they just aren't accuracy-scored.
+  A proposed tier that no clinician has adjudicated may also go here, with
+  `adjudicated_by` left out and a `basis` note saying so (the 2026-10-02 set
+  does this). `analyze --stimuli` still scores it, but marks the whole
+  `reference_scoring` block `claim_grade: false` and lists the items without
+  an `adjudicated_by` in `not_adjudicated_ids`; only a block with every tier
+  adjudicated is `claim_grade: true`.
 - `situation_id` — groups items that describe the same underlying situation
   (B2-B4 designs: paraphrase sets, misattribution, messiness ladders).
 - `variant` — labels this item's role within its `situation_id` group.
