@@ -232,10 +232,18 @@ re-priced.
     ignore a parameter a model does not support (not verified for these
     slugs), in which case the model sampled at its own setting. Their
     requests now go out without temperature and their records say so. No
-    archived record, registered arm or landed Petri run uses any of the
-    five. The map stays in the `anthropic` block, where it began; its keys
-    are model spellings and it applies to whichever block a spec routes
-    through.
+    archived record or registered arm uses any of the five, and no Petri
+    run on `main` does. On branches, CI landed two Petri outputs with
+    `openai/gpt-6-luna`, both on 2026-09-26: run_36204125708_1 (target
+    `openrouter/openai/gpt-6-luna`, branch `claude/petri-cross-model`) and
+    a rejudge of run_36076994201_1 judged by `openrouter:openai/gpt-6-luna`
+    (branch `claude/petri-rejudge-runs`). Their requests carried a
+    temperature (each seed's value; the judge's 0.0), and their records say
+    so. This revision does not rewrite them, since landed runs and
+    re-grades are append-only; a later run or re-grade with that slug is
+    sent no temperature and records why. The map stays in the `anthropic`
+    block, where it began; its keys are model spellings and it applies to
+    whichever block a spec routes through.
   - `min_output_tokens` gives 4096 for the reasoning models priced here.
     The advice lane sends the larger of the fire's `--max-tokens` and that
     value, and records the value sent. No model whose archive is
@@ -289,8 +297,12 @@ list, the `google` block entries and the corrected notes), also committed
 on the branch and never fired against:
 `629984ab07a18f04692ce28f0480edd2489215ab7d2727da0978d311766dd1d3`.
 Registry sha256 after the second review of 2026-10-02 (the five OpenAI
-slugs added to `omit_temperature`, and its note):
-`b767fed0e699ffbf21d0c623b467f28d418c29309e709033abe058d540f71731`
+slugs added to `omit_temperature`, and its note), also committed on the
+branch and never fired against:
+`b767fed0e699ffbf21d0c623b467f28d418c29309e709033abe058d540f71731`.
+Registry sha256 after a further review the same day, which qualified the
+note's statement on landed Petri runs (no entry changed):
+`5d9568496a89e237465238a5a9480f7f0f67b8c1cb36d350dc3bd95a6ef8aa98`
 
 ## The consumer-proxy caveat (repeat in every writeup)
 
