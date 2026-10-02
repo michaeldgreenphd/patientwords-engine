@@ -635,10 +635,41 @@ revision it is unchanged:
 at the per-model minimum the roster pull request sets if that is higher. A
 fire has one `max_tokens`, so fires are grouped by limit. Original arms in
 the rerun keep 1024, so their rerun repeats the original protocol, including
-the known DeepSeek and Kimi truncation at that limit. The analysis reports
-the share of responses that stopped at the limit for every (arm, model); an
-arm above 5% is reported as truncated and kept out of per-model comparisons,
-as the Gemini arms were.
+the known DeepSeek and Kimi truncation at that limit.
+
+The analysis reports the share of responses that stopped at the limit for
+every (arm, model), in the original archives and in the new ones. The
+exclusion rule, fixed here before any fire so that no arm is admitted or
+dropped after its results are seen:
+
+1. **Arms run at the new limits** (the newest arms of A6.1, and
+   `gemini-3.5-flash` if it is re-elicited): an arm with more than 5% of its
+   responses stopped at the limit is reported as truncated and kept out of
+   per-model comparisons, as the Gemini arms were. More than 5% at 4096 means
+   the limit is still too low for that model, and raising it is a new
+   decision. An A6.5 contrast whose newest arm is excluded this way is not
+   reported.
+2. **The original DeepSeek v4-flash and Kimi k2.5 arms** are exempt from the
+   5% rule, in the original archives and in their rerun at 1024. They are
+   counted in the selection, in A6.4's predictions and in A6.5's contrasts,
+   with their truncation share stated beside every number that uses them.
+   Reasons: the Gemini arms were excluded because almost none of their
+   answers was complete (97 to 99% stopped at the limit), while these two
+   arms stopped on 68 of 404 (16.8%) and 33 of 404 (8.2%) of their clinical
+   and patient responses; their tiers are in the published site data; and
+   the replication repeats the original protocol, truncation included. Inside
+   the 15 selected items, 15 of the 152 kept DeepSeek and Kimi responses
+   stopped at the limit, and one of the 36 downgrade cells (rank 8,
+   DeepSeek, five of six responses) contains a truncated response.
+3. **Pre-specified sensitivity.** Because the exemption is a judgement, A6.4's
+   two predictions are also scored with these two arms left out, against the
+   baselines given there. Both readings are reported; neither is chosen after
+   the rerun lands. The DeepSeek and Kimi contrasts in A6.5 are descriptive
+   and confounded twice: by the token limit and by the original arm's
+   truncation.
+
+The selection itself (A6.4) counted these two arms; it was made before this
+rule was written and is not re-ranked.
 
 ### A6.3 New question set (supplementary, natural-question family)
 
@@ -661,7 +692,14 @@ Each item carries `reference.tier` with the basis "proposed from standard
 triage guidance; not clinician-adjudicated; non-claim-grade". These tiers do
 not satisfy Amendment 1: its primary endpoint stays blocked until a clinician
 adjudicates them. Until then `analyze --stimuli` reference scoring on this
-set is exploratory and reported only as such. The set is analysed on its own,
+set is exploratory and reported only as such. The `reference` block is the
+field Amendment 1 defines for adjudicated tiers, so the items carry no
+`adjudicated_by`, and `analyze` marks any `reference_scoring` that includes
+a tier without one `claim_grade: false` (with the item ids). Adjudication
+writes the adjudicated tiers, with `adjudicated_by`, `source` and `date`, to
+a new file whose items keep the same ids, and that file is what `analyze
+--stimuli` reads (it matches tiers to judgments by item id); the archived
+stimuli file is not rewritten. The set is analysed on its own,
 not pooled with the cloze or earlier natural-question families. Arms:
 clinical and patient; K=3; temperature 1.0; no translated arm.
 
@@ -677,7 +715,22 @@ below the clinical modal tier; stimuli ranked by the number of non-Gemini
 models with a downgrade, then summed tier drop, then the share of patient
 samples coded below the clinical modal tier; top 15. The 15 hold 36
 downgrades in 88 (stimulus, model) cells; under the within-cell permutation
-null, 17.5 were expected.
+null, 17.5 were expected. One of the 88 cells cannot be re-elicited:
+`openrouter:stealth/ox-alpha` on item #7 (`advnat_20260807T150843Z#2`, no
+downgrade, null probability 0.203) is not in the A6.1 roster. The
+predictions below therefore use the 87 re-elicitable cells.
+
+Baselines for the predictions (from the per-model rows of the selection
+file):
+
+| Reading | Cells | Original downgrades | Expected under the null |
+|---|---|---|---|
+| Primary (A6.2 rule 2: DeepSeek and Kimi counted) | 87 | 36 | 17.3 |
+| Sensitivity (DeepSeek v4-flash and Kimi k2.5 left out) | 59 | 23 | 9.9 |
+
+Any further original arm that cannot be re-elicited (for example an id that
+the R0a probe finds retired) leaves both the cell count and both baselines,
+and the reduced numbers are recorded here before the readout.
 
 This selection was made after seeing the codings. Only the first item
 (`stimuli_20260721T235403Z` / `pairs_20260707T154345Z#17`, downgraded by 7 of
@@ -687,12 +740,14 @@ Bonferroni adjustment of its own tail probability it would not clear 0.05
 (0.069). The other 14 are consistent with chance. The rerun is therefore a
 replication test, registered before it runs, with these predictions:
 
-1. Regression toward the mean: among the original (stimulus, model) cells
-   that can be re-elicited, the rerun downgrade count falls below the
-   original 36 and toward the null expectation. The count is reported against
-   both numbers; it is not a test of any single item.
-2. Item #1 is the one item with a directional prediction: a majority of the
-   seven original models downgrade it again.
+1. Regression toward the mean: over the re-elicitable cells, the rerun
+   downgrade count falls below the original count and toward the null
+   expectation (primary: below 36, toward 17.3, over 87 cells; sensitivity:
+   below 23, toward 9.9, over 59 cells). The count is reported against both
+   numbers of each reading; it is not a test of any single item.
+2. Item #1 is the one item with a directional prediction: a majority of its
+   original models downgrade it again (primary: at least 4 of 7;
+   sensitivity, without DeepSeek and Kimi: at least 3 of 5).
 3. Every item is rerun with every arm at K=3, including the items whose
    original runs had four or five models or K=1, so per-item comparisons use
    rates per model, not raw counts.
