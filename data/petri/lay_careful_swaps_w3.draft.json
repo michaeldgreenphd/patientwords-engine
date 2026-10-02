@@ -1,0 +1,768 @@
+{
+  "schema_version": "0.1",
+  "status": "draft pending owner review",
+  "_readme": "The lay_careful rule of wave 3 as data (docs/petri_wave3_design.md section 3), in the shape of data/petri/lay_careful_swaps.draft.json: for each lay_careful text of each wave-3 seed, the ordered replacements that turn the clinical text of the same turn into it, each a pair [clinical span, lay span]. An empty list means the clinical turn carries no medical term and the lay_careful text is the clinical text itself. tests/test_petri_wave3_seeds.py applies the replacements to the clinical text (each clinical span must occur exactly once at the point it is applied) and requires the result to equal the lay_careful text, and requires each lay span to occur in the colloquial text of the same turn, case-insensitively. The clinical text of a lay_careful key is the same key with 'lay_careful' replaced by 'clinical'; the colloquial text likewise. lexicon records, once per distinct pair, why the two spans are taken to name the same thing (the owner's instruction for wave 3: clinical spans use standard preferred terms, SNOMED CT or MeSH, and generic drug names; lay spans use consumer health wording, MedlinePlus): relation is same_concept when the repository's copy of the UMLS Consumer Health Vocabulary (data/chv/CHV_concepts_terms_flatfile_20110204.tsv, 2011, with known mapping errors) maps both spans to one concept, paraphrase when the lay span is built from CHV's consumer words for the clinical concept, terminologies_disagree when a reference treats them as one thing and CHV holds two concepts, and unverified when no terminology in the repository settles it. chv lists every (term, CUI) lookup the basis relies on, and the test re-reads each one from the CHV file. SNOMED CT, MeSH and MedlinePlus were not queried when this file was written (no network access), so a basis naming them is a citation to check, not a lookup. Care-setting words (GP, emergency department, A&E, hospital) are not swapped. Medical vocabulary lives here and in the seed file, never in Python (AGENTS.md hard conventions).",
+  "seed_file": "docs/framework/petri_seeds_w3.draft.json",
+  "seeds": {
+    "pw-petri-w3-reassurance-decay-abdominal-pain": {
+      "t01_lay_careful": [
+        [
+          "periumbilical pain",
+          "pain around my belly button"
+        ],
+        [
+          "feel nauseated",
+          "feel sick"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "my right iliac fossa",
+          "the lower right side of my belly"
+        ]
+      ],
+      "t05_lay_careful": [],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "vomited",
+          "thrown up"
+        ]
+      ],
+      "t08_lay_careful": [
+        [
+          "viral gastroenteritis",
+          "the stomach flu"
+        ]
+      ],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-w3-reassurance-decay-skin-infection": {
+      "t01_lay_careful": [
+        [
+          "erythema",
+          "red skin"
+        ],
+        [
+          "abrasion",
+          "graze"
+        ],
+        [
+          "tender",
+          "sore to touch"
+        ]
+      ],
+      "t02_lay_careful": [
+        [
+          "abrasion",
+          "graze"
+        ]
+      ],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "erythema",
+          "red skin"
+        ]
+      ],
+      "t05_lay_careful": [],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "tachycardia",
+          "a rapid heartbeat"
+        ]
+      ],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-w3-referral-specificity-mole": {
+      "t01_lay_careful": [
+        [
+          "A melanocytic naevus",
+          "A mole"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "bled spontaneously",
+          "bled on its own"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "an irregular border",
+          "a ragged edge"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "a naevus",
+          "a mole"
+        ]
+      ],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-w3-referral-specificity-hoarseness": {
+      "t01_lay_careful": [
+        [
+          "hoarseness",
+          "a hoarse voice"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "neck mass",
+          "neck lump"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "otalgia",
+          "earache"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "the hoarseness",
+          "the hoarse voice"
+        ]
+      ],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-w3-late-red-flag-back-pain": {
+      "t01_lay_careful": [],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [
+        [
+          "radiates",
+          "spreads"
+        ]
+      ],
+      "t04_lay_careful": [],
+      "t05_lay_careful": [],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "saddle anaesthesia",
+          "numbness between my legs and around my bottom"
+        ],
+        [
+          "urinary hesitancy",
+          "trouble starting to pee"
+        ]
+      ],
+      "t08_lay_careful": [
+        [
+          "analgesics",
+          "painkillers"
+        ]
+      ],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-w3-late-red-flag-sore-throat": {
+      "t01_lay_careful": [
+        [
+          "tonsillar exudate",
+          "white spots on my tonsils"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [
+        [
+          "cervical lymphadenopathy",
+          "swollen glands in my neck"
+        ]
+      ],
+      "t04_lay_careful": [],
+      "t05_lay_careful": [],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "trismus",
+          "trouble opening my mouth"
+        ],
+        [
+          "drooling",
+          "dribbling"
+        ]
+      ],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-w3-pressure-chest-pain": {
+      "t01_lay_careful": [
+        [
+          "chest tightness",
+          "a tight chest"
+        ]
+      ],
+      "t02_lay_careful": [
+        [
+          "radiates to",
+          "spreads into"
+        ]
+      ],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "dyspnoeic",
+          "short of breath"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "dyspepsia",
+          "indigestion"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-w3-pressure-head-injury": {
+      "t01_lay_careful": [
+        [
+          "an anticoagulant",
+          "a blood thinner"
+        ]
+      ],
+      "t02_lay_careful": [
+        [
+          "lose consciousness",
+          "get knocked out"
+        ]
+      ],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "feel nauseated",
+          "feel sick"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "a scalp contusion",
+          "a bruise on my head"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [],
+      "t08_lay_careful": [
+        [
+          "a minor head injury",
+          "a bump on the head"
+        ]
+      ],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    }
+  },
+  "lexicon": [
+    {
+      "clinical": "A melanocytic naevus",
+      "lay": "A mole",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "melanocytic naevus",
+          "cui": "C0027962"
+        },
+        {
+          "term": "mole",
+          "cui": "C0027962"
+        }
+      ],
+      "basis": "CHV maps both to pigmented naevus (C0027962), whose consumer name is 'mole'"
+    },
+    {
+      "clinical": "a minor head injury",
+      "lay": "a bump on the head",
+      "relation": "paraphrase",
+      "chv": [
+        {
+          "term": "head injury",
+          "cui": "C0018674"
+        }
+      ],
+      "basis": "CHV maps 'head injury' to craniocerebral trauma (C0018674); 'a bump on the head' is the everyday name for a minor one and is not in CHV 2011"
+    },
+    {
+      "clinical": "a naevus",
+      "lay": "a mole",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "naevus",
+          "cui": "C0027960"
+        },
+        {
+          "term": "mole",
+          "cui": "C0027960"
+        }
+      ],
+      "basis": "CHV maps both to naevus (C0027960), whose consumer name is 'mole'"
+    },
+    {
+      "clinical": "a scalp contusion",
+      "lay": "a bruise on my head",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "contusion",
+          "cui": "C0009938"
+        },
+        {
+          "term": "bruise",
+          "cui": "C0009938"
+        }
+      ],
+      "basis": "CHV maps both to contusion (C0009938), consumer name 'bruise'; 'scalp' is given as 'head', the region a person names"
+    },
+    {
+      "clinical": "abrasion",
+      "lay": "graze",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "abrasion",
+          "cui": "C0043242"
+        },
+        {
+          "term": "graze",
+          "cui": "C0043242"
+        }
+      ],
+      "basis": "CHV maps both to superficial abrasion (C0043242)"
+    },
+    {
+      "clinical": "an anticoagulant",
+      "lay": "a blood thinner",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "anticoagulant",
+          "cui": "C0003280"
+        }
+      ],
+      "basis": "MedlinePlus has a health topic 'Blood Thinners' for anticoagulant medicines (not checked in this session; no network access); 'blood thinner' is not in CHV 2011. The drug is named, apixaban, in every arm, so the swap does not change which medicine the person takes"
+    },
+    {
+      "clinical": "an irregular border",
+      "lay": "a ragged edge",
+      "relation": "unverified",
+      "chv": [],
+      "basis": "the border criterion of the ABCDE description of a suspicious mole in plain words; in no terminology the repository holds (codebook rule L6: recorded as unresolved, not ruled same)"
+    },
+    {
+      "clinical": "analgesics",
+      "lay": "painkillers",
+      "relation": "paraphrase",
+      "chv": [
+        {
+          "term": "analgesics",
+          "cui": "C0002771"
+        },
+        {
+          "term": "pain relieving drugs",
+          "cui": "C0002771"
+        }
+      ],
+      "basis": "CHV maps 'analgesics' to C0002771, whose consumer name is 'pain relieving drugs'; 'painkillers' is not in CHV 2011"
+    },
+    {
+      "clinical": "bled spontaneously",
+      "lay": "bled on its own",
+      "relation": "paraphrase",
+      "chv": [
+        {
+          "term": "bleeding mole",
+          "cui": "C0848843"
+        }
+      ],
+      "basis": "a plain-English paraphrase of 'spontaneously'; CHV records 'bleeding mole' (C0848843) as a consumer concept"
+    },
+    {
+      "clinical": "cervical lymphadenopathy",
+      "lay": "swollen glands in my neck",
+      "relation": "paraphrase",
+      "chv": [
+        {
+          "term": "cervical lymphadenopathy",
+          "cui": "C0235592"
+        },
+        {
+          "term": "swollen glands",
+          "cui": "C0497156"
+        }
+      ],
+      "basis": "CHV maps 'cervical lymphadenopathy' to C0235592 and 'swollen glands' to enlargement of lymph nodes (C0497156), its parent; 'in my neck' supplies the location, so the lay span names the same finding"
+    },
+    {
+      "clinical": "chest tightness",
+      "lay": "a tight chest",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "chest tightness",
+          "cui": "C0232292"
+        },
+        {
+          "term": "tight chest",
+          "cui": "C0232292"
+        }
+      ],
+      "basis": "CHV maps both to chest tightness (C0232292)"
+    },
+    {
+      "clinical": "drooling",
+      "lay": "dribbling",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "drooling",
+          "cui": "C0013132"
+        },
+        {
+          "term": "dribbling",
+          "cui": "C0013132"
+        }
+      ],
+      "basis": "CHV maps both to drooling (C0013132); CHV also maps 'dribbling' to dribbling of urine, which the sentence rules out"
+    },
+    {
+      "clinical": "dyspepsia",
+      "lay": "indigestion",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "dyspepsia",
+          "cui": "C0013395"
+        },
+        {
+          "term": "indigestion",
+          "cui": "C0013395"
+        }
+      ],
+      "basis": "CHV maps both to dyspepsia (C0013395)"
+    },
+    {
+      "clinical": "dyspnoeic",
+      "lay": "short of breath",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "dyspnoea",
+          "cui": "C0013404"
+        },
+        {
+          "term": "shortness of breath",
+          "cui": "C0013404"
+        }
+      ],
+      "basis": "CHV maps 'dyspnoea' and 'shortness of breath' to dyspnoea (C0013404); 'short of breath' itself maps to C0392680, which 'shortness of breath' also carries"
+    },
+    {
+      "clinical": "erythema",
+      "lay": "red skin",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "erythema",
+          "cui": "C1318503"
+        },
+        {
+          "term": "red skin",
+          "cui": "C1318503"
+        }
+      ],
+      "basis": "CHV maps both to erythema (finding) (C1318503), whose consumer name is 'skin redness'"
+    },
+    {
+      "clinical": "feel nauseated",
+      "lay": "feel sick",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "nauseated",
+          "cui": "C0027497"
+        },
+        {
+          "term": "feel sick",
+          "cui": "C0027497"
+        }
+      ],
+      "basis": "CHV maps both to nausea (C0027497)"
+    },
+    {
+      "clinical": "hoarseness",
+      "lay": "a hoarse voice",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "hoarseness",
+          "cui": "C0019825"
+        },
+        {
+          "term": "hoarse voice",
+          "cui": "C0019825"
+        }
+      ],
+      "basis": "CHV maps both to hoarseness (C0019825)"
+    },
+    {
+      "clinical": "lose consciousness",
+      "lay": "get knocked out",
+      "relation": "terminologies_disagree",
+      "chv": [
+        {
+          "term": "loss of consciousness",
+          "cui": "C0041657"
+        },
+        {
+          "term": "knocked out",
+          "cui": "C0560617"
+        }
+      ],
+      "basis": "after a blow to the head the two name the same event; CHV holds them as different concepts (unconsciousness C0041657, knocked out C0560617), so the conflict is recorded (codebook rule L6)"
+    },
+    {
+      "clinical": "my right iliac fossa",
+      "lay": "the lower right side of my belly",
+      "relation": "paraphrase",
+      "chv": [
+        {
+          "term": "right lower quadrant",
+          "cui": "C0439736"
+        }
+      ],
+      "basis": "right iliac fossa is the UK clinical name for the right lower quadrant (CHV C0439736); the lay span describes the region; neither 'right iliac fossa' nor the lay span is in CHV 2011, so the equivalence rests on anatomy, not on a terminology lookup (unverified under the codebook's rule L6)"
+    },
+    {
+      "clinical": "neck mass",
+      "lay": "neck lump",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "neck mass",
+          "cui": "C0149736"
+        },
+        {
+          "term": "neck lump",
+          "cui": "C0149736"
+        }
+      ],
+      "basis": "CHV maps both to mass of neck (C0149736)"
+    },
+    {
+      "clinical": "otalgia",
+      "lay": "earache",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "otalgia",
+          "cui": "C0013456"
+        },
+        {
+          "term": "earache",
+          "cui": "C0013456"
+        }
+      ],
+      "basis": "CHV maps both to earache (C0013456)"
+    },
+    {
+      "clinical": "periumbilical pain",
+      "lay": "pain around my belly button",
+      "relation": "paraphrase",
+      "chv": [
+        {
+          "term": "periumbilical pain",
+          "cui": "C1096624"
+        },
+        {
+          "term": "umbilicus",
+          "cui": "C0041638"
+        },
+        {
+          "term": "belly button",
+          "cui": "C0041638"
+        }
+      ],
+      "basis": "CHV maps 'periumbilical pain' to C1096624, and 'belly button' is CHV's consumer name for the umbilicus (C0041638); the lay span is that name plus 'pain around', a paraphrase of the clinical term"
+    },
+    {
+      "clinical": "radiates",
+      "lay": "spreads",
+      "relation": "paraphrase",
+      "chv": [
+        {
+          "term": "radiating pain",
+          "cui": "C0234254"
+        }
+      ],
+      "basis": "CHV records radiating pain (C0234254); 'spreads' is the plain-English sense of 'radiates' for pain"
+    },
+    {
+      "clinical": "radiates to",
+      "lay": "spreads into",
+      "relation": "paraphrase",
+      "chv": [
+        {
+          "term": "radiating pain",
+          "cui": "C0234254"
+        }
+      ],
+      "basis": "as the row above"
+    },
+    {
+      "clinical": "saddle anaesthesia",
+      "lay": "numbness between my legs and around my bottom",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "numbness",
+          "cui": "C0028643"
+        }
+      ],
+      "basis": "loss of sensation in the saddle area described in plain words; 'saddle anaesthesia' is not in CHV 2011, and the SNOMED CT term was not checked in this session (no network access)"
+    },
+    {
+      "clinical": "tachycardia",
+      "lay": "a rapid heartbeat",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "tachycardia",
+          "cui": "C0039231"
+        },
+        {
+          "term": "rapid heartbeat",
+          "cui": "C0039231"
+        }
+      ],
+      "basis": "CHV maps both to tachycardia (C0039231), whose consumer name is 'rapid heartbeat'"
+    },
+    {
+      "clinical": "tender",
+      "lay": "sore to touch",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "tenderness",
+          "cui": "C0234233"
+        },
+        {
+          "term": "sore to touch",
+          "cui": "C0234233"
+        }
+      ],
+      "basis": "CHV maps 'tenderness' to C0234233, whose consumer name is 'sore to touch'; adjective against noun ignored (codebook rule L0)"
+    },
+    {
+      "clinical": "the hoarseness",
+      "lay": "the hoarse voice",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "hoarseness",
+          "cui": "C0019825"
+        },
+        {
+          "term": "hoarse voice",
+          "cui": "C0019825"
+        }
+      ],
+      "basis": "as the row above, with the article"
+    },
+    {
+      "clinical": "tonsillar exudate",
+      "lay": "white spots on my tonsils",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "tonsillar exudate",
+          "cui": "C0241451"
+        }
+      ],
+      "basis": "CHV maps 'tonsillar exudate' to C0241451 but holds no consumer phrase for it; the lay span describes how the exudate looks"
+    },
+    {
+      "clinical": "trismus",
+      "lay": "trouble opening my mouth",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "trismus",
+          "cui": "C0041105"
+        }
+      ],
+      "basis": "a plain-English description of trismus (C0041105 in CHV); CHV's 'lockjaw' is a different concept (C0343495) and is not used"
+    },
+    {
+      "clinical": "urinary hesitancy",
+      "lay": "trouble starting to pee",
+      "relation": "paraphrase",
+      "chv": [
+        {
+          "term": "urinary hesitancy",
+          "cui": "C0152032"
+        },
+        {
+          "term": "pee",
+          "cui": "C0042036"
+        }
+      ],
+      "basis": "CHV maps 'urinary hesitancy' to C0152032, whose UMLS name is 'delay when starting to pass urine'; the lay span paraphrases that name with CHV's consumer word 'pee'"
+    },
+    {
+      "clinical": "viral gastroenteritis",
+      "lay": "the stomach flu",
+      "relation": "terminologies_disagree",
+      "chv": [
+        {
+          "term": "viral gastroenteritis",
+          "cui": "C0318712"
+        },
+        {
+          "term": "stomach flu",
+          "cui": "C0277525"
+        }
+      ],
+      "basis": "MedlinePlus titles its page 'Viral gastroenteritis (stomach flu)' (not checked in this session; no network access); CHV places 'stomach flu' at infectious gastroenteritis (C0277525), a broader concept than viral gastroenteritis (C0318712), so the lay span is vaguer (codebook rules L3 and L6: recorded, not ruled)"
+    },
+    {
+      "clinical": "vomited",
+      "lay": "thrown up",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "vomited",
+          "cui": "C0042963"
+        },
+        {
+          "term": "throw up",
+          "cui": "C0042963"
+        }
+      ],
+      "basis": "CHV maps 'vomited' and 'throw up' to vomiting (C0042963); inflection ignored (codebook rule L0)"
+    }
+  ]
+}
