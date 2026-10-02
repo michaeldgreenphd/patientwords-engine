@@ -80,13 +80,14 @@ def test_every_wave_three_seed_validates_through_the_seed_module(w3_set):
         assert seeds.validate_seed(seed, w3_set) == [], seed_id
 
 
-def test_validate_seeds_accepts_the_file_by_path_and_by_wave(capsys):
+def test_validate_seeds_accepts_the_file_by_path_and_by_wave(capsys, w3_set):
     """The CLI path the workflow runs (`validate-seeds --seeds "$SEEDS_FILE"`), with and without --wave 3; nothing in
-    the CLI refuses a third wave."""
-    assert cli.main(["validate-seeds", "--seeds", str(W3_FILE)]) == 0
-    assert cli.main(["validate-seeds", "--seeds", str(W3_FILE), "--wave", "3"]) == 0
-    out = capsys.readouterr().out
-    assert out.count(": ok;") == 16 and "REFUSED" not in out
+    the CLI refuses a third wave. Each run's output is read on its own: one `<seed id>: ok;` line per seed of the file,
+    so a run that drops a seed cannot be covered by a run that reports one twice."""
+    for wave in ([], ["--wave", "3"]):
+        assert cli.main(["validate-seeds", "--seeds", str(W3_FILE), *wave]) == 0, wave
+        reported = sorted(line.split(";", 1)[0] for line in capsys.readouterr().out.splitlines())
+        assert reported == sorted(f"{seed_id}: ok" for seed_id in w3_set.seeds), wave
 
 
 def test_the_schema_is_the_wave_two_schema_with_pilot_wave_widened_to_three(w3_doc, w12_doc):
