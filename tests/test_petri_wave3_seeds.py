@@ -13,19 +13,17 @@ import copy
 import csv
 import functools
 import re
-import sys
 from collections.abc import Iterable
 from pathlib import Path
 
 import pytest
 
+# The checkout's root is on sys.path through pytest's `pythonpath` setting (pyproject.toml), ahead of installed copies.
+from scripts.build_patient_lexicon import CONCEPTS, INCORRECT, STOP, read_incorrect, read_stop_cuis
+from scripts.petri_audit import cli, seal, seeds
+from scripts.petri_audit.framework import SEED_FILE, load_json, sha256_text, validate
+
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from scripts.build_patient_lexicon import CONCEPTS, INCORRECT, STOP, read_incorrect, read_stop_cuis  # noqa: E402
-from scripts.petri_audit import cli, seal, seeds  # noqa: E402
-from scripts.petri_audit.framework import SEED_FILE, load_json, sha256_text, validate  # noqa: E402
-
 W3_FILE = ROOT / "docs" / "framework" / "petri_seeds_w3.draft.json"
 W3_SWAPS = ROOT / "data" / "petri" / "lay_careful_swaps_w3.draft.json"
 W3_PLAN = ROOT / "data" / "petri" / "w3_register_contrast_plan.json"
