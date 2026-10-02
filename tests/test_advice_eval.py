@@ -1397,12 +1397,49 @@ def test_every_claude_model_the_engine_prices_that_rejects_temperature_is_listed
 @pytest.mark.parametrize("spelling", [
     "claude-haiku-4-5", "anthropic:claude-haiku-4-5", "openrouter/anthropic/claude-haiku-4.5",
     "claude-sonnet-4-6", "openrouter:anthropic/claude-sonnet-4.6",
-    "openai:openai/gpt-5.5", "openrouter:openai/gpt-6-luna", "mockllm/model", "",
+    "openai:openai/gpt-5.5", "openrouter:openai/gpt-5.4-mini", "openrouter:google/gemini-3.1-pro-preview",
+    "mockllm/model", "",
     # the match is exact after one provider prefix: a near spelling is not the model
     "claude-opus-5.5", "claude-opus-5-5-20260921", "openrouter:anthropic/claude-opus-5-5",
 ])
 def test_temperature_is_left_alone_for_every_other_model(spelling):
     assert ae.temperature_omission(spelling, LIVE_REGISTRY) is None
+
+
+def _catalogue_rows_without_temperature() -> dict[str, str]:
+    """Every slug in a committed OpenRouter catalogue capture whose row lists supported_parameters without
+    temperature, mapped to the capture that says so (the newest capture listing the slug decides)."""
+    rows: dict[str, tuple[str, bool]] = {}
+    for capture in sorted((Path(__file__).resolve().parents[1] / "data" / "pab").glob("openrouter_catalogue_*.json")):
+        resolved = json.loads(capture.read_text(encoding="utf-8")).get("resolved")
+        if not isinstance(resolved, dict):
+            continue
+        for slug, row in resolved.items():
+            params = row.get("supported_parameters") if isinstance(row, dict) else None
+            if isinstance(params, list):
+                rows[slug] = (capture.name, "temperature" not in params)
+    return {slug: name for slug, (name, lacks) in rows.items() if lacks}
+
+
+def test_every_priced_openrouter_slug_whose_catalogue_row_lists_no_temperature_is_sent_none():
+    """Second review of 2026-10-01: openai/gpt-chat-latest, gpt-5.6-luna, gpt-6-astra and gpt-6.1-sol (and the
+    earlier gpt-6-luna) list no temperature parameter in their OpenRouter catalogue rows, yet were sent one, so a
+    judge at 0.0 recorded 0.0 as applied while the model sampled at its own setting. Every such slug the registry
+    prices, in any block, must be in the omission map, and every OpenRouter-routed spelling of it must match."""
+    priced = {slug for cfg in LIVE_REGISTRY.values() if isinstance(cfg, dict) for slug in (cfg.get("pricing") or {})}
+    lacking = {slug for slug in _catalogue_rows_without_temperature() if slug in priced}
+    assert {"openai/gpt-chat-latest", "openai/gpt-5.6-luna", "openai/gpt-6-astra", "openai/gpt-6.1-sol",
+            "openai/gpt-6-luna"} <= lacking
+    for slug in sorted(lacking):
+        for spelling in (slug, f"openrouter:{slug}", f"openrouter/{slug}"):
+            assert ae.temperature_omission(spelling, LIVE_REGISTRY), spelling
+        vendor = slug.split("/", 1)[0]
+        if isinstance(LIVE_REGISTRY.get(vendor), dict) and slug in (LIVE_REGISTRY[vendor].get("pricing") or {}):
+            assert ae.temperature_omission(f"{vendor}:{slug}", LIVE_REGISTRY), f"{vendor}:{slug}"
+        # what an advice call or judge on the slug sends, and what it records
+        _max, sent, adjustments = ae.call_settings(LIVE_REGISTRY, LIVE_REGISTRY["openrouter"], slug, 1024, 0.0)
+        assert sent is None
+        assert [a["field"] for a in adjustments if a["field"] == "temperature"] == ["temperature"]
 
 
 @pytest.mark.parametrize("model", ["gemini-3.1-pro-preview", "gemini-3.8-flash"])
@@ -1547,8 +1584,10 @@ def test_elicit_sends_and_records_the_registry_settings_for_a_listed_model(tmp_p
     assert all(r["request"]["temperature"] == 1.0 and r["request"]["max_tokens"] == 3000 for r in compat_rows)
     side = json.loads((stim_path.parent / f"responses_{stim_path.stem}.report.json").read_text(encoding="utf-8"))
     assert side["max_tokens"] == 1024 and side["temperature"] == 1.0
-    assert side["max_tokens_by_model"] == {"anthropic:model-r": 4096, "fakeai:model-z": 3000}
-    assert side["temperature_omitted_for"] == {"anthropic:model-r": "model-r rejects temperature (test)"}
+    # named as this fire's settings, not the archive's (a resumed archive can hold the same spec sent otherwise)
+    assert side["fire_max_tokens_by_model"] == {"anthropic:model-r": 4096, "fakeai:model-z": 3000}
+    assert side["fire_temperature_omitted_for"] == {"anthropic:model-r": "model-r rejects temperature (test)"}
+    assert "max_tokens_by_model" not in side and "temperature_omitted_for" not in side
 
 
 def test_an_unaffected_elicit_record_keeps_its_shape(tmp_path, monkeypatch):
@@ -1561,7 +1600,8 @@ def test_an_unaffected_elicit_record_keeps_its_shape(tmp_path, monkeypatch):
     assert all(list(r["request"]) == ["system", "message", "temperature", "max_tokens"] for r in advice)
     assert all(r["request"]["temperature"] == 1.0 and r["request"]["max_tokens"] == 1024 for r in advice)
     side = json.loads(sidecar.read_text(encoding="utf-8"))
-    assert "max_tokens_by_model" not in side and "temperature_omitted_for" not in side
+    assert not {"fire_max_tokens_by_model", "fire_temperature_omitted_for", "max_tokens_by_model",
+                "temperature_omitted_for"} & set(side)
 
 
 def test_the_spend_ceiling_sizes_a_listed_model_by_its_raised_budget(tmp_path, monkeypatch):

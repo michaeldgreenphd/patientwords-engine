@@ -151,7 +151,9 @@ def _registry_rate(cfg: dict, model: str) -> tuple[object, str]:
 
 
 # The registry field (anthropic block) naming the models whose requests must not carry `temperature`, and the reason
-# recorded when it is left out. Added 2026-10-01 for the Claude models that reject temperature (registry note).
+# recorded when it is left out. Added 2026-10-01 for the Claude models that reject temperature, and widened 2026-10-02
+# to the OpenRouter OpenAI slugs whose catalogue row lists no temperature parameter (registry note). Its keys are model
+# spellings from any block; it sits in the anthropic block only because it began there.
 OMIT_TEMPERATURE_FIELD = "omit_temperature"
 # The registry field (any block) giving a per-model minimum output budget for reasoning models (registry note).
 MIN_OUTPUT_TOKENS_FIELD = "min_output_tokens"
@@ -1192,14 +1194,18 @@ def elicit(args) -> Path:
         cum_cost, cum_per_model = _cumulative_from_records(all_rows)
         # the fire's settings stand in `temperature` and `max_tokens`; a spec the registry sends otherwise is named
         # here (each record carries its own request_adjustments). Absent when nothing departs, so a sidecar of an
-        # unaffected fire keeps the shape consumers already read
+        # unaffected fire keeps the shape consumers already read. Named `fire_` because they describe what THIS
+        # fire's calls for each spec it names would send, not the archive: a resumed archive can hold earlier records
+        # of the same spec sent otherwise (gemini-3.1-pro-preview's 294 records went at 1024 before its registry
+        # minimum), and those records' request fields are the account of what each call sent (second review of
+        # 2026-10-01)
         departures: dict = {}
         raised = {s: b for s, b in budgets.items() if b != args.max_tokens}
         if raised:
-            departures["max_tokens_by_model"] = raised
+            departures["fire_max_tokens_by_model"] = raised
         omitted = {s: reason for s in budgets if (reason := temperature_omission(spec_route(s)[1], registry))}
         if omitted:
-            departures["temperature_omitted_for"] = omitted
+            departures["fire_temperature_omitted_for"] = omitted
         _write_json(sidecar_path, {
             "run_utc": utc_now_iso(), "engine_sha": base_env["engine_sha"],
             "stimuli_file": str(args.stimuli), "models": models, "arms": arms,

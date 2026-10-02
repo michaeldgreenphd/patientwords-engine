@@ -363,7 +363,8 @@ def inspect_to_registry_spec(model: str, registry: dict | None = None) -> str | 
 def sampling_omissions(model: str, registry: dict | None = None) -> dict[str, str]:
     """The sampling parameters a model's requests must not carry, as {parameter: reason}: {"temperature": reason}
     when the registry's anthropic `omit_temperature` map lists the model (the Claude models that reject temperature:
-    Opus 4.7 and later, Fable 5 and 5.1, Sonnet 5 and 5.5; 2026-10-01), {} otherwise. `model` is an Inspect name
+    Opus 4.7 and later, Fable 5 and 5.1, Sonnet 5 and 5.5, 2026-10-01; and the OpenRouter OpenAI slugs whose catalogue
+    row lists no temperature parameter, 2026-10-02), {} otherwise. `model` is an Inspect name
     (`anthropic/claude-opus-5-5`, `openrouter/anthropic/claude-opus-5.5`) or a registry spec (a judge's). One rule
     for both lanes: the match is scripts/advice_eval.py `temperature_omission`, loaded as the judge loads that
     module, so what this lane leaves out of the GenerateConfig and what the advice lane and the judge leave out of

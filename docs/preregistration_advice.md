@@ -222,6 +222,20 @@ re-priced.
     the others, and that the locked Inspect (inspect-ai 0.3.237) already
     drops temperature on its Anthropic route for every Claude model it
     classes as 4.7 or later, Sonnet 5 included.
+  - A second review the next day (2026-10-02, still before any fire) added
+    five OpenAI slugs to the same map: `openai/gpt-chat-latest`,
+    `openai/gpt-5.6-luna`, `openai/gpt-6-astra` and `openai/gpt-6.1-sol`,
+    whose rows in the 2026-10-01 catalogue capture list no temperature
+    parameter, and `openai/gpt-6-luna`, whose row in the 2026-09-25 capture
+    lists none. Before, they were sent the fire's temperature, so a judge
+    at 0.0 would have recorded 0.0 as applied. OpenRouter is understood to
+    ignore a parameter a model does not support (not verified for these
+    slugs), in which case the model sampled at its own setting. Their
+    requests now go out without temperature and their records say so. No
+    archived record, registered arm or landed Petri run uses any of the
+    five. The map stays in the `anthropic` block, where it began; its keys
+    are model spellings and it applies to whichever block a spec routes
+    through.
   - `min_output_tokens` gives 4096 for the reasoning models priced here.
     The advice lane sends the larger of the fire's `--max-tokens` and that
     value, and records the value sent. No model whose archive is
@@ -271,8 +285,12 @@ Registry sha256 of this revision's first version, which was committed on
 the branch but never fired against (commit be78199e):
 `b952a88dcc01c9163a65b6d2f4ab39fb93bda002552e70109885d5360f54ae7b`.
 Registry sha256 after the same-day review (the wider `omit_temperature`
-list, the `google` block entries and the corrected notes):
-`629984ab07a18f04692ce28f0480edd2489215ab7d2727da0978d311766dd1d3`
+list, the `google` block entries and the corrected notes), also committed
+on the branch and never fired against:
+`629984ab07a18f04692ce28f0480edd2489215ab7d2727da0978d311766dd1d3`.
+Registry sha256 after the second review of 2026-10-02 (the five OpenAI
+slugs added to `omit_temperature`, and its note):
+`b767fed0e699ffbf21d0c623b467f28d418c29309e709033abe058d540f71731`
 
 ## The consumer-proxy caveat (repeat in every writeup)
 
