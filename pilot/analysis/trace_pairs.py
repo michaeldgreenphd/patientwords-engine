@@ -39,10 +39,11 @@ BLANK = "___"
 # (common.REQUIRED_FIELDS_V2) and the row id parse_generation.py assigns. Every row of all_rows.jsonl is checked
 # before any is selected, and a row without one is refused by its line, id and key (Copilot review of PR #74).
 ROW_KEYS = ("id", "clinical_term", "patient_term", "template", "next_word", "control")
-# the version-2 next_word rule, as run 2's PROTOCOL.md (section 4) states it: "a non-empty lowercase word of letters
-# (one internal hyphen or apostrophe allowed)". Mirrors pilot/scripts/common.NEXT_WORD_RE and next_word_ok, which
-# the parser applies to every row (a test holds them equal); copied rather than imported, as surface_key is
-# (Copilot review of PR #74).
+# the version-2 next_word check the parser applies to every row: pilot/scripts/common.NEXT_WORD_RE and next_word_ok,
+# copied rather than imported, as surface_key is, and held equal by a test (Copilot review of PR #74), so a trace
+# refuses exactly the next words the parser refused. It is the check behind run 2's PROTOCOL.md section 4, "a
+# non-empty lowercase word of letters (one internal hyphen or apostrophe allowed)", and is broader than that wording
+# in the two ways next_word_ok's docstring names.
 NEXT_WORD_RE = re.compile(r"[^\W\d_]+(?:[-'’][^\W\d_]+)?")
 
 
@@ -57,8 +58,10 @@ def surface_key(s: str) -> str:
 
 
 def next_word_ok(value: object) -> bool:
-    """A version-2 next_word as the protocol defines it: a non-empty lowercase word of letters (any script), with at
-    most one internal hyphen or apostrophe (straight or typographic), and nothing else."""
+    """common.next_word_ok: a string that NEXT_WORD_RE matches in full and that lower() leaves unchanged. Broader
+    than the protocol's wording in two ways: the pattern, \\w without the decimal digits and the underscore, also
+    admits numerals that are not decimal digits (Unicode No and Nl, such as superscript digits and fractions), and the
+    lowercase test admits an uppercase letter that has no lowercase form."""
     return isinstance(value, str) and NEXT_WORD_RE.fullmatch(value) is not None and value == value.lower()
 
 

@@ -130,9 +130,16 @@ OUTSIDE_THE_RULE = {"capital": WORD.capitalize(), "all capitals": WORD.upper(), 
                     "full stop": WORD + ".", "digit": WORD + "2", "underscore": f"{WORD}_{WORD}",
                     "two hyphens": f"{WORD}-{WORD}-{WORD}", "hyphen and apostrophe": f"{WORD}-{WORD}'{WORD}",
                     "leading hyphen": "-" + WORD, "trailing hyphen": WORD + "-", "leading apostrophe": "'" + WORD,
-                    "space": f"{WORD} {WORD}", "leading space": " " + WORD, "newline": WORD + "\n", "empty": ""}
+                    "space": f"{WORD} {WORD}", "leading space": " " + WORD, "newline": WORD + "\n", "empty": "",
+                    "uppercase roman numeral": "Ⅻ", "roman numeral inside a word": WORD + "Ⅰ" + WORD,
+                    "decomposed accent": WORD + "é"}
 INSIDE_THE_RULE = {"plain": WORD, "one hyphen": f"{WORD}-{WORD}", "one apostrophe": f"{WORD}'{WORD}",
                    "one typographic apostrophe": f"{WORD}’{WORD}", "letters of another script": "été"}
+# outside the protocol's wording, but the parser's check accepts them, in the two ways next_word_ok's docstring
+# names: numerals that are not decimal digits, and an uppercase letter that has no lowercase form
+BROADER_THAN_THE_WORDING = {"superscript digit": WORD + "²", "fraction": "½",
+                            "small roman numeral": "ⅻ", "circled digit": "①",
+                            "uppercase letter without a lowercase form": "ϒ"}
 
 
 def test_refuses_a_next_word_outside_the_protocol_rule(tmp_path):
@@ -152,9 +159,12 @@ def test_refuses_a_next_word_outside_the_protocol_rule(tmp_path):
 def test_next_word_rule_is_the_harness_rule(common):
     """trace_pairs.py copies the parser's rule rather than importing common (whose import reads PILOT_DIR's design);
     the copy must be the same pattern and give the same answer on every case, so the trace refuses exactly what the
-    parser would have refused."""
+    parser would have refused. The cases include those where the check is broader than the protocol's wording, on
+    which the copy must agree with the parser too."""
     assert tp.NEXT_WORD_RE.pattern == common.NEXT_WORD_RE.pattern
-    for case, value in {**OUTSIDE_THE_RULE, **INSIDE_THE_RULE, "null": None, "number": 7, "list": [WORD]}.items():
+    cases = {**OUTSIDE_THE_RULE, **INSIDE_THE_RULE, **BROADER_THAN_THE_WORDING, "null": None, "number": 7,
+             "list": [WORD]}
+    for case, value in cases.items():
         assert tp.next_word_ok(value) is common.next_word_ok(value), case
     assert not any(tp.next_word_ok(w) for w in OUTSIDE_THE_RULE.values())
     assert all(tp.next_word_ok(w) for w in INSIDE_THE_RULE.values())
