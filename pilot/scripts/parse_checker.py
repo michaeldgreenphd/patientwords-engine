@@ -14,6 +14,14 @@ parsed against, so compute_summary.py and write_manifest.py can refuse a checked
 plan. A previous parse on disk is refused unless --replace is passed: a result as small as {"batches": []} is a
 valid file (every planned batch absent, recorded as no response) and must not silently replace a complete parse
 (Codex review of PR #52).
+
+Under harness version 2 (recorded in checker_batches.json) every answer also carries relation, sentence_natural and
+patient_realism. An answer with any of them missing or outside its set is invalid exactly as one with an invalid
+verdict or reason is: counted in n_invalid_value, and its item recorded as missing. An answer whose `equivalent`
+contradicts its relation (yes with narrower or different, no with same, same_brand or broader) is kept as given and
+flagged `inconsistent: true`, counted in n_inconsistent; it is never corrected. checked.jsonl rows carry relation,
+sentence_natural, patient_realism and inconsistent (all null for a missing item). A version-1 parse is
+byte-identical to the recorded run's.
 """
 from __future__ import annotations
 
@@ -22,15 +30,18 @@ import sys
 from pathlib import Path
 
 from common import (
+    CHECKER_V2_FIELDS,
     CHECKER_VERDICTS,
     MAX_ATTEMPTS,
     PILOT,
     checker_attempt_failed,
     load_checker_batches,
+    plan_version,
     read_jsonl,
     resolve_input,
     result_binding_problems,
     sha256_file,
+    verdict_inconsistent,
     write_jsonl,
 )
 
@@ -116,11 +127,18 @@ def binding_label(unbound: bool) -> str:
     return "prompt_sha256" if not unbound else "none (--unbound: result recorded before the binding existed)"
 
 
+def v2_answer_valid(e: dict) -> bool:
+    """Whether a version-2 answer carries each further answer (relation, sentence_natural, patient_realism) as one
+    of its allowed values."""
+    return all(e.get(f) in values for f, values in CHECKER_V2_FIELDS.items())
+
+
 def derive(by_id: dict[str, dict], batches: list[dict], blind: dict[str, dict], truth: list[dict], binding: str,
-           plan_sha: str) -> tuple[list[dict], list[dict]]:
+           plan_sha: str, *, version: int) -> tuple[list[dict], list[dict]]:
     """The join itself, pure: (checked rows in key order, checker log) for a validated result. main writes these;
     write_manifest.py finalize derives them again from the recorded result file and refuses a bundle whose files
-    differ (Codex review of PR #52)."""
+    differ (Codex review of PR #52). `version` is the checker plan's harness version (see the module docstring)."""
+    v2 = version >= 2
     verdicts, log = {}, []
     for meta in batches:
         b = by_id.get(meta["batch_id"])
@@ -133,7 +151,7 @@ def derive(by_id: dict[str, dict], batches: list[dict], blind: dict[str, dict], 
             is_final = idx == len(attempts) - 1
             res = a.get("result")
             entries = res.get("verdicts") if isinstance(res, dict) else None
-            n_ok = n_bad = n_dup = n_foreign = 0
+            n_ok = n_bad = n_dup = n_foreign = n_incons = 0
             if isinstance(entries, list) and is_final:
                 for e in entries:
                     if not isinstance(e, dict):
@@ -142,10 +160,17 @@ def derive(by_id: dict[str, dict], batches: list[dict], blind: dict[str, dict], 
                     iid, eq = e.get("id"), e.get("equivalent")
                     if iid not in meta["item_ids"]:
                         n_foreign += 1
-                    elif eq not in VALID or not isinstance(e.get("reason"), str):
+                    elif eq not in VALID or not isinstance(e.get("reason"), str) or (v2 and not v2_answer_valid(e)):
                         n_bad += 1  # a missing or non-text reason is a malformed entry, not a blank (Codex, PR #52)
                     elif iid in verdicts:
                         n_dup += 1
+                    elif v2:
+                        incons = verdict_inconsistent(eq, e["relation"])  # kept as given, flagged and counted
+                        verdicts[iid] = {"verdict": eq, "reason": e["reason"],
+                                         **{f: e[f] for f in CHECKER_V2_FIELDS}, "inconsistent": incons,
+                                         "batch_id": meta["batch_id"]}
+                        n_ok += 1
+                        n_incons += incons
                     else:
                         verdicts[iid] = {"verdict": eq, "reason": e["reason"], "batch_id": meta["batch_id"]}
                         n_ok += 1
@@ -154,11 +179,14 @@ def derive(by_id: dict[str, dict], batches: list[dict], blind: dict[str, dict], 
                         "n_items": len(meta["item_ids"]),
                         "n_entries": len(entries) if isinstance(entries, list) else 0,
                         "n_used": n_ok, "n_invalid_value": n_bad, "n_duplicate_id": n_dup, "n_foreign_id": n_foreign,
+                        **({"n_inconsistent": n_incons} if v2 else {}),
                         "status": "ok" if isinstance(entries, list) else "failed", "plan_binding": binding,
                         "checker_plan_sha256": plan_sha})
     checked = []
+    missing = ({"verdict": "missing", "reason": "", **{f: None for f in CHECKER_V2_FIELDS}, "inconsistent": None,
+                "batch_id": None} if v2 else {"verdict": "missing", "reason": "", "batch_id": None})
     for t in truth:
-        v = verdicts.get(t["id"], {"verdict": "missing", "reason": "", "batch_id": None})
+        v = verdicts.get(t["id"], missing)
         checked.append({**t, **blind[t["id"]], **v, "checker_plan_sha256": plan_sha})
     return checked, log
 
@@ -166,7 +194,8 @@ def derive(by_id: dict[str, dict], batches: list[dict], blind: dict[str, dict], 
 def main(result_path: str, replace: bool = False, unbound: bool = False) -> None:
     result = json.loads(resolve_input(result_path, "parse_checker").read_text(encoding="utf-8"))
     plan_path = PILOT / "checker_batches.json"
-    batches = load_checker_batches()["batches"]  # every prompt verified against its stored hash
+    plan = load_checker_batches()  # every prompt verified against its stored hash, the plan against its inputs
+    batches = plan["batches"]
     by_id = validate_result(result, {b["batch_id"]: b["prompt_sha256"] for b in batches}, unbound)
     stale = previous_outputs()
     if stale and not replace:
@@ -175,13 +204,16 @@ def main(result_path: str, replace: bool = False, unbound: bool = False) -> None
     blind = {x["id"]: x for x in read_jsonl(PILOT / "checker_set.jsonl")}
     truth = read_jsonl(PILOT / "checker_key.jsonl")
     # every row and log entry names the plan it was parsed against
-    checked, log = derive(by_id, batches, blind, truth, binding_label(unbound), sha256_file(plan_path))
+    checked, log = derive(by_id, batches, blind, truth, binding_label(unbound), sha256_file(plan_path),
+                          version=plan_version(plan))
     write_jsonl(PILOT / "checked.jsonl", checked)
     write_jsonl(PILOT / "checker_log.jsonl", log)
     counts = {}
     for c in checked:
         counts[c["verdict"]] = counts.get(c["verdict"], 0) + 1
+    n_incons = sum(1 for c in checked if c.get("inconsistent"))
     print(f"checked.jsonl: {len(checked)} items; verdict counts {counts}; batches={len(batches)} attempts={len(log)}"
+          + (f"; {n_incons} answer(s) flagged inconsistent" if plan_version(plan) >= 2 else "")
           + (f"; --replace wrote over {' and '.join(p.name for p in stale)}" if stale else ""))
 
 

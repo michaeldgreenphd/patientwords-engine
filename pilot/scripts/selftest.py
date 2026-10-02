@@ -1,11 +1,15 @@
 """Self-test: known-value checks of the interval and TF-IDF helpers, the 8-of-N exemplar sampling path, and an
-end-to-end dry run of every script on fabricated responses inside a temporary copy of the pilot directory.
+end-to-end dry run of every script on fabricated responses inside a temporary copy of the pilot directory; then the
+same for harness version 2 (in-process checks of the version-2 functions, and a dry run with the version-2 run kit
+in pilot/prompts_v2/: rows with next_word, variant pairs, the checker's further answers, one row per concept).
 
 Run: python3 scripts/selftest.py. It never touches the real pilot outputs.
 """
 from __future__ import annotations
 
+import contextlib
 import importlib
+import io
 import json
 import os
 import random
@@ -124,6 +128,241 @@ def unit_tests() -> None:
     check(boot["n_undefined"]["A"] > 0 and len(boot["boot"]["A"]) + boot["n_undefined"]["A"] == 200,
           f"undefined replicates are skipped and counted ({boot['n_undefined']['A']} of 200 for arm A)")
     check(len(boot["boot_diff"]) + boot["n_undefined_diff"] == 200, "difference replicates account for every draw")
+
+
+def refused(fn, *args, **kwargs) -> str | None:
+    """The message of the SystemExit fn raises, or None when it returns."""
+    try:
+        fn(*args, **kwargs)
+    except SystemExit as e:
+        return str(e)
+    return None
+
+
+def unit_tests_v2() -> None:
+    """Harness version 2, in-process: the version key, the version-2 design data, the row contract with next_word, the
+    probe point, the control example, the checker's further answers, the prompt checks, the schemas, the variant
+    counts and the review allocation. These functions take the version or the design as an argument, so they are
+    checked here under the recorded run's version-1 design."""
+    v2_design = json.loads((HERE.parent / "prompts_v2" / "design.json").read_text(encoding="utf-8"))
+    v1_design = json.loads((HERE.parent / "design.json").read_text(encoding="utf-8"))
+    check(common.HARNESS_VERSION == 1 and common.harness_version(v1_design) == 1 and common.harness_version(v2_design) == 2,
+          "an absent harness_version is version 1 (the recorded run's design); the version-2 kit's design is version 2")
+    check(all(refused(common.harness_version, {"harness_version": bad}) for bad in ("2", True, 3, 2.0, None)),
+          "a harness_version that is not the integer 1 or 2 (a string, a boolean, 3, a float, null) is refused")
+    check(common.version_design_problems(v1_design) == [] and common.version_design_problems(v2_design) == [],
+          "both shipped designs carry exactly their version's data")
+    for label, bad in (("version-2 keys without harness_version 2", {k: v for k, v in v2_design.items() if k != "harness_version"}),
+                       ("no probe_endings", {k: v for k, v in v2_design.items() if k != "probe_endings"}),
+                       ("an upper-case probe ending", dict(v2_design, probe_endings=["My"])),
+                       ("counts that do not add up to the non-control rows", dict(v2_design, concepts_per_call=13)),
+                       ("a boolean count", dict(v2_design, variant_pairs_per_call=True)),
+                       ("another review sampling", dict(v2_design, review_sampling="uniform")),
+                       ("no prompt_examples", {k: v for k, v in v2_design.items() if k != "prompt_examples"}),
+                       ("version-1 data plus prompt_examples",
+                        dict(v1_design, prompt_examples=v2_design["prompt_examples"]))):
+        check(common.version_design_problems(bad) != [], f"a design with {label} is refused")
+    # the generation prompt's example words render from design.json through markers checked like the others (Codex on
+    # PR #69); a version-1 template carrying one is refused as naming an unknown marker
+    texts = common.prompt_example_texts(v2_design)
+    v2_only = set(common.generation_markers(2)) - set(common.GENERATION_MARKERS)
+    check(set(texts) == set(common.V2_GENERATION_MARKERS) == v2_only
+          and texts["{{PROBE_ENDINGS}}"] == ", ".join(v2_design["probe_endings"])
+          and common.generation_markers(1) == common.GENERATION_MARKERS,
+          "every version-2 example marker renders from design.json, and version 1 keeps its five markers")
+    gen_v2_text = (HERE.parent / "prompts_v2" / "generation_prompt.txt").read_text(encoding="utf-8")
+    check(common.template_problems(gen_v2_text, common.generation_markers(2), "g") == []
+          and common.template_problems(gen_v2_text, common.generation_markers(1), "g") != []
+          and common.template_problems(gen_v2_text.replace("{{PROBE_POINT_EXAMPLES}}", ""),
+                                       common.generation_markers(2), "g"),
+          "the version-2 template carries each version-2 marker once; version 1 refuses them as unknown")
+    pex = v2_design["prompt_examples"]
+    for label, bad_ex in (("a field missing", {k: v for k, v in pex.items() if k != "plain_word"}),
+                          ("a next word with a space", dict(pex, next_words=["two words"])),
+                          ("a probe-point example off the probe point",
+                           dict(pex, probe_point_examples=["... and then"])),
+                          ("a brace", dict(pex, technical_term="{x}"))):
+        check(refused(common.prompt_example_texts, dict(v2_design, prompt_examples=bad_ex)) is not None,
+              f"prompt examples with {label} are refused before planning")
+    row4 = {"clinical_term": "a", "patient_term": "b", "template": "x ___ my", "control": "none"}
+    row5 = {"clinical_term": "a", "patient_term": "b", "template": "x ___ my", "next_word": "friend", "control": "none"}
+    check(common.validate_line(json.dumps(row4), 1)[1] == "ok" and common.validate_line(json.dumps(row5), 2)[1] == "ok"
+          and common.validate_line(json.dumps(row4), 2)[1] == "missing_field:next_word",
+          "a version-1 row is valid under version 1; version 2 needs next_word as a fifth key")
+    for word, ok in (("friend", True), ("in-law", True), ("o'clock", True), ("o’clock", True), ("café", True),
+                     ("Friend", False), ("two words", False), ("", False), ("x-y-z", False), ("-x", False),
+                     ("friend.", False), ("4th", False), (5, False), (None, False)):
+        got = common.validate_line(json.dumps(dict(row5, next_word=word)), 2)[1]
+        check((got == "ok") == ok and (ok or got == "next_word_invalid"),
+              f"next_word {word!r} is {'valid' if ok else 'the format failure next_word_invalid'} ({got})")
+    check(common.validate_line(json.dumps(dict(row5, template="no blank", next_word="X")), 2)[1] == "template_blank_count_not_1"
+          and common.validate_line(json.dumps(dict(row5, next_word="X", control="maybe")), 2)[1] == "next_word_invalid",
+          "next_word is checked after the template and before the control value (first failing condition)")
+    check(common.attempt_failed(json.dumps(row4), 2) and not common.attempt_failed(json.dumps(row4), 1)
+          and not common.attempt_failed(json.dumps(row5), 2),
+          "the version-2 retry rule counts the five keys; version 1 counts four")
+    ends = common.probe_endings_set(v2_design["probe_endings"])
+    check(common.probe_point_ok("so I'll call my", ends) and common.probe_point_ok("  went to The  ", ends)
+          and not common.probe_point_ok("so I'll call my,", ends) and not common.probe_point_ok("and then", ends)
+          and not common.probe_point_ok("", ends),
+          "probe point: the stripped template's last word, case-insensitive, punctuation not removed")
+    check(common.probe_endings_set(["My", "the"]) == frozenset({"my", "the"})
+          and common.probe_point_ok("so I'll call MY", common.probe_endings_set(["My"])),
+          "the probe endings are lowercased once, by the caller, and still compared case-insensitively")
+    # a plan's recorded version is refused unless it is an integer the harness knows, as in design.json (Copilot on
+    # PR #69): make_review_sheet.py reads the checker plan's version from the file as it stands
+    check(common.plan_version({}) == 1 and common.plan_version({"harness_version": 2}) == 2
+          and common.plan_version({"harness_version": 1}) == 1
+          and all("must be an integer" in (refused(common.plan_version, {"harness_version": bad}) or "")
+                  for bad in ("2", True, 3, 2.0, None)),
+          "a plan's harness_version that is not the integer 1 or 2 (a string, a boolean, 3, a float, null) is refused")
+    ex = v2_design["control_example"]
+    check(json.loads(common.control_example_text(v2_design)) == ex and list(ex) == common.REQUIRED_FIELDS_V2,
+          "the version-2 control example renders with next_word in the version-2 key order")
+    for label, bad_ex in (("without next_word", {k: v for k, v in ex.items() if k != "next_word"}),
+                          ("with an invalid next_word", dict(ex, next_word="Two words")),
+                          ("ending off the probe point", dict(ex, template=ex["template"] + " later")),
+                          ("in the version-1 key order", {k: ex[k] for k in common.REQUIRED_FIELDS} | {"next_word": "x"})):
+        check(refused(common.control_example_text, dict(v2_design, control_example=bad_ex)) is not None,
+              f"a version-2 control example {label} is refused")
+    check(common.verdict_inconsistent("yes", "narrower") and common.verdict_inconsistent("no", "same_brand")
+          and not common.verdict_inconsistent("yes", "broader") and not common.verdict_inconsistent("no", "different")
+          and not any(common.verdict_inconsistent("unclear", r) for r in common.CHECKER_RELATIONS),
+          "equivalent contradicts relation: yes with narrower or different, no with same, same_brand or broader")
+    chk_v2 = (HERE.parent / "prompts_v2" / "checker_prompt.txt").read_text(encoding="utf-8")
+    gen_v2 = (HERE.parent / "prompts_v2" / "generation_prompt.txt").read_text(encoding="utf-8")
+    check(common.checker_enum_problems(chk_v2) == [] and common.version_template_problems(chk_v2, "checker", 2) == []
+          and common.version_template_problems(gen_v2, "generation", 2) == [],
+          "the version-2 prompts name every version-2 key, answer field and value")
+    check(common.checker_enum_problems(chk_v2.replace('"same_brand"', "same brand"))
+          and common.checker_enum_problems(chk_v2.replace("patient_realism", "realism"))
+          and common.version_template_problems(gen_v2.replace('"next_word"', "next word"), "generation", 2),
+          "a version-2 prompt that drops an enum value, a field name or a key is refused")
+    check(common.version_template_problems(gen_v2, "generation", 1) and common.version_template_problems(chk_v2, "checker", 1)
+          and not common.version_template_problems((HERE.parent / "prompts" / "generation_prompt.txt").read_text(encoding="utf-8"),
+                                                   "generation", 1)
+          and not common.version_template_problems((HERE.parent / "prompts" / "checker_prompt.txt").read_text(encoding="utf-8"),
+                                                   "checker", 1),
+          "the version-2 prompts are refused under version 1, which would drop their answers; the recorded prompts pass")
+    good = {"id": "c1", "verdict": "yes", "reason": "r", "relation": "same", "sentence_natural": "both",
+            "patient_realism": "real", "inconsistent": False}
+    gone = {"id": "c2", "verdict": "missing", "reason": "", "relation": None, "sentence_natural": None,
+            "patient_realism": None, "inconsistent": None}
+    check(common.checked_v2_problems(good) == [] and common.checked_v2_problems(gone) == []
+          and common.checked_v2_problems(dict(good, inconsistent=True)) and common.checked_v2_problems(dict(good, relation="x"))
+          and common.checked_v2_problems(dict(gone, relation="same")) and common.checked_v2_problems({"id": "c3", "verdict": "missing"}),
+          "a version-2 checked row must carry valid further answers and the inconsistency they imply; a missing one nulls")
+    mws = importlib.import_module("make_workflow_scripts")
+    # the renderer's command line is argparse's: the stage and --replace in either order, an unknown stage refused
+    # (Copilot on PR #69)
+    with contextlib.redirect_stderr(io.StringIO()):
+        bad_stage = refused(mws.parse_args, ["review"])
+        no_stage = refused(mws.parse_args, ["--replace"])
+    parsed = [(a.which, a.replace) for a in (mws.parse_args(["generation"]), mws.parse_args(["checker", "--replace"]),
+                                             mws.parse_args(["--replace", "checker"]))]
+    check(parsed == [("generation", False), ("checker", True), ("checker", True)]
+          and bad_stage is not None and no_stage is not None,
+          "make_workflow_scripts.py parses the stage and --replace in either order, refusing an unknown or missing "
+          "stage")
+    schema_v2 = json.loads(mws.checker_schema_js(2))
+    item = schema_v2["properties"]["verdicts"]["items"]
+    check(mws.checker_schema_js(1) == mws.CHECKER_SCHEMA_V1 and item["required"] == common.checker_fields(2)
+          and item["properties"]["relation"]["enum"] == list(common.CHECKER_RELATIONS),
+          "the workflow checker schema: the version-1 literal, or for version 2 every further answer required from the enums")
+    bar = importlib.import_module("build_api_requests")
+    v2_verdict = bar.result_shapes(2)["checker"]["shape"]["batches"][0]["attempts"][0]["result"]["verdicts"][0]
+    check(bar.verdict_schema(1) is bar.VERDICT_SCHEMA and bar.result_shapes(1) is bar.RESULT_SHAPES
+          and bar.verdict_schema(2)["properties"]["verdicts"]["items"]["additionalProperties"] is False
+          and list(v2_verdict) == common.checker_fields(2) and "next_word" in bar.retry_rules(2)["generation"],
+          "the request contract is version 1's unchanged, and version 2's carries the further answers and next_word")
+    cs = importlib.import_module("compute_summary")
+
+    def vrow(i: int, clin: str, tpl: str, pat: str, nw: str = "friend") -> dict:
+        return {"call_id": "A__x", "line_index": i, "clinical_term": clin, "template": tpl, "patient_term": pat,
+                "next_word": nw}
+    v = cs.variant_call([vrow(1, "c1", "t1", "p1"), vrow(2, "c1", "t1", "p2"), vrow(3, "c1", "t1", "p3"),
+                         vrow(4, "C1", "t2", "p4"), vrow(5, "c1", "t2", "p5"), vrow(6, "c2", "t3", "p6"),
+                         vrow(7, "c2", "t3", "P6."), vrow(8, "c3", "t4", "p8"), vrow(9, "c3", "t4", "p9", "sister"),
+                         vrow(10, "c1", "t1", "p10")])
+    check(v == {"n_rows": 10, "concepts": 4, "pairs_exact": 2, "pairs_clinical_surface": 3, "non_adjacent_repeats": 1,
+                "runs_of_three_or_more": 1},
+          f"variant counts on a hand-built call: exact and surface-form pairs, a same-surface patient term and a "
+          f"different next_word excluded, a run of three and a non-adjacent repeat ({v})")
+
+    # a compliant call is the design itself, not its counts alone (Codex on PR #69): the reviewer's construction, two
+    # concepts on three rows each and ten single rows, has 16 rows, 12 concepts and 4 exact adjacent pairs, and a call
+    # with the 4 pairs and one concept again on a later line has 12 concepts and 4 pairs too; both passed the earlier
+    # test of pairs and concepts alone. A call with the 4 pairs and a fifth concept on two adjacent rows whose second
+    # row repeats its patient term (so no variant pair) has 17 rows, 12 concepts, 4 pairs, no concept split and no run
+    # of three: only the row count flags it. The clause on split concepts has no case of its own, since it follows
+    # from the other four: 16 rows over 12 concepts leave 4 rows beyond each concept's first, and with no run of three
+    # the 4 pairs take all of them.
+    def call_rows(call: str, layout: list[int], same_phrasing: tuple[int, ...] = ()) -> list[dict]:
+        """Rows in the layout's concept order; a concept in same_phrasing repeats its first patient term."""
+        seen: dict[int, int] = {}
+        out = []
+        for i, k in enumerate(layout):
+            variant = 0 if k in same_phrasing else seen.get(k, 0)
+            out.append({"call_id": call, "control": "none", "line_index": i, "clinical_term": f"c{k}",
+                        "template": f"t{k} ___ my", "patient_term": f"p{k} v{variant}", "next_word": "friend"})
+            seen[k] = seen.get(k, 0) + 1
+        return out
+    layouts = {"A__design": ([0, 0, 1, 1, 2, 2, 3, 3, *range(4, 12)], ()),
+               "A__two_runs_of_three": ([0, 0, 0, 1, 1, 1, *range(2, 12)], ()),
+               "B__a_later_repeat": ([0, 0, 1, 1, 2, 2, 3, 3, *range(4, 12), 0], ()),
+               "B__a_repeated_phrasing": ([0, 0, 1, 1, 2, 2, 3, 3, 4, 4, *range(5, 12)], (4,))}
+    vd = cs.variant_design_summary([r for call, (lay, same) in layouts.items() for r in call_rows(call, lay, same)],
+                                   [{"call_id": c, "arm": c[0]} for c in layouts], 4, 12)
+    per = {c["call_id"]: c for c in vd["per_call"]}
+    three, later, repeated = per["A__two_runs_of_three"], per["B__a_later_repeat"], per["B__a_repeated_phrasing"]
+    check((three["n_rows"], three["concepts"], three["pairs_exact"], three["runs_of_three_or_more"]) == (16, 12, 4, 2)
+          and (later["n_rows"], later["concepts"], later["pairs_exact"], later["non_adjacent_repeats"])
+          == (17, 12, 4, 1)
+          and per["A__design"]["compliant"] and not three["compliant"] and not later["compliant"]
+          and vd["expected_rows_per_call"] == 16,
+          "variant compliance: two runs of three rows, or a concept again on a later line, are flagged; the design "
+          "passes")
+    check((repeated["n_rows"], repeated["concepts"], repeated["pairs_exact"], repeated["non_adjacent_repeats"],
+           repeated["runs_of_three_or_more"]) == (17, 12, 4, 0, 0)
+          and not repeated["compliant"]
+          and vd["flagged_calls"] == ["A__two_runs_of_three", "B__a_later_repeat", "B__a_repeated_phrasing"],
+          "variant compliance: a call of 17 rows with 12 concepts, 4 exact pairs, no concept split and no run of three "
+          "(a fifth concept's second row repeating its patient term) is flagged, by the row count alone")
+
+    # an unclear verdict still carries the relation the version-2 schema requires; that relation is reported apart and
+    # counted in no relation, precision or yes-rate figure (Codex on PR #69)
+    def answer(i: int, source: str, verdict: str, relation: str | None) -> dict:
+        given = verdict != "missing"
+        return {"id": f"k{i}", "source": source, "arm": "A", "verdict": verdict, "relation": relation,
+                "sentence_natural": "both" if given else None, "patient_realism": "real" if given else None,
+                "inconsistent": common.verdict_inconsistent(verdict, relation) if given else None}
+    cv = cs.checker_v2_summary([answer(1, "generated", "yes", "same"), answer(2, "generated", "no", "different"),
+                                answer(3, "generated", "unclear", "broader"), answer(4, "seed", "unclear", "same"),
+                                answer(5, "broken", "no", "different"), answer(6, "generated", "missing", None)])
+    un = cv["unclear_relation"]
+    check(cv["relation"]["generated"] == {"same": 1, "same_brand": 0, "broader": 0, "narrower": 0, "different": 1}
+          and sum(cv["relation"]["known_good"].values()) == 0 and cv["precision"]["generated"]["vaguer"] == 0
+          and cv["yes_by_relation"]["broader"]["n"] == 0 and cv["yes_by_relation"]["same"] == common.wilson(1, 1)
+          and cv["n_answered"] == {"generated": 3, "known_good": 1, "broken": 1}
+          and cv["n_relation_counted"] == {"generated": 2, "known_good": 0, "broken": 1}
+          and un["n"] == {"generated": 1, "known_good": 1, "broken": 0} and un["total"] == 2
+          and un["relation"]["generated"]["broader"] == 1 and un["relation"]["known_good"]["same"] == 1
+          and un["item_ids"] == ["k3", "k4"] and sum(cv["sentence_natural"]["generated"].values()) == 3,
+          "an unclear verdict's relation is reported apart and counted in no relation, precision or yes-rate figure")
+    mrs = importlib.import_module("make_review_sheet")
+    check(mrs.largest_remainder(40, {"A": 108, "B": 108}) == {"A": 20, "B": 20}
+          and mrs.largest_remainder(40, {"A": 100, "B": 50}) == {"A": 27, "B": 13}
+          and sum(mrs.largest_remainder(40, {"A": 7, "B": 6}).values()) == 40,
+          "concept allocation across arms by largest remainder")
+    wm = importlib.import_module("write_manifest")
+    rec = {"c1": {"prompt_sha256": "a" * 64, "exemplar_ids": ["s1"]}}
+    old0 = {"design_json_sha256": "d" * 64, "design": {},
+            "prompt_hashes": {"generation_prompt_template": "t" * 64, "generation_calls": rec}}
+    cur2 = {"design_json_sha256": "e" * 64, "harness_version": 2, "prompt_hashes": {"generation_prompt_template": "t" * 64}}
+    same = {"calls": [{"id": "c1", "prompt_sha256": "a" * 64, "exemplar_ids": ["s1"]}]}
+    msg = refused(wm.input_refactor_record, old0, cur2, same, ["design_json_sha256"], "r", "now")
+    check(msg is not None and "harness_version changed" in msg,
+          "--refactor-inputs refuses a design change that alters harness_version, even with every prompt unchanged")
 
 
 def fake_response(call: dict, r: random.Random, broken_first: bool) -> list[dict]:
@@ -520,6 +759,13 @@ def dry_run() -> None:
         check(f"judged yes {yes['x']} / {yes['n']} = {yes['p']:.3f}" in (tmp / "HANDOFF.md").read_text(encoding="utf-8")
               and (tmp / "HANDOFF.md").read_text(encoding="utf-8").startswith("# Self-test dry run\n\nFabricated"),
               "compute_summary writes the results block into the handoff, leaving the text outside the markers")
+        # the note that the row-level intervals of estimands 1 to 5 are descriptive is version 2's (Codex on PR #69)
+        v1_md, v1_hand = ((tmp / n).read_text(encoding="utf-8") for n in ("summary.md", "HANDOFF.md"))
+        check("row_level_intervals" not in s and "Intervals under the variant design" not in v1_md
+              and "**Intervals (version 2):**" not in v1_hand
+              and not any(p in text for p in ("estimands 1 to 5", "not independent draws", "single generation")
+                          for text in (v1_md, v1_hand)),
+              "a version-1 summary, its markdown and the results block carry no version-2 interval note")
         check(s["run"]["n_retried_calls"] == 1, "one retried call recorded")
         cw = s["run"]["calls_with_valid_rows"]
         check(cw["n"] == 18 and cw["x"] == 17 and s["run"]["calls_without_response"] == 1
@@ -893,12 +1139,34 @@ def dry_run() -> None:
         run("write_manifest.py", "finalize")
         # a plain rewrite under another interpreter clears the finalization instead of attributing the sealed
         # outputs to an interpreter that did not produce them (Codex on PR #52)
+        summary_bytes = (tmp / "summary.json").read_bytes()
         py_m = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
-        py_m["python"] = "0.0.0"
+        # an interpreter on the other side of the 3.12 change to sum() over floats would recompute the sealed float
+        # sums differently in the last bit: the summary and every manifest write but a reset are refused, and nothing
+        # is written
+        other_side = "3.11.15" if sys.version_info >= common.FLOAT_SUM_CHANGED else "3.12.0"
+        for sealed_as in (other_side, None, "unknown"):
+            py_m["python"] = sealed_as
+            (tmp / "manifest.json").write_text(json.dumps(py_m, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            crossed = (tmp / "manifest.json").read_bytes()
+            for args in (("write_manifest.py",), ("write_manifest.py", "finalize"), ("compute_summary.py",)):
+                run(*args, expect_failure=True)
+                check(("records no interpreter version" if sealed_as in (None, "unknown")
+                       else "sum() over floats changed in 3.12") in last_err[0]
+                      and (tmp / "manifest.json").read_bytes() == crossed
+                      and (tmp / "summary.json").read_bytes() == summary_bytes,
+                      f"{' '.join(args)} refuses a run sealed under Python {sealed_as!r} and writes nothing")
+        check(common.float_sum_side("3.11.15") == "plain" and common.float_sum_side("3.12") == "compensated"
+              and common.float_sum_side("3.13.4") == "compensated",
+              "the interpreter versions fall on the documented sides of the 3.12 change to sum()")
+        # within the same side, a plain rewrite under another interpreter clears the finalization instead of
+        # attributing the sealed outputs to an interpreter that did not produce them (Codex on PR #52)
+        same_side = f"{sys.version_info.major}.{sys.version_info.minor}.999"
+        py_m["python"] = same_side
         (tmp / "manifest.json").write_text(json.dumps(py_m, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         run("write_manifest.py")
         py_m2 = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
-        check(py_m2["finalized_utc"] is None and "output_hashes" not in py_m2 and py_m2["python"] != "0.0.0",
+        check(py_m2["finalized_utc"] is None and "output_hashes" not in py_m2 and py_m2["python"] != same_side,
               "a plain rewrite under another interpreter clears the finalization and records the interpreter")
         run("write_manifest.py", "finalize")
         md_text = (tmp / "summary.md").read_text(encoding="utf-8")
@@ -909,6 +1177,27 @@ def dry_run() -> None:
               "a plan-time rewrite after an output changed clears the finalization time and the hashes")
         (tmp / "summary.md").write_text(md_text, encoding="utf-8")
         run("write_manifest.py", "finalize")
+        # a finalized run directory is a sealed record: every writer that would write into it (the planner, the
+        # workflow-script renderer, the checker-set builder, the review-sheet drawer, the request builder) refuses
+        # without --replace and writes nothing, so a call with PILOT_DIR unset cannot write over the recorded run at
+        # pilot/; with --replace the renderer writes, and an unchanged render leaves the finalization standing
+        sealed = {n: (tmp / n).read_bytes() for n in ("calls.json", "checker_batches.json", "checker_set.jsonl",
+                                                       "review_map.json", "review_key.csv", "manifest.json",
+                                                       "api_requests_generation.json")}
+        sealed_wf = {p.name: p.read_bytes() for p in (tmp / "workflows").glob("*.js")}
+        for script, args in (("plan_calls.py", ()), ("make_workflow_scripts.py", ("generation",)),
+                             ("make_workflow_scripts.py", ("checker",)), ("build_checker_set.py", ()),
+                             ("make_review_sheet.py", ()), ("build_api_requests.py", ("generation", "--model", "m"))):
+            run(script, *args, expect_failure=True)
+            check("holds a finalized run" in last_err[0], f"{script} refuses to write into a finalized run directory")
+        check(all((tmp / n).read_bytes() == b for n, b in sealed.items())
+              and {p.name: p.read_bytes() for p in (tmp / "workflows").glob("*.js")} == sealed_wf,
+              "the refused writers leave every file of the finalized run as it was")
+        run("make_workflow_scripts.py", "generation", "--replace")
+        run("write_manifest.py")
+        check((tmp / "workflows" / "generation.workflow.js").read_bytes() == sealed_wf["generation.workflow.js"]
+              and isinstance(json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))["finalized_utc"], str),
+              "with --replace the renderer writes into the finalized run; the same render keeps the finalization")
         # an input refactor: text moved between the generation template and design.json with no rendered prompt
         # changed (Codex on PR #52). A plain write refuses the changed input; --refactor-inputs accepts it only with a
         # reason, not combined with --reset, and only when the re-planned calls carry the recorded prompt hashes; it
@@ -918,7 +1207,7 @@ def dry_run() -> None:
         ddoc = json.loads(design_bytes.decode("utf-8"))
         (tmp / "design.json").write_text(json.dumps(ddoc, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
         run("write_manifest.py", expect_failure=True)  # calls.json was planned from the previous design file
-        run("plan_calls.py")
+        run("plan_calls.py", "--replace")
         run("write_manifest.py", expect_failure=True)  # a changed input without --reset
         run("write_manifest.py", "--refactor-inputs", "", expect_failure=True)
         run("write_manifest.py", "--refactor-inputs", "self-test", "--reset", expect_failure=True)
@@ -946,7 +1235,7 @@ def dry_run() -> None:
         ddoc2 = json.loads((tmp / "design.json").read_text(encoding="utf-8"))
         ddoc2["swap_types"][0]["definition"] += " (edited)"  # a change that alters a prompt is not a refactor
         (tmp / "design.json").write_text(json.dumps(ddoc2, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
-        run("plan_calls.py")
+        run("plan_calls.py", "--replace")
         run("write_manifest.py", "--refactor-inputs", "a prompt changed", expect_failure=True)
         check(any(s in last_err[0] for s in ("not the recorded run's", "no longer validates against the plan",
                                              "is not what the current code derives")),
@@ -967,14 +1256,14 @@ def dry_run() -> None:
         check(okrec["generation_calls_unchanged"] == 1 and okrec["before"]["design_json_sha256"] == "d" * 64 and refused,
               "the manifest records a refactor whose calls match the recorded prompt hashes and refuses one whose do not")
         (tmp / "design.json").write_text(json.dumps(ddoc, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
-        run("plan_calls.py")
+        run("plan_calls.py", "--replace")
         seeds_bytes = (tmp / "seeds.json").read_bytes()  # the seed file is not refactorable
         (tmp / "seeds.json").write_text(json.dumps(json.loads(seeds_bytes.decode("utf-8")), indent=4, ensure_ascii=False) + "\n",
                                         encoding="utf-8")
-        run("plan_calls.py")
+        run("plan_calls.py", "--replace")
         run("write_manifest.py", "--refactor-inputs", "seeds re-serialized", expect_failure=True)
         (tmp / "seeds.json").write_bytes(seeds_bytes)
-        run("plan_calls.py")
+        run("plan_calls.py", "--replace")
         run("write_manifest.py")
         check(isinstance(json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))["finalized_utc"], str),
               "with the inputs back as sealed, a plain rewrite keeps the finalization")
@@ -1183,9 +1472,9 @@ def dry_run() -> None:
         seeds_doc["seeds"][0]["clinical_term"] = "changed for the rerun check"
         (tmp / "seeds.json").write_text(json.dumps(seeds_doc, ensure_ascii=False), encoding="utf-8")
         run("write_manifest.py", "--reset", expect_failure=True)  # calls.json still from the old seeds: refuse
-        run("plan_calls.py")
+        run("plan_calls.py", "--replace")
         run("compute_summary.py", expect_failure=True)  # the previous parse under re-planned prompts: refuse
-        run("build_checker_set.py", expect_failure=True)
+        run("build_checker_set.py", "--replace", expect_failure=True)
         run("write_manifest.py", expect_failure=True)  # seeds changed: refuse
         # the previous run's checker plan was built from the old seeds: refused even with --reset until it is
         # rebuilt after the new generation or moved aside (Codex on PR #52)
@@ -1203,7 +1492,365 @@ def dry_run() -> None:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+V2_WORDS = ("friend", "sister", "neighbour", "boss")  # neutral next words: the fabricated rows carry no vocabulary
+V2_RELATIONS = ("same", "same", "broader", "same_brand", "same")  # the cycle fabricated generated answers follow
+
+
+def fake_rows_v2(call: dict, r: random.Random, deviate: bool, failures: bool) -> str:
+    """A version-2 response: 16 control "none" rows covering 12 concepts, concepts 0 to 3 each followed by a second
+    patient phrasing with the same clinical term, template and next_word, then 4 negative controls; concepts 10 and 11
+    end off the probe point. The deviating call repeats concept 0 three times (a run of three), gives concept 2's
+    second line a clinical term that differs in casing only (a surface-form pair, not an exact one) and moves concept
+    3's second line to the end (a non-adjacent repeat): 3 exact pairs, not 4, so it is not compliant. `failures`
+    appends three format failures: a next_word with a space, an empty one, and a row without the key."""
+    tag = {k: r.randrange(1000) for k in range(12)}
+
+    def row(k: int, v: int, clin_upper: bool = False) -> str:
+        clin = f"clin {call['cell']} {k} {tag[k]}"
+        end = "and then" if k >= 10 else "so I'm going to call my"
+        return json.dumps({"clinical_term": clin.upper() if clin_upper else clin,
+                           "patient_term": f"lay {call['cell']} {k} {tag[k]} v{v}",
+                           "template": f"I mentioned ___ over lunch {k} {tag[k]}, {end}",
+                           "next_word": V2_WORDS[k % 4], "control": "none"})
+    if deviate:
+        lines = [row(0, 0), row(0, 1), row(0, 2), row(1, 0), row(1, 1), row(2, 0), row(2, 1, clin_upper=True),
+                 row(3, 0)] + [row(k, 0) for k in range(4, 12)] + [row(3, 1)]
+    else:
+        lines = [x for k in range(4) for x in (row(k, 0), row(k, 1))] + [row(k, 0) for k in range(4, 12)]
+    lines += [json.dumps({"clinical_term": f"Concept {i}", "patient_term": f"concept {i}.",
+                          "template": "She mentions ___ at night, so she called her", "next_word": "sister",
+                          "control": "negative"}) for i in range(4)]
+    if failures:
+        lines += ['{"clinical_term": "x", "patient_term": "y", "template": "a ___ my", "next_word": "Two Words", "control": "none"}',
+                  '{"clinical_term": "x", "patient_term": "y", "template": "a ___ my", "next_word": "", "control": "none"}',
+                  '{"clinical_term": "x", "patient_term": "y", "template": "a ___ my", "control": "none"}']
+    return "\n".join(lines)
+
+
+def dry_run_v2() -> None:
+    """End-to-end dry run of harness version 2 in a temporary directory, with the version-2 run kit
+    (pilot/prompts_v2/: both templates and design.json) and fabricated responses: rows with next_word, variant pairs
+    and one deviating call, format failures on next_word, and checker answers with the further fields, one of them
+    out of its set and one inconsistent. Checks every version-2 block of the summary, the one-row-per-concept review
+    draw, the version-2 schemas and scripts, and a clean finalize."""
+    tmp = Path(tempfile.mkdtemp(prefix="pilot_selftest_v2_"))
+    try:
+        for name in ("seeds.json", "manifest_model.json"):
+            shutil.copy(HERE.parent / name, tmp / name)
+        (tmp / "prompts").mkdir()
+        kit = HERE.parent / "prompts_v2"
+        for name in ("generation_prompt.txt", "checker_prompt.txt"):
+            shutil.copy(kit / name, tmp / "prompts" / name)
+        (tmp / "PROTOCOL.md").write_text("# Version-2 dry run of scripts/selftest.py\n\nFabricated responses in a "
+                                         "temporary directory.\n", encoding="utf-8")
+        (tmp / "HANDOFF.md").write_text("# Version-2 self-test dry run\n\n<!-- results:begin -->\n<!-- results:end -->\n",
+                                        encoding="utf-8")
+        model_doc = json.loads((tmp / "manifest_model.json").read_text(encoding="utf-8"))
+        model_doc["session_model_at_run"] = model_doc["session_last_served_model_at_run"] = "selftest-model"
+        (tmp / "manifest_model.json").write_text(json.dumps(model_doc, indent=2) + "\n", encoding="utf-8")
+        env = {**os.environ, "PILOT_DIR": str(tmp)}
+        last_err = [""]
+
+        def run(script: str, *args: str, expect_failure: bool = False) -> str:
+            out = subprocess.run([sys.executable, str(HERE / script), *args], env=env, capture_output=True, text=True,
+                                 check=False)
+            last_err[0] = out.stderr
+            check((out.returncode != 0) if expect_failure else (out.returncode == 0),
+                  f"[v2] {script} {' '.join(args)}{' (expected to refuse)' if expect_failure else ''}\n{out.stdout}{out.stderr}")
+            return out.stdout
+        # the version-2 prompts under the recorded run's version-1 design would drop next_word and the further checker
+        # answers: refused; so is a design carrying version-2 data without harness_version 2, or an unknown version
+        v2_design = json.loads((kit / "design.json").read_text(encoding="utf-8"))
+        shutil.copy(HERE.parent / "design.json", tmp / "design.json")
+        run("plan_calls.py", expect_failure=True)
+        check("harness version 1" in last_err[0] and not (tmp / "calls.json").exists(),
+              "the version-2 prompts with the version-1 design.json are refused before planning")
+        for bad in ({k: v for k, v in v2_design.items() if k != "harness_version"}, dict(v2_design, harness_version="2"),
+                    dict(v2_design, harness_version=3)):
+            (tmp / "design.json").write_text(json.dumps(bad, ensure_ascii=False), encoding="utf-8")
+            run("plan_calls.py", expect_failure=True)
+        check(not (tmp / "calls.json").exists(),
+              "a design with version-2 data but no harness_version 2, or a harness_version of \"2\" or 3, is refused")
+        shutil.copy(kit / "design.json", tmp / "design.json")
+        run("plan_calls.py")
+        plan = json.loads((tmp / "calls.json").read_text(encoding="utf-8"))
+        calls = plan["calls"]
+        example_word = json.dumps({"next_word": v2_design["control_example"]["next_word"]}, ensure_ascii=False)[1:-1]
+        check(plan["harness_version"] == 2 and all(example_word in c["prompt"] for c in calls),
+              "a version-2 plan records harness_version and shows the control example with next_word")
+        shown = common.prompt_example_texts(v2_design).values()
+        check(all(t in c["prompt"] for c in calls for t in shown)
+              and all(common.stray_marker(c["prompt"]) is None for c in calls),
+              "every version-2 prompt shows the example words design.json holds, rendered through their markers")
+        run("write_manifest.py")
+        m = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        check(m["design"]["harness_version"] == 2 and m["design"]["concepts_per_call"] == 12
+              and m["design"]["probe_endings"] == v2_design["probe_endings"] and "prompt_examples" not in m["design"],
+              "the manifest's design block records the harness version and the version-2 design data the summary reads")
+        run("make_workflow_scripts.py", "generation")
+        gen_js = (tmp / "workflows" / "generation.workflow.js").read_text(encoding="utf-8")
+        check(f"const REQUIRED = {json.dumps(common.REQUIRED_FIELDS_V2)}" in gen_js and "with the required keys" in gen_js,
+              "the version-2 generation script's retry test counts the five keys")
+        proto = common.sha256_file(tmp / "PROTOCOL.md")
+        gdir, cdir = tmp / "wf_v2_gen", tmp / "wf_v2_chk"
+        gdir.mkdir()
+        cdir.mkdir()
+        r = random.Random(2)
+        deviating, failing = calls[5]["id"], calls[2]["id"]
+        records = [{"type": "launched"}]
+        for i, c in enumerate(calls, 1):
+            records.append({"type": "started", "key": f"gk{i}", "agentId": f"g{i:02d}",
+                            "label": f"{c['id']} attempt 1 sha256={c['prompt_sha256']} protocol={proto}"})
+            records.append({"type": "result", "key": f"gk{i}", "agentId": f"g{i:02d}",
+                            "result": fake_rows_v2(c, r, c["id"] == deviating, c["id"] == failing)})
+            (gdir / f"agent-g{i:02d}.jsonl").write_text('{"model":"selftest-model"}\n', encoding="utf-8")
+        (gdir / "journal.jsonl").write_text("".join(json.dumps(x) + "\n" for x in records), encoding="utf-8")
+        run("extract_workflow_journal.py", "generation", str(gdir / "journal.jsonl"))
+        shutil.copy(gdir / "journal.jsonl", tmp / "workflows" / "generation.journal.jsonl")
+        run("parse_generation.py", str(tmp / "workflow_generation_result.json"))
+        rows = common.read_jsonl(tmp / "generated" / "all_rows.jsonl")
+        failures = common.read_jsonl(tmp / "generated" / "format_failures.jsonl")
+        check(len(rows) == 18 * 20 + 1 and all(common.next_word_ok(x["next_word"]) for x in rows)
+              and sorted(f["reason"] for f in failures) == ["missing_field:next_word", "next_word_invalid", "next_word_invalid"],
+              "version-2 rows keep next_word; a bad or missing next_word is a format failure")
+        # a version-2 checker template that does not offer every value its schema accepts is refused before batching
+        cp = tmp / "prompts" / "checker_prompt.txt"
+        cp_text = cp.read_text(encoding="utf-8")
+        cp.write_text(cp_text.replace('"textbook"', "textbook"), encoding="utf-8")
+        run("build_checker_set.py", expect_failure=True)
+        cp.write_text(cp_text, encoding="utf-8")
+        check("textbook" in last_err[0] and not (tmp / "checker_batches.json").exists(),
+              "a version-2 checker template missing an enum value is refused before batching")
+        run("build_checker_set.py")
+        cplan = json.loads((tmp / "checker_batches.json").read_text(encoding="utf-8"))
+        check(cplan["harness_version"] == 2, "a version-2 checker plan records harness_version")
+        run("make_workflow_scripts.py", "checker")
+        chk_js = (tmp / "workflows" / "checker.workflow.js").read_text(encoding="utf-8")
+        check(json.dumps(common.checker_output_schema(2, closed=False), indent=2) in chk_js and '"same_brand"' in chk_js,
+              "the version-2 checker script declares the version-2 schema")
+        run("build_api_requests.py", "checker", "--model", "example-model")
+        bundle = json.loads((tmp / "api_requests_checker.json").read_text(encoding="utf-8"))
+        check(bundle["api_meta"]["harness_version"] == 2
+              and bundle["requests"][0]["request"]["output_config"]["format"]["schema"] == common.checker_output_schema(2, closed=True),
+              "version-2 checker request bodies carry the version-2 schema")
+        key = {k["id"]: k for k in common.read_jsonl(tmp / "checker_key.jsonl")}
+        crecords = [{"type": "launched"}]
+        n_gen = 0
+        answers: dict[str, dict] = {}
+        bad_id = incons_id = None
+        for i, b in enumerate(cplan["batches"], 1):
+            verdicts = []
+            for iid in b["item_ids"]:
+                src = key[iid]["source"]
+                if src == "generated":
+                    n_gen += 1
+                    v = {"id": iid, "equivalent": "unclear" if n_gen % 9 == 0 else "yes",
+                         "relation": V2_RELATIONS[n_gen % len(V2_RELATIONS)]}
+                elif src == "seed":
+                    v = {"id": iid, "equivalent": "yes", "relation": "same"}
+                else:
+                    v = {"id": iid, "equivalent": "no", "relation": "different"}
+                v.update({"sentence_natural": common.CHECKER_SENTENCE_NATURAL[n_gen % 4],
+                          "patient_realism": common.CHECKER_PATIENT_REALISM[n_gen % 3], "reason": "fabricated"})
+                if src == "generated" and bad_id is None:
+                    v["relation"], bad_id = "maybe", iid  # out of its set: invalid, the item becomes missing
+                elif src == "generated" and incons_id is None:
+                    v["relation"], incons_id = "narrower", iid  # yes with narrower: kept, flagged inconsistent
+                verdicts.append(v)
+                answers[iid] = v
+            crecords.append({"type": "started", "key": f"ck{i}", "agentId": f"c{i:02d}",
+                             "label": f"{b['batch_id']} attempt 1 sha256={b['prompt_sha256']} protocol={proto}"})
+            crecords.append({"type": "result", "key": f"ck{i}", "agentId": f"c{i:02d}", "result": {"verdicts": verdicts}})
+            (cdir / f"agent-c{i:02d}.jsonl").write_text('{"model":"selftest-model"}\n', encoding="utf-8")
+        (cdir / "journal.jsonl").write_text("".join(json.dumps(x) + "\n" for x in crecords), encoding="utf-8")
+        run("extract_workflow_journal.py", "checker", str(cdir / "journal.jsonl"))
+        shutil.copy(cdir / "journal.jsonl", tmp / "workflows" / "checker.journal.jsonl")
+        run("parse_checker.py", str(tmp / "workflow_checker_result.json"))
+        checked = {c["id"]: c for c in common.read_jsonl(tmp / "checked.jsonl")}
+        clog = common.read_jsonl(tmp / "checker_log.jsonl")
+        check(checked[bad_id]["verdict"] == "missing" and checked[bad_id]["relation"] is None
+              and checked[bad_id]["inconsistent"] is None and sum(e["n_invalid_value"] for e in clog) == 1,
+              "an answer with a value outside its set is invalid: counted, and its item recorded as missing")
+        check(checked[incons_id]["verdict"] == "yes" and checked[incons_id]["relation"] == "narrower"
+              and checked[incons_id]["inconsistent"] is True and sum(e["n_inconsistent"] for e in clog) == 1
+              and sum(1 for c in checked.values() if c["inconsistent"]) == 1,
+              "an answer whose equivalent contradicts its relation is kept as given, flagged and counted")
+        # a checker plan whose recorded version is not an integer the harness knows is refused by name, never compared
+        # as "2" >= 2 (Copilot on PR #69); make_review_sheet.py reads the version from the file as it stands
+        cb_path = tmp / "checker_batches.json"
+        cb_bytes = cb_path.read_bytes()
+        cb_doc = json.loads(cb_bytes.decode("utf-8"))
+        cb_doc["harness_version"] = "2"
+        cb_path.write_text(json.dumps(cb_doc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        run("make_review_sheet.py", expect_failure=True)
+        cb_path.write_bytes(cb_bytes)
+        check("records harness_version '2'" in last_err[0] and "Traceback" not in last_err[0]
+              and not (tmp / "review_map.json").exists(),
+              "a checker plan recording harness_version \"2\" is refused by name before the review draw, not by a "
+              "TypeError")
+        run("make_review_sheet.py")
+        rmap = json.loads((tmp / "review_map.json").read_text(encoding="utf-8"))
+        by_row = {x["id"]: x for x in rows}
+        drawn = [common.concept_key(by_row[rid]["call_id"], by_row[rid]["clinical_term"], by_row[rid]["template"])
+                 for rid in rmap["map"].values()]
+        n_concepts = {a: len({common.concept_key(x["call_id"], x["clinical_term"], x["template"]) for x in rows
+                              if x["arm"] == a and x["control"] == "none"}) for a in common.ARMS}
+        check(len(rmap["map"]) == 40 and len(set(drawn)) == 40 and rmap["n_unique_concepts_in_sample"] == 40
+              and rmap["sampling"] == "one_row_per_concept" and rmap["n_concepts_by_arm"] == n_concepts == {"A": 108, "B": 108}
+              and rmap["allocation"] == {"A": 20, "B": 20},
+              "the version-2 review draws 40 rows from 40 distinct concepts, allocated by concepts per arm")
+        rkey = common.read_csv(tmp / "review_key.csv")
+        check(list(rkey[0]) == common.REVIEW_KEY_COLUMNS_V2
+              and all(k["checker_relation"] == (checked_row["relation"] or "")
+                      for k in rkey for checked_row in [next(c for c in checked.values() if c["source"] == "generated"
+                                                             and c["row_id"] == rmap["map"][k["id"]])]),
+              "the version-2 review key carries the checker's relation, sentence_natural and patient_realism")
+        run("compute_summary.py")
+        s = json.loads((tmp / "summary.json").read_text(encoding="utf-8"))
+        check(s["harness_version"] == 2, "the version-2 summary records the harness version")
+        pp = s["probe_point"]
+        check((pp["overall"]["x"], pp["overall"]["n"]) == (325, 361)
+              and pp["by_control"]["negative"]["x"] == pp["by_control"]["negative"]["n"] == 72
+              and pp["by_arm"]["A"]["n"] + pp["by_arm"]["B"]["n"] == 361
+              and sum(w["x"] for w in pp["by_cell"].values()) == 325,
+              f"probe point: 325 of 361 rows end on a probe word (two concepts per call do not) {pp['overall']}")
+        vd = s["variant_design"]
+        dev = next(c for c in vd["per_call"] if c["call_id"] == deviating)
+        check((vd["calls_compliant"]["x"], vd["calls_compliant"]["n"]) == (17, 18) and vd["flagged_calls"] == [deviating]
+              and vd["pairs_exact"] == 17 * 4 + 3 and vd["pairs_clinical_surface"] == 17 * 4 + 4
+              and vd["non_adjacent_repeats"] == 1 and vd["runs_of_three_or_more"] == 1
+              and dev == {"call_id": deviating, "arm": dev["arm"], "n_rows": 17, "concepts": 12, "pairs_exact": 3,
+                          "pairs_clinical_surface": 4, "non_adjacent_repeats": 1, "runs_of_three_or_more": 1,
+                          "compliant": False}
+              and vd["by_arm"]["A"]["n"] == vd["by_arm"]["B"]["n"] == 9,
+              f"variant design: 17 of 18 calls compliant; the deviating call is flagged with its counts ({dev})")
+        nw = s["next_word"]
+        check(nw == {"population": nw["population"], "n_rows": 361, "n_distinct": 4,
+                     "most_common": [{"word": "sister", "n": 144}, {"word": "friend", "n": 73},
+                                     {"word": "boss", "n": 72}, {"word": "neighbour", "n": 72}]},
+              f"next_word: 4 distinct words over 361 rows, most common first, ties alphabetical ({nw['most_common']})")
+        cv = s["checker_v2"]
+        answered = {iid: v for iid, v in answers.items() if iid != bad_id}
+
+        def expect(source: str, field: str, verdicts: tuple[str, ...] = common.CHECKER_VERDICTS) -> dict:
+            n = {}
+            for iid, v in answered.items():
+                if key[iid]["source"] == source and v["equivalent"] in verdicts:
+                    n[v[field]] = n.get(v[field], 0) + 1
+            return {x: n.get(x, 0) for x in common.CHECKER_V2_FIELDS[field]}
+        decided = ("yes", "no")  # relation counts only answers with a yes or no verdict (Codex on PR #69)
+        rel_gen = expect("generated", "relation", decided)
+        unclear_gen = expect("generated", "relation", ("unclear",))
+        n_unclear = sum(1 for iid, v in answered.items() if v["equivalent"] == "unclear")
+        check(cv["relation"] == {"generated": rel_gen, "known_good": expect("seed", "relation", decided),
+                                 "broken": expect("broken", "relation", decided)}
+              and cv["precision"]["generated"] == {"as_precise": rel_gen["same"] + rel_gen["same_brand"],
+                                                   "vaguer": rel_gen["broader"], "more_specific": rel_gen["narrower"],
+                                                   "not_applicable": rel_gen["different"]}
+              and rel_gen["narrower"] == 1 and cv["yes_by_relation"]["narrower"]["x"] == 1
+              and cv["yes_by_relation"]["different"]["n"] == 0
+              and all(cv["yes_by_relation"][r]["n"] == rel_gen[r] for r in common.CHECKER_RELATIONS)
+              and cv["inconsistent"] == {"generated": 1, "known_good": 0, "broken": 0, "total": 1, "item_ids": [incons_id]},
+              "the checker relation by source over yes and no verdicts, the precision view, the yes-rate by relation "
+              "and the inconsistent count")
+        check(n_unclear > 0 and cv["unclear_relation"]["relation"]["generated"] == unclear_gen
+              and cv["unclear_relation"]["n"]["generated"] == sum(unclear_gen.values()) == n_unclear
+              and cv["unclear_relation"]["total"] == len(cv["unclear_relation"]["item_ids"]) == n_unclear
+              and cv["n_relation_counted"]["generated"] + n_unclear == cv["n_answered"]["generated"],
+              f"the {n_unclear} relations given with an unclear verdict are reported apart, not counted")
+        check(cv["sentence_natural"]["generated"] == expect("generated", "sentence_natural")
+              and cv["patient_realism"]["generated"] == expect("generated", "patient_realism")
+              and sum(cv["sentence_natural"]["by_arm"]["A"].values()) + sum(cv["sentence_natural"]["by_arm"]["B"].values())
+              == cv["n_answered"]["generated"] and s["E4"]["generated"]["missing"] == 1,
+              "the checker's sentence_natural and patient_realism for generated rows, overall and by arm")
+        # the intervals of estimands 1 to 5 are computed over rows, which are not independent draws (one generation per
+        # call, two-row concepts); they are read as descriptive, and the summary says so with the design's figures and
+        # the run's concept counts (Codex on PR #69, which named estimands 2 to 5; estimand 1 counts rows too)
+        rows_by_arm = {a: sum(c["n_rows"] for c in vd["per_call"] if c["arm"] == a) for a in common.ARMS}
+        check(s["row_level_intervals"] == {"unit": "row", "estimands": [1, 2, 3, 4, 5], "reading": "descriptive",
+                                           "two_row_concepts_per_call": 4, "rows_in_two_row_concepts_per_call": 8,
+                                           "non_control_rows_per_call": 16,
+                                           "concepts": {"A": 108, "B": 108, "total": 216},
+                                           "non_control_rows": {**rows_by_arm, "total": 289}}
+              and rows_by_arm[dev["arm"]] == 145,
+              "the summary records that the intervals of estimands 1 to 5 are over rows, 8 of 16 rows a call in 4 "
+              "two-row concepts")
+        check(s["review"]["sampling"] == "one_row_per_concept" and s["review"]["n_unique_concepts_in_sample"] == 40
+              and s["review"]["n_concepts_by_arm"] == {"A": 108, "B": 108},
+              "the summary surfaces the review's one-row-per-concept figures")
+        md = (tmp / "summary.md").read_text(encoding="utf-8")
+        hand = (tmp / "HANDOFF.md").read_text(encoding="utf-8")
+        check(all(h in md for h in ("## Probe point (version 2", "## Variant design (version 2", "## next_word (version 2)",
+                                    "## Checker relation, precision, sentence and realism (version 2"))
+              and f"| {deviating} | 17 | 12 | 3 | 4 | 1 | 1 | no |" in md and "—" not in md,
+              "summary.md renders every version-2 section and the flagged call's row")
+        check("the intervals of estimands 1 to 5 are computed over rows, as the protocol fixes them" in md
+              and ("The rows are not independent draws: the rows of one call come from a single generation, and by "
+                   "design 8 of every 16 non-control rows of a call belong to 4 two-row concepts") in md
+              and "Read these intervals as descriptive. This run's non-control rows cover 216 concepts in 289 rows" in md
+              and "estimands 2 to 5" not in md
+              and f"Unclear verdicts: {n_unclear} (generated {n_unclear}, known-good 0, broken 0)." in md
+              and "rows number exactly 16 and cover exactly 12 concepts" in md,
+              "summary.md says the intervals of estimands 1 to 5 are over rows that are not independent and are "
+              "descriptive, lists the unclear verdicts' relations apart and defines a compliant call by its rows, "
+              "concepts, pairs and runs")
+        check("calls with exactly 16 rows and 12 concepts, 4 adjacent variant pairs, and no concept split or run over "
+              "three or more rows 17 / 18" in hand
+              and "templates ending on a probe word 325 / 361" in hand and "most common: sister (144)" in hand
+              and "(kept, flagged inconsistent) 1." in hand
+              and f"unclear verdicts, whose relation is not counted, {n_unclear};" in hand
+              and ("- **Intervals (version 2):** the intervals of estimands 1 to 5 are computed over rows, as the "
+                   "protocol fixes them, and the rows are not independent draws: the rows of one call come from a "
+                   "single generation, and by design 8 of every 16 non-control rows of a call belong to 4 two-row "
+                   "concepts (216 concepts in 289 non-control rows here); read these intervals as descriptive.") in hand,
+              "the handoff's results block carries the version-2 lines")
+        # a checked row whose inconsistency flag no longer describes its answers is refused by the summary
+        checked_bytes = (tmp / "checked.jsonl").read_bytes()
+        edited = common.read_jsonl(tmp / "checked.jsonl")
+        next(c for c in edited if c["id"] == incons_id)["inconsistent"] = False
+        common.write_jsonl(tmp / "checked.jsonl", edited)
+        run("compute_summary.py", expect_failure=True)
+        (tmp / "checked.jsonl").write_bytes(checked_bytes)
+        check("does not describe verdict" in last_err[0], "a version-2 checked row with a wrong inconsistency flag is refused")
+        run("record_run.py", "generation", gdir.name, str(gdir))
+        run("record_run.py", "checker", cdir.name, str(cdir))
+        # a version-2 summary.json written before row_level_intervals existed (review round 3 of PR #69) lacks
+        # fields the handoff's results block renders: the block refuses it by name, and finalize lists that refusal
+        # and seals nothing, where the block once raised a KeyError
+        summary_bytes = (tmp / "summary.json").read_bytes()
+        earlier = json.loads(summary_bytes.decode("utf-8"))
+        del earlier["row_level_intervals"], earlier["variant_design"]["expected_rows_per_call"]
+        del earlier["checker_v2"]["unclear_relation"], earlier["checker_v2"]["n_relation_counted"]
+        named = refused(common.results_block, earlier)
+        (tmp / "summary.json").write_text(json.dumps(earlier, indent=2) + "\n", encoding="utf-8")
+        run("write_manifest.py", "finalize", expect_failure=True)
+        (tmp / "summary.json").write_bytes(summary_bytes)
+        check(named is not None and "has no field 'row_level_intervals'" in named
+              and "re-run compute_summary.py" in named and named in last_err[0] and "Traceback" not in last_err[0]
+              and json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))["finalized_utc"] is None,
+              "a version-2 summary.json without row_level_intervals is refused by name, with the step to take, and "
+              "finalize seals nothing")
+        run("write_manifest.py", "finalize")
+        mf = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
+        check(isinstance(mf["finalized_utc"], str) and mf["design"]["harness_version"] == 2,
+              "the version-2 bundle finalizes: every file re-derives and both scripts render again from the plans")
+        run("plan_calls.py", expect_failure=True)
+        check("holds a finalized run" in last_err[0], "the finalized version-2 run is guarded like any other")
+        # the renderer's flag may come first (argparse, Copilot on PR #69): with --replace it writes into the
+        # finalized run, and the same render leaves the finalization standing
+        wf_before = (tmp / "workflows" / "generation.workflow.js").read_bytes()
+        run("make_workflow_scripts.py", "--replace", "generation")
+        run("write_manifest.py")
+        check((tmp / "workflows" / "generation.workflow.js").read_bytes() == wf_before
+              and isinstance(json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))["finalized_utc"], str),
+              "make_workflow_scripts.py --replace generation renders the same script and keeps the finalization")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 if __name__ == "__main__":
     unit_tests()
+    unit_tests_v2()
     dry_run()
+    dry_run_v2()
     print("selftest: all checks passed")

@@ -31,7 +31,10 @@ ids, prompt hashes and exemplar ids the manifest already records, records the re
 its own timestamp, the reason and the hashes before and after, and keeps the creation time and the run records; the
 finalization is cleared as for any changed output, and finalize seals the bundle again once compute_summary.py has
 recorded the new input hashes. A changed seed file, checker template or model file is not a refactor (the checker
-plan and the run's provenance depend on them) and still needs --reset or a new run.
+plan and the run's provenance depend on them) and still needs --reset or a new run. Nor is a design change that
+alters design.json's `harness_version`: the version decides how every response is parsed and summarized, so that is a
+new run. The manifest's design block records `harness_version`, and the version-2 design data, only for version 2 or
+later, so a version-1 manifest keeps the recorded run's shape.
 
 Both plans must have been built from the files on disk: calls.json from the seed file, the design file and the
 generation template, and checker_batches.json from the checker template, the seed file and the parsed generation
@@ -60,6 +63,8 @@ from common import (
     ARMS,
     CHECKER_BATCH,
     CONTROLS_PER_CALL,
+    DESIGN,
+    HARNESS_VERSION,
     K_EXEMPLARS,
     LEGACY_UNBOUND_SOURCES,
     MASTER_SEED,
@@ -71,6 +76,7 @@ from common import (
     ROWS_PER_CALL,
     SPECIALTIES,
     SWAP_TYPES,
+    V2_DESIGN_KEYS,
     checked_problems,
     generation_problems,
     legacy_plan_problems,
@@ -81,6 +87,7 @@ from common import (
     read_jsonl,
     review_problems,
     script_hashes,
+    sealed_interpreter_guard,
     sha256_file,
     sha256_text,
     summary_problems,
@@ -141,6 +148,13 @@ def input_refactor_record(old: dict, current: dict, calls: dict, changes: list[s
     if other:
         raise SystemExit(f"write_manifest: --refactor-inputs accepts only the design file and the generation template; "
                          f"{', '.join(other)} changed too, which needs --reset or a new run")
+    # the harness version decides how every response is parsed and summarized: a design change that alters it is a
+    # new run even when every rendered prompt is unchanged (absent in the manifest's design block means 1)
+    old_version, new_version = (old.get("design") or {}).get("harness_version", 1), current.get("harness_version", 1)
+    if old_version != new_version:
+        raise SystemExit(f"write_manifest: --refactor-inputs: design.json's harness_version changed ({old_version} then, "
+                         f"{new_version} now); the version decides how the responses are parsed and summarized, so this "
+                         f"is a new run: --reset and a new run")
     recorded = (old.get("prompt_hashes") or {}).get("generation_calls")
     if not isinstance(recorded, dict) or not recorded:
         raise SystemExit("write_manifest: --refactor-inputs: the manifest on disk records no per-call prompt hashes to "
@@ -343,6 +357,8 @@ def finalize_hashes(calls: dict) -> dict[str, str]:
 
 def main(finalize: bool, reset: bool = False, refactor: str | None = None) -> None:
     path = PILOT / "manifest.json"
+    if not reset:  # a reset starts a new run's metadata, which no interpreter sealed yet
+        sealed_interpreter_guard("write_manifest", platform.python_version())
     old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     model = json.loads((PILOT / "manifest_model.json").read_text(encoding="utf-8"))
@@ -351,6 +367,7 @@ def main(finalize: bool, reset: bool = False, refactor: str | None = None) -> No
     current = {"seeds_json_sha256": sha256_file(PILOT / "seeds.json"),
                "design_json_sha256": sha256_file(PILOT / "design.json"),
                "manifest_model_sha256": sha256_file(PILOT / "manifest_model.json"),
+               "harness_version": HARNESS_VERSION,  # compared by --refactor-inputs, never written from here
                "prompt_hashes": {"generation_prompt_template": calls["generation_prompt_template_sha256"]}}
     cb = PILOT / "checker_batches.json"
     cbdata = load_checker_batches() if cb.exists() else None
@@ -441,7 +458,10 @@ def main(finalize: bool, reset: bool = False, refactor: str | None = None) -> No
                    # read from the seed file in use, never fixed here: a rerun with real seeds must record theirs
                    "seed_provenance": seed_provenance(),
                    "checker_batch": CHECKER_BATCH, "n_broken": N_BROKEN, "n_known_good_requested": N_KNOWN_GOOD,
-                   "n_review": N_REVIEW, "n_boot": N_BOOT},
+                   "n_review": N_REVIEW, "n_boot": N_BOOT,
+                   # version 2 or later only, so a version-1 manifest keeps the recorded run's design block
+                   **({"harness_version": HARNESS_VERSION, **{k: DESIGN[k] for k in V2_DESIGN_KEYS}}
+                      if HARNESS_VERSION >= 2 else {})},
         "protocol_sha256_at_write": base.get("protocol_sha256_at_write", protocol_now),
         "protocol_sha256_now": protocol_now,
         "protocol_unchanged": base.get("protocol_sha256_at_write", protocol_now) == protocol_now,

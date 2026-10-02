@@ -8,6 +8,10 @@ Every call-log entry, row and format failure carries `prompt_sha256`, the planne
 it was parsed against, so build_checker_set.py, compute_summary.py and write_manifest.py can refuse a parse that
 belongs to another plan; a second attempt is accepted only when the first met the protocol's retry rule (Codex
 review of PR #52).
+
+Under harness version 2 (design.json `harness_version`, recorded in calls.json) a row needs the fifth key next_word,
+a lowercase word (common.next_word_ok; a bad one is the format failure `next_word_invalid`), every row keeps it in
+all_rows.jsonl, and the retry rule counts the five keys. A version-1 parse is byte-identical to the recorded run's.
 """
 from __future__ import annotations
 
@@ -27,6 +31,7 @@ from common import (
     control_is_faithful,
     lines_of,
     load_calls,
+    plan_version,
     resolve_input,
     result_binding_problems,
     validate_line,
@@ -40,7 +45,8 @@ def previous_outputs(gen_dir: Path) -> list[Path]:
     return sorted(gen_dir.glob("*.jsonl")) + sorted((gen_dir / "raw").glob("*.txt"))
 
 
-def validate_result(result: object, planned: dict[str, dict], unbound: bool = False) -> dict[str, dict]:
+def validate_result(result: object, planned: dict[str, dict], unbound: bool = False, *,
+                    version: int) -> dict[str, dict]:
     """The result contract, checked in full before anything on disk is touched: an object with a `calls` list whose
     entries are objects with a string id that is planned and appears exactly once, an `attempts` list of objects
     with a `raw` that is a string or null, numbered 1..n in order with n at most MAX_ATTEMPTS (the protocol's one
@@ -49,7 +55,8 @@ def validate_result(result: object, planned: dict[str, dict], unbound: bool = Fa
     or unplanned id, a repeated or out-of-order attempt number, or a foreign prompt hash is refused, never
     overwritten or ignored. The result's `protocol_sha256` must be the frozen protocol on disk; --unbound skips the
     prompt-hash and protocol checks only for the recorded run's own result file (common.LEGACY_UNBOUND_SOURCES),
-    and the call log says so (Codex review of PR #52)."""
+    and the call log says so (Codex review of PR #52). `version` is the plan's harness version, which decides the
+    keys the retry rule counts."""
     if not isinstance(result, dict) or not isinstance(result.get("calls"), list):
         raise SystemExit("parse_generation: the result must be an object with a 'calls' list; nothing on disk was changed")
     by_id: dict[str, dict] = {}
@@ -78,7 +85,7 @@ def validate_result(result: object, planned: dict[str, dict], unbound: bool = Fa
         elif [a["attempt"] for a in attempts] != list(range(1, len(attempts) + 1)) or len(attempts) > MAX_ATTEMPTS:
             problems.append(f"calls[{i}] ({cid}): attempts must be numbered 1..n in order with n <= {MAX_ATTEMPTS}; "
                             f"got {[a['attempt'] for a in attempts]}")
-        elif len(attempts) == MAX_ATTEMPTS and not attempt_failed(attempts[0]["raw"]):
+        elif len(attempts) == MAX_ATTEMPTS and not attempt_failed(attempts[0]["raw"], version):
             problems.append(f"calls[{i}] ({cid}): attempt 2 recorded although attempt 1 met no retry condition "
                             f"(PROTOCOL.md 3: only an empty response, or one with no line carrying the required "
                             f"keys, is retried); the final attempt would replace a valid first response")
@@ -117,11 +124,12 @@ def binding_label(unbound: bool) -> str:
     return "prompt_sha256" if not unbound else "none (--unbound: result recorded before the binding existed)"
 
 
-def derive(by_id: dict[str, dict], calls_meta: dict[str, dict],
-           binding: str) -> tuple[list[dict], list[dict], list[dict], dict[str, str]]:
+def derive(by_id: dict[str, dict], calls_meta: dict[str, dict], binding: str, *,
+           version: int) -> tuple[list[dict], list[dict], list[dict], dict[str, str]]:
     """The parse itself, pure: (rows in protocol order, format failures, call log, raw response text by file name)
     for a validated result. main writes these; write_manifest.py finalize derives them again from the recorded
-    result file and refuses a bundle whose files differ (Codex review of PR #52)."""
+    result file and refuses a bundle whose files differ (Codex review of PR #52). Under harness `version` 2 the rows
+    are validated against the five version-2 keys and carry next_word after template."""
     cell_order = {cell_id(s, t): i for i, (s, t) in enumerate(cells())}
     all_rows, failures, log, raw_texts = [], [], [], {}
     for cid, meta in calls_meta.items():  # protocol order: cell order, A before B
@@ -145,7 +153,7 @@ def derive(by_id: dict[str, dict], calls_meta: dict[str, dict],
             reasons = Counter()
             rows = []
             for li, line in enumerate(lines):
-                row, reason = validate_line(line)
+                row, reason = validate_line(line, version)
                 reasons[reason] += 1
                 if row is not None:
                     rows.append({"id": f"{cid}__L{li + 1:02d}", "call_id": cid, "arm": meta["arm"],
@@ -153,6 +161,7 @@ def derive(by_id: dict[str, dict], calls_meta: dict[str, dict],
                                  "cell": meta["cell"], "cell_index": cell_order[meta["cell"]], "line_index": li + 1,
                                  "attempt": a["attempt"], "clinical_term": row["clinical_term"],
                                  "patient_term": row["patient_term"], "template": row["template"],
+                                 **({"next_word": row["next_word"]} if version >= 2 else {}),
                                  "control": row["control"],
                                  "control_faithful": control_is_faithful(row) if row["control"] == "negative" else None,
                                  "prompt_sha256": meta["prompt_sha256"]})
@@ -175,8 +184,10 @@ def derive(by_id: dict[str, dict], calls_meta: dict[str, dict],
 
 def main(result_path: str, replace: bool = False, unbound: bool = False) -> None:
     result = json.loads(resolve_input(result_path, "parse_generation").read_text(encoding="utf-8"))
-    calls_meta = {c["id"]: c for c in load_calls()["calls"]}  # every prompt verified against its stored hash
-    by_id = validate_result(result, calls_meta, unbound)  # checked in full before any previous output is removed
+    plan = load_calls()  # every prompt verified against its stored hash, the plan against the inputs on disk
+    version = plan_version(plan)
+    calls_meta = {c["id"]: c for c in plan["calls"]}
+    by_id = validate_result(result, calls_meta, unbound, version=version)  # checked in full before any output is removed
     gen_dir = PILOT / "generated"
     raw_dir = gen_dir / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
@@ -188,7 +199,7 @@ def main(result_path: str, replace: bool = False, unbound: bool = False) -> None
         p.unlink()
     if stale:
         print(f"parse_generation: --replace removed {len(stale)} file(s) from the previous parse")
-    all_rows, failures, log, raw_texts = derive(by_id, calls_meta, binding_label(unbound))
+    all_rows, failures, log, raw_texts = derive(by_id, calls_meta, binding_label(unbound), version=version)
     for name, text in raw_texts.items():
         (raw_dir / name).write_text(text, encoding="utf-8")
     for cid in calls_meta:  # one file per planned call, empty for a call with no response

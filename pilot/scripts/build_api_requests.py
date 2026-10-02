@@ -20,14 +20,31 @@ record_run.py and finalize, which bind a run to those, need a lane-side recorder
 that is the lane's to add. Checker requests carry an output_config.format JSON schema; generation requests carry none,
 because format validity (estimand 1) measures the raw text. The model is a required argument: this run's model is in
 manifest.json, and choosing another is a decision about the execution path, not a default to bury here.
+
+Under harness version 2 (design.json `harness_version`) the checker schema adds relation, sentence_natural and
+patient_realism (VERDICT_SCHEMA_V2, built from common's enums), the result-file contract shows them, the generation
+retry rule counts the five version-2 keys, and the bundle records `harness_version`; a version-1 bundle is unchanged.
+A run directory whose manifest.json is finalized is not written into without --replace (common.finalized_run_guard).
 """
 from __future__ import annotations
 
 import argparse
+import copy
 import datetime as dt
 import json
 
-from common import PILOT, REQUIRED_FIELDS, load_calls, load_checker_batches, sha256_file
+from common import (
+    CHECKER_V2_FIELDS,
+    HARNESS_VERSION,
+    PILOT,
+    RELATION_EQUIVALENT,
+    checker_output_schema,
+    finalized_run_guard,
+    load_calls,
+    load_checker_batches,
+    required_fields,
+    sha256_file,
+)
 
 VERDICT_SCHEMA = {
     "type": "object",
@@ -49,6 +66,12 @@ VERDICT_SCHEMA = {
     "required": ["verdicts"],
     "additionalProperties": False,
 }
+VERDICT_SCHEMA_V2 = checker_output_schema(2, closed=True)
+
+
+def verdict_schema(version: int) -> dict:
+    """The checker request schema for a harness version."""
+    return VERDICT_SCHEMA_V2 if version >= 2 else VERDICT_SCHEMA
 
 RESULT_SHAPES = {
     "generation": {"file": "workflow_generation_result.json or any name passed to parse_generation.py",
@@ -85,12 +108,39 @@ RESULT_SHAPES = {
                          "result null, null_return false, raw_return holding it verbatim and unexpected_result_type "
                          "naming its type; a flag that does not describe result refuses the file."},
 }
-RETRY_RULES = {
-    "generation": f"retry once, with the identical request, when the response is empty or no returned line parses as "
-                  f"a JSON object carrying the keys {REQUIRED_FIELDS}; keep both attempts verbatim (PROTOCOL.md 3)",
-    "checker": "retry once, with the identical request, when no verdict list, or an empty one, comes back; ids still "
-               "without a usable verdict are recorded as missing (PROTOCOL.md 6)",
-}
+
+
+def result_shapes(version: int) -> dict:
+    """The result-file contract for a harness version: RESULT_SHAPES itself for version 1; for version 2 the checker
+    verdict objects carry the three further answers, and the notes say how the parser treats them."""
+    if version < 2:
+        return RESULT_SHAPES
+    shapes = copy.deepcopy(RESULT_SHAPES)
+    verdict = {"id": "<item id from the batch>", "equivalent": "yes | no | unclear",
+               **{f: " | ".join(v) for f, v in CHECKER_V2_FIELDS.items()}, "reason": "<one line>"}
+    shapes["checker"]["shape"]["batches"][0]["attempts"][0]["result"]["verdicts"] = [verdict]
+    yes_rel = [r for r, eq in RELATION_EQUIVALENT.items() if eq == "yes"]
+    no_rel = [r for r, eq in RELATION_EQUIVALENT.items() if eq == "no"]
+    shapes["checker"]["notes"] += (f" Harness version {version}: an entry missing any of {list(CHECKER_V2_FIELDS)}, or "
+                                   f"with a value outside its set, is ignored like an invalid verdict (its id is "
+                                   f"recorded as missing); an entry whose equivalent contradicts its relation (yes with "
+                                   f"one of {no_rel}, no with one of {yes_rel}) is kept as given and flagged "
+                                   f"inconsistent.")
+    return shapes
+
+
+def retry_rules(version: int) -> dict[str, str]:
+    """The retry rule each stage's lane must follow under a harness version."""
+    return {
+        "generation": f"retry once, with the identical request, when the response is empty or no returned line parses "
+                      f"as a JSON object carrying the keys {required_fields(version)}; keep both attempts verbatim "
+                      f"(PROTOCOL.md 3)",
+        "checker": "retry once, with the identical request, when no verdict list, or an empty one, comes back; ids "
+                   "still without a usable verdict are recorded as missing (PROTOCOL.md 6)",
+    }
+
+
+RETRY_RULES = retry_rules(1)  # the version-1 rules, as the recorded run's contract states them
 
 
 def build_request(model: str, prompt: str, max_tokens: int, effort: str | None, schema: dict | None) -> dict:
@@ -112,7 +162,9 @@ def main() -> None:
     ap.add_argument("--model", required=True, help="model id; the subagent run's model is in manifest.json")
     ap.add_argument("--effort", default=None, help="output_config.effort (low|medium|high|xhigh|max); omit for the default")
     ap.add_argument("--max-tokens", type=int, default=16000)
+    ap.add_argument("--replace", action="store_true", help="write into a run directory whose manifest is finalized")
     a = ap.parse_args()
+    finalized_run_guard("build_api_requests", a.replace)
     built = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     if a.which == "generation":
         items = load_calls()["calls"]  # refused unless every prompt hashes to its stored prompt_sha256
@@ -121,12 +173,15 @@ def main() -> None:
     else:
         items = load_checker_batches()["batches"]
         requests = [{"batch_id": b["batch_id"], "item_ids": b["item_ids"], "prompt_sha256": b["prompt_sha256"],
-                     "request": build_request(a.model, b["prompt"], a.max_tokens, a.effort, VERDICT_SCHEMA)} for b in items]
+                     "request": build_request(a.model, b["prompt"], a.max_tokens, a.effort,
+                                              verdict_schema(HARNESS_VERSION))} for b in items]
     out = {"api_meta": {"purpose": "request bodies only; nothing was sent (engine execution model: paid generation "
                                    "runs through push-to-run CI)",
                         "model_requested": a.model, "effort": a.effort, "max_tokens": a.max_tokens, "built_utc": built,
                         "protocol_sha256": sha256_file(PILOT / "PROTOCOL.md"),  # the lane copies it into its result
-                        "retry_rule": RETRY_RULES[a.which], "result_file": RESULT_SHAPES[a.which]},
+                        **({"harness_version": HARNESS_VERSION} if HARNESS_VERSION >= 2 else {}),
+                        "retry_rule": retry_rules(HARNESS_VERSION)[a.which],
+                        "result_file": result_shapes(HARNESS_VERSION)[a.which]},
            "requests": requests}
     path = PILOT / f"api_requests_{a.which}.json"
     path.write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

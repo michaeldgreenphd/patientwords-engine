@@ -71,13 +71,17 @@ PR #52, after Codex read the rule above as excluding them). A measurement-validi
 pilot of the stimulus-generation loop may run as Claude Code subagents inside the
 owner's own interactive Claude Code session (the Workflow tool, in a cloud session or
 on the owner's machine), on that session's subscription and with no repository key, and
-its artifacts may be committed under `pilot/`, on four conditions: the run's
-`pilot/PROTOCOL.md`, `pilot/HANDOFF.md` and `pilot/manifest.json` state that execution
-path; nothing it produces is written under `data/` or `trace_out/`, counted as a
-measurement, or published to the site; no script in this repository calls a paid
-provider API for it (`pilot/scripts/build_api_requests.py` writes request bodies and
-sends nothing); and the holdout seal check is CLEAN over the pilot directory before the
-commit. Subscription usage in the owner's session is not provider spend, so
+its artifacts may be committed under `pilot/`, on four conditions: the run directory's
+`PROTOCOL.md`, `HANDOFF.md` and `manifest.json` (`pilot/` for the first recorded run,
+`pilot/runs/<run_id>/` for later ones) state that execution path; nothing it produces is
+written under `data/` or `trace_out/`, counted as a measurement, or published to the
+site; no script in this repository calls a paid provider API for it
+(`pilot/scripts/build_api_requests.py` writes request bodies and sends nothing); and the
+holdout seal check is CLEAN over each run directory before the commit. The pilot scripts
+work on one run directory at a time, the one `PILOT_DIR` names (`pilot/` when it is
+unset); the planning, batching, rendering and review-draw scripts refuse a directory
+whose manifest is finalized unless `--replace` is passed (`common.finalized_run_guard`).
+Subscription usage in the owner's session is not provider spend, so
 `fire_trigger.py`'s journal and ceiling do not apply to it. A pilot run through a
 push-to-run lane, once one exists, needs no exception.
 
@@ -330,8 +334,15 @@ know them will pass a change that is destructive in this repo's terms:
   handoff and manifest. They are stored data all the same: a change to any of them is
   a data change, the chain is re-run from the recorded result files and the summary
   compared, and `pilot/scripts/write_manifest.py finalize` refuses a bundle whose
-  files do not agree with each other. Their numbers are checks of the pipeline, never
-  claims about the study's stimuli or its models.
+  files do not agree with each other. Every recorded run directory (`pilot/` and each
+  `pilot/runs/<run_id>/`) records the hashes of all of `pilot/scripts/*.py`, so a pull
+  request that changes any pilot script also recomputes and re-finalizes every recorded
+  run (finalize refuses a summary computed under other scripts). Re-finalize under an
+  interpreter on the same side of Python 3.12 as the one the manifest's `python`
+  records (3.12 changed `sum()` over floats, so the float sums differ in the last bit
+  across it); `compute_summary.py` and `write_manifest.py` refuse a run sealed across
+  that line, and `pilot/` is sealed under 3.13. Their numbers are
+  checks of the pipeline, never claims about the study's stimuli or its models.
 * **Irreversible spend:** any change to a file under `.github/trigger/` fires its
   workflow on push, including a merge that carries one. The lanes in `PAID_TRIGGERS` can
   spend provider credits, and so can circuit-trace with `show_mitigation: true` or

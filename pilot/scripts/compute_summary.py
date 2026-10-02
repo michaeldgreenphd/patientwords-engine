@@ -1,23 +1,43 @@
 """Compute every estimand from the pipeline's files and write summary.json and summary.md. No number in
 summary.md is typed by hand: the markdown is rendered from the same dictionaries the JSON holds.
+
+Under harness version 2 (recorded in calls.json and checker_batches.json) the summary also reports, as descriptives
+outside the protocol's estimands: the checker's relation for generated, known-good and broken items (answers with a
+yes or no verdict; the relations given with an unclear verdict apart), the precision view derived from it, the
+yes-rate by relation and the answers flagged inconsistent; the checker's sentence_natural and patient_realism for
+generated rows, by arm; probe-point compliance; variant-design compliance per call; next_word statistics; the review
+sample's one-row-per-concept figures; and a note that the intervals of estimands 1 to 5, computed over rows as the
+protocol fixes them, are descriptive, since the rows are not independent draws (row_level_intervals). summary.json
+then records `harness_version`. A version-1 summary and its markdown are byte-identical to the recorded run's.
 """
 from __future__ import annotations
 
 import json
+import platform
 import random
 from collections import Counter
+from itertools import pairwise
 
 from common import (
     ARMS,
+    CHECKER_RELATIONS,
+    CHECKER_V2_FIELDS,
     CHECKER_VERDICTS,
+    CONCEPTS_PER_CALL,
+    CONTROL_VALUES,
     MASTER_SEED,
     N_BOOT,
     PILOT,
+    PRECISION_VALUES,
+    PROBE_ENDINGS,
+    RELATION_PRECISION,
     SUMMARY_INPUTS,
+    VARIANT_PAIRS_PER_CALL,
     Tfidf,
     cell_id,
     cells,
     checked_problems,
+    concept_key,
     control_measurable,
     cosine,
     dup_key,
@@ -29,13 +49,18 @@ from common import (
     mean_pairwise,
     newcombe_diff,
     percentile,
+    plan_version,
+    probe_endings_set,
+    probe_point_ok,
     read_csv,
     read_jsonl,
     review_problems,
     rng,
     script_hashes,
+    sealed_interpreter_guard,
     sha256_file,
     sha256_text,
+    surface_key,
     wilson,
     write_results_block,
 )
@@ -128,11 +153,168 @@ def pct(vals: list[float]) -> dict:
     return {"lo": percentile(vals, 0.025), "hi": percentile(vals, 0.975)} if vals else {"lo": None, "hi": None}
 
 
+def probe_point_summary(rows: list[dict], cell_ids: list[str], endings: tuple[str, ...]) -> dict:
+    """Version 2, descriptive: the share of rows whose template, stripped, ends on a probe ending (common.probe_point_ok),
+    over every format-valid row of the final attempts, controls included, by control kind, arm and cell. A row that
+    misses is still a valid row; this is not a format failure."""
+    lowered = probe_endings_set(endings)  # once, not per row (Copilot review of PR #69)
+
+    def share(sub: list[dict]) -> dict:
+        return wilson(sum(1 for r in sub if probe_point_ok(r["template"], lowered)), len(sub))
+    return {"endings": list(endings), "population": "format-valid rows of the final attempts, controls included",
+            "overall": share(rows), "by_control": {k: share([r for r in rows if r["control"] == k]) for k in CONTROL_VALUES},
+            "by_arm": {a: share([r for r in rows if r["arm"] == a]) for a in ARMS},
+            "by_cell": {c: share([r for r in rows if r["cell"] == c]) for c in cell_ids}}
+
+
+def variant_call(none_rows: list[dict]) -> dict:
+    """One call's variant-design counts over its format-valid control "none" rows of the final attempt, ordered by
+    line_index. An adjacent variant pair is two neighbours in that order that share the template and next_word
+    exactly, have different patient_term surface keys, and share clinical_term exactly (`pairs_exact`) or by surface
+    key (`pairs_clinical_surface`, which includes the exact ones). Concepts are counted by common.concept_key (clinical
+    term surface key and template, within the call): `concepts` distinct ones, `non_adjacent_repeats` rows whose
+    concept occurred earlier but not on the row before, `runs_of_three_or_more` maximal runs of one concept of length
+    three or more."""
+    rows = sorted(none_rows, key=lambda r: r["line_index"])
+    exact = surface = 0
+    for a, b in pairwise(rows):
+        rest = (a["template"] == b["template"] and a["next_word"] == b["next_word"]
+                and surface_key(a["patient_term"]) != surface_key(b["patient_term"]))
+        exact += rest and a["clinical_term"] == b["clinical_term"]
+        surface += rest and surface_key(a["clinical_term"]) == surface_key(b["clinical_term"])
+    seen: set = set()
+    prev, run, runs3, nonadj = None, 0, 0, 0
+    for r in rows:
+        k = concept_key(r["call_id"], r["clinical_term"], r["template"])
+        if k == prev:
+            run += 1
+        else:
+            runs3 += run >= 3
+            nonadj += k in seen
+            run = 1
+        seen.add(k)
+        prev = k
+    runs3 += run >= 3
+    return {"n_rows": len(rows), "concepts": len(seen), "pairs_exact": int(exact), "pairs_clinical_surface": int(surface),
+            "non_adjacent_repeats": int(nonadj), "runs_of_three_or_more": int(runs3)}
+
+
+def variant_design_summary(rows: list[dict], finals: list[dict], pairs: int, concepts: int) -> dict:
+    """Version 2, descriptive: variant_call for every planned call (a call with no response record counts, with zero
+    rows). A call is compliant when its rows are the design the prompt asks for: exactly `concepts` + `pairs` rows
+    (each variant pair adds one row to a concept; version_design_problems holds the sum to the non-control rows of a
+    call), exactly `concepts` concepts, exactly `pairs` exact adjacent variant pairs, no concept whose rows are
+    separated by another concept's row (non_adjacent_repeats 0), and no run of three or more rows of one concept.
+    With the row and concept counts fixed, the last two leave every concept one row or two adjacent rows, `pairs` of
+    them two, so the pair count can no longer be met by two runs of three rows (Codex review of PR #69). Calls
+    compliant over all planned calls carry a Wilson interval, overall and by arm; non-compliant calls are flagged by
+    id."""
+    n_rows = concepts + pairs
+    per_call = []
+    for e in finals:
+        v = variant_call([r for r in rows if r["call_id"] == e["call_id"] and r["control"] == "none"])
+        per_call.append({"call_id": e["call_id"], "arm": e["arm"], **v,
+                         "compliant": (v["n_rows"] == n_rows and v["concepts"] == concepts and v["pairs_exact"] == pairs
+                                       and v["non_adjacent_repeats"] == 0 and v["runs_of_three_or_more"] == 0)})
+
+    def share(sub: list[dict]) -> dict:
+        return wilson(sum(1 for c in sub if c["compliant"]), len(sub))
+    return {"definition": f"per call, over the final attempt's format-valid control none rows ordered by line_index: "
+                          f"compliant when the rows number exactly {n_rows} and cover exactly {concepts} concepts "
+                          f"(clinical_term surface key and template), exactly {pairs} adjacent pairs share "
+                          f"clinical_term, template and next_word with different patient_term surface keys, no "
+                          f"concept's rows are separated by another concept's row, and no concept runs over three or "
+                          f"more rows",
+            "expected_rows_per_call": n_rows, "expected_pairs_per_call": pairs, "expected_concepts_per_call": concepts,
+            "calls_compliant": share(per_call), "by_arm": {a: share([c for c in per_call if c["arm"] == a]) for a in ARMS},
+            **{k: sum(c[k] for c in per_call) for k in ("pairs_exact", "pairs_clinical_surface", "non_adjacent_repeats",
+                                                          "runs_of_three_or_more")},
+            "flagged_calls": [c["call_id"] for c in per_call if not c["compliant"]], "per_call": per_call}
+
+
+def row_level_intervals(vd: dict) -> dict:
+    """Version 2, how to read the intervals: the frozen protocol computes those of estimands 1 to 5 over rows (Wilson
+    and Newcombe intervals count rows; estimand 1 counts every line of the final attempts, controls included; the
+    estimand 3 bootstrap resamples rows within cells). The rows are not independent draws: the rows of one call come
+    from a single generation, and the variant design puts twice `pairs` of each call's `concepts` + `pairs`
+    non-control rows into `pairs` two-row concepts, whose two rows share the clinical term and the template (8 of 16
+    rows in 4 concepts). The intervals, computed as the protocol fixes them, are therefore reported as descriptive
+    (Codex review of PR #69, which named estimands 2 to 5; estimand 1 is computed over rows too). The design figures
+    are variant_design's expectations; the concept and row counts are this run's, from its per-call counts."""
+    per_call = vd["per_call"]
+
+    def total(key: str, arm: str | None = None) -> int:
+        return sum(c[key] for c in per_call if arm is None or c["arm"] == arm)
+    return {"unit": "row", "estimands": [1, 2, 3, 4, 5], "reading": "descriptive",
+            "two_row_concepts_per_call": vd["expected_pairs_per_call"],
+            "rows_in_two_row_concepts_per_call": 2 * vd["expected_pairs_per_call"],
+            "non_control_rows_per_call": vd["expected_rows_per_call"],
+            "concepts": {**{a: total("concepts", a) for a in ARMS}, "total": total("concepts")},
+            "non_control_rows": {**{a: total("n_rows", a) for a in ARMS}, "total": total("n_rows")}}
+
+
+def next_word_summary(rows: list[dict]) -> dict:
+    """Version 2, descriptive: the next_word of every format-valid row of the final attempts, controls included: the
+    number of rows, of distinct words, and the 10 most common words (ties broken alphabetically)."""
+    counts = Counter(r["next_word"] for r in rows)
+    top = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:10]
+    return {"population": "format-valid rows of the final attempts, controls included", "n_rows": len(rows),
+            "n_distinct": len(counts), "most_common": [{"word": w, "n": n} for w, n in top]}
+
+
+def checker_v2_summary(checked: list[dict]) -> dict:
+    """Version 2, descriptive: the checker's further answers over answered items (a missing verdict carries none).
+    relation for generated, known-good and broken items; the precision view derived from it (same and same_brand as
+    as_precise, broader as vaguer, narrower as more_specific, different as not_applicable); the yes-rate by relation
+    on generated items; the answers whose equivalent contradicts their relation (kept, flagged inconsistent); and
+    sentence_natural and patient_realism for generated items, overall and by arm. Every allowed value is listed, with
+    its count, zero included.
+
+    Relation, precision and the yes-rate by relation count only answers with a yes or no verdict. The version-2
+    schema requires a relation with every answer, so an answer whose verdict is unclear (the checker could not decide
+    what a phrase means) still carries one, which describes no decided meaning; such relations are left out of those
+    counts and reported apart under `unclear_relation`, with their item ids (Codex review of PR #69). Letting an
+    unclear answer carry no relation would change the checker schema, which is harness version 3's to do."""
+    sources = {"generated": "generated", "known_good": "seed", "broken": "broken"}
+    answered = {k: [c for c in checked if c["source"] == s and c["verdict"] != "missing"] for k, s in sources.items()}
+    decided = {k: [c for c in v if c["verdict"] != "unclear"] for k, v in answered.items()}
+    unclear = {k: [c for c in v if c["verdict"] == "unclear"] for k, v in answered.items()}
+
+    def dist(items: list[dict], field: str) -> dict[str, int]:
+        n = Counter(i[field] for i in items)
+        return {v: n.get(v, 0) for v in CHECKER_V2_FIELDS[field]}
+    relation = {k: dist(v, "relation") for k, v in decided.items()}
+    gen = answered["generated"]
+    gen_decided = decided["generated"]
+    flagged = [c for c in checked if c.get("inconsistent")]
+    return {"population": "answered items (verdict not missing); relation, precision and the yes-rate by relation "
+                          "count only answers with a yes or no verdict",
+            "n_answered": {k: len(v) for k, v in answered.items()},
+            "n_relation_counted": {k: len(v) for k, v in decided.items()},
+            "relation": relation,
+            "precision": {k: {p: sum(n for r, n in rel.items() if RELATION_PRECISION[r] == p) for p in PRECISION_VALUES}
+                          for k, rel in relation.items()},
+            "yes_by_relation": {r: wilson(sum(1 for c in gen_decided if c["relation"] == r and c["verdict"] == "yes"),
+                                          sum(1 for c in gen_decided if c["relation"] == r))
+                                for r in CHECKER_RELATIONS},
+            "unclear_relation": {"n": {k: len(v) for k, v in unclear.items()},
+                                 "relation": {k: dist(v, "relation") for k, v in unclear.items()},
+                                 "total": sum(len(v) for v in unclear.values()),
+                                 "item_ids": [c["id"] for c in checked if c["verdict"] == "unclear"]},
+            "inconsistent": {**{k: sum(1 for c in flagged if c["source"] == s) for k, s in sources.items()},
+                             "total": len(flagged), "item_ids": [c["id"] for c in flagged]},
+            "sentence_natural": {"generated": dist(gen, "sentence_natural"),
+                                 "by_arm": {a: dist([c for c in gen if c["arm"] == a], "sentence_natural") for a in ARMS}},
+            "patient_realism": {"generated": dist(gen, "patient_realism"),
+                                "by_arm": {a: dist([c for c in gen if c["arm"] == a], "patient_realism") for a in ARMS}}}
+
+
 def compute() -> tuple[dict, str]:
     """Every estimand and the markdown rendering, pure: (summary, summary.md text). main writes them; write_manifest.py
     finalize computes them again and refuses a summary on disk that differs (Codex review of PR #52)."""
     seeds = load_seeds()
     calls = load_calls()  # every prompt verified against its stored hash
+    version = plan_version(calls)  # load_calls and load_checker_batches derive both plans under the design's version
     call_log = read_jsonl(PILOT / "call_log.jsonl")
     rows = read_jsonl(PILOT / "generated" / "all_rows.jsonl")
     failures = read_jsonl(PILOT / "generated" / "format_failures.jsonl")
@@ -153,7 +335,7 @@ def compute() -> tuple[dict, str]:
         raise SystemExit(f"compute_summary: checker_batches.json was built from different inputs ({', '.join(stale)} "
                          f"changed since build_checker_set.py ran); rebuild the checker set and re-run the checker")
     problems = checked_problems(checked, read_jsonl(PILOT / "checker_key.jsonl"),
-                                read_jsonl(PILOT / "checker_set.jsonl"), sha256_file(plan_path))
+                                read_jsonl(PILOT / "checker_set.jsonl"), sha256_file(plan_path), version)
     if problems:
         shown = problems[:5] + ([f"... and {len(problems) - 5} more"] if len(problems) > 5 else [])
         raise SystemExit("compute_summary: checked.jsonl is not the parse of the checker plan on disk; re-run "
@@ -171,13 +353,14 @@ def compute() -> tuple[dict, str]:
     # the review bundle must sample these checked rows: stamped with the plan and equal field for field (Codex
     # review of PR #52)
     rev_problems = review_problems(review, read_csv(PILOT / "review_sheet.csv"), read_csv(PILOT / "review_key.csv"),
-                                   checked, sha256_file(plan_path))
+                                   checked, sha256_file(plan_path), version)
     if rev_problems:
         shown = rev_problems[:5] + ([f"... and {len(rev_problems) - 5} more"] if len(rev_problems) > 5 else [])
         raise SystemExit("compute_summary: the review bundle does not sample the checked rows on disk; re-run "
                          "make_review_sheet.py (move a sheet with annotations aside first):\n  " + "\n  ".join(shown))
     cell_ids = [cell_id(s, t) for s, t in cells()]
-    S: dict = {"n_seeds": len(seeds), "k_exemplars_used": calls["k_exemplars_used"],
+    S: dict = {"harness_version": version} if version >= 2 else {}  # version 1: no key, as recorded
+    S.update({"n_seeds": len(seeds), "k_exemplars_used": calls["k_exemplars_used"],
                "k_exemplars_requested": calls["k_exemplars_requested"],
                # what the seed file says about itself; a seed without a provenance field is reported, not assumed
                "seed_provenance": sorted({s.get("provenance", "MISSING") for s in seeds}),
@@ -186,7 +369,7 @@ def compute() -> tuple[dict, str]:
                          "bootstrap": f"random.Random('{MASTER_SEED}:bootstrap')", "n_boot": N_BOOT,
                          "broken_pairs": f"random.Random('{MASTER_SEED}:broken')",
                          "checker_shuffle": f"random.Random('{MASTER_SEED}:checker_shuffle')",
-                         "review_sample": f"random.Random('{MASTER_SEED}:review')"}}
+                         "review_sample": f"random.Random('{MASTER_SEED}:review')"}})
     # the files this summary was computed from, so finalize can refuse a summary that predates any of them (Codex
     # review of PR #52)
     S["input_hashes"] = {name: sha256_file(PILOT / name) for name in SUMMARY_INPUTS}
@@ -336,6 +519,13 @@ def compute() -> tuple[dict, str]:
                "equivalence_yes": nd(S["E4"]["by_arm"]["A"]["yes_over_answered"], S["E4"]["by_arm"]["B"]["yes_over_answered"])}
     S["review"] = {"n": len(review.get("map", {})), "allocation": review.get("allocation"),
                    "checked_by_arm": review.get("n_checked_by_arm")}
+    if version >= 2:  # descriptives outside the protocol's estimands (see the module docstring)
+        S["review"].update({k: review.get(k) for k in ("sampling", "n_concepts_by_arm", "n_unique_concepts_in_sample")})
+        S["probe_point"] = probe_point_summary(rows, cell_ids, PROBE_ENDINGS)
+        S["variant_design"] = variant_design_summary(rows, finals, VARIANT_PAIRS_PER_CALL, CONCEPTS_PER_CALL)
+        S["next_word"] = next_word_summary(rows)
+        S["checker_v2"] = checker_v2_summary(checked)
+        S["row_level_intervals"] = row_level_intervals(S["variant_design"])
 
     # ---- markdown, rendered from S only (summary.json is written after it, carrying the rendering's hash)
     L = []
@@ -348,6 +538,23 @@ def compute() -> tuple[dict, str]:
              f"{S['seeds']['master_seed']}; every named stream is listed under seeds in summary.json. Values are shown "
              f"to 3 decimals.")
     L.append("")
+    if version >= 2:
+        L.append(f"Harness version {version}: rows carry next_word, the checker also answers relation, sentence_natural "
+                 f"and patient_realism, and the sections marked version 2 report descriptives outside the protocol's "
+                 f"estimands.")
+        L.append("")
+        iv = S["row_level_intervals"]
+        L.append(f"Intervals under the variant design (version 2): the intervals of estimands 1 to 5 are computed over "
+                 f"rows, as the protocol fixes them (Wilson and Newcombe intervals count rows; the estimand 3 "
+                 f"bootstrap resamples rows within cells). The rows are not independent draws: the rows of one call "
+                 f"come from a single generation, and by design {iv['rows_in_two_row_concepts_per_call']} of every "
+                 f"{iv['non_control_rows_per_call']} non-control rows of a call belong to "
+                 f"{iv['two_row_concepts_per_call']} two-row concepts, whose two rows share the clinical term and the "
+                 f"template. Read these intervals as descriptive. This run's non-control rows cover "
+                 f"{iv['concepts']['total']} concepts in {iv['non_control_rows']['total']} rows (Arm A "
+                 f"{iv['concepts']['A']} in {iv['non_control_rows']['A']}, Arm B {iv['concepts']['B']} in "
+                 f"{iv['non_control_rows']['B']}).")
+        L.append("")
     L.append("## Run overview")
     L.append("")
     R = S["run"]
@@ -396,6 +603,8 @@ def compute() -> tuple[dict, str]:
     for a in ARMS:
         L.append(prop_row(f"Arm {a}", C["by_arm"][a]))
     L.append("")
+    if version >= 2:
+        L.extend(v2_generation_markdown(S, cell_ids))
     L.append("## Estimand 2: novelty (non-control rows)")
     L.append("")
     L.append("| Scope | Key | Novel / rows | Proportion | 95% Wilson |\n|---|---|---|---|---|")
@@ -460,6 +669,8 @@ def compute() -> tuple[dict, str]:
         w, u = e["yes_over_answered"], e["unclear_over_answered"]
         L.append(f"| {lab} | {w['x']} / {w['n']} | {fmt(w['p'])} | {ci(w)} | {u['x']} / {u['n']} | {e['missing']} | {e['counts']} |")
     L.append("")
+    if version >= 2:
+        L.extend(v2_checker_markdown(S["checker_v2"]))
     L.append("## Estimand 5: exemplar sensitivity, Arm A (random exemplars) minus Arm B (fixed exemplars)")
     L.append("")
     E5 = S["E5"]
@@ -481,10 +692,91 @@ def compute() -> tuple[dict, str]:
     L.append(f"review_sheet.csv holds {S['review']['n']} rows; allocation by arm {S['review']['allocation']} from checked rows "
              f"by arm {S['review']['checked_by_arm']}. Agreement is not computed here.")
     L.append("")
+    if version >= 2:
+        R2 = S["review"]
+        L.append(f"Version 2 sampling: {R2['sampling']} (a concept is the call, the clinical term's surface key and the "
+                 f"template); concepts by arm {R2['n_concepts_by_arm']}; {R2['n_unique_concepts_in_sample']} distinct "
+                 f"concepts among the {R2['n']} rows. review_key.csv also carries the checker's relation, "
+                 f"sentence_natural and patient_realism.")
+        L.append("")
     return S, "\n".join(L)
 
 
+def counts_cell(d: dict[str, int]) -> str:
+    """A value-to-count mapping for a table cell, in the listed order."""
+    return ", ".join(f"{k} {v}" for k, v in d.items())
+
+
+def v2_generation_markdown(S: dict, cell_ids: list[str]) -> list[str]:
+    """The version-2 generation descriptives: probe point, variant design, next_word."""
+    pp, vd, nw = S["probe_point"], S["variant_design"], S["next_word"]
+    L = ["## Probe point (version 2, descriptive; not a format failure)", "",
+         (f"A template meets the probe point when, stripped, its last word is one of {', '.join(pp['endings'])} "
+          f"(case-insensitive). Population: {pp['population']}."), "",
+         "| Scope | Ending on a probe word / rows | Proportion | 95% Wilson |\n|---|---|---|---|",
+         prop_row("All rows", pp["overall"])]
+    L += [prop_row(f"Control {k}", pp["by_control"][k]) for k in pp["by_control"]]
+    L += [prop_row(f"Arm {a}", pp["by_arm"][a]) for a in ARMS]
+    L += [prop_row(f"Cell {c}", pp["by_cell"][c]) for c in cell_ids]
+    L += ["", "## Variant design (version 2, descriptive)", "", f"Definition: {vd['definition']}.", "",
+          "| Scope | Compliant calls / calls | Proportion | 95% Wilson |\n|---|---|---|---|",
+          prop_row("All calls", vd["calls_compliant"])]
+    L += [prop_row(f"Arm {a}", vd["by_arm"][a]) for a in ARMS]
+    L += ["", (f"Adjacent variant pairs: {vd['pairs_exact']} with the clinical term exact, "
+               f"{vd['pairs_clinical_surface']} with it equal in surface form (expected "
+               f"{vd['expected_pairs_per_call']} per call). Same-concept rows that are not adjacent: "
+               f"{vd['non_adjacent_repeats']}. Runs of three or more rows of one concept: "
+               f"{vd['runs_of_three_or_more']}. Flagged calls: {', '.join(vd['flagged_calls']) or 'none'}."), "",
+          ("| Call | Rows (control none) | Concepts | Pairs (exact) | Pairs (surface) | Non-adjacent repeats | "
+           "Runs of 3+ | Compliant |\n|---|---|---|---|---|---|---|---|")]
+    L += [(f"| {c['call_id']} | {c['n_rows']} | {c['concepts']} | {c['pairs_exact']} | {c['pairs_clinical_surface']} | "
+           f"{c['non_adjacent_repeats']} | {c['runs_of_three_or_more']} | {'yes' if c['compliant'] else 'no'} |")
+          for c in vd["per_call"]]
+    L += ["", "## next_word (version 2)", "",
+          f"Population: {nw['population']}: {nw['n_rows']} rows, {nw['n_distinct']} distinct words.", "",
+          "| next_word | Rows |\n|---|---|"]
+    L += [f"| {x['word']} | {x['n']} |" for x in nw["most_common"]]
+    L.append("")
+    return L
+
+
+def v2_checker_markdown(cv: dict) -> list[str]:
+    """The version-2 checker descriptives: relation, precision, the relations given with an unclear verdict (reported
+    apart), yes-rate by relation, inconsistent answers, sentence_natural and patient_realism."""
+    rc, un = cv["n_relation_counted"], cv["unclear_relation"]
+    L = ["## Checker relation, precision, sentence and realism (version 2, descriptive)", "",
+         (f"Population: {cv['population']}; answered generated {cv['n_answered']['generated']}, known-good "
+          f"{cv['n_answered']['known_good']}, broken {cv['n_answered']['broken']}; with a yes or no verdict "
+          f"generated {rc['generated']}, known-good {rc['known_good']}, broken {rc['broken']}."), "",
+         "| Items | Relation counts (yes or no verdicts) | Precision (derived from relation) |\n|---|---|---|"]
+    L += [f"| {k.replace('_', '-')} | {counts_cell(cv['relation'][k])} | {counts_cell(cv['precision'][k])} |"
+          for k in ("generated", "known_good", "broken")]
+    L += ["", (f"The version-2 schema requires a relation with every answer, so an answer whose verdict is unclear "
+               f"(the checker could not decide what a phrase means) still carries one. Such a relation describes no "
+               f"decided meaning: it is left out of the relation, precision and yes-rate counts and listed here. "
+               f"Unclear verdicts: {un['total']} (generated {un['n']['generated']}, known-good "
+               f"{un['n']['known_good']}, broken {un['n']['broken']})."), "",
+          "| Items | Relations given with an unclear verdict (not counted above) |\n|---|---|"]
+    L += [f"| {k.replace('_', '-')} | {counts_cell(un['relation'][k])} |"
+          for k in ("generated", "known_good", "broken")]
+    L += ["", ("| Relation (generated) | Judged equivalent / judged yes or no | Proportion | 95% Wilson |\n"
+               "|---|---|---|---|")]
+    L += [prop_row(r, w) for r, w in cv["yes_by_relation"].items()]
+    inc = cv["inconsistent"]
+    L += ["", (f"Answers whose equivalent contradicts their relation (kept as given, flagged inconsistent): "
+               f"{inc['total']} (generated {inc['generated']}, known-good {inc['known_good']}, broken "
+               f"{inc['broken']})."),
+          "", "| Scope (generated) | sentence_natural | patient_realism |\n|---|---|---|",
+          (f"| All | {counts_cell(cv['sentence_natural']['generated'])} | "
+           f"{counts_cell(cv['patient_realism']['generated'])} |")]
+    L += [(f"| Arm {a} | {counts_cell(cv['sentence_natural']['by_arm'][a])} | "
+           f"{counts_cell(cv['patient_realism']['by_arm'][a])} |") for a in ARMS]
+    L.append("")
+    return L
+
+
 def main() -> None:
+    sealed_interpreter_guard("compute_summary", platform.python_version())  # before anything is computed or written
     S, md = compute()
     (PILOT / "summary.md").write_text(md, encoding="utf-8", newline="\n")
     S["summary_md_sha256"] = sha256_text(md)  # the rendering this summary stands for (equal to the file's hash)
