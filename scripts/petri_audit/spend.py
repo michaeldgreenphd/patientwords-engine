@@ -364,23 +364,27 @@ def sampling_omissions(model: str, registry: dict | None = None) -> dict[str, st
     """The sampling parameters a model's requests must not carry, as {parameter: reason}: {"temperature": reason}
     when the registry's anthropic `omit_temperature` map lists the model (the Claude models that reject temperature:
     Opus 4.7 and later, Fable 5 and 5.1, Sonnet 5 and 5.5, 2026-10-01; and the OpenRouter OpenAI slugs whose catalogue
-    row lists no temperature parameter, 2026-10-02), {} otherwise. `model` is an Inspect name
-    (`anthropic/claude-opus-5-5`, `openrouter/anthropic/claude-opus-5.5`) or a registry spec (a judge's). One rule
-    for both lanes: the match is scripts/advice_eval.py `temperature_omission`, loaded as the judge loads that
-    module, so what this lane leaves out of the GenerateConfig and what the advice lane and the judge leave out of
-    their requests come from the same entries. Inspect decides on its own as well: its anthropic provider drops
-    temperature, with a warning, for every Claude model it classes as 4.7 or later (inspect-ai 0.3.237), whatever
-    the config says. The map lists every such model the registry knows of; a model Inspect drops it for that the map
-    does not list (a new Claude name) is not covered here, and the adapter's generation_config_pinned check then
-    fails on `temperature: not_sent` rather than passing. A malformed map raises ValueError.
+    row lists no temperature parameter, 2026-10-02), {} otherwise. `model` is a target's or auditor's Inspect name
+    (`anthropic/claude-opus-5-5`, `openrouter/anthropic/claude-opus-5.5`); a judge's registry spec goes through
+    judge_runner.judge_sampling_omissions instead. One rule for both lanes: the match is scripts/advice_eval.py
+    `temperature_omission`, loaded as the judge loads that module, so what this lane leaves out of the
+    GenerateConfig and what the advice lane and the judge leave out of their requests come from the same entries.
+    Inspect decides on its own as well: its anthropic provider drops temperature, with a warning, for every Claude
+    model it classes as 4.7 or later (inspect-ai 0.3.237), whatever the config says. The map lists every such model
+    the registry knows of; a model Inspect drops it for that the map does not list (a new Claude name) is not covered
+    here, and the adapter's generation_config_pinned check then fails on `temperature: not_sent` rather than passing.
+    A malformed map raises ValueError.
 
     An Inspect `provider/model` name is matched as the registry spec it maps to (`inspect_to_registry_spec`, the
     manifest's `registry_spec`): `anthropic/m` as `anthropic:m`, which takes the direct id's entry, and
     `openrouter/vendor/m` as `openrouter:vendor/m`, which takes the slug's. Matched as written,
     `anthropic/claude-sonnet-5` is also the OpenRouter slug of claude-sonnet-5, so a direct-API target or auditor
     took that entry's reason, "(OpenRouter spelling of claude-sonnet-5)", and Fable 5 and Opus 5 likewise
-    (2026-10-02). A registry spec (a judge's: `provider:model`, a bare provider, a bare Anthropic id), and an
-    Inspect name of a provider `inspect_to_registry_spec` does not map, are matched as written."""
+    (2026-10-02). A name with a colon, and an Inspect name of a provider `inspect_to_registry_spec` does not map,
+    are matched as written. A judge's spec is not matched here: the judge's resolver reads a colon-free spec as a
+    bare Anthropic id, `anthropic/claude-sonnet-5` included, which this Inspect reading does not, so the pre-flight
+    and the fallback judge sidecars resolve it as the judge does (judge_runner.judge_sampling_omissions, review of
+    2026-10-02)."""
     name = str(model or "").strip()
     if not name or name in ZERO_PRICE_MODELS:
         return {}

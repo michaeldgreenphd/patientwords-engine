@@ -186,7 +186,7 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
         return 3, {}
     if args.judge_model:
         # a judge spec the registry cannot resolve must fail here, before the target spends (Codex round 2)
-        from .judge_runner import judge_spec_problems
+        from .judge_runner import judge_sampling_omissions, judge_spec_problems
 
         judge_problems = judge_spec_problems(args.judge_model)
         if judge_problems:
@@ -203,7 +203,9 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
         judge_price = resolve_registry_price(args.judge_model)
         print(f"judge {args.judge_model}: {judge_billing_channel(args.judge_model)} channel, in {judge_price.input_per_mtok}/Mtok "
               f"out {judge_price.output_per_mtok}/Mtok ({judge_price.source})")
-        for param, reason in sampling_omissions(args.judge_model).items():
+        # the spec as RegistryJudge resolves it, so the line names what the judge's rows will record; a target's
+        # Inspect-name reading (spend.sampling_omissions) differs for colon-free specs containing "/" (2026-10-02)
+        for param, reason in judge_sampling_omissions(args.judge_model).items():
             print(f"judge {args.judge_model}: {param} omitted from every call ({reason})")
         # the pre-flight is not given the judge's allowance, so it names the registry minimum the judge step will
         # hold the allowance to (judge_runner.judge_budget_problems refuses a smaller one before any judge call)
@@ -516,7 +518,7 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
     under `can_afford`, so the judge ceiling bounds the total: a priced judge
     is booked at its ceiling with the surviving rows' sum recorded beside it,
     a zero-price judge at zero (Codex rounds 4 and 5)."""
-    from .judge_runner import TIER_TEMPERATURE, cumulative_counts, omission_fields, read_jsonl
+    from .judge_runner import TIER_TEMPERATURE, cumulative_counts, judge_sampling_omissions, omission_fields, read_jsonl
 
     run_dir = Path(args.run_dir)
     # a readapt's judge was reserved by the readapt fire, not the source fire its directory names; the sidecar carries
@@ -557,9 +559,9 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
                "abort_error": None, "spend_report_reason": reason, "cumulative": cumulative_counts(rows),
                "judgments_sha256": sha256_file(judgments_path) if judgments_path.is_file() else None,
                "judge_max_tokens": args.judge_max_tokens, "temperature": TIER_TEMPERATURE,
-               # a judge model the registry withholds temperature from was sent none (this process cannot see an
-               # installed SDK's refusal; the surviving rows record their own)
-               **omission_fields(sampling_omissions(args.judge_model).get("temperature")),
+               # a judge model the registry withholds temperature from was sent none, for the spec as RegistryJudge
+               # resolves it (this process cannot see an installed SDK's refusal; the surviving rows record their own)
+               **omission_fields(judge_sampling_omissions(args.judge_model).get("temperature")),
                "task": "petri-audit-judge", "run_id": run_dir.name, "billing_channel": channel,
                "price_source": price.source, "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok}
     sidecar.update(identity)

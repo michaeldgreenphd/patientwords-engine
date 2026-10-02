@@ -156,7 +156,8 @@ class RegistryJudge:
         self.is_anthropic = self.spec["provider"] == "anthropic"
         # a judge model the registry says rejects temperature (anthropic.omit_temperature; 2026-10-01) is sent none,
         # and every row, the sidecar and the manifest's judge of record say so (temperature_sent null,
-        # temperature_omitted the reason)
+        # temperature_omitted the reason). judge_sampling_omissions repeats this resolution and match for the
+        # pre-flight and the fallback sidecars; change both together (tests/test_petri_sampling_omission.py)
         self.registry_temperature_omitted: str | None = ae.temperature_omission(self.spec["spec"], registry)
         self.client = ae._client() if self.is_anthropic else None
 
@@ -1013,6 +1014,38 @@ def judge_min_output_tokens(model_spec: str, providers_path: str | Path | None =
     except SystemExit:
         return None
     return ae.min_output_tokens(spec["cfg"], spec["model"])
+
+
+def judge_sampling_omissions(model_spec: str, providers_path: str | Path | None = None) -> dict[str, str]:
+    """The sampling parameters RegistryJudge leaves out of every call for `model_spec` because the registry lists the
+    model, as {parameter: reason}, the shape spend.sampling_omissions returns: {"temperature": reason} or {}. The
+    pre-flight's judge line and the two fallback judge sidecars (`cli judge-spend-report`,
+    rejudge.impute_missing_reports) record this, so they say what the judge's own rows and sidecar say.
+
+    The spec is resolved as RegistryJudge.__init__ resolves it (scripts/advice_eval.py `_resolve_spec` over
+    `_load_providers`), and the resolved `provider:model` is matched as RegistryJudge matches it
+    (`temperature_omission`). That resolver reads a colon-free spec naming no registry provider as a bare Anthropic
+    id, `anthropic/claude-sonnet-5` and `openrouter/openai/gpt-6-luna` included, which the judge sends to the
+    Anthropic API as written. Until the review of 2026-10-02 these records used spend.sampling_omissions, which reads
+    such a string as a target's Inspect name and so could name another entry, or none, than the judge's rows did:
+    `openrouter/openai/gpt-6-luna` took the slug's entry and `anthropic/claude-opus-5-5` the direct id's, where the
+    judge matches neither, and `anthropic/claude-sonnet-5` took the direct id's reason and `anthropic/claude-opus-5.5`
+    no entry, where the judge takes the slug's.
+
+    {} for the zero-price sentinels (RegistryJudge refuses them; MockJudge sends the instrument's temperature) and
+    for a spec the registry cannot resolve (judge_spec_problems reports it and RegistryJudge refuses it, so no call
+    goes out under it). An installed SDK's refusal of the keyword is not visible here; the judge's rows record it
+    (RegistryJudge.temperature_omitted). A malformed map raises ValueError."""
+    if model_spec.strip() in ZERO_PRICE_MODELS:
+        return {}
+    ae = _advice_eval_module()
+    registry = ae._load_providers(providers_path or ae.DEFAULT_PROVIDERS)
+    try:
+        spec = ae._resolve_spec(model_spec, registry)
+    except SystemExit:
+        return {}
+    reason = ae.temperature_omission(spec["spec"], registry)
+    return {"temperature": reason} if reason else {}
 
 
 def judge_budget_problems(model_spec: str, judge_max_tokens: int, providers_path: str | Path | None = None) -> list[str]:

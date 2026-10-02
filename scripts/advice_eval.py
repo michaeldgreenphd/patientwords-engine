@@ -170,9 +170,10 @@ def temperature_omission_entry(model: str, registry: dict) -> tuple[str, str] | 
     `openrouter/anthropic/claude-opus-5.5`); the map lists each model under its direct id and its OpenRouter slug, so
     the match is exact after one provider prefix is removed, never fuzzy. The whole string is tried first, so
     `anthropic/claude-sonnet-5`, both an OpenRouter slug (the part after `openrouter:` that call_settings passes) and
-    a Petri Inspect name for the direct API, takes the slug's entry; the Petri lane passes the direct name's registry
-    spec instead (petri_audit.spend.sampling_omissions). A malformed map is refused, not ignored: ignoring it would
-    send the parameter the map exists to withhold."""
+    a Petri Inspect name for the direct API, takes the slug's entry; the Petri target and auditor pass the direct
+    name's registry spec instead (petri_audit.spend.sampling_omissions), and the Petri judge passes the spec
+    `_resolve_spec` gives it (RegistryJudge, petri_audit.judge_runner.judge_sampling_omissions). A malformed map is
+    refused, not ignored: ignoring it would send the parameter the map exists to withhold."""
     block = registry.get("anthropic") if isinstance(registry, dict) else None
     rules = block.get(OMIT_TEMPERATURE_FIELD) if isinstance(block, dict) else None
     if rules is None:

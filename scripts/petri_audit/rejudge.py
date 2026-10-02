@@ -100,7 +100,6 @@ from .spend import (
     openrouter_price_problems,
     registry_spec_to_inspect,
     resolve_registry_price,
-    sampling_omissions,
 )
 
 MODE = "rejudge"
@@ -1013,13 +1012,13 @@ def impute_missing_reports(plan: dict, started_dir: Path | str, now_fn: Callable
     died, or the client raised before `run_judgments` could write), a sidecar booking that run's allotment: every
     call was admitted under the ceiling, so the allotment bounds what was spent, and the rows that survived are
     summed beside it (`judge-spend-report`'s rule). A zero-price judge books zero. Returns the sidecars written."""
-    from .judge_runner import TIER_TEMPERATURE, cumulative_counts, omission_fields, read_jsonl
+    from .judge_runner import TIER_TEMPERATURE, cumulative_counts, judge_sampling_omissions, omission_fields, read_jsonl
 
     started_dir = Path(started_dir)
     judge_model = plan["judge_model"]
-    # a judge model the registry withholds temperature from was sent none (this process cannot see an installed
-    # SDK's refusal; the surviving rows record their own)
-    omitted = omission_fields(sampling_omissions(judge_model).get("temperature"))
+    # a judge model the registry withholds temperature from was sent none, for the spec as RegistryJudge resolves it
+    # (this process cannot see an installed SDK's refusal; the surviving rows record their own)
+    omitted = omission_fields(judge_sampling_omissions(judge_model).get("temperature"))
     price = resolve_registry_price(judge_model)
     zero_priced = price.input_per_mtok == 0 and price.output_per_mtok == 0
     fire = plan["fire"]

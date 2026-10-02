@@ -17,7 +17,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from scripts.petri_audit import checks, cli, envlock, framework, judge_runner, spend  # noqa: E402
+from scripts.petri_audit import checks, cli, envlock, framework, judge_runner, rejudge, spend  # noqa: E402
 from scripts.petri_audit import manifest as manifest_mod  # noqa: E402
 
 SEED_GENERATION = {"max_tokens": 1024, "temperature": 1.0, "seed_requested": 7}
@@ -63,11 +63,14 @@ def test_every_listed_model_takes_its_own_entrys_reason_in_every_spelling_the_la
     `anthropic/claude-sonnet-5` is also claude-sonnet-5's OpenRouter slug, so the pre-flight printout and the
     manifest's sampling_omitted gave that entry's reason, "(OpenRouter spelling of claude-sonnet-5)". Fable 5 and
     Opus 5 were the other two. A direct id is named `anthropic/<id>` by a target or auditor and `anthropic:<id>` or
-    `<id>` by a judge; a slug is named `openrouter/<slug>` and `openrouter:<slug>`."""
+    `<id>` by a judge; a slug is named `openrouter/<slug>` and `openrouter:<slug>`. A judge's records resolve its
+    spec as the judge does (judge_runner.judge_sampling_omissions)."""
     reason = _live_omissions()[key]
     direct = [f"anthropic/{key}", f"anthropic:{key}", key]
     for spelling in ([f"openrouter/{key}", f"openrouter:{key}"] if "/" in key else direct):
         assert spend.sampling_omissions(spelling) == {"temperature": reason}, spelling
+    for spelling in ([f"openrouter:{key}"] if "/" in key else [f"anthropic:{key}", key]):
+        assert judge_runner.judge_sampling_omissions(spelling) == {"temperature": reason}, spelling
 
 
 def test_an_inspect_name_is_matched_as_its_registry_spec():
@@ -78,7 +81,8 @@ def test_an_inspect_name_is_matched_as_its_registry_spec():
                 "openrouter": {}}
     assert spend.sampling_omissions("anthropic/m", registry) == {"temperature": "direct"}
     assert spend.sampling_omissions("openrouter/anthropic/m", registry) == {"temperature": "slug"}
-    # a judge's registry specs, matched as written
+    # names with a colon, and bare ids, matched as written (a judge's spec is resolved as the judge resolves it, by
+    # judge_runner.judge_sampling_omissions, not here)
     assert spend.sampling_omissions("anthropic:m", registry) == {"temperature": "direct"}
     assert spend.sampling_omissions("m", registry) == {"temperature": "direct"}
     assert spend.sampling_omissions("openrouter:anthropic/m", registry) == {"temperature": "slug"}
@@ -293,6 +297,100 @@ def test_the_fallback_judge_sidecar_records_a_registry_omission(tmp_path):
                      "--judge-max-spend", "1.5"]) == 0
     side = framework.load_json(other / "run_9_2.judge.report.json")
     assert "temperature_sent" not in side and "temperature_omitted" not in side
+
+
+# ------------------------------------------------------------------ the judge's other records agree with the judge
+
+# Judge strings of each form a judge spec takes: provider:model, a bare Anthropic id, a bare provider (its consumer
+# default), and colon-free strings containing "/". The judge's resolver reads the last group as bare Anthropic ids and
+# sends them to the Anthropic API as written; a target's Inspect-name reading (spend.sampling_omissions) does not, so
+# that group is where the two give another entry's reason or the opposite decision.
+JUDGE_STRINGS = ["anthropic:claude-sonnet-5", "anthropic:claude-haiku-4-5", "openrouter:anthropic/claude-opus-5.5",
+                 "openrouter:anthropic/claude-sonnet-5.5", "openrouter:openai/gpt-6-luna",
+                 "openrouter:openai/gpt-5.4-mini", "claude-sonnet-5", "claude-opus-5-5", "claude-haiku-4-5",
+                 "anthropic", "openai", "anthropic/claude-sonnet-5", "anthropic/claude-opus-5", "anthropic/claude-fable-5",
+                 "anthropic/claude-opus-5.5", "anthropic/claude-sonnet-5.5", "anthropic/claude-opus-5-5",
+                 "anthropic/claude-haiku-4-5", "openrouter/anthropic/claude-sonnet-5.5", "openrouter/openai/gpt-6-luna"]
+
+
+def _judge_sends(monkeypatch, tmp_path, spec: str) -> tuple[list, dict[str, str]]:
+    """One judgment through RegistryJudge with its provider calls faked: the temperature each request carried, and
+    the omission the judge records for it, in spend.sampling_omissions' shape."""
+    ae, client = _registry_judge(monkeypatch, tmp_path, spec)
+    sent = []
+
+    def fake_send(*args, before_retry=None):   # (client or cfg, model, system, prompt, max_tokens, temperature)
+        sent.append(args[5])
+        return "absent", 5, 6, {"model": args[1], "usage": {"input_tokens": 5, "output_tokens": 6}}, {}
+
+    monkeypatch.setattr(ae, "_send_anthropic_retrying", fake_send)
+    monkeypatch.setattr(ae, "_send_compat", fake_send)
+    monkeypatch.setattr(ae, "_pace", lambda *a: None)
+    reply = client.complete("prompt", max_tokens=4096, temperature=judge_runner.TIER_TEMPERATURE)
+    return sent, ({"temperature": reply.temperature_omitted} if reply.temperature_omitted else {})
+
+
+def _recorded(sidecar: dict) -> dict[str, str]:
+    """A judge sidecar's omission in the same shape; its two fields appear together or not at all."""
+    if "temperature_omitted" not in sidecar:
+        assert "temperature_sent" not in sidecar
+        return {}
+    assert sidecar["temperature_sent"] is None
+    return {"temperature": sidecar["temperature_omitted"]}
+
+
+@pytest.mark.parametrize("spec", JUDGE_STRINGS)
+def test_the_preflight_and_both_fallback_sidecars_record_what_the_judge_sends(spec, monkeypatch, tmp_path, capsys):
+    """Review of 2026-10-02: the pre-flight's judge line, the judge-spend-report sidecar and the rejudge fallback
+    sidecar read the judge's spec with spend.sampling_omissions, while RegistryJudge resolves a colon-free spec as a
+    bare Anthropic id. For `anthropic/claude-sonnet-5` the three named the direct id's reason where the judge's rows
+    name the slug's; for `anthropic/claude-opus-5.5` they said temperature was sent where the judge sends none; for
+    `openrouter/openai/gpt-6-luna` the reverse. Each must record what the judge sends, decision and reason."""
+    sent, judge = _judge_sends(monkeypatch, tmp_path, spec)
+    assert sent == [None if judge else judge_runner.TIER_TEMPERATURE], "the judge sends temperature unless it records why not"
+    # the pre-flight's judge line
+    monkeypatch.setattr(cli, "verify_lock", lambda *a, **k: envlock.LockReport(
+        lock_path="locked-for-test", lock_sha256="0" * 64, digest_matches=True))
+    argv = ["preflight", "--no-harness-commit", "--token-limit", "40000", "--target", "anthropic/claude-haiku-4-5",
+            "--max-spend", "6", "--judge-model", spec, "--judge-max-spend", "1"]
+    for s in ("pw-petri-example-h1-sustained", "pw-petri-example-h4-persistence", "pw-petri-example-h6-evidence"):
+        argv += ["--seed-id", s]
+    code = cli.main(argv)
+    out = capsys.readouterr().out
+    assert code == 0, out
+    prefix, middle = f"judge {spec}: ", " omitted from every call ("
+    lines = [line[len(prefix):] for line in out.splitlines() if line.startswith(prefix) and middle in line]
+    assert {param: rest[:-1] for param, rest in (line.split(middle, 1) for line in lines)} == judge, out
+    # the judge step's fallback sidecar
+    run_dir = tmp_path / "runs" / "run_9_1"
+    run_dir.mkdir(parents=True)
+    assert cli.main(["judge-spend-report", "--run-dir", str(run_dir), "--judge-model", spec, "--judge-max-spend", "1.5",
+                     "--judge-max-tokens", "4096"]) == 0
+    assert _recorded(framework.load_json(run_dir / "run_9_1.judge.report.json")) == judge
+    # the rejudge fallback sidecar, from a plan holding the fields impute_missing_reports reads
+    plan = {"judge_model": spec, "judge_slug": "judge", "judge_max_tokens": 4096, "judge_max_spend_usd": 1.0,
+            "rejudge_root": str(tmp_path / "rejudge"), "source_runs": ["run_4242_1"], "rehearsal": False,
+            "fire": {"workflow_run_id": "777", "workflow_run_attempt": "1", "commit": "c" * 40, "journal_nonce": "rj-1"},
+            "sources": [{"run_stem": "run_4242_1", "source": {"run_id": "Run4242", "eval_id": "Eval4242"}}]}
+    started = tmp_path / "started"
+    started.mkdir()
+    framework.write_json(rejudge.started_marker(started, "run_4242_1"),
+                         {"run_stem": "run_4242_1", "max_spend_usd": 1.0, "fire_spent_before_usd": 0.0})
+    (written,) = rejudge.impute_missing_reports(plan, started)
+    assert _recorded(framework.load_json(written)) == judge
+
+
+def test_a_judge_spec_no_call_can_go_out_under_records_no_omission_and_refuses_nothing(tmp_path):
+    """judge_sampling_omissions resolves as RegistryJudge does, and RegistryJudge cannot be built for a zero-price
+    sentinel or a spec the registry cannot resolve, so no call goes out under either: {} for both, never an exception,
+    so the fallback sidecar is still written. The pre-flight refuses such a spec earlier (judge_spec_problems)."""
+    for spec in ("mockllm/judge", "mockllm/model", "none/none", "nosuchprovider:claude-opus-5-5", "copilot"):
+        assert judge_runner.judge_sampling_omissions(spec) == {}, spec
+    run_dir = tmp_path / "runs" / "run_9_3"
+    run_dir.mkdir(parents=True)
+    assert cli.main(["judge-spend-report", "--run-dir", str(run_dir), "--judge-model", "nosuchprovider:claude-opus-5-5",
+                     "--judge-max-spend", "1.5"]) == 0
+    assert _recorded(framework.load_json(run_dir / "run_9_3.judge.report.json")) == {}
 
 
 # ------------------------------------------------------------------ the judge's output allowance
