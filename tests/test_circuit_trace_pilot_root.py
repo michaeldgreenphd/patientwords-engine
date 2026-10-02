@@ -145,6 +145,16 @@ CASES = [
                                  "offsets": [0, 1], "sample_size": "1"}, False),
     ("pilot-screen-other-file-missing", {**PILOT, "pairs_file": "pilot/q.json", "screen_targets": "0.02",
                                          "offsets": "1", "sample_size": "5"}, True),
+    # the seal step's --extra list splits on commas, so a comma in a pilot pairs name would scan nothing
+    ("pilot-root-comma-pairs", {**PILOT, "pairs_file": "pilot/a,b.json"}, True),
+    ("default-root-comma-pairs-is-unchanged", {"pairs_file": "data/a,b.json"}, False),
+    # an absolute or ..-escaping path can name the checkout's pilot/ without the pilot/ prefix, so both are refused
+    ("absolute-pilot-pairs-default-root", {"pairs_file": "/home/runner/work/engine/engine/pilot/p.json"}, True),
+    ("absolute-pilot-pairs-pilot-root", {**PILOT, "pairs_file": "/home/runner/work/engine/engine/pilot/p.json"},
+     True),
+    ("absolute-study-pairs", {"pairs_file": "/home/runner/work/engine/engine/data/x.json"}, True),
+    ("escaping-pilot-pairs-default-root", {"pairs_file": "../engine/pilot/p.json"}, True),
+    ("escaping-via-inner-dots", {"pairs_file": "data/../../engine/pilot/p.json"}, True),
 ]
 
 
@@ -251,6 +261,35 @@ def test_a_fail_closed_seal_check_runs_before_a_pilot_commit():
     assert "always()" in cond and "fromJson(needs.params.outputs.config).commit_outputs == 'true'" in cond
     assert ("(fromJson(needs.params.outputs.config).output_root != 'pilot/traces' "
             "|| steps.seal.outcome == 'success')") in cond
+
+
+
+PILOT_SEAL_GATE = ("${{ always() && (fromJson(needs.params.outputs.config).output_root != 'pilot/traces' "
+                   "|| steps.seal.outcome == 'success') }}")
+
+
+def test_a_pilot_cell_whose_seal_check_failed_publishes_neither_its_summary_nor_its_artifact():
+    """The run page and the workflow artifact are publications too (petri_audit.yml gates its upload on its seal
+    check the same way); the default root keeps running both after a failure, as `always()` did."""
+    steps = _trace_steps()
+    names = [str(s.get("name", "")) for s in steps]
+    seal_at = next(i for i, s in enumerate(steps) if s.get("id") == "seal")
+    for name in ("Publish summary to run page", "Upload trace outputs"):
+        at = names.index(name)
+        assert at > seal_at, name
+        assert steps[at]["if"] == PILOT_SEAL_GATE, name
+
+
+def test_the_seal_step_fails_when_the_pairs_file_is_absent(tmp_path):
+    """seal_check.py reads a missing root as zero files and passes, so the step itself refuses a missing pairs
+    file before the check runs (exit 1, no seal_check.py call)."""
+    run = next(s for s in _trace_steps() if s.get("id") == "seal")["run"]
+    assert run.index('test -f "$PAIRS_FILE"') < run.index("python scripts/seal_check.py")
+    env = {**os.environ, "PAIRS_FILE": "pilot/absent.json", "OUT_DIR": "pilot/traces/absent",
+           "RUNNER_TEMP": str(tmp_path)}
+    proc = subprocess.run(["bash", "-c", run], cwd=tmp_path, capture_output=True, text=True, env=env)
+    assert proc.returncode == 1, (proc.stdout, proc.stderr)
+    assert "pairs file pilot/absent.json not found" in proc.stdout
 
 
 def test_a_pilot_commit_stages_only_summary_parts_and_the_default_list_is_unchanged():

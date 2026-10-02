@@ -897,10 +897,23 @@ def circuit_trace_pairs_path(params: dict) -> str:
     return _circuit_trace_job_value(params, "pairs_file") or f"medlang_circuits/data/ci_pairs_{mode}.json"
 
 
+def _circuit_trace_normpath(path: str) -> str:
+    """A pairs path normalised the way the params job reads it (POSIX separators, `.` and `..` folded)."""
+    return os.path.normpath(path).replace(os.sep, "/")
+
+
 def circuit_trace_pairs_in_pilot(path: str) -> bool:
     """Whether a pairs path is under pilot/, read after normalisation so `./pilot/x` counts and
     `pilot/../data/x` does not."""
-    return os.path.normpath(path).replace(os.sep, "/").startswith(CIRCUIT_TRACE_PILOT_PAIRS_PREFIX)
+    return _circuit_trace_normpath(path).startswith(CIRCUIT_TRACE_PILOT_PAIRS_PREFIX)
+
+
+def circuit_trace_pairs_outside_checkout(path: str) -> bool:
+    """Whether a pairs path is absolute or climbs out of the checkout (`..`). Either can name the checkout's own
+    pilot/ directory without the `pilot/` prefix the pilot rule tests, so the params job and the fire path refuse
+    both for every root; every pairs_file ever journaled is repo-relative."""
+    norm = _circuit_trace_normpath(path)
+    return norm.startswith("/") or norm == ".." or norm.startswith("../")
 
 
 def circuit_trace_params_problems(params: dict) -> list[str]:
@@ -914,6 +927,9 @@ def circuit_trace_params_problems(params: dict) -> list[str]:
         return [f"circuit-trace output_root {root!r}: only \"\" (trace_out) or {CIRCUIT_TRACE_PILOT_ROOT!r} is "
                 "accepted"]
     path = circuit_trace_pairs_path(params)
+    if circuit_trace_pairs_outside_checkout(path):
+        return [f"circuit-trace pairs_file {path!r} is absolute or leaves the checkout; give a repo-relative path "
+                "(an absolute path into pilot/ would trace pilot pairs into trace_out/)"]
     in_pilot = circuit_trace_pairs_in_pilot(path)
     problems = []
     if root != CIRCUIT_TRACE_PILOT_ROOT:
@@ -925,6 +941,11 @@ def circuit_trace_params_problems(params: dict) -> list[str]:
     if not in_pilot:
         problems.append(f"circuit-trace output_root {CIRCUIT_TRACE_PILOT_ROOT!r} traces only a pairs_file under "
                         f"pilot/, not {path!r}")
+    if "," in path:
+        # the seal step passes "$OUT_DIR,$PAIRS_FILE" to seal_check.py --extra, which splits on commas; a comma in
+        # the name would turn both into paths that do not exist, and the check would pass having scanned nothing
+        problems.append(f"circuit-trace output_root {CIRCUIT_TRACE_PILOT_ROOT!r}: pairs_file {path!r} contains a "
+                        "comma, which the pilot seal check cannot scan")
     where = f"circuit-trace with output_root {CIRCUIT_TRACE_PILOT_ROOT!r}"
     mitigate = _circuit_trace_job_value(params, "show_mitigation")
     if mitigate.strip().lower() not in ("", "false", "0"):

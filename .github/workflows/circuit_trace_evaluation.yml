@@ -189,7 +189,12 @@ jobs:
           if root not in ("", "pilot/traces"):
               raise SystemExit(f"output_root {root!r}: only '' (trace_out) or 'pilot/traces' is accepted")
           pairs_path = params["pairs_file"] or f"medlang_circuits/data/ci_pairs_{params['mode']}.json"
-          in_pilot = posixpath.normpath(pairs_path).startswith("pilot/")
+          norm_pairs = posixpath.normpath(pairs_path)
+          if norm_pairs.startswith("/") or norm_pairs == ".." or norm_pairs.startswith("../"):
+              # an absolute or ..-escaping path can name pilot/ without the pilot/ prefix tested below
+              raise SystemExit(f"pairs_file {pairs_path!r} is absolute or leaves the checkout; "
+                               "give a repo-relative path")
+          in_pilot = norm_pairs.startswith("pilot/")
           if root != "pilot/traces" and in_pilot:
               raise SystemExit(f"pairs_file {pairs_path!r} is under pilot/: pilot pairs trace only with "
                                "output_root 'pilot/traces', so their outputs never enter trace_out/")
@@ -197,6 +202,8 @@ jobs:
               refused = []
               if not in_pilot:
                   refused.append(f"pairs_file {pairs_path!r} is not under pilot/")
+              if "," in pairs_path:  # the seal step's --extra list splits on commas
+                  refused.append(f"pairs_file {pairs_path!r} contains a comma")
               if params["show_mitigation"].strip().lower() not in ("", "false", "0"):
                   refused.append(f"show_mitigation {params['show_mitigation']!r}")
               if params["mode"].strip().lower() == "translation":
@@ -401,14 +408,19 @@ jobs:
       # Pilot root only: pilot pairs come from the pilot generator, not the study's batches, so everything this cell
       # wrote and the pairs file it read are swept for sealed holdout phrases before anything is committed (the
       # petri_audit.yml pattern: no site checkout, the sealed set computed from data/ and ops/). Runs after a failed
-      # trace too, as the commit step does, so a partial cell is checked before its checkpoint lands; the commit
-      # step below commits a pilot cell only when this step succeeded.
+      # trace too, as the commit step does, so a partial cell is checked before its checkpoint lands; the commit,
+      # run-page summary and artifact-upload steps below act on a pilot cell only when this step succeeded.
       - name: Holdout seal check over the pilot trace outputs (pilot root only; fails closed)
         id: seal
         if: ${{ always() && fromJson(needs.params.outputs.config).output_root == 'pilot/traces' }}
         env:
           PAIRS_FILE: ${{ fromJson(needs.params.outputs.config).pairs_file }}
         run: |
+          set -euo pipefail
+          # seal_check.py reads a root that does not exist as zero files and passes, so a pairs file that is not
+          # there fails here rather than letting the check pass over nothing (a comma in the name is refused at fire
+          # time and in the params job for the same reason: --extra splits on commas)
+          test -f "$PAIRS_FILE" || { echo "pilot seal check: pairs file $PAIRS_FILE not found"; exit 1; }
           python scripts/seal_check.py --site "$RUNNER_TEMP/no-site" --extra "$OUT_DIR,$PAIRS_FILE"
 
       - name: Commit trace outputs to the dispatched branch
@@ -463,8 +475,10 @@ jobs:
           done
           [ "$PUSHED" -eq 1 ]
 
+      # Under the pilot root the run page and the artifact are publications too (an artifact cannot be retracted once
+      # created), so a pilot cell whose seal check did not succeed publishes neither; the default root is unchanged.
       - name: Publish summary to run page
-        if: always()
+        if: ${{ always() && (fromJson(needs.params.outputs.config).output_root != 'pilot/traces' || steps.seal.outcome == 'success') }}
         run: |
           SUMMARY=$(ls "$OUT_DIR"/batch_summary*.json 2>/dev/null | head -1 || true)
           if [ -n "$SUMMARY" ]; then
@@ -477,7 +491,7 @@ jobs:
           fi
 
       - name: Upload trace outputs
-        if: always()
+        if: ${{ always() && (fromJson(needs.params.outputs.config).output_root != 'pilot/traces' || steps.seal.outcome == 'success') }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: circuit-trace-${{ matrix.model }}-${{ fromJson(needs.params.outputs.config).mode }}-${{ github.run_number }}-offset${{ matrix.offset }}
