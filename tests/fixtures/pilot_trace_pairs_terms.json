@@ -1,0 +1,17 @@
+{
+  "_readme": "The words tests/test_pilot_trace_pairs.py builds its fake version-2 pilot rows from, held here because the engine keeps medical vocabulary in data files, never in Python source (AGENTS.md). Made-up test rows, not stimuli. `row` holds the text fields of the fake generated row every test starts from; `expected` holds the two sentences that row fills, written out so the test does not recompute them with the code under test; `second_next_word` is another row's next word, `two_word_next_word` a next word that is not one word, and `template_off_probe_point` a template that does not end on a probe ending. `surface_key_strings` are compared between trace_pairs.surface_key and the harness's common.surface_key.",
+  "row": {
+    "template": "My knee hurts, so I am going to call my ___ and ask my",
+    "clinical_term": "orthopedic surgeon",
+    "patient_term": "bone doctor",
+    "next_word": "doctor"
+  },
+  "expected": {
+    "top_prompt": "My knee hurts, so I am going to call my orthopedic surgeon and ask my",
+    "bottom_prompt": "My knee hurts, so I am going to call my bone doctor and ask my"
+  },
+  "second_next_word": "pharmacist",
+  "two_word_next_word": "family doctor",
+  "template_off_probe_point": "My knee hurts after ___ so I went",
+  "surface_key_strings": ["Blood-pressure Pills!", "  ACE inhibitor ", "Lactaid pill", "mitral valve", "naïve", "x"]
+}
