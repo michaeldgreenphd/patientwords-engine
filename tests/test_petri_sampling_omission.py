@@ -53,6 +53,45 @@ def test_the_petri_rule_is_the_advice_lanes_rule():
         spend.sampling_omissions("anthropic/model-r", {"anthropic": {"omit_temperature": ["model-r"]}})
 
 
+def _live_omissions() -> dict[str, str]:
+    return framework.load_json(spend.PROVIDERS_PATH)["anthropic"]["omit_temperature"]
+
+
+@pytest.mark.parametrize("key", sorted(_live_omissions()))
+def test_every_listed_model_takes_its_own_entrys_reason_in_every_spelling_the_lane_uses(key):
+    """Review of 2026-10-02: the Inspect name of a direct-API model was matched as written, and
+    `anthropic/claude-sonnet-5` is also claude-sonnet-5's OpenRouter slug, so the pre-flight printout and the
+    manifest's sampling_omitted gave that entry's reason, "(OpenRouter spelling of claude-sonnet-5)". Fable 5 and
+    Opus 5 were the other two. A direct id is named `anthropic/<id>` by a target or auditor and `anthropic:<id>` or
+    `<id>` by a judge; a slug is named `openrouter/<slug>` and `openrouter:<slug>`."""
+    reason = _live_omissions()[key]
+    direct = [f"anthropic/{key}", f"anthropic:{key}", key]
+    for spelling in ([f"openrouter/{key}", f"openrouter:{key}"] if "/" in key else direct):
+        assert spend.sampling_omissions(spelling) == {"temperature": reason}, spelling
+
+
+def test_an_inspect_name_is_matched_as_its_registry_spec():
+    """The direct id `m` and the OpenRouter slug `anthropic/m` are two entries. The advice lane passes the slug as
+    the part after `openrouter:` and must keep matching it as written; the Petri lane's `anthropic/m` is the direct
+    API, so spend.sampling_omissions matches it as `anthropic:m`."""
+    registry = {"anthropic": {"omit_temperature": {"m": "direct", "anthropic/m": "slug", "anthropic/n.1": "slug only"}},
+                "openrouter": {}}
+    assert spend.sampling_omissions("anthropic/m", registry) == {"temperature": "direct"}
+    assert spend.sampling_omissions("openrouter/anthropic/m", registry) == {"temperature": "slug"}
+    # a judge's registry specs, matched as written
+    assert spend.sampling_omissions("anthropic:m", registry) == {"temperature": "direct"}
+    assert spend.sampling_omissions("m", registry) == {"temperature": "direct"}
+    assert spend.sampling_omissions("openrouter:anthropic/m", registry) == {"temperature": "slug"}
+    # a direct-API name takes only a direct entry, as its registry spec `anthropic:n.1` does
+    assert spend.sampling_omissions("anthropic/n.1", registry) == {}
+    assert spend.sampling_omissions("openrouter/anthropic/n.1", registry) == {"temperature": "slug only"}
+    # a registry with no block for the provider maps no spec, so the name is matched as written
+    assert spend.sampling_omissions("openrouter/anthropic/m", {"anthropic": registry["anthropic"]}) == {
+        "temperature": "slug"}
+    # the advice lane's reading of the slug is unchanged
+    assert judge_runner._advice_eval_module().temperature_omission("anthropic/m", registry) == "slug"
+
+
 def test_generate_config_kwargs_leaves_out_exactly_the_omitted_parameter():
     assert checks.generate_config_kwargs(SEED_GENERATION) == {"max_tokens": 1024, "temperature": 1.0, "seed": 7}
     assert checks.generate_config_kwargs(SEED_GENERATION, OMITTED) == {"max_tokens": 1024, "seed": 7}
@@ -205,6 +244,13 @@ def test_the_preflight_names_the_withheld_parameter_for_target_and_judge(monkeyp
     code = cli.main([a if a != "anthropic/claude-opus-5-5" else "anthropic/claude-haiku-4-5" for a in args])
     out = capsys.readouterr().out
     assert code == 0 and "target anthropic/claude-haiku-4-5: temperature omitted" not in out
+    # a direct-API target whose name is also an OpenRouter slug gets its own entry's reason (review of 2026-10-02)
+    code = cli.main([a if a != "anthropic/claude-opus-5-5" else "anthropic/claude-sonnet-5" for a in args])
+    out = capsys.readouterr().out
+    assert code == 0, out
+    reason = _live_omissions()["claude-sonnet-5"]
+    assert f"target anthropic/claude-sonnet-5: temperature omitted from every call ({reason})" in out
+    assert "OpenRouter spelling" not in out
 
 
 # ------------------------------------------------------------------ the judge of record (review of 2026-10-01)

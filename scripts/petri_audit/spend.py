@@ -372,13 +372,23 @@ def sampling_omissions(model: str, registry: dict | None = None) -> dict[str, st
     temperature, with a warning, for every Claude model it classes as 4.7 or later (inspect-ai 0.3.237), whatever
     the config says. The map lists every such model the registry knows of; a model Inspect drops it for that the map
     does not list (a new Claude name) is not covered here, and the adapter's generation_config_pinned check then
-    fails on `temperature: not_sent` rather than passing. A malformed map raises ValueError."""
-    if not str(model or "").strip() or str(model).strip() in ZERO_PRICE_MODELS:
+    fails on `temperature: not_sent` rather than passing. A malformed map raises ValueError.
+
+    An Inspect `provider/model` name is matched as the registry spec it maps to (`inspect_to_registry_spec`, the
+    manifest's `registry_spec`): `anthropic/m` as `anthropic:m`, which takes the direct id's entry, and
+    `openrouter/vendor/m` as `openrouter:vendor/m`, which takes the slug's. Matched as written,
+    `anthropic/claude-sonnet-5` is also the OpenRouter slug of claude-sonnet-5, so a direct-API target or auditor
+    took that entry's reason, "(OpenRouter spelling of claude-sonnet-5)", and Fable 5 and Opus 5 likewise
+    (2026-10-02). A registry spec (a judge's: `provider:model`, a bare provider, a bare Anthropic id), and an
+    Inspect name of a provider `inspect_to_registry_spec` does not map, are matched as written."""
+    name = str(model or "").strip()
+    if not name or name in ZERO_PRICE_MODELS:
         return {}
     registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
     from .judge_runner import _advice_eval_module  # lazy: judge_runner imports this module
 
-    reason = _advice_eval_module().temperature_omission(str(model).strip(), registry)
+    spec = inspect_to_registry_spec(name, registry) if "/" in name and ":" not in name else None
+    reason = _advice_eval_module().temperature_omission(spec or name, registry)
     return {"temperature": reason} if reason else {}
 
 
