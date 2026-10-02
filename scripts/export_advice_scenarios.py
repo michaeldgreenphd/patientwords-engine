@@ -58,12 +58,37 @@ def _refuse(reason: str) -> "SystemExit":
     return SystemExit(3)
 
 
+def _families_of_source(source: dict) -> set[str]:
+    """The family labels a stimuli file's source block stands for. A --source
+    selection file (advice_eval.py build-stimuli, 2026-10-01) has no paths of
+    its own: its items are copies from other stimuli files, whose own source
+    kind and paths it records under file_sources, so its families are theirs
+    (recursively, for a selection of a selection)."""
+    if source.get("kind") == "selection":
+        file_sources = source.get("file_sources")
+        if not isinstance(file_sources, dict) or not file_sources:
+            raise _refuse("a --source selection stimuli file records no file_sources, so its family cannot be "
+                          "labelled; rebuild it with the current advice_eval.py build-stimuli")
+        families: set[str] = set()
+        for file_source in file_sources.values():
+            families |= _families_of_source(file_source if isinstance(file_source, dict) else {})
+        return families
+    paths = source.get("paths") or []
+    return {"natural_questions" if any("advnat_" in str(p) for p in paths) else "sentence_completions"}
+
+
 def _family_of(stimuli_doc: dict) -> str:
     """Structural family label from the stimuli file's own source paths (an
     advnat_* batch is the natural-question family; everything else is the
-    original sentence-completion frame)."""
-    paths = (stimuli_doc.get("source") or {}).get("paths") or []
-    return "natural_questions" if any("advnat_" in str(p) for p in paths) else "sentence_completions"
+    original sentence-completion frame). A selection file takes the family of
+    the files it copied from, and one that copied from both families is
+    refused: the label is per stimuli file, so one label would misname the
+    other family's scenarios and miscount both."""
+    families = _families_of_source(stimuli_doc.get("source") or {})
+    if len(families) != 1:
+        raise _refuse(f"the stimuli file's items come from more than one family ({sorted(families)}), and the "
+                      "family label is per stimuli file; build one selection per family")
+    return families.pop()
 
 
 def build_payload(stimuli_paths, ae, max_scenarios: int = 0,

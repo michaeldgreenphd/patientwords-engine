@@ -154,6 +154,334 @@ def test_pairs_holdout_rows_excluded(tmp_path):
     assert [i["clinical_body"] for i in doc["items"]] == ["placeholder probe phrase kept"]
 
 
+# ------------------------------------------------- build-stimuli --source selection
+
+
+def _stim_file(directory, name, rows, ask="What should I do?"):
+    """A stimuli file built the way build-stimuli builds one; rows are (id, clinical, patient, source_ref)."""
+    directory.mkdir(parents=True, exist_ok=True)
+    items = [ae._stimulus(i, c, p, ask, ref, {"topic": "placeholder"}) for i, c, p, ref in rows]
+    path = directory / name
+    path.write_text(json.dumps({"created_utc": "2026-07-01T00:00:00Z", "engine_sha": "x", "source": {"kind": "t"},
+                                "ask_suffix": ask, "n_items": len(items), "items": items}, indent=2),
+                    encoding="utf-8")
+    return path
+
+
+def _selection(tmp_path, entries, rule="the placeholder rule", **extra):
+    path = tmp_path / "selection.json"
+    path.write_text(json.dumps({"rule": rule, "items": entries, **extra}), encoding="utf-8")
+    return path
+
+
+SEAL_BATCH = "pairs_20260715T000000Z"
+
+
+def _seal_repo(tmp_path, start_utc="2026-07-10T01:14:38Z"):
+    """What tierb_split.sealed_pair reads: ops/dashboard.json and simulated/ holding one Tier B batch (pair 1 a
+    holdout phrase, pair 2 kept). Every selection build applies the seal, so every selection test needs one."""
+    batch = tmp_path / "simulated" / f"{SEAL_BATCH}.json"
+    if not batch.exists():
+        made = _pairs_repo(tmp_path, start_utc)
+        batch.parent.mkdir(exist_ok=True)
+        made.rename(batch)
+    return batch
+
+
+def _build_selection(tmp_path, selection, *extra):
+    _seal_repo(tmp_path)
+    out_dir = tmp_path / "out"
+    ae.main(["build-stimuli", "--source", "selection", "--selection", str(selection),
+             "--dashboard", str(tmp_path / "ops" / "dashboard.json"), "--simulated-dir", str(tmp_path / "simulated"),
+             "--out-dir", str(out_dir), *extra])
+    return json.loads(next(out_dir.glob("stimuli_*.json")).read_text(encoding="utf-8"))
+
+
+def _two_files(tmp_path, ask_b="What should I do?"):
+    src = tmp_path / "src"
+    a = _stim_file(src, "stimuli_A.json", [
+        ("s1", "My flurb wobbles at level two", "My flurb keeps going wobbly", {"batch": "gen_x", "batch_index": 1}),
+        ("s2", "My zib reads high on the gauge", "My zib is acting up", {"batch": "gen_x", "batch_index": 2})])
+    b = _stim_file(src, "stimuli_B.json", [
+        ("s1", "The quon pulses twice per cycle", "The quon keeps thumping", {"batch": "gen_y", "batch_index": 1})],
+        ask=ask_b)
+    return a, b
+
+
+def test_selection_copies_items_verbatim_and_records_provenance(tmp_path):
+    a, b = _two_files(tmp_path)
+    a_bytes, b_bytes = a.read_bytes(), b.read_bytes()
+    sel = _selection(tmp_path, [{"file": str(b), "id": "s1"}, {"file": str(a), "id": "s2"}], notes="placeholder")
+    doc = _build_selection(tmp_path, sel)
+    originals = {(str(a), i["id"]): i for i in json.loads(a_bytes)["items"]}
+    originals.update({(str(b), i["id"]): i for i in json.loads(b_bytes)["items"]})
+    assert [i["id"] for i in doc["items"]] == ["s1", "s2"]
+    for item, (file, item_id) in zip(doc["items"], [(str(b), "s1"), (str(a), "s2")]):
+        original = originals[(file, item_id)]
+        rerun_of = item["meta"].pop("rerun_of")
+        assert item == original                                   # verbatim: every field, meta included
+        sha = hashlib.sha256((a_bytes if file == str(a) else b_bytes)).hexdigest()
+        assert rerun_of == {"file": file, "id": item_id, "file_sha256": sha}
+    source = doc["source"]
+    assert source["kind"] == "selection" and source["path"] == str(sel)
+    assert source["sha256"] == hashlib.sha256(sel.read_bytes()).hexdigest()
+    assert source["rule"] == "the placeholder rule" and source["notes"] == "placeholder"
+    assert source["files"] == {str(b): hashlib.sha256(b_bytes).hexdigest(), str(a): hashlib.sha256(a_bytes).hexdigest()}
+    assert source["renamed_ids"] == [] and doc["ask_suffix"] == "What should I do?" and doc["n_items"] == 2
+    # each source file's own kind and paths, which export_advice_scenarios.py reads to label the family
+    assert source["file_sources"] == {str(b): {"kind": "t", "paths": None}, str(a): {"kind": "t", "paths": None}}
+    assert source["seal_items_checked"] == 2 and source["tierb_items_checked"] == 0
+    assert a.read_bytes() == a_bytes and b.read_bytes() == b_bytes   # the source files are never touched
+
+
+def test_selection_suffixes_a_repeated_id_and_records_it(tmp_path):
+    a, b = _two_files(tmp_path)
+    sel = _selection(tmp_path, [{"file": str(a), "id": "s1"}, {"file": str(b), "id": "s1"}])
+    doc = _build_selection(tmp_path, sel)
+    assert [i["id"] for i in doc["items"]] == ["s1", "s1~stimuli_B"]
+    assert doc["items"][1]["meta"]["rerun_of"]["id"] == "s1"
+    assert doc["source"]["renamed_ids"] == [{"file": str(b), "id": "s1", "output_id": "s1~stimuli_B"}]
+
+
+def test_selection_keeps_an_earlier_rerun_of_as_prior(tmp_path):
+    a, _ = _two_files(tmp_path)
+    first = _build_selection(tmp_path, _selection(tmp_path, [{"file": str(a), "id": "s1"}]))
+    again = tmp_path / "src" / "stimuli_C.json"
+    again.write_text(json.dumps(first), encoding="utf-8")
+    (tmp_path / "out").rename(tmp_path / "out_first")
+    second = _build_selection(tmp_path, _selection(tmp_path, [{"file": str(again), "id": "s1"}]))
+    rerun_of = second["items"][0]["meta"]["rerun_of"]
+    assert rerun_of["file"] == str(again) and rerun_of["prior"]["file"] == str(a)
+
+
+@pytest.mark.parametrize("make_entries, match", [
+    (lambda a, b: [{"file": str(a.parent / "stimuli_missing.json"), "id": "s1"}], "cannot be read"),
+    (lambda a, b: [{"file": str(a), "id": "nope"}], "has no item with id 'nope'"),
+    (lambda a, b: [{"file": str(a), "id": "s1"}, {"file": str(a), "id": "s1"}], "selected twice"),
+    (lambda a, b: [{"file": str(a), "id": "s1", "extra": 1}], "exactly the keys"),
+    (lambda a, b: [{"file": str(a.parent / "pairs.json"), "id": "s1"}], "not a stimuli_"),
+    (lambda a, b: [], "non-empty list"),
+])
+def test_selection_refuses_missing_or_malformed_entries(tmp_path, make_entries, match):
+    a, b = _two_files(tmp_path)
+    with pytest.raises(SystemExit, match=match):
+        _build_selection(tmp_path, _selection(tmp_path, make_entries(a, b)))
+    assert not (tmp_path / "out").exists()
+
+
+def test_selection_refuses_a_missing_rule_an_unknown_key_and_an_ask_suffix(tmp_path):
+    a, _ = _two_files(tmp_path)
+    entries = [{"file": str(a), "id": "s1"}]
+    with pytest.raises(SystemExit, match="'rule' must be"):
+        _build_selection(tmp_path, _selection(tmp_path, entries, rule="  "))
+    with pytest.raises(SystemExit, match="unknown key"):
+        _build_selection(tmp_path, _selection(tmp_path, entries, rules="typo"))
+    with pytest.raises(SystemExit, match="--ask-suffix does not apply"):
+        _build_selection(tmp_path, _selection(tmp_path, entries), "--ask-suffix", "x")
+    with pytest.raises(SystemExit, match="requires --selection"):
+        ae.main(["build-stimuli", "--source", "selection", "--out-dir", str(tmp_path / "out")])
+
+
+def test_selection_refuses_a_message_that_no_longer_matches_its_hash(tmp_path):
+    a, _ = _two_files(tmp_path)
+    doc = json.loads(a.read_text(encoding="utf-8"))
+    doc["items"][0]["patient_message"] += " edited"
+    a.write_text(json.dumps(doc), encoding="utf-8")
+    with pytest.raises(SystemExit, match="patient_message no longer hashes"):
+        _build_selection(tmp_path, _selection(tmp_path, [{"file": str(a), "id": "s1"}]))
+
+
+def _tierb_selection_repo(tmp_path, start_utc):
+    """A Tier B batch (pair 1 holdout, pair 2 kept), a dashboard, and a stimuli file built from both pairs."""
+    batch = _seal_repo(tmp_path, start_utc)
+    pairs = json.loads(batch.read_text(encoding="utf-8"))
+    rows = [(f"{batch.stem}#{i}", p["top_prompt"], p["bottom_prompt"], {"batch": batch.stem, "batch_index": i})
+            for i, p in enumerate(pairs, start=1)]
+    return _stim_file(tmp_path / "src", "stimuli_T.json", rows), batch.stem
+
+
+def _build_tierb(tmp_path, stim, ids):
+    out_dir = tmp_path / "out"
+    ae.main(["build-stimuli", "--source", "selection",
+             "--selection", str(_selection(tmp_path, [{"file": str(stim), "id": i} for i in ids])),
+             "--dashboard", str(tmp_path / "ops" / "dashboard.json"),
+             "--simulated-dir", str(tmp_path / "simulated"), "--out-dir", str(out_dir)])
+    return json.loads(next(out_dir.glob("stimuli_*.json")).read_text(encoding="utf-8"))
+
+
+def test_selection_applies_the_pairs_holdout_guard(tmp_path):
+    stim, stem = _tierb_selection_repo(tmp_path, "2026-07-10T01:14:38Z")
+    with pytest.raises(SystemExit, match="sealed Tier B holdout pair"):
+        _build_tierb(tmp_path, stim, [f"{stem}#2", f"{stem}#1"])
+    assert not (tmp_path / "out").exists()
+    doc = _build_tierb(tmp_path, stim, [f"{stem}#2"])
+    assert doc["source"]["tierb_items_checked"] == 1 and doc["source"]["seal_items_checked"] == 1
+    assert doc["source"]["tierb_start_stamp"] == "20260710T011438Z"
+
+
+def test_selection_dashboard_reads_do_not_grow_with_the_number_of_items(tmp_path, monkeypatch):
+    """The Tier B start is no longer read once per selected item: a build reads the dashboard as often for three items
+    as for one (select_stimuli's read, and sealed_pair's through its cached _seal_context)."""
+    reads = []
+    load = ae._load_tierb_split
+
+    def counting_load():
+        mod = load()
+        read = mod.tierb_start_stamp
+
+        def counted(*args, **kwargs):
+            reads.append(args)
+            return read(*args, **kwargs)
+
+        mod.tierb_start_stamp = counted
+        return mod
+
+    monkeypatch.setattr(ae, "_load_tierb_split", counting_load)
+    stim, stem = _tierb_selection_repo(tmp_path, "2026-07-10T01:14:38Z")
+    a, b = _two_files(tmp_path)
+    _build_selection(tmp_path, _selection(tmp_path, [{"file": str(a), "id": "s1"}]))
+    reads_for_one = len(reads)
+    reads.clear()
+    (tmp_path / "out").rename(tmp_path / "out_one")
+    doc = _build_selection(tmp_path, _selection(tmp_path, [{"file": str(a), "id": "s1"}, {"file": str(b), "id": "s1"},
+                                                           {"file": str(stim), "id": f"{stem}#2"}]))
+    assert doc["source"]["seal_items_checked"] == 3 and doc["source"]["tierb_items_checked"] == 1
+    assert doc["source"]["tierb_start_stamp"] == "20260710T011438Z"
+    assert len(reads) == reads_for_one, f"{len(reads)} dashboard reads for 3 items, {reads_for_one} for 1"
+
+
+def test_selection_holdout_guard_refuses_null_start(tmp_path):
+    stim, stem = _tierb_selection_repo(tmp_path, None)
+    with pytest.raises(SystemExit, match="holdout seal cannot be applied"):
+        _build_tierb(tmp_path, stim, [f"{stem}#2"])
+
+
+def test_selection_holdout_guard_refuses_null_start_for_a_non_tier_b_item_too(tmp_path):
+    """The seal (Amendment 3) applies to every item, so without a Tier B start no item can be checked."""
+    _seal_repo(tmp_path, None)
+    a, _ = _two_files(tmp_path)
+    with pytest.raises(SystemExit, match="holdout seal cannot be applied"):
+        _build_selection(tmp_path, _selection(tmp_path, [{"file": str(a), "id": "s1"}]))
+    assert not (tmp_path / "out").exists()
+
+
+def test_selection_holdout_guard_refuses_a_tier_b_item_without_its_batch_file(tmp_path):
+    stim, stem = _tierb_selection_repo(tmp_path, "2026-07-10T01:14:38Z")
+    (tmp_path / "simulated" / f"{stem}.json").unlink()
+    with pytest.raises(SystemExit, match="holdout seal cannot be applied"):
+        _build_tierb(tmp_path, stim, [f"{stem}#2"])
+
+
+@pytest.mark.parametrize("ref", [
+    {"batch": f"{SEAL_BATCH}_txopus", "batch_index": 1},   # an alias stem of the Tier B batch
+    {"batch": "advnat_20260728T000000Z", "batch_index": 4},  # a non-Tier-B batch
+    None,                                                   # no source_ref at all
+], ids=["alias-stem", "non-tier-b-batch", "no-source-ref"])
+def test_selection_refuses_a_registered_holdout_phrase_anywhere(tmp_path, ref):
+    """Amendment 3 (tierb_split.sealed_pair rule 1): a registered holdout phrase is sealed wherever it appears, not
+    only under its own Tier B batch name."""
+    _seal_repo(tmp_path)
+    stim = _stim_file(tmp_path / "src", "stimuli_X.json", [("x1", _holdout_phrase(), "a placeholder variant", ref)])
+    with pytest.raises(SystemExit, match="sealed Tier B holdout pair"):
+        _build_selection(tmp_path, _selection(tmp_path, [{"file": str(stim), "id": "x1"}]))
+    assert not (tmp_path / "out").exists()
+
+
+def test_selection_refuses_a_tier_b_pair_with_no_top_prompt(tmp_path):
+    batch = _seal_repo(tmp_path)
+    pairs = json.loads(batch.read_text(encoding="utf-8"))
+    pairs.append({"bottom_prompt": "variant three"})
+    batch.write_text(json.dumps(pairs), encoding="utf-8")
+    stim = _stim_file(tmp_path / "src", "stimuli_X.json",
+                      [("x4", "a placeholder body", "a placeholder variant", {"batch": SEAL_BATCH, "batch_index": 3})])
+    with pytest.raises(SystemExit, match="holdout seal cannot be applied.*no top_prompt"):
+        _build_selection(tmp_path, _selection(tmp_path, [{"file": str(stim), "id": "x4"}]))
+
+
+def test_selection_checks_a_non_tier_b_batch_accepted_prompt_too(tmp_path):
+    """A payload item completed with its target word carries a body that is not the registered phrase; the batch
+    file's accepted prompt is checked besides the body when the batch file is present."""
+    _seal_repo(tmp_path)
+    tier_a = tmp_path / "simulated" / "pairs_20260701T000000Z.json"   # before the Tier B start
+    tier_a.write_text(json.dumps([{"top_prompt": _holdout_phrase(), "bottom_prompt": "v"},
+                                  {"top_prompt": "placeholder probe phrase kept", "bottom_prompt": "w"}]),
+                      encoding="utf-8")
+    ref1 = {"batch": tier_a.stem, "batch_index": 1}
+    ref2 = {"batch": tier_a.stem, "batch_index": 2}
+    stim = _stim_file(tmp_path / "src", "stimuli_P.json", [
+        ("p1", f"{_holdout_phrase()} widget.", "a placeholder variant widget.", ref1),
+        ("p2", "placeholder probe phrase kept widget.", "a placeholder variant widget.", ref2)])
+    with pytest.raises(SystemExit, match="sealed Tier B holdout pair"):
+        _build_selection(tmp_path, _selection(tmp_path, [{"file": str(stim), "id": "p1"}]))
+    doc = _build_selection(tmp_path, _selection(tmp_path, [{"file": str(stim), "id": "p2"}]))
+    assert doc["source"]["accepted_prompt_items_checked"] == 1 and doc["source"]["tierb_items_checked"] == 0
+
+
+def test_selection_refuses_one_file_named_two_ways(tmp_path):
+    a, _ = _two_files(tmp_path)
+    other_spelling = str(a.parent / ".." / a.parent.name / a.name)
+    assert other_spelling != str(a)
+    with pytest.raises(SystemExit, match="selected twice"):
+        _build_selection(tmp_path, _selection(tmp_path, [{"file": str(a), "id": "s1"},
+                                                         {"file": other_spelling, "id": "s1"}]))
+    doc = _build_selection(tmp_path, _selection(tmp_path, [{"file": str(a), "id": "s1"},
+                                                           {"file": other_spelling, "id": "s2"}]))
+    # one file, one spelling in the provenance: the first entry's
+    assert list(doc["source"]["files"]) == [str(a)]
+    assert [i["meta"]["rerun_of"]["file"] for i in doc["items"]] == [str(a), str(a)]
+
+
+def test_selection_refuses_two_entries_that_send_the_same_messages(tmp_path):
+    """One stimulus copied into two stimuli files (same messages, any ids) is one situation: selecting both would
+    elicit it twice and count it as two clusters in analyze's bootstrap."""
+    a, _ = _two_files(tmp_path)
+    original = json.loads(a.read_text(encoding="utf-8"))["items"][0]
+    twin = tmp_path / "src" / "stimuli_T.json"
+    twin.write_text(json.dumps({"source": {"kind": "t"}, "ask_suffix": "What should I do?",
+                                "items": [{**original, "id": "other"}]}), encoding="utf-8")
+    with pytest.raises(SystemExit, match="sends the same two messages"):
+        _build_selection(tmp_path, _selection(tmp_path, [{"file": str(a), "id": "s1"},
+                                                         {"file": str(twin), "id": "other"}]))
+    assert not (tmp_path / "out").exists()
+
+
+def test_selection_lists_items_that_name_one_source_pair(tmp_path):
+    """One source pair under two ask suffixes is two stimuli with different messages; the build keeps both and
+    lists them in shared_source_pairs, since analyze clusters by stimulus id alone."""
+    src = tmp_path / "src"
+    ref = {"batch": "gen_x", "batch_index": 1}
+    a = _stim_file(src, "stimuli_A.json", [("s1", "My flurb wobbles", "My flurb goes wobbly", ref)])
+    b = _stim_file(src, "stimuli_B.json", [("s1", "My flurb wobbles", "My flurb goes wobbly", ref)],
+                   ask="Who should I call?")
+    doc = _build_selection(tmp_path, _selection(tmp_path, [{"file": str(a), "id": "s1"}, {"file": str(b), "id": "s1"}]))
+    assert doc["source"]["shared_source_pairs"] == [{"source_pair": "gen_x#1", "output_ids": ["s1", "s1~stimuli_B"]}]
+    a_only = _selection(tmp_path, [{"file": str(a), "id": "s1"}])
+    (tmp_path / "out").rename(tmp_path / "out_first")
+    assert _build_selection(tmp_path, a_only)["source"]["shared_source_pairs"] == []
+
+
+def test_selection_with_mixed_suffixes_refuses_only_the_translated_arm(tmp_path, monkeypatch):
+    a, b = _two_files(tmp_path, ask_b="")
+    doc = _build_selection(tmp_path, _selection(tmp_path, [{"file": str(a), "id": "s1"}, {"file": str(b), "id": "s1"}]))
+    assert doc["ask_suffix"] is None
+    assert doc["source"]["ask_suffixes"] == {str(a): "What should I do?", str(b): ""}
+    stim_path = next((tmp_path / "out").glob("stimuli_*.json"))
+    monkeypatch.setattr(ae, "_client", lambda: object())
+    monkeypatch.setattr(ae, "_send", _stub_send)
+    with pytest.raises(SystemExit, match="translated arm cannot assemble"):
+        ae.main(["elicit", "--stimuli", str(stim_path), "--models", "model-x", "--arms", "clinical,translated",
+                 "--max-spend", "1.0", "--out-dir", str(stim_path.parent)])
+    ae.main(["elicit", "--stimuli", str(stim_path), "--models", "model-x", "--arms", "clinical,patient",
+             "--samples", "1", "--max-spend", "1.0", "--out-dir", str(stim_path.parent)])
+    rows = [json.loads(line) for line in
+            (stim_path.parent / f"responses_{stim_path.stem}.jsonl").read_text(encoding="utf-8").splitlines()]
+    # the copied messages are the ones sent
+    sent = {(r["stimulus_id"], r["arm"]): r["request"]["message"] for r in rows}
+    for item in doc["items"]:
+        assert sent[(item["id"], "clinical")] == item["clinical_message"]
+        assert sent[(item["id"], "patient")] == item["patient_message"]
+
+
 # ------------------------------------------------------------------- elicit
 
 
@@ -786,6 +1114,46 @@ def test_analyze_reference_scoring_and_thesis_endpoint(tmp_path):
     thesis_a = ref["under_triage_patient_minus_clinical"]["A"]
     assert thesis_a["mean"] == 1.0
     assert out["dispersion"]["consumer_lottery_by_arm"]["patient"] is not None
+
+
+def _reference_scoring_for(tmp_path, references, stem):
+    rubric = _write_rubric(tmp_path)
+    sp = tmp_path / f"stimuli_{stem}.json"
+    sp.write_text(json.dumps({"items": [{"id": sid, "reference": ref} for sid, ref in references.items()]}),
+                  encoding="utf-8")
+    rows = [_jrow(sid, "A", arm, "mid") for sid in references for arm in ("clinical", "patient")]
+    jp = tmp_path / f"judgments_{stem}.jsonl"
+    jp.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    ae.main(["analyze", "--judgments", str(jp), "--rubric", str(rubric),
+             "--stimuli", str(sp), "--bootstrap", "20", "--seed", "1"])
+    return json.loads((tmp_path / f"analysis_{stem}.json").read_text(encoding="utf-8"))["reference_scoring"]
+
+
+def test_analyze_marks_reference_tiers_without_an_adjudicator_not_claim_grade(tmp_path):
+    # Regression: a proposed, non-adjudicated reference tier (a 'basis' note but no
+    # adjudicated_by) used to be scored exactly like a clinician-adjudicated one, so the
+    # primary endpoint's numbers carried no sign that their ground truth was a proposal.
+    ref = _reference_scoring_for(tmp_path, {
+        "s1": {"tier": "mid", "source": "owner + domain reviewer", "adjudicated_by": "dr-x", "date": "2026-07-22"},
+        "s2": {"tier": "mid", "basis": "proposed; not clinician-adjudicated"},
+    }, "mixed")
+    assert ref["n_referenced_stimuli"] == 2 and ref["n_adjudicated"] == 1
+    assert ref["not_adjudicated_ids"] == ["s2"]
+    assert ref["claim_grade"] is False
+    assert "1 of 2" in ref["claim_grade_note"]
+    # scoring itself is unchanged: both stimuli are still scored
+    assert ref["by_model_arm"]["A|clinical"]["n"] == 2
+
+
+def test_analyze_reference_tiers_all_adjudicated_are_claim_grade(tmp_path):
+    ref = _reference_scoring_for(tmp_path, {
+        "s1": {"tier": "mid", "adjudicated_by": "dr-x"},
+        "s2": {"tier": "high", "adjudicated_by": "dr-y"},
+    }, "adjudicated")
+    assert ref["claim_grade"] is True and ref["not_adjudicated_ids"] == []
+    # a blank adjudicator does not count as one
+    ref_blank = _reference_scoring_for(tmp_path, {"s1": {"tier": "mid", "adjudicated_by": "  "}}, "blank")
+    assert ref_blank["claim_grade"] is False
 
 
 def test_analyze_dispersion_and_covariates(tmp_path):

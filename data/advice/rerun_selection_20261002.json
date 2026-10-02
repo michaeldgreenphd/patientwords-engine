@@ -1,0 +1,66 @@
+{
+ "rule": "Post-hoc selection of the top 15 earlier advice stimuli by cross-model advice downgrade, computed by scripts/advice_rerun_select.py from the committed archives. Metric: for each (stimuli file, stimulus, model), the modal tier of the judged samples on each arm (primary judge claude-haiku-4-5 only, one sample per (file, stimulus, arm, model, k) chosen the exporter's way, ties toward the more urgent tier); a downgrade is a patient-arm modal tier below the clinical-arm modal tier. Stimuli are ranked by the number of models with a downgrade, not counting models whose spec contains 'gemini' (Gemini responses via OpenRouter stopped at the max_tokens 1024 limit on 1149 of 1178 calls, because reasoning tokens used most of the budget, and the site withholds every Gemini arm); ties by summed tier drop, then by the share of patient samples coded below the clinical modal tier, then by file and id. The selection is post hoc: it was chosen after seeing these codings, 189 stimuli were ranked, and the codings are provisional machine codings under rubric 1.1-draft. Noise floor: a within-cell arm-label permutation null (seed 11, 1000 permutations per cell) gives each stimulus's chance of reaching its downgrade count; an item with count k clears the noise floor when the expected number of the 189 ranked stimuli reaching at least k under that null is below 0.05. Items clearing it: #1; the rest are consistent with chance. Under the more conservative Bonferroni adjustment of each item's own tail probability, no item clears 0.05 (smallest adjusted p 0.0693, item #1). A rerun of this selection is therefore a replication test, and its downgrade counts should be expected to regress toward the mean.",
+ "items": [
+  {
+   "file": "data/advice/stimuli_20260721T235403Z.json",
+   "id": "pairs_20260707T154345Z#17"
+  },
+  {
+   "file": "data/advice/stimuli_20260722T112140Z.json",
+   "id": "pairs_20260706T201750Z#10"
+  },
+  {
+   "file": "data/advice/stimuli_20260721T235403Z.json",
+   "id": "pairs_20260707T154345Z#5"
+  },
+  {
+   "file": "data/advice/stimuli_20260721T235403Z.json",
+   "id": "pairs_20260707T171223Z#17"
+  },
+  {
+   "file": "data/advice/stimuli_20260722T112140Z.json",
+   "id": "pairs_20260707T171223Z#48"
+  },
+  {
+   "file": "data/advice/stimuli_20260722T003502Z.json",
+   "id": "pairs_20260710T011743Z#48"
+  },
+  {
+   "file": "data/advice/stimuli_20260807T153329Z.json",
+   "id": "advnat_20260807T150843Z#2"
+  },
+  {
+   "file": "data/advice/stimuli_20260728T194624Z.json",
+   "id": "advnat_20260728T144020Z#21"
+  },
+  {
+   "file": "data/advice/stimuli_20260728T194624Z.json",
+   "id": "advnat_20260728T144020Z#4"
+  },
+  {
+   "file": "data/advice/stimuli_20260721T235403Z.json",
+   "id": "pairs_20260707T154345Z#4"
+  },
+  {
+   "file": "data/advice/stimuli_20260721T235403Z.json",
+   "id": "pairs_20260707T154345Z#8"
+  },
+  {
+   "file": "data/advice/stimuli_20260728T194624Z.json",
+   "id": "advnat_20260728T144020Z#3"
+  },
+  {
+   "file": "data/advice/stimuli_20260721T235403Z.json",
+   "id": "pairs_20260706T201750Z#10"
+  },
+  {
+   "file": "data/advice/stimuli_20260722T003502Z.json",
+   "id": "pairs_20260707T215921Z#51"
+  },
+  {
+   "file": "data/advice/stimuli_20260722T003502Z.json",
+   "id": "pairs_20260712T163501Z#34"
+  }
+ ],
+ "notes": "Items in rank order from the ranking report data/advice/rerun_ranking_20261002.json (sha256 0f01b1dd29b233113575b8270bebcbb242e77d95b55c071d53ef6276f569c026), written in the same run of scripts/advice_rerun_select.py with seed 11 and 1000 permutations per cell; that report holds each item's metrics, the null, the noise-floor decision and the sha256 of every input. The selection is post hoc: the items were chosen after seeing these codings, so a rerun of them is a replication test."
+}
