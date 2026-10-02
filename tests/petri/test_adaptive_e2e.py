@@ -169,6 +169,49 @@ def test_the_auditor_model_carries_the_prompt_files_sampling_settings():
     assert (config.max_tokens, config.temperature) == (gen["max_tokens"], gen["temperature"])
 
 
+def test_a_withheld_parameter_is_left_out_of_both_roles_under_the_name_the_adapter_reads(monkeypatch):
+    """Review of PR #71: the controller leaves a withheld parameter out of its per-call config by
+    `sampling_omissions(str(get_model(role="auditor")))`, and the adapter checks and records it by
+    `sampling_omissions(model_roles[role].model)`, which Inspect writes as `str(model)`. For every model the registry
+    withholds temperature from, and two it does not: the bound role is the Model task.build_auditor built, each
+    role's str() is the name it was built from and the log's model string, and neither the role's config nor the
+    controller's per-call config sets temperature (a request carries it if either does). Offline: dummy keys, no
+    request; the roles are bound in a copied context and nothing is left memoised."""
+    import contextvars
+
+    from inspect_ai.model import _model as model_module
+    from inspect_ai.model._model_config import model_to_model_config
+
+    from scripts.petri_audit.checks import generate_config_kwargs
+    from scripts.petri_audit.controller import AUDITOR_ROLE
+    from scripts.petri_audit.framework import load_json
+    from scripts.petri_audit.spend import PROVIDERS_PATH, sampling_omissions
+    from scripts.petri_audit.task import build_auditor, build_target
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "offline-test-key-never-sent")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "offline-test-key-never-sent")
+    monkeypatch.setattr(model_module, "_models", {})
+    rules = load_json(PROVIDERS_PATH)["anthropic"]["omit_temperature"]
+    listed = [f"openrouter/{k}" if "/" in k else f"anthropic/{k}" for k in rules]
+    seed = {"seed_id": "s", "generation": {"temperature": 1.0, "max_tokens": 1024, "seed_requested": 7}}
+    gen = adaptive.load_adaptive_prompt()["generation"]
+
+    def bound_auditor(roles):
+        model_module.init_model_roles(roles)
+        return get_model(role=AUDITOR_ROLE)
+
+    for name in [*listed, "anthropic/claude-haiku-4-5", "openrouter/openai/gpt-5.4-mini"]:
+        withheld = name in listed
+        target, built = build_target(name, [seed]), build_auditor(name)
+        auditor = contextvars.copy_context().run(bound_auditor, {"target": target, AUDITOR_ROLE: built})
+        assert auditor is built, name
+        for model in (target, auditor):
+            assert str(model) == model_to_model_config(model).model == name
+            assert (model.config.temperature is None) is withheld, name
+        per_call = generate_config_kwargs(gen, sampling_omissions(str(auditor)))  # controller.adaptive_auditor
+        assert ("temperature" in per_call) is not withheld, name
+
+
 def test_an_auditor_request_other_than_the_conversation_the_person_saw_fails_the_check(tmp_path, monkeypatch):
     """Codex review of PR #50: only the auditor's system message was checked, so a stale or malformed request could
     stand behind a passing stimulus check. The adapter recomputes every request from the record."""
