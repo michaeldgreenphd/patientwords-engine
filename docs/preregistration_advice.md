@@ -544,3 +544,216 @@ export. To fill at send time:
 - cited on the page from: `<date, frontend commit>`
 
 No measurement or published number changes.
+
+## Amendment 6 — PROPOSED (2026-10-02), NOT IN FORCE: October roster, a new question set, and a post-hoc replication of the most-downgraded earlier stimuli
+
+**Status: PROPOSED. Not in force.** An agent session drafted this amendment on
+2026-10-02 for the owner's review. Nothing in it binds, and no fire under it
+may run, until the owner approves it in writing (a recorded instruction that
+names this amendment). At approval the record at the end of this section is
+filled and the words "PROPOSED" and "NOT IN FORCE" are removed from its
+heading. Approval of the amendment does not authorise spending: every fire
+still needs the owner's explicit dollar authorisation, line by line, from
+`docs/advice_fire_plan_20261002.md`.
+
+**Why.** No advice model has been elicited since 2026-08-27, and every vendor
+in the registry has released newer models since the July arms were chosen.
+The frozen design's 1024 output tokens truncated the reasoning models: 858 of
+884 `openrouter:google/gemini-3.5-flash` and 291 of 294
+`openrouter:google/gemini-3.1-pro-preview` responses stopped at the limit (so
+the site withholds every Gemini arm), as did 105 of 581
+`deepseek:deepseek/deepseek-v4-flash` and 43 of 581
+`moonshot:moonshotai/kimi-k2.5` responses (`stop_reason` in
+`data/advice/responses_*.jsonl`). No stimulus file carries a reference tier,
+so Amendment 1's primary endpoint has never been computable.
+
+### A6.1 Roster
+
+Each arm is named by its full spec in the fire parameters; this amendment
+does not change any `consumer_default` in the registry. Model ids come from
+the OpenRouter catalogue read on 2026-10-01 and the Anthropic model table
+(the roster map of that day); which model each vendor's free consumer tier
+serves today is not verified, so the new arms are labelled "the vendor's
+current API model", not "the free-tier default".
+
+| Vendor | Newest arm (new set and rerun) | Original arm kept (rerun only) | Path and key |
+|---|---|---|---|
+| Anthropic | `anthropic:claude-sonnet-5-5` | `anthropic:claude-sonnet-5`; `anthropic:claude-haiku-4-5` stays in both waves as the cost floor | direct, `ANTHROPIC_API_KEY` |
+| OpenAI | `openai:openai/gpt-chat-latest` | `openai:openai/gpt-5.5`, `openai:openai/gpt-5.4-mini` (overflow arm) | OpenRouter, `OPENROUTER_API_KEY` |
+| Google | `openrouter:google/gemini-3.8-flash` | none: the original Gemini arms are truncated, so there is nothing valid to replicate (optional: `openrouter:google/gemini-3.5-flash` re-elicited at the new limit) | OpenRouter |
+| xAI | `xai:x-ai/grok-4.7` | `xai:x-ai/grok-4.3` | OpenRouter |
+| DeepSeek | `deepseek:deepseek/deepseek-v4.1-flash` | `deepseek:deepseek/deepseek-v4-flash` | OpenRouter |
+| Moonshot | `moonshot:moonshotai/kimi-k3` (cheaper like-for-like alternative: `moonshotai/kimi-k2.6`) | `moonshot:moonshotai/kimi-k2.5` | OpenRouter |
+
+Not added: `claude-opus-5-5` and `claude-fable-5-1` (Anthropic's model
+documentation, as summarised in the 2026-10-01 roster map and not tested
+here, says they reject sampling parameters, and the advice path sends
+`temperature`); `meta/muse-spark-1.3` (whether it is the model behind the
+Meta AI app is unverified; `meta_ai` stays `manual_ui`); Mistral, Qwen and
+Z.ai (not in the registry's consumer-product scope).
+
+**Access mode (the note `_alias_vs_snapshot` requires).** The recorded
+decision stands: an arm may be a rolling alias where that is what the
+consumer product serves, and the served build is pinned per record
+(`model_returned`, `build_fingerprint`, `request_id`). Under it:
+
+- `openai/gpt-chat-latest` is a rolling alias (OpenRouter's description: it
+  points to OpenAI's `chat-latest`, the Instant model ChatGPT uses; canonical
+  build on 2026-10-01 dated 2026-05-05). Phase 2 of the access disclosure
+  and the registry's `openai` note named this alias, reached with a direct
+  OpenAI key, as the higher-fidelity upgrade from `openai/gpt-5.5`, because
+  OpenRouter did not list it in July. OpenRouter lists it now, so it is
+  reached through the existing OpenRouter path, with no new key. Switching
+  the OpenAI arm to it is recorded here as an access-mode change, and the
+  registry note that says OpenRouter does not list it is out of date.
+- Every other new arm is requested by its undated OpenRouter or Anthropic
+  slug, which the vendor maps to a dated build; the dated build is read from
+  `model_returned` per record. The `~vendor/...-latest` aliases are not used.
+- Paths are unchanged: Anthropic direct; OpenAI, xAI, DeepSeek and Moonshot
+  through OpenRouter (Phase 2); Google through OpenRouter (the 2026-07-22
+  reroute). `google:gemini-3.8-flash` on the direct Gemini API is unverified
+  and not used.
+- Inferred, not verified: OpenRouter drops a sampling parameter that a model
+  does not support. The OpenAI GPT-5.x and GPT-6 rows list no `temperature`,
+  so those arms probably sample at the vendor's default whatever the request
+  says; the archived request records what was sent, not what was applied.
+  This applies equally to the July OpenAI records.
+
+**Prices.** The reviewed per-model prices for the new slugs land in a
+separate roster pull request. Until it merges, the spend meter would price
+`grok-4.7`, `deepseek-v4.1-flash` and `kimi-k3` at their vendor block's
+`default_pricing`, below list price, so `max_spend` would not bound the real
+bill; no fire of a new slug runs before that pull request merges. The
+registry sha256 after it merges is recorded here at approval. At this
+revision it is unchanged:
+`654959bbdc131ac2a056023ab3fdd6dff69f6d88629fd50527c088fc7b870a4a`.
+
+### A6.2 Output tokens
+
+`max_tokens` stays 1024 for every arm except the newest reasoning arms
+(`gemini-3.8-flash`, `deepseek-v4.1-flash`, `kimi-k3`), which run at 4096, or
+at the per-model minimum the roster pull request sets if that is higher. A
+fire has one `max_tokens`, so fires are grouped by limit. Original arms in
+the rerun keep 1024, so their rerun repeats the original protocol, including
+the known DeepSeek and Kimi truncation at that limit. The analysis reports
+the share of responses that stopped at the limit for every (arm, model); an
+arm above 5% is reported as truncated and kept out of per-model comparisons,
+as the Gemini arms were.
+
+### A6.3 New question set (supplementary, natural-question family)
+
+`data/advice/stimuli_20261002T062043Z.json`, built with `build-stimuli
+--source manual --ask-suffix ""` from
+`data/advice/manual_vignettes_20261002.json`: 24 situations, six for each
+proposed tier (self_care, routine, urgent, emergency) and three for each of
+the eight registered syntax styles, interleaved by tier so that any
+`offset`/`limit` chunk holds every tier. Each pair is one complete question
+whose two versions differ in a single span of at most six words: the clinical
+span is the standard term (MeSH or SNOMED CT preferred term, or a generic drug
+name) and the patient span is the everyday name for the same thing or a
+broader everyday version of it (codebook v0.2, rules L1 and L3). All 24 pass
+`validate_advice_nat_pair`. A Claude session wrote them; the earlier
+natural-question pairs were also Claude-authored. The lexicon basis in each
+item's notes was recalled from the named terminologies, not looked up in the
+drafting session.
+
+Each item carries `reference.tier` with the basis "proposed from standard
+triage guidance; not clinician-adjudicated; non-claim-grade". These tiers do
+not satisfy Amendment 1: its primary endpoint stays blocked until a clinician
+adjudicates them. Until then `analyze --stimuli` reference scoring on this
+set is exploratory and reported only as such. The set is analysed on its own,
+not pooled with the cloze or earlier natural-question families. Arms:
+clinical and patient; K=3; temperature 1.0; no translated arm.
+
+### A6.4 Rerun of earlier stimuli: a post-hoc replication
+
+`data/advice/rerun_selection_20261002.json`, written by
+`scripts/advice_rerun_select.py` (seed 11, 1000 permutations per cell; the
+sha256 of every input file is in the output). Rule: per (stimuli file,
+stimulus, model), the modal tier of each arm under the primary judge only
+(ties toward the more urgent tier, one sample per (file, stimulus, arm,
+model, k) chosen the exporter's way); a downgrade is a patient modal tier
+below the clinical modal tier; stimuli ranked by the number of non-Gemini
+models with a downgrade, then summed tier drop, then the share of patient
+samples coded below the clinical modal tier; top 15. The 15 hold 36
+downgrades in 88 (stimulus, model) cells; under the within-cell permutation
+null, 17.5 were expected.
+
+This selection was made after seeing the codings. Only the first item
+(`stimuli_20260721T235403Z` / `pairs_20260707T154345Z#17`, downgraded by 7 of
+7 models) clears the noise floor: the expected number of the 189 ranked
+stimuli reaching seven downgrades under the null is 0.0004. Under a
+Bonferroni adjustment of its own tail probability it would not clear 0.05
+(0.069). The other 14 are consistent with chance. The rerun is therefore a
+replication test, registered before it runs, with these predictions:
+
+1. Regression toward the mean: among the original (stimulus, model) cells
+   that can be re-elicited, the rerun downgrade count falls below the
+   original 36 and toward the null expectation. The count is reported against
+   both numbers; it is not a test of any single item.
+2. Item #1 is the one item with a directional prediction: a majority of the
+   seven original models downgrade it again.
+3. Every item is rerun with every arm at K=3, including the items whose
+   original runs had four or five models or K=1, so per-item comparisons use
+   rates per model, not raw counts.
+
+The rerun stimuli file is built by `build-stimuli --source selection` (a
+separate pull request). It must copy each item's assembled messages byte for
+byte (checked against the original `clinical_sha256` and `patient_sha256`)
+and give each item a unique id: `pairs_20260706T201750Z#10` is selected
+twice, from its completed form (rank 2) and its cloze form (rank 13), and a
+repeated id would make `elicit` treat the second item as already elicited.
+
+### A6.5 Generation change
+
+In the rerun, each vendor's original arm runs beside its newest arm on the
+same stimuli in the same wave: `claude-sonnet-5` and `claude-sonnet-5-5`,
+`gpt-5.5` and `gpt-chat-latest`, `grok-4.3` and `grok-4.7`,
+`deepseek-v4-flash` and `deepseek-v4.1-flash`, `kimi-k2.5` and `kimi-k3`.
+So a difference between the July archive and the rerun can be split into
+the change from re-asking the same model and the change between model
+generations, instead of the two being conflated. The contrast is the
+within-stimulus difference, between the two generations, of the patient
+minus clinical modal tier rank; with 15 post-hoc items it is descriptive
+only. For the three reasoning arms the newer generation also has the higher
+token limit (A6.2), a confound stated with each of those three comparisons.
+
+### A6.6 Judge of record and billing lanes
+
+- Judge of record: `claude-haiku-4-5`, response text only, `judge_max_tokens`
+  300, rubric `data/advice_rubric.draft.json` version 1.1-draft (canonical
+  sha256 `bd4aa5596b814592f6be76bcb7488e502cc4cf4ad0fcb6ce38404c73c37cf6c8`,
+  the rubric of every archived judgment). Secondary judges never set
+  published tiers. Amendment 2 applies unchanged: these are provisional
+  machine codings, excluded from claim-grade use.
+- Each elicitation fire bills one account. Anthropic arms run in fires whose
+  roster is Anthropic only (anthropic lane, $2 per UTC day unless the owner
+  dates an override); OpenRouter arms run in fires whose roster names no
+  Anthropic model (OpenRouter lane, $10 per day).
+- The judge bills `ANTHROPIC_API_KEY`, but the fire guard books a fire by its
+  `models` alone. So no fire with an OpenRouter-only roster sets
+  `judge: true`. Each wave is judged by one separate anthropic-lane fire
+  whose `models` is the already-complete `anthropic:claude-haiku-4-5` arm
+  (its elicitation plans 0 calls) and whose judge pass covers every response
+  in the archive.
+
+### A6.7 Vendor packs before any public per-model comparison
+
+Amendment 3's rules (1) to (3) apply to both new archives: a reproduction
+pack keyed by (vendor, archive) reaches each affected vendor before any
+public per-model comparison from these runs, the generation comparisons
+included; showing the new archives on the site counts as publication; any
+exception is a deviation the owner records in advance, as in D2 and D3.
+
+### A6.8 Budget, and what does not change
+
+Estimated cost (arithmetic in the fire plan): $17.5 at measured response
+lengths ($4.9 Anthropic, $12.5 OpenRouter) and $26.1 if responses run to the
+90th-percentile length and the reasoning arms write long answers. This
+replaces the frozen design's "$5 total" for these two waves only. Unchanged:
+the endpoints, K=3, temperature 1.0, the analysis seed 7, Amendment 2's
+quarantine, and the daily ceilings.
+
+**Approval record (to fill).** Approved by: `<owner>`. Date (UTC): `<date>`.
+Words: `<verbatim instruction>`. Registry sha256 after the roster pull
+request: `<sha256>`. Rerun stimuli file: `<path>`.
