@@ -183,39 +183,142 @@ def test_every_lay_careful_turn_is_its_clinical_turn_with_the_declared_swaps(w3_
         assert 0 < identical < TURNS, (seed_id, identical)
 
 
+def _tokens(text: str) -> list[str]:
+    return re.findall(r"[a-z0-9]+", text.lower())
+
+
+def _token_matches(a: str, b: str) -> bool:
+    """Codebook rule L0 ignores inflection and part of speech: two tokens match when equal, or when both have at least
+    four letters and share a prefix no more than two letters shorter than the shorter token (tender / tenderness,
+    throw / thrown, dyspnoea / dyspnoeic)."""
+    if a == b:
+        return True
+    if min(len(a), len(b)) < 4:
+        return False
+    common = next((i for i, (x, y) in enumerate(zip(a, b)) if x != y), min(len(a), len(b)))
+    return common >= max(4, min(len(a), len(b)) - 2)
+
+
+def _term_in_span(term: str, span: str) -> bool:
+    """Every token of a CHV lookup term matches some token of the span, inflection aside."""
+    span_tokens = _tokens(span)
+    return all(any(_token_matches(t, s) for s in span_tokens) for t in _tokens(term))
+
+
+def _chv_rows(terms: set[str]) -> dict[tuple[str, str], bool]:
+    """(term, CUI) -> whether CHV has a row for it that is not marked disparaged (column 8 of the flat file, the flag
+    scripts/build_patient_lexicon.py drops)."""
+    rows: dict[tuple[str, str], bool] = {}
+    with CHV_FILE.open(encoding="utf-8", errors="replace") as fh:
+        for row in csv.reader(fh, delimiter="\t"):
+            if len(row) > 7 and row[1].strip().lower() in terms:
+                key = (row[1].strip().lower(), row[0].strip())
+                rows[key] = rows.get(key, False) or row[7].strip().lower() != "yes"
+    return rows
+
+
+def test_the_l0_token_match_is_neither_too_loose_nor_too_strict():
+    assert _term_in_span("throw up", "thrown up") and _term_in_span("tenderness", "tender")
+    assert _term_in_span("shortness of breath", "short of breath")
+    assert not _term_in_span("throw up", "thrown out") and not _term_in_span("neck lump", "neck mass")
+    assert not _token_matches("to", "too") and not _token_matches("nausea", "neck")
+
+
 def test_every_swap_has_a_lexicon_entry_and_its_chv_lookups_hold(swaps):
     """Each distinct (clinical span, lay span) pair records why the two name the same thing; every (term, CUI) lookup
-    a basis relies on is re-read from the repository's CHV file, and a pair called same_concept has its two sides
-    meet in at least one concept."""
+    a basis relies on is re-read from the repository's CHV file. A pair called same_concept must have one lookup whose
+    term is in the clinical span and one whose term is in the lay span, sharing a CUI, both on CHV rows not marked
+    disparaged: two lookups of the same side, or a disparaged mapping, do not make the two spans one concept."""
     used = {tuple(p) for per_seed in swaps["seeds"].values() for pairs in per_seed.values() for p in pairs}
     entries = {(e["clinical"], e["lay"]): e for e in swaps["lexicon"]}
     assert len(entries) == len(swaps["lexicon"]), "one lexicon entry per pair"
     assert set(entries) == used
-    wanted = {e2["term"].lower() for e in swaps["lexicon"] for e2 in e["chv"]}
-    found: dict[str, set[str]] = {}
-    with CHV_FILE.open(encoding="utf-8", errors="replace") as fh:
-        for row in csv.reader(fh, delimiter="\t"):
-            if len(row) > 1 and row[1].strip().lower() in wanted:
-                found.setdefault(row[1].strip().lower(), set()).add(row[0])
+    rows = _chv_rows({lookup["term"].lower() for e in swaps["lexicon"] for lookup in e["chv"]})
     for (clinical, lay), entry in entries.items():
         assert entry["relation"] in LEXICON_RELATIONS, (clinical, entry["relation"])
         assert entry["basis"].strip(), clinical
         for lookup in entry["chv"]:
-            assert lookup["cui"] in found.get(lookup["term"].lower(), set()), (clinical, lookup)
+            assert (lookup["term"].lower(), lookup["cui"]) in rows, (clinical, lookup)
         if entry["relation"] == "same_concept":
-            cuis = [lookup["cui"] for lookup in entry["chv"]]
-            assert len(cuis) >= 2 and len(set(cuis)) < len(cuis), f"{clinical!r}: no shared concept recorded"
+            usable = [lk for lk in entry["chv"] if rows[(lk["term"].lower(), lk["cui"])]]
+            clinical_cuis = {lk["cui"] for lk in usable if _term_in_span(lk["term"], clinical)}
+            lay_cuis = {lk["cui"] for lk in usable if _term_in_span(lk["term"], lay)}
+            assert clinical_cuis & lay_cuis, f"{clinical!r} / {lay!r}: no non-disparaged concept shared by both sides"
 
 
-def test_numbers_in_a_clinical_turn_survive_into_its_colloquial_turn(w3_doc):
-    """Wording varies with register; facts must not. Every number the clinical turn writes in digits (a reading, a
-    temperature) appears in the colloquial turn, which may drop the unit."""
+def test_the_same_concept_check_refuses_one_sided_and_disparaged_lookups(swaps):
+    """The check above is live: the erythema pair's disparaged lookup, or a same_concept entry whose two lookups both
+    name the clinical side, fails it."""
+    entry = next(e for e in swaps["lexicon"] if e["relation"] == "same_concept")
+    one_sided = copy.deepcopy(swaps)
+    target = next(e for e in one_sided["lexicon"] if e["clinical"] == entry["clinical"])
+    target["chv"] = [entry["chv"][0], entry["chv"][0]]
+    with pytest.raises(AssertionError, match="no non-disparaged concept"):
+        test_every_swap_has_a_lexicon_entry_and_its_chv_lookups_hold(one_sided)
+    disparaged = copy.deepcopy(swaps)
+    red = next(e for e in disparaged["lexicon"] if any(
+        not _chv_rows({lk["term"].lower()}).get((lk["term"].lower(), lk["cui"]), True) for lk in e["chv"]))
+    red["relation"] = "same_concept"
+    with pytest.raises(AssertionError, match="no non-disparaged concept"):
+        test_every_swap_has_a_lexicon_entry_and_its_chv_lookups_hold(disparaged)
+
+
+def test_paraphrase_and_unverified_relations_match_their_bases(swaps):
+    """A basis that says its lay span is not in CHV, or that it rests on general knowledge or anatomy, cannot be a
+    same_concept or a paraphrase: the _readme's paraphrase is built from CHV's consumer words."""
+    for entry in swaps["lexicon"]:
+        basis = entry["basis"].lower()
+        if "unresolved" in basis or "rests on anatomy" in basis:
+            assert entry["relation"] == "unverified", entry["clinical"]
+        if f"'{entry['lay'].lower()}' is not in chv" in basis or "nor the lay span is in chv" in basis:
+            assert entry["relation"] not in {"same_concept", "paraphrase"}, entry["clinical"]
+
+
+_NUMBER_WORDS = {w: str(i) for i, w in enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen "
+    "eighteen nineteen twenty".split())} | {"thirty": "30", "forty": "40", "fifty": "50", "sixty": "60"}
+
+
+def _numbers(text: str) -> list[str]:
+    """Every number a turn states, as digits: digit tokens whole (so 1 is not found inside 10), number words mapped."""
+    lowered = text.lower()
+    digits = re.findall(r"\d+(?:\.\d+)?", lowered)
+    words = [_NUMBER_WORDS[w] for w in re.findall(r"[a-z]+", lowered) if w in _NUMBER_WORDS]
+    return sorted(digits + words)
+
+
+def test_numbers_in_a_clinical_turn_are_the_numbers_of_its_other_arms(w3_doc):
+    """Wording varies with register; facts must not. The numbers a turn states, digits or words, are the same multiset
+    in all three arms (the colloquial arm may write two as 2 and drop the unit)."""
     for seed in w3_doc["seeds"]:
         text = _texts(seed)
         for i in range(1, TURNS + 1):
-            numbers = re.findall(r"\d+(?:\.\d+)?", text[f"t{i:02d}_clinical"])
-            for n in numbers:
-                assert n in text[f"t{i:02d}_colloquial"], (seed["seed_id"], i, n)
+            clinical = _numbers(text[f"t{i:02d}_clinical"])
+            for arm in ("lay_careful", "colloquial"):
+                assert _numbers(text[f"t{i:02d}_{arm}"]) == clinical, (seed["seed_id"], i, arm)
+    assert _numbers("for 10 days") != _numbers("for 1 day"), "a digit inside a longer number is not a match"
+
+
+def _care_settings(text: str, terms: list[str]) -> list[str]:
+    lowered = text.lower()
+    return sorted(t for t in terms for _ in re.finditer(r"(?<![\w&])" + re.escape(t) + r"(?![\w&])", lowered))
+
+
+def test_every_arm_of_a_turn_names_the_same_care_settings(w3_doc, swaps):
+    """Care-setting words are not swapped (the swaps file's _readme), so the three arms of a turn name the same ones;
+    otherwise the style contrast (colloquial against lay_careful) would carry a vocabulary change. The terms are read
+    from the swaps file, and the check is live: a colloquial turn naming a different setting fails it."""
+    terms = swaps["care_setting_terms"]
+    assert terms
+    seen = 0
+    for seed in w3_doc["seeds"]:
+        text = _texts(seed)
+        for i in range(1, TURNS + 1):
+            found = {arm: _care_settings(text[f"t{i:02d}_{arm}"], terms) for arm in ARMS}
+            assert len({tuple(v) for v in found.values()}) == 1, (seed["seed_id"], i, found)
+            seen += bool(found["clinical"])
+    assert seen > 0, "no turn names a care setting: the check establishes nothing"
+    assert _care_settings(f"waiting in {terms[0]}", terms) != _care_settings(f"waiting in {terms[1]}", terms)
 
 
 # ------------------------------------------------------------------ the holdout seal
@@ -329,6 +432,30 @@ def test_the_plan_is_a_marked_draft_over_this_seed_file(plan, w3_doc):
         assert set(restricted) <= set(ids)
 
 
+def test_every_exploratory_test_in_the_holm_family_can_reject(plan):
+    """A per-target test whose smallest attainable exact two-sided sign-test p (2 / 2^n at n triples) cannot pass
+    Holm's first threshold (alpha / family size) would report 'not significant' whatever the data showed; such an
+    outcome is described, not tested (referral_specificity: 6 triples per target, 0.03125 against 0.0125 in a family
+    of four)."""
+    exploratory = plan["exploratory_outcomes"]
+    family = exploratory["family"]
+    restricted = exploratory["restricted_to_seeds"]
+    for outcome in family:
+        n = len(restricted.get(outcome, plan["scenario_sets"][plan["decomposition_set"]])) * plan["epochs_per_target"]
+        assert 2 / 2 ** n < plan["alpha"] / len(family), (outcome, n)
+    assert "referral_specificity" in restricted and "referral_specificity" not in family
+    assert set(exploratory["referral_specificity"]) == {"per_target", "across_targets", "wave2"}
+    assert "not significant after Holm" in exploratory["referral_specificity"]["wave2"]
+
+
+def test_the_plan_fixes_one_judge_route_for_every_fire(plan):
+    """The wave-2 analysis refuses runs whose judge_model differ (load_runs); the wave-3 plan says so before the cost
+    guidance tempts a split route, and names the refusal among the wave-2 code to carry over."""
+    assert "one judge route" in plan["judge"]["one_route"]
+    assert any(rule.startswith("No pooling across judge routes") for rule in plan["rules"])
+    assert any("judge_model" in item for item in plan["analysis_script"]["wave2_assumptions_to_change"])
+
+
 def test_the_plan_pins_the_instruments_the_seeds_are_judged_under(plan, w3_doc):
     """The rubric digest and one prompt digest per judged dimension, equal to the files in the repository today, so a
     prompt edit before the first fire fails here until the plan is amended with it."""
@@ -352,7 +479,8 @@ def test_the_plan_power_figures_reproduce_from_the_recorded_seed(plan):
     spec.loader.exec_module(ps)
     power = plan["power"]
     rng = random.Random(power["seed"])
-    for (label, pd, pu, rho, tau), expected in zip(ps.GRID, power["results"]):
+    assert len(power["results"]) == len(ps.GRID), "one recorded result per parameter set"
+    for (label, pd, pu, rho, tau), expected in zip(ps.GRID, power["results"], strict=True):
         got = ps.rejection_rates(rng, pd=pd, pu=pu, rho=rho, tau=tau, sims=power["sims"], counts=(3,) * 8)
         assert expected["case"] == label
         assert round(got["triple_sign_test"], 4) == pytest.approx(expected["triple_sign_test"], abs=1e-4)
