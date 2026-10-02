@@ -1,0 +1,44 @@
+{
+  "_note": "Version-2 design for the stimulus-generation pilot: pilot/design.json (the recorded run's, which stays unchanged because that run hashes it) plus harness_version 2 and the data the version-2 scripts read. harness_version selects the row and checker contract in pilot/scripts/common.py (absent means 1); it is the pilot harness's version, not manifest_model.json's harness_version, which names the Claude Code version. specialties, swap_types and cell order are version 1's. control_example is the example negative control the generation prompt shows (its {{CONTROL_EXAMPLE}} marker), rewritten for version 2: it carries next_word, its template ends on a probe ending and it is spoken in the first person, as the version-2 prompt asks of every row. probe_endings are the words a template should end on (the probe-point descriptive). concepts_per_call and variant_pairs_per_call are the variant design the prompt asks for (12 concepts, 4 of them with a second patient phrasing on the next line, 16 non-control rows). review_sampling one_row_per_concept draws at most one review row per concept. These are data, not code (engine AGENTS.md: medical vocabulary lives in data files, never in Python source). Copy this file into a version-2 run directory as design.json before planning.",
+  "harness_version": 2,
+  "specialties": [
+    "cardiology",
+    "neurology",
+    "gastroenterology"
+  ],
+  "swap_types": [
+    {
+      "name": "symptom description",
+      "definition": "the swapped phrase describes a symptom or complaint (the clinical term versus how a patient would describe the same symptom)"
+    },
+    {
+      "name": "body part",
+      "definition": "the swapped phrase names an anatomical structure or location (the clinical name versus the everyday name for the same place)"
+    },
+    {
+      "name": "medication",
+      "definition": "the swapped phrase names a medicine, drug class, or treatment (the clinical or generic name versus how a patient refers to the same medicine)"
+    }
+  ],
+  "control_example": {
+    "clinical_term": "Chest pain",
+    "patient_term": "chest pain.",
+    "template": "I get ___ when I climb the stairs, so I'm going to call my",
+    "next_word": "doctor",
+    "control": "negative"
+  },
+  "probe_endings": [
+    "a",
+    "an",
+    "the",
+    "my",
+    "his",
+    "her",
+    "their",
+    "your",
+    "our"
+  ],
+  "concepts_per_call": 12,
+  "variant_pairs_per_call": 4,
+  "review_sampling": "one_row_per_concept"
+}
