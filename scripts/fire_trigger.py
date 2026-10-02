@@ -50,6 +50,7 @@ import hashlib
 import json
 import math
 import os
+import posixpath
 import contextlib
 import re
 import secrets
@@ -89,6 +90,25 @@ PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-ev
 # both, and circuit_trace_evaluation.yml runs budget-gate for both.
 MITIGATION_IMPUTED_USD = 0.15
 CIRCUIT_TRACE_TRANSLATION_MODE = "translation"
+# circuit-trace `output_root` (2026-10-01): "" keeps today's trace_out/<stem> exactly; the one other accepted value
+# writes pilot stimulus pairs' outputs to pilot/traces/<stem>, which no collector reads. A pairs file under
+# pilot/ is traced if and only if the root is the pilot root, under that root it must sit under pilot/runs/, and a
+# pilot trace is always $0 and plain. circuit_trace_evaluation.yml's params job refuses the same;
+# tests/test_circuit_trace_pilot_root.py holds the two together.
+CIRCUIT_TRACE_PILOT_ROOT = "pilot/traces"
+CIRCUIT_TRACE_OUTPUT_ROOTS = ("", CIRCUIT_TRACE_PILOT_ROOT)
+CIRCUIT_TRACE_PILOT_PAIRS_PREFIX = "pilot/"
+# the one pilot directory the workflow's jobs check out: pilot/traces never is, so no cell's workspace, run-page
+# summary or artifact holds an earlier committed pilot part
+CIRCUIT_TRACE_PILOT_RUNS_PREFIX = "pilot/runs/"
+# the workflow's push-path defaults for the keys the pilot rules read
+CIRCUIT_TRACE_JOB_DEFAULTS = {
+    "mode": "2panel", "pairs_file": "", "offsets": "0", "sample_size": "1", "screen_targets": "",
+    "show_mitigation": "false", "generate_explanations": "0", "steer_validate": "0", "steer_boost": "0",
+    "steer_placebo": "0", "output_root": "",
+}
+# the run step passes each of these to medlang-batch-eval unless its value is "" or "0" (bash `-n` and `!= "0"`)
+CIRCUIT_TRACE_PILOT_OFF_ONLY = ("generate_explanations", "steer_validate", "steer_boost", "steer_placebo")
 
 # Resting-state parks: the cheapest legitimate stage per trigger, with
 # commit_outputs false wherever the workflow supports the key. A trigger file
@@ -864,10 +884,146 @@ def petri_rejudge_source_problems(repo, trigger, params):
     return problems
 
 
+def _circuit_trace_job_value(params: dict, key: str) -> str:
+    """A circuit-trace key's value as circuit_trace_evaluation.yml's params job resolves it from a trigger file:
+    `str()`-ed (a JSON boolean lower-cased, a list of offsets joined with commas), else the job's default."""
+    if key not in params:
+        return CIRCUIT_TRACE_JOB_DEFAULTS[key]
+    value = params[key]
+    if isinstance(value, list) and key == "offsets":
+        return ",".join(str(v) for v in value)
+    return str(value).lower() if isinstance(value, bool) else str(value)
+
+
+def circuit_trace_pairs_path(params: dict) -> str:
+    """The repo-relative pairs file a circuit-trace fire reads: `pairs_file`, or the mode's committed sample."""
+    mode = _circuit_trace_job_value(params, "mode")
+    return _circuit_trace_job_value(params, "pairs_file") or f"medlang_circuits/data/ci_pairs_{mode}.json"
+
+
+def _circuit_trace_normpath(path: str) -> str:
+    """A pairs path normalised exactly as the params job reads it on its Linux runner (`posixpath.normpath`: `.` and
+    `..` folded, a backslash part of a name), whatever OS this host runs. A path with a backslash is refused before
+    it is read here (circuit_trace_params_problems)."""
+    return posixpath.normpath(path)
+
+
+def circuit_trace_pairs_in_pilot(path: str) -> bool:
+    """Whether a pairs path is under pilot/, read after normalisation so `./pilot/x` counts and
+    `pilot/../data/x` does not."""
+    return _circuit_trace_normpath(path).startswith(CIRCUIT_TRACE_PILOT_PAIRS_PREFIX)
+
+
+def circuit_trace_pairs_in_pilot_runs(path: str) -> bool:
+    """Whether a pairs path is under pilot/runs/, the one pilot directory the workflow checks out, read after the
+    same normalisation (so `pilot/runs/../traces/x` is not)."""
+    return _circuit_trace_normpath(path).startswith(CIRCUIT_TRACE_PILOT_RUNS_PREFIX)
+
+
+def circuit_trace_pairs_outside_checkout(path: str) -> bool:
+    """Whether a pairs path is absolute or climbs out of the checkout (`..`). Either can name the checkout's own
+    pilot/ directory without the `pilot/` prefix the pilot rule tests, so the params job and the fire path refuse
+    both for every root; every pairs_file fired to date is repo-relative."""
+    norm = _circuit_trace_normpath(path)
+    return norm.startswith("/") or norm == ".." or norm.startswith("../")
+
+
+def circuit_trace_params_problems(params: dict) -> list[str]:
+    """circuit-trace's `output_root` rules, as the workflow's params job applies them: the root is "" or
+    pilot/traces; for either root the pairs path has no backslash and stays inside the checkout; a pairs file under
+    pilot/ goes with the pilot root and only with it, and under that root sits under pilot/runs/; and under the pilot
+    root nothing paid or altering runs (show_mitigation, mode translation, any steering, generate_explanations), so
+    a pilot trace is a $0 plain trace. The screen_targets rule needs the pairs file and is
+    circuit_trace_pilot_source_problems."""
+    root = _circuit_trace_job_value(params, "output_root")
+    if root not in CIRCUIT_TRACE_OUTPUT_ROOTS:
+        return [f"circuit-trace output_root {root!r}: only \"\" (trace_out) or {CIRCUIT_TRACE_PILOT_ROOT!r} is "
+                "accepted"]
+    path = circuit_trace_pairs_path(params)
+    if "\\" in path:
+        # the Linux runner reads a backslash as part of a file name, so a Windows spelling (pilot\runs\x.json, C:\...)
+        # would slip past the pilot/ and absolute-path tests; every pairs_file fired to date uses / separators
+        return [f"circuit-trace pairs_file {path!r} contains a backslash; give a repo-relative path with / "
+                "separators"]
+    if circuit_trace_pairs_outside_checkout(path):
+        return [f"circuit-trace pairs_file {path!r} is absolute or leaves the checkout; give a repo-relative path "
+                "(an absolute path into pilot/ would trace pilot pairs into trace_out/)"]
+    in_pilot = circuit_trace_pairs_in_pilot(path)
+    problems = []
+    if root != CIRCUIT_TRACE_PILOT_ROOT:
+        if in_pilot:
+            problems.append(f"circuit-trace pairs_file {path!r} is under pilot/: pilot pairs trace only with "
+                            f"output_root {CIRCUIT_TRACE_PILOT_ROOT!r}, so their outputs never enter trace_out/, "
+                            "where every collector reads measurements")
+        return problems
+    if not circuit_trace_pairs_in_pilot_runs(path):
+        # the workflow checks out pilot/runs and never pilot/traces, where earlier pilot parts are committed
+        problems.append(f"circuit-trace output_root {CIRCUIT_TRACE_PILOT_ROOT!r} traces only a pairs_file under "
+                        f"{CIRCUIT_TRACE_PILOT_RUNS_PREFIX}, not {path!r}: pilot/runs is the one pilot directory the "
+                        "workflow checks out")
+    if "," in path:
+        # the seal step passes "$OUT_DIR,$PAIRS_FILE" to seal_check.py --extra, which splits on commas; a comma in
+        # the name would turn both into paths that do not exist, and the check would pass having scanned nothing
+        problems.append(f"circuit-trace output_root {CIRCUIT_TRACE_PILOT_ROOT!r}: pairs_file {path!r} contains a "
+                        "comma, which the pilot seal check cannot scan")
+    where = f"circuit-trace with output_root {CIRCUIT_TRACE_PILOT_ROOT!r}"
+    mitigate = _circuit_trace_job_value(params, "show_mitigation")
+    if mitigate.strip().lower() not in ("", "false", "0"):
+        problems.append(f"{where}: show_mitigation {mitigate!r} is refused; a pilot trace is $0 and plain")
+    mode = _circuit_trace_job_value(params, "mode")
+    if mode.strip().lower() == CIRCUIT_TRACE_TRANSLATION_MODE:
+        problems.append(f"{where}: mode {mode!r} is refused; a pilot trace is $0 and plain")
+    for key in CIRCUIT_TRACE_PILOT_OFF_ONLY:
+        value = _circuit_trace_job_value(params, key)
+        if value not in ("", "0"):
+            problems.append(f"{where}: {key} {value!r} is refused (only \"0\" or absent); a pilot trace is $0 "
+                            "and plain")
+    return problems
+
+
+def circuit_trace_pilot_source_problems(repo: str | Path, trigger: str, params: dict) -> list[str]:
+    """Why a pilot-root circuit-trace fire cannot screen its pairs, as a list of refusals; empty for every other
+    fire. `--screen-targets` measures each pair's `target_clinical_token` on the clinical side, and a pair without
+    one is always screened out and its patient side never traced, so screening is refused when any pair in the
+    selected slices (`offsets` x `sample_size`) lacks a target. The pairs file is read from this checkout, as the
+    workflow's params job reads it at the pushed commit."""
+    if trigger != "circuit-trace":
+        return []
+    if _circuit_trace_job_value(params, "output_root") != CIRCUIT_TRACE_PILOT_ROOT:
+        return []
+    if _circuit_trace_job_value(params, "screen_targets") == "":
+        return []
+    if circuit_trace_params_problems(params):
+        return []                                        # validate_params names those
+    path = circuit_trace_pairs_path(params)
+    where = f"circuit-trace screen_targets under output_root {CIRCUIT_TRACE_PILOT_ROOT!r}"
+    try:
+        offsets = sorted({int(x) for x in _circuit_trace_job_value(params, "offsets").replace(",", " ").split()})
+        size = int(_circuit_trace_job_value(params, "sample_size"))
+    except ValueError as exc:
+        return [f"{where}: offsets or sample_size do not parse as integers ({exc})"]
+    try:
+        pairs = json.loads((Path(repo) / path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return [f"{where}: cannot read the pairs file {path!r} to check its targets ({exc})"]
+    if not isinstance(pairs, list):
+        return [f"{where}: the pairs file {path!r} is not a JSON array"]
+    missing = sorted({offset + i + 1 for offset in offsets
+                      for i, pair in enumerate(pairs[offset:offset + size])
+                      if not (isinstance(pair, dict) and pair.get("target_clinical_token"))})
+    if missing:
+        shown = ", ".join(str(i) for i in missing[:10]) + (", ..." if len(missing) > 10 else "")
+        return [f"{where}: {len(missing)} selected pair(s) of {path!r} carry no target_clinical_token (1-based "
+                f"indices {shown}); screening would screen every one of them out. Drop screen_targets"]
+    return []
+
+
 def lane_params_problems(trigger: str, params: dict, registry: dict | None = None) -> list:
     """Lane-specific invariants beyond the key set; empty for lanes that have none."""
     if trigger == "petri-audit":
         return petri_params_problems(params, registry)
+    if trigger == "circuit-trace":
+        return circuit_trace_params_problems(params)
     return []
 
 
@@ -902,14 +1058,15 @@ KNOWN_KEYS = {
     # graph_models, mode, pairs_file, offsets, sample_size, screen_targets, show_mitigation,
     # commit_outputs, max_n_logits, desired_logit_prob, node_threshold, edge_threshold,
     # max_feature_nodes, generate_explanations, steer_validate, steer_boost, steer_placebo,
-    # steer_strength, steer_boost_strength, steer_rank_offset, translation_model.
+    # steer_strength, steer_boost_strength, steer_rank_offset, translation_model; output_root
+    # added 2026-10-01 (the pilot trace root, CIRCUIT_TRACE_OUTPUT_ROOTS).
     "circuit-trace": frozenset({
         "graph_model", "graph_models", "mode", "pairs_file", "offsets", "sample_size",
         "screen_targets", "show_mitigation", "commit_outputs", "max_n_logits",
         "desired_logit_prob", "node_threshold", "edge_threshold", "max_feature_nodes",
         "generate_explanations", "steer_validate", "steer_boost", "steer_placebo",
         "steer_strength", "steer_boost_strength", "steer_rank_offset", "translation_model",
-        "translation_placebo",
+        "translation_placebo", "output_root",
     }),
     # logits_evaluation.yml `defaults` dict (re-verified 2026-09-04): models, pairs_file,
     # limit, offset, commit_outputs, mode, layers, topk, dtype. `dtype` belongs to
@@ -1796,8 +1953,10 @@ def cmd_fire(args):
         return 3
     # 2b. A petri-audit readapt must recover the run it names, under the parameters that run's fire recorded; a
     # rejudge must re-grade landed runs with another judge into directories that hold no re-grade yet.
+    # A pilot-root circuit-trace fire that screens must have a target on every pair it selects.
     readapt_problems = (petri_readapt_source_problems(repo, args.trigger, params)
-                        or petri_rejudge_source_problems(repo, args.trigger, params))
+                        or petri_rejudge_source_problems(repo, args.trigger, params)
+                        or circuit_trace_pilot_source_problems(repo, args.trigger, params))
     if readapt_problems:
         print("refused: " + "; ".join(readapt_problems), file=sys.stderr)
         return 3

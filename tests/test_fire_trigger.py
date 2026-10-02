@@ -3438,3 +3438,64 @@ def test_publish_keeps_the_park_ceiling_waiver_when_the_park_push_was_rejected(t
     assert "park published past the daily ceiling" in out and "landed 2.00" in out
     published = _origin_main_files(origin, tmp_path)[(TRIGGER_SUBDIR / "scenario-generation.json").as_posix()]
     assert json.loads(published) == park
+
+
+# --- circuit-trace output_root: the pilot trace root (2026-10-01) ------------------------------------------------
+# A pairs file under pilot/ traces only into pilot/traces/<stem>, never trace_out/, and only from pilot/runs/ (the one
+# pilot directory the workflow checks out); a pilot trace is $0 and plain; a pairs_file with a backslash is refused
+# under every root.
+# The fire path refuses a breach with exit 3 before anything is written or journaled; the agreement with the
+# workflow's params job, case for case, is tests/test_circuit_trace_pilot_root.py.
+
+def _pilot_pairs(repo, targets=(True, True, False)):
+    (repo / "pilot" / "runs").mkdir(parents=True, exist_ok=True)
+    pairs = [{"top_prompt": "placeholder a", "bottom_prompt": "placeholder b",
+              **({"target_clinical_token": " c"} if t else {})} for t in targets]
+    (repo / "pilot" / "runs" / "pairs.json").write_text(json.dumps(pairs), encoding="utf-8")
+
+
+def _assert_refused_unwritten(repo):
+    assert not trigger_path(repo).exists(), "a refused fire writes no trigger file"
+    assert not journal_path(repo).exists() or journal_path(repo).read_text(encoding="utf-8").strip() == ""
+
+
+@pytest.mark.parametrize("params, needle", [
+    ({"mode": "2panel", "pairs_file": "pilot/runs/pairs.json"}, "is under pilot/"),
+    ({"mode": "2panel", "pairs_file": "data/x.json", "output_root": "pilot/traces"}, "traces only a pairs_file under"),
+    ({"mode": "2panel", "pairs_file": "pilot/runs/pairs.json", "output_root": "trace_out"}, "only \"\" (trace_out)"),
+    ({"mode": "2panel", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/traces", "show_mitigation": True},
+     "show_mitigation 'true' is refused"),
+    ({"mode": "translation", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/traces"},
+     "mode 'translation' is refused"),
+    ({"mode": "2panel", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/traces", "steer_boost": "4"},
+     "steer_boost '4' is refused"),
+    ({"mode": "2panel", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/traces",
+      "generate_explanations": "1"}, "generate_explanations '1' is refused"),
+    ({"mode": "2panel", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/traces", "screen_targets": "0.02",
+      "offsets": "0", "sample_size": "3"}, "carry no target_clinical_token"),
+    ({"mode": "2panel", "pairs_file": "pilot/pairs.json", "output_root": "pilot/traces"},
+     "traces only a pairs_file under pilot/runs/"),
+    ({"mode": "2panel", "pairs_file": "pilot\\runs\\pairs.json"}, "contains a backslash"),
+    ({"mode": "2panel", "pairs_file": "pilot\\runs\\pairs.json", "output_root": "pilot/traces"},
+     "contains a backslash"),
+])
+def test_a_pilot_trace_that_breaks_the_root_rules_is_refused_with_exit_3(repo, capsys, params, needle):
+    _pilot_pairs(repo)
+    # a full day: the pilot refusals come before the ceiling, and a paid pilot config never reaches it
+    write_dashboard(repo, spent=2.0)
+    assert fire(repo, params=params) == 3
+    assert needle in capsys.readouterr().err
+    _assert_refused_unwritten(repo)
+
+
+def test_a_plain_pilot_trace_fires_free_and_carries_its_root(repo):
+    _pilot_pairs(repo)
+    write_dashboard(repo, spent=2.0)          # free: a full day does not stop it
+    params = {"mode": "2panel", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/traces",
+              "screen_targets": "0.02", "offsets": [0, 1], "sample_size": "1"}
+    assert not ft.is_paid_fire("circuit-trace", params)
+    assert fire(repo, params=params) == 0
+    written = json.loads(trigger_path(repo).read_text(encoding="utf-8"))
+    assert written["output_root"] == "pilot/traces" and written["pairs_file"] == "pilot/runs/pairs.json"
+    entry = ft.load_journal(journal_path(repo))[-1]
+    assert entry["trigger"] == "circuit-trace" and entry.get("max_spend") is None

@@ -42,6 +42,9 @@ model list, and every offset/chunk fired.
 
 - **circuit-trace / logits-eval**: part files under
   `trace_out/<pairs-stem>/` (non-default models: `trace_out/<stem>__<model>/`).
+  A circuit-trace fire with `output_root: pilot/traces` lands its parts under
+  `pilot/traces/<pairs-stem>/` instead (same suffix rule), summaries only, and a
+  pilot cell whose seal check failed commits nothing (docs/triggers.md).
   CI renames each chunk's summary to `batch_summary.part_NN.json`, NN = 1-based
   start offset. Expect ONE part per fired offset, per model. Always glob
   `batch_summary*.json`; `results[i]["index"]` is the global 1-based join key
@@ -143,8 +146,9 @@ correction that `fire_trigger.py publish` pushed on top of it. Check it via:
   repos/{owner}/{repo}/actions/runs/<databaseId>/artifacts` lists its artifacts; or
 - the GitHub Actions API through the `actions_list` / `actions_get` MCP tools, in
   remote sessions, where `gh` is not installed: the same run, `completed`; or
-- the landing commit — `git log origin/<branch> -- 'trace_out/<stem>*'` shows
-  the CI commit containing the LAST expected part (the final offset). Not for
+- the landing commit — `git log origin/<branch> -- 'trace_out/<stem>*'` (for a
+  pilot-root fire, `'pilot/traces/<stem>*'`) shows the CI commit containing the
+  LAST expected part (the final offset). Not for
   advice-eval, petri-audit or model-evaluation: their cost-sidecar commits (and
   advice-eval's and model-evaluation's output commits, and a petri rejudge's
   re-grade commit) run under `always()` and are made even when the run failed, so
