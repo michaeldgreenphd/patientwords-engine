@@ -1,14 +1,10 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-02T13:00:28Z",
-  "updated_by": "session",
+  "updated_utc": "2026-10-02T13:15:06Z",
+  "updated_by": "routine",
   "queue": {
     "circuit-trace": {
-      "running": {
-        "fired_utc": "2026-10-02T13:00:28Z",
-        "commit": "",
-        "note": "PARK (resting-state rule): cheapest no-op default committed so branch operations that touch this trigger file re-run a $0/negligible stage instead of the last expensive fire; commit_outputs false where the workflow supports it. Owner-approved maintenance hardening, 2026-08-27."
-      },
+      "running": null,
       "pending": null
     },
     "logits-eval": {
@@ -49,6 +45,34 @@
     }
   },
   "runs_recent": [
+    {
+      "workflow": "circuit_trace_evaluation",
+      "run_id": 37010176942,
+      "fired_utc": "2026-10-02T13:00:28Z",
+      "status": "completed/success",
+      "note": "Item 3c re-park of circuit-trace after the sentinel resolved, --ignore-settle (terminality of run 37007939743 GitHub-confirmed first). GitHub-confirmed completed/success 13:00:32Z -> 13:11:33Z. $0, commit_outputs false. First circuit-trace run on main under the workflow merged mid-cycle by PR #70 (pilot output_root; default path unchanged). Resolved in-cycle."
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "run_id": 37007939743,
+      "fired_utc": "2026-10-02T12:38:41Z",
+      "status": "completed/success",
+      "note": "Drift sentinel 2026-10-02, the only measurement fire this cycle. First fire push rejected (CI outputs moved main); recovered with fire_trigger.py publish (d34ccb96), no re-fire. GitHub-confirmed completed/success 12:38:53Z -> 12:57:57Z (19m04s); ONE run for the push this time (no duplicate, unlike 09-29). Outputs bf3320ab: batch_summary.part_01.json, backend hosted, source_set gemmascope-transcoder-16k, 3 rows, language_penalty on all three (0.045, 0.369, -0.046). Verdict vs 20260929: max |dp| 0.0, top words unchanged; 44 measured days. Resolved in-cycle."
+    },
+    {
+      "workflow": "archive_renders",
+      "run_id": 37007989844,
+      "fired_utc": "2026-10-02T12:39:17Z",
+      "status": "completed/success",
+      "note": "Item 3d PNG sweep, $0. tag renders-20261002, runs ['trace_out/drift_sentinel_20260929'], prune true. GitHub-confirmed completed/success 12:39:21Z -> 12:39:36Z; landing commit 420cc1e7. Journal entry left active by rule: harvest and re-park next cycle."
+    },
+    {
+      "workflow": "archive_renders",
+      "run_id": 37007891232,
+      "fired_utc": "2026-10-02T12:38:18Z",
+      "status": "completed/success",
+      "note": "Opening-backstop re-park of archive-renders (the 09-29 sweep 36569526880 GitHub-confirmed completed/success, manifest renders-20260929 on main). Completed 12:38:23Z -> 12:38:36Z; resolved in-cycle before the sweep fire."
+    },
     {
       "workflow": "circuit_trace_evaluation",
       "run_id": 36574396184,
@@ -764,7 +788,7 @@
     "generation_status": "COMPLETE 2026-08-06: 1,600/1,600 accepted across the 20 cadence batches. The validator-yield stopping rule never tripped. Generation spend closed at $2.7678 of the $8 pre-registered ceiling (35%). No further scenario-generation fire is warranted - priority-1 of the standing prompt is retired for this campaign."
   },
   "verdicts": [
-    "INSTRUMENT HEALTHY, thirteenth consecutive measured sentinel since the 08-22..08-25 outage. The 2026-09-29 drift sentinel succeeded (circuit-trace run 36569414257, GitHub-confirmed completed/success, 16m24s; a duplicate run 36569416060 for the same push re-measured the same three pairs with identical probabilities). 3 rows verified, language_penalty present on all three (0.045, 0.369, -0.046). data/drift_series.json now holds 43 measured days ending 20260929 (published to the live site as patientwords aa53544). Delta against 20260925: max |dp| 0.0, all six top words unchanged. The two historic DRIFT days (20260715 max |dp| 0.027, 20260814 max |dp| 0.023, both pair 2 patient, top words unchanged) are unchanged; threshold 0.01. 09-26..09-28 are Tue/Fri cadence gaps, not holes."
+    "INSTRUMENT HEALTHY, fourteenth consecutive measured sentinel since the 08-22..08-25 outage. The 2026-10-02 drift sentinel succeeded (circuit-trace run 37007939743, GitHub-confirmed completed/success, 19m04s, one run for the push). 3 rows verified, language_penalty present on all three (0.045, 0.369, -0.046). data/drift_series.json now holds 44 measured days ending 20261002 (published to the live site as patientwords b387e74). Delta against 20260929: max |dp| 0.0, top words unchanged. The two historic DRIFT days (20260715 max |dp| 0.027, 20260814 max |dp| 0.023, both pair 2 patient, top words unchanged) are unchanged; threshold 0.01. 09-30..10-01 are Tue/Fri cadence gaps, not holes."
   ],
   "findings_delta": [
     {
@@ -862,6 +886,10 @@
     {
       "date": "2026-09-29",
       "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 36569414257, 16m24s, GitHub-confirmed) - thirteenth healthy day since the 08-22..25 outage; series 42 -> 43 days, max |dp| 0.0 vs 09-25. GitHub started a DUPLICATE run (36569416060) for the one sentinel push; $0 here, identical probabilities, but on a paid lane it would double spend. Ledger: 2 Petri sidecars folded, lifetime $80.60. Nothing spent this cycle."
+    },
+    {
+      "date": "2026-10-02",
+      "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 37007939743, 19m04s, GitHub-confirmed, one run for the push) - fourteenth healthy day since the 08-22..25 outage; series 43 -> 44 days, max |dp| 0.0 vs 09-29. PNG sweep renders-20261002 landed; both lanes re-parked. Owner merged engine PRs #52/#69/#70/#74 mid-cycle (circuit-trace workflow gained a pilot output_root; no trigger changed). Ledger: 0 new sidecars. Nothing spent."
     }
   ],
   "decisions_pending": [
@@ -1055,8 +1083,8 @@
     {
       "id": "JOURNAL-EXPIRED-PARKS-20260902",
       "recorded_utc": "2026-09-04T15:00:00Z",
-      "updated_utc": "2026-09-29T13:45:00Z",
-      "what": "Standing journal-expiry record, re-verified 2026-09-25 and grown by exactly one entry, as predicted. Recomputed this cycle: 148 of 929 journal lines are unresolved-and-expired (was 147 of 915 on 09-22); all 929 lines parse as JSON. The one new entry is the 09-22 cycle's own item-3d PNG sweep (archive-renders, fired 2026-09-22T12:41:26Z), whose run 35728710223 this cycle GitHub-confirmed completed/success. fire_trigger.py resolve declined it ('no active journal entries for archive-renders') because it is past the 8h expiry; it is recorded here, not hand-edited into the journal. Nothing was lost: its outputs landed and this cycle re-parked the lane. The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-09-25T12:38:38Z), deliberately left for the next cycle. See ITEM-3D-EXPIRY-COLLISION-20260918. || 2026-09-29: recomputed 149 of 935 journal lines unresolved-and-expired (was 148 of 929); all 935 parse. The one new entry is the 09-25 item-3d sweep (archive-renders, 2026-09-25T12:38:38Z), run 36136113865 GitHub-confirmed completed/success; resolve declined it as expired, lane re-parked this cycle (da032048). The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-09-29T12:38:48Z, run 36569526880 already completed/success), left for the next cycle."
+      "updated_utc": "2026-10-02T13:15:06Z",
+      "what": "Standing journal-expiry record, re-verified 2026-09-25 and grown by exactly one entry, as predicted. Recomputed this cycle: 148 of 929 journal lines are unresolved-and-expired (was 147 of 915 on 09-22); all 929 lines parse as JSON. The one new entry is the 09-22 cycle's own item-3d PNG sweep (archive-renders, fired 2026-09-22T12:41:26Z), whose run 35728710223 this cycle GitHub-confirmed completed/success. fire_trigger.py resolve declined it ('no active journal entries for archive-renders') because it is past the 8h expiry; it is recorded here, not hand-edited into the journal. Nothing was lost: its outputs landed and this cycle re-parked the lane. The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-09-25T12:38:38Z), deliberately left for the next cycle. See ITEM-3D-EXPIRY-COLLISION-20260918. || 2026-09-29: recomputed 149 of 935 journal lines unresolved-and-expired (was 148 of 929); all 935 parse. The one new entry is the 09-25 item-3d sweep (archive-renders, 2026-09-25T12:38:38Z), run 36136113865 GitHub-confirmed completed/success; resolve declined it as expired, lane re-parked this cycle (da032048). The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-09-29T12:38:48Z, run 36569526880 already completed/success), left for the next cycle. || 2026-10-02: recomputed 150 of 939 journal lines unresolved-and-expired (was 149 of 935); all 939 parse. The one new entry is the 09-29 item-3d sweep (archive-renders, 2026-09-29T12:38:48Z), run 36569526880 GitHub-confirmed completed/success; resolve declined it as expired, lane re-parked this cycle (0b284539). The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-10-02T12:39:17Z, run 37007989844 already completed/success), left for the next cycle."
     },
     {
       "id": "sentinel-overran-window-20260829",
@@ -1095,6 +1123,11 @@
     }
   ],
   "notes": [
+    "2026-10-02 cycle: section 0 cadence gate did NOT trip - newest brief was brief_20260929.md at 3 days old.",
+    "2026-10-02 bootstrap: both repos arrived clean on session branches (claude/vigilant-lovelace-ypl8xs, claude/loving-tesla-ypl8xs) whose tips equalled origin/main (engine 5f0b5150, site 2731433; ls-remote). Engine clone shallow (Variant C shape) but at the live tip, nothing deepened; local main set from the fetched tip. Site sparse-checkout disabled (0 files off disk). All four preflight gates passed: main in both, dashboard identical to origin/main, seal_check CLEAN (183 sealed phrases, 813 files), push --dry-run clean.",
+    "2026-10-02 harvest: terminality GitHub-confirmed per entry. The 09-29 sweep run 36569526880 completed/success; resolve declined it as expired (>8h, see JOURNAL-EXPIRED-PARKS). Section 2a: ledger_update.py found 0 new sidecars (lifetime $80.604, today $0/$2); nothing to commit.",
+    "2026-10-02 coexistence: the owner merged engine PRs #52, #69, #74 and #70 at 12:50Z, mid-cycle. They changed .github/workflows/circuit_trace_evaluation.yml (an optional pilot output_root) and no trigger file or journal line; no run was created by the merges. The sentinel ran on the pre-merge commit; the 3c re-park is the first main run under the new workflow. A circuit-trace park ran on branch claude/pilot-run2-trace-fire at 09:13Z (run 36988519456, success) - another session's, not on main, not in this journal.",
+    "2026-10-02 publish: site data/drift_series.json only (b387e74) after contract gate 0 errors / 1 warning (urgency_shift 1728/13652 unjoined rows, pre-existing), claim_check all verified, seal CLEAN.",
     "2026-09-29 cycle: section 0 cadence gate did NOT trip - newest brief was brief_20260925.md at 4 days old.",
     "2026-09-29 bootstrap: both repos arrived clean on session branches (claude/vigilant-lovelace-ifldid, claude/loving-tesla-ifldid) whose tips equalled origin/main (engine 6f76ce01, site 05fd1d3; ls-remote). Engine clone is shallow with full blobs (Variant C shape) but already at the live tip, so nothing was fetched or deepened: local main was set to HEAD and origin/main pointed at the ls-remote-confirmed sha. All four preflight gates passed: main in both, dashboard identical to origin/main, seal_check CLEAN (183 sealed phrases), push --dry-run clean.",
     "2026-09-29 harvest: terminality GitHub-confirmed per entry. The 09-25 sweep run 36136113865 completed/success; resolve declined it as expired (>8h, see JOURNAL-EXPIRED-PARKS). No run was in_progress repo-wide at cycle open (latest activity: petri-audit runs on claude/petri-* branches, all completed by 2026-09-26T02:57Z).",
