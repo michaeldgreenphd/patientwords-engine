@@ -1027,10 +1027,9 @@ def judge_sampling_omissions(model_spec: str, providers_path: str | Path | None 
     (`temperature_omission`). That resolver reads a colon-free spec naming no registry provider as a bare Anthropic
     id, `anthropic/claude-sonnet-5` and `openrouter/openai/gpt-6-luna` included, which the judge sends to the
     Anthropic API as written. Until the review of 2026-10-02 these records used spend.sampling_omissions, which reads
-    such a string as a target's Inspect name and so could name another entry, or none, than the judge's rows did:
-    `openrouter/openai/gpt-6-luna` took the slug's entry and `anthropic/claude-opus-5-5` the direct id's, where the
-    judge matches neither, and `anthropic/claude-sonnet-5` took the direct id's reason and `anthropic/claude-opus-5.5`
-    no entry, where the judge takes the slug's.
+    such a string as a target's Inspect name and so could name an entry the judge's rows did not: at the reviewed
+    head, `openrouter/openai/gpt-6-luna` took the slug's entry and `anthropic/claude-opus-5-5` the direct id's, so the
+    records said temperature was withheld where the judge matches neither and sends it.
 
     {} for the zero-price sentinels (RegistryJudge refuses them; MockJudge sends the instrument's temperature) and
     for a spec the registry cannot resolve (judge_spec_problems reports it and RegistryJudge refuses it, so no call

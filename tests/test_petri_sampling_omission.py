@@ -343,9 +343,9 @@ def _recorded(sidecar: dict) -> dict[str, str]:
 def test_the_preflight_and_both_fallback_sidecars_record_what_the_judge_sends(spec, monkeypatch, tmp_path, capsys):
     """Review of 2026-10-02: the pre-flight's judge line, the judge-spend-report sidecar and the rejudge fallback
     sidecar read the judge's spec with spend.sampling_omissions, while RegistryJudge resolves a colon-free spec as a
-    bare Anthropic id. For `anthropic/claude-sonnet-5` the three named the direct id's reason where the judge's rows
-    name the slug's; for `anthropic/claude-opus-5.5` they said temperature was sent where the judge sends none; for
-    `openrouter/openai/gpt-6-luna` the reverse. Each must record what the judge sends, decision and reason."""
+    bare Anthropic id. For `openrouter/openai/gpt-6-luna` and `anthropic/claude-opus-5-5` the three said temperature
+    was withheld, naming an entry, where the judge matches no entry and sends it. Each must record what the judge
+    sends, decision and reason."""
     sent, judge = _judge_sends(monkeypatch, tmp_path, spec)
     assert sent == [None if judge else judge_runner.TIER_TEMPERATURE], "the judge sends temperature unless it records why not"
     # the pre-flight's judge line
