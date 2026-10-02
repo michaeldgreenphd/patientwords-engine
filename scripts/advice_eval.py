@@ -601,8 +601,8 @@ def _load_selection_source(file: str) -> dict:
             "source": family_source}
 
 
-def _selection_seal_check(where: str, file: str, item: dict, tierb, dashboard: str | Path,
-                          simulated_dir: str | Path) -> dict[str, bool]:
+def _selection_seal_check(where: str, file: str, item: dict, tierb, start_stamp: str | None,
+                          dashboard: str | Path, simulated_dir: str | Path) -> dict[str, bool]:
     """The holdout seal for one selected item: tierb_split.sealed_pair, the one-row form of stamp_rows' rule, which
     is wider than the --source pairs guard. A selected item is sealed when its clinical body is a registered holdout
     phrase anywhere (Amendment 3: alias stems such as pairs_<STAMP>_txopus, re-run stems, non-Tier-B batches and
@@ -612,16 +612,16 @@ def _selection_seal_check(where: str, file: str, item: dict, tierb, dashboard: s
     from the prompt the phrase set registers). A sealed item is refused, not dropped: a selection names its items,
     and a silently shorter output would misstate what was re-run. When the seal cannot be evaluated (no Tier B start
     in the dashboard, an empty phrase set, an unreadable Tier B batch file, a Tier B pair with no top_prompt, an
-    index outside its batch) sealed_pair raises SealError, and the build is refused too. Returns which checks ran.
-    Never prints prompt text."""
+    index outside its batch) sealed_pair raises SealError, and the build is refused too. start_stamp is the build's
+    one read of the dashboard's Tier B start (select_stimuli's, the stamp its source block records), so every item
+    is classified Tier B or not against that stamp. Returns which checks ran. Never prints prompt text."""
     ref = item.get("source_ref")
     batch = ref.get("batch") if isinstance(ref, dict) else None
     index = ref.get("batch_index") if isinstance(ref, dict) else None
     if not isinstance(batch, str) or not batch:
         batch, index = None, None
     label = f"{where}: {file} item {item['id']!r}" + (f" ({batch}#{index})" if batch else " (no source batch)")
-    start = tierb.tierb_start_stamp(dashboard)
-    is_tierb = tierb.is_tierb_batch(batch, start)
+    is_tierb = tierb.is_tierb_batch(batch, start_stamp)
     accepted_checked = False
     try:
         sealed = tierb.sealed_pair(batch, index, item.get("clinical_body"),
@@ -728,7 +728,7 @@ def select_stimuli(selection_path: str | Path, dashboard: str | Path,
                              f"({first_file} item {first_id!r}); the re-run would elicit one stimulus twice under "
                              "two ids, and analyze's cluster bootstrap would count it as two situations")
         seen_messages[message_pair] = (where, file, item_id)
-        checks = _selection_seal_check(where, file, original, tierb, dashboard, simulated_dir)
+        checks = _selection_seal_check(where, file, original, tierb, start_stamp, dashboard, simulated_dir)
         tierb_checked += checks["tierb"]
         accepted_checked += checks["accepted_prompt"]
         item = json.loads(json.dumps(original))   # a deep copy: nothing in the source document is touched

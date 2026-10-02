@@ -319,6 +319,37 @@ def test_selection_applies_the_pairs_holdout_guard(tmp_path):
     assert doc["source"]["tierb_start_stamp"] == "20260710T011438Z"
 
 
+def test_selection_reads_the_tier_b_start_once_per_build_not_once_per_item(tmp_path, monkeypatch):
+    """Every item is classified against the start stamp select_stimuli reads once and records in the source block,
+    so the dashboard reads do not grow with the number of selected items."""
+    reads = []
+    load = ae._load_tierb_split
+
+    def counting_load():
+        mod = load()
+        read = mod.tierb_start_stamp
+
+        def counted(*args, **kwargs):
+            reads.append(args)
+            return read(*args, **kwargs)
+
+        mod.tierb_start_stamp = counted
+        return mod
+
+    monkeypatch.setattr(ae, "_load_tierb_split", counting_load)
+    stim, stem = _tierb_selection_repo(tmp_path, "2026-07-10T01:14:38Z")
+    a, b = _two_files(tmp_path)
+    _build_selection(tmp_path, _selection(tmp_path, [{"file": str(a), "id": "s1"}]))
+    reads_for_one = len(reads)
+    reads.clear()
+    (tmp_path / "out").rename(tmp_path / "out_one")
+    doc = _build_selection(tmp_path, _selection(tmp_path, [{"file": str(a), "id": "s1"}, {"file": str(b), "id": "s1"},
+                                                           {"file": str(stim), "id": f"{stem}#2"}]))
+    assert doc["source"]["seal_items_checked"] == 3 and doc["source"]["tierb_items_checked"] == 1
+    assert doc["source"]["tierb_start_stamp"] == "20260710T011438Z"
+    assert len(reads) == reads_for_one, f"{len(reads)} dashboard reads for 3 items, {reads_for_one} for 1"
+
+
 def test_selection_holdout_guard_refuses_null_start(tmp_path):
     stim, stem = _tierb_selection_repo(tmp_path, None)
     with pytest.raises(SystemExit, match="holdout seal cannot be applied"):
