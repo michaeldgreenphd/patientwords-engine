@@ -1,0 +1,448 @@
+{
+  "pilot": "stimulus-generation measurement-validity pilot",
+  "date_utc": "2026-09-29",
+  "created_utc": "2026-09-29T21:43:06Z",
+  "finalized_utc": "2026-09-30T14:53:16Z",
+  "metadata_reset_utc": null,
+  "model": {
+    "execution_path": "Claude Code subagents launched by the Workflow tool inside a claude.ai cloud session (session_013KH1iaG3RoTUJVtwHkoiVz). Subagents inherit the session model. Their system prompt and any repository instructions injected by the harness are outside this pilot's control; prompt hashes cover only the user-turn prompt.",
+    "session_model_at_run": "claude-fable-5-1",
+    "session_last_served_model_at_run": "claude-fable-5-1",
+    "session_model_at_creation": "claude-sonnet-5",
+    "model_switched_by_user_before_run": true,
+    "effort_level": "xhigh",
+    "harness_version": "claude-code 2.1.273",
+    "source": "get_session call at 2026-09-29T21:35Z, before generation",
+    "per_subagent_model_evidence": "see manifest.json runs.*.model_evidence, filled from the workflow transcripts after each run if the transcripts record it",
+    "generation_output_schema": "none (raw text; format validity is estimand 1)",
+    "checker_output_schema": "structured output: {verdicts: [{id, equivalent in {yes,no,unclear}, reason}]}"
+  },
+  "manifest_model_sha256": "4417730fd80e518fd98b35083a7f812295c17fa73d59358662f9c0764c11f3bb",
+  "python": "3.11.15",
+  "seeds": {
+    "master_seed": 20260929,
+    "exemplar_sampling": "random.Random(20260929), one draw of K per cell in cell order",
+    "named_streams": {
+      "broken": "random.Random('20260929:broken')",
+      "checker_shuffle": "random.Random('20260929:checker_shuffle')",
+      "review": "random.Random('20260929:review')",
+      "bootstrap": "random.Random('20260929:bootstrap')"
+    }
+  },
+  "design": {
+    "specialties": [
+      "cardiology",
+      "neurology",
+      "gastroenterology"
+    ],
+    "swap_types": [
+      "symptom description",
+      "body part",
+      "medication"
+    ],
+    "arms": [
+      "A",
+      "B"
+    ],
+    "rows_per_call": 20,
+    "controls_per_call": 4,
+    "k_exemplars_requested": 8,
+    "k_exemplars_used": 6,
+    "n_seed_cases": 6,
+    "seed_provenance": {
+      "values": [
+        "synthetic placeholder, not study data"
+      ],
+      "n_seeds_without_provenance": 0,
+      "file_note": "SYNTHETIC PLACEHOLDERS. Nothing was attached to the task, so these six seed cases were written by the agent on 2026-09-29 to exercise the pipeline. They are NOT study data. Replace this file with the real seed cases before any run whose numbers matter. Field mapping used by the scripts: clinical_term, patient_term, template (blank marker '___'). Extra fields (id, specialty, swap_type, provenance) are used for labeling only."
+    },
+    "checker_batch": 30,
+    "n_broken": 20,
+    "n_known_good_requested": 10,
+    "n_review": 40,
+    "n_boot": 2000
+  },
+  "protocol_sha256_at_write": "8dd838105e94a03190e81c841474479c8a27517553bdeabf9678f3550da5d969",
+  "protocol_sha256_now": "8dd838105e94a03190e81c841474479c8a27517553bdeabf9678f3550da5d969",
+  "protocol_unchanged": true,
+  "seeds_json_sha256": "593e2b7b6d25d78ed5f8adfa7fe02d5d0e4aef5574c0c6c08a8b6937e6399884",
+  "design_json_sha256": "bd6d87f895e2b583de312cedc1da3084eab8adfde6dfcff01ab23222820a145b",
+  "input_refactors": [
+    {
+      "utc": "2026-09-30T13:45:10Z",
+      "reason": "the example negative control the generation prompt shows moved from prompts/generation_prompt.txt into design.json (control_example), rendered through the {{CONTROL_EXAMPLE}} marker; every rendered prompt byte-identical (Codex review of PR #52, round 17; owner decision of 2026-09-30 to proceed)",
+      "changed": [
+        "design_json_sha256",
+        "prompt_hashes.generation_prompt_template"
+      ],
+      "before": {
+        "design_json_sha256": "6ebbfb8c5396c817c246068da3757d0b70101350df417063be18f4c27eab661f",
+        "generation_prompt_template_sha256": "3b5a0f6c406d86868aca72dc03679f29890496ded59ab8b3840554be20fa4060"
+      },
+      "after": {
+        "design_json_sha256": "bd6d87f895e2b583de312cedc1da3084eab8adfde6dfcff01ab23222820a145b",
+        "generation_prompt_template_sha256": "c2ec45942e46f0bc4e5fd68979ef365c64d3801c3c36689323487f04047a7506"
+      },
+      "generation_calls_unchanged": 18
+    }
+  ],
+  "prompt_hashes": {
+    "generation_prompt_template": "c2ec45942e46f0bc4e5fd68979ef365c64d3801c3c36689323487f04047a7506",
+    "generation_calls": {
+      "A__cardiology__symptom_description": {
+        "prompt_sha256": "17f5c6e2d5d9120fb1c5f6095b48de70e110d510982f6bcc29a4d468cdaa9bcb",
+        "exemplar_ids": [
+          "seed_synth_04",
+          "seed_synth_05",
+          "seed_synth_03",
+          "seed_synth_06",
+          "seed_synth_02",
+          "seed_synth_01"
+        ]
+      },
+      "B__cardiology__symptom_description": {
+        "prompt_sha256": "ccb8216215c7cd4aa01bb1ed38f93b34b4f5e932577443a23fdec17bbc4e126d",
+        "exemplar_ids": [
+          "seed_synth_01",
+          "seed_synth_02",
+          "seed_synth_03",
+          "seed_synth_04",
+          "seed_synth_05",
+          "seed_synth_06"
+        ]
+      },
+      "A__cardiology__body_part": {
+        "prompt_sha256": "2d0f63da4ce8ac95910f92c7c71de8329bf1c7d5fb3c6a292e5d29aea28c148d",
+        "exemplar_ids": [
+          "seed_synth_04",
+          "seed_synth_02",
+          "seed_synth_03",
+          "seed_synth_05",
+          "seed_synth_01",
+          "seed_synth_06"
+        ]
+      },
+      "B__cardiology__body_part": {
+        "prompt_sha256": "11440dfa9ca97cd509948385c3ae6378ac92f7e89e6f4a6471f77083958498c6",
+        "exemplar_ids": [
+          "seed_synth_01",
+          "seed_synth_02",
+          "seed_synth_03",
+          "seed_synth_04",
+          "seed_synth_05",
+          "seed_synth_06"
+        ]
+      },
+      "A__cardiology__medication": {
+        "prompt_sha256": "2c8237b668c4063d11599df0eda072622062ad69caeab89fbaf3bbdddf4f96da",
+        "exemplar_ids": [
+          "seed_synth_03",
+          "seed_synth_05",
+          "seed_synth_04",
+          "seed_synth_02",
+          "seed_synth_06",
+          "seed_synth_01"
+        ]
+      },
+      "B__cardiology__medication": {
+        "prompt_sha256": "8bb241150f0f5a1932267abe91eb05dbf45769ff8132f239632cbbba3b1f6e1a",
+        "exemplar_ids": [
+          "seed_synth_01",
+          "seed_synth_02",
+          "seed_synth_03",
+          "seed_synth_04",
+          "seed_synth_05",
+          "seed_synth_06"
+        ]
+      },
+      "A__neurology__symptom_description": {
+        "prompt_sha256": "c92048dac49b36ee62c1543a8b60675d7c82fef74d03e0c37d8992fcc1414e46",
+        "exemplar_ids": [
+          "seed_synth_06",
+          "seed_synth_02",
+          "seed_synth_01",
+          "seed_synth_04",
+          "seed_synth_05",
+          "seed_synth_03"
+        ]
+      },
+      "B__neurology__symptom_description": {
+        "prompt_sha256": "b57e8c9ae2550f49e0140f2911c2b99bf8ee7a09670934110c7dc6276ca02d8f",
+        "exemplar_ids": [
+          "seed_synth_01",
+          "seed_synth_02",
+          "seed_synth_03",
+          "seed_synth_04",
+          "seed_synth_05",
+          "seed_synth_06"
+        ]
+      },
+      "A__neurology__body_part": {
+        "prompt_sha256": "f97b03f149606e4383c3d7d185681b1b16f9c50de5e1c54c3a05a83ca35d45ba",
+        "exemplar_ids": [
+          "seed_synth_02",
+          "seed_synth_06",
+          "seed_synth_03",
+          "seed_synth_04",
+          "seed_synth_05",
+          "seed_synth_01"
+        ]
+      },
+      "B__neurology__body_part": {
+        "prompt_sha256": "b3bfb6c4bfd97cbb8b54f05c82d15d59100ab5aeb0c7b5767ab8f646d7117056",
+        "exemplar_ids": [
+          "seed_synth_01",
+          "seed_synth_02",
+          "seed_synth_03",
+          "seed_synth_04",
+          "seed_synth_05",
+          "seed_synth_06"
+        ]
+      },
+      "A__neurology__medication": {
+        "prompt_sha256": "8bf5f83904342fdca80a7373f55b15ef8ec28856413a73155d7fcbfdf864d936",
+        "exemplar_ids": [
+          "seed_synth_02",
+          "seed_synth_01",
+          "seed_synth_06",
+          "seed_synth_03",
+          "seed_synth_04",
+          "seed_synth_05"
+        ]
+      },
+      "B__neurology__medication": {
+        "prompt_sha256": "cdbb9caf48ef59db46e3d51674d8b6c91ba553d99877ccbbd298fa6da09fc21d",
+        "exemplar_ids": [
+          "seed_synth_01",
+          "seed_synth_02",
+          "seed_synth_03",
+          "seed_synth_04",
+          "seed_synth_05",
+          "seed_synth_06"
+        ]
+      },
+      "A__gastroenterology__symptom_description": {
+        "prompt_sha256": "d895b5fbc706aa006f1bcbbbda3fa7cdbd209dfe5820faa3f5af4e11b3c2adcc",
+        "exemplar_ids": [
+          "seed_synth_06",
+          "seed_synth_03",
+          "seed_synth_05",
+          "seed_synth_01",
+          "seed_synth_02",
+          "seed_synth_04"
+        ]
+      },
+      "B__gastroenterology__symptom_description": {
+        "prompt_sha256": "0b6b7f46de35d8b5e04cc1b6c896a9ab69e7bcfc991b351c772cd6a699e06e06",
+        "exemplar_ids": [
+          "seed_synth_01",
+          "seed_synth_02",
+          "seed_synth_03",
+          "seed_synth_04",
+          "seed_synth_05",
+          "seed_synth_06"
+        ]
+      },
+      "A__gastroenterology__body_part": {
+        "prompt_sha256": "fa1980e80f1c6f24bb61987e287e907fdcc8ebc6e7eb4284c0aef9dff752745c",
+        "exemplar_ids": [
+          "seed_synth_02",
+          "seed_synth_01",
+          "seed_synth_03",
+          "seed_synth_05",
+          "seed_synth_06",
+          "seed_synth_04"
+        ]
+      },
+      "B__gastroenterology__body_part": {
+        "prompt_sha256": "d35937770003c7691826e382e5db33dbf9ee549258e850f346f237458a776182",
+        "exemplar_ids": [
+          "seed_synth_01",
+          "seed_synth_02",
+          "seed_synth_03",
+          "seed_synth_04",
+          "seed_synth_05",
+          "seed_synth_06"
+        ]
+      },
+      "A__gastroenterology__medication": {
+        "prompt_sha256": "256a6a705999d2b135277a7f9f919f9b3c9be13bdacecac6883eaffda8e16cef",
+        "exemplar_ids": [
+          "seed_synth_05",
+          "seed_synth_06",
+          "seed_synth_02",
+          "seed_synth_04",
+          "seed_synth_03",
+          "seed_synth_01"
+        ]
+      },
+      "B__gastroenterology__medication": {
+        "prompt_sha256": "bb30196b622bc34ef2a5efaab5a4f0be81096216a7f4d1a7bc5d182104294a6f",
+        "exemplar_ids": [
+          "seed_synth_01",
+          "seed_synth_02",
+          "seed_synth_03",
+          "seed_synth_04",
+          "seed_synth_05",
+          "seed_synth_06"
+        ]
+      }
+    },
+    "checker_prompt_template": "7c176721817d45eda9a26719c73b1a448d1e70b17209776d6a4a4c9bdd7ca7bc",
+    "checker_batches": {
+      "batch01": "e6c09751a3e5a695558dd35f2313869aabe128f24695f2c663488e7ad6af34ba",
+      "batch02": "d4504fd2ad2257499471d9771de9514d8fb936a00c073f3e003873cd1367f0bf",
+      "batch03": "35f2d4550204e36bb27ac8a494c5e6f9414141230174fb903bd4560436a6207c",
+      "batch04": "f081a28fe6bca5794ca00e5c9adedf92f5db0e9ab39deb3a41fce0707ce06de2",
+      "batch05": "99e4056aadda3d0de1cf5f7240f28672e8cb4685eb9664e40440d285342faf46",
+      "batch06": "80d0533c715d3bfb97a9ffaef8e44b9f7fe88bbd87c81914909b884357248858",
+      "batch07": "9d8df01a86da7285dff252f75f2c72fc59f0d97f1198aef71cf35c49c0661db5",
+      "batch08": "642bd847b30d8f9579085f6fe9534b9fc10a9a9bc0ab274c8e32b3ab22e3443f",
+      "batch09": "9b6772e5647aeecc2558b0901cb8ac0ff3c1f33eaff5a04c079b1c7490c98f22",
+      "batch10": "8e72db7aefb3eb91cf73a38fe37efd74f8a40b959e09027e2e0fe41b7e5c4a1e",
+      "batch11": "fe9d209eb3d8e8f42a9d221f80b0ed8e8c73139a5e37ba5fbd1c18a904e61cb2"
+    }
+  },
+  "script_hashes": {
+    "build_api_requests.py": "bcf1a8141f057d2c5f58d56fff070457ffe80d0b744cac55770a2ab9e530e1e5",
+    "build_checker_set.py": "a17e1175616c2994ec8ac57518ce90118f2dfaa85fb7905d43eefb68dca2dfe3",
+    "common.py": "6e8fd39dd548b1dcf5a56395c5bd70388d49439db48c3c7385fe4e45937f7972",
+    "compute_summary.py": "a44974d3052b621df0f42cddaf11cdcdb8a84440e73c53921c09b743946335dc",
+    "extract_workflow_journal.py": "46fc5f7730100d4d3a63ef7b3b9a2e396128b26e48d735f72be23525c6a9aeb4",
+    "make_review_sheet.py": "abc9a6335f48c3dd1ac8b118f63874b26f0106a85276bc7335ae812dc3dd6346",
+    "make_workflow_scripts.py": "599c6af0d0b0dc643e620c20edbb114db6e26bbf71225bb3804ff523cf23cb71",
+    "parse_checker.py": "294d1034bf90d2adc41da18dd88abbbce9a5aa57643ebf04512e08ce0fddc3d7",
+    "parse_generation.py": "fa2af7ddf65fdf2b6af48166bd4a0f0538c18b70a6e55626a644b9b55a220831",
+    "plan_calls.py": "2b33628901241602c9a38057690a6651ec239a6ae3c54a0180276fa71507c315",
+    "record_run.py": "335c5228335cc904e0fc8c4af8549e3c736618ccbc579ed94f2789bc2bbff3d4",
+    "rederive.py": "30132c7aee314a24b748d0223cee576a241b21d59785adc3bdc8c877147354d0",
+    "selftest.py": "9e3c1b53fe00ca1697d20fbaba3cb46ba5c009bf6bef2951ef6f00c1e3e80218",
+    "write_manifest.py": "4448d440a80a31661b9e8f97fb84655491751549c6a5571f89fd51f3ecad18c1"
+  },
+  "workflow_script_hashes": {
+    "checker.workflow.js": "85204a2387e2bc88ced5557f293bd5e4ae65f9afa3df9ae35653951e10cd6a1c",
+    "generation.workflow.js": "6bcc5a6b87b109800e1fe17e5f73c269171ad4996fb49f6ecb435b09cbffc315"
+  },
+  "runs": {
+    "generation": {
+      "agent_count": 18,
+      "agents_done": 18,
+      "agents_error": 0,
+      "agents_empty_result": 0,
+      "subagent_tool_uses": 0,
+      "subagent_tokens": 1164513,
+      "duration_ms": 523798,
+      "concurrency": 2,
+      "run_id": "wf_028d99f0-c28",
+      "transcript_dir": "/root/.claude/projects/-home-user/a8559662-9305-5f72-b3c0-2fbde9296b84/subagents/workflows/wf_028d99f0-c28",
+      "journal_sha256": "faadf0993b9f9df16833db11e08c0656def1baa3719eaede59162905ec69c621",
+      "workflow_script_sha256": "6bcc5a6b87b109800e1fe17e5f73c269171ad4996fb49f6ecb435b09cbffc315",
+      "agents_started": 18,
+      "agent_transcripts": 18,
+      "agents_without_model_id": [],
+      "journal_record_types": {
+        "launched": 1,
+        "started": 18,
+        "result": 18
+      },
+      "model_evidence": {
+        "model_strings_in_transcripts": {
+          "claude-fable-5-1": 36
+        },
+        "note": "counts of \"model\":\"...\" strings across the started agents' transcripts; API response records"
+      }
+    },
+    "checker": {
+      "agent_count": 11,
+      "agents_done": 11,
+      "agents_error": 0,
+      "agents_empty_result": 0,
+      "subagent_tool_uses": 11,
+      "subagent_tool_uses_note": "one StructuredOutput call per batch",
+      "subagent_tokens": 710273,
+      "duration_ms": 259869,
+      "concurrency": 2,
+      "run_id": "wf_453aa937-aff",
+      "transcript_dir": "/root/.claude/projects/-home-user/a8559662-9305-5f72-b3c0-2fbde9296b84/subagents/workflows/wf_453aa937-aff",
+      "journal_sha256": "f5a81e6edf37cb8a9fc3825808275fd50ac9d41311333858c53a90cfc183d3f4",
+      "workflow_script_sha256": "85204a2387e2bc88ced5557f293bd5e4ae65f9afa3df9ae35653951e10cd6a1c",
+      "agents_started": 11,
+      "agent_transcripts": 11,
+      "agents_without_model_id": [],
+      "journal_record_types": {
+        "launched": 1,
+        "started": 11,
+        "result": 11
+      },
+      "model_evidence": {
+        "model_strings_in_transcripts": {
+          "claude-fable-5-1": 22
+        },
+        "note": "counts of \"model\":\"...\" strings across the started agents' transcripts; API response records"
+      }
+    }
+  },
+  "output_hashes": {
+    "calls.json": "11fa15906907ee7cb7d8c2af48b8436fdd2d500aac7c6e489a3a4029cd2adc33",
+    "workflow_generation_result.json": "88904336854f8254dea8517654b6a31671688586397365cf97cd942d6e86ad65",
+    "workflow_checker_result.json": "a5715c73461f6cb446a990d89d586197fa12b2c5185dbb7b417afc5497dd6a34",
+    "call_log.jsonl": "7c37aeedd9af9013e1b211c544cf14431dd630daabb3e4996704011d507120f4",
+    "generated/all_rows.jsonl": "447a36a934d8a924182790af9c5fe13985ba9fe9eea16fb8c013549cb942eb99",
+    "generated/format_failures.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "checker_set.jsonl": "f9683e8b31be98d1cb379b5b53b7745a7b11f91e9f0420186f69172e52f1229b",
+    "checker_key.jsonl": "6fd92ab9edb134dc397327fb8be6a92120124d91d9fc1f7e6a106fb28b68adfb",
+    "checker_batches.json": "91641d40c2479805bd5f15973c134c59f7c6b84a7a0806f953b6c806054a6bad",
+    "checked.jsonl": "69fe2dd115d897b9cfb20ccd7af99c2e0ce7aa4629c3b974ca9f7875a58264e3",
+    "checker_log.jsonl": "c748ba7c8fbb619da782b78eeaacc978b05735fe5707bdd9c4320b7c1f9f1a78",
+    "review_sheet.csv": "5d8d6f76b3b8a50a59b7dfefee3022354191a81d9a46ec91e2f7c826b30ad83a",
+    "review_key.csv": "ea7e9d9bb875b30006bfcf769c33ff2875f782aec210c7bb94c3cdca1feed744",
+    "review_map.json": "caa96fcb4b5cea4aa29c7e62e7076669b1f002b30956e7dd5f4b5f34354c2ff8",
+    "summary.json": "f02a43ea8bda1d53a5ca36fc81e5921ecc8108e1b5cbdb46ae263e6efc5c3c37",
+    "summary.md": "1875fd8b3c2020d89c8d64a7778f375db220c4312b9277398f35850082763c2a",
+    "seeds.json": "593e2b7b6d25d78ed5f8adfa7fe02d5d0e4aef5574c0c6c08a8b6937e6399884",
+    "design.json": "bd6d87f895e2b583de312cedc1da3084eab8adfde6dfcff01ab23222820a145b",
+    "PROTOCOL.md": "8dd838105e94a03190e81c841474479c8a27517553bdeabf9678f3550da5d969",
+    "HANDOFF.md": "f87188e3843106b3cf1008b2b059b76db7824cefb46168b396b1028ca7a5e8e2",
+    "manifest_model.json": "4417730fd80e518fd98b35083a7f812295c17fa73d59358662f9c0764c11f3bb",
+    "workflows/generation.journal.jsonl": "faadf0993b9f9df16833db11e08c0656def1baa3719eaede59162905ec69c621",
+    "workflows/checker.journal.jsonl": "f5a81e6edf37cb8a9fc3825808275fd50ac9d41311333858c53a90cfc183d3f4",
+    "workflows/generation.workflow.js": "6bcc5a6b87b109800e1fe17e5f73c269171ad4996fb49f6ecb435b09cbffc315",
+    "workflows/checker.workflow.js": "85204a2387e2bc88ced5557f293bd5e4ae65f9afa3df9ae35653951e10cd6a1c",
+    "generated/A__cardiology__symptom_description.jsonl": "11b18a66dc86481bd9fe6a6f8a55324aca251a1733f75d6164b7b46b2f69ccc7",
+    "generated/B__cardiology__symptom_description.jsonl": "291769aab5f58612f3f92157ecd7064b5d4e8a34f2a53cc19591c7b8e5c4e0e7",
+    "generated/A__cardiology__body_part.jsonl": "639f5fa69f5cafaca2548abfe2f741501435b9f28029e8b5263ee0fff239f4ac",
+    "generated/B__cardiology__body_part.jsonl": "f617e1ddbf4eb89c9c17e1215b26cc0a518d973d1906e1add215dbda9fa07e31",
+    "generated/A__cardiology__medication.jsonl": "1a5ba2535a9444c17fd8a7fa70de4445740c53c06e4de4aac86036da91d42ff1",
+    "generated/B__cardiology__medication.jsonl": "8eddcfb228fac3a5a0960b64c74716fb70db7a4b226d148b1b5b977ede1852c4",
+    "generated/A__neurology__symptom_description.jsonl": "c33158c6293e09902508f11103f1c6225fa0edf9f64215e7c36b88f016c4af43",
+    "generated/B__neurology__symptom_description.jsonl": "0960835677853a23127b8398dc92a8d57396a73f3aa32348a91d1a077ec49e30",
+    "generated/A__neurology__body_part.jsonl": "07e171da42c839d513c40d5d8f308ad772bc94650a3bc546100777d36f22cf6b",
+    "generated/B__neurology__body_part.jsonl": "685ee2e14e3fc1effb2b48d70a42c0ca190f294dea08fbedf370a8f5aaac0957",
+    "generated/A__neurology__medication.jsonl": "e48ff08825108f2bacf1473b62f8c539feb01b67040d344584a453b3df9f308f",
+    "generated/B__neurology__medication.jsonl": "d2b24f59a80b82417411b9257fe2047093eb4900141afe482699b946feaaf921",
+    "generated/A__gastroenterology__symptom_description.jsonl": "cc8fe15a38494b7445999a1dc030cb8a8234394d0d0b3af133d2fdc4463e5bdf",
+    "generated/B__gastroenterology__symptom_description.jsonl": "8e04f524d19369963c9104784f1e72e0674ce9510a233471319bd54eb38f7b70",
+    "generated/A__gastroenterology__body_part.jsonl": "dac8b1ede7fb459aedeaa90d684eb4125f736b2baebbcb96073201b317d1657d",
+    "generated/B__gastroenterology__body_part.jsonl": "c9722ee900b387ef7a54c8f767f9f250c7a7a23c4097a9fe79ef7a2d11afea43",
+    "generated/A__gastroenterology__medication.jsonl": "d9254db70497b048f76ae3ff4b5dac97cdcdae9844aaf1dead91c1a86e41bd04",
+    "generated/B__gastroenterology__medication.jsonl": "f72303e1b2d4c818118b156951735921b01390a9573908d86165c46953e7b8b2",
+    "generated/raw/A__cardiology__symptom_description__attempt1.txt": "4949b35b825c19c9a760cdd9f6038f4507ddc7d6d7e5ecb6860152955320ed31",
+    "generated/raw/B__cardiology__symptom_description__attempt1.txt": "2494aabc6d65f27c5c92024ad8d04408426c9f434f949980361674573f18379c",
+    "generated/raw/A__cardiology__body_part__attempt1.txt": "a049508d810c5fd0e69e7f5c66f0bcb6169dc58ca55f88b461881fdaa89a5a0b",
+    "generated/raw/B__cardiology__body_part__attempt1.txt": "08afcfba1b4182f73e2a5e0d00cad09fc3d23779710c55c8a619305b83ad79db",
+    "generated/raw/A__cardiology__medication__attempt1.txt": "9b09a8ffbfca583fd3814bb6c6ce828c2c508bf10f055536fc815d96d10a3192",
+    "generated/raw/B__cardiology__medication__attempt1.txt": "c4236996e6b23caace63e16b85877807f3a72d11a365c1778297b9b40a4832b4",
+    "generated/raw/A__neurology__symptom_description__attempt1.txt": "a265a3ffcd5eb5c2d9a468e4aefec950815ad0ce51af69a819a06923ecb0187c",
+    "generated/raw/B__neurology__symptom_description__attempt1.txt": "fe39852417d2f726d55a850c18cecd15135c2665dd22b65ef651d846cc2f6beb",
+    "generated/raw/A__neurology__body_part__attempt1.txt": "6ada14045f61cd5402d2fe676d95660822699a01bf21ea8901e91ed0a4735385",
+    "generated/raw/B__neurology__body_part__attempt1.txt": "d40d55c52e42666d0f176e4235095678088355e5bf1a7bc75a21011e40cbf1bf",
+    "generated/raw/A__neurology__medication__attempt1.txt": "bcb494fc1f7576488b87675926619d630d0947dbd86de2496f77e0f7b803265e",
+    "generated/raw/B__neurology__medication__attempt1.txt": "04debe23ffc6d6ee24fd9eb1308845dee2d89458a9714d71b2cebb756b95eed4",
+    "generated/raw/A__gastroenterology__symptom_description__attempt1.txt": "2a68130c111f457af4d72a2b176632331475f1f7460496da25301fca4ff9e1ec",
+    "generated/raw/B__gastroenterology__symptom_description__attempt1.txt": "69c32beebd58cd2d2bb232c69f6c46b0b03344c4a6e9e474e253f45e56456ff5",
+    "generated/raw/A__gastroenterology__body_part__attempt1.txt": "b2c4486d13c80f16170f72b51961c44d19090cd5b4b7bc3bc8eb92d80ad4f0e3",
+    "generated/raw/B__gastroenterology__body_part__attempt1.txt": "5b269e59f4f39b2ff1bde1a276c8c4f0d36d8e065af35801d429db5233b25e85",
+    "generated/raw/A__gastroenterology__medication__attempt1.txt": "ecfc215a497a695aba6d8ed700c9e49ce4361ef895dfa0860823819669afbfab",
+    "generated/raw/B__gastroenterology__medication__attempt1.txt": "40fefe46cbfe1c7f1a9cc8f799077b0905640b3b8400ce15153a94a34a0800eb"
+  }
+}

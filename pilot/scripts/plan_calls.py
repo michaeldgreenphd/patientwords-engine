@@ -1,0 +1,27 @@
+"""Plan the 18 generation calls: sample Arm A exemplars with the integer seed, fix Arm B exemplars, render every
+prompt from prompts/generation_prompt.txt, and write calls.json with a SHA-256 per rendered prompt.
+
+Run once before generation. Do not edit the prompt template after running it. The plan is common.derive_plan's
+output exactly, and common.load_calls derives it again for every reader, refusing a calls.json that differs (Codex
+review of PR #52).
+"""
+from __future__ import annotations
+
+import json
+
+from common import K_EXEMPLARS, PILOT, derive_plan, load_seeds, sha256_file
+
+
+def main() -> None:
+    seeds = load_seeds()
+    template = (PILOT / "prompts" / "generation_prompt.txt").read_text(encoding="utf-8")
+    out = derive_plan(seeds, template, sha256_file(PILOT / "seeds.json"), sha256_file(PILOT / "design.json"))
+    (PILOT / "calls.json").write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"calls.json: {len(out['calls'])} calls, n_seeds={out['n_seeds']}, k_exemplars={out['k_exemplars_used']} "
+          f"(requested {K_EXEMPLARS})")
+    for c in out["calls"]:
+        print(f"  {c['id']:45s} exemplars={c['exemplar_ids']}")
+
+
+if __name__ == "__main__":
+    main()

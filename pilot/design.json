@@ -1,0 +1,13 @@
+{
+  "_note": "Design factors for the pilot's cells: the specialties, and the swap types with the definition each generation prompt shows; and control_example, the example negative control the generation prompt shows (rendered into the template's {{CONTROL_EXAMPLE}} marker as one JSON object, moved out of the template on Codex's review of PR #52 with every rendered prompt byte-identical). These are data, not code (engine AGENTS.md: medical vocabulary lives in data files, never in Python source). Cell order is the listed order, specialty-major, as PROTOCOL.md section 3 fixes it.",
+  "specialties": ["cardiology", "neurology", "gastroenterology"],
+  "swap_types": [
+    {"name": "symptom description",
+     "definition": "the swapped phrase describes a symptom or complaint (the clinical term versus how a patient would describe the same symptom)"},
+    {"name": "body part",
+     "definition": "the swapped phrase names an anatomical structure or location (the clinical name versus the everyday name for the same place)"},
+    {"name": "medication",
+     "definition": "the swapped phrase names a medicine, drug class, or treatment (the clinical or generic name versus how a patient refers to the same medicine)"}
+  ],
+  "control_example": {"clinical_term": "Chest pain", "patient_term": "chest pain.", "template": "The patient reports ___ when climbing stairs, and", "control": "negative"}
+}
