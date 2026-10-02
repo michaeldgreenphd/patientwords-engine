@@ -612,9 +612,11 @@ def _selection_seal_check(where: str, file: str, item: dict, tierb, start_stamp:
     from the prompt the phrase set registers). A sealed item is refused, not dropped: a selection names its items,
     and a silently shorter output would misstate what was re-run. When the seal cannot be evaluated (no Tier B start
     in the dashboard, an empty phrase set, an unreadable Tier B batch file, a Tier B pair with no top_prompt, an
-    index outside its batch) sealed_pair raises SealError, and the build is refused too. start_stamp is the build's
-    one read of the dashboard's Tier B start (select_stimuli's, the stamp its source block records), so every item
-    is classified Tier B or not against that stamp. Returns which checks ran. Never prints prompt text."""
+    index outside its batch) sealed_pair raises SealError, and the build is refused too. start_stamp is the Tier B
+    start select_stimuli read and its source block records. It decides whether the item counts in tierb_items_checked
+    and whether a non-Tier-B batch's accepted prompt is checked as well. sealed_pair decides Tier B membership for its
+    own rules (the accepted prompt or the body hashing holdout) from the start its _seal_context reads; that context
+    is cached, so the dashboard is not read again for each item. Returns which checks ran. Never prints prompt text."""
     ref = item.get("source_ref")
     batch = ref.get("batch") if isinstance(ref, dict) else None
     index = ref.get("batch_index") if isinstance(ref, dict) else None

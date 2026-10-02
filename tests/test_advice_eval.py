@@ -319,9 +319,9 @@ def test_selection_applies_the_pairs_holdout_guard(tmp_path):
     assert doc["source"]["tierb_start_stamp"] == "20260710T011438Z"
 
 
-def test_selection_reads_the_tier_b_start_once_per_build_not_once_per_item(tmp_path, monkeypatch):
-    """Every item is classified against the start stamp select_stimuli reads once and records in the source block,
-    so the dashboard reads do not grow with the number of selected items."""
+def test_selection_dashboard_reads_do_not_grow_with_the_number_of_items(tmp_path, monkeypatch):
+    """The Tier B start is no longer read once per selected item: a build reads the dashboard as often for three items
+    as for one (select_stimuli's read, and sealed_pair's through its cached _seal_context)."""
     reads = []
     load = ae._load_tierb_split
 
