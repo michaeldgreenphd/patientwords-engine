@@ -149,7 +149,7 @@ paid fire made that UTC day, resolved or expired alike, until eviction
 (`ops/dashboard.json` + the ledger). `ops/dashboard.json` is **committed**
 only by the daily Routine session (`ops/README.md`, `docs/routine_standing_prompt.md`):
 `fire_trigger.py` rewrites its `queue` block on every fire and resolve and restores the
-file unless the Routine passes `--keep-dashboard`; it never commits it.
+file unless the Routine, and only it, passes `--keep-dashboard`; it never commits it.
 Both repos are public: never write secrets anywhere.
 
 **Enforced, not only stated.** `.claude/settings.json` installs PreToolUse hooks
@@ -170,13 +170,13 @@ source set**; `docs/cross-model.md` has the dated per-model status (re-probe bef
 relying on it). Hosted requests retry on
 {429,500,502,503,504} with fresh slugs; a 400 aborts the batch immediately, and `run_batch`
 has no per-pair error records — a mid-batch failure just truncates `results`.
-`medlang-batch-eval` has four modes (`2panel`, `4quadrant`, `dialect`, `translation`) with
-different result schemas (`README.md` describes each). In `2panel`, `--screen-targets`
+`medlang-batch-eval` has four modes (`2panel`, `4quadrant`, `dialect`, `translation`;
+`README.md` describes each mode) with different result schemas. In `2panel`, `--screen-targets`
 records an unmeasurable pair as `screening.status == "screened_out"` without its patient
 trace, and `--show-mitigation`'s translated third panel is the only Anthropic call.
 
-**Feature tagging.** Models without a transcoder source set
-(`neuronpedia_features.MODEL_SOURCE_SETS`) auto-degrade to `NullFetcher`:
+**Feature tagging.** Only gemma-2-2b has a transcoder source set
+(`neuronpedia_features.MODEL_SOURCE_SETS`); other models auto-degrade to `NullFetcher`:
 tracing and probabilities still work, but every feature is untagged, so their
 `clinical_mass` comes out ~0.0 — an artifact, not a finding. Anything consuming
 per-model results must null clinical-mass for models whose `source_set` is null

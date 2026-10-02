@@ -68,6 +68,7 @@ DOCS: tuple[str, ...] = (
     "docs/routine_standing_prompt.md",
     "docs/fresh_session_bootstrap.md",
     "docs/archiving.md",
+    "docs/pilot_runs.md",
     "docs/README.md",
 )
 
