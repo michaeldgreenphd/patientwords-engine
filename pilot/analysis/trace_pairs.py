@@ -11,9 +11,9 @@ It is a consumer of a finished run, like the review page: it reads the run direc
 run's sealed files. The output goes to <run>/trace/ by default, with a sidecar recording the selection rule, the
 counts (selected, not selected and why, refused and why) and the sha256 of every input. A run that is not version 2,
 not finalized or without probe endings, a generated row that lacks a key a pair is built from (ROW_KEYS), or a
-selected row that cannot be traced (a term that is not a non-empty string, not exactly one blank, a next word outside
-the protocol's rule) is refused rather than skipped: a pairs file that silently lost rows would trace a different
-sample than the one described.
+selected row that cannot be traced (a term that is not a non-empty string, not exactly one blank, a next word the
+parser's next-word check refuses) is refused rather than skipped: a pairs file that silently lost rows would trace a
+different sample than the one described.
 
 Pilot traces are pipeline checks, never measurements (AGENTS.md, pilot exception): the lane writes them under
 pilot/traces/, which no collector reads. Run the holdout seal check over the output before it is pushed anywhere.
