@@ -673,20 +673,69 @@ rule was written and is not re-ranked.
 
 ### A6.3 New question set (supplementary, natural-question family)
 
-`data/advice/stimuli_20261002T062043Z.json`, built with `build-stimuli
+`data/advice/stimuli_20261002T074150Z.json`, built with `build-stimuli
 --source manual --ask-suffix ""` from
 `data/advice/manual_vignettes_20261002.json`: 24 situations, six for each
 proposed tier (self_care, routine, urgent, emergency) and three for each of
 the eight registered syntax styles, interleaved by tier so that any
-`offset`/`limit` chunk holds every tier. Each pair is one complete question
-whose two versions differ in a single span of at most six words: the clinical
-span is the standard term (MeSH or SNOMED CT preferred term, or a generic drug
-name) and the patient span is the everyday name for the same thing or a
-broader everyday version of it (codebook v0.2, rules L1 and L3). All 24 pass
-`validate_advice_nat_pair`. A Claude session wrote them; the earlier
-natural-question pairs were also Claude-authored. The lexicon basis in each
-item's notes was recalled from the named terminologies, not looked up in the
-drafting session.
+`offset`/`limit` chunk holds every tier. Every style appears in three of the
+four tiers and every tier holds six different styles, so no style is confined
+to one tier; with three items a style, Amendment 5's by-`syntax_style`
+contrast is descriptive only on this set, as Deviation D1 says of the earlier
+one. Each pair is one complete question whose two versions differ in a single
+span of at most six words. All 24 pass `validate_advice_nat_pair` with its
+dedupe set seeded by every earlier advice stimulus. A Claude session wrote
+them; the earlier natural-question pairs were also Claude-authored.
+
+**Spans and how they were checked.** The clinical span is a standard clinical
+term: for 21 items the preferred term of at least one of MeSH, SNOMED CT, the
+NCI Thesaurus or RxNorm; for #01 (aphthous ulcer) and #24 (petechial rash) an
+entry term or synonym; for #16 the verb ingested, which the NCI Thesaurus lists
+under Ingestion. The patient span is the everyday name for the same thing or a
+broader everyday version of it. Whether the two name the same thing was looked
+up item by item on 2026-10-02 in SNOMED CT (International edition 2025-02-01,
+served by tx.fhir.org), MeSH, the NCI Thesaurus, RxNorm and RxClass,
+MedlinePlus and the UMLS Consumer Health Vocabulary (2011 open-access file),
+and ruled by the lexicon rules of the stimulus codebook v0.2. That codebook is
+in the pilot pull request (#69), not yet on `main`; the rules used here, in
+brief:
+
+- L0: inflection, part of speech, articles and number are normalised before
+  comparing.
+- L1, same: the two phrases resolve to one concept in at least one
+  terminology (a synonym or entry term, or a consumer term mapped to the same
+  concept), or a consumer reference such as MedlinePlus defines the clinical
+  term with the patient phrase, and no reference puts them in different
+  concepts. A plain paraphrase of a definition counts and is recorded as one.
+- L2, same (brand): a single-ingredient brand name of the clinical drug (no
+  item here).
+- L3, broader: the patient phrase names an IS-A ancestor of the clinical
+  concept, or a drug class that contains the drug. Not the same concept, but
+  equivalent for a stimulus and labelled vaguer.
+- L4, narrower, and L5, different: not equivalent; such a pair is fixed
+  before use, never kept.
+- L6: when references disagree and none puts the two in unrelated concepts,
+  rule same and record the conflict. Never rule same on general knowledge
+  alone; record such a pair as unresolved.
+
+Rulings: 14 same under L1 (#03 and #24 as paraphrases of a definition), 4
+same under L6 with the conflict recorded (#06, #16, #17, #21), and 6 broader
+under L3 (#07, #10, #12, #19, #22, and #23 by drug class); none narrower,
+different or unresolved. Each item's notes give its relation, the status of
+its clinical span, the basis, any conflict, and every source with its URL.
+The lookups changed four patient spans before anything was elicited: #10
+wear-and-tear arthritis became arthritis (no terminology or MedlinePlus page
+gives that name, and NIAMS says osteoarthritis does not come from simple wear
+and tear), #11 a scratched eye became a scratched cornea (the CHV maps eye
+scratched to SNOMED CT's Scratch of eye region, which sits beside corneal
+abrasion rather than above it), #14 ringing
+became a noise (ringing is one of several sounds of tinnitus, so it was
+narrower), and #24 tiny purple spots became tiny red or purple spots (every
+definition of petechiae found includes red). Six messages were reworded for
+their syntax style: #03, #04, #09 and #16 moved between styles so that urgent
+tone, earlier used only on emergency items, spans three tiers, and #05 and #14
+now carry the negation inside the question, as all 16 earlier items of that
+style do.
 
 Each item carries `reference.tier` with the basis "proposed from standard
 triage guidance; not clinician-adjudicated; non-claim-grade". These tiers do

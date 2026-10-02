@@ -3,7 +3,7 @@
 This plan runs the advice lane's next experiment in two waves, as proposed in
 Amendment 6 of `docs/preregistration_advice.md`:
 
-- **Wave A** asks the 24 new questions (`data/advice/stimuli_20261002T062043Z.json`)
+- **Wave A** asks the 24 new questions (`data/advice/stimuli_20261002T074150Z.json`)
   of each vendor's current model plus the Haiku cost floor.
 - **Wave R** reruns the 15 earlier questions selected in
   `data/advice/rerun_selection_20261002.json`, with each vendor's original
@@ -171,19 +171,19 @@ going on.
 **A0a. Probe, OpenRouter 1024 arms.** OpenRouter lane, bills
 `OPENROUTER_API_KEY`. 2 calls (item 1, clinical, k=1).
 ```json
-{"stimuli_file": "data/advice/stimuli_20261002T062043Z.json", "models": "openai:openai/gpt-chat-latest xai:x-ai/grok-4.7", "arms": "clinical", "samples": "1", "max_tokens": "1024", "max_spend": "0.10", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "1", "commit_outputs": "true"}
+{"stimuli_file": "data/advice/stimuli_20261002T074150Z.json", "models": "openai:openai/gpt-chat-latest xai:x-ai/grok-4.7", "arms": "clinical", "samples": "1", "max_tokens": "1024", "max_spend": "0.10", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "1", "commit_outputs": "true"}
 ```
 Cost: 0.01481 + 0.00451 = $0.019 (high $0.025). Plan check:
-`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T062043Z.json --models "openai:openai/gpt-chat-latest xai:x-ai/grok-4.7" --arms clinical --samples 1 --max-tokens 1024 --max-spend 0.10 --offset 0 --limit 1 --dry-run`
+`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T074150Z.json --models "openai:openai/gpt-chat-latest xai:x-ai/grok-4.7" --arms clinical --samples 1 --max-tokens 1024 --max-spend 0.10 --offset 0 --limit 1 --dry-run`
 → `plan: 2 call(s) over 1 stimuli x arms ['clinical'] x models ['openai:openai/gpt-chat-latest', 'xai:x-ai/grok-4.7'] x K=1`.
 Authorise: "I authorise fire A0a of docs/advice_fire_plan_20261002.md: advice-eval, OpenRouter lane, max_spend $0.10, on <YYYY-MM-DD> UTC."
 
 **A0b. Probe, OpenRouter 4096 arms.** OpenRouter lane. 3 calls.
 ```json
-{"stimuli_file": "data/advice/stimuli_20261002T062043Z.json", "models": "openrouter:google/gemini-3.8-flash deepseek:deepseek/deepseek-v4.1-flash moonshot:moonshotai/kimi-k3", "arms": "clinical", "samples": "1", "max_tokens": "4096", "max_spend": "0.15", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "1", "commit_outputs": "true"}
+{"stimuli_file": "data/advice/stimuli_20261002T074150Z.json", "models": "openrouter:google/gemini-3.8-flash deepseek:deepseek/deepseek-v4.1-flash moonshot:moonshotai/kimi-k3", "arms": "clinical", "samples": "1", "max_tokens": "4096", "max_spend": "0.15", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "1", "commit_outputs": "true"}
 ```
 Cost: 0.00752 + 0.00083 + 0.01764 = $0.026 (high $0.048). Plan check:
-`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T062043Z.json --models "openrouter:google/gemini-3.8-flash deepseek:deepseek/deepseek-v4.1-flash moonshot:moonshotai/kimi-k3" --arms clinical --samples 1 --max-tokens 4096 --max-spend 0.15 --offset 0 --limit 1 --dry-run`
+`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T074150Z.json --models "openrouter:google/gemini-3.8-flash deepseek:deepseek/deepseek-v4.1-flash moonshot:moonshotai/kimi-k3" --arms clinical --samples 1 --max-tokens 4096 --max-spend 0.15 --offset 0 --limit 1 --dry-run`
 → `plan: 3 call(s) over 1 stimuli x arms ['clinical'] x models [...3 models...] x K=1`.
 The output-token counts of these three records replace the guesses in
 section 2; recompute A3 and R3 if any is above 3500.
@@ -193,32 +193,32 @@ Authorise: "I authorise fire A0b of docs/advice_fire_plan_20261002.md: advice-ev
 1 call. It also shows whether the model accepts the `temperature` the advice
 path sends.
 ```json
-{"stimuli_file": "data/advice/stimuli_20261002T062043Z.json", "models": "anthropic:claude-sonnet-5-5", "arms": "clinical", "samples": "1", "max_tokens": "1024", "max_spend": "0.05", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "1", "commit_outputs": "true"}
+{"stimuli_file": "data/advice/stimuli_20261002T074150Z.json", "models": "anthropic:claude-sonnet-5-5", "arms": "clinical", "samples": "1", "max_tokens": "1024", "max_spend": "0.05", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "1", "commit_outputs": "true"}
 ```
 Cost: $0.006 (high $0.007). Plan check:
-`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T062043Z.json --models "anthropic:claude-sonnet-5-5" --arms clinical --samples 1 --max-tokens 1024 --max-spend 0.05 --offset 0 --limit 1 --dry-run`
+`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T074150Z.json --models "anthropic:claude-sonnet-5-5" --arms clinical --samples 1 --max-tokens 1024 --max-spend 0.05 --offset 0 --limit 1 --dry-run`
 → `plan: 1 call(s) over 1 stimuli x arms ['clinical'] x models ['anthropic:claude-sonnet-5-5'] x K=1`.
 Authorise: "I authorise fire A0c of docs/advice_fire_plan_20261002.md: advice-eval, Anthropic lane, max_spend $0.05, on <YYYY-MM-DD> UTC."
 
 **A1. Anthropic arms.** Anthropic lane. 288 calls planned, 287 after A0c.
 ```json
-{"stimuli_file": "data/advice/stimuli_20261002T062043Z.json", "models": "anthropic:claude-haiku-4-5 anthropic:claude-sonnet-5-5", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "1.30", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "0", "commit_outputs": "true"}
+{"stimuli_file": "data/advice/stimuli_20261002T074150Z.json", "models": "anthropic:claude-haiku-4-5 anthropic:claude-sonnet-5-5", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "1.30", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "0", "commit_outputs": "true"}
 ```
 Cost: 144 x 0.00136 + 144 x 0.00581 = 0.196 + 0.837 = $1.033; high 144 x
 0.00162 + 144 x 0.00719 = $1.269; max_spend $1.269 + $0.011 → $1.30. Runtime
 144 x (3.7 + 8.3) s = 29 min; high 36 min. Plan check:
-`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T062043Z.json --models "anthropic:claude-haiku-4-5 anthropic:claude-sonnet-5-5" --arms clinical,patient --samples 3 --max-tokens 1024 --max-spend 1.30 --dry-run`
+`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T074150Z.json --models "anthropic:claude-haiku-4-5 anthropic:claude-sonnet-5-5" --arms clinical,patient --samples 3 --max-tokens 1024 --max-spend 1.30 --dry-run`
 → `plan: 288 call(s) over 24 stimuli x arms ['clinical', 'patient'] x models ['anthropic:claude-haiku-4-5', 'anthropic:claude-sonnet-5-5'] x K=3`.
 Authorise: "I authorise fire A1 of docs/advice_fire_plan_20261002.md: advice-eval, Anthropic lane, max_spend $1.30, on <YYYY-MM-DD> UTC."
 
 **A2. OpenRouter 1024 arms.** OpenRouter lane. 288 planned, 286 after A0a.
 ```json
-{"stimuli_file": "data/advice/stimuli_20261002T062043Z.json", "models": "openai:openai/gpt-chat-latest xai:x-ai/grok-4.7", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "3.90", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "0", "commit_outputs": "true"}
+{"stimuli_file": "data/advice/stimuli_20261002T074150Z.json", "models": "openai:openai/gpt-chat-latest xai:x-ai/grok-4.7", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "3.90", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "0", "commit_outputs": "true"}
 ```
 Cost: 144 x 0.01481 + 144 x 0.00451 = 2.133 + 0.649 = $2.782; high 144 x
 0.01979 + 144 x 0.00548 = $3.639; metered high $3.858 + $0.0347 → $3.90.
 Runtime 144 x (12.1 + 7.7) s = 48 min; high 66 min. Plan check:
-`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T062043Z.json --models "openai:openai/gpt-chat-latest xai:x-ai/grok-4.7" --arms clinical,patient --samples 3 --max-tokens 1024 --max-spend 3.90 --dry-run`
+`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T074150Z.json --models "openai:openai/gpt-chat-latest xai:x-ai/grok-4.7" --arms clinical,patient --samples 3 --max-tokens 1024 --max-spend 3.90 --dry-run`
 → `plan: 288 call(s) over 24 stimuli x arms ['clinical', 'patient'] x models ['openai:openai/gpt-chat-latest', 'xai:x-ai/grok-4.7'] x K=3`.
 Authorise: "I authorise fire A2 of docs/advice_fire_plan_20261002.md: advice-eval, OpenRouter lane, max_spend $3.90, on <YYYY-MM-DD> UTC."
 
@@ -226,32 +226,32 @@ Authorise: "I authorise fire A2 of docs/advice_fire_plan_20261002.md: advice-eva
 144 calls each (A3a 141 after A0b). The three differ only in `offset`
 (0, 8, 16).
 ```json
-{"stimuli_file": "data/advice/stimuli_20261002T062043Z.json", "models": "openrouter:google/gemini-3.8-flash deepseek:deepseek/deepseek-v4.1-flash moonshot:moonshotai/kimi-k3", "arms": "clinical,patient", "samples": "3", "max_tokens": "4096", "max_spend": "2.55", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "8", "commit_outputs": "true"}
+{"stimuli_file": "data/advice/stimuli_20261002T074150Z.json", "models": "openrouter:google/gemini-3.8-flash deepseek:deepseek/deepseek-v4.1-flash moonshot:moonshotai/kimi-k3", "arms": "clinical,patient", "samples": "3", "max_tokens": "4096", "max_spend": "2.55", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "8", "commit_outputs": "true"}
 ```
 (A3b: `"offset": "8"`; A3c: `"offset": "16"`.) Cost per chunk: 48 x 0.00752 +
 48 x 0.00083 + 48 x 0.01764 = 0.361 + 0.040 + 0.847 = $1.247; high 48 x
 (0.01315 + 0.00150 + 0.03384) = $2.327; metered high $2.467 + $0.0598 →
 $2.55. Runtime 48 x (20 + 46.8 + 42.0) s = 87 min; high 48 x (22 + 93.2 +
 65.4) s = 144 min. Plan check (offset 0, 8 and 16):
-`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T062043Z.json --models "openrouter:google/gemini-3.8-flash deepseek:deepseek/deepseek-v4.1-flash moonshot:moonshotai/kimi-k3" --arms clinical,patient --samples 3 --max-tokens 4096 --max-spend 2.55 --offset 0 --limit 8 --dry-run`
+`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T074150Z.json --models "openrouter:google/gemini-3.8-flash deepseek:deepseek/deepseek-v4.1-flash moonshot:moonshotai/kimi-k3" --arms clinical,patient --samples 3 --max-tokens 4096 --max-spend 2.55 --offset 0 --limit 8 --dry-run`
 → `plan: 144 call(s) over 8 stimuli x arms ['clinical', 'patient'] x models [...3 models...] x K=3` for each of the three offsets.
 Authorise (one per chunk): "I authorise fire A3a of docs/advice_fire_plan_20261002.md: advice-eval, OpenRouter lane, max_spend $2.55, on <YYYY-MM-DD> UTC." (and the same for A3b and A3c).
 
 **A4. Judge Wave A.** Anthropic lane: its `models` is the Haiku arm, already
 complete after A1, so its elicitation plans 0 calls and the fire guard books
 the judge's Anthropic spend on the Anthropic lane. The judge step judges every
-response in `responses_stimuli_20261002T062043Z.jsonl` (all seven models),
+response in `responses_stimuli_20261002T074150Z.jsonl` (all seven models),
 then runs `analyze`. Run it after A2, the last Wave A elicitation, lands.
 ```json
-{"stimuli_file": "data/advice/stimuli_20261002T062043Z.json", "models": "anthropic:claude-haiku-4-5", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "0.01", "judge": "true", "judge_model": "claude-haiku-4-5", "judge_max_spend": "1.80", "offset": "0", "limit": "0", "commit_outputs": "true"}
+{"stimuli_file": "data/advice/stimuli_20261002T074150Z.json", "models": "anthropic:claude-haiku-4-5", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "0.01", "judge": "true", "judge_model": "claude-haiku-4-5", "judge_max_spend": "1.80", "offset": "0", "limit": "0", "commit_outputs": "true"}
 ```
 Cost: section 2, typical $1.129, high $1.613; commitment $0.01 + $1.80 =
 $1.81. Runtime 1008 judgments at 2.5-4 s: 42-67 min. Plan checks (both must
 pass before firing):
-`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T062043Z.json --models "anthropic:claude-haiku-4-5" --arms clinical,patient --samples 3 --max-tokens 1024 --max-spend 0.01 --dry-run`
+`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T074150Z.json --models "anthropic:claude-haiku-4-5" --arms clinical,patient --samples 3 --max-tokens 1024 --max-spend 0.01 --dry-run`
 must print `plan: 0 call(s)` once A1 has landed (on this branch today it
 prints 144, because nothing is archived yet), and
-`python scripts/advice_eval.py judge --responses data/advice/responses_stimuli_20261002T062043Z.jsonl --rubric data/advice_rubric.draft.json --judge-model claude-haiku-4-5 --judge-max-tokens 300 --max-spend 1.80 --dry-run`
+`python scripts/advice_eval.py judge --responses data/advice/responses_stimuli_20261002T074150Z.jsonl --rubric data/advice_rubric.draft.json --judge-model claude-haiku-4-5 --judge-max-tokens 300 --max-spend 1.80 --dry-run`
 must print `judging 1008 response(s)` (today: `judging 0 response(s)`, no
 archive yet). A different number means an elicitation fire stopped early or a
 record failed; stop and look before judging.
@@ -416,7 +416,7 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
 ## 6. After the waves land ($0, local)
 
 - Reference scoring for Wave A, exploratory only:
-  `python scripts/advice_eval.py analyze --judgments data/advice/judgments_stimuli_20261002T062043Z.jsonl --rubric data/advice_rubric.draft.json --stimuli data/advice/stimuli_20261002T062043Z.json --out <scratch path>`.
+  `python scripts/advice_eval.py analyze --judgments data/advice/judgments_stimuli_20261002T074150Z.jsonl --rubric data/advice_rubric.draft.json --stimuli data/advice/stimuli_20261002T074150Z.json --out <scratch path>`.
   Its `reference_scoring` uses non-claim-grade tiers, carries
   `claim_grade: false` with all 24 ids in `not_adjudicated_ids`, and is
   reported as exploratory.

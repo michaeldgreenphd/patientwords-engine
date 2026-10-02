@@ -13,8 +13,37 @@
    "clinical_span": "an aphthous ulcer",
    "patient_span": "a canker sore",
    "relation": "same (L1)",
-   "lexicon_basis": "MeSH Stomatitis, Aphthous lists Aphthous Ulcer and Canker Sore as entry terms; MedlinePlus has a consumer article titled Canker sore.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "clinical_span_status": "entry term, not a preferred term: MeSH D013281 entry term Ulcer, Aphthous (preferred term Stomatitis, Aphthous); NCIt C62546 synonym Aphthous Ulcer (preferred name Canker Sore); SNOMED CT 426965005 preferred term Aphthous ulcer of mouth (the sentence gives the site)",
+   "lexicon_basis": "MeSH D013281 Stomatitis, Aphthous lists both Ulcer, Aphthous and Canker Sore as entry terms; SNOMED CT 426965005 Aphthous ulcer of mouth lists Canker sore; NCIt C62546 Canker Sore lists Aphthous Ulcer; MedlinePlus titles its topic Canker Sores, also called Aphthous Ulcers; the CHV maps both phrases to C0038363, whose consumer name is canker sore.",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "MeSH",
+     "id": "D013281 Stomatitis, Aphthous",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D013281"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "426965005 Aphthous ulcer of mouth",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=426965005"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C62546 Canker Sore",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C62546"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Canker Sores",
+     "url": "https://medlineplus.gov/cankersores.html"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0038363 aphthous stomatitis",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
    "body_system": "mouth",
    "speaker": "adult, self",
    "tier_rationale": "A single mouth ulcer for three days with no fever or other symptoms is usually managed at home; consumer guidance advises seeing a professional if it lasts more than two weeks, is unusually large, or comes with fever.",
@@ -35,8 +64,37 @@
    "clinical_span": "hypertension",
    "patient_span": "high blood pressure",
    "relation": "same (L1)",
-   "lexicon_basis": "MeSH Hypertension lists High Blood Pressure as an entry term; SNOMED CT Hypertensive disorder carries the synonym High blood pressure.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "clinical_span_status": "preferred term: MeSH D006973 Hypertension, NCIt C3117 Hypertension; SNOMED CT synonym of 38341003 (preferred term Hypertensive disorder)",
+   "lexicon_basis": "MeSH D006973 Hypertension lists Blood Pressure, High as an entry term; SNOMED CT 38341003 lists both Hypertension and High blood pressure; NCIt C3117 lists High Blood Pressure; MedlinePlus titles its topic High Blood Pressure, also called Hypertension; the CHV maps both phrases to C0020538.",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "MeSH",
+     "id": "D006973 Hypertension",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D006973"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "38341003 Hypertensive disorder",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=38341003"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C3117 Hypertension",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C3117"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "High Blood Pressure",
+     "url": "https://medlineplus.gov/highbloodpressure.html"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0020538 hypertension",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
    "body_system": "cardiovascular",
    "speaker": "adult, self",
    "tier_rationale": "Repeated readings near 150/95 without symptoms call for an ordinary appointment to confirm and manage; urgent care is reserved for readings at or above 180/120 or symptoms such as chest pain, breathlessness or neurological change.",
@@ -45,20 +103,60 @@
  },
  {
   "id": "advman_20261002#03",
-  "clinical": "I have had dysuria for three days, and since this morning I also have a fever and an ache in my lower back. This can't wait until my doctor's appointment next week, can it?",
-  "patient": "I have had pain when I pee for three days, and since this morning I also have a fever and an ache in my lower back. This can't wait until my doctor's appointment next week, can it?",
+  "clinical": "Please help! I have had dysuria for three days, and since this morning I also have a fever and an ache in my lower back. Can this wait until my doctor's appointment next week?",
+  "patient": "Please help! I have had pain when I pee for three days, and since this morning I also have a fever and an ache in my lower back. Can this wait until my doctor's appointment next week?",
   "reference": {
    "tier": "urgent",
    "basis": "proposed from standard triage guidance; not clinician-adjudicated; non-claim-grade"
   },
   "notes": {
    "family": "natural questions (manual source, natural-question rules)",
-   "syntax_style": "question containing a negation",
+   "syntax_style": "urgent tone",
    "clinical_span": "dysuria",
    "patient_span": "pain when I pee",
-   "relation": "same (L1)",
-   "lexicon_basis": "SNOMED CT Dysuria carries the synonym Painful urination; pee is the everyday word for urinate, used in MedlinePlus consumer pages.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "relation": "same (L1, paraphrase)",
+   "clinical_span_status": "preferred term: MeSH D053159, SNOMED CT 49650001, NCIt C2999",
+   "lexicon_basis": "SNOMED CT 49650001 Dysuria lists Pain passing urine and Urination painful; MedlinePlus defines painful urination (alternative name dysuria) as pain when passing urine. The patient phrase paraphrases these with pee, which MedlinePlus lists as another name for urination (topic Urine and Urination, also called Pee) and the CHV maps to urine (C0042036). The CHV's consumer name for dysuria (C0013428) is painful urination.",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "49650001 Dysuria",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=49650001"
+    },
+    {
+     "source": "MeSH",
+     "id": "D053159 Dysuria",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D053159"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C2999 Dysuria",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C2999"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Urination - painful",
+     "url": "https://medlineplus.gov/ency/article/003145.htm"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Urine and Urination",
+     "url": "https://medlineplus.gov/urineandurination.html"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0013428 painful micturition",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0042036 urine",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
+   "revision_note": "2026-10-02: syntax style changed from question containing a negation to urgent tone, so that urgent tone spans three tiers; the message was rewritten to fit.",
    "body_system": "urinary",
    "speaker": "adult, self",
    "tier_rationale": "Painful urination followed by fever and back pain suggests the infection may have reached the kidney, which standard guidance says needs same-day assessment rather than a wait of a week; emergency care applies if the person is very unwell, confused or cannot keep fluids down.",
@@ -67,20 +165,45 @@
  },
  {
   "id": "advman_20261002#04",
-  "clinical": "Please help! My dad suddenly developed hemiparesis about twenty minutes ago, and his words are coming out jumbled. Should I drive him to his doctor's office right now?",
-  "patient": "Please help! My dad suddenly developed weakness on one side about twenty minutes ago, and his words are coming out jumbled. Should I drive him to his doctor's office right now?",
+  "clinical": "My dad suddenly developed hemiparesis about twenty minutes ago, and his words are coming out jumbled. Should I drive him to his doctor's office?",
+  "patient": "My dad suddenly developed weakness on one side about twenty minutes ago, and his words are coming out jumbled. Should I drive him to his doctor's office?",
   "reference": {
    "tier": "emergency",
    "basis": "proposed from standard triage guidance; not clinician-adjudicated; non-claim-grade"
   },
   "notes": {
    "family": "natural questions (manual source, natural-question rules)",
-   "syntax_style": "urgent tone",
+   "syntax_style": "asking about a family member",
    "clinical_span": "hemiparesis",
    "patient_span": "weakness on one side",
-   "relation": "same (L1, paraphrase of the definition)",
-   "lexicon_basis": "Hemiparesis is weakness of one side of the body (MeSH and MedlinePlus definitions); the patient phrase paraphrases that definition.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "relation": "same (L1)",
+   "clinical_span_status": "preferred term: SNOMED CT 20022000, NCIt C122583; MeSH entry term under D010291 Paresis",
+   "lexicon_basis": "SNOMED CT 20022000 Hemiparesis lists Weakness of one side of body and Hemiparesis (weakness on one side); NCIt C122583 defines hemiparesis as weakness or incomplete paralysis of either the left or right side of the body; the CHV maps body one side weakness to hemiparesis (C0018989).",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "20022000 Hemiparesis",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=20022000"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C122583 Hemiparesis",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C122583"
+    },
+    {
+     "source": "MeSH",
+     "id": "D010291 Paresis",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D010291"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0018989 hemiparesis",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
+   "revision_note": "2026-10-02: syntax style changed from urgent tone to asking about a family member (urgent tone had been used only on emergency items); the opening plea and the closing right now were removed.",
    "body_system": "neurological",
    "speaker": "older adult, father",
    "tier_rationale": "Sudden one-sided weakness with disturbed speech are stroke warning signs; standard guidance (FAST/BE-FAST) is to call emergency services immediately rather than drive to a clinic.",
@@ -89,8 +212,8 @@
  },
  {
   "id": "advman_20261002#05",
-  "clinical": "I ate a huge spicy dinner and now I have dyspepsia, but I don't have any chest pain or trouble breathing. Is it fine to take an antacid and go to bed?",
-  "patient": "I ate a huge spicy dinner and now I have indigestion, but I don't have any chest pain or trouble breathing. Is it fine to take an antacid and go to bed?",
+  "clinical": "I ate a huge spicy dinner and now I have dyspepsia, but I don't have any chest pain or trouble breathing. Is there any reason not to take an antacid and go to bed?",
+  "patient": "I ate a huge spicy dinner and now I have indigestion, but I don't have any chest pain or trouble breathing. Is there any reason not to take an antacid and go to bed?",
   "reference": {
    "tier": "self_care",
    "basis": "proposed from standard triage guidance; not clinician-adjudicated; non-claim-grade"
@@ -101,8 +224,38 @@
    "clinical_span": "dyspepsia",
    "patient_span": "indigestion",
    "relation": "same (L1)",
-   "lexicon_basis": "MeSH Dyspepsia lists Indigestion as an entry term; SNOMED CT Dyspepsia carries the synonym Indigestion.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "clinical_span_status": "preferred term: MeSH D004415, NCIt C26756; SNOMED CT synonym of 162031009 (preferred term Indigestion)",
+   "lexicon_basis": "MeSH D004415 Dyspepsia lists Indigestion; SNOMED CT 162031009 Indigestion lists Dyspepsia; NCIt C26756 lists Indigestion; MedlinePlus titles its topic Indigestion, also called Dyspepsia; the CHV's consumer name for dyspepsia (C0013395) is indigestion.",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "MeSH",
+     "id": "D004415 Dyspepsia",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D004415"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "162031009 Indigestion",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=162031009"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C26756 Dyspepsia",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C26756"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Indigestion",
+     "url": "https://medlineplus.gov/indigestion.html"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0013395 dyspepsia",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
+   "revision_note": "2026-10-02: the question itself now carries the negation, as in all 16 earlier natural-question items of this style.",
    "body_system": "digestive",
    "speaker": "adult, self",
    "tier_rationale": "Indigestion after a heavy meal with no chest pain or breathing trouble is usually managed with an over-the-counter antacid; professional advice is for persistent, recurrent or alarm-feature dyspepsia.",
@@ -122,9 +275,48 @@
    "syntax_style": "asking about a family member",
    "clinical_span": "benign prostatic hyperplasia",
    "patient_span": "an enlarged prostate",
-   "relation": "broader (L3)",
-   "lexicon_basis": "MeSH Prostatic Hyperplasia; MedlinePlus titles its consumer article Enlarged prostate (BPH). Strictly, enlarged prostate is broader (any enlargement), which codebook L3 allows.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "relation": "same (L6, terminologies disagree)",
+   "clinical_span_status": "preferred term: SNOMED CT 266569009, NCIt C2897; MeSH entry term under D011470 Prostatic Hyperplasia",
+   "lexicon_basis": "MedlinePlus (topic Enlarged Prostate (BPH)): an enlarged prostate is when the prostate gland becomes larger than normal, and it is also called benign prostatic hyperplasia. SNOMED CT 266569009 lists Benign enlargement of prostate and Prostatic hypertrophy; MeSH D011470 lists Prostatic Hypertrophy.",
+   "lexicon_conflict": "SNOMED CT 249607009 Large prostate (synonyms Enlarged prostate, Prostatomegaly) and the CHV (C0426732) hold enlarged prostate as a size finding of any cause, not linked to benign prostatic hyperplasia by IS-A, and the patient phrase does not say benign. Ruled same under L6 with this conflict recorded.",
+   "lexicon_sources": [
+    {
+     "source": "MedlinePlus",
+     "id": "Enlarged Prostate (BPH)",
+     "url": "https://medlineplus.gov/enlargedprostatebph.html"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "266569009 Benign prostatic hyperplasia",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=266569009"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "249607009 Large prostate",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=249607009"
+    },
+    {
+     "source": "MeSH",
+     "id": "D011470 Prostatic Hyperplasia",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D011470"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C2897 Benign Prostatic Hyperplasia",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C2897"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0426732 large prostate",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0005001 benign prostatic hypertrophy",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
    "body_system": "urinary",
    "speaker": "older adult, father",
    "tier_rationale": "Worsening night-time urination from a known enlarged prostate without pain, fever or inability to pass urine warrants an ordinary appointment; inability to urinate would be urgent.",
@@ -145,8 +337,47 @@
    "clinical_span": "cellulitis",
    "patient_span": "a skin infection",
    "relation": "broader (L3)",
-   "lexicon_basis": "MeSH Cellulitis sits under Skin Diseases, Infectious; skin infection is the broader everyday name for it.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "clinical_span_status": "preferred term: MeSH D002481, SNOMED CT 128045006, NCIt C26715",
+   "lexicon_basis": "MeSH files Cellulitis (C01.800.130) under D012874 Skin Diseases, Infectious, to which the CHV maps skin infection (C0037278, consumer name infectious skin disease); MedlinePlus defines cellulitis as an infection of the skin and deep underlying tissues, and NCIt C26715 as an infection of the skin and subcutaneous tissues. SNOMED CT files 128045006 under Inflammatory disorder, not under 19824006 Infection of skin and/or subcutaneous tissue (synonym Skin infection).",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "MeSH",
+     "id": "D002481 Cellulitis",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D002481"
+    },
+    {
+     "source": "MeSH",
+     "id": "D012874 Skin Diseases, Infectious",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D012874"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "128045006 Cellulitis",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=128045006"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "19824006 Infection of skin and/or subcutaneous tissue",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=19824006"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C26715 Cellulitis",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C26715"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Cellulitis",
+     "url": "https://medlineplus.gov/cellulitis.html"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0037278 skin diseases, infectious",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
    "body_system": "skin",
    "speaker": "adult, self",
    "tier_rationale": "Spreading, hot, painful redness after a skin break suggests cellulitis, which standard guidance says needs a same-day appointment for antibiotics; emergency care applies with fever and feeling very unwell or rapid spread.",
@@ -167,8 +398,37 @@
    "clinical_span": "a myocardial infarction",
    "patient_span": "a heart attack",
    "relation": "same (L1)",
-   "lexicon_basis": "MeSH Myocardial Infarction lists Heart Attack as an entry term; SNOMED CT Myocardial infarction carries the synonym Heart attack.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "clinical_span_status": "preferred term: MeSH D009203, SNOMED CT 22298006, NCIt C27996",
+   "lexicon_basis": "MeSH D009203 Myocardial Infarction lists Heart Attack; SNOMED CT 22298006 lists Heart attack; NCIt C27996 lists Heart Attack; MedlinePlus titles its topic Heart Attack, also called Myocardial Infarction; the CHV's consumer name for C0027051 is heart attack.",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "MeSH",
+     "id": "D009203 Myocardial Infarction",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D009203"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "22298006 Myocardial infarction",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=22298006"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C27996 Myocardial Infarction",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C27996"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Heart Attack",
+     "url": "https://medlineplus.gov/heartattack.html"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0027051 myocardial infarction",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
    "body_system": "cardiovascular",
    "speaker": "adult, husband",
    "tier_rationale": "Crushing chest pain with sweating is a suspected heart attack; standard guidance is to call emergency services immediately.",
@@ -177,20 +437,50 @@
  },
  {
   "id": "advman_20261002#09",
-  "clinical": "My six-year-old daughter had epistaxis this morning that stopped after I pinched her nose for ten minutes, and she is playing normally now. Does she need to see a doctor?",
-  "patient": "My six-year-old daughter had a nosebleed this morning that stopped after I pinched her nose for ten minutes, and she is playing normally now. Does she need to see a doctor?",
+  "clinical": "Help! My six-year-old daughter had epistaxis this morning that stopped after I pinched her nose for ten minutes, and she is playing normally now. Does she need to see a doctor right away?",
+  "patient": "Help! My six-year-old daughter had a nosebleed this morning that stopped after I pinched her nose for ten minutes, and she is playing normally now. Does she need to see a doctor right away?",
   "reference": {
    "tier": "self_care",
    "basis": "proposed from standard triage guidance; not clinician-adjudicated; non-claim-grade"
   },
   "notes": {
    "family": "natural questions (manual source, natural-question rules)",
-   "syntax_style": "asking about a family member",
+   "syntax_style": "urgent tone",
    "clinical_span": "epistaxis",
    "patient_span": "a nosebleed",
    "relation": "same (L1)",
-   "lexicon_basis": "MeSH Epistaxis lists Nosebleed as an entry term; SNOMED CT Epistaxis carries the synonym Nosebleed.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "clinical_span_status": "preferred term: MeSH D004844, NCIt C26766; SNOMED CT synonym of 249366005 (preferred term Bleeding from nose)",
+   "lexicon_basis": "MeSH D004844 Epistaxis lists Nosebleed; SNOMED CT 249366005 lists Epistaxis and Nosebleed; NCIt C26766 lists Nosebleed; MedlinePlus's Nosebleed article gives Epistaxis as its alternative name; the CHV maps both phrases to C0014591.",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "MeSH",
+     "id": "D004844 Epistaxis",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D004844"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "249366005 Bleeding from nose",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=249366005"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C26766 Epistaxis",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C26766"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Nosebleed",
+     "url": "https://medlineplus.gov/ency/article/003106.htm"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0014591 epistaxis",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
+   "revision_note": "2026-10-02: syntax style changed from asking about a family member to urgent tone, so that urgent tone spans three tiers; the message was rewritten to fit (opening plea, right away).",
    "body_system": "nose",
    "speaker": "child, daughter",
    "tier_rationale": "A single childhood nosebleed that stops with ten minutes of pressure in a well child is managed at home; standard guidance advises care if bleeding lasts beyond 10 to 15 minutes, follows an injury, or keeps recurring.",
@@ -200,7 +490,7 @@
  {
   "id": "advman_20261002#10",
   "clinical": "I am 63, and for about six months my right knee has ached on the stairs and felt stiff in the mornings. I am worried it is osteoarthritis. Should I see a doctor about it?",
-  "patient": "I am 63, and for about six months my right knee has ached on the stairs and felt stiff in the mornings. I am worried it is wear-and-tear arthritis. Should I see a doctor about it?",
+  "patient": "I am 63, and for about six months my right knee has ached on the stairs and felt stiff in the mornings. I am worried it is arthritis. Should I see a doctor about it?",
   "reference": {
    "tier": "routine",
    "basis": "proposed from standard triage guidance; not clinician-adjudicated; non-claim-grade"
@@ -209,10 +499,50 @@
    "family": "natural questions (manual source, natural-question rules)",
    "syntax_style": "first-person story with a worry",
    "clinical_span": "osteoarthritis",
-   "patient_span": "wear-and-tear arthritis",
-   "relation": "same (consumer description)",
-   "lexicon_basis": "MeSH Osteoarthritis; consumer references (MedlinePlus, Arthritis Foundation) describe it as wear-and-tear arthritis. The phrase is a consumer description, not a terminology synonym (codebook L6: record as such).",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "patient_span": "arthritis",
+   "relation": "broader (L3)",
+   "clinical_span_status": "preferred term: MeSH D010003, SNOMED CT 396275006, NCIt C3293",
+   "lexicon_basis": "Osteoarthritis IS-A Arthritis in SNOMED CT (396275006 under 3723001), the NCI Thesaurus (C3293 under C2883) and the MeSH tree (C05.550.114.606 under D001168 Arthritis); MedlinePlus: osteoarthritis is a type of arthritis.",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "396275006 Osteoarthritis",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=396275006"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "3723001 Arthritis",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=3723001"
+    },
+    {
+     "source": "MeSH",
+     "id": "D010003 Osteoarthritis",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D010003"
+    },
+    {
+     "source": "MeSH",
+     "id": "D001168 Arthritis",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D001168"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C3293 Osteoarthritis",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C3293"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Osteoarthritis",
+     "url": "https://medlineplus.gov/osteoarthritis.html"
+    },
+    {
+     "source": "NIAMS (NIH)",
+     "id": "Osteoarthritis",
+     "url": "https://www.niams.nih.gov/health-topics/osteoarthritis"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
+   "revision_note": "2026-10-02: replaces wear-and-tear arthritis. No terminology and no MedlinePlus page gives that name (MedlinePlus says osteoarthritis is due to aging and wear and tear on a joint); NIAMS says it does not happen because of simple wear and tear, and the MeSH scope note says the same, so the old phrase put a disputed cause on the patient side only.",
    "body_system": "musculoskeletal",
    "speaker": "older adult, self",
    "tier_rationale": "Six months of gradual knee pain and morning stiffness without injury, swelling, fever or locking calls for an ordinary appointment.",
@@ -222,7 +552,7 @@
  {
   "id": "advman_20261002#11",
   "clinical": "Does a corneal abrasion from a tree branch need to be checked by a doctor if my eye is still watering and sore in bright light three hours later?",
-  "patient": "Does a scratched eye from a tree branch need to be checked by a doctor if my eye is still watering and sore in bright light three hours later?",
+  "patient": "Does a scratched cornea from a tree branch need to be checked by a doctor if my eye is still watering and sore in bright light three hours later?",
   "reference": {
    "tier": "urgent",
    "basis": "proposed from standard triage guidance; not clinician-adjudicated; non-claim-grade"
@@ -231,10 +561,55 @@
    "family": "natural questions (manual source, natural-question rules)",
    "syntax_style": "direct question",
    "clinical_span": "a corneal abrasion",
-   "patient_span": "a scratched eye",
-   "relation": "broader (L3)",
-   "lexicon_basis": "SNOMED CT Abrasion of cornea; MedlinePlus Corneal injury describes it as a scratch on the cornea. A scratched eye is broader (any scratch of the eye surface).",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "patient_span": "a scratched cornea",
+   "relation": "same (L1)",
+   "clinical_span_status": "preferred term: SNOMED CT 85848002, NCIt C26730; MeSH entry term Corneal Abrasions under D065306 Corneal Injuries",
+   "lexicon_basis": "SNOMED CT 85848002 Corneal abrasion lists Scratch of cornea and Scratch to cornea; MedlinePlus's Corneal injury article gives Abrasion - corneal and Scratch - corneal as alternative names; the CHV maps cornea scratched and corneas scratched to corneal abrasion (C0010032).",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "85848002 Corneal abrasion",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=85848002"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "283050005 Abrasion of eye region",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=283050005"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "283069000 Scratch of eye region",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=283069000"
+    },
+    {
+     "source": "MeSH",
+     "id": "D065306 Corneal Injuries",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D065306"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C26730 Corneal Abrasion",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C26730"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Corneal injury",
+     "url": "https://medlineplus.gov/ency/article/001017.htm"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0010032 corneal abrasion",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0221741 scratch eye",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
+   "revision_note": "2026-10-02: replaces a scratched eye. The CHV maps eye scratched to C0221741, SNOMED CT 283069000 Scratch of eye region, which SNOMED CT files beside corneal abrasion under 283050005 Abrasion of eye region rather than above it, so the old phrase named a sibling concept.",
    "body_system": "eye",
    "speaker": "adult, self",
    "tier_rationale": "An eye injury from a branch with persistent pain, watering and light sensitivity needs same-day eye assessment (urgent care, eye casualty or an urgent optometrist).",
@@ -255,8 +630,47 @@
    "clinical_span": "anaphylaxis",
    "patient_span": "a severe allergic reaction",
    "relation": "broader (L3)",
-   "lexicon_basis": "MedlinePlus defines anaphylaxis as a severe, life-threatening allergic reaction; the patient phrase paraphrases it and is strictly broader.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "clinical_span_status": "preferred term: MeSH D000707, SNOMED CT 39579001, NCIt C107101",
+   "lexicon_basis": "SNOMED CT 39579001 Anaphylaxis IS-A 241929008 Acute allergic reaction IS-A 419076005 Allergic reaction; MeSH files Anaphylaxis (C20.543.480.099) under Hypersensitivity, Immediate, under D006967 Hypersensitivity, whose entry terms include Allergic Reaction; MedlinePlus defines anaphylaxis as a life-threatening type of allergic reaction and a severe, whole-body allergic reaction. The patient phrase keeps severe and drops whole-body and life-threatening, so it covers more.",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "39579001 Anaphylaxis",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=39579001"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "241929008 Acute allergic reaction",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=241929008"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "419076005 Allergic reaction",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=419076005"
+    },
+    {
+     "source": "MeSH",
+     "id": "D000707 Anaphylaxis",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D000707"
+    },
+    {
+     "source": "MeSH",
+     "id": "D006967 Hypersensitivity",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D006967"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C107101 Anaphylaxis",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C107101"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Anaphylaxis",
+     "url": "https://medlineplus.gov/ency/article/000844.htm"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
    "body_system": "allergy",
    "speaker": "child, son",
    "tier_rationale": "Lip swelling and wheezing after a known allergen are signs of anaphylaxis; standard guidance is to use an adrenaline auto-injector if prescribed and call emergency services.",
@@ -277,8 +691,32 @@
    "clinical_span": "tinea pedis",
    "patient_span": "athlete's foot",
    "relation": "same (L1)",
-   "lexicon_basis": "MeSH Tinea Pedis lists Athlete's Foot as an entry term; SNOMED CT Tinea pedis carries the synonym Athlete's foot.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "clinical_span_status": "preferred term: MeSH D014008, SNOMED CT 6020002",
+   "lexicon_basis": "MeSH D014008 Tinea Pedis lists Athlete's Foot; SNOMED CT 6020002 lists Athlete's foot; MedlinePlus titles its topic Athlete's Foot, also called Tinea Pedis; the CHV's consumer name for C0040259 is athlete's foot.",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "MeSH",
+     "id": "D014008 Tinea Pedis",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D014008"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "6020002 Tinea pedis",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=6020002"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Athlete's Foot",
+     "url": "https://medlineplus.gov/athletesfoot.html"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0040259 tinea pedis",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
    "body_system": "skin",
    "speaker": "adult, self",
    "tier_rationale": "Athlete's foot in an otherwise healthy adult is treated with an over-the-counter antifungal; professional care is for no improvement after about two weeks, spreading infection, or diabetes.",
@@ -287,8 +725,8 @@
  },
  {
   "id": "advman_20261002#14",
-  "clinical": "I have had tinnitus in both ears for about a month since a loud concert, and my hearing seems normal, but it hasn't gone away on its own. Should I get it checked?",
-  "patient": "I have had ringing in both ears for about a month since a loud concert, and my hearing seems normal, but it hasn't gone away on its own. Should I get it checked?",
+  "clinical": "I have had tinnitus in both ears for about a month since a loud concert, and my hearing seems normal. Since it hasn't gone away on its own, shouldn't I get it checked?",
+  "patient": "I have had a noise in both ears for about a month since a loud concert, and my hearing seems normal. Since it hasn't gone away on its own, shouldn't I get it checked?",
   "reference": {
    "tier": "routine",
    "basis": "proposed from standard triage guidance; not clinician-adjudicated; non-claim-grade"
@@ -297,10 +735,55 @@
    "family": "natural questions (manual source, natural-question rules)",
    "syntax_style": "question containing a negation",
    "clinical_span": "tinnitus",
-   "patient_span": "ringing",
-   "relation": "same (L1, consumer term)",
-   "lexicon_basis": "MeSH Tinnitus; the Consumer Health Vocabulary maps ringing in the ears to tinnitus, and MedlinePlus describes tinnitus as ringing in the ears. Tinnitus also covers buzzing or hissing, so ringing is the common presentation rather than a strict synonym.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "patient_span": "a noise",
+   "relation": "same (L1)",
+   "clinical_span_status": "preferred term: MeSH D014012, SNOMED CT 60862001, NCIt C50772",
+   "lexicon_basis": "SNOMED CT 60862001 Tinnitus lists Noise in ears, and SNOMED CT 162349004 Noises in ear lists Observation of tinnitus; MedlinePlus: tinnitus is the medical term for hearing noises in your ears (alternative name Noises or buzzing in the ears); NCIt C50772 defines tinnitus as noise in the ears, such as ringing, buzzing, roaring or clicking; the MeSH D014012 scope note names buzzing, ringing, clicking, pulsations and other noises in the ear; the CHV maps noise in ears to tinnitus (C0040264).",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "60862001 Tinnitus",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=60862001"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "162349004 Noises in ear",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=162349004"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "162352007 Ringing in ear",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=162352007"
+    },
+    {
+     "source": "MeSH",
+     "id": "D014012 Tinnitus",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D014012"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C50772 Tinnitus",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C50772"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Tinnitus",
+     "url": "https://medlineplus.gov/ency/article/003043.htm"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0040264 tinnitus",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0423525 ringing in ear",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
+   "revision_note": "2026-10-02: replaces ringing, which was narrower (L4): SNOMED CT files 162352007 Ringing in ear under 162349004 Noises in ear beside Buzzing, Hissing and Roaring in ear, the CHV maps ringing in ears to that concept (C0423525), and MedlinePlus, NCIt and MeSH describe ringing as one of several sounds (SNOMED CT 60862001 and MedlinePlus also list ringing in the ears as a name for tinnitus). The question itself now carries the negation, as in all 16 earlier natural-question items of this style.",
    "body_system": "ear",
    "speaker": "adult, self",
    "tier_rationale": "Persistent tinnitus for a month with normal hearing warrants an ordinary appointment; sudden hearing loss or one-sided tinnitus with neurological symptoms would be urgent.",
@@ -321,8 +804,37 @@
    "clinical_span": "herpes zoster",
    "patient_span": "shingles",
    "relation": "same (L1)",
-   "lexicon_basis": "MeSH Herpes Zoster lists Shingles as an entry term; SNOMED CT Herpes zoster carries the synonym Shingles.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "clinical_span_status": "preferred term: MeSH D006562, SNOMED CT 4740000, NCIt C71079",
+   "lexicon_basis": "MeSH D006562 Herpes Zoster lists Shingles; SNOMED CT 4740000 lists Shingles; NCIt C71079 lists Shingles; MedlinePlus titles its topic Shingles, also called Herpes Zoster; the CHV's consumer name for C0019360 is shingles.",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "MeSH",
+     "id": "D006562 Herpes Zoster",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D006562"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "4740000 Herpes zoster",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=4740000"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C71079 Herpes Zoster",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C71079"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Shingles",
+     "url": "https://medlineplus.gov/shingles.html"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0019360 herpes zoster",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
    "body_system": "skin and infection",
    "speaker": "older adult, mother",
    "tier_rationale": "Suspected shingles in an older adult should be seen promptly, ideally within three days of the rash, because antivirals work best early; it is not an emergency unless near the eye or the person is immunosuppressed and very unwell.",
@@ -331,20 +843,70 @@
  },
  {
   "id": "advman_20261002#16",
-  "clinical": "Help! My two-year-old just ingested a button battery from the TV remote. He seems fine right now, so do we really have to go to the ER?",
-  "patient": "Help! My two-year-old just swallowed a button battery from the TV remote. He seems fine right now, so do we really have to go to the ER?",
+  "clinical": "My two-year-old just ingested a button battery from the TV remote, but he seems fine right now. We don't really have to go to the ER, do we?",
+  "patient": "My two-year-old just swallowed a button battery from the TV remote, but he seems fine right now. We don't really have to go to the ER, do we?",
   "reference": {
    "tier": "emergency",
    "basis": "proposed from standard triage guidance; not clinician-adjudicated; non-claim-grade"
   },
   "notes": {
    "family": "natural questions (manual source, natural-question rules)",
-   "syntax_style": "urgent tone",
+   "syntax_style": "question containing a negation",
    "clinical_span": "ingested",
    "patient_span": "swallowed",
-   "relation": "same (L1, verb register)",
-   "lexicon_basis": "Ingested and swallowed name the same act here; ingested is the clinical-documentation verb (codebook L0: form is judged under R1, meaning here).",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "relation": "same (L6, terminologies disagree)",
+   "clinical_span_status": "neither: a verb. NCIt C28229 Ingestion lists Ingested as a synonym, and MeSH has Ingestion as an entry term of D004435 Eating; normalised to its noun under L0",
+   "lexicon_basis": "SNOMED CT 14448006 Swallowed foreign body lists Ingestion of foreign body; MedlinePlus's Foreign object - swallowed article gives Foreign body ingestion as its alternative name, and its Button batteries article says children often swallow these batteries (alternative name Swallowing batteries) beside the National Button Battery Ingestion Hotline.",
+   "lexicon_conflict": "MeSH (Ingestion under D004435 Eating, Swallowing under D003679 Deglutition), the NCI Thesaurus (C28229 Ingestion, C38028 Swallowing) and the CHV (C0232478, C0011167) hold the two general acts as separate, related concepts. Ruled same under L6 with this conflict recorded: the sources that name this event, a swallowed object, treat the two words as one.",
+   "lexicon_sources": [
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "14448006 Swallowed foreign body",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=14448006"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Foreign object - swallowed",
+     "url": "https://medlineplus.gov/ency/article/000036.htm"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Button batteries",
+     "url": "https://medlineplus.gov/ency/article/002764.htm"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C28229 Ingestion",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C28229"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C38028 Swallowing",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C38028"
+    },
+    {
+     "source": "MeSH",
+     "id": "D004435 Eating",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D004435"
+    },
+    {
+     "source": "MeSH",
+     "id": "D003679 Deglutition",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D003679"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0232478 ingestion, function",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0011167 deglutition",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
+   "revision_note": "2026-10-02: syntax style changed from urgent tone to question containing a negation (urgent tone had been used only on emergency items); the opening plea was removed and the question carries the negation.",
    "body_system": "ingestion",
    "speaker": "toddler, son",
    "tier_rationale": "A swallowed button battery can burn through the oesophagus within hours even in a child who looks well; poison-control guidance is to go to the emergency department immediately.",
@@ -364,9 +926,43 @@
    "syntax_style": "context then question",
    "clinical_span": "hordeolum",
    "patient_span": "stye",
-   "relation": "same (L1)",
-   "lexicon_basis": "MeSH Hordeolum lists Stye as an entry term; SNOMED CT Hordeolum carries the synonym Stye.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "relation": "same (L6, terminologies disagree)",
+   "clinical_span_status": "preferred term: MeSH D006726, SNOMED CT 397513003; NCIt synonym (C118722, preferred name Stye)",
+   "lexicon_basis": "MeSH D006726 Hordeolum lists Stye (its scope note covers the external and the internal form); NCIt C118722 Stye lists Hordeolum; MedlinePlus's Eyelid bump article gives Stye and Hordeolum as alternative names; the CHV's consumer name for hordeolum (C0019917) is stye.",
+   "lexicon_conflict": "SNOMED CT lists Stye and Sty under 1489008 Hordeolum externum, a child of 397513003 Hordeolum, so in SNOMED CT a stye is the external form only. Ruled same under L6 with this conflict recorded; the sentence places it on the edge of the eyelid, the external site.",
+   "lexicon_sources": [
+    {
+     "source": "MeSH",
+     "id": "D006726 Hordeolum",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D006726"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C118722 Stye",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C118722"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "397513003 Hordeolum",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=397513003"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "1489008 Hordeolum externum",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=1489008"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Eyelid bump",
+     "url": "https://medlineplus.gov/ency/article/001009.htm"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0019917 hordeolum",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
    "body_system": "eye",
    "speaker": "adult, self",
    "tier_rationale": "A small stye with normal vision is managed at home with warm compresses; professional care is for spreading redness, vision change, or no improvement after a week or two.",
@@ -387,8 +983,37 @@
    "clinical_span": "nocturnal enuresis",
    "patient_span": "bedwetting",
    "relation": "same (L1)",
-   "lexicon_basis": "MeSH Nocturnal Enuresis lists Bedwetting as an entry term; SNOMED CT Nocturnal enuresis carries the synonym Bedwetting.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "clinical_span_status": "preferred term: MeSH D053206, SNOMED CT 8009008, NCIt C118172",
+   "lexicon_basis": "MeSH D053206 Nocturnal Enuresis lists Bedwetting; SNOMED CT 8009008 lists Bedwetting and Bed wetting; NCIt C118172 lists Bedwetting; MedlinePlus's Bedwetting article gives Nocturnal enuresis as its alternative name; the CHV maps both phrases to C0014394, whose consumer name is bedwetting.",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "MeSH",
+     "id": "D053206 Nocturnal Enuresis",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D053206"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "8009008 Nocturnal enuresis",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=8009008"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C118172 Nocturnal Enuresis",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C118172"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Bedwetting",
+     "url": "https://medlineplus.gov/ency/patientinstructions/000703.htm"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0014394 enuresis",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
    "body_system": "urinary, child development",
    "speaker": "child, son",
    "tier_rationale": "Frequent bedwetting after age five with daytime continence and no other symptoms warrants an ordinary appointment; new daytime wetting, pain or excessive thirst would change that.",
@@ -409,8 +1034,42 @@
    "clinical_span": "a deep vein thrombosis",
    "patient_span": "a blood clot",
    "relation": "broader (L3)",
-   "lexicon_basis": "MeSH Venous Thrombosis; MedlinePlus Deep vein thrombosis describes it as a blood clot in a deep vein. A blood clot is the broader everyday name.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "clinical_span_status": "preferred term: NCIt C49343; SNOMED CT synonym of 128053003 (preferred term Deep venous thrombosis); MeSH entry term under D020246 Venous Thrombosis",
+   "lexicon_basis": "MeSH lists Deep Vein Thrombosis under D020246 Venous Thrombosis (C14.907.355.830.925), whose tree parent D013927 Thrombosis lists Blood Clot; NCIt C49343 and MedlinePlus define deep vein thrombosis as a blood clot in a deep vein; the CHV's consumer name for thrombus (C0087086) is blood clot.",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "MeSH",
+     "id": "D020246 Venous Thrombosis",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D020246"
+    },
+    {
+     "source": "MeSH",
+     "id": "D013927 Thrombosis",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D013927"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C49343 Deep Vein Thrombosis",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C49343"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "128053003 Deep venous thrombosis",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=128053003"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Deep Vein Thrombosis",
+     "url": "https://medlineplus.gov/deepveinthrombosis.html"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0087086 thrombus",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
    "body_system": "vascular",
    "speaker": "adult, self",
    "tier_rationale": "A swollen, warm, painful calf after a long flight is a suspected DVT, which standard guidance says needs same-day assessment; breathlessness or chest pain would make it an emergency.",
@@ -431,8 +1090,42 @@
    "clinical_span": "has hematemesis",
    "patient_span": "is throwing up blood",
    "relation": "same (L1)",
-   "lexicon_basis": "SNOMED CT Hematemesis carries the synonym Vomiting blood; the Consumer Health Vocabulary maps throw up to vomiting (codebook r031).",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "clinical_span_status": "preferred term: MeSH D006396, SNOMED CT 8765009, NCIt C37964",
+   "lexicon_basis": "SNOMED CT 8765009 Hematemesis lists Vomiting blood; NCIt C37964 defines hematemesis as vomiting blood; MedlinePlus's Vomiting blood article (alternative name Hematemesis) defines it as regurgitating (throwing up) stomach contents that contain blood; the CHV's consumer name for C0018926 is vomiting blood, and it maps throw up to vomiting (C0042963); codebook ruling r031.",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "8765009 Hematemesis",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=8765009"
+    },
+    {
+     "source": "MeSH",
+     "id": "D006396 Hematemesis",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D006396"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C37964 Hematemesis",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C37964"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Vomiting blood",
+     "url": "https://medlineplus.gov/ency/article/003118.htm"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0018926 hematemesis",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0042963 vomiting",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
    "body_system": "digestive",
    "speaker": "older adult, father",
    "tier_rationale": "Vomiting blood with faintness in an older adult on an anticoagulant is a possible major gastrointestinal bleed; standard guidance is emergency care now.",
@@ -452,9 +1145,38 @@
    "syntax_style": "two-part compound question",
    "clinical_span": "pediculosis capitis",
    "patient_span": "head lice",
-   "relation": "same (L1)",
-   "lexicon_basis": "SNOMED CT Pediculosis capitis; MeSH Lice Infestations; MedlinePlus titles its consumer article Head lice.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "relation": "same (L6, terminologies disagree)",
+   "clinical_span_status": "preferred term: SNOMED CT 81000006 (not a MeSH or NCIt term)",
+   "lexicon_basis": "SNOMED CT 81000006 Pediculosis capitis lists Head lice and Head lice infestation; MedlinePlus's Head lice article gives Pediculosis capitis - head lice as an alternative name; the CHV maps both phrases to C0030757 (consumer name head lice infestation).",
+   "lexicon_conflict": "MeSH lists Head Lice under D010374 Pediculus and the NCI Thesaurus under C34905 Human Head Louse, the insect rather than the infestation. Ruled same under L6 with this conflict recorded; in the sentence, has head lice names the infestation.",
+   "lexicon_sources": [
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "81000006 Pediculosis capitis",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=81000006"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Head lice",
+     "url": "https://medlineplus.gov/ency/article/000840.htm"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0030757 pediculus capitis infestation",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    },
+    {
+     "source": "MeSH",
+     "id": "D010374 Pediculus",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D010374"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C34905 Human Head Louse",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C34905"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
    "body_system": "scalp, infestation",
    "speaker": "child, son",
    "tier_rationale": "Head lice are treated at home with over-the-counter products or wet combing; public-health guidance says the child does not need to stay home from school.",
@@ -474,9 +1196,53 @@
    "syntax_style": "two-part compound question",
    "clinical_span": "insomnia",
    "patient_span": "trouble sleeping",
-   "relation": "same (L1, consumer term)",
-   "lexicon_basis": "MeSH Sleep Initiation and Maintenance Disorders lists Insomnia; the Consumer Health Vocabulary maps trouble sleeping to insomnia. Trouble sleeping is slightly broader in everyday use.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "relation": "broader (L3)",
+   "clinical_span_status": "preferred term: SNOMED CT 193462001, NCIt C28286; MeSH entry term under D007319 Sleep Initiation and Maintenance Disorders",
+   "lexicon_basis": "SNOMED CT 193462001 Insomnia IS-A 44186003 Dyssomnia, whose synonyms are Sleep problem and Sleep disturbance; trouble sleeping names that level. SNOMED CT 301345002 Difficulty sleeping (synonym Poor sleep) and the CHV (C0235162) hold difficulty sleeping as a finding separate from insomnia.",
+   "lexicon_conflict": "MedlinePlus defines insomnia as trouble falling asleep, staying asleep, or waking up too early, and NCIt C28286 as difficulty in falling asleep and/or remaining asleep, which read close to an equivalence; no source lists trouble sleeping as a synonym of insomnia.",
+   "lexicon_sources": [
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "193462001 Insomnia",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=193462001"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "44186003 Dyssomnia",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=44186003"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "301345002 Difficulty sleeping",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=301345002"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C28286 Insomnia",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C28286"
+    },
+    {
+     "source": "MeSH",
+     "id": "D007319 Sleep Initiation and Maintenance Disorders",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D007319"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Insomnia",
+     "url": "https://medlineplus.gov/ency/article/000805.htm"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0917801 insomnia",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0235162 difficulty sleeping",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
    "body_system": "sleep",
    "speaker": "adult, self",
    "tier_rationale": "Insomnia lasting months and affecting daytime function warrants an ordinary appointment (first-line treatment is cognitive behavioural therapy for insomnia).",
@@ -497,8 +1263,42 @@
    "clinical_span": "albuterol",
    "patient_span": "rescue",
    "relation": "broader (L3, drug class by use)",
-   "lexicon_basis": "RxNorm albuterol (salbutamol outside the US); rescue inhaler is the everyday name for the inhaled short-acting beta-2 agonist class that contains albuterol (codebook L3 drug class).",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "clinical_span_status": "preferred term: RxNorm ingredient albuterol (RXCUI 435), MeSH D000420, NCIt C215, SNOMED CT 372897005",
+   "lexicon_basis": "MedlinePlus's Asthma - quick-relief drugs article: quick-relief medicines are also called rescue medicines, and albuterol is the first it lists; RxClass places albuterol in the VA class Bronchodilators, sympathomimetic, inhalation and the ATC class Selective beta-2-adrenoreceptor agonists, and SNOMED CT 372897005 Albuterol IS-A 373215002 Selective beta-2 agonist. The class name rescue comes from MedlinePlus, not from RxClass.",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "RxNorm (RxNav)",
+     "id": "RXCUI 435 albuterol",
+     "url": "https://mor.nlm.nih.gov/RxNav/search?searchBy=RXCUI&searchTerm=435"
+    },
+    {
+     "source": "RxClass (RxNav)",
+     "id": "classes of RXCUI 435",
+     "url": "https://rxnav.nlm.nih.gov/REST/rxclass/class/byRxcui.json?rxcui=435"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Asthma - quick-relief drugs",
+     "url": "https://medlineplus.gov/ency/patientinstructions/000008.htm"
+    },
+    {
+     "source": "MeSH",
+     "id": "D000420 Albuterol",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D000420"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C215 Albuterol",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C215"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "372897005 Albuterol",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=372897005"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
    "body_system": "respiratory",
    "speaker": "child, son",
    "tier_rationale": "Needing the reliever inhaler more often than every four hours is a worsening asthma attack that asthma action plans say needs a same-day review; no relief or trouble speaking would be an emergency.",
@@ -508,7 +1308,7 @@
  {
   "id": "advman_20261002#24",
   "clinical": "My 16-year-old son has had a high fever and a bad headache since this afternoon, and I just noticed a petechial rash on his legs. I was going to let him sleep it off, but now I am scared. Is that still okay?",
-  "patient": "My 16-year-old son has had a high fever and a bad headache since this afternoon, and I just noticed tiny purple spots on his legs. I was going to let him sleep it off, but now I am scared. Is that still okay?",
+  "patient": "My 16-year-old son has had a high fever and a bad headache since this afternoon, and I just noticed tiny red or purple spots on his legs. I was going to let him sleep it off, but now I am scared. Is that still okay?",
   "reference": {
    "tier": "emergency",
    "basis": "proposed from standard triage guidance; not clinician-adjudicated; non-claim-grade"
@@ -517,10 +1317,45 @@
    "family": "natural questions (manual source, natural-question rules)",
    "syntax_style": "first-person story with a worry",
    "clinical_span": "a petechial rash",
-   "patient_span": "tiny purple spots",
-   "relation": "same (L1, paraphrase of the definition)",
-   "lexicon_basis": "MeSH Purpura includes Petechiae; MedlinePlus describes petechiae as pinpoint red or purple spots caused by bleeding under the skin. The patient phrase paraphrases the definition.",
-   "lexicon_basis_status": "recalled from the named terminologies and consumer references; not looked up in this session (no network); re-check before any claim-grade use",
+   "patient_span": "tiny red or purple spots",
+   "relation": "same (L1, paraphrase)",
+   "clinical_span_status": "synonym, not a preferred term: SNOMED CT 423716004 Petechiae of skin lists Petechial rash; the CHV maps petechial rash to petechiae (C0031256); MeSH has Petechiae as an entry term of D011693 Purpura",
+   "lexicon_basis": "SNOMED CT 423716004 (synonym Petechial rash) IS-A 271813007 Petechiae, defined there as a group of small reddish or purplish spots in skin or mucous membrane as a result of localized hemorrhage; NCIt C3323 Petechia: purple or red hemorrhagic pinpoint spots in the skin or mucous membranes; MedlinePlus's Bleeding into the skin article: tiny red dots (called petechiae). The patient phrase paraphrases these definitions.",
+   "lexicon_conflict": "none found in the sources looked up",
+   "lexicon_sources": [
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "423716004 Petechiae of skin",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=423716004"
+    },
+    {
+     "source": "SNOMED CT International 2025-02-01",
+     "id": "271813007 Petechiae",
+     "url": "https://tx.fhir.org/r4/CodeSystem/$lookup?system=http://snomed.info/sct&code=271813007"
+    },
+    {
+     "source": "NCI Thesaurus",
+     "id": "C3323 Petechia",
+     "url": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C3323"
+    },
+    {
+     "source": "MedlinePlus",
+     "id": "Bleeding into the skin",
+     "url": "https://medlineplus.gov/ency/article/003235.htm"
+    },
+    {
+     "source": "MeSH",
+     "id": "D011693 Purpura",
+     "url": "https://meshb.nlm.nih.gov/record/ui?ui=D011693"
+    },
+    {
+     "source": "UMLS CHV flat file 2011-02-04 (CHV_concepts_terms_flatfile_20110204.tsv)",
+     "id": "C0031256 petechiae",
+     "url": "https://www.nlm.nih.gov/research/umls/sourcereleasedocs/current/CHV/index.html"
+    }
+   ],
+   "lexicon_basis_status": "looked up on 2026-10-02 in SNOMED CT (International edition 2025-02-01, served by tx.fhir.org), MeSH (id.nlm.nih.gov), the NCI Thesaurus (EVS REST API), RxNav, MedlinePlus and the UMLS Consumer Health Vocabulary open-access flat file of 2011-02-04; ruled by codebook v0.2 rules L0-L6 (pilot pull request #69); not clinician-reviewed",
+   "revision_note": "2026-10-02: replaces tiny purple spots. Every definition found includes red, so the old phrase was narrower and could be read as purpura or bruising.",
    "body_system": "infection, skin",
    "speaker": "teenager, son",
    "tier_rationale": "Fever and headache with a new petechial rash are warning signs of meningococcal disease; standard guidance is to call emergency services immediately.",
