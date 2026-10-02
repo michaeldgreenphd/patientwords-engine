@@ -10,7 +10,7 @@ nothing here is ever rewritten, and every response record is hash-chained.
 |---|---|---|
 | `stimuli_<STAMP>.json` | `build-stimuli` | paired vignettes: clinical/patient bodies + assembled messages (identical ask suffix on both sides preserves the minimal pair), per-text sha256, source provenance, engine sha |
 | `responses_<stem>.jsonl` | `elicit` | one record per API call, append-only, hash-chained (see below) |
-| `responses_<stem>.report.json` | `elicit` | cost sidecar: spend vs `--max-spend`, per-model token usage, records appended, truncation reason, **chain_head** |
+| `responses_<stem>.report.json` | `elicit` | cost sidecar: spend vs `--max-spend`, per-model token usage, records appended, truncation reason, **chain_head**; an elicit that plans no call (everything already archived, or an offset past the items) leaves it unchanged |
 | `judgments_<stem>.jsonl` | `judge` | tier + flags per response, keyed by `response_sha256` + `rubric_sha256` + judge model — never mutates the response archive, re-runnable forever |
 | `judgments_<stem>.report.json` | `judge` | judge cost sidecar |
 | `analysis_<stem>.json` | `analyze` | offline paired stats: modal tiers, rank diffs, downgrade/upgrade classes, translation recovery, within-prompt variance, cluster bootstrap CIs |
