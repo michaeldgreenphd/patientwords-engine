@@ -423,13 +423,18 @@ def advice_params_problems(params: dict, registry: dict | None = None) -> list[s
             problems.append(f"advice-eval {why}, so the generation fire's billing account cannot be classified; "
                             "fix the gen_config path or its 'model' before firing")
             continue
-        if role == "translator" and channel == "anthropic" and ":" in spec \
-                and advice_spec_key_env(spec, registry) != "ANTHROPIC_API_KEY":
-            # elicit routes a translator through the registry only when it is one of the models; otherwise it sends
-            # the spec to the Anthropic API under that name, where the call fails
+        if (role == "translator" and channel == "anthropic"
+                and advice_spec_key_env(spec, registry) != "ANTHROPIC_API_KEY"):
+            # elicit routes a translator through the registry only when it equals one of the models' resolved
+            # provider:model specs; otherwise it sends the spec to the Anthropic API under that name, where the call
+            # fails. A bare provider name (`openai`) never equals one: elicit resolves a bare name to the registry's
+            # consumer default for the models only, so the translator `openai` reaches the Anthropic API as a model
+            # name and fails the run without billing the key it would bill as a model.
+            why = ("is a bare provider name, which elicit resolves for the models but never for the translator"
+                   if ":" not in spec else "is not one of the fire's models")
             problems.append(
-                f"advice-eval translator {spec!r} is not one of the fire's models, so elicit would send it to the "
-                "Anthropic API under that name, where the run fails; use an Anthropic translator, or one that is "
+                f"advice-eval translator {spec!r} {why}, so elicit would send it to the Anthropic API under that "
+                "name, where the run fails; use an Anthropic translator, or a provider:model translator that is "
                 "also one of the models on the same account (a Google model goes through OpenRouter as "
                 "openrouter:google/<model>)")
             continue

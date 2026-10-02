@@ -1103,6 +1103,28 @@ def test_a_non_anthropic_translator_outside_the_models_is_refused_for_what_elici
     assert "GEMINI_API_KEY" not in problems[0] and "openrouter:google/<model>" in problems[0]
 
 
+@pytest.mark.parametrize("translator", ["openai", "google", "copilot"])
+def test_a_bare_provider_translator_is_refused_for_what_elicit_does(translator):
+    """elicit resolves a bare provider name to the registry's consumer default for the models only: the translator is
+    looked up among the models' resolved provider:model specs, which a bare name never equals, so it reaches the
+    Anthropic API as a model name. Before Copilot's review of PR #72, `openai` with an Anthropic roster was admitted,
+    `google` was refused for a GEMINI_API_KEY bill it would never make, and `copilot` as a spec the run refuses
+    before its first call."""
+    params = {"models": "anthropic:claude-haiku-4-5", "arms": "clinical,translated", "translator_model": translator}
+    problems = ft.advice_params_problems(params)
+    assert len(problems) == 1
+    assert "bare provider name" in problems[0] and "Anthropic API" in problems[0]
+    assert "GEMINI_API_KEY" not in problems[0] and "before its first call" not in problems[0]
+
+
+def test_a_bare_provider_translator_fire_is_refused_before_it_is_journaled(repo, capsys):
+    write_dashboard(repo, spent=0.0)
+    assert fire(repo, "advice-eval", _advice_params(_nonce="bare-translator", translator_model="openai")) == 3
+    assert "bare provider name" in capsys.readouterr().err
+    assert not trigger_path(repo, "advice-eval").exists()
+    assert not journal_path(repo).exists() or "bare-translator" not in journal_path(repo).read_text()
+
+
 def test_a_manual_ui_provider_is_refused_without_naming_a_key():
     registry = {"copilot": {"api": "manual_ui"}, "anthropic": {"api": "anthropic"}}
     problems = ft.advice_params_problems({"models": "copilot"}, registry)
