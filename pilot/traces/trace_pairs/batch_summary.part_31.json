@@ -1,0 +1,994 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 31,
+  "pairs_requested": 10,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.16",
+    "engine_sha": "915adeae689a",
+    "runner_image": "20260927.320.1"
+  },
+  "results": [
+    {
+      "index": 31,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I need psyllium for my constipation, but I take a thyroid pill, so at the drugstore I asked the",
+        "patient": "I need Metamucil for my constipation, but I take a thyroid pill, so at the drugstore I asked the"
+      },
+      "target_token": "Output \" pharmacist\"",
+      "probabilities": {
+        "clinical": 0.684,
+        "patient": 0.68
+      },
+      "language_penalty": -0.0040000000000000036,
+      "clinical_mass": {
+        "clinical": 0.3057,
+        "patient": 0.305
+      },
+      "error_share": {
+        "clinical": 0.1205,
+        "patient": 0.1178
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" pharmacy\" (p=0.023)",
+        "patient": "embedding \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" pharmacy\" (p=0.023)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pharmacist",
+        "observed_clinical": [
+          "Output \" pharmacist\"",
+          0.684
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pharmacist\"",
+            0.684
+          ],
+          [
+            "Output \" clerk\"",
+            0.049
+          ],
+          [
+            "Output \" guy\"",
+            0.026
+          ],
+          [
+            "Output \" lady\"",
+            0.023
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.023
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pharmacist\"",
+            0.68
+          ],
+          [
+            "Output \" clerk\"",
+            0.092
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.023
+          ],
+          [
+            "Output \" guy\"",
+            0.021
+          ],
+          [
+            "Output \" lady\"",
+            0.018
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1059,
+        "unique_to_a": 314,
+        "unique_to_b": 318
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_31.html",
+        "png": "pilot/traces/trace_pairs/index_31.png",
+        "diff_html": "pilot/traces/trace_pairs/index_31_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_31_diff.png"
+      }
+    },
+    {
+      "index": 32,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The doctors said Dad's stroke was in the left hemisphere, so they're keeping him in the",
+        "patient": "The doctors said Dad's stroke was in the left side of his brain, so they're keeping him in the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.059,
+        "patient": 0.098
+      },
+      "language_penalty": 0.03900000000000001,
+      "clinical_mass": {
+        "clinical": 0.4122,
+        "patient": 0.4413
+      },
+      "error_share": {
+        "clinical": 0.1008,
+        "patient": 0.0977
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" left\" (p=0.434)",
+        "patient": "embedding \u2192 Output \" left\" (p=0.301)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " hospital",
+        "observed_clinical": [
+          "Output \" hospital\"",
+          0.059
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" left\"",
+            0.434
+          ],
+          [
+            "Output \" right\"",
+            0.124
+          ],
+          [
+            "Output \" ICU\"",
+            0.066
+          ],
+          [
+            "Output \" hospital\"",
+            0.059
+          ],
+          [
+            "Output \" intensive\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" left\"",
+            0.301
+          ],
+          [
+            "Output \" ICU\"",
+            0.111
+          ],
+          [
+            "Output \" hospital\"",
+            0.098
+          ],
+          [
+            "Output \" right\"",
+            0.067
+          ],
+          [
+            "Output \" intensive\"",
+            0.052
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1130,
+        "unique_to_a": 155,
+        "unique_to_b": 193
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_32.html",
+        "png": "pilot/traces/trace_pairs/index_32.png",
+        "diff_html": "pilot/traces/trace_pairs/index_32_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_32_diff.png"
+      }
+    },
+    {
+      "index": 33,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I fell and hit my head, and since I'm on apixaban for my AFib, my son drove me to the",
+        "patient": "I fell and hit my head, and since I'm on Eliquis for my AFib, my son drove me to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.221,
+        "patient": 0.226
+      },
+      "language_penalty": 0.0050000000000000044,
+      "clinical_mass": {
+        "clinical": 0.3847,
+        "patient": 0.3634
+      },
+      "error_share": {
+        "clinical": 0.1095,
+        "patient": 0.1096
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] terms related to emergency medical response to cardi \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.104)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] terms related to emergency medical response to cardi \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.106)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " hospital",
+        "observed_clinical": [
+          "Output \" hospital\"",
+          0.221
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.527
+          ],
+          [
+            "Output \" hospital\"",
+            0.221
+          ],
+          [
+            "Output \" emergency\"",
+            0.104
+          ],
+          [
+            "Output \" er\"",
+            0.026
+          ],
+          [
+            "Output \" ED\"",
+            0.021
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.543
+          ],
+          [
+            "Output \" hospital\"",
+            0.226
+          ],
+          [
+            "Output \" emergency\"",
+            0.106
+          ],
+          [
+            "Output \" Emergency\"",
+            0.021
+          ],
+          [
+            "Output \" ED\"",
+            0.014
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1197,
+        "unique_to_a": 181,
+        "unique_to_b": 186
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_33.html",
+        "png": "pilot/traces/trace_pairs/index_33.png",
+        "diff_html": "pilot/traces/trace_pairs/index_33_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_33_diff.png"
+      }
+    },
+    {
+      "index": 34,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My husband gets claudication whenever he walks the dog, so I'm making him see his",
+        "patient": "My husband gets leg cramps whenever he walks the dog, so I'm making him see his"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.66,
+        "patient": 0.699
+      },
+      "language_penalty": 0.038999999999999924,
+      "clinical_mass": {
+        "clinical": 0.3322,
+        "patient": 0.3296
+      },
+      "error_share": {
+        "clinical": 0.1049,
+        "patient": 0.0962
+      },
+      "top_path": {
+        "clinical": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.660)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.699)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.66
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.66
+          ],
+          [
+            "Output \" GP\"",
+            0.089
+          ],
+          [
+            "Output \" doc\"",
+            0.054
+          ],
+          [
+            "Output \" Dr\"",
+            0.026
+          ],
+          [
+            "Output \" cardio\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.699
+          ],
+          [
+            "Output \" chi\"",
+            0.051
+          ],
+          [
+            "Output \" doc\"",
+            0.024
+          ],
+          [
+            "Output \" GP\"",
+            0.021
+          ],
+          [
+            "Output \" primary\"",
+            0.015
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 876,
+        "unique_to_a": 396,
+        "unique_to_b": 396
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_34.html",
+        "png": "pilot/traces/trace_pairs/index_34.png",
+        "diff_html": "pilot/traces/trace_pairs/index_34_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_34_diff.png"
+      }
+    },
+    {
+      "index": 35,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since my bout of pancreatitis, I've had steatorrhea, so I'm going to ask my",
+        "patient": "Ever since my bout of pancreatitis, I've had greasy poop, so I'm going to ask my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.227,
+        "patient": 0.197
+      },
+      "language_penalty": -0.03,
+      "clinical_mass": {
+        "clinical": 0.3104,
+        "patient": 0.3459
+      },
+      "error_share": {
+        "clinical": 0.1017,
+        "patient": 0.103
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.227)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.197)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.227
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.227
+          ],
+          [
+            "Output \" doc\"",
+            0.138
+          ],
+          [
+            "Output \" GI\"",
+            0.095
+          ],
+          [
+            "Output \" question\"",
+            0.065
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.197
+          ],
+          [
+            "Output \" vet\"",
+            0.153
+          ],
+          [
+            "Output \" doc\"",
+            0.153
+          ],
+          [
+            "Output \" GI\"",
+            0.105
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.03
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 930,
+        "unique_to_a": 487,
+        "unique_to_b": 371
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_35.html",
+        "png": "pilot/traces/trace_pairs/index_35.png",
+        "diff_html": "pilot/traces/trace_pairs/index_35_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_35_diff.png"
+      }
+    },
+    {
+      "index": 36,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The scope showed inflammation in my colon, so I'm going to fill my",
+        "patient": "The scope showed inflammation in my bowel, so I'm going to fill my"
+      },
+      "target_token": "Output \" prescription\"",
+      "probabilities": {
+        "clinical": 0.109,
+        "patient": 0.173
+      },
+      "language_penalty": 0.06399999999999999,
+      "clinical_mass": {
+        "clinical": 0.3068,
+        "patient": 0.304
+      },
+      "error_share": {
+        "clinical": 0.0962,
+        "patient": 0.098
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" colon\" (p=0.297)",
+        "patient": "embedding \u2192 Output \" bowel\" (p=0.049)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " prescription",
+        "observed_clinical": [
+          "Output \" prescription\"",
+          0.109
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" colon\"",
+            0.297
+          ],
+          [
+            "Output \" prescription\"",
+            0.109
+          ],
+          [
+            "Output \" stomach\"",
+            0.059
+          ],
+          [
+            "Output \" body\"",
+            0.046
+          ],
+          [
+            "Output \" prescriptions\"",
+            0.04
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" prescription\"",
+            0.173
+          ],
+          [
+            "Output \" colon\"",
+            0.092
+          ],
+          [
+            "Output \" stomach\"",
+            0.072
+          ],
+          [
+            "Output \" prescriptions\"",
+            0.056
+          ],
+          [
+            "Output \" bowel\"",
+            0.049
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1109,
+        "unique_to_a": 190,
+        "unique_to_b": 172
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_36.html",
+        "png": "pilot/traces/trace_pairs/index_36.png",
+        "diff_html": "pilot/traces/trace_pairs/index_36_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_36_diff.png"
+      }
+    },
+    {
+      "index": 37,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "They gave me diltiazem through my IV for my AFib, and I got so dizzy I called the",
+        "patient": "They gave me Cardizem through my IV for my AFib, and I got so dizzy I called the"
+      },
+      "target_token": "Output \" nurse\"",
+      "probabilities": {
+        "clinical": 0.225,
+        "patient": 0.271
+      },
+      "language_penalty": 0.04600000000000001,
+      "clinical_mass": {
+        "clinical": 0.3749,
+        "patient": 0.3712
+      },
+      "error_share": {
+        "clinical": 0.1172,
+        "patient": 0.114
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L20\u00b7C] titles and acronyms following names, especially with \u2192 [L24\u00b7C] text discussing nursing, healthcare, and professiona \u2192 Output \" nurse\" (p=0.225)",
+        "patient": "[L18\u00b7S]  \u2192 [L20\u00b7C] titles and acronyms following names, especially with \u2192 [L24\u00b7C] text discussing nursing, healthcare, and professiona \u2192 Output \" nurse\" (p=0.271)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " nurse",
+        "observed_clinical": [
+          "Output \" nurse\"",
+          0.225
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" nurse\"",
+            0.225
+          ],
+          [
+            "Output \" doctor\"",
+            0.154
+          ],
+          [
+            "Output \" hospital\"",
+            0.12
+          ],
+          [
+            "Output \" ER\"",
+            0.106
+          ],
+          [
+            "Output \" nurses\"",
+            0.044
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" nurse\"",
+            0.271
+          ],
+          [
+            "Output \" doctor\"",
+            0.146
+          ],
+          [
+            "Output \" ER\"",
+            0.1
+          ],
+          [
+            "Output \" hospital\"",
+            0.088
+          ],
+          [
+            "Output \" nurses\"",
+            0.047
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1046,
+        "unique_to_a": 335,
+        "unique_to_b": 311
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_37.html",
+        "png": "pilot/traces/trace_pairs/index_37.png",
+        "diff_html": "pilot/traces/trace_pairs/index_37_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_37_diff.png"
+      }
+    },
+    {
+      "index": 38,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep putting pressure on my ulnar nerve at work and my pinky goes numb, so I'm going to see my",
+        "patient": "I keep putting pressure on my elbow at work and my pinky goes numb, so I'm going to see my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.348,
+        "patient": 0.441
+      },
+      "language_penalty": 0.09300000000000003,
+      "clinical_mass": {
+        "clinical": 0.4005,
+        "patient": 0.3828
+      },
+      "error_share": {
+        "clinical": 0.1038,
+        "patient": 0.0975
+      },
+      "top_path": {
+        "clinical": "[L11\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.348)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.441)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.348
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.348
+          ],
+          [
+            "Output \" chi\"",
+            0.078
+          ],
+          [
+            "Output \" doc\"",
+            0.068
+          ],
+          [
+            "Output \" neuro\"",
+            0.053
+          ],
+          [
+            "Output \" hand\"",
+            0.042
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.441
+          ],
+          [
+            "Output \" doc\"",
+            0.087
+          ],
+          [
+            "Output \" chi\"",
+            0.06
+          ],
+          [
+            "Output \" GP\"",
+            0.036
+          ],
+          [
+            "Output \" ortho\"",
+            0.028
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 967,
+        "unique_to_a": 453,
+        "unique_to_b": 353
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_38.html",
+        "png": "pilot/traces/trace_pairs/index_38.png",
+        "diff_html": "pilot/traces/trace_pairs/index_38_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_38_diff.png"
+      }
+    },
+    {
+      "index": 39,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The echo showed my left ventricle is only pumping at 25 percent, so I'm going to call my",
+        "patient": "The echo showed my heart is only pumping at 25 percent, so I'm going to call my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.312,
+        "patient": 0.389
+      },
+      "language_penalty": 0.07700000000000001,
+      "clinical_mass": {
+        "clinical": 0.3815,
+        "patient": 0.3207
+      },
+      "error_share": {
+        "clinical": 0.1021,
+        "patient": 0.0933
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7C] terminology related to cardiology and medical resear \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.042)",
+        "patient": "embedding \u2192 Output \" heart\" (p=0.028)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.312
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cardio\"",
+            0.354
+          ],
+          [
+            "Output \" doctor\"",
+            0.312
+          ],
+          [
+            "Output \" heart\"",
+            0.042
+          ],
+          [
+            "Output \" surgeon\"",
+            0.02
+          ],
+          [
+            "Output \" primary\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.389
+          ],
+          [
+            "Output \" cardio\"",
+            0.235
+          ],
+          [
+            "Output \" heart\"",
+            0.028
+          ],
+          [
+            "Output \" mom\"",
+            0.025
+          ],
+          [
+            "Output \" primary\"",
+            0.025
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 946,
+        "unique_to_a": 376,
+        "unique_to_b": 342
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_39.html",
+        "png": "pilot/traces/trace_pairs/index_39.png",
+        "diff_html": "pilot/traces/trace_pairs/index_39_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_39_diff.png"
+      }
+    },
+    {
+      "index": 40,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The new batch of Dad's donepezil looks different from the last one, so I'm going to ask the",
+        "patient": "The new batch of Dad's Aricept looks different from the last one, so I'm going to ask the"
+      },
+      "target_token": "Output \" pharmacist\"",
+      "probabilities": {
+        "clinical": 0.279,
+        "patient": 0.23
+      },
+      "language_penalty": -0.049000000000000016,
+      "clinical_mass": {
+        "clinical": 0.2549,
+        "patient": 0.2188
+      },
+      "error_share": {
+        "clinical": 0.1064,
+        "patient": 0.1091
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7O] words and phrases related to asking questions, espec \u2192 Output \" question\" (p=0.055)",
+        "patient": "embedding \u2192 [L24\u00b7O] words and phrases related to asking questions, espec \u2192 Output \" question\" (p=0.096)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pharmacist",
+        "observed_clinical": [
+          "Output \" pharmacist\"",
+          0.279
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pharmacist\"",
+            0.279
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.132
+          ],
+          [
+            "Output \" doctor\"",
+            0.116
+          ],
+          [
+            "Output \" question\"",
+            0.055
+          ],
+          [
+            "Output \" doc\"",
+            0.043
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pharmacist\"",
+            0.23
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.109
+          ],
+          [
+            "Output \" question\"",
+            0.096
+          ],
+          [
+            "Output \" doctor\"",
+            0.085
+          ],
+          [
+            "Output \" same\"",
+            0.058
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 950,
+        "unique_to_a": 439,
+        "unique_to_b": 574
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_40.html",
+        "png": "pilot/traces/trace_pairs/index_40.png",
+        "diff_html": "pilot/traces/trace_pairs/index_40_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_40_diff.png"
+      }
+    }
+  ]
+}

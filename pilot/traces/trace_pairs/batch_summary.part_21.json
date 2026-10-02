@@ -1,0 +1,943 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 21,
+  "pairs_requested": 10,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.16",
+    "engine_sha": "915adeae689a",
+    "runner_image": "20260927.320.1"
+  },
+  "results": [
+    {
+      "index": 21,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I take a low-dose aspirin every day for my heart, and the bottle was empty, so my husband ran to the",
+        "patient": "I take a baby aspirin every day for my heart, and the bottle was empty, so my husband ran to the"
+      },
+      "target_token": "Output \" store\"",
+      "probabilities": {
+        "clinical": 0.33,
+        "patient": 0.424
+      },
+      "language_penalty": 0.09399999999999997,
+      "clinical_mass": {
+        "clinical": 0.1926,
+        "patient": 0.172
+      },
+      "error_share": {
+        "clinical": 0.1051,
+        "patient": 0.1055
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L19\u00b7C] drug prescriptions and medical treatments | medicine \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" drug\" (p=0.200)",
+        "patient": "embedding \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" drug\" (p=0.177)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " store",
+        "observed_clinical": [
+          "Output \" store\"",
+          0.33
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" store\"",
+            0.33
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.258
+          ],
+          [
+            "Output \" drug\"",
+            0.2
+          ],
+          [
+            "Output \" local\"",
+            0.051
+          ],
+          [
+            "Output \" grocery\"",
+            0.035
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" store\"",
+            0.424
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.2
+          ],
+          [
+            "Output \" drug\"",
+            0.177
+          ],
+          [
+            "Output \" local\"",
+            0.045
+          ],
+          [
+            "Output \" grocery\"",
+            0.035
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1181,
+        "unique_to_a": 177,
+        "unique_to_b": 182
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_21.html",
+        "png": "pilot/traces/trace_pairs/index_21.png",
+        "diff_html": "pilot/traces/trace_pairs/index_21_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_21_diff.png"
+      }
+    },
+    {
+      "index": 22,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The pinched nerve in my cervical spine is acting up again, so I'm going to call my",
+        "patient": "The pinched nerve in my neck is acting up again, so I'm going to call my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.342,
+        "patient": 0.359
+      },
+      "language_penalty": 0.01699999999999996,
+      "clinical_mass": {
+        "clinical": 0.3905,
+        "patient": 0.3642
+      },
+      "error_share": {
+        "clinical": 0.0985,
+        "patient": 0.0927
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.342)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.359)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.342
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.342
+          ],
+          [
+            "Output \" chi\"",
+            0.184
+          ],
+          [
+            "Output \" neuro\"",
+            0.086
+          ],
+          [
+            "Output \" pain\"",
+            0.036
+          ],
+          [
+            "Output \" neuros\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.359
+          ],
+          [
+            "Output \" chi\"",
+            0.192
+          ],
+          [
+            "Output \" neuro\"",
+            0.043
+          ],
+          [
+            "Output \" therapist\"",
+            0.026
+          ],
+          [
+            "Output \" pain\"",
+            0.026
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1178,
+        "unique_to_a": 128,
+        "unique_to_b": 152
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_22.html",
+        "png": "pilot/traces/trace_pairs/index_22.png",
+        "diff_html": "pilot/traces/trace_pairs/index_22_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_22_diff.png"
+      }
+    },
+    {
+      "index": 23,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've had leg edema since starting my new blood pressure pill, so I'm going to make an",
+        "patient": "I've had water in my legs since starting my new blood pressure pill, so I'm going to make an"
+      },
+      "target_token": "Output \" appointment\"",
+      "probabilities": {
+        "clinical": 0.789,
+        "patient": 0.844
+      },
+      "language_penalty": 0.05499999999999994,
+      "clinical_mass": {
+        "clinical": 0.2268,
+        "patient": 0.1847
+      },
+      "error_share": {
+        "clinical": 0.091,
+        "patient": 0.0876
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L19\u00b7C] scheduling an appointment | appointment \u2192 Output \" appointment\" (p=0.789)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7C] scheduling an appointment | appointment \u2192 Output \" appointment\" (p=0.844)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " appointment",
+        "observed_clinical": [
+          "Output \" appointment\"",
+          0.789
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" appointment\"",
+            0.789
+          ],
+          [
+            "Output \" app\"",
+            0.083
+          ],
+          [
+            "Output \" effort\"",
+            0.057
+          ],
+          [
+            "Output \" attempt\"",
+            0.019
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" appointment\"",
+            0.844
+          ],
+          [
+            "Output \" effort\"",
+            0.048
+          ],
+          [
+            "Output \" app\"",
+            0.042
+          ],
+          [
+            "Output \" attempt\"",
+            0.015
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 857,
+        "unique_to_a": 355,
+        "unique_to_b": 362
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_23.html",
+        "png": "pilot/traces/trace_pairs/index_23.png",
+        "diff_html": "pilot/traces/trace_pairs/index_23_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_23_diff.png"
+      }
+    },
+    {
+      "index": 24,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I sat with my legs crossed too long and pinched the peroneal nerve, so now my foot drags and I wear a",
+        "patient": "I sat with my legs crossed too long and pinched the nerve in my leg, so now my foot drags and I wear a"
+      },
+      "target_token": "Output \" brace\"",
+      "probabilities": {
+        "clinical": 0.228,
+        "patient": 0.168
+      },
+      "language_penalty": -0.06,
+      "clinical_mass": {
+        "clinical": 0.2923,
+        "patient": 0.2596
+      },
+      "error_share": {
+        "clinical": 0.1084,
+        "patient": 0.1064
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" shoe\" (p=0.095)",
+        "patient": "embedding \u2192 Output \" shoe\" (p=0.090)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " brace",
+        "observed_clinical": [
+          "Output \" brace\"",
+          0.228
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" brace\"",
+            0.228
+          ],
+          [
+            "Output \" boot\"",
+            0.156
+          ],
+          [
+            "Output \" shoe\"",
+            0.095
+          ],
+          [
+            "Output \" splint\"",
+            0.074
+          ],
+          [
+            "Output \" cast\"",
+            0.045
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" boot\"",
+            0.19
+          ],
+          [
+            "Output \" brace\"",
+            0.168
+          ],
+          [
+            "Output \" shoe\"",
+            0.09
+          ],
+          [
+            "Output \" splint\"",
+            0.054
+          ],
+          [
+            "Output \" cast\"",
+            0.054
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1185,
+        "unique_to_a": 268,
+        "unique_to_b": 219
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_24.html",
+        "png": "pilot/traces/trace_pairs/index_24.png",
+        "diff_html": "pilot/traces/trace_pairs/index_24_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_24_diff.png"
+      }
+    },
+    {
+      "index": 25,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since my left ventricle got weak, every morning I step on the",
+        "patient": "Since my ticker got weak, every morning I step on the"
+      },
+      "target_token": "Output \" scale\"",
+      "probabilities": {
+        "clinical": 0.559,
+        "patient": 0.656
+      },
+      "language_penalty": 0.09699999999999998,
+      "clinical_mass": {
+        "clinical": 0.1558,
+        "patient": 0.0945
+      },
+      "error_share": {
+        "clinical": 0.1064,
+        "patient": 0.1063
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] this neuron finds elements of personal narratives or \u2192 [L20\u00b7O] words related to measurement, especially weight | sc \u2192 Output \" scales\" (p=0.085)",
+        "patient": "embedding \u2192 [L19\u00b7O] this neuron finds elements of personal narratives or \u2192 [L20\u00b7O] words related to measurement, especially weight | sc \u2192 Output \" scales\" (p=0.146)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " scale",
+        "observed_clinical": [
+          "Output \" scale\"",
+          0.559
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" scale\"",
+            0.559
+          ],
+          [
+            "Output \" treadmill\"",
+            0.124
+          ],
+          [
+            "Output \" scales\"",
+            0.085
+          ],
+          [
+            "Output \" bathroom\"",
+            0.052
+          ],
+          [
+            "Output \" weighing\"",
+            0.015
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" scale\"",
+            0.656
+          ],
+          [
+            "Output \" scales\"",
+            0.146
+          ],
+          [
+            "Output \" bathroom\"",
+            0.079
+          ],
+          [
+            "Output \" treadmill\"",
+            0.018
+          ],
+          [
+            "Output \" Scale\"",
+            0.011
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 905,
+        "unique_to_a": 417,
+        "unique_to_b": 309
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_25.html",
+        "png": "pilot/traces/trace_pairs/index_25.png",
+        "diff_html": "pilot/traces/trace_pairs/index_25_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_25_diff.png"
+      }
+    },
+    {
+      "index": 26,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My botulinum toxin injections stopped helping my migraines, so I'm making an appointment with my",
+        "patient": "My Botox injections stopped helping my migraines, so I'm making an appointment with my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.188,
+        "patient": 0.23
+      },
+      "language_penalty": 0.04200000000000001,
+      "clinical_mass": {
+        "clinical": 0.4445,
+        "patient": 0.4453
+      },
+      "error_share": {
+        "clinical": 0.1064,
+        "patient": 0.0991
+      },
+      "top_path": {
+        "clinical": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.188)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.230)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.188
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neuro\"",
+            0.398
+          ],
+          [
+            "Output \" doctor\"",
+            0.188
+          ],
+          [
+            "Output \" new\"",
+            0.033
+          ],
+          [
+            "Output \" primary\"",
+            0.029
+          ],
+          [
+            "Output \" neuros\"",
+            0.026
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" neuro\"",
+            0.262
+          ],
+          [
+            "Output \" doctor\"",
+            0.23
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.066
+          ],
+          [
+            "Output \" primary\"",
+            0.045
+          ],
+          [
+            "Output \" new\"",
+            0.035
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 968,
+        "unique_to_a": 400,
+        "unique_to_b": 282
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_26.html",
+        "png": "pilot/traces/trace_pairs/index_26.png",
+        "diff_html": "pilot/traces/trace_pairs/index_26_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_26_diff.png"
+      }
+    },
+    {
+      "index": 27,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My doctor thinks I'm bleeding somewhere in my GI tract, so she's sending me to see a",
+        "patient": "My doctor thinks I'm bleeding somewhere in my gut, so she's sending me to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.041,
+        "patient": 0.105
+      },
+      "language_penalty": 0.064,
+      "clinical_mass": {
+        "clinical": 0.5336,
+        "patient": 0.5225
+      },
+      "error_share": {
+        "clinical": 0.1067,
+        "patient": 0.1005
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7C] words and phrases related to gut bacteria, digestion \u2192 [L25\u00b7C] content from scientific or medical papers. | gut hea \u2192 Output \" gastro\" (p=0.143)",
+        "patient": "embedding \u2192 [L21\u00b7C] words and phrases related to gut bacteria, digestion \u2192 [L25\u00b7C] content from scientific or medical papers. | gut hea \u2192 Output \" gastro\" (p=0.174)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " specialist",
+        "observed_clinical": [
+          "Output \" specialist\"",
+          0.041
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" GI\"",
+            0.387
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.207
+          ],
+          [
+            "Output \" gastro\"",
+            0.143
+          ],
+          [
+            "Output \" specialist\"",
+            0.041
+          ],
+          [
+            "Output \" colon\"",
+            0.041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" GI\"",
+            0.254
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.174
+          ],
+          [
+            "Output \" gastro\"",
+            0.174
+          ],
+          [
+            "Output \" specialist\"",
+            0.105
+          ],
+          [
+            "Output \" surgeon\"",
+            0.082
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1154,
+        "unique_to_a": 145,
+        "unique_to_b": 190
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_27.html",
+        "png": "pilot/traces/trace_pairs/index_27.png",
+        "diff_html": "pilot/traces/trace_pairs/index_27_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_27_diff.png"
+      }
+    },
+    {
+      "index": 28,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With this colitis flare I've got tenesmus, so I'm staying close to the",
+        "patient": "With this colitis flare I've got the constant urge to go, so I'm staying close to the"
+      },
+      "target_token": "Output \" bathroom\"",
+      "probabilities": {
+        "clinical": 0.262,
+        "patient": 0.291
+      },
+      "language_penalty": 0.02899999999999997,
+      "clinical_mass": {
+        "clinical": 0.2291,
+        "patient": 0.1936
+      },
+      "error_share": {
+        "clinical": 0.1174,
+        "patient": 0.119
+      },
+      "top_path": {
+        "clinical": "[L16\u00b7S]  \u2192 [L18\u00b7O] mentions of restrooms and bathrooms | bathroom \u2192 [L25\u00b7O] words relating to plumbing | bathrooms and toilets \u2192 Output \" toilet\" (p=0.434)",
+        "patient": "embedding \u2192 [L8\u00b7O] words and phrases related to defecation and bathroom \u2192 [L18\u00b7O] mentions of restrooms and bathrooms | bathroom \u2192 [L25\u00b7O] words relating to plumbing | bathrooms and toilets \u2192 Output \" toilet\" (p=0.373)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " bathroom",
+        "observed_clinical": [
+          "Output \" bathroom\"",
+          0.262
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" toilet\"",
+            0.434
+          ],
+          [
+            "Output \" bathroom\"",
+            0.262
+          ],
+          [
+            "Output \" loo\"",
+            0.085
+          ],
+          [
+            "Output \" restroom\"",
+            0.028
+          ],
+          [
+            "Output \" house\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" toilet\"",
+            0.373
+          ],
+          [
+            "Output \" bathroom\"",
+            0.291
+          ],
+          [
+            "Output \" loo\"",
+            0.107
+          ],
+          [
+            "Output \" house\"",
+            0.083
+          ],
+          [
+            "Output \" restroom\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 767,
+        "unique_to_a": 494,
+        "unique_to_b": 433
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_28.html",
+        "png": "pilot/traces/trace_pairs/index_28.png",
+        "diff_html": "pilot/traces/trace_pairs/index_28_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_28_diff.png"
+      }
+    },
+    {
+      "index": 29,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My smile went crooked because the facial nerve is swollen, so I'm picking up my",
+        "patient": "My smile went crooked because the nerve in my face is swollen, so I'm picking up my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2518
+      },
+      "error_share": {
+        "clinical": 0.1076
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " prescription",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" jaw\"",
+            0.077
+          ],
+          [
+            "Output \" face\"",
+            0.077
+          ],
+          [
+            "Output \" teeth\"",
+            0.047
+          ],
+          [
+            "Output \" mouth\"",
+            0.041
+          ],
+          [
+            "Output \" smile\"",
+            0.041
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 30,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I woke up with diplopia, so my husband is driving me to the",
+        "patient": "I woke up with double vision, so my husband is driving me to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.188,
+        "patient": 0.162
+      },
+      "language_penalty": -0.025999999999999995,
+      "clinical_mass": {
+        "clinical": 0.3403,
+        "patient": 0.2967
+      },
+      "error_share": {
+        "clinical": 0.0987,
+        "patient": 0.0957
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.089)",
+        "patient": "embedding \u2192 Output \" eye\" (p=0.268)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " hospital",
+        "observed_clinical": [
+          "Output \" hospital\"",
+          0.188
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.188
+          ],
+          [
+            "Output \" hospital\"",
+            0.188
+          ],
+          [
+            "Output \" eye\"",
+            0.188
+          ],
+          [
+            "Output \" emergency\"",
+            0.089
+          ],
+          [
+            "Output \" doctor\"",
+            0.069
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" eye\"",
+            0.268
+          ],
+          [
+            "Output \" hospital\"",
+            0.162
+          ],
+          [
+            "Output \" ER\"",
+            0.126
+          ],
+          [
+            "Output \" emergency\"",
+            0.098
+          ],
+          [
+            "Output \" doctor\"",
+            0.098
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 817,
+        "unique_to_a": 687,
+        "unique_to_b": 538
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_30.html",
+        "png": "pilot/traces/trace_pairs/index_30.png",
+        "diff_html": "pilot/traces/trace_pairs/index_30_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_30_diff.png"
+      }
+    }
+  ]
+}

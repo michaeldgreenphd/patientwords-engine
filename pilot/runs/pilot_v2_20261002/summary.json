@@ -1,0 +1,1658 @@
+{
+  "harness_version": 2,
+  "n_seeds": 26,
+  "k_exemplars_used": 8,
+  "k_exemplars_requested": 8,
+  "seed_provenance": [
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 10; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 11; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 12; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 13; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 14; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 15; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 16; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 18; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 20; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 21; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 22; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 23; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 24; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 25; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 26; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 27; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 28; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 29; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 2; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 3; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 4; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 5; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 6; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 7; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 8; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered",
+    "hand-built dataset from real patient language: engine data/measured/imported_pairs.json, source_row 9; converted mechanically to term + template form (shared prefix and suffix become the template), text unaltered"
+  ],
+  "seeds": {
+    "master_seed": 20260929,
+    "exemplar_sampling": "random.Random(20260929)",
+    "bootstrap": "random.Random('20260929:bootstrap')",
+    "n_boot": 2000,
+    "broken_pairs": "random.Random('20260929:broken')",
+    "checker_shuffle": "random.Random('20260929:checker_shuffle')",
+    "review_sample": "random.Random('20260929:review')"
+  },
+  "input_hashes": {
+    "seeds.json": "095820fe7ae0ef8aef051533fa4ab9f1e3f11322379e8524e05c59bd3419f0bb",
+    "design.json": "03e152bbf71effe1358009e6daeb4437284dfae75bc7718e6bbb5582782fca7d",
+    "calls.json": "b36a49b34f3b23ac01c23d07dc47c6af2ff69568f10bc416f45fb38416d50c0b",
+    "call_log.jsonl": "d03acc15ae68811294e067221b6c6311be7723232f6a164190e6b7e63f571a3d",
+    "generated/all_rows.jsonl": "21c695b62c5e78fc526b11bae7099f4cfb62f27c12683896d7978c4ba11a0bb1",
+    "generated/format_failures.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "checker_batches.json": "d513a4d535ad7df61e99649f71742269740845b65eb8a89e723fe4bd3d7c32c5",
+    "checker_set.jsonl": "621866881f9432669923a4dd043af4f46d8099a92caff7a23ca6440f7a6a6f33",
+    "checker_key.jsonl": "1750aed4eaa24f91fb4f7ee17bdfcb1a92c4a4ef1acb30db153597be80a1772b",
+    "checked.jsonl": "2c060cbd93631520a0d2749ed7ec88e7e66cbb48d8d2838cf893c6dc78bd4461",
+    "review_map.json": "209feab9a2611e1c2867be34372344a9f965a3307e37a0664e055dbd4169d22c",
+    "review_sheet.csv": "ce18d039d5716d6564608f960d8b938742e1678829fef0c31aa2822c443c6c3d",
+    "review_key.csv": "4da59acfefd12a79d8c5ac06738b075d394ce54dd25362dd06ade4c9d3edc853"
+  },
+  "script_hashes": {
+    "build_api_requests.py": "f06db467a4a4e2490a9d6f9d6a71595ad58e23bf7497aa929eefc79c9a3c812b",
+    "build_checker_set.py": "6b20d11dc8ad9df390f75a0a3cc8dd67eb8760acd78f0d6a40118c781fea1413",
+    "common.py": "665e220750fd1155b4f1bf2ea63a505244a0a96631c8007a4135030dac8e2dcf",
+    "compute_summary.py": "0933b230b0dbc3d7845428d6a67c3593fa25de9d083093c1387c9def1b18190f",
+    "extract_workflow_journal.py": "46fc5f7730100d4d3a63ef7b3b9a2e396128b26e48d735f72be23525c6a9aeb4",
+    "make_review_sheet.py": "8cb3e0c6010a61b086352ee6285966cb50867d1ff7fcc6626a0aaa634014c3fe",
+    "make_workflow_scripts.py": "1eb6f2b49759ef93e513207af2d7f8a7e94c3e242d557c5f0072fde549e9412c",
+    "parse_checker.py": "6ab2f019ed8a7d4df347c26466afa5272a7953a640d1639d244c99cb7eead6db",
+    "parse_generation.py": "72e14c33b8f90dd2009eae81b767ec46fbc08cff32a1838a55a04018a4bd7984",
+    "plan_calls.py": "c638ff8db59c1c3dd379c6647540b8790bf0f29007e7d5018660634663206899",
+    "record_run.py": "335c5228335cc904e0fc8c4af8549e3c736618ccbc579ed94f2789bc2bbff3d4",
+    "rederive.py": "7b67baf59d1d0fc8d3a24e4d27ef5dfda463ce3e090de81adaeecbc61b336c43",
+    "selftest.py": "47e72090b736fb8905526c51e7c757e66259148eda076c3a140a79b383bcd95b",
+    "write_manifest.py": "59266b216dfc8894d6b6e0d61e8b043ae17fdd51b96c0d539f5c84c39717671a"
+  },
+  "run": {
+    "n_calls": 18,
+    "n_attempts": 18,
+    "n_retried_calls": 0,
+    "calls_with_valid_rows": {
+      "x": 18,
+      "n": 18,
+      "p": 1.0,
+      "lo": 0.8241207740667156,
+      "hi": 1.0
+    },
+    "calls_without_response": 0,
+    "per_call": [
+      {
+        "call_id": "A__cardiology__symptom_description",
+        "arm": "A",
+        "cell": "cardiology__symptom_description",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "B__cardiology__symptom_description",
+        "arm": "B",
+        "cell": "cardiology__symptom_description",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "A__cardiology__body_part",
+        "arm": "A",
+        "cell": "cardiology__body_part",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "B__cardiology__body_part",
+        "arm": "B",
+        "cell": "cardiology__body_part",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "A__cardiology__medication",
+        "arm": "A",
+        "cell": "cardiology__medication",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "B__cardiology__medication",
+        "arm": "B",
+        "cell": "cardiology__medication",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "A__neurology__symptom_description",
+        "arm": "A",
+        "cell": "neurology__symptom_description",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "B__neurology__symptom_description",
+        "arm": "B",
+        "cell": "neurology__symptom_description",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "A__neurology__body_part",
+        "arm": "A",
+        "cell": "neurology__body_part",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "B__neurology__body_part",
+        "arm": "B",
+        "cell": "neurology__body_part",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "A__neurology__medication",
+        "arm": "A",
+        "cell": "neurology__medication",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "B__neurology__medication",
+        "arm": "B",
+        "cell": "neurology__medication",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "A__gastroenterology__symptom_description",
+        "arm": "A",
+        "cell": "gastroenterology__symptom_description",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "B__gastroenterology__symptom_description",
+        "arm": "B",
+        "cell": "gastroenterology__symptom_description",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "A__gastroenterology__body_part",
+        "arm": "A",
+        "cell": "gastroenterology__body_part",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "B__gastroenterology__body_part",
+        "arm": "B",
+        "cell": "gastroenterology__body_part",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "A__gastroenterology__medication",
+        "arm": "A",
+        "cell": "gastroenterology__medication",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      },
+      {
+        "call_id": "B__gastroenterology__medication",
+        "arm": "B",
+        "cell": "gastroenterology__medication",
+        "attempt": 1,
+        "n_lines": 20,
+        "n_valid": 20,
+        "n_invalid": 0,
+        "n_control": 4,
+        "n_noncontrol": 16,
+        "reasons": {
+          "ok": 20
+        },
+        "status": "ok"
+      }
+    ],
+    "non_final_attempts": []
+  },
+  "E1": {
+    "overall": {
+      "x": 360,
+      "n": 360,
+      "p": 1.0,
+      "lo": 0.9894419429465038,
+      "hi": 1.0
+    },
+    "by_arm": {
+      "A": {
+        "x": 180,
+        "n": 180,
+        "p": 1.0,
+        "lo": 0.979104501755633,
+        "hi": 1.0
+      },
+      "B": {
+        "x": 180,
+        "n": 180,
+        "p": 1.0,
+        "lo": 0.979104501755633,
+        "hi": 1.0
+      }
+    },
+    "by_cell": {
+      "cardiology__symptom_description": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      },
+      "cardiology__body_part": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      },
+      "cardiology__medication": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      },
+      "neurology__symptom_description": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      },
+      "neurology__body_part": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      },
+      "neurology__medication": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      },
+      "gastroenterology__symptom_description": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      },
+      "gastroenterology__body_part": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      },
+      "gastroenterology__medication": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      }
+    },
+    "failure_reasons": {},
+    "all_attempts_pooled": {
+      "x": 360,
+      "n": 360,
+      "p": 1.0,
+      "lo": 0.9894419429465038,
+      "hi": 1.0
+    }
+  },
+  "controls": {
+    "n_control_rows": 72,
+    "expected": 72,
+    "unmeasurable": 0,
+    "faithful": {
+      "x": 72,
+      "n": 72,
+      "p": 1.0,
+      "lo": 0.9493488266449553,
+      "hi": 0.9999999999999999
+    },
+    "by_arm": {
+      "A": {
+        "x": 36,
+        "n": 36,
+        "p": 1.0,
+        "lo": 0.9035813700311206,
+        "hi": 1.0
+      },
+      "B": {
+        "x": 36,
+        "n": 36,
+        "p": 1.0,
+        "lo": 0.9035813700311206,
+        "hi": 1.0
+      }
+    }
+  },
+  "E2": {
+    "by_arm": {
+      "A": {
+        "pair": {
+          "x": 144,
+          "n": 144,
+          "p": 1.0,
+          "lo": 0.9740163624577031,
+          "hi": 1.0
+        },
+        "clinical_term_only": {
+          "x": 108,
+          "n": 144,
+          "p": 0.75,
+          "lo": 0.6734032427028186,
+          "hi": 0.813604938526033
+        },
+        "patient_term_only": {
+          "x": 141,
+          "n": 144,
+          "p": 0.9791666666666666,
+          "lo": 0.940542466692591,
+          "hi": 0.9928898806627078
+        }
+      },
+      "B": {
+        "pair": {
+          "x": 142,
+          "n": 144,
+          "p": 0.9861111111111112,
+          "lo": 0.950777487017973,
+          "hi": 0.9961828653714606
+        },
+        "clinical_term_only": {
+          "x": 106,
+          "n": 144,
+          "p": 0.7361111111111112,
+          "lo": 0.6586668980301507,
+          "hi": 0.8012852731304314
+        },
+        "patient_term_only": {
+          "x": 137,
+          "n": 144,
+          "p": 0.9513888888888888,
+          "lo": 0.903064315344094,
+          "hi": 0.9762560118746657
+        }
+      }
+    },
+    "pooled": {
+      "pair": {
+        "x": 220,
+        "n": 288,
+        "p": 0.7638888888888888,
+        "lo": 0.7115671516256394,
+        "hi": 0.8092635781228186
+      },
+      "clinical_term_only": {
+        "x": 146,
+        "n": 288,
+        "p": 0.5069444444444444,
+        "lo": 0.4494938122885823,
+        "hi": 0.5642122595469035
+      },
+      "patient_term_only": {
+        "x": 204,
+        "n": 288,
+        "p": 0.7083333333333334,
+        "lo": 0.6533711231446169,
+        "hi": 0.7578110319199554
+      }
+    },
+    "duplicates_of_seeds": 0
+  },
+  "E3": {
+    "within_cell": {
+      "A": {
+        "cardiology__symptom_description": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.10676491199095728
+        },
+        "cardiology__body_part": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.1298915593574454
+        },
+        "cardiology__medication": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.10928392818472904
+        },
+        "neurology__symptom_description": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.10807061568389073
+        },
+        "neurology__body_part": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.11689593544482843
+        },
+        "neurology__medication": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.09934749623964591
+        },
+        "gastroenterology__symptom_description": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.1369336889569049
+        },
+        "gastroenterology__body_part": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.1177182310800434
+        },
+        "gastroenterology__medication": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.12280065231917447
+        }
+      },
+      "B": {
+        "cardiology__symptom_description": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.11093232758935266
+        },
+        "cardiology__body_part": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.10883961708963066
+        },
+        "cardiology__medication": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.09680160067477829
+        },
+        "neurology__symptom_description": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.09781695373034048
+        },
+        "neurology__body_part": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.13888444599458655
+        },
+        "neurology__medication": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.09119682328392291
+        },
+        "gastroenterology__symptom_description": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.1996374614319397
+        },
+        "gastroenterology__body_part": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.13805925611108433
+        },
+        "gastroenterology__medication": {
+          "n_rows": 16,
+          "n_pairs": 120,
+          "mean": 0.11543651890088412
+        }
+      }
+    },
+    "arm_mean_of_cells": {
+      "A": {
+        "mean": 0.11641189102862438,
+        "n_rows": 144,
+        "n_cells_with_pairs": 9,
+        "n_boot_effective": 2000,
+        "n_undefined_replicates": 0,
+        "lo": 0.1015239242776925,
+        "hi": 0.13272307267755626
+      },
+      "B": {
+        "mean": 0.12195611164516887,
+        "n_rows": 144,
+        "n_cells_with_pairs": 9,
+        "n_boot_effective": 2000,
+        "n_undefined_replicates": 0,
+        "lo": 0.1052761955897619,
+        "hi": 0.1391996523191753
+      }
+    },
+    "vs_seeds": {
+      "A": {
+        "mean": 0.04079515250587059,
+        "n_pairs": 3744,
+        "lo": 0.03828366841125671,
+        "hi": 0.04320066632856326
+      },
+      "B": {
+        "mean": 0.037783819161663554,
+        "n_pairs": 3744,
+        "lo": 0.035327091041148964,
+        "hi": 0.04032045673670965
+      }
+    },
+    "diff_A_minus_B": {
+      "within_cell": {
+        "diff": -0.005544220616544485,
+        "n_boot_effective": 2000,
+        "n_undefined_replicates": 0,
+        "lo": -0.029588231375659784,
+        "hi": 0.018742932378438094
+      },
+      "vs_seeds": {
+        "diff": 0.003011333344207036,
+        "lo": -0.0004573217744994643,
+        "hi": 0.006666158806266409
+      }
+    },
+    "n_boot": 2000,
+    "bootstrap_seed": "random.Random('20260929:bootstrap')",
+    "tfidf_fit_docs": 314,
+    "unmeasurable_templates": {
+      "n": 0,
+      "by_arm": {
+        "A": 0,
+        "B": 0
+      },
+      "row_ids": []
+    },
+    "unmeasurable_seed_templates": []
+  },
+  "E4": {
+    "generated": {
+      "yes_over_answered": {
+        "x": 280,
+        "n": 288,
+        "p": 0.9722222222222222,
+        "lo": 0.9461541497792941,
+        "hi": 0.9858587350337361
+      },
+      "unclear_over_answered": {
+        "x": 0,
+        "n": 288,
+        "p": 0.0,
+        "lo": 0.0,
+        "hi": 0.013162827845026915
+      },
+      "missing": 0,
+      "counts": {
+        "yes": 280,
+        "no": 8
+      }
+    },
+    "by_arm": {
+      "A": {
+        "yes_over_answered": {
+          "x": 139,
+          "n": 144,
+          "p": 0.9652777777777778,
+          "lo": 0.9212970795683261,
+          "hi": 0.9850792577187032
+        },
+        "unclear_over_answered": {
+          "x": 0,
+          "n": 144,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.025983637542296996
+        },
+        "missing": 0,
+        "counts": {
+          "yes": 139,
+          "no": 5
+        }
+      },
+      "B": {
+        "yes_over_answered": {
+          "x": 141,
+          "n": 144,
+          "p": 0.9791666666666666,
+          "lo": 0.940542466692591,
+          "hi": 0.9928898806627078
+        },
+        "unclear_over_answered": {
+          "x": 0,
+          "n": 144,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.025983637542296996
+        },
+        "missing": 0,
+        "counts": {
+          "yes": 141,
+          "no": 3
+        }
+      }
+    },
+    "by_cell": {
+      "cardiology__symptom_description": {
+        "yes_over_answered": {
+          "x": 32,
+          "n": 32,
+          "p": 1.0,
+          "lo": 0.8928208002353198,
+          "hi": 1.0
+        },
+        "unclear_over_answered": {
+          "x": 0,
+          "n": 32,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.10717919976468034
+        },
+        "missing": 0,
+        "counts": {
+          "yes": 32
+        }
+      },
+      "cardiology__body_part": {
+        "yes_over_answered": {
+          "x": 29,
+          "n": 32,
+          "p": 0.90625,
+          "lo": 0.7578184512368681,
+          "hi": 0.9675984489543291
+        },
+        "unclear_over_answered": {
+          "x": 0,
+          "n": 32,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.10717919976468034
+        },
+        "missing": 0,
+        "counts": {
+          "yes": 29,
+          "no": 3
+        }
+      },
+      "cardiology__medication": {
+        "yes_over_answered": {
+          "x": 32,
+          "n": 32,
+          "p": 1.0,
+          "lo": 0.8928208002353198,
+          "hi": 1.0
+        },
+        "unclear_over_answered": {
+          "x": 0,
+          "n": 32,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.10717919976468034
+        },
+        "missing": 0,
+        "counts": {
+          "yes": 32
+        }
+      },
+      "neurology__symptom_description": {
+        "yes_over_answered": {
+          "x": 32,
+          "n": 32,
+          "p": 1.0,
+          "lo": 0.8928208002353198,
+          "hi": 1.0
+        },
+        "unclear_over_answered": {
+          "x": 0,
+          "n": 32,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.10717919976468034
+        },
+        "missing": 0,
+        "counts": {
+          "yes": 32
+        }
+      },
+      "neurology__body_part": {
+        "yes_over_answered": {
+          "x": 29,
+          "n": 32,
+          "p": 0.90625,
+          "lo": 0.7578184512368681,
+          "hi": 0.9675984489543291
+        },
+        "unclear_over_answered": {
+          "x": 0,
+          "n": 32,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.10717919976468034
+        },
+        "missing": 0,
+        "counts": {
+          "yes": 29,
+          "no": 3
+        }
+      },
+      "neurology__medication": {
+        "yes_over_answered": {
+          "x": 32,
+          "n": 32,
+          "p": 1.0,
+          "lo": 0.8928208002353198,
+          "hi": 1.0
+        },
+        "unclear_over_answered": {
+          "x": 0,
+          "n": 32,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.10717919976468034
+        },
+        "missing": 0,
+        "counts": {
+          "yes": 32
+        }
+      },
+      "gastroenterology__symptom_description": {
+        "yes_over_answered": {
+          "x": 32,
+          "n": 32,
+          "p": 1.0,
+          "lo": 0.8928208002353198,
+          "hi": 1.0
+        },
+        "unclear_over_answered": {
+          "x": 0,
+          "n": 32,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.10717919976468034
+        },
+        "missing": 0,
+        "counts": {
+          "yes": 32
+        }
+      },
+      "gastroenterology__body_part": {
+        "yes_over_answered": {
+          "x": 30,
+          "n": 32,
+          "p": 0.9375,
+          "lo": 0.7985287670813637,
+          "hi": 0.982689433124541
+        },
+        "unclear_over_answered": {
+          "x": 0,
+          "n": 32,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.10717919976468034
+        },
+        "missing": 0,
+        "counts": {
+          "yes": 30,
+          "no": 2
+        }
+      },
+      "gastroenterology__medication": {
+        "yes_over_answered": {
+          "x": 32,
+          "n": 32,
+          "p": 1.0,
+          "lo": 0.8928208002353198,
+          "hi": 1.0
+        },
+        "unclear_over_answered": {
+          "x": 0,
+          "n": 32,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.10717919976468034
+        },
+        "missing": 0,
+        "counts": {
+          "yes": 32
+        }
+      }
+    },
+    "checker_sensitivity_known_good": {
+      "unclear_counts_as_miss": {
+        "x": 5,
+        "n": 10,
+        "p": 0.5,
+        "lo": 0.23659308901147935,
+        "hi": 0.7634069109885206
+      },
+      "unclear_excluded": {
+        "x": 5,
+        "n": 9,
+        "p": 0.5555555555555556,
+        "lo": 0.26665129180087416,
+        "hi": 0.8112214802294544
+      },
+      "counts": {
+        "no": 4,
+        "yes": 5,
+        "unclear": 1
+      }
+    },
+    "checker_specificity_broken": {
+      "unclear_counts_as_miss": {
+        "x": 19,
+        "n": 20,
+        "p": 0.95,
+        "lo": 0.7638688045357189,
+        "hi": 0.9911185512976646
+      },
+      "unclear_excluded": {
+        "x": 19,
+        "n": 20,
+        "p": 0.95,
+        "lo": 0.7638688045357189,
+        "hi": 0.9911185512976646
+      },
+      "counts": {
+        "no": 19,
+        "yes": 1
+      }
+    },
+    "checker_set": {
+      "n_items": 318,
+      "n_generated": 288,
+      "n_known_good": 10,
+      "n_broken": 20,
+      "notes": []
+    }
+  },
+  "E5": {
+    "novelty_pair": {
+      "diff": 0.01388888888888884,
+      "lo": -0.013978469324805006,
+      "hi": 0.049222512982026956
+    },
+    "diversity_within_cell": {
+      "diff": -0.005544220616544485,
+      "n_boot_effective": 2000,
+      "n_undefined_replicates": 0,
+      "lo": -0.029588231375659784,
+      "hi": 0.018742932378438094
+    },
+    "diversity_vs_seeds": {
+      "diff": 0.003011333344207036,
+      "lo": -0.0004573217744994643,
+      "hi": 0.006666158806266409
+    },
+    "equivalence_yes": {
+      "diff": -0.01388888888888884,
+      "lo": -0.05996088056899758,
+      "hi": 0.029515343986353346
+    }
+  },
+  "review": {
+    "n": 40,
+    "allocation": {
+      "A": 20,
+      "B": 20
+    },
+    "checked_by_arm": {
+      "A": 144,
+      "B": 144
+    },
+    "sampling": "one_row_per_concept",
+    "n_concepts_by_arm": {
+      "A": 108,
+      "B": 108
+    },
+    "n_unique_concepts_in_sample": 40
+  },
+  "probe_point": {
+    "endings": [
+      "a",
+      "an",
+      "the",
+      "my",
+      "his",
+      "her",
+      "their",
+      "your",
+      "our"
+    ],
+    "population": "format-valid rows of the final attempts, controls included",
+    "overall": {
+      "x": 360,
+      "n": 360,
+      "p": 1.0,
+      "lo": 0.9894419429465038,
+      "hi": 1.0
+    },
+    "by_control": {
+      "none": {
+        "x": 288,
+        "n": 288,
+        "p": 1.0,
+        "lo": 0.9868371721549732,
+        "hi": 1.0
+      },
+      "negative": {
+        "x": 72,
+        "n": 72,
+        "p": 1.0,
+        "lo": 0.9493488266449553,
+        "hi": 0.9999999999999999
+      }
+    },
+    "by_arm": {
+      "A": {
+        "x": 180,
+        "n": 180,
+        "p": 1.0,
+        "lo": 0.979104501755633,
+        "hi": 1.0
+      },
+      "B": {
+        "x": 180,
+        "n": 180,
+        "p": 1.0,
+        "lo": 0.979104501755633,
+        "hi": 1.0
+      }
+    },
+    "by_cell": {
+      "cardiology__symptom_description": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      },
+      "cardiology__body_part": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      },
+      "cardiology__medication": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      },
+      "neurology__symptom_description": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      },
+      "neurology__body_part": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      },
+      "neurology__medication": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      },
+      "gastroenterology__symptom_description": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      },
+      "gastroenterology__body_part": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      },
+      "gastroenterology__medication": {
+        "x": 40,
+        "n": 40,
+        "p": 1.0,
+        "lo": 0.9123783975415363,
+        "hi": 1.0
+      }
+    }
+  },
+  "variant_design": {
+    "definition": "per call, over the final attempt's format-valid control none rows ordered by line_index: compliant when the rows number exactly 16 and cover exactly 12 concepts (clinical_term surface key and template), exactly 4 adjacent pairs share clinical_term, template and next_word with different patient_term surface keys, no concept's rows are separated by another concept's row, and no concept runs over three or more rows",
+    "expected_rows_per_call": 16,
+    "expected_pairs_per_call": 4,
+    "expected_concepts_per_call": 12,
+    "calls_compliant": {
+      "x": 18,
+      "n": 18,
+      "p": 1.0,
+      "lo": 0.8241207740667156,
+      "hi": 1.0
+    },
+    "by_arm": {
+      "A": {
+        "x": 9,
+        "n": 9,
+        "p": 1.0,
+        "lo": 0.700854948272956,
+        "hi": 1.0
+      },
+      "B": {
+        "x": 9,
+        "n": 9,
+        "p": 1.0,
+        "lo": 0.700854948272956,
+        "hi": 1.0
+      }
+    },
+    "pairs_exact": 72,
+    "pairs_clinical_surface": 72,
+    "non_adjacent_repeats": 0,
+    "runs_of_three_or_more": 0,
+    "flagged_calls": [],
+    "per_call": [
+      {
+        "call_id": "A__cardiology__symptom_description",
+        "arm": "A",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "B__cardiology__symptom_description",
+        "arm": "B",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "A__cardiology__body_part",
+        "arm": "A",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "B__cardiology__body_part",
+        "arm": "B",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "A__cardiology__medication",
+        "arm": "A",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "B__cardiology__medication",
+        "arm": "B",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "A__neurology__symptom_description",
+        "arm": "A",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "B__neurology__symptom_description",
+        "arm": "B",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "A__neurology__body_part",
+        "arm": "A",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "B__neurology__body_part",
+        "arm": "B",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "A__neurology__medication",
+        "arm": "A",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "B__neurology__medication",
+        "arm": "B",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "A__gastroenterology__symptom_description",
+        "arm": "A",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "B__gastroenterology__symptom_description",
+        "arm": "B",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "A__gastroenterology__body_part",
+        "arm": "A",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "B__gastroenterology__body_part",
+        "arm": "B",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "A__gastroenterology__medication",
+        "arm": "A",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      },
+      {
+        "call_id": "B__gastroenterology__medication",
+        "arm": "B",
+        "n_rows": 16,
+        "concepts": 12,
+        "pairs_exact": 4,
+        "pairs_clinical_surface": 4,
+        "non_adjacent_repeats": 0,
+        "runs_of_three_or_more": 0,
+        "compliant": true
+      }
+    ]
+  },
+  "next_word": {
+    "population": "format-valid rows of the final attempts, controls included",
+    "n_rows": 360,
+    "n_distinct": 50,
+    "most_common": [
+      {
+        "word": "doctor",
+        "n": 136
+      },
+      {
+        "word": "hospital",
+        "n": 53
+      },
+      {
+        "word": "ambulance",
+        "n": 21
+      },
+      {
+        "word": "pharmacy",
+        "n": 19
+      },
+      {
+        "word": "bathroom",
+        "n": 15
+      },
+      {
+        "word": "antacid",
+        "n": 8
+      },
+      {
+        "word": "dentist",
+        "n": 8
+      },
+      {
+        "word": "pharmacist",
+        "n": 8
+      },
+      {
+        "word": "appointment",
+        "n": 6
+      },
+      {
+        "word": "surgeon",
+        "n": 6
+      }
+    ]
+  },
+  "checker_v2": {
+    "population": "answered items (verdict not missing); relation, precision and the yes-rate by relation count only answers with a yes or no verdict",
+    "n_answered": {
+      "generated": 288,
+      "known_good": 10,
+      "broken": 20
+    },
+    "n_relation_counted": {
+      "generated": 288,
+      "known_good": 9,
+      "broken": 20
+    },
+    "relation": {
+      "generated": {
+        "same": 121,
+        "same_brand": 50,
+        "broader": 109,
+        "narrower": 1,
+        "different": 7
+      },
+      "known_good": {
+        "same": 3,
+        "same_brand": 0,
+        "broader": 2,
+        "narrower": 0,
+        "different": 4
+      },
+      "broken": {
+        "same": 0,
+        "same_brand": 0,
+        "broader": 1,
+        "narrower": 1,
+        "different": 18
+      }
+    },
+    "precision": {
+      "generated": {
+        "as_precise": 171,
+        "vaguer": 109,
+        "more_specific": 1,
+        "not_applicable": 7
+      },
+      "known_good": {
+        "as_precise": 3,
+        "vaguer": 2,
+        "more_specific": 0,
+        "not_applicable": 4
+      },
+      "broken": {
+        "as_precise": 0,
+        "vaguer": 1,
+        "more_specific": 1,
+        "not_applicable": 18
+      }
+    },
+    "yes_by_relation": {
+      "same": {
+        "x": 121,
+        "n": 121,
+        "p": 1.0,
+        "lo": 0.9692293015820281,
+        "hi": 1.0
+      },
+      "same_brand": {
+        "x": 50,
+        "n": 50,
+        "p": 1.0,
+        "lo": 0.9286523998213857,
+        "hi": 0.9999999999999999
+      },
+      "broader": {
+        "x": 109,
+        "n": 109,
+        "p": 1.0,
+        "lo": 0.9659570257299043,
+        "hi": 0.9999999999999999
+      },
+      "narrower": {
+        "x": 0,
+        "n": 1,
+        "p": 0.0,
+        "lo": 0.0,
+        "hi": 0.7934506882081973
+      },
+      "different": {
+        "x": 0,
+        "n": 7,
+        "p": 0.0,
+        "lo": 0.0,
+        "hi": 0.35433043867586833
+      }
+    },
+    "unclear_relation": {
+      "n": {
+        "generated": 0,
+        "known_good": 1,
+        "broken": 0
+      },
+      "relation": {
+        "generated": {
+          "same": 0,
+          "same_brand": 0,
+          "broader": 0,
+          "narrower": 0,
+          "different": 0
+        },
+        "known_good": {
+          "same": 0,
+          "same_brand": 0,
+          "broader": 1,
+          "narrower": 0,
+          "different": 0
+        },
+        "broken": {
+          "same": 0,
+          "same_brand": 0,
+          "broader": 0,
+          "narrower": 0,
+          "different": 0
+        }
+      },
+      "total": 1,
+      "item_ids": [
+        "c0076"
+      ]
+    },
+    "inconsistent": {
+      "generated": 0,
+      "known_good": 0,
+      "broken": 0,
+      "total": 0,
+      "item_ids": []
+    },
+    "sentence_natural": {
+      "generated": {
+        "both": 288,
+        "clinical_only": 0,
+        "patient_only": 0,
+        "neither": 0
+      },
+      "by_arm": {
+        "A": {
+          "both": 144,
+          "clinical_only": 0,
+          "patient_only": 0,
+          "neither": 0
+        },
+        "B": {
+          "both": 144,
+          "clinical_only": 0,
+          "patient_only": 0,
+          "neither": 0
+        }
+      }
+    },
+    "patient_realism": {
+      "generated": {
+        "real": 287,
+        "textbook": 1,
+        "unlikely": 0
+      },
+      "by_arm": {
+        "A": {
+          "real": 144,
+          "textbook": 0,
+          "unlikely": 0
+        },
+        "B": {
+          "real": 143,
+          "textbook": 1,
+          "unlikely": 0
+        }
+      }
+    }
+  },
+  "row_level_intervals": {
+    "unit": "row",
+    "estimands": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "reading": "descriptive",
+    "two_row_concepts_per_call": 4,
+    "rows_in_two_row_concepts_per_call": 8,
+    "non_control_rows_per_call": 16,
+    "concepts": {
+      "A": 108,
+      "B": 108,
+      "total": 216
+    },
+    "non_control_rows": {
+      "A": 144,
+      "B": 144,
+      "total": 288
+    }
+  },
+  "summary_md_sha256": "8b84b768c946cb5045e291877f418d8980b70fa2c995af4eba34eabbfbc2a03e"
+}

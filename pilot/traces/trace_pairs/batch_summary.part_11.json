@@ -1,0 +1,946 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 11,
+  "pairs_requested": 10,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.16",
+    "engine_sha": "915adeae689a",
+    "runner_image": "20260927.320.1"
+  },
+  "results": [
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I get a sharp pain in my right upper quadrant after greasy meals, so I made an appointment with my",
+        "patient": "I get a sharp pain in my right side after greasy meals, so I made an appointment with my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.283,
+        "patient": 0.365
+      },
+      "language_penalty": 0.08200000000000002,
+      "clinical_mass": {
+        "clinical": 0.4569,
+        "patient": 0.4545
+      },
+      "error_share": {
+        "clinical": 0.0923,
+        "patient": 0.088
+      },
+      "top_path": {
+        "clinical": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.283)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.365)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.283
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.283
+          ],
+          [
+            "Output \" GI\"",
+            0.092
+          ],
+          [
+            "Output \" GP\"",
+            0.092
+          ],
+          [
+            "Output \" primary\"",
+            0.081
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.071
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.365
+          ],
+          [
+            "Output \" GP\"",
+            0.135
+          ],
+          [
+            "Output \" doc\"",
+            0.05
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.039
+          ],
+          [
+            "Output \" GI\"",
+            0.039
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1036,
+        "unique_to_a": 283,
+        "unique_to_b": 232
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_11.html",
+        "png": "pilot/traces/trace_pairs/index_11.png",
+        "diff_html": "pilot/traces/trace_pairs/index_11_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_11_diff.png"
+      }
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since they added the lisinopril, I've had this dry cough, so I'm going to ask my",
+        "patient": "Ever since they added the blood pressure pill, I've had this dry cough, so I'm going to ask my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.408,
+        "patient": 0.531
+      },
+      "language_penalty": 0.12300000000000005,
+      "clinical_mass": {
+        "clinical": 0.3792,
+        "patient": 0.3712
+      },
+      "error_share": {
+        "clinical": 0.1071,
+        "patient": 0.0966
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.408)",
+        "patient": "[L18\u00b7S]  \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.531)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.408
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.408
+          ],
+          [
+            "Output \" doc\"",
+            0.133
+          ],
+          [
+            "Output \" cardio\"",
+            0.08
+          ],
+          [
+            "Output \" PCP\"",
+            0.049
+          ],
+          [
+            "Output \" Dr\"",
+            0.049
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.531
+          ],
+          [
+            "Output \" doc\"",
+            0.104
+          ],
+          [
+            "Output \" Dr\"",
+            0.044
+          ],
+          [
+            "Output \" dr\"",
+            0.034
+          ],
+          [
+            "Output \" cardio\"",
+            0.026
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 914,
+        "unique_to_a": 478,
+        "unique_to_b": 362
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_12.html",
+        "png": "pilot/traces/trace_pairs/index_12.png",
+        "diff_html": "pilot/traces/trace_pairs/index_12_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_12_diff.png"
+      }
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The doctor said the pericardium is inflamed, so for three months I can't work out at the",
+        "patient": "The doctor said the sac around my heart is inflamed, so for three months I can't work out at the"
+      },
+      "target_token": "Output \" gym\"",
+      "probabilities": {
+        "clinical": 0.902,
+        "patient": 0.969
+      },
+      "language_penalty": 0.06699999999999995,
+      "clinical_mass": {
+        "clinical": 0.2011,
+        "patient": 0.1936
+      },
+      "error_share": {
+        "clinical": 0.11,
+        "patient": 0.0967
+      },
+      "top_path": {
+        "clinical": "[L15\u00b7S]  \u2192 [L16\u00b7O] words related to exercise | exercise | exercise and  \u2192 [L19\u00b7O] words and phrases related to working out and fitness \u2192 Output \" gym\" (p=0.902)",
+        "patient": "embedding \u2192 [L2\u00b7O] the phrasal verb \"work out\" | out \u2192 [L4\u00b7O] words or phrases related to exercise and physical ac \u2192 [L16\u00b7O] words related to exercise | exercise | exercise and  \u2192 [L19\u00b7O] words and phrases related to working out and fitness \u2192 Output \" gym\" (p=0.969)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " gym",
+        "observed_clinical": [
+          "Output \" gym\"",
+          0.902
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" gym\"",
+            0.902
+          ],
+          [
+            "Output \" same\"",
+            0.009
+          ],
+          [
+            "Output \" moment\"",
+            0.008
+          ],
+          [
+            "Output \" fitness\"",
+            0.007
+          ],
+          [
+            "Output \" club\"",
+            0.006
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" gym\"",
+            0.969
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 824,
+        "unique_to_a": 373,
+        "unique_to_b": 323
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_13.html",
+        "png": "pilot/traces/trace_pairs/index_13.png",
+        "diff_html": "pilot/traces/trace_pairs/index_13_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_13_diff.png"
+      }
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The eye doctor said my optic nerve is swollen, so she sent me straight to the",
+        "patient": "The eye doctor said my eye nerve is swollen, so she sent me straight to the"
+      },
+      "target_token": "Output \" emergency\"",
+      "probabilities": {
+        "clinical": 0.138,
+        "patient": 0.167
+      },
+      "language_penalty": 0.028999999999999998,
+      "clinical_mass": {
+        "clinical": 0.4698,
+        "patient": 0.4872
+      },
+      "error_share": {
+        "clinical": 0.1133,
+        "patient": 0.1073
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.138)",
+        "patient": "embedding \u2192 Output \" eye\" (p=0.089)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " emergency",
+        "observed_clinical": [
+          "Output \" emergency\"",
+          0.138
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.256
+          ],
+          [
+            "Output \" hospital\"",
+            0.177
+          ],
+          [
+            "Output \" emergency\"",
+            0.138
+          ],
+          [
+            "Output \" eye\"",
+            0.121
+          ],
+          [
+            "Output \" neuro\"",
+            0.074
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.243
+          ],
+          [
+            "Output \" hospital\"",
+            0.215
+          ],
+          [
+            "Output \" emergency\"",
+            0.167
+          ],
+          [
+            "Output \" eye\"",
+            0.089
+          ],
+          [
+            "Output \" neuro\"",
+            0.07
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1156,
+        "unique_to_a": 196,
+        "unique_to_b": 149
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_14.html",
+        "png": "pilot/traces/trace_pairs/index_14.png",
+        "diff_html": "pilot/traces/trace_pairs/index_14_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_14_diff.png"
+      }
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The pain in my left lower quadrant is back and now I have a fever, so my husband is taking me to the",
+        "patient": "The pain in my lower left side is back and now I have a fever, so my husband is taking me to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.199,
+        "patient": 0.264
+      },
+      "language_penalty": 0.065,
+      "clinical_mass": {
+        "clinical": 0.4389,
+        "patient": 0.4303
+      },
+      "error_share": {
+        "clinical": 0.0986,
+        "patient": 0.0949
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.155)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.142)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " hospital",
+        "observed_clinical": [
+          "Output \" hospital\"",
+          0.199
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.373
+          ],
+          [
+            "Output \" hospital\"",
+            0.199
+          ],
+          [
+            "Output \" emergency\"",
+            0.155
+          ],
+          [
+            "Output \" doctor\"",
+            0.107
+          ],
+          [
+            "Output \" clinic\"",
+            0.027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.264
+          ],
+          [
+            "Output \" ER\"",
+            0.264
+          ],
+          [
+            "Output \" doctor\"",
+            0.16
+          ],
+          [
+            "Output \" emergency\"",
+            0.142
+          ],
+          [
+            "Output \" clinic\"",
+            0.028
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1184,
+        "unique_to_a": 192,
+        "unique_to_b": 188
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_15.html",
+        "png": "pilot/traces/trace_pairs/index_15.png",
+        "diff_html": "pilot/traces/trace_pairs/index_15_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_15_diff.png"
+      }
+    },
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My dad took his nitroglycerin twice and his chest still hurts, so we're calling an",
+        "patient": "My dad took his chest pain pill twice and his chest still hurts, so we're calling an"
+      },
+      "target_token": "Output \" ambulance\"",
+      "probabilities": {
+        "clinical": 0.977,
+        "patient": 0.965
+      },
+      "language_penalty": -0.01200000000000001,
+      "clinical_mass": {
+        "clinical": 0.3095,
+        "patient": 0.3843
+      },
+      "error_share": {
+        "clinical": 0.107,
+        "patient": 0.0934
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] terms related to emergency medical response to cardi \u2192 Output \" ambulance\" (p=0.977)",
+        "patient": "embedding \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ambulance\" (p=0.965)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ambulance",
+        "observed_clinical": [
+          "Output \" ambulance\"",
+          0.977
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ambulance\"",
+            0.977
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ambulance\"",
+            0.965
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 846,
+        "unique_to_a": 366,
+        "unique_to_b": 367
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_16.html",
+        "png": "pilot/traces/trace_pairs/index_16.png",
+        "diff_html": "pilot/traces/trace_pairs/index_16_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_16_diff.png"
+      }
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I got a thunderclap headache out of nowhere at the gym, so I went straight to the",
+        "patient": "I got the worst headache of my life out of nowhere at the gym, so I went straight to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.105,
+        "patient": 0.103
+      },
+      "language_penalty": -0.0020000000000000018,
+      "clinical_mass": {
+        "clinical": 0.2895,
+        "patient": 0.2791
+      },
+      "error_share": {
+        "clinical": 0.107,
+        "patient": 0.0976
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] medical emergencies and their immediate aftermath. | \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.119)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.103)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " hospital",
+        "observed_clinical": [
+          "Output \" hospital\"",
+          0.105
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.324
+          ],
+          [
+            "Output \" emergency\"",
+            0.119
+          ],
+          [
+            "Output \" hospital\"",
+            0.105
+          ],
+          [
+            "Output \" doctor\"",
+            0.093
+          ],
+          [
+            "Output \" bathroom\"",
+            0.056
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.248
+          ],
+          [
+            "Output \" doctor\"",
+            0.133
+          ],
+          [
+            "Output \" hospital\"",
+            0.103
+          ],
+          [
+            "Output \" emergency\"",
+            0.103
+          ],
+          [
+            "Output \" bathroom\"",
+            0.071
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1115,
+        "unique_to_a": 361,
+        "unique_to_b": 368
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_17.html",
+        "png": "pilot/traces/trace_pairs/index_17.png",
+        "diff_html": "pilot/traces/trace_pairs/index_17_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_17_diff.png"
+      }
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "They gave my husband the alteplase for his stroke, so I told our kids to come to the",
+        "patient": "They gave my husband the clot buster for his stroke, so I told our kids to come to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.377,
+        "patient": 0.408
+      },
+      "language_penalty": 0.030999999999999972,
+      "clinical_mass": {
+        "clinical": 0.2035,
+        "patient": 0.2049
+      },
+      "error_share": {
+        "clinical": 0.1014,
+        "patient": 0.0983
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7O] mentions of rooms in a house or apartment | terms re \u2192 Output \" kitchen\" (p=0.040)",
+        "patient": "embedding \u2192 Output \" house\" (p=0.071)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " hospital",
+        "observed_clinical": [
+          "Output \" hospital\"",
+          0.377
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.377
+          ],
+          [
+            "Output \" house\"",
+            0.123
+          ],
+          [
+            "Output \" kitchen\"",
+            0.04
+          ],
+          [
+            "Output \" ER\"",
+            0.031
+          ],
+          [
+            "Output \" room\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.408
+          ],
+          [
+            "Output \" house\"",
+            0.071
+          ],
+          [
+            "Output \" party\"",
+            0.043
+          ],
+          [
+            "Output \" ER\"",
+            0.043
+          ],
+          [
+            "Output \" room\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 999,
+        "unique_to_a": 485,
+        "unique_to_b": 404
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_18.html",
+        "png": "pilot/traces/trace_pairs/index_18.png",
+        "diff_html": "pilot/traces/trace_pairs/index_18_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've got gait ataxia from my MS, so I'm going to start using a",
+        "patient": "I've got the wobbles from my MS, so I'm going to start using a"
+      },
+      "target_token": "Output \" cane\"",
+      "probabilities": {
+        "clinical": 0.404,
+        "patient": 0.134
+      },
+      "language_penalty": -0.27,
+      "clinical_mass": {
+        "clinical": 0.2497,
+        "patient": 0.1646
+      },
+      "error_share": {
+        "clinical": 0.1055,
+        "patient": 0.1027
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] phrases about health or disability | Wheelchairs and \u2192 [L19\u00b7O] words related to bicycle or walking trails | walking \u2192 Output \" walking\" (p=0.048)",
+        "patient": "[L17\u00b7S]  \u2192 [L18\u00b7C] phrases about health or disability | Wheelchairs and \u2192 [L19\u00b7O] words related to bicycle or walking trails | walking \u2192 Output \" walking\" (p=0.056)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cane",
+        "observed_clinical": [
+          "Output \" cane\"",
+          0.404
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cane\"",
+            0.404
+          ],
+          [
+            "Output \" walker\"",
+            0.19
+          ],
+          [
+            "Output \" walking\"",
+            0.048
+          ],
+          [
+            "Output \" scooter\"",
+            0.029
+          ],
+          [
+            "Output \" roll\"",
+            0.026
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" cane\"",
+            0.134
+          ],
+          [
+            "Output \" walker\"",
+            0.072
+          ],
+          [
+            "Output \" walking\"",
+            0.056
+          ],
+          [
+            "Output \" wheelchair\"",
+            0.049
+          ],
+          [
+            "Output \" tripod\"",
+            0.03
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 804,
+        "unique_to_a": 488,
+        "unique_to_b": 634
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_19.html",
+        "png": "pilot/traces/trace_pairs/index_19.png",
+        "diff_html": "pilot/traces/trace_pairs/index_19_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_19_diff.png"
+      }
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The cardiologist went in through my radial artery for the stent, and now my hand is numb, so I'm going back to the",
+        "patient": "The cardiologist went in through my wrist for the stent, and now my hand is numb, so I'm going back to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.146,
+        "patient": 0.217
+      },
+      "language_penalty": 0.07100000000000001,
+      "clinical_mass": {
+        "clinical": 0.3815,
+        "patient": 0.4266
+      },
+      "error_share": {
+        "clinical": 0.1079,
+        "patient": 0.1024
+      },
+      "top_path": {
+        "clinical": "[L20\u00b7S]  \u2192 [L23\u00b7C] references to hotels including amenities, guests, or \u2192 Output \" room\" (p=0.048)",
+        "patient": "embedding \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.070)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " hospital",
+        "observed_clinical": [
+          "Output \" hospital\"",
+          0.146
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.146
+          ],
+          [
+            "Output \" waiting\"",
+            0.079
+          ],
+          [
+            "Output \" hotel\"",
+            0.079
+          ],
+          [
+            "Output \" room\"",
+            0.048
+          ],
+          [
+            "Output \" office\"",
+            0.042
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.217
+          ],
+          [
+            "Output \" ER\"",
+            0.102
+          ],
+          [
+            "Output \" doctor\"",
+            0.07
+          ],
+          [
+            "Output \" office\"",
+            0.062
+          ],
+          [
+            "Output \" waiting\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1103,
+        "unique_to_a": 206,
+        "unique_to_b": 201
+      },
+      "outputs": {
+        "html": "pilot/traces/trace_pairs/index_20.html",
+        "png": "pilot/traces/trace_pairs/index_20.png",
+        "diff_html": "pilot/traces/trace_pairs/index_20_diff.html",
+        "diff_png": "pilot/traces/trace_pairs/index_20_diff.png"
+      }
+    }
+  ]
+}
