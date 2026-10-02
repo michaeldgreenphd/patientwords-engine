@@ -6,7 +6,9 @@ Amendment 6 of `docs/preregistration_advice.md`:
 - **Wave A** asks the 24 new questions (`data/advice/stimuli_20261002T080026Z.json`)
   of each vendor's current model plus the Haiku cost floor.
 - **Wave R** reruns the 15 earlier questions selected in
-  `data/advice/rerun_selection_20261002.json`, with each vendor's original
+  `data/advice/rerun_selection_20261002.json` (ranking report
+  `data/advice/rerun_ranking_20261002.json`) and built as
+  `data/advice/stimuli_20261002T081803Z.json`, with each vendor's original
   model beside its newest one.
 
 Estimated cost for both waves: **$17.46 at measured response lengths** ($4.92
@@ -20,9 +22,10 @@ dollar figure in it.
 
 ## 0. Conditions that must all hold before the first fire
 
-1. The pull request carrying this plan is merged, so the stimuli file, the
-   probe file, the selection file and the proposed Amendment 6 are on `main`
-   (the lane fires on `main`).
+1. The pull request carrying this plan is merged, so the new-set stimuli
+   file, the probe file, the rerun selection with its ranking report, the
+   rerun stimuli file and the proposed Amendment 6 are on `main` (the lane
+   fires on `main`).
 2. The owner has approved Amendment 6 in writing, and its approval record is
    filled.
 3. The roster pull request (October 2026 roster: reviewed prices and
@@ -38,13 +41,16 @@ dollar figure in it.
    change; recompute them before approving those fires.
 4. Wave R only: the selection-source pull request
    (`build-stimuli --source selection --selection <file>`) is merged, and the
-   rerun stimuli file built from `data/advice/rerun_selection_20261002.json`
-   is merged through a pull request. It must hold 15 items with unique ids,
-   each item's messages byte for byte equal to the original (same
-   `clinical_sha256` and `patient_sha256`). Check with the R1 plan check below:
-   it must report 270 calls. Fewer means two items share an id
-   (`pairs_20260706T201750Z#10` is selected twice, from two files), and
-   `elicit` would treat the second as already done.
+   rerun stimuli file `data/advice/stimuli_20261002T081803Z.json`, built with
+   it from `data/advice/rerun_selection_20261002.json` on 2026-10-02, is on
+   `main`. It holds 15 items with unique ids, each item's messages byte for
+   byte equal to the original (same `clinical_sha256` and `patient_sha256`);
+   both were checked when it was built. Check again with the R1 plan check
+   below: it must report 270 calls, as it did on this branch. Fewer means two
+   items share an id (`pairs_20260706T201750Z#10` is selected twice, from two
+   files, and the build renamed the rank-13 copy
+   `pairs_20260706T201750Z#10~stimuli_20260721T235403Z`), and `elicit` would
+   treat the second as already done.
 5. `python scripts/fire_trigger.py status` shows no active `advice-eval`
    entry, and the trigger is parked.
 
@@ -279,13 +285,15 @@ Authorise: "I authorise fire A4 of docs/advice_fire_plan_20261002.md: advice-eva
 
 ### Wave R: the 15 selected earlier questions
 
-`<RERUN>` below is the rerun stimuli file from condition 4, for example
-`data/advice/stimuli_<stamp>.json`. It does not exist on this branch, so the
-plan checks of R1 to R4 were run against a 15-item placeholder file in the
-session's scratch directory (placeholder text, same item count), which
-confirms that every model spec resolves and gives the counts. Rerun those
-checks on `<RERUN>` before approving; the counts must match. The two probes
-run against the probe file, not `<RERUN>`, so their checks below are real.
+The rerun stimuli file is `data/advice/stimuli_20261002T081803Z.json`
+(condition 4): the 15 selected items in rank order, copied verbatim from five
+earlier stimuli files, with the rank-13 copy of `pairs_20260706T201750Z#10`
+renamed `pairs_20260706T201750Z#10~stimuli_20260721T235403Z`. The plan checks
+of R1 to R4 below were run against it on this branch on 2026-10-02 (before
+then they used a 15-item placeholder file), and the two probes' checks against
+the probe file. The selected files carry three different ask suffixes, so the
+file's `ask_suffix` is null and `elicit` refuses the translated arm; Wave R
+elicits the clinical and patient arms only.
 
 Order: R0a, R0b, R1, R2a, R2b, R3a, R3b, R4. The original arms run at 1024
 tokens, the July protocol. The reasoning arms run at 4096 (Amendment 6,
@@ -313,38 +321,46 @@ Authorise: "I authorise fire R0b of docs/advice_fire_plan_20261002.md: advice-ev
 
 **R1. Anthropic arms.** Anthropic lane. 270 calls.
 ```json
-{"stimuli_file": "<RERUN>", "models": "anthropic:claude-haiku-4-5 anthropic:claude-sonnet-5 anthropic:claude-sonnet-5-5", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "1.80", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "0", "commit_outputs": "true"}
+{"stimuli_file": "data/advice/stimuli_20261002T081803Z.json", "models": "anthropic:claude-haiku-4-5 anthropic:claude-sonnet-5 anthropic:claude-sonnet-5-5", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "1.80", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "0", "commit_outputs": "true"}
 ```
 Cost: 90 x 0.00136 + 90 x 0.00872 + 90 x 0.00581 = 0.122 + 0.785 + 0.523 =
 $1.430; high 90 x (0.00162 + 0.01079 + 0.00719) = $1.764; max_spend $1.764 +
 $0.0166 → $1.80. Runtime 90 x (3.7 + 8.3 + 8.3) s = 30 min; high 38 min.
-Plan check → `plan: 270 call(s) over 15 stimuli x arms ['clinical', 'patient'] x models ['anthropic:claude-haiku-4-5', 'anthropic:claude-sonnet-5', 'anthropic:claude-sonnet-5-5'] x K=3`.
+Plan check:
+`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T081803Z.json --models "anthropic:claude-haiku-4-5 anthropic:claude-sonnet-5 anthropic:claude-sonnet-5-5" --arms clinical,patient --samples 3 --max-tokens 1024 --max-spend 1.80 --dry-run`
+→ `plan: 270 call(s) over 15 stimuli x arms ['clinical', 'patient'] x models ['anthropic:claude-haiku-4-5', 'anthropic:claude-sonnet-5', 'anthropic:claude-sonnet-5-5'] x K=3`.
 Authorise: "I authorise fire R1 of docs/advice_fire_plan_20261002.md: advice-eval, Anthropic lane, max_spend $1.80, on <YYYY-MM-DD> UTC."
 
 **R2a and R2b. OpenRouter 1024 arms, original and newest.** OpenRouter lane.
 R2a: items 1-8, 336 calls. R2b: items 9-15, 294.
 ```json
-{"stimuli_file": "<RERUN>", "models": "openai:openai/gpt-5.5 openai:openai/gpt-5.4-mini xai:x-ai/grok-4.3 deepseek:deepseek/deepseek-v4-flash moonshot:moonshotai/kimi-k2.5 openai:openai/gpt-chat-latest xai:x-ai/grok-4.7", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "2.80", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "8", "commit_outputs": "true"}
+{"stimuli_file": "data/advice/stimuli_20261002T081803Z.json", "models": "openai:openai/gpt-5.5 openai:openai/gpt-5.4-mini xai:x-ai/grok-4.3 deepseek:deepseek/deepseek-v4-flash moonshot:moonshotai/kimi-k2.5 openai:openai/gpt-chat-latest xai:x-ai/grok-4.7", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "2.80", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "8", "commit_outputs": "true"}
 ```
 (R2b: `"offset": "8"`, `"limit": "7"`, `"max_spend": "2.45"`.) Cost R2a: 48 x
 (0.01480 + 0.00151 + 0.00180 + 0.00020 + 0.00249 + 0.01481 + 0.00451) = 48 x
 0.04012 = $1.926; high $2.529; metered high $2.716 + $0.0347 → $2.80. R2b:
 42 x 0.04012 = $1.685; high $2.213; metered high $2.376 + $0.0347 → $2.45.
 Runtime per item-arm-sample 103.7 s typical, 168.8 s high: R2a 83-135 min,
-R2b 73-118 min. Plan checks → `plan: 336 call(s) over 8 stimuli ...` and
-`plan: 294 call(s) over 7 stimuli ...`.
+R2b 73-118 min. Plan checks:
+`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T081803Z.json --models "openai:openai/gpt-5.5 openai:openai/gpt-5.4-mini xai:x-ai/grok-4.3 deepseek:deepseek/deepseek-v4-flash moonshot:moonshotai/kimi-k2.5 openai:openai/gpt-chat-latest xai:x-ai/grok-4.7" --arms clinical,patient --samples 3 --max-tokens 1024 --max-spend 2.80 --offset 0 --limit 8 --dry-run`
+→ `plan: 336 call(s) over 8 stimuli x arms ['clinical', 'patient'] x models [...7 models...] x K=3`,
+and with `--max-spend 2.45 --offset 8 --limit 7` (R2b)
+→ `plan: 294 call(s) over 7 stimuli x arms ['clinical', 'patient'] x models [...7 models...] x K=3`.
 Authorise: "I authorise fire R2a of docs/advice_fire_plan_20261002.md: advice-eval, OpenRouter lane, max_spend $2.80, on <YYYY-MM-DD> UTC." and "I authorise fire R2b ...: max_spend $2.45 ...".
 
 **R3a and R3b. OpenRouter 4096 arms.** OpenRouter lane. R3a items 1-8, 144
 calls; R3b items 9-15, 126.
 ```json
-{"stimuli_file": "<RERUN>", "models": "openrouter:google/gemini-3.8-flash deepseek:deepseek/deepseek-v4.1-flash moonshot:moonshotai/kimi-k3", "arms": "clinical,patient", "samples": "3", "max_tokens": "4096", "max_spend": "2.55", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "8", "commit_outputs": "true"}
+{"stimuli_file": "data/advice/stimuli_20261002T081803Z.json", "models": "openrouter:google/gemini-3.8-flash deepseek:deepseek/deepseek-v4.1-flash moonshot:moonshotai/kimi-k3", "arms": "clinical,patient", "samples": "3", "max_tokens": "4096", "max_spend": "2.55", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "8", "commit_outputs": "true"}
 ```
 (R3b: `"offset": "8"`, `"limit": "7"`, `"max_spend": "2.25"`.) Cost R3a as
 A3a: $1.247, high $2.327, max_spend $2.55. R3b: 42 x 0.02599 = $1.091; high
 42 x 0.04849 = $2.036; metered high $2.159 + $0.0598 → $2.25. Runtime R3a
-87-144 min, R3b 76-126 min. Plan checks → `plan: 144 call(s) over 8 stimuli ...`
-and `plan: 126 call(s) over 7 stimuli ...`.
+87-144 min, R3b 76-126 min. Plan checks:
+`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T081803Z.json --models "openrouter:google/gemini-3.8-flash deepseek:deepseek/deepseek-v4.1-flash moonshot:moonshotai/kimi-k3" --arms clinical,patient --samples 3 --max-tokens 4096 --max-spend 2.55 --offset 0 --limit 8 --dry-run`
+→ `plan: 144 call(s) over 8 stimuli x arms ['clinical', 'patient'] x models [...3 models...] x K=3`,
+and with `--max-spend 2.25 --offset 8 --limit 7` (R3b)
+→ `plan: 126 call(s) over 7 stimuli x arms ['clinical', 'patient'] x models [...3 models...] x K=3`.
 Optional (owner decision, not costed above): add
 `openrouter:google/gemini-3.5-flash` to R3a and R3b so the Gemini arm has a
 non-truncated original beside 3.8; at its list price of $1.50/$9.00 and 2000
@@ -353,12 +369,18 @@ Authorise: "I authorise fire R3a of docs/advice_fire_plan_20261002.md: advice-ev
 
 **R4. Judge Wave R.** Anthropic lane, as A4. Run after R3b lands.
 ```json
-{"stimuli_file": "<RERUN>", "models": "anthropic:claude-haiku-4-5", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "0.01", "judge": "true", "judge_model": "claude-haiku-4-5", "judge_max_spend": "1.80", "offset": "0", "limit": "0", "commit_outputs": "true"}
+{"stimuli_file": "data/advice/stimuli_20261002T081803Z.json", "models": "anthropic:claude-haiku-4-5", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "0.01", "judge": "true", "judge_model": "claude-haiku-4-5", "judge_max_spend": "1.80", "offset": "0", "limit": "0", "commit_outputs": "true"}
 ```
 Cost: typical $1.310, high $1.613; commitment $1.81. Runtime 49-78 min. Plan
-checks: `elicit --dry-run` with these arguments must print `plan: 0 call(s)`
-after R1 has landed, and `judge --dry-run` on `<RERUN>`'s responses file must
-print `judging 1170 response(s)`.
+checks (both must pass before firing):
+`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T081803Z.json --models "anthropic:claude-haiku-4-5" --arms clinical,patient --samples 3 --max-tokens 1024 --max-spend 0.01 --dry-run`
+must print `plan: 0 call(s)` once R1 has landed (on this branch today it
+prints 90, because nothing is archived yet), and
+`python scripts/advice_eval.py judge --responses data/advice/responses_stimuli_20261002T081803Z.jsonl --rubric data/advice_rubric.draft.json --judge-model claude-haiku-4-5 --judge-max-tokens 300 --max-spend 1.80 --dry-run`
+must print `judging 1170 response(s)` (270 + 336 + 294 + 144 + 126; today:
+`judging 0 response(s)`, no archive yet). A different number means an
+elicitation fire stopped early or a record failed; stop and look before
+judging.
 Authorise: "I authorise fire R4 of docs/advice_fire_plan_20261002.md: advice-eval judge pass, Anthropic lane, max_spend $0.01 and judge_max_spend $1.80, on <YYYY-MM-DD> UTC."
 
 ## 4. Days and the daily ceilings
@@ -451,12 +473,13 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
   reported as exploratory.
 - The replication readout for Wave R compares, per original (stimulus, model)
   cell, the rerun downgrade against the original one (archives of July and
-  August 2026) and against the null expectation recorded per cell in
-  `data/advice/rerun_selection_20261002.json`. Over the 87 re-elicitable
-  cells (the 88 less `openrouter:stealth/ox-alpha` on item #7, which is not
-  re-elicited) the original count is 36 against 17.3 expected under the null;
-  the pre-specified sensitivity without DeepSeek v4-flash and Kimi k2.5 is 23
-  over 59 cells against 9.9 (Amendment 6, A6.4). Both readings are reported.
+  August 2026) and against the null expectation recorded per cell in the
+  ranking report `data/advice/rerun_ranking_20261002.json`. Over the 87
+  re-elicitable cells (the 88 less `openrouter:stealth/ox-alpha` on item #7,
+  which is not re-elicited) the original count is 36 against 17.3 expected
+  under the null; the pre-specified sensitivity without DeepSeek v4-flash and
+  Kimi k2.5 is 23 over 59 cells against 9.9 (Amendment 6, A6.4). Both
+  readings are reported.
 - The probe archive, `data/advice/responses_stimuli_20261002T074159Z.jsonl`,
   is in neither readout and is never judged or exported, and no truncation
   share counts it. `scripts/referral_destination.py` reads every
@@ -466,13 +489,22 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
 - Before anything reaches the site: the vendor packs (Amendment 6, A6.7);
   `scripts/export_advice_scenarios.py` with `--rubric data/advice_rubric.draft.json`
   (its default rubric path does not exist, which is why the published payload
-  has `tier_order` null); and two exporter limits that affect these files. The
-  exporter labels a stimuli file "natural_questions" only when its
+  has `tier_order` null); and three exporter limits that affect these files.
+  The exporter labels a stimuli file "natural_questions" only when its
   `source.paths` names an `advnat_` batch, so the manual-source new set would
-  be labelled "sentence_completions". It also groups samples by stimulus id
-  across every file in one export call, so a rerun file that keeps the
-  original ids must never be exported in the same call as the files it was
-  selected from.
+  be labelled "sentence_completions". It labels a file built by
+  `--source selection` by the families of the files it copied from, and
+  refuses one that mixes the two: the rerun file copies from three
+  sentence-completion files and two natural-question files, so the exporter
+  refuses it as built (on this branch the exporter's family check,
+  `_family_of`, refuses it with exit 3).
+  The elicitation and the replication readout do not use the exporter, but
+  showing Wave R on the site needs either one rerun file per family, built
+  before Wave R fires (each R fire would then run once per file), or an
+  exporter change (section 7). It also groups samples by stimulus id across
+  every file in one export call, and 14 of the rerun file's 15 items keep
+  their original ids, so the rerun file must never be exported in the same
+  call as the files it was selected from.
 
 ## 7. Decisions for the owner
 
@@ -483,4 +515,12 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
    total (234 responses at $0.0176 against about $0.0024).
 4. Whether to add the optional `gemini-3.5-flash` arm to R3 (about $1.62).
 5. For the selected situation that appears twice (`pairs_20260706T201750Z#10`,
-   ranks 2 and 13), keep both forms (as costed) or drop one.
+   ranks 2 and 13; the rerun file carries the second as
+   `pairs_20260706T201750Z#10~stimuli_20260721T235403Z`), keep both forms (as
+   costed) or drop one.
+6. How Wave R reaches the site, decided before Wave R fires: the exporter
+   refuses the rerun file as built because it mixes the two families
+   (section 6). Either build one rerun file per family (11
+   sentence-completion items, 4 natural-question items), which means running
+   each R fire once per file with the R2 and R3 chunks recomputed, or change
+   the exporter to label each item by its own family.

@@ -766,9 +766,13 @@ clinical and patient; K=3; temperature 1.0; no translated arm.
 
 ### A6.4 Rerun of earlier stimuli: a post-hoc replication
 
-`data/advice/rerun_selection_20261002.json`, written by
-`scripts/advice_rerun_select.py` (seed 11, 1000 permutations per cell; the
-sha256 of every input file is in the output). Rule: per (stimuli file,
+`data/advice/rerun_selection_20261002.json` and its ranking report
+`data/advice/rerun_ranking_20261002.json`, written together by
+`scripts/advice_rerun_select.py` (seed 11, 1000 permutations per cell). The
+selection holds only the rule and the 15 items as (file, id), the shape
+`build-stimuli --source selection` reads, and its notes carry the report's
+sha256; the report holds every item's metrics and the sha256 of every input
+file. Rule: per (stimuli file,
 stimulus, model), the modal tier of each arm under the primary judge only
 (ties toward the more urgent tier, one sample per (file, stimulus, arm,
 model, k) chosen the exporter's way); a downgrade is a patient modal tier
@@ -781,8 +785,8 @@ null, 17.5 were expected. One of the 88 cells cannot be re-elicited:
 downgrade, null probability 0.203) is not in the A6.1 roster. The
 predictions below therefore use the 87 re-elicitable cells.
 
-Baselines for the predictions (from the per-model rows of the selection
-file):
+Baselines for the predictions (from the per-model rows of the ranking
+report):
 
 | Reading | Cells | Original downgrades | Expected under the null |
 |---|---|---|---|
@@ -813,12 +817,19 @@ replication test, registered before it runs, with these predictions:
    original runs had four or five models or K=1, so per-item comparisons use
    rates per model, not raw counts.
 
-The rerun stimuli file is built by `build-stimuli --source selection` (a
-separate pull request). It must copy each item's assembled messages byte for
-byte (checked against the original `clinical_sha256` and `patient_sha256`)
-and give each item a unique id: `pairs_20260706T201750Z#10` is selected
-twice, from its completed form (rank 2) and its cloze form (rank 13), and a
-repeated id would make `elicit` treat the second item as already elicited.
+The rerun stimuli file is `data/advice/stimuli_20261002T081803Z.json`, built
+from the selection on 2026-10-02 by `build-stimuli --source selection` (added
+in a separate pull request). It copies each item's assembled messages byte
+for byte (every item's messages hash to the original `clinical_sha256` and
+`patient_sha256`) and gives each item a unique id: `pairs_20260706T201750Z#10`
+is selected twice, from its completed form (rank 2) and its cloze form
+(rank 13), and the build renamed the second
+`pairs_20260706T201750Z#10~stimuli_20260721T235403Z`, because a repeated id
+would make `elicit` treat the second item as already elicited. With the three
+Anthropic arms, `elicit --dry-run` on it plans 270 calls (15 items x 2 arms x
+3 models x K=3), the count the fire plan's R1 requires. The selected files
+carry different ask suffixes, so its `ask_suffix` is null and no translated
+arm is elicited.
 
 ### A6.5 Generation change
 
@@ -872,4 +883,6 @@ quarantine, and the daily ceilings.
 
 **Approval record (to fill).** Approved by: `<owner>`. Date (UTC): `<date>`.
 Words: `<verbatim instruction>`. Registry sha256 after the roster pull
-request: `<sha256>`. Rerun stimuli file: `<path>`.
+request: `<sha256>`. Rerun stimuli file:
+`data/advice/stimuli_20261002T081803Z.json` (sha256
+`b9be32edde3372e4b29aee4ce39ad25e36074eebd6a019a1779cd4d215cf2598`).
