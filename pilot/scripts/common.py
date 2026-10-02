@@ -30,10 +30,147 @@ ROWS_PER_CALL = 20
 CONTROLS_PER_CALL = 4
 MAX_ATTEMPTS = 2  # the protocol's retry rule: one attempt, at most one retry (PROTOCOL.md 3 and 6)
 BLANK = "___"
-REQUIRED_FIELDS = ["clinical_term", "patient_term", "template", "control"]
+REQUIRED_FIELDS = ["clinical_term", "patient_term", "template", "control"]  # the version-1 row contract
+# version 2 adds next_word, the word the template stops before (the probe word a later trace reads), in the key order
+# the version-2 generation prompt lists
+REQUIRED_FIELDS_V2 = ["clinical_term", "patient_term", "template", "next_word", "control"]
 CONTROL_VALUES = ("none", "negative")
 CHECKER_VERDICTS = ("yes", "no", "unclear")  # what the checker may answer (parse_checker.py)
 VERDICT_VALUES = CHECKER_VERDICTS + ("missing",)  # what a checked row may carry; anything else is refused
+
+# ---------------------------------------------------------------- harness version
+# design.json's optional integer `harness_version` selects the row and checker contract; absent means 1, the contract
+# the recorded run at pilot/ ran under, which every version-1 output keeps byte for byte. Version 2 adds next_word to
+# every row; the checker's relation, sentence_natural and patient_realism; the probe-point, variant-design and
+# next_word descriptives in the summary; and one review row per concept. Its design data (V2_DESIGN_KEYS) lives in
+# the same file. Not to be confused with manifest_model.json's `harness_version`, the Claude Code version string.
+HARNESS_VERSIONS = (1, 2)
+V2_DESIGN_KEYS = ("probe_endings", "concepts_per_call", "variant_pairs_per_call", "review_sampling")
+REVIEW_SAMPLINGS = ("one_row_per_concept",)
+# the version-2 checker's three further answers, each a closed set; the checker prompt must name every value
+# (checker_enum_problems), so prompt and schema cannot drift apart
+CHECKER_RELATIONS = ("same", "same_brand", "broader", "narrower", "different")
+CHECKER_SENTENCE_NATURAL = ("both", "clinical_only", "patient_only", "neither")
+CHECKER_PATIENT_REALISM = ("real", "textbook", "unlikely")
+CHECKER_V2_FIELDS: dict[str, tuple[str, ...]] = {"relation": CHECKER_RELATIONS,
+                                                 "sentence_natural": CHECKER_SENTENCE_NATURAL,
+                                                 "patient_realism": CHECKER_PATIENT_REALISM}
+# the equivalence each relation implies (codebook v0.2, L1-L5): an answer whose `equivalent` contradicts its relation
+# is kept and flagged inconsistent, never dropped or corrected; `unclear` contradicts no relation
+RELATION_EQUIVALENT = {"same": "yes", "same_brand": "yes", "broader": "yes", "narrower": "no", "different": "no"}
+# the precision view the summary derives from the relation (codebook R6)
+RELATION_PRECISION = {"same": "as_precise", "same_brand": "as_precise", "broader": "vaguer",
+                      "narrower": "more_specific", "different": "not_applicable"}
+PRECISION_VALUES = ("as_precise", "vaguer", "more_specific", "not_applicable")
+
+
+def harness_version(design: dict) -> int:
+    """The harness version a design file selects: its integer `harness_version`, 1 when absent. Anything else (a
+    string, a boolean, an unknown number) is refused, never read as 1."""
+    v = design.get("harness_version", 1)
+    if isinstance(v, bool) or not isinstance(v, int) or v not in HARNESS_VERSIONS:
+        raise SystemExit(f"design.json: harness_version must be an integer in {list(HARNESS_VERSIONS)} (absent means 1), "
+                         f"got {v!r}; refusing to read the design")
+    return v
+
+
+def version_design_problems(design: dict) -> list[str]:
+    """Why a design file's version data cannot be used. Version 1 must carry none of the version-2 keys: a design
+    that names probe endings but no harness_version 2 would run version 1 and drop next_word without a word. Version 2
+    must carry all of them: `probe_endings`, a non-empty list of distinct lowercase words; `concepts_per_call` and
+    `variant_pairs_per_call`, integers that add up to the non-control rows a call asks for (each variant pair adds one
+    row to a concept); `review_sampling`, one of REVIEW_SAMPLINGS. Empty when the design can be used."""
+    version = harness_version(design)
+    if version < 2:
+        present = [k for k in V2_DESIGN_KEYS if k in design]
+        return [f"design.json carries the version-2 key(s) {present} but no harness_version 2; add it, or remove them"] \
+            if present else []
+    problems = [f"design.json (harness_version 2) is missing {k!r}" for k in V2_DESIGN_KEYS if k not in design]
+    if problems:
+        return problems
+    ends = design["probe_endings"]
+    if (not isinstance(ends, list) or not ends or len(set(map(str, ends))) != len(ends)
+            or not all(isinstance(w, str) and w and w == w.lower() and not any(ch.isspace() for ch in w) for w in ends)):
+        problems.append("design.json: probe_endings must be a non-empty list of distinct lowercase words")
+    counts = [design[k] for k in ("concepts_per_call", "variant_pairs_per_call")]
+    if any(isinstance(n, bool) or not isinstance(n, int) for n in counts) or counts[0] < 1 or counts[1] < 0:
+        problems.append("design.json: concepts_per_call must be a positive integer and variant_pairs_per_call a "
+                        "non-negative integer")
+    elif counts[1] > counts[0] or sum(counts) != ROWS_PER_CALL - CONTROLS_PER_CALL:
+        problems.append(f"design.json: concepts_per_call ({counts[0]}) plus variant_pairs_per_call ({counts[1]}) must equal "
+                        f"the {ROWS_PER_CALL - CONTROLS_PER_CALL} non-control rows of a call, with no more pairs than "
+                        f"concepts")
+    if design["review_sampling"] not in REVIEW_SAMPLINGS:
+        problems.append(f"design.json: review_sampling must be one of {list(REVIEW_SAMPLINGS)}, got "
+                        f"{design['review_sampling']!r}")
+    return problems
+
+
+HARNESS_VERSION: int = harness_version(DESIGN)
+_version_problems = version_design_problems(DESIGN)
+if _version_problems:  # every script imports this module, so no script reads a design it cannot use
+    raise SystemExit("design.json cannot be used:\n  " + "\n  ".join(_version_problems))
+PROBE_ENDINGS: tuple[str, ...] = tuple(DESIGN.get("probe_endings", ()))  # version 2 only
+CONCEPTS_PER_CALL: int | None = DESIGN.get("concepts_per_call")  # version 2 only
+VARIANT_PAIRS_PER_CALL: int | None = DESIGN.get("variant_pairs_per_call")  # version 2 only
+
+
+def plan_version(plan: dict) -> int:
+    """The harness version a plan (calls.json, checker_batches.json) was derived under: the `harness_version` it
+    records, which derive_plan and build_checker_set.derive write only for version 2 or later, so a version-1 plan
+    stays byte-identical to the recorded run's."""
+    return plan.get("harness_version", 1)
+
+
+def required_fields(version: int = HARNESS_VERSION) -> list[str]:
+    """The keys a generated row must carry under a harness version, in the order the prompt lists them."""
+    return REQUIRED_FIELDS_V2 if version >= 2 else REQUIRED_FIELDS
+
+
+def checker_fields(version: int = HARNESS_VERSION) -> list[str]:
+    """The keys every checker answer must carry under a harness version, in schema order."""
+    return ["id", "equivalent", *CHECKER_V2_FIELDS, "reason"] if version >= 2 else ["id", "equivalent", "reason"]
+
+
+def checker_output_schema(version: int, closed: bool) -> dict:
+    """The checker's structured-output schema for a harness version 2 or later, built from the enums above (the
+    version-1 schemas stay as literal text in make_workflow_scripts.py and build_api_requests.py, which must render
+    the recorded run's bytes). `closed` adds additionalProperties false, as the Messages API request bodies carry."""
+    if version < 2:
+        raise ValueError("the version-1 checker schemas are literal text in their scripts")
+    props = {"id": {"type": "string"}, "equivalent": {"type": "string", "enum": list(CHECKER_VERDICTS)},
+             **{f: {"type": "string", "enum": list(v)} for f, v in CHECKER_V2_FIELDS.items()},
+             "reason": {"type": "string"}}
+    item: dict = {"type": "object", "properties": props, "required": checker_fields(version)}
+    schema: dict = {"type": "object", "properties": {"verdicts": {"type": "array", "items": item}},
+                    "required": ["verdicts"]}
+    if closed:
+        item["additionalProperties"] = False
+        schema["additionalProperties"] = False
+    return schema
+
+
+def verdict_inconsistent(equivalent: str, relation: str) -> bool:
+    """A version-2 answer whose `equivalent` contradicts its `relation` (yes with narrower or different, no with same,
+    same_brand or broader). Such an answer is kept and flagged, never corrected; `unclear` contradicts nothing."""
+    return equivalent in ("yes", "no") and RELATION_EQUIVALENT[relation] != equivalent
+
+
+NEXT_WORD_RE = re.compile(r"[^\W\d_]+(?:[-'’][^\W\d_]+)?")  # letters, at most one internal hyphen or apostrophe
+
+
+def next_word_ok(value: object) -> bool:
+    """A version-2 row's next_word: a non-empty lowercase word of letters (any script), optionally with one internal
+    hyphen or apostrophe (straight or typographic), and nothing else: no space, digit or other punctuation."""
+    return isinstance(value, str) and NEXT_WORD_RE.fullmatch(value) is not None and value == value.lower()
+
+
+def probe_point_ok(template: str, endings: tuple[str, ...] | list[str]) -> bool:
+    """Whether a template, stripped, ends on one of the probe endings: its last whitespace-separated word, compared
+    case-insensitively, is in `endings`. A word with punctuation attached ("my,") does not match. Version 2 reports
+    this as a descriptive; it is not a format failure."""
+    words = template.strip().split()
+    return bool(words) and words[-1].lower() in {e.lower() for e in endings}
 # the recorded run's two journals (2026-09-29; their labels predate the prompt-hash and protocol-hash bindings): the
 # only results the parsers accept with --unbound, so the escape hatch cannot parse a new run's responses against
 # another plan or protocol (Codex review of PR #52)
@@ -72,7 +209,19 @@ def cell_id(specialty: str, swap_type: str) -> str:
 
 
 def call_id(arm: str, specialty: str, swap_type: str) -> str:
-    return f"{arm}__{cell_id(specialty, swap_type)}"
+    return call_id_of(arm, cell_id(specialty, swap_type))
+
+
+def call_id_of(arm: str, cell: str) -> str:
+    """The call id of an arm and a cell id: one call per arm per cell, so a checked row's arm and cell name its call."""
+    return f"{arm}__{cell}"
+
+
+def concept_key(call: str, clinical_term: str, template: str) -> tuple[str, str, str]:
+    """A version-2 concept: the call, the clinical term's surface key and the exact template. A concept's second,
+    vaguer patient phrasing shares all three; the review draws at most one row per concept and the variant-design
+    descriptive counts concepts by this key."""
+    return (call, surface_key(clinical_term), template)
 
 
 def sha256_text(text: str) -> str:
@@ -151,15 +300,17 @@ def write_csv(path: Path, rows: list[dict], columns: list[str]) -> None:
 
 # ---------------------------------------------------------------- row validity (estimand 1)
 
-def validate_line(line: str) -> tuple[dict | None, str]:
-    """Return (row, "ok") when the line is a format-valid row, else (None, reason). Never repairs."""
+def validate_line(line: str, version: int = HARNESS_VERSION) -> tuple[dict | None, str]:
+    """Return (row, "ok") when the line is a format-valid row, else (None, reason). Never repairs. The reason is the
+    first failing condition, in this order: JSON, object, required keys (all missing ones named), the three text
+    fields, one blank in the template, (version 2) next_word, the control value."""
     try:
         obj = json.loads(line)
     except ValueError:
         return None, "not_json"
     if not isinstance(obj, dict):
         return None, "not_object"
-    missing = [k for k in REQUIRED_FIELDS if k not in obj]
+    missing = [k for k in required_fields(version) if k not in obj]
     if missing:
         return None, "missing_field:" + ",".join(missing)
     for k in ("clinical_term", "patient_term", "template"):
@@ -167,6 +318,8 @@ def validate_line(line: str) -> tuple[dict | None, str]:
             return None, f"empty_or_nonstring:{k}"
     if obj["template"].count(BLANK) != 1:
         return None, "template_blank_count_not_1"
+    if version >= 2 and not next_word_ok(obj["next_word"]):
+        return None, "next_word_invalid"
     if obj["control"] not in CONTROL_VALUES:
         return None, "control_value_invalid"
     return obj, "ok"
@@ -313,14 +466,33 @@ def bootstrap_mean(stat, items: list, r: random.Random, n_boot: int = N_BOOT) ->
     return {"lo": percentile(vals, 0.025), "hi": percentile(vals, 0.975), "n_boot": len(vals)}
 
 
-def checked_problems(checked: list[dict], key: list[dict], blind: list[dict], plan_sha256: str) -> list[str]:
+def checked_v2_problems(c: dict) -> list[str]:
+    """Why a version-2 checked row's further answers are not what parse_checker.py writes: for a missing verdict,
+    relation, sentence_natural, patient_realism and inconsistent all null; otherwise each answer in its set and
+    `inconsistent` the boolean verdict_inconsistent gives. Empty when they are."""
+    cid, extra = c.get("id"), (*CHECKER_V2_FIELDS, "inconsistent")
+    if c.get("verdict") == "missing":
+        return [] if all(c.get(k, 0) is None for k in extra) else [
+            f"item {cid}: a missing verdict must carry null {list(extra)}"]
+    bad = [f for f, values in CHECKER_V2_FIELDS.items() if c.get(f) not in values]
+    if bad:
+        return [f"item {cid}: {bad} not in their version-2 sets"]
+    if c.get("inconsistent") is not verdict_inconsistent(c.get("verdict"), c["relation"]):
+        return [(f"item {cid}: inconsistent {c.get('inconsistent')!r} does not describe verdict {c.get('verdict')!r} "
+                 f"with relation {c['relation']!r}")]
+    return []
+
+
+def checked_problems(checked: list[dict], key: list[dict], blind: list[dict], plan_sha256: str,
+                     version: int = HARNESS_VERSION) -> list[str]:
     """Why checked.jsonl does not belong to the checker plan on disk: an item set that differs from the truth key's
     (an item absent, unknown or repeated), an item whose fields differ from the key and the blind set, or a row
     stamped with another plan's hash (parse_checker.py writes `checker_plan_sha256`, the hash of the
     checker_batches.json it parsed against, on every row), or a verdict outside VERDICT_VALUES (a value such as
     "maybe" would leave both the answered and the missing counts and shrink every denominator unseen). A count-only
     check let a previous run's checked.jsonl pass beside a rebuilt checker set and mix its verdicts into a new run's
-    summary (Codex review of PR #52). Empty when checked.jsonl is that plan's parse."""
+    summary (Codex review of PR #52). Under harness version 2 every row's further answers are checked too
+    (checked_v2_problems). Empty when checked.jsonl is that plan's parse."""
     by_key = {t["id"]: t for t in key}
     by_blind = {b["id"]: b for b in blind}
     ids = [c.get("id") for c in checked]
@@ -333,6 +505,8 @@ def checked_problems(checked: list[dict], key: list[dict], blind: list[dict], pl
         if c.get("verdict") not in VERDICT_VALUES or not isinstance(c.get("reason"), str):
             problems.append(f"item {cid}: verdict {c.get('verdict')!r} is not one of {list(VERDICT_VALUES)} with a "
                             f"text reason")
+        elif version >= 2:
+            problems += checked_v2_problems(c)
         if cid not in by_key or cid not in by_blind:
             continue
         expected = {**by_key[cid], **by_blind[cid]}
@@ -429,16 +603,17 @@ def result_binding_problems(result: dict, unbound: bool, planned_hashes: dict[st
     return []
 
 
-def attempt_failed(raw: str | None) -> bool:
+def attempt_failed(raw: str | None, version: int = HARNESS_VERSION) -> bool:
     """PROTOCOL.md 3: a generation call has failed, and may be retried once, when the response is empty or no
-    returned line parses as a JSON object carrying the four required keys. Fewer than 20 rows, or some invalid rows,
-    is not a failure. The parser refuses a second attempt whose first did not fail (Codex review of PR #52)."""
+    returned line parses as a JSON object carrying the required keys (four in version 1, five with next_word in
+    version 2, as the workflow script's retry test counts them). Fewer than 20 rows, or some invalid rows, is not a
+    failure. The parser refuses a second attempt whose first did not fail (Codex review of PR #52)."""
     for line in lines_of(raw):
         try:
             obj = json.loads(line)
         except ValueError:
             continue
-        if isinstance(obj, dict) and all(k in obj for k in REQUIRED_FIELDS):
+        if isinstance(obj, dict) and all(k in obj for k in required_fields(version)):
             return False
     return True
 
@@ -495,11 +670,21 @@ def generation_problems(calls: dict, call_log: list[dict], rows: list[dict], fai
     return problems
 
 
+REVIEW_KEY_COLUMNS = ["id", "arm", "cell", "checker_verdict"]
+# version 2 also shows the checker's three further answers in the key (the owner opens it only after reviewing)
+REVIEW_KEY_COLUMNS_V2 = REVIEW_KEY_COLUMNS + ["checker_relation", "checker_sentence_natural", "checker_patient_realism"]
+
+
+def review_key_columns(version: int = HARNESS_VERSION) -> list[str]:
+    return REVIEW_KEY_COLUMNS_V2 if version >= 2 else REVIEW_KEY_COLUMNS
+
+
 def review_problems(review_map: dict, sheet: list[dict], key: list[dict], checked: list[dict],
-                    plan_sha256: str) -> list[str]:
+                    plan_sha256: str, version: int = HARNESS_VERSION) -> list[str]:
     """Why the human-review bundle (review_map.json, review_sheet.csv, review_key.csv) does not sample the checked
     rows on disk: a map stamped with another checker plan, review ids that differ between the three files, a mapped
-    row that is not a checked generated row, or sheet terms or key fields that differ from that row. Generated row
+    row that is not a checked generated row, or sheet terms or key fields that differ from that row (under version 2
+    the key's relation, sentence_natural and patient_realism too, an empty cell for a missing verdict). Generated row
     ids are stable across runs, so ids alone would not show changed terms or verdicts (Codex review of PR #52)."""
     problems = []
     if review_map.get("checker_plan_sha256") != plan_sha256:
@@ -520,7 +705,8 @@ def review_problems(review_map: dict, sheet: list[dict], key: list[dict], checke
         if s and any(s.get(f) != c.get(f) for f in ("clinical_term", "patient_term", "template")):
             problems.append(f"{rid}: review_sheet.csv terms differ from checked row {row_id}")
         if k and (k.get("arm") != c.get("arm") or k.get("cell") != c.get("cell")
-                  or k.get("checker_verdict") != c.get("verdict")):
+                  or k.get("checker_verdict") != c.get("verdict")
+                  or (version >= 2 and any(k.get(f"checker_{f}") != (c.get(f) or "") for f in CHECKER_V2_FIELDS))):
             problems.append(f"{rid}: review_key.csv fields differ from checked row {row_id}")
     return problems
 
@@ -587,6 +773,39 @@ def template_problems(template: str, markers: tuple[str, ...], name: str) -> lis
     return problems
 
 
+def checker_enum_problems(template: str) -> list[str]:
+    """Why a version-2 checker template does not match the version-2 schema: each answer field (equivalent and
+    CHECKER_V2_FIELDS) must be named as a word, and each of its allowed values written in double quotes ("same_brand",
+    "patient_only", ...). The schema accepts only those values, so a prompt that never offers one, or names a field
+    the schema lacks, would bias or break the answers unseen. Empty when the template names every field and value."""
+    problems = [f"field {f!r} is not named" for f in ("equivalent", *CHECKER_V2_FIELDS)
+                if not re.search(rf"\b{re.escape(f)}\b", template)]
+    missing = [v for values in (CHECKER_VERDICTS, *CHECKER_V2_FIELDS.values()) for v in values if f'"{v}"' not in template]
+    if missing:
+        problems.append(f"value(s) {missing} are not written in double quotes")
+    return problems
+
+
+def version_template_problems(template: str, kind: str, version: int = HARNESS_VERSION) -> list[str]:
+    """Why a prompt template does not fit the harness version that will parse its answers. Version 1 refuses a
+    template naming a version-2 field (next_word for generation; sentence_natural, patient_realism or same_brand for
+    the checker): version 1 would ignore those answers and drop them without a word, which is what running the
+    version-2 prompts under the recorded run's design.json would do. Version 2 requires the generation template to
+    name every required key in double quotes and the checker template to name every answer field and value
+    (checker_enum_problems). `kind` is "generation" or "checker". Empty when the template fits."""
+    name = f"prompts/{kind}_prompt.txt"
+    if version < 2:
+        v2_only = ["next_word"] if kind == "generation" else ["sentence_natural", "patient_realism", "same_brand"]
+        named = [f for f in v2_only if f in template]
+        return [(f"{name} names the version-2 field(s) {named} but design.json is harness version 1, which would "
+                 f"drop those answers; use the version-2 design.json (harness_version 2) with these prompts")] if named else []
+    if kind == "generation":
+        absent = [k for k in required_fields(version) if f'"{k}"' not in template]
+        return [(f"{name} does not name the required key(s) {absent} in double quotes (harness version {version} "
+                 f"requires {required_fields(version)})")] if absent else []
+    return [f"{name} (harness version {version}): {p}" for p in checker_enum_problems(template)]
+
+
 def stray_marker(text: str) -> str | None:
     """The first marker or stray double brace a rendered prompt still carries, or None: nothing that could be read as
     a placeholder may reach a subagent (Codex review of PR #52)."""
@@ -607,23 +826,37 @@ def control_example_text(design: dict) -> str:
     one JSON object (the vocabulary lives in the data file, not in the template or the code: engine AGENTS.md; moved
     out of the template on Codex's review of PR #52, every rendered prompt byte-identical). Refused unless it is a
     row of the required shape, in key order, marked "negative", whose two terms are the same concept in the same
-    register (surface form only), as the prompt says a negative control is."""
+    register (surface form only), as the prompt says a negative control is. Under harness version 2 (read from the
+    `design` passed) the example carries next_word too, in the version-2 key order, and its template ends on a probe
+    ending, since the prompt says negative controls follow the probe-point rule like every other row."""
+    version = harness_version(design)
     ex = design.get("control_example")
-    row = validate_line(json.dumps(ex, ensure_ascii=False))[0] if isinstance(ex, dict) else None
-    if (row is None or list(ex) != REQUIRED_FIELDS or ex.get("control") != "negative"
+    row = validate_line(json.dumps(ex, ensure_ascii=False), version)[0] if isinstance(ex, dict) else None
+    if (row is None or list(ex) != required_fields(version) or ex.get("control") != "negative"
             or not control_is_faithful(ex)):
-        raise SystemExit("design.json: control_example must be an object with exactly the keys clinical_term, "
-                         "patient_term, template (one ___) and control, in that order, control \"negative\", and the "
-                         "two terms the same concept in the same register; refusing to plan")
+        if version < 2:
+            raise SystemExit("design.json: control_example must be an object with exactly the keys clinical_term, "
+                             "patient_term, template (one ___) and control, in that order, control \"negative\", and the "
+                             "two terms the same concept in the same register; refusing to plan")
+        raise SystemExit("design.json (harness_version 2): control_example must be an object with exactly the keys "
+                         "clinical_term, patient_term, template (one ___), next_word (one lowercase word) and control, in "
+                         "that order, control \"negative\", and the two terms the same concept in the same register; "
+                         "refusing to plan")
+    if version >= 2 and not probe_point_ok(ex["template"], design.get("probe_endings") or ()):
+        raise SystemExit("design.json (harness_version 2): control_example's template must end on one of probe_endings, "
+                         "as the prompt asks of every row; refusing to plan")
     return json.dumps(ex, ensure_ascii=False)
 
 
 def derive_plan(seeds: list[dict], template: str, seeds_sha256: str, design_sha256: str) -> dict:
     """The generation plan, pure and deterministic: Arm A exemplars drawn once per cell from the named stream in
     cell order, Arm B the first K seeds in file order, every prompt rendered from the template and hashed. plan_calls.py
-    writes exactly this; load_calls derives it again and refuses a calls.json that differs (Codex review of PR #52)."""
-    problems = design_problems(SPECIALTIES, SWAP_TYPES) + template_problems(template, GENERATION_MARKERS,
-                                                                             "prompts/generation_prompt.txt")
+    writes exactly this; load_calls derives it again and refuses a calls.json that differs (Codex review of PR #52).
+    Under harness version 2 the plan records `harness_version`, and the template must name every version-2 key; a
+    version-1 plan carries no version key, byte-identical to the recorded run's."""
+    problems = (design_problems(SPECIALTIES, SWAP_TYPES)
+                + template_problems(template, GENERATION_MARKERS, "prompts/generation_prompt.txt")
+                + version_template_problems(template, "generation", HARNESS_VERSION))
     if problems:
         raise SystemExit("the design or the generation prompt template cannot be planned from; fix it before planning:"
                          "\n  " + "\n  ".join(problems))
@@ -649,7 +882,9 @@ def derive_plan(seeds: list[dict], template: str, seeds_sha256: str, design_sha2
                           "swap_type": swap_type, "cell": cell_id(specialty, swap_type), "k_exemplars": k,
                           "exemplar_ids": [e["id"] for e in exemplars], "prompt_sha256": sha256_text(prompt),
                           "prompt": prompt})
-    return {"master_seed": MASTER_SEED, "n_seeds": n, "k_exemplars_used": k, "k_exemplars_requested": K_EXEMPLARS,
+    plan = {"harness_version": HARNESS_VERSION} if HARNESS_VERSION >= 2 else {}  # version 1: no key, as recorded
+    return {**plan, "master_seed": MASTER_SEED, "n_seeds": n, "k_exemplars_used": k,
+            "k_exemplars_requested": K_EXEMPLARS,
             "generation_prompt_template_sha256": sha256_text(template),
             # the inputs this plan was rendered from: write_manifest.py refuses a plan whose inputs have since changed
             "input_hashes": {"seeds_json_sha256": seeds_sha256, "design_json_sha256": design_sha256,
@@ -758,6 +993,28 @@ def results_block(summary: dict) -> str:
     g = e4["generated"]
     sens = e4["checker_sensitivity_known_good"]["unclear_counts_as_miss"]
     spec = e4["checker_specificity_broken"]["unclear_counts_as_miss"]
+    v2_lines = []
+    if summary.get("harness_version", 1) >= 2:  # version 1 renders exactly the recorded block
+        cv, pp, vd, nw = (summary[k] for k in ("checker_v2", "probe_point", "variant_design", "next_word"))
+        prec = cv["precision"]["generated"]
+        top = ", ".join("{} ({})".format(x["word"], x["n"]) for x in nw["most_common"]) or "none"
+        v2_lines = [
+            (f"- **Checker relation (version 2), generated rows:** {json.dumps(cv['relation']['generated'])}; "
+             f"precision as precise {prec['as_precise']}, vaguer {prec['vaguer']}, more specific "
+             f"{prec['more_specific']}, not applicable {prec['not_applicable']}; answers whose equivalent contradicts "
+             f"their relation (kept, flagged inconsistent) {cv['inconsistent']['total']}."),
+            (f"- **Checker sentence and realism (version 2), generated rows:** sentence_natural "
+             f"{json.dumps(cv['sentence_natural']['generated'])}; patient_realism "
+             f"{json.dumps(cv['patient_realism']['generated'])}."),
+            (f"- **Probe point (descriptive, not a format failure):** templates ending on a probe word "
+             f"{w(pp['overall'])}; Arm A {w(pp['by_arm']['A'])}; Arm B {w(pp['by_arm']['B'])}."),
+            (f"- **Variant design (descriptive):** calls with exactly {vd['expected_pairs_per_call']} adjacent variant "
+             f"pairs and {vd['expected_concepts_per_call']} concepts {w(vd['calls_compliant'])}; Arm A "
+             f"{w(vd['by_arm']['A'])}; Arm B {w(vd['by_arm']['B'])}; adjacent variant pairs {vd['pairs_exact']} "
+             f"(clinical term exact), {vd['pairs_clinical_surface']} (clinical term equal in surface form); "
+             f"{len(vd['flagged_calls'])} call(s) flagged."),
+            f"- **next_word:** {nw['n_distinct']} distinct words over {nw['n_rows']} rows; most common: {top}.",
+        ]
     return "\n".join([
         "(written by `scripts/compute_summary.py` from `summary.json`; finalize refuses a handoff whose block differs)",
         "",
@@ -780,6 +1037,7 @@ def results_block(summary: dict) -> str:
         f"- **Estimand 5, Arm A minus Arm B:** novelty {sd(e5['novelty_pair'])} (Newcombe); within-cell similarity "
         f"{sd(e5['diversity_within_cell'])} (bootstrap); similarity to seeds {sd(e5['diversity_vs_seeds'])} (bootstrap); "
         f"equivalence {sd(e5['equivalence_yes'])} (Newcombe).",
+        *v2_lines,
     ])
 
 
@@ -852,6 +1110,27 @@ def script_hashes() -> dict[str, str]:
     summary_problems compares, so a summary never stands under code that did not compute it (Codex review of
     PR #52)."""
     return {p.name: sha256_file(p) for p in sorted(SCRIPTS_DIR.glob("*.py"))}
+
+
+def finalized_run_guard(script: str, replace: bool) -> None:
+    """Refuse a writer script's write into a run directory whose manifest.json is finalized, unless --replace was
+    passed. Every script writes under PILOT_DIR and falls back to pilot/, the first recorded run, when it is unset, so
+    a planning or rendering step run without it would write over a sealed record (plan_calls.py and
+    make_workflow_scripts.py write unconditionally; rendering again would replace the recorded run's legacy workflow
+    scripts). A later run lives in its own directory (pilot/runs/<run_id>/ once committed). With --replace the write
+    goes ahead and the next write_manifest.py clears the finalization if any hashed output changed. A manifest that is
+    not JSON is refused too, never read as unfinalized."""
+    path = PILOT / "manifest.json"
+    if replace or not path.exists():
+        return
+    try:
+        finalized = json.loads(path.read_text(encoding="utf-8")).get("finalized_utc")
+    except (ValueError, AttributeError):
+        raise SystemExit(f"{script}: {path} cannot be read as a manifest; refusing to write into {PILOT}") from None
+    if finalized:
+        raise SystemExit(f"{script}: {PILOT} holds a finalized run (manifest.json finalized {finalized}); this script "
+                         f"would write over its sealed files. Set PILOT_DIR to the run directory you mean (a new run "
+                         f"lives in its own directory), or pass --replace to write here on purpose; nothing was written")
 
 
 def log_binding(entries: list[dict]) -> bool | None:

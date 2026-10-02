@@ -13,7 +13,7 @@ import extract_workflow_journal
 import make_review_sheet
 import parse_checker
 import parse_generation
-from common import PILOT, load_seeds, log_binding, read_csv, read_jsonl, sha256_file
+from common import PILOT, load_seeds, log_binding, plan_version, read_csv, read_jsonl, sha256_file
 
 JOURNAL_COPIES = {"generation": "workflows/generation.journal.jsonl", "checker": "workflows/checker.journal.jsonl"}
 
@@ -65,10 +65,11 @@ def generation_rederive_problems(calls: dict) -> list[str]:
         return ["call_log.jsonl: plan_binding is missing or mixed across its entries; re-run parse_generation.py"]
     gen_result = json.loads((PILOT / "workflow_generation_result.json").read_text(encoding="utf-8"))
     try:
-        by_id = parse_generation.validate_result(gen_result, calls_meta, unbound)
+        by_id = parse_generation.validate_result(gen_result, calls_meta, unbound, version=plan_version(calls))
     except SystemExit as e:
         return [f"workflow_generation_result.json no longer validates against the plan: {e}"]
-    rows, failures, log, raw_texts = parse_generation.derive(by_id, calls_meta, parse_generation.binding_label(unbound))
+    rows, failures, log, raw_texts = parse_generation.derive(by_id, calls_meta, parse_generation.binding_label(unbound),
+                                                             version=plan_version(calls))
     if rows != read_jsonl(PILOT / "generated" / "all_rows.jsonl"):
         problems.append("generated/all_rows.jsonl is not what the current code derives from workflow_generation_result.json")
     if failures != read_jsonl(PILOT / "generated" / "format_failures.jsonl"):
@@ -121,14 +122,14 @@ def rederive_problems(calls: dict) -> list[str]:
         return [f"workflow_checker_result.json no longer validates against the checker plan: {e}"]
     plan_sha = sha256_file(PILOT / "checker_batches.json")
     checked, clog = parse_checker.derive(cby, plan_doc["batches"], {x["id"]: x for x in blind}, truth,
-                                         parse_checker.binding_label(cunbound), plan_sha)
+                                         parse_checker.binding_label(cunbound), plan_sha, version=plan_version(plan_doc))
     if checked != read_jsonl(PILOT / "checked.jsonl"):
         problems.append("checked.jsonl is not what the current code derives from workflow_checker_result.json")
     if clog != checker_log:
         problems.append("checker_log.jsonl is not what the current code derives from workflow_checker_result.json")
     if problems:
         return problems
-    sheet, key, rmap = make_review_sheet.derive(checked, plan_sha)
+    sheet, key, rmap = make_review_sheet.derive(checked, plan_sha, version=plan_version(plan_doc))
     term_cols = ("id", "clinical_term", "patient_term", "template")
     if [{k: r[k] for k in term_cols} for r in sheet] != [{k: r.get(k) for k in term_cols} for r in read_csv(PILOT / "review_sheet.csv")]:
         problems.append("review_sheet.csv (its term columns) is not the draw the current code makes from checked.jsonl")

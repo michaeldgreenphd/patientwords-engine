@@ -3,20 +3,29 @@ deliberately broken pairs (patient_term re-paired across rows within the same ce
 and render the checker prompts in batches of 30.
 
 Writes checker_set.jsonl (what the checker sees), checker_key.jsonl (truth, kept separate), checker_batches.json.
+
+  python3 scripts/build_checker_set.py [--replace]
+
+Under harness version 2 the plan records `harness_version` and the checker template must name every version-2
+answer field and value (common.checker_enum_problems); a version-1 plan is byte-identical to the recorded run's. A
+run directory whose manifest.json is finalized is not written into without --replace (common.finalized_run_guard).
 """
 from __future__ import annotations
 
 import json
+import sys
 from collections import defaultdict
 
 from common import (
     CHECKER_BATCH,
     CHECKER_MARKERS,
+    HARNESS_VERSION,
     N_BROKEN,
     N_KNOWN_GOOD,
     PILOT,
     cell_id,
     cells,
+    finalized_run_guard,
     generation_problems,
     load_calls,
     load_seeds,
@@ -27,6 +36,7 @@ from common import (
     stray_marker,
     surface_key,
     template_problems,
+    version_template_problems,
     write_jsonl,
 )
 
@@ -102,7 +112,8 @@ def derive(all_rows: list[dict], seeds: list[dict], template: str, seeds_sha: st
         blind.append({"id": cid, **items[i]})
         truth.append({"id": cid, **key[i]})
 
-    problems = template_problems(template, CHECKER_MARKERS, "prompts/checker_prompt.txt")
+    problems = (template_problems(template, CHECKER_MARKERS, "prompts/checker_prompt.txt")
+                + version_template_problems(template, "checker", HARNESS_VERSION))
     if problems:
         raise SystemExit("the checker prompt template cannot be rendered; fix it before batching:\n  "
                          + "\n  ".join(problems))
@@ -115,7 +126,8 @@ def derive(all_rows: list[dict], seeds: list[dict], template: str, seeds_sha: st
             raise SystemExit(f"a rendered checker prompt still carries a marker or stray braces {stray!r}; refusing to batch")
         batches.append({"batch_id": f"batch{len(batches) + 1:02d}", "item_ids": [x["id"] for x in chunk],
                         "prompt_sha256": sha256_text(prompt), "prompt": prompt})
-    out = {"checker_prompt_template_sha256": sha256_text(template),
+    out = {**({"harness_version": HARNESS_VERSION} if HARNESS_VERSION >= 2 else {}),  # version 1: no key, as recorded
+           "checker_prompt_template_sha256": sha256_text(template),
            # the inputs this plan was built from: a later step refuses a plan whose template, seeds or generation
            # rows have changed since, instead of recording a stale plan (Codex review of PR #52)
            "input_hashes": {"checker_prompt_template_sha256": sha256_text(template),
@@ -127,7 +139,8 @@ def derive(all_rows: list[dict], seeds: list[dict], template: str, seeds_sha: st
     return blind, truth, out
 
 
-def main() -> None:
+def main(replace: bool = False) -> None:
+    finalized_run_guard("build_checker_set", replace)
     all_rows = read_jsonl(PILOT / "generated" / "all_rows.jsonl")
     calls = load_calls()
     problems = generation_problems(calls, read_jsonl(PILOT / "call_log.jsonl"), all_rows,
@@ -157,4 +170,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(replace="--replace" in sys.argv[1:])
