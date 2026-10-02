@@ -62,7 +62,9 @@ lane, and advance by chaining — resolve the landed run, then fire the next.
 
 - `python scripts/fire_trigger.py resolve --trigger <name>` — ONLY when the run is truly
   terminal and ALL expected outputs landed (every expected
-  `trace_out/<stem>/batch_summary.part_NN.json` offset; for generation, the batch file
+  `trace_out/<stem>/batch_summary.part_NN.json` offset, or
+  `pilot/traces/<stem>/batch_summary.part_NN.json` for a fire with
+  `output_root: pilot/traces`; for generation, the batch file
   plus `.report.json` sidecar on main). Resolving on partial landing lets a subsequent
   fire supersede a still-pending run (the 2026-07-09 eviction seam).
 - **Settle window:** resolving stamps `resolved_utc`; a same-trigger fire within 15
