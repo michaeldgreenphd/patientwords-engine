@@ -6,6 +6,8 @@ assistants give for the same clinical situation phrased two ways. Three stimulus
   1. ``build-stimuli --source payload`` - reuse situations the study has already
      validated (the published site payload: screened-in, measured, holdout-withheld).
   2. ``build-stimuli --source manual`` - owner-authored paired vignettes.
+     (``--source pairs`` builds from generated pair batches, and ``--source selection``
+     copies chosen items of earlier stimuli files verbatim for a re-run.)
   3. ``elicit --arms clinical,patient,translated`` - the translated arm inserts an LLM
      patient->clinical translation step before elicitation, mirroring the study's
      translation-mitigation panel, to test whether translation recovers the advice.
@@ -554,6 +556,244 @@ def _stimulus(item_id, clinical_text, patient_text, ask_suffix, source_ref=None,
     }
 
 
+# --source selection (2026-10-01): re-run chosen items of earlier stimuli files on other models. The selection file
+# is data: {"rule": <how the items were chosen, free text>, "items": [{"file": <stimuli file>, "id": <item id>}],
+# "notes"?: <free text>}. Items are copied verbatim, so a re-run sends the exact messages the first run sent.
+SELECTION_KEYS = frozenset({"rule", "items", "notes"})
+SELECTION_ENTRY_KEYS = frozenset({"file", "id"})
+SELECTION_ITEM_TEXT_KEYS = ("clinical_body", "patient_body", "clinical_message", "patient_message",
+                            "clinical_sha256", "patient_sha256")
+_STIMULI_FILE_RE = re.compile(r"stimuli_[^/\\]+\.json")
+
+
+def _load_selection_source(file: str) -> dict:
+    """One stimuli file a selection names: its sha256, its ask suffix and its items by id. Refuses a missing or
+    unreadable file, one not named stimuli_*.json, one without an items list, and one whose ids repeat (a
+    selection by id would be ambiguous)."""
+    path = Path(file)
+    if not _STIMULI_FILE_RE.fullmatch(path.name):
+        raise SystemExit(f"selection names {file!r}, which is not a stimuli_*.json file")
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise SystemExit(f"selection names {file!r}, which cannot be read ({type(exc).__name__})") from exc
+    try:
+        doc = json.loads(raw.decode("utf-8"))
+    except ValueError as exc:
+        raise SystemExit(f"{file}: not valid JSON ({exc})") from exc
+    items = doc.get("items") if isinstance(doc, dict) else None
+    if not isinstance(items, list):
+        raise SystemExit(f"{file}: not a stimuli file (no 'items' list)")
+    by_id: dict[str, dict] = {}
+    for item in items:
+        item_id = item.get("id") if isinstance(item, dict) else None
+        if not isinstance(item_id, str) or not item_id:
+            raise SystemExit(f"{file}: an item carries no string 'id'")
+        if item_id in by_id:
+            raise SystemExit(f"{file}: id {item_id!r} appears more than once, so a selection by id is ambiguous")
+        by_id[item_id] = item
+    src = doc.get("source")
+    src = src if isinstance(src, dict) else {}
+    family_source = {"kind": src.get("kind"), "paths": src.get("paths")}
+    if src.get("kind") == "selection":
+        family_source["file_sources"] = src.get("file_sources")
+    return {"sha256": hashlib.sha256(raw).hexdigest(), "ask_suffix": doc.get("ask_suffix"), "by_id": by_id,
+            "source": family_source}
+
+
+def _selection_seal_check(where: str, file: str, item: dict, tierb, dashboard: str | Path,
+                          simulated_dir: str | Path) -> dict[str, bool]:
+    """The holdout seal for one selected item: tierb_split.sealed_pair, the one-row form of stamp_rows' rule, which
+    is wider than the --source pairs guard. A selected item is sealed when its clinical body is a registered holdout
+    phrase anywhere (Amendment 3: alias stems such as pairs_<STAMP>_txopus, re-run stems, non-Tier-B batches and
+    items with no source_ref alike), or when it belongs to a Tier B batch whose accepted prompt (top_prompt) or its
+    own body hashes holdout. Where the item names a non-Tier-B batch whose file is in simulated_dir, the batch's
+    accepted prompt is checked as well (a payload item completed with its target word carries a body that differs
+    from the prompt the phrase set registers). A sealed item is refused, not dropped: a selection names its items,
+    and a silently shorter output would misstate what was re-run. When the seal cannot be evaluated (no Tier B start
+    in the dashboard, an empty phrase set, an unreadable Tier B batch file, a Tier B pair with no top_prompt, an
+    index outside its batch) sealed_pair raises SealError, and the build is refused too. Returns which checks ran.
+    Never prints prompt text."""
+    ref = item.get("source_ref")
+    batch = ref.get("batch") if isinstance(ref, dict) else None
+    index = ref.get("batch_index") if isinstance(ref, dict) else None
+    if not isinstance(batch, str) or not batch:
+        batch, index = None, None
+    label = f"{where}: {file} item {item['id']!r}" + (f" ({batch}#{index})" if batch else " (no source batch)")
+    start = tierb.tierb_start_stamp(dashboard)
+    is_tierb = tierb.is_tierb_batch(batch, start)
+    accepted_checked = False
+    try:
+        sealed = tierb.sealed_pair(batch, index, item.get("clinical_body"),
+                                   dashboard_path=dashboard, simulated_dir=simulated_dir)
+        if not sealed and batch and not is_tierb and (Path(simulated_dir) / f"{batch}.json").is_file():
+            sealed = tierb.sealed_pair(batch, index, None, dashboard_path=dashboard, simulated_dir=simulated_dir)
+            accepted_checked = True
+    except tierb.SealError as exc:
+        raise SystemExit(f"{label}: the holdout seal cannot be applied ({exc}), so nothing was written. On a stale "
+                         "checkout the dashboard may carry no tierb.start_utc - point --dashboard at the ops-truth "
+                         "branch copy and --simulated-dir at the batch files.") from exc
+    if sealed:
+        raise SystemExit(f"{label}: a sealed Tier B holdout pair; a holdout pair is never a stimulus, so remove it "
+                         "from the selection")
+    return {"tierb": is_tierb, "accepted_prompt": accepted_checked}
+
+
+def select_stimuli(selection_path: str | Path, dashboard: str | Path,
+                   simulated_dir: str | Path) -> tuple[list[dict], dict, str | None]:
+    """(items, source block, ask suffix) for build-stimuli --source selection.
+
+    Each selected item is copied verbatim from its stimuli file (bodies, messages, sha256 values, source_ref,
+    meta and any other field) and gains meta.rerun_of = {file, id, file_sha256}; an item that already carried a
+    rerun_of keeps it under rerun_of.prior. Each copied message must still hash to its recorded sha256. Output
+    ids stay unique: when an id was already taken by an earlier entry from another file, the later item becomes
+    `<id>~<file stem>` and is listed in the source block's renamed_ids (rerun_of keeps the original id). The ask
+    suffix is the selected files' common one, or None when they differ: elicit then refuses the translated arm,
+    which appends the file-level suffix to each translation. Refuses, writing nothing: an unreadable or malformed
+    selection, an unknown key, a missing file or id, an entry listed twice (the file is compared by its resolved
+    path), two entries that send the same two messages, a message whose hash no longer matches, and a sealed
+    holdout pair. Items that name one source pair with different messages are kept and listed in
+    shared_source_pairs."""
+    sel_path = Path(selection_path)
+    try:
+        raw = sel_path.read_bytes()
+    except OSError as exc:
+        raise SystemExit(f"{selection_path}: cannot read the selection file ({type(exc).__name__})") from exc
+    try:
+        selection = json.loads(raw.decode("utf-8"))
+    except ValueError as exc:
+        raise SystemExit(f"{selection_path}: not valid JSON ({exc})") from exc
+    if not isinstance(selection, dict):
+        raise SystemExit(f"{selection_path}: expected a JSON object with 'rule' and 'items'")
+    unknown = sorted(set(selection) - SELECTION_KEYS)
+    if unknown:
+        raise SystemExit(f"{selection_path}: unknown key(s) {unknown}; allowed: {sorted(SELECTION_KEYS)}")
+    rule = selection.get("rule")
+    if not isinstance(rule, str) or not rule.strip():
+        raise SystemExit(f"{selection_path}: 'rule' must be a non-empty string saying how the items were chosen")
+    notes = selection.get("notes")
+    if notes is not None and not isinstance(notes, str):
+        raise SystemExit(f"{selection_path}: 'notes' must be a string when present")
+    entries = selection.get("items")
+    if not isinstance(entries, list) or not entries:
+        raise SystemExit(f"{selection_path}: 'items' must be a non-empty list of {{file, id}} objects")
+
+    tierb = _load_tierb_split()
+    start_stamp = tierb.tierb_start_stamp(dashboard)
+    # keyed by the resolved path, so one file named two ways is one source and an entry repeated under another
+    # spelling is refused rather than renamed
+    sources: dict[Path, dict] = {}
+    seen_entries: set[tuple[Path, str]] = set()
+    taken: set[str] = set()
+    items: list[dict] = []
+    renamed: list[dict] = []
+    # (clinical_sha256, patient_sha256) -> the first entry that sends those two messages
+    seen_messages: dict[tuple[str, str], tuple[str, str, str]] = {}
+    # "<batch>#<index>" -> output ids whose items name that source pair (with different messages: identical ones
+    # are refused above), so a reader can cluster them together; analyze clusters by stimulus id only
+    by_source_pair: dict[str, list[str]] = {}
+    tierb_checked = 0
+    accepted_checked = 0
+    for n, entry in enumerate(entries, start=1):
+        where = f"{selection_path}: items[{n - 1}]"
+        if not isinstance(entry, dict) or set(entry) != SELECTION_ENTRY_KEYS:
+            raise SystemExit(f"{where}: each entry must be an object with exactly the keys 'file' and 'id'")
+        file, item_id = entry["file"], entry["id"]
+        if not isinstance(file, str) or not file or not isinstance(item_id, str) or not item_id:
+            raise SystemExit(f"{where}: 'file' and 'id' must be non-empty strings")
+        key = Path(file).resolve()
+        if (key, item_id) in seen_entries:
+            raise SystemExit(f"{where}: {file} id {item_id!r} is selected twice (the same file may be named two "
+                             "ways)")
+        seen_entries.add((key, item_id))
+        if key not in sources:
+            sources[key] = {**_load_selection_source(file), "file": file}
+        source = sources[key]
+        file = source["file"]   # the spelling of the file's first entry, so provenance names one file one way
+        original = source["by_id"].get(item_id)
+        if original is None:
+            raise SystemExit(f"{where}: {file} has no item with id {item_id!r}")
+        for field in SELECTION_ITEM_TEXT_KEYS:
+            if not isinstance(original.get(field), str):
+                raise SystemExit(f"{where}: {file} item {item_id!r} has no string {field!r}, so it is not a "
+                                 "complete stimulus")
+        for side in ("clinical", "patient"):
+            if sha256_text(original[f"{side}_message"]) != original[f"{side}_sha256"]:
+                raise SystemExit(f"{where}: {file} item {item_id!r}: {side}_message no longer hashes to its "
+                                 f"recorded {side}_sha256, so it is not the message that was elicited")
+        message_pair = (original["clinical_sha256"], original["patient_sha256"])
+        if message_pair in seen_messages:
+            first_where, first_file, first_id = seen_messages[message_pair]
+            raise SystemExit(f"{where}: {file} item {item_id!r} sends the same two messages as {first_where} "
+                             f"({first_file} item {first_id!r}); the re-run would elicit one stimulus twice under "
+                             "two ids, and analyze's cluster bootstrap would count it as two situations")
+        seen_messages[message_pair] = (where, file, item_id)
+        checks = _selection_seal_check(where, file, original, tierb, dashboard, simulated_dir)
+        tierb_checked += checks["tierb"]
+        accepted_checked += checks["accepted_prompt"]
+        item = json.loads(json.dumps(original))   # a deep copy: nothing in the source document is touched
+        meta = item.get("meta")
+        if meta is None:
+            meta = {}
+        if not isinstance(meta, dict):
+            raise SystemExit(f"{where}: {file} item {item_id!r} has a 'meta' that is not an object")
+        rerun_of = {"file": file, "id": item_id, "file_sha256": source["sha256"]}
+        if "rerun_of" in meta:
+            rerun_of["prior"] = meta["rerun_of"]
+        meta["rerun_of"] = rerun_of
+        item["meta"] = meta
+        out_id = item_id
+        if out_id in taken:
+            out_id = f"{item_id}~{Path(file).stem}"
+            if out_id in taken:
+                raise SystemExit(f"{where}: id {item_id!r} is already taken and so is {out_id!r}; the output ids "
+                                 "cannot be made unique")
+            renamed.append({"file": file, "id": item_id, "output_id": out_id})
+        taken.add(out_id)
+        item["id"] = out_id
+        items.append(item)
+        ref = original.get("source_ref")
+        if isinstance(ref, dict) and isinstance(ref.get("batch"), str) and ref.get("batch") \
+                and ref.get("batch_index") is not None:
+            by_source_pair.setdefault(f"{ref['batch']}#{ref['batch_index']}", []).append(out_id)
+
+    shared = [{"source_pair": pair, "output_ids": ids} for pair, ids in by_source_pair.items() if len(ids) > 1]
+    suffixes = {src["file"]: src["ask_suffix"] for src in sources.values()}
+    distinct = set(suffixes.values())
+    ask = next(iter(distinct)) if len(distinct) == 1 else None
+    source_desc = {
+        "kind": "selection",
+        "path": str(selection_path),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "rule": rule,
+        "notes": notes,
+        "files": {src["file"]: src["sha256"] for src in sources.values()},
+        "ask_suffixes": suffixes,
+        # each source file's own source kind and paths, which export_advice_scenarios.py reads to label the family
+        "file_sources": {src["file"]: src["source"] for src in sources.values()},
+        "renamed_ids": renamed,
+        # output ids that name one source pair (batch#index) with different messages, such as one pair built with
+        # two ask suffixes: analyze treats each id as its own cluster, so these are listed for whoever reads the
+        # bootstrap CIs to cluster them together
+        "shared_source_pairs": shared,
+        # the holdout seal (tierb_split.sealed_pair) ran on every item; these count the items it checked as Tier B
+        # and the non-Tier-B items whose batch file's accepted prompt it checked besides the body
+        "seal_items_checked": len(items),
+        "tierb_items_checked": tierb_checked,
+        "accepted_prompt_items_checked": accepted_checked,
+        "tierb_start_stamp": start_stamp,
+    }
+    if renamed:
+        print(f"renamed {len(renamed)} repeated id(s) with a ~<file stem> suffix (listed in source.renamed_ids)")
+    if shared:
+        print(f"{len(shared)} source pair(s) appear under more than one output id with different messages; analyze "
+              "counts each id as its own cluster (listed in source.shared_source_pairs)")
+    if ask is None:
+        print("the selected files carry different ask suffixes: ask_suffix is null, so elicit refuses the "
+              "translated arm for this file")
+    return items, source_desc, ask
+
+
 def build_stimuli(args) -> Path:
     items = []
     if args.source == "payload":
@@ -662,7 +902,7 @@ def build_stimuli(args) -> Path:
         }
         if excluded:
             print(f"holdout guard: excluded {excluded} sealed Tier B pair(s)")
-    else:  # manual
+    elif args.source == "manual":
         ask = args.ask_suffix if args.ask_suffix is not None else DEFAULT_ASK_SUFFIX_MANUAL
         raw = _load_json(args.manual_in)
         if not isinstance(raw, list) or not raw:
@@ -702,6 +942,13 @@ def build_stimuli(args) -> Path:
                     item[key] = entry[key].strip()
             items.append(item)
         source_desc = {"kind": "manual", "path": str(args.manual_in)}
+    elif args.source == "selection":
+        if args.ask_suffix is not None:
+            raise SystemExit("--ask-suffix does not apply to --source selection: selected items are copied with "
+                             "the messages they were elicited with")
+        items, source_desc, ask = select_stimuli(args.selection, args.dashboard, args.simulated_dir)
+    else:
+        raise SystemExit(f"unknown --source {args.source!r}")
 
     if not items:
         raise SystemExit("no stimuli selected - loosen the filters or check the source file")
@@ -921,6 +1168,12 @@ def elicit(args) -> Path:
     for arm in arms:
         if arm not in ARMS:
             raise SystemExit(f"unknown arm {arm!r}; expected any of {ARMS}")
+    if "translated" in arms and "ask_suffix" in stimuli_doc and stimuli_doc["ask_suffix"] is None:
+        # a --source selection file whose items come from files with different ask suffixes: the translated arm
+        # appends the file-level suffix to each translation, and there is no single one to append
+        raise SystemExit(f"{args.stimuli}: ask_suffix is null (its items carry different ask suffixes), so the "
+                         "translated arm cannot assemble its messages; elicit the clinical and patient arms only, "
+                         "or select items that share one suffix")
     registry = _load_providers(args.providers)
     specs = [m.strip() for m in args.models.replace(",", " ").split() if m.strip()]
     if not specs:
@@ -2289,7 +2542,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     b = sub.add_parser("build-stimuli", help="assemble paired advice vignettes")
-    b.add_argument("--source", choices=("payload", "pairs", "manual"), required=True)
+    b.add_argument("--source", choices=("payload", "pairs", "manual", "selection"), required=True)
     b.add_argument("--payload", default=DEFAULT_PAYLOAD)
     b.add_argument("--only-flips", action="store_true", help="payload source: measured flips only")
     b.add_argument("--only-hedges", action="store_true",
@@ -2305,7 +2558,12 @@ def build_parser() -> argparse.ArgumentParser:
                         "(overrides intended_target for pairs whose word is not a complete noun)")
     b.add_argument("--max-items", type=int, default=0)
     b.add_argument("--pairs", nargs="+", default=[], help="pairs source: batch JSON file(s)")
-    b.add_argument("--dashboard", default="ops/dashboard.json", help="pairs source: dashboard for the holdout gate")
+    b.add_argument("--dashboard", default="ops/dashboard.json",
+                   help="pairs and selection sources: dashboard for the holdout gate")
+    b.add_argument("--selection", help="selection source: JSON {rule, items: [{file, id}], notes?} naming items "
+                                       "of existing stimuli_*.json files to copy verbatim for a re-run")
+    b.add_argument("--simulated-dir", default="data/simulated",
+                   help="selection source: where the Tier B batch files the holdout gate reads live")
     b.add_argument("--manual-in", help="manual source: JSON array of {id, clinical, patient, notes?}")
     b.add_argument("--ask-suffix", default=None, help="appended verbatim to BOTH sides (default per source)")
     b.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
@@ -2417,6 +2675,8 @@ def main(argv=None) -> None:
             raise SystemExit("--source pairs requires --pairs <file...>")
         if args.source == "manual" and not args.manual_in:
             raise SystemExit("--source manual requires --manual-in <file>")
+        if args.source == "selection" and not args.selection:
+            raise SystemExit("--source selection requires --selection <file>")
         if args.complete_with_target and args.source != "payload":
             raise SystemExit("--complete-with-target only applies to --source payload")
         build_stimuli(args)

@@ -363,3 +363,36 @@ def test_export_excludes_models_from_display_but_keeps_chain(archive):
     # chain provenance untouched: n_calls still counts the full archive
     assert payload["run"]["n_calls"] == len(
         ae._read_jsonl(archive["out_dir"] / f"responses_{archive['stim'].stem}.jsonl"))
+
+
+def _selection_doc(*file_sources):
+    return {"source": {"kind": "selection",
+                       "file_sources": {f"data/advice/stimuli_{n}.json": fs for n, fs in enumerate(file_sources)}}}
+
+
+NATURAL = {"kind": "pairs", "paths": ["data/simulated/advnat_20260728T000000Z.json"]}
+COMPLETION = {"kind": "payload", "paths": None}
+
+
+def test_family_of_a_selection_file_is_its_source_files_family():
+    """A build-stimuli --source selection file has no paths of its own (2026-10-01); a re-run of natural-question
+    items must still be labelled natural_questions, not fall through to sentence_completions."""
+    assert ex._family_of(_selection_doc(NATURAL)) == "natural_questions"
+    assert ex._family_of(_selection_doc(COMPLETION, COMPLETION)) == "sentence_completions"
+    nested = {"kind": "selection", "paths": None, "file_sources": {"data/advice/stimuli_n.json": NATURAL}}
+    assert ex._family_of(_selection_doc(nested)) == "natural_questions"
+    # the families of the other kinds are unchanged
+    assert ex._family_of({"source": NATURAL}) == "natural_questions"
+    assert ex._family_of({"source": COMPLETION}) == "sentence_completions"
+    assert ex._family_of({}) == "sentence_completions"
+
+
+@pytest.mark.parametrize("doc", [
+    _selection_doc(NATURAL, COMPLETION),          # both families in one file: one label would misname half
+    {"source": {"kind": "selection"}},            # no file_sources recorded: the family cannot be known
+], ids=["mixed-families", "no-file-sources"])
+def test_family_of_refuses_a_selection_it_cannot_label(doc, capsys):
+    with pytest.raises(SystemExit) as exc:
+        ex._family_of(doc)
+    assert exc.value.code == 3
+    assert "refused:" in capsys.readouterr().out
