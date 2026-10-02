@@ -963,6 +963,14 @@ def elicit(args) -> Path:
           f"x K={args.samples} (resume skipped {len(done)} already-archived)")
     if args.dry_run:
         return out_path
+    if not planned:
+        # Nothing to send, so nothing is appended and the sidecar is left as the last elicitation wrote it. The
+        # rewrite in the finally block below would set run_cost_usd to 0 and name this fire's models and ceiling;
+        # scripts/ledger_update.py books a first-seen cumulative sidecar's day cost from run_cost_usd, so an
+        # elicitation not yet folded would lose its day and channel booking (the judge-only fire of docs/triggers.md,
+        # advice-eval, runs elicit with an offset past the items).
+        print(f"nothing to elicit: {out_path} and its sidecar are left unchanged")
+        return out_path
 
     tracker = CostTracker(args.max_spend, args.max_tokens, custom_pricing)
     client_box: list = []  # Anthropic client, created only when an anthropic-api call happens

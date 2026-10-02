@@ -275,28 +275,193 @@ def workflow_reads_trigger(repo, trigger: str, ref: str | None = None) -> bool:
     return False
 
 
-def fire_lane(trigger: str, params: dict) -> str:
+def fire_lane(trigger: str, params: dict, registry: dict | None = None) -> str:
     """Which prepaid account a fire bills: "anthropic" (default) or "openrouter".
 
-    Only an advice-eval fire whose models spec names NO Anthropic model bills
-    the OpenRouter key alone (registry: bare ids are Anthropic; provider specs
-    starting anthropic: are Anthropic; everything else routes via OpenRouter
-    or an OpenRouter-compatible endpoint). Mixed or ambiguous specs stay on
-    the anthropic lane - fail closed. petri-audit has its own rule
-    (`_petri_lane`): its target is an Inspect model string, not a registry spec."""
+    An advice-eval fire bills the OpenRouter key alone only when every part of
+    it that can make a paid call does: each elicitation model, the judge when
+    `judge` is on, and the translator when the translated arm is requested
+    (`advice_billing_parts`; until 2026-10-01 only `models` was read, so the
+    default Anthropic judge and translator of an all-OpenRouter roster were
+    booked to the OpenRouter ceiling while billing the Anthropic key).
+    `advice_params_problems` refuses a fire whose parts bill more than one
+    account, so a mixed fire that somehow reaches here fails closed to the
+    anthropic lane. petri-audit has its own rule (`_petri_lane`): its target is
+    an Inspect model string, not a registry spec."""
     if trigger == "petri-audit":
         return _petri_lane(params)
     if trigger != "advice-eval":
         return "anthropic"
-    models = str(params.get("models") or "").strip()
+    channels = {channel for _, _, channel in advice_billing_parts(params, registry)}
+    return "openrouter" if channels == {"openrouter"} else "anthropic"
+
+
+# advice-eval billing (2026-10-01). The params job's defaults for the three spec keys (advice_evaluation.yml): the
+# fire guard reads an absent key as the workflow will run it.
+ADVICE_DEFAULT_SPEC = "claude-haiku-4-5"
+ADVICE_DEFAULT_ARMS = "clinical,patient"
+# The two accounts the daily guard bounds, by the registry `key_env` that bills them. Any other key (today
+# `google:`, GEMINI_API_KEY) has no lane, so its spend would be booked to a ceiling that does not bound it.
+ADVICE_LANE_BY_KEY = {"ANTHROPIC_API_KEY": "anthropic", "OPENROUTER_API_KEY": "openrouter"}
+
+
+def _advice_job_value(params: dict, key: str, default: str) -> str:
+    """A key's value as advice_evaluation.yml's params job resolves it: `models` as a JSON list joined with spaces,
+    a JSON boolean lower-cased, anything else `str()`-ed; the job's default when the key is absent."""
+    if key not in params:
+        return default
+    value = params[key]
+    if key == "models" and isinstance(value, list):
+        return " ".join(str(v) for v in value)
+    return str(value).lower() if isinstance(value, bool) else str(value)
+
+
+def advice_spec_key_env(spec: str, registry: dict) -> str | None:
+    """The key a single advice-eval spec bills, by advice_eval.py's `_resolve_spec` rule: `provider:model`, a bare
+    provider name the registry knows (its consumer default), else a bare model id, which is Anthropic. None when
+    the registry cannot say (a provider it does not list, or one with no public API): the run refuses those
+    before its first call."""
+    if ":" in spec:
+        provider = spec.split(":", 1)[0]
+    elif isinstance(registry.get(spec), dict):
+        provider = spec
+    else:
+        return "ANTHROPIC_API_KEY"
+    if provider == "anthropic":
+        return "ANTHROPIC_API_KEY"
+    cfg = registry.get(provider)
+    if not isinstance(cfg, dict):
+        return None
+    if cfg.get("api") == "anthropic":
+        return "ANTHROPIC_API_KEY"
+    key_env = cfg.get("key_env")
+    return key_env if isinstance(key_env, str) and key_env else None
+
+
+def _advice_spec_channel(spec: str, registry: dict) -> str:
+    """The lane a spec is booked to: its key's lane; a third key's own name (refused by advice_params_problems);
+    and, where the registry cannot say, the rule fire_lane applied before 2026-10-01 (a provider prefix other than
+    anthropic is OpenRouter, a bare spec Anthropic), so no fire the registry cannot classify changes lane."""
+    key_env = advice_spec_key_env(spec, registry)
+    if key_env is None:
+        return "openrouter" if ":" in spec else "anthropic"
+    return ADVICE_LANE_BY_KEY.get(key_env, key_env)
+
+
+def advice_gen_config_model(gen_config: str) -> tuple[str | None, str | None]:
+    """(generator spec, None), or (None, why not), for an advice-eval generation fire's `gen_config`: the config
+    file's `model`, which scripts/advice_eval.py `generate` resolves through the registry and calls. A relative path
+    is read from this checkout's root, where the workflow's Generate step runs; the file is data and is read only
+    for its `model`."""
+    path = Path(gen_config)
+    if not path.is_absolute():
+        path = Path(__file__).resolve().parents[1] / path
+    try:
+        cfg = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return None, f"gen_config {gen_config!r} cannot be read ({type(exc).__name__})"
+    model = cfg.get("model") if isinstance(cfg, dict) else None
+    if not isinstance(model, str) or not model.strip():
+        return None, f"gen_config {gen_config!r} names no string 'model'"
+    return model.strip(), None
+
+
+def advice_billing_parts(params: dict, registry: dict | None = None) -> list[tuple[str, str, str]]:
+    """[(role, spec, channel)] for every part of an advice-eval fire that can make a paid call: each elicitation
+    model (role "model"), the judge when `judge` is on ("judge"), and the translator when the translated arm is
+    requested ("translator"). A generation fire (`gen_config` set) skips elicitation in the workflow, so its
+    parts are the config file's generator model ("generator") and the judge when on; its models and translator
+    make no call. A generator whose config cannot be read is listed with spec "" on the anthropic lane, and
+    advice_params_problems refuses the fire.
+
+    The translator is routed as elicit routes it: through the registry only when its spec is one of the fire's
+    `provider:model` model specs as written, and otherwise to the Anthropic API under the name given (scripts/
+    advice_eval.py `timed_send`). A non-Anthropic translator that is not one of the models therefore bills
+    nothing but fails the run; it is classed on the Anthropic lane, where its call goes."""
+    registry = providers_registry() if registry is None else registry
+    if not isinstance(registry, dict):
+        registry = {}
+    judge_part = []
+    if judge_is_on(params):
+        judge = _advice_job_value(params, "judge_model", ADVICE_DEFAULT_SPEC).strip() or ADVICE_DEFAULT_SPEC
+        judge_part.append(("judge", judge, _advice_spec_channel(judge, registry)))
+    gen_config = _advice_job_value(params, "gen_config", "").strip()
+    if gen_config:
+        generator, _ = advice_gen_config_model(gen_config)
+        generator_part = ("generator", generator, _advice_spec_channel(generator, registry)) if generator \
+            else ("generator", "", "anthropic")
+        return [generator_part, *judge_part]
+    models = _advice_job_value(params, "models", ADVICE_DEFAULT_SPEC).replace(",", " ").split()
     if not models:
-        return "anthropic"  # workflow default is an Anthropic model
-    specs = [s for s in models.replace(",", " ").split() if s]
-    for spec in specs:
-        provider = spec.split(":", 1)[0] if ":" in spec else ""
-        if provider == "anthropic" or ":" not in spec:
-            return "anthropic"
-    return "openrouter"
+        models = [ADVICE_DEFAULT_SPEC]   # an empty value runs nothing; booked where the workflow default would be
+    parts = [("model", spec, _advice_spec_channel(spec, registry)) for spec in models]
+    parts.extend(judge_part)
+    arms = [a.strip() for a in _advice_job_value(params, "arms", ADVICE_DEFAULT_ARMS).split(",")]
+    if "translated" in arms:
+        translator = (_advice_job_value(params, "translator_model", ADVICE_DEFAULT_SPEC).strip()
+                      or ADVICE_DEFAULT_SPEC)
+        routed = ":" in translator and translator in models
+        parts.append(("translator", translator,
+                      _advice_spec_channel(translator, registry) if routed else "anthropic"))
+    return parts
+
+
+def advice_params_problems(params: dict, registry: dict | None = None) -> list[str]:
+    """The advice-eval billing invariants every entry point enforces before a paid step (the fire path's
+    validate_params and the workflow's budget-gate): one account per fire, and no part billed through a key the
+    daily guard has no lane for. One journal entry carries one commitment on one lane, so a fire whose models,
+    judge and translator bill two accounts would bound one account's spend by the other's ceiling (the same rule
+    as petri-audit's mixed-channel refusal)."""
+    registry = providers_registry() if registry is None else registry
+    if not isinstance(registry, dict):
+        registry = {}
+    parts = advice_billing_parts(params, registry)
+    problems = []
+    for role, spec, channel in parts:
+        if role == "generator" and not spec:
+            _, why = advice_gen_config_model(_advice_job_value(params, "gen_config", "").strip())
+            problems.append(f"advice-eval {why}, so the generation fire's billing account cannot be classified; "
+                            "fix the gen_config path or its 'model' before firing")
+            continue
+        if role == "translator" and channel == "anthropic" and ":" in spec \
+                and advice_spec_key_env(spec, registry) != "ANTHROPIC_API_KEY":
+            # elicit routes a translator through the registry only when it is one of the models; otherwise it sends
+            # the spec to the Anthropic API under that name, where the call fails
+            problems.append(
+                f"advice-eval translator {spec!r} is not one of the fire's models, so elicit would send it to the "
+                "Anthropic API under that name, where the run fails; use an Anthropic translator, or one that is "
+                "also one of the models on the same account (a Google model goes through OpenRouter as "
+                "openrouter:google/<model>)")
+            continue
+        key_env = advice_spec_key_env(spec, registry)
+        bare_provider = ":" not in spec and isinstance(registry.get(spec), dict)
+        if key_env is None and bare_provider:
+            problems.append(
+                f"advice-eval {role} {spec!r} is a provider the registry lists with no public API key, so the run "
+                "refuses it before its first call; capture such responses with import-manual-responses")
+        elif key_env is not None and key_env not in ADVICE_LANE_BY_KEY:
+            problems.append(
+                f"advice-eval {role} {spec!r} bills {key_env}, which has no ceiling lane: the daily guard bounds "
+                "only the Anthropic and OpenRouter accounts, so this spend would be booked to a ceiling that does "
+                "not bound it; route it through OpenRouter instead (openrouter:<vendor>/<model>, for example "
+                "openrouter:google/<model>)")
+        elif role != "translator" and bare_provider and key_env != "ANTHROPIC_API_KEY":
+            # a bare provider name resolves to the registry's consumer default; before 2026-10-01 the guard booked
+            # every bare spec to the anthropic lane, so it is refused rather than moved to another lane
+            problems.append(
+                f"advice-eval {role} {spec!r} is a bare provider name that bills {key_env} through the registry's "
+                f"consumer default; name the model explicitly ({spec}:<model>) so the fire states what it bills")
+    lanes = {}
+    for role, spec, channel in parts:
+        lanes.setdefault(channel, []).append(f"{role} {spec}")
+    if len(lanes) > 1:
+        detail = "; ".join(f"{channel}: {', '.join(names)}" for channel, names in sorted(lanes.items()))
+        problems.append(
+            f"advice-eval fire bills more than one account ({detail}): one fire carries one commitment on one "
+            "lane, so a mixed-channel fire is refused; split it into separate fires, one per account (for example "
+            "elicit with judge false and without the translated arm, then judge in a fire of its own whose models "
+            "bill the judge's account; docs/triggers.md, advice-eval)")
+    return problems
 
 
 PROVIDERS_RELPATH = Path("data") / "advice_providers.json"
@@ -868,6 +1033,8 @@ def lane_params_problems(trigger: str, params: dict, registry: dict | None = Non
     """Lane-specific invariants beyond the key set; empty for lanes that have none."""
     if trigger == "petri-audit":
         return petri_params_problems(params, registry)
+    if trigger == "advice-eval":
+        return advice_params_problems(params, registry)
     return []
 
 

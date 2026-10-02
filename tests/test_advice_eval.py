@@ -195,10 +195,11 @@ def test_elicit_chain_and_resume(tmp_path, monkeypatch):
     assert all(r["translation_sha256"] == rows[0]["output_sha256"] for r in translated)
     assert all(r["model_returned"] == "model-x-20260101" for r in translated)
 
-    # resume: identical invocation appends nothing
+    # resume: identical invocation appends nothing and leaves the sidecar as the spending run wrote it
+    before = sidecar.read_bytes()
     _elicit(tmp_path, monkeypatch, stim_path)
     assert len(resp.read_text(encoding="utf-8").splitlines()) == 7
-    assert json.loads(sidecar.read_text(encoding="utf-8"))["records_appended"] == 0
+    assert sidecar.read_bytes() == before
 
 
 def test_verify_chain_detects_tamper(tmp_path, monkeypatch):
@@ -864,11 +865,11 @@ def test_sidecar_cost_is_cumulative_across_resumes(tmp_path, monkeypatch):
     first = json.loads(sidecar.read_text(encoding="utf-8"))
     assert first["cost_basis"] == "cumulative_from_records"
     assert first["cost_usd"] == pytest.approx(first["run_cost_usd"], abs=1e-5)
-    _elicit(tmp_path, monkeypatch, stim_path)  # resume appends nothing
-    second = json.loads(sidecar.read_text(encoding="utf-8"))
-    # the overwritten sidecar keeps the archive's full spend for the ledger
-    assert second["run_cost_usd"] == 0.0
-    assert second["cost_usd"] == pytest.approx(first["cost_usd"])
+    before = sidecar.read_bytes()
+    _elicit(tmp_path, monkeypatch, stim_path)  # resume plans nothing, so it appends nothing
+    # the sidecar is left as the run that spent wrote it (2026-10-01): a rewrite with run_cost_usd 0 would lose
+    # that run's day booking in scripts/ledger_update.py if the ledger had not folded it yet
+    assert sidecar.read_bytes() == before
 
 
 def _recover(stim_path, restored_dir, out_dir, *extra):
@@ -1345,3 +1346,39 @@ def test_parse_generated_pairs_salvages_truncated_array():
             ' {"topic": "t", "clinical": "Cut off mid')
     items = _parse_generated_pairs(text)
     assert [i["clinical"] for i in items] == ["Full first", "Full second"]
+
+
+def test_elicit_with_offset_past_the_items_plans_no_call(tmp_path, monkeypatch, capsys):
+    """docs/triggers.md (advice-eval) names this as the way to judge an archive in a fire of its own: an offset at
+    or past the item count elicits nothing, whatever the models."""
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+
+    def no_call(*a, **k):
+        raise AssertionError("no call expected")
+
+    monkeypatch.setattr(ae, "_client", no_call)
+    monkeypatch.setattr(ae, "_send", no_call)
+    ae.main(["elicit", "--stimuli", str(stim_path), "--models", "anthropic:claude-haiku-4-5",
+             "--offset", "1", "--max-spend", "0.01", "--out-dir", str(stim_path.parent)])
+    assert "plan: 0 call(s)" in capsys.readouterr().out
+
+
+def test_elicit_that_plans_no_call_leaves_the_sidecar_for_the_ledger(tmp_path, monkeypatch):
+    """The judge-only fire of docs/triggers.md runs elicit with an offset past the items. It must not rewrite the
+    elicitation's sidecar: scripts/ledger_update.py books a first-seen cumulative sidecar's day cost from
+    run_cost_usd, and a rewrite with 0 there (and the judge fire's models and ceiling) would lose the elicitation's
+    day and channel booking whenever the ledger had not folded it yet."""
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, sidecar = _elicit(tmp_path, monkeypatch, stim_path)
+    before_sidecar, before_archive = sidecar.read_bytes(), resp.read_bytes()
+    assert json.loads(before_sidecar)["run_cost_usd"] > 0
+
+    def no_call(*a, **k):
+        raise AssertionError("no call expected")
+
+    monkeypatch.setattr(ae, "_client", no_call)
+    monkeypatch.setattr(ae, "_send", no_call)
+    ae.main(["elicit", "--stimuli", str(stim_path), "--models", "anthropic:claude-sonnet-4-5",
+             "--offset", "99", "--max-spend", "0.01", "--out-dir", str(stim_path.parent)])
+    assert sidecar.read_bytes() == before_sidecar
+    assert resp.read_bytes() == before_archive

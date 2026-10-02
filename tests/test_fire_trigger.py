@@ -842,8 +842,11 @@ def test_mitigation_fire_detection_and_inflight_counting():
 # ---- advice-eval registration + judge-ceiling accounting (handoff rev 2) ----
 
 def _advice_params(**over):
+    # one billing account: a mixed roster, a bare non-Anthropic provider name and a google: spec are each refused
+    # (advice_params_problems, 2026-10-01); until then this helper's roster was "anthropic:claude-haiku-4-5 openai
+    # google", which the guard classed on the anthropic lane
     p = {"stimuli_file": "data/advice/stimuli_x.json",
-         "models": "anthropic:claude-haiku-4-5 openai google",
+         "models": "anthropic:claude-haiku-4-5",
          "arms": "clinical,patient,translated", "samples": "3",
          "temperature": "1.0", "max_tokens": "1024",
          "translator_model": "claude-haiku-4-5", "max_spend": "1.50",
@@ -988,6 +991,212 @@ def test_inflight_lane_filter_and_override_scope():
     assert kind == "ok" and "override" in reason
     orl = {"models": "openai:openai/x", "max_spend": "1.0"}
     assert ft.budget_check(orl, dash, today, overrides=ov, trigger="advice-eval")[0] == "ceiling"
+
+
+# ---- advice-eval billing parts: judge and translator are booked too (2026-10-01) ----
+
+_ORL = "openai:openai/x,openrouter:google/y"
+
+
+def _old_advice_lane(params):
+    """fire_lane's advice-eval rule before 2026-10-01 (models only), kept to prove valid fires keep their lane."""
+    models = str(params.get("models") or "").strip()
+    if not models:
+        return "anthropic"
+    for spec in [s for s in models.replace(",", " ").split() if s]:
+        provider = spec.split(":", 1)[0] if ":" in spec else ""
+        if provider == "anthropic" or ":" not in spec:
+            return "anthropic"
+    return "openrouter"
+
+
+def test_fire_lane_books_the_judge_and_the_translator():
+    # the default judge and the default translator are Anthropic: an OpenRouter roster with either is mixed, and a
+    # mixed fire fails closed to the anthropic lane (it is refused before it gets that far; see below)
+    assert ft.fire_lane("advice-eval", {"models": _ORL, "judge": "true"}) == "anthropic"
+    assert ft.fire_lane("advice-eval", {"models": _ORL, "arms": "clinical,patient,translated"}) == "anthropic"
+    # judge off, or the translated arm not requested: the judge_model and translator_model values are not billed
+    assert ft.fire_lane("advice-eval", {"models": _ORL, "judge": "false",
+                                        "judge_model": "claude-haiku-4-5"}) == "openrouter"
+    assert ft.fire_lane("advice-eval", {"models": _ORL, "arms": "clinical,patient",
+                                        "translator_model": "claude-haiku-4-5"}) == "openrouter"
+    # an OpenRouter judge, and a translator that is one of the models (elicit routes it through the registry)
+    assert ft.fire_lane("advice-eval", {"models": _ORL, "judge": True,
+                                        "judge_model": "openrouter:stealth/z"}) == "openrouter"
+    assert ft.fire_lane("advice-eval", {"models": _ORL, "arms": "clinical,translated",
+                                        "translator_model": "openai:openai/x"}) == "openrouter"
+    # a translator that is not one of the models goes to the Anthropic API under the name given
+    assert ft.fire_lane("advice-eval", {"models": _ORL, "arms": "clinical,translated",
+                                        "translator_model": "openai:openai/other"}) == "anthropic"
+    # a JSON list of models is read as the params job joins it
+    assert ft.fire_lane("advice-eval", {"models": ["openai:openai/x", "openrouter:google/y"]}) == "openrouter"
+    assert ft.fire_lane("advice-eval", {"models": ["anthropic:claude-x"]}) == "anthropic"
+
+
+def test_advice_billing_parts_name_each_paid_part():
+    parts = ft.advice_billing_parts({"models": _ORL, "judge": "true", "arms": "clinical,patient,translated"})
+    assert parts == [("model", "openai:openai/x", "openrouter"), ("model", "openrouter:google/y", "openrouter"),
+                     ("judge", "claude-haiku-4-5", "anthropic"), ("translator", "claude-haiku-4-5", "anthropic")]
+
+
+@pytest.mark.parametrize("params", [
+    dict(ft.PARK_DEFAULTS["advice-eval"]),
+    {"models": "anthropic:claude-haiku-4-5", "judge": "true", "judge_model": "claude-haiku-4-5",
+     "arms": "clinical,patient,translated", "translator_model": "claude-haiku-4-5"},
+    {"models": "anthropic:claude-haiku-4-5,anthropic:claude-sonnet-5", "judge": "false"},
+    {"models": "openrouter:stealth/ox-alpha", "judge": "true", "judge_model": "openrouter:stealth/ox-alpha"},
+    {"models": "openai:openai/gpt-5.5,openai:openai/gpt-5.4-mini,openrouter:google/gemini-3.5-flash",
+     "judge": "false", "arms": "clinical,patient"},
+    {"models": "openrouter:thinkingmachines/inkling-small", "judge": "false", "judge_model": "claude-haiku-4-5",
+     "arms": "clinical,patient", "translator_model": "claude-haiku-4-5"},
+    {"models": "claude-x"}, {"models": ""}, {},
+    {"models": "anthropic"},
+    {"models": "nosuchprovider:x"},
+])
+def test_valid_advice_fires_keep_the_lane_they_had(params):
+    """Every fire the new rules still admit is classed exactly as the models-only rule classed it: the configurations
+    the trigger file has held on main that bill one account, the park default, and the edge spellings."""
+    assert ft.advice_params_problems(params) == []
+    assert ft.fire_lane("advice-eval", params) == _old_advice_lane(params)
+
+
+@pytest.mark.parametrize("over, needle", [
+    ({"models": _ORL, "judge": "true", "judge_max_spend": "0.5"}, "judge claude-haiku-4-5"),
+    ({"models": _ORL, "arms": "clinical,patient,translated"}, "translator claude-haiku-4-5"),
+    ({"models": "anthropic:claude-haiku-4-5," + _ORL}, "model openai:openai/x"),
+    ({"models": "anthropic:claude-sonnet-5", "judge": "true", "judge_model": "openrouter:stealth/z",
+      "judge_max_spend": "0.5"}, "judge openrouter:stealth/z"),
+])
+def test_mixed_channel_advice_fire_refused_with_exit_3(repo, capsys, over, needle):
+    write_dashboard(repo, spent=0.0)
+    params = _advice_params(**{"_nonce": "mix", "arms": "clinical,patient", **over})
+    assert fire(repo, "advice-eval", params) == 3
+    err = capsys.readouterr().err
+    assert "bills more than one account" in err and "split it into separate fires" in err and needle in err
+    assert not trigger_path(repo, "advice-eval").exists()
+    assert not journal_path(repo).exists() or "mix" not in journal_path(repo).read_text()
+
+
+@pytest.mark.parametrize("over", [
+    {"models": "google:gemini-3.5-flash"},
+    {"models": "google"},
+    {"judge": "true", "judge_model": "google:gemini-3.5-flash", "judge_max_spend": "0.5"},
+    {"models": "google:gemini-3.5-flash", "arms": "clinical,translated", "translator_model": "google:gemini-3.5-flash"},
+])
+def test_google_spec_refused_in_advice_fires(repo, capsys, over):
+    write_dashboard(repo, spent=0.0)
+    params = _advice_params(**{"_nonce": "g", "arms": "clinical,patient", **over})
+    assert fire(repo, "advice-eval", params) == 3
+    err = capsys.readouterr().err
+    assert "GEMINI_API_KEY" in err and "no ceiling lane" in err and "openrouter:google/<model>" in err
+    assert not trigger_path(repo, "advice-eval").exists()
+
+
+@pytest.mark.parametrize("translator", ["google:gemini-3.5-flash", "openai:openai/other"])
+def test_a_non_anthropic_translator_outside_the_models_is_refused_for_what_elicit_does(translator):
+    """elicit routes a translator through the registry only when it is one of the models; otherwise the spec goes to
+    the Anthropic API under that name. The refusal says so instead of naming the registry key it would not bill."""
+    params = {"models": "anthropic:claude-haiku-4-5", "arms": "clinical,translated", "translator_model": translator}
+    problems = ft.advice_params_problems(params)
+    assert len(problems) == 1
+    assert "not one of the fire's models" in problems[0] and "Anthropic API" in problems[0]
+    assert "GEMINI_API_KEY" not in problems[0] and "openrouter:google/<model>" in problems[0]
+
+
+def test_a_manual_ui_provider_is_refused_without_naming_a_key():
+    registry = {"copilot": {"api": "manual_ui"}, "anthropic": {"api": "anthropic"}}
+    problems = ft.advice_params_problems({"models": "copilot"}, registry)
+    assert len(problems) == 1
+    assert "no public API key" in problems[0] and "None" not in problems[0]
+
+
+def _gen_config(tmp_path, model):
+    path = tmp_path / "gen_config_placeholder.json"
+    path.write_text(json.dumps({"model": model, "n_items": 1, "prompt_template": "placeholder"}), encoding="utf-8")
+    return str(path)
+
+
+def test_generation_fire_is_booked_by_its_generator(tmp_path):
+    """With gen_config set the workflow runs generate (the config's model) and skips elicit, so models and the
+    translator make no call. Until 2026-10-01 such a fire was booked by its default models (anthropic) while its
+    OpenRouter generator billed OPENROUTER_API_KEY."""
+    params = {"gen_config": _gen_config(tmp_path, "openrouter:stealth/ox-alpha"), "max_spend": "0.25"}
+    assert ft.advice_billing_parts(params) == [("generator", "openrouter:stealth/ox-alpha", "openrouter")]
+    assert ft.fire_lane("advice-eval", params) == "openrouter"
+    assert _old_advice_lane(params) == "anthropic"     # the lane it had: the booking this corrects
+    assert ft.advice_params_problems(params) == []
+    # models and the translator are not billed in a generation fire, whatever they name
+    over = dict(params, models="google:gemini-3.5-flash", arms="clinical,translated", translator_model="claude-x")
+    assert ft.advice_params_problems(over) == [] and ft.fire_lane("advice-eval", over) == "openrouter"
+    # an Anthropic generator is booked on the anthropic lane
+    assert ft.fire_lane("advice-eval", {"gen_config": _gen_config(tmp_path, "claude-x")}) == "anthropic"
+
+
+def test_generation_fire_reads_a_relative_gen_config_from_the_checkout_root():
+    committed = "data/advice/gen_config_oxterm_scale_20260823.json"
+    model = json.loads((Path(__file__).resolve().parents[1] / committed).read_text(encoding="utf-8"))["model"]
+    parts = ft.advice_billing_parts({"gen_config": committed})
+    assert [(role, spec) for role, spec, _ in parts] == [("generator", model)]
+
+
+def test_generation_fire_with_a_google_generator_is_refused(tmp_path):
+    problems = ft.advice_params_problems({"gen_config": _gen_config(tmp_path, "google:gemini-3.5-flash")})
+    assert len(problems) == 1 and "generator" in problems[0] and "GEMINI_API_KEY" in problems[0]
+    assert "openrouter:google/<model>" in problems[0]
+
+
+def test_generation_fire_with_an_unreadable_gen_config_is_refused(tmp_path):
+    for gen_config, why in [(str(tmp_path / "missing.json"), "cannot be read"),
+                            (_gen_config(tmp_path, ""), "names no string 'model'")]:
+        params = {"gen_config": gen_config}
+        problems = ft.advice_params_problems(params)
+        assert len(problems) == 1 and why in problems[0] and "cannot be classified" in problems[0]
+        assert ft.fire_lane("advice-eval", params) == "anthropic"     # fails closed to the stricter ceiling
+
+
+def test_generation_fire_with_the_default_judge_is_mixed_and_refused(tmp_path):
+    """The Judge step runs whenever judge is true, generation fire or not."""
+    params = {"gen_config": _gen_config(tmp_path, "openrouter:stealth/ox-alpha"), "judge": "true"}
+    problems = ft.advice_params_problems(params)
+    assert any("bills more than one account" in p and "generator openrouter:stealth/ox-alpha" in p
+               for p in problems)
+
+
+def test_google_judge_model_is_not_billed_while_the_judge_is_off():
+    params = {"models": "anthropic:claude-haiku-4-5", "judge": "false", "judge_model": "google:gemini-3.5-flash"}
+    assert ft.advice_params_problems(params) == []
+
+
+def test_bare_non_anthropic_provider_name_refused(repo, capsys):
+    write_dashboard(repo, spent=0.0)
+    assert fire(repo, "advice-eval", _advice_params(_nonce="b", models="openai", arms="clinical,patient")) == 3
+    assert "bare provider name" in capsys.readouterr().err
+
+
+def test_openrouter_only_fire_with_openrouter_judge_is_booked_on_openrouter(repo):
+    write_dashboard(repo, spent=0.0)
+    params = _advice_params(_nonce="o1", models=_ORL, arms="clinical,patient", judge="true",
+                            judge_model="openrouter:stealth/z", judge_max_spend="0.5")
+    assert fire(repo, "advice-eval", params) == 0
+    entry = json.loads(journal_path(repo).read_text().splitlines()[-1])
+    assert entry["lane"] == "openrouter" and entry["max_spend"] == pytest.approx(2.0)
+
+
+def test_budget_gate_refuses_a_mixed_channel_advice_fire(repo, tmp_path, capsys):
+    """A workflow_dispatch never passes through the fire path, so the gate applies the same refusal to the params
+    job's resolved values (every key present, defaults filled in)."""
+    (repo / "data").mkdir()
+    (repo / "data" / "advice_providers.json").write_text(
+        (Path(__file__).resolve().parents[1] / "data" / "advice_providers.json").read_text(encoding="utf-8"),
+        encoding="utf-8")
+    resolved = dict(G4_LANES["advice-eval"][1], models=_ORL, judge="true")
+    pf = tmp_path / "params.json"
+    pf.write_text(json.dumps(resolved), encoding="utf-8")
+    assert ft.main(["budget-gate", "--repo", str(repo), "--trigger", "advice-eval", "--params-file", str(pf)]) == 6
+    assert "split it into separate fires" in capsys.readouterr().err
+    pf.write_text(json.dumps(dict(resolved, models="google:gemini-3.5-flash", judge="false")), encoding="utf-8")
+    assert ft.main(["budget-gate", "--repo", str(repo), "--trigger", "advice-eval", "--params-file", str(pf)]) == 6
+    assert "GEMINI_API_KEY" in capsys.readouterr().err
 
 
 def test_unwired_trigger_refused_with_exit_7(repo, capsys):
