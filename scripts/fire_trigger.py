@@ -388,8 +388,8 @@ def advice_billing_parts(params: dict, registry: dict | None = None) -> list[tup
     gen_config = _advice_job_value(params, "gen_config", "").strip()
     if gen_config:
         generator, _ = advice_gen_config_model(gen_config)
-        generator_part = ("generator", generator, _advice_spec_channel(generator, registry)) if generator \
-            else ("generator", "", "anthropic")
+        generator_part = (("generator", generator, _advice_spec_channel(generator, registry)) if generator
+                          else ("generator", "", "anthropic"))
         return [generator_part, *judge_part]
     models = _advice_job_value(params, "models", ADVICE_DEFAULT_SPEC).replace(",", " ").split()
     if not models:
