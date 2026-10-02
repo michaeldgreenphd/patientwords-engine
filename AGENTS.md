@@ -41,7 +41,7 @@ python -m pytest tests/test_graph_client.py -k retries   # single file / test
 ruff check .                            # lint (line-length 120)
 ```
 
-Console entry points (see `[tool.poetry.scripts]`): `medlang-compare`, `medlang-batch-eval`,
+Console entry points (`[tool.poetry.scripts]`): `medlang-compare`, `medlang-batch-eval`,
 `medlang-evaluate`, `medlang-generate`.
 
 ## Execution model: nothing paid or networked runs locally
@@ -51,14 +51,14 @@ API keys exist **only as GitHub Actions secrets**, and the repository holds exac
 `NEURONPEDIA_API_KEY` and optional `HF_TOKEN`. The models the study traces and measures are
 reached through Neuronpedia (`NEURONPEDIA_API_KEY`) or loaded from Hugging Face for CPU
 inference (`HF_TOKEN`). Every non-Anthropic model called through a chat API (the advice and
-Petri lanes) goes through OpenRouter on `OPENROUTER_API_KEY` (`data/advice_providers.json`
-routes `openai:`, `xai:`, `deepseek:`, `moonshot:` and `openrouter:` there), except the
+Petri lanes) goes through OpenRouter on `OPENROUTER_API_KEY`
+(routing: `data/advice_providers.json`), except the
 registry's direct `google:` entry, which uses `GEMINI_API_KEY`. There is no `OPENAI_API_KEY`,
 `XAI_API_KEY`, `DEEPSEEK_API_KEY` or `MOONSHOT_API_KEY`: the workflows' references to them
-resolve to empty strings. A Petri target in `mode: run` (or `mode: readapt`, which states
-its source run's target) must be `anthropic/<model>` or `openrouter/<vendor>/<model>`;
-`mockllm/model`, the lane's park default and the only `dry_run` target, calls nothing and
-is refused in both paid modes (`docs/triggers.md` has the full rule). Dev containers have
+resolve to empty strings. A Petri target in `mode: run` or `mode: readapt` must be
+`anthropic/<model>` or `openrouter/<vendor>/<model>`; `mockllm/model`, the lane's park
+default, calls nothing and is refused in both (`docs/triggers.md` has the full rule).
+Dev containers have
 none of these keys, and the sandbox egress proxy blocks huggingface.co and most model
 hosts. All generation, tracing, and CPU inference therefore
 runs through **push-to-run CI**: each workflow fires when its file under `.github/trigger/`
@@ -67,27 +67,24 @@ GPU) still commits no locally produced measurement: every committed summary reco
 `inference.environment`, and only CI-produced summaries are measurements.
 
 **One exception, for pilots of the generation loop** (owner decision of 2026-09-30 on
-PR #52, after Codex read the rule above as excluding them). A measurement-validity
+PR #52). A measurement-validity
 pilot of the stimulus-generation loop may run as Claude Code subagents inside the
 owner's own interactive Claude Code session (the Workflow tool, in a cloud session or
 on the owner's machine), on that session's subscription and with no repository key, and
 its artifacts may be committed under `pilot/`, on four conditions: the run directory's
-`PROTOCOL.md`, `HANDOFF.md` and `manifest.json` (`pilot/` for the first recorded run,
-`pilot/runs/<run_id>/` for later ones) state that execution path; nothing it produces is
+protocol, handoff and manifest (`pilot/PROTOCOL.md`, `pilot/HANDOFF.md` and
+`pilot/manifest.json` for the first recorded run; the same three in `pilot/runs/<run_id>/`
+for later ones) state that execution path; nothing it produces is
 written under `data/` or `trace_out/`, counted as a measurement, or published to the
-site; no script in this repository calls a paid provider API for it
-(`pilot/scripts/build_api_requests.py` writes request bodies and sends nothing); and the
-holdout seal check is CLEAN over each run directory before the commit. The pilot scripts
-work on one run directory at a time, the one `PILOT_DIR` names (`pilot/` when it is
-unset); the planning, batching, rendering and review-draw scripts refuse a directory
-whose manifest is finalized unless `--replace` is passed (`common.finalized_run_guard`).
+site; no script in this repository calls a paid provider API for it; and the
+holdout seal check is CLEAN over each run directory before the commit.
 Subscription usage in the owner's session is not provider spend, so
 `fire_trigger.py`'s journal and ceiling do not apply to it. A pilot run through a
-push-to-run lane, once one exists, needs no exception.
+push-to-run lane, once one exists, needs no exception. Mechanics: `docs/pilot_runs.md`.
 
 | Trigger file | Workflow | What it does |
 |---|---|---|
-| `circuit-trace.json` | `circuit_trace_evaluation.yml` | hosted attribution graphs (matrix: `graph_models` × `offsets`) |
+| `circuit-trace.json` | `circuit_trace_evaluation.yml` | hosted attribution graphs |
 | `logits-eval.json` | `logits_evaluation.yml` | CPU next-token measurement for models Neuronpedia can't trace |
 | `scenario-generation.json` | `scenario_generation.yml` | Claude-authored pair batches (paid; `max_spend` ceiling) |
 | `model-evaluation.json` | `model_evaluation.yml` | Claude concept-extraction eval before/after translation (paid) |
@@ -95,58 +92,49 @@ push-to-run lane, once one exists, needs no exception.
 | `activation-patching.json` | `activation_patching.yml` | CPU residual-stream patching grid ($0) |
 | `jlens-readout.json` | `jlens_readout.yml` | hosted Jacobian-lens depth readouts ($0) |
 | `advice-eval.json` | `advice_evaluation.yml` | deployed-assistant advice elicitation + judging (paid) |
-| `petri-audit.json` | `petri_audit.yml` | Petri-hosted multi-turn register experiments (paid when `mode: run`, and `mode: readapt` or `mode: rejudge` for its judge; `rejudge` re-grades landed runs with another judge into `data/petri/rejudge/`; park default `preflight` calls nothing) |
+| `petri-audit.json` | `petri_audit.yml` | Petri-hosted multi-turn register experiments (paid modes: *Cost discipline*; `rejudge` re-grades landed runs with another judge into `data/petri/rejudge/`) |
 
 Nine lanes. `scripts/fire_trigger.py` also knows `pab-probe`, whose
-workflow exists only on the PAB branch. The fact-check of 2026-09-04 found this table
-one lane behind; `.github/trigger/README.md` documents only the `scenario-generation`
-and `circuit-trace` lanes. That README predates the
-ops system and cannot be edited from a session (the guard hooks refuse every write
-under `.github/trigger/`), so the lane reference with every lane's exact key set is
-`docs/triggers.md`, and since 2026-09-09 `tests/test_trigger_docs.py` checks it and
-this table against `TRIGGERS`, `PAID_TRIGGERS`, `PARK_DEFAULTS`, `KNOWN_KEYS` and
-the workflows on the branch, so adding a lane without updating both fails the suite.
+workflow exists only on the PAB branch. The lane reference, with every lane's exact
+key set, is `docs/triggers.md` (it says why `.github/trigger/README.md` is not);
+`tests/test_trigger_docs.py` checks it and this table against `TRIGGERS`,
+`PAID_TRIGGERS`, `PARK_DEFAULTS`, `KNOWN_KEYS` and the workflows on the branch, so
+adding a lane without updating both fails the suite.
 
 **Queue discipline (the sharpest tool in the repo):** every workflow has a per-branch
 concurrency group with `cancel-in-progress: false`, which means **one running + one
 pending run**. Pushing a third trigger change *evicts the pending run silently*. Never
 stack two pending runs in the same group; chain fires instead.
 
-**Merge/copy danger:** any push that changes a trigger file fires its workflow — including
-merges to `main`. When merging branches, keep the target branch's trigger files unchanged
-(restore them before committing the merge) or you will re-fire runs and double-spend.
-Two corollaries (learned on the PAB branch, 2026-08-04, both observed live): **"changes"
+**Merge/copy danger:** any push that changes a trigger file fires its workflow, merges
+to `main` included. When merging branches, keep the target branch's trigger files
+unchanged (restore them before committing the merge) or you will re-fire runs and
+double-spend. Two corollaries (case law: `docs/operators_handbook.md` §5): **"changes"
 includes a trigger file appearing on a ref for the first time** — branch creation,
-cherry-picks, and rebases all count, and on a *new* ref **every** trigger file on it
-counts, not only the ones that differ from the parent (2026-09-04: creating a merge
-branch from `main` fired all eight lanes at once, two of them paid, with `main`'s live
-configs). Since 2026-09-04 every job in every push-to-run workflow carries
-`if: ${{ !github.event.created }}`, so the push that creates a ref is skipped
-(`tests/test_workflow_created_guard.py` enforces it on every workflow). Consequence:
-`fire_trigger.py`'s first push to a brand-new branch fires nothing — fire from an
-existing branch. Cherry-picks and rebases onto an existing branch still fire; and the
-**resting-state rule** — a trigger file at rest is a loaded default
-any branch operation can pull, so its committed content should be the cheapest stage that
-exists with `commit_outputs`/`commit_sidecar` false, never the last expensive thing that
-ran. Implemented 2026-08-29: `scripts/fire_trigger.py park --trigger <t>` (or `--all`)
-fires each lane's no-op default from `PARK_DEFAULTS`. All nine lanes are parked at rest,
-`petri-audit` (added 2026-09-16) since its first park on 2026-09-18, except
-`archive-renders` from the cycle that fires its $0 PNG sweep until the next cycle re-parks
-it (`docs/routine_standing_prompt.md` §3d); after any real fire lands, re-park that lane
+cherry-picks and rebases all count, and on a *new* ref **every** trigger file on it
+counts, not only those that differ from the parent. Every push-to-run job carries
+`if: ${{ !github.event.created }}` (`tests/test_workflow_created_guard.py`), so the push
+that creates a ref is skipped and `fire_trigger.py`'s first push to a brand-new branch
+fires nothing — fire from an existing branch; cherry-picks and rebases onto an existing
+branch still fire. And the **resting-state rule**: a trigger file at rest is a loaded
+default any branch operation can pull, so its committed content should be the cheapest
+stage that exists with `commit_outputs`/`commit_sidecar` false, never the last expensive
+thing that ran. `scripts/fire_trigger.py park --trigger <t>` (or `--all`) fires each
+lane's no-op default from `PARK_DEFAULTS`. All nine lanes rest parked except
+`archive-renders`, from the cycle that fires its $0 PNG sweep until the next re-parks it
+(`docs/routine_standing_prompt.md` §3d); after any real fire lands, re-park that lane
 (`docs/operators_handbook.md` §3).
 
 **Cost discipline:** Neuronpedia tracing, CPU logits, and all analysis are $0. The lanes
 in `fire_trigger.py`'s `PAID_TRIGGERS` (the source of truth) spend provider credits — on
 `main`, `scenario-generation`, `model-evaluation`, `advice-eval`, and
-`petri-audit` when `mode: run` (or `mode: readapt` or `mode: rejudge`, whose judge alone spends; a rejudge with the `mockllm/judge` rehearsal spends nothing) —
-and so does `circuit-trace` with `show_mitigation: true` (a flat $0.15 imputed per fire)
-or `mode: translation`. Measured per accepted pair
-across the landed `.report.json` sidecars (2026-09-04): opus **$0.020**, haiku $0.0017,
-sonnet $0.060. Every paid generation run writes `<batch>.report.json` (one archived
-batch, `pairs_20260706T172135Z` — the park default — has none); mitigation runs write
+`petri-audit` when `mode: run` (or `mode: readapt` or `mode: rejudge`, whose judge alone
+spends) — and so does `circuit-trace` with `show_mitigation: true` or
+`mode: translation`; `docs/triggers.md` has each lane's costs. Every paid
+generation run writes `<batch>.report.json`; mitigation runs write
 `mitigation.part_NN.report.json` under the trace dir. The spend ledger is
-`docs/overnight_ledger_20260708.md`: `scripts/ledger_update.py` appends to the newest
-`docs/*ledger*.md`, so a new one sorting after it would silently take over.
+`docs/overnight_ledger_20260708.md`; `scripts/ledger_update.py` appends to the newest
+`docs/*ledger*.md`, so never add another (`docs/README.md`, naming rule).
 
 **Ops tooling (required path):** fire triggers ONLY via `scripts/fire_trigger.py` — it
 journals every fire (`ops/trigger_journal.jsonl`), mechanically enforces the
@@ -154,51 +142,41 @@ one-running + one-pending discipline, hard-errors on unknown trigger keys (CI si
 ignores them), and refuses paid fires that would breach the daily operational ceiling
 ($2 unless `ops/budget_overrides.json` holds a dated raise for that UTC day; $10 for a
 fire billed only to OpenRouter), counting landed spend **and** the `max_spend` every
-paid fire made that UTC day still
-holds — resolved or expired alike; only eviction releases it (`entry_holds_spend`,
-since 2026-09-23, when resolve-released holds let the guard report $0 committed on a
-day two resolved fires had committed $12.70). Once the ledger folds a run's cost into
-`spend.today`, that run counts twice for the rest of its day; that fails closed.
+paid fire made that UTC day, resolved or expired alike, until eviction
+(`entry_holds_spend`; hold rules, including a deliberate fail-closed double count:
+`docs/operators_handbook.md` §6).
 `scripts/ledger_update.py` is the only writer of spend numbers
-(`ops/dashboard.json` + the ledger); `scripts/daily_brief.py`
-renders the 3-section brief and the push digest. `ops/dashboard.json` is **committed**
-only by the daily Routine session (`ops/README.md`, `docs/routine_standing_prompt.md`);
-`fire_trigger.py` rewrites its `queue` block as a side effect of every fire and resolve,
-then puts the file back unless `--keep-dashboard` is passed — which only the Routine
-passes; it never commits the dashboard itself. Both repos are public: never write
-secrets anywhere.
+(`ops/dashboard.json` + the ledger). `ops/dashboard.json` is **committed**
+only by the daily Routine session (`ops/README.md`, `docs/routine_standing_prompt.md`):
+`fire_trigger.py` rewrites its `queue` block on every fire and resolve and restores the
+file unless the Routine passes `--keep-dashboard`; it never commits it.
+Both repos are public: never write secrets anywhere.
 
 **Enforced, not only stated.** `.claude/settings.json` installs PreToolUse hooks
 (`.claude/hooks/`) that refuse, from any Claude Code session: hand edits under
 `.github/trigger/`; a commit of `ops/dashboard.json` outside the Routine environment;
 ref deletions and force pushes; and a `git push` from Bash that carries a trigger-file
 change. `.githooks/pre-commit` and `pre-push` repeat the dashboard, trigger and deletion
-checks inside git itself, for any caller; `fire_trigger.py` installs them as
-`core.hooksPath` on every invocation, and the SessionStart hook does too. The cloud
-containers that hold both repos start with the parent folder as the project directory,
-where project settings do not load (found 2026-09-08: the Routine committed the
-dashboard with no hook in the way), so the environment's setup script installs the
-same hooks user-level with `.claude/hooks/install_user_settings.py`
-(`.claude/hooks/README.md`). Paid lanes, and circuit-trace's two Anthropic paths
-(`show_mitigation: true`, `mode: translation`), are additionally ceiling-gated
-server-side in their own workflows (`fire_trigger.py budget-gate`).
+checks inside git itself, for any caller. `.claude/hooks/README.md` has how each layer
+is installed, including user-level in the cloud containers. Paid lanes and
+circuit-trace's two Anthropic paths are also ceiling-gated server-side in their own
+workflows (`fire_trigger.py budget-gate`).
 
 ## Architecture
 
 **Tracing (`graph_client.py` → `batch_eval.py`).** `MODEL_REGISTRY` lists four Neuronpedia
 model ids. **`gemma-2-2b` is the only model with both hosted graphs and a transcoder
-source set.** `qwen3-4b` has served graphs since the 2026-09-02 re-probe but has no
-transcoders, so its features are untagged; the other two still 400/500 server-side
-(`docs/cross-model.md` has the dated table — re-probe before relying on any of this). Hosted requests retry on
+source set**; `docs/cross-model.md` has the dated per-model status (re-probe before
+relying on it). Hosted requests retry on
 {429,500,502,503,504} with fresh slugs; a 400 aborts the batch immediately, and `run_batch`
 has no per-pair error records — a mid-batch failure just truncates `results`.
 `medlang-batch-eval` has four modes (`2panel`, `4quadrant`, `dialect`, `translation`) with
-different result schemas; `2panel` supports `--screen-targets` (clinical side traced first;
-unmeasurable pairs recorded as `screening.status == "screened_out"`, patient trace skipped) and
-`--show-mitigation` (third, LLM-translated panel — the only Anthropic call in 2panel).
+different result schemas (`README.md` describes each). In `2panel`, `--screen-targets`
+records an unmeasurable pair as `screening.status == "screened_out"` without its patient
+trace, and `--show-mitigation`'s translated third panel is the only Anthropic call.
 
-**Feature tagging.** Only gemma-2-2b has a transcoder source set
-(`neuronpedia_features.MODEL_SOURCE_SETS`); other models auto-degrade to `NullFetcher`:
+**Feature tagging.** Models without a transcoder source set
+(`neuronpedia_features.MODEL_SOURCE_SETS`) auto-degrade to `NullFetcher`:
 tracing and probabilities still work, but every feature is untagged, so their
 `clinical_mass` comes out ~0.0 — an artifact, not a finding. Anything consuming
 per-model results must null clinical-mass for models whose `source_set` is null
@@ -207,44 +185,41 @@ per-model results must null clinical-mass for models whose `source_set` is null
 **Behavior without graphs (`scripts/logits_eval.py`).** Models Neuronpedia can't trace are
 measured by direct CPU inference in CI, emitting **the same `batch_summary` schema** so
 everything downstream merges unchanged (`backend: "logits"`, `source_set: null`, plus a
-`continuations` map from greedy multi-token decoding that disambiguates wordpiece tops).
+`continuations` map of greedy completions that disambiguates wordpiece tops).
 
 **Output layout & checkpointing.** Each run writes `trace_out/<pairs-stem>/`; non-default
 models get `trace_out/<stem>__<model>/`. CI renames each chunk's summary to
 `batch_summary.part_NN.json` (NN = 1-based start offset) so chunks never clobber — all
 consumers must glob `batch_summary*.json`, and `results[i]["index"]` is the global 1-based
-join key back into the batch file. Since 2026-09-04 generation archives and trace outputs
-both commit to `main` (the dispatched branch is `main`); CI's commits interleave with
+join key back into the batch file. Generation archives and trace outputs both commit to
+`main` (the dispatched branch); CI's commits interleave with
 yours, so `git pull --rebase` before every push. Pilot traces (`output_root`) go to
 `pilot/traces/` and no collector reads them.
 
-**Analysis chain.** `scripts/urgency_shift.py` is the collector (reads site payload +
-every `trace_out/*/batch_summary.part_*`, scores care-urgency tiers from the reviewed
-vocabulary data file, classifies flips downgrade/upgrade/lateral, handles the translated
-third panel as `urgency_recovery`, `--publish` writes the site's `data/urgency_shift.json`);
-`scripts/paired_stats.py` consumes its row file (unified same-phrase set across models,
-bootstrap CIs, hand-measured validity correlation). `scripts/export_archive.py` writes the
+**Analysis chain.** `scripts/urgency_shift.py` is the collector (reads the site payload and
+every `trace_out/*/batch_summary.part_*`, scores urgency tiers and flip classes as its
+docstring defines them and the translated panel as `urgency_recovery`; `--publish` writes
+the site's `data/urgency_shift.json`);
+`scripts/paired_stats.py` consumes its row file. `scripts/export_archive.py` writes the
 flat per-(pair × model) collaborator CSV.
 
 **Publishing (`scripts/export_frontend_simulated.py`).** Merges every model's trace dir per
 batch stamp into `scenario.models[<id>]`, mirrors the gemma base to the top level for
 backward compatibility, emits `models_meta` (the frontend model-selector's source of
-truth), and caps public interactive renders at the 200 most consequential (`--max-renders`,
-HTML-only by default since 2026-07-21 — `--with-pngs` restores rasters; flips first,
-then |language penalty|). Full render sets go to GitHub Releases via
+truth), and caps public interactive renders at the 200 most consequential (`--max-renders`;
+flips first, then |language penalty|; HTML-only unless `--with-pngs`).
+Full render sets go to GitHub Releases via
 `scripts/archive_run.py` + the archive workflow (`docs/archiving.md`); pass the Release URL
 back with `--archive-url`. **PNG renders live in those Releases, not in git** (pruned
-from `main` from 2026-09-08; the tree carried ~15 GB of them and the repository had
-grown past what the cloud containers and Codex can clone): `scripts/render_archive.py
-fetch` brings any one back by HTTP Range without downloading its zip, and
-`coverage` says which PNGs are archived where. Since 2026-09-23 the exporter also
+from `main` from 2026-09-08 so the repository stays clonable): `scripts/render_archive.py
+fetch` brings any one back and `coverage` says which are archived where (`docs/archiving.md`).
+The exporter also
 **deletes** site renders under `modes/simulated/` that match its own naming but that
-neither the new payload nor any other site file lists (`scripts/render_prune.py`; a
-withheld holdout row's render had stayed served for ten weeks); `--dry-run` writes and
-deletes nothing and lists them. It refuses, writing nothing, over a site checkout that
-keeps tracked renders off disk (the cloud containers' sparse clone excludes `modes/`),
-or any tracked file its render-reference scan reads, and `scripts/seal_check.py` exits
-2 over one: `git -C ../patientwords sparse-checkout disable` first.
+neither the new payload nor any other site file lists (`scripts/render_prune.py`; why,
+in `docs/prereg_divergence_log.md`); `--dry-run` writes and deletes nothing and lists them.
+Over a sparse site checkout (the cloud containers' clone) the exporter refuses, writing
+nothing, and `scripts/seal_check.py` exits 2: `git -C ../patientwords sparse-checkout
+disable` first (each refusal: `.claude/skills/publish-site-data/SKILL.md`, precondition 3).
 The Multi-turn page's two files come from `scripts/export_petri_multiturn.py`, **owner-run
 once** after the wave-2 section 10 analysis and never in the Routine's chain (its module
 docstring has the usage and every refusal).
@@ -260,13 +235,12 @@ palette, and every mark must survive gallery-thumbnail scale. When in doubt, rem
 ## Tests
 
 Offline and fast (`tests/`, `conftest.py` provides fixtures; no network, no keys), and the
-suite stays green: `pip install -e ".[llm]" pytest ruff pyyaml` installs everything it needs —
-`matplotlib` and `networkx` are declared dependencies, not extras, and `pyyaml` (the tests
-that parse workflow YAML need it) is in the poetry dev group, which pip's extra syntax does not
-install, so it is named on the command line. A container that skipped the install shows
-`ModuleNotFoundError` failures that are the environment's, not the code's. With the site
-checked out as `../patientwords` the suite passes in full (the specialty-map gap closed
-2026-09-30, PR #63), so anything red is the change's. When new live topics outrun
+suite stays green. The dev install under *Commands* installs everything it needs
+(`matplotlib` and `networkx` are declared dependencies, not extras; `pyyaml`, for the
+workflow-YAML tests, is named there); a container that skipped it shows
+`ModuleNotFoundError` failures that are the environment's, not the code's.
+With the site checked out as `../patientwords` the suite
+passes in full, so anything red is the change's. When new live topics outrun
 `data/specialty_map.draft.json`, mapping them is an owner-review data task, not a
 threshold to relax. Every bug fix gets a regression test. CI-side behavior (workflow YAML, hosted API quirks) can't
 be tested here — validate YAML with `yaml.safe_load` and verify wiring by reading the
@@ -334,20 +308,14 @@ know them will pass a change that is destructive in this repo's terms:
   `pilot/` come from the exception in *Execution model* and say so in their protocol,
   handoff and manifest. They are stored data all the same: a change to any of them is
   a data change, the chain is re-run from the recorded result files and the summary
-  compared, and `pilot/scripts/write_manifest.py finalize` refuses a bundle whose
-  files do not agree with each other. Every recorded run directory (`pilot/` and each
-  `pilot/runs/<run_id>/`) records the hashes of all of `pilot/scripts/*.py`, so a pull
-  request that changes any pilot script also recomputes and re-finalizes every recorded
-  run (finalize refuses a summary computed under other scripts). Re-finalize under an
+  compared. A pull request that changes any `pilot/scripts/*.py` also recomputes and
+  re-finalizes every recorded run (`pilot/` and each `pilot/runs/<run_id>/`), under an
   interpreter on the same side of Python 3.12 as the one the manifest's `python`
-  records (3.12 changed `sum()` over floats, so the float sums differ in the last bit
-  across it); `compute_summary.py` and `write_manifest.py` refuse a run sealed across
-  that line, and `pilot/` is sealed under 3.13. Their numbers are
+  records (`docs/pilot_runs.md` has why). Their numbers are
   checks of the pipeline, never claims about the study's stimuli or its models.
 * **Irreversible spend:** any change to a file under `.github/trigger/` fires its
-  workflow on push, including a merge that carries one. The lanes in `PAID_TRIGGERS` can
-  spend provider credits, and so can circuit-trace with `show_mitigation: true` or
-  `mode: translation`. A trigger file changed incidentally — by a merge, rebase, or
+  workflow on push, including a merge that carries one; *Cost discipline* lists what
+  spends. A trigger file changed incidentally — by a merge, rebase, or
   branch creation — is a defect, not a formatting detail.
 * **The compatibility path that matters most:** `batch_summary*.json` is a shared
   schema across the hosted and logits paths, and the frontend exporter and every
@@ -406,11 +374,10 @@ Every pull request here is reviewed by Codex. Its findings are
 
 1. **Verify against the actual file before changing anything.** Read the lines
    the finding names. On the first reviewed pull request (`patientwords#4`,
-   2026-09-04) five findings arrived across two rounds: four were real, one — a
-   claim that a one-line pointer file had a stray blank line — was a misreading of
-   how a trailing newline renders in a diff. A later fact-check of this file found
-   22 false or misleading assertions, half of them written that same day. Plan for
-   both error rates.
+   2026-09-04) four of five findings were real; the fifth misread how a trailing
+   newline renders in a diff. A later fact-check of this file found 22 false or
+   misleading assertions, half of them written that same day. Plan for both error
+   rates.
 2. **Give every finding a disposition on its own thread**: fixed, naming the
    commit; declined, naming the reason and the evidence; or not applicable, and
    why. Silence is not a disposition. A decline goes through the ask-first

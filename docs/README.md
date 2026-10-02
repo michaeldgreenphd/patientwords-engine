@@ -14,6 +14,7 @@ add a document.
 | `docs/routine_standing_prompt.md` | The scheduled maintenance Routine's instructions, read at every firing. |
 | `docs/fresh_session_bootstrap.md` | Repairing a checkout a cloud container materialized badly. |
 | `docs/archiving.md` | Render archives: GitHub Releases, manifests, fetching one render back. |
+| `docs/pilot_runs.md` | How the pilot scripts select, guard and re-seal a run directory: the mechanics behind `AGENTS.md`'s pilot exception. |
 
 ## Read by code, records or the site: do not move
 

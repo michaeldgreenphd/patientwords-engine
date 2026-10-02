@@ -177,6 +177,13 @@ say in any record which evidence was used.
   measurement checked out the ops branch, so pairs files had to be copied
   across (`git checkout origin/main -- data/simulated/<batch>*.json`) before
   any measurement fire.
+- **2026-08-04 PAB-branch trigger lessons:** two corollaries of the merge
+  rule were learned on the PAB branch, both observed live: "changes"
+  includes a trigger file appearing on a ref for the first time (branch
+  creation, cherry-picks and rebases all count), and the resting-state rule
+  (a trigger file at rest is a loaded default any branch operation can
+  pull). Both are stated in `AGENTS.md` (*Merge/copy danger*); parking
+  implemented the second on 2026-08-29.
 - **2026-08-23 anthropic SDK `temperature` removal:** two $0 failed runs;
   fixed at the `_send` seam in `scripts/advice_eval.py` with
   retry-without + regression test. Pattern: SDK breakage fails fast and
@@ -195,7 +202,8 @@ say in any record which evidence was used.
   the first guard refusal by design — finish lanes individually after
   fixing the cause.
 - **2026-09-04 new-ref fan-out:** pushing a merge branch created from `main`
-  fired all eight lanes at once — a ref creation has no `before` commit, so
+  fired all eight lanes at once, two of them paid, with `main`'s live
+  configs — a ref creation has no `before` commit, so
   every trigger file on it counts as changed, whatever the parent. The five
   live runs were cancelled in time ($0); the cancelled logits run's `always()`
   commit step still pushed a 1-result partial over a complete summary
