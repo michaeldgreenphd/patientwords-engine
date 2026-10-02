@@ -1090,7 +1090,21 @@ RESULTS_END = "<!-- results:end -->"
 def results_block(summary: dict) -> str:
     """The handoff's Results section, rendered from summary.json's dictionaries so it cannot drift from the computed
     artifact: compute_summary.py writes it between RESULTS_BEGIN and RESULTS_END in HANDOFF.md, and summary_problems
-    (finalize) refuses a handoff whose block differs from this rendering (Codex review of PR #52)."""
+    (finalize) refuses a handoff whose block differs from this rendering (Codex review of PR #52).
+
+    A summary that lacks a field the block renders was written by an earlier compute_summary.py: a version-2
+    summary.json written before row_level_intervals existed (review round 3 of PR #69) is one. It is refused with
+    the field's name and the step to take, as plan_version refuses a plan it cannot read, never rendered into a
+    KeyError."""
+    try:
+        return _results_block_text(summary)
+    except KeyError as e:
+        raise SystemExit(f"summary.json has no field {e.args[0]!r}, which the handoff's results block renders: an "
+                         f"earlier compute_summary.py wrote it; re-run compute_summary.py") from None
+
+
+def _results_block_text(summary: dict) -> str:
+    """results_block's rendering; a field missing from the summary raises the KeyError results_block names."""
     def w(d: dict) -> str:
         return "0 / 0 (undefined)" if d["n"] == 0 else f"{d['x']} / {d['n']} = {d['p']:.3f} [{d['lo']:.3f}, {d['hi']:.3f}]"
 
@@ -1111,11 +1125,12 @@ def results_block(summary: dict) -> str:
         prec = cv["precision"]["generated"]
         top = ", ".join("{} ({})".format(x["word"], x["n"]) for x in nw["most_common"]) or "none"
         v2_lines = [
-            (f"- **Intervals (version 2):** computed over rows, as the protocol fixes them; by design "
-             f"{iv['rows_in_two_row_concepts_per_call']} of every {iv['non_control_rows_per_call']} non-control rows "
-             f"of a call belong to {iv['two_row_concepts_per_call']} two-row concepts ({iv['concepts']['total']} "
-             f"concepts in {iv['non_control_rows']['total']} non-control rows here), so the rows are not independent "
-             f"draws: read the intervals of estimands 2 to 5 as descriptive."),
+            (f"- **Intervals (version 2):** the intervals of estimands 1 to 5 are computed over rows, as the protocol "
+             f"fixes them, and the rows are not independent draws: the rows of one call come from a single "
+             f"generation, and by design {iv['rows_in_two_row_concepts_per_call']} of every "
+             f"{iv['non_control_rows_per_call']} non-control rows of a call belong to "
+             f"{iv['two_row_concepts_per_call']} two-row concepts ({iv['concepts']['total']} concepts in "
+             f"{iv['non_control_rows']['total']} non-control rows here); read these intervals as descriptive."),
             (f"- **Checker relation (version 2), generated rows with a yes or no verdict:** "
              f"{json.dumps(cv['relation']['generated'])}; precision as precise {prec['as_precise']}, vaguer "
              f"{prec['vaguer']}, more specific {prec['more_specific']}, not applicable {prec['not_applicable']}; "
@@ -1183,12 +1198,19 @@ def write_results_block(summary: dict) -> None:
 
 
 def results_block_problems(summary: dict) -> list[str]:
-    """Why HANDOFF.md's Results section is not the summary's: no block, or a block that differs from the rendering."""
+    """Why HANDOFF.md's Results section is not the summary's: no block, a summary the block cannot be rendered from
+    (results_block's refusal, which names the missing field, is listed with summary_problems' others, as
+    write_manifest.summary_recompute_problems lists a summary that no longer computes), or a block that differs from
+    the rendering."""
     path = PILOT / "HANDOFF.md"
     parts = split_results_block(path.read_text(encoding="utf-8") if path.exists() else "")
     if parts is None:
         return ["HANDOFF.md carries no results block (the RESULTS_BEGIN and RESULTS_END markers, once, in order)"]
-    if parts[1].strip("\n") != results_block(summary):
+    try:
+        rendered = results_block(summary)
+    except SystemExit as e:
+        return [str(e)]
+    if parts[1].strip("\n") != rendered:
         return ["HANDOFF.md's results block is not what summary.json renders; re-run compute_summary.py, and put "
                 "hand-written text outside the markers"]
     return []

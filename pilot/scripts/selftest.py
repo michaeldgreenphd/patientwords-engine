@@ -292,30 +292,42 @@ def unit_tests_v2() -> None:
     # a compliant call is the design itself, not its counts alone (Codex on PR #69): the reviewer's construction, two
     # concepts on three rows each and ten single rows, has 16 rows, 12 concepts and 4 exact adjacent pairs, and a call
     # with the 4 pairs and one concept again on a later line has 12 concepts and 4 pairs too; both passed the earlier
-    # test of pairs and concepts alone
-    def call_rows(call: str, layout: list[int]) -> list[dict]:
+    # test of pairs and concepts alone. A call with the 4 pairs and a fifth concept on two adjacent rows whose second
+    # row repeats its patient term (so no variant pair) has 17 rows, 12 concepts, 4 pairs, no concept split and no run
+    # of three: only the row count flags it. The clause on split concepts has no case of its own, since it follows
+    # from the other four: 16 rows over 12 concepts leave 4 rows beyond each concept's first, and with no run of three
+    # the 4 pairs take all of them.
+    def call_rows(call: str, layout: list[int], same_phrasing: tuple[int, ...] = ()) -> list[dict]:
+        """Rows in the layout's concept order; a concept in same_phrasing repeats its first patient term."""
         seen: dict[int, int] = {}
         out = []
         for i, k in enumerate(layout):
+            variant = 0 if k in same_phrasing else seen.get(k, 0)
             out.append({"call_id": call, "control": "none", "line_index": i, "clinical_term": f"c{k}",
-                        "template": f"t{k} ___ my", "patient_term": f"p{k} v{seen.get(k, 0)}", "next_word": "friend"})
+                        "template": f"t{k} ___ my", "patient_term": f"p{k} v{variant}", "next_word": "friend"})
             seen[k] = seen.get(k, 0) + 1
         return out
-    layouts = {"A__design": [0, 0, 1, 1, 2, 2, 3, 3, *range(4, 12)],
-               "A__two_runs_of_three": [0, 0, 0, 1, 1, 1, *range(2, 12)],
-               "B__a_later_repeat": [0, 0, 1, 1, 2, 2, 3, 3, *range(4, 12), 0]}
-    vd = cs.variant_design_summary([r for call, lay in layouts.items() for r in call_rows(call, lay)],
+    layouts = {"A__design": ([0, 0, 1, 1, 2, 2, 3, 3, *range(4, 12)], ()),
+               "A__two_runs_of_three": ([0, 0, 0, 1, 1, 1, *range(2, 12)], ()),
+               "B__a_later_repeat": ([0, 0, 1, 1, 2, 2, 3, 3, *range(4, 12), 0], ()),
+               "B__a_repeated_phrasing": ([0, 0, 1, 1, 2, 2, 3, 3, 4, 4, *range(5, 12)], (4,))}
+    vd = cs.variant_design_summary([r for call, (lay, same) in layouts.items() for r in call_rows(call, lay, same)],
                                    [{"call_id": c, "arm": c[0]} for c in layouts], 4, 12)
     per = {c["call_id"]: c for c in vd["per_call"]}
-    three, later = per["A__two_runs_of_three"], per["B__a_later_repeat"]
+    three, later, repeated = per["A__two_runs_of_three"], per["B__a_later_repeat"], per["B__a_repeated_phrasing"]
     check((three["n_rows"], three["concepts"], three["pairs_exact"], three["runs_of_three_or_more"]) == (16, 12, 4, 2)
           and (later["n_rows"], later["concepts"], later["pairs_exact"], later["non_adjacent_repeats"])
           == (17, 12, 4, 1)
           and per["A__design"]["compliant"] and not three["compliant"] and not later["compliant"]
-          and vd["flagged_calls"] == ["A__two_runs_of_three", "B__a_later_repeat"]
           and vd["expected_rows_per_call"] == 16,
           "variant compliance: two runs of three rows, or a concept again on a later line, are flagged; the design "
           "passes")
+    check((repeated["n_rows"], repeated["concepts"], repeated["pairs_exact"], repeated["non_adjacent_repeats"],
+           repeated["runs_of_three_or_more"]) == (17, 12, 4, 0, 0)
+          and not repeated["compliant"]
+          and vd["flagged_calls"] == ["A__two_runs_of_three", "B__a_later_repeat", "B__a_repeated_phrasing"],
+          "variant compliance: a call of 17 rows with 12 concepts, 4 exact pairs, no concept split and no run of three "
+          "(a fifth concept's second row repeating its patient term) is flagged, by the row count alone")
 
     # an unclear verdict still carries the relation the version-2 schema requires; that relation is reported apart and
     # counted in no relation, precision or yes-rate figure (Codex on PR #69)
@@ -747,10 +759,12 @@ def dry_run() -> None:
         check(f"judged yes {yes['x']} / {yes['n']} = {yes['p']:.3f}" in (tmp / "HANDOFF.md").read_text(encoding="utf-8")
               and (tmp / "HANDOFF.md").read_text(encoding="utf-8").startswith("# Self-test dry run\n\nFabricated"),
               "compute_summary writes the results block into the handoff, leaving the text outside the markers")
-        # the note that row-level intervals are descriptive under the variant design is version 2's (Codex on PR #69)
-        check("row_level_intervals" not in s and "Intervals under the variant design" not in
-              (tmp / "summary.md").read_text(encoding="utf-8")
-              and "**Intervals (version 2):**" not in (tmp / "HANDOFF.md").read_text(encoding="utf-8"),
+        # the note that the row-level intervals of estimands 1 to 5 are descriptive is version 2's (Codex on PR #69)
+        v1_md, v1_hand = ((tmp / n).read_text(encoding="utf-8") for n in ("summary.md", "HANDOFF.md"))
+        check("row_level_intervals" not in s and "Intervals under the variant design" not in v1_md
+              and "**Intervals (version 2):**" not in v1_hand
+              and not any(p in text for p in ("estimands 1 to 5", "not independent draws", "single generation")
+                          for text in (v1_md, v1_hand)),
               "a version-1 summary, its markdown and the results block carry no version-2 interval note")
         check(s["run"]["n_retried_calls"] == 1, "one retried call recorded")
         cw = s["run"]["calls_with_valid_rows"]
@@ -1749,16 +1763,18 @@ def dry_run_v2() -> None:
               and sum(cv["sentence_natural"]["by_arm"]["A"].values()) + sum(cv["sentence_natural"]["by_arm"]["B"].values())
               == cv["n_answered"]["generated"] and s["E4"]["generated"]["missing"] == 1,
               "the checker's sentence_natural and patient_realism for generated rows, overall and by arm")
-        # the intervals of estimands 2 to 5 are computed over rows; under the variant design they are read as
-        # descriptive, and the summary says so with the design's figures and the run's concept counts (Codex on PR #69)
+        # the intervals of estimands 1 to 5 are computed over rows, which are not independent draws (one generation per
+        # call, two-row concepts); they are read as descriptive, and the summary says so with the design's figures and
+        # the run's concept counts (Codex on PR #69, which named estimands 2 to 5; estimand 1 counts rows too)
         rows_by_arm = {a: sum(c["n_rows"] for c in vd["per_call"] if c["arm"] == a) for a in common.ARMS}
-        check(s["row_level_intervals"] == {"unit": "row", "estimands": [2, 3, 4, 5], "reading": "descriptive",
+        check(s["row_level_intervals"] == {"unit": "row", "estimands": [1, 2, 3, 4, 5], "reading": "descriptive",
                                            "two_row_concepts_per_call": 4, "rows_in_two_row_concepts_per_call": 8,
                                            "non_control_rows_per_call": 16,
                                            "concepts": {"A": 108, "B": 108, "total": 216},
                                            "non_control_rows": {**rows_by_arm, "total": 289}}
               and rows_by_arm[dev["arm"]] == 145,
-              "the summary records that its intervals are over rows, 8 of 16 rows a call in 4 two-row concepts")
+              "the summary records that the intervals of estimands 1 to 5 are over rows, 8 of 16 rows a call in 4 "
+              "two-row concepts")
         check(s["review"]["sampling"] == "one_row_per_concept" and s["review"]["n_unique_concepts_in_sample"] == 40
               and s["review"]["n_concepts_by_arm"] == {"A": 108, "B": 108},
               "the summary surfaces the review's one-row-per-concept figures")
@@ -1768,21 +1784,25 @@ def dry_run_v2() -> None:
                                     "## Checker relation, precision, sentence and realism (version 2"))
               and f"| {deviating} | 17 | 12 | 3 | 4 | 1 | 1 | no |" in md and "—" not in md,
               "summary.md renders every version-2 section and the flagged call's row")
-        check("By design 8 of every 16 non-control rows of a call belong to 4 two-row concepts" in md
-              and "read these intervals as descriptive. This run's non-control rows cover 216 concepts in 289 rows"
-              in md
+        check("the intervals of estimands 1 to 5 are computed over rows, as the protocol fixes them" in md
+              and ("The rows are not independent draws: the rows of one call come from a single generation, and by "
+                   "design 8 of every 16 non-control rows of a call belong to 4 two-row concepts") in md
+              and "Read these intervals as descriptive. This run's non-control rows cover 216 concepts in 289 rows" in md
+              and "estimands 2 to 5" not in md
               and f"Unclear verdicts: {n_unclear} (generated {n_unclear}, known-good 0, broken 0)." in md
               and "rows number exactly 16 and cover exactly 12 concepts" in md,
-              "summary.md says the intervals are over rows and descriptive, lists the unclear verdicts' relations "
-              "apart and defines a compliant call by its rows, concepts, pairs and runs")
+              "summary.md says the intervals of estimands 1 to 5 are over rows that are not independent and are "
+              "descriptive, lists the unclear verdicts' relations apart and defines a compliant call by its rows, "
+              "concepts, pairs and runs")
         check("calls with exactly 16 rows and 12 concepts, 4 adjacent variant pairs, and no concept split or run over "
               "three or more rows 17 / 18" in hand
               and "templates ending on a probe word 325 / 361" in hand and "most common: sister (144)" in hand
               and "(kept, flagged inconsistent) 1." in hand
               and f"unclear verdicts, whose relation is not counted, {n_unclear};" in hand
-              and ("- **Intervals (version 2):** computed over rows, as the protocol fixes them; by design 8 of every "
-                   "16 non-control rows of a call belong to 4 two-row concepts (216 concepts in 289 non-control rows "
-                   "here)") in hand,
+              and ("- **Intervals (version 2):** the intervals of estimands 1 to 5 are computed over rows, as the "
+                   "protocol fixes them, and the rows are not independent draws: the rows of one call come from a "
+                   "single generation, and by design 8 of every 16 non-control rows of a call belong to 4 two-row "
+                   "concepts (216 concepts in 289 non-control rows here); read these intervals as descriptive.") in hand,
               "the handoff's results block carries the version-2 lines")
         # a checked row whose inconsistency flag no longer describes its answers is refused by the summary
         checked_bytes = (tmp / "checked.jsonl").read_bytes()
@@ -1794,6 +1814,22 @@ def dry_run_v2() -> None:
         check("does not describe verdict" in last_err[0], "a version-2 checked row with a wrong inconsistency flag is refused")
         run("record_run.py", "generation", gdir.name, str(gdir))
         run("record_run.py", "checker", cdir.name, str(cdir))
+        # a version-2 summary.json written before row_level_intervals existed (review round 3 of PR #69) lacks
+        # fields the handoff's results block renders: the block refuses it by name, and finalize lists that refusal
+        # and seals nothing, where the block once raised a KeyError
+        summary_bytes = (tmp / "summary.json").read_bytes()
+        earlier = json.loads(summary_bytes.decode("utf-8"))
+        del earlier["row_level_intervals"], earlier["variant_design"]["expected_rows_per_call"]
+        del earlier["checker_v2"]["unclear_relation"], earlier["checker_v2"]["n_relation_counted"]
+        named = refused(common.results_block, earlier)
+        (tmp / "summary.json").write_text(json.dumps(earlier, indent=2) + "\n", encoding="utf-8")
+        run("write_manifest.py", "finalize", expect_failure=True)
+        (tmp / "summary.json").write_bytes(summary_bytes)
+        check(named is not None and "has no field 'row_level_intervals'" in named
+              and "re-run compute_summary.py" in named and named in last_err[0] and "Traceback" not in last_err[0]
+              and json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))["finalized_utc"] is None,
+              "a version-2 summary.json without row_level_intervals is refused by name, with the step to take, and "
+              "finalize seals nothing")
         run("write_manifest.py", "finalize")
         mf = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
         check(isinstance(mf["finalized_utc"], str) and mf["design"]["harness_version"] == 2,

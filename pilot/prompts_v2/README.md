@@ -78,8 +78,9 @@ work as follows. A run without the key behaves exactly as before: every version-
     non-adjacent rows and no concept on a run of three or more rows (two runs of three rows also make 4 adjacent
     pairs);
   - `next_word` statistics: the number of distinct words and the 10 most common;
-  - a note on the intervals: those of estimands 2 to 5 are computed over rows, as the protocol fixes them, while
-    8 of every 16 non-control rows belong to 4 two-row concepts, so they are read as descriptive
+  - a note on the intervals: those of estimands 1 to 5 are computed over rows, as the protocol fixes them, but
+    the rows are not independent draws. The rows of one call come from a single generation, and 8 of every 16
+    non-control rows belong to 4 two-row concepts. The intervals are therefore read as descriptive
     (`row_level_intervals`, with the run's concept and row counts).
 
   The handoff's results block gets matching lines.

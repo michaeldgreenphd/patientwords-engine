@@ -6,9 +6,9 @@ outside the protocol's estimands: the checker's relation for generated, known-go
 yes or no verdict; the relations given with an unclear verdict apart), the precision view derived from it, the
 yes-rate by relation and the answers flagged inconsistent; the checker's sentence_natural and patient_realism for
 generated rows, by arm; probe-point compliance; variant-design compliance per call; next_word statistics; the review
-sample's one-row-per-concept figures; and a note that the intervals of estimands 2 to 5, computed over rows as the
-protocol fixes them, are descriptive under the variant design (row_level_intervals). summary.json then records
-`harness_version`. A version-1 summary and its markdown are byte-identical to the recorded run's.
+sample's one-row-per-concept figures; and a note that the intervals of estimands 1 to 5, computed over rows as the
+protocol fixes them, are descriptive, since the rows are not independent draws (row_level_intervals). summary.json
+then records `harness_version`. A version-1 summary and its markdown are byte-identical to the recorded run's.
 """
 from __future__ import annotations
 
@@ -233,18 +233,19 @@ def variant_design_summary(rows: list[dict], finals: list[dict], pairs: int, con
 
 
 def row_level_intervals(vd: dict) -> dict:
-    """Version 2, how to read the intervals: the frozen protocol computes those of estimands 2 to 5 over rows (Wilson
-    and Newcombe intervals count rows; the estimand 3 bootstrap resamples rows within cells), and the variant design
-    puts twice `pairs` of each call's `concepts` + `pairs` non-control rows into `pairs` two-row concepts, whose two
-    rows share the clinical term and the template (8 of 16 rows in 4 concepts). The rows are therefore not independent
-    draws, and the intervals, computed as the protocol fixes them, are reported as descriptive (Codex review of PR
-    #69). The design figures are variant_design's expectations; the concept and row counts are this run's, from its
-    per-call counts."""
+    """Version 2, how to read the intervals: the frozen protocol computes those of estimands 1 to 5 over rows (Wilson
+    and Newcombe intervals count rows; estimand 1 counts every line of the final attempts, controls included; the
+    estimand 3 bootstrap resamples rows within cells). The rows are not independent draws: the rows of one call come
+    from a single generation, and the variant design puts twice `pairs` of each call's `concepts` + `pairs`
+    non-control rows into `pairs` two-row concepts, whose two rows share the clinical term and the template (8 of 16
+    rows in 4 concepts). The intervals, computed as the protocol fixes them, are therefore reported as descriptive
+    (Codex review of PR #69, which named estimands 2 to 5; estimand 1 is computed over rows too). The design figures
+    are variant_design's expectations; the concept and row counts are this run's, from its per-call counts."""
     per_call = vd["per_call"]
 
     def total(key: str, arm: str | None = None) -> int:
         return sum(c[key] for c in per_call if arm is None or c["arm"] == arm)
-    return {"unit": "row", "estimands": [2, 3, 4, 5], "reading": "descriptive",
+    return {"unit": "row", "estimands": [1, 2, 3, 4, 5], "reading": "descriptive",
             "two_row_concepts_per_call": vd["expected_pairs_per_call"],
             "rows_in_two_row_concepts_per_call": 2 * vd["expected_pairs_per_call"],
             "non_control_rows_per_call": vd["expected_rows_per_call"],
@@ -543,14 +544,15 @@ def compute() -> tuple[dict, str]:
                  f"estimands.")
         L.append("")
         iv = S["row_level_intervals"]
-        L.append(f"Intervals under the variant design (version 2): the intervals of estimands 2 to 5 are computed over "
+        L.append(f"Intervals under the variant design (version 2): the intervals of estimands 1 to 5 are computed over "
                  f"rows, as the protocol fixes them (Wilson and Newcombe intervals count rows; the estimand 3 "
-                 f"bootstrap resamples rows within cells). By design {iv['rows_in_two_row_concepts_per_call']} of "
-                 f"every {iv['non_control_rows_per_call']} non-control rows of a call belong to "
+                 f"bootstrap resamples rows within cells). The rows are not independent draws: the rows of one call "
+                 f"come from a single generation, and by design {iv['rows_in_two_row_concepts_per_call']} of every "
+                 f"{iv['non_control_rows_per_call']} non-control rows of a call belong to "
                  f"{iv['two_row_concepts_per_call']} two-row concepts, whose two rows share the clinical term and the "
-                 f"template, so the rows are not independent draws: read these intervals as descriptive. This run's "
-                 f"non-control rows cover {iv['concepts']['total']} concepts in {iv['non_control_rows']['total']} rows "
-                 f"(Arm A {iv['concepts']['A']} in {iv['non_control_rows']['A']}, Arm B {iv['concepts']['B']} in "
+                 f"template. Read these intervals as descriptive. This run's non-control rows cover "
+                 f"{iv['concepts']['total']} concepts in {iv['non_control_rows']['total']} rows (Arm A "
+                 f"{iv['concepts']['A']} in {iv['non_control_rows']['A']}, Arm B {iv['concepts']['B']} in "
                  f"{iv['non_control_rows']['B']}).")
         L.append("")
     L.append("## Run overview")
