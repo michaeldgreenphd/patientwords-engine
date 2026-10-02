@@ -63,10 +63,10 @@ fire. This session ran none of these commands.
 | A0b | OpenRouter | probe: gemini-3.8-flash, deepseek-v4.1-flash, kimi-k3 | 4096 | 3 | $0.026 | $0.048 | $0.15 | 2-3 | A-1 |
 | A0c | Anthropic | probe: claude-sonnet-5-5 | 1024 | 1 | $0.006 | $0.007 | $0.05 | <1 | A-1 |
 | A1 | Anthropic | new set: haiku-4-5, sonnet-5-5 | 1024 | 287 | $1.033 | $1.269 | $1.30 | 29-36 | A-1 |
-| A2 | OpenRouter | new set: gpt-chat-latest, grok-4.7 | 1024 | 286 | $2.782 | $3.639 | $3.90 | 48-66 | A-1 |
 | A3a | OpenRouter | new set items 1-8: gemini, deepseek, kimi | 4096 | 141 | $1.247 | $2.327 | $2.55 | 87-144 | A-1 |
-| A3b | OpenRouter | new set items 9-16 | 4096 | 144 | $1.247 | $2.327 | $2.55 | 87-144 | A-2 |
+| A3b | OpenRouter | new set items 9-16 | 4096 | 144 | $1.247 | $2.327 | $2.55 | 87-144 | A-1 |
 | A3c | OpenRouter | new set items 17-24 | 4096 | 144 | $1.247 | $2.327 | $2.55 | 87-144 | A-2 |
+| A2 | OpenRouter | new set: gpt-chat-latest, grok-4.7 | 1024 | 286 | $2.782 | $3.639 | $3.90 | 48-66 | A-2 |
 | A4 | Anthropic | judge all 1008 Wave A responses | n/a | 0 + 1008 judgments | $1.129 | $1.613 | $0.01 + $1.80 = $1.81 | 42-67 | A-2 |
 | R0a | OpenRouter | probe: the five original OpenRouter ids | 1024 | 5 | $0.021 | $0.027 | $0.10 | 1-2 | R-1 |
 | R0b | Anthropic | probe: claude-sonnet-5 | 1024 | 1 | $0.009 | $0.011 | $0.05 | <1 | R-1 |
@@ -159,7 +159,8 @@ them.
 
 ### Wave A: the 24 new questions
 
-Order: A0a, A0b, A0c, A1, A2, A3a, A3b, A3c, A4. After each probe, look at the
+Order: A0a, A0b, A0c, A1, A3a, A3b (day A-1), then A3c, A2, A4 (day A-2);
+section 4 gives the reason for this order. After each probe, look at the
 landed record before the next fire: `stop_reason` (a length stop on a probe
 means the limit is too low for that arm) and `model_returned` (which build the
 slug resolved to; for `gpt-chat-latest` this is the build the alias served).
@@ -240,7 +241,7 @@ Authorise (one per chunk): "I authorise fire A3a of docs/advice_fire_plan_202610
 complete after A1, so its elicitation plans 0 calls and the fire guard books
 the judge's Anthropic spend on the Anthropic lane. The judge step judges every
 response in `responses_stimuli_20261002T062043Z.jsonl` (all seven models),
-then runs `analyze`. Run it after A3c lands.
+then runs `analyze`. Run it after A2, the last Wave A elicitation, lands.
 ```json
 {"stimuli_file": "data/advice/stimuli_20261002T062043Z.json", "models": "anthropic:claude-haiku-4-5", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "0.01", "judge": "true", "judge_model": "claude-haiku-4-5", "judge_max_spend": "1.80", "offset": "0", "limit": "0", "commit_outputs": "true"}
 ```
@@ -338,25 +339,56 @@ Authorise: "I authorise fire R4 of docs/advice_fire_plan_20261002.md: advice-eva
 
 ## 4. Days and the daily ceilings
 
-The fire guard counts, for each UTC day and lane, the `max_spend` (plus
-`judge_max_spend` for a judged fire) of every fire sent that day, whether it
-has landed or failed. The Anthropic lane allows $2 a day unless the owner
-dates an override in `ops/budget_overrides.json`; an OpenRouter-only fire
-counts against $10 a day.
+The fire guard (`budget_check` in `scripts/fire_trigger.py`) refuses a fire
+when its commitment plus the day's committed spend on its lane exceeds the
+ceiling. The day's committed spend has two terms:
 
-| Day | Anthropic lane (committed) | OpenRouter lane (committed) |
-|---|---|---|
-| A-1 | A0c 0.05 + A1 1.30 = $1.35 | A0a 0.10 + A0b 0.15 + A2 3.90 + A3a 2.55 = $6.70 |
-| A-2 | A4 $1.81 | A3b 2.55 + A3c 2.55 = $5.10 |
-| R-1 | R0b 0.05 + R1 1.80 = $1.85 | R0a 0.10 + R2a 2.80 + R2b 2.45 = $5.35 |
-| R-2 | R4 $1.81 | R3a 2.55 + R3b 2.25 = $4.80 |
+- **held**: the `max_spend` (plus `judge_max_spend` for a judged fire) of
+  every fire sent that UTC day on the lane, landed or failed, resolved or not;
+- **landed**: the lane's `spend.today` figure in `ops/dashboard.json`, which
+  is non-zero once `scripts/ledger_update.py` (run by the daily Routine) has
+  folded that day's landed cost sidecars. The ledger books each sidecar to
+  its own run day, so a fold never moves one day's cost onto another day.
 
-Every day stays under both ceilings with no override, and each judge fires on
-a day of its own on the Anthropic lane, after the last elicitation of its
-wave. A day's chain runs about four to seven hours including the 15-minute
-settle windows, so a chain that crosses 00:00 UTC books its later fires on the
-next day; check `fire_trigger.py status` before each fire. Wave R starts only
-after condition 4 holds, which can be days after Wave A.
+The two overlap on purpose: once the ledger has folded a fire, that fire
+counts twice for the rest of its day (AGENTS.md). So the plan is checked
+against the worst case: before each fire, every earlier fire of the same day
+and lane has landed at its high cost and been folded. The Anthropic lane
+allows $2 a day unless the owner dates an override in
+`ops/budget_overrides.json`; an OpenRouter-only fire counts against $10 a
+day.
+
+| Day | Lane | Fires in order | Held after the last fire | Worst-case landed before the last fire | Worst case |
+|---|---|---|---|---|---|
+| A-1 | Anthropic | A0c, A1 | 0.05 + 1.30 = $1.35 | A0c 0.007 | $1.36 |
+| A-1 | OpenRouter | A0a, A0b, A3a, A3b | 0.10 + 0.15 + 2.55 + 2.55 = $5.35 | 0.025 + 0.048 + 2.327 = $2.40 | $7.75 |
+| A-2 | OpenRouter | A3c, A2 | 2.55 + 3.90 = $6.45 | A3c 2.327 | $8.78 |
+| A-2 | Anthropic | A4 | $1.81 | none | $1.81 |
+| R-1 | Anthropic | R0b, R1 | 0.05 + 1.80 = $1.85 | R0b 0.011 | $1.86 |
+| R-1 | OpenRouter | R0a, R2a, R2b | 0.10 + 2.80 + 2.45 = $5.35 | 0.027 + 2.529 = $2.56 | $7.91 |
+| R-2 | OpenRouter | R3a, R3b | 2.55 + 2.25 = $4.80 | R3a 2.327 | $7.13 |
+| R-2 | Anthropic | R4 | $1.81 | none | $1.81 |
+
+Every day stays under both ceilings in the worst case, with no override.
+An earlier draft of this plan put A2 and A3a on day A-1 after A0a and A0b:
+held $6.70, and with A0a, A0b and A2 landed at their high cost and folded
+before A3a, $6.70 + $3.71 = $10.41, over the $10 ceiling. Hence the order
+above, with A2 last on day A-2 (A3c before A2: the other way round,
+$6.45 + $3.64 = $10.09 would also exceed it). Do not move a fire to another
+day without redoing this column; before each fire,
+`python scripts/fire_trigger.py status` shows the guard's own landed and held
+figures.
+
+Each judge fires on the Anthropic lane after the last elicitation of its
+wave. The queue is one per branch for all `advice-eval` fires, whatever their
+lane, so a day's fires run one after another: day A-1 is about four and a
+half to seven hours including the 15-minute settle windows (high case: A0a 1,
+A0b 3, A0c 1, A1 36, A3a 144, A3b 144 minutes, five settle windows), day A-2
+about three and a half to five hours (high case: A3c 144, A2 66, A4 67
+minutes, two settle windows). A chain that crosses
+00:00 UTC books its later fires on the next day; check `fire_trigger.py
+status` before each fire. Wave R starts only after condition 4 holds, which
+can be days after Wave A.
 
 **Re-park.** When a day's chain pauses and after the last fire of each wave
 (A4, R4) lands and is resolved, re-park the lane:
@@ -375,19 +407,27 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
   a new authorisation for the remaining spend.
 - A fire dies on an error: the archive keeps what landed and the next fire
   resumes. Its commitment still counts for the rest of that UTC day.
-- More than 5% of an arm's responses stop at the token limit: report the arm
-  as truncated (Amendment 6, A6.2) and keep it out of per-model comparisons;
-  raising its limit is a new decision.
+- More than 5% of a newest arm's responses stop at the token limit: report
+  the arm as truncated and keep it out of per-model comparisons (Amendment 6,
+  A6.2 rule 1); raising its limit is a new decision. The original DeepSeek
+  v4-flash and Kimi k2.5 arms at 1024 are exempt (A6.2 rule 2): report their
+  share and keep them in.
 
 ## 6. After the waves land ($0, local)
 
 - Reference scoring for Wave A, exploratory only:
   `python scripts/advice_eval.py analyze --judgments data/advice/judgments_stimuli_20261002T062043Z.jsonl --rubric data/advice_rubric.draft.json --stimuli data/advice/stimuli_20261002T062043Z.json --out <scratch path>`.
-  Its `reference_scoring` uses non-claim-grade tiers and is reported as such.
+  Its `reference_scoring` uses non-claim-grade tiers, carries
+  `claim_grade: false` with all 24 ids in `not_adjudicated_ids`, and is
+  reported as exploratory.
 - The replication readout for Wave R compares, per original (stimulus, model)
-  cell, the rerun downgrade against the July one and against the null
-  expectation recorded per item in `data/advice/rerun_selection_20261002.json`
-  (36 downgrades in 88 cells in July; 17.5 expected under the null).
+  cell, the rerun downgrade against the original one (archives of July and
+  August 2026) and against the null expectation recorded per cell in
+  `data/advice/rerun_selection_20261002.json`. Over the 87 re-elicitable
+  cells (the 88 less `openrouter:stealth/ox-alpha` on item #7, which is not
+  re-elicited) the original count is 36 against 17.3 expected under the null;
+  the pre-specified sensitivity without DeepSeek v4-flash and Kimi k2.5 is 23
+  over 59 cells against 9.9 (Amendment 6, A6.4). Both readings are reported.
 - Before anything reaches the site: the vendor packs (Amendment 6, A6.7);
   `scripts/export_advice_scenarios.py` with `--rubric data/advice_rubric.draft.json`
   (its default rubric path does not exist, which is why the published payload
