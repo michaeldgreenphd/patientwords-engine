@@ -87,6 +87,7 @@ from common import (
     read_jsonl,
     review_problems,
     script_hashes,
+    sealed_interpreter_guard,
     sha256_file,
     sha256_text,
     summary_problems,
@@ -356,6 +357,8 @@ def finalize_hashes(calls: dict) -> dict[str, str]:
 
 def main(finalize: bool, reset: bool = False, refactor: str | None = None) -> None:
     path = PILOT / "manifest.json"
+    if not reset:  # a reset starts a new run's metadata, which no interpreter sealed yet
+        sealed_interpreter_guard("write_manifest", platform.python_version())
     old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     model = json.loads((PILOT / "manifest_model.json").read_text(encoding="utf-8"))

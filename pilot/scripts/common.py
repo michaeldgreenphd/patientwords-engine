@@ -1,4 +1,5 @@
-"""Shared helpers for the stimulus-generation pilot. Standard library only (Python 3.11+).
+"""Shared helpers for the stimulus-generation pilot. Standard library only (Python 3.11+; a run sealed under 3.12 or
+later, such as the recorded run in pilot/, is recomputed only under 3.12 or later: see sealed_interpreter_guard).
 
 Every constant that the protocol fixes lives here so that the scripts cannot drift from PROTOCOL.md.
 """
@@ -1131,6 +1132,51 @@ def finalized_run_guard(script: str, replace: bool) -> None:
         raise SystemExit(f"{script}: {PILOT} holds a finalized run (manifest.json finalized {finalized}); this script "
                          f"would write over its sealed files. Set PILOT_DIR to the run directory you mean (a new run "
                          f"lives in its own directory), or pass --replace to write here on purpose; nothing was written")
+
+
+# Python 3.12 made sum() over floats compensated (Neumaier summation), so the summary's float sums (estimands 3 and 5)
+# can differ in the last bit between an interpreter before 3.12 and one from 3.12 on. Within either side the values
+# agree (the recorded run gives the same summary under 3.12.14 and 3.13.4).
+FLOAT_SUM_CHANGED = (3, 12)
+
+
+def float_sum_side(version: str) -> str:
+    """Which side of the 3.12 change to sum() over floats a "major.minor[.patch]" interpreter version is on:
+    "compensated" from 3.12 on, "plain" before. A version that is not of that form is refused."""
+    m = re.fullmatch(r"(\d+)\.(\d+)(?:\.\S*)?", version) if isinstance(version, str) else None
+    if not m:
+        raise ValueError(f"not an interpreter version: {version!r}")
+    return "compensated" if (int(m[1]), int(m[2])) >= FLOAT_SUM_CHANGED else "plain"
+
+
+def sealed_interpreter_guard(script: str, running: str) -> None:
+    """Refuse to recompute or rewrite a run directory whose manifest.json is finalized when the running interpreter
+    is on the other side of the 3.12 sum() change from the interpreter that sealed it. Under such an interpreter
+    compute_summary.py writes floats that differ in the last bit from the sealed ones, so a re-seal would flip the
+    recorded summary between interpreters on every pull request that touches a pilot script. A finalized manifest
+    that records no readable interpreter version, or that is not JSON, is refused too, never read as compatible."""
+    path = PILOT / "manifest.json"
+    if not path.exists():
+        return
+    try:
+        m = json.loads(path.read_text(encoding="utf-8"))
+        finalized = m.get("finalized_utc")
+    except (ValueError, AttributeError):
+        raise SystemExit(f"{script}: {path} cannot be read as a manifest; refusing to work on {PILOT}") from None
+    if not finalized:
+        return
+    sealed = m.get("python")
+    try:
+        sealed_side = float_sum_side(sealed)
+    except ValueError:
+        raise SystemExit(f"{script}: {path} is finalized but records no interpreter version ({sealed!r}); refusing to "
+                         f"recompute a sealed run whose interpreter is unknown") from None
+    if sealed_side != float_sum_side(running):
+        need = (f"Python {FLOAT_SUM_CHANGED[0]}.{FLOAT_SUM_CHANGED[1]} or later" if sealed_side == "compensated"
+                else f"a Python before {FLOAT_SUM_CHANGED[0]}.{FLOAT_SUM_CHANGED[1]}")
+        raise SystemExit(f"{script}: {PILOT} was sealed under Python {sealed}, and this is Python {running}; sum() over "
+                         f"floats changed in 3.12, so the summary's float sums would differ in the last bit from the "
+                         f"sealed ones. Run this under {need}; nothing was written")
 
 
 def log_binding(entries: list[dict]) -> bool | None:

@@ -11,6 +11,7 @@ version-1 summary and its markdown are byte-identical to the recorded run's.
 from __future__ import annotations
 
 import json
+import platform
 import random
 from collections import Counter
 from itertools import pairwise
@@ -53,6 +54,7 @@ from common import (
     review_problems,
     rng,
     script_hashes,
+    sealed_interpreter_guard,
     sha256_file,
     sha256_text,
     surface_key,
@@ -698,6 +700,7 @@ def v2_checker_markdown(cv: dict) -> list[str]:
 
 
 def main() -> None:
+    sealed_interpreter_guard("compute_summary", platform.python_version())  # before anything is computed or written
     S, md = compute()
     (PILOT / "summary.md").write_text(md, encoding="utf-8", newline="\n")
     S["summary_md_sha256"] = sha256_text(md)  # the rendering this summary stands for (equal to the file's hash)

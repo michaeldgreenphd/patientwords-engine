@@ -1023,12 +1023,34 @@ def dry_run() -> None:
         run("write_manifest.py", "finalize")
         # a plain rewrite under another interpreter clears the finalization instead of attributing the sealed
         # outputs to an interpreter that did not produce them (Codex on PR #52)
+        summary_bytes = (tmp / "summary.json").read_bytes()
         py_m = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
-        py_m["python"] = "0.0.0"
+        # an interpreter on the other side of the 3.12 change to sum() over floats would recompute the sealed float
+        # sums differently in the last bit: the summary and every manifest write but a reset are refused, and nothing
+        # is written
+        other_side = "3.11.15" if sys.version_info >= common.FLOAT_SUM_CHANGED else "3.12.0"
+        for sealed_as in (other_side, None, "unknown"):
+            py_m["python"] = sealed_as
+            (tmp / "manifest.json").write_text(json.dumps(py_m, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            crossed = (tmp / "manifest.json").read_bytes()
+            for args in (("write_manifest.py",), ("write_manifest.py", "finalize"), ("compute_summary.py",)):
+                run(*args, expect_failure=True)
+                check(("records no interpreter version" if sealed_as in (None, "unknown")
+                       else "sum() over floats changed in 3.12") in last_err[0]
+                      and (tmp / "manifest.json").read_bytes() == crossed
+                      and (tmp / "summary.json").read_bytes() == summary_bytes,
+                      f"{' '.join(args)} refuses a run sealed under Python {sealed_as!r} and writes nothing")
+        check(common.float_sum_side("3.11.15") == "plain" and common.float_sum_side("3.12") == "compensated"
+              and common.float_sum_side("3.13.4") == "compensated",
+              "the interpreter versions fall on the documented sides of the 3.12 change to sum()")
+        # within the same side, a plain rewrite under another interpreter clears the finalization instead of
+        # attributing the sealed outputs to an interpreter that did not produce them (Codex on PR #52)
+        same_side = f"{sys.version_info.major}.{sys.version_info.minor}.999"
+        py_m["python"] = same_side
         (tmp / "manifest.json").write_text(json.dumps(py_m, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         run("write_manifest.py")
         py_m2 = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
-        check(py_m2["finalized_utc"] is None and "output_hashes" not in py_m2 and py_m2["python"] != "0.0.0",
+        check(py_m2["finalized_utc"] is None and "output_hashes" not in py_m2 and py_m2["python"] != same_side,
               "a plain rewrite under another interpreter clears the finalization and records the interpreter")
         run("write_manifest.py", "finalize")
         md_text = (tmp / "summary.md").read_text(encoding="utf-8")
@@ -1437,7 +1459,8 @@ def dry_run_v2() -> None:
         run("plan_calls.py")
         plan = json.loads((tmp / "calls.json").read_text(encoding="utf-8"))
         calls = plan["calls"]
-        check(plan["harness_version"] == 2 and all('"next_word": "doctor"' in c["prompt"] for c in calls),
+        example_word = json.dumps({"next_word": v2_design["control_example"]["next_word"]}, ensure_ascii=False)[1:-1]
+        check(plan["harness_version"] == 2 and all(example_word in c["prompt"] for c in calls),
               "a version-2 plan records harness_version and shows the control example with next_word")
         run("write_manifest.py")
         m = json.loads((tmp / "manifest.json").read_text(encoding="utf-8"))
