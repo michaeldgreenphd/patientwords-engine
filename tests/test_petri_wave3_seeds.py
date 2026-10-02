@@ -147,8 +147,10 @@ def test_the_speaker_identity_check_passes_and_reads_the_wording(w3_set):
     for sid, seed in w3_set.seeds.items():
         texts = _texts(seed)
         for arm in seed["protocol"]["arms"]:
-            carried = set().union(*(seeds._identity_clauses(texts[t["text_ref"]], markers) for t in arm["turns"]))
-            assert seeds._without_unmarked_default(carried) == {"patient"}, (sid, arm["id"])
+            # marked_identities drops the unmarked default per turn, where seed_problems drops it over the arm; the
+            # verdict is the same: a clinician or caregiver clause in any turn leaves either set unequal to {patient}.
+            carried = set().union(*(seeds.marked_identities(texts[t["text_ref"]], markers) for t in arm["turns"]))
+            assert carried == {"patient"}, (sid, arm["id"])
     seed = copy.deepcopy(next(iter(w3_set.seeds.values())))
     entry = next(t for t in seed["texts"] if t["key"] == "t02_clinical")
     entry["text"] = "As a nurse, " + entry["text"]
