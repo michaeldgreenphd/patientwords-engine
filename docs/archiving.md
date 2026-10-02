@@ -81,7 +81,9 @@ runs' `index_*.png` and `multi_*.png` from the branch **after** a successful
 upload. The interactive HTML and summaries stay in git (the export and
 back-end browsing still work); the full-resolution PNGs live only in the
 Release. This shrinks fresh clones — it does not rewrite history, so existing
-blobs remain in the pack. Default is `false`.
+blobs remain in the pack. Default is `false`. PNG renders have been pruned
+from `main` since 2026-09-08 because the tree carried ~15 GB of them and the
+repository had grown past what the cloud containers and Codex can clone.
 
 ## `prune_only`: removing PNGs a Release already holds
 
