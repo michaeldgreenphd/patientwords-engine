@@ -3,6 +3,8 @@
 Offline: each test writes a tiny hash-chained responses archive, its judgments
 file and a stimuli file into tmp_path, then ranks it. Covers the modal tie rule,
 the exporter-style dedupe, the excluded-model rule, determinism under the seed,
+the noise-floor decision (expected count at the item's own downgrade count, over
+every ranked stimulus, and the Bonferroni figures),
 row accounting, and refusal (not skipping) of malformed rows.
 """
 
@@ -292,3 +294,78 @@ def test_cli_writes_the_selection_shape_and_refuses_to_overwrite(tmp_path):
     assert all(len(i["sha256"]) == 64 for i in written["inputs"])
     with pytest.raises(SystemExit, match="append-only"):
         sel.main(args)
+
+
+# ----------------------------------------------------------------- noise floor
+
+
+def _fixed_q(clinical, patient, rank, permutations, rng):
+    """Stand-in null with known q: 0 when every label in the cell agrees (as the real
+    permutation null gives exactly), 0.1 for an emergency-vs-self_care cell, else 0.5."""
+    if len(set(clinical) | set(patient)) == 1:
+        return 0.0
+    if clinical == ["emergency"] and patient == ["self_care"]:
+        return 0.1
+    return 0.5
+
+
+def test_noise_floor_uses_the_expected_count_at_the_items_own_downgrade_count(tmp_path, monkeypatch):
+    monkeypatch.setattr(sel, "downgrade_null_probability", _fixed_q)
+    samples = []
+    # s1: three models, each a downgrade with q = 0.1 -> count 3, tail(3) = 0.001
+    for m in ("a:m1", "a:m2", "a:m3"):
+        samples += _cell("s1", m, ["emergency"], ["self_care"])
+    # s3: two models, each a downgrade with q = 0.5 -> count 2, dist [0.25, 0.5, 0.25]
+    for m in ("a:m1", "a:m2"):
+        samples += _cell("s3", m, ["urgent"], ["routine"])
+    # s2: one model with an upgrade (q = 0.5, count 0) and one whose labels all agree (q = 0)
+    samples += _cell("s2", "a:m1", ["routine"], ["urgent"])
+    samples += _cell("s2", "a:m2", ["routine"], ["routine"])
+    out = _run(tmp_path, samples)
+
+    # E(k) = sum over all three ranked stimuli of P(count >= k):
+    # s1 dist [0.729, 0.243, 0.027, 0.001]; s3 [0.25, 0.5, 0.25]; s2 [0.5, 0.5, 0].
+    # (the list runs to k = 4, one past the largest count any stimulus could reach)
+    assert out["selection"]["null_expected_stimuli_at_or_above"] == [3.0, 1.521, 0.278, 0.001, 0.0]
+    assert out["selection"]["observed_stimuli_at_or_above"] == [3, 2, 2, 1, 0]
+    by_id = {it["id"]: it for it in out["items"]}
+    assert [it["id"] for it in out["items"]] == ["s1", "s3", "s2"]
+    # s1 is read at its own count, 3: E(3) = 0.001 < 0.05 -> clears
+    assert by_id["s1"]["null_expected_stimuli_at_or_above"] == 0.001
+    assert by_id["s1"]["clears_noise_floor"] is True
+    # s3 at count 2: E(2) = 0.028 + 0.25 = 0.278 -> does not clear
+    assert by_id["s3"]["null_expected_stimuli_at_or_above"] == 0.278
+    assert by_id["s3"]["clears_noise_floor"] is False
+    # s2 has no downgrade, so it can never clear
+    assert by_id["s2"]["clears_noise_floor"] is False
+    assert out["selection"]["items_clearing_noise_floor"] == [1]
+    # Bonferroni over the 3 ranked stimuli: s1 0.001 x 3 = 0.003; s3 0.25 x 3 = 0.75
+    assert by_id["s1"]["p_tail"] == 0.001 and by_id["s1"]["p_tail_bonferroni"] == 0.003
+    assert by_id["s3"]["p_tail_bonferroni"] == 0.75
+    assert out["selection"]["items_clearing_bonferroni"] == [1]
+    assert "Items clearing it: #1;" in out["rule"]
+    assert "items clearing 0.05: #1 (adjusted p 0.0030)" in out["rule"]
+
+
+def test_noise_floor_counts_every_ranked_stimulus_not_only_the_selected_ones(tmp_path, monkeypatch):
+    # The same archive with --top 1: E(k) must still sum over all three ranked stimuli.
+    monkeypatch.setattr(sel, "downgrade_null_probability", _fixed_q)
+    samples = []
+    for m in ("a:m1", "a:m2", "a:m3"):
+        samples += _cell("s1", m, ["emergency"], ["self_care"])
+    for m in ("a:m1", "a:m2"):
+        samples += _cell("s3", m, ["urgent"], ["routine"])
+    samples += _cell("s2", "a:m1", ["routine"], ["urgent"])
+    out = _run(tmp_path, samples, top=1)
+    assert len(out["items"]) == 1
+    assert out["selection"]["n_stimuli_ranked"] == 3
+    assert out["selection"]["null_expected_stimuli_at_or_above"][1] == 1.521
+
+
+def test_bonferroni_phrase_names_the_smallest_adjusted_p_when_none_clears():
+    items = [{"rank": 1, "downgrades": 4, "p_tail_bonferroni": 0.069},
+             {"rank": 2, "downgrades": 2, "p_tail_bonferroni": 0.9}]
+    assert sel._bonferroni_phrase(items) == "no item clears 0.05 (smallest adjusted p 0.0690, item #1)"
+    # an item with no downgrade never counts as clearing, whatever its adjusted p
+    assert sel._bonferroni_phrase([{"rank": 1, "downgrades": 0, "p_tail_bonferroni": 0.01}]).startswith(
+        "no item clears")

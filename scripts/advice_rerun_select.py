@@ -2,11 +2,19 @@
 
 Offline and $0: reads only the committed archives under ``data/advice/`` and writes
 one new selection file (refusing to overwrite an existing one, because
-``data/advice/`` is append-only). The selection file has the shape the
-``build-stimuli --source selection`` source reads:
+``data/advice/`` is append-only). The selection file has the shape that a
+planned ``build-stimuli --source selection`` reader is to read (a separate pull
+request; on this branch ``build-stimuli`` has no such source, so nothing here
+consumes or validates the file yet):
 
     {"rule": <text>, "items": [{"file": "data/advice/stimuli_<stamp>.json",
                                 "id": "<stimulus id>", ...per-item metrics}], ...}
+
+The unique key of an item is the pair (file, id), not the id alone: the same
+stimulus id can be selected from two stimuli files (two forms of one
+situation), and such items carry ``same_situation_also_selected_from``. A
+reader that builds one stimuli file from the selection must give each item a
+unique id there.
 
 Methodology (every step is the repository's own definition, restated here so a
 reader of the output can reconstruct it without reading the caller):
