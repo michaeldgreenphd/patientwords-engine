@@ -27,6 +27,15 @@ Generation prompt:
 - Every row has five keys: `clinical_term`, `patient_term`, `template`, `next_word`, `control`.
 - Variant design (R7): the 16 non-control rows cover 12 concepts, and 4 of them get a second, vaguer or slangier
   patient phrasing on the next line, with the same clinical term, template and next word.
+- The example words the rules show (rule 3's clinical-note prose, rule 4's technical term and plain word, rule 5's
+  patient phrasings and leaflet wording, rule 6's vaguer patient term and its clinical phrase, rule 7's template
+  endings and next words) are not in the template: they live in `design.json`'s `prompt_examples` and render through
+  markers of their own (`{{CLINICAL_NOTE_EXAMPLES}}` and the others in `common.V2_PROMPT_EXAMPLES`), and rule 7's
+  list of endings renders from `probe_endings` (`{{PROBE_ENDINGS}}`). They moved there on Codex's review of PR #69,
+  as the example negative control did on PR #52, with every rendered prompt byte-identical:
+  `tests/test_pilot_prompts_v2.py` renders every prompt from the refactored template and from the one run
+  `pilot_v2_20261002` planned from (kept as `tests/fixtures/pilot_v2_generation_prompt_before_refactor.json`) and
+  requires them equal. A version-2 template must carry each of these markers exactly once, like the others.
 
 Checker prompt: four answers per item, based on standard terminologies rather than impression.
 
@@ -55,14 +64,23 @@ work as follows. A run without the key behaves exactly as before: every version-
   apart.
 - **Summary.** `compute_summary.py` adds descriptives that are outside the protocol's estimands. They are:
   - the relation counts for generated, known-good and broken items, and the precision view derived from them
-    (same and same_brand are as precise, broader is vaguer, narrower is more specific);
-  - the yes-rate by relation, and the count of inconsistent answers;
+    (same and same_brand are as precise, broader is vaguer, narrower is more specific). These count only answers
+    with a yes or no verdict: the schema requires a relation with every answer, so an unclear answer still carries
+    one, and those relations are reported apart (`unclear_relation`), not counted. Letting an unclear answer carry no
+    relation would change the checker schema, which is harness version 3's to do;
+  - the yes-rate by relation (over yes and no verdicts), and the count of inconsistent answers;
   - the checker's `sentence_natural` and `patient_realism` answers, by arm;
   - probe-point compliance: whether a template ends on one of the probe endings. This is reported, not counted
     as a format failure;
   - variant-design compliance per call: exact adjacent variant pairs, distinct concepts, non-adjacent repeats,
-    runs of three or more, compliant calls with a Wilson interval, and the ids of non-compliant calls;
-  - `next_word` statistics: the number of distinct words and the 10 most common.
+    runs of three or more, compliant calls with a Wilson interval, and the ids of non-compliant calls. A call is
+    compliant when it has exactly 16 rows, 12 concepts and 4 exact adjacent pairs, no concept split across
+    non-adjacent rows and no concept on a run of three or more rows (two runs of three rows also make 4 adjacent
+    pairs);
+  - `next_word` statistics: the number of distinct words and the 10 most common;
+  - a note on the intervals: those of estimands 2 to 5 are computed over rows, as the protocol fixes them, while
+    8 of every 16 non-control rows belong to 4 two-row concepts, so they are read as descriptive
+    (`row_level_intervals`, with the run's concept and row counts).
 
   The handoff's results block gets matching lines.
 - **Review sheet.** At most one row per concept, where a concept is the call, the clinical term's surface form and
@@ -75,13 +93,14 @@ work as follows. A run without the key behaves exactly as before: every version-
 
 ### Design
 
-`design.json` is `../design.json` with the same cells in the same order, plus five changes:
+`design.json` is `../design.json` with the same cells in the same order, plus six changes:
 
 - `harness_version: 2`;
 - `probe_endings`;
 - `concepts_per_call: 12`;
 - `variant_pairs_per_call: 4`;
-- `review_sampling: "one_row_per_concept"`.
+- `review_sampling: "one_row_per_concept"`;
+- `prompt_examples`, the example words the generation prompt's rules show.
 
 Its example negative control (what the prompt's `{{CONTROL_EXAMPLE}}` shows) was rewritten: it carries `next_word`,
 it is spoken in the first person, and its template ends on a probe ending, as the version-2 prompt asks of every row.

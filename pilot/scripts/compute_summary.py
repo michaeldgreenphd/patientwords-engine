@@ -2,11 +2,13 @@
 summary.md is typed by hand: the markdown is rendered from the same dictionaries the JSON holds.
 
 Under harness version 2 (recorded in calls.json and checker_batches.json) the summary also reports, as descriptives
-outside the protocol's estimands: the checker's relation for generated, known-good and broken items, the precision
-view derived from it, the yes-rate by relation and the answers flagged inconsistent; the checker's sentence_natural
-and patient_realism for generated rows, by arm; probe-point compliance; variant-design compliance per call; next_word
-statistics; and the review sample's one-row-per-concept figures. summary.json then records `harness_version`. A
-version-1 summary and its markdown are byte-identical to the recorded run's.
+outside the protocol's estimands: the checker's relation for generated, known-good and broken items (answers with a
+yes or no verdict; the relations given with an unclear verdict apart), the precision view derived from it, the
+yes-rate by relation and the answers flagged inconsistent; the checker's sentence_natural and patient_realism for
+generated rows, by arm; probe-point compliance; variant-design compliance per call; next_word statistics; the review
+sample's one-row-per-concept figures; and a note that the intervals of estimands 2 to 5, computed over rows as the
+protocol fixes them, are descriptive under the variant design (row_level_intervals). summary.json then records
+`harness_version`. A version-1 summary and its markdown are byte-identical to the recorded run's.
 """
 from __future__ import annotations
 
@@ -48,6 +50,7 @@ from common import (
     newcombe_diff,
     percentile,
     plan_version,
+    probe_endings_set,
     probe_point_ok,
     read_csv,
     read_jsonl,
@@ -154,8 +157,10 @@ def probe_point_summary(rows: list[dict], cell_ids: list[str], endings: tuple[st
     """Version 2, descriptive: the share of rows whose template, stripped, ends on a probe ending (common.probe_point_ok),
     over every format-valid row of the final attempts, controls included, by control kind, arm and cell. A row that
     misses is still a valid row; this is not a format failure."""
+    lowered = probe_endings_set(endings)  # once, not per row (Copilot review of PR #69)
+
     def share(sub: list[dict]) -> dict:
-        return wilson(sum(1 for r in sub if probe_point_ok(r["template"], endings)), len(sub))
+        return wilson(sum(1 for r in sub if probe_point_ok(r["template"], lowered)), len(sub))
     return {"endings": list(endings), "population": "format-valid rows of the final attempts, controls included",
             "overall": share(rows), "by_control": {k: share([r for r in rows if r["control"] == k]) for k in CONTROL_VALUES},
             "by_arm": {a: share([r for r in rows if r["arm"] == a]) for a in ARMS},
@@ -196,25 +201,55 @@ def variant_call(none_rows: list[dict]) -> dict:
 
 def variant_design_summary(rows: list[dict], finals: list[dict], pairs: int, concepts: int) -> dict:
     """Version 2, descriptive: variant_call for every planned call (a call with no response record counts, with zero
-    rows); a call is compliant when it has exactly `pairs` exact adjacent variant pairs and `concepts` concepts.
-    Calls compliant over all planned calls carry a Wilson interval, overall and by arm; non-compliant calls are
-    flagged by id."""
+    rows). A call is compliant when its rows are the design the prompt asks for: exactly `concepts` + `pairs` rows
+    (each variant pair adds one row to a concept; version_design_problems holds the sum to the non-control rows of a
+    call), exactly `concepts` concepts, exactly `pairs` exact adjacent variant pairs, no concept whose rows are
+    separated by another concept's row (non_adjacent_repeats 0), and no run of three or more rows of one concept.
+    With the row and concept counts fixed, the last two leave every concept one row or two adjacent rows, `pairs` of
+    them two, so the pair count can no longer be met by two runs of three rows (Codex review of PR #69). Calls
+    compliant over all planned calls carry a Wilson interval, overall and by arm; non-compliant calls are flagged by
+    id."""
+    n_rows = concepts + pairs
     per_call = []
     for e in finals:
         v = variant_call([r for r in rows if r["call_id"] == e["call_id"] and r["control"] == "none"])
         per_call.append({"call_id": e["call_id"], "arm": e["arm"], **v,
-                         "compliant": v["pairs_exact"] == pairs and v["concepts"] == concepts})
+                         "compliant": (v["n_rows"] == n_rows and v["concepts"] == concepts and v["pairs_exact"] == pairs
+                                       and v["non_adjacent_repeats"] == 0 and v["runs_of_three_or_more"] == 0)})
+
     def share(sub: list[dict]) -> dict:
         return wilson(sum(1 for c in sub if c["compliant"]), len(sub))
     return {"definition": f"per call, over the final attempt's format-valid control none rows ordered by line_index: "
-                          f"compliant when exactly {pairs} adjacent pairs share clinical_term, template and next_word "
-                          f"with different patient_term surface keys, and the rows cover exactly {concepts} concepts "
-                          f"(clinical_term surface key and template)",
-            "expected_pairs_per_call": pairs, "expected_concepts_per_call": concepts,
+                          f"compliant when the rows number exactly {n_rows} and cover exactly {concepts} concepts "
+                          f"(clinical_term surface key and template), exactly {pairs} adjacent pairs share "
+                          f"clinical_term, template and next_word with different patient_term surface keys, no "
+                          f"concept's rows are separated by another concept's row, and no concept runs over three or "
+                          f"more rows",
+            "expected_rows_per_call": n_rows, "expected_pairs_per_call": pairs, "expected_concepts_per_call": concepts,
             "calls_compliant": share(per_call), "by_arm": {a: share([c for c in per_call if c["arm"] == a]) for a in ARMS},
             **{k: sum(c[k] for c in per_call) for k in ("pairs_exact", "pairs_clinical_surface", "non_adjacent_repeats",
                                                           "runs_of_three_or_more")},
             "flagged_calls": [c["call_id"] for c in per_call if not c["compliant"]], "per_call": per_call}
+
+
+def row_level_intervals(vd: dict) -> dict:
+    """Version 2, how to read the intervals: the frozen protocol computes those of estimands 2 to 5 over rows (Wilson
+    and Newcombe intervals count rows; the estimand 3 bootstrap resamples rows within cells), and the variant design
+    puts twice `pairs` of each call's `concepts` + `pairs` non-control rows into `pairs` two-row concepts, whose two
+    rows share the clinical term and the template (8 of 16 rows in 4 concepts). The rows are therefore not independent
+    draws, and the intervals, computed as the protocol fixes them, are reported as descriptive (Codex review of PR
+    #69). The design figures are variant_design's expectations; the concept and row counts are this run's, from its
+    per-call counts."""
+    per_call = vd["per_call"]
+
+    def total(key: str, arm: str | None = None) -> int:
+        return sum(c[key] for c in per_call if arm is None or c["arm"] == arm)
+    return {"unit": "row", "estimands": [2, 3, 4, 5], "reading": "descriptive",
+            "two_row_concepts_per_call": vd["expected_pairs_per_call"],
+            "rows_in_two_row_concepts_per_call": 2 * vd["expected_pairs_per_call"],
+            "non_control_rows_per_call": vd["expected_rows_per_call"],
+            "concepts": {**{a: total("concepts", a) for a in ARMS}, "total": total("concepts")},
+            "non_control_rows": {**{a: total("n_rows", a) for a in ARMS}, "total": total("n_rows")}}
 
 
 def next_word_summary(rows: list[dict]) -> dict:
@@ -232,23 +267,39 @@ def checker_v2_summary(checked: list[dict]) -> dict:
     as_precise, broader as vaguer, narrower as more_specific, different as not_applicable); the yes-rate by relation
     on generated items; the answers whose equivalent contradicts their relation (kept, flagged inconsistent); and
     sentence_natural and patient_realism for generated items, overall and by arm. Every allowed value is listed, with
-    its count, zero included."""
+    its count, zero included.
+
+    Relation, precision and the yes-rate by relation count only answers with a yes or no verdict. The version-2
+    schema requires a relation with every answer, so an answer whose verdict is unclear (the checker could not decide
+    what a phrase means) still carries one, which describes no decided meaning; such relations are left out of those
+    counts and reported apart under `unclear_relation`, with their item ids (Codex review of PR #69). Letting an
+    unclear answer carry no relation would change the checker schema, which is harness version 3's to do."""
     sources = {"generated": "generated", "known_good": "seed", "broken": "broken"}
     answered = {k: [c for c in checked if c["source"] == s and c["verdict"] != "missing"] for k, s in sources.items()}
+    decided = {k: [c for c in v if c["verdict"] != "unclear"] for k, v in answered.items()}
+    unclear = {k: [c for c in v if c["verdict"] == "unclear"] for k, v in answered.items()}
 
     def dist(items: list[dict], field: str) -> dict[str, int]:
         n = Counter(i[field] for i in items)
         return {v: n.get(v, 0) for v in CHECKER_V2_FIELDS[field]}
-    relation = {k: dist(v, "relation") for k, v in answered.items()}
+    relation = {k: dist(v, "relation") for k, v in decided.items()}
     gen = answered["generated"]
+    gen_decided = decided["generated"]
     flagged = [c for c in checked if c.get("inconsistent")]
-    return {"population": "answered items (verdict not missing)",
+    return {"population": "answered items (verdict not missing); relation, precision and the yes-rate by relation "
+                          "count only answers with a yes or no verdict",
             "n_answered": {k: len(v) for k, v in answered.items()},
+            "n_relation_counted": {k: len(v) for k, v in decided.items()},
             "relation": relation,
             "precision": {k: {p: sum(n for r, n in rel.items() if RELATION_PRECISION[r] == p) for p in PRECISION_VALUES}
                           for k, rel in relation.items()},
-            "yes_by_relation": {r: wilson(sum(1 for c in gen if c["relation"] == r and c["verdict"] == "yes"),
-                                          sum(1 for c in gen if c["relation"] == r)) for r in CHECKER_RELATIONS},
+            "yes_by_relation": {r: wilson(sum(1 for c in gen_decided if c["relation"] == r and c["verdict"] == "yes"),
+                                          sum(1 for c in gen_decided if c["relation"] == r))
+                                for r in CHECKER_RELATIONS},
+            "unclear_relation": {"n": {k: len(v) for k, v in unclear.items()},
+                                 "relation": {k: dist(v, "relation") for k, v in unclear.items()},
+                                 "total": sum(len(v) for v in unclear.values()),
+                                 "item_ids": [c["id"] for c in checked if c["verdict"] == "unclear"]},
             "inconsistent": {**{k: sum(1 for c in flagged if c["source"] == s) for k, s in sources.items()},
                              "total": len(flagged), "item_ids": [c["id"] for c in flagged]},
             "sentence_natural": {"generated": dist(gen, "sentence_natural"),
@@ -473,6 +524,7 @@ def compute() -> tuple[dict, str]:
         S["variant_design"] = variant_design_summary(rows, finals, VARIANT_PAIRS_PER_CALL, CONCEPTS_PER_CALL)
         S["next_word"] = next_word_summary(rows)
         S["checker_v2"] = checker_v2_summary(checked)
+        S["row_level_intervals"] = row_level_intervals(S["variant_design"])
 
     # ---- markdown, rendered from S only (summary.json is written after it, carrying the rendering's hash)
     L = []
@@ -489,6 +541,17 @@ def compute() -> tuple[dict, str]:
         L.append(f"Harness version {version}: rows carry next_word, the checker also answers relation, sentence_natural "
                  f"and patient_realism, and the sections marked version 2 report descriptives outside the protocol's "
                  f"estimands.")
+        L.append("")
+        iv = S["row_level_intervals"]
+        L.append(f"Intervals under the variant design (version 2): the intervals of estimands 2 to 5 are computed over "
+                 f"rows, as the protocol fixes them (Wilson and Newcombe intervals count rows; the estimand 3 "
+                 f"bootstrap resamples rows within cells). By design {iv['rows_in_two_row_concepts_per_call']} of "
+                 f"every {iv['non_control_rows_per_call']} non-control rows of a call belong to "
+                 f"{iv['two_row_concepts_per_call']} two-row concepts, whose two rows share the clinical term and the "
+                 f"template, so the rows are not independent draws: read these intervals as descriptive. This run's "
+                 f"non-control rows cover {iv['concepts']['total']} concepts in {iv['non_control_rows']['total']} rows "
+                 f"(Arm A {iv['concepts']['A']} in {iv['non_control_rows']['A']}, Arm B {iv['concepts']['B']} in "
+                 f"{iv['non_control_rows']['B']}).")
         L.append("")
     L.append("## Run overview")
     L.append("")
@@ -676,15 +739,26 @@ def v2_generation_markdown(S: dict, cell_ids: list[str]) -> list[str]:
 
 
 def v2_checker_markdown(cv: dict) -> list[str]:
-    """The version-2 checker descriptives: relation, precision, yes-rate by relation, inconsistent answers,
-    sentence_natural and patient_realism."""
+    """The version-2 checker descriptives: relation, precision, the relations given with an unclear verdict (reported
+    apart), yes-rate by relation, inconsistent answers, sentence_natural and patient_realism."""
+    rc, un = cv["n_relation_counted"], cv["unclear_relation"]
     L = ["## Checker relation, precision, sentence and realism (version 2, descriptive)", "",
          (f"Population: {cv['population']}; answered generated {cv['n_answered']['generated']}, known-good "
-          f"{cv['n_answered']['known_good']}, broken {cv['n_answered']['broken']}."), "",
-         "| Items | Relation counts | Precision (derived from relation) |\n|---|---|---|"]
+          f"{cv['n_answered']['known_good']}, broken {cv['n_answered']['broken']}; with a yes or no verdict "
+          f"generated {rc['generated']}, known-good {rc['known_good']}, broken {rc['broken']}."), "",
+         "| Items | Relation counts (yes or no verdicts) | Precision (derived from relation) |\n|---|---|---|"]
     L += [f"| {k.replace('_', '-')} | {counts_cell(cv['relation'][k])} | {counts_cell(cv['precision'][k])} |"
           for k in ("generated", "known_good", "broken")]
-    L += ["", "| Relation (generated) | Judged equivalent / answered | Proportion | 95% Wilson |\n|---|---|---|---|"]
+    L += ["", (f"The version-2 schema requires a relation with every answer, so an answer whose verdict is unclear "
+               f"(the checker could not decide what a phrase means) still carries one. Such a relation describes no "
+               f"decided meaning: it is left out of the relation, precision and yes-rate counts and listed here. "
+               f"Unclear verdicts: {un['total']} (generated {un['n']['generated']}, known-good "
+               f"{un['n']['known_good']}, broken {un['n']['broken']})."), "",
+          "| Items | Relations given with an unclear verdict (not counted above) |\n|---|---|"]
+    L += [f"| {k.replace('_', '-')} | {counts_cell(un['relation'][k])} |"
+          for k in ("generated", "known_good", "broken")]
+    L += ["", ("| Relation (generated) | Judged equivalent / judged yes or no | Proportion | 95% Wilson |\n"
+               "|---|---|---|---|")]
     L += [prop_row(r, w) for r, w in cv["yes_by_relation"].items()]
     inc = cv["inconsistent"]
     L += ["", (f"Answers whose equivalent contradicts their relation (kept as given, flagged inconsistent): "

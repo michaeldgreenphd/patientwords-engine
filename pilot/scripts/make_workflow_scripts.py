@@ -4,6 +4,9 @@ byte-identical text whose SHA-256 is recorded in calls.json and checker_batches.
   python3 scripts/make_workflow_scripts.py generation [--replace]  -> workflows/generation.workflow.js
   python3 scripts/make_workflow_scripts.py checker [--replace]     -> workflows/checker.workflow.js
 
+The arguments are parsed by argparse (parse_args), so --replace may stand before or after the stage, as in
+build_api_requests.py (Copilot review of PR #69).
+
 A run directory whose manifest.json is finalized is not written into without --replace (common.finalized_run_guard):
 with PILOT_DIR unset the scripts would otherwise replace the recorded run's own workflow scripts.
 
@@ -20,8 +23,8 @@ run predate this label and carry no hash.
 """
 from __future__ import annotations
 
+import argparse
 import json
-import sys
 
 from common import (
     PILOT,
@@ -150,8 +153,20 @@ def render(which: str) -> tuple[str, int]:
     return text.replace("__PROTOCOL__", json.dumps(sha256_file(PILOT / "PROTOCOL.md"))), len(payload)
 
 
+STAGES = ("generation", "checker")
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """The command line, in one place: the stage and --replace, in either order."""
+    ap = argparse.ArgumentParser(description="Render a stage's Workflow-tool script from its plan into "
+                                             "workflows/<stage>.workflow.js.")
+    ap.add_argument("which", choices=STAGES, help="the stage whose plan to render")
+    ap.add_argument("--replace", action="store_true", help="write into a run directory whose manifest is finalized")
+    return ap.parse_args(argv)
+
+
 def main(which: str, replace: bool = False) -> None:
-    if which not in ("generation", "checker"):
+    if which not in STAGES:
         raise SystemExit("usage: make_workflow_scripts.py generation|checker [--replace]")
     finalized_run_guard("make_workflow_scripts", replace)  # never re-render over a sealed run's scripts
     text, n_items = render(which)
@@ -163,4 +178,5 @@ def main(which: str, replace: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "", replace="--replace" in sys.argv[2:])
+    args = parse_args()
+    main(args.which, replace=args.replace)
