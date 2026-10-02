@@ -671,6 +671,17 @@ dropped after its results are seen:
 The selection itself (A6.4) counted these two arms; it was made before this
 rule was written and is not re-ranked.
 
+**Probes.** Before the full fires, the fire plan's five probe fires (A0a to
+A0c, R0a, R0b) call each model they name once, clinical arm only, against
+`data/advice/stimuli_20261002T074159Z.json`, a one-item probe file built from
+`data/advice/manual_probe_20261002.json` that repeats item #01's messages.
+The probe archive is committed, so its spend is booked, but it is never
+judged, analysed, exported or pooled, and no truncation share above counts
+it. The probes stay out of the analysed archives because `elicit` resumes by
+(stimulus, arm, model, sample), not by `max_tokens`: inside an analysed
+archive, a probe record would make the full fire skip that cell even after a
+probe led to a different limit for the arm.
+
 ### A6.3 New question set (supplementary, natural-question family)
 
 `data/advice/stimuli_20261002T074150Z.json`, built with `build-stimuli

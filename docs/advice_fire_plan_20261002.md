@@ -21,8 +21,8 @@ dollar figure in it.
 ## 0. Conditions that must all hold before the first fire
 
 1. The pull request carrying this plan is merged, so the stimuli file, the
-   selection file and the proposed Amendment 6 are on `main` (the lane fires
-   on `main`).
+   probe file, the selection file and the proposed Amendment 6 are on `main`
+   (the lane fires on `main`).
 2. The owner has approved Amendment 6 in writing, and its approval record is
    filled.
 3. The roster pull request (October 2026 roster: reviewed prices and
@@ -62,16 +62,16 @@ fire. This session ran none of these commands.
 | A0a | OpenRouter | probe: gpt-chat-latest, grok-4.7 | 1024 | 2 | $0.019 | $0.025 | $0.10 | <1 | A-1 |
 | A0b | OpenRouter | probe: gemini-3.8-flash, deepseek-v4.1-flash, kimi-k3 | 4096 | 3 | $0.026 | $0.048 | $0.15 | 2-3 | A-1 |
 | A0c | Anthropic | probe: claude-sonnet-5-5 | 1024 | 1 | $0.006 | $0.007 | $0.05 | <1 | A-1 |
-| A1 | Anthropic | new set: haiku-4-5, sonnet-5-5 | 1024 | 287 | $1.033 | $1.269 | $1.30 | 29-36 | A-1 |
-| A3a | OpenRouter | new set items 1-8: gemini, deepseek, kimi | 4096 | 141 | $1.247 | $2.327 | $2.55 | 87-144 | A-1 |
+| A1 | Anthropic | new set: haiku-4-5, sonnet-5-5 | 1024 | 288 | $1.033 | $1.269 | $1.30 | 29-36 | A-1 |
+| A3a | OpenRouter | new set items 1-8: gemini, deepseek, kimi | 4096 | 144 | $1.247 | $2.327 | $2.55 | 87-144 | A-1 |
 | A3b | OpenRouter | new set items 9-16 | 4096 | 144 | $1.247 | $2.327 | $2.55 | 87-144 | A-1 |
 | A3c | OpenRouter | new set items 17-24 | 4096 | 144 | $1.247 | $2.327 | $2.55 | 87-144 | A-2 |
-| A2 | OpenRouter | new set: gpt-chat-latest, grok-4.7 | 1024 | 286 | $2.782 | $3.639 | $3.90 | 48-66 | A-2 |
+| A2 | OpenRouter | new set: gpt-chat-latest, grok-4.7 | 1024 | 288 | $2.782 | $3.639 | $3.90 | 48-66 | A-2 |
 | A4 | Anthropic | judge all 1008 Wave A responses | n/a | 0 + 1008 judgments | $1.129 | $1.613 | $0.01 + $1.80 = $1.81 | 42-67 | A-2 |
 | R0a | OpenRouter | probe: the five original OpenRouter ids | 1024 | 5 | $0.021 | $0.027 | $0.10 | 1-2 | R-1 |
 | R0b | Anthropic | probe: claude-sonnet-5 | 1024 | 1 | $0.009 | $0.011 | $0.05 | <1 | R-1 |
-| R1 | Anthropic | rerun: haiku-4-5, sonnet-5, sonnet-5-5 | 1024 | 269 | $1.430 | $1.764 | $1.80 | 30-38 | R-1 |
-| R2a | OpenRouter | rerun items 1-8: 7 models | 1024 | 331 | $1.926 | $2.529 | $2.80 | 83-135 | R-1 |
+| R1 | Anthropic | rerun: haiku-4-5, sonnet-5, sonnet-5-5 | 1024 | 270 | $1.430 | $1.764 | $1.80 | 30-38 | R-1 |
+| R2a | OpenRouter | rerun items 1-8: 7 models | 1024 | 336 | $1.926 | $2.529 | $2.80 | 83-135 | R-1 |
 | R2b | OpenRouter | rerun items 9-15: 7 models | 1024 | 294 | $1.685 | $2.213 | $2.45 | 73-118 | R-1 |
 | R3a | OpenRouter | rerun items 1-8: gemini, deepseek, kimi | 4096 | 144 | $1.247 | $2.327 | $2.55 | 87-144 | R-2 |
 | R3b | OpenRouter | rerun items 9-15 | 4096 | 126 | $1.091 | $2.036 | $2.25 | 76-126 | R-2 |
@@ -79,9 +79,9 @@ fire. This session ran none of these commands.
 
 Totals: Wave A $8.74 typical ($2.17 Anthropic, $6.57 OpenRouter), $13.58 high;
 Wave R $8.72 typical ($2.75 Anthropic, $5.97 OpenRouter), $12.52 high. The
-probe calls are also counted inside the full fires they precede, so the totals
-overstate by about $0.08 typical ($0.12 high). "Calls" already subtracts the
-probe records, which the full fire skips on resume.
+probes (A0a, A0b, A0c, R0a, R0b) run against a separate one-item probe file
+(section 3), so every full fire elicits all of its cells and each call is
+counted once.
 
 ## 2. How the estimates were made
 
@@ -153,37 +153,58 @@ temperature 1.0 (the workflow default), the default rubric
 `judge: "false"`, `judge_model` and `judge_max_spend` are not used. The plan
 check is `scripts/advice_eval.py elicit --dry-run` with the same arguments; it
 calls nothing and writes nothing. The outputs below were run on this branch
-on 2026-10-02, before any record exists, so the full fires show the probe
-calls too (A1 288, A2 288, A3a 144): the calls column in section 1 subtracts
-them.
+on 2026-10-02, before any record exists.
+
+**The probe file.** The five probes (A0a, A0b, A0c, R0a, R0b) do not run
+against a stimuli file that is analysed. They run against
+`data/advice/stimuli_20261002T074159Z.json`, a one-item file built with the
+same command from `data/advice/manual_probe_20261002.json`; its one item,
+`advprobe_20261002#01`, repeats the messages of item #01 of the new set. The
+probes write `data/advice/responses_stimuli_20261002T074159Z.jsonl` and its
+cost sidecar, which commit like any other archive (so the ledger books the
+probes' spend), and that archive is never judged, analysed, exported or pooled
+with any set. The reason: `elicit` resumes by (stimulus, arm, model, sample)
+and not by `max_tokens`, so a probe record inside an analysed archive would
+make the full fire skip that cell even if the arm's limit changed after the
+probe, leaving one sample of the arm at the old limit and inside its
+truncation share. A probe with `commit_outputs: "false"` would also stay out
+of the analysed archive, but it commits no cost sidecar, so
+`scripts/ledger_update.py` would never book its spend, and its uploaded
+artifact is what a `restore_artifact_run_id` recovery fire merges into the
+stimuli file that fire names.
 
 ### Wave A: the 24 new questions
 
 Order: A0a, A0b, A0c, A1, A3a, A3b (day A-1), then A3c, A2, A4 (day A-2);
-section 4 gives the reason for this order. After each probe, look at the
-landed record before the next fire: `stop_reason` (a length stop on a probe
-means the limit is too low for that arm) and `model_returned` (which build the
-slug resolved to; for `gpt-chat-latest` this is the build the alias served).
-If a probe fails with a 400, that id is wrong or not served: drop it from
-every later fire of this plan and record the drop in Amendment 6 before
-going on.
+section 4 gives the reason for this order. After each probe, look at its
+landed records in `data/advice/responses_stimuli_20261002T074159Z.jsonl`
+before the next fire: `stop_reason` (a length stop on a probe means the limit
+is too low for that arm), `model_returned` (which build the slug resolved to;
+for `gpt-chat-latest` this is the build the alias served) and
+`request.max_tokens` (the limit the call was sent with). If a probe fails with
+a 400, that id is wrong or not served: drop it from every later fire of this
+plan and record the drop in Amendment 6 before going on. If a probe leads to a
+different `max_tokens` for an arm, that is a new decision, recorded in
+Amendment 6 before the arm's full fire; because the probe record is not in the
+new set's archive, the full fire then elicits every one of its cells at the
+new limit.
 
 **A0a. Probe, OpenRouter 1024 arms.** OpenRouter lane, bills
-`OPENROUTER_API_KEY`. 2 calls (item 1, clinical, k=1).
+`OPENROUTER_API_KEY`. 2 calls (the probe item, clinical, k=1).
 ```json
-{"stimuli_file": "data/advice/stimuli_20261002T074150Z.json", "models": "openai:openai/gpt-chat-latest xai:x-ai/grok-4.7", "arms": "clinical", "samples": "1", "max_tokens": "1024", "max_spend": "0.10", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "1", "commit_outputs": "true"}
+{"stimuli_file": "data/advice/stimuli_20261002T074159Z.json", "models": "openai:openai/gpt-chat-latest xai:x-ai/grok-4.7", "arms": "clinical", "samples": "1", "max_tokens": "1024", "max_spend": "0.10", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "1", "commit_outputs": "true"}
 ```
 Cost: 0.01481 + 0.00451 = $0.019 (high $0.025). Plan check:
-`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T074150Z.json --models "openai:openai/gpt-chat-latest xai:x-ai/grok-4.7" --arms clinical --samples 1 --max-tokens 1024 --max-spend 0.10 --offset 0 --limit 1 --dry-run`
+`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T074159Z.json --models "openai:openai/gpt-chat-latest xai:x-ai/grok-4.7" --arms clinical --samples 1 --max-tokens 1024 --max-spend 0.10 --offset 0 --limit 1 --dry-run`
 → `plan: 2 call(s) over 1 stimuli x arms ['clinical'] x models ['openai:openai/gpt-chat-latest', 'xai:x-ai/grok-4.7'] x K=1`.
 Authorise: "I authorise fire A0a of docs/advice_fire_plan_20261002.md: advice-eval, OpenRouter lane, max_spend $0.10, on <YYYY-MM-DD> UTC."
 
 **A0b. Probe, OpenRouter 4096 arms.** OpenRouter lane. 3 calls.
 ```json
-{"stimuli_file": "data/advice/stimuli_20261002T074150Z.json", "models": "openrouter:google/gemini-3.8-flash deepseek:deepseek/deepseek-v4.1-flash moonshot:moonshotai/kimi-k3", "arms": "clinical", "samples": "1", "max_tokens": "4096", "max_spend": "0.15", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "1", "commit_outputs": "true"}
+{"stimuli_file": "data/advice/stimuli_20261002T074159Z.json", "models": "openrouter:google/gemini-3.8-flash deepseek:deepseek/deepseek-v4.1-flash moonshot:moonshotai/kimi-k3", "arms": "clinical", "samples": "1", "max_tokens": "4096", "max_spend": "0.15", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "1", "commit_outputs": "true"}
 ```
 Cost: 0.00752 + 0.00083 + 0.01764 = $0.026 (high $0.048). Plan check:
-`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T074150Z.json --models "openrouter:google/gemini-3.8-flash deepseek:deepseek/deepseek-v4.1-flash moonshot:moonshotai/kimi-k3" --arms clinical --samples 1 --max-tokens 4096 --max-spend 0.15 --offset 0 --limit 1 --dry-run`
+`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T074159Z.json --models "openrouter:google/gemini-3.8-flash deepseek:deepseek/deepseek-v4.1-flash moonshot:moonshotai/kimi-k3" --arms clinical --samples 1 --max-tokens 4096 --max-spend 0.15 --offset 0 --limit 1 --dry-run`
 → `plan: 3 call(s) over 1 stimuli x arms ['clinical'] x models [...3 models...] x K=1`.
 The output-token counts of these three records replace the guesses in
 section 2; recompute A3 and R3 if any is above 3500.
@@ -193,14 +214,14 @@ Authorise: "I authorise fire A0b of docs/advice_fire_plan_20261002.md: advice-ev
 1 call. It also shows whether the model accepts the `temperature` the advice
 path sends.
 ```json
-{"stimuli_file": "data/advice/stimuli_20261002T074150Z.json", "models": "anthropic:claude-sonnet-5-5", "arms": "clinical", "samples": "1", "max_tokens": "1024", "max_spend": "0.05", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "1", "commit_outputs": "true"}
+{"stimuli_file": "data/advice/stimuli_20261002T074159Z.json", "models": "anthropic:claude-sonnet-5-5", "arms": "clinical", "samples": "1", "max_tokens": "1024", "max_spend": "0.05", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "1", "commit_outputs": "true"}
 ```
 Cost: $0.006 (high $0.007). Plan check:
-`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T074150Z.json --models "anthropic:claude-sonnet-5-5" --arms clinical --samples 1 --max-tokens 1024 --max-spend 0.05 --offset 0 --limit 1 --dry-run`
+`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T074159Z.json --models "anthropic:claude-sonnet-5-5" --arms clinical --samples 1 --max-tokens 1024 --max-spend 0.05 --offset 0 --limit 1 --dry-run`
 → `plan: 1 call(s) over 1 stimuli x arms ['clinical'] x models ['anthropic:claude-sonnet-5-5'] x K=1`.
 Authorise: "I authorise fire A0c of docs/advice_fire_plan_20261002.md: advice-eval, Anthropic lane, max_spend $0.05, on <YYYY-MM-DD> UTC."
 
-**A1. Anthropic arms.** Anthropic lane. 288 calls planned, 287 after A0c.
+**A1. Anthropic arms.** Anthropic lane. 288 calls.
 ```json
 {"stimuli_file": "data/advice/stimuli_20261002T074150Z.json", "models": "anthropic:claude-haiku-4-5 anthropic:claude-sonnet-5-5", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "1.30", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "0", "commit_outputs": "true"}
 ```
@@ -211,7 +232,7 @@ Cost: 144 x 0.00136 + 144 x 0.00581 = 0.196 + 0.837 = $1.033; high 144 x
 → `plan: 288 call(s) over 24 stimuli x arms ['clinical', 'patient'] x models ['anthropic:claude-haiku-4-5', 'anthropic:claude-sonnet-5-5'] x K=3`.
 Authorise: "I authorise fire A1 of docs/advice_fire_plan_20261002.md: advice-eval, Anthropic lane, max_spend $1.30, on <YYYY-MM-DD> UTC."
 
-**A2. OpenRouter 1024 arms.** OpenRouter lane. 288 planned, 286 after A0a.
+**A2. OpenRouter 1024 arms.** OpenRouter lane. 288 calls.
 ```json
 {"stimuli_file": "data/advice/stimuli_20261002T074150Z.json", "models": "openai:openai/gpt-chat-latest xai:x-ai/grok-4.7", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "3.90", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "0", "commit_outputs": "true"}
 ```
@@ -223,8 +244,7 @@ Runtime 144 x (12.1 + 7.7) s = 48 min; high 66 min. Plan check:
 Authorise: "I authorise fire A2 of docs/advice_fire_plan_20261002.md: advice-eval, OpenRouter lane, max_spend $3.90, on <YYYY-MM-DD> UTC."
 
 **A3a, A3b, A3c. OpenRouter 4096 arms, eight items each.** OpenRouter lane.
-144 calls each (A3a 141 after A0b). The three differ only in `offset`
-(0, 8, 16).
+144 calls each. The three differ only in `offset` (0, 8, 16).
 ```json
 {"stimuli_file": "data/advice/stimuli_20261002T074150Z.json", "models": "openrouter:google/gemini-3.8-flash deepseek:deepseek/deepseek-v4.1-flash moonshot:moonshotai/kimi-k3", "arms": "clinical,patient", "samples": "3", "max_tokens": "4096", "max_spend": "2.55", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "8", "commit_outputs": "true"}
 ```
@@ -260,34 +280,38 @@ Authorise: "I authorise fire A4 of docs/advice_fire_plan_20261002.md: advice-eva
 ### Wave R: the 15 selected earlier questions
 
 `<RERUN>` below is the rerun stimuli file from condition 4, for example
-`data/advice/stimuli_<stamp>.json`. It does not exist on this branch, so these
-plan checks were run against a 15-item placeholder file in the session's
-scratch directory (placeholder text, same item count), which confirms that
-every model spec resolves and gives the counts. Rerun the checks on `<RERUN>`
-before approving; the counts must match.
+`data/advice/stimuli_<stamp>.json`. It does not exist on this branch, so the
+plan checks of R1 to R4 were run against a 15-item placeholder file in the
+session's scratch directory (placeholder text, same item count), which
+confirms that every model spec resolves and gives the counts. Rerun those
+checks on `<RERUN>` before approving; the counts must match. The two probes
+run against the probe file, not `<RERUN>`, so their checks below are real.
 
 Order: R0a, R0b, R1, R2a, R2b, R3a, R3b, R4. The original arms run at 1024
 tokens, the July protocol. The reasoning arms run at 4096 (Amendment 6,
-A6.2).
+A6.2). Read each probe's records as after the Wave A probes.
 
 **R0a. Probe, the original OpenRouter ids.** OpenRouter lane. 5 calls. These
 ids have not been called since August.
 ```json
-{"stimuli_file": "<RERUN>", "models": "openai:openai/gpt-5.5 openai:openai/gpt-5.4-mini xai:x-ai/grok-4.3 deepseek:deepseek/deepseek-v4-flash moonshot:moonshotai/kimi-k2.5", "arms": "clinical", "samples": "1", "max_tokens": "1024", "max_spend": "0.10", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "1", "commit_outputs": "true"}
+{"stimuli_file": "data/advice/stimuli_20261002T074159Z.json", "models": "openai:openai/gpt-5.5 openai:openai/gpt-5.4-mini xai:x-ai/grok-4.3 deepseek:deepseek/deepseek-v4-flash moonshot:moonshotai/kimi-k2.5", "arms": "clinical", "samples": "1", "max_tokens": "1024", "max_spend": "0.10", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "1", "commit_outputs": "true"}
 ```
 Cost: 0.01480 + 0.00151 + 0.00180 + 0.00020 + 0.00249 = $0.021 (high $0.027).
-Plan check: the same `elicit --dry-run` with these arguments →
-`plan: 5 call(s) over 1 stimuli x arms ['clinical'] x models [...5 models...] x K=1`.
+Plan check:
+`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T074159Z.json --models "openai:openai/gpt-5.5 openai:openai/gpt-5.4-mini xai:x-ai/grok-4.3 deepseek:deepseek/deepseek-v4-flash moonshot:moonshotai/kimi-k2.5" --arms clinical --samples 1 --max-tokens 1024 --max-spend 0.10 --offset 0 --limit 1 --dry-run`
+→ `plan: 5 call(s) over 1 stimuli x arms ['clinical'] x models [...5 models...] x K=1`.
 Authorise: "I authorise fire R0a of docs/advice_fire_plan_20261002.md: advice-eval, OpenRouter lane, max_spend $0.10, on <YYYY-MM-DD> UTC."
 
 **R0b. Probe, claude-sonnet-5.** Anthropic lane. 1 call.
 ```json
-{"stimuli_file": "<RERUN>", "models": "anthropic:claude-sonnet-5", "arms": "clinical", "samples": "1", "max_tokens": "1024", "max_spend": "0.05", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "1", "commit_outputs": "true"}
+{"stimuli_file": "data/advice/stimuli_20261002T074159Z.json", "models": "anthropic:claude-sonnet-5", "arms": "clinical", "samples": "1", "max_tokens": "1024", "max_spend": "0.05", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "1", "commit_outputs": "true"}
 ```
-Cost $0.009 (high $0.011). Plan check → `plan: 1 call(s)`.
+Cost $0.009 (high $0.011). Plan check:
+`python scripts/advice_eval.py elicit --stimuli data/advice/stimuli_20261002T074159Z.json --models "anthropic:claude-sonnet-5" --arms clinical --samples 1 --max-tokens 1024 --max-spend 0.05 --offset 0 --limit 1 --dry-run`
+→ `plan: 1 call(s) over 1 stimuli x arms ['clinical'] x models ['anthropic:claude-sonnet-5'] x K=1`.
 Authorise: "I authorise fire R0b of docs/advice_fire_plan_20261002.md: advice-eval, Anthropic lane, max_spend $0.05, on <YYYY-MM-DD> UTC."
 
-**R1. Anthropic arms.** Anthropic lane. 270 planned, 269 after R0b.
+**R1. Anthropic arms.** Anthropic lane. 270 calls.
 ```json
 {"stimuli_file": "<RERUN>", "models": "anthropic:claude-haiku-4-5 anthropic:claude-sonnet-5 anthropic:claude-sonnet-5-5", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "1.80", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "0", "commit_outputs": "true"}
 ```
@@ -298,7 +322,7 @@ Plan check → `plan: 270 call(s) over 15 stimuli x arms ['clinical', 'patient']
 Authorise: "I authorise fire R1 of docs/advice_fire_plan_20261002.md: advice-eval, Anthropic lane, max_spend $1.80, on <YYYY-MM-DD> UTC."
 
 **R2a and R2b. OpenRouter 1024 arms, original and newest.** OpenRouter lane.
-R2a: items 1-8, 336 planned, 331 after R0a. R2b: items 9-15, 294.
+R2a: items 1-8, 336 calls. R2b: items 9-15, 294.
 ```json
 {"stimuli_file": "<RERUN>", "models": "openai:openai/gpt-5.5 openai:openai/gpt-5.4-mini xai:x-ai/grok-4.3 deepseek:deepseek/deepseek-v4-flash moonshot:moonshotai/kimi-k2.5 openai:openai/gpt-chat-latest xai:x-ai/grok-4.7", "arms": "clinical,patient", "samples": "3", "max_tokens": "1024", "max_spend": "2.80", "judge": "false", "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01", "offset": "0", "limit": "8", "commit_outputs": "true"}
 ```
@@ -401,6 +425,11 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
 - A probe returns a 400: the id is wrong or retired. Drop it from the later
   fires, record the drop in Amendment 6, and do not substitute a different
   model without the owner's decision.
+- A model has to be probed again (for example at a raised `max_tokens`): fire
+  it on the probe file with `samples` one above that model's highest
+  `sample_k` in the probe archive, because `elicit` skips the (stimulus, arm,
+  model, k) cells already archived. Each record's `request.max_tokens` says
+  which limit it was sent with.
 - A fire stops early on its `max_spend` (`stopped_reason` in the responses
   sidecar): do not raise `max_spend` on the same day. The same parameters
   fired again resume past the archived cells, but that is a new fire and needs
@@ -428,6 +457,12 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
   re-elicited) the original count is 36 against 17.3 expected under the null;
   the pre-specified sensitivity without DeepSeek v4-flash and Kimi k2.5 is 23
   over 59 cells against 9.9 (Amendment 6, A6.4). Both readings are reported.
+- The probe archive, `data/advice/responses_stimuli_20261002T074159Z.jsonl`,
+  is in neither readout and is never judged or exported, and no truncation
+  share counts it. `scripts/referral_destination.py` reads every
+  `responses_stimuli_*` archive but builds its cells from judgments, so the
+  unjudged probe records appear only in its list of input files and its count
+  of indexed responses, never in an estimate.
 - Before anything reaches the site: the vendor packs (Amendment 6, A6.7);
   `scripts/export_advice_scenarios.py` with `--rubric data/advice_rubric.draft.json`
   (its default rubric path does not exist, which is why the published payload
