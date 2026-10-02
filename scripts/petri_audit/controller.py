@@ -22,9 +22,10 @@ from inspect_ai.model import ChatMessageSystem, ChatMessageUser, GenerateConfig,
 from inspect_petri.target import ResponseOutput, controller
 
 from .adaptive import auditor_answer, auditor_text_key, render_conversation, render_system, render_turn_request
-from .checks import MAX_TOOL_ROUNDS_PER_TURN, ROOT_BRANCH
+from .checks import MAX_TOOL_ROUNDS_PER_TURN, ROOT_BRANCH, generate_config_kwargs
 from .framework import sha256_text
 from .seeds import SeedSet, conditions, seed_digest, text_of, tool_result_for
+from .spend import sampling_omissions
 
 INFO_SOURCE = "patientwords"
 AUDITOR_ROLE = "auditor"
@@ -206,7 +207,9 @@ def adaptive_auditor(seed_set: SeedSet, prompt: dict) -> Agent:
                    "anchor": anchor, "branch_id": ROOT_BRANCH, "condition_id": cond["condition_id"], "turn_index": 0})
         auditor = get_model(role=AUDITOR_ROLE)
         gen = prompt["generation"]
-        config = GenerateConfig(max_tokens=int(gen["max_tokens"]), temperature=float(gen["temperature"]))
+        # the per-call config overrides the role's, so a parameter the registry says the auditor model rejects is left
+        # out here as task.build_auditor leaves it out of the role (spend.sampling_omissions, 2026-10-01)
+        config = GenerateConfig(**generate_config_kwargs(gen, sampling_omissions(str(auditor))))
         visible: list[tuple[str, str]] = []
         for i in range(1, total + 1):
             if i == 1:

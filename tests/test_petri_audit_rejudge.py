@@ -68,7 +68,7 @@ def _branch_record(seed: dict) -> dict:
 
 
 def _land(runs: Path, stem: str, seed_set: seeds.SeedSet, *, judge_model: str = JUDGE_OF_RECORD,
-          judge_max_tokens: int = 300) -> Path:
+          judge_max_tokens: int = 300, judge_of_record_extra: dict | None = None) -> Path:
     """A landed, chained, judged run, written through the lane's own writers: the schema example manifest with the
     seed in hand's digest, one branch record as its transcripts, sealed and chained, then a mock judge of record
     run under `judge_model` and bound into the manifest (manifest.bind_judgments)."""
@@ -111,7 +111,8 @@ def _land(runs: Path, stem: str, seed_set: seeds.SeedSet, *, judge_model: str = 
                                                  "cost_usd": side["cost_usd"], "truncated": side["truncated"],
                                                  "planned": side["planned"], "judged": totals["judged"],
                                                  "null": totals["null"], "not_applicable": totals["not_applicable"],
-                                                 "judge_max_tokens": judge_max_tokens, "temperature": 0.0})
+                                                 "judge_max_tokens": judge_max_tokens, "temperature": 0.0,
+                                                 **(judge_of_record_extra or {})})
     assert manifest_mod.verify_run(run_dir) == []
     return run_dir
 
@@ -774,3 +775,84 @@ def test_the_manifest_and_summary_make_a_mostly_null_regrade_visible(layout, cap
     assert cli.main(["rejudge-summary", "--plan", str(plan_path)]) == 0
     assert "| 100.0% (0.0%) |" in capsys.readouterr().out
     assert rejudge.null_share(0, 0) is None and rejudge.null_share(3, 1) == 0.25 and rejudge.null_share(None, 1) is None
+
+
+# ------------------------------------------------------------ an omitted temperature (review of 2026-10-01)
+
+
+class _OmittingJudge(judge_runner.MockJudge):
+    """A MockJudge whose calls went out without the instrument's temperature, as RegistryJudge reports one for a
+    model on the registry's omit_temperature list."""
+
+    temperature_omitted = "rejects temperature (test)"
+
+    def complete(self, prompt, *, max_tokens, temperature, attempt_gate=None):
+        reply = super().complete(prompt, max_tokens=max_tokens, temperature=temperature, attempt_gate=attempt_gate)
+        return judge_runner.JudgeReply(text=reply.text, input_tokens=reply.input_tokens,
+                                       output_tokens=reply.output_tokens, served_model=reply.served_model,
+                                       temperature_omitted=self.temperature_omitted)
+
+
+def _omitting_factory(spec: str, plans: list) -> judge_runner.MockJudge:
+    answers = rejudge.mock_answers(plans)
+    return _OmittingJudge(lambda p: answers[p], model_spec=spec)
+
+
+def test_a_rejudge_whose_calls_carried_no_temperature_says_so_in_its_manifest(layout):
+    """The rejudge manifest's judge block (closed schema) recorded temperature 0.0 with no marker for a judge that
+    was sent none; it now carries temperature_sent null and temperature_omitted, as the sidecar and rows do."""
+    runs, root = layout
+    plan = _plan(runs, root)
+    rejudge.execute(plan, started_dir=root.parent / "started", client_factory=_omitting_factory, environ=KEYS)
+    out_dir = root / PAID_SLUG / "run_4242_1"
+    m = framework.load_json(out_dir / rejudge.MANIFEST_NAME)
+    assert m["judge"]["temperature"] == judge_runner.TIER_TEMPERATURE
+    assert m["judge"]["temperature_sent"] is None and m["judge"]["temperature_omitted"] == "rejects temperature (test)"
+    assert framework.validate_with_refs(m, framework.load_json(rejudge.MANIFEST_SCHEMA)) == []
+    assert rejudge.verify_output(out_dir, runs) == []
+    # a judge whose calls carried it writes the judge block every earlier manifest has
+    other_root = root.parent / "other"
+    rejudge.execute(_plan(runs, other_root), started_dir=root.parent / "started2", client_factory=_mock_factory,
+                    environ=KEYS)
+    plain = framework.load_json(other_root / PAID_SLUG / "run_4242_1" / rejudge.MANIFEST_NAME)
+    assert "temperature_sent" not in plain["judge"] and "temperature_omitted" not in plain["judge"]
+    assert "temperature_omitted" not in plain["source"]["judge_of_record"]
+
+
+def test_a_source_judge_of_record_that_omitted_temperature_is_carried_into_the_rejudge(tmp_path, seed_set):
+    runs, root = tmp_path / "runs", tmp_path / "rejudge"
+    _land(runs, "run_4242_1", seed_set,
+          judge_of_record_extra={"temperature_sent": None, "temperature_omitted": "rejects temperature (test)"})
+    src = rejudge.source_record(runs, "run_4242_1")
+    assert src["judge_of_record"]["temperature_omitted"] == "rejects temperature (test)"
+    assert src["judge_of_record"]["temperature"] == 0.0
+    rejudge.execute(_plan(runs, root), started_dir=tmp_path / "started", client_factory=_mock_factory, environ=KEYS)
+    m = framework.load_json(root / PAID_SLUG / "run_4242_1" / rejudge.MANIFEST_NAME)
+    assert m["source"]["judge_of_record"]["temperature_sent"] is None
+    assert m["source"]["judge_of_record"]["temperature_omitted"] == "rejects temperature (test)"
+
+
+def test_a_thinking_rejudge_judge_below_the_registry_minimum_is_refused_at_planning(layout):
+    """A rejudge applies its judge of record's allowance (300 here), which a thinking judge would spend before
+    answering; the plan refuses it before any call or marker."""
+    runs, root = layout
+    with pytest.raises(rejudge.RejudgeError, match="min_output_tokens for this model is 4096"):
+        _plan(runs, root, judge_model="openrouter:google/gemini-3.1-pro-preview")
+    with pytest.raises(rejudge.RejudgeError, match="min_output_tokens for this model is 4096"):
+        _plan(runs, root, judge_model="claude-opus-5-5")
+    # the rehearsal judge is never a registry model
+    assert _plan(runs, root, judge_model=rejudge.MOCK_JUDGE, commit_outputs="false")["rehearsal"] is True
+
+
+def test_the_fallback_rejudge_sidecar_records_a_registry_omission(tmp_path, seed_set):
+    runs, root = tmp_path / "runs", tmp_path / "rejudge"
+    _land(runs, "run_4242_1", seed_set, judge_max_tokens=4096)
+    plan = _plan(runs, root, judge_model="openrouter:anthropic/claude-opus-5.5", judge_max_tokens="4096")
+    started = tmp_path / "started"
+    started.mkdir()
+    framework.write_json(rejudge.started_marker(started, "run_4242_1"),
+                         {"run_stem": "run_4242_1", "max_spend_usd": 1.0, "fire_spent_before_usd": 0.0})
+    (written,) = rejudge.impute_missing_reports(plan, started)
+    report = framework.load_json(written)
+    assert report["temperature"] == judge_runner.TIER_TEMPERATURE and report["temperature_sent"] is None
+    assert "Opus 5.5" in report["temperature_omitted"]

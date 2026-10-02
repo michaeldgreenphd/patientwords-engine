@@ -179,12 +179,13 @@ def _preflight(*extra: str) -> list[str]:
 
 
 def test_the_bound_at_the_dearer_model_and_the_preflight_refusals_before_the_lock(capsys):
-    # two conditions x 60000 tokens x the auditor's 15/Mtok output rate, not the target's 5 (the CLI's own line is
-    # asserted in tests/petri/test_adaptive_e2e.py, where the lock matches)
+    # two conditions x 60000 tokens x the auditor's 10/Mtok output rate, not the target's 5 (the CLI's own line is
+    # asserted in tests/petri/test_adaptive_e2e.py, where the lock matches). Sonnet 5 is 2/10 since the price review
+    # of 2026-10-01 (it was 3/15, the Sonnet 4.6 price, and this bound 1.8)
     price = spend.dearest_price(spend.resolve_price("anthropic/claude-haiku-4-5"), spend.resolve_price("anthropic/claude-sonnet-5"))
     bound = spend.preflight_bound(samples=2, epochs=1, token_limit=60000, price=price, judge_reserve_usd=0.0,
                                   max_spend_usd=50)
-    assert bound.total_usd == pytest.approx(1.8)
+    assert bound.total_usd == pytest.approx(1.2)
     code = cli.main(_preflight("--target", "anthropic/claude-haiku-4-5", "--auditor-model",
                                "openrouter/anthropic/claude-haiku-4.5"))
     assert code == 5 and "bills the openrouter channel but target" in capsys.readouterr().err

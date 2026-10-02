@@ -1,0 +1,525 @@
+{
+ "_readme": "OpenRouter catalogue capture for the reviewed prices of the October 2026 model roster (registry revision of 2026-10-01: advice and Petri lanes; nothing fired). Rows are each slug's listing in GET https://openrouter.ai/api/v1/models, prices converted from USD per token to USD per 1M tokens. The response was fetched with curl on 2026-10-01 (US Pacific; captured_utc is the saved file's modification time) and saved outside the repository; response_sha256 is the sha256 of that saved body, which is not kept. Kept rows: the 14 slugs the registry prices from this capture, plus deepseek/deepseek-v4.1-flash:batch, kept as evidence because its input rate (0.112) is above the standard row's (0.03) and the registry prices the standard slug's input at the higher of the two. canonical_slug is the dated build a rolling slug resolved to on this day. price_overrides_per_1m copies the listing's conditional price rows: long-prompt tiers (min_prompt_tokens) and, for deepseek/deepseek-v4-pro-0813, weekday UTC time-of-day windows (utc_start and utc_end as the listing gives them), some at twice the base rate. supported_parameters is the listing's own list; a slug that lists reasoning is a reasoning model for the registry's min_output_tokens rule.",
+ "captured_utc": "20261002T053607Z",
+ "source": "https://openrouter.ai/api/v1/models",
+ "response_sha256": "c23fe0eac01f12f013779263035d5119d8ddbc4f96f26f6bb92215b6177c0e1f",
+ "catalogue_size": 464,
+ "resolved": {
+  "anthropic/claude-sonnet-5.5": {
+   "slug": "anthropic/claude-sonnet-5.5",
+   "name": "Anthropic: Claude Sonnet 5.5",
+   "canonical_slug": "anthropic/claude-sonnet-5.5-20260928",
+   "input_price_per_1m": 2.0,
+   "output_price_per_1m": 10.0,
+   "input_cache_read_price_per_1m": 0.2,
+   "context_length": 1000000,
+   "priced": true,
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "anthropic/claude-opus-5.5": {
+   "slug": "anthropic/claude-opus-5.5",
+   "name": "Anthropic: Claude Opus 5.5",
+   "canonical_slug": "anthropic/claude-opus-5.5-20260921",
+   "input_price_per_1m": 4.0,
+   "output_price_per_1m": 20.0,
+   "input_cache_read_price_per_1m": 0.2,
+   "context_length": 1000000,
+   "priced": true,
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "openai/gpt-chat-latest": {
+   "slug": "openai/gpt-chat-latest",
+   "name": "OpenAI: GPT Chat Latest",
+   "canonical_slug": "openai/gpt-chat-latest-20260505",
+   "input_price_per_1m": 5.0,
+   "output_price_per_1m": 30.0,
+   "input_cache_read_price_per_1m": 0.5,
+   "context_length": 400000,
+   "priced": true,
+   "supported_parameters": [
+    "max_tokens",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools"
+   ]
+  },
+  "openai/gpt-5.6-luna": {
+   "slug": "openai/gpt-5.6-luna",
+   "name": "OpenAI: GPT-5.6 Luna",
+   "canonical_slug": "openai/gpt-5.6-luna-20260709",
+   "input_price_per_1m": 0.2,
+   "output_price_per_1m": 1.2,
+   "input_cache_read_price_per_1m": 0.02,
+   "context_length": 1050000,
+   "priced": true,
+   "price_overrides_per_1m": [
+    {
+     "min_prompt_tokens": 272000,
+     "prompt_price_per_1m": 0.4,
+     "completion_price_per_1m": 1.8,
+     "input_cache_read_price_per_1m": 0.04,
+     "input_cache_write_price_per_1m": 0.5
+    }
+   ],
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "openai/gpt-6-astra": {
+   "slug": "openai/gpt-6-astra",
+   "name": "OpenAI: GPT-6 Astra",
+   "canonical_slug": "openai/gpt-6-astra-20260903",
+   "input_price_per_1m": 10.0,
+   "output_price_per_1m": 50.0,
+   "input_cache_read_price_per_1m": 1.0,
+   "context_length": 1050000,
+   "priced": true,
+   "price_overrides_per_1m": [
+    {
+     "min_prompt_tokens": 272000,
+     "prompt_price_per_1m": 20.0,
+     "completion_price_per_1m": 75.0,
+     "input_cache_read_price_per_1m": 2.0,
+     "input_cache_write_price_per_1m": 25.0
+    }
+   ],
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "openai/gpt-6.1-sol": {
+   "slug": "openai/gpt-6.1-sol",
+   "name": "OpenAI: GPT-6.1 Sol",
+   "canonical_slug": "openai/gpt-6.1-sol-20260929",
+   "input_price_per_1m": 2.0,
+   "output_price_per_1m": 10.0,
+   "input_cache_read_price_per_1m": 0.1,
+   "context_length": 1050000,
+   "priced": true,
+   "price_overrides_per_1m": [
+    {
+     "min_prompt_tokens": 272000,
+     "prompt_price_per_1m": 4.0,
+     "completion_price_per_1m": 15.0,
+     "input_cache_read_price_per_1m": 0.2,
+     "input_cache_write_price_per_1m": 5.0
+    }
+   ],
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "google/gemini-3.8-flash": {
+   "slug": "google/gemini-3.8-flash",
+   "name": "Google: Gemini 3.8 Flash",
+   "canonical_slug": "google/gemini-3.8-flash-20260902",
+   "input_price_per_1m": 0.75,
+   "output_price_per_1m": 3.75,
+   "input_cache_read_price_per_1m": 0.075,
+   "context_length": 1048576,
+   "priced": true,
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ]
+  },
+  "google/gemini-3.1-pro-preview": {
+   "slug": "google/gemini-3.1-pro-preview",
+   "name": "Google: Gemini 3.1 Pro Preview",
+   "canonical_slug": "google/gemini-3.1-pro-preview-20260219",
+   "input_price_per_1m": 2.0,
+   "output_price_per_1m": 12.0,
+   "input_cache_read_price_per_1m": 0.2,
+   "context_length": 1048576,
+   "priced": true,
+   "price_overrides_per_1m": [
+    {
+     "min_prompt_tokens": 200000,
+     "prompt_price_per_1m": 4.0,
+     "completion_price_per_1m": 18.0,
+     "audio_price_per_1m": 4.0,
+     "input_audio_cache_price_per_1m": 0.4,
+     "input_cache_read_price_per_1m": 0.4
+    }
+   ],
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ]
+  },
+  "x-ai/grok-4.7": {
+   "slug": "x-ai/grok-4.7",
+   "name": "SpaceXAI: Grok 4.7",
+   "canonical_slug": "x-ai/grok-4.7-20260916",
+   "input_price_per_1m": 2.0,
+   "output_price_per_1m": 6.0,
+   "input_cache_read_price_per_1m": 0.5,
+   "context_length": 500000,
+   "priced": true,
+   "price_overrides_per_1m": [
+    {
+     "min_prompt_tokens": 200000,
+     "prompt_price_per_1m": 4.0,
+     "completion_price_per_1m": 12.0,
+     "input_cache_read_price_per_1m": 1.0
+    }
+   ],
+   "supported_parameters": [
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "deepseek/deepseek-v4.1-flash": {
+   "slug": "deepseek/deepseek-v4.1-flash",
+   "name": "DeepSeek: DeepSeek V4.1 Flash",
+   "canonical_slug": "deepseek/deepseek-v4.1-flash-20260910",
+   "input_price_per_1m": 0.03,
+   "output_price_per_1m": 0.75,
+   "input_cache_read_price_per_1m": 0.00375,
+   "context_length": 1048576,
+   "priced": true,
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "deepseek/deepseek-v4-pro-0813": {
+   "slug": "deepseek/deepseek-v4-pro-0813",
+   "name": "DeepSeek: DeepSeek V4 Pro 0813",
+   "canonical_slug": "deepseek/deepseek-v4-pro-20260813",
+   "input_price_per_1m": 0.66,
+   "output_price_per_1m": 1.98,
+   "input_cache_read_price_per_1m": 0.022,
+   "context_length": 1048576,
+   "priced": true,
+   "price_overrides_per_1m": [
+    {
+     "utc_days": [
+      "saturday",
+      "sunday"
+     ],
+     "prompt_price_per_1m": 0.66,
+     "completion_price_per_1m": 1.98,
+     "input_cache_read_price_per_1m": 0.022
+    },
+    {
+     "utc_days": [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday"
+     ],
+     "utc_start": 0,
+     "utc_end": 100,
+     "prompt_price_per_1m": 0.66,
+     "completion_price_per_1m": 1.98,
+     "input_cache_read_price_per_1m": 0.022
+    },
+    {
+     "utc_days": [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday"
+     ],
+     "utc_start": 100,
+     "utc_end": 400,
+     "prompt_price_per_1m": 1.32,
+     "completion_price_per_1m": 3.96,
+     "input_cache_read_price_per_1m": 0.044
+    },
+    {
+     "utc_days": [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday"
+     ],
+     "utc_start": 400,
+     "utc_end": 600,
+     "prompt_price_per_1m": 0.66,
+     "completion_price_per_1m": 1.98,
+     "input_cache_read_price_per_1m": 0.022
+    },
+    {
+     "utc_days": [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday"
+     ],
+     "utc_start": 600,
+     "utc_end": 1000,
+     "prompt_price_per_1m": 1.32,
+     "completion_price_per_1m": 3.96,
+     "input_cache_read_price_per_1m": 0.044
+    },
+    {
+     "utc_days": [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday"
+     ],
+     "utc_start": 1000,
+     "utc_end": 0,
+     "prompt_price_per_1m": 0.66,
+     "completion_price_per_1m": 1.98,
+     "input_cache_read_price_per_1m": 0.022
+    }
+   ],
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "moonshotai/kimi-k3": {
+   "slug": "moonshotai/kimi-k3",
+   "name": "MoonshotAI: Kimi K3",
+   "canonical_slug": "moonshotai/kimi-k3-20260715",
+   "input_price_per_1m": 2.7,
+   "output_price_per_1m": 13.5,
+   "input_cache_read_price_per_1m": 0.27,
+   "context_length": 1048576,
+   "priced": true,
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "moonshotai/kimi-k2.6": {
+   "slug": "moonshotai/kimi-k2.6",
+   "name": "MoonshotAI: Kimi K2.6",
+   "canonical_slug": "moonshotai/kimi-k2.6-20260420",
+   "input_price_per_1m": 0.43415,
+   "output_price_per_1m": 1.828,
+   "input_cache_read_price_per_1m": 0.07312,
+   "context_length": 262144,
+   "priced": true,
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "parallel_tool_calls",
+    "presence_penalty",
+    "reasoning",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "meta/muse-spark-1.3": {
+   "slug": "meta/muse-spark-1.3",
+   "name": "Meta: Muse Spark 1.3",
+   "canonical_slug": "meta/muse-spark-1.3-20260902",
+   "input_price_per_1m": 1.25,
+   "output_price_per_1m": 4.25,
+   "input_cache_read_price_per_1m": 0.15,
+   "context_length": 1048576,
+   "priced": true,
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_p"
+   ]
+  },
+  "deepseek/deepseek-v4.1-flash:batch": {
+   "slug": "deepseek/deepseek-v4.1-flash:batch",
+   "name": "DeepSeek: DeepSeek V4.1 Flash (batch)",
+   "canonical_slug": "deepseek/deepseek-v4.1-flash-20260910",
+   "input_price_per_1m": 0.112,
+   "output_price_per_1m": 0.336,
+   "input_cache_read_price_per_1m": 0.00336,
+   "context_length": 1048576,
+   "priced": true,
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_p"
+   ]
+  }
+ }
+}
