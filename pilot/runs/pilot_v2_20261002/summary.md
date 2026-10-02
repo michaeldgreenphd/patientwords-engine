@@ -4,6 +4,8 @@ Seeds: 26 (provenance as the seed file states it: hand-built dataset from real p
 
 Harness version 2: rows carry next_word, the checker also answers relation, sentence_natural and patient_realism, and the sections marked version 2 report descriptives outside the protocol's estimands.
 
+Intervals under the variant design (version 2): the intervals of estimands 2 to 5 are computed over rows, as the protocol fixes them (Wilson and Newcombe intervals count rows; the estimand 3 bootstrap resamples rows within cells). By design 8 of every 16 non-control rows of a call belong to 4 two-row concepts, whose two rows share the clinical term and the template, so the rows are not independent draws: read these intervals as descriptive. This run's non-control rows cover 216 concepts in 288 rows (Arm A 108 in 144, Arm B 108 in 144).
+
 ## Run overview
 
 | Quantity | Value |
@@ -89,7 +91,7 @@ A template meets the probe point when, stripped, its last word is one of a, an, 
 
 ## Variant design (version 2, descriptive)
 
-Definition: per call, over the final attempt's format-valid control none rows ordered by line_index: compliant when exactly 4 adjacent pairs share clinical_term, template and next_word with different patient_term surface keys, and the rows cover exactly 12 concepts (clinical_term surface key and template).
+Definition: per call, over the final attempt's format-valid control none rows ordered by line_index: compliant when the rows number exactly 16 and cover exactly 12 concepts (clinical_term surface key and template), exactly 4 adjacent pairs share clinical_term, template and next_word with different patient_term surface keys, no concept's rows are separated by another concept's row, and no concept runs over three or more rows.
 
 | Scope | Compliant calls / calls | Proportion | 95% Wilson |
 |---|---|---|---|
@@ -217,15 +219,23 @@ Checker set: 318 items = 288 generated + 10 known-good seed rows + 20 broken pai
 
 ## Checker relation, precision, sentence and realism (version 2, descriptive)
 
-Population: answered items (verdict not missing); answered generated 288, known-good 10, broken 20.
+Population: answered items (verdict not missing); relation, precision and the yes-rate by relation count only answers with a yes or no verdict; answered generated 288, known-good 10, broken 20; with a yes or no verdict generated 288, known-good 9, broken 20.
 
-| Items | Relation counts | Precision (derived from relation) |
+| Items | Relation counts (yes or no verdicts) | Precision (derived from relation) |
 |---|---|---|
 | generated | same 121, same_brand 50, broader 109, narrower 1, different 7 | as_precise 171, vaguer 109, more_specific 1, not_applicable 7 |
-| known-good | same 3, same_brand 0, broader 3, narrower 0, different 4 | as_precise 3, vaguer 3, more_specific 0, not_applicable 4 |
+| known-good | same 3, same_brand 0, broader 2, narrower 0, different 4 | as_precise 3, vaguer 2, more_specific 0, not_applicable 4 |
 | broken | same 0, same_brand 0, broader 1, narrower 1, different 18 | as_precise 0, vaguer 1, more_specific 1, not_applicable 18 |
 
-| Relation (generated) | Judged equivalent / answered | Proportion | 95% Wilson |
+The version-2 schema requires a relation with every answer, so an answer whose verdict is unclear (the checker could not decide what a phrase means) still carries one. Such a relation describes no decided meaning: it is left out of the relation, precision and yes-rate counts and listed here. Unclear verdicts: 1 (generated 0, known-good 1, broken 0).
+
+| Items | Relations given with an unclear verdict (not counted above) |
+|---|---|
+| generated | same 0, same_brand 0, broader 0, narrower 0, different 0 |
+| known-good | same 0, same_brand 0, broader 1, narrower 0, different 0 |
+| broken | same 0, same_brand 0, broader 0, narrower 0, different 0 |
+
+| Relation (generated) | Judged equivalent / judged yes or no | Proportion | 95% Wilson |
 |---|---|---|---|
 | same | 121 / 121 | 1.000 | [0.969, 1.000] |
 | same_brand | 50 / 50 | 1.000 | [0.929, 1.000] |

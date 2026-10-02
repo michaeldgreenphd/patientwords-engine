@@ -42,8 +42,8 @@
   },
   "input_hashes": {
     "seeds.json": "095820fe7ae0ef8aef051533fa4ab9f1e3f11322379e8524e05c59bd3419f0bb",
-    "design.json": "06417cfa85887f7bd4495c1701f016a4f62ac44efbbffc116021814b81f9c228",
-    "calls.json": "e72295b4e8a4ac0862fe1894562241d6c4135f9b8120d438ab1c6fc8fb7c66ef",
+    "design.json": "03e152bbf71effe1358009e6daeb4437284dfae75bc7718e6bbb5582782fca7d",
+    "calls.json": "b36a49b34f3b23ac01c23d07dc47c6af2ff69568f10bc416f45fb38416d50c0b",
     "call_log.jsonl": "d03acc15ae68811294e067221b6c6311be7723232f6a164190e6b7e63f571a3d",
     "generated/all_rows.jsonl": "21c695b62c5e78fc526b11bae7099f4cfb62f27c12683896d7978c4ba11a0bb1",
     "generated/format_failures.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -58,17 +58,17 @@
   "script_hashes": {
     "build_api_requests.py": "f06db467a4a4e2490a9d6f9d6a71595ad58e23bf7497aa929eefc79c9a3c812b",
     "build_checker_set.py": "6b20d11dc8ad9df390f75a0a3cc8dd67eb8760acd78f0d6a40118c781fea1413",
-    "common.py": "fbad0dd2c879dce19c96ed91af3f837709d6bdacadb4454eaf266afa2d554873",
-    "compute_summary.py": "1219f9b05e64c88f42a8918a26b2c77a878e944d663e66c81cfb3b56da75c351",
+    "common.py": "bd4bb5b2fd74c51ec885820e9a4cb688176c001553ccba4bf7d0f372931c1d56",
+    "compute_summary.py": "76395f627a4f68ae04be740a7492800cfd809016b496bc349fbda34d5a168433",
     "extract_workflow_journal.py": "46fc5f7730100d4d3a63ef7b3b9a2e396128b26e48d735f72be23525c6a9aeb4",
     "make_review_sheet.py": "8cb3e0c6010a61b086352ee6285966cb50867d1ff7fcc6626a0aaa634014c3fe",
-    "make_workflow_scripts.py": "f365d034e274c3089a78f54313890733b7ba57f2b2c8e46c6b10e1c43818bd8c",
+    "make_workflow_scripts.py": "1eb6f2b49759ef93e513207af2d7f8a7e94c3e242d557c5f0072fde549e9412c",
     "parse_checker.py": "6ab2f019ed8a7d4df347c26466afa5272a7953a640d1639d244c99cb7eead6db",
     "parse_generation.py": "72e14c33b8f90dd2009eae81b767ec46fbc08cff32a1838a55a04018a4bd7984",
     "plan_calls.py": "c638ff8db59c1c3dd379c6647540b8790bf0f29007e7d5018660634663206899",
     "record_run.py": "335c5228335cc904e0fc8c4af8549e3c736618ccbc579ed94f2789bc2bbff3d4",
     "rederive.py": "7b67baf59d1d0fc8d3a24e4d27ef5dfda463ce3e090de81adaeecbc61b336c43",
-    "selftest.py": "79556cd92d1b5ba141644317b0bf9ba11c1141851af5988f528c6ba9a0af8a74",
+    "selftest.py": "e67983db60f7e330f7a5be0dcfd4d7be0750a6d757a0ec56072885dc2a9b0bde",
     "write_manifest.py": "59266b216dfc8894d6b6e0d61e8b043ae17fdd51b96c0d539f5c84c39717671a"
   },
   "run": {
@@ -1175,7 +1175,8 @@
     }
   },
   "variant_design": {
-    "definition": "per call, over the final attempt's format-valid control none rows ordered by line_index: compliant when exactly 4 adjacent pairs share clinical_term, template and next_word with different patient_term surface keys, and the rows cover exactly 12 concepts (clinical_term surface key and template)",
+    "definition": "per call, over the final attempt's format-valid control none rows ordered by line_index: compliant when the rows number exactly 16 and cover exactly 12 concepts (clinical_term surface key and template), exactly 4 adjacent pairs share clinical_term, template and next_word with different patient_term surface keys, no concept's rows are separated by another concept's row, and no concept runs over three or more rows",
+    "expected_rows_per_call": 16,
     "expected_pairs_per_call": 4,
     "expected_concepts_per_call": 12,
     "calls_compliant": {
@@ -1455,10 +1456,15 @@
     ]
   },
   "checker_v2": {
-    "population": "answered items (verdict not missing)",
+    "population": "answered items (verdict not missing); relation, precision and the yes-rate by relation count only answers with a yes or no verdict",
     "n_answered": {
       "generated": 288,
       "known_good": 10,
+      "broken": 20
+    },
+    "n_relation_counted": {
+      "generated": 288,
+      "known_good": 9,
       "broken": 20
     },
     "relation": {
@@ -1472,7 +1478,7 @@
       "known_good": {
         "same": 3,
         "same_brand": 0,
-        "broader": 3,
+        "broader": 2,
         "narrower": 0,
         "different": 4
       },
@@ -1493,7 +1499,7 @@
       },
       "known_good": {
         "as_precise": 3,
-        "vaguer": 3,
+        "vaguer": 2,
         "more_specific": 0,
         "not_applicable": 4
       },
@@ -1540,6 +1546,40 @@
         "lo": 0.0,
         "hi": 0.35433043867586833
       }
+    },
+    "unclear_relation": {
+      "n": {
+        "generated": 0,
+        "known_good": 1,
+        "broken": 0
+      },
+      "relation": {
+        "generated": {
+          "same": 0,
+          "same_brand": 0,
+          "broader": 0,
+          "narrower": 0,
+          "different": 0
+        },
+        "known_good": {
+          "same": 0,
+          "same_brand": 0,
+          "broader": 1,
+          "narrower": 0,
+          "different": 0
+        },
+        "broken": {
+          "same": 0,
+          "same_brand": 0,
+          "broader": 0,
+          "narrower": 0,
+          "different": 0
+        }
+      },
+      "total": 1,
+      "item_ids": [
+        "c0076"
+      ]
     },
     "inconsistent": {
       "generated": 0,
@@ -1590,5 +1630,28 @@
       }
     }
   },
-  "summary_md_sha256": "e22c67c89b0ff2132e1c4fcc1f0aaeca4a8b0ab47090ba91223e65deef637527"
+  "row_level_intervals": {
+    "unit": "row",
+    "estimands": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "reading": "descriptive",
+    "two_row_concepts_per_call": 4,
+    "rows_in_two_row_concepts_per_call": 8,
+    "non_control_rows_per_call": 16,
+    "concepts": {
+      "A": 108,
+      "B": 108,
+      "total": 216
+    },
+    "non_control_rows": {
+      "A": 144,
+      "B": 144,
+      "total": 288
+    }
+  },
+  "summary_md_sha256": "7846a2ad19cf1190d68283602104fb0a14f8488154fbc69b203b1138e415ac65"
 }

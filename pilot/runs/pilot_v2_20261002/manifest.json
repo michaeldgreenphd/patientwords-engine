@@ -2,7 +2,7 @@
   "pilot": "stimulus-generation measurement-validity pilot",
   "date_utc": "2026-10-02",
   "created_utc": "2026-10-02T07:10:50Z",
-  "finalized_utc": "2026-10-02T07:46:11Z",
+  "finalized_utc": "2026-10-02T08:43:38Z",
   "metadata_reset_utc": null,
   "model": {
     "execution_path": "Claude Code in VS Code on the owner's laptop, Workflow tool subagents",
@@ -108,10 +108,28 @@
   "protocol_sha256_now": "2872eec094218ba84bd35522073375947969019adf9953a97141636daeceb671",
   "protocol_unchanged": true,
   "seeds_json_sha256": "095820fe7ae0ef8aef051533fa4ab9f1e3f11322379e8524e05c59bd3419f0bb",
-  "design_json_sha256": "06417cfa85887f7bd4495c1701f016a4f62ac44efbbffc116021814b81f9c228",
-  "input_refactors": [],
+  "design_json_sha256": "03e152bbf71effe1358009e6daeb4437284dfae75bc7718e6bbb5582782fca7d",
+  "input_refactors": [
+    {
+      "utc": "2026-10-02T08:42:30Z",
+      "reason": "PR #69 Codex P1 finding 4163704150 (concrete example vocabulary in the version-2 generation template): the example words of the template's rules moved into design.json (prompt_examples; rule 7's list of probe endings renders from probe_endings) and render through markers, following the precedent of commit 9a2aab20, where the example negative control moved from the template into design.json on PR #52. Every one of the 18 rendered prompts is byte-identical, so no prompt a subagent received changed.",
+      "changed": [
+        "design_json_sha256",
+        "prompt_hashes.generation_prompt_template"
+      ],
+      "before": {
+        "design_json_sha256": "06417cfa85887f7bd4495c1701f016a4f62ac44efbbffc116021814b81f9c228",
+        "generation_prompt_template_sha256": "a1431f41e06cc4ca74490254ce5c215856f0d57f37337f9776ac36bc51f81883"
+      },
+      "after": {
+        "design_json_sha256": "03e152bbf71effe1358009e6daeb4437284dfae75bc7718e6bbb5582782fca7d",
+        "generation_prompt_template_sha256": "b613f5c362044a1184ecb5b372d19bff8cc60d8abb2e7eaccb2d4abbc17a5e60"
+      },
+      "generation_calls_unchanged": 18
+    }
+  ],
   "prompt_hashes": {
-    "generation_prompt_template": "a1431f41e06cc4ca74490254ce5c215856f0d57f37337f9776ac36bc51f81883",
+    "generation_prompt_template": "b613f5c362044a1184ecb5b372d19bff8cc60d8abb2e7eaccb2d4abbc17a5e60",
     "generation_calls": {
       "A__cardiology__symptom_description": {
         "prompt_sha256": "ff6e6321476ab83e4e835e57272e1d33ad5734ef4607db0ad3159d553b6645cd",
@@ -366,17 +384,17 @@
   "script_hashes": {
     "build_api_requests.py": "f06db467a4a4e2490a9d6f9d6a71595ad58e23bf7497aa929eefc79c9a3c812b",
     "build_checker_set.py": "6b20d11dc8ad9df390f75a0a3cc8dd67eb8760acd78f0d6a40118c781fea1413",
-    "common.py": "fbad0dd2c879dce19c96ed91af3f837709d6bdacadb4454eaf266afa2d554873",
-    "compute_summary.py": "1219f9b05e64c88f42a8918a26b2c77a878e944d663e66c81cfb3b56da75c351",
+    "common.py": "bd4bb5b2fd74c51ec885820e9a4cb688176c001553ccba4bf7d0f372931c1d56",
+    "compute_summary.py": "76395f627a4f68ae04be740a7492800cfd809016b496bc349fbda34d5a168433",
     "extract_workflow_journal.py": "46fc5f7730100d4d3a63ef7b3b9a2e396128b26e48d735f72be23525c6a9aeb4",
     "make_review_sheet.py": "8cb3e0c6010a61b086352ee6285966cb50867d1ff7fcc6626a0aaa634014c3fe",
-    "make_workflow_scripts.py": "f365d034e274c3089a78f54313890733b7ba57f2b2c8e46c6b10e1c43818bd8c",
+    "make_workflow_scripts.py": "1eb6f2b49759ef93e513207af2d7f8a7e94c3e242d557c5f0072fde549e9412c",
     "parse_checker.py": "6ab2f019ed8a7d4df347c26466afa5272a7953a640d1639d244c99cb7eead6db",
     "parse_generation.py": "72e14c33b8f90dd2009eae81b767ec46fbc08cff32a1838a55a04018a4bd7984",
     "plan_calls.py": "c638ff8db59c1c3dd379c6647540b8790bf0f29007e7d5018660634663206899",
     "record_run.py": "335c5228335cc904e0fc8c4af8549e3c736618ccbc579ed94f2789bc2bbff3d4",
     "rederive.py": "7b67baf59d1d0fc8d3a24e4d27ef5dfda463ce3e090de81adaeecbc61b336c43",
-    "selftest.py": "79556cd92d1b5ba141644317b0bf9ba11c1141851af5988f528c6ba9a0af8a74",
+    "selftest.py": "e67983db60f7e330f7a5be0dcfd4d7be0750a6d757a0ec56072885dc2a9b0bde",
     "write_manifest.py": "59266b216dfc8894d6b6e0d61e8b043ae17fdd51b96c0d539f5c84c39717671a"
   },
   "workflow_script_hashes": {
@@ -446,7 +464,7 @@
     }
   },
   "output_hashes": {
-    "calls.json": "e72295b4e8a4ac0862fe1894562241d6c4135f9b8120d438ab1c6fc8fb7c66ef",
+    "calls.json": "b36a49b34f3b23ac01c23d07dc47c6af2ff69568f10bc416f45fb38416d50c0b",
     "workflow_generation_result.json": "b0625ad20c7661353d3df14a7547f8ce7b70839092cf1d6c1ccebd56f5912d42",
     "workflow_checker_result.json": "ea9671119fac2531684c056356a58ce06ec743329de475e897f3a98d1c93fee6",
     "call_log.jsonl": "d03acc15ae68811294e067221b6c6311be7723232f6a164190e6b7e63f571a3d",
@@ -460,12 +478,12 @@
     "review_sheet.csv": "ce18d039d5716d6564608f960d8b938742e1678829fef0c31aa2822c443c6c3d",
     "review_key.csv": "4da59acfefd12a79d8c5ac06738b075d394ce54dd25362dd06ade4c9d3edc853",
     "review_map.json": "209feab9a2611e1c2867be34372344a9f965a3307e37a0664e055dbd4169d22c",
-    "summary.json": "a2028aeecd9433123c31994d4ae4752b3b1c92ba27fc356f840fb6819b0a8a40",
-    "summary.md": "e22c67c89b0ff2132e1c4fcc1f0aaeca4a8b0ab47090ba91223e65deef637527",
+    "summary.json": "9adb1381d6d8f20c6c9549810d117d936add89f824b14d15f15a20eed14dd4fd",
+    "summary.md": "7846a2ad19cf1190d68283602104fb0a14f8488154fbc69b203b1138e415ac65",
     "seeds.json": "095820fe7ae0ef8aef051533fa4ab9f1e3f11322379e8524e05c59bd3419f0bb",
-    "design.json": "06417cfa85887f7bd4495c1701f016a4f62ac44efbbffc116021814b81f9c228",
+    "design.json": "03e152bbf71effe1358009e6daeb4437284dfae75bc7718e6bbb5582782fca7d",
     "PROTOCOL.md": "2872eec094218ba84bd35522073375947969019adf9953a97141636daeceb671",
-    "HANDOFF.md": "2928a075d33833dc1b3fbddf9b2d275511760b9ef12a652d05a72428499acbf0",
+    "HANDOFF.md": "feb48cc03ede5fdb827443ae00ceab42bc8f6fe21d77b5b81fe7506073abf16c",
     "manifest_model.json": "e89599e848a6aeb2b375d33ca8789d0b2b48f6068d74e1e8761cf39ae66d83f2",
     "workflows/generation.journal.jsonl": "b652c3601bfa18b0e66dc4a43e857e8ceeec05dbe0ffdeed3e8ef9bf4ef1ee1b",
     "workflows/checker.journal.jsonl": "f77090f2badd269fb758e718d1e49e66a21bc3e2bc19af1e6a7b9983721fb97d",
