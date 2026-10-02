@@ -107,15 +107,29 @@ Safeguards:
 
 - The version-2 prompts are refused under the version-1 `design.json`, because that combination would drop
   `next_word` and the further checker answers.
-- A writer script refuses to write into a directory whose manifest is finalized, unless `--replace` is passed. So a
-  call with `PILOT_DIR` unset cannot write over the recorded run in `pilot/`.
+- The planning, batching, rendering, review-draw and request-body scripts (`plan_calls.py`, `build_checker_set.py`,
+  `make_workflow_scripts.py`, `make_review_sheet.py`, `build_api_requests.py`) refuse to write into a directory
+  whose manifest is finalized, unless `--replace` is passed. `compute_summary.py` and `write_manifest.py` have no
+  such guard: run with `PILOT_DIR` unset, they rewrite the recorded run's summary, results block and manifest in
+  `pilot/`. Set `PILOT_DIR` for every call; if one slips, restore those files from git
+  (`git checkout -- pilot/summary.json pilot/summary.md pilot/HANDOFF.md pilot/manifest.json`).
+- `compute_summary.py` and `write_manifest.py` (except with `--reset`) refuse a finalized run directory sealed on the
+  other side of Python 3.12 from the running interpreter, because 3.12 changed `sum()` over floats and the
+  summary's float sums would differ in the last bit. The recorded run in `pilot/` is sealed under 3.13.4, so
+  re-finalizing it needs Python 3.12 or later.
 
 With the seed file run `pilot_real_20260930` used, Arm A draws the same exemplars that run drew, because the master
 seed is a constant. A comparison with that run then differs in the prompts and the harness version, not in the
 exemplars.
 
-The variant design reuses 4 templates per call, so estimand 3 (mean template similarity) will read higher than in
-run 1 for reasons of design, not of the generator. The run's protocol should say so.
+The variant design changes two estimands for reasons of design, not of the generator, and the run's protocol should
+say so:
+
+- **Estimand 3** (mean template similarity) will read higher than in run 1, because each call reuses 4 templates.
+- **Estimand 2's `clinical_term_only` novelty** will read lower. The second row of each variant pair repeats the
+  first row's clinical term exactly, and novelty counts a clinical term only the first time it appears in the arm.
+  Up to 4 of a call's 16 non-control rows (25%) therefore cannot count as novel. Pair novelty and
+  `patient_term_only` novelty are not affected, because the pair's patient terms differ.
 
 ## What to compare against run 1
 
@@ -150,6 +164,6 @@ The agreement computation needs the completed review, so it runs after the summa
   - the execution path;
   - the seed file and K;
   - that the version-2 descriptives are reported outside the estimands;
-  - the estimand 3 caveat above.
+  - the estimand 2 and estimand 3 caveats above.
 - **Committing the run.** Whether to commit the run under `pilot/runs/<run_id>/`, after the holdout seal check
   over that directory returns CLEAN.

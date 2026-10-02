@@ -301,7 +301,11 @@ know them will pass a change that is destructive in this repo's terms:
   files do not agree with each other. Every recorded run directory (`pilot/` and each
   `pilot/runs/<run_id>/`) records the hashes of all of `pilot/scripts/*.py`, so a pull
   request that changes any pilot script also recomputes and re-finalizes every recorded
-  run (finalize refuses a summary computed under other scripts). Their numbers are
+  run (finalize refuses a summary computed under other scripts). Re-finalize under an
+  interpreter on the same side of Python 3.12 as the one the manifest's `python`
+  records (3.12 changed `sum()` over floats, so the float sums differ in the last bit
+  across it); `compute_summary.py` and `write_manifest.py` refuse a run sealed across
+  that line, and `pilot/` is sealed under 3.13. Their numbers are
   checks of the pipeline, never claims about the study's stimuli or its models.
 * **Irreversible spend:** any change to a file under `.github/trigger/` fires its
   workflow on push, including a merge that carries one. Four of those lanes can spend
