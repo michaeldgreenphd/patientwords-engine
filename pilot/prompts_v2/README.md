@@ -54,8 +54,11 @@ with the owner's on the same rows.
 work as follows. A run without the key behaves exactly as before: every version-1 output is byte-identical.
 
 - **Rows.** `next_word` is required. It must be a lowercase word of letters, with at most one internal hyphen or
-  apostrophe. A row with a bad `next_word` is the format failure `next_word_invalid`; a row without one is
-  `missing_field:next_word`. `generated/all_rows.jsonl` keeps `next_word`. The retry rule counts the five keys.
+  apostrophe. The check, `common.next_word_ok`, is broader than that wording in two ways: it also admits numerals
+  that are not decimal digits (such as superscript digits, fractions and small Roman numerals), and an uppercase
+  letter that has no lowercase form. A row the check refuses is the format failure `next_word_invalid`; a row
+  without one is `missing_field:next_word`. `generated/all_rows.jsonl` keeps `next_word`. The retry rule counts the
+  five keys.
 - **Checker.** The structured-output schema requires the three further answers. An answer with any of them missing
   or outside its set is invalid, and its item becomes `missing`, as an invalid verdict does now. An answer whose
   `equivalent` contradicts its `relation` (yes with narrower or different, no with same, same_brand or broader) is
