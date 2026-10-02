@@ -240,10 +240,16 @@ re-priced.
     (branch `claude/petri-rejudge-runs`). Their requests carried a
     temperature (each seed's value; the judge's 0.0), and their records say
     so. This revision does not rewrite them, since landed runs and
-    re-grades are append-only; a later run or re-grade with that slug is
-    sent no temperature and records why. The map stays in the `anthropic`
-    block, where it began; its keys are model spellings and it applies to
-    whichever block a spec routes through.
+    re-grades are append-only. A later run with that slug as target or
+    auditor is sent no temperature and records why. As a judge the slug is
+    likewise sent none, but only at a `judge_max_tokens` of 4096 or more
+    (its `min_output_tokens`), whether it judges a new run or re-grades
+    one. Every landed run was judged at 300 (all nine: five on `main`, four
+    on branches), and a rejudge must use its judge of record's
+    `judge_max_tokens`, so a re-grade of any of them by this slug is
+    refused before any call. The map stays in the `anthropic` block, where
+    it began; its keys are model spellings and it applies to whichever
+    block a spec routes through.
   - `min_output_tokens` gives 4096 for the reasoning models priced here.
     The advice lane sends the larger of the fire's `--max-tokens` and that
     value, and records the value sent. No model whose archive is
@@ -252,18 +258,28 @@ re-priced.
     of its instrument and a rejudge must match its judge of record's. Its
     `judge` step and a rejudge plan therefore refuse a listed judge model
     whose `judge_max_tokens` is below the minimum, before any call.
-- **What the direct Anthropic path already sent.** The anthropic Python SDK
-  that CI installs unpinned stopped accepting the temperature keyword
-  (`scripts/advice_eval.py` `_send`, first seen in run 32610000348 on
-  2026-08-23). `_send` then retries without it and stops sending it for
-  the rest of the process. So since that date every `anthropic:` call in
-  CI has gone out without temperature, whatever the fire set. That covers
-  advice elicitation, translation, the advice judge and the Petri judge.
-  This is inferred from `_send`'s code and docstring; it was not checked
-  against a CI log for this revision. The local venv's anthropic 1.7.0
-  also lacks the keyword. Archived records state the fire's value either
-  way (1.0, or 0.0 for a translation), so an archived `request.temperature`
-  is the requested value, not evidence of what was sent.
+- **What the direct Anthropic path already sent.** It depends on the lane.
+  Both statements below are inferred from the code and the installs;
+  neither was checked against a CI log for this revision.
+  - Advice lane. `advice_evaluation.yml` installs the anthropic Python SDK
+    unpinned, and that SDK stopped accepting the temperature keyword
+    (`scripts/advice_eval.py` `_send`, first seen in run 32610000348 on
+    2026-08-23). `_send` then retries without it and stops sending it for
+    the rest of the process. So since that date every `anthropic:` call
+    the advice lane made in CI has gone out without temperature, whatever
+    the fire set. That covers advice elicitation, translation and the
+    advice judge. The local venv's anthropic 1.7.0 also lacks the keyword.
+    Archived advice records state the fire's value either way (1.0, or 0.0
+    for a translation), so an archived `request.temperature` is the
+    requested value, not evidence of what was sent.
+  - Petri lane: not affected. `petri_audit.yml` installs
+    `docs/framework/petri_environment.lock.json` exactly, and its
+    `verify-lock` step refuses any drift before a model call. The lock
+    pins anthropic 0.105.0, whose `messages.create` accepts temperature, so
+    `_send` never drops it there, and the Petri judge was sent its 0.0. All
+    nine landed Petri runs record that lock's digest (4aecf38c). The seven
+    judged on the direct API, the five on `main` among them, used
+    `claude-haiku-4-5` at temperature 0.0.
 - **What changes in the records.** From this revision on, a call sent
   without temperature records it, whether the registry or the SDK left it
   out. An advice record carries `request.temperature` null and a
@@ -274,13 +290,20 @@ re-priced.
   their `temperature` stays the instrument's 0.0. New records of the
   registered `anthropic:claude-haiku-4-5` and `anthropic:claude-sonnet-5`
   arms, and new judgments of the `claude-haiku-4-5` advice judge of
-  record, therefore have this shape when run in CI. An archive resumed
-  after this revision will mix earlier records that say 1.0 with new ones
-  that say null. The sampling is the same in both, because the earlier
-  calls in CI after 2026-08-23 also went out without temperature. Listing
-  Sonnet 5 changes what is sent only on a route that still forwards
-  temperature: `openrouter:anthropic/claude-sonnet-5`, which has no
-  archived record, and a Petri `openrouter/` target or auditor.
+  record, therefore have this shape when run in CI. An advice archive
+  resumed after this revision will mix earlier records that say 1.0 with
+  new ones that say null. The sampling is the same in both, because the
+  earlier advice calls in CI after 2026-08-23 also went out without
+  temperature. A `claude-haiku-4-5` Petri judge, which the map does not
+  list, is still sent 0.0. Listing Sonnet 5 changes what is sent only on a
+  route that still forwards temperature:
+  - `openrouter:anthropic/claude-sonnet-5`, which no archived record or
+    landed run uses;
+  - a Petri `openrouter/` target or auditor;
+  - a direct-API Petri judge (`claude-sonnet-5` or
+    `anthropic:claude-sonnet-5`). Before this revision the locked SDK
+    would have sent it the judge's 0.0; now it is sent none. No landed
+    Petri run or re-grade used a Sonnet 5 judge.
 - **Direct Anthropic rates.** `medlang_circuits.evaluate_models.PRICING`
   adds `claude-opus-5-5` (4/20), `claude-sonnet-5-5` (2/10) and
   `claude-fable-5-1` (10/50). It corrects `claude-sonnet-5` from 3/15 to
@@ -301,8 +324,15 @@ slugs added to `omit_temperature`, and its note), also committed on the
 branch and never fired against:
 `b767fed0e699ffbf21d0c623b467f28d418c29309e709033abe058d540f71731`.
 Registry sha256 after a further review the same day, which qualified the
-note's statement on landed Petri runs (no entry changed):
-`5d9568496a89e237465238a5a9480f7f0f67b8c1cb36d350dc3bd95a6ef8aa98`
+note's statement on landed Petri runs (no entry changed), also committed
+on the branch and never fired against:
+`5d9568496a89e237465238a5a9480f7f0f67b8c1cb36d350dc3bd95a6ef8aa98`.
+Registry sha256 after a check later the same day, which limited to the
+advice lane the note's statement that `anthropic:` calls in CI went out
+without temperature, added the direct-API Petri judge to the routes where
+listing Sonnet 5 changes what is sent, and corrected what a later run or
+re-grade with `openai/gpt-6-luna` is sent (no entry changed):
+`51ab32928b404970000fa9ddfcf892541ee378f2ee3899ca587563520260be96`
 
 ## The consumer-proxy caveat (repeat in every writeup)
 
