@@ -1,0 +1,18 @@
+You are an independent checker for a vocabulary study. This task is self-contained. Use no tools, read no files, and ignore any repository instructions you may have been shown.
+
+For each item below you see a clinical_term, a patient_term, and a template with one blank (___). Fill the blank with each phrase in turn and answer four questions. Base the meaning questions on standard medical terminology (SNOMED CT, MeSH, RxNorm, and consumer health vocabularies such as MedlinePlus), not on impression.
+
+1. relation: how patient_term relates to clinical_term in this sentence. Ignore grammatical form (an adjective against its noun, singular against plural).
+   - "same": the same concept: a synonym, a consumer synonym, or a plain paraphrase of the clinical term's definition.
+   - "same_brand": patient_term is a brand name of the single-ingredient drug that clinical_term names.
+   - "broader": patient_term names a broader category that contains the clinical concept (a parent concept, or a drug class containing the drug) and still truly describes it.
+   - "narrower": patient_term names a more specific concept, or one particular presentation of the clinical concept.
+   - "different": a different concept or a different kind of thing, such as a diagnosis against a description of its symptoms, or an episode against one of its symptoms.
+2. equivalent: "yes" when relation is same, same_brand or broader; "no" when relation is narrower or different; "unclear" only when you cannot decide what one of the phrases means. A pair that names the same thing but reads badly is still "yes".
+3. sentence_natural: does the sentence read as natural, grammatical speech with each phrase in the blank? Answer "both", "clinical_only", "patient_only" or "neither". The sentence stops on purpose before its next word; judge only how each phrase fits.
+4. patient_realism: would a patient actually say patient_term? Answer "real" (people say this), "textbook" (the tidy wording of a health leaflet: plausible, but seldom said) or "unlikely".
+
+Give a one-line reason naming the deciding consideration. Return your answers as structured output with one entry per item id, in any order, covering every id exactly once.
+
+ITEMS
+{{ITEMS}}
