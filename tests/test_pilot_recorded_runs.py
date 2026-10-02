@@ -145,14 +145,24 @@ def test_recorded_run_finalizes_under_current_scripts(run_dir: Path, tmp_path: P
 def test_a_stale_script_fails_before_the_interpreter_skip(tmp_path: Path):
     """A pilot script edited without re-finalizing the recorded runs fails on every interpreter: with a drifted copy
     of the scripts and an interpreter on the other side of 3.12 from the sealing one, the check fails on the script
-    hashes instead of skipping; with the scripts as committed, the same interpreter reaches the skip."""
+    hashes instead of skipping; with the scripts as committed, the same interpreter reaches the skip.
+
+    pytest.skip raises Skipped, a BaseException that pytest.raises(AssertionError) lets through, so a check that
+    reached the skip before comparing the hashes would report this test as skipped and leave the suite green; that
+    is what this test did, before this guard, with the hash comparison removed or the skip moved back ahead of it.
+    Reaching the skip with the drifted scripts is therefore turned into a failure here."""
     sealed = json.loads((PILOT / "manifest.json").read_text(encoding="utf-8"))["python"]
     other_side = "3.11.9" if common.float_sum_side(sealed) == "compensated" else "3.12.0"
     drifted = tmp_path / "scripts"
     shutil.copytree(SCRIPTS, drifted, ignore=shutil.ignore_patterns("__pycache__"))
     target = drifted / "compute_summary.py"
     target.write_text(target.read_text(encoding="utf-8") + "# an edit after the run was sealed\n", encoding="utf-8")
-    with pytest.raises(AssertionError, match=r"script_hashes do not match pilot/scripts for \['compute_summary.py'\]"):
-        check_recorded_run(PILOT, tmp_path, scripts=drifted, running=other_side)
+    try:
+        with pytest.raises(AssertionError,
+                           match=r"script_hashes do not match pilot/scripts for \['compute_summary.py'\]"):
+            check_recorded_run(PILOT, tmp_path, scripts=drifted, running=other_side)
+    except pytest.skip.Exception as skipped:
+        pytest.fail(f"a drifted pilot script reached the interpreter skip before the recorded hashes were compared "
+                    f"({skipped}); the hash comparison must come first and fail")
     with pytest.raises(pytest.skip.Exception, match="every recorded hash matches its file"):
         check_recorded_run(PILOT, tmp_path, scripts=SCRIPTS, running=other_side)
