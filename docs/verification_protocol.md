@@ -66,8 +66,23 @@ recorded command still gives that bundle's items unchanged.
   need its trace to be rated; the trace matters when ratings are later
   compared with trace measures. A run's traces may land after its bundle is
   wanted, so `--pilot-trace-optional <run id>` exports that run without
-  requiring or reading trace results. Its items are then the same before and
-  after the traces land, and a rating joins its trace later by run and row id.
+  requiring a trace or reading trace results. Its items are then the same
+  before and after the traces land, and a rating joins its trace later by run
+  and row id. Such a run reads no trace file at all, except Run 2: its item
+  ids are keyed on its trace pairs file (see *Labels and ids*), so that file
+  is still read, for the sha256 its items record, and must exist.
+- **Which trace pairs file a selection needs.** `pilot/analysis/trace_pairs.py`
+  builds a run's trace pairs file in one of three ways. With `--review-sample`
+  it holds exactly the review sample and records each pair's review id, which
+  must match `review_map.json`; this is the file the default selection needs,
+  as Run 2's is. Its default holds the rows the checker judged equivalent, and
+  `--include-controls` adds the negative controls; neither records review ids.
+  A review-sample row the checker did not judge equivalent is missing from
+  those, so the export stops (`missing_trace`). `--pilot-all-rows` takes every
+  non-control row, whatever the checker said, and none of the three files holds
+  all of them once the checker has said no to any row. In practice
+  `--pilot-all-rows` therefore goes with `--pilot-trace-optional` for the same
+  run.
 - **One trace directory per run.** The circuit-trace lane writes a pilot trace
   to `pilot/traces/<pairs file name without .json>/`. Run 2's pairs file is
   `trace/trace_pairs.json`, so a later run whose pairs file keeps that name
@@ -331,14 +346,28 @@ python scripts/seal_check.py --site ../patientwords
   export stops, naming item ids, if any round 1 item is missing
   (`previous_item_missing`), shows another text, proposed urgency or question
   set under its id (`previous_item_changed`), or if a question id round 1 used is gone
-  (`previous_question_missing`). The main-study pairs are ranked again from
+  (`previous_question_missing`). It also stops, naming question ids, if a
+  kept question id has another scale type, other answer values or another
+  order of them, another "can't judge" value, another length limit, phase,
+  per-version setting or reveal lock (`previous_question_changed`): the app
+  checks a stored answer against all of these when a physician saves the item
+  again, so an answer given in round 1 would be refused or read on another
+  scale. Wording may change. The main-study pairs are ranked again from
   the site payload at export time, so a pair published since round 1 can push
   a round 1 pair out of the top 40. The export then stops and names its item
   id, and a larger `--main-pairs` keeps it while it is still published.
+- The command above takes Run 3's review sample and requires its traces, so
+  Run 3's trace pairs file must be built with
+  `pilot/analysis/trace_pairs.py --review-sample --out pilot/runs/pilot_v3_<date>/trace/<its own name>.json`
+  before its trace is fired (see *Which trace pairs file a selection needs* and
+  *One trace directory per run*).
 - Add `--pilot-trace-optional pilot_v3_<date>` if Run 3's traces have not
   landed when the bundle is wanted.
 - Add `--pilot-all-rows pilot_v3_<date>` to send every Run 3 pair rather than
-  its review sample. Every added item needs at least two physicians.
+  its review sample, together with `--pilot-trace-optional pilot_v3_<date>`:
+  no trace pairs file `trace_pairs.py` builds holds every non-control row once
+  the checker has said no to one, so a required trace would stop the export
+  (`missing_trace`). Every added item needs at least two physicians.
 - Commit the bundle through a pull request, as the first was, then switch the
   app to it between rounds (DEPLOY.md section 19). **Assign items** gives the
   new items to physicians.
