@@ -4,11 +4,13 @@ version-2 markers, its design.json is a valid version-2 design, and every prompt
 clean, lists every probe ending and carries each rule added from the owner's review of run pilot_v2_20261002. The
 checker prompt is version 2's byte for byte, and the design differs from version 2's only in its note.
 
-The rules are checked by the sentences that state them, which hold no medical vocabulary (engine AGENTS.md: that
-lives in data files, never in Python source); the kit's example words stay in design.json's prompt_examples, and the
-template must not carry them. The codebook decision that goes with the kit (D1, codebook v0.3: the checker is not a
-gate for keeping stimuli) is checked here too, with version 0.2's files pinned unchanged; tests/test_pilot_codebook.py
-checks that the current codebook rebuilds from its inputs."""
+The rule text is pinned line by line: tests/fixtures/pilot_v3_changed_lines.json holds, in full, every line of the
+version-3 template that differs from version 2's, and the template must differ from version 2's in exactly those
+lines. The rule text is data, not Python source (engine AGENTS.md: medical vocabulary lives in data files); the kit's
+example words stay in design.json's prompt_examples, and the template must not carry them. The codebook decision that
+goes with the kit (D1, codebook v0.3: the checker is not a gate for keeping stimuli) is checked here too, with version
+0.2's files pinned unchanged; tests/test_pilot_codebook.py checks that the current codebook rebuilds from its
+inputs."""
 import hashlib
 import importlib.util
 import json
@@ -34,33 +36,9 @@ assert _spec is not None and _spec.loader is not None, "pilot/scripts/common.py 
 common = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(common)
 
-# The sentences that state each rule added or changed in version 3, as the rendered prompt carries them, keyed by the
-# README's heading for the rule. None holds a marker, so each appears verbatim in every rendered prompt.
-V3_RULES = {
-    "rule 3, first person only": (
-        "3. First person. Both sentences are the patient speaking or writing about themselves, in the first person",
-        "The speaker is always the patient, never a relative, a clinician or a narrator describing someone else"),
-    "rule 4, the clinical phrase as a clinician writes it": (
-        "Where such a standard term exists, use it rather than a description.",
-        "Write it the way a clinician writes it in a note, in its usual word order and with the details a clinician "
-        "would add, not as a stiff phrase built to fit the blank; the sentence around it stays the patient's own "
-        "words (rule 3)."),
-    "rule 5, common slang only": (
-        "Use only slang that most adult patients would recognise; avoid regional, dated or rare slang.",
-        "the second a vaguer or slangier one (slang only as rule 5 allows)"),
-    "rule 6, at most one brand-name concept per call": (
-        "6. Brand names, at most one concept per call.",
-        "At most one of this call's concepts may pair a drug's generic name with one of its brand names.",
-        "Every other medicine concept must change register in another way"),
-    "rule 8, keep the side, the place and the number": (
-        "8. Keep the side, the place and the number.",
-        "the patient phrase may be vaguer about what the thing is (rule 7), never about where it is or how many.",
-        "say it in both phrases, so that neither phrase is more specific than the other."),
-    "rule 9, no grid names for a region": (
-        "9. No grid names for a region.",
-        "on the clinical side use the standard anatomical term for that part.",
-        "If the only clinical name for a place is its grid name, choose a different body part."),
-}
+# Every line of the version-3 template that is not a line of version 2's, in template order: each new rule, each
+# changed rule (renumbered ones included) and each changed instruction around them, in full with its markers.
+CHANGED = json.loads((ROOT / "tests" / "fixtures" / "pilot_v3_changed_lines.json").read_text(encoding="utf-8"))["lines"]
 
 
 def v3_harness(run_dir: Path, monkeypatch: pytest.MonkeyPatch) -> ModuleType:
@@ -134,13 +112,19 @@ def test_v3_template_holds_no_example_words():
     assert words and all(w not in GEN for w in words)
 
 
-def test_v3_states_every_new_rule():
-    for rule, sentences in V3_RULES.items():
-        for s in sentences:
-            assert GEN.count(s) == 1, (rule, s)
+def test_v3_differs_from_version_2_in_exactly_the_listed_lines():
+    """Each changed line is pinned in full, so deleting or rewording any sentence of a new rule, or reverting a changed
+    line to version 2's wording, fails here; the lines version 3 kept from version 2 stay version 2's, in order."""
+    v2_lines = (V2 / "generation_prompt.txt").read_text(encoding="utf-8").splitlines()
+    v3_lines = GEN.splitlines()
+    assert [line for line in v3_lines if line not in set(v2_lines)] == [c["text"] for c in CHANGED]
+    assert len([line for line in v2_lines if line not in set(v3_lines)]) == sum(c["replaces"] is not None
+                                                                                  for c in CHANGED)
+    assert ([line for line in v3_lines if line in set(v2_lines)]
+            == [line for line in v2_lines if line in set(v3_lines)])
     # version 2's allowance for a relative speaking about the patient is gone
-    v2_gen = (V2 / "generation_prompt.txt").read_text(encoding="utf-8")
-    assert "or a relative speaking about the patient" in v2_gen and "or a relative speaking about the patient" not in GEN
+    assert "or a relative speaking about the patient" in "\n".join(v2_lines)
+    assert "or a relative speaking about the patient" not in GEN
 
 
 @pytest.mark.parametrize("seed_file", sorted(SEED_FILES))
@@ -148,7 +132,8 @@ def test_v3_every_planned_prompt_renders_clean_with_every_rule(seed_file: str, t
                                                                monkeypatch: pytest.MonkeyPatch):
     """Plan both arms of every cell as plan_calls.py would in a run directory holding the version-3 kit, and read
     each planned prompt: no marker left, the probe endings listed exactly as design.json gives them, the example
-    negative control and the cell's swap definition shown, and every version-3 rule sentence present."""
+    negative control and the cell's swap definition shown, and every changed line of the template present as a whole
+    line, with its markers rendered from the design."""
     v3 = v3_harness(tmp_path, monkeypatch)
     seeds = v3.validate_seeds(json.loads(SEED_FILES[seed_file].read_text(encoding="utf-8")))
     plan = v3.derive_plan(seeds, GEN, "0" * 64, "0" * 64)
@@ -156,6 +141,14 @@ def test_v3_every_planned_prompt_renders_clean_with_every_rule(seed_file: str, t
     assert len(plan["calls"]) == len(v3.ARMS) * len(v3.cells())
     example = v3.control_example_text(v3.DESIGN)
     definitions = {t["name"]: t["definition"] for t in DESIGN["swap_types"]}
+    marker_texts = {**v3.prompt_example_texts(v3.DESIGN), "{{CONTROL_EXAMPLE}}": example}
+    expected_lines = []
+    for c in CHANGED:
+        line = c["text"]
+        for marker, text in marker_texts.items():
+            line = line.replace(marker, text)
+        assert v3.stray_marker(line) is None, c["part"]
+        expected_lines.append((c["part"], line))
     for call in plan["calls"]:
         prompt = call["prompt"]
         assert v3.stray_marker(prompt) is None, call["id"]
@@ -163,8 +156,9 @@ def test_v3_every_planned_prompt_renders_clean_with_every_rule(seed_file: str, t
         assert listed is not None, call["id"]
         assert [w.strip() for w in listed.group(1).split(",")] == DESIGN["probe_endings"], call["id"]
         assert example in prompt and definitions[call["swap_type"]] in prompt, call["id"]
-        for rule, sentences in V3_RULES.items():
-            assert all(s in prompt for s in sentences), (call["id"], rule)
+        prompt_lines = prompt.splitlines()
+        for part, line in expected_lines:
+            assert prompt_lines.count(line) == 1, (call["id"], part)
 
 
 def test_codebook_v0_3_records_that_the_checker_is_not_a_gate():
