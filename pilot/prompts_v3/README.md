@@ -55,8 +55,15 @@ a patient would say it). Version 2 also allowed "a relative speaking about the p
 - **Note.** r013: the template said "The doctor said the ___ is inflamed". The note asked to "make it personal" with
   "my", and said "Important that these are kinda things that are said in first person because we are simulating
   something a patient would say".
-- **Run 2.** 20 of the 288 generated rows had a relative speaking about someone else. To count them, the templates
-  with no first-person singular word were listed and read.
+- **Not taken from the note.** Its last sentence, "Patient would also probably say \"sac\"", is about that pair's
+  patient phrase, which already contains the word. No rule was added for it: rule 5 already asks for the words
+  patients actually use, and one note does not show a general preference for shorter phrases.
+- **Run 2.** 42 of the 288 generated rows were about another person's condition or medicine, usually the
+  speaker's parent, partner or child: 21 in each arm, and by swap type 8 body part, 18 medication and
+  16 symptom description. 20 of the 42 have no first-person singular word. The other 22 are in the first person but
+  about someone else (for example `A__gastroenterology__symptom_description__L11` and
+  `B__neurology__medication__L05`). The count comes from reading all 288 templates in `checked.jsonl`. In the review
+  sample, 5 of the 40 rows were about someone else, and the owner kept 3 of them.
 - **Related changes.**
   - "What one row is" now calls the template "one sentence that the patient says or writes about themselves".
   - The negative-control instruction now says controls follow rules 3 and 10. The example negative control in
@@ -140,8 +147,12 @@ resamples) and the run's summary.
 - **The keep rule.** The checker-side keep rule R8 (keep when `sentence_natural` is `both`) kept all 40 rows. That
   covered the 27 the owner kept, and it caught none of the 13 the owner would edit or drop: specificity 0/13.
 - **Same meaning.** The checker's same-meaning answers agreed with the owner's at chance level: 24/40, kappa 0.05.
-  It still catches gross mismatches: it answered not equivalent on 19 of the run's 20 deliberately broken pairs
-  (summary, estimand 4).
+  The run's summary (estimand 4) shows it rejects nearly every broken pair but also many good ones:
+  - it answered not equivalent on 19 of the run's 20 deliberately broken pairs;
+  - on the 10 seed rows the run's protocol treats as known-good, it answered equivalent on only 5 (not equivalent on
+    4, unclear on 1).
+
+  So a not-equivalent answer marks a pair for a closer look; it does not show that the pair is broken.
 
 **What stays.** The checker remains a same-meaning screen whose answers are computed and reported.
 
@@ -228,7 +239,8 @@ Three cautions:
 - **When run 3 runs.** Before physician review of run 2's pairs in the verification app, or after it, so that the
   physicians' notes can shape the prompt first.
 - **Trace selection.** Whether `pilot/analysis/trace_pairs.py` should keep selecting rows by the checker's
-  same-meaning verdict by default, given its chance-level agreement with the owner on run 2 (kappa 0.05).
+  same-meaning verdict by default, given its chance-level agreement with the owner on run 2 (kappa 0.05) and its 5
+  of 10 on the known-good seed rows.
 - **R8.** Whether to revise it, given the 2 kept rows in run 2 whose patient sentence the owner did not find natural.
 - **Codebook rules.** Whether the six run 2 rules become codebook rules, which needs `make_codebook.py` to read
   more than one review export.
