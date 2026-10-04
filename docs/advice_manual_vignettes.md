@@ -56,11 +56,19 @@ is deliberately non-medical): `docs/advice_manual_vignettes.template.json`.
 
 ```bash
 python scripts/advice_eval.py build-stimuli --source manual \
-  --manual-in <your file> --out-dir data/advice
+  --manual-in <your file> --family <sentence_completions|natural_questions> \
+  --out-dir data/advice
 ```
 
 The build validates (both sides present, not identical, unique ids, reference
 shape), assembles the messages, and writes `data/advice/stimuli_<stamp>.json`.
+`--family` records which stimuli family the set belongs to in
+`source.family`. A payload or pairs set's family follows from its source
+batch, but a manual set has none, so the site exporter
+(`scripts/export_advice_scenarios.py`) refuses a manual set that declares no
+family rather than guessing one (since 2026-10-03). Give it when you build:
+every elicited response records the stimuli file's hash (`stimuli_sha256`),
+so the family cannot be added to the file after the set has been elicited.
 It is reviewed by eye, committed, and fired like any other set. Manual sets
 are supplementary to the registered pilot endpoints unless the
 pre-registration is amended before their first fire.

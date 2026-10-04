@@ -234,6 +234,17 @@ def test_selection_copies_items_verbatim_and_records_provenance(tmp_path):
     assert a.read_bytes() == a_bytes and b.read_bytes() == b_bytes   # the source files are never touched
 
 
+def test_selection_records_a_manual_files_declared_family(tmp_path):
+    # A manual file's family is declared, not derived from source paths (build-stimuli --family), so a selection
+    # that copies from one records the declaration beside its kind and paths for the exporter to read.
+    a, _b = _two_files(tmp_path)
+    doc_a = json.loads(a.read_text(encoding="utf-8"))
+    doc_a["source"] = {"kind": "manual", "path": "data/advice/manual_x.json", "family": "natural_questions"}
+    a.write_text(json.dumps(doc_a), encoding="utf-8")
+    doc = _build_selection(tmp_path, _selection(tmp_path, [{"file": str(a), "id": "s1"}]))
+    assert doc["source"]["file_sources"] == {str(a): {"kind": "manual", "paths": None, "family": "natural_questions"}}
+
+
 def test_selection_suffixes_a_repeated_id_and_records_it(tmp_path):
     a, b = _two_files(tmp_path)
     sel = _selection(tmp_path, [{"file": str(a), "id": "s1"}, {"file": str(b), "id": "s1"}])
