@@ -196,8 +196,10 @@ def _nonempty_str(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
-def _judgment_problem(row: Any, tier_ids: set[str]) -> str | None:
-    """Why a judgment row is malformed, or None when it is well formed."""
+def _judgment_problem(row: Any) -> str | None:
+    """Why a judgment row is malformed, or None when it is well formed. The tier is checked here only for its type:
+    which tier ids are valid depends on the rubric the row was made under, so load_archive checks membership for rows
+    made under the supplied rubric and sets rows made under another rubric aside unread."""
     if not isinstance(row, dict):
         return "not a JSON object"
     sha = row.get("response_sha256")
@@ -216,8 +218,8 @@ def _judgment_problem(row: Any, tier_ids: set[str]) -> str | None:
     if "tier" not in row:
         return "tier field is absent (a judge failure is recorded as tier null)"
     tier = row["tier"]
-    if tier is not None and tier not in tier_ids:
-        return f"tier {tier!r} is not a tier id of the rubric in force"
+    if tier is not None and not _nonempty_str(tier):
+        return f"tier {tier!r} is neither null nor a non-empty string"
     return None
 
 
@@ -362,9 +364,14 @@ def load_archive(advice_dir: Path, stem: str, tier_ids: set[str], judge_model: s
     other_rubrics: dict[str, int] = {}
     primary_under_rubric = 0
     for line_no, row in _read_jsonl_numbered(judgments_path):
-        problem = _judgment_problem(row, tier_ids)
+        problem = _judgment_problem(row)
         if problem:
             raise SystemExit(f"{judgments_path}:{line_no}: malformed judgment row: {problem}; refusing")
+        if row["rubric_sha256"] == rubric_sha256 and row["tier"] is not None and row["tier"] not in tier_ids:
+            # a row made under the supplied rubric must use its tiers (any judge); a row made under another rubric
+            # may use that rubric's tiers and is set aside below without its tier being read
+            raise SystemExit(f"{judgments_path}:{line_no}: malformed judgment row: tier {row['tier']!r} is not a "
+                             f"tier id of the rubric it was made under ({rubric_sha256[:12]}); refusing")
         keys = keys_by_sha.get(row["response_sha256"])
         if keys is None:
             raise SystemExit(f"{judgments_path}:{line_no}: judgment for response "

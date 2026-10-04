@@ -396,6 +396,30 @@ def test_judgments_made_under_another_rubric_are_excluded_and_counted(tmp_path):
     assert out["rubric"]["canonical_sha256"] == RUBRIC_SHA
 
 
+def test_a_judgment_under_another_rubric_with_a_tier_this_rubric_lacks_is_excluded_not_refused(tmp_path):
+    # Regression (Gemini review of PR #82): the tier was checked against the supplied rubric before rows made under
+    # another rubric were set aside, so a re-judge under a revised tier vocabulary stopped the run instead of being
+    # excluded and counted.
+    samples = _cell("s1", "a:m1", ["urgent"], ["urgent"])
+    shas = _write_archive(tmp_path / "advice", samples)
+    later = {"response_sha256": shas[1], "stimulus_id": "s1", "arm": "patient", "model": "a:m1", "sample_k": 1,
+             "judge_model": PRIMARY, "tier": "legacy_tier", "rubric_sha256": OTHER_RUBRIC_SHA}
+    _write_archive(tmp_path / "advice", samples, [later])
+    out = _build(tmp_path)
+    assert out["items"][0]["per_model"][0]["patient_modal"] == "urgent"
+    assert out["row_accounting"][STEM]["judgment_rows"] == {"excluded:other_rubric": 1, "used": 2}
+
+
+def test_a_judgment_under_the_supplied_rubric_with_an_unknown_tier_is_refused(tmp_path):
+    samples = _cell("s1", "a:m1", ["urgent"], ["urgent"])
+    shas = _write_archive(tmp_path / "advice", samples)
+    bad = {"response_sha256": shas[1], "stimulus_id": "s1", "arm": "patient", "model": "a:m1", "sample_k": 1,
+           "judge_model": PRIMARY, "tier": "legacy_tier", "rubric_sha256": RUBRIC_SHA}
+    _write_archive(tmp_path / "advice", samples, [bad])
+    with pytest.raises(SystemExit, match="'legacy_tier' is not a tier id of the rubric it was made under"):
+        _build(tmp_path)
+
+
 def test_a_stem_named_twice_is_refused(tmp_path):
     # Regression (Codex, PR #73 post-merge): a repeated --stem loaded the archive twice and counted every one of its
     # cells twice, in the downgrade counts and as independent draws in the null.
