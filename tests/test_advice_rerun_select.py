@@ -1,11 +1,12 @@
 """Tests for scripts/advice_rerun_select.py - the post-hoc rerun selection ranker.
 
-Offline: each test writes a tiny hash-chained responses archive, its judgments
-file and a stimuli file into tmp_path, then ranks it. Covers the modal tie rule,
+Offline: each test writes a tiny hash-chained responses archive with its sidecar,
+its judgments file and a stimuli file into tmp_path, then ranks it. Covers the modal tie rule,
 the exporter-style dedupe, the excluded-model rule, determinism under the seed,
 the noise-floor decision (expected count at the item's own downgrade count, over
 every ranked stimulus, and the Bonferroni figures),
-row accounting, refusal (not skipping) of malformed rows, and the two files the
+row accounting, refusal (not skipping) of malformed rows, the archive's binding to
+its sidecar, its stimuli document and the rubric, duplicate stems, and the two files the
 CLI writes: the ranking report, unchanged in content, and the selection in
 exactly the shape build-stimuli --source selection reads, whose notes carry the
 report's sha256.
@@ -39,6 +40,7 @@ RUBRIC = {"version": "t-draft", "tiers": [{"id": t, "label": t, "definition": "d
           "flags": [], "judge_instructions": "{tiers}{flags}{response}"}
 STEM = "stimuli_20990101T000000Z"
 PRIMARY = "claude-haiku-4-5"
+RUBRIC_SHA = ae.sha256_text(ae.canonical_json(RUBRIC))   # what advice_eval.py judge stamps on each row
 
 
 def _cell(sid, model, clinical, patient):
@@ -51,20 +53,26 @@ def _cell(sid, model, clinical, patient):
 
 def _write_archive(adir, samples, extra_judgments=()):
     """samples: dicts with sid, arm, model, k and optionally tier (absent = unjudged),
-    judge, sent and text. Returns the response sha256 of each sample, in order."""
+    judge, rubric_sha (default the test rubric's), sent and text. Writes the stimuli
+    file, the responses archive (each advice record stamped with the stimuli document's
+    canonical sha256, as elicit stamps it), its sidecar (records_total and chain_head,
+    as elicit writes them) and the judgments. Returns the response sha256 of each
+    sample, in order."""
     adir.mkdir(parents=True, exist_ok=True)
     ids = sorted({s["sid"] for s in samples})
     # complete stimuli (bodies, messages, hashes), so build-stimuli's selection reader can load them too
     items = [ae._stimulus(i, f"placeholder clinical {i}", f"placeholder patient {i}", "placeholder ask?")
              for i in ids]
-    (adir / f"{STEM}.json").write_text(json.dumps({"ask_suffix": "placeholder ask?", "items": items}),
-                                       encoding="utf-8")
+    stimuli_doc = {"ask_suffix": "placeholder ask?", "items": items}
+    (adir / f"{STEM}.json").write_text(json.dumps(stimuli_doc), encoding="utf-8")
+    stimuli_sha = ae.sha256_text(ae.canonical_json(stimuli_doc))
     prev, lines, judgments, shas = None, [], [], []
     for n, s in enumerate(samples):
         text = s.get("text", f"placeholder response {n}")
         rec = {"record_type": "advice", "stimulus_id": s["sid"], "arm": s["arm"],
                "model_requested": s["model"], "sample_k": s["k"], "response_text": text,
-               "response_sha256": ae.sha256_text(text), "sent_utc": s.get("sent", f"2099-01-01T00:00:{n:02d}Z")}
+               "response_sha256": ae.sha256_text(text), "sent_utc": s.get("sent", f"2099-01-01T00:00:{n:02d}Z"),
+               "stimuli_sha256": stimuli_sha}
         sealed = ae._seal_record(rec, prev)
         prev = sealed["record_sha256"]
         lines.append(json.dumps(sealed))
@@ -72,9 +80,12 @@ def _write_archive(adir, samples, extra_judgments=()):
         if "tier" in s:
             judgments.append({"response_sha256": rec["response_sha256"], "stimulus_id": s["sid"],
                               "arm": s["arm"], "model": s["model"], "sample_k": s["k"],
-                              "judge_model": s.get("judge", PRIMARY), "tier": s["tier"]})
+                              "judge_model": s.get("judge", PRIMARY), "tier": s["tier"],
+                              "rubric_sha256": s.get("rubric_sha", RUBRIC_SHA)})
     judgments.extend(extra_judgments)
     (adir / f"responses_{STEM}.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (adir / f"responses_{STEM}.report.json").write_text(
+        json.dumps({"records_total": len(lines), "chain_head": prev}), encoding="utf-8")
     (adir / f"judgments_{STEM}.jsonl").write_text(
         "\n".join(json.dumps(j) for j in judgments) + "\n", encoding="utf-8")
     return shas
@@ -205,7 +216,7 @@ def test_excluded_rows_are_counted_by_reason(tmp_path):
                   {"sid": "s1", "arm": "translated", "model": "a:m1", "k": 1, "tier": "routine"}])
     shas = _write_archive(tmp_path / "advice", samples)
     row = {"response_sha256": shas[0], "stimulus_id": "s1", "arm": "clinical", "model": "a:m1",
-           "sample_k": 1, "judge_model": PRIMARY, "tier": "routine"}
+           "sample_k": 1, "judge_model": PRIMARY, "tier": "routine", "rubric_sha256": RUBRIC_SHA}
     extra = [
         {**row, "judge_model": "openrouter:vendor/second-judge", "tier": "emergency"},
         {**row, "judge_model": "some-other-bare-judge", "tier": "emergency"},
@@ -225,7 +236,7 @@ def test_excluded_rows_are_counted_by_reason(tmp_path):
 
 def _good_row(sha):
     return {"response_sha256": sha, "stimulus_id": "s1", "arm": "clinical", "model": "a:m1",
-            "sample_k": 1, "judge_model": PRIMARY, "tier": "routine"}
+            "sample_k": 1, "judge_model": PRIMARY, "tier": "routine", "rubric_sha256": RUBRIC_SHA}
 
 
 @pytest.mark.parametrize("mutate", [
@@ -241,8 +252,10 @@ def _good_row(sha):
     lambda j: j.update(stimulus_id="s2"),           # key does not match the archived response
     lambda j: j.update(judge_model=""),
     lambda j: j.pop("model"),
+    lambda j: j.pop("rubric_sha256"),               # every judgment names the rubric it was made under
+    lambda j: j.update(rubric_sha256="draft-1"),
 ], ids=["no-arm", "bad-arm", "unknown-tier", "no-tier", "k-string", "k-bool", "k-zero", "bad-sha",
-        "orphan-sha", "key-mismatch", "empty-judge", "no-model"])
+        "orphan-sha", "key-mismatch", "empty-judge", "no-model", "no-rubric-sha", "bad-rubric-sha"])
 def test_malformed_judgment_rows_are_refused(tmp_path, mutate):
     samples = _cell("s1", "a:m1", ["routine"], ["routine"])
     shas = _write_archive(tmp_path / "advice", samples)
@@ -281,6 +294,144 @@ def test_broken_chain_is_refused(tmp_path):
     path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
     with pytest.raises(SystemExit, match="refusing to rank"):
         _build(tmp_path)
+
+
+# ------------------------------------- binding to the sidecar, the stimuli and the rubric
+
+
+def _rewrite_jsonl(path, keep):
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows[:keep]), encoding="utf-8")
+
+
+def test_an_archive_cut_back_to_an_earlier_prefix_is_refused(tmp_path):
+    # Regression (Codex, PR #73 post-merge): a responses archive and its judgments cut back consistently to an
+    # earlier prefix still pass verify_chain, and every remaining judgment resolves, so the ranking used to be
+    # computed from the shorter archive. The sidecar's records_total and chain_head describe the full archive.
+    samples = (_cell("s1", "a:m1", ["urgent"] * 2, ["self_care"] * 2)
+               + _cell("s2", "a:m1", ["urgent"] * 2, ["self_care"] * 2))
+    _write_archive(tmp_path / "advice", samples)
+    _build(tmp_path)   # the full archive ranks
+    adir = tmp_path / "advice"
+    _rewrite_jsonl(adir / f"responses_{STEM}.jsonl", 4)
+    _rewrite_jsonl(adir / f"judgments_{STEM}.jsonl", 4)
+    assert ae.verify_chain(ae._read_jsonl(adir / f"responses_{STEM}.jsonl"))[0]   # the prefix is internally valid
+    with pytest.raises(SystemExit, match=r"holds 4 record\(s\) but .*records_total 8; refusing"):
+        _build(tmp_path)
+
+
+@pytest.mark.parametrize("sidecar, message", [
+    (None, "missing"),
+    ({"chain_head": "0" * 64}, "records_total None is missing"),
+    ({"records_total": "4"}, "records_total '4' is missing or not a non-negative integer"),
+    ({"records_total": 4}, "chain_head None is missing"),
+    ({"records_total": 4, "chain_head": "0" * 64}, "ends at record .* but .* records chain_head 000000000000"),
+], ids=["no-sidecar", "no-total", "total-string", "no-head", "other-head"])
+def test_a_sidecar_that_does_not_describe_the_archive_is_refused(tmp_path, sidecar, message):
+    _write_archive(tmp_path / "advice", _cell("s1", "a:m1", ["urgent"] * 2, ["self_care"] * 2))
+    path = tmp_path / "advice" / f"responses_{STEM}.report.json"
+    if sidecar is None:
+        path.unlink()
+    else:
+        path.write_text(json.dumps(sidecar), encoding="utf-8")
+    with pytest.raises(SystemExit, match=message):
+        _build(tmp_path)
+
+
+def test_responses_elicited_from_another_stimuli_document_are_refused(tmp_path):
+    # Regression (Codex, PR #73 post-merge): a stimuli file edited after elicitation, with the same ids, passed the
+    # id-membership check, and the selection then copied messages the responses were never sent.
+    _write_archive(tmp_path / "advice", _cell("s1", "a:m1", ["urgent"] * 2, ["self_care"] * 2))
+    path = tmp_path / "advice" / f"{STEM}.json"
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    doc["items"][0]["patient_message"] = "placeholder patient s1, edited after elicitation"
+    path.write_text(json.dumps(doc), encoding="utf-8")
+    with pytest.raises(SystemExit, match="elicited from a stimuli document with canonical sha256 .* refusing"):
+        _build(tmp_path)
+
+
+def test_an_advice_record_without_its_stimuli_hash_is_refused(tmp_path):
+    adir = tmp_path / "advice"
+    _write_archive(adir, _cell("s1", "a:m1", ["urgent"], ["self_care"]))
+    path = adir / f"responses_{STEM}.jsonl"
+    prev, lines = None, []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        body = {k: v for k, v in json.loads(line).items() if k not in ("prev_sha256", "record_sha256",
+                                                                      "stimuli_sha256")}
+        sealed = ae._seal_record(body, prev)   # resealed, so only the missing hash is wrong
+        prev = sealed["record_sha256"]
+        lines.append(json.dumps(sealed))
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (adir / f"responses_{STEM}.report.json").write_text(json.dumps({"records_total": 2, "chain_head": prev}),
+                                                        encoding="utf-8")
+    with pytest.raises(SystemExit, match="malformed advice record: stimuli_sha256 is not"):
+        _build(tmp_path)
+
+
+OTHER_RUBRIC_SHA = ae.sha256_text(ae.canonical_json({**RUBRIC, "version": "t-draft-2"}))   # same tier ids
+
+
+def test_judgments_made_under_another_rubric_are_refused_when_none_match(tmp_path):
+    # Regression (Codex, PR #73 post-merge): rows judged under another rubric revision with the same tier ids
+    # passed validation, and the report attributed the ranking to the supplied rubric's version and hash.
+    samples = _cell("s1", "a:m1", ["urgent"] * 2, ["self_care"] * 2)
+    for s in samples:
+        s["rubric_sha"] = OTHER_RUBRIC_SHA
+    _write_archive(tmp_path / "advice", samples)
+    with pytest.raises(SystemExit, match=f"made under another rubric \\({OTHER_RUBRIC_SHA[:12]} \\(4 rows\\)\\)"):
+        _build(tmp_path)
+
+
+def test_judgments_made_under_another_rubric_are_excluded_and_counted(tmp_path):
+    # a later re-judge under another rubric does not displace the supplied rubric's tier, and is counted
+    samples = _cell("s1", "a:m1", ["urgent"], ["urgent"])
+    shas = _write_archive(tmp_path / "advice", samples)
+    later = {"response_sha256": shas[1], "stimulus_id": "s1", "arm": "patient", "model": "a:m1", "sample_k": 1,
+             "judge_model": PRIMARY, "tier": "self_care", "rubric_sha256": OTHER_RUBRIC_SHA}
+    _write_archive(tmp_path / "advice", samples, [later])
+    out = _build(tmp_path)
+    assert out["items"][0]["per_model"][0]["patient_modal"] == "urgent"
+    assert out["items"][0]["downgrades"] == 0
+    assert out["row_accounting"][STEM]["judgment_rows"] == {"excluded:other_rubric": 1, "used": 2}
+    assert out["rubric"]["canonical_sha256"] == RUBRIC_SHA
+
+
+def test_a_judgment_under_another_rubric_with_a_tier_this_rubric_lacks_is_excluded_not_refused(tmp_path):
+    # Regression (Gemini review of PR #82): the tier was checked against the supplied rubric before rows made under
+    # another rubric were set aside, so a re-judge under a revised tier vocabulary stopped the run instead of being
+    # excluded and counted.
+    samples = _cell("s1", "a:m1", ["urgent"], ["urgent"])
+    shas = _write_archive(tmp_path / "advice", samples)
+    later = {"response_sha256": shas[1], "stimulus_id": "s1", "arm": "patient", "model": "a:m1", "sample_k": 1,
+             "judge_model": PRIMARY, "tier": "legacy_tier", "rubric_sha256": OTHER_RUBRIC_SHA}
+    _write_archive(tmp_path / "advice", samples, [later])
+    out = _build(tmp_path)
+    assert out["items"][0]["per_model"][0]["patient_modal"] == "urgent"
+    assert out["row_accounting"][STEM]["judgment_rows"] == {"excluded:other_rubric": 1, "used": 2}
+
+
+def test_a_judgment_under_the_supplied_rubric_with_an_unknown_tier_is_refused(tmp_path):
+    samples = _cell("s1", "a:m1", ["urgent"], ["urgent"])
+    shas = _write_archive(tmp_path / "advice", samples)
+    bad = {"response_sha256": shas[1], "stimulus_id": "s1", "arm": "patient", "model": "a:m1", "sample_k": 1,
+           "judge_model": PRIMARY, "tier": "legacy_tier", "rubric_sha256": RUBRIC_SHA}
+    _write_archive(tmp_path / "advice", samples, [bad])
+    with pytest.raises(SystemExit, match="'legacy_tier' is not a tier id of the rubric it was made under"):
+        _build(tmp_path)
+
+
+def test_a_stem_named_twice_is_refused(tmp_path):
+    # Regression (Codex, PR #73 post-merge): a repeated --stem loaded the archive twice and counted every one of its
+    # cells twice, in the downgrade counts and as independent draws in the null.
+    _two_stimuli(tmp_path)
+    with pytest.raises(SystemExit, match=f"named more than once: {STEM}"):
+        sel.build_report(tmp_path / "advice", [STEM, STEM], _rubric(tmp_path), PRIMARY, ["gemini"], "test note",
+                         15, 11, 50)
+    report_path, selection_path, base, _ = _cli_args(tmp_path)
+    with pytest.raises(SystemExit, match="named more than once"):
+        sel.main(base + ["--stem", STEM, "--stem", STEM,
+                         "--report-out", str(report_path), "--selection-out", str(selection_path)])
+    assert not report_path.exists() and not selection_path.exists()
 
 
 # --------------------------------------------------------------------- CLI

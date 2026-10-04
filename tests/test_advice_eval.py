@@ -234,6 +234,17 @@ def test_selection_copies_items_verbatim_and_records_provenance(tmp_path):
     assert a.read_bytes() == a_bytes and b.read_bytes() == b_bytes   # the source files are never touched
 
 
+def test_selection_records_a_manual_files_declared_family(tmp_path):
+    # A manual file's family is declared, not derived from source paths (build-stimuli --family), so a selection
+    # that copies from one records the declaration beside its kind and paths for the exporter to read.
+    a, _b = _two_files(tmp_path)
+    doc_a = json.loads(a.read_text(encoding="utf-8"))
+    doc_a["source"] = {"kind": "manual", "path": "data/advice/manual_x.json", "family": "natural_questions"}
+    a.write_text(json.dumps(doc_a), encoding="utf-8")
+    doc = _build_selection(tmp_path, _selection(tmp_path, [{"file": str(a), "id": "s1"}]))
+    assert doc["source"]["file_sources"] == {str(a): {"kind": "manual", "paths": None, "family": "natural_questions"}}
+
+
 def test_selection_suffixes_a_repeated_id_and_records_it(tmp_path):
     a, b = _two_files(tmp_path)
     sel = _selection(tmp_path, [{"file": str(a), "id": "s1"}, {"file": str(b), "id": "s1"}])
@@ -1154,6 +1165,20 @@ def test_analyze_reference_tiers_all_adjudicated_are_claim_grade(tmp_path):
     # a blank adjudicator does not count as one
     ref_blank = _reference_scoring_for(tmp_path, {"s1": {"tier": "mid", "adjudicated_by": "  "}}, "blank")
     assert ref_blank["claim_grade"] is False
+    # nor does an explicit null: the proposed-tier state, listed as not adjudicated
+    ref_null = _reference_scoring_for(tmp_path, {"s1": {"tier": "mid", "adjudicated_by": None}}, "null")
+    assert ref_null["claim_grade"] is False and ref_null["not_adjudicated_ids"] == ["s1"]
+
+
+@pytest.mark.parametrize("adjudicator", [True, 1, ["dr-x"], {"name": "dr-x"}],
+                         ids=["bool", "number", "list", "object"])
+def test_analyze_refuses_an_adjudicator_that_is_not_a_string(tmp_path, adjudicator):
+    # Regression (Codex, PR #73 post-merge): str() made any truthy value a non-empty "name", so a malformed
+    # adjudicated_by (true, a list, an object) could mark the whole reference block claim_grade true with no
+    # reviewer named. Only a non-empty string names an adjudicator; another type is refused, not coerced.
+    with pytest.raises(SystemExit, match=f"adjudicated_by is a {type(adjudicator).__name__}, not a string"):
+        _reference_scoring_for(tmp_path, {"s1": {"tier": "mid", "adjudicated_by": "dr-x"},
+                                          "s2": {"tier": "high", "adjudicated_by": adjudicator}}, "malformed")
 
 
 def test_analyze_dispersion_and_covariates(tmp_path):

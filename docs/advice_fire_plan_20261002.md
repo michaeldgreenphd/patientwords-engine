@@ -490,9 +490,19 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
   `scripts/export_advice_scenarios.py` with `--rubric data/advice_rubric.draft.json`
   (its default rubric path does not exist, which is why the published payload
   has `tier_order` null); and three exporter limits that affect these files.
-  The exporter labels a stimuli file "natural_questions" only when its
-  `source.paths` names an `advnat_` batch, so the manual-source new set would
-  be labelled "sentence_completions". It labels a file built by
+  The exporter labelled a stimuli file "natural_questions" only when its
+  `source.paths` named an `advnat_` batch, so the manual-source new set would
+  have been labelled "sentence_completions". Since 2026-10-03 (the follow-up
+  to PR #73's post-merge review) a manual file must declare its family in
+  `source.family`, written by `build-stimuli --source manual --family`, and
+  the exporter refuses one that declares none (exit 3). The new set as built,
+  `stimuli_20261002T080026Z.json`, declares none, so once Wave A is elicited
+  the exporter will refuse it rather than mislabel it. Until then the
+  exporter, before and after this change, refuses the file at an earlier
+  check, because it has no advice records yet. The family cannot be added
+  after Wave A fires, because every response records the file's hash
+  (section 7, item 7). The
+  exporter labels a file built by
   `--source selection` by the families of the files it copied from, and
   refuses one that mixes the two: the rerun file copies from three
   sentence-completion files and two natural-question files, so the exporter
@@ -524,3 +534,12 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
    sentence-completion items, 4 natural-question items), which means running
    each R fire once per file with the R2 and R3 chunks recomputed, or change
    the exporter to label each item by its own family.
+7. How Wave A reaches the site, decided before Wave A fires (added
+   2026-10-03): once Wave A is elicited, the exporter will refuse
+   `stimuli_20261002T080026Z.json` because it declares no family
+   (section 6). Either rebuild it from
+   `data/advice/manual_vignettes_20261002.json` with `--ask-suffix ""
+   --family natural_questions` before Wave A fires, which writes a new stamp
+   that the Wave A commands here and Amendment 6 (A6.3) would then name, or
+   fire it as built and give the exporter a way to declare a family at export
+   time before the set is published.

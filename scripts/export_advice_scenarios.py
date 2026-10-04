@@ -44,6 +44,9 @@ DISPLAY_ALIASES = {
     "openrouter:google/gemini-3.5-flash": "google:gemini-3.5-flash",  # AI Studio daily quota reroute, 2026-07-22
 }
 
+# The family labels a scenario can carry (advice_eval.STIMULI_FAMILIES, which build-stimuli --family offers).
+FAMILIES = ("sentence_completions", "natural_questions")
+
 
 def _load_advice_eval():
     path = Path(__file__).resolve().parent / "advice_eval.py"
@@ -59,12 +62,25 @@ def _refuse(reason: str) -> "SystemExit":
 
 
 def _families_of_source(source: dict) -> set[str]:
-    """The family labels a stimuli file's source block stands for. A --source
-    selection file (advice_eval.py build-stimuli, 2026-10-01) has no paths of
-    its own: its items are copies from other stimuli files, whose own source
-    kind and paths it records under file_sources, so its families are theirs
-    (recursively, for a selection of a selection)."""
-    if source.get("kind") == "selection":
+    """The family labels a stimuli file's source block stands for, by its kind
+    (advice_eval.py build-stimuli writes the block). Each kind has one rule, and
+    a block no rule covers is refused, never given a default label:
+
+    - payload: the published next-token payload, whose pairs are the original
+      sentence-completion frame, so sentence_completions;
+    - pairs: natural_questions when a source batch is an advnat_* file, else
+      sentence_completions; a pairs block with no paths is refused;
+    - manual: the family the file declares in source.family (build-stimuli
+      --family); a manual file has no source batch to read it from, so one that
+      declares none, or an unknown one, is refused (Codex, post-merge review of
+      PR #73: the natural-question set of 2026-10-02 would otherwise have been
+      labelled sentence_completions);
+    - selection: a --source selection file (2026-10-01) has no paths of its
+      own: its items are copies from other stimuli files, whose own source kind,
+      paths and declared family it records under file_sources, so its families
+      are theirs (recursively, for a selection of a selection)."""
+    kind = source.get("kind")
+    if kind == "selection":
         file_sources = source.get("file_sources")
         if not isinstance(file_sources, dict) or not file_sources:
             raise _refuse("a --source selection stimuli file records no file_sources, so its family cannot be "
@@ -73,17 +89,33 @@ def _families_of_source(source: dict) -> set[str]:
         for file_source in file_sources.values():
             families |= _families_of_source(file_source if isinstance(file_source, dict) else {})
         return families
-    paths = source.get("paths") or []
-    return {"natural_questions" if any("advnat_" in str(p) for p in paths) else "sentence_completions"}
+    if kind == "manual":
+        family = source.get("family")
+        if family not in FAMILIES:
+            raise _refuse(f"a --source manual stimuli file must declare its family in source.family (one of "
+                          f"{', '.join(FAMILIES)}); this one records {family!r}. Build it with advice_eval.py "
+                          "build-stimuli --source manual --family <family> before eliciting: the family is part of "
+                          "the stimuli document every response's stimuli_sha256 binds, so it cannot be added after")
+        return {family}
+    if kind == "payload":
+        return {"sentence_completions"}
+    if kind == "pairs":
+        paths = source.get("paths")
+        if not isinstance(paths, list) or not paths:
+            raise _refuse("a --source pairs stimuli file records no source paths, so its family cannot be labelled")
+        return {"natural_questions" if any("advnat_" in str(p) for p in paths) else "sentence_completions"}
+    raise _refuse(f"stimuli source kind {kind!r} has no family rule (payload, pairs, manual or selection), so its "
+                  "family cannot be labelled")
 
 
 def _family_of(stimuli_doc: dict) -> str:
-    """Structural family label from the stimuli file's own source paths (an
-    advnat_* batch is the natural-question family; everything else is the
-    original sentence-completion frame). A selection file takes the family of
-    the files it copied from, and one that copied from both families is
-    refused: the label is per stimuli file, so one label would misname the
-    other family's scenarios and miscount both."""
+    """Structural family label from the stimuli file's own source block, by the
+    rules of _families_of_source (an advnat_* pairs batch is the natural-question
+    family, the published payload the sentence-completion frame, a manual file
+    the family it declares). A selection file takes the family of the files it
+    copied from, and one that copied from both families is refused: the label
+    is per stimuli file, so one label would misname the other family's
+    scenarios and miscount both."""
     families = _families_of_source(stimuli_doc.get("source") or {})
     if len(families) != 1:
         raise _refuse(f"the stimuli file's items come from more than one family ({sorted(families)}), and the "

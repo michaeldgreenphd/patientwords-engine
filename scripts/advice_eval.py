@@ -62,6 +62,10 @@ DEFAULT_ASK_SUFFIX_MANUAL = "What should I do?"
 # truncated registered set ONLY in the target word being present vs cut off.
 DEFAULT_ASK_SUFFIX_COMPLETED = "Anyway what should I do?"
 ARMS = ("clinical", "patient", "translated")
+# The stimuli families the site exporter (export_advice_scenarios.py) labels. A payload or pairs file's family
+# follows from its source; a manual file has no source batch to read it from, so build-stimuli --source manual
+# records the one --family names in source.family, and the exporter refuses a manual file that records none.
+STIMULI_FAMILIES = ("sentence_completions", "natural_questions")
 DEFAULT_MAX_TOKENS = 1024
 DEFAULT_SAMPLES = 3
 EST_INPUT_TOKENS = 400  # worst-case per-call input sizing for the pre-call budget check
@@ -708,6 +712,8 @@ def _load_selection_source(file: str) -> dict:
     src = doc.get("source")
     src = src if isinstance(src, dict) else {}
     family_source = {"kind": src.get("kind"), "paths": src.get("paths")}
+    if "family" in src:   # a manual file's declared family (build-stimuli --family), which the exporter requires
+        family_source["family"] = src.get("family")
     if src.get("kind") == "selection":
         family_source["file_sources"] = src.get("file_sources")
     return {"sha256": hashlib.sha256(raw).hexdigest(), "ask_suffix": doc.get("ask_suffix"), "by_id": by_id,
@@ -1057,6 +1063,12 @@ def build_stimuli(args) -> Path:
                     item[key] = entry[key].strip()
             items.append(item)
         source_desc = {"kind": "manual", "path": str(args.manual_in)}
+        family = getattr(args, "family", None)
+        if family is not None:
+            source_desc["family"] = family
+        else:
+            print("no --family: the site exporter refuses a manual stimuli file that declares no family, and the "
+                  "family cannot be added after elicitation (every response records the stimuli file's hash)")
     elif args.source == "selection":
         if args.ask_suffix is not None:
             raise SystemExit("--ask-suffix does not apply to --source selection: selected items are copied with "
@@ -1896,6 +1908,10 @@ def analyze(args) -> Path:
         # standard triage guidance; not clinician-adjudicated") is still scored,
         # but the whole block is then marked claim_grade false, so its
         # under_triage numbers cannot pass for Amendment 1's primary endpoint.
+        # Only a non-empty string names an adjudicator. Absent, null or blank
+        # is the documented proposed-tier state and is listed as not
+        # adjudicated; any other type (true, a number, a list, an object) is a
+        # malformed field and is refused, never coerced into a name.
         not_adjudicated: list[str] = []
         for it in _load_json(args.stimuli).get("items", []):
             ref_block = it.get("reference") or {}
@@ -1905,7 +1921,12 @@ def analyze(args) -> Path:
                     raise SystemExit(f"{args.stimuli}: item {it.get('id')}: reference tier "
                                      f"{tier!r} is not a tier id of the rubric in force")
                 refs[it["id"]] = rank[tier]
-                if not str(ref_block.get("adjudicated_by") or "").strip():
+                adjudicator = ref_block.get("adjudicated_by")
+                if adjudicator is not None and not isinstance(adjudicator, str):
+                    raise SystemExit(f"{args.stimuli}: item {it.get('id')}: reference adjudicated_by is a "
+                                     f"{type(adjudicator).__name__}, not a string; it names who adjudicated the "
+                                     "tier, so record the name or leave the field out (not adjudicated); refusing")
+                if not (adjudicator or "").strip():
                     not_adjudicated.append(it["id"])
         if refs:
             per_ma: dict[tuple, dict] = {}
@@ -2774,6 +2795,9 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--simulated-dir", default="data/simulated",
                    help="selection source: where the Tier B batch files the holdout gate reads live")
     b.add_argument("--manual-in", help="manual source: JSON array of {id, clinical, patient, notes?}")
+    b.add_argument("--family", choices=STIMULI_FAMILIES, default=None,
+                   help="manual source: the stimuli family recorded in source.family, which the site exporter "
+                        "requires of a manual file (a payload or pairs file's family follows from its source)")
     b.add_argument("--ask-suffix", default=None, help="appended verbatim to BOTH sides (default per source)")
     b.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
 
@@ -2884,6 +2908,9 @@ def main(argv=None) -> None:
             raise SystemExit("--source pairs requires --pairs <file...>")
         if args.source == "manual" and not args.manual_in:
             raise SystemExit("--source manual requires --manual-in <file>")
+        if args.family is not None and args.source != "manual":
+            raise SystemExit("--family only applies to --source manual: a payload, pairs or selection file's "
+                             "family follows from its source")
         if args.source == "selection" and not args.selection:
             raise SystemExit("--source selection requires --selection <file>")
         if args.complete_with_target and args.source != "payload":

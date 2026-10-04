@@ -31,17 +31,32 @@ Methodology (every step is the repository's own definition, restated here so a
 reader of the output can reconstruct it without reading the caller):
 
 1. Inputs. Every ``judgments_<stem>.jsonl`` in the advice directory (or the stems
-   named with ``--stem``), with its ``responses_<stem>.jsonl`` and the stimuli
-   file ``<stem>.json``. Each responses archive must pass ``verify_chain``; a
-   broken chain is a refusal, as in the exporter. The sha256 of every input file
-   is recorded in the output.
+   named with ``--stem``, each at most once), with its ``responses_<stem>.jsonl``
+   and the stimuli file ``<stem>.json``. Each responses archive must pass
+   ``verify_chain``; a broken chain is a refusal, as in the exporter. An archive
+   cut back to an earlier prefix still passes ``verify_chain``, so the archive
+   must also hold exactly the ``records_total`` records and end at the
+   ``chain_head`` that its sidecar ``responses_<stem>.report.json`` recorded when
+   the records were written; a missing sidecar, a missing or malformed field, or
+   a mismatch is a refusal. Every advice record must carry the
+   ``stimuli_sha256`` of the loaded stimuli document (``advice_eval``'s
+   canonical hash, ``sha256_text(canonical_json(doc))``), so responses elicited
+   from another version of the stimuli file are refused. The sha256 of every
+   file the ranking is computed from is recorded in the output; the sidecar is
+   read only for the two values above, which a passing check makes equal to
+   values the recorded archive sha256 already determines, so it is not listed.
 2. Judge. Only the primary judge (``--judge-model``, default ``claude-haiku-4-5``).
    Provider-spec judges (``provider:model``) are secondary second opinions and
    are excluded, as ``analyze`` and the exporter exclude them; any other bare
    judge label is excluded too, so the ranking rests on one judge. Judgment rows
    with a null tier are judge failures (the judge retries them) and carry no
-   tier. When one response has several primary judgments, the last one in the
-   file wins ("later passes overwrite earlier ones", as in the exporter).
+   tier. Every judgment row carries the ``rubric_sha256`` it was made under
+   (the canonical hash of the rubric, as ``advice_eval.py judge`` writes it);
+   primary-judge rows made under a rubric other than ``--rubric`` are a different
+   instrument and are excluded and counted, and an archive none of whose
+   primary-judge rows were made under ``--rubric`` is refused. When one response
+   has several primary judgments, the last one in the file wins ("later passes
+   overwrite earlier ones", as in the exporter).
 3. One sample per (stimulus file, stimulus id, arm, model, sample k), chosen the
    exporter's way (``export_advice_scenarios.build_payload``): response records
    are grouped by (stimulus id, arm, display model), where ``DISPLAY_ALIASES``
@@ -86,7 +101,8 @@ reader of the output can reconstruct it without reading the caller):
 Malformed rows are refused, never skipped: a judgment row missing a field,
 with a field of the wrong type, with a tier the rubric does not define, or
 pointing at a response the archive does not hold stops the run with the file
-and line. Excluded rows are counted by reason in the output.
+and line, as does an advice record whose ``stimuli_sha256`` is absent or names
+another stimuli document. Excluded rows are counted by reason in the output.
 
 This script ranks archived machine codings (provisional, rubric draft); it
 dispenses no advice and makes no claim-grade statement. The selection is post
@@ -180,13 +196,18 @@ def _nonempty_str(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
-def _judgment_problem(row: Any, tier_ids: set[str]) -> str | None:
-    """Why a judgment row is malformed, or None when it is well formed."""
+def _judgment_problem(row: Any) -> str | None:
+    """Why a judgment row is malformed, or None when it is well formed. The tier is checked here only for its type:
+    which tier ids are valid depends on the rubric the row was made under, so load_archive checks membership for rows
+    made under the supplied rubric and sets rows made under another rubric aside unread."""
     if not isinstance(row, dict):
         return "not a JSON object"
     sha = row.get("response_sha256")
     if not isinstance(sha, str) or not _SHA256_RE.match(sha):
         return "response_sha256 is not a 64-character hex digest"
+    rubric_sha = row.get("rubric_sha256")
+    if not isinstance(rubric_sha, str) or not _SHA256_RE.match(rubric_sha):
+        return "rubric_sha256 is not a 64-character hex digest (every judgment records the rubric it was made under)"
     for key in ("stimulus_id", "model", "judge_model"):
         if not _nonempty_str(row.get(key)):
             return f"{key} is missing or not a non-empty string"
@@ -197,8 +218,8 @@ def _judgment_problem(row: Any, tier_ids: set[str]) -> str | None:
     if "tier" not in row:
         return "tier field is absent (a judge failure is recorded as tier null)"
     tier = row["tier"]
-    if tier is not None and tier not in tier_ids:
-        return f"tier {tier!r} is not a tier id of the rubric in force"
+    if tier is not None and not _nonempty_str(tier):
+        return f"tier {tier!r} is neither null nor a non-empty string"
     return None
 
 
@@ -218,7 +239,45 @@ def _advice_problem(row: dict) -> str | None:
     sent = row.get("sent_utc")
     if sent is not None and not isinstance(sent, str):
         return "sent_utc is neither a string nor null"
+    stimuli_sha = row.get("stimuli_sha256")
+    if not isinstance(stimuli_sha, str) or not _SHA256_RE.match(stimuli_sha):
+        return "stimuli_sha256 is not a 64-character hex digest (every advice record names the stimuli it was sent from)"
     return None
+
+
+def _is_count(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def check_sidecar(responses_path: Path, sidecar_path: Path, rows: list[dict]) -> None:
+    """Refuse unless the archive holds exactly the records its sidecar recorded when they were written.
+
+    ``verify_chain`` proves each record follows the one before it, so an archive cut back to an earlier prefix
+    still verifies. Every writer of a responses archive (``advice_eval.py`` elicit, import-manual-responses and
+    recover) also writes ``records_total`` and ``chain_head`` to ``responses_<stem>.report.json``; every committed
+    sidecar carries both (2026-10-03). A missing sidecar, a missing or malformed field, or a value the archive does
+    not match is a refusal, never a skipped check."""
+    if not sidecar_path.is_file():
+        raise SystemExit(f"{sidecar_path}: missing; it records the record count and chain head that "
+                         f"{responses_path.name} must match, so a truncated archive cannot pass; refusing")
+    try:
+        sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        raise SystemExit(f"{sidecar_path}: not valid JSON ({exc}); refusing") from exc
+    if not isinstance(sidecar, dict):
+        raise SystemExit(f"{sidecar_path}: not a JSON object; refusing")
+    total, head = sidecar.get("records_total"), sidecar.get("chain_head")
+    if not _is_count(total):
+        raise SystemExit(f"{sidecar_path}: records_total {total!r} is missing or not a non-negative integer; refusing")
+    if not (head is None and total == 0) and (not isinstance(head, str) or not _SHA256_RE.match(head)):
+        raise SystemExit(f"{sidecar_path}: chain_head {head!r} is missing or not a 64-character hex digest; refusing")
+    if total != len(rows):
+        raise SystemExit(f"{responses_path}: holds {len(rows)} record(s) but {sidecar_path.name} records "
+                         f"records_total {total}; refusing to rank a truncated or unrecorded archive")
+    archive_head = rows[-1].get("record_sha256") if rows else None
+    if head != archive_head:
+        raise SystemExit(f"{responses_path}: ends at record {str(archive_head)[:12]} but {sidecar_path.name} records "
+                         f"chain_head {str(head)[:12]}; refusing to rank an archive its sidecar does not describe")
 
 
 @dataclass
@@ -238,12 +297,17 @@ def _bump(counter: dict[str, int], key: str, by: int = 1) -> None:
     counter[key] = counter.get(key, 0) + by
 
 
-def load_archive(advice_dir: Path, stem: str, tier_ids: set[str], judge_model: str) -> Archive:
+def load_archive(advice_dir: Path, stem: str, tier_ids: set[str], judge_model: str,
+                 rubric_sha256: str) -> Archive:
     """Read one (stimuli, responses, judgments) triple and return its judged cells.
 
-    Refuses on a missing file, a broken hash chain, a malformed advice record or
-    judgment row, a stimulus id the stimuli file does not define, and a judgment
-    that names a response the archive does not hold (or holds under another key).
+    Refuses on a missing file, a broken hash chain, an archive its sidecar's
+    records_total and chain_head do not describe, a malformed advice record or
+    judgment row, an advice record elicited from another stimuli document
+    (stimuli_sha256), a stimulus id the stimuli file does not define, a judgment
+    that names a response the archive does not hold (or holds under another
+    key), and an archive whose primary-judge rows were none of them made under
+    the rubric whose canonical hash is ``rubric_sha256``.
     """
     stimuli_path = advice_dir / f"{stem}.json"
     responses_path = advice_dir / f"responses_{stem}.jsonl"
@@ -260,6 +324,8 @@ def load_archive(advice_dir: Path, stem: str, tier_ids: set[str], judge_model: s
     if not isinstance(items, list):
         raise SystemExit(f"{stimuli_path}: no 'items' list; refusing")
     stimulus_ids = {it.get("id") for it in items if isinstance(it, dict)}
+    # the hash advice_eval.py elicit stamps on every record it sends from this document
+    stimuli_sha256 = ae.sha256_text(ae.canonical_json(stimuli_doc))
 
     numbered = _read_jsonl_numbered(responses_path)
     rows = [r for _n, r in numbered]
@@ -269,6 +335,7 @@ def load_archive(advice_dir: Path, stem: str, tier_ids: set[str], judge_model: s
     ok, msg = ae.verify_chain(rows)
     if not ok:
         raise SystemExit(f"{responses_path}: {msg}; refusing to rank a tampered or truncated archive")
+    check_sidecar(responses_path, advice_dir / f"responses_{stem}.report.json", rows)
 
     advice: list[dict] = []
     for line_no, row in numbered:
@@ -282,18 +349,29 @@ def load_archive(advice_dir: Path, stem: str, tier_ids: set[str], judge_model: s
         if row["stimulus_id"] not in stimulus_ids:
             raise SystemExit(f"{responses_path}:{line_no}: stimulus id {row['stimulus_id']!r} is not in "
                              f"{stimuli_path.name}; refusing")
+        if row["stimuli_sha256"] != stimuli_sha256:
+            raise SystemExit(f"{responses_path}:{line_no}: the response was elicited from a stimuli document with "
+                             f"canonical sha256 {row['stimuli_sha256'][:12]}, but {stimuli_path.name} hashes to "
+                             f"{stimuli_sha256[:12]}; refusing to rank responses against text they were not sent")
         advice.append(row)
     keys_by_sha: dict[str, set[tuple[str, str, str, int]]] = {}
     for r in advice:
         keys_by_sha.setdefault(r["response_sha256"], set()).add(
             (r["stimulus_id"], r["arm"], r["model_requested"], r["sample_k"]))
 
-    # Judgments: validate every row, then keep the last primary non-null tier per response.
+    # Judgments: validate every row, then keep the last primary non-null tier per response made under the rubric.
     tier_by_sha: dict[str, str] = {}
+    other_rubrics: dict[str, int] = {}
+    primary_under_rubric = 0
     for line_no, row in _read_jsonl_numbered(judgments_path):
-        problem = _judgment_problem(row, tier_ids)
+        problem = _judgment_problem(row)
         if problem:
             raise SystemExit(f"{judgments_path}:{line_no}: malformed judgment row: {problem}; refusing")
+        if row["rubric_sha256"] == rubric_sha256 and row["tier"] is not None and row["tier"] not in tier_ids:
+            # a row made under the supplied rubric must use its tiers (any judge); a row made under another rubric
+            # may use that rubric's tiers and is set aside below without its tier being read
+            raise SystemExit(f"{judgments_path}:{line_no}: malformed judgment row: tier {row['tier']!r} is not a "
+                             f"tier id of the rubric it was made under ({rubric_sha256[:12]}); refusing")
         keys = keys_by_sha.get(row["response_sha256"])
         if keys is None:
             raise SystemExit(f"{judgments_path}:{line_no}: judgment for response "
@@ -307,12 +385,22 @@ def load_archive(advice_dir: Path, stem: str, tier_ids: set[str], judge_model: s
         if row["judge_model"] != judge_model:
             _bump(arc.judgment_rows, "excluded:other_judge")
             continue
+        if row["rubric_sha256"] != rubric_sha256:
+            # the same judge under another rubric is a different instrument (as in referral_destination.py)
+            _bump(arc.judgment_rows, "excluded:other_rubric")
+            _bump(other_rubrics, row["rubric_sha256"][:12])
+            continue
+        primary_under_rubric += 1
         if row["tier"] is None:
             _bump(arc.judgment_rows, "excluded:null_tier")
             continue
         if row["response_sha256"] in tier_by_sha:
             _bump(arc.judgment_rows, "excluded:superseded_by_later_judgment")
         tier_by_sha[row["response_sha256"]] = row["tier"]
+    if other_rubrics and not primary_under_rubric:
+        raise SystemExit(f"{judgments_path}: every {judge_model} judgment was made under another rubric "
+                         f"({', '.join(f'{d} ({n} rows)' for d, n in sorted(other_rubrics.items()))}), none under "
+                         f"the supplied rubric {rubric_sha256[:12]}; refusing to rank this archive under it")
     arc.judgment_rows["used"] = len(tier_by_sha)  # rows left after the exclusions above
 
     # Exporter dedupe: one record per (stimulus, arm, display model, k).
@@ -490,10 +578,12 @@ def build_report(advice_dir: Path, stems: list[str], rubric_path: Path, judge_mo
         raise SystemExit("--permutations must be at least 1")
     if top < 1:
         raise SystemExit("--top must be at least 1")
+    refuse_duplicate_stems(stems)
     rubric = json.loads(rubric_path.read_text(encoding="utf-8"))
     tier_order = [t["id"] for t in rubric["tiers"]]
     rank = {t: i for i, t in enumerate(tier_order)}
-    archives = [load_archive(advice_dir, stem, set(tier_order), judge_model) for stem in stems]
+    rubric_sha256 = ae.sha256_text(ae.canonical_json(rubric))   # the hash advice_eval.py judge stamps on each row
+    archives = [load_archive(advice_dir, stem, set(tier_order), judge_model, rubric_sha256) for stem in stems]
     cells = paired_cells(archives, rank, seed, permutations)
     ranked = rank_stimuli(cells, exclude)
     if not ranked:
@@ -594,7 +684,7 @@ def build_report(advice_dir: Path, stems: list[str], rubric_path: Path, judge_mo
         "judge_model": judge_model,
         "excluded_models": {"substrings": list(exclude), "note": exclude_note},
         "rubric": {"path": _display_path(rubric_path), "version": rubric.get("version"),
-                   "canonical_sha256": ae.sha256_text(ae.canonical_json(rubric)), "tier_order": tier_order},
+                   "canonical_sha256": rubric_sha256, "tier_order": tier_order},
         "display_aliases": DISPLAY_ALIASES,
         "inputs": inputs,
         "row_accounting": {arc.stem: {"judgment_rows": dict(sorted(arc.judgment_rows.items())),
@@ -606,6 +696,15 @@ def build_report(advice_dir: Path, stems: list[str], rubric_path: Path, judge_mo
         "script": "scripts/advice_rerun_select.py",
         "command": command,
     }
+
+
+def refuse_duplicate_stems(stems: list[str]) -> None:
+    """Refuse a stem named more than once: its archive would be loaded twice and every one of its cells counted
+    twice, in the downgrade counts and as independent draws in the null."""
+    repeated = sorted({s for s in stems if stems.count(s) > 1})
+    if repeated:
+        raise SystemExit(f"stem(s) named more than once: {', '.join(repeated)}; each archive is ranked once, so a "
+                         "repeated --stem would count its cells twice; refusing")
 
 
 def _bonferroni_phrase(items: list[dict[str, Any]]) -> str:
@@ -696,6 +795,7 @@ def main(argv: list[str] | None = None) -> dict[str, Any]:
             if out.exists():
                 raise SystemExit(f"{out}: exists; data/advice/ is append-only, so write a new file instead")
     stems = args.stem or discover_stems(advice_dir)
+    refuse_duplicate_stems(stems)
     exclude = list(args.exclude_model) if args.exclude_model is not None else list(DEFAULT_EXCLUDE)
     cli_args = list(argv) if argv is not None else sys.argv[1:]
     report = build_report(advice_dir, stems, Path(args.rubric), args.judge_model, exclude,

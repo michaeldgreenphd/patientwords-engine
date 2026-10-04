@@ -51,7 +51,8 @@ def archive(tmp_path, monkeypatch):
          "patient": "everyday body two, so I track it with a"},
     ]), encoding="utf-8")
     out_dir = tmp_path / "advice"
-    ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(manual), "--out-dir", str(out_dir)])
+    ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(manual), "--family", "sentence_completions",
+             "--out-dir", str(out_dir)])
     stim = next(out_dir.glob("stimuli_*.json"))
     registry = tmp_path / "providers.json"
     registry.write_text(json.dumps({
@@ -158,7 +159,8 @@ def test_export_merges_rerouted_google_paths(tmp_path, monkeypatch):
          "patient": "everyday body one, so I track it with a"},
     ]), encoding="utf-8")
     out_dir = tmp_path / "advice"
-    ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(manual), "--out-dir", str(out_dir)])
+    ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(manual), "--family", "sentence_completions",
+             "--out-dir", str(out_dir)])
     stim = next(out_dir.glob("stimuli_*.json"))
     registry = tmp_path / "providers.json"
     registry.write_text(json.dumps({
@@ -206,7 +208,8 @@ def test_export_joins_trace_and_rationale_from_site_payload(tmp_path, monkeypatc
          "patient": "everyday body two, so I track it with a"},
     ]), encoding="utf-8")
     out_dir = tmp_path / "advice"
-    ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(manual), "--out-dir", str(out_dir)])
+    ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(manual), "--family", "sentence_completions",
+             "--out-dir", str(out_dir)])
     stim = next(out_dir.glob("stimuli_*.json"))
     registry = tmp_path / "providers.json"
     registry.write_text(json.dumps({
@@ -266,7 +269,8 @@ def test_export_refuses_empty_archive(tmp_path):
     manual = tmp_path / "manual.json"
     manual.write_text(json.dumps([{"id": "s1", "clinical": "aa bb", "patient": "cc dd"}]), encoding="utf-8")
     out_dir = tmp_path / "advice"
-    ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(manual), "--out-dir", str(out_dir)])
+    ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(manual), "--family", "sentence_completions",
+             "--out-dir", str(out_dir)])
     stim = next(out_dir.glob("stimuli_*.json"))
     with pytest.raises(SystemExit) as exc:
         ex.main(["--stimuli", str(stim), "--out", str(tmp_path / "x.json")])
@@ -372,6 +376,7 @@ def _selection_doc(*file_sources):
 
 NATURAL = {"kind": "pairs", "paths": ["data/simulated/advnat_20260728T000000Z.json"]}
 COMPLETION = {"kind": "payload", "paths": None}
+MANUAL_NATURAL = {"kind": "manual", "paths": None, "family": "natural_questions"}   # as a selection records it
 
 
 def test_family_of_a_selection_file_is_its_source_files_family():
@@ -384,7 +389,8 @@ def test_family_of_a_selection_file_is_its_source_files_family():
     # the families of the other kinds are unchanged
     assert ex._family_of({"source": NATURAL}) == "natural_questions"
     assert ex._family_of({"source": COMPLETION}) == "sentence_completions"
-    assert ex._family_of({}) == "sentence_completions"
+    # a selection of a manual file takes the family that file declares (build-stimuli copies source.family)
+    assert ex._family_of(_selection_doc(MANUAL_NATURAL)) == "natural_questions"
 
 
 @pytest.mark.parametrize("doc", [
@@ -396,3 +402,65 @@ def test_family_of_refuses_a_selection_it_cannot_label(doc, capsys):
         ex._family_of(doc)
     assert exc.value.code == 3
     assert "refused:" in capsys.readouterr().out
+
+
+def test_a_manual_file_takes_the_family_it_declares():
+    assert ex._family_of({"source": MANUAL_NATURAL}) == "natural_questions"
+    assert ex._family_of({"source": {**MANUAL_NATURAL, "family": "sentence_completions"}}) == "sentence_completions"
+    # the exporter's labels are the ones build-stimuli --family offers
+    assert ex.FAMILIES == ae.STIMULI_FAMILIES
+
+
+@pytest.mark.parametrize("doc", [
+    {"source": {"kind": "manual", "path": "data/advice/manual_x.json"}},   # declares no family
+    {"source": {**MANUAL_NATURAL, "family": None}},
+    {"source": {**MANUAL_NATURAL, "family": "register_rewrite"}},         # not a family the page labels
+    _selection_doc({"kind": "manual", "paths": None}),                       # a selection of an undeclared manual file
+    {"source": {"kind": "pairs", "paths": []}},
+    {"source": {"kind": "pairs"}},
+    {"source": {"kind": "something_else", "paths": None}},
+    {},
+], ids=["manual-no-family", "manual-null-family", "manual-unknown-family", "selection-of-undeclared-manual",
+        "pairs-empty-paths", "pairs-no-paths", "unknown-kind", "no-source"])
+def test_family_of_refuses_a_source_no_rule_labels(doc, capsys):
+    # Regression (Codex, PR #73 post-merge): a source with no paths fell through to sentence_completions, so the
+    # manual natural-question set of 2026-10-02 (source.kind manual, no paths) would have been published under the
+    # wrong family. Each kind now has its own rule, and a source no rule labels is refused.
+    with pytest.raises(SystemExit) as exc:
+        ex._family_of(doc)
+    assert exc.value.code == 3
+    assert "refused:" in capsys.readouterr().out
+
+
+def test_a_manual_natural_question_file_is_exported_under_its_family(tmp_path, monkeypatch):
+    manual = tmp_path / "manual.json"
+    manual.write_text(json.dumps([{"id": "n1", "clinical": "clinical question one?",
+                                   "patient": "everyday question one?"}]), encoding="utf-8")
+    out_dir = tmp_path / "advice"
+    ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(manual), "--family", "natural_questions",
+             "--out-dir", str(out_dir)])
+    stim = next(out_dir.glob("stimuli_*.json"))
+    assert json.loads(stim.read_text(encoding="utf-8"))["source"] == {
+        "kind": "manual", "path": str(manual), "family": "natural_questions"}
+    registry = tmp_path / "providers.json"
+    registry.write_text(json.dumps({"prov-x": {"api": "openai-compat", "base_url": "https://x.example/v1",
+                                               "key_env": "X_KEY", "default_pricing": [1.0, 4.0]}}),
+                        encoding="utf-8")
+    monkeypatch.setattr(ae, "_send_compat", lambda cfg, model, system, user_text, max_tokens, temperature: (
+        f"advice for [{user_text[:18]}]", 10, 20, {"model": model + "-served", "usage": {}}))
+    ae.main(["elicit", "--stimuli", str(stim), "--models", "prov-x:model-1", "--providers", str(registry),
+             "--arms", "clinical,patient", "--samples", "1", "--max-spend", "5.0", "--out-dir", str(out_dir)])
+    out = tmp_path / "advice_scenarios.json"
+    ex.main(["--stimuli", str(stim), "--out", str(out)])
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert [s["family"] for s in payload["scenarios"]] == ["natural_questions"]
+
+
+def test_build_stimuli_takes_a_family_only_for_a_manual_source(tmp_path):
+    with pytest.raises(SystemExit, match="--family only applies to --source manual"):
+        ae.main(["build-stimuli", "--source", "pairs", "--pairs", str(tmp_path / "pairs.json"),
+                 "--family", "natural_questions", "--out-dir", str(tmp_path / "advice")])
+    with pytest.raises(SystemExit):   # argparse: not one of the families the exporter labels
+        ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(tmp_path / "m.json"),
+                 "--family", "register_rewrite", "--out-dir", str(tmp_path / "advice")])
+    assert not (tmp_path / "advice").exists()
