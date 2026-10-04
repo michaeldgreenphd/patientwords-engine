@@ -168,6 +168,9 @@ first review:
 
 With 40 reviews, only a large change can be told apart from noise: the intervals above are about 30 points wide.
 
+Run 2's review (`pilot_v2_20261002`, 2026-10-04) against this baseline, and its owner-against-checker agreement, are
+recorded in `../codebook/README.md`.
+
 Version 2 also makes possible three comparisons that run 1 could not support:
 
 - the owner's `sentence_natural` and `patient_realism` answers against the checker's on the same rows;
