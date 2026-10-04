@@ -182,9 +182,10 @@ in `ops/pab_ci/`.
 ## Physician verification
 
 The task bundle for the physician verification app, whose code is in the
-private repository `michaeldgreenphd/patientwords-verify`.
-`docs/verification_protocol.md` is the protocol.
+private repository `michaeldgreenphd/patientwords-verify`, and the import of
+the ratings the app exports. `docs/verification_protocol.md` is the protocol.
 
 | Script | What it does | Status | Writes | Who runs it |
 |---|---|---|---|---|
 | `export_verification_tasks.py` | The items physicians rate, blind to source: pilot Run 2's 40 traced pairs, the published main-study pairs with the largest language penalty, the 2026-10-02 advice stimuli and the Petri wave-3 scripts, with the question wording from `data/verification/questions.json`; refuses (writing nothing) on a missing input, an unknown field, a changed text or any holdout-seal hit | operator tool | `--out-dir`, default `data/verification/`: a new `tasks_<stamp>.json` it refuses to overwrite, its seed recorded inside | owner or session, before each upload to the app; then `seal_check.py`, whose default roots include `data/verification/` (so the daily sweep re-checks every committed bundle) |
+| `import_verification_ratings.py` | Reads the app's ratings export against the bundle it names and the questions file (refusing, writing nothing, on a sha256 mismatch, an unknown id or value, a field outside the export schema or any identity data); derives current, first and reveal-time blind answers; computes Krippendorff's alpha (ordinal or nominal) with a seeded item bootstrap, per-item realism flags and the proposed combined urgency tier; counts notes, never copies them | operator tool | `--out-dir`, default `data/verification/`: `ratings_<bundle_id>_<export stamp>.summary.json` and `.md`, and with `--write-proposed-adjudication` a `.proposed_adjudication.json` (the shape `advice_eval.py analyze --stimuli` reads, marked not in force); never replaces an output silently; seed and resamples recorded | owner or session, when the owner hands over an export |

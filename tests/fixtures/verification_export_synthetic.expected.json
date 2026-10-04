@@ -1,0 +1,605 @@
+{
+ "generator": "a Node script driving the verification app's server code (patientwords-verify dff1069) in its Node test environment over data/verification/tasks_20261004T042945Z.json; this file is computed from that script's own record of what it saved, and the alpha values from the third-party `krippendorff` package (0.8.2) on the same answers, never from the export or the engine import",
+ "excluded": [
+  "md01"
+ ],
+ "raters": {
+  "md01": {
+   "started": 3,
+   "complete": 3
+  },
+  "md02": {
+   "started": 19,
+   "complete": 18
+  },
+  "md03": {
+   "started": 18,
+   "complete": 16
+  },
+  "md04": {
+   "started": 20,
+   "complete": 17
+  },
+  "md05": {
+   "started": 19,
+   "complete": 19
+  }
+ },
+ "complete_by_set": {
+  "advice_new": 16,
+  "tracing_pair": 39,
+  "advice_rerun": 8,
+  "multiturn_script": 4,
+  "advice_rerun_truncated": 3
+ },
+ "incomplete_by_set": {
+  "tracing_pair": 3,
+  "advice_new": 3
+ },
+ "changed_after_first": {
+  "advice_new|realism_patient": 1,
+  "multiturn_script|coherent": 1,
+  "advice_rerun|coherent": 2,
+  "advice_new|same": 3,
+  "advice_rerun_truncated|situation_plausible": 1,
+  "advice_rerun|same": 1,
+  "advice_new|realism_clinical": 2,
+  "advice_new|patient_tier_differs": 1,
+  "tracing_pair|clinical_right": 1,
+  "tracing_pair|coherent": 4,
+  "tracing_pair|same": 2,
+  "advice_new|own_tier": 2,
+  "tracing_pair|keep": 2,
+  "multiturn_script|realism.colloquial": 1,
+  "multiturn_script|realism.lay_careful": 1
+ },
+ "cleared_after_first": {},
+ "changed_after_reveal": {
+  "advice_new|realism_patient": 1,
+  "advice_new|same": 3,
+  "advice_new|patient_tier_differs": 1
+ },
+ "first_given_after_reveal": {
+  "advice_new|patient_tier_differs": 7
+ },
+ "distributions": {
+  "advice_new|realism_patient": {
+   "1": 4,
+   "2": 3,
+   "3": 4,
+   "4": 3,
+   "5": 2
+  },
+  "advice_new|realism_clinical": {
+   "1": 3,
+   "3": 5,
+   "4": 6,
+   "5": 1,
+   "\"cant_judge\"": 1
+  },
+  "advice_new|same": {
+   "\"no\"": 8,
+   "\"yes\"": 7,
+   "\"cant_tell\"": 1
+  },
+  "advice_new|enough_info": {
+   "\"yes\"": 6,
+   "\"no\"": 10
+  },
+  "advice_new|coherent": {
+   "\"no\"": 10,
+   "\"cant_tell\"": 1,
+   "\"yes\"": 5
+  },
+  "advice_new|own_tier": {
+   "\"cant_tell\"": 2,
+   "\"self_care\"": 5,
+   "\"emergency\"": 7,
+   "\"routine\"": 2
+  },
+  "advice_new|patient_tier_differs": {
+   "__unanswered__": 7,
+   "\"yes\"": 6,
+   "\"no\"": 3
+  },
+  "advice_new|proposed_tier_agree": {
+   "\"agree\"": 8,
+   "\"disagree\"": 7,
+   "\"cant_tell\"": 1
+  },
+  "advice_new|proposed_tier_reason": {
+   "__unanswered__": 8,
+   "\"Invented reason text for the synthetic export.\"": 8
+  },
+  "tracing_pair|same": {
+   "\"no\"": 25,
+   "\"yes\"": 14
+  },
+  "tracing_pair|patient_realism": {
+   "1": 5,
+   "2": 5,
+   "3": 9,
+   "4": 13,
+   "5": 6,
+   "\"cant_judge\"": 1
+  },
+  "tracing_pair|clinical_right": {
+   "\"no\"": 8,
+   "\"close\"": 9,
+   "__unanswered__": 7,
+   "\"yes\"": 12,
+   "\"cant_tell\"": 3
+  },
+  "tracing_pair|enough_info": {
+   "\"no\"": 16,
+   "\"yes\"": 22,
+   "\"cant_tell\"": 1
+  },
+  "tracing_pair|target_fit": {
+   "\"neither\"": 8,
+   "\"both\"": 11,
+   "\"clinical_only\"": 11,
+   "\"patient_only\"": 8,
+   "\"cant_tell\"": 1
+  },
+  "tracing_pair|coherent": {
+   "\"yes\"": 17,
+   "\"cant_tell\"": 1,
+   "\"no\"": 21
+  },
+  "tracing_pair|keep": {
+   "\"drop\"": 13,
+   "\"edit\"": 12,
+   "\"keep\"": 9,
+   "__unanswered__": 5
+  },
+  "advice_rerun|realism_patient": {
+   "2": 3,
+   "3": 1,
+   "4": 1,
+   "5": 2,
+   "\"cant_judge\"": 1
+  },
+  "advice_rerun|realism_clinical": {
+   "1": 2,
+   "2": 2,
+   "4": 1,
+   "5": 3
+  },
+  "advice_rerun|same": {
+   "\"yes\"": 7,
+   "\"no\"": 1
+  },
+  "advice_rerun|enough_info": {
+   "\"yes\"": 6,
+   "\"no\"": 2
+  },
+  "advice_rerun|coherent": {
+   "\"no\"": 5,
+   "\"yes\"": 3
+  },
+  "advice_rerun|own_tier": {
+   "\"emergency\"": 4,
+   "\"self_care\"": 2,
+   "\"urgent\"": 2
+  },
+  "advice_rerun|patient_tier_differs": {
+   "\"yes\"": 4,
+   "__unanswered__": 1,
+   "\"no\"": 3
+  },
+  "multiturn_script|realism.clinical": {
+   "1": 3,
+   "3": 1
+  },
+  "multiturn_script|realism.colloquial": {
+   "3": 1,
+   "4": 2,
+   "5": 1
+  },
+  "multiturn_script|realism.lay_careful": {
+   "1": 1,
+   "3": 2,
+   "\"cant_judge\"": 1
+  },
+  "multiturn_script|same_facts": {
+   "\"no\"": 1,
+   "\"yes\"": 2,
+   "\"cant_tell\"": 1
+  },
+  "multiturn_script|course_plausible": {
+   "2": 1,
+   "4": 2,
+   "5": 1
+  },
+  "multiturn_script|enough_info": {
+   "\"yes\"": 3,
+   "\"no\"": 1
+  },
+  "multiturn_script|first_warning_turn": {
+   "1": 1,
+   "7": 2,
+   "\"cant_tell\"": 1
+  },
+  "multiturn_script|own_tier_final": {
+   "\"routine\"": 4
+  },
+  "multiturn_script|coherent": {
+   "\"no\"": 2,
+   "\"yes\"": 2
+  },
+  "multiturn_script|flag_turns": {
+   "[8]": 1,
+   "__unanswered__": 2,
+   "[6,7]": 1
+  },
+  "advice_rerun_truncated|situation_plausible": {
+   "1": 1,
+   "2": 2
+  },
+  "advice_rerun_truncated|same": {
+   "\"no\"": 3
+  },
+  "advice_rerun_truncated|enough_info": {
+   "\"no\"": 2,
+   "\"cant_tell\"": 1
+  },
+  "advice_rerun_truncated|coherent": {
+   "\"yes\"": 3
+  },
+  "advice_rerun_truncated|own_tier": {
+   "\"routine\"": 2,
+   "\"urgent\"": 1
+  }
+ },
+ "combined_tier": {
+  "vt_78daa6060095": {
+   "tier": null,
+   "n": 0,
+   "proposed": "emergency",
+   "raters": []
+  },
+  "vt_166ff1f1db4b": {
+   "tier": null,
+   "n": 0,
+   "proposed": "urgent",
+   "raters": []
+  },
+  "vt_6f09ab5b74ab": {
+   "tier": null,
+   "n": 1,
+   "proposed": "routine",
+   "raters": [
+    "md02"
+   ]
+  },
+  "vt_8a7bd67e10f4": {
+   "tier": null,
+   "n": 0,
+   "proposed": "emergency",
+   "raters": []
+  },
+  "vt_5c1990d9c982": {
+   "tier": null,
+   "n": 0,
+   "proposed": "routine",
+   "raters": []
+  },
+  "vt_91bb47feb3ae": {
+   "tier": null,
+   "n": 0,
+   "proposed": "emergency",
+   "raters": []
+  },
+  "vt_0d7ff133fb38": {
+   "tier": null,
+   "n": 0,
+   "proposed": "emergency",
+   "raters": []
+  },
+  "vt_8639793da130": {
+   "tier": null,
+   "n": 0,
+   "proposed": "routine",
+   "raters": []
+  },
+  "vt_272c11627f8d": {
+   "tier": null,
+   "n": 0,
+   "proposed": "routine",
+   "raters": []
+  },
+  "vt_5f3f1339b5c5": {
+   "tier": null,
+   "n": 0,
+   "proposed": "routine",
+   "raters": []
+  },
+  "vt_4b4d4772c7d1": {
+   "tier": null,
+   "n": 0,
+   "proposed": "emergency",
+   "raters": []
+  },
+  "vt_25b3bc74419c": {
+   "tier": "self_care",
+   "n": 2,
+   "proposed": "urgent",
+   "raters": [
+    "md02",
+    "md05"
+   ]
+  },
+  "vt_5df4ecf7acac": {
+   "tier": "emergency",
+   "n": 2,
+   "proposed": "urgent",
+   "raters": [
+    "md03",
+    "md04"
+   ]
+  },
+  "vt_bc5d65fe9fe2": {
+   "tier": "self_care",
+   "n": 3,
+   "proposed": "self_care",
+   "raters": [
+    "md03",
+    "md04",
+    "md05"
+   ]
+  },
+  "vt_2adc6ace443e": {
+   "tier": null,
+   "n": 1,
+   "proposed": "self_care",
+   "raters": [
+    "md04"
+   ]
+  },
+  "vt_ade7e3571884": {
+   "tier": null,
+   "n": 0,
+   "proposed": "routine",
+   "raters": []
+  },
+  "vt_5932ca12c5e1": {
+   "tier": null,
+   "n": 0,
+   "proposed": "self_care",
+   "raters": []
+  },
+  "vt_3ca961c4085d": {
+   "tier": null,
+   "n": 0,
+   "proposed": "urgent",
+   "raters": []
+  },
+  "vt_41dc5b6e4af7": {
+   "tier": null,
+   "n": 0,
+   "proposed": "emergency",
+   "raters": []
+  },
+  "vt_731162e6021a": {
+   "tier": null,
+   "n": 0,
+   "proposed": "self_care",
+   "raters": []
+  },
+  "vt_e9e0c941f380": {
+   "tier": "emergency",
+   "n": 3,
+   "proposed": "urgent",
+   "raters": [
+    "md02",
+    "md03",
+    "md05"
+   ]
+  },
+  "vt_98fc438e3da8": {
+   "tier": null,
+   "n": 0,
+   "proposed": "urgent",
+   "raters": []
+  },
+  "vt_c074bb86e800": {
+   "tier": null,
+   "n": 0,
+   "proposed": "self_care",
+   "raters": []
+  },
+  "vt_74fafbedfcdb": {
+   "tier": "routine",
+   "n": 2,
+   "proposed": "self_care",
+   "raters": [
+    "md03",
+    "md05"
+   ]
+  }
+ },
+ "notes_nonempty": 21,
+ "app_n_complete": {
+  "md01": 3,
+  "md02": 18,
+  "md03": 16,
+  "md04": 17,
+  "md05": 19
+ },
+ "n_events": 193,
+ "alpha_krippendorff_package": {
+  "package": "krippendorff",
+  "values": {
+   "advice_new|coherent": {
+    "metric": "nominal",
+    "primary": 0.3333333333,
+    "abstain_as_category": 0.2222222222
+   },
+   "advice_new|enough_info": {
+    "metric": "nominal",
+    "primary": 0.4814814815,
+    "abstain_as_category": 0.4814814815
+   },
+   "advice_new|own_tier": {
+    "metric": "ordinal",
+    "primary": 0.8166666667
+   },
+   "advice_new|patient_tier_differs": {
+    "metric": "nominal",
+    "primary": 1.0,
+    "abstain_as_category": 1.0
+   },
+   "advice_new|proposed_tier_agree": {
+    "metric": "nominal",
+    "primary": 1.0,
+    "abstain_as_category": 0.7741935484
+   },
+   "advice_new|realism_clinical": {
+    "metric": "ordinal",
+    "primary": 0.5673076923
+   },
+   "advice_new|realism_patient": {
+    "metric": "ordinal",
+    "primary": 0.8575530587
+   },
+   "advice_new|same": {
+    "metric": "nominal",
+    "primary": 0.7291666667,
+    "abstain_as_category": 0.5483870968
+   },
+   "advice_rerun_truncated|coherent": {
+    "metric": "nominal",
+    "primary": null,
+    "abstain_as_category": null
+   },
+   "advice_rerun_truncated|enough_info": {
+    "metric": "nominal",
+    "primary": null,
+    "abstain_as_category": 0.0
+   },
+   "advice_rerun_truncated|own_tier": {
+    "metric": "ordinal",
+    "primary": 0.0
+   },
+   "advice_rerun_truncated|same": {
+    "metric": "nominal",
+    "primary": null,
+    "abstain_as_category": null
+   },
+   "advice_rerun_truncated|situation_plausible": {
+    "metric": "ordinal",
+    "primary": 0.0
+   },
+   "advice_rerun|coherent": {
+    "metric": "nominal",
+    "primary": 0.5333333333,
+    "abstain_as_category": 0.5333333333
+   },
+   "advice_rerun|enough_info": {
+    "metric": "nominal",
+    "primary": -0.1666666667,
+    "abstain_as_category": -0.1666666667
+   },
+   "advice_rerun|own_tier": {
+    "metric": "ordinal",
+    "primary": 0.6840277778
+   },
+   "advice_rerun|patient_tier_differs": {
+    "metric": "nominal",
+    "primary": -0.5,
+    "abstain_as_category": -0.5
+   },
+   "advice_rerun|realism_clinical": {
+    "metric": "ordinal",
+    "primary": 0.5176282051
+   },
+   "advice_rerun|realism_patient": {
+    "metric": "ordinal",
+    "primary": 0.5630252101
+   },
+   "advice_rerun|same": {
+    "metric": "nominal",
+    "primary": 0.0,
+    "abstain_as_category": 0.0
+   },
+   "multiturn_script|coherent": {
+    "metric": "nominal",
+    "primary": 0.0,
+    "abstain_as_category": 0.0
+   },
+   "multiturn_script|course_plausible": {
+    "metric": "ordinal",
+    "primary": 0.0
+   },
+   "multiturn_script|enough_info": {
+    "metric": "nominal",
+    "primary": null,
+    "abstain_as_category": null
+   },
+   "multiturn_script|first_warning_turn": {
+    "metric": "nominal",
+    "primary": null,
+    "abstain_as_category": 0.0
+   },
+   "multiturn_script|own_tier_final": {
+    "metric": "ordinal",
+    "primary": null
+   },
+   "multiturn_script|realism": {
+    "metric": "ordinal",
+    "primary": 0.6867724868
+   },
+   "multiturn_script|realism.clinical": {
+    "metric": "ordinal",
+    "primary": null
+   },
+   "multiturn_script|realism.colloquial": {
+    "metric": "ordinal",
+    "primary": 0.0
+   },
+   "multiturn_script|realism.lay_careful": {
+    "metric": "ordinal",
+    "primary": 0.0
+   },
+   "multiturn_script|same_facts": {
+    "metric": "nominal",
+    "primary": 0.0,
+    "abstain_as_category": 0.0
+   },
+   "tracing_pair|clinical_right": {
+    "metric": "ordinal",
+    "primary": 0.7191358025
+   },
+   "tracing_pair|coherent": {
+    "metric": "nominal",
+    "primary": 0.1708683473,
+    "abstain_as_category": 0.1341772152
+   },
+   "tracing_pair|enough_info": {
+    "metric": "nominal",
+    "primary": 0.2642045455,
+    "abstain_as_category": 0.2205128205
+   },
+   "tracing_pair|keep": {
+    "metric": "nominal",
+    "primary": 0.1338582677
+   },
+   "tracing_pair|patient_realism": {
+    "metric": "ordinal",
+    "primary": 0.7077812538
+   },
+   "tracing_pair|same": {
+    "metric": "nominal",
+    "primary": 0.5657142857,
+    "abstain_as_category": 0.5657142857
+   },
+   "tracing_pair|target_fit": {
+    "metric": "nominal",
+    "primary": 0.3454376164,
+    "abstain_as_category": 0.3060869565
+   }
+  }
+ },
+ "generator_seed": 4242
+}
