@@ -38,7 +38,9 @@ on every row (`checker_shown_before_first_answer`).
 
 Sample ids (`r001` to `r040`) are per run: the same id names different pairs in the two runs.
 
-### 2026-10-01: run 1 (`pilot_real_20260930`)
+Entry dates are in UTC, the date of the owner's first answers (run 1's export file records its local export date, 2026-10-01).
+
+### 2026-10-02: run 1 (`pilot_real_20260930`)
 
 Recorded as codebook v0.2's baseline (`codebook_v0.2.md`, *Baseline from the first review*), with the rules R1-R9
 that review led to.
