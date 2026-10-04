@@ -38,7 +38,10 @@ scripts.
 Choosing main-study pairs by the size of their language penalty is a way to
 find pairs worth a physician's look. It is not a finding: a single pair's
 penalty is not a stable measurement (`AGENTS.md`, known measurement
-limitations).
+limitations). Penalties are compared at six decimals: they are differences of
+probabilities recorded to three decimals, so two penalties equal as recorded
+tie instead of being separated by floating-point noise, and a tie goes to the
+earlier batch, then the lower index.
 
 ## What physicians are asked
 
@@ -55,10 +58,16 @@ limitations).
   and optional flags on individual script messages.
 - **Notes** on every item, up to 4,000 characters.
 
-For the 24 new advice questions the physician first gives their own urgency
-without seeing the study's. Once that answer is saved, the app shows the
-proposed urgency and asks whether they agree. The first answer cannot be
-changed after that.
+The urgency question on an advice item asks about the message with clinical
+terms. Except on the nine cut-off items, a separate question asks whether the
+physician would triage the everyday-words message differently. For the 24 new
+advice questions the physician first gives their own urgency without seeing
+the study's. Once that answer is saved, the app shows the proposed urgency and
+asks whether they agree. The first answer cannot be changed after that.
+
+No question, hint or instruction says what answer to expect. The realism
+ratings are what the questions measure, so a hint predicting a low score for
+the clinical-terms version would anchor the rating it asks for.
 
 ## Assignment and order
 
@@ -75,24 +84,62 @@ changed after that.
 
 ## Blinding
 
-Physicians never see model names, measured numbers, batch or item ids, method
-labels, Claude's reasons for a scenario, topics, checker verdicts, or the
-proposed urgency before their own answer. The three versions of a script are
-shown as Version A, B and C, in an order that differs between physicians.
+The app never shows a physician model names, measured numbers, batch or item
+ids, method labels, Claude's reasons for a scenario, topics, checker verdicts,
+or the proposed urgency before their own answer. The three versions of a script
+are shown as Version A, B and C, in an order that differs between physicians.
 Physicians do not see each other's answers.
+
+That blinding holds inside the app only. The study's repositories and site are
+public, and they hold the answers next to the texts physicians rate:
+
+- the task bundle (`data/verification/tasks_<stamp>.json`) puts every item's
+  text beside its `reveal` (the proposed urgency) and its `provenance` (for a
+  main-study pair, its language penalty, rank and batch);
+- the advice stimuli file (`data/advice/stimuli_20261002T080026Z.json`)
+  carries the proposed tier of each of the 24 new questions;
+- the wave-3 seed file (`docs/framework/petri_seeds_w3.draft.json`) states, in
+  each seed's notes, the care its author expects; its `scenario.reference`
+  fields are still empty;
+- the site publishes the measured numbers of the main-study pairs and links to
+  the engine repository, and the app's page names the study.
+
+A physician who looks these up can see the study's answer before giving their
+own. The welcome text asks physicians not to search for the scenarios or look
+up the study's materials while rating, and says why. Nothing can enforce that
+request or show afterwards whether it was kept, so the blind first answers are
+blind by instruction, and any report of them says so. Keeping the bundle out
+of the public repository would remove the easiest lookup but not the others,
+because the source files are already public; that is an owner decision.
 
 ## The holdout seal
 
 Sealed Tier B holdout pairs are never shown to a physician. The exporter checks
 every tracing and advice row with the study's seal rule and scans every text a
 physician will see, and then the whole bundle, for any sealed phrase. Any hit,
-or a seal that cannot be checked, stops the export and nothing is written. Run
-the seal check over the bundle again before uploading it:
+or a seal that cannot be checked, stops the export and nothing is written.
+
+A bundle that was clean when exported can stop being clean. Under Amendment 3 a
+phrase becomes sealed everywhere once a later Tier B batch accepts it and it
+hashes into the holdout bucket. The bundle's `seal.holdout_bucket_unsealed`
+lists the items whose clinical text already hashes into that bucket. In
+`tasks_20261004T042945Z.json` there are eight: four pilot pairs, one
+main-study pair from a Tier A batch, the cut-off advice item made from that
+same sentence, one of the new advice questions and one rerun advice question.
+Any of them would become sealed if a later Tier B batch accepted the same
+sentence. So the seal check's default roots include `data/verification`: the
+daily sweep re-checks every committed bundle, and the same command runs
+before each upload:
 
 ```bash
 python scripts/export_verification_tasks.py --site ../patientwords
-python scripts/seal_check.py --site ../patientwords --extra data/verification
+python scripts/seal_check.py --site ../patientwords
 ```
+
+If the sweep ever flags a bundle, stop serving it (set the app's `STUDY_OPEN`
+to `false`), follow the breach protocol `scripts/seal_check.py` prints, and
+decide how to rebuild the bundle without the sealed item and what happens to
+ratings already given on it.
 
 ## Privacy
 

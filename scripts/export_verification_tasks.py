@@ -13,7 +13,9 @@ Three families, every item from a committed engine file or the published site pa
     generated rows (template, terms, next word) and to their trace results in ``pilot/traces/trace_pairs/``;
   - the ``--main-pairs`` (default 40) main-study pairs already published in the site payload
     (``<site>/data/simulated_scenarios.json``) whose ``--rank-model`` (default gemma-2-2b) language penalty is
-    largest in absolute value. A row without a measured penalty, a row the seal allowlist names as containing a
+    largest in absolute value, compared at ``RANK_DECIMALS`` decimals so that penalties equal at their recorded
+    precision tie and the stated tie rule (batch, then index) decides between them. A row without a measured
+    penalty, a row the seal allowlist names as containing a
     sealed phrase, a row traced with a screening probe extension (the traced sentence is not the generated one) and
     a repeat of a higher-ranked prompt pair are excluded and counted. The ranking is a way to pick pairs worth a
     physician's look, not a measurement: AGENTS.md's known limitations say no claim may rest on one pair's penalty.
@@ -41,8 +43,11 @@ or payload row naming a non-Tier-B batch whose file exists, the batch's accepted
 ``advice_eval._selection_seal_check``); every rater-visible string, and then the whole serialized bundle, is swept
 with ``seal_check``'s matcher against the sealed registry, with no allowlist. A sealed row anywhere in the published
 payload, a sealed row or text in the bundle, or a seal that cannot be evaluated refuses the export. Messages name
-item ids, batch#index labels and paths only, never text. Run ``scripts/seal_check.py --extra data/verification``
-over the written file before uploading it.
+item ids, batch#index labels and paths only, never text. The bundle's ``seal`` block also lists the items whose
+clinical text hashes into the holdout bucket (``tierb_split.is_holdout``) without being sealed: Amendment 3 would
+seal such a text everywhere once a later Tier B batch accepted it. A bundle is therefore re-checked after export:
+``scripts/seal_check.py``'s default roots include ``data/verification``, so the daily sweep covers every committed
+bundle, and the same command runs before each upload to the app.
 
 Determinism: the item set and every item are a pure function of the inputs; the item order is the items sorted by
 item_id and then shuffled with ``random.Random(seed)``. The same inputs, ``--seed`` and ``--stamp`` give a
@@ -92,6 +97,11 @@ QUESTIONS_SCHEMA = "patientwords-verification-questions/1"
 DEFAULT_SEED = 20261003
 DEFAULT_MAIN_PAIRS = 40
 DEFAULT_RANK_MODEL = "gemma-2-2b"
+# Main-study pairs are ranked on |language penalty| rounded to this many decimals. The payload's penalties are
+# differences of probabilities recorded to three decimals, so they carry binary floating-point noise (0.531 - 0.104
+# is 0.42700000000000005, 0.859 - 0.432 is 0.427); six decimals is finer than the recorded precision and far coarser
+# than that noise, so two penalties equal as recorded tie and the tie rule (batch, then index) decides.
+RANK_DECIMALS = 6
 MULTITURN_WAVE = 3
 SITE_PAYLOAD = "data/simulated_scenarios.json"
 SITE_LABEL = "patientwords:" + SITE_PAYLOAD
@@ -329,6 +339,7 @@ class Seal:
         self.rows_checked: Counter = Counter()
         self.accepted_checked = 0
         self.texts_scanned = 0
+        self.bucket_items: list[str] = []
 
     def row_sealed(self, family: str, batch: str | None, index: int | None, clinical: str | None,
                    label: str) -> bool:
@@ -345,6 +356,13 @@ class Seal:
             refuse("seal_config", f"{label}: the holdout seal cannot be applied ({exc})")
         self.rows_checked[family] += 1
         return sealed
+
+    def note_bucket(self, item_id: str, clinical: str) -> None:
+        """Record an unsealed item whose clinical text hashes into the holdout bucket (``tierb_split.is_holdout``).
+        It is not sealed today, but Amendment 3 would seal it everywhere once a later Tier B batch accepted the same
+        prompt, so the bundle lists it and the recurring seal sweep covers data/verification."""
+        if tierb_split.is_holdout(clinical):
+            self.bucket_items.append(item_id)
 
     def scan(self, text: str, suffix: str = "") -> list[str]:
         """Sealed labels found in a text (seal_check's normalized, decoded match; no allowlist)."""
@@ -489,6 +507,7 @@ def pilot_items(inp: Inputs, seal: Seal, run_dir: Path, traces_dir: Path) -> tup
         if seal.row_sealed("tracing_pilot", None, None, top, f"pilot Run 2 row {row_id}"):
             refuse("sealed_row", f"pilot Run 2 row {row_id} (trace index {i}) is a sealed holdout phrase")
         display = pair_display(top, bottom, next_word)
+        seal.note_bucket(item_id_for("tracing_pair", source_path, row_id), top)
         items.append({
             "item_id": item_id_for("tracing_pair", source_path, row_id),
             "family": "tracing_pair", "question_set": "tracing_pair", "display": display, "reveal": None,
@@ -566,7 +585,7 @@ def main_items(inp: Inputs, seal: Seal, site: Path, allowlist: Path, n_pairs: in
         if ((model.get("screening") or {}).get("probe_extension")):
             counts["excluded_probe_extended_trace"] += 1
             continue
-        candidates.append((-abs(penalty), batch, index, s, model, penalty))
+        candidates.append((-round(abs(penalty), RANK_DECIMALS), batch, index, s, model, penalty))
     candidates.sort(key=lambda c: (c[0], c[1], c[2]))
     seen: set[tuple[str, str]] = set()
     chosen = []
@@ -594,6 +613,7 @@ def main_items(inp: Inputs, seal: Seal, site: Path, allowlist: Path, n_pairs: in
         for side in ("clinical", "patient"):
             if display[side]["highlight"] is None:
                 highlight_missing[side] += 1
+        seal.note_bucket(item_id_for("tracing_pair", SITE_LABEL, label), clinical)
         items.append({
             "item_id": item_id_for("tracing_pair", SITE_LABEL, label),
             "family": "tracing_pair", "question_set": "tracing_pair", "display": display, "reveal": None,
@@ -603,17 +623,20 @@ def main_items(inp: Inputs, seal: Seal, site: Path, allowlist: Path, n_pairs: in
                            "tierb": tierb_split.is_tierb_batch(batch, seal.start),
                            "display_sha256": sha256_text(canonical(display))},
         })
-    penalties = [abs(c[5]) for c in chosen]
+    penalties = [-c[0] for c in chosen]
     selection = {
         "rule": f"pairs already published in the site payload, ranked by the absolute language penalty of "
-                f"{rank_model} (largest first; ties by batch, then index), excluding rows without a measured "
-                "penalty, rows the seal allowlist names as containing a sealed phrase, rows traced with a screening "
+                f"{rank_model} rounded to {RANK_DECIMALS} decimals (largest first; ties by batch, then index; the "
+                "rounding removes floating-point noise, so penalties equal as recorded tie), excluding rows without "
+                "a measured penalty, rows the seal allowlist names as containing a sealed phrase, rows traced with a "
+                "screening "
                 "probe extension, and repeats of a higher-ranked prompt pair (each excluded row counted once, under "
                 "the first of these reasons). A selection heuristic for review, not a measurement: no claim rests "
                 "on one pair's penalty (AGENTS.md, known measurement limitations)",
         "source": SITE_LABEL,
         "source_sha256": payload_sha,
         "rank_model": rank_model,
+        "rank_decimals": RANK_DECIMALS,
         "main_pairs_requested": n_pairs,
         "allowlist_entries": len(allow_entries),
         "counts": dict(sorted(counts.items())) | {"selected": len(items)},
@@ -664,8 +687,10 @@ def advice_items(inp: Inputs, seal: Seal, questions: dict, new_path: Path,
         _advice_seal(seal, item, where)
         display = _advice_display(item, where, cut_off=False)
         tier_counts[reference["tier"]] += 1
+        item_id = item_id_for("advice", new_source, need_str(item["id"], f"{where} id"))
+        seal.note_bucket(item_id, need_str(item["clinical_body"], f"{where} clinical_body"))
         items.append({
-            "item_id": item_id_for("advice", new_source, need_str(item["id"], f"{where} id")),
+            "item_id": item_id,
             "family": "advice", "question_set": "advice_new", "display": display,
             "reveal": {"proposed_tier": reference["tier"]},
             "provenance": {"source_path": new_source, "source_id": item["id"], "source_sha256": new_sha,
@@ -700,8 +725,10 @@ def advice_items(inp: Inputs, seal: Seal, questions: dict, new_path: Path,
         forms[form] += 1
         _advice_seal(seal, item, where)
         display = _advice_display(item, where, cut_off=(form == "truncated"))
+        item_id = item_id_for("advice", rerun_source, need_str(item["id"], f"{where} id"))
+        seal.note_bucket(item_id, need_str(item["clinical_body"], f"{where} clinical_body"))
         items.append({
-            "item_id": item_id_for("advice", rerun_source, need_str(item["id"], f"{where} id")),
+            "item_id": item_id,
             "family": "advice",
             "question_set": "advice_rerun_truncated" if form == "truncated" else "advice_rerun",
             "display": display, "reveal": None,
@@ -901,6 +928,13 @@ def build_bundle(args: argparse.Namespace) -> tuple[dict, str]:
             "rater_visible_texts_scanned": seal.texts_scanned,
             "whole_bundle_scanned": True,
             "allowlist_applied": False,
+            "holdout_bucket_unsealed": {
+                "item_ids": sorted(seal.bucket_items),
+                "rule": "items whose clinical text (the sentence of a tracing pair, the clinical body of an advice "
+                        "item) hashes into the holdout bucket (tierb_split.is_holdout) but is not sealed; Amendment 3 "
+                        "would seal such a text everywhere once a later Tier B batch accepted the same prompt. "
+                        "scripts/seal_check.py sweeps data/verification by default, so the daily sweep would flag it",
+            },
             "method": "tierb_split.sealed_pair on every tracing and advice row (and every published payload row); "
                       "seal_check.scan_text over every rater-visible string and over the serialized bundle, with no "
                       "allowlist",

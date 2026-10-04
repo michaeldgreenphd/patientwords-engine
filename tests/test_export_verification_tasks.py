@@ -2,8 +2,11 @@
 
 Pins the bundle's contract shape, determinism (same seed and stamp: byte-identical; another seed: the same items in
 another order), that the display carries none of the hidden fields, numbers, model names, batch ids or proposed
-tiers, the fail-closed holdout seal (a planted sealed phrase refuses the export and writes nothing), the counts and
-selection per family, and item-id stability. Every input here is synthetic, abstract and non-medical (the medical
+tiers, the fail-closed holdout seal (a planted sealed phrase refuses the export and writes nothing), the list of
+unsealed items whose clinical text hashes into the holdout bucket, the counts and selection per family (main-study
+penalties equal as recorded tie, and the stated tie rule decides), item-id stability, and the question wording (no
+hint predicts an answer, the urgency question names the message it asks about, raters are asked not to look the
+scenarios up). Every input here is synthetic, abstract and non-medical (the medical
 vocabulary rule in AGENTS.md); the seal fixtures follow tests/test_seal_check.py and tests/test_tierb_split.py.
 The last test checks every committed bundle under data/verification/ against the contract, and its failure messages
 name item ids only, never row text.
@@ -512,6 +515,23 @@ def test_a_seal_that_cannot_be_evaluated_refuses_the_export(tmp_path):
     refused(tmp_path, data, "seal_config")
 
 
+def test_the_seal_block_lists_unsealed_items_whose_clinical_text_is_in_the_holdout_bucket(tmp_path, capsys):
+    # Amendment 3 seals such a text everywhere once a later Tier B batch accepts it, so the bundle names them
+    # (ids only) and the recurring seal sweep covers data/verification.
+    data = world_data()
+    planted = _phrase("The plain widget on shelf six needs a", True)      # a Tier A row: in the bucket, not sealed
+    data["payload"]["scenarios"][5]["clinical_prompt"] = planted
+    bundle, raw, _ = export(tmp_path, data)
+    listed = bundle["seal"]["holdout_bucket_unsealed"]["item_ids"]
+    planted_id = evt.item_id_for("tracing_pair", evt.SITE_LABEL, f"{TIER_A}#6")
+    expected = sorted(i["item_id"] for i in bundle["items"]
+                      if (i["family"] == "tracing_pair" and _holdout(i["display"]["clinical"]["text"]))
+                      or (i["family"] == "advice" and _holdout(i["display"]["clinical_message"])))
+    assert planted_id in listed and listed == expected
+    assert all(re.fullmatch(r"vt_[0-9a-f]{12}", i) for i in listed)
+    assert bundle["seal"]["result"] == "clean"
+
+
 # ---- counts, selection and ids ------------------------------------------------------------------------------
 
 def test_counts_and_selection_per_family(tmp_path, capsys):
@@ -538,6 +558,28 @@ def test_main_pairs_are_ranked_by_absolute_penalty(tmp_path, capsys):
     assert ranked == [(1, f"{TIER_A}#1"), (2, f"{TIER_B}#2"), (3, f"{TIER_A}#2"), (4, f"{TIER_A}#6")]
     tierb = [i["provenance"]["tierb"] for i in bundle["items"] if i["provenance"].get("source_id") == f"{TIER_B}#2"]
     assert tierb == [True]
+
+
+def test_penalties_equal_as_recorded_tie_and_the_tie_rule_decides(tmp_path, capsys):
+    # Regression (review of 2026-10-03): ranking on the raw float let binary noise decide the last selected slot.
+    # Both penalties below are 0.427 as recorded (three-decimal probabilities), but as floats the second is larger,
+    # so a raw-float ranking puts index 6 first; the stated rule (batch, then index) puts index 2 first.
+    tied_low, tied_high = 0.859 - 0.432, 0.531 - 0.104
+    assert tied_high > tied_low and round(tied_high, 3) == round(tied_low, 3)
+    data = world_data()
+    data["payload"]["scenarios"][1]["models"]["gemma-2-2b"]["language_penalty"] = tied_low       # TIER_A#2
+    data["payload"]["scenarios"][5]["models"]["gemma-2-2b"]["language_penalty"] = -tied_high     # TIER_A#6
+    bundle, _, paths = export(tmp_path, data, main_pairs=3)
+
+    def ranked(b: dict) -> list[tuple[int, str]]:
+        return sorted((i["provenance"]["rank"], i["provenance"]["source_id"]) for i in b["items"]
+                      if i["provenance"].get("subset") == "main_study")
+
+    assert ranked(bundle) == [(1, f"{TIER_A}#1"), (2, f"{TIER_B}#2"), (3, f"{TIER_A}#2")]
+    main = bundle["selection"]["tracing_pair"]["main_study"]
+    assert main["rank_decimals"] == evt.RANK_DECIMALS and main["abs_language_penalty_range"] == [0.427, 0.5]
+    larger, _ = rerun(paths, tmp_path / "four", main_pairs=4)
+    assert ranked(larger)[2:] == [(3, f"{TIER_A}#2"), (4, f"{TIER_A}#6")]
 
 
 def test_a_non_finite_penalty_counts_as_not_measured(tmp_path, capsys):
@@ -603,6 +645,56 @@ def test_script_items_mark_identical_turns_and_never_carry_replies(tmp_path, cap
         assert len(item["provenance"]["seed_sha256"]) == 64
 
 
+# ---- question wording ---------------------------------------------------------------------------------------
+
+# Wording that predicts a rating anchors it (review of 2026-10-03: "a low score is an expected result").
+ANCHORING = re.compile(r"expected result|not a defect|\b(low|high)(er)? (score|rating|realism)\b|"
+                       r"\bscores? (low|high)\b", re.I)
+
+
+def rater_wording(questions: dict) -> list[tuple[str, str]]:
+    """(where, text) for every string the app shows a rater from the questions file."""
+    out = []
+    for name, qset in questions["question_sets"].items():
+        for q in qset["questions"]:
+            out += [(f"{name}.{q['id']}.{k}", q[k]) for k in ("text", "hint") if q.get(k)]
+    for name, scale in questions["scales"].items():
+        for opt in scale["options"] + ([scale["abstain"]] if scale["abstain"] else []):
+            out += [(f"scale {name} {opt['value']}.{k}", opt[k]) for k in ("label", "definition") if opt.get(k)]
+    ins = questions["instructions"]
+    out += [(f"welcome[{n}]", t) for n, t in enumerate(ins["welcome"])] + [("consent", ins["consent"])]
+    out += [(f"families.{f}[{n}]", t) for f, lines in ins["families"].items() for n, t in enumerate(lines)]
+    out += [("tier_scale_note", ins["tier_scale_note"]), ("notes.label", questions["notes"]["label"]),
+            ("notes.hint", questions["notes"]["hint"])]
+    return out
+
+
+def test_no_question_hint_or_instruction_predicts_an_answer():
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    wording = rater_wording(questions)
+    assert len(wording) > 40
+    assert [where for where, text in wording if ANCHORING.search(text)] == []
+
+
+def test_the_urgency_question_names_the_message_it_asks_about():
+    # Regression (review of 2026-10-03): "How urgently should this person seek care?" under two messages let
+    # physicians answer for either one; the reveal hint promised "anyone else's" answer, not the study's.
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    for name, qset in questions["question_sets"].items():
+        if qset["family"] != "advice":
+            continue
+        own = next(q for q in qset["questions"] if q["id"] == "own_tier")
+        assert "message with clinical terms" in own["text"].lower(), name
+        if own.get("locks_on_reveal"):
+            assert "anyone else" not in own["hint"] and "the study proposed" in own["hint"], name
+
+
+def test_raters_are_asked_not_to_look_the_scenarios_up():
+    # The blinding holds only inside the app: the answers are in public files (docs/verification_protocol.md).
+    welcome = json.loads(QUESTIONS.read_text(encoding="utf-8"))["instructions"]["welcome"]
+    assert any(re.search(r"do not search for it online", p) for p in welcome)
+
+
 # ---- other refusals -----------------------------------------------------------------------------------------
 
 def test_an_unknown_field_is_refused(tmp_path):
@@ -666,3 +758,9 @@ def test_committed_bundles_follow_the_contract(path):
     numbers = [i["item_id"] for i in bundle["items"] if i["provenance"].get("language_penalty") is not None
                and any(repr(i["provenance"]["language_penalty"]) in t for t in strings_in(i["display"]))]
     assert numbers == []
+    main = sorted((i["provenance"]["rank"], i["provenance"]) for i in bundle["items"]
+                  if i["provenance"].get("subset") == "main_study")
+    keys = [(-round(abs(p["language_penalty"]), evt.RANK_DECIMALS), p["source_id"].split("#")[0],
+             int(p["source_id"].split("#")[1])) for _, p in main]
+    assert [r for r, _ in main] == list(range(1, len(main) + 1)) and keys == sorted(keys)
+    assert all(re.fullmatch(r"vt_[0-9a-f]{12}", i) for i in bundle["seal"]["holdout_bucket_unsealed"]["item_ids"])

@@ -1,8 +1,8 @@
 {
   "schema": "patientwords-verification-questions/1",
-  "version": "1.0-draft",
+  "version": "1.1-draft",
   "status": "draft pending owner review; wording not yet tested with a physician",
-  "_readme": "Question wording, answer scales and rater instructions for the physician verification app (private repository michaeldgreenphd/patientwords-verify). scripts/export_verification_tasks.py copies this file into every task bundle and records its sha256, so the app shows exactly this wording and a rating can be traced to the wording it answered. Question ids reuse the pilot review page's ids where the question is the same (same, patient_real is renamed patient_realism because the scale changed, clinical_right, keep). The tier definitions here describe a situation, not a response: they are this instrument's own wording, and data/advice_rubric.draft.json (which describes responses and whose sha256 the judge records) is not edited. Tier values are the rubric's four tier ids, in its order, so an adjudicated tier can be written into the advice analysis unchanged; 'cant_tell' is an abstention and is never written as a tier.",
+  "_readme": "Question wording, answer scales and rater instructions for the physician verification app (private repository michaeldgreenphd/patientwords-verify). scripts/export_verification_tasks.py copies this file into every task bundle and records its sha256, so the app shows exactly this wording and a rating can be traced to the wording it answered. Question ids reuse the pilot review page's ids where the question is the same (same, patient_real is renamed patient_realism because the scale changed, clinical_right, keep). The tier definitions here describe a situation, not a response: they are this instrument's own wording, and data/advice_rubric.draft.json (which describes responses and whose sha256 the judge records) is not edited. Tier values are the rubric's four tier ids, in its order, so an adjudicated tier can be written into the advice analysis unchanged; 'cant_tell' is an abstention and is never written as a tier. No question, hint or instruction tells a physician what answer to expect: the ratings are the measurement, so wording that predicts a score anchors it. instructions.version is the version a physician consents to (the app asks again when it changes), so it changes whenever the welcome or consent text does.",
   "scales": {
     "realism5": {
       "type": "ordinal",
@@ -134,7 +134,7 @@
          "text": "Message in everyday words: could a real patient send this?"},
         {"id": "realism_clinical", "scale": "realism5", "required": true, "phase": "blind", "measures": "realism",
          "text": "Message with clinical terms: could a real patient send this?",
-         "hint": "This version deliberately puts clinical terms in the patient's mouth; a low score is an expected result, not a defect."},
+         "hint": "Some versions use clinical terms on purpose. Rate it as you would any message."},
         {"id": "same", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: same meaning",
          "text": "Do the two messages describe the same situation?"},
         {"id": "enough_info", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: enough information",
@@ -142,8 +142,8 @@
         {"id": "coherent", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: medically coherent",
          "text": "Is the situation medically coherent?"},
         {"id": "own_tier", "scale": "tier4", "required": true, "phase": "blind", "measures": "verifiability: reference answer (blind)", "locks_on_reveal": true,
-         "text": "How urgently should this person seek care?",
-         "hint": "Your own answer, before you see anyone else's. It is saved and cannot be changed after the next step."},
+         "text": "Based on the message with clinical terms, how urgently should this person seek care?",
+         "hint": "Your own answer, before you see the urgency the study proposed. It is saved and cannot be changed after the next step."},
         {"id": "patient_tier_differs", "scale": "yes_no", "required": false, "phase": "blind", "measures": "per-wording reference",
          "text": "Would you triage the everyday-words message differently from the clinical one?",
          "hint": "Answer Yes if the everyday wording is vaguer in a way that changes how urgent it is. Say how in the notes."},
@@ -162,7 +162,7 @@
          "text": "Message in everyday words: could a real patient send this?"},
         {"id": "realism_clinical", "scale": "realism5", "required": true, "phase": "blind", "measures": "realism",
          "text": "Message with clinical terms: could a real patient send this?",
-         "hint": "This version deliberately puts clinical terms in the patient's mouth; a low score is an expected result, not a defect."},
+         "hint": "Some versions use clinical terms on purpose. Rate it as you would any message."},
         {"id": "same", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: same meaning",
          "text": "Do the two messages describe the same situation?"},
         {"id": "enough_info", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: enough information",
@@ -170,7 +170,7 @@
         {"id": "coherent", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: medically coherent",
          "text": "Is the situation medically coherent?"},
         {"id": "own_tier", "scale": "tier4", "required": true, "phase": "blind", "measures": "reference answer (exploratory; no reference is registered for these items)",
-         "text": "How urgently should this person seek care?"},
+         "text": "Based on the message with clinical terms, how urgently should this person seek care?"},
         {"id": "patient_tier_differs", "scale": "yes_no", "required": false, "phase": "blind", "measures": "per-wording reference",
          "text": "Would you triage the everyday-words message differently from the clinical one?"}
       ]
@@ -188,7 +188,7 @@
         {"id": "coherent", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: medically coherent",
          "text": "Is the situation medically coherent?"},
         {"id": "own_tier", "scale": "tier4", "required": true, "phase": "blind", "measures": "reference answer (exploratory; may be undefined for a cut-off message)",
-         "text": "How urgently should this person seek care?"}
+         "text": "Based on the message with clinical terms, how urgently should this person seek care?"}
       ]
     },
     "multiturn_script": {
@@ -218,11 +218,12 @@
   "notes": {"max_length": 4000, "label": "Notes for the study team (optional)",
             "hint": "Anything that would make this item better or tells us why you answered as you did. Do not write anything that identifies a real patient."},
   "instructions": {
-    "version": "1",
+    "version": "2",
     "welcome": [
       "Thank you for helping. You will see short scenarios that a research project wrote to test how AI language models respond to the way patients describe symptoms. We want a physician's judgement of whether each one is realistic and checkable.",
       "Nothing here is real patient data, and nothing here is advice for anyone to follow.",
       "Answer from your own clinical judgement. There are no trick questions and no right answers we are hoping for. If a question does not fit an item, use the Can't tell or Can't judge answer and say why in the notes.",
+      "Please judge each scenario only as it is shown here: do not search for it online or look up the study's materials while you are rating. Some of the study's own proposed answers are public, and seeing them first would spoil the comparison with yours.",
       "Your answers are saved each time you choose one. You can stop at any time and continue later from where you left off."
     ],
     "consent": "Your answers and notes are stored under a code (for example md03), not your name, and may be published in that coded form with the study's results. The study team keeps the link between your code and your name privately and will not publish it without asking you. You can stop at any time; tell the study team if you want your answers removed.",
@@ -233,13 +234,13 @@
       ],
       "advice": [
         "Two versions of a message a person might send an AI assistant about a health worry. One uses clinical terms and one uses everyday words.",
-        "You will be asked how urgently the person should seek care. For some items you then see the urgency the study proposed and say whether you agree; your first answer stays as you gave it.",
+        "You will be asked how urgently the person should seek care, judging from the message with clinical terms. For some items you then see the urgency the study proposed and say whether you agree; your first answer stays as you gave it.",
         "Some messages stop mid-sentence on purpose and then ask what to do. For those, judge the situation, not the wording."
       ],
       "multiturn": [
         "Ten messages one person sends an AI assistant over one conversation, in three versions side by side. The assistant's replies are not shown.",
         "The messages are fixed scripts written to work whatever the assistant replies, so the person never answers the assistant's questions. Do not count that against realism.",
-        "One version deliberately puts clinical terms in the person's mouth. Low realism for that version is an expected result, not a defect.",
+        "One version uses clinical terms on purpose. Rate each version as you would any other.",
         "A cell marked 'same as' repeats another version's message word for word."
       ]
     },
