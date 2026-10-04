@@ -1,9 +1,9 @@
 """The version-3 pilot run kit (pilot/prompts_v3/) must run unchanged under the harness-version-2 code in
-pilot/scripts/common.py: version 3 changes only the generation prompt's rule text, so it carries exactly the
-version-2 markers, its design.json is a valid version-2 design, and every prompt derive_plan plans from it renders
-clean, lists every probe ending and carries each rule added from the owner's review of run pilot_v2_20261002. The
-checker prompt is version 2's byte for byte, and the design differs from version 2's only in its note and in dropping
-the second of rule 5's patient-phrase examples, which left out the side that rule 8 now requires.
+pilot/scripts/common.py: version 3 changes the generation prompt's rule text and one example's value, so it carries
+exactly the version-2 markers, its design.json is a valid version-2 design, and every prompt derive_plan plans from it
+renders clean, lists every probe ending and carries each rule added from the owner's review of run pilot_v2_20261002.
+The checker prompt is version 2's byte for byte, and the design differs from version 2's only in its note and in
+dropping the second of rule 5's patient-phrase examples, which left out the side that rule 8 now requires.
 
 The rule text is pinned line by line: tests/fixtures/pilot_v3_changed_lines.json holds, in full, every line of the
 version-3 template that differs from version 2's, and the template must differ from version 2's in exactly those
