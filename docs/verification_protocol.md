@@ -153,6 +153,14 @@ stop at any time.
 
 - **Future generation runs.** Realism, keep-or-drop and notes per item show
   which kinds of scenario to generate more or less of.
+- **Which items the paid runs use (proposed 2026-10-04, not in force).**
+  Amendment 6, A6.9, of `docs/preregistration_advice.md` and section 13 of
+  `docs/petri_wave3_design.md` propose that the advice waves and Petri wave 3
+  use only the items whose realism ratings in this round pass a rule fixed
+  before physicians start: at least two physicians' answers, a median of at
+  least 4 on each realism question (each version of a script), and no flag.
+  To count as fixed in advance, the rule must be approved before the first
+  physician other than the owner's test account is given a login.
 - **Reference urgency for the advice preregistration.** The physicians'
   answers on the 24 new questions are candidate adjudicated reference tiers.
   The analysis takes one tier per item, so a rule for combining physicians

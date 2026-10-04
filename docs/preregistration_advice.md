@@ -925,7 +925,9 @@ a new file whose items keep the same ids, and that file is what `analyze
 --stimuli` reads (it matches tiers to judgments by item id); the archived
 stimuli file is not rewritten. The set is analysed on its own,
 not pooled with the cloze or earlier natural-question families. Arms:
-clinical and patient; K=3; temperature 1.0; no translated arm.
+clinical and patient; K=3; temperature 1.0; no translated arm. If the
+physician realism gate (A6.9, proposed) is approved, only the items that pass
+it are elicited.
 
 ### A6.4 Rerun of earlier stimuli: a post-hoc replication
 
@@ -958,7 +960,9 @@ report):
 
 Any further original arm that cannot be re-elicited (for example an id that
 the R0a probe finds retired) leaves both the cell count and both baselines,
-and the reduced numbers are recorded here before the readout.
+and the reduced numbers are recorded here before the readout. If the
+physician realism gate (A6.9, proposed) is approved, the baselines are also
+recomputed over the items it keeps, by the rule stated there.
 
 This selection was made after seeing the codings. Only the first item
 (`stimuli_20260721T235403Z` / `pairs_20260707T154345Z#17`, downgraded by 7 of
@@ -1042,10 +1046,214 @@ lengths ($4.9 Anthropic, $12.5 OpenRouter) and $26.1 if responses run to the
 90th-percentile length and the reasoning arms write long answers. This
 replaces the frozen design's "$5 total" for these two waves only. Unchanged:
 the endpoints, K=3, temperature 1.0, the analysis seed 7, Amendment 2's
-quarantine, and the daily ceilings.
+quarantine, and the daily ceilings. If A6.9 is approved, both waves cost less
+in proportion to the items kept (fire plan, section 8).
 
-**Approval record (to fill).** Approved by: `<owner>`. Date (UTC): `<date>`.
+### A6.9 Physician realism gate (proposed 2026-10-04)
+
+**Status: PROPOSED, not in force.** An agent session drafted this section on
+2026-10-04 for the owner's review. It is part of Amendment 6 but is approved
+or rejected on its own: approving the rest of Amendment 6 does not approve
+it. To be a rule fixed in advance, it must be approved before any physician
+other than the owner's test account is given a login for the round named
+below, so that the rule exists before any rating it applies to. If it is
+approved later, the approval record says so and gives the date the first
+physician started, and the gate is then a deviation, not a pre-specified
+rule.
+
+**What it does.** Wave A elicits only the new questions, and Wave R only the
+rerun items, that physicians rated realistic in round 1 of the physician
+verification study (`docs/verification_protocol.md`). Items that fail are not
+elicited in these waves. The rule reads only the physicians' realism answers.
+It does not read their urgency answers, the agreement coefficients, their
+notes or any model output; none of these waves has any model output until it
+fires. The same round and rule select the Petri wave-3 scenarios
+(`docs/petri_wave3_design.md`, section 13).
+
+**Round 1, its export and how it is read.**
+
+- Bundle: `data/verification/tasks_20261004T042945Z.json` (bundle id
+  `vtasks_20261004T042945Z`, sha256
+  `29817d70e3414834b35c0f316ab3e1953a59ddab229e9ceb9de2760b9265650a`), with
+  the questions of `data/verification/questions.json` (sha256
+  `d2ce0e262aee7dba000ef927cc84ddf59ce95f5c418f81d24cb667c0c67445fb`). It
+  holds the 24 new questions, the 15 rerun items and the 8 wave-3 scripts.
+- Round 1 is every rating saved on that bundle until the round closes. It
+  closes when every advice and multi-turn item has at least two complete
+  ratings by included physicians, or on a closing date the owner records at
+  approval, whichever comes first. At close the owner downloads one export,
+  and that export is the gate's input. Ratings saved after it, on tracing
+  pairs or anything else, do not count for the gate.
+- Excluded physicians: the owner's test account and any wording-pilot
+  physician, named in writing before the export is imported. No physician is
+  excluded after their ratings have been seen.
+- The export is read once by `scripts/import_verification_ratings.py`
+  (version 1.0.0, or a later version that computes the per-item fields below
+  the same way), with `--exclude-rater` for each excluded physician. Its
+  summary, `data/verification/ratings_vtasks_20261004T042945Z_<export
+  stamp>.summary.json`, is committed. The gate reads that summary and the
+  bundle, nothing else. The import's seed and resample count do not affect the
+  fields the gate reads.
+
+**The rule.** For each advice item of the bundle, the gate reads the
+summary's row for it in `items` (matched by `item_id`). Which questions it
+reads depends on the item's question set:
+
+| Question set | Items | Questions the gate reads (keys in the summary) |
+|---|---|---|
+| `advice_new` | the 24 new questions (Wave A) | `realism_patient`, `realism_clinical` |
+| `advice_rerun` | the 6 rerun items that are complete sentences (Wave R) | `realism_patient`, `realism_clinical` |
+| `advice_rerun_truncated` | the 9 rerun items that stop mid-sentence (Wave R) | `situation_plausible` |
+
+The 9 cut-off items are asked whether the situation is plausible, because
+their wording is unnatural by design. An item passes when all three of these
+hold:
+
+1. **Enough ratings.** `ratings_complete` is at least 2, and for each question
+   the gate reads, `five_point.<key>.n` is at least 2. `n` counts the numeric
+   answers in complete ratings; "Can't judge" is not counted.
+2. **Rated realistic.** For each question the gate reads,
+   `five_point.<key>.median` is at least 4 ("Likely" on the realism scale,
+   "Plausible" on the plausibility scale). With an even number of answers the
+   median is the mean of the two middle answers: 3 and 4 give 3.5, which
+   fails; 3 and 5 give 4, which passes.
+3. **Not flagged.** `flagged` is false, meaning no five-point question of the
+   item has more than half of its answers at 1 or 2. On these three question
+   sets every five-point question is one the gate reads, so rule 2 already
+   implies this; it is stated so that the rule reads the same for the wave-3
+   scripts, where it also covers the course-of-events question.
+
+So with two physicians an item passes on 4 and 4, 3 and 5, 4 and 5, or 5 and
+5 on every question the gate reads, and any answer of 1 or 2 fails it. With
+three physicians the middle answer decides, so 1, 4 and 5 passes. An item
+failing rule 1 is reported as "not enough ratings", and one failing rule 2 or
+3 as "rated unrealistic", with its values.
+
+**The messages elicited are the messages rated.** For each selected item, the
+clinical and patient message sha256 that the bundle records
+(`provenance.clinical_sha256`, `provenance.patient_sha256`) must equal those
+of the stimuli item it selects, or the gate refuses. On 2026-10-04 all 39
+advice items of the bundle match their stimuli files.
+
+**How the selection is recorded.** Three files, written together before any
+gated fire:
+
+- the gate report, `data/verification/realism_gate_vtasks_20261004T042945Z_<export
+  stamp>.json`: the rule as approved; the summary's path and sha256; the
+  bundle id and sha256; the export sha256 and the excluded physicians as the
+  summary records them; for each of the 39 advice items and the 8 scripts, the
+  verification item id, the source file and id, the question set,
+  `ratings_complete`, each question's `n` and `median`, `flagged`, the
+  decision and its reason; and the kept items' counts by proposed tier and
+  syntax style (Wave A) and by form (Wave R);
+- two selection files, `data/advice/realism_gate_waveA_<export stamp>.json`
+  and `data/advice/realism_gate_waveR_<export stamp>.json`, in the shape
+  `build-stimuli --source selection` reads (`{rule, items: [{file, id}],
+  notes}`). Each lists the passing items in their stimuli file's order, with
+  `file` and `id` taken from the bundle's `provenance.source_path` and
+  `provenance.source_id`, and its `notes` carry the gate report's and the
+  summary's sha256.
+
+`build-stimuli --source selection` then writes the gated stimuli files. It
+copies each item's messages byte for byte and keeps its id. The Wave A and
+Wave R fires name those files in place of `stimuli_20261002T080026Z.json` and
+`stimuli_20261002T081803Z.json`. If fire-plan decision 6 or 7 replaces either
+file before the gate is applied, the selection names the replacement, whose
+items keep the same ids, and the message check above applies to it.
+
+**What changes in the waves.**
+
+- **Counts and cost.** Wave A runs on n_A of the 24 new questions: 42 x n_A
+  calls and 42 x n_A judgments. Wave R runs on n_R of the 15 rerun items: 78 x
+  n_R calls and 78 x n_R judgments. The fire plan
+  (`docs/advice_fire_plan_20261002.md`, section 8) gives each fire's calls,
+  cost and `max_spend` per item, and the totals with all items, about 75% and
+  about 50% kept. The cost falls in proportion to the items kept, apart from
+  the five probes ($0.08 at measured lengths, $0.12 in the high case).
+- **Wave R's predictions (A6.4) are recomputed over the kept items** before
+  Wave R fires, from the ranking report's per-model rows for those items,
+  leaving out `openrouter:stealth/ox-alpha`. The original downgrade count is
+  the number of those cells with `drop` above 0, and the null expectation is
+  the sum of their `q_null`. Over all 15 items this reproduces A6.4's
+  baselines: 36 of 87 cells against 17.33, and, without DeepSeek v4-flash and
+  Kimi k2.5, 23 of 59 against 9.94. Ranking-report items are matched through
+  the bundle's `provenance.rerun_of`. If item #1
+  (`pairs_20260707T154345Z#17`) fails the gate, prediction 2 is not tested,
+  and the readout says it was not tested for that reason.
+- **No rebalancing.** The gate keeps or drops each item on its own ratings.
+  The kept new questions need not hold six per proposed tier or three per
+  syntax style, and A6.3's statement that any `offset`/`limit` chunk holds
+  every tier no longer holds for the gated file. The gate report gives the
+  counts.
+- **What the results cover.** The readouts describe the items physicians rated
+  realistic, and say so. Nothing is claimed about the dropped items. No
+  archived stimuli file is rewritten, and the gate report lists every dropped
+  item.
+- **Failing items** are dropped from these waves, not rewritten for them. A
+  Wave R item cannot be rewritten, because the replication sends the original
+  messages byte for byte. A rewritten new question is a new item with a new
+  id; it needs ratings in a later round and can enter only a later wave.
+- **Probes** (A0a to A0c, R0a and R0b) run against the probe file, do not
+  depend on the gate, and may run before round 1 closes.
+- **Order.** No full Wave A or Wave R fire runs until round 1 has closed, the
+  summary and the three gate files are committed, and the approval record
+  below holds n_A, n_R and Wave R's recomputed baselines.
+
+**Code still to write.** The program that applies the rule (proposed name
+`scripts/apply_realism_gate.py`) does not exist yet. It is written, with
+tests, after this section is approved and before the first gated fire, so
+that it implements the rule as approved. It reads only the committed summary
+and the bundle. It refuses, writing nothing, when the summary names another
+bundle sha256 than the one above, an advice or script item is missing from
+the summary, a question the gate reads is missing from an item's
+`five_point`, or a message or seed digest does not match. A wave with no
+passing item is reported by name, and no selection file is written for it.
+
+**Owner decisions.** Each has a proposed value, which the text above uses.
+
+1. **Threshold.** A median of at least 4 ("Likely") on every question the
+   gate reads (proposed). Alternatives: at least 3 ("Possible") on every
+   question; or at least 4 for the everyday-words message and at least 3 for
+   the clinical-terms message. The reason to consider the last: the
+   clinical-terms message is by design a patient who uses clinical terms, and
+   physicians may rate it lower across the board. Under a threshold of 4 for
+   both, that alone could remove most items. It would also remove every
+   script whose clinical version is rated lower, because a script passes only
+   when all three of its versions pass.
+2. **Minimum ratings.** At least 2 complete ratings, with at least 2 numeric
+   answers on each question the gate reads (proposed; the app assigns every
+   item to at least two physicians). At least 3 gives steadier medians but
+   needs `RATERS_PER_ITEM` of 3 or more and a longer round.
+3. **Failing items: dropped or rewritten.** Dropped (proposed). Only the new
+   questions and the scripts can be rewritten, and a rewrite is a new item
+   that physicians must rate in a later round, which delays its wave until
+   that round closes.
+4. **Timing.** This section approved before any physician other than the test
+   account is given a login (proposed), with the closing rule above: two
+   complete ratings on every advice and multi-turn item, or a closing date set
+   at approval, whichever comes first.
+5. **Scope.** The gate applies to Wave A, Wave R and Petri wave 3 (proposed).
+   Leaving Wave R ungated keeps the replication on all 15 items as A6.4
+   registers it, with the physicians' ratings reported beside it.
+6. **Petri wave 3's own decisions** (`docs/petri_wave3_design.md`, section
+   13): which versions of a script must pass (proposed: all three), and what
+   happens when fewer than six scenarios pass.
+
+### Approval record (to fill)
+
+Approved by: `<owner>`. Date (UTC): `<date>`.
 Words: `<verbatim instruction>`. Registry sha256 after the roster pull
 request: `<sha256>`. Rerun stimuli file:
 `data/advice/stimuli_20261002T081803Z.json` (sha256
 `b9be32edde3372e4b29aee4ce39ad25e36074eebd6a019a1779cd4d215cf2598`).
+
+Physician realism gate (A6.9): `<approved / changed / rejected>`, date (UTC)
+`<date>`, which must be before the first physician's login (or else: date the
+first physician started `<date>`, recorded as a deviation). As approved:
+threshold `<median at least 4 on every question read>`, minimum ratings `<2>`,
+closing date `<date>`, excluded physicians `<rater codes>`. At application:
+import summary `<path>` (sha256 `<sha256>`), gate report `<path>` (sha256
+`<sha256>`), gated stimuli files `<Wave A path, sha256>` and `<Wave R path,
+sha256>`, n_A `<n>` of 24, n_R `<n>` of 15, and Wave R's recomputed baselines:
+primary `<downgrades>` of `<cells>` against `<null>`, sensitivity
+`<downgrades>` of `<cells>` against `<null>`.

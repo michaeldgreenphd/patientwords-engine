@@ -20,6 +20,13 @@ its place in the order. Approving Amendment 6 does not authorise any fire.
 Each fire runs only after the owner types its authorisation sentence with the
 dollar figure in it.
 
+These figures are for all 24 new questions and all 15 rerun items. Amendment
+6 also proposes (A6.9, not in force) that the waves elicit only the items
+physicians rate realistic. If the owner approves that, section 8 gives the
+counts and costs as a function of the items kept; with about 75% kept the two
+waves cost $12.97 at measured lengths and $19.40 in the high case, and with
+about 50% kept $9.06 and $13.53.
+
 ## 0. Conditions that must all hold before the first fire
 
 1. The pull request carrying this plan is merged, so the new-set stimuli
@@ -53,6 +60,11 @@ dollar figure in it.
    treat the second as already done.
 5. `python scripts/fire_trigger.py status` shows no active `advice-eval`
    entry, and the trigger is parked.
+6. Only if the owner approves the physician realism gate (Amendment 6, A6.9):
+   round 1 of the physician verification study has closed, the import summary
+   and the gate's three files are committed, the gated stimuli files are
+   built, and every full fire below names its gated file with the counts and
+   `max_spend` of section 8. The probes do not wait for this.
 
 Fires are sent by the operator with
 `python scripts/fire_trigger.py fire --trigger advice-eval --params-file <file holding the JSON below> --note "<fire id> of docs/advice_fire_plan_20261002.md"`,
@@ -543,3 +555,101 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
    that the Wave A commands here and Amendment 6 (A6.3) would then name, or
    fire it as built and give the exporter a way to declare a family at export
    time before the set is published.
+8. The physician realism gate (Amendment 6, A6.9, added 2026-10-04): approve,
+   change or reject it, with its own decisions (threshold, minimum ratings,
+   whether failing items are dropped or rewritten, timing, scope). If
+   approved, it changes the items, calls, cost and `max_spend` of every full
+   fire (section 8), and Wave A and Wave R wait for round 1 of the physician
+   verification study to close.
+
+## 8. Under the physician realism gate (proposed 2026-10-04; not in force)
+
+Amendment 6, A6.9, proposes that Wave A and Wave R elicit only the items that
+physicians rated realistic in round 1 of the physician verification study. If
+the owner approves it, this section replaces the item counts of sections 1 to
+3; everything else in this plan stands. Nothing here has been fired.
+
+**Stimuli files.** The full fires name the gated stimuli files that
+`build-stimuli --source selection` writes from the gate's two selection files
+(A6.9), in place of `stimuli_20261002T080026Z.json` (Wave A) and
+`stimuli_20261002T081803Z.json` (Wave R). Below, n_A is the number of new
+questions kept (of 24) and n_R the number of rerun items kept (of 15). The
+probes are unchanged.
+
+**Per item.** Each fire's calls and cost are the per-item figure times the
+items in the fire. The figures are section 2's per-response costs times 2 arms
+x K=3 x the fire's models, and they reproduce section 1 at n_A = 24 and
+n_R = 15. The metered high per item is section 3's metered high for the full
+fire divided by its items; it sets `max_spend`.
+
+| Fire | Calls per item | Typical $ per item | High $ per item | Metered high $ per item | Worst-case call |
+|---|---|---|---|---|---|
+| A1 | 12 | 0.04302 | 0.05286 | 0.05288 (1.269 / 24) | $0.0110 |
+| A2 | 12 | 0.11592 | 0.15162 | 0.16075 (3.858 / 24) | $0.0347 |
+| A3 (each chunk) | 18 | 0.15594 | 0.29094 | 0.30838 (2.467 / 8) | $0.0598 |
+| A4 judge | 42 judgments | 0.04704 | 0.06720 | | |
+| R1 | 18 | 0.09534 | 0.11760 | 0.11760 (1.764 / 15) | $0.0166 |
+| R2 (each chunk) | 42 | 0.24072 | 0.31602 | 0.33950 (2.716 / 8) | $0.0347 |
+| R3 (each chunk) | 18 | 0.15594 | 0.29094 | 0.30838 (2.467 / 8) | $0.0598 |
+| R4 judge | 78 judgments | 0.08736 | 0.10752 | | |
+
+(A4 per item: 42 x 0.00112 typical; 24 x 0.00112 + 18 x 0.00224 high. R4: 78
+x 0.00112 typical; 60 x 0.00112 + 18 x 0.00224 high.) A fire's `max_spend` is
+its items x the metered high per item, plus one worst-case call, rounded up to
+$0.05, as in section 2. A judge fire's `judge_max_spend` is its high case plus
+10%, rounded up to $0.05.
+
+**Chunks.** A3, R2 and R3 keep at most eight items per fire, for the runtime
+reason of section 2. A3a, A3b and A3c take items 1-8, 9-16 and 17-24 of the
+gated file, and a chunk with no items is not fired: there is no A3c when
+n_A is 16 or fewer, and no A3b when it is 8 or fewer. R2b and R3b exist only
+when n_R is above 8.
+
+**Totals at three sizes.** 75% of 15 is 11.25 and 50% is 7.5; the table uses
+11 and 8. Amounts are rounded to the cent, so parts may differ from a total by
+$0.01.
+
+| | All items | About 75% kept | About 50% kept |
+|---|---|---|---|
+| Wave A items (n_A) | 24 | 18 | 12 |
+| Wave A calls, judgments | 1008, 1008 | 756, 756 | 504, 504 |
+| Wave A typical (Anthropic + OpenRouter) | $8.74 ($2.17 + $6.57) | $6.57 ($1.63 + $4.94) | $4.39 ($1.09 + $3.31) |
+| Wave A high | $13.58 | $10.21 | $6.83 |
+| Wave R items (n_R) | 15 | 11 | 8 |
+| Wave R calls, judgments | 1170, 1170 | 858, 858 | 624, 624 |
+| Wave R typical (Anthropic + OpenRouter) | $8.72 ($2.75 + $5.97) | $6.40 ($2.02 + $4.38) | $4.66 ($1.47 + $3.19) |
+| Wave R high | $12.52 | $9.19 | $6.69 |
+| **Both waves, typical** | **$17.46** | **$12.97** | **$9.06** |
+| **Both waves, high** | **$26.10** | **$19.40** | **$13.53** |
+
+The probes are in every column at their full cost ($0.08 typical and $0.12
+high for the five).
+
+**`max_spend` at those sizes** (items in the fire in brackets):
+
+| Fire | All items | About 75% kept | About 50% kept |
+|---|---|---|---|
+| A1 | $1.30 (24) | $1.00 (18) | $0.65 (12) |
+| A2 | $3.90 (24) | $2.95 (18) | $2.00 (12) |
+| A3a, A3b, A3c | $2.55, $2.55, $2.55 (8, 8, 8) | $2.55, $2.55, $0.70 (8, 8, 2) | $2.55, $1.30 (8, 4); no A3c |
+| A4 `judge_max_spend` | $1.80 | $1.35 | $0.90 |
+| R1 | $1.80 (15) | $1.35 (11) | $1.00 (8) |
+| R2a, R2b | $2.80, $2.45 (8, 7) | $2.80, $1.10 (8, 3) | $2.80 (8); no R2b |
+| R3a, R3b | $2.55, $2.25 (8, 7) | $2.55, $1.00 (8, 3) | $2.55 (8); no R3b |
+| R4 `judge_max_spend` | $1.80 | $1.35 | $0.95 |
+
+**Days and ceilings.** The fires keep the order and days of section 4. Each
+gated fire commits at most what the same fire commits with all items (fewer
+items at the same per-item rates), and a chunk with no items is not fired, so
+section 4's worst cases are upper bounds and every day stays under its
+ceiling.
+
+**Plan checks.** Each `elicit --dry-run` of section 3 is run against the
+gated file and must print the per-item calls times the items in the fire: 12
+x n_A for A1 and for A2, 18 x the chunk's items for each A3 chunk, 18 x n_R for
+R1 (in place of condition 4's 270), 42 x and 18 x the chunk's items for each
+R2 and R3 chunk. The judge checks must print `judging 42 x n_A response(s)`
+for A4 and `judging 78 x n_R response(s)` for R4.
+
+**Timing.** Wave A and Wave R wait for round 1 to close and for the gate's
+files to be committed. The probes do not wait.
