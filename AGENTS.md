@@ -193,8 +193,8 @@ models get `trace_out/<stem>__<model>/`. CI renames each chunk's summary to
 consumers must glob `batch_summary*.json`, and `results[i]["index"]` is the global 1-based
 join key back into the batch file. Generation archives and trace outputs both commit to
 `main` (the dispatched branch); CI's commits interleave with
-yours, so `git pull --rebase` before every push. Pilot traces (`output_root`) go to
-`pilot/traces/` and no collector reads them.
+yours, so `git pull --rebase` before every push. Pilot traces and pilot logits
+(`output_root`) go to `pilot/traces/` and `pilot/logits/`; no collector reads them.
 
 **Analysis chain.** `scripts/urgency_shift.py` is the collector (reads the site payload and
 every `trace_out/*/batch_summary.part_*`, scores urgency tiers and flip classes as its

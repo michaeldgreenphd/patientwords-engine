@@ -64,7 +64,9 @@ lane, and advance by chaining — resolve the landed run, then fire the next.
   terminal and ALL expected outputs landed (every expected
   `trace_out/<stem>/batch_summary.part_NN.json` offset, or
   `pilot/traces/<stem>/batch_summary.part_NN.json` for a fire with
-  `output_root: pilot/traces`; for generation, the batch file
+  `output_root: pilot/traces`, or
+  `pilot/logits/<stem>__<model>/batch_summary.part_NN.json` for a logits-eval fire with
+  `output_root: pilot/logits`; for generation, the batch file
   plus `.report.json` sidecar on main). Resolving on partial landing lets a subsequent
   fire supersede a still-pending run (the 2026-07-09 eviction seam).
 - **Settle window:** resolving stamps `resolved_utc`; a same-trigger fire within 15

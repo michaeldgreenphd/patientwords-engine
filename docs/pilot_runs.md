@@ -39,6 +39,11 @@ recorded run (2026-09-30)*) records the decision.
   `output_root: pilot/traces` writes `pilot/traces/<pairs-stem>[__<model>]/`,
   which no collector reads. `docs/triggers.md` (the `circuit-trace` row) has every
   rule that lane applies to a pilot fire.
+- Pilot next-token measurements by the open-weight models are a second such tree:
+  a logits-eval fire with `output_root: pilot/logits` writes
+  `pilot/logits/<pairs-stem>__<model>/`, which no collector reads either. The
+  same pairs file a pilot trace reads (under `pilot/runs/`) serves this lane.
+  `docs/triggers.md` (the `logits-eval` row) has every rule it applies.
 
 ## A finalized run is not written into without `--replace`
 

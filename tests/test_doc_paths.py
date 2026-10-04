@@ -75,6 +75,19 @@ DOCS: tuple[str, ...] = (
 _REJUDGE = ("runtime output of the petri-audit lane's `mode: rejudge`; no rejudge output has landed on main "
             "(2026-09-30), so the directory does not exist yet")
 _SITE = "a file in the sibling site repository (../patientwords), not in this one"
+_PILOT_LOGITS = ("runtime output of the logits-eval lane's `output_root: pilot/logits` (2026-10-04); no pilot "
+                 "logits fire has landed, so the directory does not exist yet")
+# every name the docs give the pilot logits root, as missing_paths reports them
+PILOT_LOGITS_NAMES: tuple[tuple[str, str], ...] = (
+    ("AGENTS.md", "pilot/logits/"),
+    ("docs/triggers.md", "pilot/logits"),
+    ("docs/triggers.md", "pilot/logits/"),
+    ("docs/triggers.md", "pilot/logits/*__*/"),
+    ("docs/triggers.md", "pilot/logits/*__*/batch_summary.part_NN.json"),
+    ("docs/triggers.md", "pilot/logits/**"),
+    ("docs/pilot_runs.md", "pilot/logits"),
+    ("docs/pilot_runs.md", "pilot/logits/*__*/"),
+)
 
 # (document, path as the document writes it, after placeholders become `*`) -> why it does not exist.
 ALLOWED_MISSING: dict[tuple[str, str], str] = {
@@ -93,6 +106,7 @@ ALLOWED_MISSING: dict[tuple[str, str], str] = {
     ("docs/README.md", "data/jlens_insights.json"): _SITE,
     ("docs/README.md", ".github/workflows/build.yml"):
         "the traces site build, in michaeldgreenphd/patientwords-traces, which the index points to",
+    **{name: _PILOT_LOGITS for name in PILOT_LOGITS_NAMES},
 }
 
 # ALLOWED_MISSING keys whose path is a runtime output that may legitimately appear in the tree: the stale check
@@ -102,6 +116,7 @@ MAY_APPEAR: frozenset[tuple[str, str]] = frozenset({
     ("docs/triggers.md", "data/petri/rejudge/*/*/"),
     ("docs/routine_standing_prompt.md", "data/petri/rejudge/*/*/"),
     ("docs/archiving.md", "trace_out/pairs_20260707T215921Z/index_07.png"),
+    *PILOT_LOGITS_NAMES,      # a pilot logits fire's CI commit creates them
 })
 
 _FENCE = re.compile(r"^\s*(```|~~~)")
