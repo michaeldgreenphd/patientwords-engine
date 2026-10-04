@@ -28,12 +28,12 @@ nothing here is medical advice.
 
 | Kind | What the physician sees | Where it comes from |
 |---|---|---|
-| Tracing pair | Two versions of one sentence that stops where the next word would go. The words that differ are highlighted, and the expected next word is shown underneath. | Pilot Run 2's 40 traced pairs, plus the 40 main-study pairs already published on the site whose next-word prediction changed most between the two wordings (largest absolute language penalty, gemma-2-2b). |
+| Tracing pair | Two versions of one sentence that stops where the next word would go. The words that differ are highlighted, and the expected next word is shown underneath. | Pairs from the pilot runs the export names (in the first bundle, Run 2's 40 traced pairs; see below), plus the 40 main-study pairs already published on the site whose next-word prediction changed most between the two wordings (largest absolute language penalty, gemma-2-2b). |
 | Advice question | Two messages a person might send an AI assistant: one with clinical terms, one in everyday words, exactly as they were sent to the models. | The 24 new questions of 2026-10-02 (each with a proposed urgency) and the 15 rerun items. Nine rerun items stop mid-sentence on purpose and get their own questions. |
 | Multi-turn script | The ten messages one person sends over one conversation, in three versions side by side. The assistant's replies are never shown. | The 8 Petri wave-3 scenarios. |
 
 The first bundle holds 127 items: 80 tracing pairs, 39 advice questions and 8
-scripts.
+scripts. A later round's bundle adds pilot runs (see *Rounds*).
 
 Choosing main-study pairs by the size of their language penalty is a way to
 find pairs worth a physician's look. It is not a finding: a single pair's
@@ -42,6 +42,48 @@ limitations). Penalties are compared at six decimals: they are differences of
 probabilities recorded to three decimals, so two penalties equal as recorded
 tie instead of being separated by floating-point noise, and a tie goes to the
 earlier batch, then the lower index.
+
+### Pilot pairs: which runs, which rows, and their traces
+
+A bundle takes pilot pairs from each pilot run named with `--pilot-run <run id>`
+(a directory under `pilot/runs/`; the option can be repeated). With none named
+it takes `pilot_v2_20261002` (Run 2) alone, as the first bundle did, so the
+recorded command still gives that bundle's items unchanged.
+
+- **Which runs.** A run must be finalized (its `manifest.json` has
+  `finalized_utc`) and version 2 (`design.json` has `harness_version` 2, the
+  version that records the expected next word). Every run file the exporter
+  reads (`design.json`, `generated/all_rows.jsonl`, `review_map.json`) must
+  still hash as the finalized manifest records. Anything else stops the export.
+- **Which rows.** By default a run gives its blind review sample, the rows its
+  `review_map.json` names (for Run 2, the 40 pairs the owner reviewed). With
+  `--pilot-all-rows <run id>` it gives every generated row that is not a
+  control row instead; negative controls are left out and counted.
+- **Traces.** By default every pilot pair must have a trace result: the run's
+  trace pairs file must hold the row, and the trace results in
+  `pilot/traces/<that file's name without .json>/` must carry it with the same
+  prompts. Physicians rate the sentences, not the trace, so a pair does not
+  need its trace to be rated; the trace matters when ratings are later
+  compared with trace measures. A run's traces may land after its bundle is
+  wanted, so `--pilot-trace-optional <run id>` exports that run without
+  requiring or reading trace results. Its items are then the same before and
+  after the traces land, and a rating joins its trace later by run and row id.
+- **One trace directory per run.** The circuit-trace lane writes a pilot trace
+  to `pilot/traces/<pairs file name without .json>/`. Run 2's pairs file is
+  `trace/trace_pairs.json`, so a later run whose pairs file keeps that name
+  would write into Run 2's directory and overwrite its committed results. The
+  export refuses two runs that would read one directory. Give each run's trace
+  pairs file its own name (`pilot/analysis/trace_pairs.py --out`) before its
+  trace is fired.
+- **Labels and ids.** Each item's provenance names its run: `pilot_run2` for
+  Run 2, as in the first bundle, and `pilot:<run id>` for any other run.
+  Physicians never see it. A later run's item ids are keyed on its generated
+  rows file and row id, so a row keeps one id whichever rows and trace option
+  a bundle uses. Run 2's stay keyed on its trace pairs file, as in the first
+  bundle, because the app stores every rating under the item id.
+- **Repeats.** A pair whose two sentences repeat an earlier pilot pair in the
+  same bundle is kept, since each row is its run's output, and counted in its
+  run's selection block.
 
 ## What physicians are asked
 
@@ -258,6 +300,60 @@ replaced silently:
 The script implements the app design's recommended defaults for the open
 decisions below. Changing a decision changes the script.
 
+## Rounds
+
+Each physician round uses one bundle. The import reads one bundle per export:
+every event in an export must have been saved on the bundle the export names,
+or the import stops (`event_bundle_mismatch`).
+
+**Round 1** is `tasks_20261004T042945Z.json`: Run 2's 40 pairs, the 40
+main-study pairs, the 39 advice questions and the 8 scripts. Before round 2
+starts, take round 1's final export and import it. That summary is round 1's
+result.
+
+**Round 2** adds pilot Run 3 (`pilot/runs/pilot_v3_<date>/`). Run 3 must be
+finalized, seal-checked and committed first, since the exporter reads it from
+the repository. Its bundle is round 1's command with Run 3 added, under a new
+stamp:
+
+```bash
+python scripts/export_verification_tasks.py --site ../patientwords \
+    --pilot-run pilot_v2_20261002 --pilot-run pilot_v3_<date> \
+    --previous-bundle data/verification/tasks_20261004T042945Z.json
+python scripts/seal_check.py --site ../patientwords
+```
+
+- Keep `--pilot-run pilot_v2_20261002` and every other default (the seed,
+  `--main-pairs 40`, the advice and seed files), so every round 1 item keeps
+  its item id. The app needs every item a physician already holds to be in
+  the bundle it switches to, and stores answers under item and question ids
+  (the app's DEPLOY.md section 19). `--previous-bundle` checks this: the
+  export stops, naming item ids, if any round 1 item is missing
+  (`previous_item_missing`), shows another text, proposed urgency or question
+  set under its id (`previous_item_changed`), or if a question id round 1 used is gone
+  (`previous_question_missing`). The main-study pairs are ranked again from
+  the site payload at export time, so a pair published since round 1 can push
+  a round 1 pair out of the top 40. The export then stops and names its item
+  id, and a larger `--main-pairs` keeps it while it is still published.
+- Add `--pilot-trace-optional pilot_v3_<date>` if Run 3's traces have not
+  landed when the bundle is wanted.
+- Add `--pilot-all-rows pilot_v3_<date>` to send every Run 3 pair rather than
+  its review sample. Every added item needs at least two physicians.
+- Commit the bundle through a pull request, as the first was, then switch the
+  app to it between rounds (DEPLOY.md section 19). **Assign items** gives the
+  new items to physicians.
+
+**Reading round 2's ratings.** The app keeps every rating in one Ratings tab,
+and round 1's events carry round 1's bundle. An export taken after the switch
+therefore spans two bundles, and the import refuses it, even with round 1's
+physicians excluded. Reading round 2 needs one of two things: a rule for
+pooling ratings made on two bundles, built into the import, or round 2 run on
+its own Sheet (a separate deployment of the app), whose export holds round 2's
+events only. A separate Sheet's bundle need not keep round 1's items, but
+every bundle carries the advice questions and scripts, so they would be rated
+again. Until the owner chooses, round 2's ratings stay in the app and its
+backups and are not imported.
+
 ## Decisions still open (owner)
 
 - The rule for combining physicians into one reference tier, and its
@@ -272,4 +368,5 @@ decisions below. Changing a decision changes the script.
   differently from the clinical one: the analysis has one tier per item.
 - Whether ratings made on two bundles are pooled. The app supports switching
   to a new bundle between rounds; the import reads one bundle per export and
-  refuses an export that spans a switch.
+  refuses an export that spans a switch, so round 2's ratings cannot be
+  imported until this is decided or round 2 runs on its own Sheet (*Rounds*).
