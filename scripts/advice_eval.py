@@ -1896,6 +1896,10 @@ def analyze(args) -> Path:
         # standard triage guidance; not clinician-adjudicated") is still scored,
         # but the whole block is then marked claim_grade false, so its
         # under_triage numbers cannot pass for Amendment 1's primary endpoint.
+        # Only a non-empty string names an adjudicator. Absent, null or blank
+        # is the documented proposed-tier state and is listed as not
+        # adjudicated; any other type (true, a number, a list, an object) is a
+        # malformed field and is refused, never coerced into a name.
         not_adjudicated: list[str] = []
         for it in _load_json(args.stimuli).get("items", []):
             ref_block = it.get("reference") or {}
@@ -1905,7 +1909,12 @@ def analyze(args) -> Path:
                     raise SystemExit(f"{args.stimuli}: item {it.get('id')}: reference tier "
                                      f"{tier!r} is not a tier id of the rubric in force")
                 refs[it["id"]] = rank[tier]
-                if not str(ref_block.get("adjudicated_by") or "").strip():
+                adjudicator = ref_block.get("adjudicated_by")
+                if adjudicator is not None and not isinstance(adjudicator, str):
+                    raise SystemExit(f"{args.stimuli}: item {it.get('id')}: reference adjudicated_by is a "
+                                     f"{type(adjudicator).__name__}, not a string; it names who adjudicated the "
+                                     "tier, so record the name or leave the field out (not adjudicated); refusing")
+                if not (adjudicator or "").strip():
                     not_adjudicated.append(it["id"])
         if refs:
             per_ma: dict[tuple, dict] = {}
