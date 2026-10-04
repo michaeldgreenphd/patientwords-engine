@@ -12,6 +12,7 @@ from __future__ import annotations
 import copy
 import csv
 import functools
+import hashlib
 import re
 from collections.abc import Iterable
 from pathlib import Path
@@ -579,3 +580,84 @@ def test_the_plan_power_figures_reproduce_from_the_recorded_seed(plan):
         assert round(got["scenario_sign_flip"], 4) == pytest.approx(expected["scenario_sign_flip"], abs=1e-4)
     assert ps.sign_test_p(plan["primary"]["majority_needed_at_24_non_tied"], 24) < 0.05
     assert ps.sign_test_p(plan["primary"]["majority_needed_at_24_non_tied"] - 1, 24) >= 0.05
+
+
+# ------------------------------------------------------------------ the proposed physician realism gate
+
+
+def test_the_proposed_realism_gate_names_the_rated_scripts_and_their_realism_keys(plan, w3_set):
+    """The gate (PROPOSED 2026-10-04; docs/petri_wave3_design.md section 13) reads one round's import summary. The
+    bundle it names must be the file it hashes to and hold one script item per wave-3 seed, rated on these exact
+    seeds: a seed edited after the bundle was exported fails here until the gate names a round that rated the new
+    text. Its gate keys must be the import's own keys for the per-version five-point question, one per arm, and
+    flag_adds the item's other five-point questions, which the import's flag also covers."""
+    from scripts.import_verification_ratings import is_five_point, item_keys
+
+    gate = plan["physician_realism_gate"]
+    assert gate["status"].startswith("PROPOSED") and "not in force" in gate["status"]
+    assert gate["selection"] is None, "the selection is set by a dated amendment after the gate is applied"
+    rnd = gate["round"]
+    bundle_path = ROOT / rnd["bundle"]
+    assert hashlib.sha256(bundle_path.read_bytes()).hexdigest() == rnd["bundle_sha256"]
+    bundle = load_json(bundle_path)
+    assert bundle["bundle_id"] == rnd["bundle_id"]
+    script_items = [i for i in bundle["items"] if i["question_set"] == rnd["question_set"]]
+    by_seed = {i["provenance"]["source_id"]: i for i in script_items}
+    assert len(by_seed) == len(script_items), "one item per seed"
+    assert sorted(by_seed) == sorted(w3_set.seeds), "the round rated every seed in the seed file"
+    for seed_id, item in by_seed.items():
+        assert item["provenance"]["source_path"] == plan["seed_file"], seed_id
+        assert seeds.seed_digest(w3_set.seeds[seed_id]) == item["provenance"]["seed_sha256"], seed_id
+        five_point = {k: spec for k, spec in item_keys(item, bundle["questions"]).items() if is_five_point(spec.scale)}
+        assert sorted(k for k, spec in five_point.items() if spec.arm is not None) == sorted(gate["gate_keys"])
+        assert sorted({spec.arm for spec in five_point.values() if spec.arm is not None}) == sorted(ARMS)
+        assert sorted(k for k, spec in five_point.items() if spec.arm is None) == sorted(gate["flag_adds"])
+    assert gate["not_flagged"] is True
+    assert 2 <= gate["min_complete_ratings"] and 2 <= gate["min_answers_per_key"]
+    assert 1 < gate["min_median"] <= 5
+
+
+def test_the_realism_gate_floor_and_counts_follow_from_the_plan(plan):
+    """min_scenarios is the fewest scenario means whose sign-flip gate can reach alpha (its smallest p is 2/2^S), and
+    each row of counts_by_scenarios_passing is the plan's own arithmetic at S seeds: 3S triples, the sign test's
+    majority, and power.plug_in's exact method at 3S triples with that block's recorded q and p. The eight-seed row
+    is the plan as drafted."""
+    import importlib.util
+    from fractions import Fraction
+    from math import comb
+
+    spec = importlib.util.spec_from_file_location("petri_w2_power_sim", ROOT / "scripts" / "petri_w2_power_sim.py")
+    ps = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ps)
+    gate = plan["physician_realism_gate"]
+    alpha = plan["alpha"]
+    floor = min(s for s in range(1, 64) if 2 / 2 ** s < alpha)
+    assert gate["min_scenarios"] == floor
+    all_seeds = len(plan["scenario_sets"][plan["decomposition_set"]])
+    epochs = plan["epochs_per_target"]
+    plug = plan["power"]["plug_in"]["results"]
+    names = ("primary", "exchanges_6_10", "decomposition_paired_difference_before_holm")
+    rates = [(float(Fraction(r["q"])), float(Fraction(r["p"]))) for r in plug[:len(names)]]
+
+    def plug_in(n: int, q: float, p: float) -> float:
+        return sum(comb(n, big) * q ** big * (1 - q) ** (n - big)
+                   * sum(comb(big, k) * p ** k * (1 - p) ** (big - k)
+                         for k in range(big + 1) if ps.sign_test_p(k, big) < alpha)
+                   for big in range(n + 1))
+
+    rows = gate["counts_by_scenarios_passing"]
+    assert [r["scenarios"] for r in rows] == list(range(all_seeds, floor - 1, -1))
+    for row in rows:
+        s = row["scenarios"]
+        n = s * epochs
+        assert row["triples_per_target"] == n
+        assert row["conversations_per_target"] == n * len(ARMS)
+        need = row["majority_needed_non_tied"]
+        assert ps.sign_test_p(need, n) < alpha <= ps.sign_test_p(need - 1, n), s
+        assert row["general_headline_gate_smallest_p"] == f"2/{2 ** s}"
+        for name, (q, p) in zip(names, rates, strict=True):
+            assert row["plug_in_power"][name] == pytest.approx(round(plug_in(n, q, p), 3), abs=1e-9), (s, name)
+    full = rows[0]
+    assert full["triples_per_target"] == plan["final_triples_per_target"]
+    assert full["majority_needed_non_tied"] == plan["primary"]["majority_needed_at_24_non_tied"]
+    assert [full["plug_in_power"][name] for name in names] == [r["power"] for r in plug[:len(names)]]
