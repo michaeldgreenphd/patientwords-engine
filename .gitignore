@@ -11,3 +11,9 @@ dist/
 # retention); only the sanitised export, transcripts, judgments and manifest are committed (docs/petri_integration_design.md)
 *.eval
 data/petri/runs/*/logs/
+
+# Physician verification: the app's ratings export (export_<stamp>.json) holds every physician's notes and is never
+# committed; keep it outside the checkout (docs/verification_protocol.md). scripts/import_verification_ratings.py
+# refuses an export inside the repository; these lines cover the two places one is most likely to be saved.
+/export_*.json
+data/verification/export_*.json

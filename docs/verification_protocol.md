@@ -162,18 +162,114 @@ stop at any time.
 - **Multi-turn scenarios before their first run.** Clinician review of the
   wave-3 scripts is a step the wave-3 design note lists before the first paid
   run. A text edit made after that run would need a new seed instead.
-- **Agreement between physicians**, planned: Krippendorff's alpha (ordinal)
-  with Gwet's AC2 for the five-point scales, nominal alpha with Gwet's AC1 for
-  yes/no answers, exact and within-one agreement, and an item-level bootstrap
-  with its seed recorded. The engine has no import script for ratings yet.
+- **Agreement between physicians**: Krippendorff's alpha with an item-level
+  bootstrap and exact agreement, computed by the import below. Gwet's AC1 and
+  AC2, planned beside alpha because alpha is low when nearly every answer
+  falls in one category, are not computed yet.
+
+## How ratings are imported and analysed
+
+The app's export (`export_<stamp>.json`, from "Export for the engine" or the
+daily backup) is read by `scripts/import_verification_ratings.py`. The export
+holds the physicians' notes, so it stays outside the repository. The script
+refuses an export saved anywhere inside the checkout, and `.gitignore` lists
+`export_*.json` at the root and under `data/verification/`. The script reads
+the export from wherever the owner keeps it:
+
+```bash
+python scripts/import_verification_ratings.py --export <path>/export_<stamp>.json \
+    --exclude-rater md01            # the dummy test account, and any pilot physician
+```
+
+**What it checks.** The export must name a bundle committed under
+`data/verification/` by its sha256, and the questions file must be the one
+that bundle copied. Every event must name an item of that bundle and a
+question of its set, with an allowed answer. Rater ids must be codes such as
+`md01`. The export must carry no field outside its schema, no field named
+after a username, name, email or password, and no email address outside the
+notes and the free-text answers. The reveal step must have held: the urgency
+answer never changes after the proposed urgency is shown. Any failure stops
+the import with a named reason, and nothing is written.
+
+Every event must have been saved on the export's bundle, and this is checked
+before any physician is excluded. The import therefore cannot yet read an
+export that spans a switch to a new bundle (the app's DEPLOY.md section 19),
+even with the physician who rated on the older bundle excluded. Reading
+older-bundle ratings needs a rule for pooling ratings made on two bundles,
+which is an open decision below.
+
+**What it derives.** For each physician and item, it derives:
+
+- the current answers, which come from the latest save;
+- the first answer to each question. Any later change is counted, including
+  an answer changed and then changed back. Whether the latest answer still
+  differs from the first is counted separately;
+- whether the rating is complete, recomputed from the questions;
+- on the 24 new advice questions, the blind answers as they were when the
+  proposed urgency was shown (the reveal event). A blind answer changed or
+  first given after that is counted. It is left out of the primary analysis
+  and used in a sensitivity analysis.
+
+Only complete ratings enter the analysis; unfinished ones are counted.
+Physicians named with `--exclude-rater` are left out and counted. Any other
+physician is kept. A removed physician is kept too, with a warning that names
+them, so a forgotten test account shows.
+
+**What it computes.** Each question is analysed within its question set:
+
+- the distribution of answers;
+- Krippendorff's alpha: ordinal or nominal, as the scale's type says;
+  "Can't judge" and "Can't tell" count as missing, and for nominal questions
+  a second alpha counts them as one more answer;
+- a 95% percentile interval from 2,000 bootstrap resamples of items, under a
+  seed recorded in the output. For the multi-turn realism question, whose
+  units are the three versions of each script, a script's three versions are
+  resampled together. No interval is given from fewer than two items;
+- the share of physician pairs that gave the same answer;
+- on the 24 new advice questions, a sensitivity analysis: each blind
+  question's alpha again with the latest answers, which include those changed
+  or first given after the proposed urgency was shown.
+
+For each item it reports every answer's distribution, the median realism or
+plausibility, and a flag when more than half of the physicians who answered
+gave 1 or 2. Notes are counted per item, never copied.
+
+On the 24 new advice questions it combines the physicians' blind urgency
+answers into one tier and compares it with the proposed tier. The rule is the
+median on the advice rubric's order. When an even number of answers splits
+between two tiers, the more urgent of the two is taken. "Can't tell" is left
+out, and fewer than two answers give no tier.
+
+**What it writes.** All files go to `data/verification/`, and none is
+replaced silently:
+
+- `ratings_<bundle_id>_<export stamp>.summary.json` and `.summary.md`: rater
+  codes, ids, answer values and counts only, with the seed, the resample
+  count and the sha256 of every input;
+- with `--write-proposed-adjudication`, a third file,
+  `.proposed_adjudication.json`. It has the shape
+  `scripts/advice_eval.py analyze --stimuli` reads. It is marked as a
+  proposal: it is not in force until the owner records the combining rule in
+  a pre-registration amendment. The rater codes are recorded as
+  `proposed_by`, not `adjudicated_by`, so `analyze` scores the file as not
+  adjudicated (`claim_grade: false`). The file in force, under
+  `data/advice/`, is a later step once the rule is recorded.
+
+The script implements the app design's recommended defaults for the open
+decisions below. Changing a decision changes the script.
 
 ## Decisions still open (owner)
 
 - The rule for combining physicians into one reference tier, and its
-  tie-break.
+  tie-break. The import uses the median, with an even split going to the
+  more urgent tier, until the owner records a rule.
 - Whether "Can't tell" counts as an answer or as an abstention when agreement
-  is computed.
+  is computed. The import treats it as an abstention, with a sensitivity
+  analysis that counts it as an answer on nominal questions.
 - Whether the 15 rerun items should get reference tiers at all (no reference
   scoring is registered for them).
 - What to do when a physician would triage the everyday-words version
   differently from the clinical one: the analysis has one tier per item.
+- Whether ratings made on two bundles are pooled. The app supports switching
+  to a new bundle between rounds; the import reads one bundle per export and
+  refuses an export that spans a switch.
