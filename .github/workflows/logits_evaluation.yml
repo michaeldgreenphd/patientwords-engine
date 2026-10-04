@@ -140,6 +140,18 @@ jobs:
                   v = os.environ.get("IN_" + k.upper(), "")
                   if v:
                       p[k] = v
+          # Every value is written to $GITHUB_OUTPUT below as one `key=value` line, and a later duplicate key wins, so
+          # a value carrying a newline writes further key=value lines of its own. A dispatch pairs_file of
+          # "data/x.json\npairs_file=pilot/runs/..." would pass the pilot/ refusal below and then measure pilot pairs
+          # into trace_out/; limit, offset, layers, topk, dtype or commit_outputs could carry the same line. The
+          # dispatch form takes one line of text, but the API takes any string, and a dispatch never passes through
+          # scripts/fire_trigger.py, which refuses the same characters at a fire (control_char_values). Refused here
+          # for both paths, before any check below reads a value.
+          for k, v in p.items():
+              if any(ord(c) < 32 or ord(c) == 127 for c in v):
+                  raise SystemExit(f"{k} must not carry a control character (newline, carriage return, tab), got {v!r}")
+          if p["mode"] not in ("logits", "depth", "verify"):
+              raise SystemExit("mode must be 'logits', 'depth' or 'verify', got " + repr(p["mode"]))
           models = [m.strip() for m in p["models"].replace(",", " ").split() if m.strip()]
           if not models:
               raise SystemExit("no models to evaluate")
@@ -189,8 +201,6 @@ jobs:
               f.write("topk=" + p["topk"] + "\n")
               f.write("dtype=" + p["dtype"] + "\n")
               f.write("output_root=" + root + "\n")
-          if p["mode"] not in ("logits", "depth", "verify"):
-              raise SystemExit("mode must be 'logits', 'depth' or 'verify', got " + repr(p["mode"]))
           print("models:", models, "| pairs:", p["pairs_file"], "| mode:", p["mode"],
                 "| limit:", p["limit"], "| offset:", p["offset"], "| layers:", p["layers"],
                 "| output_root:", repr(root))

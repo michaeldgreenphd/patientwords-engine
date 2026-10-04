@@ -157,6 +157,18 @@ CASES = [
     # with / separators a drive spelling is a relative name on the Linux runner, read alike on both sides
     ("forward-slash-drive-spelling-default-root", {"pairs_file": "C:/engine/data/x.json"}, False),
     ("forward-slash-drive-spelling-pilot-root", {**PILOT, "pairs_file": "C:/engine/pilot/runs/p.json"}, True),
+    # every resolved value is written as one `key=value` line and a later duplicate key wins, so a value carrying a
+    # newline (or any control character, as fire_trigger.control_char_values reads one) is refused on both sides
+    # before anything is written: otherwise it would add key=value lines after the checks had passed
+    ("newline-injects-pilot-pairs-default-root", {"pairs_file": "data/x.json\npairs_file=pilot/runs/p.json"}, True),
+    ("newline-injects-the-pilot-root-via-dtype", {"dtype": "float32\noutput_root=pilot/logits"}, True),
+    ("newline-injects-commit-outputs", {"commit_outputs": "false\ncommit_outputs=true"}, True),
+    ("newline-in-a-model-list-element", {"models": ["qwen3-1.7b\noutput_root=pilot/logits"]}, True),
+    ("newline-in-mode-under-pilot-root", {**PILOT, "mode": "logits\npairs_file=data/x.json"}, True),
+    ("carriage-return-in-limit", {"limit": "1\r"}, True),
+    ("tab-in-models", {"models": "qwen3-1.7b\tqwen3-4b"}, True),
+    ("delete-character-in-layers", {"layers": "all\x7f"}, True),
+    ("control-character-in-pilot-pairs", {**PILOT, "pairs_file": "pilot/runs/p\x0b.json"}, True),
 ]
 
 
@@ -186,8 +198,9 @@ def test_the_params_job_and_the_fire_path_refuse_the_same_pilot_configs(tmp_path
     ({**PILOT, "output_root": "pilot/traces"}, "or 'pilot/logits' is accepted"),
     ({"pairs_file": "pilot\\runs\\p.json"}, "contains a backslash"),
     ({"pairs_file": "/abs/pilot/runs/p.json"}, "is absolute or leaves the checkout"),
+    ({"pairs_file": "data/x.json\npairs_file=pilot/runs/p.json"}, "control character"),
 ], ids=["pilot-pairs-default-root", "pilot-file-outside-runs", "pilot-logits-file", "depth-mode", "comma",
-        "circuit-trace-root", "backslash", "absolute"])
+        "circuit-trace-root", "backslash", "absolute", "newline"])
 def test_both_sides_name_the_refusal(tmp_path, cfg, needle):
     full = {**BASE, **cfg}
     rc, _, err = _run_params(tmp_path, full)
@@ -222,17 +235,90 @@ def test_the_params_job_publishes_the_root_and_its_defaults_match_the_fire_path(
     assert "output_root" not in _workflow()[True]["workflow_dispatch"]["inputs"]
 
 
+def _dispatch_keys() -> list[str]:
+    """The keys a workflow_dispatch can set: the params step reads each from an IN_<KEY> env var."""
+    return [k[len("IN_"):].lower() for k in _params_step()["env"] if k.startswith("IN_")]
+
+
+# a clean value for every dispatch input, so each test varies one input only
+DISPATCH_CLEAN = {"models": "qwen3-1.7b", "pairs_file": "data/x.json", "limit": "0", "offset": "0",
+                  "commit_outputs": "false", "mode": "logits", "layers": "all", "topk": "10", "dtype": "float32"}
+
+
+def _run_dispatch(tmp_path: Path, inputs: dict[str, str]) -> tuple[int, str, str]:
+    """Run the params heredoc on the workflow_dispatch path, as CI runs it, with these form (or API) inputs. A
+    dispatch never passes through scripts/fire_trigger.py, so the params job is its only guard."""
+    out = tmp_path / "gh_output"
+    out.write_text("")
+    env = {k: v for k, v in os.environ.items() if not k.startswith("IN_")}
+    env.update({"EVENT_NAME": "workflow_dispatch", "GITHUB_OUTPUT": str(out)})
+    env.update({"IN_" + k.upper(): v for k, v in inputs.items()})
+    proc = subprocess.run([sys.executable, "-"], input=_params_heredoc(), cwd=tmp_path, capture_output=True,
+                          text=True, env=env)
+    return proc.returncode, out.read_text(encoding="utf-8"), proc.stderr
+
+
+def test_the_dispatch_inputs_are_the_keys_these_tests_cover():
+    assert sorted(_dispatch_keys()) == sorted(DISPATCH_CLEAN)
+
+
 def test_a_dispatch_of_pilot_pairs_is_refused_too(tmp_path):
     """The dispatch path reads the form inputs, of which output_root is none, so a pilot pairs file given there is
     refused rather than measured into trace_out/."""
-    out = tmp_path / "gh_output"
-    out.write_text("")
-    env = {**os.environ, "EVENT_NAME": "workflow_dispatch", "GITHUB_OUTPUT": str(out),
-           "IN_MODELS": "qwen3-1.7b", "IN_PAIRS_FILE": "pilot/runs/p.json"}
-    proc = subprocess.run([sys.executable, "-"], input=_params_heredoc(), cwd=tmp_path, capture_output=True,
-                          text=True, env=env)
-    assert proc.returncode != 0 and "is under pilot/" in proc.stderr, proc.stderr
-    assert out.read_text(encoding="utf-8") == ""
+    rc, out, err = _run_dispatch(tmp_path, {"models": "qwen3-1.7b", "pairs_file": "pilot/runs/p.json"})
+    assert rc != 0 and "is under pilot/" in err, err
+    assert out == ""
+
+
+def test_a_clean_dispatch_writes_each_output_once(tmp_path):
+    rc, out, err = _run_dispatch(tmp_path, DISPATCH_CLEAN)
+    assert rc == 0, err
+    keys = [line.split("=", 1)[0] for line in out.splitlines()]
+    assert sorted(keys) == sorted([*DISPATCH_CLEAN, "output_root"]), out
+    assert _outputs(out)["pairs_file"] == "data/x.json" and _outputs(out)["output_root"] == ""
+
+
+def test_a_dispatch_pairs_file_cannot_inject_pilot_pairs_with_a_newline(tmp_path):
+    """The reproduction of 2026-10-04: through the API (the form takes one line) a dispatch pairs_file of a study path,
+    a newline and a second pairs_file= line passed the pilot/ refusal, which read the whole string, and wrote two
+    pairs_file lines. Read later-wins, the eval job would have measured run 2's pilot pairs into trace_out/."""
+    rc, out, err = _run_dispatch(tmp_path, {**DISPATCH_CLEAN, "commit_outputs": "true",
+                                            "pairs_file": "data/x.json\npairs_file=" + RUN2_PAIRS})
+    assert rc != 0, (out, err)
+    assert "pairs_file must not carry a control character" in err, err
+    assert out == "", "a refused dispatch writes no outputs, so no eval job starts"
+
+
+@pytest.mark.parametrize("key", sorted(DISPATCH_CLEAN))
+def test_no_dispatch_input_can_add_an_output_line(tmp_path, key):
+    """Every input, not only pairs_file: each is written as its own key=value line, so any of them could carry an
+    injected pairs_file (or commit_outputs, or output_root) line."""
+    rc, out, err = _run_dispatch(tmp_path, {**DISPATCH_CLEAN, key: DISPATCH_CLEAN[key] + "\npairs_file=pilot/runs/p.json"})
+    assert rc != 0, (out, err)
+    assert f"{key} must not carry a control character" in err, err
+    assert out == ""
+
+
+@pytest.mark.parametrize("char", ["\n", "\r", "\t", "\x0b", "\x1b", "\x7f"],
+                         ids=["newline", "carriage-return", "tab", "vertical-tab", "escape", "delete"])
+def test_every_control_character_is_refused_on_dispatch(tmp_path, char):
+    """The same set fire_trigger.control_char_values refuses: below code point 32, and 127. (NUL is left out: no
+    environment variable can carry one, on the runner or here.)"""
+    rc, out, err = _run_dispatch(tmp_path, {**DISPATCH_CLEAN, "pairs_file": f"data/x{char}.json"})
+    assert rc != 0 and "must not carry a control character" in err, err
+    assert out == ""
+    assert ft.control_char_values({"pairs_file": f"data/x{char}.json"}) == ["pairs_file"]
+
+
+@pytest.mark.parametrize("path", ["push", "dispatch"])
+def test_an_unknown_mode_is_refused_before_any_output_is_written(tmp_path, path):
+    """The mode check ran after the writes until 2026-10-04; it now runs before them, as every other check does."""
+    if path == "push":
+        rc, out, err = _run_params(tmp_path, {**BASE, "pairs_file": "data/x.json", "mode": "spread"})
+    else:
+        rc, out, err = _run_dispatch(tmp_path, {**DISPATCH_CLEAN, "mode": "spread"})
+    assert rc != 0 and "mode must be 'logits', 'depth' or 'verify'" in err, err
+    assert out == ""
 
 
 # --- Resolve output dir -----------------------------------------------------------------------------------------
