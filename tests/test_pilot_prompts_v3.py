@@ -121,13 +121,14 @@ def test_v3_template_holds_no_example_words():
 
 
 def test_v3_rule_6_caps_brand_pairs_and_leaves_other_medicines_to_the_other_rules():
-    """Rule 6 caps brand-for-generic pairs at one per call, the kit's provisional number until the owner sets one
-    (README, *Decisions left to the owner*). It does not say what the call's other medicine concepts must use instead:
-    an earlier draft restricted them to slang or a broader name, which the owner's notes did not ask for (Codex review
-    of PR #80)."""
+    """Rule 6 caps brand-for-generic pairs per call. The number is the owner's to set before run 3 (README, *Decisions
+    left to the owner*); this test accepts any number, and the fixture pins the line as written. Rule 6 does not say
+    what the call's other medicine concepts must use instead: an earlier draft restricted them to slang or a broader
+    name, which the owner's notes did not ask for (Codex review of PR #80)."""
     rule_6 = [line for line in GEN.splitlines() if line.startswith("6. ")]
     assert len(rule_6) == 1
-    assert "At most one of this call's concepts may pair a drug's generic name with one of its brand names." in rule_6[0]
+    assert re.search(r"At most (?:one|two|three|four|five|\d+) of this call's concepts may pair a drug's generic "
+                     r"name with one of its brand names\.", rule_6[0]), rule_6[0]
     assert rule_6[0].endswith("The call's other medicine concepts change register in any way the other rules allow.")
     assert not re.search(r"\b(slang|broader|must)\b", rule_6[0]), rule_6[0]
 
