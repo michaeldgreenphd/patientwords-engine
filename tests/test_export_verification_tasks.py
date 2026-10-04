@@ -521,12 +521,22 @@ def test_the_seal_block_lists_unsealed_items_whose_clinical_text_is_in_the_holdo
     data = world_data()
     planted = _phrase("The plain widget on shelf six needs a", True)      # a Tier A row: in the bucket, not sealed
     data["payload"]["scenarios"][5]["clinical_prompt"] = planted
+    # The exporter buckets an advice item by its clinical BODY, while raters see the clinical MESSAGE (body plus the
+    # ask suffix). Give every advice message a suffix chosen so that at least one item's body and message fall in
+    # different buckets; a check of the message instead of the body then lists a different set and fails here.
+    advice_items = data["advice_new"]["items"] + data["advice_rerun"]["items"]
+    suffix = next(s for s in (f" ask {n}" for n in range(1000))
+                  if any(_holdout(it["clinical_body"]) != _holdout(it["clinical_body"] + s) for it in advice_items))
+    for it in advice_items:
+        it["clinical_message"] = it["clinical_body"] + suffix
+        it["clinical_sha256"] = _sha(it["clinical_message"])
+    body_of = {it["id"]: it["clinical_body"] for it in advice_items}
     bundle, raw, _ = export(tmp_path, data)
     listed = bundle["seal"]["holdout_bucket_unsealed"]["item_ids"]
     planted_id = evt.item_id_for("tracing_pair", evt.SITE_LABEL, f"{TIER_A}#6")
     expected = sorted(i["item_id"] for i in bundle["items"]
                       if (i["family"] == "tracing_pair" and _holdout(i["display"]["clinical"]["text"]))
-                      or (i["family"] == "advice" and _holdout(i["display"]["clinical_message"])))
+                      or (i["family"] == "advice" and _holdout(body_of[i["provenance"]["source_id"]])))
     assert planted_id in listed and listed == expected
     assert all(re.fullmatch(r"vt_[0-9a-f]{12}", i) for i in listed)
     assert bundle["seal"]["result"] == "clean"
