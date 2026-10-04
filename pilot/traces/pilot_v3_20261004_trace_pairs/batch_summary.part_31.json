@@ -1,0 +1,994 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 31,
+  "pairs_requested": 10,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.16",
+    "engine_sha": "17959f056268",
+    "runner_image": "20260927.320.1"
+  },
+  "results": [
+    {
+      "index": 31,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I took a swig of bismuth subsalicylate for my upset stomach, then crawled back into my",
+        "patient": "I took a swig of the pink stuff for my upset stomach, then crawled back into my"
+      },
+      "target_token": "Output \" bed\"",
+      "probabilities": {
+        "clinical": 0.383,
+        "patient": 0.314
+      },
+      "language_penalty": -0.069,
+      "clinical_mass": {
+        "clinical": 0.1205,
+        "patient": 0.1057
+      },
+      "error_share": {
+        "clinical": 0.1133,
+        "patient": 0.104
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] mentions of beds or sleeping | bed \u2192 [L19\u00b7O] references to getting out of bed | bed \u2192 [L24\u00b7O] references to people being in or on a bed | bed \u2192 Output \" bed\" (p=0.383)",
+        "patient": "embedding \u2192 [L18\u00b7O] mentions of beds or sleeping | bed \u2192 [L19\u00b7O] references to getting out of bed | bed \u2192 [L20\u00b7C] stories about people and their beds/bedrooms, especi \u2192 [L24\u00b7O] references to people being in or on a bed | bed \u2192 Output \" bed\" (p=0.314)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " bed",
+        "observed_clinical": [
+          "Output \" bed\"",
+          0.383
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" bed\"",
+            0.383
+          ],
+          [
+            "Output \" tent\"",
+            0.097
+          ],
+          [
+            "Output \" warm\"",
+            0.085
+          ],
+          [
+            "Output \" sleeping\"",
+            0.04
+          ],
+          [
+            "Output \" bunk\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bed\"",
+            0.314
+          ],
+          [
+            "Output \" tent\"",
+            0.131
+          ],
+          [
+            "Output \" bunk\"",
+            0.09
+          ],
+          [
+            "Output \" sleeping\"",
+            0.08
+          ],
+          [
+            "Output \" warm\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1030,
+        "unique_to_a": 253,
+        "unique_to_b": 339
+      },
+      "outputs": {
+        "html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_31.html",
+        "png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_31.png",
+        "diff_html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_31_diff.html",
+        "diff_png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_31_diff.png"
+      }
+    },
+    {
+      "index": 32,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The neurologist said my stroke was in my brainstem, so now I'm working with a",
+        "patient": "The neurologist said my stroke was in the base of my brain, so now I'm working with a"
+      },
+      "target_token": "Output \" speech\"",
+      "probabilities": {
+        "clinical": 0.146,
+        "patient": 0.237
+      },
+      "language_penalty": 0.091,
+      "clinical_mass": {
+        "clinical": 0.4423,
+        "patient": 0.4168
+      },
+      "error_share": {
+        "clinical": 0.1056,
+        "patient": 0.0981
+      },
+      "top_path": {
+        "clinical": "[L16\u00b7S]  \u2192 [L24\u00b7C] words related to medical treatment or legal cases |  \u2192 Output \" physical\" (p=0.113)",
+        "patient": "embedding \u2192 [L18\u00b7C] descriptions of neurological conditions including sy \u2192 [L19\u00b7C] language about therapy and counseling | therapy and  \u2192 [L24\u00b7C] words related to medical treatment or legal cases |  \u2192 Output \" physical\" (p=0.186)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " speech",
+        "observed_clinical": [
+          "Output \" speech\"",
+          0.146
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neuro\"",
+            0.271
+          ],
+          [
+            "Output \" speech\"",
+            0.146
+          ],
+          [
+            "Output \" physical\"",
+            0.113
+          ],
+          [
+            "Output \" neuros\"",
+            0.042
+          ],
+          [
+            "Output \" rehab\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" speech\"",
+            0.237
+          ],
+          [
+            "Output \" physical\"",
+            0.186
+          ],
+          [
+            "Output \" neuro\"",
+            0.163
+          ],
+          [
+            "Output \" therapist\"",
+            0.032
+          ],
+          [
+            "Output \" physio\"",
+            0.032
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1076,
+        "unique_to_a": 285,
+        "unique_to_b": 249
+      },
+      "outputs": {
+        "html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_32.html",
+        "png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_32.png",
+        "diff_html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_32_diff.html",
+        "diff_png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_32_diff.png"
+      }
+    },
+    {
+      "index": 33,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm on apixaban and I'm getting a tooth pulled next week, so first I'll check with my",
+        "patient": "I'm on blood thinners and I'm getting a tooth pulled next week, so first I'll check with my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.105,
+        "patient": 0.177
+      },
+      "language_penalty": 0.072,
+      "clinical_mass": {
+        "clinical": 0.4551,
+        "patient": 0.4235
+      },
+      "error_share": {
+        "clinical": 0.1082,
+        "patient": 0.1058
+      },
+      "top_path": {
+        "clinical": "[L13\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.105)",
+        "patient": "[L13\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.177)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.105
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dentist\"",
+            0.531
+          ],
+          [
+            "Output \" doctor\"",
+            0.105
+          ],
+          [
+            "Output \" doc\"",
+            0.05
+          ],
+          [
+            "Output \" oral\"",
+            0.044
+          ],
+          [
+            "Output \" surgeon\"",
+            0.026
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dentist\"",
+            0.543
+          ],
+          [
+            "Output \" doctor\"",
+            0.177
+          ],
+          [
+            "Output \" doc\"",
+            0.057
+          ],
+          [
+            "Output \" Dr\"",
+            0.031
+          ],
+          [
+            "Output \" oral\"",
+            0.024
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 798,
+        "unique_to_a": 591,
+        "unique_to_b": 431
+      },
+      "outputs": {
+        "html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_33.html",
+        "png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_33.png",
+        "diff_html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_33_diff.html",
+        "diff_png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_33_diff.png"
+      }
+    },
+    {
+      "index": 34,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been dealing with paroxysmal nocturnal dyspnea this week, so I'm going to call my",
+        "patient": "I've been dealing with waking up at night gasping for air this week, so I'm going to call my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.332,
+        "patient": 0.453
+      },
+      "language_penalty": 0.121,
+      "clinical_mass": {
+        "clinical": 0.3727,
+        "patient": 0.2348
+      },
+      "error_share": {
+        "clinical": 0.1069,
+        "patient": 0.0972
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] my | first-person references related to technology i \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.332)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] words or phrases giving medical advice. | Medical co \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.453)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.332
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.332
+          ],
+          [
+            "Output \" cardio\"",
+            0.139
+          ],
+          [
+            "Output \" pulmon\"",
+            0.122
+          ],
+          [
+            "Output \" doc\"",
+            0.074
+          ],
+          [
+            "Output \" PCP\"",
+            0.04
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.453
+          ],
+          [
+            "Output \" doc\"",
+            0.054
+          ],
+          [
+            "Output \" GP\"",
+            0.037
+          ],
+          [
+            "Output \" sleep\"",
+            0.029
+          ],
+          [
+            "Output \" OB\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 868,
+        "unique_to_a": 500,
+        "unique_to_b": 518
+      },
+      "outputs": {
+        "html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_34.html",
+        "png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_34.png",
+        "diff_html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_34_diff.html",
+        "diff_png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_34_diff.png"
+      }
+    },
+    {
+      "index": 35,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having tenesmus for weeks, so I booked a visit with my",
+        "patient": "I've been having a constant urge to poop for weeks, so I booked a visit with my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.211,
+        "patient": 0.26
+      },
+      "language_penalty": 0.049000000000000016,
+      "clinical_mass": {
+        "clinical": 0.4015,
+        "patient": 0.3795
+      },
+      "error_share": {
+        "clinical": 0.096,
+        "patient": 0.097
+      },
+      "top_path": {
+        "clinical": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.211)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.260)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.211
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.211
+          ],
+          [
+            "Output \" GP\"",
+            0.211
+          ],
+          [
+            "Output \" GI\"",
+            0.1
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.053
+          ],
+          [
+            "Output \" primary\"",
+            0.042
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.26
+          ],
+          [
+            "Output \" GP\"",
+            0.158
+          ],
+          [
+            "Output \" GI\"",
+            0.084
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.066
+          ],
+          [
+            "Output \" doc\"",
+            0.045
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 803,
+        "unique_to_a": 592,
+        "unique_to_b": 560
+      },
+      "outputs": {
+        "html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_35.html",
+        "png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_35.png",
+        "diff_html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_35_diff.html",
+        "diff_png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_35_diff.png"
+      }
+    },
+    {
+      "index": 36,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The pain started around my umbilicus and moved lower, so my husband drove me to the",
+        "patient": "The pain started around my belly button and moved lower, so my husband drove me to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.236,
+        "patient": 0.275
+      },
+      "language_penalty": 0.039000000000000035,
+      "clinical_mass": {
+        "clinical": 0.3745,
+        "patient": 0.3613
+      },
+      "error_share": {
+        "clinical": 0.0996,
+        "patient": 0.1014
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7C] terms related to emergency medical response to cardi \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.209)",
+        "patient": "[L17\u00b7S]  \u2192 [L18\u00b7C] terms related to emergency medical response to cardi \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.214)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " hospital",
+        "observed_clinical": [
+          "Output \" hospital\"",
+          0.236
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.344
+          ],
+          [
+            "Output \" hospital\"",
+            0.236
+          ],
+          [
+            "Output \" emergency\"",
+            0.209
+          ],
+          [
+            "Output \" nearest\"",
+            0.068
+          ],
+          [
+            "Output \" closest\"",
+            0.032
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.354
+          ],
+          [
+            "Output \" hospital\"",
+            0.275
+          ],
+          [
+            "Output \" emergency\"",
+            0.214
+          ],
+          [
+            "Output \" nearest\"",
+            0.042
+          ],
+          [
+            "Output \" Emergency\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1131,
+        "unique_to_a": 149,
+        "unique_to_b": 147
+      },
+      "outputs": {
+        "html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_36.html",
+        "png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_36.png",
+        "diff_html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_36_diff.html",
+        "diff_png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_36_diff.png"
+      }
+    },
+    {
+      "index": 37,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The incision on my chest from my coronary artery bypass surgery looks red and swollen, so I'm going to call my",
+        "patient": "The incision on my chest from my heart bypass looks red and swollen, so I'm going to call my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.52,
+        "patient": 0.463
+      },
+      "language_penalty": -0.056999999999999995,
+      "clinical_mass": {
+        "clinical": 0.5009,
+        "patient": 0.4927
+      },
+      "error_share": {
+        "clinical": 0.108,
+        "patient": 0.1031
+      },
+      "top_path": {
+        "clinical": "[L13\u00b7S]  \u2192 [L15\u00b7S] possessive pronouns used in conversation and stories \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] Relationships | words related to healthcare and rela \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.520)",
+        "patient": "[L16\u00b7S]  \u2192 [L18\u00b7C] Relationships | words related to healthcare and rela \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.463)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.52
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.52
+          ],
+          [
+            "Output \" surgeon\"",
+            0.19
+          ],
+          [
+            "Output \" cardio\"",
+            0.148
+          ],
+          [
+            "Output \" heart\"",
+            0.023
+          ],
+          [
+            "Output \" nurse\"",
+            0.014
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.463
+          ],
+          [
+            "Output \" surgeon\"",
+            0.192
+          ],
+          [
+            "Output \" cardio\"",
+            0.17
+          ],
+          [
+            "Output \" heart\"",
+            0.038
+          ],
+          [
+            "Output \" doc\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1016,
+        "unique_to_a": 165,
+        "unique_to_b": 216
+      },
+      "outputs": {
+        "html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_37.html",
+        "png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_37.png",
+        "diff_html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_37_diff.html",
+        "diff_png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_37_diff.png"
+      }
+    },
+    {
+      "index": 38,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The MRI found a small tumor in the frontal lobe, so next week I'm meeting with a",
+        "patient": "The MRI found a small tumor in the front of my brain, so next week I'm meeting with a"
+      },
+      "target_token": "Output \" surgeon\"",
+      "probabilities": {
+        "clinical": 0.058,
+        "patient": 0.063
+      },
+      "language_penalty": 0.0049999999999999975,
+      "clinical_mass": {
+        "clinical": 0.4648,
+        "patient": 0.4576
+      },
+      "error_share": {
+        "clinical": 0.1101,
+        "patient": 0.1008
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] specific subjects that can be studied, such as vario \u2192 [L20\u00b7C] words related to mental health, psychology, and medi \u2192 [L23\u00b7O] terms related to the nervous system and the brain |  \u2192 [L24\u00b7C] words related to the study of biology and medicine,  \u2192 Output \" neuro\" (p=0.293)",
+        "patient": "embedding \u2192 [L24\u00b7C] words related to the study of biology and medicine,  \u2192 Output \" neuro\" (p=0.249)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " surgeon",
+        "observed_clinical": [
+          "Output \" surgeon\"",
+          0.058
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neuros\"",
+            0.332
+          ],
+          [
+            "Output \" neuro\"",
+            0.293
+          ],
+          [
+            "Output \" specialist\"",
+            0.058
+          ],
+          [
+            "Output \" surgeon\"",
+            0.058
+          ],
+          [
+            "Output \" doctor\"",
+            0.04
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" neuros\"",
+            0.363
+          ],
+          [
+            "Output \" neuro\"",
+            0.249
+          ],
+          [
+            "Output \" surgeon\"",
+            0.063
+          ],
+          [
+            "Output \" doctor\"",
+            0.049
+          ],
+          [
+            "Output \" specialist\"",
+            0.049
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1081,
+        "unique_to_a": 172,
+        "unique_to_b": 231
+      },
+      "outputs": {
+        "html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_38.html",
+        "png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_38.png",
+        "diff_html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_38_diff.html",
+        "diff_png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_38_diff.png"
+      }
+    },
+    {
+      "index": 39,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The scan showed my aorta is getting wider, so I need to see a",
+        "patient": "The scan showed my main artery is getting wider, so I need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.097,
+        "patient": 0.146
+      },
+      "language_penalty": 0.04899999999999999,
+      "clinical_mass": {
+        "clinical": 0.4927,
+        "patient": 0.4429
+      },
+      "error_share": {
+        "clinical": 0.0972,
+        "patient": 0.0986
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.076)",
+        "patient": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.128)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " specialist",
+        "observed_clinical": [
+          "Output \" specialist\"",
+          0.097
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cardio\"",
+            0.494
+          ],
+          [
+            "Output \" specialist\"",
+            0.097
+          ],
+          [
+            "Output \" doctor\"",
+            0.076
+          ],
+          [
+            "Output \" heart\"",
+            0.076
+          ],
+          [
+            "Output \" surgeon\"",
+            0.067
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" cardio\"",
+            0.395
+          ],
+          [
+            "Output \" specialist\"",
+            0.146
+          ],
+          [
+            "Output \" doctor\"",
+            0.128
+          ],
+          [
+            "Output \" vascular\"",
+            0.069
+          ],
+          [
+            "Output \" surgeon\"",
+            0.042
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 918,
+        "unique_to_a": 328,
+        "unique_to_b": 410
+      },
+      "outputs": {
+        "html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_39.html",
+        "png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_39.png",
+        "diff_html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_39_diff.html",
+        "diff_png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_39_diff.png"
+      }
+    },
+    {
+      "index": 40,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I start freezing up before my next dose of carbidopa-levodopa is due, so I'm going to tell my",
+        "patient": "I start freezing up before my next dose of Parkinson's medicine is due, so I'm going to tell my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.463,
+        "patient": 0.531
+      },
+      "language_penalty": 0.068,
+      "clinical_mass": {
+        "clinical": 0.3948,
+        "patient": 0.3966
+      },
+      "error_share": {
+        "clinical": 0.1164,
+        "patient": 0.1024
+      },
+      "top_path": {
+        "clinical": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.463)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.531)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.463
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.463
+          ],
+          [
+            "Output \" neuro\"",
+            0.219
+          ],
+          [
+            "Output \" doc\"",
+            0.062
+          ],
+          [
+            "Output \" Dr\"",
+            0.026
+          ],
+          [
+            "Output \" dr\"",
+            0.023
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.531
+          ],
+          [
+            "Output \" neuro\"",
+            0.172
+          ],
+          [
+            "Output \" GP\"",
+            0.049
+          ],
+          [
+            "Output \" doc\"",
+            0.034
+          ],
+          [
+            "Output \" nurse\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 845,
+        "unique_to_a": 545,
+        "unique_to_b": 456
+      },
+      "outputs": {
+        "html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_40.html",
+        "png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_40.png",
+        "diff_html": "pilot/traces/pilot_v3_20261004_trace_pairs/index_40_diff.html",
+        "diff_png": "pilot/traces/pilot_v3_20261004_trace_pairs/index_40_diff.png"
+      }
+    }
+  ]
+}
