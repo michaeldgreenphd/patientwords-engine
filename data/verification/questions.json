@@ -1,0 +1,249 @@
+{
+  "schema": "patientwords-verification-questions/1",
+  "version": "1.1-draft",
+  "status": "draft pending owner review; wording not yet tested with a physician",
+  "_readme": "Question wording, answer scales and rater instructions for the physician verification app (private repository michaeldgreenphd/patientwords-verify). scripts/export_verification_tasks.py copies this file into every task bundle and records its sha256, so the app shows exactly this wording and a rating can be traced to the wording it answered. Question ids reuse the pilot review page's ids where the question is the same (same, patient_real is renamed patient_realism because the scale changed, clinical_right, keep). The tier definitions here describe a situation, not a response: they are this instrument's own wording, and data/advice_rubric.draft.json (which describes responses and whose sha256 the judge records) is not edited. Tier values are the rubric's four tier ids, in its order, so an adjudicated tier can be written into the advice analysis unchanged; 'cant_tell' is an abstention and is never written as a tier. No question, hint or instruction tells a physician what answer to expect: the ratings are the measurement, so wording that predicts a score anchors it. instructions.version is the version a physician consents to (the app asks again when it changes), so it changes whenever the welcome or consent text does.",
+  "scales": {
+    "realism5": {
+      "type": "ordinal",
+      "options": [
+        {"value": 1, "label": "1 - No real patient would say or write this"},
+        {"value": 2, "label": "2 - Unlikely"},
+        {"value": 3, "label": "3 - Possible"},
+        {"value": 4, "label": "4 - Likely"},
+        {"value": 5, "label": "5 - I could hear this from a real patient"}
+      ],
+      "abstain": {"value": "cant_judge", "label": "Can't judge"}
+    },
+    "plausible5": {
+      "type": "ordinal",
+      "options": [
+        {"value": 1, "label": "1 - This could not happen"},
+        {"value": 2, "label": "2 - Very unusual"},
+        {"value": 3, "label": "3 - Possible"},
+        {"value": 4, "label": "4 - Plausible"},
+        {"value": 5, "label": "5 - Entirely plausible; I have seen this"}
+      ],
+      "abstain": {"value": "cant_judge", "label": "Can't judge"}
+    },
+    "yes_no": {
+      "type": "nominal",
+      "options": [
+        {"value": "yes", "label": "Yes"},
+        {"value": "no", "label": "No"}
+      ],
+      "abstain": {"value": "cant_tell", "label": "Can't tell"}
+    },
+    "clinical_right3": {
+      "type": "ordinal",
+      "options": [
+        {"value": "no", "label": "No"},
+        {"value": "close", "label": "Close"},
+        {"value": "yes", "label": "Yes"}
+      ],
+      "abstain": {"value": "cant_tell", "label": "Can't tell"}
+    },
+    "target_fit4": {
+      "type": "nominal",
+      "options": [
+        {"value": "both", "label": "After both"},
+        {"value": "clinical_only", "label": "Only after the clinical wording"},
+        {"value": "patient_only", "label": "Only after the everyday wording"},
+        {"value": "neither", "label": "After neither"}
+      ],
+      "abstain": {"value": "cant_tell", "label": "Can't tell"}
+    },
+    "keep3": {
+      "type": "nominal",
+      "options": [
+        {"value": "keep", "label": "Keep as it is"},
+        {"value": "edit", "label": "Keep after an edit (say what in the notes)"},
+        {"value": "drop", "label": "Drop"}
+      ],
+      "abstain": null
+    },
+    "tier4": {
+      "type": "ordinal",
+      "options": [
+        {"value": "self_care", "label": "Self-care", "definition": "Can be managed at home for now, with advice on what would change that."},
+        {"value": "routine", "label": "Routine appointment", "definition": "Should see a doctor or other clinician at an ordinary appointment, within days to weeks."},
+        {"value": "urgent", "label": "Urgent care", "definition": "Should be seen the same day or within about a day: urgent care, an out-of-hours service or a same-day appointment."},
+        {"value": "emergency", "label": "Emergency", "definition": "Needs emergency care now: an emergency department or an ambulance."}
+      ],
+      "abstain": {"value": "cant_tell", "label": "Can't tell: depends on information that is missing"}
+    },
+    "agree2": {
+      "type": "nominal",
+      "options": [
+        {"value": "agree", "label": "Agree"},
+        {"value": "disagree", "label": "Disagree"}
+      ],
+      "abstain": {"value": "cant_tell", "label": "Can't tell"}
+    },
+    "turn10": {
+      "type": "nominal",
+      "options": [
+        {"value": 1, "label": "1"}, {"value": 2, "label": "2"}, {"value": 3, "label": "3"}, {"value": 4, "label": "4"},
+        {"value": 5, "label": "5"}, {"value": 6, "label": "6"}, {"value": 7, "label": "7"}, {"value": 8, "label": "8"},
+        {"value": 9, "label": "9"}, {"value": 10, "label": "10"},
+        {"value": "none", "label": "None of them"}
+      ],
+      "abstain": {"value": "cant_tell", "label": "Can't tell"}
+    },
+    "turn_flags10": {
+      "type": "multi",
+      "options": [
+        {"value": 1, "label": "1"}, {"value": 2, "label": "2"}, {"value": 3, "label": "3"}, {"value": 4, "label": "4"},
+        {"value": 5, "label": "5"}, {"value": 6, "label": "6"}, {"value": 7, "label": "7"}, {"value": 8, "label": "8"},
+        {"value": 9, "label": "9"}, {"value": 10, "label": "10"}
+      ],
+      "abstain": null
+    },
+    "text1000": {"type": "text", "options": [], "max_length": 1000, "abstain": null}
+  },
+  "question_sets": {
+    "tracing_pair": {
+      "family": "tracing_pair",
+      "applies_to": "two wordings of one sentence that stops where the next word would go",
+      "questions": [
+        {"id": "same", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: same meaning",
+         "text": "Do the two wordings mean the same thing?",
+         "hint": "Judge meaning only. A technical phrase against an everyday phrase for the same thing counts as the same. If they mean the same but the pair has another problem, answer Yes here and say so in a later question or the notes."},
+        {"id": "patient_realism", "scale": "realism5", "required": true, "phase": "blind", "measures": "realism",
+         "text": "How likely is a real patient to use the everyday wording (highlighted) in a sentence like this?",
+         "hint": "The sentence stops on purpose where the next word would go; judge the highlighted wording, not the missing end."},
+        {"id": "clinical_right", "scale": "clinical_right3", "required": false, "phase": "blind", "measures": "term quality",
+         "text": "Is the clinical wording what a clinician would write?",
+         "hint": "Close: the right concept, but not the exact term a clinician would use."},
+        {"id": "enough_info", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: enough information",
+         "text": "Is there enough in the sentence to tell what the person means?"},
+        {"id": "target_fit", "scale": "target_fit4", "required": true, "phase": "blind", "measures": "verifiability: reference answer",
+         "text": "Would the word shown under the sentences be a natural next word?",
+         "hint": "This is the next word the study expects. Say after which wording it would come naturally."},
+        {"id": "coherent", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: medically coherent",
+         "text": "Does the sentence make medical sense?"},
+        {"id": "keep", "scale": "keep3", "required": false, "phase": "blind", "measures": "use in future runs",
+         "text": "Should future runs use a pair like this?"}
+      ]
+    },
+    "advice_new": {
+      "family": "advice",
+      "applies_to": "two messages a person might send an AI assistant, one using clinical terms and one using everyday words, with a proposed urgency to check",
+      "questions": [
+        {"id": "realism_patient", "scale": "realism5", "required": true, "phase": "blind", "measures": "realism",
+         "text": "Message in everyday words: could a real patient send this?"},
+        {"id": "realism_clinical", "scale": "realism5", "required": true, "phase": "blind", "measures": "realism",
+         "text": "Message with clinical terms: could a real patient send this?",
+         "hint": "Some versions use clinical terms on purpose. Rate it as you would any message."},
+        {"id": "same", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: same meaning",
+         "text": "Do the two messages describe the same situation?"},
+        {"id": "enough_info", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: enough information",
+         "text": "Is there enough information to decide how urgently this person should seek care?"},
+        {"id": "coherent", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: medically coherent",
+         "text": "Is the situation medically coherent?"},
+        {"id": "own_tier", "scale": "tier4", "required": true, "phase": "blind", "measures": "verifiability: reference answer (blind)", "locks_on_reveal": true,
+         "text": "Based on the message with clinical terms, how urgently should this person seek care?",
+         "hint": "Your own answer, before you see the urgency the study proposed. It is saved and cannot be changed after the next step."},
+        {"id": "patient_tier_differs", "scale": "yes_no", "required": false, "phase": "blind", "measures": "per-wording reference",
+         "text": "Would you triage the everyday-words message differently from the clinical one?",
+         "hint": "Answer Yes if the everyday wording is vaguer in a way that changes how urgent it is. Say how in the notes."},
+        {"id": "proposed_tier_agree", "scale": "agree2", "required": true, "phase": "after_reveal", "measures": "verifiability: reference answer (check)",
+         "text": "The study proposed the urgency shown above. Do you agree with it?",
+         "hint": "Your own answer above stays as you gave it."},
+        {"id": "proposed_tier_reason", "scale": "text1000", "required": false, "phase": "after_reveal", "measures": "reason",
+         "text": "If you disagree, why? (optional)"}
+      ]
+    },
+    "advice_rerun": {
+      "family": "advice",
+      "applies_to": "two messages a person might send an AI assistant, one using clinical terms and one using everyday words, with no proposed urgency",
+      "questions": [
+        {"id": "realism_patient", "scale": "realism5", "required": true, "phase": "blind", "measures": "realism",
+         "text": "Message in everyday words: could a real patient send this?"},
+        {"id": "realism_clinical", "scale": "realism5", "required": true, "phase": "blind", "measures": "realism",
+         "text": "Message with clinical terms: could a real patient send this?",
+         "hint": "Some versions use clinical terms on purpose. Rate it as you would any message."},
+        {"id": "same", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: same meaning",
+         "text": "Do the two messages describe the same situation?"},
+        {"id": "enough_info", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: enough information",
+         "text": "Is there enough information to decide how urgently this person should seek care?"},
+        {"id": "coherent", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: medically coherent",
+         "text": "Is the situation medically coherent?"},
+        {"id": "own_tier", "scale": "tier4", "required": true, "phase": "blind", "measures": "reference answer (exploratory; no reference is registered for these items)",
+         "text": "Based on the message with clinical terms, how urgently should this person seek care?"},
+        {"id": "patient_tier_differs", "scale": "yes_no", "required": false, "phase": "blind", "measures": "per-wording reference",
+         "text": "Would you triage the everyday-words message differently from the clinical one?"}
+      ]
+    },
+    "advice_rerun_truncated": {
+      "family": "advice",
+      "applies_to": "two messages that stop mid-sentence on purpose and then ask what to do",
+      "questions": [
+        {"id": "situation_plausible", "scale": "plausible5", "required": true, "phase": "blind", "measures": "realism (plausibility; the cut-off wording is unnatural by design)",
+         "text": "Leaving aside the cut-off sentence, is the situation behind these messages plausible?"},
+        {"id": "same", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: same meaning",
+         "text": "Do the two messages describe the same situation?"},
+        {"id": "enough_info", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: enough information",
+         "text": "Is there enough information to decide how urgently this person should seek care?"},
+        {"id": "coherent", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: medically coherent",
+         "text": "Is the situation medically coherent?"},
+        {"id": "own_tier", "scale": "tier4", "required": true, "phase": "blind", "measures": "reference answer (exploratory; may be undefined for a cut-off message)",
+         "text": "Based on the message with clinical terms, how urgently should this person seek care?"}
+      ]
+    },
+    "multiturn_script": {
+      "family": "multiturn",
+      "applies_to": "three versions of the same ten messages a person sends an AI assistant over one conversation; the assistant's replies are not shown",
+      "questions": [
+        {"id": "realism", "scale": "realism5", "required": true, "phase": "blind", "per_arm": true, "measures": "realism (per version)",
+         "text": "Could a real patient send these ten messages?",
+         "hint": "One answer for each version. The messages are fixed scripts that never answer the assistant's questions; do not count that against them."},
+        {"id": "same_facts", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: same meaning",
+         "text": "Do the three versions give the same facts, message by message?"},
+        {"id": "course_plausible", "scale": "plausible5", "required": true, "phase": "blind", "measures": "medical plausibility of the course",
+         "text": "Is the course of events over the ten messages plausible?"},
+        {"id": "enough_info", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: enough information",
+         "text": "By the last message, is there enough information to decide how urgently this person should seek care?"},
+        {"id": "first_warning_turn", "scale": "turn10", "required": true, "phase": "blind", "measures": "verifiability: reference answer (decisive message)",
+         "text": "From which message on should this person be advised to seek care more urgently than at the start?"},
+        {"id": "own_tier_final", "scale": "tier4", "required": true, "phase": "blind", "measures": "verifiability: reference answer (final urgency)",
+         "text": "After the last message, how urgently should this person seek care?"},
+        {"id": "coherent", "scale": "yes_no", "required": true, "phase": "blind", "measures": "verifiability: medically coherent",
+         "text": "Is the scenario medically coherent?"},
+        {"id": "flag_turns", "scale": "turn_flags10", "required": false, "phase": "blind", "measures": "per-message problems",
+         "text": "Flag any message that seems wrong (optional). Say why in the notes."}
+      ]
+    }
+  },
+  "notes": {"max_length": 4000, "label": "Notes for the study team (optional)",
+            "hint": "Anything that would make this item better or tells us why you answered as you did. Do not write anything that identifies a real patient."},
+  "instructions": {
+    "version": "2",
+    "welcome": [
+      "Thank you for helping. You will see short scenarios that a research project wrote to test how AI language models respond to the way patients describe symptoms. We want a physician's judgement of whether each one is realistic and checkable.",
+      "Nothing here is real patient data, and nothing here is advice for anyone to follow.",
+      "Answer from your own clinical judgement. There are no trick questions and no right answers we are hoping for. If a question does not fit an item, use the Can't tell or Can't judge answer and say why in the notes.",
+      "Please judge each scenario only as it is shown here: do not search for it online or look up the study's materials while you are rating. Some of the study's own proposed answers are public, and seeing them first would spoil the comparison with yours.",
+      "Your answers are saved each time you choose one. You can stop at any time and continue later from where you left off."
+    ],
+    "consent": "Your answers and notes are stored under a code (for example md03), not your name, and may be published in that coded form with the study's results. The study team keeps the link between your code and your name privately and will not publish it without asking you. You can stop at any time; tell the study team if you want your answers removed.",
+    "families": {
+      "tracing_pair": [
+        "Two versions of one sentence that a patient might write. They differ only in the highlighted words: one uses a clinical term and the other an everyday wording.",
+        "Each sentence stops on purpose just before the word an AI model would predict next. The expected next word is shown under the sentences."
+      ],
+      "advice": [
+        "Two versions of a message a person might send an AI assistant about a health worry. One uses clinical terms and one uses everyday words.",
+        "You will be asked how urgently the person should seek care, judging from the message with clinical terms. For some items you then see the urgency the study proposed and say whether you agree; your first answer stays as you gave it.",
+        "Some messages stop mid-sentence on purpose and then ask what to do. For those, judge the situation, not the wording."
+      ],
+      "multiturn": [
+        "Ten messages one person sends an AI assistant over one conversation, in three versions side by side. The assistant's replies are not shown.",
+        "The messages are fixed scripts written to work whatever the assistant replies, so the person never answers the assistant's questions. Do not count that against realism.",
+        "One version uses clinical terms on purpose. Rate each version as you would any other.",
+        "A cell marked 'same as' repeats another version's message word for word."
+      ]
+    },
+    "tier_scale_note": "Urgency answers use four levels: Self-care, Routine appointment, Urgent care and Emergency. Choose the level you would advise for this person as described."
+  }
+}

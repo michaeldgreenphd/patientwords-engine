@@ -44,7 +44,7 @@ publish-site-data skill, which the Routine runs in §5 when new results land.
 | `drift_sentinel.py` | Day-over-day stability of the hosted tracer on the three frozen sentinel pairs | live | `ops/drift_series.json`; `--site` also writes the site's `data/drift_series.json` | the Routine (§3b) |
 | `lens_sentinel_check.py` | The drift sentinel's counterpart for the hosted j-lens readouts | operator tool | `ops/lens_sentinel_series.json` (2026-09-02) | owner or session after a lens sentinel readout lands; the current Routine prompt does not run it |
 | `render_archive.py` | Fetches archived PNGs from GitHub Releases by HTTP Range, and reports which PNGs are archived where | live | `fetch` writes under `dist/renders/`; `coverage`, `index` and `shrink-check` print | the Routine (`coverage`, §3d); the `archive-renders` lane (`coverage --require-archived`, `shrink-check`); anyone who needs a PNG (`fetch`) |
-| `seal_check.py` | Sweeps the site and the engine's `docs/` and `ops/` for any Tier B holdout phrase; a hit is reported as path, `batch#index` and count, never the phrase | live | nothing; exit 0 clean, 1 hit, 2 configuration error | the Routine (§5), publish chain step 8b, the `petri-audit` lane, the holdout-seal-check skill; imported by `tierb_near_twins.py` and `petri_audit/seal.py` |
+| `seal_check.py` | Sweeps the site and the engine's `docs/`, `ops/` and `data/verification/` (the physician task bundles) for any Tier B holdout phrase; a hit is reported as path, `batch#index` and count, never the phrase | live | nothing; exit 0 clean, 1 hit, 2 configuration error | the Routine (§5), publish chain step 8b, the `petri-audit` lane, the holdout-seal-check skill; imported by `tierb_near_twins.py` and `petri_audit/seal.py` |
 | `backfill_planner.py` | Printed the next $0 fire per lane for the coverage backfill | one-off and done | nothing (prints `fire_trigger.py` commands) | the Routine and the backfill accelerator (`ops/routines.md` §2) until the backfill closed on 2026-08-26 |
 | `backfill_mitigation_costs.py` | Imputed cost sidecars for mitigation runs from before cost capture existed | one-off and done | `trace_out/<run>/mitigation.part_NN.report.json`, each marked `imputed: true` | session, 2026-07-31 (commit dc108c4b) |
 
@@ -178,3 +178,13 @@ in `ops/pab_ci/`.
 | `petri_multiturn_synthetic.py` | Synthetic wave-2 runs and section 10 artifact for tests and fixtures | operator tool | nothing itself | imported by `tests/test_export_petri_multiturn.py`, and by `export_petri_multiturn.py --write-samples` when owner or session regenerates the sample fixtures; no scheduled path runs it |
 | `petri_three_arm.py` | Exploratory three-arm and crossed-factorial comparisons over wave-2 runs | operator tool | an optional report file; none committed | owner or session |
 | `petri_w2_power_sim.py` | Design-only power simulation for the register contrast | one-off and done | nothing (prints JSON that records its seed) | session; `docs/petri_wave2_design.md` quotes its numbers |
+
+## Physician verification
+
+The task bundle for the physician verification app, whose code is in the
+private repository `michaeldgreenphd/patientwords-verify`.
+`docs/verification_protocol.md` is the protocol.
+
+| Script | What it does | Status | Writes | Who runs it |
+|---|---|---|---|---|
+| `export_verification_tasks.py` | The items physicians rate, blind to source: pilot Run 2's 40 traced pairs, the published main-study pairs with the largest language penalty, the 2026-10-02 advice stimuli and the Petri wave-3 scripts, with the question wording from `data/verification/questions.json`; refuses (writing nothing) on a missing input, an unknown field, a changed text or any holdout-seal hit | operator tool | `--out-dir`, default `data/verification/`: a new `tasks_<stamp>.json` it refuses to overwrite, its seed recorded inside | owner or session, before each upload to the app; then `seal_check.py`, whose default roots include `data/verification/` (so the daily sweep re-checks every committed bundle) |

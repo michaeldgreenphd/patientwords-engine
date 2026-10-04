@@ -82,7 +82,7 @@ nothing. That red run is expected; resolve it like any other.
 *Data contracts* section of the site's `AGENTS.md` names every writer); then
 `python scripts/validate_frontend_contract.py --site ../patientwords`
 (0 errors required) and `python scripts/seal_check.py --site
-../patientwords --extra docs,ops` (CLEAN required) before pushing. Data
+../patientwords --extra docs,ops,data/verification` (CLEAN required) before pushing. Data
 payloads only — never page text. Merges to site `main` publish live.
 
 **Merging branches.** Any push that changes a trigger file fires its

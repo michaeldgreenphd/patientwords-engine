@@ -11,14 +11,17 @@ allowlist suppresses a sealed phrase only inside a whole-field occurrence of
 the exact containing field whose sha256 it records, never inside that text run
 on into more words, and never for a field that is the phrase up to case and
 whitespace; and a root whose git checkout keeps tracked files off disk (a
-sparse checkout) is a configuration error, not a CLEAN sweep. Uses abstract
-non-medical synthetic phrases only.
+sparse checkout) is a configuration error, not a CLEAN sweep. Since 2026-10-03
+the default roots include data/verification (the physician task bundles), and
+every sweep command the live operating docs spell out names every default root.
+Uses abstract non-medical synthetic phrases only.
 """
 
 import hashlib
 import html
 import importlib.util
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -468,3 +471,32 @@ def test_hidden_files_in_excluded_dirs_or_unscanned_suffixes_do_not_refuse(tmp_p
     _git(root, "update-index", "--skip-worktree", "docs/note.md")
     assert sc.hidden_scannable([root], [root / "trace_out"]) == [str(root / "docs" / "note.md")]
     assert sc.hidden_scannable([root / "docs" / "note.md"]) == [str(root / "docs" / "note.md")]
+
+
+# --- the default roots: the physician task bundles are swept ---------------- #
+
+def test_the_default_sweep_covers_the_verification_bundles(tmp_path, capsys, monkeypatch):
+    # Regression (review of 2026-10-03): a task bundle under data/verification was seal-checked once at export and
+    # never again, though Amendment 3 can seal one of its texts later. Run with every default but --site.
+    phrase = sealed_phrase()
+    setup(tmp_path, phrase)
+    bundle = tmp_path / "data" / "verification" / "tasks_20990101T000000Z.json"
+    bundle.parent.mkdir(parents=True)
+    bundle.write_text(json.dumps({"items": [{"display": {"text": phrase}}]}), encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    rc = sc.main(["--site", str(tmp_path / "site"), "--allowlist", str(tmp_path / "no_allowlist.json")])
+    out = capsys.readouterr().out
+    assert "data/verification" in sc.DEFAULT_EXTRA.split(",")
+    assert rc == 1 and "data/verification/tasks_20990101T000000Z.json" in out and phrase not in out
+
+
+def test_live_operating_docs_sweep_every_default_root():
+    # A documented sweep that passes --extra replaces the default roots, so it must name every one of them.
+    defaults = set(sc.DEFAULT_EXTRA.split(","))
+    found = 0
+    for rel in ("docs/routine_standing_prompt.md", "docs/operators_handbook.md"):
+        text = " ".join((_ROOT / rel).read_text(encoding="utf-8").split())
+        for m in re.finditer(r"seal_check\.py [^`]*?--extra ([^`\s]+)", text):
+            found += 1
+            assert defaults <= set(m.group(1).split(",")), f"{rel}: --extra {m.group(1)}"
+    assert found >= 2

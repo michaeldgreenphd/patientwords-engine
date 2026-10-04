@@ -56,7 +56,7 @@ allowlist file is malformed, or a root's checkout hides tracked files).
 
 Usage:
   python scripts/seal_check.py [--site ../patientwords] [--dashboard ops/dashboard.json]
-      [--simulated data/simulated] [--trace-out trace_out] [--extra docs,ops]
+      [--simulated data/simulated] [--trace-out trace_out] [--extra docs,ops,data/verification]
       [--allowlist data/seal_allowlist.json]
 """
 
@@ -82,6 +82,13 @@ except ImportError:
 # transcript, judgment and rule-outcome families as .jsonl, and a scan that
 # skipped them would clear a leak it never read.
 SCAN_SUFFIXES = {".json", ".jsonl", ".html", ".md", ".csv", ".txt", ".yml"}
+
+# The engine roots swept besides the site when --extra is not given.
+# data/verification added 2026-10-03: the physician task bundles there are
+# seal-checked when exported, but Amendment 3 seals a phrase everywhere once a
+# later Tier B batch accepts it, so a bundle that was clean at export can hold a
+# sealed phrase later; only a recurring sweep sees that.
+DEFAULT_EXTRA = "docs,ops,data/verification"
 
 _LABEL_RE = re.compile(r"^(?P<stem>[A-Za-z0-9_.\-]+)#(?P<index>[1-9][0-9]*)$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -431,8 +438,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="the engine's registry sources; excluded from the sweep by resolved path")
     parser.add_argument("--trace-out", default="trace_out",
                         help="the engine's own measurement store; excluded by resolved path")
-    parser.add_argument("--extra", default="docs,ops",
-                        help="comma-separated extra engine roots to sweep")
+    parser.add_argument("--extra", default=DEFAULT_EXTRA,
+                        help=f"comma-separated extra engine roots to sweep (default {DEFAULT_EXTRA})")
     parser.add_argument("--allowlist", default="data/seal_allowlist.json",
                         help="owner-ruled allowlist (absent file = no allowlist)")
     args = parser.parse_args(argv)

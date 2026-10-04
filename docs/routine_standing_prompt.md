@@ -175,7 +175,9 @@ then its gates before pushing data payloads only:
 be 0 errors), `python scripts/claim_check.py` (a `FAIL:` or `warn:` line
 goes in the digest headline and `decisions_pending`; never edit the prose
 to clear it) and `python scripts/seal_check.py --site ../patientwords
---extra docs,ops` (must be CLEAN). Never edit page HTML, text, figures, or
+--extra docs,ops,data/verification` (must be CLEAN; `data/verification`
+holds the physician task bundles, which a later Tier B batch can seal after
+they were exported clean). Never edit page HTML, text, figures, or
 labels. When nothing landed, skip this
 section entirely — do not republish unchanged data. The site checkout is
 `main`, which GitHub Pages serves: a data-payload push there is a live
