@@ -18,17 +18,23 @@ never usernames, names or password data. The import refuses an export that carri
 field named after identity or credential data, a rater id that is not a code, or an email-shaped string outside the
 two free-text places (notes and text answers). Note text and text answers are counted, never copied (owner decision
 11 of the app's DESIGN.md: none is committed unless the owner has read the notes and listed them). The export itself
-holds the notes, so it stays outside the repository.
+holds the notes, so it stays outside the repository: an ``--export`` path that resolves inside this checkout is
+refused (``export_inside_repository``), and ``.gitignore`` lists ``export_*.json`` at the root and under
+``data/verification/``.
 
 Checks, each a named refusal (``REFUSED [code]``) that writes nothing:
 
-* the export's schema and every field's type; ``bundle_sha256`` must equal the sha256 of the bundle file given with
+* the export lies outside the repository;
+* the export's schema and every field's type (a list or an object where a string is expected is a named refusal,
+  never a crash); ``bundle_sha256`` must equal the sha256 of the bundle file given with
   ``--bundle`` or found under ``data/verification/``, and ``bundle_id`` must match it; ``questions_sha256`` must equal
   the bundle's and the sha256 of the questions file, whose content must equal the bundle's copy;
 * every event's item id is in the bundle and its question set is the item's; every answer key is a question of that
   set (per-version keys name one of the item's versions) and every value is allowed by the question's scale, with
   JSON types kept (``"3"`` is not ``3``); notes and text answers are strings within their length limits (counted in
-  UTF-16 code units, as the app counts them); an event's ``bundle_sha256`` is the export's (one bundle per import);
+  UTF-16 code units, as the app counts them); an event's ``bundle_sha256`` is the export's (one bundle per import,
+  checked before any exclusion, so excluding a rater does not admit their events on another bundle; an export
+  that spans a bundle switch, the app's DEPLOY.md section 19, cannot be read yet);
 * event ids are unique; rater ids are known codes; ``--exclude-rater`` names a rater in the export;
 * the reveal step held: a reveal only on an item with a reveal step, after a save, once, with exactly the answers of
   the save before it, holding every required blind answer; no after-reveal answer before the reveal; every
@@ -38,12 +44,13 @@ Derivations, per physician (rater) and item, events taken in the export's order,
 order (the app's own rule for "latest"):
 
 * **current answers**: the latest ``save``; **first answers**: for each answer key, the value in the earliest save
-  that answers it. Changes after the first answer are counted per question (changed, or cleared), over every rating
-  by an included physician, finished or not.
+  that answers it. Changes after the first answer are counted per question over every rating by an included
+  physician, finished or not: changed (any later save gives another answer, so 2, then 4, then 2 counts), differs
+  at the latest save (the net change), and cleared at the latest save.
 * **blind answers of reveal items** (owner decision 18, as built: only the urgency question locks): every blind-phase
   answer is taken from the ``reveal`` event, which holds the saved answers at the moment the proposed urgency was
-  shown; after-reveal answers come from the latest save. A blind answer changed, or first given, after the reveal
-  is counted per question and never enters the analysis.
+  shown; after-reveal answers come from the latest save. A blind answer changed or cleared by any save after the
+  reveal, or first given after it, is counted per question and enters only the sensitivity analysis below.
 * **complete**: the current answers answer every required question (after-reveal ones too on an item with a reveal
   step), the app's rule, recomputed here from the questions; the app's own count is compared and any difference
   reported. **Only complete ratings enter the distributions, the agreement and the combined tier**; unfinished
@@ -67,11 +74,20 @@ Statistics (all per question set and question, because the same id is worded dif
 * **Abstentions** (the scale's ``abstain`` answer, "Can't judge" / "Can't tell"; owner decision 10's default) are
   missing in the primary analysis and their count is reported; for nominal questions a sensitivity analysis counts
   them as one more category.
-* **Interval**: percentile bootstrap over units, ``--resamples`` resamples (default 2000) of the pairable units with
-  replacement, each analysis with its own ``random.Random`` seeded by the string "<seed>|<question set>|<key>|<variant>"
-  (Python seeds a string through SHA-512, so it does not depend on PYTHONHASHSEED). Physicians are not resampled.
-  Resamples where alpha is undefined are counted and left out; with fewer than half defined, no interval is given.
-  The 2.5th and 97.5th percentiles are interpolated linearly between order statistics (position q * (B - 1)).
+* **Interval**: item-level percentile bootstrap (DESIGN.md 10.4), ``--resamples`` resamples (default 2000) of the
+  items holding a pairable unit, with replacement; a resampled item brings all its pairable units, so the three
+  versions of a script stay together in the pooled per-version question (they share the scenario and the
+  physicians, and resampling them one by one would understate the uncertainty). Each analysis has its own
+  ``random.Random`` seeded by the string "<seed>|<question set>|<key>|<variant>" (Python seeds a string through
+  SHA-512, so it does not depend on PYTHONHASHSEED). Physicians are not resampled. With fewer than
+  ``MIN_BOOTSTRAP_ITEMS`` (2) items no interval is given, since every resample of one item is that item. Resamples
+  where alpha is undefined are counted and left out; with fewer than half defined, no interval is given. The 2.5th
+  and 97.5th percentiles are interpolated linearly between order statistics (position q * (B - 1)).
+* **Post-reveal sensitivity** (DESIGN.md 10.3): for every blind question of a set whose items have a reveal step,
+  alpha and its interval again with the latest save's answers, which include blind answers changed or first given
+  after the reveal; reported beside the primary alpha with the number of ratings whose answer differs. It reuses
+  the primary analysis's seed string, so while the same items hold a pairable unit both intervals come from the
+  same item draws and differ only through the answers.
 * **Pairwise agreement**: among all pairs of non-abstaining answers on the same unit, the share that are equal, and
   for ordinal scales the share at most one category apart. Every pair counts once.
 * **Per item**: the distribution of every answer, the median and the share at the two lowest points (<= 2) of every
@@ -89,9 +105,11 @@ the summary JSON and Markdown record the seed (and whether it was the default), 
 every input and of this script, the script version, every exclusion and every warning. They carry item ids, source
 ids, rater codes, answer values and counts only: no scenario text, no note, no name. The proposed adjudication has
 the shape ``scripts/advice_eval.py analyze --stimuli`` reads, ``{"items": [{"id", "reference": {"tier",
-"adjudicated_by"}}]}``, with ``id`` the advice stimuli id and ``adjudicated_by`` the rater codes and the rule; items
-without a tier carry ``"reference": null``, which ``analyze`` skips. It is written next to the summary, not under
-``data/advice/``.
+"proposed_by"}}]}``, with ``id`` the advice stimuli id and ``proposed_by`` the rater codes and the rule; items
+without a tier carry ``"reference": null``, which ``analyze`` skips. The codes are never in ``adjudicated_by``:
+``analyze`` treats any non-empty ``adjudicated_by`` as clinician adjudication (claim grade) and does not read the
+file's status, so a proposal carrying one would score as in force. Without it, ``analyze`` scores the file with
+``claim_grade: false``. It is written next to the summary, not under ``data/advice/``.
 
 Usage (from the engine root):
   python scripts/import_verification_ratings.py --export ~/Downloads/export_20261020T020000Z.json
@@ -127,6 +145,11 @@ ADJUDICATION_STATUS = ("proposed adjudication, not in force until the owner reco
 DEFAULT_SEED = 20261004
 DEFAULT_RESAMPLES = 2000
 CI_LEVEL = 0.95
+# The fewest items with a pairable unit a bootstrap interval is computed from. With one item every resample is that
+# item, so the percentile "interval" has zero width and says nothing about uncertainty. Two is the floor at which
+# resamples can differ at all; intervals from few items are still wide and unstable, and the Markdown says that a
+# coefficient on fewer than about ten units should not carry a claim.
+MIN_BOOTSTRAP_ITEMS = 2
 # "Unrealistic" / "implausible": an answer at the two lowest points of a numeric five-point ordinal scale (1 or 2 on
 # the realism and plausibility scales). A scale counts as five-point numeric when it is ordinal and its five option
 # values are the integers 1 to 5, read from the questions file.
@@ -182,8 +205,9 @@ def canonical(obj: Any) -> str:
 
 
 def logical_path(path: Path) -> str:
-    """A path as the outputs record it: repository-relative inside this checkout, else the file name only (an
-    export kept outside the repository is named by its file name and sha256, not by where it sits on a disk)."""
+    """A path as the outputs record it: repository-relative inside this checkout, else the file name only (the
+    export, which is always outside the repository, is named by its file name and sha256, not by where it sits on a
+    disk)."""
     resolved = path.resolve()
     try:
         return resolved.relative_to(REPO_ROOT).as_posix()
@@ -256,6 +280,15 @@ def need_str(value: Any, where: str, nullable: bool = False) -> str | None:
     return value
 
 
+def need_choice(value: Any, allowed: Iterable[str], where: str, code: str = "bad_export") -> str:
+    """A string from ``allowed``. The type is checked first, so a list or an object in a hand-edited export is a
+    named refusal, not a TypeError from a set or dict membership test."""
+    allowed = sorted(allowed)
+    if not isinstance(value, str) or value not in allowed:
+        refuse(code, f"{where} is not one of {allowed}")
+    return value
+
+
 def need_rater_id(value: Any, where: str) -> str:
     if not isinstance(value, str) or not RATER_ID_RE.match(value):
         refuse("rater_id_not_pseudonymous", f"{where} is not a rater code like md01 (a username, name or address "
@@ -299,8 +332,23 @@ def locate_bundle(bundle_sha: str, bundle_arg: str | None, verification_dir: Pat
                                f"{bundle_sha[:16]}...; pass --bundle with the file the app served")
 
 
+def refuse_export_inside_repository(export_path: Path) -> None:
+    """The export holds every physician's notes and free-text answers, and this repository is public: an export
+    saved inside the checkout is one ``git add`` from being committed (the default --out-dir is under it). Refuse
+    it, wherever in the checkout it sits; the path is resolved first, so a symbolic link into the checkout counts
+    as inside."""
+    try:
+        export_path.resolve().relative_to(REPO_ROOT)
+    except ValueError:
+        return
+    refuse("export_inside_repository", f"the export {logical_path(export_path)} is inside the repository, which is "
+                                       "public; it holds the physicians' notes, so move it outside the checkout "
+                                       "(for example to ~/Downloads) and pass that path")
+
+
 def load_inputs(args: argparse.Namespace) -> Inputs:
     export_path = Path(args.export)
+    refuse_export_inside_repository(export_path)
     export, export_bytes = read_file(export_path, "ratings export")
     if not isinstance(export, dict):
         refuse("bad_export", "the export is not a JSON object")
@@ -362,8 +410,8 @@ def check_questions(questions: Any) -> None:
         if not isinstance(qs, list):
             refuse("bad_questions", f"question set {set_name!r} has no question list")
         for q in qs:
-            if not isinstance(q, dict) or q.get("scale") not in scales or q.get("phase") not in ("blind",
-                                                                                                    "after_reveal"):
+            if not isinstance(q, dict) or not isinstance(q.get("scale"), str) or q["scale"] not in scales or \
+                    q.get("phase") not in ("blind", "after_reveal"):
                 refuse("bad_questions", f"question set {set_name!r}: a question lacks a known scale or phase")
     notes = questions.get("notes")
     if not isinstance(notes, dict) or not is_int(notes.get("max_length")):
@@ -450,6 +498,7 @@ class Rating:
     saves: list[dict[str, Any]] = field(default_factory=list)
     notes: str = ""
     reveal: dict[str, Any] | None = None
+    reveal_at: int | None = None  # the number of saves before the reveal: saves[reveal_at:] came after it
     complete: bool = False
 
     @property
@@ -505,8 +554,7 @@ def check_export(inp: Inputs) -> Checked:
     if not is_int(settings["max_items_per_rater"]) or settings["max_items_per_rater"] < 0:
         refuse("bad_export", "settings.max_items_per_rater is not a non-negative integer")
     need_str(settings["assignment_seed"], "settings.assignment_seed")
-    if settings["order_mode"] not in ORDER_MODES:
-        refuse("bad_export", f"settings.order_mode is not one of {sorted(ORDER_MODES)}")
+    need_choice(settings["order_mode"], ORDER_MODES, "settings.order_mode")
 
     items = {i["item_id"]: i for i in bundle.get("items", [])}
     if not isinstance(export["raters"], list) or not isinstance(export["assignments"], list) or \
@@ -522,8 +570,7 @@ def check_export(inp: Inputs) -> Checked:
         if rid in seen_raters:
             refuse("duplicate_rater", f"rater {rid} is listed twice")
         seen_raters.add(rid)
-        if r["status"] not in RATER_STATUSES:
-            refuse("bad_export", f"{where}.status is not one of {sorted(RATER_STATUSES)}")
+        need_choice(r["status"], RATER_STATUSES, f"{where}.status")
         need_str(r["consent_version"], f"{where}.consent_version", nullable=True)
         if r["consent_utc"] is not None:
             parse_utc(r["consent_utc"], f"{where}.consent_utc")
@@ -539,10 +586,9 @@ def check_export(inp: Inputs) -> Checked:
         rid = need_rater_id(a["rater_id"], f"{where}.rater_id")
         if rid not in seen_raters:
             refuse("unknown_rater", f"{where} names rater {rid}, who is not in the export's raters")
-        if a["item_id"] not in items:
+        if not isinstance(a["item_id"], str) or a["item_id"] not in items:
             refuse("unknown_item", f"{where} names item {a['item_id']!r}, which is not in bundle {bundle['bundle_id']}")
-        if a["status"] not in ASSIGNMENT_STATUSES:
-            refuse("bad_export", f"{where}.status is not one of {sorted(ASSIGNMENT_STATUSES)}")
+        need_choice(a["status"], ASSIGNMENT_STATUSES, f"{where}.status")
         if a["position"] is not None and not (is_int(a["position"]) and a["position"] >= 1):
             refuse("bad_export", f"{where}.position is not a positive integer or null")
         round_ = a["round"]
@@ -578,19 +624,23 @@ def check_export(inp: Inputs) -> Checked:
         rid = need_rater_id(ev["rater_id"], f"{where}.rater_id")
         if rid not in seen_raters:
             refuse("unknown_rater", f"{where} names rater {rid}, who is not in the export's raters")
-        item = items.get(ev["item_id"])
+        item = items.get(ev["item_id"]) if isinstance(ev["item_id"], str) else None
         if item is None:
             refuse("unknown_item", f"{where} names item {ev['item_id']!r}, which is not in bundle "
                                    f"{bundle['bundle_id']}")
         if ev["question_set"] != item["question_set"]:
             refuse("question_set_mismatch", f"{where}: question set {ev['question_set']!r}, the bundle's item "
                                             f"{item['item_id']} is {item['question_set']!r}")
-        if ev["event"] not in EVENT_TYPES:
-            refuse("bad_event", f"{where}.event is not one of {sorted(EVENT_TYPES)}")
+        need_choice(ev["event"], EVENT_TYPES, f"{where}.event", "bad_event")
         if ev["bundle_sha256"] != export["bundle_sha256"]:
+            # One bundle per import. Excluding the rater does not help: every event is checked before exclusion is
+            # applied. An export from after a bundle switch (the app's DEPLOY.md section 19) therefore cannot be
+            # read yet; reading older-bundle events (DESIGN.md 10.3) is future work and needs the owner's rule for
+            # ratings made on two bundles.
             refuse("event_bundle_mismatch", f"{where} was saved on bundle {str(ev['bundle_sha256'])[:16]}..., the "
-                                            "export's bundle is another; this import reads one bundle at a time, so "
-                                            "import that bundle's ratings on their own or exclude the rater")
+                                            "export's bundle is another; this import reads an export whose events "
+                                            "were all saved on its one bundle, and cannot yet read one that spans a "
+                                            "bundle switch (excluding the rater does not change that)")
         if ev["position"] is not None and not (is_int(ev["position"]) and ev["position"] >= 1):
             refuse("bad_event", f"{where}.position is not a positive integer or null")
         need_str(ev["app_version"], f"{where}.app_version")
@@ -647,6 +697,7 @@ def apply_event(rating: Rating, kind: str, answers: dict[str, Any], notes: str, 
         if missing:
             refuse("reveal_blind_incomplete", f"{where}: the reveal lacks required blind answer(s) {missing}")
         rating.reveal = dict(answers)
+        rating.reveal_at = len(rating.saves)
         return
     early = sorted(k for k in answers if keys[k].question["phase"] == "after_reveal" and rating.reveal is None)
     if early:
@@ -682,6 +733,26 @@ def first_answers(rating: Rating) -> dict[str, Any]:
     for answers in rating.saves:
         for k, v in answers.items():
             out.setdefault(k, v)
+    return out
+
+
+def answer_history(rating: Rating) -> dict[str, dict[str, bool]]:
+    """For each key the rating ever answered, three facts about what happened after its first answer:
+
+    * ``changed_after_first``: some later save gives it a different answer (DESIGN.md 10.3's "answers changed after
+      they were first given"). An answer changed and changed back (2, then 4, then 2) counts; a question cleared
+      and answered again with the same value does not, since its answer never differed;
+    * ``differs_from_first_at_latest``: the latest save's answer differs from the first (the net change);
+    * ``cleared_after_first``: the latest save leaves it unanswered."""
+    first = first_answers(rating)
+    out: dict[str, dict[str, bool]] = {}
+    for k, v in first.items():
+        later = [s[k] for s in rating.saves if k in s]
+        out[k] = {
+            "changed_after_first": any(canonical(x) != canonical(v) for x in later),
+            "differs_from_first_at_latest": k in rating.current and canonical(rating.current[k]) != canonical(v),
+            "cleared_after_first": k not in rating.current,
+        }
     return out
 
 
@@ -765,20 +836,37 @@ def percentile(sorted_values: Sequence[float], q: float) -> float:
 
 
 def alpha_with_interval(units: list[list[int]], n_categories: int, metric: str, resamples: int,
-                        rng: random.Random) -> dict[str, Any]:
-    """Point alpha over the pairable units and a percentile bootstrap interval over those units."""
-    pairable = [u for u in units if len(u) >= 2]
-    contributions = [unit_coincidences(u) for u in pairable]
+                        rng: random.Random, items: Sequence[str] | None = None) -> dict[str, Any]:
+    """Point alpha over the pairable units and an item-level percentile bootstrap interval.
+
+    ``items[i]`` names the item unit i belongs to; without it every unit is its own item. The bootstrap resamples
+    items with replacement (DESIGN.md 10.4: "resamples of items"), and a resampled item brings all of its pairable
+    units. That matters for the pooled per-version question: its units are (item, version), and the versions of one
+    script are read together by the same physicians, so resampling the units one by one would treat correlated units
+    as independent and give too narrow an interval. When every unit is its own item the draws are the same as a
+    bootstrap over units. With fewer than MIN_BOOTSTRAP_ITEMS items holding a pairable unit no interval is given:
+    every resample of one item is that item, so its "interval" would have zero width."""
+    if items is not None and len(items) != len(units):
+        raise ValueError("items must name one item per unit")
+    pairable = [i for i, u in enumerate(units) if len(u) >= 2]
+    contributions = {i: unit_coincidences(units[i]) for i in pairable}
     o = [[0.0] * n_categories for _ in range(n_categories)]
-    for contrib in contributions:
+    for contrib in contributions.values():
         for c, k, w in contrib:
             o[c][k] += w
     value, reason = alpha_from_matrix(o, metric)
+    # One bootstrap draw per item, in first-appearance order: the coincidences of all its pairable units.
+    by_item: dict[Any, list[tuple[int, int, float]]] = {}
+    for i in pairable:
+        by_item.setdefault(i if items is None else items[i], []).extend(contributions[i])
+    draws = list(by_item.values())
     out: dict[str, Any] = {
         "value": None if value is None else round(value, 6),
         "undefined_reason": reason,
         "pairable_units": len(pairable),
-        "pairable_values": sum(len(u) for u in pairable),
+        "pairable_values": sum(len(units[i]) for i in pairable),
+        "bootstrap_unit": "item",
+        "resampled_items": len(draws),
         "ci95": None,
         "ci_note": None,
         "resamples_defined": 0,
@@ -787,13 +875,17 @@ def alpha_with_interval(units: list[list[int]], n_categories: int, metric: str, 
     if not pairable:
         out["ci_note"] = "no pairable units"
         return out
+    if len(draws) < MIN_BOOTSTRAP_ITEMS:
+        out["ci_note"] = (f"{len(draws)} item(s) with a pairable unit, fewer than {MIN_BOOTSTRAP_ITEMS}: every "
+                          "resample would be the same, so no interval")
+        return out
     replicates: list[float] = []
     undefined = 0
-    size = len(pairable)
+    size = len(draws)
     for _ in range(resamples):
         rep = [[0.0] * n_categories for _ in range(n_categories)]
         for _j in range(size):
-            for c, k, w in contributions[rng.randrange(size)]:
+            for c, k, w in draws[rng.randrange(size)]:
                 rep[c][k] += w
         a, _r = alpha_from_matrix(rep, metric)
         if a is None:
@@ -866,8 +958,12 @@ def five_point_stats(values: Iterable[Any]) -> dict[str, Any]:
 
 
 def analyse_key(set_name: str, label: str, spec_of: dict[str, KeySpec], units: list[Unit], seed: int,
-                resamples: int) -> dict[str, Any]:
-    """Distribution and agreement for one question (or one version of a per-version question)."""
+                resamples: int, post_reveal_units: list[Unit] | None = None) -> dict[str, Any]:
+    """Distribution and agreement for one question (or one version of a per-version question).
+
+    ``post_reveal_units`` (blind questions of items with a reveal step only) hold the same complete ratings with
+    the latest save's answers, so a blind answer changed or first given after the reveal is in them. They feed the
+    sensitivity analysis DESIGN.md 10.3 asks for; the primary analysis uses the answers as of the reveal."""
     spec = next(iter(spec_of.values()))
     scale = spec.scale
     all_values = [v for u in units for _r, v in u.values]
@@ -898,10 +994,11 @@ def analyse_key(set_name: str, label: str, spec_of: dict[str, KeySpec], units: l
         rec["five_point"] = five_point_stats(all_values)
     options = option_values(scale)
     index = {canonical(v): i for i, v in enumerate(options)}
+    items = [u.item_id for u in units]
 
-    def coded(abstain_as_category: bool) -> list[list[int]]:
+    def coded(source: list[Unit], abstain_as_category: bool) -> list[list[int]]:
         out = []
-        for u in units:
+        for u in source:
             vals = []
             for _r, v in u.values:
                 if v is None:
@@ -914,17 +1011,29 @@ def analyse_key(set_name: str, label: str, spec_of: dict[str, KeySpec], units: l
             out.append(vals)
         return out
 
-    primary = coded(False)
+    primary = coded(units, False)
     rec["units_with_fewer_than_2_answers"] = sum(1 for u in primary if len(u) < 2)
     metric = scale["type"]
     rng = random.Random(f"{seed}|{set_name}|{label}|primary")
-    rec["alpha"] = {"metric": metric, **alpha_with_interval(primary, len(options), metric, resamples, rng)}
+    rec["alpha"] = {"metric": metric, **alpha_with_interval(primary, len(options), metric, resamples, rng, items)}
     rec["pairwise_agreement"] = pairwise_agreement(primary, metric == "ordinal")
     if metric == "nominal" and scale.get("abstain"):
         rng = random.Random(f"{seed}|{set_name}|{label}|abstain_as_category")
         rec["alpha_abstain_as_category"] = {
             "metric": "nominal",
-            **alpha_with_interval(coded(True), len(options) + 1, "nominal", resamples, rng)}
+            **alpha_with_interval(coded(units, True), len(options) + 1, "nominal", resamples, rng, items)}
+    if post_reveal_units is not None:
+        differing = sum(1 for u, w in zip(units, post_reveal_units) for (_r, a), (_s, b) in zip(u.values, w.values)
+                        if canonical(a) != canonical(b))
+        # The primary's seed string on purpose (common random numbers): whenever the same items hold a pairable unit
+        # the item draws are the primary's, so the two intervals differ only through the answers, and a question
+        # nobody changed after the reveal gets the identical interval. An answer first given after the reveal can
+        # make another item pairable, and then the draws differ.
+        rng = random.Random(f"{seed}|{set_name}|{label}|primary")
+        rec["alpha_post_reveal_answers"] = {
+            "metric": metric,
+            "ratings_with_a_post_reveal_answer": differing,
+            **alpha_with_interval(coded(post_reveal_units, False), len(options), metric, resamples, rng, items)}
     return rec
 
 
@@ -955,17 +1064,17 @@ def analyse(inp: Inputs, checked: Checked, included: set[str], seed: int, resamp
         set_name = item["question_set"]
         has_step = item.get("reveal") is not None
         for rating in by_item[item["item_id"]]:
-            first = first_answers(rating)
-            for k, spec in keys_of[item["item_id"]].items():
-                if k not in first:
+            history = answer_history(rating)
+            for k in keys_of[item["item_id"]]:
+                if k not in history:
                     continue
+                change = history[k]
                 rec = answer_changes.setdefault(set_name, {}).setdefault(
-                    k, {"first_given": 0, "changed_after_first": 0, "cleared_after_first": 0})
+                    k, {"first_given": 0, "changed_after_first": 0, "differs_from_first_at_latest": 0,
+                        "cleared_after_first": 0})
                 rec["first_given"] += 1
-                if k not in rating.current:
-                    rec["cleared_after_first"] += 1
-                elif canonical(rating.current[k]) != canonical(first[k]):
-                    rec["changed_after_first"] += 1
+                for name, hit in change.items():
+                    rec[name] += int(hit)
             if has_step:
                 blk = reveal_block.setdefault(set_name, {"ratings_with_reveal_step": 0, "ratings_revealed": 0,
                                                          "blind_changed_after_reveal": {},
@@ -977,10 +1086,12 @@ def analyse(inp: Inputs, checked: Checked, included: set[str], seed: int, resamp
                 for k, spec in keys_of[item["item_id"]].items():
                     if spec.question["phase"] != "blind":
                         continue
-                    at_reveal, now = rating.reveal.get(k), rating.current.get(k)
-                    if at_reveal is None and now is not None:
+                    # Any save after the reveal counts, as for changes after the first answer: an answer changed
+                    # (or cleared) and later restored was still changed after the proposed urgency was shown.
+                    at_reveal, after = rating.reveal.get(k), rating.saves[rating.reveal_at:]
+                    if at_reveal is None and any(k in s for s in after):
                         blk["blind_first_given_after_reveal"][k] = blk["blind_first_given_after_reveal"].get(k, 0) + 1
-                    elif at_reveal is not None and canonical(at_reveal) != canonical(now):
+                    elif at_reveal is not None and any(canonical(s.get(k)) != canonical(at_reveal) for s in after):
                         blk["blind_changed_after_reveal"][k] = blk["blind_changed_after_reveal"].get(k, 0) + 1
 
     # ---- agreement per question set and question
@@ -998,19 +1109,27 @@ def analyse(inp: Inputs, checked: Checked, included: set[str], seed: int, resamp
                 labels = [(q["id"], None)] + [(f"{q['id']}.{a}", a) for a in arms]
             else:
                 labels = [(q["id"], None)]
+            # The sensitivity analysis of DESIGN.md 10.3: a blind question of a set whose items have a reveal step
+            # is analysed a second time with the latest save's answers, which include any blind answer changed or
+            # first given after the reveal.
+            sensitivity = q["phase"] == "blind" and any(i.get("reveal") is not None for i in set_items)
             for label, arm in labels:
                 units: list[Unit] = []
+                post_reveal: list[Unit] = []
                 specs: dict[str, KeySpec] = {}
                 for i in set_items:
                     for spec in keys_of[i["item_id"]].values():
                         if spec.question["id"] != q["id"] or (arm is not None and spec.arm != arm):
                             continue
                         specs[spec.key] = spec
-                        values = [(r.rater, analysis_value(r, spec, i.get("reveal") is not None))
-                                  for r in by_item[i["item_id"]] if r.complete]
+                        complete = [r for r in by_item[i["item_id"]] if r.complete]
+                        values = [(r.rater, analysis_value(r, spec, i.get("reveal") is not None)) for r in complete]
                         units.append(Unit(i["item_id"], spec.arm, values))
+                        post_reveal.append(Unit(i["item_id"], spec.arm,
+                                                [(r.rater, r.current.get(spec.key)) for r in complete]))
                 if specs:
-                    block[label] = analyse_key(set_name, label, specs, units, seed, resamples)
+                    block[label] = analyse_key(set_name, label, specs, units, seed, resamples,
+                                               post_reveal if sensitivity else None)
         agreement[set_name] = block
 
     # ---- per item
@@ -1199,7 +1318,14 @@ def combined_tier(inp: Inputs, keys_of: dict[str, dict[str, KeySpec]],
 
 
 def adjudication_doc(combined: dict[str, Any], inp: Inputs, summary_name: str, stamp: str) -> dict[str, Any]:
-    """The proposed reference-tier file, in the shape advice_eval.py analyze --stimuli reads."""
+    """The proposed reference-tier file, in the shape advice_eval.py analyze --stimuli reads.
+
+    The rater codes and the rule go in ``reference.proposed_by``, never in ``adjudicated_by``. ``analyze`` counts a
+    tier as clinician-adjudicated, and its scoring as claim grade, whenever ``adjudicated_by`` is a non-empty
+    string, and it never reads this file's top-level ``status``. Left without ``adjudicated_by``, the proposal is
+    scored with ``claim_grade: false``, the documented state of a proposed tier, so a run on it cannot pass for
+    Amendment 1's primary endpoint. The file in force (DESIGN.md 10.5 item 3, under ``data/advice/``) is written
+    only after the owner records the combining rule; it is not this file."""
     date = inp.export["exported_utc"][:10]
     items = []
     for r in combined["items"]:
@@ -1210,7 +1336,7 @@ def adjudication_doc(combined: dict[str, Any], inp: Inputs, summary_name: str, s
         rule = "median, even split to the more urgent" if r["even_split_to_more_urgent"] else "median"
         items.append({"id": r["id"], "item_id": r["item_id"], "reference": {
             "tier": r["tier"],
-            "adjudicated_by": "; ".join(r["raters"]) + f" ({rule})",
+            "proposed_by": "; ".join(r["raters"]) + f" ({rule})",
             "source": f"physician verification ratings, export {stamp}; {ADJUDICATION_STATUS}",
             "date": date,
         }})
@@ -1218,6 +1344,9 @@ def adjudication_doc(combined: dict[str, Any], inp: Inputs, summary_name: str, s
                       if i.get("reveal") is not None} - {None})
     return {
         "status": ADJUDICATION_STATUS,
+        "claim_grade": False,
+        "claim_grade_note": "the rater codes are in proposed_by, not adjudicated_by, so advice_eval.py analyze "
+                            "scores these tiers as not adjudicated (claim_grade false)",
         "rule": combined["rule"],
         "stimuli_files": sources,
         "derived_from": {"summary": summary_name, "export_sha256": inp.export_sha256,
@@ -1323,10 +1452,23 @@ def build_summary(inp: Inputs, checked: Checked, args: argparse.Namespace) -> tu
                      "(n_c + n_k) / 2)^2; metric = the scale's type; units with fewer than 2 answers are not pairable",
             "abstentions": "missing in the primary analysis; one more category in the nominal sensitivity analysis "
                            "(owner decision 10's default)",
-            "interval": "percentile bootstrap over pairable units with replacement; random.Random seeded by the "
-                        "string '<seed>|<question set>|<key>|<variant>'; undefined resamples counted and left out; "
-                        "no interval when fewer than half are defined; percentiles interpolated linearly at "
-                        "q * (B - 1)",
+            "interval": "item-level percentile bootstrap: the items holding a pairable unit are resampled with "
+                        "replacement, each bringing all its pairable units (for the pooled per-version question, "
+                        "an item's versions stay together); physicians are not resampled; random.Random seeded by "
+                        "the string '<seed>|<question set>|<key>|<variant>'; no interval from fewer than "
+                        f"{MIN_BOOTSTRAP_ITEMS} items; undefined resamples counted and left out; no interval when "
+                        "fewer than half are defined; percentiles interpolated linearly at q * (B - 1)",
+            "answer_changes": "per question, over every rating by an included physician, finished or not: "
+                              "changed_after_first = some later save gives another answer (an answer changed and "
+                              "changed back counts); differs_from_first_at_latest = the latest save's answer "
+                              "differs from the first; cleared_after_first = the latest save leaves it unanswered. "
+                              "After the reveal: any save after the reveal that changes or clears a blind answer "
+                              "(blind_changed_after_reveal), or gives one first (blind_first_given_after_reveal)",
+            "post_reveal_sensitivity": "for blind questions of items with a reveal step: alpha a second time with "
+                                       "the latest save's answers, which include blind answers changed or first "
+                                       "given after the reveal (DESIGN.md 10.3), under the primary's seed string "
+                                       "(the same item draws while the same items hold a pairable unit); the "
+                                       "primary analysis uses the answers as of the reveal",
             "pairwise_agreement": "share of equal pairs of non-abstaining answers on the same unit (ordinal: and "
                                   "within one category); every pair counts once",
             "five_point": f"numeric five-point ordinal scales: median, and the share at <= {LOW_MAX}; an item is "
@@ -1416,22 +1558,39 @@ def render_markdown(summary: dict[str, Any]) -> str:
               "more category (nominal questions). Conventional thresholds: at least 0.800 reliable, at least 0.667 "
               "tentative. Few units give wide intervals; a coefficient on fewer than about ten units should not "
               "carry a claim.", "",
-              "| Question set | Question | Metric | Pairable units | Answers | Abstentions | Alpha | 95% interval | "
-              "Exact agreement | Alpha, abstain as category |",
-              "|---|---|---|---|---|---|---|---|---|---|"]
+              "| Question set | Question | Metric | Pairable units | Items resampled | Answers | Abstentions | Alpha | "
+              "95% interval | Exact agreement | Alpha, abstain as category |",
+              "|---|---|---|---|---|---|---|---|---|---|---|"]
     for s, block in summary["agreement"].items():
         for label, rec in block.items():
             a = rec.get("alpha")
             if a is None:
-                lines.append(f"| {s} | {label} | {rec['scale_type']} | - | {rec['answers']} | {rec['abstentions']} "
-                             f"| - | - | - | - |")
+                lines.append(f"| {s} | {label} | {rec['scale_type']} | - | - | {rec['answers']} | "
+                             f"{rec['abstentions']} | - | - | - | - |")
                 continue
             ci = f"{a['ci95'][0]:.3f} to {a['ci95'][1]:.3f}" if a["ci95"] else "none"
             value = fmt(a["value"]) if a["value"] is not None else "undefined"
             sens = rec.get("alpha_abstain_as_category")
-            lines.append(f"| {s} | {label} | {a['metric']} | {a['pairable_units']} | {rec['answers']} | "
-                         f"{rec['abstentions']} | {value} | {ci} | {fmt(rec['pairwise_agreement']['exact'])} | "
-                         f"{fmt(sens['value']) if sens else '-'} |")
+            lines.append(f"| {s} | {label} | {a['metric']} | {a['pairable_units']} | {a['resampled_items']} | "
+                         f"{rec['answers']} | {rec['abstentions']} | {value} | {ci} | "
+                         f"{fmt(rec['pairwise_agreement']['exact'])} | {fmt(sens['value']) if sens else '-'} |")
+    lines += ["", "The interval resamples items: a multi-turn script's versions are resampled together. No interval is "
+                  f"given from fewer than {MIN_BOOTSTRAP_ITEMS} items, or when fewer than half of the resamples have a "
+                  "defined alpha."]
+    post = [(s, label, rec) for s, block in summary["agreement"].items() for label, rec in block.items()
+            if rec.get("alpha_post_reveal_answers")]
+    if post:
+        lines += ["", "### Sensitivity: blind answers changed or first given after the reveal", "",
+                  "The primary alpha uses the blind answers as of the reveal. This one uses the latest save's "
+                  "answers, which include those given or changed after the proposed urgency was shown.", "",
+                  "| Question set | Question | Ratings with a post-reveal answer | Alpha, as of the reveal | "
+                  "Alpha, latest answers | 95% interval |", "|---|---|---|---|---|---|"]
+        for s, label, rec in post:
+            pr = rec["alpha_post_reveal_answers"]
+            ci = f"{pr['ci95'][0]:.3f} to {pr['ci95'][1]:.3f}" if pr["ci95"] else "none"
+            lines.append(f"| {s} | {label} | {pr['ratings_with_a_post_reveal_answer']} | "
+                         f"{fmt(rec['alpha']['value']) if rec['alpha']['value'] is not None else 'undefined'} | "
+                         f"{fmt(pr['value']) if pr['value'] is not None else 'undefined'} | {ci} |")
     flagged = [r for r in summary["items"] if r["flagged"]]
     lines += ["", "## Items flagged unrealistic or implausible", "",
               f"More than half of an item's non-abstaining physicians answered {LOW_MAX} or lower on a five-point "
@@ -1455,18 +1614,22 @@ def render_markdown(summary: dict[str, Any]) -> str:
         for r in ct["items"]:
             lines.append(f"| {r['item_id']} | {r['id']} | {r['answers']} | {r['tier'] or '-'} | {r['proposed']} | "
                          f"{r['no_tier_reason'] or ''} |")
-    lines += ["", "## Answers changed", "", "Over every rating by an included physician, finished or not.", "",
-              "| Question set | Question | First given | Changed later | Cleared later |", "|---|---|---|---|---|"]
+    lines += ["", "## Answers changed", "", "Over every rating by an included physician, finished or not. \"Changed "
+                                          "later\" counts any later save that gave another answer, including an "
+                                          "answer changed and then changed back; \"Differs at the end\" compares "
+                                          "the latest save with the first answer.", "",
+              "| Question set | Question | First given | Changed later | Differs at the end | Unanswered at the end |",
+              "|---|---|---|---|---|---|"]
     for s, block in summary["answer_changes"].items():
         for k, c in block.items():
             lines.append(f"| {s} | {k} | {c['first_given']} | {c['changed_after_first']} | "
-                         f"{c['cleared_after_first']} |")
+                         f"{c['differs_from_first_at_latest']} | {c['cleared_after_first']} |")
     for s, blk in summary["reveal"].items():
         lines += ["", f"After the reveal ({s}): {blk['ratings_revealed']} of {blk['ratings_with_reveal_step']} ratings "
                       "revealed. Blind answers changed after the reveal: "
                       f"{json.dumps(blk['blind_changed_after_reveal'], sort_keys=True)}; first given after it: "
-                      f"{json.dumps(blk['blind_first_given_after_reveal'], sort_keys=True)}. The analysis uses the "
-                      "answers as of the reveal."]
+                      f"{json.dumps(blk['blind_first_given_after_reveal'], sort_keys=True)}. The primary analysis "
+                      "uses the answers as of the reveal; the sensitivity table above uses the latest ones."]
     nt = summary["notes"]
     lines += ["", "## Notes", "", f"{nt['ratings_with_notes']} ratings carry notes and {nt['text_answers']} carry a "
                                   f"text answer; none is copied here. {nt['rule']}.", ""]

@@ -2,12 +2,15 @@
 
 Pins Krippendorff's alpha against the worked examples of Krippendorff (2011), "Computing Krippendorff's
 Alpha-Reliability" (binary 0.095, two-coder nominal 0.692, four-coder nominal with missing data 0.743, the same data
-ordinal 0.815, the coincidence matrix and the ordinal difference table); every named refusal (bundle and questions
-sha256, unknown ids, bad values, identity fields and addresses, malformed events, broken reveal rules, outputs that
-exist); first against latest answers; blind answers of reveal items taken from the reveal event, with later changes
-counted; complete ratings only; exclusion of named raters and the warning for a removed one; the combined tier rule
-(odd, even, even split to the more urgent, fewer than two answers, abstentions) and the proposed adjudication file;
-determinism under a seed; and an integration test over a synthetic export the verification app's own server code
+ordinal 0.815, the coincidence matrix and the ordinal difference table); the item-level bootstrap against a
+direct reference (a script's versions resampled together) and no interval from one item; every named refusal (an
+export inside the repository, bundle and questions sha256, unknown ids, bad values and wrongly typed fields, identity
+fields and addresses, malformed events, events on another bundle even with the rater excluded, broken reveal rules,
+outputs that exist); first against latest answers, with any later change counted; blind answers of reveal items
+taken from the reveal event, with later changes counted and a post-reveal sensitivity analysis; complete ratings
+only; exclusion of named raters and the warning for a removed one; the combined tier rule (odd, even, even split to
+the more urgent, fewer than two answers, abstentions) and the proposed adjudication file, which advice_eval.py
+analyze scores as not claim grade; determinism under a seed; and an integration test over a synthetic export the verification app's own server code
 wrote over the real task bundle (tests/fixtures/verification_export_synthetic.json), checked against an oracle the
 generating script computed from what it saved, with alpha values from the third-party `krippendorff` package
 (tests/fixtures/verification_export_synthetic.expected.json).
@@ -161,7 +164,10 @@ class Export:
 
 def run(tmp_path: Path, doc: dict | Path, *args: str, out: str = "out") -> tuple[dict, Path]:
     if isinstance(doc, Path):
-        path = doc
+        # an export is refused inside the repository, so the committed fixture is read from a copy outside it
+        path = tmp_path / doc.name
+        if not path.exists():
+            path.write_bytes(doc.read_bytes())
     else:
         path = tmp_path / "export.json"
         path.write_text(json.dumps(doc), encoding="utf-8")
@@ -274,8 +280,89 @@ def test_bootstrap_interval_is_seeded_and_withheld_when_most_resamples_are_undef
     c = ivr.alpha_with_interval(units, 3, "ordinal", 300, random.Random("s|y"))
     assert a == b and a["ci95"] is not None and a["ci95"] != c["ci95"]
     assert a["resamples_defined"] + a["resamples_undefined"] == 300
-    one = ivr.alpha_with_interval([[1, 1]], 3, "nominal", 50, random.Random(1))
-    assert one["value"] is None and one["ci95"] is None and "fewer than half" in one["ci_note"]
+    # two items, each in one category: a resample of one item twice has no chance disagreement, so alpha is
+    # undefined; under this seed 27 of 51 resamples are, and no interval is given
+    half = ivr.alpha_with_interval([[0, 0], [1, 1]], 2, "nominal", 51, random.Random("half|c"))
+    assert half["value"] == 1.0 and half["resampled_items"] == 2
+    assert (half["resamples_defined"], half["resamples_undefined"]) == (24, 27)
+    assert half["ci95"] is None and "fewer than half" in half["ci_note"]
+
+
+def _reference_item_bootstrap(by_item: list[list[list[int]]], n_categories: int, metric: str, resamples: int,
+                              rng: Any) -> tuple[list[float], int]:
+    """An item-level percentile bootstrap written out directly: draw items with replacement, pool all their units,
+    compute alpha; the 2.5th and 97.5th percentiles of the defined replicates."""
+    reps = []
+    for _ in range(resamples):
+        picked = [by_item[rng.randrange(len(by_item))] for _ in range(len(by_item))]
+        a = ivr.krippendorff_alpha([u for item in picked for u in item], n_categories, metric)
+        if a is not None:
+            reps.append(a)
+    reps.sort()
+    return [ivr.percentile(reps, 0.025), ivr.percentile(reps, 0.975)], len(reps)
+
+
+def test_bootstrap_resamples_items_and_keeps_an_items_versions_together():
+    # Regression: the pooled per-version question's units are (item, version), and they were resampled one by one,
+    # as if the three versions of one script were independent; DESIGN.md 10.4 resamples items.
+    import random
+
+    by_item = [[[0, 1, 1], [0, 1, 2], [1, 1, 2]],      # three items, three versions each, three physicians
+               [[3, 4, 4], [3, 3, 4], [2, 4, 4]],
+               [[1, 2, 2], [2, 2, 3], [1, 2, 3]]]
+    units = [u for item in by_item for u in item]
+    items = [f"item{i}" for i, item in enumerate(by_item) for _u in item]
+    got = ivr.alpha_with_interval(units, 5, "ordinal", 400, random.Random("cl"), items)
+    want, defined = _reference_item_bootstrap(by_item, 5, "ordinal", 400, random.Random("cl"))
+    assert (got["pairable_units"], got["resampled_items"], got["bootstrap_unit"]) == (9, 3, "item")
+    assert got["resamples_defined"] == defined
+    assert got["ci95"] == pytest.approx(want, abs=1e-6)
+    assert got["value"] == pytest.approx(ivr.krippendorff_alpha(units, 5, "ordinal"), abs=1e-6)
+    # without item names every unit is its own item: the same point value, nine draws per resample, another interval
+    flat = ivr.alpha_with_interval(units, 5, "ordinal", 400, random.Random("cl"))
+    assert flat["resampled_items"] == 9 and flat["value"] == got["value"] and flat["ci95"] != got["ci95"]
+
+
+def test_no_interval_from_a_single_item():
+    # Regression: one pairable unit gave ci95 [alpha, alpha], a zero-width "95% interval", because every resample of
+    # one unit is that unit.
+    import random
+
+    one = ivr.alpha_with_interval([[0, 1]], 2, "nominal", 2000, random.Random("x"))
+    assert one["value"] == 0.0 and one["ci95"] is None and one["resamples_defined"] == 0
+    assert "fewer than 2" in one["ci_note"]
+    # one script's three versions are three pairable units but one item: still no interval
+    pooled = ivr.alpha_with_interval([[0, 1], [1, 1], [0, 0]], 2, "nominal", 200, random.Random("x"), ["s1"] * 3)
+    assert (pooled["pairable_units"], pooled["resampled_items"], pooled["ci95"]) == (3, 1, None)
+    assert pooled["value"] is not None
+
+
+def test_the_pooled_per_version_question_resamples_scripts_through_the_import(tmp_path):
+    qid = PER_ARM_Q["id"]
+    chosen = set(BY_SET[PER_ARM_SET][:3])
+    order = [i["item_id"] for i in BUNDLE["items"] if i["item_id"] in chosen]   # the bundle's order, as the import
+    # option indices per item and version; each physician's answers move together across a script's versions
+    idx = {"md02": [[0, 1, 1], [3, 4, 4], [1, 2, 2]], "md03": [[1, 1, 2], [3, 3, 4], [2, 2, 3]]}
+    ex = Export().rater("md02").rater("md03")
+    for rid, per_item in idx.items():
+        for iid, row in zip(order, per_item):
+            arms = [a["arm"] for a in ITEMS[iid]["display"]["arms"]]
+            ex.rate(rid, iid, **{f"{qid}.{arm}": opt(PER_ARM_Q, i) for arm, i in zip(arms, row)})
+    summary, _ = run(tmp_path, ex.doc())
+    block = summary["agreement"][PER_ARM_SET]
+    pooled = block[qid]["alpha"]
+    assert block[qid]["unit"] == "item and version"
+    assert (pooled["pairable_units"], pooled["resampled_items"]) == (9, 3)
+    by_item = [[[idx["md02"][n][v], idx["md03"][n][v]] for v in range(3)] for n in range(3)]
+    scale = Q["scales"][PER_ARM_Q["scale"]]
+    rng = __import__("random").Random(f"{ivr.DEFAULT_SEED}|{PER_ARM_SET}|{qid}|primary")
+    want, _defined = _reference_item_bootstrap(by_item, len(scale["options"]), scale["type"], 200, rng)
+    assert pooled["ci95"] == pytest.approx(want, abs=1e-6)
+    for label, rec in block.items():
+        if label.startswith(qid + "."):
+            assert (rec["alpha"]["pairable_units"], rec["alpha"]["resampled_items"]) == (3, 3), label
+    md = next((tmp_path / "out").glob("*.summary.md")).read_text(encoding="utf-8")
+    assert "Items resampled" in md
 
 
 # ---- the combined tier ----------------------------------------------------------------------------------------------
@@ -316,15 +403,45 @@ def test_combined_tier_from_an_export_and_the_proposed_adjudication_file(tmp_pat
     by_id = {x["item_id"]: x for x in adj["items"]}
     assert by_id[a]["id"] == ITEMS[a]["provenance"]["source_id"]
     assert by_id[a]["reference"]["tier"] == t1
-    assert by_id[a]["reference"]["adjudicated_by"] == "md02; md03 (median, even split to the more urgent)"
-    assert by_id[c]["reference"]["adjudicated_by"] == "md02; md03; md04 (median)"
+    assert by_id[a]["reference"]["proposed_by"] == "md02; md03 (median, even split to the more urgent)"
+    assert by_id[c]["reference"]["proposed_by"] == "md02; md03; md04 (median)"
     assert by_id[b]["reference"] is None and adj["coverage"]["with_tier"] == 2
-    # the shape advice_eval.py analyze --stimuli reads: items[].id and an optional reference {tier, adjudicated_by}
+    # the shape advice_eval.py analyze --stimuli reads: items[].id and an optional reference {tier}; the rater codes
+    # are never in adjudicated_by, which analyze would count as clinician adjudication
     for x in adj["items"]:
         assert isinstance(x["id"], str)
         ref = x["reference"] or {}
         if ref:
-            assert ref["tier"] in TIERS and isinstance(ref["adjudicated_by"], str) and ref["adjudicated_by"].strip()
+            assert ref["tier"] in TIERS and "adjudicated_by" not in ref
+            assert isinstance(ref["proposed_by"], str) and ref["proposed_by"].strip()
+    assert adj["claim_grade"] is False
+
+
+def test_the_proposed_adjudication_is_not_claim_grade_in_advice_eval_analyze(tmp_path):
+    # Regression: the proposal put the rater codes in reference.adjudicated_by, and advice_eval.py analyze counts
+    # any non-empty adjudicated_by as clinician adjudication and never reads the file's status, so a run on the
+    # proposal reported claim_grade true. The codes now sit in proposed_by.
+    spec = importlib.util.spec_from_file_location("advice_eval_for_ivr", ROOT / "scripts" / "advice_eval.py")
+    ae = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ae)
+    tid = TIER_Q["id"]
+    ex = Export().rater("md02").rater("md03")
+    for iid in BY_SET[REVEAL_SET][:2]:
+        ex.rate("md02", iid, **{tid: TIERS[1]}).rate("md03", iid, **{tid: TIERS[1]})
+    _, out = run(tmp_path, ex.doc(), "--write-proposed-adjudication")
+    adj_path = next(out.glob("*.proposed_adjudication.json"))
+    ids = [x["id"] for x in json.loads(adj_path.read_text(encoding="utf-8"))["items"] if x["reference"]]
+    assert len(ids) == 2
+    rows = [{"stimulus_id": sid, "model": "m", "arm": arm, "tier": TIERS[1], "sample_k": 1,
+             "response_sha256": f"{sid}{arm}", "rubric_sha256": "r", "judge_model": "j", "flags": {}}
+            for sid in ids for arm in ae.ARMS[:2]]
+    jp = tmp_path / "judgments_proposal.jsonl"
+    jp.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    ae.main(["analyze", "--judgments", str(jp), "--rubric", str(ROOT / "data" / "advice_rubric.draft.json"),
+             "--stimuli", str(adj_path), "--bootstrap", "20", "--seed", "1"])
+    ref = json.loads((tmp_path / "analysis_proposal.json").read_text(encoding="utf-8"))["reference_scoring"]
+    assert (ref["n_referenced_stimuli"], ref["n_adjudicated"]) == (2, 0)
+    assert ref["claim_grade"] is False and sorted(ref["not_adjudicated_ids"]) == sorted(ids)
 
 
 # ---- derivations ----------------------------------------------------------------------------------------------------
@@ -338,10 +455,80 @@ def test_current_answers_are_the_latest_save_and_changes_after_the_first_are_cou
     ex.save("md03", item, full(item, **{rq: 4, oq: opt(PAIR_OPTIONAL, 1)}))
     summary, _ = run(tmp_path, ex.doc())
     changes = summary["answer_changes"][PAIR_SET]
-    assert changes[rq] == {"first_given": 2, "changed_after_first": 1, "cleared_after_first": 0}
-    assert changes[oq] == {"first_given": 2, "changed_after_first": 0, "cleared_after_first": 1}
+    assert changes[rq] == {"first_given": 2, "changed_after_first": 1, "differs_from_first_at_latest": 1,
+                           "cleared_after_first": 0}
+    assert changes[oq] == {"first_given": 2, "changed_after_first": 0, "differs_from_first_at_latest": 0,
+                           "cleared_after_first": 1}
     dist = {d["value"]: d["n"] for d in summary["agreement"][PAIR_SET][rq]["distribution"]}
     assert dist[4] == 2 and dist[2] == 0, "the analysis uses the current answers, not the first"
+
+
+def test_any_later_change_counts_even_when_changed_back(tmp_path):
+    # Regression: only the first and the latest answer were compared, so an answer changed and changed back
+    # (2, then 4, then 2) counted as unchanged; DESIGN.md 10.3 asks how many answers changed after they were first
+    # given. The net change is reported beside it.
+    item = BY_SET[PAIR_SET][0]
+    rq, oq = PAIR_REALISM["id"], PAIR_OPTIONAL["id"]
+    ex = Export().rater("md02")
+    ex.save("md02", item, full(item, **{rq: 2, oq: opt(PAIR_OPTIONAL, 0)}))
+    ex.save("md02", item, full(item, **{rq: 4}))                                  # changed; optional cleared
+    ex.save("md02", item, full(item, **{rq: 2, oq: opt(PAIR_OPTIONAL, 0)}))      # both back to the first answers
+    summary, out = run(tmp_path, ex.doc())
+    changes = summary["answer_changes"][PAIR_SET]
+    assert changes[rq] == {"first_given": 1, "changed_after_first": 1, "differs_from_first_at_latest": 0,
+                           "cleared_after_first": 0}
+    # cleared and answered again with the same value: its answer never differed
+    assert changes[oq] == {"first_given": 1, "changed_after_first": 0, "differs_from_first_at_latest": 0,
+                           "cleared_after_first": 0}
+    md = next(out.glob("*.summary.md")).read_text(encoding="utf-8")
+    assert f"| {PAIR_SET} | {rq} | 1 | 1 | 0 | 0 |" in md
+
+
+def test_a_blind_answer_changed_after_the_reveal_and_back_is_counted(tmp_path):
+    item = BY_SET[REVEAL_SET][0]
+    rq = REVEAL_REALISM["id"]
+    ex = Export().rater("md02")
+    blind = full(item, **{rq: 1})
+    ex.save("md02", item, blind).reveal("md02", item)
+    ex.save("md02", item, {**blind, **after_reveal(item), rq: 5})
+    ex.save("md02", item, {**blind, **after_reveal(item)})                       # back to the blind answer
+    summary, _ = run(tmp_path, ex.doc())
+    assert summary["reveal"][REVEAL_SET]["blind_changed_after_reveal"] == {rq: 1}
+    post = summary["agreement"][REVEAL_SET][rq]["alpha_post_reveal_answers"]
+    assert post["ratings_with_a_post_reveal_answer"] == 0, "the latest answer is the blind one again"
+
+
+def test_post_reveal_sensitivity_analysis_uses_the_latest_answers(tmp_path):
+    # Regression: DESIGN.md 10.3 uses a blind answer changed or first given after the reveal in a sensitivity
+    # analysis; the import only counted them.
+    a, b = BY_SET[REVEAL_SET][:2]
+    rq = REVEAL_REALISM["id"]
+    lo, hi = opt(REVEAL_REALISM, 0), opt(REVEAL_REALISM, 4)
+    ex = Export().rater("md02").rater("md03")
+    ex.rate("md03", a, **{rq: lo}).rate("md03", b, **{rq: hi}).rate("md02", b, **{rq: hi})
+    blind = full(a, **{rq: lo})
+    ex.save("md02", a, blind).reveal("md02", a)
+    ex.save("md02", a, {**blind, **after_reveal(a), rq: hi})                    # changed after the reveal
+    summary, out = run(tmp_path, ex.doc())
+    rec = summary["agreement"][REVEAL_SET][rq]
+    assert rec["alpha"]["value"] == 1.0, "the primary analysis keeps the answers as of the reveal"
+    post = rec["alpha_post_reveal_answers"]
+    n = len(Q["scales"][REVEAL_REALISM["scale"]]["options"])
+    assert post["ratings_with_a_post_reveal_answer"] == 1 and post["metric"] == rec["alpha"]["metric"]
+    assert post["value"] == pytest.approx(ivr.krippendorff_alpha([[0, 4], [4, 4]], n, rec["alpha"]["metric"]),
+                                          abs=1e-6)
+    assert post["value"] < 1.0
+    # the same item draws as the primary: a question nobody changed after the reveal gets the identical interval
+    tq = summary["agreement"][REVEAL_SET][TIER_Q["id"]]
+    assert tq["alpha_post_reveal_answers"]["ratings_with_a_post_reveal_answer"] == 0
+    assert {k: v for k, v in tq["alpha_post_reveal_answers"].items() if k != "ratings_with_a_post_reveal_answer"} == \
+        tq["alpha"]
+    # only blind questions of a set with a reveal step get it
+    assert all("alpha_post_reveal_answers" not in r for r in summary["agreement"][PAIR_SET].values())
+    assert all("alpha_post_reveal_answers" not in r for r in summary["agreement"][REVEAL_SET].values()
+               if r["phase"] == "after_reveal")
+    md = next(out.glob("*.summary.md")).read_text(encoding="utf-8")
+    assert "Sensitivity: blind answers changed or first given after the reveal" in md
 
 
 def test_blind_answers_of_a_reveal_item_come_from_the_reveal_event(tmp_path):
@@ -529,6 +716,14 @@ REFUSALS = [
     ("event on another bundle", lambda d: d["events"][3].update(bundle_sha256="2" * 64), "event_bundle_mismatch"),
     ("rater status", lambda d: d["raters"][0].update(status="deleted"), "bad_export"),
     ("raters per item", lambda d: d["settings"].update(raters_per_item=1), "bad_export"),
+    # a list or an object where the export has a string: a named refusal, never a TypeError from a set lookup
+    ("list as order mode", lambda d: d["settings"].update(order_mode=["blocked"]), "bad_export"),
+    ("list as rater status", lambda d: d["raters"][0].update(status=["active"]), "bad_export"),
+    ("list as assignment item", lambda d: d["assignments"][0].update(item_id=[d["assignments"][0]["item_id"]]),
+     "unknown_item"),
+    ("object as assignment status", lambda d: d["assignments"][0].update(status={"s": "assigned"}), "bad_export"),
+    ("list as event item", lambda d: d["events"][0].update(item_id=[d["events"][0]["item_id"]]), "unknown_item"),
+    ("list as event type", lambda d: d["events"][0].update(event=["save"]), "bad_event"),
     ("lock broken", _m_lock, "lock_broken"),
     ("after-reveal answer before the reveal", _m_early, "answer_before_reveal"),
     ("reveal snapshot", _m_snapshot, "reveal_snapshot_mismatch"),
@@ -567,6 +762,56 @@ def test_refuses_a_questions_file_with_other_bytes_or_content(tmp_path):
     for e in doc["events"]:
         e["bundle_sha256"] = sha
     refused(tmp_path, doc, "questions_content_mismatch", "--bundle", str(fake))
+
+
+def test_excluding_a_rater_does_not_admit_their_events_on_another_bundle(tmp_path):
+    # Regression: the refusal suggested excluding the rater, but every event is checked before exclusion applies,
+    # so the suggested rerun gave the same refusal.
+    doc = fixture_doc()
+    for e in doc["events"]:
+        if e["rater_id"] == "md01":
+            e["bundle_sha256"] = "2" * 64
+    message = refused(tmp_path, doc, "event_bundle_mismatch", "--exclude-rater", "md01")
+    assert "or exclude the rater" not in message
+    assert "excluding the rater does not change that" in message
+
+
+def test_refuses_an_export_inside_the_repository(tmp_path, monkeypatch):
+    # Regression: an export saved under data/verification/ (the default --out-dir) was read without a word, one
+    # `git add` from committing every physician's notes to a public repository.
+    with pytest.raises(SystemExit) as exc:
+        ivr.main(["--export", str(FIXTURE), "--out-dir", str(tmp_path / "out")])
+    assert "REFUSED [export_inside_repository]" in str(exc.value)
+    # anywhere in the checkout, and through a symbolic link that resolves into it
+    fake_root = tmp_path / "repo"
+    inside = fake_root / "data" / "verification" / "export_20261020T020000Z.json"
+    inside.parent.mkdir(parents=True)
+    inside.write_bytes(FIXTURE.read_bytes())
+    link = tmp_path / "linked_export.json"
+    link.symlink_to(inside)
+    monkeypatch.setattr(ivr, "REPO_ROOT", fake_root.resolve())
+    for path in (inside, link):
+        with pytest.raises(SystemExit) as exc:
+            ivr.main(["--export", str(path), "--out-dir", str(tmp_path / "out")])
+        assert "REFUSED [export_inside_repository]" in str(exc.value), path
+    assert not (tmp_path / "out").exists()
+
+
+def test_gitignore_keeps_an_export_saved_in_the_checkout_out_of_git():
+    import shutil
+    import subprocess
+
+    if shutil.which("git") is None or subprocess.run(["git", "-C", str(ROOT), "rev-parse"],
+                                                      capture_output=True).returncode:
+        pytest.skip("not a git checkout")
+
+    def ignored(rel: str) -> bool:
+        return subprocess.run(["git", "-C", str(ROOT), "check-ignore", "-q", rel]).returncode == 0
+
+    assert ignored("export_20261020T020000Z.json")
+    assert ignored("data/verification/export_20261020T020000Z.json")
+    assert not ignored("data/verification/tasks_20261004T042945Z.json")
+    assert not ignored("data/verification/ratings_vtasks_20261004T042945Z_20261020T020000Z.summary.json")
 
 
 def test_refuses_an_unknown_excluded_rater(tmp_path):
@@ -628,10 +873,15 @@ def test_synthetic_app_export_matches_the_generators_oracle(tmp_path):
     for set_name, cov in summary["coverage"]["by_question_set"].items():
         assert cov["ratings_complete"] == exp["complete_by_set"].get(set_name, 0), set_name
         assert cov["ratings_unfinished"] == exp["incomplete_by_set"].get(set_name, 0), set_name
+    # The oracle's changed_after_first compares the first answer with the latest save (the net change). The generator
+    # never changes an answer and then changes it back, so here any change and the net change agree; the unit test
+    # test_any_later_change_counts_even_when_changed_back separates them.
     for set_name, block in summary["answer_changes"].items():
         for k, c in block.items():
-            assert c["changed_after_first"] == exp["changed_after_first"].get(f"{set_name}|{k}", 0), k
+            assert c["differs_from_first_at_latest"] == exp["changed_after_first"].get(f"{set_name}|{k}", 0), k
+            assert c["changed_after_first"] == c["differs_from_first_at_latest"], k
             assert c["cleared_after_first"] == exp["cleared_after_first"].get(f"{set_name}|{k}", 0), k
+    # The generator saves once after a reveal, so any change after it and the net change agree here too.
     for set_name, blk in summary["reveal"].items():
         assert blk["blind_changed_after_reveal"] == {k.split("|")[1]: v for k, v in exp["changed_after_reveal"].items()
                                                      if k.startswith(set_name + "|")}
@@ -658,6 +908,39 @@ def test_synthetic_app_export_matches_the_generators_oracle(tmp_path):
                 assert got is None, key
             else:
                 assert got == pytest.approx(want, abs=1e-6), key
+    # Intervals: never from fewer than 2 resampled items (one item gave a zero-width "interval" before), and the
+    # pooled per-version question resamples items, not (item, version) units.
+    n_withheld = 0
+    for set_name, block in summary["agreement"].items():
+        for label, rec in block.items():
+            for key in ("alpha", "alpha_abstain_as_category", "alpha_post_reveal_answers"):
+                a = rec.get(key)
+                if not a:
+                    continue
+                if a["resampled_items"] < 2:
+                    n_withheld += 1
+                    assert a["ci95"] is None and a["resamples_defined"] == 0, (set_name, label, key)
+                if rec["unit"] == "item":
+                    assert a["resampled_items"] == a["pairable_units"], (set_name, label, key)
+    assert n_withheld >= 1, "the fixture has a question with one rated item"
+    # the post-reveal sensitivity reuses the primary's item draws: where no answer changed, the same interval
+    unchanged = [rec for rec in summary["agreement"][REVEAL_SET].values()
+                 if rec.get("alpha_post_reveal_answers", {}).get("ratings_with_a_post_reveal_answer") == 0]
+    assert sum(1 for rec in unchanged if rec["alpha"]["ci95"]) >= 3
+    for rec in unchanged:
+        post = {k: v for k, v in rec["alpha_post_reveal_answers"].items() if k != "ratings_with_a_post_reveal_answer"}
+        assert post == rec["alpha"], rec["question"]
+    changed = [rec for rec in summary["agreement"][REVEAL_SET].values()
+               if rec.get("alpha_post_reveal_answers", {}).get("ratings_with_a_post_reveal_answer")]
+    assert changed and all(rec["alpha_post_reveal_answers"]["value"] != rec["alpha"]["value"] for rec in changed)
+    block = summary["agreement"][PER_ARM_SET]
+    pooled = block[PER_ARM_Q["id"]]["alpha"]
+    versions = [rec["alpha"] for label, rec in block.items() if label.startswith(PER_ARM_Q["id"] + ".")]
+    assert block[PER_ARM_Q["id"]]["unit"] == "item and version" and len(versions) == 3
+    assert pooled["pairable_units"] == sum(v["pairable_units"] for v in versions)
+    assert max(v["resampled_items"] for v in versions) <= pooled["resampled_items"] < pooled["pairable_units"]
+    two_rated = sum(1 for r in summary["items"] if r["question_set"] == PER_ARM_SET and r["ratings_complete"] >= 2)
+    assert pooled["resampled_items"] <= two_rated
     for row in summary["combined_tier"]["items"]:
         want = exp["combined_tier"][row["item_id"]]
         assert (row["tier"], row["answers"], row["raters"]) == (want["tier"], want["n"], want["raters"]), row["item_id"]

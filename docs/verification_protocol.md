@@ -171,8 +171,10 @@ stop at any time.
 
 The app's export (`export_<stamp>.json`, from "Export for the engine" or the
 daily backup) is read by `scripts/import_verification_ratings.py`. The export
-holds the physicians' notes, so it stays outside the repository; the script
-reads it from wherever the owner keeps it:
+holds the physicians' notes, so it stays outside the repository. The script
+refuses an export saved anywhere inside the checkout, and `.gitignore` lists
+`export_*.json` at the root and under `data/verification/`. The script reads
+the export from wherever the owner keeps it:
 
 ```bash
 python scripts/import_verification_ratings.py --export <path>/export_<stamp>.json \
@@ -189,14 +191,24 @@ notes and the free-text answers. The reveal step must have held: the urgency
 answer never changes after the proposed urgency is shown. Any failure stops
 the import with a named reason, and nothing is written.
 
+Every event must have been saved on the export's bundle, and this is checked
+before any physician is excluded. The import therefore cannot yet read an
+export that spans a switch to a new bundle (the app's DEPLOY.md section 19),
+even with the physician who rated on the older bundle excluded. Reading
+older-bundle ratings needs a rule for pooling ratings made on two bundles,
+which is an open decision below.
+
 **What it derives.** For each physician and item, it derives:
 
 - the current answers, which come from the latest save;
-- the first answer to each question; changes after it are counted;
+- the first answer to each question. Any later change is counted, including
+  an answer changed and then changed back. Whether the latest answer still
+  differs from the first is counted separately;
 - whether the rating is complete, recomputed from the questions;
 - on the 24 new advice questions, the blind answers as they were when the
   proposed urgency was shown (the reveal event). A blind answer changed or
-  first given after that is counted and left out of the analysis.
+  first given after that is counted. It is left out of the primary analysis
+  and used in a sensitivity analysis.
 
 Only complete ratings enter the analysis; unfinished ones are counted.
 Physicians named with `--exclude-rater` are left out and counted. Any other
@@ -210,8 +222,13 @@ them, so a forgotten test account shows.
   "Can't judge" and "Can't tell" count as missing, and for nominal questions
   a second alpha counts them as one more answer;
 - a 95% percentile interval from 2,000 bootstrap resamples of items, under a
-  seed recorded in the output;
-- the share of physician pairs that gave the same answer.
+  seed recorded in the output. For the multi-turn realism question, whose
+  units are the three versions of each script, a script's three versions are
+  resampled together. No interval is given from fewer than two items;
+- the share of physician pairs that gave the same answer;
+- on the 24 new advice questions, a sensitivity analysis: each blind
+  question's alpha again with the latest answers, which include those changed
+  or first given after the proposed urgency was shown.
 
 For each item it reports every answer's distribution, the median realism or
 plausibility, and a flag when more than half of the physicians who answered
@@ -233,7 +250,10 @@ replaced silently:
   `.proposed_adjudication.json`. It has the shape
   `scripts/advice_eval.py analyze --stimuli` reads. It is marked as a
   proposal: it is not in force until the owner records the combining rule in
-  a pre-registration amendment.
+  a pre-registration amendment. The rater codes are recorded as
+  `proposed_by`, not `adjudicated_by`, so `analyze` scores the file as not
+  adjudicated (`claim_grade: false`). The file in force, under
+  `data/advice/`, is a later step once the rule is recorded.
 
 The script implements the app design's recommended defaults for the open
 decisions below. Changing a decision changes the script.
@@ -250,3 +270,6 @@ decisions below. Changing a decision changes the script.
   scoring is registered for them).
 - What to do when a physician would triage the everyday-words version
   differently from the clinical one: the analysis has one tier per item.
+- Whether ratings made on two bundles are pooled. The app supports switching
+  to a new bundle between rounds; the import reads one bundle per export and
+  refuses an export that spans a switch.
