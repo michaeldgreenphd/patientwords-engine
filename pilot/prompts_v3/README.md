@@ -160,7 +160,9 @@ editing `common.py` is a script change.
 repository); the checker does not. This is recorded as decision D1 in codebook v0.3 (`../codebook/codebook_v0.3.md`).
 
 **Evidence from the run 2 review.** The numbers come from `pilot/analysis/review_agreement.py` (seed 20261002, 2000
-resamples) and the run's summary.
+resamples) and the run's summary. The review and the script's output are committed in `../codebook/`
+(`review_export_pilot_v2_20261002.json` and `agreement_pilot_v2_20261002.json`), and `tests/test_pilot_codebook_d1.py`
+checks every number D1 quotes against them and against the run's `review_key.csv` and `summary.json`.
 
 - **Naturalness and realism.** On all 40 sampled rows the checker answered `both` to `sentence_natural` and `real` to
   `patient_realism`, so it could not tell the pairs the owner found natural or real from the rest:

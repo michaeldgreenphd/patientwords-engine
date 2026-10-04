@@ -11,7 +11,7 @@ lines. The rule text is data, not Python source (engine AGENTS.md: medical vocab
 example words stay in design.json's prompt_examples, and the template must not carry them. The codebook decision that
 goes with the kit (D1, codebook v0.3: the checker is not a gate for keeping stimuli) is checked here too, with version
 0.2's files pinned unchanged; tests/test_pilot_codebook.py checks that the current codebook rebuilds from its
-inputs."""
+inputs, and tests/test_pilot_codebook_d1.py that every number D1 quotes is the committed run 2 value."""
 import hashlib
 import importlib.util
 import json
