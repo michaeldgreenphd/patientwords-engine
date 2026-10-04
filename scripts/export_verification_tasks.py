@@ -9,8 +9,24 @@ protocol.
 Three families, every item from a committed engine file or the published site payload:
 
 * ``tracing_pair`` (question set ``tracing_pair``; display kind ``pair_sentence``):
-  - pilot Run 2's 40 traced pairs (``pilot/runs/pilot_v2_20261002/trace/trace_pairs.json``), joined to the run's
-    generated rows (template, terms, next word) and to their trace results in ``pilot/traces/trace_pairs/``;
+  - the pairs of each pilot run named with ``--pilot-run <run id>`` (repeatable; a run is the directory
+    ``<--pilot-runs-dir>/<run id>``, default ``pilot/runs/``; with none named, ``pilot_v2_20261002`` alone, the first
+    bundle's run). A run must be finalized (``manifest.json`` has ``finalized_utc``) and version 2 (``design.json``
+    ``harness_version`` 2), and every run file read (``design.json``, ``generated/all_rows.jsonl``,
+    ``review_map.json``) must hash as the finalized manifest's ``output_hashes`` records. Each run contributes its
+    blind review sample (the rows ``review_map.json`` names, in review-id order), or with ``--pilot-all-rows <run
+    id>`` every generated row whose ``control`` is ``none`` (negative controls are excluded and counted), each shown
+    as its template with the clinical and the patient term and the row's next word. By default every pair needs a
+    trace result: the run's one trace pairs file (the JSON file under ``<run>/trace/`` beside its ``.meta.json``
+    sidecar) must hold the row, and the trace results in ``<--pilot-trace-root>/<that file's stem>/`` (default
+    ``pilot/traces/``, where the circuit-trace lane's pilot root writes them) must carry its index with the same
+    prompts. With ``--pilot-trace-optional <run id>`` that run's trace files are neither required nor read, so its
+    items do not change when its traces land; a pair joins its trace later by run and row id. Two runs that would
+    read one trace results directory are refused. A pair whose two sentences repeat an earlier pilot item's is kept
+    (each row is its run's output) and counted. Item ids are keyed on the run's generated rows file and the row id,
+    so a row keeps one id under every selection and trace option; Run 2's are keyed on its trace pairs file and
+    labelled ``pilot_run2``, as in the first bundle (``LEGACY_PILOT_RUNS``), and every other run's items are
+    labelled ``pilot:<run id>``. Labels are provenance, never shown to a rater;
   - the ``--main-pairs`` (default 40) main-study pairs already published in the site payload
     (``<site>/data/simulated_scenarios.json``) whose ``--rank-model`` (default gemma-2-2b) language penalty is
     largest in absolute value, compared at ``RANK_DECIMALS`` decimals so that penalties equal at their recorded
@@ -57,13 +73,24 @@ item keeps its id across bundles while its source keeps its path and id.
 
 Refusals (a named SystemExit, and nothing is written): a missing or unreadable input, a field the exporter does not
 know in a record it reads (a new field may carry meaning the selection must respect, so a person decides), a shape
-it cannot use, a text whose sha256 no longer matches, a questions file that does not fit the items, fewer
-main-study candidates than requested, an item id collision, an existing output file (a bundle is an archive, never
-rewritten), and every seal failure above.
+it cannot use, a text whose sha256 no longer matches, a pilot run that is not finalized (``run_not_finalized``) or
+not version 2 (``run_not_version_2``), a pilot pair without its required trace (``missing_trace``) or whose trace
+result carries other prompts (``trace_mismatch``), a questions file that does not fit the items, fewer main-study
+candidates than requested, an item id collision, an existing output file (a bundle is an archive, never rewritten),
+and every seal failure above.
+
+Rounds. Each physician round uses one bundle (the ratings import reads one bundle per export). A later round's
+bundle is built with ``--previous-bundle <the previous round's bundle>``, which refuses unless every item of that
+bundle is in the new one under the same id with the same question set, display and reveal (``previous_item_missing``,
+``previous_item_changed``) and every question id it uses is kept (``previous_question_missing``): the app needs
+every item a physician holds to stay in the bundle it switches to, and stores answers under item and question ids.
+docs/verification_protocol.md (Rounds) has how round 2 is built.
 
 Usage (from the engine root):
   python scripts/export_verification_tasks.py [--site ../patientwords] [--seed 20261003] [--main-pairs 40]
       [--stamp 20261003T120000Z] [--out-dir data/verification]
+      [--pilot-run RUN_ID ...] [--pilot-all-rows RUN_ID ...] [--pilot-trace-optional RUN_ID ...]
+      [--previous-bundle data/verification/tasks_<stamp>.json]
 """
 from __future__ import annotations
 
@@ -103,14 +130,24 @@ DEFAULT_RANK_MODEL = "gemma-2-2b"
 # than that noise, so two penalties equal as recorded tie and the tie rule (batch, then index) decides.
 RANK_DECIMALS = 6
 MULTITURN_WAVE = 3
+# Pilot runs: a run is a directory under --pilot-runs-dir (default pilot/runs), named by its run id.
+DEFAULT_PILOT_RUN = "pilot_v2_20261002"
+HARNESS_VERSION = 2
+RUN_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
+PILOT_SUBSET_PREFIX = "pilot:"
+# Run 2's items were first exported (tasks_20261004T042945Z.json) under the subset label "pilot_run2" and keyed on
+# the run's trace pairs file, so they keep both: the item id is derived from that key, and the app stores every
+# rating under the item id (a changed id orphans them). Every other run is labelled "pilot:<run id>" and keyed on its
+# generated rows file, which every selection and trace option reads, so a row keeps one item id in every bundle.
+LEGACY_PILOT_RUNS = {"pilot_v2_20261002": {"subset": "pilot_run2", "id_source": "trace/trace_pairs.json"}}
 SITE_PAYLOAD = "data/simulated_scenarios.json"
 SITE_LABEL = "patientwords:" + SITE_PAYLOAD
 BLANK = "___"
 
 DEFAULTS = {
     "questions": REPO_ROOT / "data" / "verification" / "questions.json",
-    "pilot_run": REPO_ROOT / "pilot" / "runs" / "pilot_v2_20261002",
-    "pilot_traces": REPO_ROOT / "pilot" / "traces" / "trace_pairs",
+    "pilot_runs_dir": REPO_ROOT / "pilot" / "runs",
+    "pilot_trace_root": REPO_ROOT / "pilot" / "traces",
     "advice_new": REPO_ROOT / "data" / "advice" / "stimuli_20261002T080026Z.json",
     "advice_rerun": REPO_ROOT / "data" / "advice" / "stimuli_20261002T081803Z.json",
     "petri_seeds": REPO_ROOT / "docs" / "framework" / "petri_seeds_w3.draft.json",
@@ -234,24 +271,25 @@ class Inputs:
         except (UnicodeDecodeError, ValueError) as exc:
             refuse("unreadable_input", f"{role}: {path} is not UTF-8 JSON ({type(exc).__name__})")
 
-    def read_jsonl(self, path: Path, role: str) -> tuple[list[dict], str]:
-        data = self.read_bytes(path, role)
+
+def parse_jsonl(data: bytes, path: Path, role: str) -> list[dict]:
+    """The JSON objects of a JSONL file's bytes, blank lines skipped; anything else is a named refusal."""
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        refuse("unreadable_input", f"{role}: {path} is not UTF-8")
+    rows: list[dict] = []
+    for n, line in enumerate(text.splitlines(), 1):
+        if not line.strip():
+            continue
         try:
-            text = data.decode("utf-8")
-        except UnicodeDecodeError:
-            refuse("unreadable_input", f"{role}: {path} is not UTF-8")
-        rows: list[dict] = []
-        for n, line in enumerate(text.splitlines(), 1):
-            if not line.strip():
-                continue
-            try:
-                obj = json.loads(line)
-            except ValueError:
-                refuse("unreadable_input", f"{role}: {path} line {n} is not JSON")
-            if not isinstance(obj, dict):
-                refuse("bad_input", f"{role}: {path} line {n} is not a JSON object")
-            rows.append(obj)
-        return rows, sha256_bytes(data)
+            obj = json.loads(line)
+        except ValueError:
+            refuse("unreadable_input", f"{role}: {path} line {n} is not JSON")
+        if not isinstance(obj, dict):
+            refuse("bad_input", f"{role}: {path} line {n} is not a JSON object")
+        rows.append(obj)
+    return rows
 
 
 def check_keys(obj: Any, allowed: frozenset[str], where: str, required: tuple[str, ...] = ()) -> dict:
@@ -458,83 +496,297 @@ def pair_display(clinical: str, patient: str, next_word: str) -> dict:
             "patient": {"text": patient, "highlight": hp}, "next_word": next_word, "cut_off": True}
 
 
-def pilot_items(inp: Inputs, seal: Seal, run_dir: Path, traces_dir: Path) -> tuple[list[dict], dict]:
-    pairs_path = run_dir / "trace" / "trace_pairs.json"
-    meta_path = run_dir / "trace" / "trace_pairs.meta.json"
-    rows_path = run_dir / "generated" / "all_rows.jsonl"
-    pairs, pairs_sha = inp.read_json(pairs_path, "pilot Run 2 trace pairs")
-    meta, _ = inp.read_json(meta_path, "pilot Run 2 trace pairs sidecar")
-    rows, _ = inp.read_jsonl(rows_path, "pilot Run 2 generated rows")
+class PilotRun:
+    """One pilot run to export: its id, which rows it contributes and whether each needs a trace result."""
+
+    def __init__(self, run_id: str, all_rows: bool = False, trace_required: bool = True) -> None:
+        self.run_id = run_id
+        self.all_rows = all_rows
+        self.trace_required = trace_required
+
+    @property
+    def subset(self) -> str:
+        """The provenance label of the run's items (never shown to a rater)."""
+        legacy = LEGACY_PILOT_RUNS.get(self.run_id)
+        return legacy["subset"] if legacy else PILOT_SUBSET_PREFIX + self.run_id
+
+
+def pilot_runs_from_args(args: argparse.Namespace) -> list[PilotRun]:
+    """The pilot runs named on the command line (the default run when none is), or a named refusal."""
+    run_ids = list(args.pilot_run) if args.pilot_run else [DEFAULT_PILOT_RUN]
+    for run_id in run_ids:
+        if not isinstance(run_id, str) or not RUN_ID_RE.fullmatch(run_id):
+            refuse("bad_input", f"--pilot-run {run_id!r} is not a run id: it takes a directory name under "
+                                "--pilot-runs-dir, not a path")
+    repeated = sorted(k for k, v in Counter(run_ids).items() if v > 1)
+    if repeated:
+        refuse("bad_input", f"--pilot-run names {repeated} more than once")
+    for flag, named in (("--pilot-all-rows", args.pilot_all_rows), ("--pilot-trace-optional",
+                                                                    args.pilot_trace_optional)):
+        stray = sorted(set(named or ()) - set(run_ids))
+        if stray:
+            refuse("bad_input", f"{flag} names {stray}, which no --pilot-run exports")
+    return [PilotRun(r, all_rows=r in set(args.pilot_all_rows or ()),
+                     trace_required=r not in set(args.pilot_trace_optional or ())) for r in run_ids]
+
+
+def _run_dir(runs_dir: Path, run_id: str) -> Path:
+    run_dir = runs_dir / run_id
+    if not run_dir.is_dir():
+        refuse("missing_input", f"pilot run {run_id}: {run_dir} is not a directory")
+    return run_dir
+
+
+def check_trace_dirs_distinct(runs: list[PilotRun], runs_dir: Path, trace_root: Path) -> None:
+    """Refuse, before any trace result is read, two runs whose required traces would come from one directory."""
+    seen: dict[Path, str] = {}
+    for run in runs:
+        if not run.trace_required:
+            continue
+        traces_dir = trace_root / _trace_pairs_file(_run_dir(runs_dir, run.run_id), run.run_id).stem
+        other = seen.setdefault(traces_dir.resolve(), run.run_id)
+        if other != run.run_id:
+            refuse("bad_input", f"pilot runs {other} and {run.run_id} would read one trace results directory "
+                                f"({traces_dir}): the circuit-trace lane writes pilot/traces/<pairs-file stem>/, so "
+                                "two runs whose trace pairs files share a stem share (and overwrite) one directory; "
+                                "give each run's trace pairs file its own stem")
+
+
+def _finalized_hash(manifest: dict, rel: str, data: bytes, run_id: str) -> None:
+    """Refuse a run file whose bytes differ from the sha256 its finalized manifest records for it."""
+    recorded = manifest["output_hashes"].get(rel)
+    if not isinstance(recorded, str):
+        refuse("run_not_finalized", f"pilot run {run_id}: the finalized manifest records no sha256 for {rel}")
+    if sha256_bytes(data) != recorded:
+        refuse("hash_mismatch", f"pilot run {run_id}: {rel} no longer hashes to the sha256 its finalized "
+                                "manifest records")
+
+
+def _json_of(data: bytes, path: Path, role: str) -> Any:
+    try:
+        return json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as exc:
+        refuse("unreadable_input", f"{role}: {path} is not UTF-8 JSON ({type(exc).__name__})")
+
+
+def _trace_pairs_file(run_dir: Path, run_id: str) -> Path:
+    """The run's one trace pairs file: the JSON file under <run>/trace/ that is not a .meta.json sidecar."""
+    trace_dir = run_dir / "trace"
+    found = sorted(p for p in trace_dir.glob("*.json") if not p.name.endswith(".meta.json")) \
+        if trace_dir.is_dir() else []
+    if not found:
+        refuse("missing_trace", f"pilot run {run_id}: no trace pairs file under {trace_dir}; a trace result is "
+                                f"required for its pairs (pass --pilot-trace-optional {run_id} to export it "
+                                "without trace results)")
+    if len(found) > 1:
+        refuse("bad_input", f"pilot run {run_id}: {len(found)} trace pairs files under {trace_dir} "
+                            f"({[p.name for p in found]}); the exporter reads a run's one trace pairs file")
+    return found[0]
+
+
+def _read_trace_pairs(inp: Inputs, pairs_path: Path, run_id: str) -> tuple[list[dict], str]:
+    """The run's trace pairs, after the sidecar, run and key checks; and the pairs file's sha256."""
+    meta_path = pairs_path.with_name(pairs_path.stem + ".meta.json")
+    pairs, pairs_sha = inp.read_json(pairs_path, f"pilot run {run_id} trace pairs")
+    meta, _ = inp.read_json(meta_path, f"pilot run {run_id} trace pairs sidecar")
     check_keys(meta, TRACE_META_KEYS, f"{meta_path.name}", ("output", "counts"))
     if (meta.get("output") or {}).get("sha256") != pairs_sha:
         refuse("hash_mismatch", f"{pairs_path} no longer hashes to the sha256 its sidecar records")
+    if "run" in meta and meta["run"] != run_id:
+        refuse("bad_input", f"{meta_path.name} names run {meta['run']!r}, not {run_id!r}")
     if not isinstance(pairs, list) or not pairs:
         refuse("bad_input", f"{pairs_path} is not a non-empty list of pairs")
     if (meta.get("counts") or {}).get("selected") != len(pairs):
         refuse("bad_input", f"{pairs_path} holds {len(pairs)} pairs; its sidecar says {meta['counts'].get('selected')}")
-    by_id: dict[str, dict] = {}
-    for row in rows:
-        check_keys(row, PILOT_ROW_KEYS, f"{rows_path.name} row {row.get('id')!r}", ("id",))
-        if row["id"] in by_id:
-            refuse("bad_input", f"{rows_path.name} repeats row id {row['id']!r}")
-        by_id[row["id"]] = row
-    traced = traced_prompts(inp, traces_dir)
-    source_path = logical_path(pairs_path)
-    items = []
     for i, pair in enumerate(pairs, 1):
         where = f"{pairs_path.name} pair {i}"
         check_keys(pair, TRACE_PAIR_KEYS, where, tuple(sorted(TRACE_PAIR_KEYS)))
         pilot = check_keys(pair["pilot"], TRACE_PILOT_KEYS, f"{where} pilot block", ("row_id", "run"))
-        row_id = need_str(pilot["row_id"], f"{where} pilot.row_id")
-        row = by_id.get(row_id)
-        if row is None:
-            refuse("bad_input", f"{where}: row {row_id!r} is not in {rows_path.name}")
-        top = need_str(pair["top_prompt"], f"{where} top_prompt")
-        bottom = need_str(pair["bottom_prompt"], f"{where} bottom_prompt")
-        template = need_str(row.get("template"), f"row {row_id} template")
+        if pilot["run"] != run_id:
+            refuse("bad_input", f"{where}: its pilot block names run {pilot['run']!r}, not {run_id!r}")
+        need_str(pilot["row_id"], f"{where} pilot.row_id")
+    return pairs, pairs_sha
+
+
+def pilot_items(inp: Inputs, seal: Seal, runs_dir: Path, trace_root: Path,
+                run: PilotRun) -> tuple[list[dict], dict]:
+    """The items of one finalized version-2 pilot run, in selection order, and the run's selection block."""
+    run_id = run.run_id
+    run_dir = _run_dir(runs_dir, run_id)
+    manifest, _ = inp.read_json(run_dir / "manifest.json", f"pilot run {run_id} manifest")
+    design_bytes = inp.read_bytes(run_dir / "design.json", f"pilot run {run_id} design")
+    design = _json_of(design_bytes, run_dir / "design.json", f"pilot run {run_id} design")
+    version = design.get("harness_version") if isinstance(design, dict) else None
+    if version != HARNESS_VERSION:
+        refuse("run_not_version_2", f"pilot run {run_id}: design.json harness_version is {version!r}; only "
+                                    f"version-{HARNESS_VERSION} runs record the expected next word a pair shows")
+    if not isinstance(manifest, dict) or not isinstance(manifest.get("finalized_utc"), str) \
+            or not manifest["finalized_utc"].strip():
+        refuse("run_not_finalized", f"pilot run {run_id}: manifest.json is not finalized (no finalized_utc); "
+                                    "export a run only after write_manifest.py finalize")
+    if not isinstance(manifest.get("output_hashes"), dict):
+        refuse("run_not_finalized", f"pilot run {run_id}: the finalized manifest records no output_hashes")
+    _finalized_hash(manifest, "design.json", design_bytes, run_id)
+
+    rows_path = run_dir / "generated" / "all_rows.jsonl"
+    rows_bytes = inp.read_bytes(rows_path, f"pilot run {run_id} generated rows")
+    _finalized_hash(manifest, "generated/all_rows.jsonl", rows_bytes, run_id)
+    rows = parse_jsonl(rows_bytes, rows_path, f"pilot run {run_id} generated rows")
+    by_id: dict[str, dict] = {}
+    for row in rows:
+        check_keys(row, PILOT_ROW_KEYS, f"{rows_path.name} row {row.get('id')!r}", ("id",))
+        need_str(row["id"], f"{rows_path.name} row id")
+        if row["id"] in by_id:
+            refuse("bad_input", f"{rows_path.name} repeats row id {row['id']!r}")
+        by_id[row["id"]] = row
+
+    map_path = run_dir / "review_map.json"
+    map_bytes = inp.read_bytes(map_path, f"pilot run {run_id} review map")
+    _finalized_hash(manifest, "review_map.json", map_bytes, run_id)
+    review_doc = _json_of(map_bytes, map_path, f"pilot run {run_id} review map")
+    mapping = review_doc.get("map") if isinstance(review_doc, dict) else None
+    if not isinstance(mapping, dict) or not mapping or not all(
+            isinstance(k, str) and isinstance(v, str) for k, v in mapping.items()):
+        refuse("bad_input", f"pilot run {run_id}: review_map.json has no map of review ids to row ids")
+    review_of: dict[str, str] = {}
+    for review_id, row_id in mapping.items():
+        if row_id not in by_id:
+            refuse("bad_input", f"pilot run {run_id}: review_map.json names row {row_id!r}, which is not in "
+                                f"{rows_path.name}")
+        if row_id in review_of:
+            refuse("bad_input", f"pilot run {run_id}: review_map.json names row {row_id!r} twice")
+        review_of[row_id] = review_id
+
+    counts: Counter = Counter()
+    if run.all_rows:
+        selected = []
+        for row in rows:
+            control = row.get("control")
+            if control == "none":
+                selected.append(row)
+            elif control == "negative":
+                counts["excluded_control_rows"] += 1
+            else:
+                refuse("bad_input", f"pilot run {run_id} row {row['id']!r}: control {control!r} is neither 'none' "
+                                    "nor 'negative'")
+        counts["generated_rows"] = len(rows)
+    else:
+        selected = [by_id[mapping[review_id]] for review_id in sorted(mapping)]
+        for row in selected:
+            if row.get("control") != "none":
+                refuse("bad_input", f"pilot run {run_id}: review sample row {row['id']!r} is a control row")
+        counts["review_sample"] = len(mapping)
+    if not selected:
+        refuse("bad_input", f"pilot run {run_id}: no row was selected")
+
+    pairs_by_row: dict[str, tuple[int, dict]] = {}
+    traced: dict[int, tuple[str, str]] = {}
+    pairs_path = traces_dir = None
+    pairs_sha = None
+    if run.trace_required:
+        pairs_path = _trace_pairs_file(run_dir, run_id)
+        pairs, pairs_sha = _read_trace_pairs(inp, pairs_path, run_id)
+        for i, pair in enumerate(pairs, 1):
+            row_id = pair["pilot"]["row_id"]
+            if row_id not in by_id:
+                refuse("bad_input", f"{pairs_path.name} pair {i}: row {row_id!r} is not in {rows_path.name}")
+            if row_id in pairs_by_row:
+                refuse("bad_input", f"{pairs_path.name} pair {i} repeats row {row_id!r}")
+            pairs_by_row[row_id] = (i, pair)
+        traces_dir = trace_root / pairs_path.stem
+        traced = traced_prompts(inp, traces_dir, run_id)
+        counts["trace_pairs"] = len(pairs)
+        counts["traced"] = sum(1 for i in range(1, len(pairs) + 1) if i in traced)
+        counts["trace_pairs_not_selected"] = len(set(pairs_by_row) - {r["id"] for r in selected})
+
+    legacy = LEGACY_PILOT_RUNS.get(run_id)
+    if legacy:
+        id_path = run_dir / legacy["id_source"]
+        if pairs_path is not None and id_path.resolve() == pairs_path.resolve():
+            id_sha = pairs_sha
+        else:
+            id_sha = sha256_bytes(inp.read_bytes(id_path, f"pilot run {run_id} item id key"))
+    else:
+        id_path, id_sha = rows_path, sha256_bytes(rows_bytes)
+    source_path = logical_path(id_path)
+
+    items = []
+    for row in selected:
+        row_id = row["id"]
+        label = f"pilot run {run_id} row {row_id}"
+        template = need_str(row.get("template"), f"{label} template")
         if template.count(BLANK) != 1:
-            refuse("bad_input", f"row {row_id}: template does not hold exactly one blank")
-        clinical_term = need_str(row.get("clinical_term"), f"row {row_id} clinical_term")
-        patient_term = need_str(row.get("patient_term"), f"row {row_id} patient_term")
-        next_word = need_str(row.get("next_word"), f"row {row_id} next_word")
-        if top != template.replace(BLANK, clinical_term) or bottom != template.replace(BLANK, patient_term):
-            refuse("bad_input", f"{where}: the pair's sentences are not row {row_id}'s template with its terms")
-        if pair["target_clinical_token"] != " " + next_word:
-            refuse("bad_input", f"{where}: target_clinical_token is not a space plus row {row_id}'s next_word")
-        if traced.get(i) != (top, bottom):
-            refuse("bad_input", f"{where}: no trace result in {traces_dir} carries index {i} with this pair's "
-                                "prompts; only traced pairs are rated")
-        if seal.row_sealed("tracing_pilot", None, None, top, f"pilot Run 2 row {row_id}"):
-            refuse("sealed_row", f"pilot Run 2 row {row_id} (trace index {i}) is a sealed holdout phrase")
+            refuse("bad_input", f"{label}: template does not hold exactly one blank")
+        clinical_term = need_str(row.get("clinical_term"), f"{label} clinical_term")
+        patient_term = need_str(row.get("patient_term"), f"{label} patient_term")
+        next_word = need_str(row.get("next_word"), f"{label} next_word")
+        top, bottom = template.replace(BLANK, clinical_term), template.replace(BLANK, patient_term)
+        trace_index = None
+        if run.trace_required:
+            if row_id not in pairs_by_row:
+                refuse("missing_trace", f"{label} is not in {pairs_path.name}; a trace result is required for its "
+                                        f"pairs (pass --pilot-trace-optional {run_id} to export it without one)")
+            trace_index, pair = pairs_by_row[row_id]
+            where = f"{pairs_path.name} pair {trace_index}"
+            if pair["top_prompt"] != top or pair["bottom_prompt"] != bottom:
+                refuse("bad_input", f"{where}: the pair's sentences are not row {row_id}'s template with its terms")
+            if pair["target_clinical_token"] != " " + next_word:
+                refuse("bad_input", f"{where}: target_clinical_token is not a space plus row {row_id}'s next_word")
+            if pair["pilot"].get("review_id") != review_of.get(row_id):
+                refuse("bad_input", f"{where}: its review id is not the one review_map.json gives row {row_id}")
+            if trace_index not in traced:
+                refuse("missing_trace", f"{where} (row {row_id}) has no trace result in {traces_dir}; a trace "
+                                        f"result is required for its pairs (pass --pilot-trace-optional {run_id} "
+                                        "to export it without one)")
+            if traced[trace_index] != (top, bottom):
+                refuse("trace_mismatch", f"{where} (row {row_id}): the trace result with index {trace_index} in "
+                                         f"{traces_dir} carries other prompts")
+        if seal.row_sealed("tracing_pilot", None, None, top, label):
+            refuse("sealed_row", f"{label} is a sealed holdout phrase")
         display = pair_display(top, bottom, next_word)
-        seal.note_bucket(item_id_for("tracing_pair", source_path, row_id), top)
+        item_id = item_id_for("tracing_pair", source_path, row_id)
+        seal.note_bucket(item_id, top)
         items.append({
-            "item_id": item_id_for("tracing_pair", source_path, row_id),
+            "item_id": item_id,
             "family": "tracing_pair", "question_set": "tracing_pair", "display": display, "reveal": None,
-            "provenance": {"subset": "pilot_run2", "source_path": source_path, "source_id": row_id,
-                           "source_sha256": pairs_sha, "run": pilot["run"], "review_id": pilot.get("review_id"),
-                           "trace_index": i, "rows_path": logical_path(rows_path),
+            "provenance": {"subset": run.subset, "source_path": source_path, "source_id": row_id,
+                           "source_sha256": id_sha, "run": run_id, "review_id": review_of.get(row_id),
+                           "trace_index": trace_index, "rows_path": logical_path(rows_path),
                            "display_sha256": sha256_text(canonical(display))},
         })
+    counts["selected"] = len(items)
+    rows_rule = ("every generated row of the run that is not a control row (control 'none'), in the run's row order"
+                 if run.all_rows else
+                 "the run's blind review sample (review_map.json), in review-id order")
+    trace_rule = ("; each pair required to be in the run's trace pairs file and to have a trace result with the "
+                  "same prompts" if run.trace_required else
+                  "; trace results not required and not read (a pair joins its trace later by run and row id)")
     selection = {
-        "rule": "every pair of pilot Run 2's trace pairs file (the run's blind review sample, 40 pairs), joined to "
-                "the run's generated rows for template, terms and next word, each required to have a trace result "
-                "with the same prompts",
+        "run": run_id,
+        "rule": f"{rows_rule}, joined to the run's generated rows for template, terms and next word{trace_rule}. "
+                "The run must be finalized and version 2, and every run file read must hash as its finalized "
+                "manifest records",
+        "rows": "all_rows" if run.all_rows else "review_sample",
+        "trace_required": run.trace_required,
         "source": source_path,
-        "counts": {"pairs": len(pairs), "traced": sum(1 for i in range(1, len(pairs) + 1) if i in traced),
-                   "selected": len(items)},
+        "rows_source": logical_path(rows_path),
+        "trace_pairs": logical_path(pairs_path) if pairs_path is not None else None,
+        "trace_results": logical_path(traces_dir) if traces_dir is not None else None,
+        "counts": dict(sorted(counts.items())),
     }
     return items, selection
 
 
-def traced_prompts(inp: Inputs, traces_dir: Path) -> dict[int, tuple[str, str]]:
+def traced_prompts(inp: Inputs, traces_dir: Path, run_id: str) -> dict[int, tuple[str, str]]:
     """{trace index: (clinical prompt, patient prompt)} from the trace results under traces_dir."""
     parts = sorted(traces_dir.glob("batch_summary*.json")) if traces_dir.is_dir() else []
     if not parts:
-        refuse("missing_input", f"pilot traces: no batch_summary*.json under {traces_dir}")
+        refuse("missing_trace", f"pilot run {run_id}: no batch_summary*.json under {traces_dir}; a trace result is "
+                                f"required for its pairs (pass --pilot-trace-optional {run_id} to export it without "
+                                "trace results)")
     out: dict[int, tuple[str, str]] = {}
     for part in parts:
-        summary, _ = inp.read_json(part, "pilot Run 2 trace results")
+        summary, _ = inp.read_json(part, f"pilot run {run_id} trace results")
         results = summary.get("results") if isinstance(summary, dict) else None
         if not isinstance(results, list):
             refuse("bad_input", f"{part} has no results list")
@@ -828,6 +1080,51 @@ def multiturn_items(inp: Inputs, seeds_path: Path) -> tuple[list[dict], dict]:
 
 # ---- bundle --------------------------------------------------------------------------------------------------
 
+def check_previous_bundle(inp: Inputs, path: Path, items: list[dict], questions: dict) -> dict:
+    """The previous round's bundle, checked against this one: every item it holds is here under the same id, with
+    the same question set, display and reveal, and every question id of each of its question sets is still in that set.
+    The app needs every item a physician holds to stay in the bundle it switches to, and stores answers under the
+    item id and the question id (its DEPLOY.md section 19), so a missing item or question, or another text under
+    the same id, is refused (ids only)."""
+    role = "previous round's bundle"
+    data = inp.read_bytes(path, role)
+    prev = _json_of(data, path, role)
+    if not isinstance(prev, dict) or prev.get("schema") != SCHEMA or not isinstance(prev.get("items"), list) \
+            or not isinstance(prev.get("questions"), dict):
+        refuse("bad_input", f"--previous-bundle {path} is not a {SCHEMA} bundle")
+    now = {i["item_id"]: i for i in items}
+    missing, changed = [], []
+    for n, old in enumerate(prev["items"], 1):
+        item_id = old.get("item_id") if isinstance(old, dict) else None
+        if not isinstance(item_id, str):
+            refuse("bad_input", f"--previous-bundle {path}: item {n} has no item_id")
+        new = now.get(item_id)
+        if new is None:
+            missing.append(item_id)
+        elif any(canonical(new[k]) != canonical(old.get(k)) for k in ("question_set", "display", "reveal")):
+            changed.append(item_id)
+    if missing:
+        refuse("previous_item_missing", f"{len(missing)} item(s) of {prev.get('bundle_id')} are not in this bundle: "
+                                        f"{sorted(missing)}. The app needs every item a physician holds to stay in "
+                                        "the bundle it switches to")
+    if changed:
+        refuse("previous_item_changed", f"{len(changed)} item(s) of {prev.get('bundle_id')} show another text, "
+                                        f"proposed tier or question set under the same item id: {sorted(changed)}. "
+                                        "A rating stored under the id would be read as a rating of the new one")
+    lost = []
+    old_sets = prev["questions"].get("question_sets")
+    for set_name, qset in (old_sets.items() if isinstance(old_sets, dict) else ()):
+        new_ids = {q["id"] for q in questions["question_sets"].get(set_name, {}).get("questions", [])}
+        lost += [f"{set_name}.{q.get('id')}" for q in (qset or {}).get("questions", [])
+                 if isinstance(q, dict) and q.get("id") not in new_ids]
+    if lost:
+        refuse("previous_question_missing", f"question id(s) of {prev.get('bundle_id')} are not in this bundle's "
+                                            f"questions: {sorted(lost)}. Wording may change between bundles; "
+                                            "question ids may not")
+    return {"path": logical_path(path), "bundle_id": prev.get("bundle_id"), "sha256": sha256_bytes(data),
+            "items_kept": len(prev["items"]), "items_added": len(items) - len(prev["items"])}
+
+
 def parse_stamp(stamp: str | None) -> tuple[str, str]:
     """(compact stamp, ISO created_utc) for --stamp, or the current UTC second."""
     if stamp is None:
@@ -859,7 +1156,26 @@ def build_bundle(args: argparse.Namespace) -> tuple[dict, str]:
     inp.read_bytes(Path(args.dashboard), "holdout seal: Tier B start (dashboard)")
     seal = Seal(Path(args.dashboard), Path(args.simulated))
 
-    pilot, pilot_sel = pilot_items(inp, seal, Path(args.pilot_run), Path(args.pilot_traces))
+    runs = pilot_runs_from_args(args)
+    check_trace_dirs_distinct(runs, Path(args.pilot_runs_dir), Path(args.pilot_trace_root))
+    pilot: list[dict] = []
+    pilot_sel: dict[str, dict] = {}
+    pilot_by_subset: dict[str, int] = {}
+    seen_pairs: set[tuple[str, str]] = set()
+    for run in runs:
+        run_items, run_sel = pilot_items(inp, seal, Path(args.pilot_runs_dir), Path(args.pilot_trace_root), run)
+        # a pair whose two sentences repeat an earlier pilot item's (in this run or an earlier one) is kept, since
+        # each row is its run's output, and counted
+        repeats = 0
+        for item in run_items:
+            key = (item["display"]["clinical"]["text"], item["display"]["patient"]["text"])
+            repeats += key in seen_pairs
+            seen_pairs.add(key)
+        run_sel["counts"]["repeats_an_earlier_pilot_pair"] = repeats
+        run_sel["counts"] = dict(sorted(run_sel["counts"].items()))
+        pilot += run_items
+        pilot_sel[run.subset] = run_sel
+        pilot_by_subset[run.subset] = len(run_items)
     if args.main_pairs:
         main, main_sel = main_items(inp, seal, Path(args.site), Path(args.allowlist), args.main_pairs,
                                     args.rank_model)
@@ -877,6 +1193,8 @@ def build_bundle(args: argparse.Namespace) -> tuple[dict, str]:
     dupes = sorted(k for k, v in ids.items() if v > 1)
     if dupes:
         refuse("id_collision", f"item ids repeat: {dupes}")
+    previous = (check_previous_bundle(inp, Path(args.previous_bundle), items, questions)
+                if args.previous_bundle else None)
     for i in items:
         set_name = i["question_set"]
         if QUESTION_SETS[set_name] != i["family"]:
@@ -909,12 +1227,13 @@ def build_bundle(args: argparse.Namespace) -> tuple[dict, str]:
         "questions_sha256": sha256_bytes(q_bytes),
         "sources": inp.sources,
         "selection": {
-            "tracing_pair": {"pilot_run2": pilot_sel, "main_study": main_sel},
+            "tracing_pair": {**pilot_sel, "main_study": main_sel},
             "advice": advice_sel,
             "multiturn": multi_sel,
             "order": "items sorted by item_id, then shuffled with Python's random.Random(seed); the app orders "
                      "each physician's items by its own seeded hash",
             "item_id": "vt_ + the first 12 hex digits of sha256(family U+001F source path U+001F source id)",
+            "previous_bundle": previous,
             "highlight": "the shortest span where the two sentences differ, widened to whole words; [start, end) in "
                          "UTF-16 code units (JavaScript string indices)",
         },
@@ -944,7 +1263,7 @@ def build_bundle(args: argparse.Namespace) -> tuple[dict, str]:
             "by_family": {f: by_family[f] for f in FAMILIES},
             "by_question_set": {s: by_set[s] for s in QUESTION_SETS},
             "with_reveal": sum(1 for i in items if i["reveal"] is not None),
-            "tracing_pair_by_subset": {"pilot_run2": len(pilot), "main_study": len(main)},
+            "tracing_pair_by_subset": {**pilot_by_subset, "main_study": len(main)},
         },
         "items": items,
     }
@@ -988,7 +1307,18 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     ap.add_argument("--rank-model", default=DEFAULT_RANK_MODEL, help="the model whose language penalty ranks pairs")
     ap.add_argument("--stamp", default=None, help="UTC stamp YYYYMMDDTHHMMSSZ (default: now)")
     ap.add_argument("--out-dir", default=str(DEFAULTS["out_dir"]))
-    for key in ("questions", "pilot_run", "pilot_traces", "advice_new", "advice_rerun", "petri_seeds",
+    ap.add_argument("--pilot-run", action="append", metavar="RUN_ID",
+                    help="a finalized version-2 pilot run to take tracing pairs from, by its directory name under "
+                         f"--pilot-runs-dir; repeatable (default: {DEFAULT_PILOT_RUN} alone, the first bundle's run)")
+    ap.add_argument("--pilot-all-rows", action="append", metavar="RUN_ID",
+                    help="take every non-control generated row of this run instead of its blind review sample")
+    ap.add_argument("--previous-bundle", default=None, metavar="PATH",
+                    help="the previous round's bundle: refuse unless every item it holds is in this one, unchanged, "
+                         "and every question id it uses is kept")
+    ap.add_argument("--pilot-trace-optional", action="append", metavar="RUN_ID",
+                    help="do not require (or read) trace results for this run's pairs; by default every pilot "
+                         "pair needs one")
+    for key in ("questions", "pilot_runs_dir", "pilot_trace_root", "advice_new", "advice_rerun", "petri_seeds",
                 "dashboard", "simulated", "allowlist"):
         ap.add_argument("--" + key.replace("_", "-"), default=str(DEFAULTS[key]))
     return ap.parse_args(argv)

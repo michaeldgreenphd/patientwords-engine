@@ -4,12 +4,16 @@ Pins the bundle's contract shape, determinism (same seed and stamp: byte-identic
 another order), that the display carries none of the hidden fields, numbers, model names, batch ids or proposed
 tiers, the fail-closed holdout seal (a planted sealed phrase refuses the export and writes nothing), the list of
 unsealed items whose clinical text hashes into the holdout bucket, the counts and selection per family (main-study
-penalties equal as recorded tie, and the stated tie rule decides), item-id stability, and the question wording (no
+penalties equal as recorded tie, and the stated tie rule decides), item-id stability, the question wording (no
 hint predicts an answer, the urgency question names the message it asks about, raters are asked not to look the
-scenarios up). Every input here is synthetic, abstract and non-medical (the medical
-vocabulary rule in AGENTS.md); the seal fixtures follow tests/test_seal_check.py and tests/test_tierb_split.py.
-The last test checks every committed bundle under data/verification/ against the contract, and its failure messages
-name item ids only, never row text.
+scenarios up), and the pilot runs: which runs, the review sample or every non-control row, a required or an optional
+trace (an optional one is not read, so the items do not change when traces land), a row's id under every option,
+and the refusals for a run that is not finalized, not version 2, changed since it was finalized or missing a
+required trace. Every input here is synthetic, abstract and non-medical (the medical vocabulary rule in AGENTS.md);
+the seal fixtures follow tests/test_seal_check.py and tests/test_tierb_split.py. The committed-bundle tests check
+every bundle under data/verification/ against the contract, with failure messages naming item ids only, never row
+text, and re-export the first bundle from the committed engine files: the default run gives its pilot items
+unchanged, and with the site payload it recorded the recorded command gives its items byte for byte.
 """
 from __future__ import annotations
 
@@ -18,6 +22,7 @@ import hashlib
 import importlib.util
 import json
 import re
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +37,8 @@ _SPEC.loader.exec_module(evt)
 QUESTIONS = ROOT / "data" / "verification" / "questions.json"
 STAMP = "20261003T120000Z"
 TIER_A = "pairs_20260705T000000Z"
+RUN2 = "pilot_v2_20261002"          # the default run: its items keep the first bundle's label and id key
+RUN_NEW = "pilot_v9_20990101"       # any other run
 TIER_B = "pairs_20260711T000000Z"
 START = "2026-07-10T01:14:38Z"
 MARK_RATIONALE = "zzmark rationale qx"
@@ -216,41 +223,71 @@ def world_data() -> dict:
     }
 
 
-def write_world(tmp_path: Path, data: dict) -> dict[str, Path]:
-    def dump(path: Path, obj: Any) -> Path:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(obj), encoding="utf-8")
-        return path
+def dump(path: Path, obj: Any) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    return path
 
-    run = tmp_path / "pilot" / "run2"
-    rows = data["pilot_rows"]
-    (run / "generated").mkdir(parents=True)
-    (run / "generated" / "all_rows.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows),
-                                                       encoding="utf-8")
-    pairs = data.get("pairs") or [
-        {"top_prompt": r["template"].replace("___", r["clinical_term"]),
-         "bottom_prompt": r["template"].replace("___", r["patient_term"]),
-         "target_clinical_token": " " + r["next_word"],
-         "pilot": {"run": "run2", "row_id": r["id"], "review_id": f"r{n:03d}", "call_id": r["call_id"],
-                   "arm": "A", "cell": r["cell"], "control": "none", "concept_key": "k", "probe_point": True,
-                   "checker": {"verdict": "yes"}, "prompt_sha256": "0" * 64}}
-        for n, r in enumerate(rows, 1)]
-    pairs_path = dump(run / "trace" / "trace_pairs.json", pairs)
-    dump(run / "trace" / "trace_pairs.meta.json",
-         {"run": "run2", "counts": {"selected": len(pairs)},
-          "output": {"file": "trace_pairs.json", "sha256": hashlib.sha256(pairs_path.read_bytes()).hexdigest()}})
-    traces = tmp_path / "pilot" / "traces"
-    dump(traces / "batch_summary.part_01.json",
-         {"results": [{"index": n, "prompts": {"clinical": p["top_prompt"], "patient": p["bottom_prompt"]}}
-                      for n, p in enumerate(pairs, 1)]})
+
+def _file_sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _pair_of(row: dict, run_id: str, review_id: str | None) -> dict:
+    return {"top_prompt": row["template"].replace("___", row["clinical_term"]),
+            "bottom_prompt": row["template"].replace("___", row["patient_term"]),
+            "target_clinical_token": " " + row["next_word"],
+            "pilot": {"run": run_id, "row_id": row["id"], "review_id": review_id, "call_id": row["call_id"],
+                      "arm": "A", "cell": row["cell"], "control": "none", "concept_key": "k", "probe_point": True,
+                      "checker": {"verdict": "yes"}, "prompt_sha256": "0" * 64}}
+
+
+def write_run(paths: dict[str, Path], run_id: str, rows: list[dict], review: list[str] | None = None,
+              traced: list[str] | None = None, pairs_name: str = "trace_pairs", finalized: bool = True,
+              version: Any = 2) -> Path:
+    """A synthetic pilot run under the world's runs directory: its generated rows, a review map over the row ids in
+    ``review`` (default every non-control row, in order), a design, a finalized manifest hashing those three files,
+    and, for the row ids in ``traced`` (default the review sample; [] for none), a trace pairs file with its sidecar
+    and trace results under the world's trace root, in <stem>/ as the circuit-trace lane's pilot root writes them."""
+    run = paths["pilot_runs_dir"] / run_id
+    by_id = {r["id"]: r for r in rows}
+    review = [r["id"] for r in rows if r["control"] == "none"] if review is None else review
+    mapping = {f"r{n:03d}": row_id for n, row_id in enumerate(review, 1)}
+    review_of = {row_id: rid for rid, row_id in mapping.items()}
+    rows_path = run / "generated" / "all_rows.jsonl"
+    rows_path.parent.mkdir(parents=True, exist_ok=True)
+    rows_path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    dump(run / "review_map.json", {"sampling": "synthetic", "map": mapping})
+    dump(run / "design.json", {"harness_version": version, "probe_endings": ["my"]})
+    hashes = {name: _file_sha(run / name) for name in ("design.json", "generated/all_rows.jsonl", "review_map.json")}
+    dump(run / "manifest.json", {"pilot": "synthetic", "finalized_utc": "2099-01-01T00:00:00Z" if finalized else None,
+                                 "output_hashes": hashes})
+    traced = review if traced is None else traced
+    if traced:
+        pairs = [_pair_of(by_id[row_id], run_id, review_of.get(row_id)) for row_id in traced]
+        pairs_path = dump(run / "trace" / f"{pairs_name}.json", pairs)
+        dump(run / "trace" / f"{pairs_name}.meta.json",
+             {"run": run_id, "counts": {"selected": len(pairs)},
+              "output": {"file": pairs_path.name, "sha256": _file_sha(pairs_path)}})
+        write_traces(paths, pairs_name, pairs)
+    return run
+
+
+def write_traces(paths: dict[str, Path], stem: str, pairs: list[dict]) -> Path:
+    return dump(paths["pilot_trace_root"] / stem / "batch_summary.part_01.json",
+                {"results": [{"index": n, "prompts": {"clinical": p["top_prompt"], "patient": p["bottom_prompt"]}}
+                             for n, p in enumerate(pairs, 1)]})
+
+
+def write_world(tmp_path: Path, data: dict) -> dict[str, Path]:
     sim = tmp_path / "simulated"
     dump(sim / f"{TIER_A}.json", data["tier_a"])
     dump(sim / f"{TIER_B}.json", data["tier_b"])
     dump(sim / "advnat_20990101T000000Z.json", [{"top_prompt": "Is the drivetrain worth fixing?"}])
     paths = {
         "questions": QUESTIONS,
-        "pilot_run": run,
-        "pilot_traces": traces,
+        "pilot_runs_dir": tmp_path / "pilot" / "runs",
+        "pilot_trace_root": tmp_path / "pilot" / "traces",
         "advice_new": dump(tmp_path / "advice" / "new.json", data["advice_new"]),
         "advice_rerun": dump(tmp_path / "advice" / "rerun.json", data["advice_rerun"]),
         "petri_seeds": dump(tmp_path / "seeds.json", data["seeds"]),
@@ -261,6 +298,7 @@ def write_world(tmp_path: Path, data: dict) -> dict[str, Path]:
         "out_dir": tmp_path / "out",
     }
     dump(paths["site"] / "data" / "simulated_scenarios.json", data["payload"])
+    write_run(paths, RUN2, data["pilot_rows"])
     return paths
 
 
@@ -277,9 +315,9 @@ def export(tmp_path: Path, data: dict | None = None, **kw: Any) -> tuple[dict, b
     return bundle, raw, paths
 
 
-def rerun(paths: dict[str, Path], out_dir: Path, **kw: Any) -> tuple[dict, bytes]:
+def rerun(paths: dict[str, Path], out_dir: Path, *extra: str, **kw: Any) -> tuple[dict, bytes]:
     """Export the same world again into another directory."""
-    assert evt.main(argv(paths, **kw) + ["--out-dir", str(out_dir)]) == 0
+    assert evt.main(argv(paths, *extra, **kw) + ["--out-dir", str(out_dir)]) == 0
     raw = (out_dir / f"tasks_{STAMP}.json").read_bytes()
     return json.loads(raw), raw
 
@@ -290,8 +328,13 @@ def refused(tmp_path: Path, data: dict, code: str, **kw: Any) -> str:
     if "questions" in data:
         paths["questions"] = tmp_path / "questions.json"
         paths["questions"].write_text(json.dumps(data["questions"]), encoding="utf-8")
+    return refused_paths(paths, code, **kw)
+
+
+def refused_paths(paths: dict[str, Path], code: str, *extra: str, **kw: Any) -> str:
+    """refused() over an existing world, with extra arguments."""
     with pytest.raises(SystemExit) as exc:
-        evt.main(argv(paths, **kw))
+        evt.main(argv(paths, *extra, **kw))
     message = str(exc.value)
     assert f"[{code}]" in message, message
     assert "nothing was written" in message
@@ -733,23 +776,333 @@ def test_a_changed_text_is_refused(tmp_path):
     refused(tmp_path / "b", data, "hash_mismatch")
 
 
-def test_an_untraced_pilot_pair_is_refused(tmp_path):
-    paths = write_world(tmp_path, world_data())
-    summary = paths["pilot_traces"] / "batch_summary.part_01.json"
-    doc = json.loads(summary.read_text())
-    doc["results"] = doc["results"][:1]
-    summary.write_text(json.dumps(doc))
-    with pytest.raises(SystemExit) as exc:
-        evt.main(argv(paths))
-    assert "[bad_input]" in str(exc.value) and not paths["out_dir"].exists()
-
-
 def test_an_existing_bundle_is_never_overwritten(tmp_path, capsys):
     _, raw, paths = export(tmp_path)
     with pytest.raises(SystemExit) as exc:
         evt.main(argv(paths))
     assert "[output_exists]" in str(exc.value)
     assert (paths["out_dir"] / f"tasks_{STAMP}.json").read_bytes() == raw
+
+
+# ---- pilot runs: which run, which rows, whether a trace is required -----------------------------------------
+
+def _new_run_rows() -> list[dict]:
+    """Three pairs and one negative control for a second synthetic run (abstract and non-medical)."""
+    spec = [("silver kettle", "teapot thing", "aunt", "none"), ("garden hose", "long green tube", "landlord", "none"),
+            ("bike pump", "air thingy", "brother", "none"), ("blue ledger", "red ledger", "office", "negative")]
+    return [{"id": f"B__cell__kind__L{n:02d}", "call_id": "B__cell__kind", "arm": "B", "specialty": "cell",
+             "swap_type": "kind", "cell": "cell__kind", "cell_index": 0, "line_index": n, "attempt": 1,
+             "clinical_term": ct, "patient_term": pt,
+             "template": "I lent the ___ to a friend, so now I have to ask my", "next_word": word,
+             "control": control, "control_faithful": True if control == "negative" else None,
+             "prompt_sha256": "0" * 64}
+            for n, (ct, pt, word, control) in enumerate(spec, 1)]
+
+
+NEW_LABEL = "pilot:" + RUN_NEW
+
+
+def _pilot(bundle: dict, subset: str) -> list[dict]:
+    return [i for i in bundle["items"] if i["provenance"].get("subset") == subset]
+
+
+def test_the_default_run_keeps_the_first_bundles_label_and_id_key(tmp_path, capsys):
+    bundle, _, paths = export(tmp_path)
+    key = evt.logical_path(paths["pilot_runs_dir"] / RUN2 / "trace" / "trace_pairs.json")
+    items = _pilot(bundle, "pilot_run2")
+    assert {i["provenance"]["source_path"] for i in items} == {key}
+    assert all(i["item_id"] == evt.item_id_for("tracing_pair", key, i["provenance"]["source_id"]) for i in items)
+    assert sorted((i["provenance"]["review_id"], i["provenance"]["trace_index"], i["provenance"]["run"])
+                  for i in items) == [("r001", 1, RUN2), ("r002", 2, RUN2)]
+    sel = bundle["selection"]["tracing_pair"]
+    assert list(sel) == ["pilot_run2", "main_study"]
+    assert sel["pilot_run2"]["rows"] == "review_sample" and sel["pilot_run2"]["trace_required"] is True
+    assert sel["pilot_run2"]["counts"] == {"repeats_an_earlier_pilot_pair": 0, "review_sample": 2, "selected": 2,
+                                           "trace_pairs": 2, "trace_pairs_not_selected": 0, "traced": 2}
+    assert sel["pilot_run2"]["trace_results"] == evt.logical_path(paths["pilot_trace_root"] / "trace_pairs")
+
+
+def test_a_second_run_joins_with_its_own_label_counts_and_id_key(tmp_path, capsys):
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, review=[rows[2]["id"], rows[0]["id"]], pairs_name="pairs_v9")
+    bundle, raw = rerun(paths, paths["out_dir"], "--pilot-run", RUN2, "--pilot-run", RUN_NEW)
+    assert check_contract(bundle) == [] and forbidden_in_display(bundle) == []
+    assert bundle["counts"]["tracing_pair_by_subset"] == {"pilot_run2": 2, NEW_LABEL: 2, "main_study": 4}
+    assert list(bundle["selection"]["tracing_pair"]) == ["pilot_run2", NEW_LABEL, "main_study"]
+    key = evt.logical_path(paths["pilot_runs_dir"] / RUN_NEW / "generated" / "all_rows.jsonl")
+    new = _pilot(bundle, NEW_LABEL)
+    assert {i["provenance"]["source_path"] for i in new} == {key}
+    assert all(i["item_id"] == evt.item_id_for("tracing_pair", key, i["provenance"]["source_id"]) for i in new)
+    assert sorted((i["provenance"]["review_id"], i["provenance"]["source_id"], i["provenance"]["trace_index"])
+                  for i in new) == [("r001", rows[2]["id"], 1), ("r002", rows[0]["id"], 2)]
+    sel = bundle["selection"]["tracing_pair"][NEW_LABEL]
+    assert sel["run"] == RUN_NEW and sel["source"] == key and sel["counts"]["selected"] == 2
+    assert sel["trace_results"] == evt.logical_path(paths["pilot_trace_root"] / "pairs_v9")
+    assert bundle["seal"]["rows_checked_with_sealed_pair"]["tracing_pilot"] == 4
+    displays = json.dumps([i["display"] for i in bundle["items"]])
+    assert RUN_NEW not in displays and RUN2 not in displays and "pilot" not in displays   # labels stay out of sight
+
+
+def test_a_run_gives_its_review_sample_or_every_non_control_row_and_a_row_keeps_its_id(tmp_path, capsys):
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, review=[rows[1]["id"]], traced=[])
+    only_new = ("--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+    sample, _ = rerun(paths, tmp_path / "sample", *only_new)
+    every, _ = rerun(paths, tmp_path / "every", *only_new, "--pilot-all-rows", RUN_NEW)
+
+    def ids(b: dict) -> dict[str, tuple[str, str | None]]:
+        return {i["provenance"]["source_id"]: (i["item_id"], i["provenance"]["review_id"])
+                for i in _pilot(b, NEW_LABEL)}
+
+    assert list(ids(sample)) == [rows[1]["id"]]
+    assert sorted(ids(every)) == sorted(r["id"] for r in rows[:3])         # the negative control is left out
+    assert ids(every)[rows[1]["id"]] == ids(sample)[rows[1]["id"]]          # same id, same review id
+    assert [ids(every)[r["id"]][1] for r in (rows[0], rows[2])] == [None, None]
+    sel = every["selection"]["tracing_pair"][NEW_LABEL]
+    assert sel["rows"] == "all_rows" and sel["counts"] == {
+        "excluded_control_rows": 1, "generated_rows": 4, "repeats_an_earlier_pilot_pair": 0, "selected": 3}
+    assert sample["selection"]["tracing_pair"][NEW_LABEL]["counts"]["review_sample"] == 1
+
+
+def test_a_review_sample_row_that_is_a_control_row_is_refused(tmp_path):
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, review=[rows[3]["id"]], traced=[])
+    message = refused_paths(paths, "bad_input", "--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+    assert rows[3]["id"] in message and "control row" in message
+
+
+def test_without_traces_a_run_is_refused_unless_optional_and_its_items_do_not_change_when_traces_land(tmp_path,
+                                                                                                     capsys):
+    # Run 3's traces may land after the bundle is wanted: requiring a trace stays the default, and an optional one
+    # is neither required nor read, so the same export gives the same bytes before and after the traces land
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, traced=[])
+    both = ("--pilot-run", RUN2, "--pilot-run", RUN_NEW)
+    message = refused_paths(paths, "missing_trace", *both)
+    assert RUN_NEW in message and f"--pilot-trace-optional {RUN_NEW}" in message
+    before, raw_before = rerun(paths, tmp_path / "before", *both, "--pilot-trace-optional", RUN_NEW)
+    sel = before["selection"]["tracing_pair"][NEW_LABEL]
+    assert sel["trace_required"] is False and sel["trace_pairs"] is None and sel["trace_results"] is None
+    assert "not required and not read" in sel["rule"]
+    assert [i["provenance"]["trace_index"] for i in _pilot(before, NEW_LABEL)] == [None, None, None]
+    assert {i["provenance"]["trace_index"] for i in _pilot(before, "pilot_run2")} == {1, 2}
+
+    write_run(paths, RUN_NEW, rows, pairs_name="pairs_v9")                  # the traces land
+    _, raw_after = rerun(paths, tmp_path / "after", *both, "--pilot-trace-optional", RUN_NEW)
+    assert raw_after == raw_before
+    traced, _ = rerun(paths, tmp_path / "traced", *both)
+
+    def shown(b: dict) -> dict:
+        return {i["item_id"]: i["display"] for i in _pilot(b, NEW_LABEL)}
+
+    assert shown(traced) == shown(before)                                   # same ids, same displays
+    assert sorted(i["provenance"]["trace_index"] for i in _pilot(traced, NEW_LABEL)) == [1, 2, 3]
+
+
+@pytest.mark.parametrize("change, code", [({"finalized": False}, "run_not_finalized"),
+                                          ({"version": 1}, "run_not_version_2"),
+                                          ({"version": "2"}, "run_not_version_2"),
+                                          ({"version": True}, "run_not_version_2")])
+def test_a_run_that_is_not_finalized_or_not_version_2_is_refused(tmp_path, change, code):
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, RUN_NEW, _new_run_rows(), pairs_name="pairs_v9", **change)
+    assert RUN_NEW in refused_paths(paths, code, "--pilot-run", RUN_NEW)
+    refused_paths(paths, code, "--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+
+
+@pytest.mark.parametrize("name", ["generated/all_rows.jsonl", "review_map.json", "design.json"])
+def test_a_run_file_that_no_longer_matches_its_finalized_manifest_is_refused(tmp_path, name):
+    paths = write_world(tmp_path / "changed", world_data())
+    run = write_run(paths, RUN_NEW, _new_run_rows(), traced=[])
+    (run / name).write_bytes((run / name).read_bytes() + b"\n")
+    assert name in refused_paths(paths, "hash_mismatch", "--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+    paths = write_world(tmp_path / "unrecorded", world_data())
+    run = write_run(paths, RUN_NEW, _new_run_rows(), traced=[])
+    manifest = json.loads((run / "manifest.json").read_text())
+    del manifest["output_hashes"][name]
+    dump(run / "manifest.json", manifest)
+    assert name in refused_paths(paths, "run_not_finalized", "--pilot-run", RUN_NEW,
+                                 "--pilot-trace-optional", RUN_NEW)
+
+
+def test_a_required_trace_that_is_missing_or_carries_other_prompts_is_refused(tmp_path):
+    def summary(paths: dict[str, Path]) -> Path:
+        return paths["pilot_trace_root"] / "trace_pairs" / "batch_summary.part_01.json"
+
+    paths = write_world(tmp_path / "short", world_data())
+    doc = json.loads(summary(paths).read_text())
+    doc["results"] = doc["results"][:1]
+    summary(paths).write_text(json.dumps(doc))
+    assert "--pilot-trace-optional" in refused_paths(paths, "missing_trace")
+
+    paths = write_world(tmp_path / "other", world_data())
+    doc = json.loads(summary(paths).read_text())
+    doc["results"][1]["prompts"]["patient"] += " again"
+    summary(paths).write_text(json.dumps(doc))
+    refused_paths(paths, "trace_mismatch")
+
+    paths = write_world(tmp_path / "none", world_data())
+    summary(paths).unlink()
+    refused_paths(paths, "missing_trace")
+
+    paths = write_world(tmp_path / "partial", world_data())        # a trace pairs file without one review row
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, traced=[rows[0]["id"]], pairs_name="pairs_v9")
+    assert rows[1]["id"] in refused_paths(paths, "missing_trace", "--pilot-run", RUN_NEW)
+
+
+def test_a_trace_pairs_file_naming_a_row_the_run_does_not_have_is_refused(tmp_path):
+    paths = write_world(tmp_path, world_data())
+    pairs_path = paths["pilot_runs_dir"] / RUN2 / "trace" / "trace_pairs.json"
+    pairs = json.loads(pairs_path.read_text())
+    pairs.append(dict(pairs[0], pilot=dict(pairs[0]["pilot"], row_id="A__cell__kind__L99")))
+    dump(pairs_path, pairs)
+    dump(pairs_path.with_name("trace_pairs.meta.json"),
+         {"run": RUN2, "counts": {"selected": len(pairs)},
+          "output": {"file": pairs_path.name, "sha256": _file_sha(pairs_path)}})
+    assert "A__cell__kind__L99" in refused_paths(paths, "bad_input")
+
+
+def test_two_runs_that_would_read_one_trace_results_directory_are_refused(tmp_path):
+    # the circuit-trace lane writes pilot/traces/<pairs-file stem>/: a second run whose trace pairs file keeps the
+    # default name would share (and overwrite) the first run's directory
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, RUN_NEW, _new_run_rows())
+    message = refused_paths(paths, "bad_input", "--pilot-run", RUN2, "--pilot-run", RUN_NEW)
+    assert RUN2 in message and RUN_NEW in message and "own stem" in message
+
+
+@pytest.mark.parametrize("extra, fragment", [
+    (("--pilot-run", "pilot/runs/x"), "not a run id"),
+    (("--pilot-run", ".."), "not a run id"),
+    (("--pilot-run", RUN2, "--pilot-run", RUN2), "more than once"),
+    (("--pilot-all-rows", RUN_NEW), "which no --pilot-run exports"),
+    (("--pilot-trace-optional", RUN_NEW), "which no --pilot-run exports"),
+])
+def test_pilot_run_arguments_are_checked(tmp_path, extra, fragment):
+    paths = write_world(tmp_path, world_data())
+    assert fragment in refused_paths(paths, "bad_input", *extra)
+
+
+def test_an_absent_run_is_refused(tmp_path):
+    paths = write_world(tmp_path, world_data())
+    assert RUN_NEW in refused_paths(paths, "missing_input", "--pilot-run", RUN_NEW)
+    refused_paths(paths, "missing_input", "--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+
+
+def test_a_sealed_row_in_any_run_refuses_the_export(tmp_path):
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    rows[1].update({"template": "___", "clinical_term": SEALED})
+    write_run(paths, RUN_NEW, rows, traced=[])
+    message = refused_paths(paths, "sealed_row", "--pilot-run", RUN2, "--pilot-run", RUN_NEW,
+                            "--pilot-trace-optional", RUN_NEW)
+    assert rows[1]["id"] in message and SEALED not in message
+
+
+def test_a_pair_that_repeats_an_earlier_pilot_pair_is_kept_and_counted(tmp_path, capsys):
+    data = world_data()
+    paths = write_world(tmp_path, data)
+    rows = _new_run_rows() + [dict(data["pilot_rows"][0], id="B__cell__kind__L09", call_id="B__cell__kind")]
+    write_run(paths, RUN_NEW, rows, pairs_name="pairs_v9")
+    bundle, _ = rerun(paths, paths["out_dir"], "--pilot-run", RUN2, "--pilot-run", RUN_NEW)
+    tracing = bundle["selection"]["tracing_pair"]
+    assert tracing["pilot_run2"]["counts"]["repeats_an_earlier_pilot_pair"] == 0
+    assert tracing[NEW_LABEL]["counts"]["repeats_an_earlier_pilot_pair"] == 1
+    assert len(_pilot(bundle, NEW_LABEL)) == 4
+
+
+# ---- rounds: a later bundle keeps every item of the previous one --------------------------------------------
+
+def test_a_later_round_keeps_every_previous_item_and_adds_a_run(tmp_path, capsys):
+    first, raw_first, paths = export(tmp_path)
+    assert first["selection"]["previous_bundle"] is None
+    previous = tmp_path / "round1.json"
+    previous.write_bytes(raw_first)
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, pairs_name="pairs_v9")
+    second, _ = rerun(paths, tmp_path / "round2", "--pilot-run", RUN2, "--pilot-run", RUN_NEW,
+                      "--previous-bundle", str(previous))
+    assert check_contract(second) == []
+    assert second["selection"]["previous_bundle"] == {
+        "path": evt.logical_path(previous), "bundle_id": first["bundle_id"],
+        "sha256": hashlib.sha256(raw_first).hexdigest(), "items_kept": 13, "items_added": 3}
+    kept = {i["item_id"]: i for i in second["items"]}
+    assert all(kept[i["item_id"]]["display"] == i["display"] for i in first["items"])
+
+
+def test_a_later_round_that_drops_or_changes_a_previous_item_or_question_is_refused(tmp_path, capsys):
+    _, raw_first, paths = export(tmp_path / "w")
+    previous = tmp_path / "round1.json"
+    previous.write_bytes(raw_first)
+    shutil.rmtree(paths["out_dir"])
+    # dropped: one main-study pair fewer
+    message = refused_paths(paths, "previous_item_missing", "--previous-bundle", str(previous), main_pairs=3)
+    assert evt.item_id_for("tracing_pair", evt.SITE_LABEL, f"{TIER_A}#6") in message
+    # changed: another text under the same advice item id
+    original = paths["advice_new"].read_bytes()
+    advice = json.loads(original)
+    item = advice["items"][0]
+    item["patient_message"] += " Thanks."
+    item["patient_sha256"] = _sha(item["patient_message"])
+    dump(paths["advice_new"], advice)
+    message = refused_paths(paths, "previous_item_changed", "--previous-bundle", str(previous))
+    assert evt.item_id_for("advice", evt.logical_path(paths["advice_new"]), item["id"]) in message
+    assert "1 item(s)" in message and item["patient_message"] not in message
+    advice = json.loads(original)                       # another proposed tier: the after-reveal answers refer to it
+    advice["items"][0]["reference"]["tier"] = "routine"
+    dump(paths["advice_new"], advice)
+    assert "1 item(s)" in refused_paths(paths, "previous_item_changed", "--previous-bundle", str(previous))
+    paths["advice_new"].write_bytes(original)
+    # a question id renamed (wording may change; ids may not)
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    keep = next(q for q in questions["question_sets"]["tracing_pair"]["questions"] if q["id"] == "keep")
+    keep["id"] = "keep_renamed"
+    paths["questions"] = dump(tmp_path / "questions.json", questions)
+    assert "tracing_pair.keep" in refused_paths(paths, "previous_question_missing", "--previous-bundle",
+                                                str(previous))
+
+
+# ---- the first bundle, re-exported --------------------------------------------------------------------------
+
+FIRST_BUNDLE = ROOT / "data" / "verification" / "tasks_20261004T042945Z.json"
+
+
+def test_the_default_run_still_gives_the_first_bundles_pilot_items(tmp_path, capsys):
+    # Reads the committed Run 2 files (sealed by its finalized manifest) and compares items; prints no row text.
+    committed = json.loads(FIRST_BUNDLE.read_text(encoding="utf-8"))
+    assert evt.main(["--main-pairs", "0", "--stamp", "20261004T042945Z", "--out-dir", str(tmp_path)]) == 0
+    new = json.loads((tmp_path / FIRST_BUNDLE.name).read_text(encoding="utf-8"))
+    mine = {i["item_id"]: i for i in _pilot(new, "pilot_run2")}
+    first = {i["item_id"]: i for i in _pilot(committed, "pilot_run2")}
+    assert len(first) == 40 and mine == first
+
+
+def test_the_recorded_command_reproduces_the_first_bundles_items_byte_for_byte(tmp_path, capsys):
+    # docs/verification_protocol.md's command with the bundle's own stamp. Its items also depend on the site payload
+    # and the engine inputs it recorded, so this runs only when every one of them (but the daily dashboard, of which
+    # only the Tier B start is read) still hashes as recorded.
+    raw = FIRST_BUNDLE.read_bytes()
+    committed = json.loads(raw)
+    site = ROOT.parent / "patientwords"
+    changed = []
+    for source in committed["sources"]:
+        if source["path"] == "ops/dashboard.json":
+            continue
+        path = site / evt.SITE_PAYLOAD if source["path"] == evt.SITE_LABEL else ROOT / source["path"]
+        if not path.is_file() or _file_sha(path) != source["sha256"]:
+            changed.append(source["path"])
+    if changed:
+        pytest.skip(f"inputs changed or absent since the first bundle: {changed}")
+    assert committed["seed"] == evt.DEFAULT_SEED
+    assert evt.main(["--site", str(site), "--stamp", "20261004T042945Z", "--out-dir", str(tmp_path)]) == 0
+    new_raw = (tmp_path / FIRST_BUNDLE.name).read_bytes()
+    marker = b'\n "items": ['
+    assert new_raw[new_raw.index(marker):] == raw[raw.index(marker):]
 
 
 # ---- the committed bundles ----------------------------------------------------------------------------------
