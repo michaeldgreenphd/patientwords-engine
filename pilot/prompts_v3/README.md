@@ -31,30 +31,29 @@ alters the script hashes both recorded runs seal, so both would have to be recom
 avoids that. Editing the value of an existing example is different: it renders through the marker the example
 already has, so it is a data change. The dropped rule 5 example is one.
 
-### Rule 6 (new): at most one brand-name concept per call
+### Rule 6 (new): at most one brand-name concept per call (provisional number)
 
-At most one of a call's concepts may pair a drug's generic name with one of its brand names. Every other medicine
-concept must change register in another way that rules 5 and 7 allow: common slang for the drug, or a broader
-everyday name for its kind of medicine. Rule 7's vaguer example shows the second kind. The brand-name sentences of
-version 2's rule 5 (single-ingredient drugs only, never a combination product's brand) moved into this rule
-unchanged.
+At most one of a call's concepts may pair a drug's generic name with one of its brand names. The call's other
+medicine concepts change register in any way the other rules allow. The brand-name sentences of version 2's rule 5
+(single-ingredient drugs only, never a combination product's brand) moved into this rule unchanged.
 
 - **Notes.** r001: a generic-for-brand swap "is okay but also not quite the same as using slang instead of the drug
   name". r033: generic against brand "is interesting but would not build all stimuli on these examples".
-- **Beyond the notes.** The notes ask only for fewer brand pairs. The rule's last sentence, which says what the other
-  medicine concepts use instead, is this kit's addition. It points only to register changes the kit already allows:
-  - slang for the drug, which r001 sets against a brand swap ("using slang instead of the drug name");
-  - a broader name for the kind of medicine, which rule 7 allows and codebook L3 counts as broader (a drug class,
-    including one named by what it treats).
-
-  It does not suggest describing what a medicine looks like. No codebook rule counts a description of a pill as
-  naming the same drug, and L6 forbids ruling "same" on general knowledge alone. See *Decisions left to the owner*.
+- **Owner approval, no number.** After the review, on 2026-10-04 in chat, the owner approved capping brand-for-generic
+  pairs as a step for run 3 and set no number. One per call is this kit's provisional default. The number is the
+  owner's to set before run 3 (see *Decisions left to the owner*).
+- **No list of alternatives.** The rule does not say what the call's other medicine concepts use instead; rules 5 and
+  7 govern them as they govern every row. An earlier draft limited them to common slang or a broader everyday name
+  for the kind of medicine. The notes do not ask for that, so it was dropped (Codex review of PR #80).
 - **Run 2.** 50 of the 288 generated rows were brand pairs (checker relation `same_brand`), all in medication cells:
   50 of the 96 medication rows. Each of the 6 medication calls had 7 to 10 brand concepts out of 12. In the review
   sample, 6 of the 10 medication rows were brand pairs, and the owner kept 5 of them. The other 4 medication rows were
   all kept, too few to predict how the cap will move the medication keep rate.
-- **Why the cap is plain text.** The cap is written into the template as "at most one". A `design.json` setting would
-  need a marker to render it (see above).
+- **Why the number is in the template, not in `design.json`.** The cap is written into rule 6's text as "at most
+  one". The version-2 harness puts a `design.json` value into the prompt only through a marker `common.py` lists, and
+  `prompt_examples` must hold exactly the fields `common.py` names. A cap stored in `design.json` would therefore not
+  reach the prompt without a new marker, which is a script change (see above). Setting another number is an edit to
+  rule 6's text and to its pinned line in `tests/fixtures/pilot_v3_changed_lines.json`.
 - **Effect.** A run has 6 medication calls (3 specialties, 2 arms), so it can hold at most 6 brand concepts there.
   Whether the generator obeyed can be read from `checked.jsonl` (relation `same_brand`, per call); the summary's
   relation counts give the totals per arm.
@@ -253,15 +252,16 @@ Three cautions:
   intervals overlap.
 - **Six changes at once.** Run 3 changes six rules together, so a difference between runs 2 and 3 cannot be credited
   to any one rule.
-- **Brand pairs.** Rule 6 removes most brand pairs, which the owner kept at a high rate in run 2 (5 of 6 sampled), so
-  the medication keep rate may fall for that reason alone.
+- **Brand pairs.** At the provisional cap of one per call, rule 6 removes most brand pairs, which the owner kept at a
+  high rate in run 2 (5 of 6 sampled), so the medication keep rate may fall for that reason alone.
 
 ## Decisions left to the owner
 
-- **The exact brand cap.** The template says at most one brand-name concept per call. Zero, or a per-run total
-  instead of a per-call one, are the alternatives; changing the number is an edit to rule 6's text.
-- **Rule 6's last sentence.** It goes beyond the notes (see *Rule 6*). The alternative is to drop it and leave the
-  other medicine concepts to rule 5 alone.
+- **The brand cap's number (to set before run 3).** The owner approved capping brand-for-generic pairs for run 3
+  and set no number. The template carries one per call as a provisional default. Run 2's counts bear on the choice:
+  50 of its 288 generated pairs were brand pairs, all among the 96 medication rows, with 7 to 10 of the 12 concepts
+  in each of the 6 medication calls; the owner kept 5 of the 6 brand pairs in the review sample. The alternatives
+  include zero, another per-call number, or a per-run total. Changing the number is an edit to rule 6's text.
 - **Rule 4's reading of r006.** The rule asks for the clinical phrase as a clinician says it, not as a clinician
   writes it in a note (see *Rule 4*). If the owner meant the written form, that sentence should ask for it instead.
 - **The speaker group for slang.** Rule 5 says "most adult patients" and names no country or dialect. Naming one

@@ -120,6 +120,18 @@ def test_v3_template_holds_no_example_words():
     assert words and all(w not in GEN for w in words)
 
 
+def test_v3_rule_6_caps_brand_pairs_and_leaves_other_medicines_to_the_other_rules():
+    """Rule 6 caps brand-for-generic pairs at one per call, the kit's provisional number until the owner sets one
+    (README, *Decisions left to the owner*). It does not say what the call's other medicine concepts must use instead:
+    an earlier draft restricted them to slang or a broader name, which the owner's notes did not ask for (Codex review
+    of PR #80)."""
+    rule_6 = [line for line in GEN.splitlines() if line.startswith("6. ")]
+    assert len(rule_6) == 1
+    assert "At most one of this call's concepts may pair a drug's generic name with one of its brand names." in rule_6[0]
+    assert rule_6[0].endswith("The call's other medicine concepts change register in any way the other rules allow.")
+    assert not re.search(r"\b(slang|broader|must)\b", rule_6[0]), rule_6[0]
+
+
 def test_v3_differs_from_version_2_in_exactly_the_listed_lines():
     """Each changed line is pinned in full, so deleting or rewording any sentence of a new rule, or reverting a changed
     line to version 2's wording, fails here; the lines version 3 kept from version 2 stay version 2's, in order."""
