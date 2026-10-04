@@ -20,9 +20,16 @@ Three families, every item from a committed engine file or the published site pa
     trace result: the run's one trace pairs file (the JSON file under ``<run>/trace/`` beside its ``.meta.json``
     sidecar) must hold the row, and the trace results in ``<--pilot-trace-root>/<that file's stem>/`` (default
     ``pilot/traces/``, where the circuit-trace lane's pilot root writes them) must carry its index with the same
-    prompts. With ``--pilot-trace-optional <run id>`` that run's trace files are neither required nor read, so its
-    items do not change when its traces land; a pair joins its trace later by run and row id. Two runs that would
-    read one trace results directory are refused. A pair whose two sentences repeat an earlier pilot item's is kept
+    prompts. A trace pairs file built with ``trace_pairs.py --review-sample`` records each pair's review id, which
+    must be the one ``review_map.json`` gives its row; one built without it records none (a file recording some is
+    refused). The review sample therefore needs a ``--review-sample`` trace pairs file (or one that holds every
+    review row), and ``--pilot-all-rows`` one that holds every non-control row, which neither of ``trace_pairs.py``'s
+    selections gives once the checker has judged any row not equivalent; in practice it goes with
+    ``--pilot-trace-optional``. With ``--pilot-trace-optional <run id>`` that run's pairs need no trace and its trace
+    results are not read, so its items do not change when its traces land; a pair joins its trace later by run and
+    row id. Such a run reads no trace file at all, except Run 2, whose item ids are keyed on its trace pairs file:
+    that file is still read (and must exist) for the items' ``source_sha256``. Two runs that would read one trace
+    results directory are refused. A pair whose two sentences repeat an earlier pilot item's is kept
     (each row is its run's output) and counted. Item ids are keyed on the run's generated rows file and the row id,
     so a row keeps one id under every selection and trace option; Run 2's are keyed on its trace pairs file and
     labelled ``pilot_run2``, as in the first bundle (``LEGACY_PILOT_RUNS``), and every other run's items are
@@ -82,8 +89,10 @@ and every seal failure above.
 Rounds. Each physician round uses one bundle (the ratings import reads one bundle per export). A later round's
 bundle is built with ``--previous-bundle <the previous round's bundle>``, which refuses unless every item of that
 bundle is in the new one under the same id with the same question set, display and reveal (``previous_item_missing``,
-``previous_item_changed``) and every question id it uses is kept (``previous_question_missing``): the app needs
-every item a physician holds to stay in the bundle it switches to, and stores answers under item and question ids.
+``previous_item_changed``) and every question id it uses is kept (``previous_question_missing``) with the same scale
+type, answer values, abstain value, text length limit, phase, per_arm and reveal lock (``previous_question_changed``):
+the app needs every item a physician holds to stay in the bundle it switches to, stores answers under item and
+question ids, and validates a stored answer against the question's current scale, phase and lock.
 docs/verification_protocol.md (Rounds) has how round 2 is built.
 
 Usage (from the engine root):
@@ -686,12 +695,24 @@ def pilot_items(inp: Inputs, seal: Seal, runs_dir: Path, trace_root: Path,
     if run.trace_required:
         pairs_path = _trace_pairs_file(run_dir, run_id)
         pairs, pairs_sha = _read_trace_pairs(inp, pairs_path, run_id)
+        # trace_pairs.py records a review id on every pair when built with --review-sample and on none otherwise
+        # (its default and --include-controls selections), so a file that records them must agree with
+        # review_map.json on every pair, and a file that records none has nothing to check
+        recorded = [pair["pilot"].get("review_id") for pair in pairs]
+        carries_review_ids = any(r is not None for r in recorded)
+        if carries_review_ids and None in recorded:
+            refuse("bad_input", f"{pairs_path.name} records a review id for {sum(r is not None for r in recorded)} "
+                                f"of its {len(pairs)} pairs; trace_pairs.py records one for every pair "
+                                "(--review-sample) or for none")
         for i, pair in enumerate(pairs, 1):
             row_id = pair["pilot"]["row_id"]
             if row_id not in by_id:
                 refuse("bad_input", f"{pairs_path.name} pair {i}: row {row_id!r} is not in {rows_path.name}")
             if row_id in pairs_by_row:
                 refuse("bad_input", f"{pairs_path.name} pair {i} repeats row {row_id!r}")
+            if carries_review_ids and pair["pilot"]["review_id"] != review_of.get(row_id):
+                refuse("bad_input", f"{pairs_path.name} pair {i}: its review id is not the one review_map.json "
+                                    f"gives row {row_id} (the file was built from another review map)")
             pairs_by_row[row_id] = (i, pair)
         traces_dir = trace_root / pairs_path.stem
         traced = traced_prompts(inp, traces_dir, run_id)
@@ -724,16 +745,20 @@ def pilot_items(inp: Inputs, seal: Seal, runs_dir: Path, trace_root: Path,
         trace_index = None
         if run.trace_required:
             if row_id not in pairs_by_row:
+                which = ("--pilot-all-rows takes every non-control row, and trace_pairs.py's selections leave out "
+                         "the rows the checker did not judge equivalent (default) or every row outside the review "
+                         "sample (--review-sample)" if run.all_rows else
+                         "the review sample needs a trace pairs file that holds every review-sample row, as "
+                         "trace_pairs.py --review-sample builds it")
                 refuse("missing_trace", f"{label} is not in {pairs_path.name}; a trace result is required for its "
-                                        f"pairs (pass --pilot-trace-optional {run_id} to export it without one)")
+                                        f"pairs, and {which}. Pass --pilot-trace-optional {run_id} to export it "
+                                        "without one")
             trace_index, pair = pairs_by_row[row_id]
             where = f"{pairs_path.name} pair {trace_index}"
             if pair["top_prompt"] != top or pair["bottom_prompt"] != bottom:
                 refuse("bad_input", f"{where}: the pair's sentences are not row {row_id}'s template with its terms")
             if pair["target_clinical_token"] != " " + next_word:
                 refuse("bad_input", f"{where}: target_clinical_token is not a space plus row {row_id}'s next_word")
-            if pair["pilot"].get("review_id") != review_of.get(row_id):
-                refuse("bad_input", f"{where}: its review id is not the one review_map.json gives row {row_id}")
             if trace_index not in traced:
                 refuse("missing_trace", f"{where} (row {row_id}) has no trace result in {traces_dir}; a trace "
                                         f"result is required for its pairs (pass --pilot-trace-optional {run_id} "
@@ -1080,12 +1105,54 @@ def multiturn_items(inp: Inputs, seeds_path: Path) -> tuple[list[dict], dict]:
 
 # ---- bundle --------------------------------------------------------------------------------------------------
 
+def answer_contracts(questions: Any, where: str) -> dict[str, dict]:
+    """{"<question set>.<question id>": what a stored answer to that question means} for a questions document: the
+    scale's type, its option values in order, its abstain value and (a text scale) its max_length, and the
+    question's phase, per_arm and locks_on_reveal. Labels, definitions, text and hint are wording, which may change.
+    The app validates a stored answer against all of these when a physician saves the item again
+    (patientwords-verify src/Logic.gs: validValue_, answerKeys_, validateAnswers_), and the import reads it against
+    them. A document of another shape is refused, naming where, never skipped."""
+    def bad(what: str) -> NoReturn:
+        refuse("bad_input", f"{where}: {what}")
+
+    if not isinstance(questions, dict):
+        bad("questions is not an object")
+    scales, sets = questions.get("scales"), questions.get("question_sets")
+    if not isinstance(scales, dict):
+        bad("questions.scales is not an object")
+    if not isinstance(sets, dict):
+        bad("questions.question_sets is not an object")
+    out: dict[str, dict] = {}
+    for set_name, qset in sets.items():
+        qs = qset.get("questions") if isinstance(qset, dict) else None
+        if not isinstance(qs, list):
+            bad(f"question set {set_name!r} has no questions list")
+        for n, q in enumerate(qs, 1):
+            if not isinstance(q, dict) or not isinstance(q.get("id"), str):
+                bad(f"question {n} of set {set_name!r} is not an object with a string id")
+            scale = scales.get(q["scale"]) if isinstance(q.get("scale"), str) else None
+            options =scale.get("options", []) if isinstance(scale, dict) else None
+            if not isinstance(options, list) or not all(isinstance(o, dict) and "value" in o for o in options):
+                bad(f"{set_name}.{q['id']}: its scale is not an object with a list of options that have values")
+            abstain = scale.get("abstain")
+            if abstain is not None and not (isinstance(abstain, dict) and "value" in abstain):
+                bad(f"{set_name}.{q['id']}: its scale's abstain is not an object with a value")
+            out[f"{set_name}.{q['id']}"] = {
+                "scale_type": scale.get("type"), "values": [o["value"] for o in options],
+                "abstain": abstain["value"] if abstain is not None else None,
+                "max_length": scale.get("max_length") if scale.get("type") == "text" else None,
+                "phase": q.get("phase"), "per_arm": bool(q.get("per_arm")),
+                "locks_on_reveal": bool(q.get("locks_on_reveal"))}
+    return out
+
+
 def check_previous_bundle(inp: Inputs, path: Path, items: list[dict], questions: dict) -> dict:
     """The previous round's bundle, checked against this one: every item it holds is here under the same id, with
-    the same question set, display and reveal, and every question id of each of its question sets is still in that set.
-    The app needs every item a physician holds to stay in the bundle it switches to, and stores answers under the
-    item id and the question id (its DEPLOY.md section 19), so a missing item or question, or another text under
-    the same id, is refused (ids only)."""
+    the same question set, display and reveal, and every question id of each of its question sets is still in that
+    set with the same answer contract (``answer_contracts``). The app needs every item a physician holds to stay in
+    the bundle it switches to, and stores answers under the item id and the question id (its DEPLOY.md section 19),
+    so a missing item or question, another text under the same id, or another scale, set of answer values, phase,
+    per_arm or reveal lock under the same question id is refused (ids only)."""
     role = "previous round's bundle"
     data = inp.read_bytes(path, role)
     prev = _json_of(data, path, role)
@@ -1111,16 +1178,20 @@ def check_previous_bundle(inp: Inputs, path: Path, items: list[dict], questions:
         refuse("previous_item_changed", f"{len(changed)} item(s) of {prev.get('bundle_id')} show another text, "
                                         f"proposed tier or question set under the same item id: {sorted(changed)}. "
                                         "A rating stored under the id would be read as a rating of the new one")
-    lost = []
-    old_sets = prev["questions"].get("question_sets")
-    for set_name, qset in (old_sets.items() if isinstance(old_sets, dict) else ()):
-        new_ids = {q["id"] for q in questions["question_sets"].get(set_name, {}).get("questions", [])}
-        lost += [f"{set_name}.{q.get('id')}" for q in (qset or {}).get("questions", [])
-                 if isinstance(q, dict) and q.get("id") not in new_ids]
+    old_contracts = answer_contracts(prev["questions"], f"--previous-bundle {path}")
+    new_contracts = answer_contracts(questions, "this bundle's questions")
+    lost = sorted(k for k in old_contracts if k not in new_contracts)
     if lost:
         refuse("previous_question_missing", f"question id(s) of {prev.get('bundle_id')} are not in this bundle's "
-                                            f"questions: {sorted(lost)}. Wording may change between bundles; "
+                                            f"questions: {lost}. Wording may change between bundles; "
                                             "question ids may not")
+    altered = sorted(f"{k} ({', '.join(f for f in old_contracts[k] if old_contracts[k][f] != new_contracts[k][f])})"
+                     for k in old_contracts if old_contracts[k] != new_contracts[k])
+    if altered:
+        refuse("previous_question_changed", f"question id(s) of {prev.get('bundle_id')} keep their id with another "
+                                            f"answer contract: {altered}. An answer stored under the id would be "
+                                            "read on another scale, phase or lock. Wording may change between "
+                                            "bundles; what an answer means may not")
     return {"path": logical_path(path), "bundle_id": prev.get("bundle_id"), "sha256": sha256_bytes(data),
             "items_kept": len(prev["items"]), "items_added": len(items) - len(prev["items"])}
 
@@ -1314,10 +1385,10 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
                     help="take every non-control generated row of this run instead of its blind review sample")
     ap.add_argument("--previous-bundle", default=None, metavar="PATH",
                     help="the previous round's bundle: refuse unless every item it holds is in this one, unchanged, "
-                         "and every question id it uses is kept")
+                         "and every question id it uses is kept with the same scale, answer values, phase and lock")
     ap.add_argument("--pilot-trace-optional", action="append", metavar="RUN_ID",
                     help="do not require (or read) trace results for this run's pairs; by default every pilot "
-                         "pair needs one")
+                         "pair needs one (Run 2's trace pairs file is still read: its item ids are keyed on it)")
     for key in ("questions", "pilot_runs_dir", "pilot_trace_root", "advice_new", "advice_rerun", "petri_seeds",
                 "dashboard", "simulated", "allowlist"):
         ap.add_argument("--" + key.replace("_", "-"), default=str(DEFAULTS[key]))

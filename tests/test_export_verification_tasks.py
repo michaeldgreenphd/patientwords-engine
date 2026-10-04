@@ -7,9 +7,12 @@ unsealed items whose clinical text hashes into the holdout bucket, the counts an
 penalties equal as recorded tie, and the stated tie rule decides), item-id stability, the question wording (no
 hint predicts an answer, the urgency question names the message it asks about, raters are asked not to look the
 scenarios up), and the pilot runs: which runs, the review sample or every non-control row, a required or an optional
-trace (an optional one is not read, so the items do not change when traces land), a row's id under every option,
-and the refusals for a run that is not finalized, not version 2, changed since it was finalized or missing a
-required trace. Every input here is synthetic, abstract and non-medical (the medical vocabulary rule in AGENTS.md);
+trace (an optional one is not read, so the items do not change when traces land; Run 2's trace pairs file is still
+read as its id key), a trace pairs file with or without review ids, a row's id under every option, and the refusals
+for a run that is not finalized, not version 2, changed since it was finalized, missing a required trace, or whose
+review map, trace pairs file or sidecar does not fit it; and later rounds (--previous-bundle): a previous item
+dropped or changed, a question id dropped or kept with another scale, answer values, phase or lock, and a previous
+bundle of another shape. Every input here is synthetic, abstract and non-medical (the medical vocabulary rule in AGENTS.md);
 the seal fixtures follow tests/test_seal_check.py and tests/test_tierb_split.py. The committed-bundle tests check
 every bundle under data/verification/ against the contract, with failure messages naming item ids only, never row
 text, and re-export the first bundle from the committed engine files: the default run gives its pilot items
@@ -243,12 +246,14 @@ def _pair_of(row: dict, run_id: str, review_id: str | None) -> dict:
 
 
 def write_run(paths: dict[str, Path], run_id: str, rows: list[dict], review: list[str] | None = None,
-              traced: list[str] | None = None, pairs_name: str = "trace_pairs", finalized: bool = True,
-              version: Any = 2) -> Path:
+              traced: list[str] | None = None, pairs_name: str = "trace_pairs",
+              finalized_utc: Any = "2099-01-01T00:00:00Z", version: Any = 2, review_ids: bool = True) -> Path:
     """A synthetic pilot run under the world's runs directory: its generated rows, a review map over the row ids in
     ``review`` (default every non-control row, in order), a design, a finalized manifest hashing those three files,
     and, for the row ids in ``traced`` (default the review sample; [] for none), a trace pairs file with its sidecar
-    and trace results under the world's trace root, in <stem>/ as the circuit-trace lane's pilot root writes them."""
+    and trace results under the world's trace root, in <stem>/ as the circuit-trace lane's pilot root writes them.
+    The pairs carry their review ids as trace_pairs.py --review-sample writes them, or with ``review_ids=False``
+    none, as its default and --include-controls selections write them."""
     run = paths["pilot_runs_dir"] / run_id
     by_id = {r["id"]: r for r in rows}
     review = [r["id"] for r in rows if r["control"] == "none"] if review is None else review
@@ -260,17 +265,32 @@ def write_run(paths: dict[str, Path], run_id: str, rows: list[dict], review: lis
     dump(run / "review_map.json", {"sampling": "synthetic", "map": mapping})
     dump(run / "design.json", {"harness_version": version, "probe_endings": ["my"]})
     hashes = {name: _file_sha(run / name) for name in ("design.json", "generated/all_rows.jsonl", "review_map.json")}
-    dump(run / "manifest.json", {"pilot": "synthetic", "finalized_utc": "2099-01-01T00:00:00Z" if finalized else None,
-                                 "output_hashes": hashes})
+    dump(run / "manifest.json", {"pilot": "synthetic", "finalized_utc": finalized_utc, "output_hashes": hashes})
     traced = review if traced is None else traced
     if traced:
-        pairs = [_pair_of(by_id[row_id], run_id, review_of.get(row_id)) for row_id in traced]
-        pairs_path = dump(run / "trace" / f"{pairs_name}.json", pairs)
-        dump(run / "trace" / f"{pairs_name}.meta.json",
-             {"run": run_id, "counts": {"selected": len(pairs)},
-              "output": {"file": pairs_path.name, "sha256": _file_sha(pairs_path)}})
+        pairs = [_pair_of(by_id[row_id], run_id, review_of.get(row_id) if review_ids else None)
+                 for row_id in traced]
+        write_pairs(run, pairs, pairs_name)
         write_traces(paths, pairs_name, pairs)
     return run
+
+
+def write_pairs(run: Path, pairs: list[dict], pairs_name: str = "trace_pairs") -> Path:
+    """A run's trace pairs file and the sidecar that records its sha256 (as trace_pairs.py writes them)."""
+    pairs_path = dump(run / "trace" / f"{pairs_name}.json", pairs)
+    dump(run / "trace" / f"{pairs_name}.meta.json",
+         {"run": run.name, "counts": {"selected": len(pairs)},
+          "output": {"file": pairs_path.name, "sha256": _file_sha(pairs_path)}})
+    return pairs_path
+
+
+def reseal(run: Path, name: str, obj: Any) -> None:
+    """Rewrite a run file and record its new sha256 in the run's finalized manifest, so that only the change under
+    test differs from a well-formed run."""
+    dump(run / name, obj)
+    manifest = json.loads((run / "manifest.json").read_text())
+    manifest["output_hashes"][name] = _file_sha(run / name)
+    dump(run / "manifest.json", manifest)
 
 
 def write_traces(paths: dict[str, Path], stem: str, pairs: list[dict]) -> Path:
@@ -812,6 +832,8 @@ def test_the_default_run_keeps_the_first_bundles_label_and_id_key(tmp_path, caps
     items = _pilot(bundle, "pilot_run2")
     assert {i["provenance"]["source_path"] for i in items} == {key}
     assert all(i["item_id"] == evt.item_id_for("tracing_pair", key, i["provenance"]["source_id"]) for i in items)
+    assert {i["provenance"]["source_sha256"] for i in items} == {
+        _file_sha(paths["pilot_runs_dir"] / RUN2 / "trace" / "trace_pairs.json")}
     assert sorted((i["provenance"]["review_id"], i["provenance"]["trace_index"], i["provenance"]["run"])
                   for i in items) == [("r001", 1, RUN2), ("r002", 2, RUN2)]
     sel = bundle["selection"]["tracing_pair"]
@@ -834,6 +856,8 @@ def test_a_second_run_joins_with_its_own_label_counts_and_id_key(tmp_path, capsy
     new = _pilot(bundle, NEW_LABEL)
     assert {i["provenance"]["source_path"] for i in new} == {key}
     assert all(i["item_id"] == evt.item_id_for("tracing_pair", key, i["provenance"]["source_id"]) for i in new)
+    assert {i["provenance"]["source_sha256"] for i in new} == {
+        _file_sha(paths["pilot_runs_dir"] / RUN_NEW / "generated" / "all_rows.jsonl")}
     assert sorted((i["provenance"]["review_id"], i["provenance"]["source_id"], i["provenance"]["trace_index"])
                   for i in new) == [("r001", rows[2]["id"], 1), ("r002", rows[0]["id"], 2)]
     sel = bundle["selection"]["tracing_pair"][NEW_LABEL]
@@ -874,6 +898,65 @@ def test_a_review_sample_row_that_is_a_control_row_is_refused(tmp_path):
     assert rows[3]["id"] in message and "control row" in message
 
 
+ONLY_NEW_OPTIONAL = ("--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+
+
+@pytest.mark.parametrize("doc, fragment", [
+    ({"map": {"r001": "B__cell__kind__L99"}}, "names row 'B__cell__kind__L99', which is not in"),
+    ({"map": {"r001": "B__cell__kind__L01", "r002": "B__cell__kind__L01"}}, "names row 'B__cell__kind__L01' twice"),
+    ({"map": {}}, "has no map"),
+    ({"map": ["B__cell__kind__L01"]}, "has no map"),
+    ({"map": {"r001": 1}}, "has no map"),
+    ({"sampling": "synthetic"}, "has no map"),
+    (["B__cell__kind__L01"], "has no map"),
+])
+def test_a_review_map_that_is_not_a_map_of_known_rows_is_refused(tmp_path, doc, fragment):
+    paths = write_world(tmp_path, world_data())
+    run = write_run(paths, RUN_NEW, _new_run_rows(), traced=[])
+    reseal(run, "review_map.json", doc)
+    assert fragment in refused_paths(paths, "bad_input", *ONLY_NEW_OPTIONAL)
+    assert fragment in refused_paths(paths, "bad_input", *ONLY_NEW_OPTIONAL, "--pilot-all-rows", RUN_NEW)
+
+
+@pytest.mark.parametrize("control", ["positive", None, ""])
+def test_a_control_value_other_than_none_or_negative_is_refused_under_all_rows(tmp_path, control):
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    rows[1]["control"] = control
+    write_run(paths, RUN_NEW, rows, review=[rows[0]["id"]], traced=[])
+    rerun(paths, tmp_path / "sample", *ONLY_NEW_OPTIONAL)                  # the review sample does not read it
+    message = refused_paths(paths, "bad_input", *ONLY_NEW_OPTIONAL, "--pilot-all-rows", RUN_NEW)
+    assert rows[1]["id"] in message and "neither 'none' nor 'negative'" in message
+
+
+def test_a_run_with_no_row_to_select_is_refused(tmp_path):
+    paths = write_world(tmp_path, world_data())
+    control = _new_run_rows()[3]
+    write_run(paths, RUN_NEW, [control], review=[control["id"]], traced=[])
+    message = refused_paths(paths, "bad_input", *ONLY_NEW_OPTIONAL, "--pilot-all-rows", RUN_NEW)
+    assert f"pilot run {RUN_NEW}: no row was selected" in message
+
+
+def test_an_optional_trace_reads_no_trace_file_but_run2s_id_key(tmp_path, capsys):
+    # A run with --pilot-trace-optional reads no trace file, except Run 2, whose item ids are keyed on its trace
+    # pairs file: that file is read for the items' source_sha256 and must exist; its sidecar and trace results are not
+    # read. (Check of 2026-10-04: the docs had said no trace file is read for any run.)
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, pairs_name="pairs_v9")                  # its traces have landed
+    run2_pairs = paths["pilot_runs_dir"] / RUN2 / "trace" / "trace_pairs.json"
+    bundle, _ = rerun(paths, tmp_path / "optional", "--pilot-run", RUN2, "--pilot-run", RUN_NEW,
+                      "--pilot-trace-optional", RUN2, "--pilot-trace-optional", RUN_NEW)
+    read = {s["path"]: s["role"] for s in bundle["sources"]}
+    trace_files = sorted(p for p in read if "/trace/" in p or p.startswith(evt.logical_path(paths["pilot_trace_root"])))
+    assert trace_files == [evt.logical_path(run2_pairs)]
+    assert read[evt.logical_path(run2_pairs)] == f"pilot run {RUN2} item id key"
+    assert {i["provenance"]["source_sha256"] for i in _pilot(bundle, "pilot_run2")} == {_file_sha(run2_pairs)}
+    run2_pairs.unlink()
+    message = refused_paths(paths, "missing_input", "--pilot-run", RUN2, "--pilot-trace-optional", RUN2)
+    assert "item id key" in message
+
+
 def test_without_traces_a_run_is_refused_unless_optional_and_its_items_do_not_change_when_traces_land(tmp_path,
                                                                                                      capsys):
     # Run 3's traces may land after the bundle is wanted: requiring a trace stays the default, and an optional one
@@ -903,7 +986,9 @@ def test_without_traces_a_run_is_refused_unless_optional_and_its_items_do_not_ch
     assert sorted(i["provenance"]["trace_index"] for i in _pilot(traced, NEW_LABEL)) == [1, 2, 3]
 
 
-@pytest.mark.parametrize("change, code", [({"finalized": False}, "run_not_finalized"),
+@pytest.mark.parametrize("change, code", [({"finalized_utc": None}, "run_not_finalized"),
+                                          ({"finalized_utc": "  "}, "run_not_finalized"),
+                                          ({"finalized_utc": 20990101}, "run_not_finalized"),
                                           ({"version": 1}, "run_not_version_2"),
                                           ({"version": "2"}, "run_not_version_2"),
                                           ({"version": True}, "run_not_version_2")])
@@ -912,6 +997,17 @@ def test_a_run_that_is_not_finalized_or_not_version_2_is_refused(tmp_path, chang
     write_run(paths, RUN_NEW, _new_run_rows(), pairs_name="pairs_v9", **change)
     assert RUN_NEW in refused_paths(paths, code, "--pilot-run", RUN_NEW)
     refused_paths(paths, code, "--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+
+
+@pytest.mark.parametrize("hashes", [None, [], "design.json"])
+def test_a_manifest_whose_output_hashes_is_not_a_map_is_refused(tmp_path, hashes):
+    paths = write_world(tmp_path, world_data())
+    run = write_run(paths, RUN_NEW, _new_run_rows(), traced=[])
+    manifest = json.loads((run / "manifest.json").read_text())
+    manifest["output_hashes"] = hashes
+    dump(run / "manifest.json", manifest)
+    assert "no output_hashes" in refused_paths(paths, "run_not_finalized", "--pilot-run", RUN_NEW,
+                                               "--pilot-trace-optional", RUN_NEW)
 
 
 @pytest.mark.parametrize("name", ["generated/all_rows.jsonl", "review_map.json", "design.json"])
@@ -955,16 +1051,131 @@ def test_a_required_trace_that_is_missing_or_carries_other_prompts_is_refused(tm
     assert rows[1]["id"] in refused_paths(paths, "missing_trace", "--pilot-run", RUN_NEW)
 
 
+def _run2_pairs(paths: dict[str, Path]) -> tuple[Path, list[dict]]:
+    run = paths["pilot_runs_dir"] / RUN2
+    return run, json.loads((run / "trace" / "trace_pairs.json").read_text())
+
+
 def test_a_trace_pairs_file_naming_a_row_the_run_does_not_have_is_refused(tmp_path):
     paths = write_world(tmp_path, world_data())
-    pairs_path = paths["pilot_runs_dir"] / RUN2 / "trace" / "trace_pairs.json"
-    pairs = json.loads(pairs_path.read_text())
+    run, pairs = _run2_pairs(paths)
     pairs.append(dict(pairs[0], pilot=dict(pairs[0]["pilot"], row_id="A__cell__kind__L99")))
-    dump(pairs_path, pairs)
-    dump(pairs_path.with_name("trace_pairs.meta.json"),
-         {"run": RUN2, "counts": {"selected": len(pairs)},
-          "output": {"file": pairs_path.name, "sha256": _file_sha(pairs_path)}})
+    write_pairs(run, pairs)
     assert "A__cell__kind__L99" in refused_paths(paths, "bad_input")
+
+
+@pytest.mark.parametrize("field, value, fragment", [
+    ("top_prompt", "I left the red ledger on the bus, so I need to call my", "are not row"),
+    ("bottom_prompt", "I left the notebook on the train, so I need to call my", "are not row"),
+    ("target_clinical_token", " landlord", "target_clinical_token is not a space plus row"),
+])
+def test_a_trace_pair_that_is_not_its_rows_sentences_and_next_word_is_refused(tmp_path, field, value, fragment):
+    # the trace results keep the row's prompts, so only the pair-against-row check can catch this
+    paths = write_world(tmp_path, world_data())
+    run, pairs = _run2_pairs(paths)
+    pairs[0][field] = value
+    write_pairs(run, pairs)
+    message = refused_paths(paths, "bad_input")
+    assert fragment in message and pairs[0]["pilot"]["row_id"] in message and value not in message
+
+
+def test_a_trace_pairs_file_repeating_a_row_is_refused(tmp_path):
+    paths = write_world(tmp_path, world_data())
+    run, pairs = _run2_pairs(paths)
+    write_pairs(run, pairs + [pairs[0]])
+    message = refused_paths(paths, "bad_input")
+    assert "pair 3 repeats row" in message and pairs[0]["pilot"]["row_id"] in message
+
+
+def test_a_trace_pairs_sidecar_or_pair_naming_another_run_is_refused(tmp_path):
+    # the guard against exporting another run's pairs under this run's label and ids
+    paths = write_world(tmp_path / "sidecar", world_data())
+    run, pairs = _run2_pairs(paths)
+    meta_path = run / "trace" / "trace_pairs.meta.json"
+    meta = json.loads(meta_path.read_text())
+    meta["run"] = RUN_NEW
+    dump(meta_path, meta)
+    assert f"names run {RUN_NEW!r}, not {RUN2!r}" in refused_paths(paths, "bad_input")
+
+    paths = write_world(tmp_path / "pair", world_data())
+    run, pairs = _run2_pairs(paths)
+    pairs[1]["pilot"]["run"] = RUN_NEW
+    write_pairs(run, pairs)
+    message = refused_paths(paths, "bad_input")
+    assert "pair 2: its pilot block names run" in message and RUN_NEW in message
+
+
+def test_more_than_one_trace_pairs_file_under_a_run_is_refused(tmp_path):
+    paths = write_world(tmp_path, world_data())
+    run, pairs = _run2_pairs(paths)
+    write_pairs(run, pairs, "trace_pairs_again")
+    message = refused_paths(paths, "bad_input")
+    assert "2 trace pairs files" in message and "trace_pairs_again.json" in message
+
+
+def test_a_trace_pairs_file_without_review_ids_serves_the_review_sample_and_every_row(tmp_path, capsys):
+    # Regression (check of 2026-10-04): trace_pairs.py's default and --include-controls selections write
+    # review_id null on every pair, and the exporter read each null as a mismatch with review_map.json, so no such
+    # file could serve any selection. Here the trace pairs file holds every row, the negative control included, as
+    # --include-controls writes it, with no review ids.
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, review=[rows[2]["id"], rows[0]["id"]], traced=[r["id"] for r in rows],
+              pairs_name="pairs_v9", review_ids=False)
+    both = ("--pilot-run", RUN2, "--pilot-run", RUN_NEW)
+    sample, _ = rerun(paths, tmp_path / "sample", *both)
+    every, _ = rerun(paths, tmp_path / "every", *both, "--pilot-all-rows", RUN_NEW)
+
+    def by_row(b: dict) -> dict[str, tuple[str, str | None, int]]:
+        return {i["provenance"]["source_id"]: (i["item_id"], i["provenance"]["review_id"],
+                                               i["provenance"]["trace_index"]) for i in _pilot(b, NEW_LABEL)}
+
+    # the review ids come from review_map.json, the trace index from the pairs file's order
+    assert by_row(sample) == {rows[2]["id"]: (by_row(every)[rows[2]["id"]][0], "r001", 3),
+                              rows[0]["id"]: (by_row(every)[rows[0]["id"]][0], "r002", 1)}
+    assert sorted(by_row(every)) == sorted(r["id"] for r in rows[:3])
+    assert by_row(every)[rows[1]["id"]][1:] == (None, 2)
+    assert sample["selection"]["tracing_pair"][NEW_LABEL]["counts"]["trace_pairs_not_selected"] == 2
+    assert every["selection"]["tracing_pair"][NEW_LABEL]["counts"]["trace_pairs_not_selected"] == 1  # the control
+
+
+def test_a_row_the_trace_pairs_file_leaves_out_is_refused_with_how_to_build_one(tmp_path):
+    # trace_pairs.py's default selection leaves out the rows the checker did not judge equivalent, so a review-sample
+    # row (or, under --pilot-all-rows, any non-control row) can be missing from it
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, review=[rows[1]["id"]], traced=[rows[0]["id"], rows[2]["id"]],
+              pairs_name="pairs_v9", review_ids=False)
+    message = refused_paths(paths, "missing_trace", "--pilot-run", RUN_NEW)
+    assert rows[1]["id"] in message and "trace_pairs.py --review-sample" in message
+    message = refused_paths(paths, "missing_trace", "--pilot-run", RUN_NEW, "--pilot-all-rows", RUN_NEW)
+    assert rows[1]["id"] in message and "--pilot-all-rows takes every non-control row" in message
+
+
+def test_a_trace_pairs_file_whose_review_ids_disagree_with_the_review_map_is_refused(tmp_path):
+    paths = write_world(tmp_path / "selected", world_data())     # a selected pair carries another review id
+    run, pairs = _run2_pairs(paths)
+    pairs[1]["pilot"]["review_id"] = "r009"
+    write_pairs(run, pairs)
+    message = refused_paths(paths, "bad_input")
+    assert "pair 2: its review id" in message and "another review map" in message
+
+    paths = write_world(tmp_path / "unselected", world_data())   # a pair outside the sample carries one
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, review=[rows[0]["id"]], traced=[r["id"] for r in rows[:3]],
+              pairs_name="pairs_v9", review_ids=False)
+    pairs = json.loads((paths["pilot_runs_dir"] / RUN_NEW / "trace" / "pairs_v9.json").read_text())
+    for n, pair in enumerate(pairs, 1):
+        pair["pilot"]["review_id"] = f"r{n:03d}"
+    write_pairs(paths["pilot_runs_dir"] / RUN_NEW, pairs, "pairs_v9")
+    message = refused_paths(paths, "bad_input", "--pilot-run", RUN_NEW)
+    assert "pair 2: its review id" in message and rows[1]["id"] in message
+
+    paths = write_world(tmp_path / "some", world_data())         # review ids on some pairs and not others
+    run, pairs = _run2_pairs(paths)
+    pairs[0]["pilot"]["review_id"] = None
+    write_pairs(run, pairs)
+    assert "records a review id for 1 of its 2 pairs" in refused_paths(paths, "bad_input")
 
 
 def test_two_runs_that_would_read_one_trace_results_directory_are_refused(tmp_path):
@@ -1065,6 +1276,123 @@ def test_a_later_round_that_drops_or_changes_a_previous_item_or_question_is_refu
     paths["questions"] = dump(tmp_path / "questions.json", questions)
     assert "tracing_pair.keep" in refused_paths(paths, "previous_question_missing", "--previous-bundle",
                                                 str(previous))
+
+
+def _round1(tmp_path: Path) -> tuple[dict[str, Path], dict, Path]:
+    """A world, its round-1 bundle (parsed) and a path to write a previous bundle to; the world's out dir is empty."""
+    first, _, paths = export(tmp_path / "w")
+    shutil.rmtree(paths["out_dir"])
+    return paths, first, tmp_path / "round1.json"
+
+
+@pytest.mark.parametrize("doc", [{"schema": "patientwords-verification-tasks/0", "items": [], "questions": {}},
+                                 {"schema": evt.SCHEMA, "items": {}, "questions": {}},
+                                 {"schema": evt.SCHEMA, "items": [], "questions": []},
+                                 [evt.SCHEMA]])
+def test_a_previous_bundle_that_is_not_a_tasks_bundle_is_refused(tmp_path, doc):
+    paths, _, previous = _round1(tmp_path)
+    dump(previous, doc)
+    assert f"is not a {evt.SCHEMA} bundle" in refused_paths(paths, "bad_input", "--previous-bundle", str(previous))
+
+
+def test_a_previous_item_whose_question_set_alone_changed_is_refused(tmp_path, capsys):
+    paths, first, previous = _round1(tmp_path)
+    item = next(i for i in first["items"] if i["question_set"] == "advice_rerun")
+    item["question_set"] = "advice_rerun_truncated"                       # display and reveal unchanged
+    dump(previous, first)
+    message = refused_paths(paths, "previous_item_changed", "--previous-bundle", str(previous))
+    assert "1 item(s)" in message and item["item_id"] in message
+
+
+def _question(questions: dict, set_name: str, qid: str) -> dict:
+    return next(q for q in questions["question_sets"][set_name]["questions"] if q["id"] == qid)
+
+
+def _options(*values: Any) -> list[dict]:
+    return [{"value": v, "label": str(v)} for v in values]
+
+
+# Each change keeps the question id but changes what a stored answer means; the app checks a stored answer against
+# the question's current scale, phase and lock when a physician saves the item again (patientwords-verify
+# src/Logic.gs). The first is the check of 2026-10-04's reproduction (realism5 replaced by yes_no; the 4 a
+# physician gave would sit under a scale without it). (mutation of the questions, a question it changes, the field)
+CONTRACT_CHANGES = {
+    "scale": (lambda q: _question(q, "tracing_pair", "patient_realism").update(scale="yes_no"),
+              "tracing_pair.patient_realism", "scale_type"),
+    "values": (lambda q: q["scales"]["keep3"].update(options=_options("yes", "no")), "tracing_pair.keep", "values"),
+    "order": (lambda q: q["scales"]["realism5"]["options"].reverse(), "advice_new.realism_patient", "values"),
+    "abstain": (lambda q: q["scales"]["yes_no"]["abstain"].update(value="unsure"), "tracing_pair.same", "abstain"),
+    "max_length": (lambda q: q["scales"]["text1000"].update(max_length=200), "advice_new.proposed_tier_reason",
+                   "max_length"),
+    "phase": (lambda q: _question(q, "advice_new", "proposed_tier_agree").update(phase="blind"),
+              "advice_new.proposed_tier_agree", "phase"),
+    "per_arm": (lambda q: _question(q, "multiturn_script", "realism").update(per_arm=False),
+                "multiturn_script.realism", "per_arm"),
+}
+
+
+@pytest.mark.parametrize("change", sorted(CONTRACT_CHANGES))
+def test_a_kept_question_id_whose_answer_contract_changed_is_refused(tmp_path, change):
+    paths, first, previous = _round1(tmp_path)
+    dump(previous, first)
+    mutate, key, field = CONTRACT_CHANGES[change]
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    mutate(questions)
+    paths["questions"] = dump(tmp_path / "questions.json", questions)
+    message = refused_paths(paths, "previous_question_changed", "--previous-bundle", str(previous))
+    assert re.search(re.escape(key) + r" \([^)]*\b" + field + r"\b", message), message
+
+
+def test_a_question_that_gained_or_lost_the_reveal_lock_is_refused(tmp_path):
+    # advice_new keeps exactly one locking question, so the lock is moved in the previous bundle's copy instead
+    paths, first, previous = _round1(tmp_path)
+    _question(first["questions"], "tracing_pair", "same")["locks_on_reveal"] = True
+    dump(previous, first)
+    message = refused_paths(paths, "previous_question_changed", "--previous-bundle", str(previous))
+    assert "tracing_pair.same (locks_on_reveal)" in message
+
+
+def test_a_question_reworded_or_on_a_renamed_identical_scale_is_kept(tmp_path, capsys):
+    paths, first, previous = _round1(tmp_path)
+    dump(previous, first)
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    keep = _question(questions, "tracing_pair", "keep")
+    keep["text"] += " (reworded)"
+    questions["scales"]["keep3_v2"] = copy.deepcopy(questions["scales"]["keep3"])
+    questions["scales"]["keep3_v2"]["options"][0]["label"] += " (reworded)"
+    keep["scale"] = "keep3_v2"
+    paths["questions"] = dump(tmp_path / "questions.json", questions)
+    second, _ = rerun(paths, tmp_path / "round2", "--previous-bundle", str(previous))
+    assert second["selection"]["previous_bundle"]["items_kept"] == len(first["items"])
+
+
+@pytest.mark.parametrize("change, fragment", [
+    (lambda q: q.update(question_sets=[]), "questions.question_sets is not an object"),
+    (lambda q: q.update(scales=None), "questions.scales is not an object"),
+    (lambda q: q["question_sets"].update(tracing_pair={"family": "tracing_pair"}),
+     "question set 'tracing_pair' has no questions list"),
+    (lambda q: q["question_sets"]["tracing_pair"]["questions"].__setitem__(0, "same"),
+     "question 1 of set 'tracing_pair' is not an object with a string id"),
+    (lambda q: _question(q, "tracing_pair", "keep").update(scale="keep9"), "tracing_pair.keep: its scale is not"),
+    (lambda q: q["scales"]["keep3"].update(options=["keep", "edit"]), "tracing_pair.keep: its scale is not"),
+    (lambda q: q["scales"]["yes_no"].update(abstain="cant_tell"), "its scale's abstain is not"),
+])
+def test_a_previous_bundle_whose_questions_are_malformed_is_refused_not_skipped(tmp_path, change, fragment):
+    paths, first, previous = _round1(tmp_path)
+    change(first["questions"])
+    dump(previous, first)
+    assert fragment in refused_paths(paths, "bad_input", "--previous-bundle", str(previous))
+
+
+def test_answer_contracts_refuse_a_questions_value_that_is_not_an_object():
+    # through the command line check_previous_bundle refuses it first; the function refuses it on its own as well
+    with pytest.raises(SystemExit) as exc:
+        evt.answer_contracts([], "somewhere")
+    assert "[bad_input] somewhere: questions is not an object" in str(exc.value)
+    contracts = evt.answer_contracts(json.loads(QUESTIONS.read_text(encoding="utf-8")), "questions.json")
+    assert contracts["advice_new.own_tier"] == {
+        "scale_type": "ordinal", "values": ["self_care", "routine", "urgent", "emergency"], "abstain": "cant_tell",
+        "max_length": None, "phase": "blind", "per_arm": False, "locks_on_reveal": True}
 
 
 # ---- the first bundle, re-exported --------------------------------------------------------------------------
