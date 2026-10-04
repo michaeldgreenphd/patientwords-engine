@@ -496,9 +496,12 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
   to PR #73's post-merge review) a manual file must declare its family in
   `source.family`, written by `build-stimuli --source manual --family`, and
   the exporter refuses one that declares none (exit 3). The new set as built,
-  `stimuli_20261002T080026Z.json`, declares none, so the exporter refuses it
-  rather than mislabel it; the family cannot be added after Wave A fires,
-  because every response records the file's hash (section 7, item 7). The
+  `stimuli_20261002T080026Z.json`, declares none, so once Wave A is elicited
+  the exporter will refuse it rather than mislabel it. Until then the
+  exporter, before and after this change, refuses the file at an earlier
+  check, because it has no advice records yet. The family cannot be added
+  after Wave A fires, because every response records the file's hash
+  (section 7, item 7). The
   exporter labels a file built by
   `--source selection` by the families of the files it copied from, and
   refuses one that mixes the two: the rerun file copies from three
@@ -532,8 +535,9 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
    each R fire once per file with the R2 and R3 chunks recomputed, or change
    the exporter to label each item by its own family.
 7. How Wave A reaches the site, decided before Wave A fires (added
-   2026-10-03): the exporter refuses `stimuli_20261002T080026Z.json` because
-   it declares no family (section 6). Either rebuild it from
+   2026-10-03): once Wave A is elicited, the exporter will refuse
+   `stimuli_20261002T080026Z.json` because it declares no family
+   (section 6). Either rebuild it from
    `data/advice/manual_vignettes_20261002.json` with `--ask-suffix ""
    --family natural_questions` before Wave A fires, which writes a new stamp
    that the Wave A commands here and Amendment 6 (A6.3) would then name, or
