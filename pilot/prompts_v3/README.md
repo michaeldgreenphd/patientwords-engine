@@ -11,11 +11,14 @@ are as `../prompts_v2/README.md` describes them; this file covers only what vers
 
 ## What changed from version 2
 
-Only the generation prompt's rule text changed:
+The generation prompt's rule text changed, and one example in `design.json`:
 
 - `checker_prompt.txt` is version 2's, byte for byte (see *The checker's role* below).
-- `design.json` is version 2's except its `_note`. The cells, the example negative control, `prompt_examples`,
-  `probe_endings` and the variant design (12 concepts, 4 of them with a second patient phrasing) are unchanged.
+- `design.json` is version 2's except its `_note` and one example. Rule 5's patient-phrase examples
+  (`prompt_examples.patient_phrases`) keep only version 2's first, "the left side of my heart"; version 2's second,
+  "my heart", left out a side that rule 8 now requires (see *Rule 8*). The cells, the example negative control, the
+  other prompt examples, `probe_endings` and the variant design (12 concepts, 4 of them with a second patient
+  phrasing) are unchanged.
 - `generation_prompt.txt` has ten rules instead of seven. Each change below names the review row whose note
   motivated it. Row ids are run 2's review ids (`../runs/pilot_v2_20261002/review_map.json` maps them to rows); run 1's
   review used the same ids for different pairs.
@@ -25,17 +28,27 @@ template into `design.json`'s `prompt_examples` (Codex review of PR #69), and th
 `pilot/scripts/common.py` lists (`generation_markers`), refusing any other. A new example, or a rendered setting such
 as the brand-name cap, would need a new marker, which is a change to a pilot script. A change to any pilot script
 alters the script hashes both recorded runs seal, so both would have to be recomputed and re-finalized. This kit
-avoids that.
+avoids that. Editing the value of an existing example is different: it renders through the marker the example
+already has, so it is a data change. The dropped rule 5 example is one.
 
 ### Rule 6 (new): at most one brand-name concept per call
 
 At most one of a call's concepts may pair a drug's generic name with one of its brand names. Every other medicine
-concept must change register another way: the everyday words patients use for what the medicine is for or what it
-looks like. Rule 7's vaguer example already shows one such phrasing. The brand-name sentences of version 2's rule 5
-(single-ingredient drugs only, never a combination product's brand) moved into this rule unchanged.
+concept must change register in another way that rules 5 and 7 allow: common slang for the drug, or a broader
+everyday name for its kind of medicine. Rule 7's vaguer example shows the second kind. The brand-name sentences of
+version 2's rule 5 (single-ingredient drugs only, never a combination product's brand) moved into this rule
+unchanged.
 
 - **Notes.** r001: a generic-for-brand swap "is okay but also not quite the same as using slang instead of the drug
   name". r033: generic against brand "is interesting but would not build all stimuli on these examples".
+- **Beyond the notes.** The notes ask only for fewer brand pairs. The rule's last sentence, which says what the other
+  medicine concepts use instead, is this kit's addition. It points only to register changes the kit already allows:
+  - slang for the drug, which r001 sets against a brand swap ("using slang instead of the drug name");
+  - a broader name for the kind of medicine, which rule 7 allows and codebook L3 counts as broader (a drug class,
+    including one named by what it treats).
+
+  It does not suggest describing what a medicine looks like. No codebook rule counts a description of a pill as
+  naming the same drug, and L6 forbids ruling "same" on general knowledge alone. See *Decisions left to the owner*.
 - **Run 2.** 50 of the 288 generated rows were brand pairs (checker relation `same_brand`), all in medication cells:
   50 of the 96 medication rows. Each of the 6 medication calls had 7 to 10 brand concepts out of 12. In the review
   sample, 6 of the 10 medication rows were brand pairs, and the owner kept 5 of them. The other 4 medication rows were
@@ -78,8 +91,8 @@ or rare slang is out. The second phrasing of a variant pair is now "a vaguer or 
 allows)".
 
 - **Note.** r025: the patient phrase was slang for the heart, standing in for one of its chambers, and the note said
-  "ticker is not something i am familiar with". It suggested the left side of the heart instead, which is already one of rule 5's patient-phrase
-  examples.
+  "ticker is not something i am familiar with". It suggested the left side of the heart instead, which is now rule
+  5's only patient-phrase example (see *Rule 8*).
 - **Limit.** The prompt names no speaker group (no country or dialect), so "most adult patients" is not narrowed
   further. See *Decisions left to the owner*.
 
@@ -93,6 +106,10 @@ phrase is more specific than the other.
 - **Note.** r005: "would someone be more specific and say something about being one eyelid or the other?"
 - **Why the side goes in both phrases.** That row's clinical term named no side. A patient phrase that named one would
   have been narrower than the clinical term, which codebook rule L4 counts as not equivalent.
+- **Rule 5's example.** Version 2's rule 5 set two patient phrases against the leaflet wording "main pumping chamber",
+  which describes the left ventricle: "the left side of my heart" and "my heart". The second drops the side, which
+  this rule forbids, and run 2 paired the left ventricle with the bare word "heart" twice
+  (`A__cardiology__body_part__L01`, `B__cardiology__body_part__L08`). Version 3's `design.json` keeps only the first.
 
 ### Rule 9 (new): no grid names for a region
 
@@ -106,22 +123,29 @@ term for that part. When a place's only clinical name is its grid name, the gene
   15 kept, against 9 of 10 for medication and 10 of 15 for symptom descriptions.
 - **Wording.** The rule does not use the word "quadrant", because the template holds no example words (see above).
 
-### Rule 4 (changed): the clinical phrase as a clinician writes it
+### Rule 4 (changed): the clinical phrase as a clinician says it
 
 Two sentences were added:
 
 - Where a standard term exists, use it rather than a description.
-- Write the clinical phrase the way a clinician writes it in a note: in its usual word order and with the details a
-  clinician would add (such as the side, rule 8), not as a stiff phrase built to fit the blank. The sentence around
-  it stays the patient's own words.
+- Write the clinical phrase as a clinician would say it out loud, in its usual word order, not in the shorthand of a
+  clinical note and not as a stiff phrase built to fit the blank. The sentence around it stays the patient's own
+  words.
 
-The rule already asked for the preferred term in SNOMED CT or MeSH, or a drug's generic name (codebook R3 and L1).
+The rule already asked for the preferred term in SNOMED CT or MeSH, or a drug's generic name (codebook R3 and L1), as
+a patient would repeat it after hearing it from their clinician, and as specific as a clinician would be.
 
 - **Notes.** r006: "The clinical one feels a little robotic but I would keep". r017: "I dont know medical lexicon but
   if this is that maybe you can use it?"
+- **Reading of r006.** This is the kit's reading, not the owner's. The note says the clinical side "feels a little
+  robotic", which the kit reads as a term in the form a chart uses, set into a spoken sentence. So the rule asks for
+  the term as a clinician says it. That is also what the rule's first sentence (the term as a patient repeats it)
+  and rule 3's ban on clinical-note prose imply. Asking instead for the form a clinician writes in a note, with the
+  details a note adds, could make the clinical phrase stiffer, the opposite of what the note asks for. Detail is
+  still required: the rule ends "be as specific as a clinician would be", and rule 8 keeps the side. See *Decisions
+  left to the owner*.
 - **Scope.** The rule governs the clinical phrase only. The template is one sentence shared by both phrases, and it
-  is the patient speaking (rule 3). A clinical sentence written as note prose would break rules 2 and 3, so the "note"
-  standard applies to the phrase in the blank.
+  is the patient speaking (rule 3).
 
 ### Renumbering
 
@@ -199,7 +223,7 @@ Then add the seed file, `manifest_model.json`, the run's own `PROTOCOL.md` and `
 
 The run's protocol should state:
 
-- the six rule changes;
+- the six rule changes and the dropped rule 5 example;
 - that the checker is not a gate;
 - version 2's estimand 2 and estimand 3 caveats, which still apply because the variant design is unchanged.
 
@@ -234,6 +258,10 @@ Three cautions:
 
 - **The exact brand cap.** The template says at most one brand-name concept per call. Zero, or a per-run total
   instead of a per-call one, are the alternatives; changing the number is an edit to rule 6's text.
+- **Rule 6's last sentence.** It goes beyond the notes (see *Rule 6*). The alternative is to drop it and leave the
+  other medicine concepts to rule 5 alone.
+- **Rule 4's reading of r006.** The rule asks for the clinical phrase as a clinician says it, not as a clinician
+  writes it in a note (see *Rule 4*). If the owner meant the written form, that sentence should ask for it instead.
 - **The speaker group for slang.** Rule 5 says "most adult patients" and names no country or dialect. Naming one
   (US English, for example) would make the rule easier to check.
 - **When run 3 runs.** Before physician review of run 2's pairs in the verification app, or after it, so that the

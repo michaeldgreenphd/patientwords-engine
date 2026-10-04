@@ -2,7 +2,8 @@
 pilot/scripts/common.py: version 3 changes only the generation prompt's rule text, so it carries exactly the
 version-2 markers, its design.json is a valid version-2 design, and every prompt derive_plan plans from it renders
 clean, lists every probe ending and carries each rule added from the owner's review of run pilot_v2_20261002. The
-checker prompt is version 2's byte for byte, and the design differs from version 2's only in its note.
+checker prompt is version 2's byte for byte, and the design differs from version 2's only in its note and in dropping
+the second of rule 5's patient-phrase examples, which left out the side that rule 8 now requires.
 
 The rule text is pinned line by line: tests/fixtures/pilot_v3_changed_lines.json holds, in full, every line of the
 version-3 template that differs from version 2's, and the template must differ from version 2's in exactly those
@@ -71,10 +72,17 @@ def test_v3_templates_have_exactly_the_version_2_markers():
     assert common.version_template_problems(CHK, "checker", 1)
 
 
-def test_v3_design_is_the_version_2_design_with_a_new_note():
+def test_v3_design_is_the_version_2_design_less_one_example():
+    """Rule 5's patient-phrase examples keep only version 2's first; its second named the organ without the side of
+    the chamber the leaflet example describes, which rule 8 forbids. Every other field is version 2's."""
     v2 = json.loads((V2 / "design.json").read_text(encoding="utf-8"))
     assert DESIGN["_note"] != v2["_note"]
-    assert {k: v for k, v in DESIGN.items() if k != "_note"} == {k: v for k, v in v2.items() if k != "_note"}
+    v2_phrases = v2["prompt_examples"]["patient_phrases"]
+    assert len(v2_phrases) == 2 and DESIGN["prompt_examples"]["patient_phrases"] == v2_phrases[:1]
+    expected = {k: v for k, v in v2.items() if k != "_note"}
+    expected["prompt_examples"] = {**v2["prompt_examples"], "patient_phrases": v2_phrases[:1]}
+    assert {k: v for k, v in DESIGN.items() if k != "_note"} == expected
+    assert list(DESIGN["prompt_examples"]) == list(v2["prompt_examples"])
     assert list(DESIGN) == list(v2)
     assert common.harness_version(DESIGN) == 2
     assert common.version_design_problems(DESIGN) == []
