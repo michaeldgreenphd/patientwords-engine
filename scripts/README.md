@@ -178,3 +178,13 @@ in `ops/pab_ci/`.
 | `petri_multiturn_synthetic.py` | Synthetic wave-2 runs and section 10 artifact for tests and fixtures | operator tool | nothing itself | imported by `tests/test_export_petri_multiturn.py`, and by `export_petri_multiturn.py --write-samples` when owner or session regenerates the sample fixtures; no scheduled path runs it |
 | `petri_three_arm.py` | Exploratory three-arm and crossed-factorial comparisons over wave-2 runs | operator tool | an optional report file; none committed | owner or session |
 | `petri_w2_power_sim.py` | Design-only power simulation for the register contrast | one-off and done | nothing (prints JSON that records its seed) | session; `docs/petri_wave2_design.md` quotes its numbers |
+
+## Physician verification
+
+The task bundle for the physician verification app, whose code is in the
+private repository `michaeldgreenphd/patientwords-verify`.
+`docs/verification_protocol.md` is the protocol.
+
+| Script | What it does | Status | Writes | Who runs it |
+|---|---|---|---|---|
+| `export_verification_tasks.py` | The items physicians rate, blind to source: pilot Run 2's 40 traced pairs, the published main-study pairs with the largest language penalty, the 2026-10-02 advice stimuli and the Petri wave-3 scripts, with the question wording from `data/verification/questions.json`; refuses (writing nothing) on a missing input, an unknown field, a changed text or any holdout-seal hit | operator tool | `--out-dir`, default `data/verification/`: a new `tasks_<stamp>.json` it refuses to overwrite, its seed recorded inside | owner or session, before each upload to the app; then `seal_check.py --extra data/verification` |
