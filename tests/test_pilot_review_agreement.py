@@ -1,6 +1,8 @@
 """pilot/analysis/review_agreement.py compares the owner's blind review of a version-2 run with the checker's
-structured answers. These tests use a small fake run and export with hand-checkable numbers."""
+structured answers. Most tests use a small fake run and export with hand-checkable numbers; the last two check that
+run 2's committed review export joins to that run and that its committed agreement is what the script derives."""
 import copy
+import csv
 import importlib.util
 import json
 from pathlib import Path
@@ -90,3 +92,34 @@ def test_main_writes_json_and_markdown_with_seed(tmp_path):
     result = json.loads((tmp_path / "agreement.json").read_text(encoding="utf-8"))
     assert result["seed"] == 5 and result["resamples"] == 100 and len(result["export_sha256"]) == 64
     assert "Keep rule R8" in (tmp_path / "agreement.md").read_text(encoding="utf-8")
+
+
+RUN2 = ROOT / "pilot" / "runs" / "pilot_v2_20261002"
+RUN2_EXPORT = ROOT / "pilot" / "codebook" / "review_export_pilot_v2_20261002.json"
+RUN2_AGREEMENT = ROOT / "pilot" / "codebook" / "agreement_pilot_v2_20261002"
+
+
+def test_committed_run2_export_is_that_runs_blind_review():
+    export = json.loads(RUN2_EXPORT.read_text(encoding="utf-8"))
+    mapping = json.loads((RUN2 / "review_map.json").read_text(encoding="utf-8"))["map"]
+    with (RUN2 / "review_sheet.csv").open(encoding="utf-8", newline="") as f:
+        sheet = {r["id"]: r for r in csv.DictReader(f)}
+    rows = export["rows"]
+    assert export["run"] == RUN2.name
+    assert sorted(r["sample_id"] for r in rows) == sorted(sheet) == sorted(mapping)
+    fields = ("clinical_term", "patient_term", "template")
+    for r in rows:
+        sid = r["sample_id"]
+        assert r["item"] == mapping[sid], sid
+        assert [r[k] for k in fields] == [sheet[sid][k] for k in fields], sid
+        assert r["owner"]["checker_shown_before_first_answer"] is False, sid
+
+
+def test_committed_run2_agreement_is_what_the_script_derives(tmp_path):
+    recorded = json.loads(RUN2_AGREEMENT.with_suffix(".json").read_text(encoding="utf-8"))
+    assert ra.main(["--run-dir", str(RUN2), "--export", str(RUN2_EXPORT), "--out-dir", str(tmp_path),
+                    "--seed", str(recorded["seed"]), "--resamples", str(recorded["resamples"])]) == 0
+    for suffix in (".json", ".md"):
+        assert (tmp_path / f"agreement{suffix}").read_bytes() == RUN2_AGREEMENT.with_suffix(suffix).read_bytes(), (
+            f"agreement_pilot_v2_20261002{suffix} is not what review_agreement.py derives from the committed run and "
+            "export; rebuild it as pilot/codebook/README.md says")

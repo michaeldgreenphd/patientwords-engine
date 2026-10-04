@@ -30,6 +30,11 @@ recorded run (2026-09-30)*) records the decision.
   environment variable names, or `pilot/` when it is unset
   (`pilot/scripts/common.py`, `PILOT`). Set `PILOT_DIR` for every call of a new
   run.
+- A run's blind review is recorded outside its sealed directory, in
+  `pilot/codebook/`: the review export and, for a version-2 run, the owner's
+  answers compared with the checker's (`pilot/analysis/review_agreement.py`).
+  `pilot/codebook/README.md` lists those files and keeps a dated entry per
+  review.
 - Pilot traces are a separate tree: a circuit-trace fire with
   `output_root: pilot/traces` writes `pilot/traces/<pairs-stem>[__<model>]/`,
   which no collector reads. `docs/triggers.md` (the `circuit-trace` row) has every
