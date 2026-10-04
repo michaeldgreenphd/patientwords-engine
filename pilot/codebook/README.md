@@ -14,8 +14,9 @@ hashes the review sheet before it is filled.
 | File | What it is | How it is made |
 |---|---|---|
 | `review_export_pilot_real_20260930.json` | The owner's blind review of run 1 (`pilot_real_20260930`, made on the owner's laptop and not a recorded run; see `../prompts_v2/README.md`) | Exported from the private review page's database |
-| `codebook_rules.json` | The codebook's rules, lexicon rulings and settled and open questions | Hand-written |
-| `codebook_v0.2.json`, `codebook_v0.2.md` | Codebook v0.2 | `pilot/analysis/make_codebook.py`, from the run 1 export and the rules; `tests/test_pilot_codebook.py` checks the committed copy is current |
+| `codebook_rules.json` | The codebook's rules, lexicon rulings and settled and open questions, now at version 0.3 | Hand-written |
+| `codebook_v0.2.json`, `codebook_v0.2.md` | Codebook v0.2 | `pilot/analysis/make_codebook.py`, from the run 1 export and the rules file at version 0.2, which is in the git history (`codebook_v0.2.json` records its sha256); no longer rebuilt, and `tests/test_pilot_prompts_v3.py` pins both files' hashes |
+| `codebook_v0.3.json`, `codebook_v0.3.md` | Codebook v0.3: v0.2's rules, lexicon rulings and baseline, plus decision D1 (the checker is not a gate for keeping stimuli), made after run 2's review | `pilot/analysis/make_codebook.py`, from the run 1 export and the rules; `tests/test_pilot_codebook.py` checks the committed copy is current. D1 quotes run 2's numbers, which `make_codebook.py` does not compute; `tests/test_pilot_codebook_d1.py` checks each one against the run 2 export and agreement files below and the run's `review_key.csv` and `summary.json` |
 | `review_export_pilot_v2_20261002.json` | The owner's blind review of run 2 (`pilot/runs/pilot_v2_20261002/`) | Exported from the review page's database on 2026-10-04 (UTC) and joined to the run's review sheet; its provenance records the sha256 of five run files at export |
 | `agreement_pilot_v2_20261002.json`, `agreement_pilot_v2_20261002.md` | The owner's run 2 answers against the checker's, on the same 40 rows | `pilot/analysis/review_agreement.py`, seed 20261002, 2000 bootstrap resamples; `tests/test_pilot_review_agreement.py` checks the committed copy is current |
 
@@ -92,7 +93,8 @@ the owner's keep: it keeps all 40 rows, including the 11 the owner would edit an
 **Conclusion.** The checker does not discriminate on naturalness or realism: it gave one answer to every row, so its
 agreement with the owner is the share of rows where the owner gave that answer too, and its kappa is zero. Its keep
 rule keeps everything. It cannot gate stimuli on these questions. Its answer to whether the two phrases mean the
-same thing agrees with the owner's at chance level, as in run 1.
+same thing agrees with the owner's at chance level, as in run 1. The owner's decision on this is D1 in codebook v0.3:
+physician review, not the checker, decides which stimuli are kept.
 
 The owner's notes, by theme (full text in the export):
 

@@ -7,7 +7,9 @@ mechanics those rules rely on. It was moved out of `AGENTS.md` on 2026-10-02 to
 keep that file under its byte budget (`tests/test_agents_md_budget.py`); nothing
 here changes a rule. The step-by-step procedure for a run is in the first run's
 `pilot/HANDOFF.md` (*First three things to do on your laptop*) and, for the
-version-2 kit, `pilot/prompts_v2/README.md` (*How a run uses it*).
+version-2 kit, `pilot/prompts_v2/README.md` (*How a run uses it*). The version-3
+kit, `pilot/prompts_v3/`, runs on the same harness version and follows the same
+procedure; its README lists what it changes.
 
 ## Why the exception exists
 
