@@ -109,6 +109,19 @@ CIRCUIT_TRACE_JOB_DEFAULTS = {
 }
 # the run step passes each of these to medlang-batch-eval unless its value is "" or "0" (bash `-n` and `!= "0"`)
 CIRCUIT_TRACE_PILOT_OFF_ONLY = ("generate_explanations", "steer_validate", "steer_boost", "steer_placebo")
+# logits-eval `output_root` (2026-10-04): circuit-trace's pilot root carried over to the CPU next-token lane. "" keeps
+# today's trace_out/<stem>__<model> exactly; the one other accepted value writes pilot stimulus pairs' outputs to
+# pilot/logits/<stem>__<model>, which no collector reads. The pairs-path rules are circuit-trace's: under either root
+# no backslash and nothing absolute or ..-escaping; a pairs file under pilot/ goes with the pilot root and only with
+# it, and under that root sits under pilot/runs/ (the one pilot directory the eval job checks out) with no comma in
+# its name. A pilot run measures next-token behavior only (mode logits): depth and verify write other files. The
+# params job in logits_evaluation.yml refuses the same; tests/test_logits_pilot_root.py holds the two together.
+LOGITS_EVAL_PILOT_ROOT = "pilot/logits"
+LOGITS_EVAL_OUTPUT_ROOTS = ("", LOGITS_EVAL_PILOT_ROOT)
+LOGITS_EVAL_PILOT_MODE = "logits"
+# the workflow's push-path defaults for the keys the pilot rules read
+LOGITS_EVAL_JOB_DEFAULTS = {"pairs_file": "data/simulated/pairs_20260706T201750Z.json", "mode": "logits",
+                            "output_root": ""}
 
 # Resting-state parks: the cheapest legitimate stage per trigger, with
 # commit_outputs false wherever the workflow supports the key. A trigger file
@@ -1188,6 +1201,56 @@ def circuit_trace_pilot_source_problems(repo: str | Path, trigger: str, params: 
     return []
 
 
+def _logits_eval_job_value(params: dict, key: str) -> str:
+    """A logits-eval key's value as logits_evaluation.yml's params job resolves it from a trigger file: `str()`-ed
+    (a JSON boolean lower-cased), else the job's default. An explicit "" stays "" (the job has no fallback)."""
+    if key not in params:
+        return LOGITS_EVAL_JOB_DEFAULTS[key]
+    value = params[key]
+    return str(value).lower() if isinstance(value, bool) else str(value)
+
+
+def logits_eval_params_problems(params: dict) -> list[str]:
+    """logits-eval's `output_root` rules, as the workflow's params job applies them: the root is "" or pilot/logits;
+    for either root the pairs path has no backslash and stays inside the checkout; a pairs file under pilot/ goes with
+    the pilot root and only with it; and under that root the pairs file sits under pilot/runs/ with no comma in its
+    name, and the mode is logits. The path tests are circuit-trace's (posixpath-normalised, as the Linux runner reads
+    a path), so `./pilot/x` is under pilot/ and `pilot/runs/../logits/x` is not under pilot/runs/."""
+    root = _logits_eval_job_value(params, "output_root")
+    if root not in LOGITS_EVAL_OUTPUT_ROOTS:
+        return [f"logits-eval output_root {root!r}: only \"\" (trace_out) or {LOGITS_EVAL_PILOT_ROOT!r} is accepted"]
+    path = _logits_eval_job_value(params, "pairs_file")
+    if "\\" in path:
+        # the Linux runner reads a backslash as part of a file name, so a Windows spelling (pilot\runs\x.json, C:\...)
+        # would slip past the pilot/ and absolute-path tests
+        return [f"logits-eval pairs_file {path!r} contains a backslash; give a repo-relative path with / separators"]
+    if circuit_trace_pairs_outside_checkout(path):
+        return [f"logits-eval pairs_file {path!r} is absolute or leaves the checkout; give a repo-relative path "
+                "(an absolute path into pilot/ would measure pilot pairs into trace_out/)"]
+    if root != LOGITS_EVAL_PILOT_ROOT:
+        if circuit_trace_pairs_in_pilot(path):
+            return [f"logits-eval pairs_file {path!r} is under pilot/: pilot pairs are measured only with "
+                    f"output_root {LOGITS_EVAL_PILOT_ROOT!r}, so their outputs never enter trace_out/, where every "
+                    "collector reads measurements"]
+        return []
+    problems = []
+    if not circuit_trace_pairs_in_pilot_runs(path):
+        # the eval job checks out pilot/runs and never pilot/logits, where earlier pilot parts are committed
+        problems.append(f"logits-eval output_root {LOGITS_EVAL_PILOT_ROOT!r} measures only a pairs_file under "
+                        f"{CIRCUIT_TRACE_PILOT_RUNS_PREFIX}, not {path!r}: pilot/runs is the one pilot directory the "
+                        "eval job checks out")
+    if "," in path:
+        # the seal step passes "<copy of OUT_DIR>,$PAIRS_FILE" to seal_check.py --extra, which splits on commas; a
+        # comma in the name would turn the pairs file into paths that do not exist, which the check reads as clean
+        problems.append(f"logits-eval output_root {LOGITS_EVAL_PILOT_ROOT!r}: pairs_file {path!r} contains a comma, "
+                        "which the pilot seal check cannot scan")
+    mode = _logits_eval_job_value(params, "mode")
+    if mode != LOGITS_EVAL_PILOT_MODE:
+        problems.append(f"logits-eval with output_root {LOGITS_EVAL_PILOT_ROOT!r}: mode {mode!r} is refused; a pilot "
+                        f"run measures next-token behavior only (mode {LOGITS_EVAL_PILOT_MODE!r})")
+    return problems
+
+
 def lane_params_problems(trigger: str, params: dict, registry: dict | None = None) -> list:
     """Lane-specific invariants beyond the key set; empty for lanes that have none."""
     if trigger == "petri-audit":
@@ -1196,6 +1259,8 @@ def lane_params_problems(trigger: str, params: dict, registry: dict | None = Non
         return advice_params_problems(params, registry)
     if trigger == "circuit-trace":
         return circuit_trace_params_problems(params)
+    if trigger == "logits-eval":
+        return logits_eval_params_problems(params)
     return []
 
 
@@ -1242,9 +1307,10 @@ KNOWN_KEYS = {
     }),
     # logits_evaluation.yml `defaults` dict (re-verified 2026-09-04): models, pairs_file,
     # limit, offset, commit_outputs, mode, layers, topk, dtype. `dtype` belongs to
-    # mode: verify (float32 vs bfloat16); the other two modes ignore it.
+    # mode: verify (float32 vs bfloat16); the other two modes ignore it. output_root
+    # added 2026-10-04 (the pilot logits root, LOGITS_EVAL_OUTPUT_ROOTS).
     "logits-eval": frozenset({"models", "pairs_file", "limit", "offset", "commit_outputs",
-                              "mode", "layers", "topk", "dtype"}),
+                              "mode", "layers", "topk", "dtype", "output_root"}),
     # activation_patching.yml `defaults` dict (verified 2026-07-09): pairs_file, limit,
     # layers, positions, model, offsets, commit_outputs.
     "activation-patching": frozenset({

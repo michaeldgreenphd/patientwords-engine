@@ -14,6 +14,17 @@ name: Logits Evaluation (medlang-circuits)
 #
 # gemma-3-4b-it is gated on Hugging Face; add an HF_TOKEN repo secret to include
 # it. The Qwen models are open and need no token.
+#
+# Outputs land in trace_out/<pairs-file-stem>__<model>/. The trigger key
+# output_root (2026-10-04, circuit-trace's pilot root carried over to this lane)
+# has one other accepted value, "pilot/logits": a pairs file under pilot/ is
+# measured into pilot/logits/<pairs-file-stem>__<model>/, which no collector
+# reads, and only with it, and that pairs file must sit under pilot/runs/, the
+# one pilot directory the eval job checks out (pilot/logits never is, so no
+# cell's workspace holds an earlier pilot part). A pilot run measures next-token
+# behavior only (mode logits) and is a pipeline check, never a measurement: it
+# commits only its batch_summary part, and a fail-closed holdout seal check runs
+# before that commit.
 
 on:
   workflow_dispatch:
@@ -82,6 +93,7 @@ jobs:
       layers: ${{ steps.params.outputs.layers }}
       topk: ${{ steps.params.outputs.topk }}
       dtype: ${{ steps.params.outputs.dtype }}
+      output_root: ${{ steps.params.outputs.output_root }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -109,12 +121,12 @@ jobs:
           IN_DTYPE: ${{ inputs.dtype }}
         run: |
           python - <<'EOF'
-          import json, os
+          import json, os, posixpath
           defaults = {"models": "qwen3-4b qwen3-1.7b",
                       "pairs_file": "data/simulated/pairs_20260706T201750Z.json",
                       "limit": "0", "offset": "0", "commit_outputs": "false",
                       "mode": "logits", "layers": "all", "topk": "10",
-                      "dtype": "float32"}
+                      "dtype": "float32", "output_root": ""}
           p = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/logits-eval.json", encoding="utf-8") as f:
@@ -131,6 +143,40 @@ jobs:
           models = [m.strip() for m in p["models"].replace(",", " ").split() if m.strip()]
           if not models:
               raise SystemExit("no models to evaluate")
+          # output_root: "" keeps trace_out/<stem>__<model>; "pilot/logits" is the pilot root, which no collector reads.
+          # A pairs file under pilot/ goes with the pilot root and only with it, under that root it must sit under
+          # pilot/runs/ (the one pilot directory the eval job checks out), and a pilot run is mode logits only.
+          # scripts/fire_trigger.py (logits_eval_params_problems) refuses the same before a fire is journaled; a
+          # workflow_dispatch has no output_root input, so it keeps "". Every check runs before any output is written.
+          root = p["output_root"]
+          if root not in ("", "pilot/logits"):
+              raise SystemExit(f"output_root {root!r}: only '' (trace_out) or 'pilot/logits' is accepted")
+          pairs_path = p["pairs_file"]
+          if "\\" in pairs_path:
+              # posixpath reads a backslash as part of a file name, so the pilot/ and absolute-path tests below would
+              # not see a Windows spelling (pilot\runs\x.json, C:\...)
+              raise SystemExit(f"pairs_file {pairs_path!r} contains a backslash; give a repo-relative path "
+                               "with / separators")
+          norm_pairs = posixpath.normpath(pairs_path)
+          if norm_pairs.startswith("/") or norm_pairs == ".." or norm_pairs.startswith("../"):
+              # an absolute or ..-escaping path can name pilot/ without the pilot/ prefix tested below
+              raise SystemExit(f"pairs_file {pairs_path!r} is absolute or leaves the checkout; "
+                               "give a repo-relative path")
+          if root != "pilot/logits" and norm_pairs.startswith("pilot/"):
+              raise SystemExit(f"pairs_file {pairs_path!r} is under pilot/: pilot pairs are measured only with "
+                               "output_root 'pilot/logits', so their outputs never enter trace_out/")
+          if root == "pilot/logits":
+              refused = []
+              if not norm_pairs.startswith("pilot/runs/"):
+                  # the eval job checks out pilot/runs and never pilot/logits, so pilot pairs are read from there only
+                  refused.append(f"pairs_file {pairs_path!r} is not under pilot/runs/")
+              if "," in pairs_path:  # the seal step's --extra list splits on commas
+                  refused.append(f"pairs_file {pairs_path!r} contains a comma")
+              if p["mode"] != "logits":  # depth and verify write other files, under trace_out/ names
+                  refused.append(f"mode {p['mode']!r}")
+              if refused:
+                  raise SystemExit("output_root 'pilot/logits' measures next-token behavior (mode 'logits') only, "
+                                   "from a pairs file under pilot/runs/; refused: " + "; ".join(refused))
           out = os.environ["GITHUB_OUTPUT"]
           with open(out, "a", encoding="utf-8") as f:
               f.write("models=" + json.dumps(models) + "\n")
@@ -142,10 +188,12 @@ jobs:
               f.write("layers=" + p["layers"] + "\n")
               f.write("topk=" + p["topk"] + "\n")
               f.write("dtype=" + p["dtype"] + "\n")
+              f.write("output_root=" + root + "\n")
           if p["mode"] not in ("logits", "depth", "verify"):
               raise SystemExit("mode must be 'logits', 'depth' or 'verify', got " + repr(p["mode"]))
           print("models:", models, "| pairs:", p["pairs_file"], "| mode:", p["mode"],
-                "| limit:", p["limit"], "| offset:", p["offset"], "| layers:", p["layers"])
+                "| limit:", p["limit"], "| offset:", p["offset"], "| layers:", p["layers"],
+                "| output_root:", repr(root))
           EOF
 
   eval:
@@ -164,6 +212,9 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           filter: blob:none
+          # pilot/runs, not all of pilot/: a pilot cell reads its pairs file from there, while pilot/logits stays out
+          # as trace_out/ does, so neither root's OUT_DIR starts with earlier committed parts in it; the commit step
+          # stages this cell's new part outside the sparse checkout with `git add --sparse`, for both roots
           sparse-checkout: |
             .github
             scripts
@@ -172,6 +223,7 @@ jobs:
             docs
             ops
             tests
+            pilot/runs
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.11"
@@ -207,10 +259,24 @@ jobs:
           OFFSET: ${{ needs.params.outputs.offset }}
           MODE: ${{ needs.params.outputs.mode }}
           TOPK: ${{ needs.params.outputs.topk }}
+          OUTPUT_ROOT: ${{ needs.params.outputs.output_root }}
         run: |
           STEM=$(basename "$PAIRS_FILE" .json)
           PART=$(printf 'part_%02d' $((OFFSET + 1)))
           echo "PART=$PART" >> "$GITHUB_ENV"
+          if [ "$OUTPUT_ROOT" = "pilot/logits" ]; then
+            # pilot pairs: outside trace_out/, where every collector reads measurements; the params job admits only
+            # mode logits under this root, so the summary is always a batch_summary part
+            if [ "$MODE" != "logits" ]; then
+              echo "output_root pilot/logits measures mode logits only, not $MODE"; exit 1
+            fi
+            echo "OUT_DIR=pilot/logits/${STEM}__${MODEL}" >> "$GITHUB_ENV"
+            echo "SUMMARY_FILE=batch_summary.$PART.json" >> "$GITHUB_ENV"
+            exit 0
+          elif [ -n "$OUTPUT_ROOT" ]; then
+            # the params job admits only these two
+            echo "output_root $OUTPUT_ROOT: only '' or 'pilot/logits' is accepted"; exit 1
+          fi
           if [ "$MODE" = "depth" ]; then
             # separate dir: a depth probe is a different instrument from the
             # behavioral run and must not merge into the same batch_summary set
@@ -269,8 +335,36 @@ jobs:
             --model "$MODEL" --out "$OUT_DIR" --limit "$LIMIT" --offset "$OFFSET" \
             --topk "$TOPK" --dtype "$DTYPE"
 
+      # Pilot root only: pilot pairs come from the pilot generator, not the study's batches, so everything this cell
+      # wrote and the pairs file it read are swept for sealed holdout phrases before anything is committed (the
+      # circuit-trace pilot seal step and petri_audit.yml's pattern: no site checkout, the sealed set computed from
+      # data/ and ops/). The sweep reads a copy of OUT_DIR under $RUNNER_TEMP, not OUT_DIR in place: OUT_DIR is outside
+      # the sparse checkout, so once an earlier fire has committed a part there git marks that part skip-worktree, and
+      # seal_check.py refuses any root holding such a file (exit 2), which would block every later chunk of the same
+      # pairs file. The copy holds exactly the files this cell wrote, the part the commit step stages among them. Runs
+      # after a failed measurement too, as the commit step does, so a partial part is checked before it lands; the
+      # commit and run-page summary steps below act on a pilot cell only when this step succeeded.
+      - name: Holdout seal check over the pilot logits outputs (pilot root only; fails closed)
+        id: seal
+        if: ${{ always() && needs.params.outputs.output_root == 'pilot/logits' }}
+        env:
+          PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
+        run: |
+          set -euo pipefail
+          # seal_check.py reads a root that does not exist as zero files and passes, so a pairs file that is not
+          # there fails here rather than letting the check pass over nothing (a comma in the name is refused at fire
+          # time and in the params job for the same reason: --extra splits on commas)
+          test -f "$PAIRS_FILE" || { echo "pilot seal check: pairs file $PAIRS_FILE not found"; exit 1; }
+          SEAL_COPY="$RUNNER_TEMP/pilot-logits-seal"
+          rm -rf "$SEAL_COPY"
+          mkdir -p "$SEAL_COPY"
+          if [ -d "$OUT_DIR" ]; then
+            cp -R "$OUT_DIR/." "$SEAL_COPY/"
+          fi
+          python scripts/seal_check.py --site "$RUNNER_TEMP/no-site" --extra "$SEAL_COPY,$PAIRS_FILE"
+
       - name: Commit the per-model summary to the branch
-        if: ${{ always() && needs.params.outputs.commit_outputs == 'true' }}
+        if: ${{ always() && needs.params.outputs.commit_outputs == 'true' && (needs.params.outputs.output_root != 'pilot/logits' || steps.seal.outcome == 'success') }}
         env:
           BRANCH: ${{ github.ref_name }}
         run: |
@@ -295,8 +389,10 @@ jobs:
           done
           exit 1
 
+      # Under the pilot root the run page is a publication too, so a pilot cell whose seal check did not succeed does
+      # not print its summary there; the default root is unchanged.
       - name: Job summary
-        if: always()
+        if: ${{ always() && (needs.params.outputs.output_root != 'pilot/logits' || steps.seal.outcome == 'success') }}
         run: |
           SUMMARY="$OUT_DIR/$SUMMARY_FILE"
           if [ -f "$SUMMARY" ]; then

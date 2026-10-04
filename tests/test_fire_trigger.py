@@ -3730,3 +3730,58 @@ def test_a_plain_pilot_trace_fires_free_and_carries_its_root(repo):
     assert written["output_root"] == "pilot/traces" and written["pairs_file"] == "pilot/runs/pairs.json"
     entry = ft.load_journal(journal_path(repo))[-1]
     assert entry["trigger"] == "circuit-trace" and entry.get("max_spend") is None
+
+
+# --- logits-eval output_root: the pilot logits root (2026-10-04) -------------------------------------------------
+# circuit-trace's pilot root carried over to the CPU next-token lane: a pairs file under pilot/ is measured only into
+# pilot/logits/<stem>__<model>, never trace_out/, and only from pilot/runs/; a pilot run is mode logits only; a
+# pairs_file with a backslash, an absolute path or one that leaves the checkout is refused under every root. The fire
+# path refuses a breach with exit 3 before anything is written or journaled; the agreement with the workflow's params
+# job, case for case, is tests/test_logits_pilot_root.py.
+
+def _assert_logits_refused_unwritten(repo):
+    assert not trigger_path(repo, "logits-eval").exists(), "a refused fire writes no trigger file"
+    assert not journal_path(repo).exists() or journal_path(repo).read_text(encoding="utf-8").strip() == ""
+
+
+@pytest.mark.parametrize("params, needle", [
+    ({"models": "qwen3-1.7b", "pairs_file": "pilot/runs/pairs.json"}, "is under pilot/"),
+    ({"models": "qwen3-1.7b", "pairs_file": "data/x.json", "output_root": "pilot/logits"},
+     "measures only a pairs_file under pilot/runs/"),
+    ({"models": "qwen3-1.7b", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/traces"},
+     "only \"\" (trace_out) or 'pilot/logits'"),
+    ({"models": "qwen3-1.7b", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/logits", "mode": "depth"},
+     "mode 'depth' is refused"),
+    ({"models": "qwen3-1.7b", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/logits",
+      "mode": "verify"}, "mode 'verify' is refused"),
+    ({"models": "qwen3-1.7b", "pairs_file": "pilot/runs/a,b.json", "output_root": "pilot/logits"},
+     "contains a comma"),
+    ({"models": "qwen3-1.7b", "pairs_file": "pilot\\runs\\pairs.json"}, "contains a backslash"),
+    ({"models": "qwen3-1.7b", "pairs_file": "/home/runner/work/e/e/pilot/runs/pairs.json"},
+     "is absolute or leaves the checkout"),
+])
+def test_a_pilot_logits_fire_that_breaks_the_root_rules_is_refused_with_exit_3(repo, capsys, params, needle):
+    assert fire(repo, trigger="logits-eval", params=params) == 3
+    assert needle in capsys.readouterr().err
+    _assert_logits_refused_unwritten(repo)
+
+
+def test_a_plain_pilot_logits_fire_is_free_and_carries_its_root(repo):
+    write_dashboard(repo, spent=2.0)          # free: a full day does not stop it
+    params = {"models": ["qwen3-4b", "qwen3-1.7b"], "pairs_file": "pilot/runs/pairs.json",
+              "output_root": "pilot/logits", "limit": "10", "offset": "0"}
+    assert not ft.is_paid_fire("logits-eval", params)
+    assert fire(repo, trigger="logits-eval", params=params) == 0
+    written = json.loads(trigger_path(repo, "logits-eval").read_text(encoding="utf-8"))
+    assert written["output_root"] == "pilot/logits" and written["pairs_file"] == "pilot/runs/pairs.json"
+    entry = ft.load_journal(journal_path(repo))[-1]
+    assert entry["trigger"] == "logits-eval" and entry.get("max_spend") is None
+
+
+def test_the_default_root_logits_fire_is_unchanged(repo):
+    """A study fire with no output_root (every logits-eval fire before 2026-10-04) passes the new rules unchanged."""
+    params = {"models": "qwen3-4b", "pairs_file": "data/simulated/pairs_20260707T171223Z.json", "offset": "40",
+              "limit": "20"}
+    assert ft.logits_eval_params_problems(params) == []
+    assert fire(repo, trigger="logits-eval", params=params) == 0
+    assert "output_root" not in json.loads(trigger_path(repo, "logits-eval").read_text(encoding="utf-8"))
