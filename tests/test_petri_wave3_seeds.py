@@ -875,8 +875,9 @@ def test_if_applied_names_every_field_that_depends_on_the_passing_seeds(plan):
     """if_applied is the checklist of the amendment that applies the gate. Every field of the plan (outside the gate
     block) that holds a value tied to the seed set must be in fields, or in unchanged with a reason: the number of
     scenarios as a number or a word, 3S, 9S, 2^S, the primary's majority, t(0.975, S - 1) and its value, a
-    mechanism's seed and triple counts as words, the referral seeds' triples, pooled triples and pooled majority, and
-    every seed id. The values are derived from the plan, so the scan still means something after an amendment. A
+    mechanism's seed and triple counts as words, the referral seeds' triples, pooled triples and pooled majority,
+    every seed id, and wording that quantifies over the seeds ("every seed", "each scenario", "all the scripts"). The
+    values are derived from the plan, so the scan still means something after an amendment. A
     field can depend on the seeds without holding one of these values; if_applied lists those as well, and the scan
     cannot check them. Every listed field must exist, and every test named under tests must be in this module."""
     gate = plan["physician_realism_gate"]
@@ -900,6 +901,10 @@ def test_if_applied_names_every_field_that_depends_on_the_passing_seeds(plan):
     phrases = [NUMBER_WORDS[s], f"{NUMBER_WORDS[per_mechanism]} per mechanism", f"{NUMBER_WORDS[per_mechanism]} seeds",
                f"{NUMBER_WORDS[per_mechanism]} scenarios", f"{NUMBER_WORDS[epochs * per_mechanism]} triples"]
     phrase_re = re.compile(r"\b(" + "|".join(re.escape(p) for p in phrases) + r")\b")
+    # Wording that quantifies over the seed set without a count ("every seed", "each scenario", "all the scripts",
+    # "every passing seed") depends on it as much as a count does (Codex review of PR #87, 2026-10-05).
+    quantified_re = re.compile(r"\b(?:every|each|all)(?: of)?(?: the)?(?: \w+)? (?:seeds?|scenarios?|scripts?)\b",
+                               re.IGNORECASE)
 
     def tied_to_the_seeds(value: object) -> bool:
         if isinstance(value, bool):
@@ -907,8 +912,8 @@ def test_if_applied_names_every_field_that_depends_on_the_passing_seeds(plan):
         if isinstance(value, int):
             return value in numbers
         if isinstance(value, str):
-            return bool(number_re.search(value) or phrase_re.search(value) or f"t(0.975, {s - 1})" in value
-                        or t_value in value or any(seed_id in value for seed_id in ids))
+            return bool(number_re.search(value) or phrase_re.search(value) or quantified_re.search(value)
+                        or f"t(0.975, {s - 1})" in value or t_value in value or any(seed_id in value for seed_id in ids))
         return False
 
     found = sorted({path for path, value in nodes if tied_to_the_seeds(value)})
@@ -923,7 +928,7 @@ def test_if_applied_names_every_field_that_depends_on_the_passing_seeds(plan):
             "sensitivity[each_mechanism_alone].rule", "exploratory_outcomes.referral_specificity.per_target",
             "exploratory_outcomes.referral_specificity.across_targets",
             "exploratory_outcomes.restricted_to_seeds.referral_specificity[0]",
-            "primary.majority_needed_at_24_non_tied"} <= set(found)
+            "primary.majority_needed_at_24_non_tied", "analysis_script.wave2_assumptions_to_change[7]"} <= set(found)
     assert [t for t in applied["tests"] if not callable(globals().get(t))] == []
 
 

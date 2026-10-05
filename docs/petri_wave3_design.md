@@ -810,11 +810,13 @@ physicians in round 1 of the verification study". The suite checks that
 `if_applied.fields` covers every field of the plan that holds one of the eight-seed
 values (the number of scenarios as a number or a word, 24, 72, 256, the primary's
 majority of 18, t(0.975, 7) and its value 2.365, a mechanism's two seeds and six
-triples, the referral seeds' 6, 18 and 14, or a seed id). A field can depend on the seeds
-without holding one of these values; `if_applied.fields` lists those too, and the scan
-cannot check them. Fields that hold such a value but do not depend on the seeds, such as
-the window floors, are listed in `if_applied.unchanged` with the reason. Every fire then
-selects the passing seeds by `seed_ids`.
+triples, the referral seeds' 6, 18 and 14, a seed id, or wording that quantifies over the
+seeds, such as "every seed" or "each scenario"). Among those is the analysis script's
+note that the decomposition runs on every seed, which becomes every passing seed. A field
+can depend on the seeds without holding one of these values; `if_applied.fields` lists
+those too, and the scan cannot check them. Fields that hold such a value but do not
+depend on the seeds, such as the window floors, are listed in `if_applied.unchanged` with
+the reason. Every fire then selects the passing seeds by `seed_ids`.
 
 **Scripts edited after rating.** The seed file is a draft, and a script can still be
 edited before its first run, but an edited script is not the script physicians rated. It
