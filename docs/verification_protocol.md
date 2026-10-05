@@ -186,7 +186,8 @@ stop at any time.
   that passed keep their round-1 result and are not rated again. A script
   with too few ratings in a round may be rated again unchanged in a later
   round, and the first round in which it has enough ratings decides it; a
-  script rated unrealistic must be rewritten before it is rated again.
+  script rated unrealistic must be rewritten before it is rated again, and
+  an edit to anything physicians do not see is not a rewrite.
 - **Reference urgency for the advice preregistration.** The physicians'
   answers on the 24 new questions are candidate adjudicated reference tiers.
   The analysis takes one tier per item, so a rule for combining physicians

@@ -812,21 +812,25 @@ amendment (section 9.9) and a dated note in A6.9's approval record, before its b
 given to any physician. Its bundle need hold only the rewritten scripts and the scripts
 that were short of ratings, and its exclusions and closing export are recorded before its
 import and checked as round 1's are. The gate then selects across the rounds: each seed
-is decided by the earliest round whose bundle rated it at its current digest and in which
-it reached both of rule 1's counts. A round in which it was short does not decide it (the
-owner's decision of 2026-10-05, quoted in A6.9's approval record). So:
+is decided by the earliest round whose bundle rated its current script, the turns
+physicians see (`provenance.turn_sha256`), and in which it reached both of rule 1's
+counts. A round in which it was short does not decide it (the owner's decision of
+2026-10-05, quoted in A6.9's approval record). The seed's digest, which also covers fields
+physicians never see (notes, hypotheses, generation settings), is compared only so that
+the seed that runs is one a round's bundle recorded. So:
 
-- a script that passed in round 1, or was rated unrealistic there, and has not been
-  edited since keeps its round-1 result and is not rated again;
+- a script that passed in round 1, or was rated unrealistic there, and whose turns have
+  not been edited since keeps its round-1 result and is not rated again, even when a field
+  physicians never see was edited;
 - a script short of ratings in round 1 may be rated again, unedited, in a later round,
   which then decides it;
-- a rewritten script, which has a new digest, is decided by the earliest later round that
-  rated it and reached the counts;
-- a later round that rates a script at a digest an earlier round has already decided
-  does not replace the earlier result;
-- a script rated at its current digest only in rounds where it was short is "not enough
-  ratings";
-- a script whose current digest no round rated cannot pass.
+- a rewritten script, whose turns changed, is decided by the earliest later round that
+  rated its new turns and reached the counts;
+- a later round that rates turns an earlier round has already decided does not replace
+  the earlier result;
+- a script whose current turns were rated only in rounds where it was short is "not
+  enough ratings";
+- a script whose current digest no round recorded cannot pass.
 
 Only wave 3 has later rounds: the advice items that fail are dropped, not rewritten (A6.9,
 decision 3), so Wave A and Wave R are selected from round 1 alone.
@@ -880,7 +884,10 @@ edited before its first run, but an edited script is not the script physicians r
 can pass only after physicians rate the new text in a later round, and the program that
 applies the gate, which reads the seed file as it is when it runs, refuses while it holds
 a seed whose current digest no round's bundle recorded ("Later rounds" above; A6.9, "Code
-still to write", lists every file the program reads).
+still to write", lists every file the program reads). An edit only to fields physicians
+never see (notes, hypotheses, generation settings) changes the digest and not the script:
+the round that rated the script's turns still decides it, and the seed runs once the edit
+is undone or a later round's bundle records the new digest.
 Since the owner approved the gate (`physician_realism_gate.approval.approved`), the
 suite also fails as soon as a rated seed is edited, or a seed is added to or removed from
 the seed file, until a round in the plan's `rounds` has rated each seed as it then is.

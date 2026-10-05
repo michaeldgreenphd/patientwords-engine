@@ -1388,12 +1388,19 @@ For the items it compares:
   it), with the bundle's `provenance.clinical_sha256` and
   `provenance.patient_sha256`;
 - for each seed of the seed file, after checking that every round's script
-  items have `provenance.source_path` equal to the plan's `seed_file`, the
-  digest of the seed, computed with `seed_digest`
+  items have `provenance.source_path` equal to the plan's `seed_file`, two
+  things. The digest of the seed, computed with `seed_digest`
   (`scripts/petri_audit/seeds.py`), with the `provenance.seed_sha256` of
-  its item in each round's bundle, earliest round first: the first round
-  whose item has that digest and in which the seed reached both of rule 1's
-  counts decides it ("Rounds" below).
+  its item in each round's bundle: some round must have recorded it, so the
+  seed that runs is one a round's bundle recorded. And the seed's script as
+  physicians see it: the sha256 of each of its turns, by version, computed
+  as `scripts/export_verification_tasks.py` computes
+  `provenance.turn_sha256`, with the `provenance.turn_sha256` of its item in
+  each round's bundle, earliest round first: the first round whose item has
+  those turn hashes and in which the seed reached both of rule 1's counts
+  decides it ("Rounds" below). The digest also covers fields physicians
+  never see (notes, hypotheses, generation settings), so it says whether
+  the seed is the one recorded, and the turns say which round decides it.
 
 It compares items, not whole files: a file that replaces a stimuli file under
 decision 6 or 7 has another file sha256 than the bundle's
@@ -1407,7 +1414,9 @@ or "never created"), do not agree with the spreadsheet the round ran in
 `closing_export` is not filled (a value still null, a sha256 that is not
 64 lowercase hexadecimal characters, or a time that is not an ISO-8601 UTC
 time), a comparison above fails, a seed of the seed file has a current
-digest that no round rated, an advice or script item of a round's bundle
+digest that no round rated, a round's item at a seed's current digest
+records other turn hashes than the ones the program computes from the
+seed, an advice or script item of a round's bundle
 is missing from that round's summary, a passing item is missing from the
 stimuli file or seed file it reads, or a question the gate reads is
 missing from an item's `five_point`. A wave, or under decision 6's
@@ -1428,24 +1437,32 @@ are. Wave A and Wave R are selected from round 1 alone: their failing items
 are dropped (decision 3), not rewritten, so no later round rates an item
 they can use, and a rewritten new question is a new item for a later wave.
 Wave 3 selects across the rounds. Each seed is decided by the earliest
-round whose bundle rated it at its current digest and in which it reached
-both of rule 1's counts (`min_complete_ratings` complete ratings, and
-`min_answers_per_key` numeric answers on every question the gate reads for
-it). A round in which it was short does not decide it; that is the owner's
-decision of 2026-10-05 (approval record below). So:
+round whose bundle rated its current script, the turns physicians see
+(`provenance.turn_sha256`), and in which it reached both of rule 1's counts
+(`min_complete_ratings` complete ratings, and `min_answers_per_key` numeric
+answers on every question the gate reads for it). A round in which it was
+short does not decide it; that is the owner's decision of 2026-10-05
+(approval record below). The seed's digest is compared too, but only so
+that the seed that runs is one a round's bundle recorded: it also covers
+fields physicians never see (notes, hypotheses, generation settings), so an
+edit to those alone changes the digest and not the script. So:
 
-- a script that passed in round 1, or was rated unrealistic there, and has
-  not been edited since keeps that result and is not rated again;
+- a script that passed in round 1, or was rated unrealistic there, and
+  whose turns have not been edited since keeps that result and is not
+  rated again, even when a field physicians never see was edited;
 - a script short of ratings in round 1 may be rated again, unedited, in a
   later round, which then decides it;
-- a rewritten script, which has a new digest, is decided by the earliest
-  later round that rated it and reached the counts;
-- a later round that rates a script at a digest an earlier round has
-  already decided does not replace the earlier result;
-- a script rated at its current digest only in rounds where it was short is
-  "not enough ratings";
-- a script whose current digest no round rated cannot pass (the program
-  refuses while the seed file holds one).
+- a rewritten script, whose turns changed, is decided by the earliest
+  later round that rated its new turns and reached the counts;
+- a later round that rates turns an earlier round has already decided does
+  not replace the earlier result;
+- a script whose current turns were rated only in rounds where it was short
+  is "not enough ratings";
+- a script whose current digest no round recorded cannot pass (the program
+  refuses while the seed file holds one). A seed edited only in fields
+  physicians never see runs once the edit is undone, or once a later
+  round's bundle records its new digest; that round's ratings of its
+  unchanged turns do not decide it.
 
 Applied again after a later round, the program writes a new gate report for
 wave 3 alone, named after the latest round's bundle id and export stamp,
@@ -1635,6 +1652,14 @@ their own before it.
     again while the rewritten ones are (Gate 6b), and Wave A and Wave R are
     selected from round 1 alone, since their failing items are dropped
     (Gate 3); this changes neither the rule nor which items pass.
+  - Which round decides a script: the turns physicians see (the bundle's
+    `provenance.turn_sha256`), not the seed digest, which also covers
+    notes, hypotheses and generation settings, so an edit to those alone
+    cannot make an unchanged script eligible to be rated again; the digest
+    is still compared, so a seed runs only as a round's bundle recorded
+    it, and "its current digest" in the decision below means its current
+    turns for which round decides it; this changes neither the rule nor
+    which items pass.
 - Owner's decision, 2026-10-05 (after the approval; it can change which
   seeds pass, so it is recorded here as a decision, not as a
   clarification). Asked in the agent session whether a later round may

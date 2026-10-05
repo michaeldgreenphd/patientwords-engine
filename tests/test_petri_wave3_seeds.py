@@ -813,21 +813,42 @@ NOT_RATED = "not rated at its current text"
 SHORT = "not enough ratings"
 
 
+def _turn_hashes(seed: dict) -> dict[str, list[str]]:
+    """The script physicians see, as hashes: for each version (arm id), the sha256 of the UTF-8 text of each of its
+    turns, in order, as scripts/export_verification_tasks.py records it in an item's provenance.turn_sha256. Compared
+    as a mapping, so the order of the versions does not count: the app sets their order for each physician."""
+    texts = {t["key"]: t["text"] for t in seed["texts"]}
+    return {arm["id"]: [sha256_text(texts[turn["text_ref"]]) for turn in arm["turns"]]
+            for arm in seed["protocol"]["arms"]}
+
+
 def _cumulative_selection(rounds: list[tuple[dict[str, dict], dict[str, dict]]], seeds_by_id: dict[str, dict],
                           gate: dict) -> dict[str, tuple[int | None, str]]:
     """The wave-3 selection as the plan's cumulative_selection states it: for each seed of the seed file, its deciding
     round (1 for rounds[0]) and the rule's decision on its row in that round's summary. The deciding round is the
-    earliest that rated the seed at its current digest and in which the seed reached the answer counts; a round in
-    which it was short does not decide it (the owner's decision of 2026-10-05). (None, SHORT) when every round that
-    rated its current digest was short, and (None, NOT_RATED) when none did. rounds holds, for each round in order,
-    its script items by seed id and its summary rows by item id. A reference for the program that applies the gate."""
-    at_digest = _rounds_at_current_digest([by_seed for by_seed, _rows in rounds], seeds_by_id)
+    earliest that rated the seed's current script, the turns physicians see (provenance.turn_sha256, _turn_hashes),
+    and in which the seed reached the answer counts; a round in which it was short does not decide it (the owner's
+    decision of 2026-10-05). The digest, which also covers fields physicians never see, is compared only so that the
+    seed that runs is one a round's bundle recorded (item_match): (None, NOT_RATED) when no round recorded its
+    current digest, and a round's item at that digest must record the seed's current turns. (None, SHORT) when every
+    round that rated its current turns was short. rounds holds, for each round in order, its script items by seed id
+    and its summary rows by item id. A reference for the program that applies the gate."""
+    rated = [by_seed for by_seed, _rows in rounds]
+    at_digest = _rounds_at_current_digest(rated, seeds_by_id)
     selection: dict[str, tuple[int | None, str]] = {}
-    for sid, ks in at_digest.items():
-        selection[sid] = (None, SHORT if ks else NOT_RATED)
-        for k in ks:
-            by_seed, rows = rounds[k]
-            decision = _gate_decision(rows[by_seed[sid]["item_id"]], gate)
+    for sid, seed in seeds_by_id.items():
+        if not at_digest[sid]:
+            selection[sid] = (None, NOT_RATED)
+            continue
+        turns = _turn_hashes(seed)
+        assert all(rated[k][sid]["provenance"]["turn_sha256"] == turns for k in at_digest[sid]), \
+            f"a round recorded {sid!r} at its current digest with other turns"
+        selection[sid] = (None, SHORT)
+        for k, (by_seed, rows) in enumerate(rounds):
+            item = by_seed.get(sid)
+            if item is None or item["provenance"]["turn_sha256"] != turns:
+                continue
+            decision = _gate_decision(rows[item["item_id"]], gate)
             if decision != SHORT:
                 selection[sid] = (k + 1, decision)
                 break
@@ -872,6 +893,7 @@ def test_a_later_round_keeps_the_scripts_that_passed_and_decides_the_rewritten_o
         item = copy.deepcopy(round1[sid])
         item["item_id"] = f"round2_{sid}"
         item["provenance"]["seed_sha256"] = seeds.seed_digest(seeds_now[sid])
+        item["provenance"]["turn_sha256"] = _turn_hashes(seeds_now[sid])
         return item
 
     # Round 2 rates the rewritten script, and, as a bundle from today's exporter would, two scripts at the digests
@@ -918,8 +940,8 @@ def test_a_later_round_keeps_the_scripts_that_passed_and_decides_the_rewritten_o
     later_s13 = _section(s13, "**Later rounds.**", "**Cost.**")
     proto = one_line(_section(PROTOCOL.read_text(encoding="utf-8"), "**Which items the paid runs use", "\n- **"))
     for name, text in (("A6.9 Rounds", rounds_a69), ("section 13", later_s13)):
-        assert "decided by the earliest round whose bundle rated it at its current digest and in which it reached " \
-               "both of rule 1's counts" in text, name
+        assert "decided by the earliest round whose bundle rated its current script, the turns physicians see " \
+               "(`provenance.turn_sha256`), and in which it reached both of rule 1's counts" in text, name
         assert re.search(r"not been edited since keeps (?:its round-1|that) result and is not rated again", text), name
         assert "does not replace the earlier result" in text and "cannot pass" in text, name
         assert re.search(r"Wave A and Wave R are selected from round 1 alone", text), name
@@ -1021,6 +1043,95 @@ def test_a_round_where_a_script_was_short_does_not_decide_it(plan, w3_set):
         in cumulative
     assert "the scripts short of ratings in every earlier round" in gate["rounds_rule"]
     assert "may be rated again, unedited, in a later round" in gate["rounds"][0]["short_items"]
+
+
+def test_only_an_edit_to_the_turns_physicians_see_lets_a_later_round_decide_a_rated_script(plan, w3_set):
+    """seed_digest hashes the whole seed, including fields physicians never see: notes, hypotheses, generation
+    settings. Deciding by the digest, an edit to those alone gave an unchanged script a new digest, so a later round
+    could rate it again and replace its earlier result (Codex review of PR #87, 2026-10-05). The round that decides a
+    script is now read from its turns, the bundle's provenance.turn_sha256, and the digest is compared only so that
+    the seed that runs is one a round's bundle recorded. This changes neither the rule nor which items pass: the
+    owner's words are that a script rated unrealistic "can't be re-rated unless it is edited", and an edit physicians
+    cannot see leaves the script they rated as it was."""
+    gate = plan["physician_realism_gate"]
+    _bundle1, round1 = _rated_scripts(gate["rounds"][0])
+    # The turn hashes computed from the seed file are the ones the exporter recorded in round 1's bundle.
+    assert {sid: _turn_hashes(seed) for sid, seed in w3_set.seeds.items()} == {
+        sid: item["provenance"]["turn_sha256"] for sid, item in round1.items()}
+    ids = sorted(w3_set.seeds)
+    failed_notes, passed_settings, failed_rewritten, failed_alone = ids[:4]
+    fine = dict.fromkeys(gate["min_answers_keys"], (4, 4))
+    good = _summary_row(fine)
+    bad = _summary_row({**fine, gate["gate_keys"][0]: (1, 2)})
+    rows1 = {item["item_id"]: bad if sid in (failed_notes, failed_rewritten, failed_alone) else good
+             for sid, item in round1.items()}
+    seeds_now = copy.deepcopy(w3_set.seeds)
+    seeds_now[failed_notes]["notes"] += " Edited after round 1."
+    seeds_now[passed_settings]["generation"]["max_tokens"] += 1
+    text = seeds_now[failed_rewritten]["texts"][0]
+    text["text"] += " Rewritten."
+    text["sha256"] = sha256_text(text["text"])
+    changed = (failed_notes, passed_settings, failed_rewritten)
+    assert all(seeds.seed_digest(seeds_now[sid]) != round1[sid]["provenance"]["seed_sha256"] for sid in changed)
+    assert [_turn_hashes(seeds_now[sid]) == round1[sid]["provenance"]["turn_sha256"] for sid in changed] == [
+        True, True, False]
+
+    def recorded(sid: str) -> dict:
+        """Round 2's item for the seed as seeds_now holds it: its new digest, and the turns it now has."""
+        item = copy.deepcopy(round1[sid])
+        item["item_id"] = f"round2_{sid}"
+        item["provenance"].update(seed_sha256=seeds.seed_digest(seeds_now[sid]),
+                                  turn_sha256=_turn_hashes(seeds_now[sid]))
+        return item
+
+    round2 = {sid: recorded(sid) for sid in changed}
+    rows2 = {round2[failed_notes]["item_id"]: good, round2[passed_settings]["item_id"]: bad,
+             round2[failed_rewritten]["item_id"]: good}
+    selection = _cumulative_selection([(round1, rows1), (round2, rows2)], seeds_now, gate)
+    # An edit physicians cannot see: round 1 rated these turns with enough ratings, so round 1 decides, either way.
+    assert selection[failed_notes] == (1, "rated unrealistic")
+    assert selection[passed_settings] == (1, "passes")
+    # An edit to the turns: round 2 rated the new script, and decides it.
+    assert selection[failed_rewritten] == (2, "passes")
+    assert selection[failed_alone] == (1, "rated unrealistic")
+    # The digest is still compared: until a round's bundle records a seed's new digest, the seed cannot pass, whatever
+    # field was edited.
+    alone = _cumulative_selection([(round1, rows1)], seeds_now, gate)
+    assert {sid for sid, (_k, d) in alone.items() if d == NOT_RATED} == set(changed)
+    # A round's item at a seed's current digest must record the turns the seed has; anything else is refused.
+    broken = copy.deepcopy(round2)
+    broken[failed_notes]["provenance"]["turn_sha256"] = round2[failed_rewritten]["provenance"]["turn_sha256"]
+    with pytest.raises(AssertionError, match=re.escape(f"{failed_notes!r} at its current digest with other turns")):
+        _cumulative_selection([(round1, rows1), (broken, rows2)], seeds_now, gate)
+
+    # The plan, A6.9, section 13, the protocol and the approval record say the same.
+    one_line = functools.partial(re.sub, r"\s+", " ")
+    prereg = PREREG.read_text(encoding="utf-8")
+    rounds_a69 = one_line(_section(prereg, "**Rounds.**", "**The counts report**"))
+    spec = one_line(_section(prereg, "**Code still to write.**", "**Owner decisions"))
+    record = one_line(_section(prereg, "### Approval record", None))
+    design = W3_DESIGN.read_text(encoding="utf-8")
+    later_s13 = one_line(_section(design, "**Later rounds.**", "**Cost.**"))
+    edited_s13 = one_line(_section(design, "**Scripts edited after rating.**", "**Decisions specific to wave 3"))
+    proto = one_line(_section(PROTOCOL.read_text(encoding="utf-8"), "**Which items the paid runs use", "\n- **"))
+    for name, text in (("plan item_match", gate["item_match"]), ("plan cumulative_selection",
+                                                                 gate["cumulative_selection"]),
+                       ("A6.9 Rounds", rounds_a69), ("A6.9 spec", spec), ("section 13", later_s13)):
+        assert "provenance.turn_sha256" in text and "notes, hypotheses, generation settings" in text, name
+    assert "provenance.seed_sha256" in gate["item_match"] and "seed_digest" in gate["item_match"]
+    assert "with provenance.turn_sha256 equal to the turn hashes of the seed's current script" \
+        in gate["cumulative_selection"]
+    assert "provenance.seed_sha256 equal to the seed's current digest and whose summary row" \
+        not in gate["cumulative_selection"], "the digest no longer says which round decides"
+    assert "first round whose item has those turn hashes and in which the seed reached both of rule 1's counts " \
+           "decides it" in spec
+    assert "records other turn hashes than the ones the program computes from the seed" in spec
+    assert "rated at its current digest only in rounds" not in rounds_a69 + later_s13
+    assert "changes the digest and not the script" in edited_s13
+    assert "an edit to anything physicians do not see is not a rewrite" in proto
+    clarification = record[record.index("- Which round decides a script:"):record.index("- Owner's decision")]
+    assert "`provenance.turn_sha256`" in clarification
+    assert clarification.rstrip().endswith("this changes neither the rule nor which items pass.")
 
 
 def test_the_realism_gate_floor_and_counts_follow_from_the_plan(plan):
