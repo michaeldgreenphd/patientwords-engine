@@ -27,8 +27,10 @@ Three families, every item from a committed engine file or the published site pa
     ``<run id>_<name>.json`` with ``<name>`` not empty, the rule the lane's pilot root applies before it traces a
     file; its stem may not hold ``__``, and two runs' files may not share a stem, a run with optional traces
     included (only names are read): the lane derives the results directory from the stem alone, so a shared stem
-    means one run's traces overwrite the other's. Run 2's ``trace_pairs.json`` predates the rule and keeps its
-    name. A trace pairs file built with ``trace_pairs.py --review-sample`` records each pair's
+    means one run's traces overwrite the other's. Run 2's ``trace_pairs.json`` predates the rule and keeps its name;
+    its ``trace/`` may also hold byte-identical copies named for the run (the lane needs one to trace Run 2 again),
+    and the exporter still reads ``trace_pairs.json`` and its results in ``trace_pairs[__<model>]/``, never a
+    copy's. A trace pairs file built with ``trace_pairs.py --review-sample`` records each pair's
     review id, which must be the one ``review_map.json`` gives its row; one built without it records none (a file
     recording some is refused). The review sample therefore needs a ``--review-sample`` trace pairs file (or one
     that holds every review row), and ``--pilot-all-rows`` one that holds every non-control row, which neither of
@@ -89,11 +91,11 @@ Refusals (a named SystemExit, and nothing is written): a missing or unreadable i
 know in a record it reads (a new field may carry meaning the selection must respect, so a person decides), a shape
 it cannot use, a text whose sha256 no longer matches, a pilot run that is not finalized (``run_not_finalized``) or
 not version 2 (``run_not_version_2``), a trace pairs file not named after its run or sharing a stem with another
-run's, a pilot pair without its required trace (``missing_trace``) or whose trace result carries other prompts
+run's, a second file under a run's ``trace/`` (for Run 2, one that is not a byte-identical copy of its pairs file),
+a pilot pair without its required trace (``missing_trace``) or whose trace result carries other prompts
 (``trace_mismatch``), trace results for more than one graph model with none named (``ambiguous_trace``), a
-questions file that does not fit the items, fewer main-study
-candidates than requested, an item id collision, an existing output file (a bundle is an archive, never rewritten),
-and every seal failure above.
+questions file that does not fit the items, fewer main-study candidates than requested, an item id collision, an
+existing output file (a bundle is an archive, never rewritten), and every seal failure above.
 
 Rounds. Each physician round uses one bundle (the ratings import reads one bundle per export). A later round's
 bundle is built with ``--previous-bundle <the previous round's bundle>``, which refuses unless every item of that
@@ -603,14 +605,13 @@ def check_trace_pairs_files(runs: list[PilotRun], runs_dir: Path) -> None:
     """Refuse, before any trace file is read, a trace pairs file the circuit-trace lane could not give its own
     results directory: one not named after its run, one whose stem holds the model separator, or two runs' files
     sharing a stem (a run's traces for every graph model share its stem, so a shared stem means one run's results
-    overwrite the other's). Every run is checked, a run whose traces are optional included: its traces may be fired
-    later, so the collision matters even though its trace results are not read. Only file names are read here."""
+    overwrite the other's). Every file under every run's trace/ is checked, a run whose traces are optional
+    included: its traces may be fired later, so the collision matters even though its trace results are not read.
+    Only file names are read here."""
     seen: dict[str, str] = {}
     for run in runs:
         run_dir = _run_dir(runs_dir, run.run_id)
-        stems = [_trace_pairs_file(run_dir, run.run_id).stem] if run.trace_required \
-            else [p.stem for p in _trace_pairs_candidates(run_dir)]
-        for stem in stems:
+        for stem in (p.stem for p in _trace_pairs_candidates(run_dir)):
             if not _pairs_file_named_for_run(stem, run.run_id):
                 refuse("bad_input", f"pilot run {run.run_id}: trace pairs file {stem}.json is not named after the "
                                     f"run (its name must be {run.run_id}_<name>.json, as the circuit-trace lane's "
@@ -683,18 +684,26 @@ def _trace_pairs_candidates(run_dir: Path) -> list[Path]:
         if trace_dir.is_dir() else []
 
 
-def _trace_pairs_file(run_dir: Path, run_id: str) -> Path:
-    """The run's one trace pairs file: the JSON file under <run>/trace/ that is not a .meta.json sidecar."""
+def _trace_pairs_file(run_dir: Path, run_id: str) -> tuple[Path, list[Path]]:
+    """The run's one trace pairs file (the JSON file under <run>/trace/ that is not a .meta.json sidecar), and the
+    other files there that must be byte-identical copies of it (pilot_items compares them). Only Run 2 may have
+    copies: the lanes' pilot roots refuse its legacy trace_pairs.json for a new fire, so tracing it again needs a
+    copy named for the run beside it (PR #85: pilot_v2_20261002_trace_pairs.json), and the exporter still reads the
+    legacy file, which its items' ids are keyed on, and the legacy file's trace results directory."""
     trace_dir = run_dir / "trace"
     found = _trace_pairs_candidates(run_dir)
     if not found:
         refuse("missing_trace", f"pilot run {run_id}: no trace pairs file under {trace_dir}; a trace result is "
                                 f"required for its pairs (pass --pilot-trace-optional {run_id} to export it "
                                 "without trace results)")
-    if len(found) > 1:
-        refuse("bad_input", f"pilot run {run_id}: {len(found)} trace pairs files under {trace_dir} "
-                            f"({[p.name for p in found]}); the exporter reads a run's one trace pairs file")
-    return found[0]
+    if len(found) == 1:
+        return found[0], []
+    legacy = LEGACY_PILOT_RUNS.get(run_id)
+    if legacy is not None and run_dir / legacy["id_source"] in found:
+        id_file = run_dir / legacy["id_source"]
+        return id_file, [p for p in found if p != id_file]
+    refuse("bad_input", f"pilot run {run_id}: {len(found)} trace pairs files under {trace_dir} "
+                        f"({[p.name for p in found]}); the exporter reads a run's one trace pairs file")
 
 
 def _read_trace_pairs(inp: Inputs, pairs_path: Path, run_id: str) -> tuple[list[dict], str]:
@@ -797,8 +806,17 @@ def pilot_items(inp: Inputs, seal: Seal, runs_dir: Path, trace_root: Path,
     pairs_path = traces_dir = trace_model = None
     pairs_sha = None
     if run.trace_required:
-        pairs_path = _trace_pairs_file(run_dir, run_id)
+        pairs_path, copies = _trace_pairs_file(run_dir, run_id)
         pairs, pairs_sha = _read_trace_pairs(inp, pairs_path, run_id)
+        for copy_path in copies:
+            # a copy that differs would be a second selection of the run's pairs, whose traces this export does not
+            # read; only a byte-identical copy (made to fire the run again under the lane's naming rule) is allowed
+            if sha256_bytes(inp.read_bytes(copy_path, f"pilot run {run_id} trace pairs copy")) != pairs_sha:
+                refuse("bad_input", f"pilot run {run_id}: {copy_path.name} under {copy_path.parent} is not a "
+                                    f"byte-identical copy of {pairs_path.name}, which the export reads (its items' "
+                                    f"ids are keyed on it). Besides {pairs_path.name}, the run's trace/ may hold "
+                                    "only copies of it named for the run, as the lane's pilot root needs to trace "
+                                    "it again")
         # trace_pairs.py records a review id on every pair when built with --review-sample and on none otherwise
         # (its default and --include-controls selections), so a file that records them must agree with
         # review_map.json on every pair, and a file that records none has nothing to check

@@ -108,11 +108,22 @@ recorded command still gives that bundle's items unchanged.
   ids are keyed on that file. The export stops (`bad_input`) on a trace pairs
   file that is not named after its run, on one whose name holds `__` (the
   lane's model separator), and on two runs whose files share a name. It checks
-  this for every run it exports, including one exported with
+  every file under each exported run's `trace/`, including a run exported with
   `--pilot-trace-optional`, because that run's trace may still be fired. For
   such a run it reads only the file names, not the files. Build a run's file
   with `pilot/analysis/trace_pairs.py --out pilot/runs/<run id>/trace/<run id>_trace_pairs.json`
   before its trace is fired.
+- **Tracing Run 2 again.** Under PR #85's rule the lanes refuse Run 2's
+  `trace_pairs.json` for a new fire and say to copy it under
+  `pilot_v2_20261002_trace_pairs.json`. Put that copy beside the original in
+  `pilot/runs/pilot_v2_20261002/trace/` and leave it byte for byte the same.
+  The export allows such a copy and still reads `trace_pairs.json` and its
+  results in `pilot/traces/trace_pairs/` (or `trace_pairs__<model>/`), so the
+  first bundle's command keeps giving the same items. It never reads results
+  traced from the copy, which land in
+  `pilot/traces/pilot_v2_20261002_trace_pairs[__<model>]/`. Any other second
+  file under a run's `trace/`, including a copy that differs, stops the export
+  (`bad_input`).
 - **Labels and ids.** Each item's provenance names its run: `pilot_run2` for
   Run 2, as in the first bundle, and `pilot:<run id>` for any other run.
   Physicians never see it. A later run's item ids are keyed on its generated

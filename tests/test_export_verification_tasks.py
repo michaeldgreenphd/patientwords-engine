@@ -11,10 +11,11 @@ trace (an optional one is not read, so the items do not change when traces land;
 read as its id key), a trace pairs file with or without review ids, a row's id under every option, which trace
 results directory a run reads (named after its pairs file; <stem>__<model>/ for another graph model, named or the
 one found, two found refused), the naming rule for a trace pairs file (<run id>_<name>.json, the lanes' rule, compared
-with fire_trigger's when it has one), and the refusals for a run that is not finalized, not version 2, changed since
-it was finalized, missing a required trace, whose trace pairs file is not named after it, holds "__" or shares a stem
-with another run's (optional runs included), or whose review map, trace pairs file or sidecar does not fit it; and
-later
+with fire_trigger's when it has one), a byte-identical copy of Run 2's trace pairs file beside it (allowed, and never
+read for traces), and the refusals for a run that is not finalized, not version 2, changed since it was finalized,
+missing a required trace, whose trace pairs file is not named after it, holds "__" or shares a stem with another
+run's (optional runs included), that holds a second trace pairs file other than such a copy, or whose review map,
+trace pairs file or sidecar does not fit it; and later
 rounds (--previous-bundle): a previous item dropped or changed, a question id dropped or kept with another scale,
 answer values (of another JSON type included), phase, requirement or lock, another notes limit, and a previous
 bundle of another shape. Every input here is synthetic, abstract and non-medical (the medical vocabulary rule in
@@ -1122,10 +1123,18 @@ def test_a_trace_pairs_sidecar_or_pair_naming_another_run_is_refused(tmp_path):
 
 def test_more_than_one_trace_pairs_file_under_a_run_is_refused(tmp_path):
     paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    run = write_run(paths, RUN_NEW, rows)
+    write_pairs(run, [_pair_of(rows[0], RUN_NEW, "r001")], f"{RUN_NEW}_again")     # both named for the run
+    for extra in ((), ("--pilot-all-rows", RUN_NEW)):
+        message = refused_paths(paths, "bad_input", "--pilot-run", RUN_NEW, *extra)
+        assert "2 trace pairs files" in message and f"{RUN_NEW}_again.json" in message
+    # Run 2 alone may hold a second file, and only a byte-identical copy of trace_pairs.json (see the copy tests)
+    paths = write_world(tmp_path / "run2", world_data())
     run, pairs = _run2_pairs(paths)
-    write_pairs(run, pairs, "trace_pairs_again")
+    write_pairs(run, pairs[:1], f"{RUN2}_trace_pairs")
     message = refused_paths(paths, "bad_input")
-    assert "2 trace pairs files" in message and "trace_pairs_again.json" in message
+    assert f"{RUN2}_trace_pairs.json" in message and "not a byte-identical copy of trace_pairs.json" in message
 
 
 def test_a_trace_pairs_file_without_review_ids_serves_the_review_sample_and_every_row(tmp_path, capsys):
@@ -1212,6 +1221,51 @@ def test_a_run_reads_the_trace_results_named_after_its_pairs_file_and_run2_its_l
     assert tracing[f"pilot:{RUN3}"]["trace_pairs"] == evt.logical_path(
         paths["pilot_runs_dir"] / RUN3 / "trace" / f"{RUN3}_trace_pairs.json")
     assert {tracing[k]["trace_model"] for k in ("pilot_run2", f"pilot:{RUN3}")} == {"gemma-2-2b"}
+
+
+def _items_bytes(raw: bytes) -> bytes:
+    return raw[raw.index(b'\n "items": ['):]
+
+
+def test_run2s_copy_made_to_trace_it_again_leaves_its_export_unchanged(tmp_path, capsys):
+    # PR #85's lanes refuse Run 2's legacy trace_pairs.json for a new fire and say to copy it under
+    # pilot_v2_20261002_trace_pairs.json. A copy beside it made the default export (the recorded first-bundle
+    # command) refuse with "2 trace pairs files". A byte-identical copy is now allowed; the export still reads
+    # trace_pairs.json, which Run 2's ids are keyed on, and its results in pilot/traces/trace_pairs/, never the
+    # copy's results.
+    paths = write_world(tmp_path, world_data())
+    before, before_raw = rerun(paths, tmp_path / "before")
+    run, pairs = _run2_pairs(paths)
+    copy_name = f"{RUN2}_trace_pairs"
+    shutil.copy2(run / "trace" / "trace_pairs.json", run / "trace" / f"{copy_name}.json")
+    shutil.copy2(run / "trace" / "trace_pairs.meta.json", run / "trace" / f"{copy_name}.meta.json")
+    write_traces(paths, copy_name, pairs, "qwen3-4b")                        # a re-trace from the copy
+    after, after_raw = rerun(paths, tmp_path / "after")
+    assert _items_bytes(after_raw) == _items_bytes(before_raw)
+    assert after["selection"] == before["selection"]
+    sel = after["selection"]["tracing_pair"]["pilot_run2"]
+    assert sel["trace_pairs"].endswith(f"{RUN2}/trace/trace_pairs.json") and sel["trace_model"] == "gemma-2-2b"
+    assert sel["trace_results"] == evt.logical_path(paths["pilot_trace_root"] / "trace_pairs")
+    assert [s["role"] for s in after["sources"] if s["path"].endswith(f"{copy_name}.json")] == [
+        f"pilot run {RUN2} trace pairs copy"]
+    # with the trace optional, Run 2 still reads only trace_pairs.json, for its id key
+    rerun(paths, tmp_path / "optional", "--pilot-trace-optional", RUN2)
+    # the copy's results are never read for Run 2: naming the model they are for looks in trace_pairs__qwen3-4b/
+    message = refused_paths(paths, "missing_trace", "--pilot-trace-model", RUN2, "qwen3-4b")
+    assert "trace_pairs__qwen3-4b" in message and copy_name not in message
+
+
+def test_a_second_file_under_run2s_trace_that_is_not_a_copy_is_refused(tmp_path):
+    paths = write_world(tmp_path, world_data())
+    run, _ = _run2_pairs(paths)
+    copy_path = run / "trace" / f"{RUN2}_trace_pairs.json"
+    copy_path.write_bytes((run / "trace" / "trace_pairs.json").read_bytes() + b"\n")    # one byte more
+    message = refused_paths(paths, "bad_input")
+    assert copy_path.name in message and "not a byte-identical copy of trace_pairs.json" in message
+    # a copy not named for the run is refused by the naming rule, as any other file there is
+    copy_path.unlink()
+    shutil.copy2(run / "trace" / "trace_pairs.json", run / "trace" / "trace_pairs_copy.json")
+    assert "trace_pairs_copy.json is not named after the run" in refused_paths(paths, "bad_input")
 
 
 @pytest.mark.parametrize("optional", [False, True], ids=["required", "optional"])
