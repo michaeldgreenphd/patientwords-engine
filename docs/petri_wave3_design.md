@@ -438,9 +438,9 @@ session.
 3. The owner approves the plan as a dated decision and decides the open settings
    (section 10).
 4. CI preflight and dry run at $0; re-park.
-5. If the owner approves the physician realism gate (section 13, proposed): physician
-   round 1 closes, the gate is applied, and a dated amendment records the passing seeds
-   in the plan, all before the pilot.
+5. The physician realism gate (section 13, approved 2026-10-05): physician round 1
+   closes, the gate is applied, and a dated amendment records the passing seeds in the
+   plan, all before the pilot.
 6. Pilot: epoch 1 on the anchor, one paid fire. Read coverage only (truncations, empty
    replies, token use, judge cost); compute no contrast. The pilot epoch counts as
    epoch 1 unless it is voided for an operational defect named before any contrast
@@ -627,11 +627,11 @@ redefinition after the data; nothing public before the final analysis and the ve
    first fire.
 10. **Whether wave 3 is the confirmatory amendment** that integration-design decision 1
     allows for H1 sustained and H4 on new scenarios. This note drafts it as a pilot.
-11. **The physician realism gate** (section 13, proposed 2026-10-04): approve, change or
-    reject it. The decisions it shares with the advice lane (threshold, minimum ratings,
-    dropped or rewritten, timing, scope) are listed in A6.9 of
-    `docs/preregistration_advice.md`; the three that are wave 3's own are at the end of
-    section 13.
+11. **The physician realism gate** (section 13): decided 2026-10-05. The owner approved
+    it on its own, ahead of the rest of the plan. The choices it shares with the advice
+    lane (threshold, minimum ratings, dropped or rewritten, timing, scope) are recorded
+    in A6.9 of `docs/preregistration_advice.md`, and the three that are wave 3's own at
+    the end of section 13.
 
 ---
 
@@ -669,16 +669,16 @@ What is fixed to wave 2, and matters later rather than for running wave 3:
 
 ---
 
-## 13. Physician realism gate (proposed 2026-10-04)
+## 13. Physician realism gate (proposed 2026-10-04, approved 2026-10-05)
 
-**Status: proposed, not in force.** An agent session drafted this section on 2026-10-04
-for the owner's review. It changes nothing above unless the owner approves it. The plan
-holds it as data, in its `physician_realism_gate` block, and it can be approved on its
-own, ahead of the rest of the plan. To be a rule fixed in advance, it must be approved
-before any physician other than the owner's test account is given a login for the round
-below. Approved later, it is recorded as a deviation, with the date the first physician
-started. The round, its closing rule, the program that reads its export and the owner
-decisions are shared with the advice lane and written once, in A6.9 of
+**Status: approved 2026-10-05, on its own.** An agent session drafted this section on
+2026-10-04 for the owner's review, and the owner approved it on 2026-10-05, ahead of the
+rest of the plan, which is still a draft. The plan holds it as data, in its
+`physician_realism_gate` block, whose `approval` records the decision. It changes the
+counts above only when it is applied, by the dated amendment described below. It was
+approved before any login to the verification app, so it is a rule fixed in advance.
+The round, its closing rule, the program that reads its export, the owner's choices and
+the approval record are shared with the advice lane and written once, in A6.9 of
 `docs/preregistration_advice.md`. This section says what is specific to wave 3.
 
 **What it does.** Wave 3 runs only the scenarios whose scripts physicians rated
@@ -697,8 +697,8 @@ edited after rating" below).
 1. at least 2 complete ratings, and at least 2 numeric answers ("Can't judge" not
    counted) on the realism question of each of the three versions (`realism.clinical`,
    `realism.colloquial`, `realism.lay_careful`);
-2. a median of at least 4 ("Likely") on each of the three; with two answers, 3 and 4
-   give 3.5 and fail, 3 and 5 give 4 and pass;
+2. a median of at least 3 ("Possible") on each of the three; with two answers, 2 and 3
+   give 2.5 and fail, while 2 and 4, and 1 and 5, give 3 and pass;
 3. no flag: the import flags an item when more than half of the answers to any of its
    five-point questions are 1 or 2. On a script this adds the course-of-events question,
    so a scenario whose course most physicians rated 1 or 2 ("could not happen", "very
@@ -718,7 +718,8 @@ edited after rating" below).
 
 The cost of this choice: a scenario is dropped when any one version fails, so more
 scenarios are dropped than under a per-version rule, most of all if physicians rate the
-clinical version lower across the board. A6.9's threshold options address that.
+clinical version lower across the board. A6.9's threshold options addressed that, and the
+owner chose a median of at least 3 on every version.
 
 **What changes when S of the 8 scenarios pass.** Per target, three epochs of S seeds.
 The power figures use the plan's own exact method (`power.plug_in`) at 3S triples, with
@@ -768,10 +769,9 @@ scenarios at which row 1 can be reached at all, and at six only when no scenario
 zero: one zero mean gives 4/64 = 0.0625. Seven scenarios tolerate one zero mean and eight
 tolerate two (the table above). When more means are zero than that, the gate's p is
 reported and the statements apply as written, so row 2 applies when the primary passes.
-If fewer than six scenarios pass, wave 3 does not fire as registered: the owner either
-rewrites the failing scripts, which physicians rate again in a later round before the
-gate is applied again, or runs wave 3 as an exploratory pilot, labelled so, under a dated
-amendment.
+If fewer than six scenarios pass, wave 3 does not fire as registered: the failing
+scripts are rewritten, physicians rate them again in a later round, and the gate is then
+applied again (the owner's choice; decision 2 below).
 
 **Cost.** Section 5's estimates scale with the conversations, three per scenario per
 epoch. At wave-2 rates and reply lengths, per target (three epochs):
@@ -816,26 +816,28 @@ selects the passing seeds by `seed_ids`.
 edited before its first run, but an edited script is not the script physicians rated. It
 can pass only after physicians rate the new text in a later round, and the program that
 applies the gate refuses a seed whose digest differs from the one the bundle recorded.
-Once the owner approves the gate (`physician_realism_gate.approval.approved`), the suite
-also fails as soon as a rated seed is edited, or a seed is added to or removed from the
-seed file, until the plan names a round that rated the seed file as it then is. While the
-gate is only proposed the suite compares the gate block only with the bundle it names,
-never with the seed file, so the draft seeds can still be edited, added or removed. An
-edit made now means that physicians will rate the old text unless the bundle is exported
-again before the first physician other than the owner's test account is given a login
-(A6.9, "Which bundle").
+Since the owner approved the gate (`physician_realism_gate.approval.approved`), the
+suite also fails as soon as a rated seed is edited, or a seed is added to or removed from
+the seed file, until the plan names a round that rated the seed file as it then is.
+Before the approval the suite compared the gate block only with the bundle it names,
+never with the seed file, so that the draft seeds could still be edited while the rule
+was only proposed. An edit made now fails the suite, and physicians would rate the old
+text, unless the bundle is exported again, and the plan re-pointed to it, before the
+first physician other than the owner's test account is given a login (A6.9, "Which
+bundle").
 
-**Decisions specific to wave 3** (the shared ones are in A6.9):
+**Decisions specific to wave 3, as the owner chose them on 2026-10-05** (the shared
+ones are in A6.9; the owner's words are quoted in its approval record as "Gate 6a" to
+"Gate 6c"). Each is the value the draft proposed.
 
-1. **Which versions must pass.** All three (proposed, for the reasons above). The
-   alternative is the primary's pair only, colloquial and clinical: a scenario whose
+1. **Which versions must pass.** Chosen: all three, for the reasons above. Not chosen:
+   the primary's pair only, colloquial and clinical, under which a scenario whose
    careful-lay version fails would still run, but would leave the style-against-vocabulary
    split, which would then cover fewer scenarios than the primary. A rule that could drop
    the colloquial or the clinical version alone is not workable, because such a scenario
    has no primary contrast.
-2. **Fewer than six scenarios pass.** Rewrite the failing scripts and rate them again in
-   a later round (proposed), or run wave 3 as an exploratory pilot.
-3. **The floor.** Six scenarios (proposed), the fewest at which row 1 can be reached at
-   all, though only with no scenario mean exactly zero. The alternative is seven, which
-   tolerates one zero mean and drops wave 3 to the choices of decision 2 whenever two
-   scenarios fail.
+2. **Fewer than six scenarios pass.** Chosen: rewrite the failing scripts and rate them
+   again in a later round. Not chosen: running wave 3 as an exploratory pilot.
+3. **The floor.** Chosen: six scenarios, the fewest at which row 1 can be reached at all,
+   though only with no scenario mean exactly zero. Not chosen: seven, which tolerates one
+   zero mean and would have sent wave 3 to decision 2 whenever two scenarios fail.

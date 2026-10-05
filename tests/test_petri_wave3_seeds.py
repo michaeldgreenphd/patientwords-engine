@@ -647,15 +647,16 @@ def _check_realism_gate(plan: dict, seeds_by_id: dict[str, dict]) -> None:
     five-point question, one per arm, and flag_adds the item's other five-point questions, which the import's flag
     also covers. Those checks compare the block with the bundle it names, a committed file that is never rewritten,
     so they bind nothing else. Every comparison with the seed file (that the bundle rated each of its seeds, from its
-    path, on its current digests: item_match) runs only once the owner has approved the gate. While the gate is
-    proposed, the draft seeds may still be edited, added or removed, and the suite must not enforce a rule nobody has
-    approved."""
+    path, on its current digests: item_match) runs only once the owner has approved the gate, which the owner did on
+    2026-10-05. A gate that is only proposed leaves the draft seeds free to be edited, added or removed, because the
+    suite must not enforce a rule nobody has approved."""
     from scripts.import_verification_ratings import is_five_point, item_keys
 
     gate = plan["physician_realism_gate"]
     approval = gate["approval"]
     if approval["approved"]:
         assert approval["approved_by"] and approval["approved_on"], "an approval names who approved it and when"
+        assert gate["status"].startswith("APPROVED") and approval["record"], "an approval says where it is recorded"
     else:
         assert gate["status"].startswith("PROPOSED") and "not in force" in gate["status"]
         assert approval["approved_by"] is None and approval["approved_on"] is None
@@ -682,24 +683,28 @@ def _check_realism_gate(plan: dict, seeds_by_id: dict[str, dict]) -> None:
         "the round closes on the rule's own counts, so it cannot close with items the rule then drops"
 
 
-def test_the_proposed_realism_gate_names_the_rated_scripts_and_their_realism_keys(plan, w3_set):
-    """The gate (PROPOSED 2026-10-04; docs/petri_wave3_design.md section 13) reads one round's import summary and the
-    bundle it names; _check_realism_gate holds the checks. It is a draft: not approved, and no selection yet. Its
-    thresholds are the proposed values that A6.9, section 13 and the verification protocol state (they are checked
-    against that prose in test_the_gate_reads_the_same_in_the_plan_a69_section_13_and_the_protocol); the dated
-    approval that changes one changes this line with it."""
+def test_the_realism_gate_is_approved_and_names_the_rated_scripts_and_their_realism_keys(plan, w3_set):
+    """The gate (docs/petri_wave3_design.md section 13), approved by the owner on 2026-10-05, reads one round's import
+    summary and the bundle it names; _check_realism_gate holds the checks, and with the approval recorded they include
+    the seed file (item_match). It is not yet applied: no selection. Its values are the owner's choices that A6.9's
+    approval record quotes (median of 3 or more, minimum 2, closing date 2026-10-31, floor 6), checked against the prose
+    in test_the_gate_reads_the_same_in_the_plan_a69_section_13_and_the_protocol; a dated amendment that changes one
+    changes this line with it."""
     gate = plan["physician_realism_gate"]
-    assert gate["approval"]["approved"] is False, "approving the gate is a dated owner decision"
+    assert gate["approval"]["approved"] is True and gate["approval"]["approved_on"] == "2026-10-05"
     assert gate["selection"] is None, "the selection is set by a dated amendment after the gate is applied"
-    proposed = {"min_complete_ratings": 2, "min_answers_per_key": 2, "min_median": 4, "min_scenarios": 6}
-    assert {k: gate[k] for k in proposed} == proposed
+    chosen = {"min_complete_ratings": 2, "min_answers_per_key": 2, "min_median": 3, "min_scenarios": 6}
+    assert {k: gate[k] for k in chosen} == chosen
+    assert gate["round"]["closing_date"] == "2026-10-31"
     _check_realism_gate(plan, w3_set.seeds)
 
 
 def test_a_changed_seed_file_fails_the_gate_check_only_once_the_gate_is_approved(plan, w3_set):
     """Editing, adding or removing a draft seed is allowed while the gate is proposed and caught, by seed id, once
-    it is approved (item_match). The changes are made to copies, and the test holds whatever the seed file holds
-    today: it never requires the seed file to match the bundle, which would bind the proposed rule."""
+    it is approved (item_match). Both states are built as copies of the plan, so the test exercises the proposed state
+    although the plan records the approval of 2026-10-05; the seed changes are made to copies as well. Whether the
+    real seed file matches the bundle is test_the_realism_gate_is_approved_and_names_the_rated_scripts_and_their_
+    realism_keys's check."""
     gate = plan["physician_realism_gate"]
     _bundle, by_seed = _rated_scripts(gate)
     rated = sorted(set(by_seed) & set(w3_set.seeds))
@@ -714,8 +719,11 @@ def test_a_changed_seed_file_fails_the_gate_check_only_once_the_gate_is_approved
         assert _rated_seed_mismatches(by_seed, edited) == sorted({*before, first})
         cases += [(edited, first), ({k: v for k, v in w3_set.seeds.items() if k != last}, last)]
     proposed, approved = copy.deepcopy(plan), copy.deepcopy(plan)
+    proposed["physician_realism_gate"]["status"] = "PROPOSED, not in force (a copy made for this test)"
     proposed["physician_realism_gate"]["approval"].update(approved=False, approved_by=None, approved_on=None)
-    approved["physician_realism_gate"]["approval"].update(approved=True, approved_by="owner", approved_on="2026-10-05")
+    approved["physician_realism_gate"]["status"] = "APPROVED (a copy made for this test)"
+    approved["physician_realism_gate"]["approval"].update(approved=True, approved_by="owner", approved_on="2026-10-05",
+                                                          record="this test")
     if not before and set(w3_set.seeds) == set(by_seed):
         _check_realism_gate(approved, w3_set.seeds)   # the approved check passes on a seed file the bundle rated
     for changed, named in cases:
@@ -887,8 +895,9 @@ def _md_table(text: str, header_start: str) -> list[list[str]]:
 
 def test_the_gate_reads_the_same_in_the_plan_a69_section_13_and_the_protocol(plan):
     """The rule is written in four places: the plan's gate block (data), A6.9 of the preregistration, section 13 of
-    the wave-3 design note and the verification protocol. Its thresholds, the round's closing counts and the round's
-    bundle must agree in all of them, so a change to one that misses another fails here."""
+    the wave-3 design note and the verification protocol. Its thresholds, the round's closing counts, its closing date
+    and the round's bundle must agree in all of them, so a change to one that misses another fails here. The plan's
+    values must also be the ones in the owner's words that A6.9's approval record quotes (2026-10-05)."""
     gate = plan["physician_realism_gate"]
     rnd = gate["round"]
     prereg = PREREG.read_text(encoding="utf-8")
@@ -911,22 +920,32 @@ def test_the_gate_reads_the_same_in_the_plan_a69_section_13_and_the_protocol(pla
         (a69, r"`five_point\.<key>\.median` is at least (\d+)", (median,)),
         (a69, r"closes when every advice and multi-turn item has at least (\w+) complete ratings by included "
               r"physicians and at least (\w+) numeric answers", (ratings, answers)),
-        (a69, r"A median of at least (\d+) \(\"Likely\"\) on every question", (median,)),
-        (a69, r"At least (\d+) complete ratings, with at least (\d+) numeric", (ratings, answers)),
+        (a69, r"median of at least (\d+)", (median,)),
+        (a69, r"Chosen, as proposed: at least (\d+) complete ratings, with at least (\d+) numeric", (ratings, answers)),
         (a69, r"(\w+) complete ratings and (\w+) numeric answers on every question the gate reads", (ratings, answers)),
-        (record, r"threshold `<median at least (\d+) on every question read>`, minimum ratings `<(\d+)>`",
-         (median, ratings)),
+        (record, r"threshold, a median of at least (\d+) \(\"\w+\"\) on every question the gate reads; minimum "
+                 r"ratings, (\d+) complete ratings and (\d+) numeric answers", (median, ratings, answers)),
+        (record, r"> Gate 1: Median of (\d+) ", (median,)),
+        (record, r"> Gate 2: (\d+)\b", (ratings,)),
+        (record, r"> Gate 6c: (\d+)\b", (gate["min_scenarios"],)),
         (s13, r"at least (\d+) complete ratings, and at least (\d+) numeric answers", (ratings, answers)),
-        (s13, r"a median of at least (\d+) \(\"Likely\"\)", (median,)),
+        (s13, r"median of at least (\d+)", (median,)),
         (proto, r"at least (\w+) complete ratings, at least (\w+) numeric answers", (ratings, answers)),
         (proto, r"a median of at least (\d+)", (median,)),
     ]
     for text, pattern, expected in checks:
         assert set(found(text, pattern)) == {expected}, pattern
+    assert answers == ratings, "the owner chose one minimum (Gate 2), for complete ratings and numeric answers alike"
     for value in (rnd["bundle"], rnd["bundle_id"], rnd["bundle_sha256"], rnd["questions_sha256"]):
         assert value in a69, value
+        assert value == rnd["bundle"] or value in record, value
     assert rnd["bundle"] in s13
-    assert "round 1 bundle `<bundle id>`" in record and "Re-pointed before the first physician's login" in record
+    closing = rnd["closing_date"]
+    assert re.findall(r"> Gate 4: (\d{4}-\d\d-\d\d)", record) == [closing]
+    assert f"the closing date, {closing} (UTC)" in a69 and "Extending the closing date" in a69
+    assert f"closing date {closing} (UTC)" in record and "Closing date extensions" in record
+    assert f"or on {closing} (UTC)" in proto
+    assert "Re-pointed before round 1's bundle is fixed" in record
 
 
 def test_section_13_tables_are_the_plan_rows(plan):

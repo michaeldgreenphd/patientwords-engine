@@ -717,7 +717,10 @@ names this amendment). At approval the record at the end of this section is
 filled and the words "PROPOSED" and "NOT IN FORCE" are removed from its
 heading. Approval of the amendment does not authorise spending: every fire
 still needs the owner's explicit dollar authorisation, line by line, from
-`docs/advice_fire_plan_20261002.md`.
+`docs/advice_fire_plan_20261002.md`. One section has been approved on its
+own: A6.9, the physician realism gate, on 2026-10-05 (its approval record is
+at the end of this amendment). A6.1 to A6.8 are still proposed and not in
+force.
 
 **Why.** No advice model has been elicited since 2026-08-27, and every vendor
 in the registry has released newer models since the July arms were chosen.
@@ -925,8 +928,8 @@ a new file whose items keep the same ids, and that file is what `analyze
 --stimuli` reads (it matches tiers to judgments by item id); the archived
 stimuli file is not rewritten. The set is analysed on its own,
 not pooled with the cloze or earlier natural-question families. Arms:
-clinical and patient; K=3; temperature 1.0; no translated arm. If the
-physician realism gate (A6.9, proposed) is approved, only the items that pass
+clinical and patient; K=3; temperature 1.0; no translated arm. Under the
+physician realism gate (A6.9, approved 2026-10-05), only the items that pass
 it are elicited.
 
 ### A6.4 Rerun of earlier stimuli: a post-hoc replication
@@ -960,8 +963,8 @@ report):
 
 Any further original arm that cannot be re-elicited (for example an id that
 the R0a probe finds retired) leaves both the cell count and both baselines,
-and the reduced numbers are recorded here before the readout. If the
-physician realism gate (A6.9, proposed) is approved, the baselines are also
+and the reduced numbers are recorded here before the readout. Under the
+physician realism gate (A6.9, approved 2026-10-05), the baselines are also
 recomputed over the items it keeps, by the rule stated there.
 
 This selection was made after seeing the codings. Only the first item
@@ -1046,20 +1049,25 @@ lengths ($4.9 Anthropic, $12.5 OpenRouter) and $26.1 if responses run to the
 90th-percentile length and the reasoning arms write long answers. This
 replaces the frozen design's "$5 total" for these two waves only. Unchanged:
 the endpoints, K=3, temperature 1.0, the analysis seed 7, Amendment 2's
-quarantine, and the daily ceilings. If A6.9 is approved, both waves cost less
-in proportion to the items kept (fire plan, section 8).
+quarantine, and the daily ceilings. Under A6.9 (approved 2026-10-05), both
+waves cost less in proportion to the items kept (fire plan, section 8).
 
-### A6.9 Physician realism gate (proposed 2026-10-04)
+### A6.9 Physician realism gate (proposed 2026-10-04, approved 2026-10-05)
 
-**Status: PROPOSED, not in force.** An agent session drafted this section on
-2026-10-04 for the owner's review. It is part of Amendment 6 but is approved
-or rejected on its own: approving the rest of Amendment 6 does not approve
-it. To be a rule fixed in advance, it must be approved before any physician
-other than the owner's test account is given a login for the round named
-below, so that the rule exists before any rating it applies to. If it is
-approved later, the approval record says so and gives the date the first
-physician started, and the gate is then a deviation, not a pre-specified
-rule.
+**Status: APPROVED 2026-10-05. Only this section is approved: the rest of
+Amendment 6 (A6.1 to A6.8) is still PROPOSED and not in force.** An agent
+session drafted this section on 2026-10-04 for the owner's review, and the
+owner approved it on 2026-10-05 with the choices listed under "Owner
+decisions" below; the approval record at the end of this amendment quotes the
+owner's words. This section was approved on its own. Its approval does not
+approve Wave A or Wave R, which A6.3 and A6.4 still only propose, and it
+authorises no fire and no spending. It fixes how those waves, if they are
+approved, and Petri wave 3 select their items. To be a rule fixed in advance
+it had to be approved before any physician other than the owner's test
+account was given a login for the round named below. It was approved before
+any login at all: the verification app was not yet deployed. So the rule
+existed before any rating it applies to, and it is a pre-specified rule, not
+a deviation.
 
 **What it does.** Wave A elicits only the new questions, and Wave R only the
 rerun items, that physicians rated realistic in round 1 of the physician
@@ -1095,14 +1103,22 @@ fires. The same round and rule select the Petri wave-3 scenarios
 - Round 1 is every rating saved on that bundle until the round closes. It
   closes when every advice and multi-turn item has at least two complete
   ratings by included physicians and at least two numeric answers on every
-  question the gate reads for it (rule 1 below), or on a closing date the
-  owner records at approval, whichever comes first. Two complete ratings
+  question the gate reads for it (rule 1 below), or on the closing date,
+  2026-10-31 (UTC), whichever comes first. Two complete ratings
   alone do not close an item: the import counts a rating complete when every
   required question has an answer, and "Can't judge" is an answer, but it adds
   no numeric answer. With two physicians, one "Can't judge" on a question the
   gate reads leaves that question one answer short. At close the owner
   downloads one export, and that export is the gate's input. Ratings saved
   after it, on tracing pairs or anything else, do not count for the gate.
+- **Extending the closing date.** The owner set 2026-10-31 at approval and
+  noted that it may need to be extended. An extension is recorded as a dated
+  note in the approval record below, with the new closing date, before the
+  current closing date passes; the same edit changes the wave-3 plan's
+  `physician_realism_gate.round.closing_date`. It is decided on rating counts
+  only (how many complete ratings, and numeric answers, the items have),
+  never on realism scores or anything computed from them. A closing date that
+  has passed is not extended: the round has closed on it.
 - **Items short of answers.** The app tops up an item only while fewer than
   `RATERS_PER_ITEM` active physicians are assigned to it, whatever their
   answers (`assignTopUp_` in the app's `src/Logic.gs`), and its admin menu has
@@ -1141,19 +1157,22 @@ hold:
    the gate reads, `five_point.<key>.n` is at least 2. `n` counts the numeric
    answers in complete ratings; "Can't judge" is not counted.
 2. **Rated realistic.** For each question the gate reads,
-   `five_point.<key>.median` is at least 4 ("Likely" on the realism scale,
-   "Plausible" on the plausibility scale). With an even number of answers the
-   median is the mean of the two middle answers: 3 and 4 give 3.5, which
-   fails; 3 and 5 give 4, which passes.
+   `five_point.<key>.median` is at least 3 ("Possible" on both the realism
+   and the plausibility scale). With an even number of answers the median is
+   the mean of the two middle answers: 2 and 3 give 2.5, which fails; 2 and 4
+   give 3, which passes.
 3. **Not flagged.** `flagged` is false, meaning no five-point question of the
    item has more than half of its answers at 1 or 2. On these three question
    sets every five-point question is one the gate reads, so rule 2 already
    implies this; it is stated so that the rule reads the same for the wave-3
    scripts, where it also covers the course-of-events question.
 
-So with two physicians an item passes on 4 and 4, 3 and 5, 4 and 5, or 5 and
-5 on every question the gate reads, and any answer of 1 or 2 fails it. With
-three physicians the middle answer decides, so 1, 4 and 5 passes. An item
+So with two physicians an item passes when, on every question the gate
+reads, the two answers add up to at least 6: 3 and 3, 2 and 4, and 1 and 5
+pass; 2 and 3, and 1 and 4, fail. One physician's 1 or 2 does not by itself
+fail an item: 1 and 5 pass, because the median is 3 and only one of the two
+answers is low, which is not more than half. With three physicians the middle
+answer decides, so 1, 3 and 5 passes and 2, 2 and 5 fails. An item
 failing rule 1 is reported as "not enough ratings", and one failing rule 2 or
 3 as "rated unrealistic", with its values.
 
@@ -1233,7 +1252,7 @@ of every file it copies from, and the exporter refuses one that carries both.
 
 **Code still to write.** The program that applies the rule (proposed name
 `scripts/apply_realism_gate.py`) does not exist yet. It is written, with
-tests, after this section is approved and before the first gated fire, so
+tests, now that this section is approved and before the first gated fire, so
 that it implements the rule as approved. It reads only the committed summary
 and the bundle. It refuses, writing nothing, when the summary names another
 bundle sha256 than round 1's (the one above, unless the approval record
@@ -1242,60 +1261,101 @@ the summary, a question the gate reads is missing from an item's
 `five_point`, or a message or seed digest does not match. A wave with no
 passing item is reported by name, and no selection file is written for it.
 
-**Owner decisions.** Each has a proposed value, which the text above uses.
+**Owner decisions, as chosen on 2026-10-05.** The text above applies these
+choices. The draft proposed a value for each; the owner chose the proposed
+value for every decision but the threshold.
 
-1. **Threshold.** A median of at least 4 ("Likely") on every question the
-   gate reads (proposed). Alternatives: at least 3 ("Possible") on every
-   question; or at least 4 for the everyday-words message and at least 3 for
-   the clinical-terms message. The reason to consider the last: the
-   clinical-terms message is by design a patient who uses clinical terms, and
-   physicians may rate it lower across the board. Under a threshold of 4 for
-   both, that alone could remove most items. It would also remove every
-   script whose clinical version is rated lower, because a script passes only
-   when all three of its versions pass.
-2. **Minimum ratings.** At least 2 complete ratings, with at least 2 numeric
-   answers on each question the gate reads (proposed; the app assigns every
-   item to at least two physicians). At least 3 gives steadier medians but
-   needs `RATERS_PER_ITEM` of 3 or more and a longer round. A related
-   setting, not a change to the rule: `RATERS_PER_ITEM` of 3 with the
-   minimum kept at 2 lets an item absorb one "Can't judge" per question
-   without falling short, at the cost of a third rating on every item.
-3. **Failing items: dropped or rewritten.** Dropped (proposed). Only the new
-   questions and the scripts can be rewritten, and a rewrite is a new item
-   that physicians must rate in a later round, which delays its wave until
-   that round closes.
-4. **Timing.** This section approved before any physician other than the test
-   account is given a login (proposed), with the closing rule above: two
-   complete ratings and two numeric answers on every question the gate reads,
-   on every advice and multi-turn item, or a closing date set at approval,
-   whichever comes first.
-5. **Scope.** The gate applies to Wave A, Wave R and Petri wave 3 (proposed).
-   Leaving Wave R ungated keeps the replication on all 15 items as A6.4
-   registers it, with the physicians' ratings reported beside it.
+1. **Threshold.** Chosen: a median of at least 3 ("Possible") on every
+   question the gate reads. The draft proposed at least 4 ("Likely"). The
+   other alternative was at least 4 for the everyday-words message and at
+   least 3 for the clinical-terms message. The reason the draft gave for a
+   lower threshold: the clinical-terms message is by design a patient who uses
+   clinical terms, and physicians may rate it lower across the board. Under a
+   threshold of 4 for both, that alone could have removed most items, and
+   every script whose clinical version is rated lower, because a script
+   passes only when all three of its versions pass.
+2. **Minimum ratings.** Chosen, as proposed: at least 2 complete ratings, with
+   at least 2 numeric answers on each question the gate reads (the app
+   assigns every item to at least two physicians). Not chosen: at least 3,
+   which gives steadier medians but needs `RATERS_PER_ITEM` of 3 or more and a
+   longer round. A related setting, not a change to the rule:
+   `RATERS_PER_ITEM` of 3 with the minimum kept at 2 lets an item absorb one
+   "Can't judge" per question without falling short, at the cost of a third
+   rating on every item.
+3. **Failing items: dropped or rewritten.** Chosen, as proposed: dropped. Only
+   the new questions and the scripts can be rewritten, and a rewrite is a new
+   item that physicians must rate in a later round, which delays its wave
+   until that round closes.
+4. **Timing.** Approved on 2026-10-05, before any login. The round closes on
+   the closing rule above: two complete ratings and two numeric answers on
+   every question the gate reads, on every advice and multi-turn item, or the
+   closing date, 2026-10-31 (UTC), whichever comes first. The owner noted
+   that the date may need to be extended; "Extending the closing date" above
+   says how.
+5. **Scope.** Chosen, as proposed: Wave A, Wave R and Petri wave 3. Not
+   chosen: leaving Wave R ungated, which would have kept the replication on
+   all 15 items as A6.4 registers it, with the physicians' ratings reported
+   beside it.
 6. **Petri wave 3's own decisions** (`docs/petri_wave3_design.md`, section
-   13): which versions of a script must pass (proposed: all three), what
-   happens when fewer than six scenarios pass, and whether the floor is six
-   (proposed) or seven, which tolerates one scenario mean of exactly zero.
+   13). Chosen, as proposed: all three versions of a script must pass; when
+   fewer than six scenarios pass, the failing scripts are rewritten and rated
+   again in a later round; and the floor is six. Not chosen: the colloquial
+   and clinical versions only; an exploratory pilot below the floor; and a
+   floor of seven, which tolerates one scenario mean of exactly zero.
 
-### Approval record (to fill)
+### Approval record
 
-Approved by: `<owner>`. Date (UTC): `<date>`.
+**Amendment 6, A6.1 to A6.8 (to fill; still proposed).** Approved by:
+`<owner>`. Date (UTC): `<date>`.
 Words: `<verbatim instruction>`. Registry sha256 after the roster pull
 request: `<sha256>`. Rerun stimuli file:
 `data/advice/stimuli_20261002T081803Z.json` (sha256
 `b9be32edde3372e4b29aee4ce39ad25e36074eebd6a019a1779cd4d215cf2598`).
 
-Physician realism gate (A6.9): `<approved / changed / rejected>`, date (UTC)
-`<date>`, which must be before the first physician's login (or else: date the
-first physician started `<date>`, recorded as a deviation). As approved:
-threshold `<median at least 4 on every question read>`, minimum ratings `<2>`,
-closing date `<date>`, excluded physicians `<rater codes>`, round 1 bundle
-`<bundle id>` (sha256 `<sha256>`, questions sha256 `<sha256>`). Re-pointed
-before the first physician's login (A6.9, "Which bundle"), each on its own
-dated line: `<date>`: `<old bundle id>` to `<new bundle id>` (sha256
-`<sha256>`, questions sha256 `<sha256>`). At application:
-import summary `<path>` (sha256 `<sha256>`), gate report `<path>` (sha256
-`<sha256>`), gated stimuli files `<Wave A path, sha256>` and `<Wave R path,
-sha256>`, n_A `<n>` of 24, n_R `<n>` of 15, and Wave R's recomputed baselines:
-primary `<downgrades>` of `<cells>` against `<null>`, sensitivity
-`<downgrades>` of `<cells>` against `<null>`.
+**Physician realism gate (A6.9): APPROVED 2026-10-05.** Approved by the
+owner, who answered the gate's decisions on a private decision page and sent
+the answers in the agent session at about 2026-10-05T05:18Z. The same words
+are on pull request #87 (comment 5988571759). Verbatim:
+
+> Gate: Approve, with my answers below
+> Gate 1: Median of 3 ("Possible") or more on every question
+> Gate 2: 2
+> Gate 3: Drop them
+> Gate 4: 2026-10-31 | note: We might need to extend this later
+> Gate 5: Wave A, Wave R and Petri wave 3
+> Gate 6a: All three
+> Gate 6b: Rewrite the failing scripts and rate them again
+> Gate 6c: 6
+
+"Gate 1" to "Gate 5" are owner decisions 1 to 5 of A6.9, and "Gate 6a" to
+"Gate 6c" are the three decisions of `docs/petri_wave3_design.md` section 13
+(which versions must pass, what happens below the floor, and the floor). The
+owner also chose a wording pilot with one physician, and to rate a pilot of
+their own before it.
+
+- Timing: approved before any login to the verification app, by any
+  physician, test account or pilot account; the app was not yet deployed. A
+  pre-specified rule, not a deviation.
+- As approved: threshold, a median of at least 3 ("Possible") on every
+  question the gate reads; minimum ratings, 2 complete ratings and 2 numeric
+  answers on each question the gate reads; failing items dropped; closing
+  date 2026-10-31 (UTC); scope, Wave A, Wave R and Petri wave 3; for wave 3,
+  all three versions of a script must pass, the floor is six scenarios, and
+  below it the failing scripts are rewritten and rated again in a later
+  round.
+- Round 1 bundle: `vtasks_20261004T042945Z` (sha256
+  `29817d70e3414834b35c0f316ab3e1953a59ddab229e9ceb9de2760b9265650a`,
+  questions sha256
+  `d2ce0e262aee7dba000ef927cc84ddf59ce95f5c418f81d24cb667c0c67445fb`).
+- Re-pointed before round 1's bundle is fixed (A6.9, "Which bundle"), each on
+  its own dated line (to fill if it happens): `<date>`: `<old bundle id>` to
+  `<new bundle id>` (sha256 `<sha256>`, questions sha256 `<sha256>`).
+- Closing date extensions (A6.9, "Extending the closing date"), each on its
+  own dated line, written before the closing date it replaces: none.
+- Excluded physicians (to fill before the export is imported): `<rater
+  codes>`.
+- At application (to fill): import summary `<path>` (sha256 `<sha256>`), gate
+  report `<path>` (sha256 `<sha256>`), gated stimuli files `<Wave A path,
+  sha256>` and `<Wave R path, sha256>`, n_A `<n>` of 24, n_R `<n>` of 15, and
+  Wave R's recomputed baselines: primary `<downgrades>` of `<cells>` against
+  `<null>`, sensitivity `<downgrades>` of `<cells>` against `<null>`.

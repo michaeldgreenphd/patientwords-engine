@@ -21,11 +21,12 @@ Each fire runs only after the owner types its authorisation sentence with the
 dollar figure in it.
 
 These figures are for all 24 new questions and all 15 rerun items. Amendment
-6 also proposes (A6.9, not in force) that the waves elicit only the items
-physicians rate realistic. If the owner approves that, section 8 gives the
-counts and costs as a function of the items kept; with about 75% kept the two
-waves cost $12.97 at measured lengths and $19.40 in the high case, and with
-about 50% kept $9.06 and $13.53.
+6's section A6.9, the physician realism gate, which the owner approved on its
+own on 2026-10-05 (the rest of Amendment 6 is still proposed), has the waves
+elicit only the items physicians rate realistic. Section 8 gives the counts
+and costs as a function of the items kept; with about 75% kept the two waves
+cost $12.97 at measured lengths and $19.40 in the high case, and with about
+50% kept $9.06 and $13.53.
 
 ## 0. Conditions that must all hold before the first fire
 
@@ -60,11 +61,11 @@ about 50% kept $9.06 and $13.53.
    treat the second as already done.
 5. `python scripts/fire_trigger.py status` shows no active `advice-eval`
    entry, and the trigger is parked.
-6. Only if the owner approves the physician realism gate (Amendment 6, A6.9):
-   round 1 of the physician verification study has closed, the import summary
-   and the gate's three files are committed, the gated stimuli files are
-   built, and every full fire below names its gated file with the counts and
-   `max_spend` of section 8. The probes do not wait for this.
+6. Under the physician realism gate (Amendment 6, A6.9, approved
+   2026-10-05): round 1 of the physician verification study has closed, the
+   import summary and the gate's three files are committed, the gated stimuli
+   files are built, and every full fire below names its gated file with the
+   counts and `max_spend` of section 8. The probes do not wait for this.
 
 Fires are sent by the operator with
 `python scripts/fire_trigger.py fire --trigger advice-eval --params-file <file holding the JSON below> --note "<fire id> of docs/advice_fire_plan_20261002.md"`,
@@ -530,7 +531,8 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
 
 ## 7. Decisions for the owner
 
-1. Approve, change or reject Amendment 6 (it is proposed, not in force).
+1. Approve, change or reject Amendment 6 (it is proposed, not in force;
+   only its section A6.9 has been approved, on 2026-10-05: decision 8).
 2. Each fire, by its authorisation sentence and dollar figure.
 3. Moonshot arm: `kimi-k3` ($2.70/$13.50, costed here) or the cheaper
    `kimi-k2.6` ($0.434/$1.83). k2.6 would cut about $3.57 from the typical
@@ -555,21 +557,22 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
    that the Wave A commands here and Amendment 6 (A6.3) would then name, or
    fire it as built and give the exporter a way to declare a family at export
    time before the set is published.
-8. The physician realism gate (Amendment 6, A6.9, added 2026-10-04): approve,
-   change or reject it, with its own decisions (threshold, minimum ratings,
-   whether failing items are dropped or rewritten, timing, scope). If
-   approved, it changes the items, calls, cost and `max_spend` of every full
-   fire (section 8), and Wave A and Wave R wait for round 1 of the physician
-   verification study to close.
+8. The physician realism gate (Amendment 6, A6.9, added 2026-10-04):
+   decided 2026-10-05. The owner approved it on its own, with its decisions
+   (threshold, minimum ratings, failing items dropped, timing and closing
+   date, scope) recorded in A6.9 and its approval record. It changes the
+   items, calls, cost and `max_spend` of every full fire (section 8), and
+   Wave A and Wave R wait for round 1 of the physician verification study to
+   close.
 
-## 8. Under the physician realism gate (proposed 2026-10-04; not in force)
+## 8. Under the physician realism gate (A6.9, approved 2026-10-05)
 
-Amendment 6, A6.9, proposes that Wave A and Wave R elicit only the items that
-physicians rated realistic in round 1 of the physician verification study. If
-the owner approves it, this section replaces the stimuli files, item counts,
-calls, costs and `max_spend` of sections 1 to 3, and sections 0, 4, 6 and 7
-change as listed under "Other sections" at the end of this section. Nothing
-else in this plan changes. Nothing here has been fired.
+Amendment 6, A6.9, approved on its own on 2026-10-05, has Wave A and Wave R
+elicit only the items that physicians rated realistic in round 1 of the
+physician verification study. This section therefore replaces the stimuli
+files, item counts, calls, costs and `max_spend` of sections 1 to 3, and
+sections 0, 4, 6 and 7 change as listed under "Other sections" at the end of
+this section. Nothing else in this plan changes. Nothing here has been fired.
 
 **Stimuli files.** The full fires name the gated stimuli files that
 `build-stimuli --source selection` writes from the gate's two selection files
