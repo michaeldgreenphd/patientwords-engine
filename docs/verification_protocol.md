@@ -183,7 +183,9 @@ stop at any time.
   the program refuses a summary of any other export, so a rating saved
   after the close cannot count. If fewer than six wave-3 scripts pass, the
   failing ones are rewritten and rated in a later round, and the scripts
-  that passed keep their round-1 result and are not rated again. A script
+  that passed keep their round-1 result and are not rated again. Once six
+  pass there is no later round, and the program that applies the rule
+  refuses one. A script
   with too few ratings in a round may be rated again unchanged in a later
   round, and the first round in which it has enough ratings decides it; a
   script rated unrealistic must be rewritten before it is rated again, and

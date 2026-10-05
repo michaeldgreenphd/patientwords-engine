@@ -1418,7 +1418,8 @@ or "never created"), do not agree with the spreadsheet the round ran in
 time), a comparison above fails, a seed of the seed file has a current
 digest that no round rated, a round's item at a seed's current digest
 records other turn hashes than the ones the program computes from the
-seed, an advice or script item of a round's bundle
+seed, a later round follows rounds over which six or more wave-3 seeds
+already pass ("Rounds" below), an advice or script item of a round's bundle
 is missing from that round's summary, a passing item is missing from the
 stimuli file or seed file it reads, or a question the gate reads is
 missing from an item's `five_point`. A wave, or under decision 6's
@@ -1435,9 +1436,18 @@ failing ones are rewritten and rated again (decision 6;
 amendment to the wave-3 plan, with a dated note in the approval record
 below, before its bundle is given to any physician, and its exclusions and
 closing export are recorded before its export is imported, as round 1's
-are. Wave A and Wave R are selected from round 1 alone: their failing items
-are dropped (decision 3), not rewritten, so no later round rates an item
-they can use, and a rewritten new question is a new item for a later wave.
+are. The program that applies the gate enforces "fewer than six": for each
+later round it computes the selection over the rounds before it, each seed
+taken at the turns the latest of those rounds rated (so an edit to the seed
+file made after them cannot lower the count), and refuses, writing nothing,
+if six or more seeds pass there. So once six pass, no later round follows:
+a script rated unrealistic or short of ratings is not rated again, and wave
+3 runs on the scripts that passed. A script short of ratings is rated again
+only in a later round that exists because fewer than six passed, alongside
+the rewritten ones. Wave A and Wave R are selected from round 1 alone: their
+failing items are dropped (decision 3), not rewritten, so no later round
+rates an item they can use, and a rewritten new question is a new item for a
+later wave.
 Wave 3 selects across the rounds. Each seed is decided by the earliest
 round whose bundle rated its current script, the turns physicians see
 (`provenance.turn_sha256`), and in which it reached both of rule 1's counts
@@ -1671,6 +1681,11 @@ their own before it.
     `short_rounds` of the rounds in which it was short, and the reason "not
     enough ratings", so such a seed is recorded without an invented round;
     this changes neither the rule nor which items pass.
+  - A later round only below the floor: the gate program computes the
+    selection over the rounds before each later round and refuses the
+    later round if six or more wave-3 seeds already pass there, and the
+    suite checks the same from the committed summaries; this changes
+    neither the rule nor which items pass.
 - Owner's decision, 2026-10-05 (after the approval; it can change which
   seeds pass, so it is recorded here as a decision, not as a
   clarification). Asked in the agent session whether a later round may

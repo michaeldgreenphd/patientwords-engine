@@ -658,7 +658,16 @@ def _rounds_at_current_digest(rated: list[dict[str, dict]], seeds_by_id: dict[st
     return at_digest
 
 
-def _check_realism_gate(plan: dict, seeds_by_id: dict[str, dict], bundles: dict[str, dict] | None = None) -> None:
+def _summary_path(rnd: dict) -> str:
+    """Where a round's committed import summary is: the import's own name for it, from the round's bundle id and the
+    stamp of its recorded closing export (rounds_rule)."""
+    from scripts.import_verification_ratings import export_stamp
+
+    return f"data/verification/ratings_{rnd['bundle_id']}_{export_stamp(rnd['closing_export']['closed_utc'])}.summary.json"
+
+
+def _check_realism_gate(plan: dict, seeds_by_id: dict[str, dict], bundles: dict[str, dict] | None = None,
+                        summaries: dict[str, dict] | None = None) -> None:
     """The gate block against the bundle of each of its rounds, and, once approved, against the seed file. Each bundle
     must be the file it hashes to (or one a test passes in bundles, by path) and hold one script item per seed id,
     with gate keys that are the import's own keys for the per-version five-point question, one per arm, and flag_adds
@@ -667,7 +676,9 @@ def _check_realism_gate(plan: dict, seeds_by_id: dict[str, dict], bundles: dict[
     the seed file (that some round rated each of its seeds, from its path, at its current digest, and that every seed
     a round rated is still in it: item_match, cumulative_selection) runs only once the owner has approved the gate,
     which the owner did on 2026-10-05. A gate that is only proposed leaves the draft seeds free to be edited, added or
-    removed, because the suite must not enforce a rule nobody has approved."""
+    removed, because the suite must not enforce a rule nobody has approved. When rounds holds a later round, the rounds
+    before it must have their closing exports recorded and their summaries committed (or passed in summaries, by
+    path), and must leave fewer than min_scenarios seeds passing (rounds_rule, _later_round_refusal)."""
     from scripts.import_verification_ratings import is_five_point, item_keys
 
     gate = plan["physician_realism_gate"]
@@ -701,6 +712,20 @@ def _check_realism_gate(plan: dict, seeds_by_id: dict[str, dict], bundles: dict[
             f"seed(s) {unrated} of the seed file rated by no round at their current digest, and seed(s) {removed} "
             "rated by a round but no longer in the seed file: a script can pass only after a round rates its current "
             "text (item_match, cumulative_selection)")
+    if len(gate["rounds"]) > 1:
+        rows_by_round = []
+        for n, rnd in enumerate(gate["rounds"][:-1], start=1):
+            closing = rnd["closing_export"]
+            assert closing["sha256"] and closing["closed_utc"], \
+                f"round {n + 1} follows round {n}, whose closing export is not recorded"
+            path = _summary_path(rnd)
+            summary = (summaries or {}).get(path) or load_json(ROOT / path)
+            assert _closing_export_refusal(summary["inputs"]["export"], closing) is None, path
+            assert summary["inputs"]["bundle"]["bundle_id"] == rnd["bundle_id"], path
+            assert summary["inputs"]["bundle"]["sha256"] == rnd["bundle_sha256"], path
+            rows_by_round.append({row["item_id"]: row for row in summary["items"]})
+        refusal = _later_round_refusal([*zip(rated[:-1], rows_by_round), (rated[-1], {})], gate)
+        assert refusal is None, refusal
     assert gate["not_flagged"] is True
     assert 2 <= gate["min_complete_ratings"] and 2 <= gate["min_answers_per_key"]
     assert 1 < gate["min_median"] <= 5
@@ -837,6 +862,9 @@ def _cumulative_selection(rounds: list[tuple[dict[str, dict], dict[str, dict]]],
     round's item at that digest must record the seed's current turns. (None, SHORT, the rounds) when every round that
     rated its current turns was short. rounds holds, for each round in order, its script items by seed id and its
     summary rows by item id. A reference for the program that applies the gate."""
+    refusal = _later_round_refusal(rounds, gate)
+    if refusal:
+        raise ValueError(refusal)
     rated = [by_seed for by_seed, _rows in rounds]
     at_digest = _rounds_at_current_digest(rated, seeds_by_id)
     selection: dict[str, Decided] = {}
@@ -847,19 +875,43 @@ def _cumulative_selection(rounds: list[tuple[dict[str, dict], dict[str, dict]]],
         turns = _turn_hashes(seed)
         assert all(rated[k][sid]["provenance"]["turn_sha256"] == turns for k in at_digest[sid]), \
             f"a round recorded {sid!r} at its current digest with other turns"
-        short: list[int] = []
-        for k, (by_seed, rows) in enumerate(rounds):
-            item = by_seed.get(sid)
-            if item is None or item["provenance"]["turn_sha256"] != turns:
-                continue
-            decision = _gate_decision(rows[item["item_id"]], gate)
-            if decision != SHORT:
-                selection[sid] = (k + 1, decision, tuple(short))
-                break
-            short.append(k + 1)
-        else:
-            selection[sid] = (None, SHORT, tuple(short))
+        selection[sid] = _decide(rounds, sid, turns, gate)
     return selection
+
+
+def _decide(rounds: list[tuple[dict[str, dict], dict[str, dict]]], sid: str, turns: dict[str, list[str]],
+            gate: dict) -> Decided:
+    """One seed's deciding round, decision and short rounds, for the given turns (cumulative_selection)."""
+    short: list[int] = []
+    for k, (by_seed, rows) in enumerate(rounds):
+        item = by_seed.get(sid)
+        if item is None or item["provenance"]["turn_sha256"] != turns:
+            continue
+        decision = _gate_decision(rows[item["item_id"]], gate)
+        if decision != SHORT:
+            return (k + 1, decision, tuple(short))
+        short.append(k + 1)
+    return (None, SHORT, tuple(short))
+
+
+def _passing_before(rounds: list[tuple[dict[str, dict], dict[str, dict]]], k: int, gate: dict) -> int:
+    """How many seeds pass over rounds[:k], each seed taken at the turns the latest of those rounds rated (rounds_rule):
+    the count the floor is checked against before round k + 1 may exist. Those rounds' bundles and summaries alone
+    give it, so an edit to the seed file made after them cannot lower it."""
+    prefix = rounds[:k]
+    latest = {sid: item["provenance"]["turn_sha256"] for by_seed, _rows in prefix for sid, item in by_seed.items()}
+    return sum(_decide(prefix, sid, turns, gate)[1] == "passes" for sid, turns in latest.items())
+
+
+def _later_round_refusal(rounds: list[tuple[dict[str, dict], dict[str, dict]]], gate: dict) -> str | None:
+    """None when every later round follows rounds that leave fewer than min_scenarios seeds passing; else why the
+    program that applies the gate refuses (rounds_rule: a later round exists only below the floor)."""
+    for k in range(1, len(rounds)):
+        passing = _passing_before(rounds, k, gate)
+        if passing >= gate["min_scenarios"]:
+            return (f"round {k + 1} follows rounds over which {passing} seeds already pass, at or above min_scenarios "
+                    f"({gate['min_scenarios']})")
+    return None
 
 
 def _selection_record(selection: dict[str, Decided]) -> dict[str, list[dict]]:
@@ -875,6 +927,21 @@ def _selection_record(selection: dict[str, Decided]) -> dict[str, list[dict]]:
     failing = [{"seed_id": sid, "round": k, "short_rounds": list(short), "reason": outcome}
                for sid, (k, outcome, short) in selection.items() if outcome != "passes"]
     return {"passing": passing, "failing": failing}
+
+
+def _with_round_summaries(plan: dict, rows_by_round: list[dict[str, dict]]) -> dict[str, dict]:
+    """For a copy of the plan that a test builds: record a closing export for each of its first rounds, one per entry
+    of rows_by_round, and return the summaries the suite then reads for them, by path, holding what the gate reads of
+    a summary (its inputs.export and inputs.bundle, and its items rows)."""
+    out = {}
+    for n, (rnd, rows) in enumerate(zip(plan["physician_realism_gate"]["rounds"], rows_by_round, strict=False), start=1):
+        rnd["closing_export"].update(sha256=f"{n:064x}", closed_utc=f"2026-10-{19 + n}T02:00:00.000Z")
+        out[_summary_path(rnd)] = {
+            "inputs": {"export": {"sha256": rnd["closing_export"]["sha256"],
+                                  "exported_utc": rnd["closing_export"]["closed_utc"]},
+                       "bundle": {"sha256": rnd["bundle_sha256"], "bundle_id": rnd["bundle_id"]}},
+            "items": [{"item_id": item_id, **row} for item_id, row in rows.items()]}
+    return out
 
 
 def test_a_later_round_keeps_the_scripts_that_passed_and_decides_the_rewritten_ones(plan, w3_set):
@@ -904,10 +971,13 @@ def test_a_later_round_keeps_the_scripts_that_passed_and_decides_the_rewritten_o
     ids = sorted(w3_set.seeds)
     assert set(round1) == set(ids)
     rewritten, kept_failing, kept_passing, edited_later = ids[:4]
+    also_failing = ids[-1]
     good = _summary_row(dict.fromkeys(gate["min_answers_keys"], (4, 4)))
     bad = _summary_row({**dict.fromkeys(gate["min_answers_keys"], (4, 4)), gate["gate_keys"][0]: (1, 2)})
-    rows1 = {item["item_id"]: bad if sid in (rewritten, kept_failing) else good for sid, item in round1.items()}
-    # After round 1, two scripts fail: one is rewritten (a new digest), the other is left as it was.
+    rows1 = {item["item_id"]: bad if sid in (rewritten, kept_failing, also_failing) else good
+             for sid, item in round1.items()}
+    # After round 1, three scripts fail, so five pass, below the floor of six: one is rewritten (a new digest), the
+    # others are left as they were.
     seeds_now = copy.deepcopy(w3_set.seeds)
     seeds_now[rewritten]["texts"][0]["text"] += " Rewritten."
 
@@ -928,7 +998,8 @@ def test_a_later_round_keeps_the_scripts_that_passed_and_decides_the_rewritten_o
     assert selection[rewritten] == (2, "passes", ()), "decided by the round that rated its new text"
     assert selection[kept_failing] == (1, "rated unrealistic", ()), "a later rating of the same text replaces nothing"
     assert selection[kept_passing] == (1, "passes", ()), "a script that passed keeps its round-1 result"
-    assert all(selection[sid] == (1, "passes", ()) for sid in ids[3:])
+    assert selection[also_failing] == (1, "rated unrealistic", ())
+    assert all(selection[sid] == (1, "passes", ()) for sid in ids[3:-1])
     # Round 1 alone never rated the rewritten text, and round 2 alone would lose every script it did not rate.
     assert _cumulative_selection(both[:1], seeds_now, gate)[rewritten] == (None, NOT_RATED, ())
     assert {sid for sid, (k, _d, _s) in _cumulative_selection(both[1:], seeds_now, gate).items() if k is None} \
@@ -946,11 +1017,12 @@ def test_a_later_round_keeps_the_scripts_that_passed_and_decides_the_rewritten_o
     two["physician_realism_gate"]["rounds"].append(entry)
     bundles = {entry["bundle"]: {**copy.deepcopy(bundle1), "bundle_id": entry["bundle_id"],
                                  "items": [round2[rewritten]]}}
-    _check_realism_gate(two, seeds_now, bundles)
+    summaries = _with_round_summaries(two, [rows1])
+    _check_realism_gate(two, seeds_now, bundles, summaries)
     with pytest.raises(AssertionError, match=re.escape(f"'{rewritten}'")):
         _check_realism_gate(plan, seeds_now)
     with pytest.raises(AssertionError, match=re.escape(f"'{edited_later}'")):
-        _check_realism_gate(two, seeds_later, bundles)
+        _check_realism_gate(two, seeds_later, bundles, summaries)
 
     # The prose says the same: A6.9's "Rounds", section 13's "Later rounds" and the approval record's lines.
     one_line = functools.partial(re.sub, r"\s+", " ")
@@ -1232,6 +1304,134 @@ def test_only_an_edit_to_the_turns_physicians_see_lets_a_later_round_decide_a_ra
     clarification = _clarification(record, "- Which round decides a script:")
     assert "`provenance.turn_sha256`" in clarification
     assert clarification.rstrip().endswith("this changes neither the rule nor which items pass.")
+
+
+def test_a_later_round_is_refused_once_the_rounds_before_it_reach_the_floor(plan, w3_set):
+    """A later round exists only when fewer than min_scenarios seeds pass (Gate 6b), but neither the approved check
+    nor the selection checked it: they accepted every round in rounds, so a round appended after six or seven seeds
+    had passed could rate rewritten failures and enlarge the paid run (Codex review of PR #87, 2026-10-05). The
+    program that applies the gate now computes the selection over the rounds before each later round, each seed taken
+    at the turns the latest of those rounds rated, and refuses the later round when min_scenarios or more pass there;
+    the suite checks the same from the committed summaries. A script short of ratings is rated again only in a later
+    round that exists because fewer passed (the owner's decision of 2026-10-05). This changes neither the rule nor
+    which items pass."""
+    gate = plan["physician_realism_gate"]
+    floor = gate["min_scenarios"]
+    bundle1, round1 = _rated_scripts(gate["rounds"][0])
+    ids = sorted(w3_set.seeds)
+    assert floor < len(ids) - 1, "the cases below need two seeds that do not pass round 1 at the floor"
+    fine = dict.fromkeys(gate["min_answers_keys"], (4, 4))
+    good, bad = _summary_row(fine), _summary_row({**fine, gate["gate_keys"][0]: (1, 2)})
+    short = _summary_row({**fine, gate["flag_adds"][0]: ("cant_judge", 4)})
+
+    def round1_rows(not_passing: dict[str, dict]) -> dict[str, dict]:
+        return {item["item_id"]: not_passing.get(sid, good) for sid, item in round1.items()}
+
+    def rerated(n: int, seeds_now: dict[str, dict], rows: dict[str, dict]) -> tuple[dict[str, dict], dict[str, dict]]:
+        """Round n's items for these seeds as seeds_now holds them, with their rows."""
+        items = {}
+        for sid in rows:
+            items[sid] = copy.deepcopy(round1[sid])
+            items[sid]["item_id"] = f"round{n}_{sid}"
+            items[sid]["provenance"].update(seed_sha256=seeds.seed_digest(seeds_now[sid]),
+                                            turn_sha256=_turn_hashes(seeds_now[sid]))
+        return items, {items[sid]["item_id"]: row for sid, row in rows.items()}
+
+    def rewrite(seeds_now: dict[str, dict], sid: str) -> None:
+        text = seeds_now[sid]["texts"][0]
+        text["text"] += " Rewritten."
+        text["sha256"] = sha256_text(text["text"])
+
+    at_floor = round1_rows({ids[0]: bad, ids[1]: bad})                 # floor seeds pass
+    below = round1_rows({ids[0]: bad, ids[1]: bad, ids[2]: bad})      # floor - 1 pass
+    short_at_floor = round1_rows({ids[0]: short, ids[1]: short})       # floor pass, two short
+    assert [_passing_before([(round1, rows), (round1, {})], 1, gate) for rows in (at_floor, below, short_at_floor)] \
+        == [floor, floor - 1, floor]
+    rewritten = copy.deepcopy(w3_set.seeds)
+    rewrite(rewritten, ids[0])
+    refused = re.escape(f"round 2 follows rounds over which {floor} seeds already pass")
+    # Floor reached in round 1: a round 2 that rates a rewritten failure is refused.
+    with pytest.raises(ValueError, match=refused):
+        _cumulative_selection([(round1, at_floor), rerated(2, rewritten, {ids[0]: good})], rewritten, gate)
+    # Below the floor: the same round 2 is allowed, and decides the rewritten script.
+    allowed = _cumulative_selection([(round1, below), rerated(2, rewritten, {ids[0]: good})], rewritten, gate)
+    assert allowed[ids[0]] == (2, "passes", ())
+    # Floor reached with two scripts short: they are not rated again, since no later round follows.
+    with pytest.raises(ValueError, match=refused):
+        _cumulative_selection([(round1, short_at_floor), rerated(2, w3_set.seeds, {ids[0]: good, ids[1]: good})],
+                              w3_set.seeds, gate)
+    assert _cumulative_selection([(round1, short_at_floor)], w3_set.seeds, gate)[ids[0]] == (None, SHORT, (1,))
+    # The count is taken at the turns the rounds before rated: rewriting a script that passed, so that the seed file
+    # holds one fewer passing script, does not open a later round.
+    passed_then_edited = copy.deepcopy(w3_set.seeds)
+    rewrite(passed_then_edited, ids[-1])
+    with pytest.raises(ValueError, match=refused):
+        _cumulative_selection([(round1, at_floor), rerated(2, passed_then_edited, {ids[-1]: good})],
+                              passed_then_edited, gate)
+    # Every later round is checked, not only the last: round 1 reached the floor, so round 2 should not exist, even
+    # though a script that passed was then rewritten and failed in round 2, which leaves rounds 1 and 2 together
+    # below the floor.
+    round2_fails_a_passer = rerated(2, passed_then_edited, {ids[-1]: bad})
+    assert _passing_before([(round1, at_floor), round2_fails_a_passer], 2, gate) == floor - 1
+    with pytest.raises(ValueError, match=refused):
+        _cumulative_selection([(round1, at_floor), round2_fails_a_passer, rerated(3, passed_then_edited, {})],
+                              passed_then_edited, gate)
+    # Three rounds: round 3 follows rounds 1 and 2 together. Round 1 leaves floor - 1 passing; round 2 rates two
+    # rewrites. If neither passes, round 3 may follow; if one passes, the floor is reached and it may not.
+    rewritten_both = copy.deepcopy(rewritten)
+    rewrite(rewritten_both, ids[1])
+    none_more = rerated(2, rewritten_both, {ids[0]: bad, ids[1]: bad})
+    one_more = rerated(2, rewritten_both, {ids[0]: good, ids[1]: bad})
+    rewritten_again = copy.deepcopy(rewritten_both)
+    rewrite(rewritten_again, ids[1])
+    third = rerated(3, rewritten_again, {ids[1]: good})
+    assert [_passing_before([(round1, below), second], 2, gate) for second in (none_more, one_more)] == [
+        floor - 1, floor]
+    selection = _cumulative_selection([(round1, below), none_more, third], rewritten_again, gate)
+    assert (selection[ids[0]], selection[ids[1]]) == ((2, "rated unrealistic", ()), (3, "passes", ()))
+    with pytest.raises(ValueError, match=re.escape(f"round 3 follows rounds over which {floor} seeds")):
+        _cumulative_selection([(round1, below), one_more, third], rewritten_again, gate)
+
+    # The approved check enforces it from the rounds' summaries.
+    two = copy.deepcopy(plan)
+    entry = {**copy.deepcopy(gate["rounds"][0]), "name": "round 2 (a copy made for this test)",
+             "bundle": "round2_for_this_test.json", "bundle_id": "vtasks_round2_for_this_test", "bundle_sha256": None}
+    two["physician_realism_gate"]["rounds"].append(entry)
+    items2, _rows2 = rerated(2, rewritten, {ids[0]: good})
+    bundles = {entry["bundle"]: {**copy.deepcopy(bundle1), "bundle_id": entry["bundle_id"],
+                                 "items": list(items2.values())}}
+    _check_realism_gate(two, rewritten, bundles, _with_round_summaries(two, [below]))
+    with pytest.raises(AssertionError, match=refused):
+        _check_realism_gate(two, rewritten, bundles, _with_round_summaries(two, [at_floor]))
+    unrecorded = copy.deepcopy(plan)
+    unrecorded["physician_realism_gate"]["rounds"].append(entry)
+    with pytest.raises(AssertionError, match="round 2 follows round 1, whose closing export is not recorded"):
+        _check_realism_gate(unrecorded, rewritten, bundles)
+
+    # The plan, A6.9, section 13, the protocol and the approval record say so.
+    one_line = functools.partial(re.sub, r"\s+", " ")
+    prereg = PREREG.read_text(encoding="utf-8")
+    rounds_a69 = one_line(_section(prereg, "**Rounds.**", "**The counts report**"))
+    spec = one_line(_section(prereg, "**Code still to write.**", "**Owner decisions"))
+    record = one_line(_section(prereg, "### Approval record", None))
+    later_s13 = one_line(_section(W3_DESIGN.read_text(encoding="utf-8"), "**Later rounds.**", "**Cost.**"))
+    proto = one_line(_section(PROTOCOL.read_text(encoding="utf-8"), "**Which items the paid runs use", "\n- **"))
+    rule = gate["rounds_rule"]
+    assert "refuses, writing nothing, if min_scenarios or more seeds pass there" in rule
+    assert "each seed taken at the turns the latest of those rounds rated" in rule
+    assert "data/verification/ratings_<bundle_id>_<export stamp>.summary.json" in rule
+    assert "leave fewer than min_scenarios seeds passing (rounds_rule)" in gate["approval"]["effect"]
+    assert "refuses one that follows rounds at or above it" in gate["below_min_scenarios"]
+    assert "refuses, writing nothing, if six or more seeds pass there" in rounds_a69
+    assert "each seed taken at the turns the latest of those rounds rated" in rounds_a69 + later_s13
+    assert "a later round follows rounds over which six or more wave-3 seeds already pass" in spec
+    assert "refuses a later round that follows six or more passing seeds" in later_s13
+    for name, text in (("A6.9 Rounds", rounds_a69), ("section 13", later_s13)):
+        assert re.search(r"short of ratings is rated again only in a later round that exists because fewer (?:than "
+                         r"six )?passed, alongside the rewritten ones", text), name
+    assert "Once six pass there is no later round" in proto
+    line = _clarification(record, "- A later round only below the floor:")
+    assert line.rstrip().endswith("this changes neither the rule nor which items pass.")
 
 
 def test_the_realism_gate_floor_and_counts_follow_from_the_plan(plan):

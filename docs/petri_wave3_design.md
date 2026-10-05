@@ -809,7 +809,12 @@ below).
 **Later rounds.** The plan's `physician_realism_gate.rounds` lists the rating rounds in
 order, earliest first; today it holds round 1 alone. A later round is appended, by a dated
 amendment (section 9.9) and a dated note in A6.9's approval record, before its bundle is
-given to any physician. Its bundle need hold only the rewritten scripts and the scripts
+given to any physician, and only while fewer than six scenarios pass over the rounds
+before it: the program that applies the gate computes that selection, each seed taken at
+the turns the latest of those rounds rated, and refuses a later round that follows six or
+more passing seeds. So once six pass, no script is rated again, and a script short of
+ratings is rated again only in a later round that exists because fewer than six passed,
+alongside the rewritten ones. Its bundle need hold only the rewritten scripts and the scripts
 that were short of ratings, and its exclusions and closing export are recorded before its
 import and checked as round 1's are. The gate then selects across the rounds: each seed
 is decided by the earliest round whose bundle rated its current script, the turns
