@@ -26,7 +26,16 @@ ceiling. Follow these steps in order; every failure mode here is silent.
    `scripts/fire_trigger.py`, each verified against its workflow's params heredoc).
    Underscore-prefixed keys (`_nonce`, `_note`) are pass-through metadata. Never rename a
    rejected key to an underscore form to bypass validation — fix the key.
-4. Rehearse with `--dry-run` first; fire only when the dry-run output is exactly what you
+4. A pilot-root fire (circuit-trace `output_root: pilot/traces`, logits-eval
+   `output_root: pilot/logits`) reads a pairs file named for its run:
+   `pilot/runs/<run_id>/.../<run_id>_<name>.json`. Both lanes name the output folder by
+   the file's stem alone, so the run id in the name keeps two runs' parts out of one
+   folder; `fire` refuses any other name with exit 3 (as the params jobs do).
+   `pilot/analysis/trace_pairs.py` writes that name by default. Run 2's legacy
+   `trace/trace_pairs.json` is refused: copy it under
+   `pilot_v2_20261002_trace_pairs.json` to fire it again. `docs/triggers.md` has the
+   rest of the pilot rules.
+5. Rehearse with `--dry-run` first; fire only when the dry-run output is exactly what you
    intend.
 
 ## 2 · Fire

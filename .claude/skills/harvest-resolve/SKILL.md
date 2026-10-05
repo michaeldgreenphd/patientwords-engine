@@ -47,7 +47,10 @@ model list, and every offset/chunk fired.
   pilot cell whose seal check failed commits nothing (docs/triggers.md). A
   logits-eval fire with `output_root: pilot/logits` likewise lands under
   `pilot/logits/<pairs-stem>__<model>/` (every logits-eval directory carries the
-  model suffix), the same way.
+  model suffix), the same way. A pilot pairs file is named for its run
+  (`pilot/runs/<run_id>/.../<run_id>_<name>.json`, refused otherwise since
+  2026-10-04), so a pilot stem starts with its run id; the one exception is run 2's
+  parts, at `pilot/traces/trace_pairs/`, landed before the rule.
   CI renames each chunk's summary to `batch_summary.part_NN.json`, NN = 1-based
   start offset. Expect ONE part per fired offset, per model. Always glob
   `batch_summary*.json`; `results[i]["index"]` is the global 1-based join key

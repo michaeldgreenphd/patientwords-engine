@@ -44,6 +44,16 @@ recorded run (2026-09-30)*) records the decision.
   `pilot/logits/<pairs-stem>__<model>/`, which no collector reads either. The
   same pairs file a pilot trace reads (under `pilot/runs/`) serves this lane.
   `docs/triggers.md` (the `logits-eval` row) has every rule it applies.
+- Both trees name an output folder by the pairs file's stem alone, so under either
+  pilot root a pairs file is named for its run:
+  `pilot/runs/<run_id>/.../<run_id>_<name>.json` (2026-10-04). The fire path and
+  both workflows' params jobs refuse any other name, and
+  `pilot/analysis/trace_pairs.py` writes `<run-dir>/trace/<run_id>_trace_pairs.json`
+  by default. Before that rule every run's default was `trace/trace_pairs.json`, so
+  two runs' traces would have landed in one folder and replaced each other's parts.
+  Run 2's `pilot/runs/pilot_v2_20261002/trace/trace_pairs.json` keeps its name and
+  its parts stay at `pilot/traces/trace_pairs/`; tracing or measuring it again needs
+  the file copied under `pilot_v2_20261002_trace_pairs.json` first.
 
 ## A finalized run is not written into without `--replace`
 
