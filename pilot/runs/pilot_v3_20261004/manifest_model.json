@@ -1,0 +1,15 @@
+{
+  "execution_path": "Claude Code in VS Code on the owner's laptop, Workflow tool subagents",
+  "execution_notes": "Subagents inherit the session model. Their system prompt and the repository instructions the harness injects (the engine checkout's CLAUDE.md, which imports AGENTS.md, at 5f0b5150 on main, the session's project directory) are outside this pilot's control; prompt hashes cover only the user-turn prompt. The planning steps ran in a subagent of the same session; the main session launches the workflows. The workflow scripts run from the run directory inside the session scratchpad worktree (branch claude/pilot-run3), as run 2's did, so no copy of the scripts is needed.",
+  "session_model_at_run": "claude-opus-5-5[1m]",
+  "session_last_served_model_at_run": "claude-opus-5-5[1m]",
+  "session_model_at_creation": "unknown",
+  "model_switched_by_user_before_run": "unknown",
+  "effort_level": "unknown",
+  "harness_version": "claude-code 2.1.287",
+  "source": "session_model_*: the system prompt of the session's planning subagent (model id claude-opus-5-5[1m], Opus 5.5 with 1M context) and the main session's statement in its task that the session runs claude-opus-5-5, read 2026-10-04T17:01Z before generation. harness_version: the process that runs this session, found by walking the planning subagent's shell up to its parent at 2026-10-04T17:01Z, is /Users/michaelgreen/.vscode/extensions/anthropic.claude-code-2.1.287-darwin-arm64/resources/native-binary/claude, started 2026-10-02 05:41:13 local time with --resume of this session's id and --max-thinking-tokens 31999; VS Code extensions 2.1.288 and 2.1.289 are also installed, so a restart of the session before generation could change the version (HANDOFF.md records one if it happens). session_model_at_creation, model_switched_by_user_before_run and effort_level could not be verified from inside the session: the process's command line carries no model or effort flag, and the settings files were not read (a guard hook refuses shell access to them). Note: design.json's harness_version (2, the pilot scripts' version) is a different field from this Claude Code version string.",
+  "seeds_source": "pilot/runs/pilot_v2_20261002/seeds.json (sha256 095820fe7ae0ef8a...), copied byte-identical; run 2's seeds were byte-identical to run 1's, which came from ~/Downloads/seeds_imported.json (converted from the engine's data/measured/imported_pairs.json)",
+  "per_subagent_model_evidence": "see manifest.json runs.*.model_evidence, filled from the workflow transcripts after each run if the transcripts record it",
+  "generation_output_schema": "none (raw text; format validity is estimand 1)",
+  "checker_output_schema": "structured output (harness version 2): {verdicts: [{id, equivalent in {yes,no,unclear}, relation in {same,same_brand,broader,narrower,different}, sentence_natural in {both,clinical_only,patient_only,neither}, patient_realism in {real,textbook,unlikely}, reason}]}"
+}
