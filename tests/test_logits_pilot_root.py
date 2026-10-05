@@ -6,12 +6,13 @@ pilot/logits/<run_id>/<stem>__<model>/ (the run's own folder), so their outputs 
 collector reads measurements. Each thing is held by running or parsing what CI runs:
 
 - the params job's push-path refusals (its python heredoc, run as CI runs it) agree case for case with the fire-time
-  refusals in scripts/fire_trigger.py, and a refused config writes no job outputs; among them, a pilot pairs file is
-  named for its run (pilot/runs/<run_id>/.../<run_id>_<name>.json, 2026-10-04), and a run id that names one of
+  refusals in scripts/fire_trigger.py, and a refused config writes no job outputs; among them, a pilot pairs file
+  sits in its run's trace/ directory and is named for its run, with no "__" in its name
+  (pilot/runs/<run_id>/trace/<run_id>_<name>.json, 2026-10-04 and 2026-10-05), and a run id that names one of
   circuit-trace's flat pilot folders from before 2026-10-05 is refused, as there;
 - the "Resolve output dir" step writes OUT_DIR under the pilot root only when asked, in the run's own folder with the
-  run id read as the fire path reads it, so two runs never share a folder, and leaves the default root's three paths
-  (logits, depth, verify) as they were;
+  run id read as the fire path reads it, so two runs never share a folder and neither do two files or two models of
+  one run, and leaves the default root's three paths (logits, depth, verify) as they were;
 - the eval job checks out pilot/runs and never pilot/logits; a fail-closed holdout seal check runs after the
   measurement and before the commit, over a copy of what the cell wrote and the pairs file; a pilot cell commits
   only its batch_summary part, and only when that check succeeded; and the run-page summary is gated the same way.
@@ -20,6 +21,7 @@ The pairs and phrases written here are abstract placeholders, never study stimul
 """
 from __future__ import annotations
 
+import ast
 import importlib.util
 import json
 import os
@@ -101,13 +103,14 @@ def _fire_refuses(cfg: dict) -> list[str]:
 
 
 BASE = {"models": "qwen3-1.7b", "commit_outputs": "false"}
-# a placeholder run, run_a, and its pairs file, named for it
-PILOT_PAIRS = "pilot/runs/run_a/run_a_pairs.json"
+# a placeholder run, run_a, and its pairs files, in its trace/ directory and named for it
+PILOT_PAIRS = "pilot/runs/run_a/trace/run_a_pairs.json"
+OTHER_PILOT_PAIRS = "pilot/runs/run_a/trace/run_a_other.json"
 PILOT = {"output_root": PILOT_ROOT, "pairs_file": PILOT_PAIRS}
 # Codex on PR #85 (2026-10-05): run a's a_b_pairs.json and run a_b's a_b_pairs.json both pass the naming rule and share
 # a stem, so a folder cut from the stem alone held both runs' parts; each now measures into its own run's folder
-PREFIX_RUN_PAIRS = "pilot/runs/a/a_b_pairs.json"
-PREFIXED_RUN_PAIRS = "pilot/runs/a_b/a_b_pairs.json"
+PREFIX_RUN_PAIRS = "pilot/runs/a/trace/a_b_pairs.json"
+PREFIXED_RUN_PAIRS = "pilot/runs/a_b/trace/a_b_pairs.json"
 # run 2's pairs under the run-named name, beside the legacy file: where trace_pairs.py's default writes them when re-run
 # on run 2 (a byte-identical file), and what docs/triggers.md and the refusal tell a session to fire instead
 RUN2_RUN_NAMED = "pilot/runs/pilot_v2_20261002/trace/pilot_v2_20261002_trace_pairs.json"
@@ -134,24 +137,53 @@ CASES = [
     ("pilot-root-the-run-2-review-sample", {"models": "qwen3-4b qwen3-1.7b", "pairs_file": RUN2_PAIRS,
                                             "output_root": PILOT_ROOT, "limit": "0", "offset": "0",
                                             "commit_outputs": "true"}, True),
-    # named for its run: pilot/runs/<run_id>/.../<run_id>_<name>.json, the name read as given (OUT_DIR's stem is cut
-    # from it) and the run id from the normalised path
-    ("pilot-root-pairs-in-a-deeper-directory", {**PILOT, "pairs_file": "pilot/runs/run_a/x/y/run_a_pairs.json"}, False),
-    ("pilot-root-climbing-back-into-the-run", {**PILOT, "pairs_file": "pilot/runs/run_b/../run_a/run_a_pairs.json"},
-     False),
+    # named for its run: pilot/runs/<run_id>/trace/<run_id>_<name>.json, the name read as given (OUT_DIR's stem is
+    # cut from it) and the run id from the normalised path
+    ("pilot-root-a-second-file-of-the-run", {**PILOT, "pairs_file": OTHER_PILOT_PAIRS}, False),
+    ("pilot-root-climbing-back-into-the-run",
+     {**PILOT, "pairs_file": "pilot/runs/run_b/../run_a/trace/run_a_pairs.json"}, False),
     ("pilot-root-pairs-directly-in-runs", {**PILOT, "pairs_file": "pilot/runs/run_a_pairs.json"}, True),
     ("pilot-root-pairs-not-named-for-the-run", {**PILOT, "pairs_file": "pilot/runs/run_a/trace/pairs.json"}, True),
-    ("pilot-root-pairs-named-for-another-run", {**PILOT, "pairs_file": "pilot/runs/run_a/run_b_pairs.json"}, True),
-    ("pilot-root-climbing-into-another-run", {**PILOT, "pairs_file": "pilot/runs/run_b/../run_a/run_b_pairs.json"},
+    ("pilot-root-pairs-named-for-another-run", {**PILOT, "pairs_file": "pilot/runs/run_a/trace/run_b_pairs.json"},
      True),
-    ("pilot-root-run-id-without-the-underscore", {**PILOT, "pairs_file": "pilot/runs/run_a/run_apairs.json"}, True),
-    ("pilot-root-run-id-alone", {**PILOT, "pairs_file": "pilot/runs/run_a/run_a_.json"}, True),
-    ("pilot-root-name-starts-with-part-of-the-run-id", {**PILOT, "pairs_file": "pilot/runs/run_a/run_pairs.json"},
+    ("pilot-root-climbing-into-another-run",
+     {**PILOT, "pairs_file": "pilot/runs/run_b/../run_a/trace/run_b_pairs.json"}, True),
+    ("pilot-root-run-id-without-the-underscore", {**PILOT, "pairs_file": "pilot/runs/run_a/trace/run_apairs.json"},
      True),
-    ("pilot-root-not-a-json-name", {**PILOT, "pairs_file": "pilot/runs/run_a/run_a_pairs.txt"}, True),
-    ("pilot-root-upper-case-suffix", {**PILOT, "pairs_file": "pilot/runs/run_a/run_a_pairs.JSON"}, True),
+    ("pilot-root-run-id-alone", {**PILOT, "pairs_file": "pilot/runs/run_a/trace/run_a_.json"}, True),
+    ("pilot-root-name-starts-with-part-of-the-run-id",
+     {**PILOT, "pairs_file": "pilot/runs/run_a/trace/run_pairs.json"}, True),
+    ("pilot-root-not-a-json-name", {**PILOT, "pairs_file": "pilot/runs/run_a/trace/run_a_pairs.txt"}, True),
+    ("pilot-root-upper-case-suffix", {**PILOT, "pairs_file": "pilot/runs/run_a/trace/run_a_pairs.JSON"}, True),
     ("pilot-root-trailing-dot", {**PILOT, "pairs_file": PILOT_PAIRS + "/."}, True),
     ("pilot-root-trailing-slash", {**PILOT, "pairs_file": PILOT_PAIRS + "/"}, True),
+    # in its run's trace/ directory and nowhere else: the folder is pilot/logits/<run_id>/<stem>__<model>, so a file of
+    # one name elsewhere in the run would measure into the trace/ file's folder (the independent check of 2026-10-05)
+    ("pilot-root-pairs-directly-in-the-run-directory", {**PILOT, "pairs_file": "pilot/runs/run_a/run_a_pairs.json"},
+     True),
+    ("pilot-root-pairs-in-another-directory-of-the-run",
+     {**PILOT, "pairs_file": "pilot/runs/run_a/other/run_a_pairs.json"}, True),
+    ("pilot-root-pairs-below-trace", {**PILOT, "pairs_file": "pilot/runs/run_a/trace/deeper/run_a_pairs.json"}, True),
+    ("pilot-root-pairs-in-a-deeper-directory", {**PILOT, "pairs_file": "pilot/runs/run_a/x/y/run_a_pairs.json"}, True),
+    ("pilot-root-trace-directory-in-another-case",
+     {**PILOT, "pairs_file": "pilot/runs/run_a/Trace/run_a_pairs.json"}, True),
+    ("pilot-root-climbing-out-of-trace", {**PILOT, "pairs_file": "pilot/runs/run_a/trace/../run_a_pairs.json"}, True),
+    ("pilot-root-climbing-back-into-trace",
+     {**PILOT, "pairs_file": "pilot/runs/run_a/other/../trace/run_a_pairs.json"}, False),
+    ("pilot-root-run-3s-file-directly-in-its-run-directory",
+     {**PILOT, "pairs_file": "pilot/runs/pilot_v3_20261004/pilot_v3_20261004_trace_pairs.json"}, True),
+    # no "__" in the name: every folder here is <stem>__<model>, so a stem holding "__" could name another file's
+    # folder for another model, as it can on circuit-trace
+    ("pilot-root-model-separator-in-the-name",
+     {**PILOT, "pairs_file": "pilot/runs/run_a/trace/run_a_pairs__qwen3-4b.json"}, True),
+    ("pilot-root-model-separator-after-the-run-id", {**PILOT, "pairs_file": "pilot/runs/run_a/trace/run_a__p.json"},
+     True),
+    ("pilot-root-model-separator-at-the-end", {**PILOT, "pairs_file": "pilot/runs/run_a/trace/run_a_pairs__.json"},
+     True),
+    ("pilot-root-model-separator-in-the-run-id", {**PILOT, "pairs_file": "pilot/runs/a__b/trace/a__b_p.json"}, True),
+    ("pilot-root-single-underscores", {**PILOT, "pairs_file": "pilot/runs/run_a/trace/run_a_p_q.json"}, False),
+    # a run id is kept as given: Run_A is a run of its own, beside run_a
+    ("pilot-root-upper-case-run-id", {**PILOT, "pairs_file": "pilot/runs/Run_A/trace/Run_A_pairs.json"}, False),
     ("pilot-root-study-pairs", {**PILOT, "pairs_file": "data/x.json"}, True),
     ("pilot-root-escaping-pairs", {**PILOT, "pairs_file": "pilot/../data/x.json"}, True),
     ("pilot-root-default-pairs", {"output_root": PILOT_ROOT}, True),
@@ -173,7 +205,7 @@ CASES = [
     ("pilot-mode-case-variant", {**PILOT, "mode": "Logits"}, True),
     ("pilot-mode-padded", {**PILOT, "mode": " logits"}, True),
     # the seal step's --extra list splits on commas, so a comma in a pilot pairs name would scan nothing of it
-    ("pilot-root-comma-pairs", {**PILOT, "pairs_file": "pilot/runs/run_a/run_a_a,b.json"}, True),
+    ("pilot-root-comma-pairs", {**PILOT, "pairs_file": "pilot/runs/run_a/trace/run_a_a,b.json"}, True),
     ("default-root-comma-pairs-is-unchanged", {"pairs_file": "data/a,b.json"}, False),
     # an absolute or ..-escaping path can name the checkout's pilot/ without the pilot/ prefix, so both are refused
     ("absolute-pilot-pairs-default-root", {"pairs_file": "/home/runner/work/engine/engine/pilot/runs/p.json"}, True),
@@ -204,7 +236,8 @@ CASES = [
     ("carriage-return-in-limit", {"limit": "1\r"}, True),
     ("tab-in-models", {"models": "qwen3-1.7b\tqwen3-4b"}, True),
     ("delete-character-in-layers", {"layers": "all\x7f"}, True),
-    ("control-character-in-pilot-pairs", {**PILOT, "pairs_file": "pilot/runs/run_a/run_a_p\x0b.json"}, True),
+    ("control-character-in-pilot-pairs", {**PILOT, "pairs_file": "pilot/runs/run_a/trace/run_a_p\x0b.json"}, True),
+    ("newline-in-a-pilot-run-id", {**PILOT, "pairs_file": "pilot/runs/r\nQ=1/trace/r\nQ=1_x.json"}, True),
     # each run measures into its own folder, pilot/logits/<run_id>/<stem>__<model>: run a's and run a_b's
     # a_b_pairs.json (Codex on PR #85) are both accepted, and land in two folders
     ("pilot-root-run-a-owns-a_b_pairs", {**PILOT, "pairs_file": PREFIX_RUN_PAIRS}, False),
@@ -212,26 +245,26 @@ CASES = [
     ("pilot-root-run-2s-run-named-file", {**PILOT, "pairs_file": RUN2_RUN_NAMED}, False),
     # a run id that names one of circuit-trace's flat folders from before 2026-10-05 is refused here too, so a run id
     # is usable on both pilot lanes or on neither
-    ("pilot-root-run-id-is-run-2s-legacy-folder", {**PILOT, "pairs_file": "pilot/runs/trace_pairs/trace_pairs_x.json"},
-     True),
+    ("pilot-root-run-id-is-run-2s-legacy-folder",
+     {**PILOT, "pairs_file": "pilot/runs/trace_pairs/trace/trace_pairs_x.json"}, True),
     ("pilot-root-run-id-is-run-3s-legacy-folder",
      {**PILOT, "pairs_file": "pilot/runs/pilot_v3_20261004_trace_pairs/trace/pilot_v3_20261004_trace_pairs_x.json"},
      True),
     ("pilot-root-climbing-into-a-legacy-run-id",
-     {**PILOT, "pairs_file": "pilot/runs/run_a/../trace_pairs/trace_pairs_x.json"}, True),
+     {**PILOT, "pairs_file": "pilot/runs/run_a/../trace_pairs/trace/trace_pairs_x.json"}, True),
     ("pilot-root-run-id-extends-a-legacy-name",
-     {**PILOT, "pairs_file": "pilot/runs/trace_pairs_v2/trace_pairs_v2_x.json"}, False),
+     {**PILOT, "pairs_file": "pilot/runs/trace_pairs_v2/trace/trace_pairs_v2_x.json"}, False),
     ("pilot-root-legacy-name-below-the-run-id",
-     {**PILOT, "pairs_file": "pilot/runs/run_a/trace_pairs/run_a_pairs.json"}, False),
-    ("pilot-root-legacy-name-as-the-file-name", {**PILOT, "pairs_file": "pilot/runs/run_a/run_a_trace_pairs.json"},
-     False),
+     {**PILOT, "pairs_file": "pilot/runs/run_a/trace_pairs/run_a_pairs.json"}, True),
+    ("pilot-root-legacy-name-as-the-file-name",
+     {**PILOT, "pairs_file": "pilot/runs/run_a/trace/run_a_trace_pairs.json"}, False),
     # path spellings the runner normalises: the run id is read from the normalised path, the name as given
-    ("pilot-root-doubled-slashes", {**PILOT, "pairs_file": "pilot//runs//run_a//run_a_pairs.json"}, False),
-    ("pilot-root-dot-segments-inside-the-run", {**PILOT, "pairs_file": "pilot/runs/run_a/./x/../run_a_pairs.json"},
-     False),
-    ("pilot-root-run-id-with-a-dot", {**PILOT, "pairs_file": "pilot/runs/run.a/run.a_pairs.json"}, False),
+    ("pilot-root-doubled-slashes", {**PILOT, "pairs_file": "pilot//runs//run_a//trace//run_a_pairs.json"}, False),
+    ("pilot-root-dot-segments-inside-the-run",
+     {**PILOT, "pairs_file": "pilot/runs/run_a/./x/../trace/run_a_pairs.json"}, False),
+    ("pilot-root-run-id-with-a-dot", {**PILOT, "pairs_file": "pilot/runs/run.a/trace/run.a_pairs.json"}, False),
     ("pilot-root-dot-run-directory", {**PILOT, "pairs_file": "pilot/runs/./run_a_pairs.json"}, True),
-    ("pilot-root-climbing-out-of-runs", {**PILOT, "pairs_file": "pilot/runs/../runs_x/runs_x_pairs.json"}, True),
+    ("pilot-root-climbing-out-of-runs", {**PILOT, "pairs_file": "pilot/runs/../runs_x/trace/runs_x_pairs.json"}, True),
 ]
 
 
@@ -257,9 +290,13 @@ def test_the_params_job_and_the_fire_path_refuse_the_same_pilot_configs(tmp_path
     ({**PILOT, "pairs_file": "pilot/p.json"}, "under pilot/runs/"),
     ({**PILOT, "pairs_file": "pilot/logits/p/x.json"}, "under pilot/runs/"),
     ({**PILOT, "mode": "depth"}, "mode 'depth'"),
-    ({**PILOT, "pairs_file": "pilot/runs/run_a/run_a_a,b.json"}, "contains a comma"),
+    ({**PILOT, "pairs_file": "pilot/runs/run_a/trace/run_a_a,b.json"}, "contains a comma"),
     ({**PILOT, "pairs_file": RUN2_PAIRS}, "is not named for its run"),
-    ({**PILOT, "pairs_file": "pilot/runs/run_a_pairs.json"}, "is not named for its run"),
+    ({**PILOT, "pairs_file": "pilot/runs/run_a_pairs.json"}, "is not in its run's trace/ directory"),
+    ({**PILOT, "pairs_file": "pilot/runs/run_a/run_a_pairs.json"}, "is not in its run's trace/ directory"),
+    ({**PILOT, "pairs_file": "pilot/runs/run_a/trace/deeper/run_a_pairs.json"}, "is not in its run's trace/ directory"),
+    ({**PILOT, "pairs_file": "pilot/runs/run_a/trace/run_b_pairs.json"}, "is not named for its run"),
+    ({**PILOT, "pairs_file": "pilot/runs/run_a/trace/run_a_pairs__qwen3-4b.json"}, "holds '__' in its name"),
     ({**PILOT, "output_root": "pilot/traces"}, "or 'pilot/logits' is accepted"),
     ({"pairs_file": "pilot\\runs\\p.json"}, "contains a backslash"),
     ({"pairs_file": "/abs/pilot/runs/p.json"}, "is absolute or leaves the checkout"),
@@ -267,12 +304,13 @@ def test_the_params_job_and_the_fire_path_refuse_the_same_pilot_configs(tmp_path
     # run 2's refusal names the run-named file to fire instead, and how to make it, on both sides
     ({**PILOT, "pairs_file": RUN2_PAIRS}, RUN2_RUN_NAMED),
     ({**PILOT, "pairs_file": RUN2_PAIRS}, "trace_pairs.py --run-dir pilot/runs/pilot_v2_20261002 --review-sample"),
-    ({**PILOT, "pairs_file": "pilot/runs/trace_pairs/trace_pairs_x.json"},
+    ({**PILOT, "pairs_file": "pilot/runs/trace_pairs/trace/trace_pairs_x.json"},
      "pilot output folder pilot/traces/trace_pairs/ written before 2026-10-05"),
-    ({**PILOT, "pairs_file": "pilot/runs/pilot_v3_20261004_trace_pairs/pilot_v3_20261004_trace_pairs_x.json"},
+    ({**PILOT, "pairs_file": "pilot/runs/pilot_v3_20261004_trace_pairs/trace/pilot_v3_20261004_trace_pairs_x.json"},
      "pilot output folder pilot/traces/pilot_v3_20261004_trace_pairs/ written before 2026-10-05"),
 ], ids=["pilot-pairs-default-root", "pilot-file-outside-runs", "pilot-logits-file", "depth-mode", "comma",
-        "run-2-legacy-name", "no-run-directory", "circuit-trace-root", "backslash", "absolute", "newline",
+        "run-2-legacy-name", "no-run-directory", "file-directly-in-the-run", "file-below-trace",
+        "named-for-another-run", "model-separator", "circuit-trace-root", "backslash", "absolute", "newline",
         "run-2-run-named-file-named", "run-2-rebuild-command-named", "run-2-legacy-run-id", "run-3-legacy-run-id"])
 def test_both_sides_name_the_refusal(tmp_path, cfg, needle):
     full = {**BASE, **cfg}
@@ -484,22 +522,50 @@ ACCEPTED_PILOT_PATHS = sorted({c["pairs_file"] for _, c, refused in CASES
                                if not refused and c.get("output_root") == PILOT_ROOT})
 
 
+LOGITS_MODELS = ("qwen3-4b", "qwen3-1.7b", "gemma-2-2b")
+
+
 def test_every_accepted_pilot_path_measures_into_its_runs_folder_as_the_fire_path_reads_the_run_id(tmp_path):
-    """For each pilot pairs path the parity table accepts, the resolve step's OUT_DIR is
+    """For each pilot pairs path the parity table accepts and each model, the resolve step's OUT_DIR is
     pilot/logits/<fire_trigger.pilot_run_id(path)>/<the given name's stem>__<model>, so the folder's run id is the one
-    the fire path and the params job checked; and paths of different runs never share a folder."""
-    assert {PREFIX_RUN_PAIRS, PREFIXED_RUN_PAIRS, RUN3_PAIRS, RUN2_RUN_NAMED} <= set(ACCEPTED_PILOT_PATHS)
-    seen: dict[str, str] = {}
+    the fire path and the params job checked. No folder is shared by two runs, nor within a run by two files (two
+    normalised paths) or two models: the independent check of 2026-10-05 found pilot/runs/r/r_x.json,
+    pilot/runs/r/other/r_x.json and pilot/runs/r/trace/deeper/r_x.json each measuring into
+    pilot/runs/r/trace/r_x.json's folder; the table refuses each."""
+    assert {PREFIX_RUN_PAIRS, PREFIXED_RUN_PAIRS, RUN3_PAIRS, RUN2_RUN_NAMED, PILOT_PAIRS, OTHER_PILOT_PAIRS} <= set(
+        ACCEPTED_PILOT_PATHS)
+    files_per_run: dict[str, set[str]] = {}
+    for path in ACCEPTED_PILOT_PATHS:
+        files_per_run.setdefault(ft.pilot_run_id(path), set()).add(os.path.normpath(path))
+    assert max(len(files) for files in files_per_run.values()) >= 2, "some run has two files, so within-run is tested"
+    seen_run: dict[str, str] = {}
+    seen_cell: dict[str, tuple[str, str]] = {}
     for i, path in enumerate(ACCEPTED_PILOT_PATHS):
         run_id = ft.pilot_run_id(path)
         stem = path.rsplit("/", 1)[1][:-len(".json")]
         assert run_id and run_id not in ft.PILOT_LEGACY_OUTPUT_FOLDERS, path
-        rc, env, log = _run_resolve(tmp_path / str(i), "logits", PILOT_ROOT, pairs_file=path, model="qwen3-1.7b",
-                                    offset="0")
-        assert rc == 0, log
-        out_dir = next(line for line in env.splitlines() if line.startswith("OUT_DIR="))
-        assert out_dir == f"OUT_DIR=pilot/logits/{run_id}/{stem}__qwen3-1.7b", path
-        assert seen.setdefault(out_dir, run_id) == run_id, f"{path} shares {out_dir} with run {seen[out_dir]}"
+        for model in LOGITS_MODELS:
+            rc, env, log = _run_resolve(tmp_path / f"{i}_{model}", "logits", PILOT_ROOT, pairs_file=path, model=model,
+                                        offset="0")
+            assert rc == 0, log
+            out_dir = next(line for line in env.splitlines() if line.startswith("OUT_DIR="))
+            assert out_dir == f"OUT_DIR=pilot/logits/{run_id}/{stem}__{model}", (path, model)
+            assert seen_run.setdefault(out_dir, run_id) == run_id, f"{path} shares {out_dir} with run {seen_run[out_dir]}"
+            cell = (os.path.normpath(path), model)
+            assert seen_cell.setdefault(out_dir, cell) == cell, f"{cell} shares {out_dir} with {seen_cell[out_dir]}"
+
+
+def test_the_run_ids_case_is_kept_in_the_output_folder(tmp_path):
+    """A run id is read and written as given, so Run_A is a run of its own, beside run_a (on circuit-trace the
+    independent check's mutant that lower-cased the run id passed every other test; the same is held here)."""
+    upper = "pilot/runs/Run_A/trace/Run_A_pairs.json"
+    rc, _, err = _run_params(tmp_path / "params", {**BASE, **PILOT, "pairs_file": upper})
+    assert rc == 0 and _fire_refuses({**BASE, **PILOT, "pairs_file": upper}) == [], err
+    assert ft.pilot_run_id(upper) == "Run_A"
+    rc, env, log = _run_resolve(tmp_path / "upper", "logits", PILOT_ROOT, pairs_file=upper, offset="0")
+    assert rc == 0 and "OUT_DIR=pilot/logits/Run_A/Run_A_pairs__qwen3-4b\n" in env, log
+    rc, env, log = _run_resolve(tmp_path / "lower", "logits", PILOT_ROOT, pairs_file=PILOT_PAIRS, offset="0")
+    assert rc == 0 and "OUT_DIR=pilot/logits/run_a/run_a_pairs__qwen3-4b\n" in env, log
 
 
 @pytest.mark.parametrize("pairs", ["pilot/runs/run_a_pairs.json", "pilot/runs/./run_a_pairs.json", "pilot/p.json",
@@ -514,13 +580,26 @@ def test_the_resolve_step_refuses_a_pilot_path_without_a_run_directory(tmp_path,
 
 @pytest.mark.parametrize("legacy", sorted(ft.PILOT_LEGACY_OUTPUT_FOLDERS))
 def test_both_sides_refuse_every_legacy_folder_name_as_a_run_id(tmp_path, legacy):
-    """The fire path's list and this params job's agree name for name (circuit-trace's params job is held to the same
-    list in tests/test_circuit_trace_pilot_root.py)."""
+    """Each name on the fire path's list is refused on both sides, with the same reason. A name on the params job's
+    list alone is not exercised here: test_the_params_jobs_legacy_list_is_the_fire_paths parses that list."""
     pairs = f"pilot/runs/{legacy}/trace/{legacy}_x.json"
     rc, out, err = _run_params(tmp_path, {**BASE, **PILOT, "pairs_file": pairs})
     assert rc != 0 and out == "" and f"pilot/traces/{legacy}/ written before 2026-10-05" in err, err
     problems = _fire_refuses({**BASE, **PILOT, "pairs_file": pairs})
     assert problems and f"pilot/traces/{legacy}/ written before 2026-10-05" in problems[0], problems
+
+
+def test_the_params_jobs_legacy_list_is_the_fire_paths():
+    """The params job's list, parsed from its heredoc, equals the fire path's as a set, with no name twice. The
+    behavioural test above tries only the fire path's names, so a name added to the workflow alone would have passed
+    it (the independent check's mutant K, 2026-10-05). circuit-trace's params job is held to the same list in
+    tests/test_circuit_trace_pilot_root.py."""
+    found = re.findall(r"elif run_id in (\([^)]*\)):", _params_heredoc())
+    assert len(found) == 1, found
+    names = ast.literal_eval(found[0])
+    assert isinstance(names, tuple) and all(isinstance(n, str) for n in names), names
+    assert len(names) == len(set(names)), names
+    assert set(names) == set(ft.PILOT_LEGACY_OUTPUT_FOLDERS)
 
 
 @pytest.mark.parametrize("mode, root", [("depth", PILOT_ROOT), ("verify", PILOT_ROOT), ("logits", "pilot/traces"),

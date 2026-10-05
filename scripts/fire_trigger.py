@@ -93,8 +93,8 @@ CIRCUIT_TRACE_TRANSLATION_MODE = "translation"
 # circuit-trace `output_root` (2026-10-01): "" keeps today's trace_out/<stem> exactly; the one other accepted value
 # writes pilot stimulus pairs' outputs to pilot/traces/<run_id>/<stem> (the run's own folder since 2026-10-05,
 # PILOT_LEGACY_OUTPUT_FOLDERS below), which no collector reads. A pairs file under pilot/ is traced if and only if
-# the root is the pilot root, under that root it must sit under pilot/runs/ and be named for its run
-# (PILOT_PAIRS_SUFFIX below), and a pilot trace is always $0 and plain.
+# the root is the pilot root, under that root it must sit in its run's directory under pilot/runs/, be named for
+# its run and hold no "__" (PILOT_PAIRS_SUFFIX below), and a pilot trace is always $0 and plain.
 # circuit_trace_evaluation.yml's params job refuses the same; tests/test_circuit_trace_pilot_root.py holds the two
 # together.
 CIRCUIT_TRACE_PILOT_ROOT = "pilot/traces"
@@ -109,24 +109,38 @@ CIRCUIT_TRACE_PILOT_RUNS_PREFIX = "pilot/runs/"
 # path (pilot_run_id). Two runs therefore never share an output folder. Before this, both lanes named the folder by
 # the pairs file's stem alone, so two runs' files of one name (pilot/analysis/trace_pairs.py gave every run
 # trace/trace_pairs.json until 2026-10-04), or of names that only the run id told apart (runs a and a_b each owning an
-# a_b_pairs.json), wrote one folder and replaced each other's parts without a refusal. The pairs file is still named
-# for its run, pilot/runs/<run_id>/.../<run_id>_<name>.json (2026-10-04), so a folder's name says which run it holds.
-# Run 2's trace/trace_pairs.json predates that rule and is refused for a new fire; firing run 2 again needs its pairs
+# a_b_pairs.json), wrote one folder and replaced each other's parts without a refusal. Within a run, the folder's
+# name is the pairs file's stem, so the file sits at exactly pilot/runs/<run_id>/trace/<file> (PILOT_PAIRS_DIR), where
+# pilot/analysis/trace_pairs.py writes it and PR #86's verification exporter reads it: two files of one run then have
+# two names, where a file in another directory of the run (pilot/runs/r/r_x.json, pilot/runs/r/other/r_x.json,
+# pilot/runs/r/trace/deeper/r_x.json) would have shared pilot/traces/r/r_x/ with pilot/runs/r/trace/r_x.json. The
+# file is named for its run, pilot/runs/<run_id>/trace/<run_id>_<name>.json (2026-10-04), so a folder's name says
+# which run it holds; and its name holds no "__" (PILOT_MODEL_SEPARATOR), which the lanes put between a stem and a
+# model, so that r_x__qwen3-4b.json traced with gemma-2-2b cannot write r_x.json's qwen3-4b folder. Run 2's
+# trace/trace_pairs.json predates the naming rule and is refused for a new fire; firing run 2 again needs its pairs
 # under the run-named name beside it (PILOT_RUN2_RUN_NAMED_PAIRS). Both workflows' params jobs apply the same tests.
 PILOT_PAIRS_SUFFIX = ".json"
+# the one directory of a run that holds its pilot pairs files (pilot/runs/<run_id>/trace/)
+PILOT_PAIRS_DIR = "trace"
+# what both lanes put between a pairs file's stem and a model in an output folder's name (<stem>__<model>)
+PILOT_MODEL_SEPARATOR = "__"
 # Run 2's pairs under the name a pilot-root fire accepts, beside the legacy trace/trace_pairs.json: where
 # pilot/analysis/trace_pairs.py's default --out puts them (`--run-dir pilot/runs/pilot_v2_20261002 --review-sample`
 # rebuilds a byte-identical file there, checked 2026-10-05), or where a copy of the legacy file goes. The verification
-# exporter of PR #86 reads the legacy file and accepts a byte-identical copy beside it. Its outputs would land in
-# pilot/traces/pilot_v2_20261002/pilot_v2_20261002_trace_pairs/, not beside run 2's parts.
+# exporter of PR #86 reads the legacy file; for a run whose trace it requires it accepts a copy beside it only while
+# the two are byte-identical, and for a run whose trace is optional it checks only the names of the files there. Its
+# outputs would land in pilot/traces/pilot_v2_20261002/pilot_v2_20261002_trace_pairs/, not beside run 2's parts.
 PILOT_RUN2_RUN_NAMED_PAIRS = "pilot/runs/pilot_v2_20261002/trace/pilot_v2_20261002_trace_pairs.json"
 # The pilot output folders written before 2026-10-05, flat under pilot/traces/ and named by the pairs file's stem
 # alone: run 2's parts (pilot/traces/trace_pairs/) and run 3's (pilot/traces/pilot_v3_20261004_trace_pairs/). They
 # stay where they are, and a run whose id is one of these names is refused under either pilot root, since its
-# outputs would land inside that folder. The list is closed: every later pilot fire writes <root>/<run_id>/, so no
-# new flat folder can appear (no pilot logits fire was made before this layout, so pilot/logits has none). It is
-# written out, not detected, because the fire path reads the local checkout and the params jobs read the fired
-# branch, without pilot/traces checked out, so a detected list could differ between the two.
+# outputs would land inside that folder. The list names every such folder as of 2026-10-05. It stays complete only
+# while every pilot fire uses the per-run layout: a pilot trace fired from a branch without it (main, until PR #85
+# merges) still writes a flat folder. tests/test_circuit_trace_pilot_root.py reads git and fails on any folder of
+# parts directly under pilot/traces/ that is missing from this list (no pilot logits fire was made before this layout,
+# so pilot/logits has none). It is written out, not detected, because the fire path reads the local checkout and the
+# params jobs read the fired branch, without pilot/traces checked out, so a detected list could differ between the
+# two.
 PILOT_LEGACY_OUTPUT_FOLDERS = ("trace_pairs", "pilot_v3_20261004_trace_pairs")
 # the workflow's push-path defaults for the keys the pilot rules read
 CIRCUIT_TRACE_JOB_DEFAULTS = {
@@ -140,8 +154,9 @@ CIRCUIT_TRACE_PILOT_OFF_ONLY = ("generate_explanations", "steer_validate", "stee
 # today's trace_out/<stem>__<model> exactly; the one other accepted value writes pilot stimulus pairs' outputs to
 # pilot/logits/<run_id>/<stem>__<model>, which no collector reads. The pairs-path rules are circuit-trace's: under
 # either root no backslash and nothing absolute or ..-escaping; a pairs file under pilot/ goes with the pilot root and
-# only with it, and under that root sits under pilot/runs/ (the one pilot directory the eval job checks out), is named
-# for its run (PILOT_PAIRS_SUFFIX above), has a run id that is no legacy folder's name (PILOT_LEGACY_OUTPUT_FOLDERS
+# only with it, and under that root sits in its run's trace/ directory under pilot/runs/ (the one pilot directory the
+# eval job checks out), is named for its run and holds no "__" (PILOT_PAIRS_SUFFIX above), has a run id that is no
+# legacy folder's name (PILOT_LEGACY_OUTPUT_FOLDERS
 # above, one list for both lanes, so a run id is usable on both or on neither) and has no comma in its name. A pilot
 # run measures next-token behavior only (mode logits): depth and verify write other files. The params job in
 # logits_evaluation.yml refuses the same; tests/test_logits_pilot_root.py holds the two together.
@@ -1142,13 +1157,29 @@ def pilot_run_id(path: str) -> str:
     return parts[2] if len(parts) >= 4 and parts[:2] == ["pilot", "runs"] else ""
 
 
+def pilot_pairs_location_problem(path: str, lane: str, root: str) -> str | None:
+    """Why a pilot-root pairs path under pilot/runs/ is not in its run's trace/ directory, or None when it is. Read
+    after the same normalisation as the other path rules, the path must be exactly
+    pilot/runs/<run_id>/trace/<file> (PILOT_PAIRS_DIR): the output folder is <root>/<run_id>/<the file's stem>, so
+    two files of one run in two directories (`pilot/runs/r/r_x.json` and `pilot/runs/r/trace/r_x.json`) would share
+    it. So `pilot/runs/r/trace/r_x.json` and `pilot/runs/s/../r/trace/r_x.json` pass; `pilot/runs/r_x.json`,
+    `pilot/runs/r/r_x.json`, `pilot/runs/r/other/r_x.json` and `pilot/runs/r/trace/deeper/r_x.json` do not. Used by
+    both lanes under their pilot root, after the pilot/runs/ test has passed."""
+    parts = _circuit_trace_normpath(path).split("/")
+    if len(parts) == 5 and parts[:2] == ["pilot", "runs"] and parts[3] == PILOT_PAIRS_DIR:
+        return None
+    return (f"{lane} output_root {root!r}: pairs_file {path!r} is not in its run's {PILOT_PAIRS_DIR}/ directory; a "
+            f"pilot pairs file is pilot/runs/<run_id>/{PILOT_PAIRS_DIR}/<run_id>_<name>{PILOT_PAIRS_SUFFIX}, where "
+            "pilot/analysis/trace_pairs.py writes it, so each file of a run has an output folder of its own under "
+            f"{root}/<run_id>/")
+
+
 def pilot_pairs_run_name_problem(path: str, lane: str, root: str) -> str | None:
-    """Why a pilot-root pairs path under pilot/runs/ is not named for its run, or None when it is. Read after the
-    same normalisation as the other path rules, the path must be pilot/runs/<run_id>/<any directories>/<file>, and
-    the file's name as given (the workflows cut the output folder's stem from the given path's basename) must be
-    <run_id>_<name>.json with <name> not empty. So `pilot/runs/r/trace/r_x.json` passes; `pilot/runs/r_x.json` (no
-    run directory), `pilot/runs/r/trace/x.json`, `pilot/runs/r/s_x.json` and `pilot/runs/s/../r/s_x.json` do not.
-    Used by both lanes under their pilot root, after the pilot/runs/ test has passed."""
+    """Why a pilot-root pairs path under pilot/runs/ is not named for its run, or None when it is. The file's name as
+    given (the workflows cut the output folder's stem from the given path's basename) must be <run_id>_<name>.json
+    with <name> not empty, the run id read from the normalised path (pilot_run_id). So `pilot/runs/r/trace/r_x.json`
+    passes; `pilot/runs/r/trace/x.json`, `pilot/runs/r/trace/s_x.json` and `pilot/runs/s/../r/trace/s_x.json` do not.
+    Used by both lanes under their pilot root, after the location test has passed."""
     name = posixpath.basename(path)
     run_id = pilot_run_id(path)
     prefix = run_id + "_"
@@ -1156,17 +1187,32 @@ def pilot_pairs_run_name_problem(path: str, lane: str, root: str) -> str | None:
             and len(name) > len(prefix) + len(PILOT_PAIRS_SUFFIX)):
         return None
     return (f"{lane} output_root {root!r}: pairs_file {path!r} is not named for its run; a pilot pairs file is "
-            f"pilot/runs/<run_id>/.../<run_id>_<name>{PILOT_PAIRS_SUFFIX}, so the name of the output folder under "
-            f"{root}/<run_id>/ says which run it holds (run 2's trace/trace_pairs.json predates this: to fire run 2 "
-            "again, re-run pilot/analysis/trace_pairs.py --run-dir pilot/runs/pilot_v2_20261002 --review-sample, "
-            f"whose default writes a byte-identical {PILOT_RUN2_RUN_NAMED_PAIRS}, or copy the file there)")
+            f"pilot/runs/<run_id>/{PILOT_PAIRS_DIR}/<run_id>_<name>{PILOT_PAIRS_SUFFIX}, so the name of the output "
+            f"folder under {root}/<run_id>/ says which run it holds (run 2's trace/trace_pairs.json predates this: to "
+            "fire run 2 again, re-run pilot/analysis/trace_pairs.py --run-dir pilot/runs/pilot_v2_20261002 "
+            f"--review-sample, whose default writes a byte-identical {PILOT_RUN2_RUN_NAMED_PAIRS}, or copy the file "
+            "there)")
+
+
+def pilot_pairs_separator_problem(path: str, lane: str, root: str) -> str | None:
+    """Why a pilot-root pairs file's name is refused for holding the model separator, or None when it holds none. Both
+    lanes name an output folder <stem>__<model> (circuit-trace leaves gemma-2-2b's unsuffixed), so a stem holding
+    "__" could name another file's folder for another model: `r_x__qwen3-4b.json` traced with gemma-2-2b would write
+    pilot/traces/r/r_x__qwen3-4b/, the folder of `r_x.json` traced with qwen3-4b. PR #86's exporter refuses such a
+    stem too. Read on the name as given; used by both lanes under their pilot root, after the naming test has passed
+    (so the name ends in .json, and "__" in the name is "__" in the stem)."""
+    if PILOT_MODEL_SEPARATOR not in posixpath.basename(path):
+        return None
+    return (f"{lane} output_root {root!r}: pairs_file {path!r} holds {PILOT_MODEL_SEPARATOR!r} in its name, which "
+            f"both pilot lanes put between a pairs file's stem and a model in an output folder's name "
+            f"(<stem>{PILOT_MODEL_SEPARATOR}<model>), so its folder could be another file's folder for another model")
 
 
 def pilot_legacy_run_id_problem(path: str, lane: str, root: str) -> str | None:
     """Why a pilot-root pairs path's run id is refused, or None when it is not: a run id that is the name of a flat
     output folder written before 2026-10-05 (PILOT_LEGACY_OUTPUT_FOLDERS) would put the run's trace outputs,
     pilot/traces/<run_id>/<stem>, inside that folder. Both lanes refuse the same ids, so a run id is usable on both
-    or on neither. Used under either pilot root, after the pilot/runs/ and naming tests have passed."""
+    or on neither. Used under either pilot root, after the location, naming and separator tests have passed."""
     run_id = pilot_run_id(path)
     if run_id not in PILOT_LEGACY_OUTPUT_FOLDERS:
         return None
@@ -1186,8 +1232,9 @@ def circuit_trace_pairs_outside_checkout(path: str) -> bool:
 def circuit_trace_params_problems(params: dict) -> list[str]:
     """circuit-trace's `output_root` rules, as the workflow's params job applies them: the root is "" or
     pilot/traces; for either root the pairs path has no backslash and stays inside the checkout; a pairs file under
-    pilot/ goes with the pilot root and only with it, and under that root sits under pilot/runs/, is named for its run
-    (pilot_pairs_run_name_problem) and has a run id that is no legacy folder's name (pilot_legacy_run_id_problem); and
+    pilot/ goes with the pilot root and only with it, and under that root sits in its run's trace/ directory
+    (pilot_pairs_location_problem), is named for its run (pilot_pairs_run_name_problem), holds no "__" in its name
+    (pilot_pairs_separator_problem) and has a run id that is no legacy folder's name (pilot_legacy_run_id_problem); and
     under the pilot root nothing paid or altering runs (show_mitigation, mode translation, any steering,
     generate_explanations), so a pilot trace is a $0 plain trace. The screen_targets rule needs the pairs file and is
     circuit_trace_pilot_source_problems."""
@@ -1218,9 +1265,12 @@ def circuit_trace_params_problems(params: dict) -> list[str]:
                         f"{CIRCUIT_TRACE_PILOT_RUNS_PREFIX}, not {path!r}: pilot/runs is the one pilot directory the "
                         "workflow checks out")
     else:
-        # named for its run, then a run id that is no legacy flat folder's name: the select step writes
-        # pilot/traces/<run_id>/<stem>[__<model>] (pilot_run_id)
-        refused_run = (pilot_pairs_run_name_problem(path, "circuit-trace", CIRCUIT_TRACE_PILOT_ROOT)
+        # in its run's trace/ directory, named for its run, no "__" in its name, and a run id that is no legacy flat
+        # folder's name: the select step writes pilot/traces/<run_id>/<stem>[__<model>] (pilot_run_id), one folder
+        # per pairs file and model
+        refused_run = (pilot_pairs_location_problem(path, "circuit-trace", CIRCUIT_TRACE_PILOT_ROOT)
+                       or pilot_pairs_run_name_problem(path, "circuit-trace", CIRCUIT_TRACE_PILOT_ROOT)
+                       or pilot_pairs_separator_problem(path, "circuit-trace", CIRCUIT_TRACE_PILOT_ROOT)
                        or pilot_legacy_run_id_problem(path, "circuit-trace", CIRCUIT_TRACE_PILOT_ROOT))
         if refused_run:
             problems.append(refused_run)
@@ -1293,8 +1343,9 @@ def _logits_eval_job_value(params: dict, key: str) -> str:
 def logits_eval_params_problems(params: dict) -> list[str]:
     """logits-eval's `output_root` rules, as the workflow's params job applies them: the root is "" or pilot/logits;
     for either root the pairs path has no backslash and stays inside the checkout; a pairs file under pilot/ goes with
-    the pilot root and only with it; and under that root the pairs file sits under pilot/runs/, is named for its run
-    (pilot_pairs_run_name_problem), has a run id that is no legacy folder's name (pilot_legacy_run_id_problem) and has
+    the pilot root and only with it; and under that root the pairs file sits in its run's trace/ directory
+    (pilot_pairs_location_problem), is named for its run (pilot_pairs_run_name_problem), holds no "__" in its name
+    (pilot_pairs_separator_problem), has a run id that is no legacy folder's name (pilot_legacy_run_id_problem) and has
     no comma in its name, and the mode is logits. The path tests are
     circuit-trace's (posixpath-normalised, as the Linux runner reads a path), so `./pilot/x` is under pilot/ and
     `pilot/runs/../logits/x` is not under pilot/runs/."""
@@ -1322,9 +1373,12 @@ def logits_eval_params_problems(params: dict) -> list[str]:
                         f"{CIRCUIT_TRACE_PILOT_RUNS_PREFIX}, not {path!r}: pilot/runs is the one pilot directory the "
                         "eval job checks out")
     else:
-        # named for its run, then a run id that is no legacy flat folder's name: the resolve step writes
-        # pilot/logits/<run_id>/<stem>__<model> (pilot_run_id)
-        refused_run = (pilot_pairs_run_name_problem(path, "logits-eval", LOGITS_EVAL_PILOT_ROOT)
+        # in its run's trace/ directory, named for its run, no "__" in its name, and a run id that is no legacy flat
+        # folder's name: the resolve step writes pilot/logits/<run_id>/<stem>__<model> (pilot_run_id), one folder per
+        # pairs file and model
+        refused_run = (pilot_pairs_location_problem(path, "logits-eval", LOGITS_EVAL_PILOT_ROOT)
+                       or pilot_pairs_run_name_problem(path, "logits-eval", LOGITS_EVAL_PILOT_ROOT)
+                       or pilot_pairs_separator_problem(path, "logits-eval", LOGITS_EVAL_PILOT_ROOT)
                        or pilot_legacy_run_id_problem(path, "logits-eval", LOGITS_EVAL_PILOT_ROOT))
         if refused_run:
             problems.append(refused_run)
