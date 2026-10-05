@@ -170,7 +170,10 @@ stop at any time.
   is fixed in advance. Only A6.9 is approved: the rest of Amendment 6, which
   proposes the advice waves themselves, is still proposed. Three accounts
   are excluded: the owner's test account, the owner's own pilot account and
-  the wording-pilot physician's account. Their logins do not fix the round's
+  the wording-pilot physician's account. Their rater codes are written down
+  before the import, in A6.9's approval record and in the wave-3 plan's
+  `expected_exclusions`, and the program that applies the rule refuses an
+  import that excluded any other set of raters. Their logins do not fix the round's
   bundle; the first login of any other account does. If the wording pilot changes the
   bundle, round 1 runs in a new spreadsheet, because the import cannot read
   an export holding ratings on two bundles (A6.9, "Ratings on an earlier

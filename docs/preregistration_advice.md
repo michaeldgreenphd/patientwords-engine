@@ -1157,12 +1157,16 @@ model output until it fires. The same round and rule select the Petri wave-3 sce
   numeric answers were short.
 - Excluded physicians: the owner's test account, the owner's own pilot
   account and the wording-pilot physician's account, by the rater codes they
-  hold in the round's export, named in writing in the approval record before
-  the export is imported. An account that is not in the round's export
-  (because round 1 ran in a new spreadsheet) is recorded as absent and not
-  passed to the import, which refuses `--exclude-rater` for a rater the
-  export does not hold (`unknown_excluded_rater`). No physician is excluded
-  after their ratings have been seen.
+  hold in the round's export, named in writing before the export is
+  imported: in the approval record and, by the same dated edit, in the
+  wave-3 plan's `physician_realism_gate.round.expected_exclusions`, with the
+  spreadsheet round 1 ran in. An account that is not in the round's export
+  (because round 1 ran in a new spreadsheet) is recorded as "not in the
+  export" and not passed to the import, which refuses `--exclude-rater` for
+  a rater the export does not hold (`unknown_excluded_rater`). The program
+  that applies the gate compares the summary's excluded raters with those
+  codes and refuses on any difference ("Code still to write" below). No
+  physician is excluded after their ratings have been seen.
 - The export is read once by `scripts/import_verification_ratings.py`
   (version 1.0.0, or a later version that computes the per-item fields below
   the same way), with `--exclude-rater` for each excluded physician. Its
@@ -1233,10 +1237,10 @@ gated fire:
 - the gate report, `data/verification/realism_gate_vtasks_20261004T042945Z_<export
   stamp>.json`: the rule as approved; the summary's path and sha256; the
   bundle id and sha256; the export sha256 and the excluded physicians as the
-  summary records them; for each of the 39 advice items and the 8 scripts, the
-  verification item id, the source file and id, the question set,
-  `ratings_complete`, each question's `n` and `median`, `flagged`, the
-  decision and its reason; and the kept items' counts by proposed tier and
+  summary records them; the spreadsheet round 1 ran in; for each of the 39
+  advice items and the 8 scripts, the verification item id, the source file
+  and id, the question set, `ratings_complete`, each question's `n` and
+  `median`, `flagged`, the decision and its reason; and the kept items' counts by proposed tier and
   syntax style (Wave A) and by form (Wave R);
 - two selection files, `data/advice/realism_gate_waveA_<export stamp>.json`
   and `data/advice/realism_gate_waveR_<export stamp>.json`, in the shape
@@ -1301,13 +1305,15 @@ tests, now that this section is approved and before the first gated fire, so
 that it implements the rule as approved. It reads these files and no others:
 
 1. the committed import summary: its `inputs.bundle` (path, sha256 and bundle
-   id), its `inputs.export` sha256, the physicians it excluded, and its
-   `items` rows for the advice and script items of the bundle. Of the
-   physicians' ratings, this is all it reads; it never reads the export;
+   id), its `inputs.export` sha256, the physicians it excluded
+   (`exclusions.excluded_raters`), and its `items` rows for the advice and
+   script items of the bundle. Of the physicians' ratings, this is all it
+   reads; it never reads the export;
 2. the wave-3 plan's `physician_realism_gate` block
    (`data/petri/w3_register_contrast_plan.json`): round 1's bundle path, id,
    sha256 and questions sha256, as re-pointed under "Which bundle" if they
-   are, the rule's values, and `seed_file`;
+   are, the excluded accounts recorded in `round.expected_exclusions`, the
+   rule's values, and `seed_file`;
 3. the bundle that block names;
 4. the stimuli file of each advice item: the file its bundle
    `provenance.source_path` names (today
@@ -1323,6 +1329,11 @@ It reads files 4 and 5 as they are when it runs, and compares:
 - the bundle file's sha256, computed from its bytes, and its bundle id and
   questions sha256, with the plan block's round values, and the summary's
   `inputs.bundle` sha256 and bundle id with the same values;
+- the summary's `exclusions.excluded_raters` with the rater codes in
+  `round.expected_exclusions`, exactly: every recorded code excluded and no
+  other, so an `--exclude-rater` left out, or a physician of the round
+  excluded, is a refusal. An account recorded as "not in the export" adds no
+  code, and the gate report records the spreadsheet;
 - for each advice item that passes the rule, the sha256 of its clinical and
   its patient message in the stimuli file it reads (the item found by the
   bundle's `provenance.source_id`, the sha256 taken of the message's UTF-8
@@ -1338,8 +1349,10 @@ It compares items, not whole files: a file that replaces a stimuli file under
 decision 6 or 7 has another file sha256 than the bundle's
 `provenance.source_sha256`, but each of its selected items must carry the
 messages physicians rated. It refuses, writing nothing, when any of these
-files is missing or unreadable, a comparison above fails, an advice or
-script item of the bundle is missing from the summary, a passing item is
+files is missing or unreadable, `round.expected_exclusions` is not filled
+(a value still null, a value that is neither a rater code nor "not in the
+export", or two accounts with one code), a comparison above fails, an
+advice or script item of the bundle is missing from the summary, a passing item is
 missing from the stimuli file or seed file it reads, or a question the gate
 reads is missing from an item's `five_point`. A wave with no passing item is
 reported by name, and no selection file is written for it. It does not
@@ -1438,13 +1451,22 @@ their own before it.
   `<new bundle id>` (sha256 `<sha256>`, questions sha256 `<sha256>`).
 - Closing date extensions (A6.9, "Extending the closing date"), each on its
   own dated line, written before the closing date it replaces: none.
-- Excluded physicians (to fill before the export is imported), each with
-  its rater code in the round's export or "not in the export": the owner's
-  test account `<rater code>`, the owner's own pilot account `<rater code>`,
-  the wording-pilot physician's account `<rater code>`. The spreadsheet
-  round 1 ran in: `<the pilot's, or a new one>`.
+- Excluded physicians (to fill before the export is imported, by one dated
+  edit that also fills the wave-3 plan's
+  `physician_realism_gate.round.expected_exclusions` with the same values),
+  each with its rater code in the round's export or "not in the export":
+  the owner's test account `<rater code>`, the owner's own pilot account
+  `<rater code>`, the wording-pilot physician's account `<rater code>`. The
+  spreadsheet round 1 ran in: `<the pilot's, or a new one>`.
 - At application (to fill): import summary `<path>` (sha256 `<sha256>`), gate
   report `<path>` (sha256 `<sha256>`), gated stimuli files `<Wave A path,
   sha256>` and `<Wave R path, sha256>`, n_A `<n>` of 24, n_R `<n>` of 15, and
   Wave R's recomputed baselines: primary `<downgrades>` of `<cells>` against
   `<null>`, sensitivity `<downgrades>` of `<cells>` against `<null>`.
+- Clarifications after approval (2026-10-05), from Codex's review of pull
+  request #87. Each says how the approved rule is carried out; none changes
+  the rule or which items pass.
+  - Excluded accounts: also recorded in the plan's
+    `round.expected_exclusions`, which the gate program compares with the
+    summary's excluded raters, refusing on any difference; this changes
+    neither the rule nor which items pass.

@@ -709,6 +709,15 @@ edited after rating" below).
    so a scenario whose course most physicians rated 1 or 2 ("could not happen", "very
    unusual") fails even when every version's wording passes.
 
+**Whose ratings count.** The three accounts that rate before round 1 (the owner's test
+account, the owner's own pilot account and the wording-pilot physician's account) are
+excluded at import. Their rater codes in the round's export, or "not in the export", and
+the spreadsheet round 1 ran in are written down before the import: in A6.9's approval
+record and, by the same dated edit, in the plan's
+`physician_realism_gate.round.expected_exclusions`. The program that applies the gate
+refuses unless the summary excluded exactly those codes, so a forgotten `--exclude-rater`,
+or a physician of the round excluded, cannot reach the selection.
+
 **Why all three versions, not each version on its own.**
 
 - The unit of every registered test is the triple. The primary contrast needs the

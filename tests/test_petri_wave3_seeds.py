@@ -1045,6 +1045,96 @@ def test_the_gate_program_spec_reads_every_file_it_compares(plan):
             if stale.search(text)] == []
 
 
+NOT_IN_EXPORT = "not in the export"
+SPREADSHEETS = ("the pilot's", "a new one")
+
+
+def _exclusion_refusal(excluded: list[str], expected: dict) -> str | None:
+    """The exclusion check as the plan's round.expected_exclusions states it, applied to the import summary's
+    exclusions.excluded_raters (the field tests/test_import_verification_ratings.py pins): None when the summary
+    excluded exactly the recorded rater codes, else why the program that applies the gate refuses. A reference for
+    that program."""
+    from scripts.import_verification_ratings import RATER_ID_RE
+
+    values = list(expected["accounts"].values())
+    if any(v is None for v in [*values, expected["spreadsheet"]]):
+        return "not filled"
+    if expected["spreadsheet"] not in SPREADSHEETS or any(v != NOT_IN_EXPORT and not RATER_ID_RE.match(v)
+                                                          for v in values):
+        return "not a recorded value"
+    codes = [v for v in values if v != NOT_IN_EXPORT]
+    if len(set(codes)) != len(codes):
+        return "two accounts with one code"
+    if sorted(excluded) != sorted(codes):
+        return "excluded raters differ"
+    return None
+
+
+def test_the_gate_checks_that_the_import_excluded_exactly_the_recorded_accounts(plan):
+    """The three accounts that rate before round 1 are excluded at import by rater code. Those codes were written only
+    in the prose of A6.9's approval record, which the gate program does not read, so an import that left out one
+    --exclude-rater, or excluded a physician of the round, would have passed every comparison it makes and changed which
+    items enter the paid runs (Codex review of PR #87, 2026-10-05). The plan now records them in
+    round.expected_exclusions, filled by the same dated edit as the approval record before the import; until then
+    every value is null and the gate cannot be applied. The program compares the summary's excluded raters with them
+    exactly. This changes neither the rule nor which items pass."""
+    gate = plan["physician_realism_gate"]
+    rnd = gate["round"]
+    expected = rnd["expected_exclusions"]
+    accounts = rnd["accounts_that_do_not_fix_the_bundle"]
+    assert list(expected["accounts"]) == accounts, "one entry per account that rates before round 1"
+    assert NOT_IN_EXPORT in expected["values"] and all(s in expected["values"] for s in SPREADSHEETS)
+    assert "exclusions.excluded_raters" in expected["check"]
+    if all(v is None for v in [*expected["accounts"].values(), expected["spreadsheet"]]):
+        assert _exclusion_refusal([], expected) == "not filled", "the gate cannot be applied before the record"
+    else:
+        codes = [v for v in expected["accounts"].values() if v != NOT_IN_EXPORT]
+        assert _exclusion_refusal(codes, expected) is None, "filled, every value one the plan allows"
+
+    def filled(test: str | None, pilot: str | None, wording: str | None, spreadsheet: str | None) -> dict:
+        return {"accounts": dict(zip(accounts, (test, pilot, wording), strict=True)), "spreadsheet": spreadsheet}
+
+    pilot_sheet = filled("md01", "md02", "md03", "the pilot's")
+    new_sheet = filled(NOT_IN_EXPORT, NOT_IN_EXPORT, NOT_IN_EXPORT, "a new one")
+    cases = [
+        (["md01", "md02", "md03"], pilot_sheet, None),
+        (["md01", "md03"], pilot_sheet, "excluded raters differ"),                   # an --exclude-rater left out
+        (["md01", "md02", "md03", "md04"], pilot_sheet, "excluded raters differ"),   # a physician of the round excluded
+        (["md01", "md02", "md04"], pilot_sheet, "excluded raters differ"),
+        ([], new_sheet, None),
+        (["md01"], new_sheet, "excluded raters differ"),
+        (["md01"], filled("md01", NOT_IN_EXPORT, NOT_IN_EXPORT, "a new one"), None),
+        (["md01", "md02"], filled("md01", "md02", None, "the pilot's"), "not filled"),
+        (["md01", "md02", "md03"], filled("md01", "md02", "md03", None), "not filled"),
+        (["md01", "md02"], filled("md01", "md02", "md02", "the pilot's"), "two accounts with one code"),
+        (["md01", "md02", "md03"], filled("md01", "md02", "absent", "the pilot's"), "not a recorded value"),
+        (["md01", "md02", "md03"], filled("md01", "md02", "md03", "another one"), "not a recorded value"),
+    ]
+    for excluded, record, reason in cases:
+        assert _exclusion_refusal(excluded, record) == reason, (excluded, record)
+
+    one_line = functools.partial(re.sub, r"\s+", " ")
+    prereg = PREREG.read_text(encoding="utf-8")
+    a69 = one_line(_section(prereg, "### A6.9 Physician realism gate", "### Approval record"))
+    spec = one_line(_section(prereg, "**Code still to write.**", "**Owner decisions"))
+    record = one_line(_section(prereg, "### Approval record", None))
+    s13 = one_line(_section(W3_DESIGN.read_text(encoding="utf-8"), "## 13. Physician realism gate", None))
+    proto = one_line(_section(PROTOCOL.read_text(encoding="utf-8"), "**Which items the paid runs use", "\n- **"))
+    inputs = _section(spec, "It reads these files and no others", "It reads files 4 and 5")
+    compares = _section(spec, "It reads files 4 and 5", "It compares items, not whole files")
+    refuses = _section(spec, "It refuses, writing nothing", "A wave with no passing item")
+    assert "`round.expected_exclusions`" in inputs and "`exclusions.excluded_raters`" in inputs, \
+        "the gate program reads the recorded exclusions and the summary's"
+    assert re.search(r"`exclusions\.excluded_raters` with the rater codes in `round\.expected_exclusions`, exactly",
+                     compares), "the gate program compares the two exactly"
+    assert "`round.expected_exclusions` is not filled" in refuses, "and refuses while the record is not filled"
+    excluded_line = _section(record, "- Excluded physicians (to fill", "- At application")
+    assert "`physician_realism_gate.round.expected_exclusions`" in excluded_line
+    assert [name for name, text in (("A6.9", a69), ("section 13", s13), ("protocol", proto))
+            if "expected_exclusions" not in text] == []
+    assert all("expected_exclusions" in rnd[k] for k in ("excluded_raters", "reader"))
+
+
 def test_section_13_tables_are_the_plan_rows(plan):
     """Section 13 shows the gate's counts as three tables; they must be the plan's rows, which the suite recomputes
     (test_the_realism_gate_floor_and_counts_follow_from_the_plan)."""
