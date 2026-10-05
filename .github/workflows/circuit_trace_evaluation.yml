@@ -20,8 +20,10 @@ name: Circuit Trace Evaluation (medlang-circuits)
 # into pilot/traces/<pairs-file-stem>/, which no collector reads, and only
 # with it, and that pairs file must sit under pilot/runs/, the one pilot
 # directory either job checks out (pilot/traces never is, so no cell's
-# workspace holds an earlier pilot part). A pilot trace is a $0 plain
-# pipeline check, never a measurement: the params job refuses
+# workspace holds an earlier pilot part), and be named for its run,
+# pilot/runs/<run_id>/.../<run_id>_<name>.json (2026-10-04), so every pilot
+# output folder carries its run id. A pilot trace is a $0 plain pipeline
+# check, never a measurement: the params job refuses
 # show_mitigation, mode translation, steering and generate_explanations under
 # it, it commits only the summary parts, and a fail-closed holdout seal check
 # runs before that commit.
@@ -214,6 +216,18 @@ jobs:
               if not norm_pairs.startswith("pilot/runs/"):
                   # both jobs check out pilot/runs and never pilot/traces, so pilot pairs trace from there only
                   refused.append(f"pairs_file {pairs_path!r} is not under pilot/runs/")
+              else:
+                  # named for its run, pilot/runs/<run_id>/.../<run_id>_<name>.json: OUT_DIR is cut from the file's
+                  # stem alone, so two runs' files of one name (run 2's trace/trace_pairs.json, before 2026-10-04)
+                  # would trace into one folder and replace each other's parts (fire_trigger.py
+                  # pilot_pairs_run_name_problem; logits_evaluation.yml applies the same test)
+                  parts = norm_pairs.split("/")
+                  run_id = parts[2] if len(parts) >= 4 else ""
+                  name = posixpath.basename(pairs_path)
+                  if not (run_id and name.startswith(run_id + "_") and name.endswith(".json")
+                          and len(name) > len(run_id) + len("_.json")):
+                      refused.append(f"pairs_file {pairs_path!r} is not named for its run "
+                                     "(pilot/runs/<run_id>/.../<run_id>_<name>.json)")
               if "," in pairs_path:  # the seal step's --extra list splits on commas
                   refused.append(f"pairs_file {pairs_path!r} contains a comma")
               if params["show_mitigation"].strip().lower() not in ("", "false", "0"):

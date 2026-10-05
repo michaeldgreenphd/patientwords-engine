@@ -92,15 +92,25 @@ MITIGATION_IMPUTED_USD = 0.15
 CIRCUIT_TRACE_TRANSLATION_MODE = "translation"
 # circuit-trace `output_root` (2026-10-01): "" keeps today's trace_out/<stem> exactly; the one other accepted value
 # writes pilot stimulus pairs' outputs to pilot/traces/<stem>, which no collector reads. A pairs file under
-# pilot/ is traced if and only if the root is the pilot root, under that root it must sit under pilot/runs/, and a
-# pilot trace is always $0 and plain. circuit_trace_evaluation.yml's params job refuses the same;
-# tests/test_circuit_trace_pilot_root.py holds the two together.
+# pilot/ is traced if and only if the root is the pilot root, under that root it must sit under pilot/runs/ and be
+# named for its run (PILOT_PAIRS_SUFFIX below), and a pilot trace is always $0 and plain.
+# circuit_trace_evaluation.yml's params job refuses the same; tests/test_circuit_trace_pilot_root.py holds the two
+# together.
 CIRCUIT_TRACE_PILOT_ROOT = "pilot/traces"
 CIRCUIT_TRACE_OUTPUT_ROOTS = ("", CIRCUIT_TRACE_PILOT_ROOT)
 CIRCUIT_TRACE_PILOT_PAIRS_PREFIX = "pilot/"
 # the one pilot directory the workflow's jobs check out: pilot/traces never is, so no cell's workspace, run-page
 # summary or artifact holds an earlier committed pilot part
 CIRCUIT_TRACE_PILOT_RUNS_PREFIX = "pilot/runs/"
+# Under either pilot root (circuit-trace's pilot/traces, logits-eval's pilot/logits) a pairs file is named for its run
+# (2026-10-04, Codex on PR #85): pilot/runs/<run_id>/.../<run_id>_<name>.json. Both lanes name a pilot output folder
+# by the pairs file's stem alone (pilot/traces/<stem>[__<model>], pilot/logits/<stem>__<model>), and
+# pilot/analysis/trace_pairs.py used to name every run's file trace/trace_pairs.json, so two runs' fires wrote the
+# same folder and replaced each other's parts without a refusal. With the run id leading the file name, every pilot
+# output folder carries its run's id. Run 2's trace/trace_pairs.json predates the rule (its parts sit in
+# pilot/traces/trace_pairs/ and stay there) and is refused for a new fire; re-tracing run 2 needs that file copied
+# under pilot_v2_20261002_trace_pairs.json. Both workflows' params jobs apply the same test.
+PILOT_PAIRS_SUFFIX = ".json"
 # the workflow's push-path defaults for the keys the pilot rules read
 CIRCUIT_TRACE_JOB_DEFAULTS = {
     "mode": "2panel", "pairs_file": "", "offsets": "0", "sample_size": "1", "screen_targets": "",
@@ -113,9 +123,10 @@ CIRCUIT_TRACE_PILOT_OFF_ONLY = ("generate_explanations", "steer_validate", "stee
 # today's trace_out/<stem>__<model> exactly; the one other accepted value writes pilot stimulus pairs' outputs to
 # pilot/logits/<stem>__<model>, which no collector reads. The pairs-path rules are circuit-trace's: under either root
 # no backslash and nothing absolute or ..-escaping; a pairs file under pilot/ goes with the pilot root and only with
-# it, and under that root sits under pilot/runs/ (the one pilot directory the eval job checks out) with no comma in
-# its name. A pilot run measures next-token behavior only (mode logits): depth and verify write other files. The
-# params job in logits_evaluation.yml refuses the same; tests/test_logits_pilot_root.py holds the two together.
+# it, and under that root sits under pilot/runs/ (the one pilot directory the eval job checks out), is named for its
+# run (PILOT_PAIRS_SUFFIX above) and has no comma in its name. A pilot run measures next-token behavior only (mode
+# logits): depth and verify write other files. The params job in logits_evaluation.yml refuses the same;
+# tests/test_logits_pilot_root.py holds the two together.
 LOGITS_EVAL_PILOT_ROOT = "pilot/logits"
 LOGITS_EVAL_OUTPUT_ROOTS = ("", LOGITS_EVAL_PILOT_ROOT)
 LOGITS_EVAL_PILOT_MODE = "logits"
@@ -1103,6 +1114,26 @@ def circuit_trace_pairs_in_pilot_runs(path: str) -> bool:
     return _circuit_trace_normpath(path).startswith(CIRCUIT_TRACE_PILOT_RUNS_PREFIX)
 
 
+def pilot_pairs_run_name_problem(path: str, lane: str, root: str) -> str | None:
+    """Why a pilot-root pairs path under pilot/runs/ is not named for its run, or None when it is. Read after the
+    same normalisation as the other path rules, the path must be pilot/runs/<run_id>/<any directories>/<file>, and
+    the file's name as given (the workflows cut the output folder's stem from the given path's basename) must be
+    <run_id>_<name>.json with <name> not empty. So `pilot/runs/r/trace/r_x.json` passes; `pilot/runs/r_x.json` (no
+    run directory), `pilot/runs/r/trace/x.json`, `pilot/runs/r/s_x.json` and `pilot/runs/s/../r/s_x.json` do not.
+    Used by both lanes under their pilot root, after the pilot/runs/ test has passed."""
+    parts = _circuit_trace_normpath(path).split("/")
+    name = posixpath.basename(path)
+    run_id = parts[2] if len(parts) >= 4 else ""
+    prefix = run_id + "_"
+    if (run_id and name.startswith(prefix) and name.endswith(PILOT_PAIRS_SUFFIX)
+            and len(name) > len(prefix) + len(PILOT_PAIRS_SUFFIX)):
+        return None
+    return (f"{lane} output_root {root!r}: pairs_file {path!r} is not named for its run; a pilot pairs file is "
+            f"pilot/runs/<run_id>/.../<run_id>_<name>{PILOT_PAIRS_SUFFIX}, so the output folder under {root}/ "
+            "starts with its run id and never holds another run's parts (run 2's trace/trace_pairs.json predates "
+            "this: copy it under pilot_v2_20261002_trace_pairs.json to fire it again)")
+
+
 def circuit_trace_pairs_outside_checkout(path: str) -> bool:
     """Whether a pairs path is absolute or climbs out of the checkout (`..`). Either can name the checkout's own
     pilot/ directory without the `pilot/` prefix the pilot rule tests, so the params job and the fire path refuse
@@ -1114,10 +1145,10 @@ def circuit_trace_pairs_outside_checkout(path: str) -> bool:
 def circuit_trace_params_problems(params: dict) -> list[str]:
     """circuit-trace's `output_root` rules, as the workflow's params job applies them: the root is "" or
     pilot/traces; for either root the pairs path has no backslash and stays inside the checkout; a pairs file under
-    pilot/ goes with the pilot root and only with it, and under that root sits under pilot/runs/; and under the pilot
-    root nothing paid or altering runs (show_mitigation, mode translation, any steering, generate_explanations), so
-    a pilot trace is a $0 plain trace. The screen_targets rule needs the pairs file and is
-    circuit_trace_pilot_source_problems."""
+    pilot/ goes with the pilot root and only with it, and under that root sits under pilot/runs/ and is named for its
+    run (pilot_pairs_run_name_problem); and under the pilot root nothing paid or altering runs (show_mitigation, mode
+    translation, any steering, generate_explanations), so a pilot trace is a $0 plain trace. The screen_targets rule
+    needs the pairs file and is circuit_trace_pilot_source_problems."""
     root = _circuit_trace_job_value(params, "output_root")
     if root not in CIRCUIT_TRACE_OUTPUT_ROOTS:
         return [f"circuit-trace output_root {root!r}: only \"\" (trace_out) or {CIRCUIT_TRACE_PILOT_ROOT!r} is "
@@ -1144,6 +1175,10 @@ def circuit_trace_params_problems(params: dict) -> list[str]:
         problems.append(f"circuit-trace output_root {CIRCUIT_TRACE_PILOT_ROOT!r} traces only a pairs_file under "
                         f"{CIRCUIT_TRACE_PILOT_RUNS_PREFIX}, not {path!r}: pilot/runs is the one pilot directory the "
                         "workflow checks out")
+    else:
+        unnamed = pilot_pairs_run_name_problem(path, "circuit-trace", CIRCUIT_TRACE_PILOT_ROOT)
+        if unnamed:
+            problems.append(unnamed)
     if "," in path:
         # the seal step passes "$OUT_DIR,$PAIRS_FILE" to seal_check.py --extra, which splits on commas; a comma in
         # the name would turn both into paths that do not exist, and the check would pass having scanned nothing
@@ -1213,9 +1248,10 @@ def _logits_eval_job_value(params: dict, key: str) -> str:
 def logits_eval_params_problems(params: dict) -> list[str]:
     """logits-eval's `output_root` rules, as the workflow's params job applies them: the root is "" or pilot/logits;
     for either root the pairs path has no backslash and stays inside the checkout; a pairs file under pilot/ goes with
-    the pilot root and only with it; and under that root the pairs file sits under pilot/runs/ with no comma in its
-    name, and the mode is logits. The path tests are circuit-trace's (posixpath-normalised, as the Linux runner reads
-    a path), so `./pilot/x` is under pilot/ and `pilot/runs/../logits/x` is not under pilot/runs/."""
+    the pilot root and only with it; and under that root the pairs file sits under pilot/runs/, is named for its run
+    (pilot_pairs_run_name_problem) and has no comma in its name, and the mode is logits. The path tests are
+    circuit-trace's (posixpath-normalised, as the Linux runner reads a path), so `./pilot/x` is under pilot/ and
+    `pilot/runs/../logits/x` is not under pilot/runs/."""
     root = _logits_eval_job_value(params, "output_root")
     if root not in LOGITS_EVAL_OUTPUT_ROOTS:
         return [f"logits-eval output_root {root!r}: only \"\" (trace_out) or {LOGITS_EVAL_PILOT_ROOT!r} is accepted"]
@@ -1239,6 +1275,10 @@ def logits_eval_params_problems(params: dict) -> list[str]:
         problems.append(f"logits-eval output_root {LOGITS_EVAL_PILOT_ROOT!r} measures only a pairs_file under "
                         f"{CIRCUIT_TRACE_PILOT_RUNS_PREFIX}, not {path!r}: pilot/runs is the one pilot directory the "
                         "eval job checks out")
+    else:
+        unnamed = pilot_pairs_run_name_problem(path, "logits-eval", LOGITS_EVAL_PILOT_ROOT)
+        if unnamed:
+            problems.append(unnamed)
     if "," in path:
         # the seal step passes "<copy of OUT_DIR>,$PAIRS_FILE" to seal_check.py --extra, which splits on commas; a
         # comma in the name would turn the pairs file into paths that do not exist, which the check reads as clean

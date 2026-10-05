@@ -21,7 +21,9 @@ name: Logits Evaluation (medlang-circuits)
 # measured into pilot/logits/<pairs-file-stem>__<model>/, which no collector
 # reads, and only with it, and that pairs file must sit under pilot/runs/, the
 # one pilot directory the eval job checks out (pilot/logits never is, so no
-# cell's workspace holds an earlier pilot part). A pilot run measures next-token
+# cell's workspace holds an earlier pilot part), and be named for its run,
+# pilot/runs/<run_id>/.../<run_id>_<name>.json, so every pilot output folder
+# carries its run id. A pilot run measures next-token
 # behavior only (mode logits) and is a pipeline check, never a measurement: it
 # commits only its batch_summary part, and a fail-closed holdout seal check runs
 # before that commit.
@@ -182,6 +184,18 @@ jobs:
               if not norm_pairs.startswith("pilot/runs/"):
                   # the eval job checks out pilot/runs and never pilot/logits, so pilot pairs are read from there only
                   refused.append(f"pairs_file {pairs_path!r} is not under pilot/runs/")
+              else:
+                  # named for its run, pilot/runs/<run_id>/.../<run_id>_<name>.json: OUT_DIR is cut from the file's
+                  # stem alone, so two runs' files of one name (run 2's trace/trace_pairs.json, before 2026-10-04)
+                  # would write one folder and replace each other's parts (fire_trigger.py
+                  # pilot_pairs_run_name_problem; circuit_trace_evaluation.yml applies the same test)
+                  parts = norm_pairs.split("/")
+                  run_id = parts[2] if len(parts) >= 4 else ""
+                  name = posixpath.basename(pairs_path)
+                  if not (run_id and name.startswith(run_id + "_") and name.endswith(".json")
+                          and len(name) > len(run_id) + len("_.json")):
+                      refused.append(f"pairs_file {pairs_path!r} is not named for its run "
+                                     "(pilot/runs/<run_id>/.../<run_id>_<name>.json)")
               if "," in pairs_path:  # the seal step's --extra list splits on commas
                   refused.append(f"pairs_file {pairs_path!r} contains a comma")
               if p["mode"] != "logits":  # depth and verify write other files, under trace_out/ names
