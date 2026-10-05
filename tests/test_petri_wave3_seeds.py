@@ -1020,6 +1020,31 @@ def test_the_gate_reads_the_same_in_the_plan_a69_section_13_and_the_protocol(pla
         "how ratings on an earlier bundle stay out of the round's export"
 
 
+def test_the_gate_program_spec_reads_every_file_it_compares(plan):
+    """A6.9 specifies the program that will apply the gate. It must refuse when a rated message or seed has changed
+    since the bundle recorded its digest, which it can see only by reading the stimuli files and the seed file as
+    they are when it runs. So the spec lists them as inputs, with what it compares in each (Codex review of PR #87,
+    2026-10-05): the first draft said the program read only the summary and the bundle, which would have compared
+    the bundle's recorded digests with nothing."""
+    gate = plan["physician_realism_gate"]
+    one_line = functools.partial(re.sub, r"\s+", " ")
+    prereg = PREREG.read_text(encoding="utf-8")
+    a69 = one_line(_section(prereg, "### A6.9 Physician realism gate", "### Approval record"))
+    spec = one_line(_section(prereg, "**Code still to write.**", "**Owner decisions"))
+    s13 = one_line(_section(W3_DESIGN.read_text(encoding="utf-8"), "## 13. Physician realism gate", None))
+    bundle = load_json(ROOT / gate["round"]["bundle"])
+    stimuli = sorted({i["provenance"]["source_path"] for i in bundle["items"] if i["question_set"].startswith("advice")})
+    assert "reads these files and no others" in spec
+    for needed in ("import summary", "physician_realism_gate", "the bundle", *stimuli, "decision 6 or 7",
+                   plan["seed_file"], "provenance.clinical_sha256", "provenance.patient_sha256",
+                   "provenance.seed_sha256", "seed_digest", "missing"):
+        assert needed in spec, f"the gate program's spec does not name {needed!r}"
+    assert "seed_file" in gate["round"]["reader"] and "seed_file" in gate["item_match"]
+    stale = re.compile(r"reads? only (?:the committed |that )?summary and the bundle|summary and the bundle, nothing else")
+    assert [name for name, text in (("A6.9", a69), ("section 13", s13), ("plan", one_line(json.dumps(gate))))
+            if stale.search(text)] == []
+
+
 def test_section_13_tables_are_the_plan_rows(plan):
     """Section 13 shows the gate's counts as three tables; they must be the plan's rows, which the suite recomputes
     (test_the_realism_gate_floor_and_counts_follow_from_the_plan)."""

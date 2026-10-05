@@ -1163,9 +1163,11 @@ fires. The same round and rule select the Petri wave-3 scenarios
   (version 1.0.0, or a later version that computes the per-item fields below
   the same way), with `--exclude-rater` for each excluded physician. Its
   summary, `data/verification/ratings_vtasks_20261004T042945Z_<export
-  stamp>.summary.json`, is committed. The gate reads that summary and the
-  bundle, nothing else. The import's seed and resample count do not affect the
-  fields the gate reads.
+  stamp>.summary.json`, is committed. Of the ratings, the gate reads that
+  summary and nothing else. To check that what runs is what was rated, it
+  also reads the bundle, the stimuli files and the wave-3 seed file ("Code
+  still to write" below lists every file it reads and what it compares). The
+  import's seed and resample count do not affect the fields the gate reads.
 
 **The rule.** For each advice item of the bundle, the gate reads the
 summary's row for it in `items` (matched by `item_id`). Which questions it
@@ -1215,8 +1217,9 @@ failing rule 1 is reported as "not enough ratings", and one failing rule 2 or
 **The messages elicited are the messages rated.** For each selected item, the
 clinical and patient message sha256 that the bundle records
 (`provenance.clinical_sha256`, `provenance.patient_sha256`) must equal those
-of the stimuli item it selects, or the gate refuses. On 2026-10-04 all 39
-advice items of the bundle match their stimuli files.
+of the stimuli item it selects, computed from the stimuli file when the gate
+is applied, or the gate refuses. On 2026-10-04 all 39 advice items of the
+bundle match their stimuli files.
 
 **How the selection is recorded.** Three files, written together before any
 gated fire:
@@ -1289,13 +1292,53 @@ of every file it copies from, and the exporter refuses one that carries both.
 **Code still to write.** The program that applies the rule (proposed name
 `scripts/apply_realism_gate.py`) does not exist yet. It is written, with
 tests, now that this section is approved and before the first gated fire, so
-that it implements the rule as approved. It reads only the committed summary
-and the bundle. It refuses, writing nothing, when the summary names another
-bundle sha256 than round 1's (the one above, unless the approval record
-re-points it under "Which bundle"), an advice or script item is missing from
-the summary, a question the gate reads is missing from an item's
-`five_point`, or a message or seed digest does not match. A wave with no
-passing item is reported by name, and no selection file is written for it.
+that it implements the rule as approved. It reads these files and no others:
+
+1. the committed import summary: its `inputs.bundle` (path, sha256 and bundle
+   id), its `inputs.export` sha256, the physicians it excluded, and its
+   `items` rows for the advice and script items of the bundle. Of the
+   physicians' ratings, this is all it reads; it never reads the export;
+2. the wave-3 plan's `physician_realism_gate` block
+   (`data/petri/w3_register_contrast_plan.json`): round 1's bundle path, id,
+   sha256 and questions sha256, as re-pointed under "Which bundle" if they
+   are, the rule's values, and `seed_file`;
+3. the bundle that block names;
+4. the stimuli file of each advice item: the file its bundle
+   `provenance.source_path` names (today
+   `data/advice/stimuli_20261002T080026Z.json` for Wave A and
+   `data/advice/stimuli_20261002T081803Z.json` for Wave R), or the file that
+   replaces it under fire-plan decision 6 or 7, whose items keep the same
+   ids;
+5. the wave-3 seed file, `docs/framework/petri_seeds_w3.draft.json` (the
+   plan's `seed_file`).
+
+It reads files 4 and 5 as they are when it runs, and compares:
+
+- the bundle file's sha256, computed from its bytes, and its bundle id and
+  questions sha256, with the plan block's round values, and the summary's
+  `inputs.bundle` sha256 and bundle id with the same values;
+- for each advice item that passes the rule, the sha256 of its clinical and
+  its patient message in the stimuli file it reads (the item found by the
+  bundle's `provenance.source_id`, the sha256 taken of the message's UTF-8
+  text, as `scripts/export_verification_tasks.py` computes it), with the
+  bundle's `provenance.clinical_sha256` and `provenance.patient_sha256`;
+- for each script that passes the rule, after checking that its bundle
+  `provenance.source_path` is the plan's `seed_file`, the digest of that
+  seed in the seed file, computed with `seed_digest`
+  (`scripts/petri_audit/seeds.py`), with the bundle's
+  `provenance.seed_sha256`.
+
+It compares items, not whole files: a file that replaces a stimuli file under
+decision 6 or 7 has another file sha256 than the bundle's
+`provenance.source_sha256`, but each of its selected items must carry the
+messages physicians rated. It refuses, writing nothing, when any of these
+files is missing or unreadable, a comparison above fails, an advice or
+script item of the bundle is missing from the summary, a passing item is
+missing from the stimuli file or seed file it reads, or a question the gate
+reads is missing from an item's `five_point`. A wave with no passing item is
+reported by name, and no selection file is written for it. It does not
+compute Wave R's recomputed baselines, which come from the ranking report as
+"What changes in the waves" says.
 
 **Owner decisions, as chosen on 2026-10-05.** The text above applies these
 choices. The draft proposed a value for each; the owner chose the proposed

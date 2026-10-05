@@ -821,7 +821,9 @@ the reason. Every fire then selects the passing seeds by `seed_ids`.
 **Scripts edited after rating.** The seed file is a draft, and a script can still be
 edited before its first run, but an edited script is not the script physicians rated. It
 can pass only after physicians rate the new text in a later round, and the program that
-applies the gate refuses a seed whose digest differs from the one the bundle recorded.
+applies the gate, which reads the seed file as it is when it runs, refuses a passing seed
+whose digest differs from the one the bundle recorded (A6.9, "Code still to write", lists
+every file the program reads).
 Since the owner approved the gate (`physician_realism_gate.approval.approved`), the
 suite also fails as soon as a rated seed is edited, or a seed is added to or removed from
 the seed file, until the plan names a round that rated the seed file as it then is.
