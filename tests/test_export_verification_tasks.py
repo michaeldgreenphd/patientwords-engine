@@ -4,12 +4,32 @@ Pins the bundle's contract shape, determinism (same seed and stamp: byte-identic
 another order), that the display carries none of the hidden fields, numbers, model names, batch ids or proposed
 tiers, the fail-closed holdout seal (a planted sealed phrase refuses the export and writes nothing), the list of
 unsealed items whose clinical text hashes into the holdout bucket, the counts and selection per family (main-study
-penalties equal as recorded tie, and the stated tie rule decides), item-id stability, and the question wording (no
-hint predicts an answer, the urgency question names the message it asks about, raters are asked not to look the
-scenarios up). Every input here is synthetic, abstract and non-medical (the medical
-vocabulary rule in AGENTS.md); the seal fixtures follow tests/test_seal_check.py and tests/test_tierb_split.py.
-The last test checks every committed bundle under data/verification/ against the contract, and its failure messages
-name item ids only, never row text.
+penalties equal as recorded tie, and the stated tie rule decides), item-id stability, the question wording (no hint
+predicts an answer, the urgency question names the message it asks about, raters are asked not to look the scenarios
+up), and the pilot runs: which runs, the review sample or every non-control row, a required or an optional trace (an
+optional one is not read, so the items do not change when traces land; Run 2's trace pairs file is still read as its
+id key), a trace pairs file with or without review ids, a row's id under every option, which trace results directory
+a run reads (PR #85's per-run layout, <run id>/<stem>/ named after its pairs file, and Run 2's and Run 3's two
+legacy folders, never a flat folder for another run, one model's results in both layouts refused, different models
+in different layouts read by the model rules; <stem>__<model>/ for another graph model, named or the one found, two
+found refused, and every summary there declaring the model it is read as), the naming rule for a trace pairs file
+(<run id>_<name>.json, the lanes' rule, compared with fire_trigger's when it has one), a byte-identical copy of Run
+2's trace pairs file beside it (allowed; its results, in Run 2's own folder, are Run 2's, and conflict with the
+legacy ones), and the refusals for a run that is not finalized, not version 2, changed since it was finalized,
+missing a required trace, whose trace pairs file is not named after it or holds "__" (optional runs included; two
+runs' files may share a stem), whose run id is a legacy folder's name, that holds a second trace pairs file other
+than such a copy while its trace is required (an optional run's second file is checked by name only), or whose
+review map, trace pairs file or sidecar does not fit it, and a next word outside the version-2 rule (the trace-pairs
+builder's check, with the trace optional or required); and later rounds (--previous-bundle): a previous item dropped
+or changed, a question id dropped or kept with another scale, answer values (of another JSON type included), phase,
+requirement or lock, a required question added to a set previous items use (an optional one, or one in a set no
+previous item uses, kept), another notes limit, and a previous bundle of another shape. Every input here is
+synthetic, abstract and non-medical (the medical vocabulary rule in AGENTS.md); the seal fixtures follow
+tests/test_seal_check.py and tests/test_tierb_split.py. The committed-bundle tests check every bundle under
+data/verification/ against the contract, with failure messages naming item ids only, never row text, and re-export
+the first bundle from the committed engine files: the default run gives its pilot items unchanged, and with the site
+payload it recorded, the reproduction command (its stamp, Run 2's graph model named) gives its items byte for byte,
+compared from the items onward.
 """
 from __future__ import annotations
 
@@ -18,6 +38,7 @@ import hashlib
 import importlib.util
 import json
 import re
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +53,12 @@ _SPEC.loader.exec_module(evt)
 QUESTIONS = ROOT / "data" / "verification" / "questions.json"
 STAMP = "20261003T120000Z"
 TIER_A = "pairs_20260705T000000Z"
+RUN2 = "pilot_v2_20261002"          # the default run: its items keep the first bundle's label and id key
+RUN_NEW = "pilot_v9_20990101"       # any other run
+NEW_PAIRS = f"{RUN_NEW}_trace_pairs"  # its trace pairs file's stem, named after the run as the naming rule asks
+RUN3 = "pilot_v3_20261004"          # named like pilot Run 3, whose pairs file is named after the run
+# the two trace folders written flat before PR #85's per-run layout, by run (the exporter's LEGACY_TRACE_FOLDERS)
+LEGACY_FOLDERS = {RUN2: "trace_pairs", RUN3: f"{RUN3}_trace_pairs"}
 TIER_B = "pairs_20260711T000000Z"
 START = "2026-07-10T01:14:38Z"
 MARK_RATIONALE = "zzmark rationale qx"
@@ -216,41 +243,109 @@ def world_data() -> dict:
     }
 
 
-def write_world(tmp_path: Path, data: dict) -> dict[str, Path]:
-    def dump(path: Path, obj: Any) -> Path:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(obj), encoding="utf-8")
-        return path
+def dump(path: Path, obj: Any) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    return path
 
-    run = tmp_path / "pilot" / "run2"
-    rows = data["pilot_rows"]
-    (run / "generated").mkdir(parents=True)
-    (run / "generated" / "all_rows.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows),
-                                                       encoding="utf-8")
-    pairs = data.get("pairs") or [
-        {"top_prompt": r["template"].replace("___", r["clinical_term"]),
-         "bottom_prompt": r["template"].replace("___", r["patient_term"]),
-         "target_clinical_token": " " + r["next_word"],
-         "pilot": {"run": "run2", "row_id": r["id"], "review_id": f"r{n:03d}", "call_id": r["call_id"],
-                   "arm": "A", "cell": r["cell"], "control": "none", "concept_key": "k", "probe_point": True,
-                   "checker": {"verdict": "yes"}, "prompt_sha256": "0" * 64}}
-        for n, r in enumerate(rows, 1)]
-    pairs_path = dump(run / "trace" / "trace_pairs.json", pairs)
-    dump(run / "trace" / "trace_pairs.meta.json",
-         {"run": "run2", "counts": {"selected": len(pairs)},
-          "output": {"file": "trace_pairs.json", "sha256": hashlib.sha256(pairs_path.read_bytes()).hexdigest()}})
-    traces = tmp_path / "pilot" / "traces"
-    dump(traces / "batch_summary.part_01.json",
-         {"results": [{"index": n, "prompts": {"clinical": p["top_prompt"], "patient": p["bottom_prompt"]}}
-                      for n, p in enumerate(pairs, 1)]})
+
+def _file_sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _pair_of(row: dict, run_id: str, review_id: str | None) -> dict:
+    return {"top_prompt": row["template"].replace("___", row["clinical_term"]),
+            "bottom_prompt": row["template"].replace("___", row["patient_term"]),
+            "target_clinical_token": " " + row["next_word"],
+            "pilot": {"run": run_id, "row_id": row["id"], "review_id": review_id, "call_id": row["call_id"],
+                      "arm": "A", "cell": row["cell"], "control": "none", "concept_key": "k", "probe_point": True,
+                      "checker": {"verdict": "yes"}, "prompt_sha256": "0" * 64}}
+
+
+def write_run(paths: dict[str, Path], run_id: str, rows: list[dict], review: list[str] | None = None,
+              traced: list[str] | None = None, pairs_name: str | None = None,
+              finalized_utc: Any = "2099-01-01T00:00:00Z", version: Any = 2, review_ids: bool = True,
+              trace_model: str = "gemma-2-2b") -> Path:
+    """A synthetic pilot run under the world's runs directory: its generated rows, a review map over the row ids in
+    ``review`` (default every non-control row, in order), a design, a finalized manifest hashing those three files,
+    and, for the row ids in ``traced`` (default the review sample; [] for none), a trace pairs file with its sidecar
+    and trace results under the world's trace root, where write_traces puts them for a ``trace_model`` (gemma-2-2b
+    by default). The pairs file is named after the run
+    (<run id>_trace_pairs.json) unless ``pairs_name`` says otherwise; Run 2's keeps its trace_pairs.json. The pairs
+    carry their review ids as trace_pairs.py --review-sample writes them, or with ``review_ids=False`` none, as its
+    default and --include-controls selections write them."""
+    if pairs_name is None:
+        pairs_name = "trace_pairs" if run_id == RUN2 else f"{run_id}_trace_pairs"
+    run = paths["pilot_runs_dir"] / run_id
+    by_id = {r["id"]: r for r in rows}
+    review = [r["id"] for r in rows if r["control"] == "none"] if review is None else review
+    mapping = {f"r{n:03d}": row_id for n, row_id in enumerate(review, 1)}
+    review_of = {row_id: rid for rid, row_id in mapping.items()}
+    rows_path = run / "generated" / "all_rows.jsonl"
+    rows_path.parent.mkdir(parents=True, exist_ok=True)
+    rows_path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    dump(run / "review_map.json", {"sampling": "synthetic", "map": mapping})
+    dump(run / "design.json", {"harness_version": version, "probe_endings": ["my"]})
+    hashes = {name: _file_sha(run / name) for name in ("design.json", "generated/all_rows.jsonl", "review_map.json")}
+    dump(run / "manifest.json", {"pilot": "synthetic", "finalized_utc": finalized_utc, "output_hashes": hashes})
+    traced = review if traced is None else traced
+    if traced:
+        pairs = [_pair_of(by_id[row_id], run_id, review_of.get(row_id) if review_ids else None)
+                 for row_id in traced]
+        write_pairs(run, pairs, pairs_name)
+        write_traces(paths, run_id, pairs_name, pairs, trace_model)
+    return run
+
+
+def write_pairs(run: Path, pairs: list[dict], pairs_name: str = "trace_pairs") -> Path:
+    """A run's trace pairs file and the sidecar that records its sha256 (as trace_pairs.py writes them)."""
+    pairs_path = dump(run / "trace" / f"{pairs_name}.json", pairs)
+    dump(run / "trace" / f"{pairs_name}.meta.json",
+         {"run": run.name, "counts": {"selected": len(pairs)},
+          "output": {"file": pairs_path.name, "sha256": _file_sha(pairs_path)}})
+    return pairs_path
+
+
+def reseal(run: Path, name: str, obj: Any) -> None:
+    """Rewrite a run file and record its new sha256 in the run's finalized manifest, so that only the change under
+    test differs from a well-formed run."""
+    dump(run / name, obj)
+    manifest = json.loads((run / "manifest.json").read_text())
+    manifest["output_hashes"][name] = _file_sha(run / name)
+    dump(run / "manifest.json", manifest)
+
+
+def summary_doc(pairs: list[dict], model: Any = "gemma-2-2b") -> dict:
+    """A trace summary for the pairs as the hosted circuit-trace lane writes it: the graph model it traced with
+    (None: no graph_model field) and one result per pair, indexed from 1."""
+    doc: dict = {} if model is None else {"graph_model": model}
+    doc["results"] = [{"index": n, "prompts": {"clinical": p["top_prompt"], "patient": p["bottom_prompt"]}}
+                      for n, p in enumerate(pairs, 1)]
+    return doc
+
+
+def write_traces(paths: dict[str, Path], run_id: str, stem: str, pairs: list[dict], model: str = "gemma-2-2b",
+                 layout: str | None = None) -> Path:
+    """Trace results for the pairs of the run's pairs file ``stem``, where the circuit-trace lane's pilot root writes
+    them for the model: in the run's own folder, <root>/<run id>/<stem>[__<model>]/ (PR #85's per-run layout,
+    ``layout="per_run"``), or flat, <root>/<stem>[__<model>]/ (``layout="flat"``), as Run 2's and Run 3's were written
+    before it. By default flat for a run's legacy folder (LEGACY_FOLDERS) and per-run otherwise."""
+    if layout is None:
+        layout = "flat" if LEGACY_FOLDERS.get(run_id) == stem else "per_run"
+    base = paths["pilot_trace_root"] if layout == "flat" else paths["pilot_trace_root"] / run_id
+    folder = stem if model == "gemma-2-2b" else f"{stem}__{model}"
+    return dump(base / folder / "batch_summary.part_01.json", summary_doc(pairs, model))
+
+
+def write_world(tmp_path: Path, data: dict) -> dict[str, Path]:
     sim = tmp_path / "simulated"
     dump(sim / f"{TIER_A}.json", data["tier_a"])
     dump(sim / f"{TIER_B}.json", data["tier_b"])
     dump(sim / "advnat_20990101T000000Z.json", [{"top_prompt": "Is the drivetrain worth fixing?"}])
     paths = {
         "questions": QUESTIONS,
-        "pilot_run": run,
-        "pilot_traces": traces,
+        "pilot_runs_dir": tmp_path / "pilot" / "runs",
+        "pilot_trace_root": tmp_path / "pilot" / "traces",
         "advice_new": dump(tmp_path / "advice" / "new.json", data["advice_new"]),
         "advice_rerun": dump(tmp_path / "advice" / "rerun.json", data["advice_rerun"]),
         "petri_seeds": dump(tmp_path / "seeds.json", data["seeds"]),
@@ -261,6 +356,7 @@ def write_world(tmp_path: Path, data: dict) -> dict[str, Path]:
         "out_dir": tmp_path / "out",
     }
     dump(paths["site"] / "data" / "simulated_scenarios.json", data["payload"])
+    write_run(paths, RUN2, data["pilot_rows"])
     return paths
 
 
@@ -277,9 +373,9 @@ def export(tmp_path: Path, data: dict | None = None, **kw: Any) -> tuple[dict, b
     return bundle, raw, paths
 
 
-def rerun(paths: dict[str, Path], out_dir: Path, **kw: Any) -> tuple[dict, bytes]:
+def rerun(paths: dict[str, Path], out_dir: Path, *extra: str, **kw: Any) -> tuple[dict, bytes]:
     """Export the same world again into another directory."""
-    assert evt.main(argv(paths, **kw) + ["--out-dir", str(out_dir)]) == 0
+    assert evt.main(argv(paths, *extra, **kw) + ["--out-dir", str(out_dir)]) == 0
     raw = (out_dir / f"tasks_{STAMP}.json").read_bytes()
     return json.loads(raw), raw
 
@@ -290,8 +386,13 @@ def refused(tmp_path: Path, data: dict, code: str, **kw: Any) -> str:
     if "questions" in data:
         paths["questions"] = tmp_path / "questions.json"
         paths["questions"].write_text(json.dumps(data["questions"]), encoding="utf-8")
+    return refused_paths(paths, code, **kw)
+
+
+def refused_paths(paths: dict[str, Path], code: str, *extra: str, **kw: Any) -> str:
+    """refused() over an existing world, with extra arguments."""
     with pytest.raises(SystemExit) as exc:
-        evt.main(argv(paths, **kw))
+        evt.main(argv(paths, *extra, **kw))
     message = str(exc.value)
     assert f"[{code}]" in message, message
     assert "nothing was written" in message
@@ -733,23 +834,1266 @@ def test_a_changed_text_is_refused(tmp_path):
     refused(tmp_path / "b", data, "hash_mismatch")
 
 
-def test_an_untraced_pilot_pair_is_refused(tmp_path):
-    paths = write_world(tmp_path, world_data())
-    summary = paths["pilot_traces"] / "batch_summary.part_01.json"
-    doc = json.loads(summary.read_text())
-    doc["results"] = doc["results"][:1]
-    summary.write_text(json.dumps(doc))
-    with pytest.raises(SystemExit) as exc:
-        evt.main(argv(paths))
-    assert "[bad_input]" in str(exc.value) and not paths["out_dir"].exists()
-
-
 def test_an_existing_bundle_is_never_overwritten(tmp_path, capsys):
     _, raw, paths = export(tmp_path)
     with pytest.raises(SystemExit) as exc:
         evt.main(argv(paths))
     assert "[output_exists]" in str(exc.value)
     assert (paths["out_dir"] / f"tasks_{STAMP}.json").read_bytes() == raw
+
+
+# ---- pilot runs: which run, which rows, whether a trace is required -----------------------------------------
+
+def _new_run_rows() -> list[dict]:
+    """Three pairs and one negative control for a second synthetic run (abstract and non-medical)."""
+    spec = [("silver kettle", "teapot thing", "aunt", "none"), ("garden hose", "long green tube", "landlord", "none"),
+            ("bike pump", "air thingy", "brother", "none"), ("blue ledger", "red ledger", "office", "negative")]
+    return [{"id": f"B__cell__kind__L{n:02d}", "call_id": "B__cell__kind", "arm": "B", "specialty": "cell",
+             "swap_type": "kind", "cell": "cell__kind", "cell_index": 0, "line_index": n, "attempt": 1,
+             "clinical_term": ct, "patient_term": pt,
+             "template": "I lent the ___ to a friend, so now I have to ask my", "next_word": word,
+             "control": control, "control_faithful": True if control == "negative" else None,
+             "prompt_sha256": "0" * 64}
+            for n, (ct, pt, word, control) in enumerate(spec, 1)]
+
+
+NEW_LABEL = "pilot:" + RUN_NEW
+
+
+def _pilot(bundle: dict, subset: str) -> list[dict]:
+    return [i for i in bundle["items"] if i["provenance"].get("subset") == subset]
+
+
+def test_the_default_run_keeps_the_first_bundles_label_and_id_key(tmp_path, capsys):
+    bundle, _, paths = export(tmp_path)
+    key = evt.logical_path(paths["pilot_runs_dir"] / RUN2 / "trace" / "trace_pairs.json")
+    items = _pilot(bundle, "pilot_run2")
+    assert {i["provenance"]["source_path"] for i in items} == {key}
+    assert all(i["item_id"] == evt.item_id_for("tracing_pair", key, i["provenance"]["source_id"]) for i in items)
+    assert {i["provenance"]["source_sha256"] for i in items} == {
+        _file_sha(paths["pilot_runs_dir"] / RUN2 / "trace" / "trace_pairs.json")}
+    assert sorted((i["provenance"]["review_id"], i["provenance"]["trace_index"], i["provenance"]["run"])
+                  for i in items) == [("r001", 1, RUN2), ("r002", 2, RUN2)]
+    sel = bundle["selection"]["tracing_pair"]
+    assert list(sel) == ["pilot_run2", "main_study"]
+    assert sel["pilot_run2"]["rows"] == "review_sample" and sel["pilot_run2"]["trace_required"] is True
+    assert sel["pilot_run2"]["counts"] == {"repeats_an_earlier_pilot_pair": 0, "review_sample": 2, "selected": 2,
+                                           "trace_pairs": 2, "trace_pairs_not_selected": 0, "traced": 2}
+    assert sel["pilot_run2"]["trace_results"] == evt.logical_path(paths["pilot_trace_root"] / "trace_pairs")
+    assert sel["pilot_run2"]["trace_model"] == "gemma-2-2b"
+
+
+def test_a_second_run_joins_with_its_own_label_counts_and_id_key(tmp_path, capsys):
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, review=[rows[2]["id"], rows[0]["id"]])
+    bundle, raw = rerun(paths, paths["out_dir"], "--pilot-run", RUN2, "--pilot-run", RUN_NEW)
+    assert check_contract(bundle) == [] and forbidden_in_display(bundle) == []
+    assert bundle["counts"]["tracing_pair_by_subset"] == {"pilot_run2": 2, NEW_LABEL: 2, "main_study": 4}
+    assert list(bundle["selection"]["tracing_pair"]) == ["pilot_run2", NEW_LABEL, "main_study"]
+    key = evt.logical_path(paths["pilot_runs_dir"] / RUN_NEW / "generated" / "all_rows.jsonl")
+    new = _pilot(bundle, NEW_LABEL)
+    assert {i["provenance"]["source_path"] for i in new} == {key}
+    assert all(i["item_id"] == evt.item_id_for("tracing_pair", key, i["provenance"]["source_id"]) for i in new)
+    assert {i["provenance"]["source_sha256"] for i in new} == {
+        _file_sha(paths["pilot_runs_dir"] / RUN_NEW / "generated" / "all_rows.jsonl")}
+    assert sorted((i["provenance"]["review_id"], i["provenance"]["source_id"], i["provenance"]["trace_index"])
+                  for i in new) == [("r001", rows[2]["id"], 1), ("r002", rows[0]["id"], 2)]
+    sel = bundle["selection"]["tracing_pair"][NEW_LABEL]
+    assert sel["run"] == RUN_NEW and sel["source"] == key and sel["counts"]["selected"] == 2
+    assert sel["trace_results"] == evt.logical_path(paths["pilot_trace_root"] / RUN_NEW / NEW_PAIRS)
+    assert bundle["seal"]["rows_checked_with_sealed_pair"]["tracing_pilot"] == 4
+    displays = json.dumps([i["display"] for i in bundle["items"]])
+    assert RUN_NEW not in displays and RUN2 not in displays and "pilot" not in displays   # labels stay out of sight
+
+
+def test_a_run_gives_its_review_sample_or_every_non_control_row_and_a_row_keeps_its_id(tmp_path, capsys):
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, review=[rows[1]["id"]], traced=[])
+    only_new = ("--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+    sample, _ = rerun(paths, tmp_path / "sample", *only_new)
+    every, _ = rerun(paths, tmp_path / "every", *only_new, "--pilot-all-rows", RUN_NEW)
+
+    def ids(b: dict) -> dict[str, tuple[str, str | None]]:
+        return {i["provenance"]["source_id"]: (i["item_id"], i["provenance"]["review_id"])
+                for i in _pilot(b, NEW_LABEL)}
+
+    assert list(ids(sample)) == [rows[1]["id"]]
+    assert sorted(ids(every)) == sorted(r["id"] for r in rows[:3])         # the negative control is left out
+    assert ids(every)[rows[1]["id"]] == ids(sample)[rows[1]["id"]]          # same id, same review id
+    assert [ids(every)[r["id"]][1] for r in (rows[0], rows[2])] == [None, None]
+    sel = every["selection"]["tracing_pair"][NEW_LABEL]
+    assert sel["rows"] == "all_rows" and sel["counts"] == {
+        "excluded_control_rows": 1, "generated_rows": 4, "repeats_an_earlier_pilot_pair": 0, "selected": 3}
+    assert sample["selection"]["tracing_pair"][NEW_LABEL]["counts"]["review_sample"] == 1
+
+
+def test_a_review_sample_row_that_is_a_control_row_is_refused(tmp_path):
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, review=[rows[3]["id"]], traced=[])
+    message = refused_paths(paths, "bad_input", "--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+    assert rows[3]["id"] in message and "control row" in message
+
+
+ONLY_NEW_OPTIONAL = ("--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+
+
+@pytest.mark.parametrize("doc, fragment", [
+    ({"map": {"r001": "B__cell__kind__L99"}}, "names row 'B__cell__kind__L99', which is not in"),
+    ({"map": {"r001": "B__cell__kind__L01", "r002": "B__cell__kind__L01"}}, "names row 'B__cell__kind__L01' twice"),
+    ({"map": {}}, "has no map"),
+    ({"map": ["B__cell__kind__L01"]}, "has no map"),
+    ({"map": {"r001": 1}}, "has no map"),
+    ({"sampling": "synthetic"}, "has no map"),
+    (["B__cell__kind__L01"], "has no map"),
+])
+def test_a_review_map_that_is_not_a_map_of_known_rows_is_refused(tmp_path, doc, fragment):
+    paths = write_world(tmp_path, world_data())
+    run = write_run(paths, RUN_NEW, _new_run_rows(), traced=[])
+    reseal(run, "review_map.json", doc)
+    assert fragment in refused_paths(paths, "bad_input", *ONLY_NEW_OPTIONAL)
+    assert fragment in refused_paths(paths, "bad_input", *ONLY_NEW_OPTIONAL, "--pilot-all-rows", RUN_NEW)
+
+
+@pytest.mark.parametrize("control", ["positive", None, ""])
+def test_a_control_value_other_than_none_or_negative_is_refused_under_all_rows(tmp_path, control):
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    rows[1]["control"] = control
+    write_run(paths, RUN_NEW, rows, review=[rows[0]["id"]], traced=[])
+    rerun(paths, tmp_path / "sample", *ONLY_NEW_OPTIONAL)                  # the review sample does not read it
+    message = refused_paths(paths, "bad_input", *ONLY_NEW_OPTIONAL, "--pilot-all-rows", RUN_NEW)
+    assert rows[1]["id"] in message and "neither 'none' nor 'negative'" in message
+
+
+def test_a_run_with_no_row_to_select_is_refused(tmp_path):
+    paths = write_world(tmp_path, world_data())
+    control = _new_run_rows()[3]
+    write_run(paths, RUN_NEW, [control], review=[control["id"]], traced=[])
+    message = refused_paths(paths, "bad_input", *ONLY_NEW_OPTIONAL, "--pilot-all-rows", RUN_NEW)
+    assert f"pilot run {RUN_NEW}: no row was selected" in message
+
+
+def test_an_optional_trace_reads_no_trace_file_but_run2s_id_key(tmp_path, capsys):
+    # A run with --pilot-trace-optional reads no trace file, except Run 2, whose item ids are keyed on its trace
+    # pairs file: that file is read for the items' source_sha256 and must exist; its sidecar and trace results are not
+    # read. (Check of 2026-10-04: the docs had said no trace file is read for any run.)
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows)                  # its traces have landed
+    run2_pairs = paths["pilot_runs_dir"] / RUN2 / "trace" / "trace_pairs.json"
+    bundle, _ = rerun(paths, tmp_path / "optional", "--pilot-run", RUN2, "--pilot-run", RUN_NEW,
+                      "--pilot-trace-optional", RUN2, "--pilot-trace-optional", RUN_NEW)
+    read = {s["path"]: s["role"] for s in bundle["sources"]}
+    trace_files = sorted(p for p in read if "/trace/" in p or p.startswith(evt.logical_path(paths["pilot_trace_root"])))
+    assert trace_files == [evt.logical_path(run2_pairs)]
+    assert read[evt.logical_path(run2_pairs)] == f"pilot run {RUN2} item id key"
+    assert {i["provenance"]["source_sha256"] for i in _pilot(bundle, "pilot_run2")} == {_file_sha(run2_pairs)}
+    run2_pairs.unlink()
+    message = refused_paths(paths, "missing_input", "--pilot-run", RUN2, "--pilot-trace-optional", RUN2)
+    assert "item id key" in message
+
+
+def test_without_traces_a_run_is_refused_unless_optional_and_its_items_do_not_change_when_traces_land(tmp_path,
+                                                                                                     capsys):
+    # Run 3's traces may land after the bundle is wanted: requiring a trace stays the default, and an optional one
+    # is neither required nor read, so the same export gives the same bytes before and after the traces land
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, traced=[])
+    both = ("--pilot-run", RUN2, "--pilot-run", RUN_NEW)
+    message = refused_paths(paths, "missing_trace", *both)
+    assert RUN_NEW in message and f"--pilot-trace-optional {RUN_NEW}" in message
+    before, raw_before = rerun(paths, tmp_path / "before", *both, "--pilot-trace-optional", RUN_NEW)
+    sel = before["selection"]["tracing_pair"][NEW_LABEL]
+    assert sel["trace_required"] is False and sel["trace_pairs"] is None and sel["trace_results"] is None
+    assert sel["trace_model"] is None
+    assert "not required and not read" in sel["rule"]
+    assert [i["provenance"]["trace_index"] for i in _pilot(before, NEW_LABEL)] == [None, None, None]
+    assert {i["provenance"]["trace_index"] for i in _pilot(before, "pilot_run2")} == {1, 2}
+
+    write_run(paths, RUN_NEW, rows)                  # the traces land
+    _, raw_after = rerun(paths, tmp_path / "after", *both, "--pilot-trace-optional", RUN_NEW)
+    assert raw_after == raw_before
+    traced, _ = rerun(paths, tmp_path / "traced", *both)
+
+    def shown(b: dict) -> dict:
+        return {i["item_id"]: i["display"] for i in _pilot(b, NEW_LABEL)}
+
+    assert shown(traced) == shown(before)                                   # same ids, same displays
+    assert sorted(i["provenance"]["trace_index"] for i in _pilot(traced, NEW_LABEL)) == [1, 2, 3]
+
+
+@pytest.mark.parametrize("change, code", [({"finalized_utc": None}, "run_not_finalized"),
+                                          ({"finalized_utc": "  "}, "run_not_finalized"),
+                                          ({"finalized_utc": 20990101}, "run_not_finalized"),
+                                          ({"version": 1}, "run_not_version_2"),
+                                          ({"version": "2"}, "run_not_version_2"),
+                                          ({"version": True}, "run_not_version_2")])
+def test_a_run_that_is_not_finalized_or_not_version_2_is_refused(tmp_path, change, code):
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, RUN_NEW, _new_run_rows(), **change)
+    assert RUN_NEW in refused_paths(paths, code, "--pilot-run", RUN_NEW)
+    refused_paths(paths, code, "--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+
+
+@pytest.mark.parametrize("hashes", [None, [], "design.json"])
+def test_a_manifest_whose_output_hashes_is_not_a_map_is_refused(tmp_path, hashes):
+    paths = write_world(tmp_path, world_data())
+    run = write_run(paths, RUN_NEW, _new_run_rows(), traced=[])
+    manifest = json.loads((run / "manifest.json").read_text())
+    manifest["output_hashes"] = hashes
+    dump(run / "manifest.json", manifest)
+    assert "no output_hashes" in refused_paths(paths, "run_not_finalized", "--pilot-run", RUN_NEW,
+                                               "--pilot-trace-optional", RUN_NEW)
+
+
+@pytest.mark.parametrize("name", ["generated/all_rows.jsonl", "review_map.json", "design.json"])
+def test_a_run_file_that_no_longer_matches_its_finalized_manifest_is_refused(tmp_path, name):
+    paths = write_world(tmp_path / "changed", world_data())
+    run = write_run(paths, RUN_NEW, _new_run_rows(), traced=[])
+    (run / name).write_bytes((run / name).read_bytes() + b"\n")
+    assert name in refused_paths(paths, "hash_mismatch", "--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+    paths = write_world(tmp_path / "unrecorded", world_data())
+    run = write_run(paths, RUN_NEW, _new_run_rows(), traced=[])
+    manifest = json.loads((run / "manifest.json").read_text())
+    del manifest["output_hashes"][name]
+    dump(run / "manifest.json", manifest)
+    assert name in refused_paths(paths, "run_not_finalized", "--pilot-run", RUN_NEW,
+                                 "--pilot-trace-optional", RUN_NEW)
+
+
+def test_a_required_trace_that_is_missing_or_carries_other_prompts_is_refused(tmp_path):
+    def summary(paths: dict[str, Path]) -> Path:
+        return paths["pilot_trace_root"] / "trace_pairs" / "batch_summary.part_01.json"
+
+    paths = write_world(tmp_path / "short", world_data())
+    doc = json.loads(summary(paths).read_text())
+    doc["results"] = doc["results"][:1]
+    summary(paths).write_text(json.dumps(doc))
+    assert "--pilot-trace-optional" in refused_paths(paths, "missing_trace")
+
+    paths = write_world(tmp_path / "other", world_data())
+    doc = json.loads(summary(paths).read_text())
+    doc["results"][1]["prompts"]["patient"] += " again"
+    summary(paths).write_text(json.dumps(doc))
+    refused_paths(paths, "trace_mismatch")
+
+    paths = write_world(tmp_path / "none", world_data())
+    summary(paths).unlink()
+    refused_paths(paths, "missing_trace")
+
+    paths = write_world(tmp_path / "partial", world_data())        # a trace pairs file without one review row
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, traced=[rows[0]["id"]])
+    assert rows[1]["id"] in refused_paths(paths, "missing_trace", "--pilot-run", RUN_NEW)
+
+
+def _run2_pairs(paths: dict[str, Path]) -> tuple[Path, list[dict]]:
+    run = paths["pilot_runs_dir"] / RUN2
+    return run, json.loads((run / "trace" / "trace_pairs.json").read_text())
+
+
+def test_a_trace_pairs_file_naming_a_row_the_run_does_not_have_is_refused(tmp_path):
+    paths = write_world(tmp_path, world_data())
+    run, pairs = _run2_pairs(paths)
+    pairs.append(dict(pairs[0], pilot=dict(pairs[0]["pilot"], row_id="A__cell__kind__L99")))
+    write_pairs(run, pairs)
+    assert "A__cell__kind__L99" in refused_paths(paths, "bad_input")
+
+
+@pytest.mark.parametrize("field, value, fragment", [
+    ("top_prompt", "I left the red ledger on the bus, so I need to call my", "are not row"),
+    ("bottom_prompt", "I left the notebook on the train, so I need to call my", "are not row"),
+    ("target_clinical_token", " landlord", "target_clinical_token is not a space plus row"),
+])
+def test_a_trace_pair_that_is_not_its_rows_sentences_and_next_word_is_refused(tmp_path, field, value, fragment):
+    # the trace results keep the row's prompts, so only the pair-against-row check can catch this
+    paths = write_world(tmp_path, world_data())
+    run, pairs = _run2_pairs(paths)
+    pairs[0][field] = value
+    write_pairs(run, pairs)
+    message = refused_paths(paths, "bad_input")
+    assert fragment in message and pairs[0]["pilot"]["row_id"] in message and value not in message
+
+
+def test_a_trace_pairs_file_repeating_a_row_is_refused(tmp_path):
+    paths = write_world(tmp_path, world_data())
+    run, pairs = _run2_pairs(paths)
+    write_pairs(run, pairs + [pairs[0]])
+    message = refused_paths(paths, "bad_input")
+    assert "pair 3 repeats row" in message and pairs[0]["pilot"]["row_id"] in message
+
+
+def test_a_trace_pairs_sidecar_or_pair_naming_another_run_is_refused(tmp_path):
+    # the guard against exporting another run's pairs under this run's label and ids
+    paths = write_world(tmp_path / "sidecar", world_data())
+    run, pairs = _run2_pairs(paths)
+    meta_path = run / "trace" / "trace_pairs.meta.json"
+    meta = json.loads(meta_path.read_text())
+    meta["run"] = RUN_NEW
+    dump(meta_path, meta)
+    assert f"names run {RUN_NEW!r}, not {RUN2!r}" in refused_paths(paths, "bad_input")
+
+    paths = write_world(tmp_path / "pair", world_data())
+    run, pairs = _run2_pairs(paths)
+    pairs[1]["pilot"]["run"] = RUN_NEW
+    write_pairs(run, pairs)
+    message = refused_paths(paths, "bad_input")
+    assert "pair 2: its pilot block names run" in message and RUN_NEW in message
+
+
+def test_more_than_one_trace_pairs_file_under_a_run_is_refused(tmp_path):
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    run = write_run(paths, RUN_NEW, rows)
+    write_pairs(run, [_pair_of(rows[0], RUN_NEW, "r001")], f"{RUN_NEW}_again")     # both named for the run
+    for extra in ((), ("--pilot-all-rows", RUN_NEW)):
+        message = refused_paths(paths, "bad_input", "--pilot-run", RUN_NEW, *extra)
+        assert "2 trace pairs files" in message and f"{RUN_NEW}_again.json" in message
+    # Run 2 alone may hold a second file, and only a byte-identical copy of trace_pairs.json (see the copy tests)
+    paths = write_world(tmp_path / "run2", world_data())
+    run, pairs = _run2_pairs(paths)
+    write_pairs(run, pairs[:1], f"{RUN2}_trace_pairs")
+    message = refused_paths(paths, "bad_input")
+    assert f"{RUN2}_trace_pairs.json" in message and "not a byte-identical copy of trace_pairs.json" in message
+
+
+def test_a_trace_pairs_file_without_review_ids_serves_the_review_sample_and_every_row(tmp_path, capsys):
+    # Regression (check of 2026-10-04): trace_pairs.py's default and --include-controls selections write
+    # review_id null on every pair, and the exporter read each null as a mismatch with review_map.json, so no such
+    # file could serve any selection. Here the trace pairs file holds every row, the negative control included, as
+    # --include-controls writes it, with no review ids.
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, review=[rows[2]["id"], rows[0]["id"]], traced=[r["id"] for r in rows],
+              review_ids=False)
+    both = ("--pilot-run", RUN2, "--pilot-run", RUN_NEW)
+    sample, _ = rerun(paths, tmp_path / "sample", *both)
+    every, _ = rerun(paths, tmp_path / "every", *both, "--pilot-all-rows", RUN_NEW)
+
+    def by_row(b: dict) -> dict[str, tuple[str, str | None, int]]:
+        return {i["provenance"]["source_id"]: (i["item_id"], i["provenance"]["review_id"],
+                                               i["provenance"]["trace_index"]) for i in _pilot(b, NEW_LABEL)}
+
+    # the review ids come from review_map.json, the trace index from the pairs file's order
+    assert by_row(sample) == {rows[2]["id"]: (by_row(every)[rows[2]["id"]][0], "r001", 3),
+                              rows[0]["id"]: (by_row(every)[rows[0]["id"]][0], "r002", 1)}
+    assert sorted(by_row(every)) == sorted(r["id"] for r in rows[:3])
+    assert by_row(every)[rows[1]["id"]][1:] == (None, 2)
+    assert sample["selection"]["tracing_pair"][NEW_LABEL]["counts"]["trace_pairs_not_selected"] == 2
+    assert every["selection"]["tracing_pair"][NEW_LABEL]["counts"]["trace_pairs_not_selected"] == 1  # the control
+
+
+def test_a_row_the_trace_pairs_file_leaves_out_is_refused_with_how_to_build_one(tmp_path):
+    # trace_pairs.py's default selection leaves out the rows the checker did not judge equivalent, so a review-sample
+    # row (or, under --pilot-all-rows, any non-control row) can be missing from it
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, review=[rows[1]["id"]], traced=[rows[0]["id"], rows[2]["id"]],
+              review_ids=False)
+    message = refused_paths(paths, "missing_trace", "--pilot-run", RUN_NEW)
+    assert rows[1]["id"] in message and "trace_pairs.py --review-sample" in message
+    message = refused_paths(paths, "missing_trace", "--pilot-run", RUN_NEW, "--pilot-all-rows", RUN_NEW)
+    assert rows[1]["id"] in message and "--pilot-all-rows takes every non-control row" in message
+
+
+def test_a_trace_pairs_file_whose_review_ids_disagree_with_the_review_map_is_refused(tmp_path):
+    paths = write_world(tmp_path / "selected", world_data())     # a selected pair carries another review id
+    run, pairs = _run2_pairs(paths)
+    pairs[1]["pilot"]["review_id"] = "r009"
+    write_pairs(run, pairs)
+    message = refused_paths(paths, "bad_input")
+    assert "pair 2: its review id" in message and "another review map" in message
+
+    paths = write_world(tmp_path / "unselected", world_data())   # a pair outside the sample carries one
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, review=[rows[0]["id"]], traced=[r["id"] for r in rows[:3]],
+              review_ids=False)
+    pairs = json.loads((paths["pilot_runs_dir"] / RUN_NEW / "trace" / f"{NEW_PAIRS}.json").read_text())
+    for n, pair in enumerate(pairs, 1):
+        pair["pilot"]["review_id"] = f"r{n:03d}"
+    write_pairs(paths["pilot_runs_dir"] / RUN_NEW, pairs, NEW_PAIRS)
+    message = refused_paths(paths, "bad_input", "--pilot-run", RUN_NEW)
+    assert "pair 2: its review id" in message and rows[1]["id"] in message
+
+    paths = write_world(tmp_path / "some", world_data())         # review ids on some pairs and not others
+    run, pairs = _run2_pairs(paths)
+    pairs[0]["pilot"]["review_id"] = None
+    write_pairs(run, pairs)
+    assert "records a review id for 1 of its 2 pairs" in refused_paths(paths, "bad_input")
+
+
+# ---- trace pairs file names and trace results directories ---------------------------------------------------
+
+def test_a_run_reads_the_trace_results_named_after_its_pairs_file_and_run2_its_legacy_directory(tmp_path, capsys):
+    # The naming rule: a run's trace pairs file is <run id>_<name>.json (Run 3's is pilot_v3_20261004_trace_pairs.json).
+    # Run 3's results were traced before PR #85's per-run layout, into pilot/traces/<that stem>/, and stay there; Run
+    # 2's trace_pairs.json predates the rule and keeps pilot/traces/trace_pairs/. A later run reads its own folder.
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, RUN3, _new_run_rows())
+    write_run(paths, RUN_NEW, [dict(r, id=r["id"] + "n") for r in _new_run_rows()])
+    bundle, _ = rerun(paths, paths["out_dir"], "--pilot-run", RUN2, "--pilot-run", RUN3, "--pilot-run", RUN_NEW)
+    tracing = bundle["selection"]["tracing_pair"]
+    assert tracing["pilot_run2"]["trace_results"] == evt.logical_path(paths["pilot_trace_root"] / "trace_pairs")
+    assert tracing[f"pilot:{RUN3}"]["trace_results"] == evt.logical_path(
+        paths["pilot_trace_root"] / f"{RUN3}_trace_pairs")
+    assert tracing[f"pilot:{RUN3}"]["trace_pairs"] == evt.logical_path(
+        paths["pilot_runs_dir"] / RUN3 / "trace" / f"{RUN3}_trace_pairs.json")
+    assert tracing[NEW_LABEL]["trace_results"] == evt.logical_path(paths["pilot_trace_root"] / RUN_NEW / NEW_PAIRS)
+    assert {tracing[k]["trace_model"] for k in ("pilot_run2", f"pilot:{RUN3}", NEW_LABEL)} == {"gemma-2-2b"}
+
+
+def _items_bytes(raw: bytes) -> bytes:
+    return raw[raw.index(b'\n "items": ['):]
+
+
+def test_run2s_copy_leaves_its_export_unchanged_and_its_traces_are_run2s_in_its_own_folder(tmp_path, capsys):
+    # PR #85's lanes refuse Run 2's legacy trace_pairs.json for a new fire; tracing Run 2 again needs a byte-identical
+    # copy, pilot_v2_20261002_trace_pairs.json, beside it, and its results land in Run 2's own folder,
+    # pilot/traces/pilot_v2_20261002/pilot_v2_20261002_trace_pairs[__<model>]/. A copy alone changes nothing: the
+    # export still reads trace_pairs.json, which Run 2's ids are keyed on, and the legacy results. The copy's results
+    # are Run 2's: for another model they are read by the model rules (a command naming no model then finds two
+    # models; naming gemma-2-2b, as the reproduction command does, gives the same items), and for gemma-2-2b they
+    # conflict with the legacy ones. The optional path reads no trace results. Without the legacy results the copy's
+    # are read.
+    paths = write_world(tmp_path, world_data())
+    root = paths["pilot_trace_root"]
+    before, before_raw = rerun(paths, tmp_path / "before")
+    run, pairs = _run2_pairs(paths)
+    copy_name = f"{RUN2}_trace_pairs"
+    shutil.copy2(run / "trace" / "trace_pairs.json", run / "trace" / f"{copy_name}.json")
+    shutil.copy2(run / "trace" / "trace_pairs.meta.json", run / "trace" / f"{copy_name}.meta.json")
+    after, after_raw = rerun(paths, tmp_path / "after")
+    assert _items_bytes(after_raw) == _items_bytes(before_raw)
+    assert after["selection"] == before["selection"]
+    sel = after["selection"]["tracing_pair"]["pilot_run2"]
+    assert sel["trace_pairs"].endswith(f"{RUN2}/trace/trace_pairs.json") and sel["trace_model"] == "gemma-2-2b"
+    assert sel["trace_results"] == evt.logical_path(root / "trace_pairs")
+    assert [s["role"] for s in after["sources"] if s["path"].endswith(f"{copy_name}.json")] == [
+        f"pilot run {RUN2} trace pairs copy"]
+    # a flat folder named for the copy (the layout before PR #85) is no legacy folder, and is never read
+    write_traces(paths, RUN2, copy_name, pairs, "qwen3-4b", layout="flat")
+    _, flat_raw = rerun(paths, tmp_path / "flat")
+    assert flat_raw == after_raw
+    # the copy traced with another model in Run 2's own folder: not a conflict, but two models, so a command naming no
+    # model stops as ambiguous_trace; naming either model reads its one folder and gives the same items
+    write_traces(paths, RUN2, copy_name, pairs, "qwen3-4b")
+    own_qwen = root / RUN2 / f"{copy_name}__qwen3-4b"
+    message = refused_paths(paths, "ambiguous_trace")
+    assert f"gemma-2-2b: {root / 'trace_pairs'}" in message and f"qwen3-4b: {own_qwen}" in message
+    for model, folder in (("gemma-2-2b", root / "trace_pairs"), ("qwen3-4b", own_qwen)):
+        named, named_raw = rerun(paths, tmp_path / f"named_{model}", "--pilot-trace-model", RUN2, model)
+        assert _items_bytes(named_raw) == _items_bytes(before_raw)
+        sel = named["selection"]["tracing_pair"]["pilot_run2"]
+        assert sel["trace_results"] == evt.logical_path(folder) and sel["trace_model"] == model
+    # the copy traced with gemma-2-2b too: one model in both layouts, refused whichever model is named
+    write_traces(paths, RUN2, copy_name, pairs)
+    for extra in ((), ("--pilot-trace-model", RUN2, "gemma-2-2b"), ("--pilot-trace-model", RUN2, "qwen3-4b")):
+        message = refused_paths(paths, "trace_layout_conflict", *extra)
+        assert f"gemma-2-2b: {root / 'trace_pairs'}" in message and f"gemma-2-2b: {root / RUN2 / copy_name}" in message
+        assert f"qwen3-4b: {own_qwen}" not in message
+    _, optional_raw = rerun(paths, tmp_path / "optional", "--pilot-trace-optional", RUN2)
+    assert b'"trace_index": null' in _items_bytes(optional_raw)
+    # without the legacy results (moving or removing them is the owner's decision), the copy's are Run 2's
+    shutil.rmtree(root / "trace_pairs")
+    own, own_raw = rerun(paths, tmp_path / "own", "--pilot-trace-model", RUN2, "gemma-2-2b")
+    assert _items_bytes(own_raw) == _items_bytes(before_raw)              # the same trace indexes, the same items
+    sel = own["selection"]["tracing_pair"]["pilot_run2"]
+    assert sel["trace_model"] == "gemma-2-2b" and sel["trace_results"] == evt.logical_path(root / RUN2 / copy_name)
+
+
+def test_a_second_file_under_run2s_trace_that_is_not_a_copy_is_refused(tmp_path):
+    paths = write_world(tmp_path, world_data())
+    run, _ = _run2_pairs(paths)
+    copy_path = run / "trace" / f"{RUN2}_trace_pairs.json"
+    copy_path.write_bytes((run / "trace" / "trace_pairs.json").read_bytes() + b"\n")    # one byte more
+    message = refused_paths(paths, "bad_input")
+    assert copy_path.name in message and "not a byte-identical copy of trace_pairs.json" in message
+    # a copy not named for the run is refused by the naming rule, as any other file there is
+    copy_path.unlink()
+    shutil.copy2(run / "trace" / "trace_pairs.json", run / "trace" / "trace_pairs_copy.json")
+    assert "trace_pairs_copy.json is not named after the run" in refused_paths(paths, "bad_input")
+
+
+def test_an_optional_runs_second_trace_pairs_file_is_checked_by_name_and_refused_once_its_trace_is_required(
+        tmp_path, capsys):
+    # The one-file and copy rules decide which pairs file a required trace reads. A run exported with
+    # --pilot-trace-optional reads no pairs file but Run 2's id key, so they wait until its trace is required (the
+    # protocol had said any second file stops the export). Its file names are still checked, since its traces may
+    # be fired: a second file not named for the run is refused while the trace is optional.
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    run = write_run(paths, RUN_NEW, rows)
+    write_pairs(run, [_pair_of(rows[0], RUN_NEW, "r001")], f"{RUN_NEW}_again")     # named for the run
+    rerun(paths, tmp_path / "new_optional", "--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+    assert "2 trace pairs files" in refused_paths(paths, "bad_input", "--pilot-run", RUN_NEW)
+    write_pairs(run, [_pair_of(rows[0], RUN_NEW, "r001")], "pairs_v9")
+    assert "pairs_v9.json is not named after the run" in refused_paths(
+        paths, "bad_input", "--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+    # Run 2 with a copy that differs: its optional export reads trace_pairs.json alone, for the id key, so its
+    # items are those of the export without the copy; with its trace required the copy is compared and refused
+    paths = write_world(tmp_path / "run2", world_data())
+    before, before_raw = rerun(paths, tmp_path / "run2_before", "--pilot-trace-optional", RUN2)
+    run2, _ = _run2_pairs(paths)
+    copy_path = run2 / "trace" / f"{RUN2}_trace_pairs.json"
+    copy_path.write_bytes((run2 / "trace" / "trace_pairs.json").read_bytes() + b"\n")
+    after, after_raw = rerun(paths, tmp_path / "run2_after", "--pilot-trace-optional", RUN2)
+    assert _items_bytes(after_raw) == _items_bytes(before_raw) and after["sources"] == before["sources"]
+    assert "not a byte-identical copy of trace_pairs.json" in refused_paths(paths, "bad_input")
+
+
+@pytest.mark.parametrize("optional", [False, True], ids=["required", "optional"])
+def test_a_trace_pairs_file_not_named_after_its_run_is_refused_even_when_its_traces_are_optional(tmp_path, optional):
+    # Codex review of PR #86 (4179236833): a later run whose trace pairs file keeps trace_pairs.py's default name
+    # (trace_pairs.json, Run 2's) maps to Run 2's pilot/traces/trace_pairs/, and firing its trace would overwrite
+    # Run 2's committed results. With --pilot-trace-optional the exporter skipped the check and exported it.
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, RUN_NEW, _new_run_rows(), pairs_name="trace_pairs")
+    extra = ("--pilot-trace-optional", RUN_NEW) if optional else ()
+    message = refused_paths(paths, "bad_input", "--pilot-run", RUN2, "--pilot-run", RUN_NEW, *extra)
+    assert "trace_pairs.json is not named after the run" in message and RUN_NEW in message
+    # any name that does not start with the run id is refused the same way, with Run 2 in the export or not
+    paths = write_world(tmp_path / "other", world_data())
+    write_run(paths, RUN_NEW, _new_run_rows(), pairs_name="pairs_v9")
+    assert "pairs_v9.json is not named after the run" in refused_paths(paths, "bad_input", "--pilot-run", RUN_NEW,
+                                                                        *extra)
+
+
+@pytest.mark.parametrize("optional", [False, True], ids=["required", "optional"])
+@pytest.mark.parametrize("stem", [RUN_NEW, RUN_NEW + "x", RUN_NEW + "-pairs", RUN_NEW + "_"],
+                         ids=["bare_run_id", "another_character", "a_hyphen", "no_name_after_the_underscore"])
+def test_a_trace_pairs_file_needs_the_run_id_an_underscore_and_a_name(tmp_path, stem, optional):
+    # The lane's rule (PR #85) is <run id>_<name>.json with <name> not empty. The exporter first accepted any name
+    # starting with the run id, so it exported runs whose pairs file the lane refuses to trace.
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, RUN_NEW, _new_run_rows(), pairs_name=stem)
+    extra = ("--pilot-trace-optional", RUN_NEW) if optional else ()
+    message = refused_paths(paths, "bad_input", "--pilot-run", RUN_NEW, *extra)
+    assert f"{stem}.json is not named after the run" in message and f"{RUN_NEW}_<name>.json" in message
+
+
+def test_a_trace_pairs_file_with_the_run_id_an_underscore_and_any_name_is_accepted(tmp_path, capsys):
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, RUN_NEW, _new_run_rows(), pairs_name=f"{RUN_NEW}_x")
+    bundle, _ = rerun(paths, paths["out_dir"], "--pilot-run", RUN_NEW)
+    assert bundle["selection"]["tracing_pair"][NEW_LABEL]["trace_results"] == evt.logical_path(
+        paths["pilot_trace_root"] / RUN_NEW / f"{RUN_NEW}_x")
+
+
+# (stem, whether the lane's rule accepts it) for a run named like Run 3; the exporter's own "__" refusal is separate
+LANE_NAMING_CASES = [(f"{RUN3}_trace_pairs", True), (f"{RUN3}_x", True), (f"{RUN3}__x", True), (RUN3, False),
+                     (f"{RUN3}x", False), (f"{RUN3}-pairs", False), (f"{RUN3}_", False), ("trace_pairs", False),
+                     (f"x_{RUN3}_trace_pairs", False), (f"{RUN3[:-1]}_trace_pairs", False)]
+
+
+def test_the_naming_rule_is_the_lanes():
+    # The exporter and the lanes' pilot roots must accept the same pairs-file names, or the exporter would export a
+    # run whose traces the lane refuses to fire. The lane's rule is fire_trigger.pilot_pairs_run_name_problem, which
+    # comes with PR #85; until it is on the branch, this compares the exporter with the table alone.
+    for stem, accepted in LANE_NAMING_CASES:
+        assert evt._pairs_file_named_for_run(stem, RUN3) is accepted, stem
+    assert evt._pairs_file_named_for_run("trace_pairs", RUN2), "Run 2's legacy name is the exporter's one exception"
+    spec = importlib.util.spec_from_file_location("fire_trigger_naming", ROOT / "scripts" / "fire_trigger.py")
+    fire_trigger = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fire_trigger)
+    lane_rule = getattr(fire_trigger, "pilot_pairs_run_name_problem", None)
+    if lane_rule is None:
+        pytest.skip("scripts/fire_trigger.py has no pilot_pairs_run_name_problem on this branch (PR #85 adds it)")
+    for root, lane in (("pilot/traces", "circuit-trace"), ("pilot/logits", "logits-eval")):
+        for stem, accepted in LANE_NAMING_CASES:
+            assert (lane_rule(f"pilot/runs/{RUN3}/trace/{stem}.json", lane, root) is None) is accepted, (lane, stem)
+
+
+@pytest.mark.parametrize("optional", [(), (RUN_NEW + "_b",), (RUN_NEW,), (RUN_NEW, RUN_NEW + "_b")],
+                         ids=["both_required", "later_optional", "earlier_optional", "both_optional"])
+def test_two_runs_whose_trace_pairs_files_share_a_stem_each_read_their_own_folder(tmp_path, capsys, optional):
+    # Two runs' files can both satisfy the naming rule and still share a stem (one run id followed by "_" is a prefix
+    # of the other). Before PR #85 the lane wrote pilot/traces/<stem>/, so both runs traced into one folder, and the
+    # export refused such a pair of runs (Codex review of PR #86, 4179236833). Under the per-run layout each run
+    # traces into pilot/traces/<run id>/<stem>/, and the export reads each run's own folder.
+    paths = write_world(tmp_path, world_data())
+    run_b = RUN_NEW + "_b"
+    shared = f"{run_b}_trace_pairs"
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, pairs_name=shared)
+    write_run(paths, run_b, [dict(r, id=r["id"] + "b") for r in rows], pairs_name=shared)
+    extra = [a for run in optional for a in ("--pilot-trace-optional", run)]
+    bundle, _ = rerun(paths, paths["out_dir"], "--pilot-run", RUN_NEW, "--pilot-run", run_b, *extra)
+    tracing = bundle["selection"]["tracing_pair"]
+    for run_id in (RUN_NEW, run_b):
+        required = run_id not in optional
+        assert tracing[f"pilot:{run_id}"]["trace_results"] == (
+            evt.logical_path(paths["pilot_trace_root"] / run_id / shared) if required else None)
+        assert len(_pilot(bundle, f"pilot:{run_id}")) == 3
+
+
+# ---- PR #85's per-run layout and the two legacy folders ----------------------------------------------------------
+
+def test_a_later_run_reads_its_own_folder_never_a_flat_one(tmp_path, capsys):
+    # PR #85: every pilot fire since 2026-10-05 writes pilot/traces/<run id>/<stem>[__<model>]/. A flat
+    # pilot/traces/<stem>/ is the layout before it, and is read only for the two runs whose parts were written so.
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, RUN_NEW, _new_run_rows())
+    root = paths["pilot_trace_root"]
+    bundle, _ = rerun(paths, tmp_path / "own", "--pilot-run", RUN_NEW)
+    assert bundle["selection"]["tracing_pair"][NEW_LABEL]["trace_results"] == evt.logical_path(
+        root / RUN_NEW / NEW_PAIRS)
+    shutil.move(root / RUN_NEW / NEW_PAIRS, root / NEW_PAIRS)                # the same results, flat
+    message = refused_paths(paths, "missing_trace", "--pilot-run", RUN_NEW)
+    assert f"{root / RUN_NEW / NEW_PAIRS} or {root / RUN_NEW / NEW_PAIRS}__<model>" in message
+    message = refused_paths(paths, "missing_trace", "--pilot-run", RUN_NEW, "--pilot-trace-model", RUN_NEW,
+                            "gemma-2-2b")
+    assert f"no gemma-2-2b trace results (batch_summary*.json) in {root / RUN_NEW / NEW_PAIRS};" in message
+
+
+def test_run3s_legacy_folder_is_read_for_any_model_and_its_own_folder_once_the_legacy_one_is_gone(tmp_path, capsys):
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, RUN3, _new_run_rows())
+    root, stem, label = paths["pilot_trace_root"], f"{RUN3}_trace_pairs", f"pilot:{RUN3}"
+    pairs = json.loads((paths["pilot_runs_dir"] / RUN3 / "trace" / f"{stem}.json").read_text())
+    legacy, legacy_raw = rerun(paths, tmp_path / "legacy", "--pilot-run", RUN3)
+    assert legacy["selection"]["tracing_pair"][label]["trace_results"] == evt.logical_path(root / stem)
+    write_traces(paths, RUN3, stem, pairs, "qwen3-4b", layout="flat")       # a second model, also flat
+    assert "2 directories" in refused_paths(paths, "ambiguous_trace", "--pilot-run", RUN3)
+    qwen, _ = rerun(paths, tmp_path / "qwen", "--pilot-run", RUN3, "--pilot-trace-model", RUN3, "qwen3-4b")
+    assert qwen["selection"]["tracing_pair"][label]["trace_results"] == evt.logical_path(root / f"{stem}__qwen3-4b")
+    shutil.rmtree(root / f"{stem}__qwen3-4b")
+    (root / RUN3).mkdir()
+    shutil.move(root / stem, root / RUN3 / stem)                              # moved into its own folder
+    own, own_raw = rerun(paths, tmp_path / "own", "--pilot-run", RUN3)
+    assert own["selection"]["tracing_pair"][label]["trace_results"] == evt.logical_path(root / RUN3 / stem)
+    assert _items_bytes(own_raw) == _items_bytes(legacy_raw)
+
+
+# (the model the run is traced again with, into its own folder; a second model already in its legacy folder, or None;
+# the model named, or None; the outcome): a conflict, an ambiguity, or the layout whose folder the named model is read
+# from. The legacy folder always holds gemma-2-2b, as Run 2's and Run 3's do.
+LAYOUT_CASES = [
+    ("gemma-2-2b", None, None, "conflict"),                 # one model in both layouts
+    ("gemma-2-2b", None, "gemma-2-2b", "conflict"),
+    ("gemma-2-2b", None, "qwen3-4b", "conflict"),           # the conflict is the run's, whichever model is named
+    ("qwen3-4b", "qwen3-4b", "qwen3-4b", "conflict"),       # a second model in both layouts
+    ("qwen3-4b", None, None, "ambiguous"),                  # two models, one per layout, none named
+    ("qwen3-4b", None, "qwen3-4b", "own"),                  # the named model's one folder is the run's own
+    ("qwen3-4b", None, "gemma-2-2b", "legacy"),             # the named model's one folder is the legacy one
+]
+
+
+@pytest.mark.parametrize("run_id", [RUN2, RUN3])
+@pytest.mark.parametrize("model, legacy_extra, named, outcome", LAYOUT_CASES)
+def test_one_models_results_in_both_layouts_are_refused_and_other_models_are_read_by_the_model_rules(
+        tmp_path, capsys, run_id, model, legacy_extra, named, outcome):
+    # PR #85 keeps Run 2's and Run 3's parts in their flat folders; a fire of either run since writes its own folder.
+    # One model's results in both are two traces of one pairs file by one model, and the export does not pick one
+    # (trace_layout_conflict). Different models in different layouts are not a conflict (owner's decision of
+    # 2026-10-05): re-tracing Run 2 or Run 3 with another model leaves its gemma-2-2b results readable, and the model
+    # rules apply across both layouts. Run 2 is traced again from its run-named copy (the lanes refuse its
+    # trace_pairs.json), Run 3 from its own pairs file.
+    paths = write_world(tmp_path, world_data())
+    root = paths["pilot_trace_root"]
+    label = "pilot_run2" if run_id == RUN2 else f"pilot:{RUN3}"
+    if run_id == RUN3:
+        write_run(paths, RUN3, _new_run_rows())
+        stem = f"{RUN3}_trace_pairs"
+    else:
+        run, _ = _run2_pairs(paths)
+        stem = f"{RUN2}_trace_pairs"
+        for suffix in (".json", ".meta.json"):
+            shutil.copy2(run / "trace" / f"trace_pairs{suffix}", run / "trace" / f"{stem}{suffix}")
+    _, before_raw = rerun(paths, tmp_path / "before", "--pilot-run", run_id)
+    pairs = json.loads((paths["pilot_runs_dir"] / run_id / "trace" / f"{stem}.json").read_text())
+    legacy = root / LEGACY_FOLDERS[run_id]
+    if legacy_extra:
+        write_traces(paths, run_id, LEGACY_FOLDERS[run_id], pairs, legacy_extra, layout="flat")
+    write_traces(paths, run_id, stem, pairs, model, layout="per_run")
+
+    def folder(base: Path, m: str) -> Path:
+        return base if m == "gemma-2-2b" else base.with_name(f"{base.name}__{m}")
+
+    extra = ("--pilot-run", run_id) + (("--pilot-trace-model", run_id, named) if named else ())
+    if outcome == "conflict":
+        message = refused_paths(paths, "trace_layout_conflict", *extra)
+        assert f"has {model} trace results in both layouts" in message
+        assert f"{model}: {folder(legacy, model)}" in message
+        assert f"{model}: {folder(root / run_id / stem, model)}" in message
+        assert f"--pilot-trace-optional {run_id}" in message
+        rerun(paths, tmp_path / "optional", "--pilot-run", run_id, "--pilot-trace-optional", run_id)
+    elif outcome == "ambiguous":
+        message = refused_paths(paths, "ambiguous_trace", *extra)
+        assert f"gemma-2-2b: {legacy}" in message and f"{model}: {folder(root / run_id / stem, model)}" in message
+        assert f"--pilot-trace-model {run_id} <model>" in message
+    else:
+        bundle, raw = rerun(paths, tmp_path / "named", *extra)
+        expected = folder(legacy if outcome == "legacy" else root / run_id / stem, named)
+        sel = bundle["selection"]["tracing_pair"][label]
+        assert sel["trace_results"] == evt.logical_path(expected) and sel["trace_model"] == named
+        assert _items_bytes(raw) == _items_bytes(before_raw)         # the same pairs, the same trace indexes
+
+
+@pytest.mark.parametrize("optional", [False, True], ids=["required", "optional"])
+@pytest.mark.parametrize("run_id", ["trace_pairs", "pilot_v3_20261004_trace_pairs"])
+def test_a_run_id_that_names_a_legacy_trace_folder_is_refused(tmp_path, run_id, optional):
+    # PR #85's lanes refuse such a run id, since the run's own folder, pilot/traces/<run id>/, would sit inside the
+    # legacy folder of that name; the export refuses it too, so a run it accepts is one the lanes will trace
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, run_id, _new_run_rows())
+    extra = ("--pilot-trace-optional", run_id) if optional else ()
+    message = refused_paths(paths, "bad_input", "--pilot-run", run_id, *extra)
+    assert f"pilot run {run_id}: the run id is the name of the pilot trace folder pilot/traces/{run_id}/" in message
+
+
+def test_the_legacy_trace_folders_are_the_lanes():
+    # The exporter reads, for Run 2 and Run 3, the two flat folders PR #85 keeps, and refuses their names as run ids,
+    # as the lanes do. fire_trigger.PILOT_LEGACY_OUTPUT_FOLDERS comes with PR #85; until it is on the branch, this
+    # compares the exporter with the table alone.
+    assert evt.LEGACY_TRACE_FOLDERS == LEGACY_FOLDERS
+    spec = importlib.util.spec_from_file_location("fire_trigger_legacy", ROOT / "scripts" / "fire_trigger.py")
+    fire_trigger = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fire_trigger)
+    lane_folders = getattr(fire_trigger, "PILOT_LEGACY_OUTPUT_FOLDERS", None)
+    if lane_folders is None:
+        pytest.skip("scripts/fire_trigger.py has no PILOT_LEGACY_OUTPUT_FOLDERS on this branch (PR #85 adds it)")
+    assert sorted(evt.LEGACY_TRACE_FOLDERS.values()) == sorted(lane_folders)
+    for run_id, folder in evt.LEGACY_TRACE_FOLDERS.items():         # each folder is its run's pairs-file stem
+        assert fire_trigger.pilot_run_id(f"pilot/runs/{run_id}/trace/{folder}.json") == run_id
+        assert fire_trigger.pilot_legacy_run_id_problem(f"pilot/runs/{folder}/trace/{folder}_x.json",
+                                                        "circuit-trace", "pilot/traces") is not None
+
+
+def test_a_trace_pairs_file_whose_stem_holds_the_model_separator_is_refused(tmp_path):
+    # pilot/traces/<run id>/<stem>__<model>/ is the lane's directory for a non-default model, so a stem holding "__"
+    # could be read as another stem's results for another model
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, RUN_NEW, _new_run_rows(), pairs_name=f"{RUN_NEW}__qwen3-4b")
+    message = refused_paths(paths, "bad_input", "--pilot-run", RUN_NEW)
+    assert "'__'" in message and RUN_NEW in message
+    refused_paths(paths, "bad_input", "--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+
+
+def test_a_run_traced_with_another_graph_model_reads_that_models_directory(tmp_path, capsys):
+    # Codex review of PR #86 (4179127691): the circuit-trace lane writes a non-default model's results to
+    # pilot/traces/<stem>__<model>/, and the exporter looked only in pilot/traces/<stem>/, so it reported a committed
+    # cross-model trace as missing.
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, RUN_NEW, _new_run_rows(), trace_model="qwen3-4b")
+    both = ("--pilot-run", RUN2, "--pilot-run", RUN_NEW)
+    found, _ = rerun(paths, tmp_path / "found", *both)                      # the one model with results
+    named, _ = rerun(paths, tmp_path / "named", *both, "--pilot-trace-model", RUN_NEW, "qwen3-4b")
+    for bundle in (found, named):
+        sel = bundle["selection"]["tracing_pair"][NEW_LABEL]
+        assert sel["trace_model"] == "qwen3-4b" and sel["trace_results"] == evt.logical_path(
+            paths["pilot_trace_root"] / RUN_NEW / f"{NEW_PAIRS}__qwen3-4b")
+        assert "qwen3-4b trace results" in sel["rule"]
+        assert sorted(i["provenance"]["trace_index"] for i in _pilot(bundle, NEW_LABEL)) == [1, 2, 3]
+    assert [i["item_id"] for i in found["items"]] == [i["item_id"] for i in named["items"]]
+    # the default model, named, is read from the unsuffixed directory, which holds nothing here
+    message = refused_paths(paths, "missing_trace", *both, "--pilot-trace-model", RUN_NEW, "gemma-2-2b")
+    assert message.count(NEW_PAIRS) == 1 and "qwen3-4b" not in message
+
+
+def test_a_named_model_never_reads_the_default_models_results_and_two_models_need_one_named(tmp_path, capsys):
+    # Codex review of PR #86 (4179127691): with a default-model directory already there, the exporter validated it
+    # in place of the selected model's results. A named model is read from its own directory only, and with results
+    # for two models and none named the export stops rather than choosing.
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows)                                          # gemma-2-2b results, complete
+    pairs = json.loads((paths["pilot_runs_dir"] / RUN_NEW / "trace" / f"{NEW_PAIRS}.json").read_text())
+    both = ("--pilot-run", RUN2, "--pilot-run", RUN_NEW)
+    write_traces(paths, RUN_NEW, NEW_PAIRS, pairs[:1], "qwen3-4b")           # qwen3-4b: one pair traced so far
+    message = refused_paths(paths, "ambiguous_trace", *both)
+    assert "2 directories" in message and "gemma-2-2b" in message and "qwen3-4b" in message
+    assert f"--pilot-trace-model {RUN_NEW} <model>" in message
+    message = refused_paths(paths, "missing_trace", *both, "--pilot-trace-model", RUN_NEW, "qwen3-4b")
+    assert f"{NEW_PAIRS}__qwen3-4b" in message and "pair 2" in message
+    gemma, _ = rerun(paths, tmp_path / "gemma", *both, "--pilot-trace-model", RUN_NEW, "gemma-2-2b")
+    assert gemma["selection"]["tracing_pair"][NEW_LABEL]["trace_model"] == "gemma-2-2b"
+    write_traces(paths, RUN_NEW, NEW_PAIRS, [dict(p, bottom_prompt=p["bottom_prompt"] + " again") for p in pairs],
+                 "qwen3-4b")                                                 # qwen3-4b results, other prompts
+    refused_paths(paths, "trace_mismatch", *both, "--pilot-trace-model", RUN_NEW, "qwen3-4b")
+
+
+def test_a_named_model_with_no_results_directory_is_missing_not_read_from_the_default_models(tmp_path, capsys):
+    # Codex review of PR #86 (4179127691), the case it names: the selected model's results are not committed at all
+    # and complete gemma-2-2b results are. Naming the model must not fall back to the gemma-2-2b directory.
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, RUN_NEW, _new_run_rows())                               # gemma-2-2b results only
+    assert not (paths["pilot_trace_root"] / RUN_NEW / f"{NEW_PAIRS}__qwen3-4b").exists()
+    both = ("--pilot-run", RUN2, "--pilot-run", RUN_NEW)
+    message = refused_paths(paths, "missing_trace", *both, "--pilot-trace-model", RUN_NEW, "qwen3-4b")
+    assert f"{NEW_PAIRS}__qwen3-4b" in message
+
+
+def test_a_second_directory_for_the_default_model_is_ambiguous_not_hidden(tmp_path, capsys):
+    # The lane never writes <stem>__gemma-2-2b/, but a directory of that name next to <stem>/ is a second set of
+    # results for the same model; it is counted as such, not let to replace the first unseen
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, RUN_NEW, _new_run_rows())
+    pairs = json.loads((paths["pilot_runs_dir"] / RUN_NEW / "trace" / f"{NEW_PAIRS}.json").read_text())
+    dump(paths["pilot_trace_root"] / RUN_NEW / f"{NEW_PAIRS}__gemma-2-2b" / "batch_summary.part_01.json",
+         summary_doc(pairs))
+    assert "2 directories" in refused_paths(paths, "ambiguous_trace", "--pilot-run", RUN_NEW)
+
+
+# (directory model, how it is chosen, what one of its summaries declares): a summary whose graph_model is another
+# model, absent, empty or not a string, in a directory read as the default model's or a named model's
+WRONG_DECLARED_MODEL = [
+    ("gemma-2-2b", "found", "qwen3-4b"), ("gemma-2-2b", "found", None), ("gemma-2-2b", "named", "qwen3-4b"),
+    ("qwen3-4b", "found", "gemma-2-2b"), ("qwen3-4b", "named", "gemma-2-2b"), ("qwen3-4b", "named", None),
+    ("qwen3-4b", "named", ""), ("qwen3-4b", "named", ["qwen3-4b"]),
+]
+
+
+@pytest.mark.parametrize("model, chosen, declared", WRONG_DECLARED_MODEL)
+def test_a_trace_summary_that_does_not_declare_the_model_its_directory_is_read_as_is_refused(tmp_path, model, chosen,
+                                                                                            declared):
+    # Codex review of PR #86 (4183566187): the exporter took a results directory's model from its name and never
+    # read the summaries' own graph_model (medlang_circuits/batch_eval.py records it in every hosted summary), so a
+    # summary of another model, or of none named, copied into the directory was recorded under the directory's model.
+    # The second of two parts declares the wrong model here, so every part is checked, not only the first.
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, trace_model=model)
+    pairs = json.loads((paths["pilot_runs_dir"] / RUN_NEW / "trace" / f"{NEW_PAIRS}.json").read_text())
+    folder = paths["pilot_trace_root"] / RUN_NEW / (NEW_PAIRS if model == "gemma-2-2b" else f"{NEW_PAIRS}__{model}")
+    dump(folder / "batch_summary.part_01.json", summary_doc(pairs[:1], model))
+    later = summary_doc(pairs[1:], declared)
+    for result in later["results"]:
+        result["index"] += 1
+    dump(folder / "batch_summary.part_02.json", later)
+    extra = ("--pilot-trace-model", RUN_NEW, model) if chosen == "named" else ()
+    message = refused_paths(paths, "trace_model_mismatch", "--pilot-run", RUN_NEW, *extra)
+    assert "batch_summary.part_02.json" in message and f"as {model}'s trace results" in message
+    assert ("declares no graph model" in message) is not isinstance(declared, str)
+    later["graph_model"] = model                                              # declared as read: exported
+    dump(folder / "batch_summary.part_02.json", later)
+    bundle, _ = rerun(paths, tmp_path / "fixed", "--pilot-run", RUN_NEW, *extra)
+    assert bundle["selection"]["tracing_pair"][NEW_LABEL]["trace_model"] == model
+    assert f"declaring graph_model {model}" in bundle["selection"]["tracing_pair"][NEW_LABEL]["rule"]
+
+
+def test_run2s_default_model_summaries_are_checked_too(tmp_path):
+    # the default run reads Run 2's gemma-2-2b directory without a named model; its summaries are checked as well
+    paths = write_world(tmp_path, world_data())
+    part = paths["pilot_trace_root"] / "trace_pairs" / "batch_summary.part_01.json"
+    doc = json.loads(part.read_text())
+    doc["graph_model"] = "qwen3-4b"
+    dump(part, doc)
+    message = refused_paths(paths, "trace_model_mismatch")
+    assert "declares graph model 'qwen3-4b'" in message and RUN2 in message
+
+
+@pytest.mark.parametrize("extra, fragment", [
+    (("--pilot-run", RUN2, "--pilot-trace-model", RUN_NEW, "qwen3-4b"), "which no --pilot-run exports"),
+    (("--pilot-run", RUN2, "--pilot-trace-model", RUN2, "qwen3-4b", "--pilot-trace-model", RUN2, "gemma-2-2b"),
+     "more than once"),
+    (("--pilot-run", RUN2, "--pilot-trace-optional", RUN2, "--pilot-trace-model", RUN2, "qwen3-4b"),
+     "--pilot-trace-optional says not to read"),
+    (("--pilot-run", RUN2, "--pilot-trace-model", RUN2, "../qwen3-4b"), "not a graph model id"),
+    (("--pilot-run", RUN2, "--pilot-trace-model", RUN2, "qwen3__4b"), "not a graph model id"),
+])
+def test_pilot_trace_model_arguments_are_checked(tmp_path, extra, fragment):
+    paths = write_world(tmp_path, world_data())
+    assert fragment in refused_paths(paths, "bad_input", *extra)
+
+
+@pytest.mark.parametrize("extra, fragment", [
+    (("--pilot-run", "pilot/runs/x"), "not a run id"),
+    (("--pilot-run", ".."), "not a run id"),
+    (("--pilot-run", RUN2, "--pilot-run", RUN2), "more than once"),
+    (("--pilot-all-rows", RUN_NEW), "which no --pilot-run exports"),
+    (("--pilot-trace-optional", RUN_NEW), "which no --pilot-run exports"),
+])
+def test_pilot_run_arguments_are_checked(tmp_path, extra, fragment):
+    paths = write_world(tmp_path, world_data())
+    assert fragment in refused_paths(paths, "bad_input", *extra)
+
+
+def test_an_absent_run_is_refused(tmp_path):
+    paths = write_world(tmp_path, world_data())
+    assert RUN_NEW in refused_paths(paths, "missing_input", "--pilot-run", RUN_NEW)
+    refused_paths(paths, "missing_input", "--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+
+
+def test_a_sealed_row_in_any_run_refuses_the_export(tmp_path):
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    rows[1].update({"template": "___", "clinical_term": SEALED})
+    write_run(paths, RUN_NEW, rows, traced=[])
+    message = refused_paths(paths, "sealed_row", "--pilot-run", RUN2, "--pilot-run", RUN_NEW,
+                            "--pilot-trace-optional", RUN_NEW)
+    assert rows[1]["id"] in message and SEALED not in message
+
+
+# next words the version-2 rule refuses: two words, an uppercase letter, punctuation, a leading space, a digit, the
+# underscore, two hyphens, empty, and values that are not strings
+BAD_NEXT_WORDS = ["two words", "Aunt", "aunt.", " aunt", "aunt2", "au_nt", "self-made-up", "", None, 7, ["aunt"]]
+
+
+@pytest.mark.parametrize("word", BAD_NEXT_WORDS)
+def test_a_next_word_outside_the_version_2_rule_is_refused_when_the_trace_is_optional(tmp_path, word):
+    # Codex review of PR #86 (4183566207): with --pilot-trace-optional no trace pairs file is read, and the exporter
+    # checked only that next_word was a non-empty string, so a malformed or schema-drifted run put a next word the
+    # parser and the trace-pairs builder refuse in front of physicians. The message names the row, never the word.
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    rows[1]["next_word"] = word
+    write_run(paths, RUN_NEW, rows, traced=[])
+    for extra in ((), ("--pilot-all-rows", RUN_NEW)):
+        message = refused_paths(paths, "bad_next_word", *ONLY_NEW_OPTIONAL, *extra)
+        assert rows[1]["id"] in message and "version-2 rule" in message
+        assert not (isinstance(word, str) and word.strip() and word in message)
+
+
+@pytest.mark.parametrize("word", ["two words", "Aunt", "aunt."])
+def test_a_next_word_outside_the_version_2_rule_is_refused_when_the_trace_is_required(tmp_path, word):
+    # the trace pairs file here carries the same word as its target, so only the row check can refuse it
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    rows[0]["next_word"] = word
+    write_run(paths, RUN_NEW, rows)
+    assert rows[0]["id"] in refused_paths(paths, "bad_next_word", "--pilot-run", RUN_NEW)
+
+
+def test_next_words_the_version_2_rule_accepts_are_exported(tmp_path, capsys):
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    words = ["well-known", "o\u2019clock", "na\u00efve"]      # a hyphen, a typographic apostrophe, a non-ASCII letter
+    for row, word in zip(rows, words):
+        row["next_word"] = word
+    write_run(paths, RUN_NEW, rows, traced=[])
+    bundle, _ = rerun(paths, paths["out_dir"], *ONLY_NEW_OPTIONAL)
+    assert sorted(i["display"]["next_word"] for i in _pilot(bundle, NEW_LABEL)) == sorted(words)
+
+
+def test_the_next_word_rule_is_the_trace_pairs_builders():
+    # reused, not copied: the exporter's check is pilot/analysis/trace_pairs.py's next_word_ok, which
+    # tests/test_pilot_trace_pairs.py holds equal to the parser's pilot/scripts/common.next_word_ok
+    assert Path(evt.next_word_ok.__code__.co_filename) == ROOT / "pilot" / "analysis" / "trace_pairs.py"
+    assert not any(evt.next_word_ok(w) for w in BAD_NEXT_WORDS)
+
+
+def test_a_pair_that_repeats_an_earlier_pilot_pair_is_kept_and_counted(tmp_path, capsys):
+    data = world_data()
+    paths = write_world(tmp_path, data)
+    rows = _new_run_rows() + [dict(data["pilot_rows"][0], id="B__cell__kind__L09", call_id="B__cell__kind")]
+    write_run(paths, RUN_NEW, rows)
+    bundle, _ = rerun(paths, paths["out_dir"], "--pilot-run", RUN2, "--pilot-run", RUN_NEW)
+    tracing = bundle["selection"]["tracing_pair"]
+    assert tracing["pilot_run2"]["counts"]["repeats_an_earlier_pilot_pair"] == 0
+    assert tracing[NEW_LABEL]["counts"]["repeats_an_earlier_pilot_pair"] == 1
+    assert len(_pilot(bundle, NEW_LABEL)) == 4
+
+
+# ---- rounds: a later bundle keeps every item of the previous one --------------------------------------------
+
+def test_a_later_round_keeps_every_previous_item_and_adds_a_run(tmp_path, capsys):
+    first, raw_first, paths = export(tmp_path)
+    assert first["selection"]["previous_bundle"] is None
+    previous = tmp_path / "round1.json"
+    previous.write_bytes(raw_first)
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows)
+    second, _ = rerun(paths, tmp_path / "round2", "--pilot-run", RUN2, "--pilot-run", RUN_NEW,
+                      "--previous-bundle", str(previous))
+    assert check_contract(second) == []
+    assert second["selection"]["previous_bundle"] == {
+        "path": evt.logical_path(previous), "bundle_id": first["bundle_id"],
+        "sha256": hashlib.sha256(raw_first).hexdigest(), "items_kept": 13, "items_added": 3}
+    kept = {i["item_id"]: i for i in second["items"]}
+    assert all(kept[i["item_id"]]["display"] == i["display"] for i in first["items"])
+
+
+def test_a_later_round_that_drops_or_changes_a_previous_item_or_question_is_refused(tmp_path, capsys):
+    _, raw_first, paths = export(tmp_path / "w")
+    previous = tmp_path / "round1.json"
+    previous.write_bytes(raw_first)
+    shutil.rmtree(paths["out_dir"])
+    # dropped: one main-study pair fewer
+    message = refused_paths(paths, "previous_item_missing", "--previous-bundle", str(previous), main_pairs=3)
+    assert evt.item_id_for("tracing_pair", evt.SITE_LABEL, f"{TIER_A}#6") in message
+    # changed: another text under the same advice item id
+    original = paths["advice_new"].read_bytes()
+    advice = json.loads(original)
+    item = advice["items"][0]
+    item["patient_message"] += " Thanks."
+    item["patient_sha256"] = _sha(item["patient_message"])
+    dump(paths["advice_new"], advice)
+    message = refused_paths(paths, "previous_item_changed", "--previous-bundle", str(previous))
+    assert evt.item_id_for("advice", evt.logical_path(paths["advice_new"]), item["id"]) in message
+    assert "1 item(s)" in message and item["patient_message"] not in message
+    advice = json.loads(original)                       # another proposed tier: the after-reveal answers refer to it
+    advice["items"][0]["reference"]["tier"] = "routine"
+    dump(paths["advice_new"], advice)
+    assert "1 item(s)" in refused_paths(paths, "previous_item_changed", "--previous-bundle", str(previous))
+    paths["advice_new"].write_bytes(original)
+    # a question id renamed (wording may change; ids may not)
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    keep = next(q for q in questions["question_sets"]["tracing_pair"]["questions"] if q["id"] == "keep")
+    keep["id"] = "keep_renamed"
+    paths["questions"] = dump(tmp_path / "questions.json", questions)
+    assert "tracing_pair.keep" in refused_paths(paths, "previous_question_missing", "--previous-bundle",
+                                                str(previous))
+
+
+def _round1(tmp_path: Path) -> tuple[dict[str, Path], dict, Path]:
+    """A world, its round-1 bundle (parsed) and a path to write a previous bundle to; the world's out dir is empty."""
+    first, _, paths = export(tmp_path / "w")
+    shutil.rmtree(paths["out_dir"])
+    return paths, first, tmp_path / "round1.json"
+
+
+@pytest.mark.parametrize("doc", [{"schema": "patientwords-verification-tasks/0", "items": [], "questions": {}},
+                                 {"schema": evt.SCHEMA, "items": {}, "questions": {}},
+                                 {"schema": evt.SCHEMA, "items": [], "questions": []},
+                                 [evt.SCHEMA]])
+def test_a_previous_bundle_that_is_not_a_tasks_bundle_is_refused(tmp_path, doc):
+    paths, _, previous = _round1(tmp_path)
+    dump(previous, doc)
+    assert f"is not a {evt.SCHEMA} bundle" in refused_paths(paths, "bad_input", "--previous-bundle", str(previous))
+
+
+def test_a_previous_item_whose_question_set_alone_changed_is_refused(tmp_path, capsys):
+    paths, first, previous = _round1(tmp_path)
+    item = next(i for i in first["items"] if i["question_set"] == "advice_rerun")
+    item["question_set"] = "advice_rerun_truncated"                       # display and reveal unchanged
+    dump(previous, first)
+    message = refused_paths(paths, "previous_item_changed", "--previous-bundle", str(previous))
+    assert "1 item(s)" in message and item["item_id"] in message
+
+
+def _question(questions: dict, set_name: str, qid: str) -> dict:
+    return next(q for q in questions["question_sets"][set_name]["questions"] if q["id"] == qid)
+
+
+def _options(*values: Any) -> list[dict]:
+    return [{"value": v, "label": str(v)} for v in values]
+
+
+# Each change keeps the question id but changes what a stored answer means; the app checks a stored answer against
+# the question's current scale, phase and lock when a physician saves the item again (patientwords-verify
+# src/Logic.gs). The first is the check of 2026-10-04's reproduction (realism5 replaced by yes_no; the 4 a
+# physician gave would sit under a scale without it). (mutation of the questions, a question it changes, the field)
+CONTRACT_CHANGES = {
+    "scale": (lambda q: _question(q, "tracing_pair", "patient_realism").update(scale="yes_no"),
+              "tracing_pair.patient_realism", "scale_type"),
+    "values": (lambda q: q["scales"]["keep3"].update(options=_options("yes", "no")), "tracing_pair.keep", "values"),
+    "order": (lambda q: q["scales"]["realism5"]["options"].reverse(), "advice_new.realism_patient", "values"),
+    "abstain": (lambda q: q["scales"]["yes_no"]["abstain"].update(value="unsure"), "tracing_pair.same", "abstain"),
+    "max_length": (lambda q: q["scales"]["text1000"].update(max_length=200), "advice_new.proposed_tier_reason",
+                   "max_length"),
+    "phase": (lambda q: _question(q, "advice_new", "proposed_tier_agree").update(phase="blind"),
+              "advice_new.proposed_tier_agree", "phase"),
+    "per_arm": (lambda q: _question(q, "multiturn_script", "realism").update(per_arm=False),
+                "multiturn_script.realism", "per_arm"),
+    # Codex review of PR #86 (4179127689): required gates the reveal and an item's completeness in the app
+    # (blindComplete_, itemComplete_) and the import (is_complete), in both directions
+    "required_on": (lambda q: _question(q, "tracing_pair", "keep").update(required=True), "tracing_pair.keep",
+                    "required"),
+    "required_off": (lambda q: _question(q, "tracing_pair", "same").update(required=False), "tracing_pair.same",
+                     "required"),
+    # Codex review of PR #86 (4179127694): Python's == takes true for 1, the app's === and the import's same_value
+    # do not, so a stored 1 would be refused under a scale whose option is true
+    "value_type": (lambda q: q["scales"]["realism5"]["options"][0].update(value=True),
+                   "advice_new.realism_patient", "values"),
+}
+
+
+@pytest.mark.parametrize("change", sorted(CONTRACT_CHANGES))
+def test_a_kept_question_id_whose_answer_contract_changed_is_refused(tmp_path, change):
+    paths, first, previous = _round1(tmp_path)
+    dump(previous, first)
+    mutate, key, field = CONTRACT_CHANGES[change]
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    mutate(questions)
+    paths["questions"] = dump(tmp_path / "questions.json", questions)
+    message = refused_paths(paths, "previous_question_changed", "--previous-bundle", str(previous))
+    assert re.search(re.escape(key) + r" \([^)]*\b" + field + r"\b", message), message
+
+
+def test_an_abstain_value_of_another_json_type_is_refused(tmp_path):
+    # Codex review of PR #86 (4179127694), for the abstain value: 0 and false are equal in Python, not in the app
+    paths, first, previous = _round1(tmp_path)
+    first["questions"]["scales"]["yes_no"]["abstain"]["value"] = 0
+    dump(previous, first)
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    questions["scales"]["yes_no"]["abstain"]["value"] = False
+    paths["questions"] = dump(tmp_path / "questions.json", questions)
+    message = refused_paths(paths, "previous_question_changed", "--previous-bundle", str(previous))
+    assert "tracing_pair.same (abstain)" in message
+
+
+@pytest.mark.parametrize("limit", [2000, 8000])
+def test_another_notes_limit_is_refused(tmp_path, limit):
+    # Codex review of PR #86 (4179236828): the app and the import refuse a note longer than the bundle's
+    # notes.max_length, so a lower limit would refuse a note saved under round 1's. The limit is compared exactly,
+    # as a text scale's max_length is, so a higher one is refused too.
+    paths, first, previous = _round1(tmp_path)
+    dump(previous, first)
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    questions["notes"]["max_length"] = limit
+    paths["questions"] = dump(tmp_path / "questions.json", questions)
+    message = refused_paths(paths, "previous_notes_changed", "--previous-bundle", str(previous))
+    assert f"is {first['questions']['notes']['max_length']} and this bundle's is {limit}" in message
+
+
+def test_a_question_that_gained_or_lost_the_reveal_lock_is_refused(tmp_path):
+    # advice_new keeps exactly one locking question, so the lock is moved in the previous bundle's copy instead
+    paths, first, previous = _round1(tmp_path)
+    _question(first["questions"], "tracing_pair", "same")["locks_on_reveal"] = True
+    dump(previous, first)
+    message = refused_paths(paths, "previous_question_changed", "--previous-bundle", str(previous))
+    assert "tracing_pair.same (locks_on_reveal)" in message
+
+
+def test_a_question_reworded_or_on_a_renamed_identical_scale_is_kept(tmp_path, capsys):
+    paths, first, previous = _round1(tmp_path)
+    dump(previous, first)
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    keep = _question(questions, "tracing_pair", "keep")
+    keep["text"] += " (reworded)"
+    questions["scales"]["keep3_v2"] = copy.deepcopy(questions["scales"]["keep3"])
+    questions["scales"]["keep3_v2"]["options"][0]["label"] += " (reworded)"
+    keep["scale"] = "keep3_v2"
+    paths["questions"] = dump(tmp_path / "questions.json", questions)
+    second, _ = rerun(paths, tmp_path / "round2", "--previous-bundle", str(previous))
+    assert second["selection"]["previous_bundle"]["items_kept"] == len(first["items"])
+
+
+def _added_question(required: Any, phase: str = "blind") -> dict:
+    return {"id": "added_check", "scale": "yes_no", "required": required, "phase": phase,
+            "text": "Is anything else unclear?"}
+
+
+def _questions_with_added(tmp_path: Path, set_name: str, question: dict) -> Path:
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    questions["question_sets"][set_name]["questions"].append(question)
+    return dump(tmp_path / "questions.json", questions)
+
+
+@pytest.mark.parametrize("set_name, phase, required", [("tracing_pair", "blind", True), ("tracing_pair", "blind", 1),
+                                                       ("advice_new", "after_reveal", True),
+                                                       ("advice_new", "blind", True),
+                                                       ("multiturn_script", "blind", True)])
+def test_a_required_question_added_to_a_set_previous_items_use_is_refused(tmp_path, set_name, phase, required):
+    # Codex review of PR #86 (4183566200): the check compared only the question ids the previous bundle had, so a
+    # required question added to a set its items use passed. A rating saved on the previous bundle has no answer to
+    # it: the app and the import (is_complete) would count a completed item as incomplete, and the import would
+    # refuse a stored reveal lacking a required blind answer (reveal_blind_incomplete). required is read by truth
+    # value, as the app and the import read it.
+    paths, first, previous = _round1(tmp_path)
+    dump(previous, first)
+    paths["questions"] = _questions_with_added(tmp_path, set_name, _added_question(required, phase))
+    message = refused_paths(paths, "previous_required_question_added", "--previous-bundle", str(previous))
+    assert f"['{set_name}.added_check']" in message and first["bundle_id"] in message
+
+
+@pytest.mark.parametrize("required", [False, 0])
+def test_an_optional_question_added_to_a_set_previous_items_use_is_kept(tmp_path, capsys, required):
+    paths, first, previous = _round1(tmp_path)
+    dump(previous, first)
+    paths["questions"] = _questions_with_added(tmp_path, "tracing_pair", _added_question(required))
+    second, _ = rerun(paths, tmp_path / "round2", "--previous-bundle", str(previous))
+    assert second["selection"]["previous_bundle"]["items_kept"] == len(first["items"])
+    assert "added_check" in [q["id"] for q in second["questions"]["question_sets"]["tracing_pair"]["questions"]]
+
+
+def test_a_required_question_added_to_a_set_no_previous_item_uses_is_kept(tmp_path, capsys):
+    # a set that no previous item uses holds no stored rating, so it may gain a required question
+    paths, first, previous = _round1(tmp_path)
+    dump(previous, first)
+    paths["questions"] = _questions_with_added(tmp_path, "advice_rerun_truncated", _added_question(True))
+    assert "advice_rerun_truncated.added_check" in refused_paths(paths, "previous_required_question_added",
+                                                                 "--previous-bundle", str(previous))
+    first["items"] = [i for i in first["items"] if i["question_set"] != "advice_rerun_truncated"]
+    dump(previous, first)
+    second, _ = rerun(paths, tmp_path / "round2", "--previous-bundle", str(previous))
+    assert second["selection"]["previous_bundle"]["items_added"] == 1
+
+
+@pytest.mark.parametrize("change, fragment", [
+    (lambda q: q.update(question_sets=[]), "questions.question_sets is not an object"),
+    (lambda q: q.update(scales=None), "questions.scales is not an object"),
+    (lambda q: q["question_sets"].update(tracing_pair={"family": "tracing_pair"}),
+     "question set 'tracing_pair' has no questions list"),
+    (lambda q: q["question_sets"]["tracing_pair"]["questions"].__setitem__(0, "same"),
+     "question 1 of set 'tracing_pair' is not an object with a string id"),
+    (lambda q: _question(q, "tracing_pair", "keep").update(scale="keep9"), "tracing_pair.keep: its scale is not"),
+    (lambda q: q["scales"]["keep3"].update(options=["keep", "edit"]), "tracing_pair.keep: its scale is not"),
+    (lambda q: q["scales"]["yes_no"].update(abstain="cant_tell"), "its scale's abstain is not"),
+    (lambda q: q["notes"].pop("max_length"), "questions.notes.max_length is not a positive integer"),
+    (lambda q: q["notes"].update(max_length=True), "questions.notes.max_length is not a positive integer"),
+    (lambda q: q.pop("notes"), "questions.notes.max_length is not a positive integer"),
+])
+def test_a_previous_bundle_whose_questions_are_malformed_is_refused_not_skipped(tmp_path, change, fragment):
+    paths, first, previous = _round1(tmp_path)
+    change(first["questions"])
+    dump(previous, first)
+    assert fragment in refused_paths(paths, "bad_input", "--previous-bundle", str(previous))
+
+
+def test_answer_contracts_refuse_a_questions_value_that_is_not_an_object():
+    # through the command line check_previous_bundle refuses it first; the function refuses it on its own as well
+    with pytest.raises(SystemExit) as exc:
+        evt.answer_contracts([], "somewhere")
+    assert "[bad_input] somewhere: questions is not an object" in str(exc.value)
+    contracts = evt.answer_contracts(json.loads(QUESTIONS.read_text(encoding="utf-8")), "questions.json")
+    assert contracts["advice_new.own_tier"] == {
+        "scale_type": "ordinal", "values": ["self_care", "routine", "urgent", "emergency"], "abstain": "cant_tell",
+        "max_length": None, "phase": "blind", "required": True, "per_arm": False, "locks_on_reveal": True}
+    assert contracts["tracing_pair.keep"]["required"] is False
+
+
+# ---- the first bundle, re-exported --------------------------------------------------------------------------
+
+FIRST_BUNDLE = ROOT / "data" / "verification" / "tasks_20261004T042945Z.json"
+# The first bundle's command as docs/verification_protocol.md gives it for reproduction (Reproducing the first
+# bundle): its stamp, and Run 2's graph model named. Run 2's first traces are gemma-2-2b's; once Run 2 is traced
+# again with another model, a command naming no model finds two and stops (ambiguous_trace). No item records the
+# model (it is in the selection block only, the same value either way), so naming it changes no item byte.
+REPRODUCE = ["--stamp", "20261004T042945Z", "--pilot-trace-model", "pilot_v2_20261002", "gemma-2-2b"]
+
+
+def test_the_default_run_still_gives_the_first_bundles_pilot_items(tmp_path, capsys):
+    """The default run (Run 2), read from the committed Run 2 files (sealed by its finalized manifest) with the
+    reproduction options (REPRODUCE) and no main-study pairs, gives the first bundle's 40 Run 2 items unchanged,
+    compared as parsed items, nothing else. Needs no site checkout; prints no row text."""
+    committed = json.loads(FIRST_BUNDLE.read_text(encoding="utf-8"))
+    assert evt.main(["--main-pairs", "0", *REPRODUCE, "--out-dir", str(tmp_path)]) == 0
+    new = json.loads((tmp_path / FIRST_BUNDLE.name).read_text(encoding="utf-8"))
+    mine = {i["item_id"]: i for i in _pilot(new, "pilot_run2")}
+    first = {i["item_id"]: i for i in _pilot(committed, "pilot_run2")}
+    assert len(first) == 40 and mine == first
+
+
+def test_the_recorded_command_reproduces_the_first_bundles_items_byte_for_byte(tmp_path, capsys):
+    """The first bundle's reproduction command (REPRODUCE, docs/verification_protocol.md, Reproducing the first
+    bundle) gives its items byte for byte. Only the items are compared: the bytes from '"items": [' to the end of the
+    file. The rest differs by design (the exporter has changed since: sources gained entries and role names, selection
+    gained per-run blocks), and naming Run 2's graph model changes none of it but selection's record of the model,
+    which is gemma-2-2b either way. The items also depend on the site payload and the engine inputs the bundle
+    recorded, so this runs only when every one of them (but the daily dashboard, of which only the Tier B start is
+    read) still hashes as recorded, and is skipped otherwise."""
+    raw = FIRST_BUNDLE.read_bytes()
+    committed = json.loads(raw)
+    site = ROOT.parent / "patientwords"
+    changed = []
+    for source in committed["sources"]:
+        if source["path"] == "ops/dashboard.json":
+            continue
+        path = site / evt.SITE_PAYLOAD if source["path"] == evt.SITE_LABEL else ROOT / source["path"]
+        if not path.is_file() or _file_sha(path) != source["sha256"]:
+            changed.append(source["path"])
+    if changed:
+        pytest.skip(f"inputs changed or absent since the first bundle: {changed}")
+    assert committed["seed"] == evt.DEFAULT_SEED
+    assert evt.main(["--site", str(site), *REPRODUCE, "--out-dir", str(tmp_path)]) == 0
+    new_raw = (tmp_path / FIRST_BUNDLE.name).read_bytes()
+    marker = b'\n "items": ['
+    assert new_raw[new_raw.index(marker):] == raw[raw.index(marker):]
 
 
 # ---- the committed bundles ----------------------------------------------------------------------------------

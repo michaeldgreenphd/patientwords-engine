@@ -28,12 +28,12 @@ nothing here is medical advice.
 
 | Kind | What the physician sees | Where it comes from |
 |---|---|---|
-| Tracing pair | Two versions of one sentence that stops where the next word would go. The words that differ are highlighted, and the expected next word is shown underneath. | Pilot Run 2's 40 traced pairs, plus the 40 main-study pairs already published on the site whose next-word prediction changed most between the two wordings (largest absolute language penalty, gemma-2-2b). |
+| Tracing pair | Two versions of one sentence that stops where the next word would go. The words that differ are highlighted, and the expected next word is shown underneath. | Pairs from the pilot runs the export names (in the first bundle, Run 2's 40 traced pairs; see below), plus the 40 main-study pairs already published on the site whose next-word prediction changed most between the two wordings (largest absolute language penalty, gemma-2-2b). |
 | Advice question | Two messages a person might send an AI assistant: one with clinical terms, one in everyday words, exactly as they were sent to the models. | The 24 new questions of 2026-10-02 (each with a proposed urgency) and the 15 rerun items. Nine rerun items stop mid-sentence on purpose and get their own questions. |
 | Multi-turn script | The ten messages one person sends over one conversation, in three versions side by side. The assistant's replies are never shown. | The 8 Petri wave-3 scenarios. |
 
 The first bundle holds 127 items: 80 tracing pairs, 39 advice questions and 8
-scripts.
+scripts. A later round's bundle adds pilot runs (see *Rounds*).
 
 Choosing main-study pairs by the size of their language penalty is a way to
 find pairs worth a physician's look. It is not a finding: a single pair's
@@ -42,6 +42,172 @@ limitations). Penalties are compared at six decimals: they are differences of
 probabilities recorded to three decimals, so two penalties equal as recorded
 tie instead of being separated by floating-point noise, and a tie goes to the
 earlier batch, then the lower index.
+
+### Pilot pairs: which runs, which rows, and their traces
+
+A bundle takes pilot pairs from each pilot run named with `--pilot-run <run id>`
+(a directory under `pilot/runs/`; the option can be repeated). With none named
+it takes `pilot_v2_20261002` (Run 2) alone, as the first bundle did, so the
+first bundle's command still gives that bundle's items unchanged (see
+*Reproducing the first bundle* below).
+
+- **Which runs.** A run must be finalized (its `manifest.json` has
+  `finalized_utc`) and version 2 (`design.json` has `harness_version` 2, the
+  version that records the expected next word). Every run file the exporter
+  reads (`design.json`, `generated/all_rows.jsonl`, `review_map.json`) must
+  still hash as the finalized manifest records. Anything else stops the export.
+- **Which rows.** By default a run gives its blind review sample, the rows its
+  `review_map.json` names (for Run 2, the 40 pairs the owner reviewed). With
+  `--pilot-all-rows <run id>` it gives every generated row that is not a
+  control row instead; negative controls are left out and counted. Every row
+  exported must have an expected next word that follows the version-2 rule:
+  one lowercase word of letters, with at most one internal hyphen or
+  apostrophe. This is the check the parser and `pilot/analysis/trace_pairs.py`
+  apply, and the export uses the latter's. A row that breaks it stops the
+  export (`bad_next_word`), whether or not the run's trace is required.
+- **Traces.** By default every pilot pair must have a trace result: the run's
+  trace pairs file must hold the row, and the run's trace results must carry it
+  with the same prompts. The export reads them where the circuit-trace lane
+  writes them (see *Where a run's traces are*): for gemma-2-2b in
+  `pilot/traces/<run id>/<that file's name without .json>/`, and for another
+  graph model in `.../<name without .json>__<model>/`.
+  `--pilot-trace-model <run id> <model>` reads that model's directory and no
+  other. With no model named, the export reads the one model whose directory
+  holds results. It stops if there are none (`missing_trace`), or if results
+  are in more than one directory (`ambiguous_trace`), so it never chooses
+  between models for you. Every trace summary it reads must also name that model in its
+  `graph_model` field, which the circuit-trace lane records in every summary; a
+  summary that names another model, or none, stops the export
+  (`trace_model_mismatch`), so a summary copied into the wrong model's
+  directory is never credited to that model. The selection block records the
+  model it read. Physicians rate the
+  sentences, not the trace, so a pair does not need its trace to be rated; the
+  trace matters when ratings are later compared with trace measures. A run's
+  traces may land after its bundle is wanted, so
+  `--pilot-trace-optional <run id>` exports that run without requiring a trace
+  or reading trace results. Its items are then the same before and after the
+  traces land, and a rating joins its trace later by run and row id. Such a
+  run reads no trace file at all, except Run 2: its item ids are keyed on its
+  trace pairs file (see *Labels and ids*), so that file is still read, for the
+  sha256 its items record, and must exist.
+- **Which trace pairs file a selection needs.** `pilot/analysis/trace_pairs.py`
+  builds a run's trace pairs file in one of three ways. With `--review-sample`
+  it holds exactly the review sample and records each pair's review id, which
+  must match `review_map.json`; this is the file the default selection needs,
+  as Run 2's is. Its default holds the rows the checker judged equivalent, and
+  `--include-controls` adds the negative controls; neither records review ids.
+  A review-sample row the checker did not judge equivalent is missing from
+  those, so the export stops (`missing_trace`). `--pilot-all-rows` takes every
+  non-control row, whatever the checker said, and none of the three files holds
+  all of them once the checker has said no to any row. In practice
+  `--pilot-all-rows` therefore goes with `--pilot-trace-optional` for the same
+  run.
+- **Where a run's traces are.** This follows PR #85's layout, which must be
+  merged before this export is used on a new fire. Since 2026-10-05 the
+  circuit-trace lane writes each run's traces in a folder of its own,
+  `pilot/traces/<run id>/<pairs file name without .json>/` (with `__<model>`
+  added for a model other than gemma-2-2b). `<run id>` is the directory
+  directly under `pilot/runs/` that holds the pairs file. Before that, the lane
+  named the folder after the pairs file alone. Two runs were traced that way,
+  and their results stay where they are:
+  - Run 2's in `pilot/traces/trace_pairs/`;
+  - Run 3's in `pilot/traces/pilot_v3_20261004_trace_pairs/`.
+
+  The export reads each of these two folders for its own run only, and only
+  while the run still holds the pairs file the folder is named after. It never
+  reads any other folder directly under `pilot/traces/`. A run that has one
+  graph model's results in both its legacy folder and its own folder stops the
+  export (`trace_layout_conflict`), whichever model is named. The two sets
+  would be two traces of one pairs file by one model, and the export never
+  chooses between them. A person decides which set stands; moving or removing
+  committed results is a decision, made in a pull request. Until then
+  `--pilot-trace-optional <run id>` exports the run without reading either
+  set. Different models in different layouts are not a conflict: a run traced
+  again with another model keeps its gemma-2-2b results where they were, and
+  the model rules above apply across both layouts. Name the model with
+  `--pilot-trace-model`; with none named, two models stop the export
+  (`ambiguous_trace`). A run id that is one of the two legacy folder names is refused
+  (`bad_input`), as the lanes refuse it, because that run's own folder would
+  sit inside the old one.
+- **Name the pairs file after the run.** A run's trace pairs file must be named
+  `<run id>_<name>.json`, where `<name>` is not empty, so a results folder's
+  name says which run it holds. This is the rule the circuit-trace and
+  logits-eval lanes apply to a pairs file under their pilot roots
+  (`scripts/fire_trigger.py`'s `pilot_pairs_run_name_problem`, added by
+  PR #85), so a run the export accepts is one the lane will trace. A bare run
+  id, or the run id followed by anything but `_`, is refused by both. Run 3's
+  file is `trace/pilot_v3_20261004_trace_pairs.json`. Run 2's
+  `trace_pairs.json` predates the rule and keeps its name, because its items'
+  ids are keyed on that file. The export stops (`bad_input`) on a trace pairs
+  file that is not named after its run, and on one whose name holds `__` (the
+  lane's model separator). It checks every file under each exported run's
+  `trace/`, including a run exported with `--pilot-trace-optional`, because
+  that run's trace may still be fired. For such a run it reads only the file
+  names, not the files. Two runs' files may share a name, since each run's
+  results are in its own folder. Build a run's file with
+  `pilot/analysis/trace_pairs.py --out pilot/runs/<run id>/trace/<run id>_trace_pairs.json`
+  before its trace is fired.
+- **Tracing Run 2 again.** Under PR #85's rule the lanes refuse Run 2's
+  `trace_pairs.json` for a new fire. Re-running
+  `pilot/analysis/trace_pairs.py --run-dir pilot/runs/pilot_v2_20261002 --review-sample`
+  writes a byte-identical `pilot_v2_20261002_trace_pairs.json` beside it, and
+  copying the file there does the same. Leave it byte for byte the same.
+  Run 2's finalized manifest records no hash for any file under `trace/`, so
+  the copy leaves the finalized run as it was. The copy alone changes nothing:
+  the export still reads `trace_pairs.json`, which Run 2's item ids are keyed
+  on, and its results in `pilot/traces/trace_pairs/`. Results traced from the
+  copy land in Run 2's own folder,
+  `pilot/traces/pilot_v2_20261002/pilot_v2_20261002_trace_pairs[__<model>]/`.
+  They are results of the same pairs, so the export reads them as Run 2's.
+  Traced with another graph model, they sit beside the legacy gemma-2-2b
+  results without conflict. A command that names no model then finds two
+  models and stops (`ambiguous_trace`). That is why the reproduction command
+  below names `--pilot-trace-model pilot_v2_20261002 gemma-2-2b`, which still
+  gives the first bundle's items unchanged. Traced with gemma-2-2b, they are a
+  second gemma-2-2b trace of Run 2 beside the legacy one, and the export stops
+  (`trace_layout_conflict`) until the owner decides which set stands. When a
+  run's trace is required, any other second file under its `trace/`, including
+  a copy that differs, stops the export (`bad_input`). A run exported with
+  `--pilot-trace-optional` reads no trace pairs file (Run 2 reads only
+  `trace_pairs.json`, for its id key), so for such a run the second-file and
+  copy checks wait until its trace is required; the names of its files are
+  still checked.
+- **Labels and ids.** Each item's provenance names its run: `pilot_run2` for
+  Run 2, as in the first bundle, and `pilot:<run id>` for any other run.
+  Physicians never see it. A later run's item ids are keyed on its generated
+  rows file and row id, so a row keeps one id whichever rows and trace option
+  a bundle uses. Run 2's stay keyed on its trace pairs file, as in the first
+  bundle, because the app stores every rating under the item id.
+- **Repeats.** A pair whose two sentences repeat an earlier pilot pair in the
+  same bundle is kept, since each row is its run's output, and counted in its
+  run's selection block.
+- **Reproducing the first bundle.** This command rebuilds the first bundle,
+  `data/verification/tasks_20261004T042945Z.json`, from the committed files.
+  Write it to a scratch directory, since the export never overwrites a bundle:
+
+  ```bash
+  python scripts/export_verification_tasks.py --site ../patientwords \
+      --stamp 20261004T042945Z \
+      --pilot-trace-model pilot_v2_20261002 gemma-2-2b \
+      --out-dir <scratch directory>
+  ```
+
+  It names Run 2's graph model because Run 2's first traces are gemma-2-2b's.
+  Once Run 2 is traced again with another model (see *Tracing Run 2 again*), a
+  command that names no model finds two models and stops (`ambiguous_trace`).
+  Naming gemma-2-2b reads the traces the first bundle was built from, so the
+  command keeps working after any such trace. Naming the model changes no
+  item: no item records the model, only the selection block does, and it is
+  gemma-2-2b either way. The first bundle was exported before this option
+  existed, without it.
+
+  Compare from `"items": [` to the end of the file. Those bytes come out
+  identical to the committed bundle's while the site payload and the engine
+  inputs it recorded are unchanged, and
+  `test_the_recorded_command_reproduces_the_first_bundles_items_byte_for_byte`
+  checks exactly that. The rest of the file differs by design. The exporter
+  has changed since the first bundle: `sources` has more entries and new role
+  names, and `selection` has per-run blocks.
 
 ## What physicians are asked
 
@@ -258,6 +424,93 @@ replaced silently:
 The script implements the app design's recommended defaults for the open
 decisions below. Changing a decision changes the script.
 
+## Rounds
+
+Each physician round uses one bundle. The import reads one bundle per export:
+every event in an export must have been saved on the bundle the export names,
+or the import stops (`event_bundle_mismatch`).
+
+**Round 1** is `tasks_20261004T042945Z.json`: Run 2's 40 pairs, the 40
+main-study pairs, the 39 advice questions and the 8 scripts. Before round 2
+starts, take round 1's final export and import it. That summary is round 1's
+result.
+
+**Round 2** adds pilot Run 3 (`pilot/runs/pilot_v3_20261004/`). Run 3 and
+its trace results must be finalized, seal-checked and committed first, since
+the exporter reads them from the repository. Its bundle is round 1's command
+with Run 3 added, under a new stamp:
+
+```bash
+python scripts/export_verification_tasks.py --site ../patientwords \
+    --pilot-run pilot_v2_20261002 --pilot-run pilot_v3_20261004 \
+    --previous-bundle data/verification/tasks_20261004T042945Z.json
+python scripts/seal_check.py --site ../patientwords
+```
+
+- Keep `--pilot-run pilot_v2_20261002` and every other default (the seed,
+  `--main-pairs 40`, the advice and seed files), so every round 1 item keeps
+  its item id. The app needs every item a physician already holds to be in
+  the bundle it switches to, and stores answers under item and question ids
+  (the app's DEPLOY.md section 19). `--previous-bundle` checks this: the
+  export stops, naming item ids, if any round 1 item is missing
+  (`previous_item_missing`), shows another text, proposed urgency or question
+  set under its id (`previous_item_changed`), or if a question id round 1 used is gone
+  (`previous_question_missing`). It also stops, naming question ids, if a
+  kept question id has another scale type, other answer values or another
+  order of them, another "can't judge" value, another length limit, phase,
+  required or optional setting, per-version setting or reveal lock
+  (`previous_question_changed`). The app checks a stored answer against all of
+  these when a physician saves the item again, and uses whether a question is
+  required to decide when the proposed urgency may be revealed and when an item
+  is complete. After such a change, an answer given in round 1 would be
+  refused, read on another scale, or counted as complete or incomplete
+  differently. Answer values are compared with their JSON types, as the app and
+  the import compare them, so `true` in place of `1` is another value. A new
+  question may be added to a question set that round 1 items use only as
+  optional: the export stops, naming question ids, on a new required one
+  (`previous_required_question_added`), because no round 1 rating answers it,
+  so the app and the import would count a completed item as incomplete, and the
+  import would refuse a stored reveal that lacks a required blind answer. A set
+  that no round 1 item uses may gain required questions. The
+  export also stops if the notes length limit changed
+  (`previous_notes_changed`): the app and the import refuse a note longer than
+  the bundle's limit. Wording may change. The main-study pairs are ranked again from
+  the site payload at export time, so a pair published since round 1 can push
+  a round 1 pair out of the top 40. The export then stops and names its item
+  id, and a larger `--main-pairs` keeps it while it is still published.
+- The command above takes Run 3's review sample and requires its gemma-2-2b
+  traces. Run 3's trace pairs file, `trace/pilot_v3_20261004_trace_pairs.json`,
+  was built with `pilot/analysis/trace_pairs.py --review-sample` and named after
+  the run. Its traces were fired before PR #85's per-run layout and are in
+  `pilot/traces/pilot_v3_20261004_trace_pairs/`, beside Run 2's
+  `pilot/traces/trace_pairs/` (see *Which trace pairs file a selection needs*
+  and *Where a run's traces are*). Tracing Run 3 again writes
+  `pilot/traces/pilot_v3_20261004/`. If that is another graph model, add
+  `--pilot-trace-model pilot_v3_20261004 gemma-2-2b` (or the other model) to
+  say whose traces the bundle requires. If it is gemma-2-2b again, the export
+  stops (`trace_layout_conflict`) until the owner decides which set stands.
+- Add `--pilot-trace-optional pilot_v3_20261004` if Run 3's traces have not
+  landed when the bundle is wanted.
+- Add `--pilot-all-rows pilot_v3_20261004` to send every Run 3 pair rather than
+  its review sample, together with `--pilot-trace-optional pilot_v3_20261004`:
+  no trace pairs file `trace_pairs.py` builds holds every non-control row once
+  the checker has said no to one, so a required trace would stop the export
+  (`missing_trace`). Every added item needs at least two physicians.
+- Commit the bundle through a pull request, as the first was, then switch the
+  app to it between rounds (DEPLOY.md section 19). **Assign items** gives the
+  new items to physicians.
+
+**Reading round 2's ratings.** The app keeps every rating in one Ratings tab,
+and round 1's events carry round 1's bundle. An export taken after the switch
+therefore spans two bundles, and the import refuses it, even with round 1's
+physicians excluded. Reading round 2 needs one of two things: a rule for
+pooling ratings made on two bundles, built into the import, or round 2 run on
+its own Sheet (a separate deployment of the app), whose export holds round 2's
+events only. A separate Sheet's bundle need not keep round 1's items, but
+every bundle carries the advice questions and scripts, so they would be rated
+again. Until the owner chooses, round 2's ratings stay in the app and its
+backups and are not imported.
+
 ## Decisions still open (owner)
 
 - The rule for combining physicians into one reference tier, and its
@@ -272,4 +525,5 @@ decisions below. Changing a decision changes the script.
   differently from the clinical one: the analysis has one tier per item.
 - Whether ratings made on two bundles are pooled. The app supports switching
   to a new bundle between rounds; the import reads one bundle per export and
-  refuses an export that spans a switch.
+  refuses an export that spans a switch, so round 2's ratings cannot be
+  imported until this is decided or round 2 runs on its own Sheet (*Rounds*).
