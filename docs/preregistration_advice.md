@@ -1517,3 +1517,8 @@ their own before it.
     `realism_gate_waveR_<family>_<export stamp>.json`, and the count of the
     gate's files depends on that split and on which waves have a passing
     item; this changes neither the rule nor which items pass.
+  - Wave 3's limitations: the design note's sections 2, 9.8 and 11, and the
+    plan's `if_applied` wording for every statement, now separate the
+    physicians' realism rating, which the gate adds once applied, from the
+    clinical validation the study still lacks (no reference care for any
+    scenario); this changes neither the rule nor which items pass.

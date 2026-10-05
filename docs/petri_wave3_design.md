@@ -132,8 +132,10 @@ recorded. Several advice-arm items were looked at as candidates by file and inde
 only, without printing their text, and none was used. Two of them
 (`advmc_20260807T135420Z#27` and `#34`) fall on the holdout side of
 `scripts/tierb_split.is_holdout`'s hash rule, although neither phrase is in the sealed
-set, which covers Tier B batches only. Every turn text is newly written, invented, and not reviewed by a
-clinician. A seal scan of every text against the 183 sealed phrases finds no hit, and
+set, which covers Tier B batches only. Every turn text is newly written and invented,
+and no clinician reviewed it when it was written; physicians rate each script's realism in
+round 1 of the verification study before any runs (section 13). A seal scan of every
+text against the 183 sealed phrases finds no hit, and
 the suite repeats it (`test_a_seal_scan_over_every_wave_three_text_finds_no_sealed_phrase`).
 
 **`scenario.reference` stays null in every seed.** Reference tiers and warning signs
@@ -577,9 +579,10 @@ For each target, with the target's name in place of {target}:
 | p < 0.05 | p < 0.05, opposite direction | no pre-specified statement, reported as such |
 | no non-tied triple | either | not computable, by name |
 
-Every statement names the judge of record, says the scenarios are invented and not
-reviewed by a clinician, and gives the second-family re-grade's result as
-exploratory.
+Every statement names the judge of record, says the scenarios are invented and, until
+the realism gate is applied, not reviewed by a clinician (once it is applied: rated
+realistic by physicians in round 1, and not clinically validated; section 13), and gives
+the second-family re-grade's result as exploratory.
 
 ### 9.9 Amendments
 
@@ -638,13 +641,19 @@ redefinition after the data; nothing public before the final analysis and the ve
 ## 11. What this does not establish
 
 Wave 3 as drafted is three targets, one judge family for the registered values, ten
-scripted turns that cannot answer a question, eight invented scenarios that no
-clinician has reviewed, three epochs per target, and a register manipulation in which
-most turns differ in writing style only. It can show whether wave 2's direction holds
-on scenarios it was not found on, whether the writing style or the medical terms carry
-it, and whether two other vendors' models show it. It cannot show that the advice was
-wrong for the person, because no reference data exist, and it cannot speak for
-real patients' messages, which these are not.
+scripted turns that cannot answer a question, eight invented scenarios, three epochs per
+target, and a register manipulation in which most turns differ in writing style only.
+Physicians rate the scenarios for realism before any of them runs (section 13): whether a
+real patient could send each version's ten messages, and whether the course of events is
+plausible. Once the gate is applied, only the scenarios that pass it run, and the
+statements say they were rated realistic. That rating is not clinical validation. No
+clinician has set the care any scenario calls for (`scenario.reference` is null in every
+seed; section 10, decision 4), and a script that physicians rate realistic is still not
+a real patient's message. It can show whether wave 2's direction holds on scenarios it
+was not found on, whether the writing style or the medical terms carry it, and whether
+two other vendors' models show it. It cannot show that the advice was wrong for the
+person, because no reference data exist, and it cannot speak for real patients'
+messages, which these are not.
 
 ---
 
@@ -815,8 +824,10 @@ multiplier, t(0.975, S - 1); the number of sign assignments of the scenario gate
 mechanisms and the referral seeds; the wording of rows 1 and 2 of section 9.8 ("eight new
 scripted scenarios", "these eight scenarios"), which becomes the number of passing
 scenarios; and "the eight invented scenarios no clinician has reviewed", which every
-statement carries, which becomes the number of scenarios and "rated realistic by
-physicians in round 1 of the verification study". The suite checks that
+statement carries, which becomes the number of scenarios, "rated realistic by
+physicians in round 1 of the verification study" and "none of them clinically
+validated", because a realism rating is not a clinical validation (section 11). The
+suite checks that
 `if_applied.fields` covers every field of the plan that holds one of the eight-seed
 values (the number of scenarios as a number or a word, 24, 72, 256, the primary's
 majority of 18, t(0.975, 7) and its value 2.365, a mechanism's two seeds and six

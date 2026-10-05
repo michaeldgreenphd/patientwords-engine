@@ -1212,6 +1212,33 @@ def test_a_split_wave_r_has_one_selection_path_per_family():
     counts = [a69[m.end():m.end() + 40] for m in re.finditer(r"\bthree files\b", a69, re.IGNORECASE)]
     assert counts and all(c.startswith(", or four if fire-plan decision 6 splits") for c in counts), counts
 
+def test_the_limitations_separate_the_realism_rating_from_clinical_validation(plan):
+    """Once the gate is applied, every wave-3 scenario that runs has been rated by physicians, so section 11's "eight
+    invented scenarios that no clinician has reviewed" would be false, and the plan's statements would say "rated
+    realistic" (Codex review of PR #87, 2026-10-05). The rating asks whether a patient could send the messages and
+    whether the course of events is plausible; it sets no reference care, so the study still has no clinical
+    validation. Section 11, section 2's grounding note, section 9.8, section 13 and the plan's if_applied wording for
+    every statement now say both. The plan's own every_statement_carries keeps the pre-application wording until the
+    amendment that applies the gate changes it. This changes neither the rule nor which items pass."""
+    one_line = functools.partial(re.sub, r"\s+", " ")
+    design = W3_DESIGN.read_text(encoding="utf-8")
+    s11 = one_line(_section(design, "## 11. What this does not establish", "## 12."))
+    grounding = one_line(_section(design, "**Grounding.**", "**`scenario.reference` stays null"))
+    s98 = one_line(_section(design, "### 9.8 What each outcome permits", "### 9.9"))
+    s13 = one_line(_section(design, "## 13. Physician realism gate", None))
+    applied = plan["physician_realism_gate"]["if_applied"]["fields"]["statements.every_statement_carries"]
+    unreviewed = re.compile(r"no clinician has reviewed|not reviewed by a clinician")
+    assert not unreviewed.search(s11) and not unreviewed.search(grounding), \
+        "a limitation that the gate makes false once it is applied"
+    assert "(section 13)" in s11 and "(section 13)" in grounding
+    assert "That rating is not clinical validation" in s11 and "`scenario.reference` is null" in s11
+    for name, text in (("section 9.8", s98), ("section 13", s13), ("plan if_applied", applied)):
+        assert "rated realistic by physicians in round 1" in text, name
+        assert re.search(r"not (?:a )?clinical(?:ly)? validat|none of them clinically validated", text), name
+    assert "until the realism gate is applied, not reviewed by a clinician" in s98
+    assert "no clinician has reviewed" in plan["statements"]["every_statement_carries"], \
+        "the pre-application wording, which if_applied replaces"
+
 def test_section_13_tables_are_the_plan_rows(plan):
     """Section 13 shows the gate's counts as three tables; they must be the plan's rows, which the suite recomputes
     (test_the_realism_gate_floor_and_counts_follow_from_the_plan)."""
