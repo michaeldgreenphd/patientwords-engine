@@ -822,37 +822,59 @@ def _turn_hashes(seed: dict) -> dict[str, list[str]]:
             for arm in seed["protocol"]["arms"]}
 
 
+Decided = tuple[int | None, str, tuple[int, ...]]
+
+
 def _cumulative_selection(rounds: list[tuple[dict[str, dict], dict[str, dict]]], seeds_by_id: dict[str, dict],
-                          gate: dict) -> dict[str, tuple[int | None, str]]:
+                          gate: dict) -> dict[str, Decided]:
     """The wave-3 selection as the plan's cumulative_selection states it: for each seed of the seed file, its deciding
-    round (1 for rounds[0]) and the rule's decision on its row in that round's summary. The deciding round is the
-    earliest that rated the seed's current script, the turns physicians see (provenance.turn_sha256, _turn_hashes),
-    and in which the seed reached the answer counts; a round in which it was short does not decide it (the owner's
-    decision of 2026-10-05). The digest, which also covers fields physicians never see, is compared only so that the
-    seed that runs is one a round's bundle recorded (item_match): (None, NOT_RATED) when no round recorded its
-    current digest, and a round's item at that digest must record the seed's current turns. (None, SHORT) when every
-    round that rated its current turns was short. rounds holds, for each round in order, its script items by seed id
-    and its summary rows by item id. A reference for the program that applies the gate."""
+    round (1 for rounds[0]), the rule's decision on its row in that round's summary, and the rounds, in order, that
+    rated its current script and in which it was short of the counts. The deciding round is the earliest that rated
+    the seed's current script, the turns physicians see (provenance.turn_sha256, _turn_hashes), and in which the seed
+    reached the answer counts; a round in which it was short does not decide it (the owner's decision of 2026-10-05).
+    The digest, which also covers fields physicians never see, is compared only so that the seed that runs is one a
+    round's bundle recorded (item_match): (None, NOT_RATED, ()) when no round recorded its current digest, and a
+    round's item at that digest must record the seed's current turns. (None, SHORT, the rounds) when every round that
+    rated its current turns was short. rounds holds, for each round in order, its script items by seed id and its
+    summary rows by item id. A reference for the program that applies the gate."""
     rated = [by_seed for by_seed, _rows in rounds]
     at_digest = _rounds_at_current_digest(rated, seeds_by_id)
-    selection: dict[str, tuple[int | None, str]] = {}
+    selection: dict[str, Decided] = {}
     for sid, seed in seeds_by_id.items():
         if not at_digest[sid]:
-            selection[sid] = (None, NOT_RATED)
+            selection[sid] = (None, NOT_RATED, ())
             continue
         turns = _turn_hashes(seed)
         assert all(rated[k][sid]["provenance"]["turn_sha256"] == turns for k in at_digest[sid]), \
             f"a round recorded {sid!r} at its current digest with other turns"
-        selection[sid] = (None, SHORT)
+        short: list[int] = []
         for k, (by_seed, rows) in enumerate(rounds):
             item = by_seed.get(sid)
             if item is None or item["provenance"]["turn_sha256"] != turns:
                 continue
             decision = _gate_decision(rows[item["item_id"]], gate)
             if decision != SHORT:
-                selection[sid] = (k + 1, decision)
+                selection[sid] = (k + 1, decision, tuple(short))
                 break
+            short.append(k + 1)
+        else:
+            selection[sid] = (None, SHORT, tuple(short))
     return selection
+
+
+def _selection_record(selection: dict[str, Decided]) -> dict[str, list[dict]]:
+    """passing and failing as the plan's selection_shape gives them, from the reference selection, in seed_file order:
+    each passing seed with its deciding round and the rounds in which it was short; each failing seed with its
+    deciding round, None when no round decided it, the rounds in which it was short, and its reason. A seed no round
+    recorded at its current digest gets no entry: the program refuses."""
+    unrated = [sid for sid, (_k, outcome, _short) in selection.items() if outcome == NOT_RATED]
+    if unrated:
+        raise ValueError(f"seed(s) {unrated} rated by no round at their current digest: the program refuses")
+    passing = [{"seed_id": sid, "round": k, "short_rounds": list(short)}
+               for sid, (k, outcome, short) in selection.items() if outcome == "passes"]
+    failing = [{"seed_id": sid, "round": k, "short_rounds": list(short), "reason": outcome}
+               for sid, (k, outcome, short) in selection.items() if outcome != "passes"]
+    return {"passing": passing, "failing": failing}
 
 
 def test_a_later_round_keeps_the_scripts_that_passed_and_decides_the_rewritten_ones(plan, w3_set):
@@ -903,18 +925,18 @@ def test_a_later_round_keeps_the_scripts_that_passed_and_decides_the_rewritten_o
              round2[kept_passing]["item_id"]: bad}
     both = [(round1, rows1), (round2, rows2)]
     selection = _cumulative_selection(both, seeds_now, gate)
-    assert selection[rewritten] == (2, "passes"), "decided by the round that rated its new text"
-    assert selection[kept_failing] == (1, "rated unrealistic"), "a later rating of the same text replaces nothing"
-    assert selection[kept_passing] == (1, "passes"), "a script that passed keeps its round-1 result"
-    assert all(selection[sid] == (1, "passes") for sid in ids[3:])
+    assert selection[rewritten] == (2, "passes", ()), "decided by the round that rated its new text"
+    assert selection[kept_failing] == (1, "rated unrealistic", ()), "a later rating of the same text replaces nothing"
+    assert selection[kept_passing] == (1, "passes", ()), "a script that passed keeps its round-1 result"
+    assert all(selection[sid] == (1, "passes", ()) for sid in ids[3:])
     # Round 1 alone never rated the rewritten text, and round 2 alone would lose every script it did not rate.
-    assert _cumulative_selection(both[:1], seeds_now, gate)[rewritten] == (None, NOT_RATED)
-    assert {sid for sid, (k, _d) in _cumulative_selection(both[1:], seeds_now, gate).items() if k is None} \
+    assert _cumulative_selection(both[:1], seeds_now, gate)[rewritten] == (None, NOT_RATED, ())
+    assert {sid for sid, (k, _d, _s) in _cumulative_selection(both[1:], seeds_now, gate).items() if k is None} \
         == set(ids) - set(round2)
     # A script edited after the last round that rated it cannot pass.
     seeds_later = copy.deepcopy(seeds_now)
     seeds_later[edited_later]["texts"][0]["text"] += " Edited."
-    assert _cumulative_selection(both, seeds_later, gate)[edited_later] == (None, NOT_RATED)
+    assert _cumulative_selection(both, seeds_later, gate)[edited_later] == (None, NOT_RATED, ())
 
     # The approved check reads every round. With round 2 appended, holding only the rewritten script, it passes on the
     # rewritten seed file; round 1 alone fails it, naming the rewritten seed, and so does a seed edited after both.
@@ -997,20 +1019,20 @@ def test_a_round_where_a_script_was_short_does_not_decide_it(plan, w3_set):
     rows3 = {round3[short_twice_then_rated]["item_id"]: bad}
     selection = _cumulative_selection([(round1, rows1), (round2, rows2), (round3, rows3)], w3_set.seeds, gate)
     # Short in round 1, then decided by round 2 at the same digest.
-    assert selection[short_then_rated] == (2, "passes")
+    assert selection[short_then_rated] == (2, "passes", (1,))
     # Rated unrealistic in round 1: round 2's ratings of the same text are ignored.
-    assert selection[failed_then_rated] == (1, "rated unrealistic")
+    assert selection[failed_then_rated] == (1, "rated unrealistic", ())
     # Short in every round that rated it.
-    assert selection[short_everywhere] == (None, SHORT)
+    assert selection[short_everywhere] == (None, SHORT, (1, 2))
     # A script that passed is decided by round 1, whatever a later round shows.
-    assert selection[passed_then_short] == (1, "passes")
+    assert selection[passed_then_short] == (1, "passes", ())
     # The first round with enough ratings decides, here round 3, and it can fail the script.
-    assert selection[short_twice_then_rated] == (3, "rated unrealistic")
-    assert all(selection[sid] == (1, "passes") for sid in ids[5:])
+    assert selection[short_twice_then_rated] == (3, "rated unrealistic", (1, 2))
+    assert all(selection[sid] == (1, "passes", ()) for sid in ids[5:])
     # Round 1 alone: the scripts short there are 'not enough ratings', not unrated.
     alone = _cumulative_selection([(round1, rows1)], w3_set.seeds, gate)
-    assert {sid for sid, d in alone.items() if d == (None, SHORT)} == {short_then_rated, short_everywhere,
-                                                                        short_twice_then_rated}
+    assert {sid for sid, d in alone.items() if d == (None, SHORT, (1,))} == {short_then_rated, short_everywhere,
+                                                                              short_twice_then_rated}
 
     # The owner's words are quoted where the decision is recorded, as a decision, after the clarifications.
     one_line = functools.partial(re.sub, r"\s+", " ")
@@ -1043,6 +1065,84 @@ def test_a_round_where_a_script_was_short_does_not_decide_it(plan, w3_set):
         in cumulative
     assert "the scripts short of ratings in every earlier round" in gate["rounds_rule"]
     assert "may be rated again, unedited, in a later round" in gate["rounds"][0]["short_items"]
+
+
+def _clarification(record: str, start: str) -> str:
+    """One line of the approval record's clarifications list, from the record joined into one line: from start to the
+    next line of the list, or to the owner's decision that follows the list."""
+    i = record.index(start)
+    ends = [k for k in (record.find(" - ", i + len(start)), record.find("- Owner's decision", i)) if k != -1]
+    return record[i:min(ends)]
+
+
+def test_the_recorded_selection_gives_a_script_short_in_every_round_no_deciding_round(plan, w3_set):
+    """The selection the plan records (selection_shape) gave every failing entry a round, defined as its deciding
+    round, but a seed short of ratings in every round that rated its current turns has none: no round decides it
+    (cumulative_selection). The program would have had to invent a round, write an undocumented null or drop the
+    rounds in which it was short (Codex review of PR #87, 2026-10-05). Each entry now has a deciding round that is null
+    when no round decided it, the list of the rounds in which it was short, and, if failing, its reason, which is 'not
+    enough ratings' exactly when the round is null. This changes neither the rule nor which items pass."""
+    gate = plan["physician_realism_gate"]
+    shape = gate["selection_shape"]
+    keys = {name: re.search(name + r": \[\{([^}]*)\}\]", shape).group(1).split(", ") for name in ("passing", "failing")}
+    assert keys == {"passing": ["seed_id", "round", "short_rounds"],
+                    "failing": ["seed_id", "round", "short_rounds", "reason"]}
+    for needed in ("or null when no round decided it", "A passing entry always has a round",
+                   "'not enough ratings', with round null and short_rounds not empty", "has no entry",
+                   "each in seed_file order"):
+        assert needed in shape, needed
+    assert "null when no round decided it" in gate["cumulative_selection"]
+
+    _bundle1, round1 = _rated_scripts(gate["rounds"][0])
+    ids = sorted(w3_set.seeds)
+    short_everywhere, short_then_passed, failed, short_then_failed = ids[:4]
+    fine = dict.fromkeys(gate["min_answers_keys"], (4, 4))
+    good, bad = _summary_row(fine), _summary_row({**fine, gate["gate_keys"][0]: (1, 2)})
+    short = _summary_row({**fine, gate["flag_adds"][0]: ("cant_judge", 4)})
+
+    def later(n: int, rows: dict[str, dict]) -> tuple[dict[str, dict], dict[str, dict]]:
+        items = {}
+        for sid in rows:
+            items[sid] = copy.deepcopy(round1[sid])
+            items[sid]["item_id"] = f"round{n}_{sid}"
+        return items, {items[sid]["item_id"]: row for sid, row in rows.items()}
+
+    first = {short_everywhere: short, short_then_passed: short, failed: bad, short_then_failed: short}
+    rows1 = {item["item_id"]: first.get(sid, good) for sid, item in round1.items()}
+    rounds = [(round1, rows1), later(2, {short_everywhere: short, short_then_passed: good, short_then_failed: bad})]
+    record = _selection_record(_cumulative_selection(rounds, w3_set.seeds, gate))
+    assert [e["seed_id"] for e in record["passing"] + record["failing"]] == [
+        *(sid for sid in w3_set.seeds if sid not in (short_everywhere, failed, short_then_failed)),
+        *(sid for sid in w3_set.seeds if sid in (short_everywhere, failed, short_then_failed))]
+    by_id = {e["seed_id"]: e for e in record["passing"] + record["failing"]}
+    assert by_id[short_everywhere] == {"seed_id": short_everywhere, "round": None, "short_rounds": [1, 2],
+                                       "reason": SHORT}
+    assert by_id[short_then_passed] == {"seed_id": short_then_passed, "round": 2, "short_rounds": [1]}
+    assert by_id[failed] == {"seed_id": failed, "round": 1, "short_rounds": [], "reason": "rated unrealistic"}
+    assert by_id[short_then_failed] == {"seed_id": short_then_failed, "round": 2, "short_rounds": [1],
+                                        "reason": "rated unrealistic"}
+    for entry in record["passing"] + record["failing"]:
+        assert set(entry) == set(keys["failing" if "reason" in entry else "passing"])
+    assert all(e["round"] is not None for e in record["passing"])
+    assert all((e["round"] is None) == (e["reason"] == SHORT) for e in record["failing"])
+    assert all(e["short_rounds"] for e in record["failing"] if e["round"] is None)
+    # A seed whose current digest no round recorded gets no entry: the program refuses.
+    edited = copy.deepcopy(w3_set.seeds)
+    edited[failed]["texts"][0]["text"] += " Edited."
+    with pytest.raises(ValueError, match=re.escape(repr(failed))):
+        _selection_record(_cumulative_selection(rounds, edited, gate))
+
+    one_line = functools.partial(re.sub, r"\s+", " ")
+    prereg = PREREG.read_text(encoding="utf-8")
+    a69 = one_line(_section(prereg, "### A6.9 Physician realism gate", "### Approval record"))
+    record_text = one_line(_section(prereg, "### Approval record", None))
+    s13 = one_line(_section(W3_DESIGN.read_text(encoding="utf-8"), "**How the selection is recorded.**",
+                            "**Scripts edited after rating.**"))
+    assert "or none if every round that rated its current turns was short, and the rounds in which it was short" in a69
+    assert 'with a null round, the list of those rounds and the reason "not enough ratings"' in a69
+    assert 'recorded with a null round, those rounds and the reason "not enough ratings" (`selection_shape`)' in s13
+    line = _clarification(record_text, "- Scripts short in every round:")
+    assert "`short_rounds`" in line and line.rstrip().endswith("this changes neither the rule nor which items pass.")
 
 
 def test_only_an_edit_to_the_turns_physicians_see_lets_a_later_round_decide_a_rated_script(plan, w3_set):
@@ -1089,15 +1189,15 @@ def test_only_an_edit_to_the_turns_physicians_see_lets_a_later_round_decide_a_ra
              round2[failed_rewritten]["item_id"]: good}
     selection = _cumulative_selection([(round1, rows1), (round2, rows2)], seeds_now, gate)
     # An edit physicians cannot see: round 1 rated these turns with enough ratings, so round 1 decides, either way.
-    assert selection[failed_notes] == (1, "rated unrealistic")
-    assert selection[passed_settings] == (1, "passes")
+    assert selection[failed_notes] == (1, "rated unrealistic", ())
+    assert selection[passed_settings] == (1, "passes", ())
     # An edit to the turns: round 2 rated the new script, and decides it.
-    assert selection[failed_rewritten] == (2, "passes")
-    assert selection[failed_alone] == (1, "rated unrealistic")
+    assert selection[failed_rewritten] == (2, "passes", ())
+    assert selection[failed_alone] == (1, "rated unrealistic", ())
     # The digest is still compared: until a round's bundle records a seed's new digest, the seed cannot pass, whatever
     # field was edited.
     alone = _cumulative_selection([(round1, rows1)], seeds_now, gate)
-    assert {sid for sid, (_k, d) in alone.items() if d == NOT_RATED} == set(changed)
+    assert {sid for sid, (_k, d, _s) in alone.items() if d == NOT_RATED} == set(changed)
     # A round's item at a seed's current digest must record the turns the seed has; anything else is refused.
     broken = copy.deepcopy(round2)
     broken[failed_notes]["provenance"]["turn_sha256"] = round2[failed_rewritten]["provenance"]["turn_sha256"]
@@ -1129,7 +1229,7 @@ def test_only_an_edit_to_the_turns_physicians_see_lets_a_later_round_decide_a_ra
     assert "rated at its current digest only in rounds" not in rounds_a69 + later_s13
     assert "changes the digest and not the script" in edited_s13
     assert "an edit to anything physicians do not see is not a rewrite" in proto
-    clarification = record[record.index("- Which round decides a script:"):record.index("- Owner's decision")]
+    clarification = _clarification(record, "- Which round decides a script:")
     assert "`provenance.turn_sha256`" in clarification
     assert clarification.rstrip().endswith("this changes neither the rule nor which items pass.")
 

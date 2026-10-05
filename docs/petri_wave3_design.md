@@ -856,7 +856,10 @@ eight). Section 5's suggested judge ceilings remain enough.
 scripts with their values and decisions. A dated amendment to the plan (section 9.9),
 made before the pilot epoch, then sets `physician_realism_gate.selection` to the gate
 report and each round's import summary (paths and sha256), the passing seed ids and the
-failing ones with their reasons, each with the round that decided it. The same amendment
+failing ones with their reasons, each with the round that decided it and the rounds in
+which it was short; a seed short in every round that rated its current turns has no
+deciding round, and is recorded with a null round, those rounds and the reason "not enough
+ratings" (`selection_shape`). The same amendment
 changes every field of the plan whose value depends on which seeds pass, as the plan's
 `if_applied.fields` says for each one. Among
 them: the passing seeds and 3S samples in `fires_rule`; the counts; the interval's

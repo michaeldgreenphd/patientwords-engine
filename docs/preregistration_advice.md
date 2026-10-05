@@ -1266,8 +1266,10 @@ one fewer for each wave, or Wave R family, with no passing item:
   items and the 8 scripts, the verification item id, the source file and
   id, the question set, `ratings_complete`, each question's `n` and
   `median`, `flagged`, the decision and its reason, and for each script the
-  round that decided it ("Rounds" below); and the kept items' counts by
-  proposed tier and syntax style (Wave A) and by form (Wave R);
+  round that decided it, or none if every round that rated its current
+  turns was short, and the rounds in which it was short ("Rounds" below);
+  and the kept items' counts by proposed tier and syntax style (Wave A) and
+  by form (Wave R);
 - the selection files, in the shape `build-stimuli --source selection` reads
   (`{rule, items: [{file, id}], notes}`):
   `data/advice/realism_gate_waveA_<export stamp>.json` for Wave A; for Wave R,
@@ -1466,8 +1468,12 @@ edit to those alone changes the digest and not the script. So:
 
 Applied again after a later round, the program writes a new gate report for
 wave 3 alone, named after the latest round's bundle id and export stamp,
-with each script's deciding round, or the rounds in which it was short; the
+with each script's deciding round and the rounds in which it was short; the
 Wave A and Wave R selection files written at round 1's application stand.
+A script short in every round that rated its current turns has no deciding
+round: the report and the plan's `selection` record it with a null round,
+the list of those rounds and the reason "not enough ratings" (the plan's
+`selection_shape`).
 
 **The counts report**, also still to write, before the round's closing date
 (proposed: a `--counts-only` option of `scripts/import_verification_ratings.py`,
@@ -1660,6 +1666,11 @@ their own before it.
     it, and "its current digest" in the decision below means its current
     turns for which round decides it; this changes neither the rule nor
     which items pass.
+  - Scripts short in every round: the plan's `selection_shape` gives each
+    seed a deciding `round` that is null when no round decided it, the list
+    `short_rounds` of the rounds in which it was short, and the reason "not
+    enough ratings", so such a seed is recorded without an invented round;
+    this changes neither the rule nor which items pass.
 - Owner's decision, 2026-10-05 (after the approval; it can change which
   seeds pass, so it is recorded here as a decision, not as a
   clarification). Asked in the agent session whether a later round may
