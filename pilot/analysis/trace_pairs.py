@@ -8,15 +8,26 @@ equivalent, in the run's own row order, with a provenance block per pair so ever
 row by the 1-based index the lane assigns.
 
 It is a consumer of a finished run, like the review page: it reads the run directory and never writes inside the
-run's sealed files. The output goes to <run>/trace/ by default, with a sidecar recording the selection rule, the
-counts (selected, not selected and why, refused and why) and the sha256 of every input. A run that is not version 2,
-not finalized or without probe endings, a generated row that lacks a key a pair is built from (ROW_KEYS), or a
-selected row that cannot be traced (a term that is not a non-empty string, not exactly one blank, a next word the
-parser's next-word check refuses) is refused rather than skipped: a pairs file that silently lost rows would trace a
-different sample than the one described.
+run's sealed files. The output goes to <run>/trace/<run_id>_trace_pairs.json by default (default_out), with a
+sidecar recording the selection rule, the counts (selected, not selected and why, refused and why) and the sha256 of
+every input. The file is named for its run, in the run's trace/ directory, because both pilot lanes (circuit-trace's
+pilot/traces/, logits-eval's pilot/logits/) refuse a pilot pairs file that is not at
+pilot/runs/<run_id>/trace/<run_id>_<name>.json or whose name holds "__" (docs/triggers.md); an --out elsewhere writes a
+file they refuse. They name the output folder <root>/<run_id>/<the file's stem>[__<model>] (2026-10-05), so the name
+says which run a folder holds, and two files or two models of one run never share one.
+Before 2026-10-04 every run's default was trace/trace_pairs.json, and the lanes named the folder by the stem alone,
+so two runs' traces would have shared one folder. Run 2's committed trace/trace_pairs.json keeps its name; to trace
+it again, re-run this script on run 2 with --review-sample, whose default writes a byte-identical
+trace/pilot_v2_20261002_trace_pairs.json beside it (checked 2026-10-05), or copy the file to that path.
+
+A run that is not version 2, not finalized or without probe endings, a generated row that lacks a key a pair is built
+from (ROW_KEYS), or a selected row that cannot be traced (a term that is not a non-empty string, not exactly one
+blank, a next word the parser's next-word check refuses) is refused rather than skipped: a pairs file that silently
+lost rows would trace a different sample than the one described.
 
 Pilot traces are pipeline checks, never measurements (AGENTS.md, pilot exception): the lane writes them under
-pilot/traces/, which no collector reads. Run the holdout seal check over the output before it is pushed anywhere.
+pilot/traces/<run_id>/, which no collector reads. Run the holdout seal check over the output before it is pushed
+anywhere.
 
 The default selection is every generated row the checker judged equivalent. --review-sample instead selects exactly
 the rows of the run's blind review sample (review_map.json), whatever the checker said, in review-id order, so trace
@@ -196,15 +207,23 @@ def build(run_dir: Path, include_controls: bool = False, review_sample: bool = F
     return pairs, meta
 
 
+def default_out(run_dir: Path) -> Path:
+    """<run-dir>/trace/<run_id>_trace_pairs.json, run_id being the run directory's name (as build() records it): the
+    path both pilot lanes accept for a pilot-root fire, pilot/runs/<run_id>/trace/<run_id>_<name>.json (a run id
+    holding "__" gives a name they refuse)."""
+    return run_dir / "trace" / f"{run_dir.name}_trace_pairs.json"
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--run-dir", required=True)
-    ap.add_argument("--out", help="default: <run-dir>/trace/trace_pairs.json")
+    ap.add_argument("--out", help="default: <run-dir>/trace/<run_id>_trace_pairs.json; a pilot-root fire refuses a "
+                                  "pairs file whose name does not start with <run_id>_")
     ap.add_argument("--include-controls", action="store_true")
     ap.add_argument("--review-sample", action="store_true", help="trace exactly the blind review sample")
     a = ap.parse_args(argv)
     run_dir = Path(a.run_dir)
-    out = Path(a.out) if a.out else run_dir / "trace" / "trace_pairs.json"
+    out = Path(a.out) if a.out else default_out(run_dir)
     try:
         pairs, meta = build(run_dir, a.include_controls, a.review_sample)
     except (TraceInputError, FileNotFoundError, KeyError) as e:

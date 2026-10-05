@@ -17,11 +17,17 @@ name: Circuit Trace Evaluation (medlang-circuits)
 # Outputs land in trace_out/<pairs-file-stem>/ so different batches never
 # collide on index numbering. The trigger key output_root (2026-10-01) has one
 # other accepted value, "pilot/traces": a pairs file under pilot/ is traced
-# into pilot/traces/<pairs-file-stem>/, which no collector reads, and only
-# with it, and that pairs file must sit under pilot/runs/, the one pilot
-# directory either job checks out (pilot/traces never is, so no cell's
-# workspace holds an earlier pilot part). A pilot trace is a $0 plain
-# pipeline check, never a measurement: the params job refuses
+# into pilot/traces/<run_id>/<pairs-file-stem>/ (the run's own folder since
+# 2026-10-05; <run_id> is the directory directly under pilot/runs/), which no
+# collector reads, and only with it, and that pairs file must sit under
+# pilot/runs/, the one pilot directory either job checks out (pilot/traces
+# never is, so no cell's workspace holds an earlier pilot part), in its run's
+# trace/ directory, and be named for its run with no "__" in its name,
+# pilot/runs/<run_id>/trace/<run_id>_<name>.json (2026-10-04). Run
+# 2's and run 3's parts landed flat, at pilot/traces/trace_pairs/ and
+# pilot/traces/pilot_v3_20261004_trace_pairs/, and stay there; a run id of
+# either name is refused. A pilot trace is a $0 plain pipeline
+# check, never a measurement: the params job refuses
 # show_mitigation, mode translation, steering and generate_explanations under
 # it, it commits only the summary parts, and a fail-closed holdout seal check
 # runs before that commit.
@@ -183,10 +189,21 @@ jobs:
                   value = os.environ.get("IN_" + key.upper(), "")
                   if value:
                       params[key] = value
+          # A value carrying a newline (or any control character, as fire_trigger.control_char_values reads one) is
+          # refused on both paths before any check below reads a value. The outputs below are JSON, which escapes one,
+          # but "Select sample pairs" writes OUT_DIR=<folder> to $GITHUB_ENV from the pairs file's name, where a
+          # newline adds lines of its own and the last OUT_DIR wins. A dispatch never passes through
+          # scripts/fire_trigger.py, which refuses the same characters at a fire (logits_evaluation.yml's params job
+          # refuses them too).
+          for key, value in params.items():
+              if any(ord(c) < 32 or ord(c) == 127 for c in value):
+                  raise SystemExit(f"{key} must not carry a control character (newline, carriage return, tab), "
+                                   f"got {value!r}")
           offsets = sorted({int(x) for x in params["offsets"].replace(",", " ").split()})
           if not offsets:
               raise SystemExit("no offsets to trace")
-          # output_root: "" keeps trace_out/<stem>; "pilot/traces" is the pilot root, which no collector reads. A
+          # output_root: "" keeps trace_out/<stem>; "pilot/traces" is the pilot root, which no collector reads, and
+          # each run traces into its own folder there, pilot/traces/<run_id>/<stem>[__<model>] (2026-10-05). A
           # pairs file under pilot/ goes with the pilot root and only with it, under that root it must sit under
           # pilot/runs/ (the one pilot directory either job checks out), and a pilot trace is $0 and plain.
           # scripts/fire_trigger.py (circuit_trace_params_problems, circuit_trace_pilot_source_problems) refuses
@@ -214,6 +231,38 @@ jobs:
               if not norm_pairs.startswith("pilot/runs/"):
                   # both jobs check out pilot/runs and never pilot/traces, so pilot pairs trace from there only
                   refused.append(f"pairs_file {pairs_path!r} is not under pilot/runs/")
+              else:
+                  # the run id is the directory directly under pilot/runs/, and the select step below traces into
+                  # pilot/traces/<run_id>/<stem>[__<model>], so two runs never share a folder. Within the run, the
+                  # file sits at exactly pilot/runs/<run_id>/trace/<file> (where pilot/analysis/trace_pairs.py writes
+                  # it), so two of its files never share a stem; it is named for its run,
+                  # pilot/runs/<run_id>/trace/<run_id>_<name>.json (2026-10-04), so the folder's name says which run
+                  # it holds; its name holds no "__", which the select step puts between a stem and a model; and a
+                  # run id that names a flat folder written before 2026-10-05 (run 2's pilot/traces/trace_pairs/, run
+                  # 3's pilot/traces/pilot_v3_20261004_trace_pairs/) is refused, since the run would trace into it
+                  # (fire_trigger.py pilot_pairs_location_problem, pilot_pairs_run_name_problem,
+                  # pilot_pairs_separator_problem and pilot_legacy_run_id_problem; logits_evaluation.yml applies the
+                  # same tests)
+                  parts = norm_pairs.split("/")
+                  run_id = parts[2] if len(parts) == 5 and parts[3] == "trace" else ""
+                  name = posixpath.basename(pairs_path)
+                  if not run_id:
+                      refused.append(f"pairs_file {pairs_path!r} is not in its run's trace/ directory "
+                                     "(pilot/runs/<run_id>/trace/<run_id>_<name>.json)")
+                  elif not (name.startswith(run_id + "_") and name.endswith(".json")
+                            and len(name) > len(run_id) + len("_.json")):
+                      refused.append(f"pairs_file {pairs_path!r} is not named for its run "
+                                     "(pilot/runs/<run_id>/trace/<run_id>_<name>.json; for run 2's legacy "
+                                     "trace/trace_pairs.json, re-run pilot/analysis/trace_pairs.py --run-dir "
+                                     "pilot/runs/pilot_v2_20261002 --review-sample, whose default writes a "
+                                     "byte-identical pilot/runs/pilot_v2_20261002/trace/"
+                                     "pilot_v2_20261002_trace_pairs.json, or copy the file there)")
+                  elif "__" in name:
+                      refused.append(f"pairs_file {pairs_path!r} holds '__' in its name, which the select step "
+                                     "puts between a stem and a model")
+                  elif run_id in ("trace_pairs", "pilot_v3_20261004_trace_pairs"):
+                      refused.append(f"run id {run_id!r} is the name of the pilot output folder "
+                                     f"pilot/traces/{run_id}/ written before 2026-10-05")
               if "," in pairs_path:  # the seal step's --extra list splits on commas
                   refused.append(f"pairs_file {pairs_path!r} contains a comma")
               if params["show_mitigation"].strip().lower() not in ("", "false", "0"):
@@ -337,7 +386,7 @@ jobs:
           OFFSET: ${{ matrix.offset }}
         run: |
           python - <<'EOF'
-          import json, os
+          import json, os, posixpath
           mode, n = os.environ["MODE"], int(os.environ["SAMPLE_SIZE"])
           offset = int(os.environ["OFFSET"])
           path = os.environ["PAIRS_FILE"] or f"medlang_circuits/data/ci_pairs_{mode}.json"
@@ -356,7 +405,14 @@ jobs:
           if root == "":
               out_dir = f"trace_out/{stem}"
           elif root == "pilot/traces":  # pilot pairs: outside trace_out/, where every collector reads
-              out_dir = f"pilot/traces/{stem}"
+              # in the run's own folder (2026-10-05): the run id is the directory directly under pilot/runs/ of the
+              # normalised path, read as the params job reads it (fire_trigger.py pilot_run_id), so two runs whose
+              # pairs files share a stem (runs a and a_b each owning a_b_pairs.json) never write one folder
+              parts = posixpath.normpath(path).split("/")
+              run_id = parts[2] if len(parts) >= 4 and parts[:2] == ["pilot", "runs"] else ""
+              if not run_id:  # the params job admits no such path
+                  raise SystemExit(f"pilot pairs file {path!r} is not under pilot/runs/<run_id>/")
+              out_dir = f"pilot/traces/{run_id}/{stem}"
           else:  # the params job admits only these two
               raise SystemExit(f"output_root {root!r}: only '' or 'pilot/traces' is accepted")
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:

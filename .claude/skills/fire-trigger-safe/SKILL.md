@@ -26,7 +26,22 @@ ceiling. Follow these steps in order; every failure mode here is silent.
    `scripts/fire_trigger.py`, each verified against its workflow's params heredoc).
    Underscore-prefixed keys (`_nonce`, `_note`) are pass-through metadata. Never rename a
    rejected key to an underscore form to bypass validation — fix the key.
-4. Rehearse with `--dry-run` first; fire only when the dry-run output is exactly what you
+4. A pilot-root fire (circuit-trace `output_root: pilot/traces`, logits-eval
+   `output_root: pilot/logits`) writes into its run's own folder,
+   `<root>/<run_id>/<stem>[__<model>]/`, where `<run_id>` is the directory directly
+   under `pilot/runs/` (2026-10-05). It reads a pairs file in its run's `trace/`
+   directory, named for its run with no `__` in its name,
+   `pilot/runs/<run_id>/trace/<run_id>_<name>.json`; `fire` refuses any other path with
+   exit 3 (as the params jobs do), and `pilot/analysis/trace_pairs.py` writes that
+   path by default. A run id of `trace_pairs` or `pilot_v3_20261004_trace_pairs`
+   (the two flat folders under `pilot/traces/` from before 2026-10-05) is refused the
+   same way. Run 2's legacy `trace/trace_pairs.json` is refused: to fire run 2 again,
+   re-run `pilot/analysis/trace_pairs.py --run-dir pilot/runs/pilot_v2_20261002
+   --review-sample`, whose default writes a byte-identical
+   `pilot/runs/pilot_v2_20261002/trace/pilot_v2_20261002_trace_pairs.json` beside it
+   (or copy the file to that path), and fire that file.
+   `docs/triggers.md` has the rest of the pilot rules.
+5. Rehearse with `--dry-run` first; fire only when the dry-run output is exactly what you
    intend.
 
 ## 2 · Fire
@@ -63,8 +78,10 @@ lane, and advance by chaining — resolve the landed run, then fire the next.
 - `python scripts/fire_trigger.py resolve --trigger <name>` — ONLY when the run is truly
   terminal and ALL expected outputs landed (every expected
   `trace_out/<stem>/batch_summary.part_NN.json` offset, or
-  `pilot/traces/<stem>/batch_summary.part_NN.json` for a fire with
-  `output_root: pilot/traces`; for generation, the batch file
+  `pilot/traces/<run_id>/<stem>/batch_summary.part_NN.json` for a fire with
+  `output_root: pilot/traces`, or
+  `pilot/logits/<run_id>/<stem>__<model>/batch_summary.part_NN.json` for a logits-eval
+  fire with `output_root: pilot/logits`; for generation, the batch file
   plus `.report.json` sidecar on main). Resolving on partial landing lets a subsequent
   fire supersede a still-pending run (the 2026-07-09 eviction seam).
 - **Settle window:** resolving stamps `resolved_utc`; a same-trigger fire within 15

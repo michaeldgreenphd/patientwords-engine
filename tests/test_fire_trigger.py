@@ -3672,17 +3672,24 @@ def test_publish_keeps_the_park_ceiling_waiver_when_the_park_push_was_rejected(t
 
 
 # --- circuit-trace output_root: the pilot trace root (2026-10-01) ------------------------------------------------
-# A pairs file under pilot/ traces only into pilot/traces/<stem>, never trace_out/, and only from pilot/runs/ (the one
-# pilot directory the workflow checks out); a pilot trace is $0 and plain; a pairs_file with a backslash is refused
-# under every root.
+# A pairs file under pilot/ traces only into pilot/traces/<run_id>/<stem> (its run's own folder, 2026-10-05), never
+# trace_out/, and only from its run's trace/ directory under pilot/runs/ (the one pilot directory the workflow checks
+# out), named for its run with no "__" in its name (pilot/runs/<run_id>/trace/<run_id>_<name>.json), with a run id that
+# names no flat pilot folder written before 2026-10-05; a pilot trace is $0 and plain; a pairs_file with a backslash is
+# refused under every root.
 # The fire path refuses a breach with exit 3 before anything is written or journaled; the agreement with the
 # workflow's params job, case for case, is tests/test_circuit_trace_pilot_root.py.
 
+# a placeholder pilot run, run_a, and its pairs file, in its trace/ directory and named for it as a pilot-root fire
+# requires (2026-10-04, 2026-10-05)
+PILOT_RUN_PAIRS = "pilot/runs/run_a/trace/run_a_pairs.json"
+
+
 def _pilot_pairs(repo, targets=(True, True, False)):
-    (repo / "pilot" / "runs").mkdir(parents=True, exist_ok=True)
+    (repo / PILOT_RUN_PAIRS).parent.mkdir(parents=True, exist_ok=True)
     pairs = [{"top_prompt": "placeholder a", "bottom_prompt": "placeholder b",
               **({"target_clinical_token": " c"} if t else {})} for t in targets]
-    (repo / "pilot" / "runs" / "pairs.json").write_text(json.dumps(pairs), encoding="utf-8")
+    (repo / PILOT_RUN_PAIRS).write_text(json.dumps(pairs), encoding="utf-8")
 
 
 def _assert_refused_unwritten(repo):
@@ -3691,24 +3698,45 @@ def _assert_refused_unwritten(repo):
 
 
 @pytest.mark.parametrize("params, needle", [
-    ({"mode": "2panel", "pairs_file": "pilot/runs/pairs.json"}, "is under pilot/"),
+    ({"mode": "2panel", "pairs_file": PILOT_RUN_PAIRS}, "is under pilot/"),
     ({"mode": "2panel", "pairs_file": "data/x.json", "output_root": "pilot/traces"}, "traces only a pairs_file under"),
-    ({"mode": "2panel", "pairs_file": "pilot/runs/pairs.json", "output_root": "trace_out"}, "only \"\" (trace_out)"),
-    ({"mode": "2panel", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/traces", "show_mitigation": True},
+    ({"mode": "2panel", "pairs_file": PILOT_RUN_PAIRS, "output_root": "trace_out"}, "only \"\" (trace_out)"),
+    ({"mode": "2panel", "pairs_file": PILOT_RUN_PAIRS, "output_root": "pilot/traces", "show_mitigation": True},
      "show_mitigation 'true' is refused"),
-    ({"mode": "translation", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/traces"},
+    ({"mode": "translation", "pairs_file": PILOT_RUN_PAIRS, "output_root": "pilot/traces"},
      "mode 'translation' is refused"),
-    ({"mode": "2panel", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/traces", "steer_boost": "4"},
+    ({"mode": "2panel", "pairs_file": PILOT_RUN_PAIRS, "output_root": "pilot/traces", "steer_boost": "4"},
      "steer_boost '4' is refused"),
-    ({"mode": "2panel", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/traces",
+    ({"mode": "2panel", "pairs_file": PILOT_RUN_PAIRS, "output_root": "pilot/traces",
       "generate_explanations": "1"}, "generate_explanations '1' is refused"),
-    ({"mode": "2panel", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/traces", "screen_targets": "0.02",
+    ({"mode": "2panel", "pairs_file": PILOT_RUN_PAIRS, "output_root": "pilot/traces", "screen_targets": "0.02",
       "offsets": "0", "sample_size": "3"}, "carry no target_clinical_token"),
     ({"mode": "2panel", "pairs_file": "pilot/pairs.json", "output_root": "pilot/traces"},
      "traces only a pairs_file under pilot/runs/"),
     ({"mode": "2panel", "pairs_file": "pilot\\runs\\pairs.json"}, "contains a backslash"),
     ({"mode": "2panel", "pairs_file": "pilot\\runs\\pairs.json", "output_root": "pilot/traces"},
      "contains a backslash"),
+    # a pilot pairs file is named for its run, so the output folder cut from its stem carries the run id
+    ({"mode": "2panel", "pairs_file": "pilot/runs/pilot_v2_20261002/trace/trace_pairs.json",
+      "output_root": "pilot/traces"}, "is not named for its run"),
+    ({"mode": "2panel", "pairs_file": "pilot/runs/run_a/trace/pairs.json", "output_root": "pilot/traces"},
+     "is not named for its run"),
+    # in its run's trace/ directory, and no "__" in its name, so each file and model of a run has a folder of its own
+    ({"mode": "2panel", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/traces"},
+     "is not in its run's trace/ directory"),
+    ({"mode": "2panel", "pairs_file": "pilot/runs/run_a/run_a_pairs.json", "output_root": "pilot/traces"},
+     "is not in its run's trace/ directory"),
+    ({"mode": "2panel", "pairs_file": "pilot/runs/run_a/trace/deeper/run_a_pairs.json", "output_root": "pilot/traces"},
+     "is not in its run's trace/ directory"),
+    ({"mode": "2panel", "pairs_file": "pilot/runs/run_a/trace/run_a_pairs__qwen3-4b.json",
+      "output_root": "pilot/traces"}, "holds '__' in its name"),
+    # a run id that names a flat pilot folder written before 2026-10-05 would trace into it
+    ({"mode": "2panel", "pairs_file": "pilot/runs/trace_pairs/trace/trace_pairs_x.json", "output_root": "pilot/traces"},
+     "pilot output folder pilot/traces/trace_pairs/ written before 2026-10-05"),
+    ({"mode": "2panel",
+      "pairs_file": "pilot/runs/pilot_v3_20261004_trace_pairs/trace/pilot_v3_20261004_trace_pairs_x.json",
+      "output_root": "pilot/traces"},
+     "pilot output folder pilot/traces/pilot_v3_20261004_trace_pairs/ written before 2026-10-05"),
 ])
 def test_a_pilot_trace_that_breaks_the_root_rules_is_refused_with_exit_3(repo, capsys, params, needle):
     _pilot_pairs(repo)
@@ -3722,11 +3750,86 @@ def test_a_pilot_trace_that_breaks_the_root_rules_is_refused_with_exit_3(repo, c
 def test_a_plain_pilot_trace_fires_free_and_carries_its_root(repo):
     _pilot_pairs(repo)
     write_dashboard(repo, spent=2.0)          # free: a full day does not stop it
-    params = {"mode": "2panel", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/traces",
+    params = {"mode": "2panel", "pairs_file": PILOT_RUN_PAIRS, "output_root": "pilot/traces",
               "screen_targets": "0.02", "offsets": [0, 1], "sample_size": "1"}
     assert not ft.is_paid_fire("circuit-trace", params)
     assert fire(repo, params=params) == 0
     written = json.loads(trigger_path(repo).read_text(encoding="utf-8"))
-    assert written["output_root"] == "pilot/traces" and written["pairs_file"] == "pilot/runs/pairs.json"
+    assert written["output_root"] == "pilot/traces" and written["pairs_file"] == PILOT_RUN_PAIRS
     entry = ft.load_journal(journal_path(repo))[-1]
     assert entry["trigger"] == "circuit-trace" and entry.get("max_spend") is None
+
+
+# --- logits-eval output_root: the pilot logits root (2026-10-04) -------------------------------------------------
+# circuit-trace's pilot root carried over to the CPU next-token lane: a pairs file under pilot/ is measured only into
+# pilot/logits/<run_id>/<stem>__<model>, never trace_out/, and only from its run's trace/ directory under pilot/runs/,
+# named for its run with no "__" in its name and with a run id that names no flat pilot folder written before
+# 2026-10-05 (as circuit-trace's pilot pairs are); a pilot run is
+# mode logits only; a pairs_file with a backslash, an absolute path or one that leaves
+# the checkout is refused under every root. The fire path refuses a breach with exit 3 before anything is written or
+# journaled; the agreement with the workflow's params job, case for case, is tests/test_logits_pilot_root.py.
+
+def _assert_logits_refused_unwritten(repo):
+    assert not trigger_path(repo, "logits-eval").exists(), "a refused fire writes no trigger file"
+    assert not journal_path(repo).exists() or journal_path(repo).read_text(encoding="utf-8").strip() == ""
+
+
+@pytest.mark.parametrize("params, needle", [
+    ({"models": "qwen3-1.7b", "pairs_file": PILOT_RUN_PAIRS}, "is under pilot/"),
+    ({"models": "qwen3-1.7b", "pairs_file": "data/x.json", "output_root": "pilot/logits"},
+     "measures only a pairs_file under pilot/runs/"),
+    ({"models": "qwen3-1.7b", "pairs_file": PILOT_RUN_PAIRS, "output_root": "pilot/traces"},
+     "only \"\" (trace_out) or 'pilot/logits'"),
+    ({"models": "qwen3-1.7b", "pairs_file": PILOT_RUN_PAIRS, "output_root": "pilot/logits", "mode": "depth"},
+     "mode 'depth' is refused"),
+    ({"models": "qwen3-1.7b", "pairs_file": PILOT_RUN_PAIRS, "output_root": "pilot/logits",
+      "mode": "verify"}, "mode 'verify' is refused"),
+    ({"models": "qwen3-1.7b", "pairs_file": "pilot/runs/run_a/trace/run_a_a,b.json", "output_root": "pilot/logits"},
+     "contains a comma"),
+    ({"models": "qwen3-1.7b", "pairs_file": "pilot\\runs\\pairs.json"}, "contains a backslash"),
+    ({"models": "qwen3-1.7b", "pairs_file": "/home/runner/work/e/e/pilot/runs/pairs.json"},
+     "is absolute or leaves the checkout"),
+    # a pilot pairs file is named for its run, so the output folder cut from its stem carries the run id
+    ({"models": "qwen3-1.7b", "pairs_file": "pilot/runs/pilot_v2_20261002/trace/trace_pairs.json",
+      "output_root": "pilot/logits"}, "is not named for its run"),
+    ({"models": "qwen3-1.7b", "pairs_file": "pilot/runs/run_a/trace/run_b_pairs.json", "output_root": "pilot/logits"},
+     "is not named for its run"),
+    # in its run's trace/ directory, and no "__" in its name, as for circuit-trace
+    ({"models": "qwen3-1.7b", "pairs_file": "pilot/runs/run_a/run_a_pairs.json", "output_root": "pilot/logits"},
+     "is not in its run's trace/ directory"),
+    ({"models": "qwen3-1.7b", "pairs_file": "pilot/runs/run_a/other/run_a_pairs.json", "output_root": "pilot/logits"},
+     "is not in its run's trace/ directory"),
+    ({"models": "qwen3-1.7b", "pairs_file": "pilot/runs/run_a/trace/run_a_p__qwen3-4b.json",
+      "output_root": "pilot/logits"}, "holds '__' in its name"),
+    # the same legacy run ids circuit-trace refuses, so a run id is usable on both pilot lanes or on neither
+    ({"models": "qwen3-1.7b", "pairs_file": "pilot/runs/trace_pairs/trace/trace_pairs_x.json",
+      "output_root": "pilot/logits"}, "pilot output folder pilot/traces/trace_pairs/ written before 2026-10-05"),
+    ({"models": "qwen3-1.7b",
+      "pairs_file": "pilot/runs/pilot_v3_20261004_trace_pairs/trace/pilot_v3_20261004_trace_pairs_x.json",
+      "output_root": "pilot/logits"}, "pilot output folder pilot/traces/pilot_v3_20261004_trace_pairs/ written before"),
+])
+def test_a_pilot_logits_fire_that_breaks_the_root_rules_is_refused_with_exit_3(repo, capsys, params, needle):
+    assert fire(repo, trigger="logits-eval", params=params) == 3
+    assert needle in capsys.readouterr().err
+    _assert_logits_refused_unwritten(repo)
+
+
+def test_a_plain_pilot_logits_fire_is_free_and_carries_its_root(repo):
+    write_dashboard(repo, spent=2.0)          # free: a full day does not stop it
+    params = {"models": ["qwen3-4b", "qwen3-1.7b"], "pairs_file": PILOT_RUN_PAIRS,
+              "output_root": "pilot/logits", "limit": "10", "offset": "0"}
+    assert not ft.is_paid_fire("logits-eval", params)
+    assert fire(repo, trigger="logits-eval", params=params) == 0
+    written = json.loads(trigger_path(repo, "logits-eval").read_text(encoding="utf-8"))
+    assert written["output_root"] == "pilot/logits" and written["pairs_file"] == PILOT_RUN_PAIRS
+    entry = ft.load_journal(journal_path(repo))[-1]
+    assert entry["trigger"] == "logits-eval" and entry.get("max_spend") is None
+
+
+def test_the_default_root_logits_fire_is_unchanged(repo):
+    """A study fire with no output_root (every logits-eval fire before 2026-10-04) passes the new rules unchanged."""
+    params = {"models": "qwen3-4b", "pairs_file": "data/simulated/pairs_20260707T171223Z.json", "offset": "40",
+              "limit": "20"}
+    assert ft.logits_eval_params_problems(params) == []
+    assert fire(repo, trigger="logits-eval", params=params) == 0
+    assert "output_root" not in json.loads(trigger_path(repo, "logits-eval").read_text(encoding="utf-8"))

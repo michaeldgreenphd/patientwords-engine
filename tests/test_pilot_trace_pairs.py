@@ -202,11 +202,44 @@ def test_refuses_a_selected_row_whose_term_is_not_a_non_empty_string(tmp_path, k
 def test_main_writes_the_pairs_and_a_sidecar_with_the_output_hash(tmp_path):
     run = _run(tmp_path, [_row("r01")], {"r01": "yes"})
     assert tp.main(["--run-dir", str(run)]) == 0
-    out = run / "trace" / "trace_pairs.json"
+    # named for its run (2026-10-04): both pilot lanes refuse a pilot pairs file whose name does not start with its
+    # run id, since each names its output folder by the file's stem alone
+    out = run / "trace" / "pilot_test_run_trace_pairs.json"
+    assert sorted(f.name for f in (run / "trace").iterdir()) == ["pilot_test_run_trace_pairs.json",
+                                                                 "pilot_test_run_trace_pairs.meta.json"]
     meta = json.loads(out.with_suffix(".meta.json").read_text(encoding="utf-8"))
-    assert meta["output"]["sha256"] == hashlib.sha256(out.read_bytes()).hexdigest()
+    assert meta["output"] == {"file": "pilot_test_run_trace_pairs.json",
+                              "sha256": hashlib.sha256(out.read_bytes()).hexdigest()}
     assert json.loads(out.read_text(encoding="utf-8"))[0]["target_clinical_token"] == " " + WORD
     assert tp.main(["--run-dir", str(tmp_path / "missing")]) == 2
+
+
+def test_an_explicit_out_is_written_where_it_names(tmp_path):
+    run = _run(tmp_path, [_row("r01")], {"r01": "yes"})
+    out = tmp_path / "elsewhere" / "pilot_test_run_review.json"
+    assert tp.main(["--run-dir", str(run), "--out", str(out)]) == 0
+    assert out.is_file() and out.with_suffix(".meta.json").is_file()
+    assert not (run / "trace").exists()
+
+
+@pytest.mark.parametrize("trigger, root", [("circuit-trace", "pilot/traces"), ("logits-eval", "pilot/logits")])
+def test_the_default_output_name_is_the_one_both_pilot_lanes_accept(trigger, root):
+    """The default --out of a run committed at pilot/runs/<run_id>/ passes the fire path's pilot-root rules on both
+    lanes, and the name every run got before 2026-10-04 (run 2's trace/trace_pairs.json) does not."""
+    ft = _load("fire_trigger_trace_pairs_test", "scripts/fire_trigger.py")
+    run_dir = Path("pilot") / "runs" / "pilot_v9_20990101"
+    default = tp.default_out(run_dir).as_posix()
+    assert default == "pilot/runs/pilot_v9_20990101/trace/pilot_v9_20990101_trace_pairs.json"
+    # the lanes read the same run id from the path, and write pilot/traces|logits/<run_id>/<stem>... (2026-10-05)
+    assert ft.pilot_run_id(default) == run_dir.name
+    # the run-named file the lanes' refusal of run 2's legacy name tells a session to fire is this default for run 2
+    assert ft.PILOT_RUN2_RUN_NAMED_PAIRS == tp.default_out(Path("pilot") / "runs" / "pilot_v2_20261002").as_posix()
+    lane = {"models": "qwen3-1.7b"} if trigger == "logits-eval" else {"mode": "2panel"}
+    ok = {**lane, "commit_outputs": "false", "output_root": root, "pairs_file": default}
+    assert ft.validate_params(trigger, ok) is None
+    legacy = {**ok, "pairs_file": (run_dir / "trace" / "trace_pairs.json").as_posix()}
+    with pytest.raises(ValueError, match="is not named for its run"):
+        ft.validate_params(trigger, legacy)
 
 
 def test_surface_key_matches_the_harness(common):
