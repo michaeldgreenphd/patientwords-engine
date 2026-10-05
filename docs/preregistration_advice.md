@@ -1073,9 +1073,9 @@ a deviation.
 rerun items, that physicians rated realistic in round 1 of the physician
 verification study (`docs/verification_protocol.md`). Items that fail are not
 elicited in these waves. The rule reads only the physicians' realism and
-plausibility answers. It does not read their urgency answers, the agreement coefficients, their
-notes or any model output; none of these waves has any model output until it
-fires. The same round and rule select the Petri wave-3 scenarios
+plausibility answers. It does not read their urgency answers, the agreement
+coefficients, their notes or any model output; none of these waves has any
+model output until it fires. The same round and rule select the Petri wave-3 scenarios
 (`docs/petri_wave3_design.md`, section 13).
 
 **Round 1, its export and how it is read.**
@@ -1092,8 +1092,8 @@ fires. The same round and rule select the Petri wave-3 scenarios
   the wording pilot (about 10 items). Their logins do not fix the bundle,
   and their ratings are excluded (below). That bundle is round 1's until the
   first login of any other account fixes it. The rule names accounts, not
-  people. If the bundle is exported again before it is
-  fixed (for example because the dummy test or the wording pilot changes
+  people. If the bundle is exported again before it is fixed (for example
+  because the dummy test or the wording pilot changes
   `data/verification/questions.json`, which is version 1.1-draft and not yet
   tested with a physician), round 1 moves to the new bundle. A dated note in
   the approval record below, and the same edit to the wave-3 plan's
@@ -1127,10 +1127,10 @@ fires. The same round and rule select the Petri wave-3 scenarios
   closes when every advice and multi-turn item has at least two complete
   ratings by included physicians and at least two numeric answers on every
   question the gate reads for it (rule 1 below), or on the closing date,
-  2026-10-31 (UTC), whichever comes first. Two complete ratings
-  alone do not close an item: the import counts a rating complete when every
-  required question has an answer, and "Can't judge" is an answer, but it adds
-  no numeric answer. With two physicians, one "Can't judge" on a question the
+  2026-10-31 (UTC), whichever comes first. Two complete ratings alone do not
+  close an item: the import counts a rating complete when every required
+  question has an answer, and "Can't judge" is an answer, but it adds no
+  numeric answer. With two physicians, one "Can't judge" on a question the
   gate reads leaves that question one answer short. At close the owner
   downloads one export, and that export is the gate's input. Ratings saved
   after it, on tracing pairs or anything else, do not count for the gate.
@@ -1140,8 +1140,12 @@ fires. The same round and rule select the Petri wave-3 scenarios
   current closing date passes; the same edit changes the wave-3 plan's
   `physician_realism_gate.round.closing_date`. It is decided on rating counts
   only (how many complete ratings, and numeric answers, the items have),
-  never on realism scores or anything computed from them. A closing date that
-  has passed is not extended: the round has closed on it.
+  never on realism scores or anything computed from them. The app's Progress
+  report (its DEPLOY.md section 15) gives each item's complete ratings and
+  shows no answers, so it can be read for this. The import's summary puts
+  each question's median beside its answer count, so it is not read before
+  the round closes. A closing date that has passed is not extended: the
+  round has closed on it.
 - **Items short of answers.** The app tops up an item only while fewer than
   `RATERS_PER_ITEM` active physicians are assigned to it, whatever their
   answers (`assignTopUp_` in the app's `src/Logic.gs`), and its admin menu has
@@ -1197,22 +1201,24 @@ hold:
    implies this; it is stated so that the rule reads the same for the wave-3
    scripts, where it also covers the course-of-events question.
 
-On a wave-3 script (`multiturn_script`) the gate reads the realism question of
-each of the three versions, for rules 1 and 2, and the course-of-events
-question (`course_plausible`), for rules 1 and 3 (section 13 of
-`docs/petri_wave3_design.md`). The course-of-events question needs at least 2
-numeric answers like the others: the flag counts numeric answers only, so
-with two physicians and one "Can't judge" there, the other physician's answer
-alone would decide the flag. Such a script is "not enough ratings".
-
-So with two physicians an item passes when, on every question the gate
+So with two physicians an item passes rule 2 when, on every question rule 2
 reads, the two answers add up to at least 6: 3 and 3, 2 and 4, and 1 and 5
 pass; 2 and 3, and 1 and 4, fail. One physician's 1 or 2 does not by itself
 fail an item: 1 and 5 pass, because the median is 3 and only one of the two
 answers is low, which is not more than half. With three physicians the middle
-answer decides, so 1, 3 and 5 passes and 2, 2 and 5 fails. An item
-failing rule 1 is reported as "not enough ratings", and one failing rule 2 or
-3 as "rated unrealistic", with its values.
+answer decides, so 1, 3 and 5 passes and 2, 2 and 5 fails. An item failing
+rule 1 is reported as "not enough ratings", and one failing rule 2 or 3 as
+"rated unrealistic", with its values.
+
+On a wave-3 script (`multiturn_script`) the gate reads the realism question of
+each of the three versions, for rules 1 and 2, and the course-of-events
+question (`course_plausible`), for rules 1 and 3 (section 13 of
+`docs/petri_wave3_design.md`). The course-of-events question has no median
+threshold: with two physicians the flag fails a script only when both
+answers are 1 or 2. It needs at least 2 numeric answers like the others,
+because the flag counts numeric answers only: with two physicians and one
+"Can't judge" there, the other physician's answer alone would decide the
+flag. Such a script is "not enough ratings".
 
 **The messages elicited are the messages rated.** For each selected item, the
 clinical and patient message sha256 that the bundle records

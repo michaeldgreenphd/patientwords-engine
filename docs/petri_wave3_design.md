@@ -701,8 +701,9 @@ edited after rating" below).
    with two physicians and one "Can't judge" on the course of events, the other
    physician's answer alone would otherwise decide it; such a scenario is "not enough
    ratings";
-2. a median of at least 3 ("Possible") on each of the three; with two answers, 2 and 3
-   give 2.5 and fail, while 2 and 4, and 1 and 5, give 3 and pass;
+2. a median of at least 3 ("Possible") on the realism question of each of the three
+   versions; with two answers, 2 and 3 give 2.5 and fail, while 2 and 4, and 1 and 5,
+   give 3 and pass. The course-of-events question has no median threshold;
 3. no flag: the import flags an item when more than half of the answers to any of its
    five-point questions are 1 or 2. On a script this adds the course-of-events question,
    so a scenario whose course most physicians rated 1 or 2 ("could not happen", "very
