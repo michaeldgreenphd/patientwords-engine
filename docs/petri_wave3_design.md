@@ -729,6 +729,13 @@ refuses a record that disagrees with the spreadsheet, and refuses unless the sum
 excluded exactly the recorded codes, so a forgotten `--exclude-rater`, or a physician of
 the round excluded, cannot reach the selection.
 
+**Which export counts.** The export the owner downloads when round 1 closes is the
+gate's only input, and ratings saved after it do not count. Its sha256 and the close
+time (the export's own `exported_utc`) are written down before the import, in A6.9's
+approval record and in the plan's `physician_realism_gate.round.closing_export`. The
+program that applies the gate refuses a summary whose `inputs.export` differs from them,
+so a summary of a later export of the same spreadsheet cannot reach the selection.
+
 **Why all three versions, not each version on its own.**
 
 - The unit of every registered test is the triple. The primary contrast needs the

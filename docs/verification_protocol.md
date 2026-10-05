@@ -178,7 +178,10 @@ stop at any time.
   bundle; the first login of any other account does. If the wording pilot changes the
   bundle, round 1 runs in a new spreadsheet, because the import cannot read
   an export holding ratings on two bundles (A6.9, "Ratings on an earlier
-  bundle stay out of the round's export").
+  bundle stay out of the round's export"). The sha256 and time of the
+  export downloaded at close are written down before the import too, and
+  the program refuses a summary of any other export, so a rating saved
+  after the close cannot count.
 - **Reference urgency for the advice preregistration.** The physicians'
   answers on the 24 new questions are candidate adjudicated reference tiers.
   The analysis takes one tier per item, so a rule for combining physicians

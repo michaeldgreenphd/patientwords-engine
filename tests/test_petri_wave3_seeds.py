@@ -1194,6 +1194,95 @@ def test_the_gate_checks_that_the_import_excluded_exactly_the_recorded_accounts(
     assert "'never created'" in rnd["excluded_raters"]
 
 
+def _closing_export_refusal(summary_export: dict, closing: dict) -> str | None:
+    """The closing-export check as the plan's round.closing_export states it, applied to the import summary's
+    inputs.export: None when the summary was built from the recorded closing export, else why the program that
+    applies the gate refuses. A reference for that program."""
+    from scripts.import_verification_ratings import ISO_UTC_RE, SHA256_RE
+
+    if closing["sha256"] is None or closing["closed_utc"] is None:
+        return "not filled"
+    if not SHA256_RE.match(closing["sha256"]) or not ISO_UTC_RE.match(closing["closed_utc"]):
+        return "not a recorded value"
+    if summary_export["sha256"] != closing["sha256"] or summary_export["exported_utc"] != closing["closed_utc"]:
+        return "another export"
+    return None
+
+
+def test_the_gate_reads_only_the_summary_of_the_recorded_closing_export(plan, tmp_path):
+    """Ratings saved after round 1 closes do not count, but the gate program compared the summary only with the bundle
+    and the exclusions, so a summary built from a later export of the same spreadsheet, holding ratings saved after
+    the close, would have passed every check (Codex review of PR #87, 2026-10-05). The closing export's sha256 and the
+    close time (its own exported_utc) are now recorded before the import, in the plan's round.closing_export and A6.9's
+    approval record, and the program requires the summary's inputs.export.sha256 and inputs.export.exported_utc to
+    equal them exactly. The import is run here on the committed synthetic export, so the reference check reads the
+    field names the import writes. This changes neither the rule nor which items pass."""
+    from scripts.import_verification_ratings import main as import_main
+
+    rnd = plan["physician_realism_gate"]["round"]
+    closing = rnd["closing_export"]
+    assert set(closing) == {"sha256", "closed_utc", "values", "check"}
+    assert all(f"inputs.export.{k}" in closing["values"] for k in ("sha256", "exported_utc"))
+    assert all(f"inputs.export.{k}" in closing["check"] for k in ("sha256", "exported_utc"))
+    assert "expected_exclusions" in closing["values"]
+    assert "closing export (closing_export)" in rnd["reader"] and "inputs.export with closing_export" in rnd["reader"]
+    if closing["sha256"] is None and closing["closed_utc"] is None:
+        assert _closing_export_refusal({"sha256": "", "exported_utc": ""}, closing) == "not filled"
+
+    def summarise(export: dict, name: str, indent: int | None = None) -> dict:
+        path = tmp_path / f"{name}.json"   # an export is refused inside the repository
+        path.write_text(json.dumps(export, indent=indent), encoding="utf-8")
+        out = tmp_path / f"out_{name}"
+        import_main(["--export", str(path), "--out-dir", str(out), "--resamples", "50"])
+        summary = load_json(next(out.glob("*.summary.json")))
+        assert summary["inputs"]["export"]["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+        return summary["inputs"]["export"]
+
+    fixture = load_json(ROOT / "tests" / "fixtures" / "verification_export_synthetic.json")
+    assert fixture["bundle_id"] == rnd["bundle_id"], "the synthetic export is over round 1's bundle"
+    at_close = summarise(fixture, "at_close")
+    later = summarise({**fixture, "exported_utc": "2026-11-02T09:00:00.000Z"}, "later")
+    same_time = summarise(fixture, "same_time", indent=1)   # other bytes under the same exported_utc
+    assert same_time["exported_utc"] == at_close["exported_utc"] and same_time["sha256"] != at_close["sha256"]
+    recorded = {"sha256": at_close["sha256"], "closed_utc": fixture["exported_utc"]}
+    cases = [
+        (at_close, recorded, None),
+        (later, recorded, "another export"),       # a later export of the same spreadsheet
+        (at_close, {**recorded, "closed_utc": later["exported_utc"]}, "another export"),
+        (later, {**recorded, "sha256": later["sha256"]}, "another export"),   # the hash alone is not enough
+        (same_time, recorded, "another export"),    # nor the time alone: the sha256 binds the bytes
+        (at_close, {**recorded, "sha256": None}, "not filled"),
+        (at_close, {**recorded, "closed_utc": None}, "not filled"),
+        (at_close, {**recorded, "sha256": recorded["sha256"].upper()}, "not a recorded value"),
+        (at_close, {**recorded, "closed_utc": "2026-10-20"}, "not a recorded value"),
+    ]
+    for summary_export, record, reason in cases:
+        assert _closing_export_refusal(summary_export, record) == reason, (summary_export["exported_utc"], record)
+
+    one_line = functools.partial(re.sub, r"\s+", " ")
+    prereg = PREREG.read_text(encoding="utf-8")
+    a69 = one_line(_section(prereg, "### A6.9 Physician realism gate", "### Approval record"))
+    spec = one_line(_section(prereg, "**Code still to write.**", "**Owner decisions"))
+    record = one_line(_section(prereg, "### Approval record", None))
+    s13 = one_line(_section(W3_DESIGN.read_text(encoding="utf-8"), "## 13. Physician realism gate", None))
+    proto = one_line(_section(PROTOCOL.read_text(encoding="utf-8"), "**Which items the paid runs use", "\n- **"))
+    inputs = _section(spec, "It reads these files and no others", "It reads files 4 and 5")
+    compares = _section(spec, "It reads files 4 and 5", "It compares items, not whole files")
+    refuses = _section(spec, "It refuses, writing nothing", "with no passing item")
+    assert "`inputs.export.sha256` and `inputs.export.exported_utc`" in inputs and "`round.closing_export`" in inputs
+    assert re.search(r"`inputs\.export\.sha256` with `round\.closing_export\.sha256`, and its "
+                     r"`inputs\.export\.exported_utc` with `round\.closing_export\.closed_utc`, exactly", compares)
+    assert "`round.closing_export` is not filled" in refuses
+    closing_line = _section(record, "- Closing export (to fill before the export is imported", "- At application")
+    assert "`physician_realism_gate.round.closing_export`" in closing_line and "exported_utc" in closing_line
+    round_bullet = _section(a69, "- Round 1 is every rating saved on that bundle", "- **Extending the closing date.**")
+    assert "`physician_realism_gate.round.closing_export`" in round_bullet and "refuses a summary of any other export" \
+        in round_bullet
+    assert "`physician_realism_gate.round.closing_export`" in s13
+    assert "refuses a summary of any other export" in proto
+    assert "its `inputs.export` sha256" not in spec, "the first draft read the export's sha256 and compared it with nothing"
+
+
 def test_the_closing_counts_are_read_from_a_report_that_shows_no_scores(plan):
     """The round closes early, or has its closing date extended, on counts only: complete ratings and numeric answers.
     The only report the first draft allowed before close, the app's Progress report, shows complete ratings and not

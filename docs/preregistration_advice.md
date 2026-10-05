@@ -1134,6 +1134,13 @@ model output until it fires. The same round and rule select the Petri wave-3 sce
   gate reads leaves that question one answer short. At close the owner
   downloads one export, and that export is the gate's input. Ratings saved
   after it, on tracing pairs or anything else, do not count for the gate.
+  Its sha256, and the time the round closed, which is the export's own
+  `exported_utc`, are written down before it is imported: in the approval
+  record and, by the same dated edit, in the wave-3 plan's
+  `physician_realism_gate.round.closing_export`. The program that applies
+  the gate refuses a summary of any other export ("Code still to write"
+  below), so a later export of the same spreadsheet, holding ratings saved
+  after the close, cannot be its input.
 - **Extending the closing date.** The owner set 2026-10-31 at approval and
   noted that it may need to be extended. An extension is recorded as a dated
   note in the approval record below, with the new closing date, before the
@@ -1249,8 +1256,10 @@ one fewer for each wave, or Wave R family, with no passing item:
 
 - the gate report, `data/verification/realism_gate_vtasks_20261004T042945Z_<export
   stamp>.json`: the rule as approved; the summary's path and sha256; the
-  bundle id and sha256; the export sha256 and the excluded physicians as the
-  summary records them; the spreadsheet round 1 ran in; for each of the 39
+  bundle id and sha256; the export's sha256 and `exported_utc` and the
+  excluded physicians as the summary records them, which the program has
+  checked against the recorded closing export and exclusions; the
+  spreadsheet round 1 ran in; for each of the 39
   advice items and the 8 scripts, the verification item id, the source file
   and id, the question set, `ratings_complete`, each question's `n` and
   `median`, `flagged`, the decision and its reason; and the kept items'
@@ -1324,7 +1333,9 @@ tests, now that this section is approved and before the first gated fire, so
 that it implements the rule as approved. It reads these files and no others:
 
 1. the committed import summary: its `inputs.bundle` (path, sha256 and bundle
-   id), its `inputs.export` sha256, the physicians it excluded
+   id), its `inputs.export.sha256` and `inputs.export.exported_utc` (the
+   sha256 of the export it read and the time that export was written), the
+   physicians it excluded
    (`exclusions.excluded_raters`), and its `items` rows for the advice and
    script items of the bundle. Of the physicians' ratings, this is all it
    reads; it never reads the export;
@@ -1332,7 +1343,8 @@ that it implements the rule as approved. It reads these files and no others:
    (`data/petri/w3_register_contrast_plan.json`): round 1's bundle path, id,
    sha256 and questions sha256, as re-pointed under "Which bundle" if they
    are, the excluded accounts recorded in `round.expected_exclusions`, the
-   rule's values, and `seed_file`;
+   closing export recorded in `round.closing_export`, the rule's values,
+   and `seed_file`;
 3. the bundle that block names;
 4. the stimuli file of each advice item: the file its bundle
    `provenance.source_path` names (today
@@ -1354,6 +1366,11 @@ It reads files 4 and 5 as they are when it runs, and compares:
   excluded, is a refusal. An account recorded as "not in the export" or
   "never created" adds no code, and the gate report records the
   spreadsheet;
+- the summary's `inputs.export.sha256` with `round.closing_export.sha256`,
+  and its `inputs.export.exported_utc` with
+  `round.closing_export.closed_utc`, exactly: a summary built from any
+  other export of the round's spreadsheet, such as a later one that holds
+  ratings saved after the close, is a refusal;
 - for each advice item that passes the rule, the sha256 of its clinical and
   its patient message in the stimuli file it reads (the item found by the
   bundle's `provenance.source_id`, the sha256 taken of the message's UTF-8
@@ -1372,10 +1389,12 @@ messages physicians rated. It refuses, writing nothing, when any of these
 files is missing or unreadable, `round.expected_exclusions` is not filled
 (a value still null, or a value that is not a rater code, "not in the
 export" or "never created"), does not agree with the spreadsheet round 1
-ran in ("Excluded physicians" above) or gives two accounts one code, a
-comparison above fails, an
-advice or script item of the bundle is missing from the summary, a passing item is
-missing from the stimuli file or seed file it reads, or a question the gate
+ran in ("Excluded physicians" above) or gives two accounts one code,
+`round.closing_export` is not filled (a value still null, a sha256 that is
+not 64 lowercase hexadecimal characters, or a time that is not an ISO-8601
+UTC time), a comparison above fails, an advice or script item of the
+bundle is missing from the summary, a passing item is missing from the
+stimuli file or seed file it reads, or a question the gate
 reads is missing from an item's `five_point`. A wave, or under decision 6's
 split a Wave R family, with no passing item is reported by name, and no
 selection file is written for it. It does not
@@ -1500,6 +1519,11 @@ their own before it.
   spreadsheet round 1 ran in: `<the pilot's, or a new one>`. In a new one,
   all three are "not in the export"; in the pilot's, each account has its
   own rater code, or "never created" if it was never created there.
+- Closing export (to fill before the export is imported, by the same dated
+  edit as the excluded physicians, which also fills the wave-3 plan's
+  `physician_realism_gate.round.closing_export` with the same values):
+  sha256 `<sha256 of the export file>`, closed `<the export's exported_utc>`
+  (UTC).
 - At application (to fill): import summary `<path>` (sha256 `<sha256>`), gate
   report `<path>` (sha256 `<sha256>`), gated stimuli files `<Wave A path,
   sha256>` and `<Wave R path, sha256>` (one Wave R file per family if
@@ -1538,3 +1562,8 @@ their own before it.
     created" for one never created there), and the gate program refuses a
     record that does not; this changes neither the rule nor which items
     pass.
+  - Closing export: its sha256 and the close time (the export's own
+    `exported_utc`) are recorded before the import, in the line above and
+    the plan's `round.closing_export`, and the gate program refuses a
+    summary whose `inputs.export` differs, so ratings saved after the close
+    cannot count; this changes neither the rule nor which items pass.
