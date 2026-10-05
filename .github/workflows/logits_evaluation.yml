@@ -18,15 +18,17 @@ name: Logits Evaluation (medlang-circuits)
 # Outputs land in trace_out/<pairs-file-stem>__<model>/. The trigger key
 # output_root (2026-10-04, circuit-trace's pilot root carried over to this lane)
 # has one other accepted value, "pilot/logits": a pairs file under pilot/ is
-# measured into pilot/logits/<pairs-file-stem>__<model>/, which no collector
-# reads, and only with it, and that pairs file must sit under pilot/runs/, the
-# one pilot directory the eval job checks out (pilot/logits never is, so no
-# cell's workspace holds an earlier pilot part), and be named for its run,
-# pilot/runs/<run_id>/.../<run_id>_<name>.json, so every pilot output folder
-# carries its run id. A pilot run measures next-token
-# behavior only (mode logits) and is a pipeline check, never a measurement: it
-# commits only its batch_summary part, and a fail-closed holdout seal check runs
-# before that commit.
+# measured into pilot/logits/<run_id>/<pairs-file-stem>__<model>/ (the run's
+# own folder; <run_id> is the directory directly under pilot/runs/), which no
+# collector reads, and only with it, and that pairs file must sit under
+# pilot/runs/, the one pilot directory the eval job checks out (pilot/logits
+# never is, so no cell's workspace holds an earlier pilot part), and be named
+# for its run, pilot/runs/<run_id>/.../<run_id>_<name>.json; a run id that
+# names one of circuit-trace's flat pilot folders from before 2026-10-05
+# (trace_pairs, pilot_v3_20261004_trace_pairs) is refused, as there. A pilot run
+# measures next-token behavior only (mode logits) and is a pipeline check, never
+# a measurement: it commits only its batch_summary part, and a fail-closed
+# holdout seal check runs before that commit.
 
 on:
   workflow_dispatch:
@@ -157,9 +159,10 @@ jobs:
           models = [m.strip() for m in p["models"].replace(",", " ").split() if m.strip()]
           if not models:
               raise SystemExit("no models to evaluate")
-          # output_root: "" keeps trace_out/<stem>__<model>; "pilot/logits" is the pilot root, which no collector reads.
-          # A pairs file under pilot/ goes with the pilot root and only with it, under that root it must sit under
-          # pilot/runs/ (the one pilot directory the eval job checks out), and a pilot run is mode logits only.
+          # output_root: "" keeps trace_out/<stem>__<model>; "pilot/logits" is the pilot root, which no collector reads,
+          # and each run measures into its own folder there, pilot/logits/<run_id>/<stem>__<model>. A pairs file under
+          # pilot/ goes with the pilot root and only with it, under that root it must sit under pilot/runs/ (the one
+          # pilot directory the eval job checks out), and a pilot run is mode logits only.
           # scripts/fire_trigger.py (logits_eval_params_problems) refuses the same before a fire is journaled; a
           # workflow_dispatch has no output_root input, so it keeps "". Every check runs before any output is written.
           root = p["output_root"]
@@ -185,17 +188,28 @@ jobs:
                   # the eval job checks out pilot/runs and never pilot/logits, so pilot pairs are read from there only
                   refused.append(f"pairs_file {pairs_path!r} is not under pilot/runs/")
               else:
-                  # named for its run, pilot/runs/<run_id>/.../<run_id>_<name>.json: OUT_DIR is cut from the file's
-                  # stem alone, so two runs' files of one name (run 2's trace/trace_pairs.json, before 2026-10-04)
-                  # would write one folder and replace each other's parts (fire_trigger.py
-                  # pilot_pairs_run_name_problem; circuit_trace_evaluation.yml applies the same test)
+                  # the run id is the directory directly under pilot/runs/, and the resolve step measures into
+                  # pilot/logits/<run_id>/<stem>__<model>, so two runs never share a folder. The file is named for its
+                  # run, pilot/runs/<run_id>/.../<run_id>_<name>.json, so the folder's name says which run it holds;
+                  # and a run id that names one of circuit-trace's flat pilot folders from before 2026-10-05 (run 2's
+                  # pilot/traces/trace_pairs/, run 3's pilot/traces/pilot_v3_20261004_trace_pairs/) is refused here
+                  # too, so a run id is usable on both pilot lanes or on neither (fire_trigger.py
+                  # pilot_pairs_run_name_problem and pilot_legacy_run_id_problem; circuit_trace_evaluation.yml applies
+                  # the same tests)
                   parts = norm_pairs.split("/")
                   run_id = parts[2] if len(parts) >= 4 else ""
                   name = posixpath.basename(pairs_path)
                   if not (run_id and name.startswith(run_id + "_") and name.endswith(".json")
                           and len(name) > len(run_id) + len("_.json")):
                       refused.append(f"pairs_file {pairs_path!r} is not named for its run "
-                                     "(pilot/runs/<run_id>/.../<run_id>_<name>.json)")
+                                     "(pilot/runs/<run_id>/.../<run_id>_<name>.json; for run 2's legacy "
+                                     "trace/trace_pairs.json, re-run pilot/analysis/trace_pairs.py --run-dir "
+                                     "pilot/runs/pilot_v2_20261002 --review-sample, whose default writes a "
+                                     "byte-identical pilot/runs/pilot_v2_20261002/trace/"
+                                     "pilot_v2_20261002_trace_pairs.json, or copy the file there)")
+                  elif run_id in ("trace_pairs", "pilot_v3_20261004_trace_pairs"):
+                      refused.append(f"run id {run_id!r} is the name of the pilot output folder "
+                                     f"pilot/traces/{run_id}/ written before 2026-10-05")
               if "," in pairs_path:  # the seal step's --extra list splits on commas
                   refused.append(f"pairs_file {pairs_path!r} contains a comma")
               if p["mode"] != "logits":  # depth and verify write other files, under trace_out/ names
@@ -294,7 +308,18 @@ jobs:
             if [ "$MODE" != "logits" ]; then
               echo "output_root pilot/logits measures mode logits only, not $MODE"; exit 1
             fi
-            echo "OUT_DIR=pilot/logits/${STEM}__${MODEL}" >> "$GITHUB_ENV"
+            # in the run's own folder: the run id is the directory directly under pilot/runs/ of the normalised path,
+            # read as the params job reads it (fire_trigger.py pilot_run_id), so two runs whose pairs files share a
+            # stem (runs a and a_b each owning a_b_pairs.json) never write one folder
+            NORM=$(python -c 'import posixpath, sys; print(posixpath.normpath(sys.argv[1]))' "$PAIRS_FILE")
+            RUN_ID=""
+            case "$NORM" in
+              pilot/runs/*/*) RUN_ID=${NORM#pilot/runs/}; RUN_ID=${RUN_ID%%/*} ;;
+            esac
+            if [ -z "$RUN_ID" ]; then
+              echo "pilot pairs file $PAIRS_FILE is not under pilot/runs/<run_id>/"; exit 1
+            fi
+            echo "OUT_DIR=pilot/logits/${RUN_ID}/${STEM}__${MODEL}" >> "$GITHUB_ENV"
             echo "SUMMARY_FILE=batch_summary.$PART.json" >> "$GITHUB_ENV"
             exit 0
           elif [ -n "$OUTPUT_ROOT" ]; then

@@ -230,6 +230,10 @@ def test_the_default_output_name_is_the_one_both_pilot_lanes_accept(trigger, roo
     run_dir = Path("pilot") / "runs" / "pilot_v9_20990101"
     default = tp.default_out(run_dir).as_posix()
     assert default == "pilot/runs/pilot_v9_20990101/trace/pilot_v9_20990101_trace_pairs.json"
+    # the lanes read the same run id from the path, and write pilot/traces|logits/<run_id>/<stem>... (2026-10-05)
+    assert ft.pilot_run_id(default) == run_dir.name
+    # the run-named file the lanes' refusal of run 2's legacy name tells a session to fire is this default for run 2
+    assert ft.PILOT_RUN2_RUN_NAMED_PAIRS == tp.default_out(Path("pilot") / "runs" / "pilot_v2_20261002").as_posix()
     lane = {"models": "qwen3-1.7b"} if trigger == "logits-eval" else {"mode": "2panel"}
     ok = {**lane, "commit_outputs": "false", "output_root": root, "pairs_file": default}
     assert ft.validate_params(trigger, ok) is None

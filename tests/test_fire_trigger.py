@@ -3672,10 +3672,10 @@ def test_publish_keeps_the_park_ceiling_waiver_when_the_park_push_was_rejected(t
 
 
 # --- circuit-trace output_root: the pilot trace root (2026-10-01) ------------------------------------------------
-# A pairs file under pilot/ traces only into pilot/traces/<stem>, never trace_out/, and only from pilot/runs/ (the one
-# pilot directory the workflow checks out), named for its run (pilot/runs/<run_id>/.../<run_id>_<name>.json, so the
-# folder carries the run id); a pilot trace is $0 and plain; a pairs_file with a backslash is refused under every
-# root.
+# A pairs file under pilot/ traces only into pilot/traces/<run_id>/<stem> (its run's own folder, 2026-10-05), never
+# trace_out/, and only from pilot/runs/ (the one pilot directory the workflow checks out), named for its run
+# (pilot/runs/<run_id>/.../<run_id>_<name>.json), with a run id that names no flat pilot folder written before
+# 2026-10-05; a pilot trace is $0 and plain; a pairs_file with a backslash is refused under every root.
 # The fire path refuses a breach with exit 3 before anything is written or journaled; the agreement with the
 # workflow's params job, case for case, is tests/test_circuit_trace_pilot_root.py.
 
@@ -3721,6 +3721,12 @@ def _assert_refused_unwritten(repo):
      "is not named for its run"),
     ({"mode": "2panel", "pairs_file": "pilot/runs/pairs.json", "output_root": "pilot/traces"},
      "is not named for its run"),
+    # a run id that names a flat pilot folder written before 2026-10-05 would trace into it
+    ({"mode": "2panel", "pairs_file": "pilot/runs/trace_pairs/trace_pairs_x.json", "output_root": "pilot/traces"},
+     "pilot output folder pilot/traces/trace_pairs/ written before 2026-10-05"),
+    ({"mode": "2panel", "pairs_file": "pilot/runs/pilot_v3_20261004_trace_pairs/pilot_v3_20261004_trace_pairs_x.json",
+      "output_root": "pilot/traces"},
+     "pilot output folder pilot/traces/pilot_v3_20261004_trace_pairs/ written before 2026-10-05"),
 ])
 def test_a_pilot_trace_that_breaks_the_root_rules_is_refused_with_exit_3(repo, capsys, params, needle):
     _pilot_pairs(repo)
@@ -3746,8 +3752,9 @@ def test_a_plain_pilot_trace_fires_free_and_carries_its_root(repo):
 
 # --- logits-eval output_root: the pilot logits root (2026-10-04) -------------------------------------------------
 # circuit-trace's pilot root carried over to the CPU next-token lane: a pairs file under pilot/ is measured only into
-# pilot/logits/<stem>__<model>, never trace_out/, and only from pilot/runs/, named for its run (as circuit-trace's
-# pilot pairs are); a pilot run is mode logits only; a pairs_file with a backslash, an absolute path or one that leaves
+# pilot/logits/<run_id>/<stem>__<model>, never trace_out/, and only from pilot/runs/, named for its run and with a run
+# id that names no flat pilot folder written before 2026-10-05 (as circuit-trace's pilot pairs are); a pilot run is
+# mode logits only; a pairs_file with a backslash, an absolute path or one that leaves
 # the checkout is refused under every root. The fire path refuses a breach with exit 3 before anything is written or
 # journaled; the agreement with the workflow's params job, case for case, is tests/test_logits_pilot_root.py.
 
@@ -3776,6 +3783,12 @@ def _assert_logits_refused_unwritten(repo):
       "output_root": "pilot/logits"}, "is not named for its run"),
     ({"models": "qwen3-1.7b", "pairs_file": "pilot/runs/run_a/run_b_pairs.json", "output_root": "pilot/logits"},
      "is not named for its run"),
+    # the same legacy run ids circuit-trace refuses, so a run id is usable on both pilot lanes or on neither
+    ({"models": "qwen3-1.7b", "pairs_file": "pilot/runs/trace_pairs/trace_pairs_x.json", "output_root": "pilot/logits"},
+     "pilot output folder pilot/traces/trace_pairs/ written before 2026-10-05"),
+    ({"models": "qwen3-1.7b",
+      "pairs_file": "pilot/runs/pilot_v3_20261004_trace_pairs/pilot_v3_20261004_trace_pairs_x.json",
+      "output_root": "pilot/logits"}, "pilot output folder pilot/traces/pilot_v3_20261004_trace_pairs/ written before"),
 ])
 def test_a_pilot_logits_fire_that_breaks_the_root_rules_is_refused_with_exit_3(repo, capsys, params, needle):
     assert fire(repo, trigger="logits-eval", params=params) == 3
