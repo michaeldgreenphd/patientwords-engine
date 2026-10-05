@@ -20,6 +20,14 @@ its place in the order. Approving Amendment 6 does not authorise any fire.
 Each fire runs only after the owner types its authorisation sentence with the
 dollar figure in it.
 
+These figures are for all 24 new questions and all 15 rerun items. Amendment
+6's section A6.9, the physician realism gate, which the owner approved on its
+own on 2026-10-05 (the rest of Amendment 6 is still proposed), has the waves
+elicit only the items physicians rate realistic. Section 8 gives the counts
+and costs as a function of the items kept; with about 75% kept the two waves
+cost $12.97 at measured lengths and $19.40 in the high case, and with about
+50% kept $9.06 and $13.53.
+
 ## 0. Conditions that must all hold before the first fire
 
 1. The pull request carrying this plan is merged, so the new-set stimuli
@@ -53,6 +61,13 @@ dollar figure in it.
    treat the second as already done.
 5. `python scripts/fire_trigger.py status` shows no active `advice-eval`
    entry, and the trigger is parked.
+6. Under the physician realism gate (Amendment 6, A6.9, approved
+   2026-10-05): round 1 of the physician verification study has closed, the
+   import summary and the gate's files (its report and its selection files,
+   one per wave, or per Wave R family under decision 6's first option; A6.9)
+   are committed, the gated stimuli files are built, and every full fire
+   below names its gated file with the counts and `max_spend` of section 8.
+   The probes do not wait for this.
 
 Fires are sent by the operator with
 `python scripts/fire_trigger.py fire --trigger advice-eval --params-file <file holding the JSON below> --note "<fire id> of docs/advice_fire_plan_20261002.md"`,
@@ -518,7 +533,8 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
 
 ## 7. Decisions for the owner
 
-1. Approve, change or reject Amendment 6 (it is proposed, not in force).
+1. Approve, change or reject Amendment 6 (it is proposed, not in force;
+   only its section A6.9 has been approved, on 2026-10-05: decision 8).
 2. Each fire, by its authorisation sentence and dollar figure.
 3. Moonshot arm: `kimi-k3` ($2.70/$13.50, costed here) or the cheaper
    `kimi-k2.6` ($0.434/$1.83). k2.6 would cut about $3.57 from the typical
@@ -543,3 +559,161 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
    that the Wave A commands here and Amendment 6 (A6.3) would then name, or
    fire it as built and give the exporter a way to declare a family at export
    time before the set is published.
+8. The physician realism gate (Amendment 6, A6.9, added 2026-10-04):
+   decided 2026-10-05. The owner approved it on its own, with its decisions
+   (threshold, minimum ratings, failing items dropped, timing and closing
+   date, scope) recorded in A6.9 and its approval record. It changes the
+   items, calls, cost and `max_spend` of every full fire (section 8), and
+   Wave A and Wave R wait for round 1 of the physician verification study to
+   close.
+
+## 8. Under the physician realism gate (A6.9, approved 2026-10-05)
+
+Amendment 6, A6.9, approved on its own on 2026-10-05, has Wave A and Wave R
+elicit only the items that physicians rated realistic in round 1 of the
+physician verification study. This section therefore replaces the stimuli
+files, item counts, calls, costs and `max_spend` of sections 1 to 3, and
+sections 0, 4, 6 and 7 change as listed under "Other sections" at the end of
+this section. Nothing else in this plan changes. Nothing here has been fired.
+
+**Stimuli files.** The full fires name the gated stimuli files that
+`build-stimuli --source selection` writes from the gate's selection files
+(A6.9: one for Wave A, and one for Wave R, or one per family under decision
+6's first option), in place of `stimuli_20261002T080026Z.json` (Wave A) and
+`stimuli_20261002T081803Z.json` (Wave R). Below, n_A is the number of new
+questions kept (of 24) and n_R the number of rerun items kept (of 15). The
+probes are unchanged.
+
+**Per item.** Each fire's calls and cost are the per-item figure times the
+items in the fire. The figures are section 2's per-response costs times 2 arms
+x K=3 x the fire's models, and they reproduce section 1 at n_A = 24 and
+n_R = 15. The metered high per item is section 3's metered high for the full
+fire divided by its items; it sets `max_spend`.
+
+| Fire | Calls per item | Typical $ per item | High $ per item | Metered high $ per item | Worst-case call |
+|---|---|---|---|---|---|
+| A1 | 12 | 0.04302 | 0.05286 | 0.05288 (1.269 / 24) | $0.0110 |
+| A2 | 12 | 0.11592 | 0.15162 | 0.16075 (3.858 / 24) | $0.0347 |
+| A3 (each chunk) | 18 | 0.15594 | 0.29094 | 0.30838 (2.467 / 8) | $0.0598 |
+| A4 judge | 42 judgments | 0.04704 | 0.06720 | | |
+| R1 | 18 | 0.09534 | 0.11760 | 0.11760 (1.764 / 15) | $0.0166 |
+| R2 (each chunk) | 42 | 0.24072 | 0.31602 | 0.33950 (2.716 / 8) | $0.0347 |
+| R3 (each chunk) | 18 | 0.15594 | 0.29094 | 0.30838 (2.467 / 8) | $0.0598 |
+| R4 judge | 78 judgments | 0.08736 | 0.10752 | | |
+
+(A4 per item: 42 x 0.00112 typical; 24 x 0.00112 + 18 x 0.00224 high. R4: 78
+x 0.00112 typical; 60 x 0.00112 + 18 x 0.00224 high.) A fire's `max_spend` is
+its items x the metered high per item, plus one worst-case call, rounded up to
+$0.05, as in section 2. A judge fire's `judge_max_spend` is its high case plus
+10%, rounded up to $0.05.
+
+**Chunks.** A3, R2 and R3 keep at most eight items per fire, for the runtime
+reason of section 2. A3a, A3b and A3c take items 1-8, 9-16 and 17-24 of the
+gated file, and a chunk with no items is not fired: there is no A3c when
+n_A is 16 or fewer, and no A3b when it is 8 or fewer. R2b and R3b exist only
+when n_R is above 8.
+
+**Totals at three sizes.** 75% of 15 is 11.25 and 50% is 7.5; the table uses
+11 and 8. Amounts are rounded to the cent, so parts may differ from a total by
+$0.01.
+
+| | All items | About 75% kept | About 50% kept |
+|---|---|---|---|
+| Wave A items (n_A) | 24 | 18 | 12 |
+| Wave A calls, judgments | 1008, 1008 | 756, 756 | 504, 504 |
+| Wave A typical (Anthropic + OpenRouter) | $8.74 ($2.17 + $6.57) | $6.57 ($1.63 + $4.94) | $4.39 ($1.09 + $3.31) |
+| Wave A high | $13.58 | $10.21 | $6.83 |
+| Wave R items (n_R) | 15 | 11 | 8 |
+| Wave R calls, judgments | 1170, 1170 | 858, 858 | 624, 624 |
+| Wave R typical (Anthropic + OpenRouter) | $8.72 ($2.75 + $5.97) | $6.40 ($2.02 + $4.38) | $4.66 ($1.47 + $3.19) |
+| Wave R high | $12.52 | $9.19 | $6.69 |
+| **Both waves, typical** | **$17.46** | **$12.97** | **$9.06** |
+| **Both waves, high** | **$26.10** | **$19.40** | **$13.53** |
+
+The probes are in every column at their full cost ($0.08 typical and $0.12
+high for the five).
+
+**`max_spend` at those sizes** (items in the fire in brackets):
+
+| Fire | All items | About 75% kept | About 50% kept |
+|---|---|---|---|
+| A1 | $1.30 (24) | $1.00 (18) | $0.65 (12) |
+| A2 | $3.90 (24) | $2.95 (18) | $2.00 (12) |
+| A3a, A3b, A3c | $2.55, $2.55, $2.55 (8, 8, 8) | $2.55, $2.55, $0.70 (8, 8, 2) | $2.55, $1.30 (8, 4); no A3c |
+| A4 `judge_max_spend` | $1.80 | $1.35 | $0.90 |
+| R1 | $1.80 (15) | $1.35 (11) | $1.00 (8) |
+| R2a, R2b | $2.80, $2.45 (8, 7) | $2.80, $1.10 (8, 3) | $2.80 (8); no R2b |
+| R3a, R3b | $2.55, $2.25 (8, 7) | $2.55, $1.00 (8, 3) | $2.55 (8); no R3b |
+| R4 `judge_max_spend` | $1.80 | $1.35 | $0.95 |
+
+**Days and ceilings.** The fires keep the order and days of section 4. Each
+gated fire commits at most what the same fire commits with all items (fewer
+items at the same per-item rates), and a chunk with no items is not fired, so
+section 4's worst cases are upper bounds and every day stays under its
+ceiling. This holds with one gated file per wave. Under decision 6's first
+option (one rerun file per family) each R fire runs once per file, and each
+of those fires adds its own worst-case call and rounding to its `max_spend`,
+so section 4's Wave R days are recomputed for the split fires, with or
+without the gate.
+
+**Plan checks.** Each `elicit --dry-run` of section 3 is run against the
+gated file and must print the per-item calls times the items in the fire: 12
+x n_A for A1 and for A2, 18 x the chunk's items for each A3 chunk, 18 x n_R for
+R1 (in place of condition 4's 270), 42 x and 18 x the chunk's items for each
+R2 and R3 chunk. The judge checks must print `judging 42 x n_A response(s)`
+for A4 and `judging 78 x n_R response(s)` for R4.
+
+**Timing.** Wave A and Wave R wait for round 1 to close and for the gate's
+files to be committed. The probes do not wait.
+
+**Other sections.** Under the gate, these parts of the plan change as well:
+
+- **Section 0.** Condition 4's plan check of R1 prints 18 x n_R calls, not
+  270 (see "Plan checks" above). Condition 6 applies.
+- **Section 3.** Every full fire's `stimuli_file`, `offset`, `limit`,
+  `max_spend` and (judge fires) `judge_max_spend`, every plan check's
+  `--stimuli`, `--offset`, `--limit`, `--max-spend` and expected output, and
+  the dollar figures in every authorisation sentence take the gated file and
+  this section's values. Each fire's cost and runtime scale with its items. The
+  archives are named after the stimuli file, so the judge checks read
+  `data/advice/responses_<gated stem>.jsonl`, where `<gated stem>` is the
+  gated file's name without `.json`.
+- **Section 4.** With one gated file per wave, the days and their order stand
+  and the worst cases are upper bounds (see "Days and ceilings" above).
+- **Section 6.**
+  - Wave A's reference scoring reads the gated file and its judgments:
+    `analyze --judgments data/advice/judgments_<gated Wave A stem>.jsonl
+    --stimuli <gated Wave A file>`, with `--rubric` and `--out` as in
+    section 6. Its
+    `not_adjudicated_ids` holds the n_A kept ids, not all 24.
+  - The replication readout's cell count and null expectation, 36 of 87 cells
+    against 17.3 and 23 of 59 against 9.9 in the sensitivity reading, are
+    recomputed over the kept items as A6.9 says, and the readout reports the
+    recomputed figures that the approval record holds. If item #1 is dropped,
+    prediction 2 is reported as not tested, for that reason.
+  - The exporter limits apply to the gated files unchanged. A file built by
+    `--source selection` takes the families of every file it copied from,
+    and of the files those copied from in turn (`_families_of_source` in
+    `scripts/export_advice_scenarios.py`), whichever items it keeps. So the
+    gated Wave A file has the family the Wave A file it is selected from
+    declares, and is refused if that file declares none;
+    `stimuli_20261002T080026Z.json` declares none today (decision 7). A gated Wave R
+    file selected from the rerun file as built inherits all five files the
+    rerun file copied from, both families, so the exporter refuses it even if
+    every item it keeps is of one family, as it refuses the rerun file
+    (decision 6). Under decision 6's first option, each gated Wave R file is
+    selected from one per-family rerun file and has that one family (A6.9).
+    The gated Wave R file's items keep their ids, so it is never exported in
+    the same call as the rerun file or the files that one was selected from.
+- **Section 7.**
+  - Decision 6: under its first option, one file per family, the Wave R
+    selection is split by family into two selection files,
+    `data/advice/realism_gate_waveR_sentence_completions_<export stamp>.json`
+    and `data/advice/realism_gate_waveR_natural_questions_<export stamp>.json`
+    (A6.9), each built into its own gated file, and each R fire runs once per gated file with the chunks
+    of this section. The counts are the kept items' by family, which the gate
+    report gives, not 11 sentence-completion and 4 natural-question items.
+  - Decision 7: the gate's Wave A selection names the Wave A file that exists
+    when the gate is applied (A6.9). If decision 7's first option rebuilds
+    that file under a new stamp after the gate is applied, the Wave A
+    selection is written again for the new file before Wave A fires.

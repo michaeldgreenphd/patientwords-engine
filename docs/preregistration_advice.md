@@ -717,7 +717,10 @@ names this amendment). At approval the record at the end of this section is
 filled and the words "PROPOSED" and "NOT IN FORCE" are removed from its
 heading. Approval of the amendment does not authorise spending: every fire
 still needs the owner's explicit dollar authorisation, line by line, from
-`docs/advice_fire_plan_20261002.md`.
+`docs/advice_fire_plan_20261002.md`. One section has been approved on its
+own: A6.9, the physician realism gate, on 2026-10-05 (its approval record is
+at the end of this amendment). A6.1 to A6.8 are still proposed and not in
+force.
 
 **Why.** No advice model has been elicited since 2026-08-27, and every vendor
 in the registry has released newer models since the July arms were chosen.
@@ -925,7 +928,9 @@ a new file whose items keep the same ids, and that file is what `analyze
 --stimuli` reads (it matches tiers to judgments by item id); the archived
 stimuli file is not rewritten. The set is analysed on its own,
 not pooled with the cloze or earlier natural-question families. Arms:
-clinical and patient; K=3; temperature 1.0; no translated arm.
+clinical and patient; K=3; temperature 1.0; no translated arm. Under the
+physician realism gate (A6.9, approved 2026-10-05), only the items that pass
+it are elicited.
 
 ### A6.4 Rerun of earlier stimuli: a post-hoc replication
 
@@ -958,7 +963,9 @@ report):
 
 Any further original arm that cannot be re-elicited (for example an id that
 the R0a probe finds retired) leaves both the cell count and both baselines,
-and the reduced numbers are recorded here before the readout.
+and the reduced numbers are recorded here before the readout. Under the
+physician realism gate (A6.9, approved 2026-10-05), the baselines are also
+recomputed over the items it keeps, by the rule stated there.
 
 This selection was made after seeing the codings. Only the first item
 (`stimuli_20260721T235403Z` / `pairs_20260707T154345Z#17`, downgraded by 7 of
@@ -1042,10 +1049,723 @@ lengths ($4.9 Anthropic, $12.5 OpenRouter) and $26.1 if responses run to the
 90th-percentile length and the reasoning arms write long answers. This
 replaces the frozen design's "$5 total" for these two waves only. Unchanged:
 the endpoints, K=3, temperature 1.0, the analysis seed 7, Amendment 2's
-quarantine, and the daily ceilings.
+quarantine, and the daily ceilings. Under A6.9 (approved 2026-10-05), both
+waves cost less in proportion to the items kept (fire plan, section 8).
 
-**Approval record (to fill).** Approved by: `<owner>`. Date (UTC): `<date>`.
+### A6.9 Physician realism gate (proposed 2026-10-04, approved 2026-10-05)
+
+**Status: APPROVED 2026-10-05. Only this section is approved: the rest of
+Amendment 6 (A6.1 to A6.8) is still PROPOSED and not in force.** An agent
+session drafted this section on 2026-10-04 for the owner's review, and the
+owner approved it on 2026-10-05 with the choices listed under "Owner
+decisions" below; the approval record at the end of this amendment quotes the
+owner's words. This section was approved on its own. Its approval does not
+approve Wave A or Wave R, which A6.3 and A6.4 still only propose, and it
+authorises no fire and no spending. It fixes how those waves, if they are
+approved, and Petri wave 3 select their items. To be a rule fixed in advance
+it had to be approved before any physician other than the owner's test
+account was given a login for the round named below. It was approved before
+any login at all: the verification app was not yet deployed. So the rule
+existed before any rating it applies to, and it is a pre-specified rule, not
+a deviation.
+
+**What it does.** Wave A elicits only the new questions, and Wave R only the
+rerun items, that physicians rated realistic in round 1 of the physician
+verification study (`docs/verification_protocol.md`). Items that fail are not
+elicited in these waves. The rule reads only the physicians' realism and
+plausibility answers. It does not read their urgency answers, the agreement
+coefficients, their notes or any model output; none of these waves has any
+model output until it fires. The same rule selects the Petri wave-3 scenarios, from
+round 1 and, if fewer than six pass, later rounds ("Rounds" below;
+`docs/petri_wave3_design.md`, section 13).
+
+**Round 1, its export and how it is read.**
+
+- Bundle: `data/verification/tasks_20261004T042945Z.json` (bundle id
+  `vtasks_20261004T042945Z`, sha256
+  `29817d70e3414834b35c0f316ab3e1953a59ddab229e9ceb9de2760b9265650a`), with
+  the questions of `data/verification/questions.json` (sha256
+  `d2ce0e262aee7dba000ef927cc84ddf59ce95f5c418f81d24cb667c0c67445fb`). It
+  holds the 24 new questions, the 15 rerun items and the 8 wave-3 scripts.
+- **Which bundle.** Three accounts rate before round 1 and are not part of
+  it: the owner's test account (the app's dummy test, its DEPLOY.md step 12),
+  the owner's own pilot account, and the account of the physician who rates
+  the wording pilot (about 10 items). Their logins do not fix the bundle,
+  and their ratings are excluded (below). That bundle is round 1's until the
+  first login of any other account fixes it. The rule names accounts, not
+  people. If the bundle is exported again before it is fixed (for example
+  because the dummy test or the wording pilot changes
+  `data/verification/questions.json`, which is version 1.1-draft and not yet
+  tested with a physician), round 1 moves to the new bundle. A dated note in
+  the approval record below, and the same edit to the wave-3 plan's
+  `physician_realism_gate.rounds[0]`, name the new bundle's id, sha256 and
+  questions sha256; the rule is otherwise unchanged. Once the bundle is
+  fixed, a new bundle starts a later round.
+- **Ratings on an earlier bundle stay out of the round's export.** The
+  round's export must hold ratings on one bundle only. The import refuses an
+  export with events on two bundles (`event_bundle_mismatch`), and checks
+  this before it excludes any physician, so excluding the three accounts
+  does not admit their ratings on another bundle. The app does not drop
+  ratings either. Its Ratings tab is never edited, so every rating saved in
+  a spreadsheet is in every export from it. Its bundle switch (DEPLOY.md
+  section 19) points the same spreadsheet at the new bundle, so the earlier
+  bundle's ratings stay in it. So:
+  - If round 1 moves to a new bundle after anything was rated on the earlier
+    one, round 1 runs in a new spreadsheet, set up with the new bundle by
+    repeating steps 2 to 11 of the app's DEPLOY.md (the steps its section
+    18 D gives for setting up a new spreadsheet). Its export holds only
+    ratings saved there, on the new bundle. It has its own web app URL and
+    its own rater ids, which start again at `md01`. Physicians are given
+    logins there only. The pilot's spreadsheet is closed as DEPLOY.md
+    section 15 says for the end of a study (a last backup and export,
+    `STUDY_OPEN` set to `false`, and its backup trigger deleted). Its export
+    is the pilot's record, never the gate's input.
+  - If the bundle does not change, round 1 may run in the same spreadsheet.
+    The pilot accounts are removed there (Remove physician, DEPLOY.md
+    section 15) before the round's Assign items, so that they are given no
+    round-1 items, and they are excluded at import.
+- Round 1 is every rating saved on that bundle until the round closes. It
+  closes when every advice and multi-turn item has at least two complete
+  ratings by included physicians and at least two numeric answers on every
+  question the gate reads for it (rule 1 below), or on the closing date,
+  2026-10-31 (UTC), whichever comes first. The round ends at the end of its
+  closing date in force in UTC, 23:59:59Z (a fraction of that last second
+  still counts: the close time's UTC date is the closing date or earlier).
+  For 2026-10-31 that is 18:59:59 CDT, the owner's US Central time, because
+  daylight time is still in force that day (it ends on 2026-11-01). The
+  closing date in force is 2026-10-31, or the date set by the last recorded
+  extension (below). An early close, once every item has both counts, may
+  be at any time before then. The program that applies the gate checks
+  this: a closing export dated (in UTC) before the closing date in force
+  is accepted only if its summary shows every advice and multi-turn item at
+  both counts; with any item short, the round had not closed, and it
+  refuses. An export dated on the closing date in force is not checked for
+  these counts, and an item still short then is "not enough ratings". Two
+  complete ratings alone do not
+  close an item: the import counts a rating complete when every required
+  question has an answer, and "Can't judge" is an answer, but it adds no
+  numeric answer. With two physicians, one "Can't judge" on a question the
+  gate reads leaves that question one answer short. At close the owner
+  downloads one export, and that export is the gate's input. Ratings saved
+  after it, on tracing pairs or anything else, do not count for the gate.
+  Its sha256, and the time the round closed, which is the export's own
+  `exported_utc`, are written down before it is imported: in the approval
+  record and, by the same dated edit, in the wave-3 plan's
+  `physician_realism_gate.rounds[0].closing_export`. The program that applies
+  the gate refuses a summary of any other export ("Code still to write"
+  below), so a later export of the same spreadsheet, holding ratings saved
+  after the close, cannot be its input. It also refuses a closing export
+  whose close time falls after the end of the closing date in force, so an
+  export downloaded after the deadline cannot be the input either, even when
+  its sha256 and time are the ones recorded.
+- **Extending the closing date.** The owner set 2026-10-31 at approval and
+  noted that it may need to be extended. An extension is recorded as a dated
+  note in the approval record below, with the new closing date, before the
+  current closing date passes; the same edit appends it to the wave-3
+  plan's `physician_realism_gate.rounds[0].closing_date_extensions`, as the
+  date it was recorded and the new closing date, and `closing_date` keeps
+  the registered 2026-10-31. The program that applies the gate refuses an
+  extension recorded after the closing date it replaces, or one that sets
+  no later date. It is decided on rating counts
+  only (how many complete ratings, and numeric answers, the items have),
+  never on realism scores or anything computed from them. Before the round
+  closes, these counts are read from the counts report ("Code still to
+  write" below), which gives each item's complete ratings and numeric
+  answers and nothing else; whether the round has closed early on its counts
+  is read from it too. The app's Progress report (its DEPLOY.md section 15)
+  gives each item's complete ratings and shows no answers, so it may also be
+  read, but it cannot show an item that has two complete ratings and is
+  still short of numeric answers. The import's summary puts each question's
+  median beside its answer count, so it is not read before the round
+  closes. A closing date that has passed is not extended: the round has
+  closed on it.
+- **Items short of answers.** The app tops up an item only while fewer than
+  `RATERS_PER_ITEM` active physicians are assigned to it, whatever their
+  answers (`assignTopUp_` in the app's `src/Logic.gs`), and its admin menu has
+  no command that assigns a physician to one item. So a "Can't judge" does not
+  by itself bring the item another physician; raising `RATERS_PER_ITEM` and
+  running Assign items again tops up every item. An item still short of
+  either count when the round closes on its date does not pass. It is
+  reported as "not enough ratings", with its counts and whether ratings or
+  numeric answers were short. A wave-3 script short in round 1 may be rated
+  again, unedited, in a later round, which then decides it ("Rounds" below;
+  the owner's decision of 2026-10-05). An advice item may not: Wave A and
+  Wave R are selected from round 1 alone.
+- Excluded physicians: the owner's test account, the owner's own pilot
+  account and the wording-pilot physician's account, by the rater codes they
+  hold in the round's export, named in writing before the export is
+  imported: in the approval record and, by the same dated edit, in the
+  wave-3 plan's `physician_realism_gate.rounds[0].expected_exclusions`, with the
+  spreadsheet round 1 ran in. The record agrees with that spreadsheet. If
+  round 1 ran in a new spreadsheet, none of the three accounts is in its
+  export: each is recorded as "not in the export" and none is passed to the
+  import, which refuses `--exclude-rater` for a rater the export does not
+  hold (`unknown_excluded_rater`). If it ran in the pilot's spreadsheet,
+  each account created there has its own rater code; an account never
+  created there (for example the owner's own pilot account, if the owner
+  rates no pilot) is recorded as "never created", not as "not in the
+  export". The program that applies the gate refuses a record that does not
+  agree with the spreadsheet, and compares the summary's excluded raters
+  with the recorded codes, refusing on any difference ("Code still to
+  write" below). No physician is excluded after their ratings have been
+  seen.
+- The export is read once by `scripts/import_verification_ratings.py`
+  (version 1.0.0, or a later version that computes the per-item fields below
+  the same way), with `--exclude-rater` for each excluded physician. Its
+  summary, `data/verification/ratings_vtasks_20261004T042945Z_<export
+  stamp>.summary.json`, is committed. Of the ratings, the gate reads that
+  summary and nothing else. To check that what runs is what was rated, it
+  also reads the bundle, the stimuli files and the wave-3 seed file ("Code
+  still to write" below lists every file it reads and what it compares). The
+  import's seed and resample count do not affect the fields the gate reads.
+
+**The rule.** For each advice item of the bundle, the gate reads the
+summary's row for it in `items` (matched by `item_id`). Which questions it
+reads depends on the item's question set:
+
+| Question set | Items | Questions the gate reads (keys in the summary) |
+|---|---|---|
+| `advice_new` | the 24 new questions (Wave A) | `realism_patient`, `realism_clinical` |
+| `advice_rerun` | the 6 rerun items that are complete sentences (Wave R) | `realism_patient`, `realism_clinical` |
+| `advice_rerun_truncated` | the 9 rerun items that stop mid-sentence (Wave R) | `situation_plausible` |
+
+The 9 cut-off items are asked whether the situation is plausible, because
+their wording is unnatural by design. An item passes when all three of these
+hold:
+
+1. **Enough ratings.** `ratings_complete` is at least 2, and for each question
+   the gate reads, `five_point.<key>.n` is at least 2. `n` counts the numeric
+   answers in complete ratings; "Can't judge" is not counted.
+2. **Rated realistic.** For each question the gate reads,
+   `five_point.<key>.median` is at least 3 ("Possible" on both the realism
+   and the plausibility scale). With an even number of answers the median is
+   the mean of the two middle answers: 2 and 3 give 2.5, which fails; 2 and 4
+   give 3, which passes.
+3. **Not flagged.** `flagged` is false, meaning no five-point question of the
+   item has more than half of its answers at 1 or 2. On these three question
+   sets every five-point question is one the gate reads, so rule 2 already
+   implies this; it is stated so that the rule reads the same for the wave-3
+   scripts, where it also covers the course-of-events question.
+
+So with two physicians an item passes rule 2 when, on every question rule 2
+reads, the two answers add up to at least 6: 3 and 3, 2 and 4, and 1 and 5
+pass; 2 and 3, and 1 and 4, fail. One physician's 1 or 2 does not by itself
+fail an item: 1 and 5 pass, because the median is 3 and only one of the two
+answers is low, which is not more than half. With three physicians the middle
+answer decides, so 1, 3 and 5 passes and 2, 2 and 5 fails. An item failing
+rule 1 is reported as "not enough ratings", and one failing rule 2 or 3 as
+"rated unrealistic", with its values.
+
+On a wave-3 script (`multiturn_script`) the gate reads the realism question of
+each of the three versions, for rules 1 and 2, and the course-of-events
+question (`course_plausible`), for rules 1 and 3 (section 13 of
+`docs/petri_wave3_design.md`). The course-of-events question has no median
+threshold: with two physicians the flag fails a script only when both
+answers are 1 or 2. It needs at least 2 numeric answers like the others,
+because the flag counts numeric answers only: with two physicians and one
+"Can't judge" there, the other physician's answer alone would decide the
+flag. Such a script is "not enough ratings".
+
+**The messages elicited are the messages rated.** For each selected item, the
+clinical and patient message sha256 that the bundle records
+(`provenance.clinical_sha256`, `provenance.patient_sha256`) must equal those
+of the stimuli item it selects, computed from the stimuli file when the gate
+is applied, or the gate refuses. On 2026-10-04 all 39 advice items of the
+bundle match their stimuli files.
+
+**How the selection is recorded.** The gate report and one selection file
+for each wave with a passing item, written together before any gated fire:
+three files, or four if fire-plan decision 6 splits Wave R by family, and
+one fewer for each wave, or Wave R family, with no passing item:
+
+- the gate report, `data/verification/realism_gate_vtasks_20261004T042945Z_<export
+  stamp>.json`: the rule as approved; for each round, its summary's path
+  and sha256, its bundle id and sha256, and the export's sha256 and
+  `exported_utc` and the excluded physicians as its summary records them,
+  which the program has checked against the recorded closing export and
+  exclusions; the spreadsheet round 1 ran in; for each of the 39 advice
+  items and the 8 scripts, the verification item id, the source file and
+  id, the question set, `ratings_complete`, each question's `n` and
+  `median`, `flagged`, the decision and its reason, and for each script the
+  round that decided it, or none if every round that rated its current
+  turns was short, and the rounds in which it was short ("Rounds" below);
+  and the kept items' counts by proposed tier and syntax style (Wave A) and
+  by form (Wave R);
+- the selection files, in the shape `build-stimuli --source selection` reads
+  (`{rule, items: [{file, id}], notes}`):
+  `data/advice/realism_gate_waveA_<export stamp>.json` for Wave A; for Wave R,
+  `data/advice/realism_gate_waveR_<export stamp>.json`, or, if decision 6
+  splits Wave R by family, one file per family,
+  `data/advice/realism_gate_waveR_<family>_<export stamp>.json`, where
+  `<family>` is `sentence_completions` or `natural_questions` (the family
+  names of `advice_eval.STIMULI_FAMILIES`). Each lists the passing items in
+  their stimuli file's order, with `file` and `id` taken from the bundle's
+  `provenance.source_path` and `provenance.source_id`, and its `notes` carry
+  the gate report's and the summary's sha256.
+
+`build-stimuli --source selection` then writes the gated stimuli files. It
+copies each item's messages byte for byte and keeps its id. The Wave A and
+Wave R fires name those files in place of `stimuli_20261002T080026Z.json` and
+`stimuli_20261002T081803Z.json`. If fire-plan decision 6 or 7 replaces either
+file before the gate is applied, the selection names the replacement, whose
+items keep the same ids, and the message check above applies to it. If
+decision 6 replaces the rerun file with one file per family, the Wave R
+selection is written as one selection file per family, at the per-family
+paths above, each naming only its own family's file: a file built by
+`--source selection` carries the families of every file it copies from, and
+the exporter refuses one that carries both.
+
+**What changes in the waves.**
+
+- **Counts and cost.** Wave A runs on n_A of the 24 new questions: 42 x n_A
+  calls and 42 x n_A judgments. Wave R runs on n_R of the 15 rerun items: 78 x
+  n_R calls and 78 x n_R judgments. The fire plan
+  (`docs/advice_fire_plan_20261002.md`, section 8) gives each fire's calls,
+  cost and `max_spend` per item, and the totals with all items, about 75% and
+  about 50% kept. The cost falls in proportion to the items kept, apart from
+  the five probes ($0.08 at measured lengths, $0.12 in the high case).
+- **Wave R's predictions (A6.4) are recomputed over the kept items** before
+  Wave R fires, from the ranking report's per-model rows for those items,
+  leaving out `openrouter:stealth/ox-alpha`. The original downgrade count is
+  the number of those cells with `drop` above 0, and the null expectation is
+  the sum of their `q_null`. Over all 15 items this reproduces A6.4's
+  baselines: 36 of 87 cells against 17.33, and, without DeepSeek v4-flash and
+  Kimi k2.5, 23 of 59 against 9.94. Ranking-report items are matched through
+  the bundle's `provenance.rerun_of`. If item #1
+  (`pairs_20260707T154345Z#17`) fails the gate, prediction 2 is not tested,
+  and the readout says it was not tested for that reason.
+- **No rebalancing.** The gate keeps or drops each item on its own ratings.
+  The kept new questions need not hold six per proposed tier or three per
+  syntax style, and A6.3's statement that any `offset`/`limit` chunk holds
+  every tier no longer holds for the gated file. The gate report gives the
+  counts.
+- **What the results cover.** The readouts describe the items physicians rated
+  realistic, and say so. Nothing is claimed about the dropped items. No
+  archived stimuli file is rewritten, and the gate report lists every dropped
+  item.
+- **Failing items** are dropped from these waves, not rewritten for them. A
+  Wave R item cannot be rewritten, because the replication sends the original
+  messages byte for byte. A rewritten new question is a new item with a new
+  id; it needs ratings in a later round and can enter only a later wave.
+- **Probes** (A0a to A0c, R0a and R0b) run against the probe file, do not
+  depend on the gate, and may run before round 1 closes.
+- **Order.** No full Wave A or Wave R fire runs until round 1 has closed,
+  the summary and the gate's files (its report and its selection files, as
+  "How the selection is recorded" counts them) are committed, and the
+  approval record below holds n_A, n_R and Wave R's recomputed baselines.
+
+**Code still to write.** The program that applies the rule (proposed name
+`scripts/apply_realism_gate.py`) does not exist yet. It is written, with
+tests, now that this section is approved and before the first gated fire, so
+that it implements the rule as approved. It reads these files and no others:
+
+1. the committed import summary of each round in the plan's `rounds`
+   (today round 1 alone): its `inputs.bundle` (path, sha256 and bundle id),
+   its `inputs.export.sha256` and `inputs.export.exported_utc` (the sha256
+   of the export it read and the time that export was written), the
+   physicians it excluded (`exclusions.excluded_raters`), and its `items`
+   rows for the advice and script items of its bundle. Of the physicians'
+   ratings, this is all it reads; it never reads an export;
+2. the wave-3 plan's `physician_realism_gate` block
+   (`data/petri/w3_register_contrast_plan.json`): for each round in
+   `rounds`, its bundle path, id, sha256 and questions sha256 (round 1's as
+   re-pointed under "Which bundle" if they are), its recorded excluded
+   accounts and its recorded closing export (round 1's in
+   `rounds[0].expected_exclusions` and `rounds[0].closing_export`); the
+   rule's values; and `seed_file`;
+3. the bundle each round names;
+4. the stimuli file of each advice item: the file its round-1 bundle
+   `provenance.source_path` names (today
+   `data/advice/stimuli_20261002T080026Z.json` for Wave A and
+   `data/advice/stimuli_20261002T081803Z.json` for Wave R), or the file that
+   replaces it under fire-plan decision 6 or 7, whose items keep the same
+   ids;
+5. the wave-3 seed file, `docs/framework/petri_seeds_w3.draft.json` (the
+   plan's `seed_file`).
+
+It reads files 4 and 5 as they are when it runs. For each round it
+compares:
+
+- the bundle file's sha256, computed from its bytes, and its bundle id and
+  questions sha256, with the round's entry in `rounds`, and the round's
+  summary's `inputs.bundle` sha256 and bundle id with the same values;
+- the summary's `exclusions.excluded_raters` with the rater codes in the
+  round's recorded exclusions (`rounds[0].expected_exclusions` for round
+  1), exactly: every recorded code excluded and no other, so an
+  `--exclude-rater` left out, or a physician of the round excluded, is a
+  refusal. An account recorded as "not in the export" or "never created"
+  adds no code, and the gate report records the spreadsheet;
+- the summary's `inputs.export.sha256` with the round's
+  `closing_export.sha256`, and its `inputs.export.exported_utc` with its
+  `closing_export.closed_utc` (`rounds[0].closing_export` for round 1),
+  exactly: a summary built from any other export of the round's
+  spreadsheet, such as a later one that holds ratings saved after the
+  close, is a refusal;
+- the round's `closing_export.closed_utc` with the end, 23:59:59Z (UTC),
+  of its closing date in force: its `closing_date`, or the closing date of
+  the last of its `closing_date_extensions`. A close time whose UTC date is
+  later than that date is a refusal, so an export downloaded after the
+  deadline cannot be the closing export even when the summary matches the
+  record;
+- when that close time's UTC date is before the closing date in force (an
+  early close), the summary's row for every advice and multi-turn item of
+  the round's bundle with both of rule 1's counts: `ratings_complete` at
+  least 2, and `five_point.<key>.n` at least 2 on every question the gate
+  reads for it. Any item short is a refusal, because the round had not
+  closed. An export dated on the closing date in force is not checked for
+  these counts.
+
+For the items it compares:
+
+- for each advice item of round 1 that passes the rule, the sha256 of its
+  clinical and its patient message in the stimuli file it reads (the item
+  found by the bundle's `provenance.source_id`, the sha256 taken of the
+  message's UTF-8 text, as `scripts/export_verification_tasks.py` computes
+  it), with the bundle's `provenance.clinical_sha256` and
+  `provenance.patient_sha256`;
+- for each seed of the seed file, after checking that every round's script
+  items have `provenance.source_path` equal to the plan's `seed_file`, two
+  things. The digest of the seed, computed with `seed_digest`
+  (`scripts/petri_audit/seeds.py`), with the `provenance.seed_sha256` of
+  its item in each round's bundle: some round must have recorded it, so the
+  seed that runs is one a round's bundle recorded. And the seed's script as
+  physicians see it: the sha256 of each of its turns, by version, computed
+  as `scripts/export_verification_tasks.py` computes
+  `provenance.turn_sha256`, with the `provenance.turn_sha256` of its item in
+  each round's bundle, earliest round first: the first round whose item has
+  those turn hashes and in which the seed reached both of rule 1's counts
+  decides it ("Rounds" below). The digest also covers fields physicians
+  never see (notes, hypotheses, generation settings), so it says whether
+  the seed is the one recorded, and the turns say which round decides it.
+
+It compares items, not whole files: a file that replaces a stimuli file under
+decision 6 or 7 has another file sha256 than the bundle's
+`provenance.source_sha256`, but each of its selected items must carry the
+messages physicians rated. It refuses, writing nothing, when any of these
+files is missing or unreadable, a round's recorded exclusions are not
+filled (for round 1, `rounds[0].expected_exclusions` is not filled: a
+value still null, or a value that is not a rater code, "not in the export"
+or "never created"), do not agree with the spreadsheet the round ran in
+("Excluded physicians" above) or give two accounts one code, a round's
+`closing_export` is not filled (a value still null, a sha256 that is not
+64 lowercase hexadecimal characters, or a time that is not an ISO-8601 UTC
+time), a round's close time falls after the end of its closing date in
+force, a round's close time falls before its closing date in force while an
+advice or multi-turn item of its summary is short of either closing count,
+an entry of a round's `closing_date_extensions` is not two dates
+(YYYY-MM-DD), was recorded after the closing date it replaces or sets no
+later one, a comparison above fails, a seed of the seed file has a current
+digest that no round rated, a round's item at a seed's current digest
+records other turn hashes than the ones the program computes from the
+seed, a later round follows rounds over which six or more wave-3 seeds
+already pass ("Rounds" below), an advice or script item of a round's bundle
+is missing from that round's summary, a passing item is missing from the
+stimuli file or seed file it reads, or a question the gate reads is
+missing from an item's `five_point`. A wave, or under decision 6's
+split a Wave R family, with no passing item is reported by name, and no
+selection file is written for it. It does not
+compute Wave R's recomputed baselines, which come from the ranking report as
+"What changes in the waves" says.
+
+**Rounds.** The plan's `rounds` lists the rating rounds in order, earliest
+first; today it holds round 1 alone, as `rounds[0]`. A later round is added
+only for Petri wave 3, when fewer than six of its scripts pass and the
+failing ones are rewritten and rated again (decision 6;
+`docs/petri_wave3_design.md`, section 13). It is appended by a dated
+amendment to the wave-3 plan, with a dated note in the approval record
+below, before its bundle is given to any physician, and its exclusions and
+closing export are recorded before its export is imported, as round 1's
+are. The program that applies the gate enforces "fewer than six": for each
+later round it computes the selection over the rounds before it, each seed
+taken at the turns the latest of those rounds rated (so an edit to the seed
+file made after them cannot lower the count), and refuses, writing nothing,
+if six or more seeds pass there. So once six pass, no later round follows:
+a script rated unrealistic or short of ratings is not rated again, and wave
+3 runs on the scripts that passed. A script short of ratings is rated again
+only in a later round that exists because fewer than six passed, alongside
+the rewritten ones. Wave A and Wave R are selected from round 1 alone: their
+failing items are dropped (decision 3), not rewritten, so no later round
+rates an item they can use, and a rewritten new question is a new item for a
+later wave.
+Wave 3 selects across the rounds. Each seed is decided by the earliest
+round whose bundle rated its current script, the turns physicians see
+(`provenance.turn_sha256`), and in which it reached both of rule 1's counts
+(`min_complete_ratings` complete ratings, and `min_answers_per_key` numeric
+answers on every question the gate reads for it). A round in which it was
+short does not decide it; that is the owner's decision of 2026-10-05
+(approval record below). The seed's digest is compared too, but only so
+that the seed that runs is one a round's bundle recorded: it also covers
+fields physicians never see (notes, hypotheses, generation settings), so an
+edit to those alone changes the digest and not the script. So:
+
+- a script that passed in round 1, or was rated unrealistic there, and
+  whose turns have not been edited since keeps that result and is not
+  rated again, even when a field physicians never see was edited;
+- a script short of ratings in round 1 may be rated again, unedited, in a
+  later round, which then decides it;
+- a rewritten script, whose turns changed, is decided by the earliest
+  later round that rated its new turns and reached the counts;
+- a later round that rates turns an earlier round has already decided does
+  not replace the earlier result;
+- a script whose current turns were rated only in rounds where it was short
+  is "not enough ratings";
+- a script whose current digest no round recorded cannot pass (the program
+  refuses while the seed file holds one). A seed edited only in fields
+  physicians never see runs once the edit is undone, or once a later
+  round's bundle records its new digest; that round's ratings of its
+  unchanged turns decide it only if every earlier round that rated those
+  turns was short.
+
+Applied again after a later round, the program writes a new gate report for
+wave 3 alone, named after the latest round's bundle id and export stamp,
+with each script's deciding round and the rounds in which it was short; the
+Wave A and Wave R selection files written at round 1's application stand.
+A script short in every round that rated its current turns has no deciding
+round: the report and the plan's `selection` record it with a null round,
+the list of those rounds and the reason "not enough ratings" (the plan's
+`selection_shape`).
+
+**The counts report**, also still to write, before the round's closing date
+(proposed: a `--counts-only` option of `scripts/import_verification_ratings.py`,
+which already checks an export and applies `--exclude-rater`). It reads an
+export taken while the round is open, with `--exclude-rater` for the
+excluded accounts, and prints, for each advice and script item of the
+bundle, its complete ratings by included physicians and, for each question
+the gate reads for it, the numeric answers in those ratings: the counts the
+summary records as `ratings_complete` and `five_point.<key>.n`, computed the
+same way. It also prints whether each item has both of the round's closing
+counts, and how many items do not. It prints no median, no share of low
+answers, no flag, no agreement coefficient, no answer and no note, and it
+writes no file in the repository (the export stays outside it, as for the
+import). Before the round closes, it and the app's Progress report are what
+the owner reads about the ratings: to see whether the round has closed on its
+counts, and to decide an extension ("Extending the closing date" above).
+
+**Owner decisions, as chosen on 2026-10-05.** The text above applies these
+choices. The draft proposed a value for each; the owner chose the proposed
+value for every decision but the threshold.
+
+1. **Threshold.** Chosen: a median of at least 3 ("Possible") on every
+   question rule 2 reads (a script's course-of-events question has no
+   threshold). The draft proposed at least 4 ("Likely"). The
+   other alternative was at least 4 for the everyday-words message and at
+   least 3 for the clinical-terms message. The reason the draft gave for a
+   lower threshold: the clinical-terms message is by design a patient who uses
+   clinical terms, and physicians may rate it lower across the board. Under a
+   threshold of 4 for both, that alone could have removed most items, and
+   every script whose clinical version is rated lower, because a script
+   passes only when all three of its versions pass.
+2. **Minimum ratings.** Chosen, as proposed: at least 2 complete ratings, with
+   at least 2 numeric answers on each question the gate reads (the app
+   assigns every item to at least two physicians). Not chosen: at least 3,
+   which gives steadier medians but needs `RATERS_PER_ITEM` of 3 or more and a
+   longer round. A related setting, not a change to the rule:
+   `RATERS_PER_ITEM` of 3 with the minimum kept at 2 lets an item absorb one
+   "Can't judge" per question without falling short, at the cost of a third
+   rating on every item.
+3. **Failing items: dropped or rewritten.** Chosen, as proposed: dropped. Only
+   the new questions and the scripts can be rewritten, and a rewrite is a new
+   item that physicians must rate in a later round, which delays its wave
+   until that round closes.
+4. **Timing.** Approved on 2026-10-05, before any login. The round closes on
+   the closing rule above: two complete ratings and two numeric answers on
+   every question the gate reads, on every advice and multi-turn item, or the
+   closing date, 2026-10-31 (UTC), whichever comes first. The owner noted
+   that the date may need to be extended; "Extending the closing date" above
+   says how.
+5. **Scope.** Chosen, as proposed: Wave A, Wave R and Petri wave 3. Not
+   chosen: leaving Wave R ungated, which would have kept the replication on
+   all 15 items as A6.4 registers it, with the physicians' ratings reported
+   beside it.
+6. **Petri wave 3's own decisions** (`docs/petri_wave3_design.md`, section
+   13). Chosen, as proposed: all three versions of a script must pass; when
+   fewer than six scenarios pass, the failing scripts are rewritten and rated
+   again in a later round; and the floor is six. Not chosen: the colloquial
+   and clinical versions only; an exploratory pilot below the floor; and a
+   floor of seven, which tolerates one scenario mean of exactly zero.
+
+### Approval record
+
+**Amendment 6, A6.1 to A6.8 (to fill; still proposed).** Approved by:
+`<owner>`. Date (UTC): `<date>`.
 Words: `<verbatim instruction>`. Registry sha256 after the roster pull
 request: `<sha256>`. Rerun stimuli file:
 `data/advice/stimuli_20261002T081803Z.json` (sha256
 `b9be32edde3372e4b29aee4ce39ad25e36074eebd6a019a1779cd4d215cf2598`).
+
+**Physician realism gate (A6.9): APPROVED 2026-10-05.** Approved by the
+owner, who answered the gate's decisions on a private decision page and sent
+the answers in the agent session at about 2026-10-05T05:18Z. The same words
+are on pull request #87 (comment 5988571759). Verbatim:
+
+> Gate: Approve, with my answers below
+> Gate 1: Median of 3 ("Possible") or more on every question
+> Gate 2: 2
+> Gate 3: Drop them
+> Gate 4: 2026-10-31 | note: We might need to extend this later
+> Gate 5: Wave A, Wave R and Petri wave 3
+> Gate 6a: All three
+> Gate 6b: Rewrite the failing scripts and rate them again
+> Gate 6c: 6
+
+"Gate 1" to "Gate 5" are owner decisions 1 to 5 of A6.9, and "Gate 6a" to
+"Gate 6c" are the three decisions of `docs/petri_wave3_design.md` section 13
+(which versions must pass, what happens below the floor, and the floor). The
+owner also chose a wording pilot with one physician, and to rate a pilot of
+their own before it.
+
+- Timing: approved before any login to the verification app, by any
+  physician, test account or pilot account; the app was not yet deployed. A
+  pre-specified rule, not a deviation.
+- As approved: threshold, a median of at least 3 ("Possible") on every
+  question the gate reads; minimum ratings, 2 complete ratings and 2 numeric
+  answers on each question the gate reads; failing items dropped; closing
+  date 2026-10-31 (UTC); scope, Wave A, Wave R and Petri wave 3; for wave 3,
+  all three versions of a script must pass, the floor is six scenarios, and
+  below it the failing scripts are rewritten and rated again in a later
+  round.
+- Round 1 bundle: `vtasks_20261004T042945Z` (sha256
+  `29817d70e3414834b35c0f316ab3e1953a59ddab229e9ceb9de2760b9265650a`,
+  questions sha256
+  `d2ce0e262aee7dba000ef927cc84ddf59ce95f5c418f81d24cb667c0c67445fb`).
+- Re-pointed before round 1's bundle is fixed (A6.9, "Which bundle": by the
+  first login of an account other than the test and pilot accounts), each on
+  its own dated line (to fill if it happens): `<date>`: `<old bundle id>` to
+  `<new bundle id>` (sha256 `<sha256>`, questions sha256 `<sha256>`).
+- Closing date extensions (A6.9, "Extending the closing date"), each on its
+  own dated line, written before the closing date it replaces, and by the
+  same edit appended to the wave-3 plan's
+  `physician_realism_gate.rounds[0].closing_date_extensions`: none.
+- Excluded physicians (to fill before the export is imported, by one dated
+  edit that also fills the wave-3 plan's
+  `physician_realism_gate.rounds[0].expected_exclusions` with the same values),
+  each with its rater code in the round's export, "not in the export" or
+  "never created": the owner's test account `<value>`, the owner's own pilot
+  account `<value>`, the wording-pilot physician's account `<value>`. The
+  spreadsheet round 1 ran in: `<the pilot's, or a new one>`. In a new one,
+  all three are "not in the export"; in the pilot's, each account has its
+  own rater code, or "never created" if it was never created there.
+- Closing export (to fill before the export is imported, by the same dated
+  edit as the excluded physicians, which also fills the wave-3 plan's
+  `physician_realism_gate.rounds[0].closing_export` with the same values):
+  sha256 `<sha256 of the export file>`, closed `<the export's exported_utc>`
+  (UTC), no later than the end, 23:59:59Z, of the closing date in force.
+- At application (to fill): import summary `<path>` (sha256 `<sha256>`), gate
+  report `<path>` (sha256 `<sha256>`), gated stimuli files `<Wave A path,
+  sha256>` and `<Wave R path, sha256>` (one Wave R file per family if
+  decision 6 splits Wave R), n_A `<n>` of 24, n_R `<n>` of 15, and
+  Wave R's recomputed baselines: primary `<downgrades>` of `<cells>` against
+  `<null>`, sensitivity `<downgrades>` of `<cells>` against `<null>`.
+- Later rounds (A6.9, "Rounds": Petri wave 3 only, if fewer than six of its
+  scripts pass), each on its own dated line, written before its bundle is
+  given to any physician: `<date>`: round `<n>`, bundle `<id>` (sha256
+  `<sha256>`, questions sha256 `<sha256>`), the rewritten seeds `<ids>`,
+  the seeds rated again unedited because every earlier round that rated
+  them was short `<ids>`, closing date `<date>`; and, before its export is
+  imported, its excluded physicians and its closing export (sha256,
+  closed). None so far.
+- Clarifications after approval (2026-10-05), from Codex's review of pull
+  request #87. Each says how the approved rule is carried out; none changes
+  the rule or which items pass.
+  - Excluded accounts: also recorded in the plan's
+    `round.expected_exclusions`, which the gate program compares with the
+    summary's excluded raters, refusing on any difference; this changes
+    neither the rule nor which items pass.
+  - Counts report: the closing counts and any extension are read before the
+    round closes from a counts-only report (complete ratings and numeric
+    answers per item; no medians, flags or scores), added to "Code still to
+    write"; this changes neither the rule nor which items pass.
+  - Median threshold: "every question the gate reads" in the "As approved"
+    line above means every question rule 2 reads, so not a script's
+    course-of-events question, which counts only through the flag; the
+    verification protocol and decision 1 now say so; this changes neither
+    the rule nor which items pass.
+  - Wave R selection files: if decision 6 splits Wave R by family, each
+    family's selection has its own path,
+    `realism_gate_waveR_<family>_<export stamp>.json`, and the count of the
+    gate's files depends on that split and on which waves have a passing
+    item; this changes neither the rule nor which items pass.
+  - Wave 3's limitations: the design note's sections 2, 9.8 and 11, and the
+    plan's `if_applied` wording for every statement, now separate the
+    physicians' realism rating, which the gate adds once applied, from the
+    clinical validation the study still lacks (no reference care for any
+    scenario); this changes neither the rule nor which items pass.
+  - Excluded accounts and the spreadsheet: the record must agree with the
+    spreadsheet round 1 ran in (a new one: all three accounts "not in the
+    export"; the pilot's: each account its own rater code, or "never
+    created" for one never created there), and the gate program refuses a
+    record that does not; this changes neither the rule nor which items
+    pass.
+  - Closing export: its sha256 and the close time (the export's own
+    `exported_utc`) are recorded before the import, in the "Closing export"
+    line above and the plan's `round.closing_export`, and the gate program
+    refuses a summary whose `inputs.export` differs, so ratings saved after
+    the close cannot count; this changes neither the rule nor which items
+    pass.
+  - Later rounds: the plan's `round` is now `rounds`, an ordered list that
+    holds round 1 alone (`rounds[0]`; the lines above that name `round.`
+    fields mean `rounds[0].`). If fewer than six wave-3 scripts pass, each
+    seed is decided by the earliest round that rated it at its current
+    digest, so the scripts that passed keep their result and are not rated
+    again while the rewritten ones are (Gate 6b), and Wave A and Wave R are
+    selected from round 1 alone, since their failing items are dropped
+    (Gate 3); this changes neither the rule nor which items pass.
+  - Which round decides a script: the turns physicians see (the bundle's
+    `provenance.turn_sha256`), not the seed digest, which also covers
+    notes, hypotheses and generation settings, so an edit to those alone
+    cannot make an unchanged script eligible to be rated again; the digest
+    is still compared, so a seed runs only as a round's bundle recorded
+    it, and "its current digest" in the decision below means its current
+    turns for which round decides it; this changes neither the rule nor
+    which items pass.
+  - Scripts short in every round: the plan's `selection_shape` gives each
+    seed a deciding `round` that is null when no round decided it, the list
+    `short_rounds` of the rounds in which it was short, and the reason "not
+    enough ratings", so such a seed is recorded without an invented round;
+    this changes neither the rule nor which items pass.
+  - A later round only below the floor: the gate program computes the
+    selection over the rounds before each later round and refuses the
+    later round if six or more wave-3 seeds already pass there, and the
+    suite checks the same from the committed summaries; this changes
+    neither the rule nor which items pass.
+  - Wave 3's statements: once the gate is applied, the wording every
+    statement carries names the rounds that decided the passing scenarios
+    ("round 1", or for example "rounds 1 and 2" if a later round decided
+    any), not round 1 alone, and A6.9 and section 13 say wave 3 may be
+    selected from later rounds; this changes neither the rule nor which
+    items pass.
+  - The deadline: the gate program refuses a closing export whose close
+    time is after the end, 23:59:59Z (UTC; 18:59:59 CDT on 2026-10-31), of
+    the closing date in force, which is 2026-10-31 or the date of the last
+    extension recorded in the plan's `closing_date_extensions` before the
+    date it replaces; `closing_date` keeps the registered date; this
+    changes neither the rule nor which items pass.
+  - An early close: a closing export dated (UTC) before the closing date
+    in force is accepted only if its summary shows every advice and
+    multi-turn item at both closing counts, and the gate program refuses
+    it otherwise, because the round had not closed; one dated on the
+    closing date in force is not checked for them, and items still short
+    then are "not enough ratings"; this changes neither the rule nor which
+    items pass.
+- Owner's decision, 2026-10-05 (after the approval; it can change which
+  seeds pass, so it is recorded here as a decision, not as a
+  clarification). Asked in the agent session whether a later round may
+  rate the same unedited script when round 1 had too few ratings, the
+  owner chose "Yes, if short", the option described as:
+
+  > A round where the script had too few ratings doesn't count. The first
+  > round with enough ratings decides. A script that actually failed on
+  > realism still can't be re-rated unless it is edited.
+
+  Applied in A6.9 ("Items short of answers" and "Rounds"), section 13 of
+  `docs/petri_wave3_design.md`, the verification protocol and the wave-3
+  plan's `cumulative_selection` and `rounds_rule`. A wave-3 seed is decided
+  by the earliest round whose bundle rated it at its current digest and in
+  which it reached both of rule 1's counts. A round in which it was short
+  does not decide it, and a seed rated at its current digest only in such
+  rounds is "not enough ratings". "Failed on realism" is "rated
+  unrealistic" (a median below 3 or the flag), so a script decided that
+  way, like one that passed, is not rated again unless it is edited. This
+  replaces "the earliest round that rated it at its current digest" in the
+  "Later rounds" clarification above. Advice items are unaffected: Wave A
+  and Wave R are selected from round 1 alone.

@@ -319,6 +319,49 @@ stop at any time.
 
 - **Future generation runs.** Realism, keep-or-drop and notes per item show
   which kinds of scenario to generate more or less of.
+- **Which items the paid runs use (approved 2026-10-05).** Amendment 6,
+  A6.9, of `docs/preregistration_advice.md` and section 13 of
+  `docs/petri_wave3_design.md` say that the advice waves and Petri wave 3 use
+  only the items whose ratings in this round pass a rule fixed before
+  physicians start. An item needs at least two complete ratings, at least two
+  numeric answers ("Can't judge" not counted) on each question the rule
+  reads, and no flag. The questions with a threshold are the realism
+  question of each message (each version of a script) and the plausibility
+  question for the nine advice items cut off mid-sentence: each needs a
+  median of at least 3 ("Possible"). On a script the rule also reads the
+  course-of-events question, which has no median threshold: it counts only
+  through the flag, and needs two numeric answers like the others. The round closes
+  when every advice and multi-turn item has those counts, or on 2026-10-31
+  (UTC), whichever comes first; A6.9 says how that date may be extended.
+  The round ends at the end of that date in UTC, 23:59:59Z, which is
+  18:59:59 CDT in US Central time, and the program that applies the rule
+  refuses an export downloaded after then, unless an extension recorded
+  before the date moved it. An export downloaded before that date counts
+  only if every advice and multi-turn item already has both counts;
+  otherwise the program refuses it, because the round has not closed. The
+  owner approved A6.9 on 2026-10-05, before anyone had a login, so the rule
+  is fixed in advance. Only A6.9 is approved: the rest of Amendment 6, which
+  proposes the advice waves themselves, is still proposed. Three accounts
+  are excluded: the owner's test account, the owner's own pilot account and
+  the wording-pilot physician's account. Their rater codes are written down
+  before the import, in A6.9's approval record and in the wave-3 plan's
+  `expected_exclusions`, and the program that applies the rule refuses an
+  import that excluded any other set of raters. Their logins do not fix the round's
+  bundle; the first login of any other account does. If the wording pilot changes the
+  bundle, round 1 runs in a new spreadsheet, because the import cannot read
+  an export holding ratings on two bundles (A6.9, "Ratings on an earlier
+  bundle stay out of the round's export"). The sha256 and time of the
+  export downloaded at close are written down before the import too, and
+  the program refuses a summary of any other export, so a rating saved
+  after the close cannot count. If fewer than six wave-3 scripts pass, the
+  failing ones are rewritten and rated in a later round, and the scripts
+  that passed keep their round-1 result and are not rated again. Once six
+  pass there is no later round, and the program that applies the rule
+  refuses one. A script
+  with too few ratings in a round may be rated again unchanged in a later
+  round, and the first round in which it has enough ratings decides it; a
+  script rated unrealistic must be rewritten before it is rated again, and
+  an edit to anything physicians do not see is not a rewrite.
 - **Reference urgency for the advice preregistration.** The physicians'
   answers on the 24 new questions are candidate adjudicated reference tiers.
   The analysis takes one tier per item, so a rule for combining physicians
