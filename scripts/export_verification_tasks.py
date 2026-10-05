@@ -19,21 +19,27 @@ Three families, every item from a committed engine file or the published site pa
     as its template with the clinical and the patient term and the row's next word, which must follow the version-2
     next_word rule (one lowercase word, ``next_word_ok``; ``bad_next_word``). By default every pair needs a
     trace result: the run's one trace pairs file (the JSON file under ``<run>/trace/`` beside its ``.meta.json``
-    sidecar) must hold the row, and the trace results in ``<--pilot-trace-root>/<that file's stem>/`` (default
-    ``pilot/traces/``, where the circuit-trace lane's pilot root writes them; ``<stem>__<model>/`` for a graph
-    model other than gemma-2-2b, as the lane names it) must carry its index with the same prompts. The model is the
-    one ``--pilot-trace-model <run id> <model>`` names, read from its own directory only; with none named, the one
-    model whose directory holds results, and results for none or for more than one are refused
-    (``missing_trace``, ``ambiguous_trace``), never guessed between. Every trace summary read must declare that model
-    in its ``graph_model`` field, as the hosted summaries do (``trace_model_mismatch``), so a summary placed in another
-    model's directory is never recorded under that directory's model. A trace pairs file must be named after its run,
-    ``<run id>_<name>.json`` with ``<name>`` not empty, the rule the lane's pilot root applies before it traces a
-    file; its stem may not hold ``__``, and two runs' files may not share a stem, a run with optional traces
-    included (only names are read): the lane derives the results directory from the stem alone, so a shared stem
-    means one run's traces overwrite the other's. Run 2's ``trace_pairs.json`` predates the rule and keeps its name;
-    its ``trace/`` may also hold byte-identical copies named for the run (the lane needs one to trace Run 2 again),
-    and the exporter still reads ``trace_pairs.json`` and its results in ``trace_pairs[__<model>]/``, never a
-    copy's. A trace pairs file built with ``trace_pairs.py --review-sample`` records each pair's
+    sidecar) must hold the row, and the trace results must carry its index with the same prompts. They are read
+    where the circuit-trace lane's pilot root writes them under PR #85's per-run layout: ``<--pilot-trace-root>/<run
+    id>/<that file's stem>/`` (default root ``pilot/traces/``), or ``<stem>__<model>/`` there for a graph model other
+    than gemma-2-2b. The two folders written before that layout stay where they are and are read for their own runs
+    (``LEGACY_TRACE_FOLDERS``): Run 2's ``pilot/traces/trace_pairs/`` and Run 3's
+    ``pilot/traces/pilot_v3_20261004_trace_pairs/`` (with ``__<model>`` likewise). A run with results in both layouts
+    is refused (``trace_layout_conflict``), never chosen between, and a run id that is one of those folder names is
+    refused, as the lanes refuse it. The model is the one ``--pilot-trace-model <run id> <model>`` names, read from
+    its own directory only; with none named, the one model whose directory holds results, and results for none or in
+    more than one directory are refused (``missing_trace``, ``ambiguous_trace``), never guessed between. Every trace
+    summary read must declare that model in its ``graph_model`` field, as the hosted summaries do
+    (``trace_model_mismatch``), so a summary placed in another model's directory is never recorded under that
+    directory's model. A trace pairs file must be named after its run, ``<run id>_<name>.json`` with ``<name>`` not
+    empty, the rule the lane's pilot root applies before it traces a file, and its stem may not hold ``__``; both
+    are checked for a run with optional traces too (only names are read). Two runs' files may share a stem, since
+    each run's results are in its own folder. Run 2's ``trace_pairs.json`` predates the naming rule and keeps its
+    name; its ``trace/`` may also hold byte-identical copies named for the run (the lane needs one to trace Run 2
+    again). The exporter still reads ``trace_pairs.json``, which Run 2's item ids are keyed on, and reads a copy's
+    trace results as the same pairs' results, in Run 2's own folder ``<root>/pilot_v2_20261002/<copy's stem>/``;
+    with Run 2's legacy results present that is a ``trace_layout_conflict``. A trace pairs file built with
+    ``trace_pairs.py --review-sample`` records each pair's
     review id, which must be the one ``review_map.json`` gives its row; one built without it records none (a file
     recording some is refused). The review sample therefore needs a ``--review-sample`` trace pairs file (or one
     that holds every review row), and ``--pilot-all-rows`` one that holds every non-control row, which neither of
@@ -91,17 +97,19 @@ byte-identical file; a different seed gives the same items in another order. The
 item keeps its id across bundles while its source keeps its path and id.
 
 Refusals (a named SystemExit, and nothing is written): a missing or unreadable input, a field the exporter does not
-know in a record it reads (a new field may carry meaning the selection must respect, so a person decides), a shape
-it cannot use, a text whose sha256 no longer matches, a pilot run that is not finalized (``run_not_finalized``) or
-not version 2 (``run_not_version_2``), a pilot row whose next word breaks the version-2 rule (``bad_next_word``),
-whether or not its trace is required, a trace pairs file not named after its run or sharing a stem with another
-run's, a second file under the ``trace/`` of a run whose trace is required (for Run 2, one that is not a
-byte-identical copy of its pairs file; an optional run reads no pairs file but Run 2's id key, so only the names of
-its files are checked), a pilot pair without its required trace (``missing_trace``) or whose trace result carries
-other prompts (``trace_mismatch``), trace results for more than one graph model with none named
-(``ambiguous_trace``), a trace summary that does not declare the graph model its directory is read as
-(``trace_model_mismatch``), a questions file that does not fit the items, fewer main-study candidates than requested, an
-item id collision, an existing output file (a bundle is an archive, never rewritten), and every seal failure above.
+know in a record it reads (a new field may carry meaning the selection must respect, so a person decides), a shape it
+cannot use, a text whose sha256 no longer matches, a pilot run that is not finalized (``run_not_finalized``) or not
+version 2 (``run_not_version_2``), a pilot row whose next word breaks the version-2 rule (``bad_next_word``), whether
+or not its trace is required, a run id that is a legacy trace folder's name, a trace pairs file not named after its
+run or whose stem holds ``__``, a second file under the ``trace/`` of a run whose trace is required (for Run 2, one
+that is not a byte-identical copy of its pairs file; an optional run reads no pairs file but Run 2's id key, so only
+the names of its files are checked), a pilot pair without its required trace (``missing_trace``) or whose trace
+result carries other prompts (``trace_mismatch``), trace results in more than one directory for the model read, or
+for more than one graph model with none named (``ambiguous_trace``), trace results in both the legacy and the per-run
+layout (``trace_layout_conflict``), a trace summary that does not declare the graph model its directory is read as
+(``trace_model_mismatch``), a questions file that does not fit the items, fewer main-study candidates than requested,
+an item id collision, an existing output file (a bundle is an archive, never rewritten), and every seal failure
+above.
 
 Rounds. Each physician round uses one bundle (the ratings import reads one bundle per export). A later round's
 bundle is built with ``--previous-bundle <the previous round's bundle>``, which refuses unless every item of that
@@ -193,12 +201,22 @@ PILOT_SUBSET_PREFIX = "pilot:"
 # rating under the item id (a changed id orphans them). Every other run is labelled "pilot:<run id>" and keyed on its
 # generated rows file, which every selection and trace option reads, so a row keeps one item id in every bundle.
 LEGACY_PILOT_RUNS = {"pilot_v2_20261002": {"subset": "pilot_run2", "id_source": "trace/trace_pairs.json"}}
-# The circuit-trace lane's pilot root writes a run's trace results to <root>/<pairs-file stem>/ for gemma-2-2b and to
-# <root>/<pairs-file stem>__<model>/ for any other graph model (circuit_trace_evaluation.yml, "Select sample pairs");
-# the exporter reads them by the same rule. A pairs-file stem may not hold MODEL_SEPARATOR, so that no results
-# directory can be read both as one stem's and as another stem's with a model suffix.
+# The circuit-trace lane's pilot root writes a run's trace results in the run's own folder (PR #85's per-run layout,
+# 2026-10-05): <root>/<run id>/<pairs-file stem>/ for gemma-2-2b and <root>/<run id>/<pairs-file stem>__<model>/ for
+# any other graph model, where <run id> is the directory directly under pilot/runs/ that holds the pairs file
+# (circuit_trace_evaluation.yml, "Select sample pairs"; fire_trigger.pilot_run_id). The exporter reads them by the
+# same rule. A pairs-file stem may not hold MODEL_SEPARATOR, so that no results directory can be read both as one
+# stem's and as another stem's with a model suffix.
 UNSUFFIXED_TRACE_MODEL = "gemma-2-2b"
 MODEL_SEPARATOR = "__"
+# Before 2026-10-05 the lane wrote <root>/<pairs-file stem>[__<model>]/, with no run folder. Two runs' parts were
+# written that way and stay where they are (fire_trigger.PILOT_LEGACY_OUTPUT_FOLDERS, PR #85): Run 2's in
+# pilot/traces/trace_pairs/ and Run 3's in pilot/traces/pilot_v3_20261004_trace_pairs/. The exporter reads such a
+# folder for its own run only, and only while the run still holds the pairs file the folder is named after. A run with
+# results both there and in its own folder is refused (trace_layout_conflict), never chosen between. The lanes refuse
+# a run id that is one of these folder names, since that run's own folder would sit inside the old one, and so does
+# the exporter. A test holds the names equal to fire_trigger's list when fire_trigger has one.
+LEGACY_TRACE_FOLDERS = {"pilot_v2_20261002": "trace_pairs", "pilot_v3_20261004": "pilot_v3_20261004_trace_pairs"}
 SITE_PAYLOAD = "data/simulated_scenarios.json"
 SITE_LABEL = "patientwords:" + SITE_PAYLOAD
 BLANK = "___"
@@ -616,12 +634,12 @@ def _run_dir(runs_dir: Path, run_id: str) -> Path:
 
 
 def _pairs_file_named_for_run(stem: str, run_id: str) -> bool:
-    """The naming rule for a run's trace pairs file: <run id>_<name>.json with <name> not empty, so that every run's
-    trace results get their own directory under the lane's pilot root. It is the rule the circuit-trace and
-    logits-eval lanes apply to a pilot pairs file under their pilot roots (fire_trigger's
-    pilot_pairs_run_name_problem, PR #85), so a run this exporter accepts is one the lane will trace: a bare run id,
-    or the run id followed by anything but "_", is refused by both. Run 2's trace/trace_pairs.json predates the rule
-    and keeps its name, since its items' ids are keyed on it (LEGACY_PILOT_RUNS)."""
+    """The naming rule for a run's trace pairs file: <run id>_<name>.json with <name> not empty, so that a trace
+    results folder's name says which run it holds. It is the rule the circuit-trace and logits-eval lanes apply to a
+    pilot pairs file under their pilot roots (fire_trigger's pilot_pairs_run_name_problem, PR #85), so a run this
+    exporter accepts is one the lane will trace: a bare run id, or the run id followed by anything but "_", is refused
+    by both. Run 2's trace/trace_pairs.json predates the rule and keeps its name, since its items' ids are keyed on it
+    (LEGACY_PILOT_RUNS)."""
     prefix = run_id + "_"
     if stem.startswith(prefix) and len(stem) > len(prefix):
         return True
@@ -630,60 +648,93 @@ def _pairs_file_named_for_run(stem: str, run_id: str) -> bool:
 
 
 def check_trace_pairs_files(runs: list[PilotRun], runs_dir: Path) -> None:
-    """Refuse, before any trace file is read, a trace pairs file the circuit-trace lane could not give its own
-    results directory: one not named after its run, one whose stem holds the model separator, or two runs' files
-    sharing a stem (a run's traces for every graph model share its stem, so a shared stem means one run's results
-    overwrite the other's). Every file under every run's trace/ is checked, a run whose traces are optional
-    included: its traces may be fired later, so the collision matters even though its trace results are not read.
-    Only file names are read here."""
-    seen: dict[str, str] = {}
+    """Refuse, before any trace file is read, a run the circuit-trace lane's pilot root would not trace: a run id that
+    is the name of a legacy trace folder (LEGACY_TRACE_FOLDERS), a trace pairs file not named after its run, or one
+    whose stem holds the model separator. Every file under every run's trace/ is checked, a run whose traces are
+    optional included: its traces may be fired later. Only file names are read here. Two runs' files may share a
+    stem: under the per-run layout each run's results are in a folder of its own."""
+    legacy_folders = set(LEGACY_TRACE_FOLDERS.values())
     for run in runs:
+        if run.run_id in legacy_folders:
+            refuse("bad_input", f"pilot run {run.run_id}: the run id is the name of the pilot trace folder "
+                                f"pilot/traces/{run.run_id}/, written before 2026-10-05, so the run's own folder "
+                                "would sit inside it; the circuit-trace and logits-eval lanes refuse the id "
+                                "(fire_trigger's pilot_legacy_run_id_problem, PR #85), so give the run another one")
         run_dir = _run_dir(runs_dir, run.run_id)
         for stem in (p.stem for p in _trace_pairs_candidates(run_dir)):
             if not _pairs_file_named_for_run(stem, run.run_id):
                 refuse("bad_input", f"pilot run {run.run_id}: trace pairs file {stem}.json is not named after the "
-                                    f"run (its name must be {run.run_id}_<name>.json, as the circuit-trace lane's "
-                                    "pilot root requires). The lane writes pilot/traces/<pairs-file stem>/, so a "
-                                    "file not named after its run can write into another run's directory "
-                                    "(trace_pairs.json is Run 2's); rebuild it with pilot/analysis/trace_pairs.py "
-                                    f"--out .../trace/{run.run_id}_trace_pairs.json")
+                                    f"run (its name must be {run.run_id}_<name>.json, as the circuit-trace and "
+                                    "logits-eval lanes' pilot roots require before they trace a file, so that a "
+                                    "results folder's name says which run it holds); rebuild it with "
+                                    "pilot/analysis/trace_pairs.py --out "
+                                    f".../trace/{run.run_id}_trace_pairs.json")
             if MODEL_SEPARATOR in stem:
                 refuse("bad_input", f"pilot run {run.run_id}: trace pairs file {stem}.json holds "
                                     f"{MODEL_SEPARATOR!r}, which the circuit-trace lane puts between a stem and a "
                                     "graph model in a results directory's name, so its directory could be read as "
                                     "another file's results for another model")
-            other = seen.setdefault(stem, run.run_id)
-            if other != run.run_id:
-                refuse("bad_input", f"pilot runs {other} and {run.run_id} have trace pairs files with one stem "
-                                    f"({stem}): the circuit-trace lane writes pilot/traces/<pairs-file stem>/ (and "
-                                    f"<stem>{MODEL_SEPARATOR}<model>/), so their trace results would share (and "
-                                    "overwrite) one directory, whether or not this export requires them; give each "
-                                    "run's trace pairs file its own stem")
 
 
-def _results_dir(trace_root: Path, stem: str, model: str) -> Path:
-    """Where the circuit-trace lane's pilot root writes the results of one pairs file for one graph model."""
-    return trace_root / (stem if model == UNSUFFIXED_TRACE_MODEL else f"{stem}{MODEL_SEPARATOR}{model}")
+def _results_dir(base: Path, model: str) -> Path:
+    """Where the circuit-trace lane's pilot root writes one pairs file's results for one graph model, given the
+    model-free directory ``base`` (<root>/<run id>/<stem>, or a legacy <root>/<stem>)."""
+    return base if model == UNSUFFIXED_TRACE_MODEL else base.with_name(f"{base.name}{MODEL_SEPARATOR}{model}")
 
 
-def trace_results_dir(trace_root: Path, stem: str, run: PilotRun) -> tuple[Path, str]:
-    """(results directory, graph model) for a run whose trace results are required. A model named with
-    --pilot-trace-model is read from its own directory and nowhere else; with none named, the one model whose
-    directory holds results is read, and none or more than one is refused, never guessed between."""
-    if run.trace_model is not None:
-        return _results_dir(trace_root, stem, run.trace_model), run.trace_model
-    found: list[tuple[str, Path]] = []        # (model, directory); counted by directory, so no entry hides another
-    candidates = [trace_root / stem] + sorted(trace_root.glob(f"{glob.escape(stem)}{MODEL_SEPARATOR}*"))
-    for d in candidates:
+def _results_found(base: Path) -> list[tuple[str, Path]]:
+    """(graph model, directory) for each of <base>/ (gemma-2-2b) and <base>__<model>/ (that model) that holds a
+    batch_summary*.json; each directory counts, so no entry hides another."""
+    found = []
+    for d in [base] + sorted(base.parent.glob(f"{glob.escape(base.name)}{MODEL_SEPARATOR}*")):
         if d.is_dir() and any(d.glob("batch_summary*.json")):
-            found.append((UNSUFFIXED_TRACE_MODEL if d.name == stem else d.name[len(stem) + len(MODEL_SEPARATOR):], d))
+            found.append((UNSUFFIXED_TRACE_MODEL if d == base else d.name[len(base.name) + len(MODEL_SEPARATOR):], d))
+    return found
+
+
+def trace_results_dir(trace_root: Path, run: PilotRun, stems: list[str]) -> tuple[Path, str]:
+    """(results directory, graph model) for a run whose trace results are required. ``stems`` are the stems of the
+    run's trace pairs file and of its byte-identical copies (Run 2's), any of which the lane may have traced. Two
+    layouts are read (PR #85): the run's own folder, <root>/<run id>/<stem>[__<model>]/, where every pilot fire since
+    2026-10-05 writes; and, for a run in LEGACY_TRACE_FOLDERS, the folder written before then,
+    <root>/<legacy folder>[__<model>]/, while the run still holds the pairs file it is named after. A run with
+    results in both layouts is refused (``trace_layout_conflict``) whatever their models, never chosen between: the
+    two would be two traces of one pairs file. Within the one layout that holds results, a model named with
+    --pilot-trace-model is read from its own directory and nowhere else; with none named, the one model whose
+    directory holds results is read; none, or more than one directory, is refused (``missing_trace``,
+    ``ambiguous_trace``), never guessed between."""
+    run_id = run.run_id
+    legacy_folder = LEGACY_TRACE_FOLDERS.get(run_id)
+    legacy_bases = [trace_root / legacy_folder] if legacy_folder in stems else []
+    own_bases = [trace_root / run_id / stem for stem in stems]
+    legacy = [hit for base in legacy_bases for hit in _results_found(base)]
+    own = [hit for base in own_bases for hit in _results_found(base)]
+    if legacy and own:
+        refuse("trace_layout_conflict", f"pilot run {run_id} has trace results in both layouts: in the folder "
+                                        "written before 2026-10-05 "
+                                        f"({', '.join(f'{m}: {d}' for m, d in legacy)}) and in the run's own folder "
+                                        f"under PR #85's per-run layout ({', '.join(f'{m}: {d}' for m, d in own)}). "
+                                        "The export does not choose between them; a person decides which set stands "
+                                        "(moving or removing committed results is a decision, made in a pull "
+                                        f"request), or pass --pilot-trace-optional {run_id} to export the run "
+                                        "without trace results")
+    found = legacy or own
+    if run.trace_model is not None:
+        found = [(m, d) for m, d in found if m == run.trace_model]
     if len(found) > 1:
-        refuse("ambiguous_trace", f"pilot run {run.run_id}: trace results of its pairs file {stem}.json exist in "
-                                  f"{len(found)} directories, one per graph model "
-                                  f"({', '.join(f'{m}: {d}' for m, d in found)}); name the model whose traces this "
-                                  f"bundle requires with --pilot-trace-model {run.run_id} <model>")
+        tail = "" if run.trace_model is not None else (
+            f"; if they are for different graph models, name the one whose traces this bundle requires with "
+            f"--pilot-trace-model {run_id} <model>")
+        refuse("ambiguous_trace", f"pilot run {run_id}: its trace results are in {len(found)} directories "
+                                  f"({', '.join(f'{m}: {d}' for m, d in found)}), and the export reads one{tail}")
     if not found:
-        return trace_root / stem, UNSUFFIXED_TRACE_MODEL      # traced_prompts refuses it as missing_trace
+        bases = legacy_bases + own_bases
+        where = (", ".join(str(_results_dir(b, run.trace_model)) for b in bases) if run.trace_model is not None else
+                 ", ".join(f"{b} or {b}{MODEL_SEPARATOR}<model>" for b in bases))
+        named = f"{run.trace_model} " if run.trace_model is not None else ""
+        refuse("missing_trace", f"pilot run {run_id}: no {named}trace results (batch_summary*.json) in {where}; a "
+                                f"trace result is required for its pairs (pass --pilot-trace-optional {run_id} to "
+                                "export it without trace results)")
     model, d = found[0]
     return d, model
 
@@ -716,8 +767,9 @@ def _trace_pairs_file(run_dir: Path, run_id: str) -> tuple[Path, list[Path]]:
     """The run's one trace pairs file (the JSON file under <run>/trace/ that is not a .meta.json sidecar), and the
     other files there that must be byte-identical copies of it (pilot_items compares them). Only Run 2 may have
     copies: the lanes' pilot roots refuse its legacy trace_pairs.json for a new fire, so tracing it again needs a
-    copy named for the run beside it (PR #85: pilot_v2_20261002_trace_pairs.json), and the exporter still reads the
-    legacy file, which its items' ids are keyed on, and the legacy file's trace results directory."""
+    copy named for the run beside it (PR #85: pilot_v2_20261002_trace_pairs.json). The exporter still reads the
+    legacy file, which its items' ids are keyed on; a copy's trace results are the same pairs' results, in the run's
+    own folder (trace_results_dir)."""
     trace_dir = run_dir / "trace"
     found = _trace_pairs_candidates(run_dir)
     if not found:
@@ -864,7 +916,7 @@ def pilot_items(inp: Inputs, seal: Seal, runs_dir: Path, trace_root: Path,
                 refuse("bad_input", f"{pairs_path.name} pair {i}: its review id is not the one review_map.json "
                                     f"gives row {row_id} (the file was built from another review map)")
             pairs_by_row[row_id] = (i, pair)
-        traces_dir, trace_model = trace_results_dir(trace_root, pairs_path.stem, run)
+        traces_dir, trace_model = trace_results_dir(trace_root, run, [pairs_path.stem] + [c.stem for c in copies])
         traced = traced_prompts(inp, traces_dir, run_id, trace_model)
         counts["trace_pairs"] = len(pairs)
         counts["traced"] = sum(1 for i in range(1, len(pairs) + 1) if i in traced)
@@ -1614,10 +1666,11 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
                          "pair needs one (Run 2's trace pairs file is still read: its item ids are keyed on it)")
     ap.add_argument("--pilot-trace-model", action="append", nargs=2, metavar=("RUN_ID", "MODEL"),
                     help="read this run's required trace results for this graph model, from "
-                         f"<--pilot-trace-root>/<pairs stem>{MODEL_SEPARATOR}<model>/ ({UNSUFFIXED_TRACE_MODEL}: "
-                         "<pairs stem>/), as the circuit-trace lane writes them; with none named, the one model "
-                         "whose results exist is read, and none or more than one is refused. Every summary read "
-                         "must declare the model in its graph_model field")
+                         f"<--pilot-trace-root>/<run id>/<pairs stem>{MODEL_SEPARATOR}<model>/ "
+                         f"({UNSUFFIXED_TRACE_MODEL}: <pairs stem>/), as the circuit-trace lane writes them (Run 2's "
+                         "and Run 3's legacy folders: <--pilot-trace-root>/<pairs stem>[__<model>]/); with none "
+                         "named, the one model whose results exist is read, and none or more than one is refused. "
+                         "Every summary read must declare the model in its graph_model field")
     for key in ("questions", "pilot_runs_dir", "pilot_trace_root", "advice_new", "advice_rerun", "petri_seeds",
                 "dashboard", "simulated", "allowlist"):
         ap.add_argument("--" + key.replace("_", "-"), default=str(DEFAULTS[key]))

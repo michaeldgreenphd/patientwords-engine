@@ -65,15 +65,16 @@ recorded command still gives that bundle's items unchanged.
   apply, and the export uses the latter's. A row that breaks it stops the
   export (`bad_next_word`), whether or not the run's trace is required.
 - **Traces.** By default every pilot pair must have a trace result: the run's
-  trace pairs file must hold the row, and the trace results in
-  `pilot/traces/<that file's name without .json>/` must carry it with the same
-  prompts. That directory is gemma-2-2b's. The circuit-trace lane writes another
-  graph model's results to `pilot/traces/<name without .json>__<model>/`, and
+  trace pairs file must hold the row, and the run's trace results must carry it
+  with the same prompts. The export reads them where the circuit-trace lane
+  writes them (see *Where a run's traces are*): for gemma-2-2b in
+  `pilot/traces/<run id>/<that file's name without .json>/`, and for another
+  graph model in `.../<name without .json>__<model>/`.
   `--pilot-trace-model <run id> <model>` reads that model's directory and no
   other. With no model named, the export reads the one model whose directory
-  holds results. It stops if there are none (`missing_trace`), or if more than
-  one model has results (`ambiguous_trace`), so it never chooses between models
-  for you. Every trace summary it reads must also name that model in its
+  holds results. It stops if there are none (`missing_trace`), or if results
+  are in more than one directory (`ambiguous_trace`), so it never chooses
+  between models for you. Every trace summary it reads must also name that model in its
   `graph_model` field, which the circuit-trace lane records in every summary; a
   summary that names another model, or none, stops the export
   (`trace_model_mismatch`), so a summary copied into the wrong model's
@@ -100,42 +101,64 @@ recorded command still gives that bundle's items unchanged.
   all of them once the checker has said no to any row. In practice
   `--pilot-all-rows` therefore goes with `--pilot-trace-optional` for the same
   run.
-- **One trace directory per run: name the pairs file after the run.** The
-  circuit-trace lane writes a pilot trace to
-  `pilot/traces/<pairs file name without .json>/` (with `__<model>` added for a
-  model other than gemma-2-2b). It takes the directory from the file name
-  alone. Run 2's pairs file is `trace/trace_pairs.json`, so a later run whose
-  pairs file kept that name would write into Run 2's directory and overwrite its
-  committed results. A run's trace pairs file must therefore be named after the
-  run: `<run id>_<name>.json`, where `<name>` is not empty. This is the rule
-  the circuit-trace and logits-eval lanes apply to a pairs file under their
-  pilot roots (`scripts/fire_trigger.py`'s `pilot_pairs_run_name_problem`,
-  added by PR #85), so a run the export accepts is one the lane will trace. A
-  bare run id, or the run id followed by anything but `_`, is refused by both.
-  Run 3's file is `trace/pilot_v3_20261004_trace_pairs.json`, traced into
-  `pilot/traces/pilot_v3_20261004_trace_pairs/`. Run 2's `trace_pairs.json`
-  predates the rule and keeps its name and its directory, because its items'
+- **Where a run's traces are.** This follows PR #85's layout, which must be
+  merged before this export is used on a new fire. Since 2026-10-05 the
+  circuit-trace lane writes each run's traces in a folder of its own,
+  `pilot/traces/<run id>/<pairs file name without .json>/` (with `__<model>`
+  added for a model other than gemma-2-2b). `<run id>` is the directory
+  directly under `pilot/runs/` that holds the pairs file. Before that, the lane
+  named the folder after the pairs file alone. Two runs were traced that way,
+  and their results stay where they are:
+  - Run 2's in `pilot/traces/trace_pairs/`;
+  - Run 3's in `pilot/traces/pilot_v3_20261004_trace_pairs/`.
+
+  The export reads each of these two folders for its own run only, and only
+  while the run still holds the pairs file the folder is named after. It never
+  reads any other folder directly under `pilot/traces/`. A run with results in
+  both its legacy folder and its own folder stops the export
+  (`trace_layout_conflict`), whatever models they are for. The two sets would
+  be two traces of one pairs file, and the export never chooses between them.
+  A person decides which set stands; moving or removing committed results is
+  a decision, made in a pull request. Until then
+  `--pilot-trace-optional <run id>` exports the run without reading either
+  set. A run id that is one of the two legacy folder names is refused
+  (`bad_input`), as the lanes refuse it, because that run's own folder would
+  sit inside the old one.
+- **Name the pairs file after the run.** A run's trace pairs file must be named
+  `<run id>_<name>.json`, where `<name>` is not empty, so a results folder's
+  name says which run it holds. This is the rule the circuit-trace and
+  logits-eval lanes apply to a pairs file under their pilot roots
+  (`scripts/fire_trigger.py`'s `pilot_pairs_run_name_problem`, added by
+  PR #85), so a run the export accepts is one the lane will trace. A bare run
+  id, or the run id followed by anything but `_`, is refused by both. Run 3's
+  file is `trace/pilot_v3_20261004_trace_pairs.json`. Run 2's
+  `trace_pairs.json` predates the rule and keeps its name, because its items'
   ids are keyed on that file. The export stops (`bad_input`) on a trace pairs
-  file that is not named after its run, on one whose name holds `__` (the
-  lane's model separator), and on two runs whose files share a name. It checks
-  every file under each exported run's `trace/`, including a run exported with
-  `--pilot-trace-optional`, because that run's trace may still be fired. For
-  such a run it reads only the file names, not the files. Build a run's file
-  with `pilot/analysis/trace_pairs.py --out pilot/runs/<run id>/trace/<run id>_trace_pairs.json`
+  file that is not named after its run, and on one whose name holds `__` (the
+  lane's model separator). It checks every file under each exported run's
+  `trace/`, including a run exported with `--pilot-trace-optional`, because
+  that run's trace may still be fired. For such a run it reads only the file
+  names, not the files. Two runs' files may share a name, since each run's
+  results are in its own folder. Build a run's file with
+  `pilot/analysis/trace_pairs.py --out pilot/runs/<run id>/trace/<run id>_trace_pairs.json`
   before its trace is fired.
 - **Tracing Run 2 again.** Under PR #85's rule the lanes refuse Run 2's
-  `trace_pairs.json` for a new fire and say to copy it under
-  `pilot_v2_20261002_trace_pairs.json`. Put that copy beside the original in
-  `pilot/runs/pilot_v2_20261002/trace/` and leave it byte for byte the same.
+  `trace_pairs.json` for a new fire. Re-running
+  `pilot/analysis/trace_pairs.py --run-dir pilot/runs/pilot_v2_20261002 --review-sample`
+  writes a byte-identical `pilot_v2_20261002_trace_pairs.json` beside it, and
+  copying the file there does the same. Leave it byte for byte the same.
   Run 2's finalized manifest records no hash for any file under `trace/`, so
-  the copy leaves the finalized run as it was. The export allows such a copy
-  and still reads `trace_pairs.json` and its results in
-  `pilot/traces/trace_pairs/` (or `trace_pairs__<model>/`), so the first
-  bundle's command keeps giving the same items. It never reads results traced
-  from the copy, which land in
-  `pilot/traces/pilot_v2_20261002_trace_pairs[__<model>]/`. When a run's trace
-  is required, any other second file under its `trace/`, including a copy that
-  differs, stops the export (`bad_input`). A run exported with
+  the copy leaves the finalized run as it was. The copy alone changes nothing:
+  the export still reads `trace_pairs.json`, which Run 2's item ids are keyed
+  on, and its results in `pilot/traces/trace_pairs/`. Results traced from the
+  copy land in Run 2's own folder,
+  `pilot/traces/pilot_v2_20261002/pilot_v2_20261002_trace_pairs[__<model>]/`.
+  They are results of the same pairs, so the export reads them as Run 2's. With
+  Run 2's legacy results still in place, though, Run 2 then has results in both
+  layouts and the export stops (`trace_layout_conflict`). The first bundle's
+  recorded command stops too, until the owner decides which set stands. When a
+  run's trace is required, any other second file under its `trace/`, including
+  a copy that differs, stops the export (`bad_input`). A run exported with
   `--pilot-trace-optional` reads no trace pairs file (Run 2 reads only
   `trace_pairs.json`, for its id key), so for such a run the second-file and
   copy checks wait until its trace is required; the names of its files are
@@ -422,11 +445,12 @@ python scripts/seal_check.py --site ../patientwords
 - The command above takes Run 3's review sample and requires its gemma-2-2b
   traces. Run 3's trace pairs file, `trace/pilot_v3_20261004_trace_pairs.json`,
   was built with `pilot/analysis/trace_pairs.py --review-sample` and named after
-  the run, so its traces land in `pilot/traces/pilot_v3_20261004_trace_pairs/`,
-  beside Run 2's `pilot/traces/trace_pairs/` (see *Which trace pairs file a
-  selection needs* and *One trace directory per run*). If Run 3 is also traced
-  with another graph model, add `--pilot-trace-model pilot_v3_20261004 <model>`
-  to say whose traces the bundle requires.
+  the run. Its traces were fired before PR #85's per-run layout and are in
+  `pilot/traces/pilot_v3_20261004_trace_pairs/`, beside Run 2's
+  `pilot/traces/trace_pairs/` (see *Which trace pairs file a selection needs*
+  and *Where a run's traces are*). Tracing Run 3 again, with any graph model,
+  writes `pilot/traces/pilot_v3_20261004/`. The export then stops
+  (`trace_layout_conflict`) until the owner decides which set stands.
 - Add `--pilot-trace-optional pilot_v3_20261004` if Run 3's traces have not
   landed when the bundle is wanted.
 - Add `--pilot-all-rows pilot_v3_20261004` to send every Run 3 pair rather than

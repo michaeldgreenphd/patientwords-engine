@@ -9,23 +9,26 @@ predicts an answer, the urgency question names the message it asks about, raters
 up), and the pilot runs: which runs, the review sample or every non-control row, a required or an optional trace (an
 optional one is not read, so the items do not change when traces land; Run 2's trace pairs file is still read as its
 id key), a trace pairs file with or without review ids, a row's id under every option, which trace results directory
-a run reads (named after its pairs file; <stem>__<model>/ for another graph model, named or the one found, two found
-refused, and every summary there declaring the model it is read as), the naming rule for a trace pairs file (<run
-id>_<name>.json, the lanes' rule, compared with fire_trigger's when it has one), a byte-identical copy of Run 2's
-trace pairs file beside it (allowed, and never read for traces), and the refusals for a run that is not finalized,
-not version 2, changed since it was finalized, missing a required trace, whose trace pairs file is not named after
-it, holds "__" or shares a stem with another run's (optional runs included), that holds a second trace pairs file
-other than such a copy while its trace is required (an optional run's second file is checked by name only), or whose
-review map, trace pairs file or sidecar does not fit it, and a next word outside the version-2 rule (the trace-pairs
-builder's check, with the trace optional or required); and later rounds (--previous-bundle): a previous item dropped
-or changed, a question id dropped or kept with another scale, answer values (of another JSON type included), phase,
-requirement or lock, a required question added to a set previous items use (an optional one, or one in a set no
-previous item uses, kept), another notes limit, and a previous bundle of another shape. Every input here is
-synthetic, abstract and non-medical (the medical vocabulary rule in AGENTS.md); the seal fixtures follow
-tests/test_seal_check.py and tests/test_tierb_split.py. The committed-bundle tests check every bundle under
-data/verification/ against the contract, with failure messages naming item ids only, never row text, and re-export
-the first bundle from the committed engine files: the default run gives its pilot items unchanged, and with the site
-payload it recorded the recorded command gives its items byte for byte.
+a run reads (PR #85's per-run layout, <run id>/<stem>/ named after its pairs file, and Run 2's and Run 3's two
+legacy folders, never a flat folder for another run, results in both layouts refused whatever the model;
+<stem>__<model>/ for another graph model, named or the one found, two found refused, and every summary there
+declaring the model it is read as), the naming rule for a trace pairs file (<run id>_<name>.json, the lanes' rule,
+compared with fire_trigger's when it has one), a byte-identical copy of Run 2's trace pairs file beside it (allowed;
+its results, in Run 2's own folder, are Run 2's, and conflict with the legacy ones), and the refusals for a run that
+is not finalized, not version 2, changed since it was finalized, missing a required trace, whose trace pairs file is
+not named after it or holds "__" (optional runs included; two runs' files may share a stem), whose run id is a
+legacy folder's name, that holds a second trace pairs file other than such a copy while its trace is required (an
+optional run's second file is checked by name only), or whose review map, trace pairs file or sidecar does not fit
+it, and a next word outside the version-2 rule (the trace-pairs builder's check, with the trace optional or
+required); and later rounds (--previous-bundle): a previous item dropped or changed, a question id dropped or kept
+with another scale, answer values (of another JSON type included), phase, requirement or lock, a required question
+added to a set previous items use (an optional one, or one in a set no previous item uses, kept), another notes
+limit, and a previous bundle of another shape. Every input here is synthetic, abstract and non-medical (the medical
+vocabulary rule in AGENTS.md); the seal fixtures follow tests/test_seal_check.py and tests/test_tierb_split.py. The
+committed-bundle tests check every bundle under data/verification/ against the contract, with failure messages
+naming item ids only, never row text, and re-export the first bundle from the committed engine files: the default
+run gives its pilot items unchanged, and with the site payload it recorded the recorded command gives its items byte
+for byte.
 """
 from __future__ import annotations
 
@@ -52,6 +55,9 @@ TIER_A = "pairs_20260705T000000Z"
 RUN2 = "pilot_v2_20261002"          # the default run: its items keep the first bundle's label and id key
 RUN_NEW = "pilot_v9_20990101"       # any other run
 NEW_PAIRS = f"{RUN_NEW}_trace_pairs"  # its trace pairs file's stem, named after the run as the naming rule asks
+RUN3 = "pilot_v3_20261004"          # named like pilot Run 3, whose pairs file is named after the run
+# the two trace folders written flat before PR #85's per-run layout, by run (the exporter's LEGACY_TRACE_FOLDERS)
+LEGACY_FOLDERS = {RUN2: "trace_pairs", RUN3: f"{RUN3}_trace_pairs"}
 TIER_B = "pairs_20260711T000000Z"
 START = "2026-07-10T01:14:38Z"
 MARK_RATIONALE = "zzmark rationale qx"
@@ -262,8 +268,8 @@ def write_run(paths: dict[str, Path], run_id: str, rows: list[dict], review: lis
     """A synthetic pilot run under the world's runs directory: its generated rows, a review map over the row ids in
     ``review`` (default every non-control row, in order), a design, a finalized manifest hashing those three files,
     and, for the row ids in ``traced`` (default the review sample; [] for none), a trace pairs file with its sidecar
-    and trace results under the world's trace root, in <stem>/ (or <stem>__<model>/ for a ``trace_model`` other than
-    gemma-2-2b) as the circuit-trace lane's pilot root writes them. The pairs file is named after the run
+    and trace results under the world's trace root, where write_traces puts them for a ``trace_model`` (gemma-2-2b
+    by default). The pairs file is named after the run
     (<run id>_trace_pairs.json) unless ``pairs_name`` says otherwise; Run 2's keeps its trace_pairs.json. The pairs
     carry their review ids as trace_pairs.py --review-sample writes them, or with ``review_ids=False`` none, as its
     default and --include-controls selections write them."""
@@ -286,7 +292,7 @@ def write_run(paths: dict[str, Path], run_id: str, rows: list[dict], review: lis
         pairs = [_pair_of(by_id[row_id], run_id, review_of.get(row_id) if review_ids else None)
                  for row_id in traced]
         write_pairs(run, pairs, pairs_name)
-        write_traces(paths, pairs_name, pairs, trace_model)
+        write_traces(paths, run_id, pairs_name, pairs, trace_model)
     return run
 
 
@@ -317,10 +323,17 @@ def summary_doc(pairs: list[dict], model: Any = "gemma-2-2b") -> dict:
     return doc
 
 
-def write_traces(paths: dict[str, Path], stem: str, pairs: list[dict], model: str = "gemma-2-2b") -> Path:
-    """Trace results for the pairs, where the circuit-trace lane's pilot root writes them for the model."""
+def write_traces(paths: dict[str, Path], run_id: str, stem: str, pairs: list[dict], model: str = "gemma-2-2b",
+                 layout: str | None = None) -> Path:
+    """Trace results for the pairs of the run's pairs file ``stem``, where the circuit-trace lane's pilot root writes
+    them for the model: in the run's own folder, <root>/<run id>/<stem>[__<model>]/ (PR #85's per-run layout,
+    ``layout="per_run"``), or flat, <root>/<stem>[__<model>]/ (``layout="flat"``), as Run 2's and Run 3's were written
+    before it. By default flat for a run's legacy folder (LEGACY_FOLDERS) and per-run otherwise."""
+    if layout is None:
+        layout = "flat" if LEGACY_FOLDERS.get(run_id) == stem else "per_run"
+    base = paths["pilot_trace_root"] if layout == "flat" else paths["pilot_trace_root"] / run_id
     folder = stem if model == "gemma-2-2b" else f"{stem}__{model}"
-    return dump(paths["pilot_trace_root"] / folder / "batch_summary.part_01.json", summary_doc(pairs, model))
+    return dump(base / folder / "batch_summary.part_01.json", summary_doc(pairs, model))
 
 
 def write_world(tmp_path: Path, data: dict) -> dict[str, Path]:
@@ -887,7 +900,7 @@ def test_a_second_run_joins_with_its_own_label_counts_and_id_key(tmp_path, capsy
                   for i in new) == [("r001", rows[2]["id"], 1), ("r002", rows[0]["id"], 2)]
     sel = bundle["selection"]["tracing_pair"][NEW_LABEL]
     assert sel["run"] == RUN_NEW and sel["source"] == key and sel["counts"]["selected"] == 2
-    assert sel["trace_results"] == evt.logical_path(paths["pilot_trace_root"] / NEW_PAIRS)
+    assert sel["trace_results"] == evt.logical_path(paths["pilot_trace_root"] / RUN_NEW / NEW_PAIRS)
     assert bundle["seal"]["rows_checked_with_sealed_pair"]["tracing_pilot"] == 4
     displays = json.dumps([i["display"] for i in bundle["items"]])
     assert RUN_NEW not in displays and RUN2 not in displays and "pilot" not in displays   # labels stay out of sight
@@ -1214,55 +1227,69 @@ def test_a_trace_pairs_file_whose_review_ids_disagree_with_the_review_map_is_ref
 
 # ---- trace pairs file names and trace results directories ---------------------------------------------------
 
-RUN3 = "pilot_v3_20261004"          # named like pilot Run 3, whose pairs file is named after the run
-
-
 def test_a_run_reads_the_trace_results_named_after_its_pairs_file_and_run2_its_legacy_directory(tmp_path, capsys):
-    # The naming rule: a run's trace pairs file is <run id>_<name>.json (Run 3's is pilot_v3_20261004_trace_pairs.json),
-    # and the circuit-trace lane writes its results to pilot/traces/<that stem>/; Run 2's trace_pairs.json predates
-    # the rule and keeps pilot/traces/trace_pairs/.
+    # The naming rule: a run's trace pairs file is <run id>_<name>.json (Run 3's is pilot_v3_20261004_trace_pairs.json).
+    # Run 3's results were traced before PR #85's per-run layout, into pilot/traces/<that stem>/, and stay there; Run
+    # 2's trace_pairs.json predates the rule and keeps pilot/traces/trace_pairs/. A later run reads its own folder.
     paths = write_world(tmp_path, world_data())
     write_run(paths, RUN3, _new_run_rows())
-    bundle, _ = rerun(paths, paths["out_dir"], "--pilot-run", RUN2, "--pilot-run", RUN3)
+    write_run(paths, RUN_NEW, [dict(r, id=r["id"] + "n") for r in _new_run_rows()])
+    bundle, _ = rerun(paths, paths["out_dir"], "--pilot-run", RUN2, "--pilot-run", RUN3, "--pilot-run", RUN_NEW)
     tracing = bundle["selection"]["tracing_pair"]
     assert tracing["pilot_run2"]["trace_results"] == evt.logical_path(paths["pilot_trace_root"] / "trace_pairs")
     assert tracing[f"pilot:{RUN3}"]["trace_results"] == evt.logical_path(
         paths["pilot_trace_root"] / f"{RUN3}_trace_pairs")
     assert tracing[f"pilot:{RUN3}"]["trace_pairs"] == evt.logical_path(
         paths["pilot_runs_dir"] / RUN3 / "trace" / f"{RUN3}_trace_pairs.json")
-    assert {tracing[k]["trace_model"] for k in ("pilot_run2", f"pilot:{RUN3}")} == {"gemma-2-2b"}
+    assert tracing[NEW_LABEL]["trace_results"] == evt.logical_path(paths["pilot_trace_root"] / RUN_NEW / NEW_PAIRS)
+    assert {tracing[k]["trace_model"] for k in ("pilot_run2", f"pilot:{RUN3}", NEW_LABEL)} == {"gemma-2-2b"}
 
 
 def _items_bytes(raw: bytes) -> bytes:
     return raw[raw.index(b'\n "items": ['):]
 
 
-def test_run2s_copy_made_to_trace_it_again_leaves_its_export_unchanged(tmp_path, capsys):
-    # PR #85's lanes refuse Run 2's legacy trace_pairs.json for a new fire and say to copy it under
-    # pilot_v2_20261002_trace_pairs.json. A copy beside it made the default export (the recorded first-bundle
-    # command) refuse with "2 trace pairs files". A byte-identical copy is now allowed; the export still reads
-    # trace_pairs.json, which Run 2's ids are keyed on, and its results in pilot/traces/trace_pairs/, never the
-    # copy's results.
+def test_run2s_copy_leaves_its_export_unchanged_and_its_traces_are_run2s_in_its_own_folder(tmp_path, capsys):
+    # PR #85's lanes refuse Run 2's legacy trace_pairs.json for a new fire; tracing Run 2 again needs a byte-identical
+    # copy, pilot_v2_20261002_trace_pairs.json, beside it, and its results land in Run 2's own folder,
+    # pilot/traces/pilot_v2_20261002/pilot_v2_20261002_trace_pairs[__<model>]/. A copy alone changes nothing: the
+    # export still reads trace_pairs.json, which Run 2's ids are keyed on, and the legacy results. Once the copy's
+    # results land, Run 2 has results in both layouts and the export stops rather than choose; the optional path,
+    # which reads no trace results, still exports. Without the legacy results the copy's are read as Run 2's.
     paths = write_world(tmp_path, world_data())
+    root = paths["pilot_trace_root"]
     before, before_raw = rerun(paths, tmp_path / "before")
     run, pairs = _run2_pairs(paths)
     copy_name = f"{RUN2}_trace_pairs"
     shutil.copy2(run / "trace" / "trace_pairs.json", run / "trace" / f"{copy_name}.json")
     shutil.copy2(run / "trace" / "trace_pairs.meta.json", run / "trace" / f"{copy_name}.meta.json")
-    write_traces(paths, copy_name, pairs, "qwen3-4b")                        # a re-trace from the copy
     after, after_raw = rerun(paths, tmp_path / "after")
     assert _items_bytes(after_raw) == _items_bytes(before_raw)
     assert after["selection"] == before["selection"]
     sel = after["selection"]["tracing_pair"]["pilot_run2"]
     assert sel["trace_pairs"].endswith(f"{RUN2}/trace/trace_pairs.json") and sel["trace_model"] == "gemma-2-2b"
-    assert sel["trace_results"] == evt.logical_path(paths["pilot_trace_root"] / "trace_pairs")
+    assert sel["trace_results"] == evt.logical_path(root / "trace_pairs")
     assert [s["role"] for s in after["sources"] if s["path"].endswith(f"{copy_name}.json")] == [
         f"pilot run {RUN2} trace pairs copy"]
-    # with the trace optional, Run 2 still reads only trace_pairs.json, for its id key
-    rerun(paths, tmp_path / "optional", "--pilot-trace-optional", RUN2)
-    # the copy's results are never read for Run 2: naming the model they are for looks in trace_pairs__qwen3-4b/
-    message = refused_paths(paths, "missing_trace", "--pilot-trace-model", RUN2, "qwen3-4b")
-    assert "trace_pairs__qwen3-4b" in message and copy_name not in message
+    # a flat folder named for the copy (the layout before PR #85) is no legacy folder, and is never read
+    write_traces(paths, RUN2, copy_name, pairs, "qwen3-4b", layout="flat")
+    _, flat_raw = rerun(paths, tmp_path / "flat")
+    assert flat_raw == after_raw
+    # the copy traced in Run 2's own folder: results in both layouts, whatever the model read
+    write_traces(paths, RUN2, copy_name, pairs, "qwen3-4b")
+    for extra in ((), ("--pilot-trace-model", RUN2, "qwen3-4b"), ("--pilot-trace-model", RUN2, "gemma-2-2b")):
+        message = refused_paths(paths, "trace_layout_conflict", *extra)
+        assert f"gemma-2-2b: {root / 'trace_pairs'}" in message
+        assert f"qwen3-4b: {root / RUN2 / f'{copy_name}__qwen3-4b'}" in message
+    _, optional_raw = rerun(paths, tmp_path / "optional", "--pilot-trace-optional", RUN2)
+    assert b'"trace_index": null' in _items_bytes(optional_raw)
+    # without the legacy results (moving or removing them is the owner's decision), the copy's are Run 2's
+    shutil.rmtree(root / "trace_pairs")
+    own, own_raw = rerun(paths, tmp_path / "own")
+    assert _items_bytes(own_raw) == _items_bytes(before_raw)              # the same trace indexes, the same items
+    sel = own["selection"]["tracing_pair"]["pilot_run2"]
+    assert sel["trace_model"] == "qwen3-4b" and sel["trace_results"] == evt.logical_path(
+        root / RUN2 / f"{copy_name}__qwen3-4b")
 
 
 def test_a_second_file_under_run2s_trace_that_is_not_a_copy_is_refused(tmp_path):
@@ -1340,7 +1367,7 @@ def test_a_trace_pairs_file_with_the_run_id_an_underscore_and_any_name_is_accept
     write_run(paths, RUN_NEW, _new_run_rows(), pairs_name=f"{RUN_NEW}_x")
     bundle, _ = rerun(paths, paths["out_dir"], "--pilot-run", RUN_NEW)
     assert bundle["selection"]["tracing_pair"][NEW_LABEL]["trace_results"] == evt.logical_path(
-        paths["pilot_trace_root"] / f"{RUN_NEW}_x")
+        paths["pilot_trace_root"] / RUN_NEW / f"{RUN_NEW}_x")
 
 
 # (stem, whether the lane's rule accepts it) for a run named like Run 3; the exporter's own "__" refusal is separate
@@ -1369,10 +1396,11 @@ def test_the_naming_rule_is_the_lanes():
 
 @pytest.mark.parametrize("optional", [(), (RUN_NEW + "_b",), (RUN_NEW,), (RUN_NEW, RUN_NEW + "_b")],
                          ids=["both_required", "later_optional", "earlier_optional", "both_optional"])
-def test_two_runs_whose_trace_pairs_files_share_a_stem_are_refused_even_when_optional(tmp_path, optional):
+def test_two_runs_whose_trace_pairs_files_share_a_stem_each_read_their_own_folder(tmp_path, capsys, optional):
     # Two runs' files can both satisfy the naming rule and still share a stem (one run id followed by "_" is a prefix
-    # of the other); the circuit-trace lane would write both runs' results to one directory. An optional run's file
-    # is checked too (Codex review of PR #86, 4179236833): its traces may be fired later. Only file names are read.
+    # of the other). Before PR #85 the lane wrote pilot/traces/<stem>/, so both runs traced into one folder, and the
+    # export refused such a pair of runs (Codex review of PR #86, 4179236833). Under the per-run layout each run
+    # traces into pilot/traces/<run id>/<stem>/, and the export reads each run's own folder.
     paths = write_world(tmp_path, world_data())
     run_b = RUN_NEW + "_b"
     shared = f"{run_b}_trace_pairs"
@@ -1380,13 +1408,118 @@ def test_two_runs_whose_trace_pairs_files_share_a_stem_are_refused_even_when_opt
     write_run(paths, RUN_NEW, rows, pairs_name=shared)
     write_run(paths, run_b, [dict(r, id=r["id"] + "b") for r in rows], pairs_name=shared)
     extra = [a for run in optional for a in ("--pilot-trace-optional", run)]
-    message = refused_paths(paths, "bad_input", "--pilot-run", RUN_NEW, "--pilot-run", run_b, *extra)
-    assert RUN_NEW in message and run_b in message and "own stem" in message and shared in message
+    bundle, _ = rerun(paths, paths["out_dir"], "--pilot-run", RUN_NEW, "--pilot-run", run_b, *extra)
+    tracing = bundle["selection"]["tracing_pair"]
+    for run_id in (RUN_NEW, run_b):
+        required = run_id not in optional
+        assert tracing[f"pilot:{run_id}"]["trace_results"] == (
+            evt.logical_path(paths["pilot_trace_root"] / run_id / shared) if required else None)
+        assert len(_pilot(bundle, f"pilot:{run_id}")) == 3
+
+
+# ---- PR #85's per-run layout and the two legacy folders ----------------------------------------------------------
+
+def test_a_later_run_reads_its_own_folder_never_a_flat_one(tmp_path, capsys):
+    # PR #85: every pilot fire since 2026-10-05 writes pilot/traces/<run id>/<stem>[__<model>]/. A flat
+    # pilot/traces/<stem>/ is the layout before it, and is read only for the two runs whose parts were written so.
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, RUN_NEW, _new_run_rows())
+    root = paths["pilot_trace_root"]
+    bundle, _ = rerun(paths, tmp_path / "own", "--pilot-run", RUN_NEW)
+    assert bundle["selection"]["tracing_pair"][NEW_LABEL]["trace_results"] == evt.logical_path(
+        root / RUN_NEW / NEW_PAIRS)
+    shutil.move(root / RUN_NEW / NEW_PAIRS, root / NEW_PAIRS)                # the same results, flat
+    message = refused_paths(paths, "missing_trace", "--pilot-run", RUN_NEW)
+    assert f"{root / RUN_NEW / NEW_PAIRS} or {root / RUN_NEW / NEW_PAIRS}__<model>" in message
+    message = refused_paths(paths, "missing_trace", "--pilot-run", RUN_NEW, "--pilot-trace-model", RUN_NEW,
+                            "gemma-2-2b")
+    assert f"no gemma-2-2b trace results (batch_summary*.json) in {root / RUN_NEW / NEW_PAIRS};" in message
+
+
+def test_run3s_legacy_folder_is_read_for_any_model_and_its_own_folder_once_the_legacy_one_is_gone(tmp_path, capsys):
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, RUN3, _new_run_rows())
+    root, stem, label = paths["pilot_trace_root"], f"{RUN3}_trace_pairs", f"pilot:{RUN3}"
+    pairs = json.loads((paths["pilot_runs_dir"] / RUN3 / "trace" / f"{stem}.json").read_text())
+    legacy, legacy_raw = rerun(paths, tmp_path / "legacy", "--pilot-run", RUN3)
+    assert legacy["selection"]["tracing_pair"][label]["trace_results"] == evt.logical_path(root / stem)
+    write_traces(paths, RUN3, stem, pairs, "qwen3-4b", layout="flat")       # a second model, also flat
+    assert "2 directories" in refused_paths(paths, "ambiguous_trace", "--pilot-run", RUN3)
+    qwen, _ = rerun(paths, tmp_path / "qwen", "--pilot-run", RUN3, "--pilot-trace-model", RUN3, "qwen3-4b")
+    assert qwen["selection"]["tracing_pair"][label]["trace_results"] == evt.logical_path(root / f"{stem}__qwen3-4b")
+    shutil.rmtree(root / f"{stem}__qwen3-4b")
+    (root / RUN3).mkdir()
+    shutil.move(root / stem, root / RUN3 / stem)                              # moved into its own folder
+    own, own_raw = rerun(paths, tmp_path / "own", "--pilot-run", RUN3)
+    assert own["selection"]["tracing_pair"][label]["trace_results"] == evt.logical_path(root / RUN3 / stem)
+    assert _items_bytes(own_raw) == _items_bytes(legacy_raw)
+
+
+# (the model traced again in the run's own folder, the model named): every pair is refused, whatever the models
+LAYOUT_CONFLICTS = [("gemma-2-2b", None), ("qwen3-4b", None), ("qwen3-4b", "qwen3-4b"), ("qwen3-4b", "gemma-2-2b"),
+                    ("gemma-2-2b", "gemma-2-2b")]
+
+
+@pytest.mark.parametrize("run_id", [RUN2, RUN3])
+@pytest.mark.parametrize("model, named", LAYOUT_CONFLICTS)
+def test_a_run_with_results_in_both_layouts_is_refused_never_chosen_between(tmp_path, capsys, run_id, model, named):
+    # PR #85 keeps Run 2's and Run 3's parts in their flat folders; a fire of either run since writes its own folder.
+    # Results in both are two traces of one pairs file, and the export does not pick one, even when the named
+    # model's results sit in one layout only. Run 2 is traced again from its run-named copy (the lanes refuse its
+    # trace_pairs.json), Run 3 from its own pairs file.
+    paths = write_world(tmp_path, world_data())
+    root = paths["pilot_trace_root"]
+    if run_id == RUN3:
+        write_run(paths, RUN3, _new_run_rows())
+        stem = f"{RUN3}_trace_pairs"
+    else:
+        run, _ = _run2_pairs(paths)
+        stem = f"{RUN2}_trace_pairs"
+        for suffix in (".json", ".meta.json"):
+            shutil.copy2(run / "trace" / f"trace_pairs{suffix}", run / "trace" / f"{stem}{suffix}")
+    pairs = json.loads((paths["pilot_runs_dir"] / run_id / "trace" / f"{stem}.json").read_text())
+    write_traces(paths, run_id, stem, pairs, model, layout="per_run")
+    extra = ("--pilot-trace-model", run_id, named) if named else ()
+    message = refused_paths(paths, "trace_layout_conflict", "--pilot-run", run_id, *extra)
+    own = root / run_id / (stem if model == "gemma-2-2b" else f"{stem}__{model}")
+    assert f"gemma-2-2b: {root / LEGACY_FOLDERS[run_id]}" in message and f"{model}: {own}" in message
+    assert f"--pilot-trace-optional {run_id}" in message
+    rerun(paths, tmp_path / "optional", "--pilot-run", run_id, "--pilot-trace-optional", run_id)
+
+
+@pytest.mark.parametrize("optional", [False, True], ids=["required", "optional"])
+@pytest.mark.parametrize("run_id", ["trace_pairs", "pilot_v3_20261004_trace_pairs"])
+def test_a_run_id_that_names_a_legacy_trace_folder_is_refused(tmp_path, run_id, optional):
+    # PR #85's lanes refuse such a run id, since the run's own folder, pilot/traces/<run id>/, would sit inside the
+    # legacy folder of that name; the export refuses it too, so a run it accepts is one the lanes will trace
+    paths = write_world(tmp_path, world_data())
+    write_run(paths, run_id, _new_run_rows())
+    extra = ("--pilot-trace-optional", run_id) if optional else ()
+    message = refused_paths(paths, "bad_input", "--pilot-run", run_id, *extra)
+    assert f"pilot run {run_id}: the run id is the name of the pilot trace folder pilot/traces/{run_id}/" in message
+
+
+def test_the_legacy_trace_folders_are_the_lanes():
+    # The exporter reads, for Run 2 and Run 3, the two flat folders PR #85 keeps, and refuses their names as run ids,
+    # as the lanes do. fire_trigger.PILOT_LEGACY_OUTPUT_FOLDERS comes with PR #85; until it is on the branch, this
+    # compares the exporter with the table alone.
+    assert evt.LEGACY_TRACE_FOLDERS == LEGACY_FOLDERS
+    spec = importlib.util.spec_from_file_location("fire_trigger_legacy", ROOT / "scripts" / "fire_trigger.py")
+    fire_trigger = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fire_trigger)
+    lane_folders = getattr(fire_trigger, "PILOT_LEGACY_OUTPUT_FOLDERS", None)
+    if lane_folders is None:
+        pytest.skip("scripts/fire_trigger.py has no PILOT_LEGACY_OUTPUT_FOLDERS on this branch (PR #85 adds it)")
+    assert sorted(evt.LEGACY_TRACE_FOLDERS.values()) == sorted(lane_folders)
+    for run_id, folder in evt.LEGACY_TRACE_FOLDERS.items():         # each folder is its run's pairs-file stem
+        assert fire_trigger.pilot_run_id(f"pilot/runs/{run_id}/trace/{folder}.json") == run_id
+        assert fire_trigger.pilot_legacy_run_id_problem(f"pilot/runs/{folder}/trace/{folder}_x.json",
+                                                        "circuit-trace", "pilot/traces") is not None
 
 
 def test_a_trace_pairs_file_whose_stem_holds_the_model_separator_is_refused(tmp_path):
-    # pilot/traces/<stem>__<model>/ is the lane's directory for a non-default model, so a stem holding "__" could be
-    # read as another stem's results for another model
+    # pilot/traces/<run id>/<stem>__<model>/ is the lane's directory for a non-default model, so a stem holding "__"
+    # could be read as another stem's results for another model
     paths = write_world(tmp_path, world_data())
     write_run(paths, RUN_NEW, _new_run_rows(), pairs_name=f"{RUN_NEW}__qwen3-4b")
     message = refused_paths(paths, "bad_input", "--pilot-run", RUN_NEW)
@@ -1406,7 +1539,7 @@ def test_a_run_traced_with_another_graph_model_reads_that_models_directory(tmp_p
     for bundle in (found, named):
         sel = bundle["selection"]["tracing_pair"][NEW_LABEL]
         assert sel["trace_model"] == "qwen3-4b" and sel["trace_results"] == evt.logical_path(
-            paths["pilot_trace_root"] / f"{NEW_PAIRS}__qwen3-4b")
+            paths["pilot_trace_root"] / RUN_NEW / f"{NEW_PAIRS}__qwen3-4b")
         assert "qwen3-4b trace results" in sel["rule"]
         assert sorted(i["provenance"]["trace_index"] for i in _pilot(bundle, NEW_LABEL)) == [1, 2, 3]
     assert [i["item_id"] for i in found["items"]] == [i["item_id"] for i in named["items"]]
@@ -1424,7 +1557,7 @@ def test_a_named_model_never_reads_the_default_models_results_and_two_models_nee
     write_run(paths, RUN_NEW, rows)                                          # gemma-2-2b results, complete
     pairs = json.loads((paths["pilot_runs_dir"] / RUN_NEW / "trace" / f"{NEW_PAIRS}.json").read_text())
     both = ("--pilot-run", RUN2, "--pilot-run", RUN_NEW)
-    write_traces(paths, NEW_PAIRS, pairs[:1], "qwen3-4b")                    # qwen3-4b: one pair traced so far
+    write_traces(paths, RUN_NEW, NEW_PAIRS, pairs[:1], "qwen3-4b")           # qwen3-4b: one pair traced so far
     message = refused_paths(paths, "ambiguous_trace", *both)
     assert "2 directories" in message and "gemma-2-2b" in message and "qwen3-4b" in message
     assert f"--pilot-trace-model {RUN_NEW} <model>" in message
@@ -1432,7 +1565,7 @@ def test_a_named_model_never_reads_the_default_models_results_and_two_models_nee
     assert f"{NEW_PAIRS}__qwen3-4b" in message and "pair 2" in message
     gemma, _ = rerun(paths, tmp_path / "gemma", *both, "--pilot-trace-model", RUN_NEW, "gemma-2-2b")
     assert gemma["selection"]["tracing_pair"][NEW_LABEL]["trace_model"] == "gemma-2-2b"
-    write_traces(paths, NEW_PAIRS, [dict(p, bottom_prompt=p["bottom_prompt"] + " again") for p in pairs],
+    write_traces(paths, RUN_NEW, NEW_PAIRS, [dict(p, bottom_prompt=p["bottom_prompt"] + " again") for p in pairs],
                  "qwen3-4b")                                                 # qwen3-4b results, other prompts
     refused_paths(paths, "trace_mismatch", *both, "--pilot-trace-model", RUN_NEW, "qwen3-4b")
 
@@ -1442,7 +1575,7 @@ def test_a_named_model_with_no_results_directory_is_missing_not_read_from_the_de
     # and complete gemma-2-2b results are. Naming the model must not fall back to the gemma-2-2b directory.
     paths = write_world(tmp_path, world_data())
     write_run(paths, RUN_NEW, _new_run_rows())                               # gemma-2-2b results only
-    assert not (paths["pilot_trace_root"] / f"{NEW_PAIRS}__qwen3-4b").exists()
+    assert not (paths["pilot_trace_root"] / RUN_NEW / f"{NEW_PAIRS}__qwen3-4b").exists()
     both = ("--pilot-run", RUN2, "--pilot-run", RUN_NEW)
     message = refused_paths(paths, "missing_trace", *both, "--pilot-trace-model", RUN_NEW, "qwen3-4b")
     assert f"{NEW_PAIRS}__qwen3-4b" in message
@@ -1454,7 +1587,8 @@ def test_a_second_directory_for_the_default_model_is_ambiguous_not_hidden(tmp_pa
     paths = write_world(tmp_path, world_data())
     write_run(paths, RUN_NEW, _new_run_rows())
     pairs = json.loads((paths["pilot_runs_dir"] / RUN_NEW / "trace" / f"{NEW_PAIRS}.json").read_text())
-    dump(paths["pilot_trace_root"] / f"{NEW_PAIRS}__gemma-2-2b" / "batch_summary.part_01.json", summary_doc(pairs))
+    dump(paths["pilot_trace_root"] / RUN_NEW / f"{NEW_PAIRS}__gemma-2-2b" / "batch_summary.part_01.json",
+         summary_doc(pairs))
     assert "2 directories" in refused_paths(paths, "ambiguous_trace", "--pilot-run", RUN_NEW)
 
 
@@ -1478,7 +1612,7 @@ def test_a_trace_summary_that_does_not_declare_the_model_its_directory_is_read_a
     rows = _new_run_rows()
     write_run(paths, RUN_NEW, rows, trace_model=model)
     pairs = json.loads((paths["pilot_runs_dir"] / RUN_NEW / "trace" / f"{NEW_PAIRS}.json").read_text())
-    folder = paths["pilot_trace_root"] / (NEW_PAIRS if model == "gemma-2-2b" else f"{NEW_PAIRS}__{model}")
+    folder = paths["pilot_trace_root"] / RUN_NEW / (NEW_PAIRS if model == "gemma-2-2b" else f"{NEW_PAIRS}__{model}")
     dump(folder / "batch_summary.part_01.json", summary_doc(pairs[:1], model))
     later = summary_doc(pairs[1:], declared)
     for result in later["results"]:
