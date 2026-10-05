@@ -23,7 +23,9 @@ Three families, every item from a committed engine file or the published site pa
     model other than gemma-2-2b, as the lane names it) must carry its index with the same prompts. The model is the
     one ``--pilot-trace-model <run id> <model>`` names, read from its own directory only; with none named, the one
     model whose directory holds results, and results for none or for more than one are refused
-    (``missing_trace``, ``ambiguous_trace``), never guessed between. A trace pairs file must be named after its run,
+    (``missing_trace``, ``ambiguous_trace``), never guessed between. Every trace summary read must declare that model
+    in its ``graph_model`` field, as the hosted summaries do (``trace_model_mismatch``), so a summary placed in another
+    model's directory is never recorded under that directory's model. A trace pairs file must be named after its run,
     ``<run id>_<name>.json`` with ``<name>`` not empty, the rule the lane's pilot root applies before it traces a
     file; its stem may not hold ``__``, and two runs' files may not share a stem, a run with optional traces
     included (only names are read): the lane derives the results directory from the stem alone, so a shared stem
@@ -95,7 +97,8 @@ run's, a second file under the ``trace/`` of a run whose trace is required (for 
 byte-identical copy of its pairs file; an optional run reads no pairs file but Run 2's id key, so only the names of
 its files are checked), a pilot pair without its required trace (``missing_trace``) or whose trace result carries
 other prompts (``trace_mismatch``), trace results for more than one graph model with none named
-(``ambiguous_trace``), a questions file that does not fit the items, fewer main-study candidates than requested, an
+(``ambiguous_trace``), a trace summary that does not declare the graph model its directory is read as
+(``trace_model_mismatch``), a questions file that does not fit the items, fewer main-study candidates than requested, an
 item id collision, an existing output file (a bundle is an archive, never rewritten), and every seal failure above.
 
 Rounds. Each physician round uses one bundle (the ratings import reads one bundle per export). A later round's
@@ -838,7 +841,7 @@ def pilot_items(inp: Inputs, seal: Seal, runs_dir: Path, trace_root: Path,
                                     f"gives row {row_id} (the file was built from another review map)")
             pairs_by_row[row_id] = (i, pair)
         traces_dir, trace_model = trace_results_dir(trace_root, pairs_path.stem, run)
-        traced = traced_prompts(inp, traces_dir, run_id)
+        traced = traced_prompts(inp, traces_dir, run_id, trace_model)
         counts["trace_pairs"] = len(pairs)
         counts["traced"] = sum(1 for i in range(1, len(pairs) + 1) if i in traced)
         counts["trace_pairs_not_selected"] = len(set(pairs_by_row) - {r["id"] for r in selected})
@@ -907,7 +910,8 @@ def pilot_items(inp: Inputs, seal: Seal, runs_dir: Path, trace_root: Path,
                  if run.all_rows else
                  "the run's blind review sample (review_map.json), in review-id order")
     trace_rule = ("; each pair required to be in the run's trace pairs file and to have a trace result with the "
-                  f"same prompts in the {trace_model} trace results" if run.trace_required else
+                  f"same prompts in the {trace_model} trace results, every trace summary read declaring "
+                  f"graph_model {trace_model}" if run.trace_required else
                   "; trace results not required and not read (a pair joins its trace later by run and row id)")
     selection = {
         "run": run_id,
@@ -926,8 +930,12 @@ def pilot_items(inp: Inputs, seal: Seal, runs_dir: Path, trace_root: Path,
     return items, selection
 
 
-def traced_prompts(inp: Inputs, traces_dir: Path, run_id: str) -> dict[int, tuple[str, str]]:
-    """{trace index: (clinical prompt, patient prompt)} from the trace results under traces_dir."""
+def traced_prompts(inp: Inputs, traces_dir: Path, run_id: str, model: str) -> dict[int, tuple[str, str]]:
+    """{trace index: (clinical prompt, patient prompt)} from the trace results under traces_dir, which are read as
+    ``model``'s. Every summary there must declare that graph model in its ``graph_model`` field, which the hosted
+    circuit-trace summaries always record (medlang_circuits/batch_eval.py, run_batch): the directory name says which
+    model the lane wrote it for, and the summary says which model traced it, so a summary that names another model,
+    or none, is refused (``trace_model_mismatch``) rather than recorded under the directory's model."""
     parts = sorted(traces_dir.glob("batch_summary*.json")) if traces_dir.is_dir() else []
     if not parts:
         refuse("missing_trace", f"pilot run {run_id}: no batch_summary*.json under {traces_dir}; a trace result is "
@@ -936,6 +944,14 @@ def traced_prompts(inp: Inputs, traces_dir: Path, run_id: str) -> dict[int, tupl
     out: dict[int, tuple[str, str]] = {}
     for part in parts:
         summary, _ = inp.read_json(part, f"pilot run {run_id} trace results")
+        declared = summary.get("graph_model") if isinstance(summary, dict) else None
+        if not isinstance(declared, str) or declared != model:
+            what = f"declares graph model {declared!r}" if isinstance(declared, str) else \
+                "declares no graph model (no string graph_model)"
+            refuse("trace_model_mismatch", f"pilot run {run_id}: {part} {what}, but the export reads {traces_dir} "
+                                           f"as {model}'s trace results. A summary of another model, or of none "
+                                           "named, would be recorded under the wrong model; move it to its model's "
+                                           "directory, or name the model with --pilot-trace-model")
         results = summary.get("results") if isinstance(summary, dict) else None
         if not isinstance(results, list):
             refuse("bad_input", f"{part} has no results list")
@@ -1546,7 +1562,8 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
                     help="read this run's required trace results for this graph model, from "
                          f"<--pilot-trace-root>/<pairs stem>{MODEL_SEPARATOR}<model>/ ({UNSUFFIXED_TRACE_MODEL}: "
                          "<pairs stem>/), as the circuit-trace lane writes them; with none named, the one model "
-                         "whose results exist is read, and none or more than one is refused")
+                         "whose results exist is read, and none or more than one is refused. Every summary read "
+                         "must declare the model in its graph_model field")
     for key in ("questions", "pilot_runs_dir", "pilot_trace_root", "advice_new", "advice_rerun", "petri_seeds",
                 "dashboard", "simulated", "allowlist"):
         ap.add_argument("--" + key.replace("_", "-"), default=str(DEFAULTS[key]))

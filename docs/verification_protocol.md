@@ -68,7 +68,12 @@ recorded command still gives that bundle's items unchanged.
   other. With no model named, the export reads the one model whose directory
   holds results. It stops if there are none (`missing_trace`), or if more than
   one model has results (`ambiguous_trace`), so it never chooses between models
-  for you. The selection block records the model it read. Physicians rate the
+  for you. Every trace summary it reads must also name that model in its
+  `graph_model` field, which the circuit-trace lane records in every summary; a
+  summary that names another model, or none, stops the export
+  (`trace_model_mismatch`), so a summary copied into the wrong model's
+  directory is never credited to that model. The selection block records the
+  model it read. Physicians rate the
   sentences, not the trace, so a pair does not need its trace to be rated; the
   trace matters when ratings are later compared with trace measures. A run's
   traces may land after its bundle is wanted, so

@@ -4,25 +4,26 @@ Pins the bundle's contract shape, determinism (same seed and stamp: byte-identic
 another order), that the display carries none of the hidden fields, numbers, model names, batch ids or proposed
 tiers, the fail-closed holdout seal (a planted sealed phrase refuses the export and writes nothing), the list of
 unsealed items whose clinical text hashes into the holdout bucket, the counts and selection per family (main-study
-penalties equal as recorded tie, and the stated tie rule decides), item-id stability, the question wording (no
-hint predicts an answer, the urgency question names the message it asks about, raters are asked not to look the
-scenarios up), and the pilot runs: which runs, the review sample or every non-control row, a required or an optional
-trace (an optional one is not read, so the items do not change when traces land; Run 2's trace pairs file is still
-read as its id key), a trace pairs file with or without review ids, a row's id under every option, which trace
-results directory a run reads (named after its pairs file; <stem>__<model>/ for another graph model, named or the
-one found, two found refused), the naming rule for a trace pairs file (<run id>_<name>.json, the lanes' rule, compared
-with fire_trigger's when it has one), a byte-identical copy of Run 2's trace pairs file beside it (allowed, and never
-read for traces), and the refusals for a run that is not finalized, not version 2, changed since it was finalized,
-missing a required trace, whose trace pairs file is not named after it, holds "__" or shares a stem with another
-run's (optional runs included), that holds a second trace pairs file other than such a copy while its trace is
-required (an optional run's second file is checked by name only), or whose review map, trace pairs file or sidecar
-does not fit it; and later rounds (--previous-bundle): a previous item dropped or changed, a question id dropped or
-kept with another scale, answer values (of another JSON type included), phase, requirement or lock, another notes
-limit, and a previous bundle of another shape. Every input here is synthetic, abstract and non-medical (the medical
-vocabulary rule in AGENTS.md); the seal fixtures follow tests/test_seal_check.py and tests/test_tierb_split.py. The
-committed-bundle tests check every bundle under data/verification/ against the contract, with failure messages naming
-item ids only, never row text, and re-export the first bundle from the committed engine files: the default run gives
-its pilot items unchanged, and with the site payload it recorded the recorded command gives its items byte for byte.
+penalties equal as recorded tie, and the stated tie rule decides), item-id stability, the question wording (no hint
+predicts an answer, the urgency question names the message it asks about, raters are asked not to look the scenarios
+up), and the pilot runs: which runs, the review sample or every non-control row, a required or an optional trace (an
+optional one is not read, so the items do not change when traces land; Run 2's trace pairs file is still read as its
+id key), a trace pairs file with or without review ids, a row's id under every option, which trace results directory
+a run reads (named after its pairs file; <stem>__<model>/ for another graph model, named or the one found, two found
+refused, and every summary there declaring the model it is read as), the naming rule for a trace pairs file (<run
+id>_<name>.json, the lanes' rule, compared with fire_trigger's when it has one), a byte-identical copy of Run 2's
+trace pairs file beside it (allowed, and never read for traces), and the refusals for a run that is not finalized,
+not version 2, changed since it was finalized, missing a required trace, whose trace pairs file is not named after
+it, holds "__" or shares a stem with another run's (optional runs included), that holds a second trace pairs file
+other than such a copy while its trace is required (an optional run's second file is checked by name only), or whose
+review map, trace pairs file or sidecar does not fit it; and later rounds (--previous-bundle): a previous item
+dropped or changed, a question id dropped or kept with another scale, answer values (of another JSON type included),
+phase, requirement or lock, another notes limit, and a previous bundle of another shape. Every input here is
+synthetic, abstract and non-medical (the medical vocabulary rule in AGENTS.md); the seal fixtures follow
+tests/test_seal_check.py and tests/test_tierb_split.py. The committed-bundle tests check every bundle under
+data/verification/ against the contract, with failure messages naming item ids only, never row text, and re-export
+the first bundle from the committed engine files: the default run gives its pilot items unchanged, and with the site
+payload it recorded the recorded command gives its items byte for byte.
 """
 from __future__ import annotations
 
@@ -305,12 +306,19 @@ def reseal(run: Path, name: str, obj: Any) -> None:
     dump(run / "manifest.json", manifest)
 
 
+def summary_doc(pairs: list[dict], model: Any = "gemma-2-2b") -> dict:
+    """A trace summary for the pairs as the hosted circuit-trace lane writes it: the graph model it traced with
+    (None: no graph_model field) and one result per pair, indexed from 1."""
+    doc: dict = {} if model is None else {"graph_model": model}
+    doc["results"] = [{"index": n, "prompts": {"clinical": p["top_prompt"], "patient": p["bottom_prompt"]}}
+                      for n, p in enumerate(pairs, 1)]
+    return doc
+
+
 def write_traces(paths: dict[str, Path], stem: str, pairs: list[dict], model: str = "gemma-2-2b") -> Path:
     """Trace results for the pairs, where the circuit-trace lane's pilot root writes them for the model."""
     folder = stem if model == "gemma-2-2b" else f"{stem}__{model}"
-    return dump(paths["pilot_trace_root"] / folder / "batch_summary.part_01.json",
-                {"results": [{"index": n, "prompts": {"clinical": p["top_prompt"], "patient": p["bottom_prompt"]}}
-                             for n, p in enumerate(pairs, 1)]})
+    return dump(paths["pilot_trace_root"] / folder / "batch_summary.part_01.json", summary_doc(pairs, model))
 
 
 def write_world(tmp_path: Path, data: dict) -> dict[str, Path]:
@@ -1444,10 +1452,56 @@ def test_a_second_directory_for_the_default_model_is_ambiguous_not_hidden(tmp_pa
     paths = write_world(tmp_path, world_data())
     write_run(paths, RUN_NEW, _new_run_rows())
     pairs = json.loads((paths["pilot_runs_dir"] / RUN_NEW / "trace" / f"{NEW_PAIRS}.json").read_text())
-    dump(paths["pilot_trace_root"] / f"{NEW_PAIRS}__gemma-2-2b" / "batch_summary.part_01.json",
-         {"results": [{"index": n, "prompts": {"clinical": p["top_prompt"], "patient": p["bottom_prompt"]}}
-                      for n, p in enumerate(pairs, 1)]})
+    dump(paths["pilot_trace_root"] / f"{NEW_PAIRS}__gemma-2-2b" / "batch_summary.part_01.json", summary_doc(pairs))
     assert "2 directories" in refused_paths(paths, "ambiguous_trace", "--pilot-run", RUN_NEW)
+
+
+# (directory model, how it is chosen, what one of its summaries declares): a summary whose graph_model is another
+# model, absent, empty or not a string, in a directory read as the default model's or a named model's
+WRONG_DECLARED_MODEL = [
+    ("gemma-2-2b", "found", "qwen3-4b"), ("gemma-2-2b", "found", None), ("gemma-2-2b", "named", "qwen3-4b"),
+    ("qwen3-4b", "found", "gemma-2-2b"), ("qwen3-4b", "named", "gemma-2-2b"), ("qwen3-4b", "named", None),
+    ("qwen3-4b", "named", ""), ("qwen3-4b", "named", ["qwen3-4b"]),
+]
+
+
+@pytest.mark.parametrize("model, chosen, declared", WRONG_DECLARED_MODEL)
+def test_a_trace_summary_that_does_not_declare_the_model_its_directory_is_read_as_is_refused(tmp_path, model, chosen,
+                                                                                            declared):
+    # Codex review of PR #86 (4183566187): the exporter took a results directory's model from its name and never
+    # read the summaries' own graph_model (medlang_circuits/batch_eval.py records it in every hosted summary), so a
+    # summary of another model, or of none named, copied into the directory was recorded under the directory's model.
+    # The second of two parts declares the wrong model here, so every part is checked, not only the first.
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    write_run(paths, RUN_NEW, rows, trace_model=model)
+    pairs = json.loads((paths["pilot_runs_dir"] / RUN_NEW / "trace" / f"{NEW_PAIRS}.json").read_text())
+    folder = paths["pilot_trace_root"] / (NEW_PAIRS if model == "gemma-2-2b" else f"{NEW_PAIRS}__{model}")
+    dump(folder / "batch_summary.part_01.json", summary_doc(pairs[:1], model))
+    later = summary_doc(pairs[1:], declared)
+    for result in later["results"]:
+        result["index"] += 1
+    dump(folder / "batch_summary.part_02.json", later)
+    extra = ("--pilot-trace-model", RUN_NEW, model) if chosen == "named" else ()
+    message = refused_paths(paths, "trace_model_mismatch", "--pilot-run", RUN_NEW, *extra)
+    assert "batch_summary.part_02.json" in message and f"as {model}'s trace results" in message
+    assert ("declares no graph model" in message) is not isinstance(declared, str)
+    later["graph_model"] = model                                              # declared as read: exported
+    dump(folder / "batch_summary.part_02.json", later)
+    bundle, _ = rerun(paths, tmp_path / "fixed", "--pilot-run", RUN_NEW, *extra)
+    assert bundle["selection"]["tracing_pair"][NEW_LABEL]["trace_model"] == model
+    assert f"declaring graph_model {model}" in bundle["selection"]["tracing_pair"][NEW_LABEL]["rule"]
+
+
+def test_run2s_default_model_summaries_are_checked_too(tmp_path):
+    # the default run reads Run 2's gemma-2-2b directory without a named model; its summaries are checked as well
+    paths = write_world(tmp_path, world_data())
+    part = paths["pilot_trace_root"] / "trace_pairs" / "batch_summary.part_01.json"
+    doc = json.loads(part.read_text())
+    doc["graph_model"] = "qwen3-4b"
+    dump(part, doc)
+    message = refused_paths(paths, "trace_model_mismatch")
+    assert "declares graph model 'qwen3-4b'" in message and RUN2 in message
 
 
 @pytest.mark.parametrize("extra, fragment", [
