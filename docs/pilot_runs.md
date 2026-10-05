@@ -36,24 +36,37 @@ recorded run (2026-09-30)*) records the decision.
   `pilot/codebook/README.md` lists those files and keeps a dated entry per
   review.
 - Pilot traces are a separate tree: a circuit-trace fire with
-  `output_root: pilot/traces` writes `pilot/traces/<pairs-stem>[__<model>]/`,
+  `output_root: pilot/traces` writes `pilot/traces/<run_id>/<pairs-stem>[__<model>]/`,
   which no collector reads. `docs/triggers.md` (the `circuit-trace` row) has every
   rule that lane applies to a pilot fire.
 - Pilot next-token measurements by the open-weight models are a second such tree:
   a logits-eval fire with `output_root: pilot/logits` writes
-  `pilot/logits/<pairs-stem>__<model>/`, which no collector reads either. The
-  same pairs file a pilot trace reads (under `pilot/runs/`) serves this lane.
+  `pilot/logits/<run_id>/<pairs-stem>__<model>/`, which no collector reads either.
+  The same pairs file a pilot trace reads (under `pilot/runs/`) serves this lane.
   `docs/triggers.md` (the `logits-eval` row) has every rule it applies.
-- Both trees name an output folder by the pairs file's stem alone, so under either
-  pilot root a pairs file is named for its run:
-  `pilot/runs/<run_id>/.../<run_id>_<name>.json` (2026-10-04). The fire path and
-  both workflows' params jobs refuse any other name, and
-  `pilot/analysis/trace_pairs.py` writes `<run-dir>/trace/<run_id>_trace_pairs.json`
-  by default. Before that rule every run's default was `trace/trace_pairs.json`, so
-  two runs' traces would have landed in one folder and replaced each other's parts.
-  Run 2's `pilot/runs/pilot_v2_20261002/trace/trace_pairs.json` keeps its name and
-  its parts stay at `pilot/traces/trace_pairs/`; tracing or measuring it again needs
-  the file copied under `pilot_v2_20261002_trace_pairs.json` first.
+- In both trees each run's outputs sit in a folder of its own, named by the run
+  id: the directory directly under `pilot/runs/` that holds the pairs file
+  (2026-10-05). Under either pilot root the pairs file is also named for its run,
+  `pilot/runs/<run_id>/.../<run_id>_<name>.json` (2026-10-04), so a folder's name
+  says which run it holds; `pilot/analysis/trace_pairs.py` writes
+  `<run-dir>/trace/<run_id>_trace_pairs.json` by default. The fire path and both
+  workflows' params jobs refuse any other name.
+- Before 2026-10-05 an output folder was named by the pairs file's stem alone, so
+  two runs could share one (two files named `trace/trace_pairs.json`, or runs `a`
+  and `a_b` each holding an `a_b_pairs.json`) and replace each other's parts. Two
+  folders were written that way and stay where they are: run 2's parts at
+  `pilot/traces/trace_pairs/` and run 3's at
+  `pilot/traces/pilot_v3_20261004_trace_pairs/`. A run id of either name is
+  refused under both pilot roots, since that run's outputs would land inside the
+  old folder.
+- Run 2's `pilot/runs/pilot_v2_20261002/trace/trace_pairs.json` keeps its name.
+  To trace or measure it again, first re-run
+  `pilot/analysis/trace_pairs.py --run-dir pilot/runs/pilot_v2_20261002 --review-sample`.
+  Its default writes
+  `pilot/runs/pilot_v2_20261002/trace/pilot_v2_20261002_trace_pairs.json`
+  beside the original, byte for byte the same (checked 2026-10-05); copying the
+  file to that path does the same. Fire that file. Its outputs then land in run
+  2's own folders, not beside the old parts.
 
 ## A finalized run is not written into without `--replace`
 

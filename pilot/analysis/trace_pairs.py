@@ -11,10 +11,12 @@ It is a consumer of a finished run, like the review page: it reads the run direc
 run's sealed files. The output goes to <run>/trace/<run_id>_trace_pairs.json by default (default_out), with a
 sidecar recording the selection rule, the counts (selected, not selected and why, refused and why) and the sha256 of
 every input. The file is named for its run because both pilot lanes (circuit-trace's pilot/traces/, logits-eval's
-pilot/logits/) name their output folder by the pairs file's stem alone and refuse a pilot pairs file whose name does
-not start with its run id (docs/triggers.md): before 2026-10-04 every run's default was trace/trace_pairs.json, so
-two runs' traces would have shared one folder. Run 2's committed trace/trace_pairs.json keeps its name; to trace it
-again, copy it under pilot_v2_20261002_trace_pairs.json.
+pilot/logits/) refuse a pilot pairs file whose name does not start with its run id (docs/triggers.md). They name the
+output folder <root>/<run_id>/<the file's stem>[__<model>] (2026-10-05), so the name says which run a folder holds.
+Before 2026-10-04 every run's default was trace/trace_pairs.json, and the lanes named the folder by the stem alone,
+so two runs' traces would have shared one folder. Run 2's committed trace/trace_pairs.json keeps its name; to trace
+it again, re-run this script on run 2 with --review-sample, whose default writes a byte-identical
+trace/pilot_v2_20261002_trace_pairs.json beside it (checked 2026-10-05), or copy the file to that path.
 
 A run that is not version 2, not finalized or without probe endings, a generated row that lacks a key a pair is built
 from (ROW_KEYS), or a selected row that cannot be traced (a term that is not a non-empty string, not exactly one
@@ -22,7 +24,8 @@ blank, a next word the parser's next-word check refuses) is refused rather than 
 lost rows would trace a different sample than the one described.
 
 Pilot traces are pipeline checks, never measurements (AGENTS.md, pilot exception): the lane writes them under
-pilot/traces/, which no collector reads. Run the holdout seal check over the output before it is pushed anywhere.
+pilot/traces/<run_id>/, which no collector reads. Run the holdout seal check over the output before it is pushed
+anywhere.
 
 The default selection is every generated row the checker judged equivalent. --review-sample instead selects exactly
 the rows of the run's blind review sample (review_map.json), whatever the checker said, in review-id order, so trace

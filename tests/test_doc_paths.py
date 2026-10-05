@@ -77,17 +77,33 @@ _REJUDGE = ("runtime output of the petri-audit lane's `mode: rejudge`; no rejudg
 _SITE = "a file in the sibling site repository (../patientwords), not in this one"
 _PILOT_LOGITS = ("runtime output of the logits-eval lane's `output_root: pilot/logits` (2026-10-04); no pilot "
                  "logits fire has landed, so the directory does not exist yet")
-# every name the docs give the pilot logits root, as missing_paths reports them
+# every name the docs give the pilot logits root, as missing_paths reports them (each run's own folder,
+# pilot/logits/<run_id>/<stem>__<model>/, since 2026-10-05)
 PILOT_LOGITS_NAMES: tuple[tuple[str, str], ...] = (
     ("AGENTS.md", "pilot/logits/"),
     ("docs/triggers.md", "pilot/logits"),
     ("docs/triggers.md", "pilot/logits/"),
-    ("docs/triggers.md", "pilot/logits/*__*/"),
-    ("docs/triggers.md", "pilot/logits/*__*/batch_summary.part_NN.json"),
-    ("docs/triggers.md", "pilot/logits/**"),
+    ("docs/triggers.md", "pilot/logits/*/*__*/"),
+    ("docs/triggers.md", "pilot/logits/*/*__*/batch_summary.part_NN.json"),
+    ("docs/triggers.md", "pilot/logits/*/**"),
     ("docs/pilot_runs.md", "pilot/logits"),
-    ("docs/pilot_runs.md", "pilot/logits/*__*/"),
+    ("docs/pilot_runs.md", "pilot/logits/*/*__*/"),
 )
+_RUN3_TRACES = ("run 3's circuit-trace parts, committed by CI to its fire branch on 2026-10-04 and on main since "
+                "PR #84 merged (894d3d7c, 2026-10-05 UTC); this branch's base predates that merge")
+_RUN2_RUN_NAMED = ("where docs/triggers.md and docs/pilot_runs.md tell a session to rebuild (trace_pairs.py) or copy "
+                   "run 2's pairs file under its run-named name before tracing or measuring it again (2026-10-05); "
+                   "no such file has been made")
+_RUN2_NEW_TRACE_OUT = ("runtime output: where the parts of a new trace of run 2's run-named pairs file would land; "
+                       "run 2 has not been traced again")
+# the pilot paths other than pilot/logits the docs name that are missing here, with why
+PILOT_OTHER_NAMES: dict[tuple[str, str], str] = {
+    ("docs/triggers.md", "pilot/traces/pilot_v3_20261004_trace_pairs/"): _RUN3_TRACES,
+    ("docs/pilot_runs.md", "pilot/traces/pilot_v3_20261004_trace_pairs/"): _RUN3_TRACES,
+    ("docs/triggers.md", "pilot/runs/pilot_v2_20261002/trace/pilot_v2_20261002_trace_pairs.json"): _RUN2_RUN_NAMED,
+    ("docs/pilot_runs.md", "pilot/runs/pilot_v2_20261002/trace/pilot_v2_20261002_trace_pairs.json"): _RUN2_RUN_NAMED,
+    ("docs/triggers.md", "pilot/traces/pilot_v2_20261002/"): _RUN2_NEW_TRACE_OUT,
+}
 
 # (document, path as the document writes it, after placeholders become `*`) -> why it does not exist.
 ALLOWED_MISSING: dict[tuple[str, str], str] = {
@@ -107,6 +123,7 @@ ALLOWED_MISSING: dict[tuple[str, str], str] = {
     ("docs/README.md", ".github/workflows/build.yml"):
         "the traces site build, in michaeldgreenphd/patientwords-traces, which the index points to",
     **{name: _PILOT_LOGITS for name in PILOT_LOGITS_NAMES},
+    **PILOT_OTHER_NAMES,
 }
 
 # ALLOWED_MISSING keys whose path is a runtime output that may legitimately appear in the tree: the stale check
@@ -117,6 +134,7 @@ MAY_APPEAR: frozenset[tuple[str, str]] = frozenset({
     ("docs/routine_standing_prompt.md", "data/petri/rejudge/*/*/"),
     ("docs/archiving.md", "trace_out/pairs_20260707T215921Z/index_07.png"),
     *PILOT_LOGITS_NAMES,      # a pilot logits fire's CI commit creates them
+    *PILOT_OTHER_NAMES,       # a merge of main, a documented copy, or a pilot trace's CI commit creates them
 })
 
 _FENCE = re.compile(r"^\s*(```|~~~)")

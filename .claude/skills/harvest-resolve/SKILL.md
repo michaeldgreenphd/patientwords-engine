@@ -43,14 +43,16 @@ model list, and every offset/chunk fired.
 - **circuit-trace / logits-eval**: part files under
   `trace_out/<pairs-stem>/` (non-default models: `trace_out/<stem>__<model>/`).
   A circuit-trace fire with `output_root: pilot/traces` lands its parts under
-  `pilot/traces/<pairs-stem>/` instead (same suffix rule), summaries only, and a
-  pilot cell whose seal check failed commits nothing (docs/triggers.md). A
+  `pilot/traces/<run_id>/<pairs-stem>/` instead (same suffix rule), summaries only,
+  and a pilot cell whose seal check failed commits nothing (docs/triggers.md). A
   logits-eval fire with `output_root: pilot/logits` likewise lands under
-  `pilot/logits/<pairs-stem>__<model>/` (every logits-eval directory carries the
-  model suffix), the same way. A pilot pairs file is named for its run
-  (`pilot/runs/<run_id>/.../<run_id>_<name>.json`, refused otherwise since
-  2026-10-04), so a pilot stem starts with its run id; the one exception is run 2's
-  parts, at `pilot/traces/trace_pairs/`, landed before the rule.
+  `pilot/logits/<run_id>/<pairs-stem>__<model>/` (every logits-eval directory
+  carries the model suffix), the same way. `<run_id>` is the directory directly
+  under `pilot/runs/` that holds the pairs file (2026-10-05), and a pilot stem
+  starts with it (the file is named for its run since 2026-10-04). The two
+  exceptions landed flat, before either rule: run 2's parts at
+  `pilot/traces/trace_pairs/` and run 3's at
+  `pilot/traces/pilot_v3_20261004_trace_pairs/`.
   CI renames each chunk's summary to `batch_summary.part_NN.json`, NN = 1-based
   start offset. Expect ONE part per fired offset, per model. Always glob
   `batch_summary*.json`; `results[i]["index"]` is the global 1-based join key
@@ -153,7 +155,8 @@ correction that `fire_trigger.py publish` pushed on top of it. Check it via:
 - the GitHub Actions API through the `actions_list` / `actions_get` MCP tools, in
   remote sessions, where `gh` is not installed: the same run, `completed`; or
 - the landing commit — `git log origin/<branch> -- 'trace_out/<stem>*'` (for a
-  pilot-root fire, `'pilot/traces/<stem>*'` or `'pilot/logits/<stem>*'`) shows the CI commit containing the
+  pilot-root fire, `'pilot/traces/<run_id>/<stem>*'` or
+  `'pilot/logits/<run_id>/<stem>*'`) shows the CI commit containing the
   LAST expected part (the final offset). Not for
   advice-eval, petri-audit or model-evaluation: their cost-sidecar commits (and
   advice-eval's and model-evaluation's output commits, and a petri rejudge's
