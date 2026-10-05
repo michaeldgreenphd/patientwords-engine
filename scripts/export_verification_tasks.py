@@ -91,11 +91,12 @@ Refusals (a named SystemExit, and nothing is written): a missing or unreadable i
 know in a record it reads (a new field may carry meaning the selection must respect, so a person decides), a shape
 it cannot use, a text whose sha256 no longer matches, a pilot run that is not finalized (``run_not_finalized``) or
 not version 2 (``run_not_version_2``), a trace pairs file not named after its run or sharing a stem with another
-run's, a second file under a run's ``trace/`` (for Run 2, one that is not a byte-identical copy of its pairs file),
-a pilot pair without its required trace (``missing_trace``) or whose trace result carries other prompts
-(``trace_mismatch``), trace results for more than one graph model with none named (``ambiguous_trace``), a
-questions file that does not fit the items, fewer main-study candidates than requested, an item id collision, an
-existing output file (a bundle is an archive, never rewritten), and every seal failure above.
+run's, a second file under the ``trace/`` of a run whose trace is required (for Run 2, one that is not a
+byte-identical copy of its pairs file; an optional run reads no pairs file but Run 2's id key, so only the names of
+its files are checked), a pilot pair without its required trace (``missing_trace``) or whose trace result carries
+other prompts (``trace_mismatch``), trace results for more than one graph model with none named
+(``ambiguous_trace``), a questions file that does not fit the items, fewer main-study candidates than requested, an
+item id collision, an existing output file (a bundle is an archive, never rewritten), and every seal failure above.
 
 Rounds. Each physician round uses one bundle (the ratings import reads one bundle per export). A later round's
 bundle is built with ``--previous-bundle <the previous round's bundle>``, which refuses unless every item of that

@@ -117,13 +117,19 @@ recorded command still gives that bundle's items unchanged.
   `trace_pairs.json` for a new fire and say to copy it under
   `pilot_v2_20261002_trace_pairs.json`. Put that copy beside the original in
   `pilot/runs/pilot_v2_20261002/trace/` and leave it byte for byte the same.
-  The export allows such a copy and still reads `trace_pairs.json` and its
-  results in `pilot/traces/trace_pairs/` (or `trace_pairs__<model>/`), so the
-  first bundle's command keeps giving the same items. It never reads results
-  traced from the copy, which land in
-  `pilot/traces/pilot_v2_20261002_trace_pairs[__<model>]/`. Any other second
-  file under a run's `trace/`, including a copy that differs, stops the export
-  (`bad_input`).
+  Run 2's finalized manifest records no hash for any file under `trace/`, so
+  the copy leaves the finalized run as it was. The export allows such a copy
+  and still reads `trace_pairs.json` and its results in
+  `pilot/traces/trace_pairs/` (or `trace_pairs__<model>/`), so the first
+  bundle's command keeps giving the same items. It never reads results traced
+  from the copy, which land in
+  `pilot/traces/pilot_v2_20261002_trace_pairs[__<model>]/`. When a run's trace
+  is required, any other second file under its `trace/`, including a copy that
+  differs, stops the export (`bad_input`). A run exported with
+  `--pilot-trace-optional` reads no trace pairs file (Run 2 reads only
+  `trace_pairs.json`, for its id key), so for such a run the second-file and
+  copy checks wait until its trace is required; the names of its files are
+  still checked.
 - **Labels and ids.** Each item's provenance names its run: `pilot_run2` for
   Run 2, as in the first bundle, and `pilot:<run id>` for any other run.
   Physicians never see it. A later run's item ids are keyed on its generated

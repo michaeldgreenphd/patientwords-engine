@@ -14,15 +14,15 @@ one found, two found refused), the naming rule for a trace pairs file (<run id>_
 with fire_trigger's when it has one), a byte-identical copy of Run 2's trace pairs file beside it (allowed, and never
 read for traces), and the refusals for a run that is not finalized, not version 2, changed since it was finalized,
 missing a required trace, whose trace pairs file is not named after it, holds "__" or shares a stem with another
-run's (optional runs included), that holds a second trace pairs file other than such a copy, or whose review map,
-trace pairs file or sidecar does not fit it; and later
-rounds (--previous-bundle): a previous item dropped or changed, a question id dropped or kept with another scale,
-answer values (of another JSON type included), phase, requirement or lock, another notes limit, and a previous
-bundle of another shape. Every input here is synthetic, abstract and non-medical (the medical vocabulary rule in
-AGENTS.md); the seal fixtures follow tests/test_seal_check.py and tests/test_tierb_split.py. The committed-bundle
-tests check every bundle under data/verification/ against the contract, with failure messages naming item ids only,
-never row text, and re-export the first bundle from the committed engine files: the default run gives its pilot
-items unchanged, and with the site payload it recorded the recorded command gives its items byte for byte.
+run's (optional runs included), that holds a second trace pairs file other than such a copy while its trace is
+required (an optional run's second file is checked by name only), or whose review map, trace pairs file or sidecar
+does not fit it; and later rounds (--previous-bundle): a previous item dropped or changed, a question id dropped or
+kept with another scale, answer values (of another JSON type included), phase, requirement or lock, another notes
+limit, and a previous bundle of another shape. Every input here is synthetic, abstract and non-medical (the medical
+vocabulary rule in AGENTS.md); the seal fixtures follow tests/test_seal_check.py and tests/test_tierb_split.py. The
+committed-bundle tests check every bundle under data/verification/ against the contract, with failure messages naming
+item ids only, never row text, and re-export the first bundle from the committed engine files: the default run gives
+its pilot items unchanged, and with the site payload it recorded the recorded command gives its items byte for byte.
 """
 from __future__ import annotations
 
@@ -1266,6 +1266,33 @@ def test_a_second_file_under_run2s_trace_that_is_not_a_copy_is_refused(tmp_path)
     copy_path.unlink()
     shutil.copy2(run / "trace" / "trace_pairs.json", run / "trace" / "trace_pairs_copy.json")
     assert "trace_pairs_copy.json is not named after the run" in refused_paths(paths, "bad_input")
+
+
+def test_an_optional_runs_second_trace_pairs_file_is_checked_by_name_and_refused_once_its_trace_is_required(
+        tmp_path, capsys):
+    # The one-file and copy rules decide which pairs file a required trace reads. A run exported with
+    # --pilot-trace-optional reads no pairs file but Run 2's id key, so they wait until its trace is required (the
+    # protocol had said any second file stops the export). Its file names are still checked, since its traces may
+    # be fired: a second file not named for the run is refused while the trace is optional.
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    run = write_run(paths, RUN_NEW, rows)
+    write_pairs(run, [_pair_of(rows[0], RUN_NEW, "r001")], f"{RUN_NEW}_again")     # named for the run
+    rerun(paths, tmp_path / "new_optional", "--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+    assert "2 trace pairs files" in refused_paths(paths, "bad_input", "--pilot-run", RUN_NEW)
+    write_pairs(run, [_pair_of(rows[0], RUN_NEW, "r001")], "pairs_v9")
+    assert "pairs_v9.json is not named after the run" in refused_paths(
+        paths, "bad_input", "--pilot-run", RUN_NEW, "--pilot-trace-optional", RUN_NEW)
+    # Run 2 with a copy that differs: its optional export reads trace_pairs.json alone, for the id key, so its
+    # items are those of the export without the copy; with its trace required the copy is compared and refused
+    paths = write_world(tmp_path / "run2", world_data())
+    before, before_raw = rerun(paths, tmp_path / "run2_before", "--pilot-trace-optional", RUN2)
+    run2, _ = _run2_pairs(paths)
+    copy_path = run2 / "trace" / f"{RUN2}_trace_pairs.json"
+    copy_path.write_bytes((run2 / "trace" / "trace_pairs.json").read_bytes() + b"\n")
+    after, after_raw = rerun(paths, tmp_path / "run2_after", "--pilot-trace-optional", RUN2)
+    assert _items_bytes(after_raw) == _items_bytes(before_raw) and after["sources"] == before["sources"]
+    assert "not a byte-identical copy of trace_pairs.json" in refused_paths(paths, "bad_input")
 
 
 @pytest.mark.parametrize("optional", [False, True], ids=["required", "optional"])
