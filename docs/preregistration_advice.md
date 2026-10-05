@@ -1165,13 +1165,19 @@ model output until it fires. The same round and rule select the Petri wave-3 sce
   hold in the round's export, named in writing before the export is
   imported: in the approval record and, by the same dated edit, in the
   wave-3 plan's `physician_realism_gate.round.expected_exclusions`, with the
-  spreadsheet round 1 ran in. An account that is not in the round's export
-  (because round 1 ran in a new spreadsheet) is recorded as "not in the
-  export" and not passed to the import, which refuses `--exclude-rater` for
-  a rater the export does not hold (`unknown_excluded_rater`). The program
-  that applies the gate compares the summary's excluded raters with those
-  codes and refuses on any difference ("Code still to write" below). No
-  physician is excluded after their ratings have been seen.
+  spreadsheet round 1 ran in. The record agrees with that spreadsheet. If
+  round 1 ran in a new spreadsheet, none of the three accounts is in its
+  export: each is recorded as "not in the export" and none is passed to the
+  import, which refuses `--exclude-rater` for a rater the export does not
+  hold (`unknown_excluded_rater`). If it ran in the pilot's spreadsheet,
+  each account created there has its own rater code; an account never
+  created there (for example the owner's own pilot account, if the owner
+  rates no pilot) is recorded as "never created", not as "not in the
+  export". The program that applies the gate refuses a record that does not
+  agree with the spreadsheet, and compares the summary's excluded raters
+  with the recorded codes, refusing on any difference ("Code still to
+  write" below). No physician is excluded after their ratings have been
+  seen.
 - The export is read once by `scripts/import_verification_ratings.py`
   (version 1.0.0, or a later version that computes the per-item fields below
   the same way), with `--exclude-rater` for each excluded physician. Its
@@ -1345,8 +1351,9 @@ It reads files 4 and 5 as they are when it runs, and compares:
 - the summary's `exclusions.excluded_raters` with the rater codes in
   `round.expected_exclusions`, exactly: every recorded code excluded and no
   other, so an `--exclude-rater` left out, or a physician of the round
-  excluded, is a refusal. An account recorded as "not in the export" adds no
-  code, and the gate report records the spreadsheet;
+  excluded, is a refusal. An account recorded as "not in the export" or
+  "never created" adds no code, and the gate report records the
+  spreadsheet;
 - for each advice item that passes the rule, the sha256 of its clinical and
   its patient message in the stimuli file it reads (the item found by the
   bundle's `provenance.source_id`, the sha256 taken of the message's UTF-8
@@ -1363,8 +1370,10 @@ decision 6 or 7 has another file sha256 than the bundle's
 `provenance.source_sha256`, but each of its selected items must carry the
 messages physicians rated. It refuses, writing nothing, when any of these
 files is missing or unreadable, `round.expected_exclusions` is not filled
-(a value still null, a value that is neither a rater code nor "not in the
-export", or two accounts with one code), a comparison above fails, an
+(a value still null, or a value that is not a rater code, "not in the
+export" or "never created"), does not agree with the spreadsheet round 1
+ran in ("Excluded physicians" above) or gives two accounts one code, a
+comparison above fails, an
 advice or script item of the bundle is missing from the summary, a passing item is
 missing from the stimuli file or seed file it reads, or a question the gate
 reads is missing from an item's `five_point`. A wave, or under decision 6's
@@ -1485,10 +1494,12 @@ their own before it.
 - Excluded physicians (to fill before the export is imported, by one dated
   edit that also fills the wave-3 plan's
   `physician_realism_gate.round.expected_exclusions` with the same values),
-  each with its rater code in the round's export or "not in the export":
-  the owner's test account `<rater code>`, the owner's own pilot account
-  `<rater code>`, the wording-pilot physician's account `<rater code>`. The
-  spreadsheet round 1 ran in: `<the pilot's, or a new one>`.
+  each with its rater code in the round's export, "not in the export" or
+  "never created": the owner's test account `<value>`, the owner's own pilot
+  account `<value>`, the wording-pilot physician's account `<value>`. The
+  spreadsheet round 1 ran in: `<the pilot's, or a new one>`. In a new one,
+  all three are "not in the export"; in the pilot's, each account has its
+  own rater code, or "never created" if it was never created there.
 - At application (to fill): import summary `<path>` (sha256 `<sha256>`), gate
   report `<path>` (sha256 `<sha256>`), gated stimuli files `<Wave A path,
   sha256>` and `<Wave R path, sha256>` (one Wave R file per family if
@@ -1521,3 +1532,9 @@ their own before it.
     physicians' realism rating, which the gate adds once applied, from the
     clinical validation the study still lacks (no reference care for any
     scenario); this changes neither the rule nor which items pass.
+  - Excluded accounts and the spreadsheet: the record must agree with the
+    spreadsheet round 1 ran in (a new one: all three accounts "not in the
+    export"; the pilot's: each account its own rater code, or "never
+    created" for one never created there), and the gate program refuses a
+    record that does not; this changes neither the rule nor which items
+    pass.

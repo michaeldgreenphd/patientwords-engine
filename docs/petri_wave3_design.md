@@ -720,12 +720,14 @@ edited after rating" below).
 
 **Whose ratings count.** The three accounts that rate before round 1 (the owner's test
 account, the owner's own pilot account and the wording-pilot physician's account) are
-excluded at import. Their rater codes in the round's export, or "not in the export", and
-the spreadsheet round 1 ran in are written down before the import: in A6.9's approval
-record and, by the same dated edit, in the plan's
-`physician_realism_gate.round.expected_exclusions`. The program that applies the gate
-refuses unless the summary excluded exactly those codes, so a forgotten `--exclude-rater`,
-or a physician of the round excluded, cannot reach the selection.
+excluded at import. Their rater codes in the round's export and the spreadsheet round 1
+ran in are written down before the import: in A6.9's approval record and, by the same
+dated edit, in the plan's `physician_realism_gate.round.expected_exclusions`. In a new
+spreadsheet all three are "not in the export"; in the pilot's, each has its own code, or
+is "never created" if it was never created there. The program that applies the gate
+refuses a record that disagrees with the spreadsheet, and refuses unless the summary
+excluded exactly the recorded codes, so a forgotten `--exclude-rater`, or a physician of
+the round excluded, cannot reach the selection.
 
 **Why all three versions, not each version on its own.**
 

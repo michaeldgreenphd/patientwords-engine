@@ -1074,23 +1074,29 @@ def test_the_gate_program_spec_reads_every_file_it_compares(plan):
 
 
 NOT_IN_EXPORT = "not in the export"
-SPREADSHEETS = ("the pilot's", "a new one")
+NEVER_CREATED = "never created"
+PILOT_SHEET, NEW_SHEET = SPREADSHEETS = ("the pilot's", "a new one")
 
 
 def _exclusion_refusal(excluded: list[str], expected: dict) -> str | None:
     """The exclusion check as the plan's round.expected_exclusions states it, applied to the import summary's
-    exclusions.excluded_raters (the field tests/test_import_verification_ratings.py pins): None when the summary
-    excluded exactly the recorded rater codes, else why the program that applies the gate refuses. A reference for
-    that program."""
+    exclusions.excluded_raters (the field tests/test_import_verification_ratings.py pins): None when the record agrees
+    with the spreadsheet round 1 ran in and the summary excluded exactly the recorded rater codes, else why the program
+    that applies the gate refuses. In a new spreadsheet none of the three accounts exists, so each is 'not in the
+    export'; in the pilot's, each account created there has a rater code, and one never created is 'never created'.
+    A reference for that program."""
     from scripts.import_verification_ratings import RATER_ID_RE
 
     values = list(expected["accounts"].values())
     if any(v is None for v in [*values, expected["spreadsheet"]]):
         return "not filled"
-    if expected["spreadsheet"] not in SPREADSHEETS or any(v != NOT_IN_EXPORT and not RATER_ID_RE.match(v)
-                                                          for v in values):
+    if expected["spreadsheet"] not in SPREADSHEETS or any(v not in (NOT_IN_EXPORT, NEVER_CREATED)
+                                                          and not RATER_ID_RE.match(v) for v in values):
         return "not a recorded value"
-    codes = [v for v in values if v != NOT_IN_EXPORT]
+    if expected["spreadsheet"] == NEW_SHEET and any(v != NOT_IN_EXPORT for v in values) or (
+            expected["spreadsheet"] == PILOT_SHEET and NOT_IN_EXPORT in values):
+        return "disagrees with the spreadsheet"
+    codes = [v for v in values if v not in (NOT_IN_EXPORT, NEVER_CREATED)]
     if len(set(codes)) != len(codes):
         return "two accounts with one code"
     if sorted(excluded) != sorted(codes):
@@ -1105,25 +1111,29 @@ def test_the_gate_checks_that_the_import_excluded_exactly_the_recorded_accounts(
     items enter the paid runs (Codex review of PR #87, 2026-10-05). The plan now records them in
     round.expected_exclusions, filled by the same dated edit as the approval record before the import; until then
     every value is null and the gate cannot be applied. The program compares the summary's excluded raters with them
-    exactly. This changes neither the rule nor which items pass."""
+    exactly. Each value was first checked on its own, so a record of all three accounts 'not in the export' on the
+    pilot's spreadsheet matched an import with no exclusions and counted the pilot ratings (a second finding on the
+    same pull request): the record must now agree with the spreadsheet, and an account never created is 'never
+    created'. Neither change alters the rule or which items pass."""
     gate = plan["physician_realism_gate"]
     rnd = gate["round"]
     expected = rnd["expected_exclusions"]
     accounts = rnd["accounts_that_do_not_fix_the_bundle"]
     assert list(expected["accounts"]) == accounts, "one entry per account that rates before round 1"
-    assert NOT_IN_EXPORT in expected["values"] and all(s in expected["values"] for s in SPREADSHEETS)
-    assert "exclusions.excluded_raters" in expected["check"]
+    assert all(f"'{v}'" in expected["values"] for v in (NOT_IN_EXPORT, NEVER_CREATED, *SPREADSHEETS))
+    assert "exclusions.excluded_raters" in expected["check"] and "disagree with spreadsheet" in expected["check"]
     if all(v is None for v in [*expected["accounts"].values(), expected["spreadsheet"]]):
         assert _exclusion_refusal([], expected) == "not filled", "the gate cannot be applied before the record"
     else:
-        codes = [v for v in expected["accounts"].values() if v != NOT_IN_EXPORT]
+        codes = [v for v in expected["accounts"].values() if v not in (NOT_IN_EXPORT, NEVER_CREATED)]
         assert _exclusion_refusal(codes, expected) is None, "filled, every value one the plan allows"
 
     def filled(test: str | None, pilot: str | None, wording: str | None, spreadsheet: str | None) -> dict:
         return {"accounts": dict(zip(accounts, (test, pilot, wording), strict=True)), "spreadsheet": spreadsheet}
 
-    pilot_sheet = filled("md01", "md02", "md03", "the pilot's")
-    new_sheet = filled(NOT_IN_EXPORT, NOT_IN_EXPORT, NOT_IN_EXPORT, "a new one")
+    pilot_sheet = filled("md01", "md02", "md03", PILOT_SHEET)
+    new_sheet = filled(NOT_IN_EXPORT, NOT_IN_EXPORT, NOT_IN_EXPORT, NEW_SHEET)
+    disagrees = "disagrees with the spreadsheet"
     cases = [
         (["md01", "md02", "md03"], pilot_sheet, None),
         (["md01", "md03"], pilot_sheet, "excluded raters differ"),                   # an --exclude-rater left out
@@ -1131,7 +1141,18 @@ def test_the_gate_checks_that_the_import_excluded_exactly_the_recorded_accounts(
         (["md01", "md02", "md04"], pilot_sheet, "excluded raters differ"),
         ([], new_sheet, None),
         (["md01"], new_sheet, "excluded raters differ"),
-        (["md01"], filled("md01", NOT_IN_EXPORT, NOT_IN_EXPORT, "a new one"), None),
+        # The record must agree with the spreadsheet (Codex review of PR #87, 2026-10-05, second finding on the
+        # record). On the pilot's spreadsheet the three accounts are in the export; recorded as absent, an import with
+        # no --exclude-rater would match the empty set of codes and count the pilot ratings.
+        ([], filled(NOT_IN_EXPORT, NOT_IN_EXPORT, NOT_IN_EXPORT, PILOT_SHEET), disagrees),
+        (["md01", "md02"], filled("md01", "md02", NOT_IN_EXPORT, PILOT_SHEET), disagrees),
+        # In a new spreadsheet none of the three accounts is set up, so a code there contradicts the record.
+        (["md01"], filled("md01", NOT_IN_EXPORT, NOT_IN_EXPORT, NEW_SHEET), disagrees),
+        (["md01", "md02", "md03"], filled("md01", "md02", "md03", NEW_SHEET), disagrees),
+        ([], filled(NOT_IN_EXPORT, NEVER_CREATED, NOT_IN_EXPORT, NEW_SHEET), disagrees),
+        # An account never created (the owner rates no pilot of their own) is named as such, and adds no code.
+        (["md01", "md02"], filled("md01", NEVER_CREATED, "md02", PILOT_SHEET), None),
+        (["md01", "md02", "md03"], filled("md01", NEVER_CREATED, "md02", PILOT_SHEET), "excluded raters differ"),
         (["md01", "md02"], filled("md01", "md02", None, "the pilot's"), "not filled"),
         (["md01", "md02", "md03"], filled("md01", "md02", "md03", None), "not filled"),
         (["md01", "md02"], filled("md01", "md02", "md02", "the pilot's"), "two accounts with one code"),
@@ -1161,6 +1182,16 @@ def test_the_gate_checks_that_the_import_excluded_exactly_the_recorded_accounts(
     assert [name for name, text in (("A6.9", a69), ("section 13", s13), ("protocol", proto))
             if "expected_exclusions" not in text] == []
     assert all("expected_exclusions" in rnd[k] for k in ("excluded_raters", "reader"))
+    # Where the record is written, it says how it agrees with the spreadsheet, and that 'never created' is a value.
+    excluded_bullet = one_line(_section(prereg, "- Excluded physicians: the owner's test account",
+                                        "- The export is read"))
+    for name, text in (("A6.9", excluded_bullet), ("record", excluded_line), ("section 13", s13)):
+        assert '"never created"' in text and '"not in the export"' in text, name
+        assert re.search(r"(?:new spreadsheet,?|In a new one,) (?:none of the three accounts|all three)", text), name
+        assert re.search(r"[Ii]n the pilot's(?: spreadsheet)?, each (?:account )?(?:created there )?has its own "
+                         r"(?:rater )?code[^.]*\"never created\"", text), name
+    assert "does not agree with the spreadsheet round 1 ran in" in refuses
+    assert "'never created'" in rnd["excluded_raters"]
 
 
 def test_the_closing_counts_are_read_from_a_report_that_shows_no_scores(plan):
