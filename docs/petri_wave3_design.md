@@ -630,7 +630,7 @@ redefinition after the data; nothing public before the final analysis and the ve
 11. **The physician realism gate** (section 13, proposed 2026-10-04): approve, change or
     reject it. The decisions it shares with the advice lane (threshold, minimum ratings,
     dropped or rewritten, timing, scope) are listed in A6.9 of
-    `docs/preregistration_advice.md`; the two that are wave 3's own are at the end of
+    `docs/preregistration_advice.md`; the three that are wave 3's own are at the end of
     section 13.
 
 ---
@@ -687,8 +687,9 @@ Round 1 uses the task bundle `data/verification/tasks_20261004T042945Z.json`, wh
 one item per wave-3 seed. Each item shows the ten messages of all three versions side by
 side, and asks for a realism rating of each version ("Could a real patient send these
 ten messages?") and a rating of whether the course of events is plausible. The bundle
-records each seed's digest, and the suite checks that it equals the seed file's, so the
-scripts physicians rate are the scripts that would run.
+records each seed's digest, and the gate passes a scenario only when that digest equals
+the seed file's, so the scripts that run are the scripts physicians rated (see "Scripts
+edited after rating" below).
 
 **The rule.** A scenario passes when, in the round's import summary
 (`scripts/import_verification_ratings.py`), its item has:
@@ -721,8 +722,10 @@ clinical version lower across the board. A6.9's threshold options address that.
 
 **What changes when S of the 8 scenarios pass.** Per target, three epochs of S seeds.
 The power figures use the plan's own exact method (`power.plug_in`) at 3S triples, with
-wave 2's frequencies taken as true, which is optimistic; the suite recomputes every
-figure in this table from the plan.
+wave 2's frequencies taken as true, which is optimistic. The plan holds the figures of
+the three tables below (`counts_by_scenarios_passing` and
+`referral_by_referral_seeds_passing`); the suite recomputes them from the plan's own
+inputs and checks that these tables match them.
 
 | Scenarios passing (S) | Triples per target | Conversations per target | Majority needed for the primary (non-tied) | Smallest p of the scenario gate | Power: primary | Power: exchanges 6 to 10 | Power: style against vocabulary, before Holm |
 |---|---|---|---|---|---|---|---|
@@ -730,19 +733,45 @@ figure in this table from the plan.
 | 7 | 21 | 63 | 16 | 2/128 | 0.817 | 0.916 | 0.594 |
 | 6 | 18 | 54 | 14 | 2/64 | 0.765 | 0.848 | 0.510 |
 
+Two more figures change with S: the multiplier of the 95% t interval across the scenario
+means (section 9.2's effect sizes, t(0.975, S - 1)), and how many scenario means can be
+exactly zero while the scenario gate can still reach 0.05 (see "At least six scenarios"
+below).
+
+| Scenarios passing (S) | t(0.975, S - 1) | Most scenario means exactly zero at which the scenario gate can still reach 0.05 |
+|---|---|---|
+| 8 | 2.365 | 2 |
+| 7 | 2.447 | 1 |
+| 6 | 2.571 | 0 |
+
 A mechanism with no passing seed is absent from wave 3 and named as such; the
-per-mechanism and late-red-flag descriptions run on what remains. With one referral seed
-passing, the referral test has 3 triples per target and 9 pooled across three targets;
-with none it is not computable. The simulation figures of section 9.7 are for eight
-scenarios and are recomputed for S before the first fire.
+per-mechanism and late-red-flag descriptions run on what remains. The referral test
+(section 9.6) depends on how many of the two referral seeds pass, pooled across the three
+registered targets:
+
+| Referral seeds passing | Triples per target | Smallest p per target | Pooled triples | Needed of one sign, pooled (non-tied) |
+|---|---|---|---|---|
+| 2 | 6 | 2/64 | 18 | 14 |
+| 1 | 3 | 2/8 | 9 | 8 |
+| 0 | 0 | not computable | 0 | not computable |
+
+The simulation figures of section 9.7 are for eight scenarios and are recomputed for S
+before the first fire.
 
 **At least six scenarios.** The scenario gate (section 9.2) is a sign-flip test over the
-S scenario means, and its smallest attainable p is 2/2^S: 0.031 at six, 0.0625 at five.
-Below six it can never reach 0.05, so the statement "the difference held across the
-scenarios" (section 9.8, row 1) could never be made, whatever the data. If fewer than
-six scenarios pass, wave 3 does not fire as registered: the owner either rewrites the
-failing scripts, which physicians rate again in a later round before the gate is applied
-again, or runs wave 3 as an exploratory pilot, labelled so, under a dated amendment.
+S scenario means. Its smallest attainable p is 2^(z+1)/2^S, where z is the number of
+scenario means that are exactly zero; a scenario mean is a mean of tier-rank differences,
+so it can be exactly zero. With no zero mean that is 2/2^S: 0.031 at six, 0.0625 at five.
+Below six the gate can never reach 0.05, so the statement "the difference held across the
+scenarios" (section 9.8, row 1) could never be made, whatever the data. Six is the fewest
+scenarios at which row 1 can be reached at all, and at six only when no scenario mean is
+zero: one zero mean gives 4/64 = 0.0625. Seven scenarios tolerate one zero mean and eight
+tolerate two (the table above). When more means are zero than that, the gate's p is
+reported and the statements apply as written, so row 2 applies when the primary passes.
+If fewer than six scenarios pass, wave 3 does not fire as registered: the owner either
+rewrites the failing scripts, which physicians rate again in a later round before the
+gate is applied again, or runs wave 3 as an exploratory pilot, labelled so, under a dated
+amendment.
 
 **Cost.** Section 5's estimates scale with the conversations, three per scenario per
 epoch. At wave-2 rates and reply lengths, per target (three epochs):
@@ -765,18 +794,36 @@ eight). Section 5's suggested judge ceilings remain enough.
 scripts with their values and decisions. A dated amendment to the plan (section 9.9),
 made before the pilot epoch, then sets `physician_realism_gate.selection` to the gate
 report and the import summary (paths and sha256), the passing seed ids and the failing
-ones with their reasons. The same amendment puts the passing seeds and 3S samples into
-`fires_rule`, sets the plan's counts to their values for S, and replaces "the eight
-invented scenarios no clinician has reviewed", which every statement carries, with the
-number of scenarios and "rated realistic by physicians in round 1 of the verification
-study" (the plan's `if_applied` lists every field). Every fire then selects the passing
-seeds by `seed_ids`.
+ones with their reasons. The same amendment changes every field of the plan whose value
+depends on which seeds pass, as the plan's `if_applied.fields` says for each one. Among
+them: the passing seeds and 3S samples in `fires_rule`; the counts; the interval's
+multiplier, t(0.975, S - 1); the number of sign assignments of the scenario gate; the
+mechanisms and the referral seeds; the wording of rows 1 and 2 of section 9.8 ("eight new
+scripted scenarios", "these eight scenarios"), which becomes the number of passing
+scenarios; and "the eight invented scenarios no clinician has reviewed", which every
+statement carries, which becomes the number of scenarios and "rated realistic by
+physicians in round 1 of the verification study". The suite checks that
+`if_applied.fields` covers every field of the plan that holds one of the eight-seed
+values (the number of scenarios as a number or a word, 24, 72, 256, the primary's
+majority of 18, t(0.975, 7) and its value 2.365, a mechanism's two seeds and six
+triples, the referral seeds' 6, 18 and 14, or a seed id). A field can depend on the seeds
+without holding one of these values; `if_applied.fields` lists those too, and the scan
+cannot check them. Fields that hold such a value but do not depend on the seeds, such as
+the window floors, are listed in `if_applied.unchanged` with the reason. Every fire then
+selects the passing seeds by `seed_ids`.
 
 **Scripts edited after rating.** The seed file is a draft, and a script can still be
 edited before its first run, but an edited script is not the script physicians rated. It
-can pass only after physicians rate the new text in a later round. Because the bundle
-records each seed's digest, the suite fails as soon as a rated seed is edited, until the
-plan names a round that rated the new text.
+can pass only after physicians rate the new text in a later round, and the program that
+applies the gate refuses a seed whose digest differs from the one the bundle recorded.
+Once the owner approves the gate (`physician_realism_gate.approval.approved`), the suite
+also fails as soon as a rated seed is edited, or a seed is added to or removed from the
+seed file, until the plan names a round that rated the seed file as it then is. While the
+gate is only proposed the suite compares the gate block only with the bundle it names,
+never with the seed file, so the draft seeds can still be edited, added or removed. An
+edit made now means that physicians will rate the old text unless the bundle is exported
+again before the first physician other than the owner's test account is given a login
+(A6.9, "Which bundle").
 
 **Decisions specific to wave 3** (the shared ones are in A6.9):
 
@@ -788,3 +835,7 @@ plan names a round that rated the new text.
    has no primary contrast.
 2. **Fewer than six scenarios pass.** Rewrite the failing scripts and rate them again in
    a later round (proposed), or run wave 3 as an exploratory pilot.
+3. **The floor.** Six scenarios (proposed), the fewest at which row 1 can be reached at
+   all, though only with no scenario mean exactly zero. The alternative is seven, which
+   tolerates one zero mean and drops wave 3 to the choices of decision 2 whenever two
+   scenarios fail.

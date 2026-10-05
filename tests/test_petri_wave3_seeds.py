@@ -584,51 +584,158 @@ def test_the_plan_power_figures_reproduce_from_the_recorded_seed(plan):
 
 # ------------------------------------------------------------------ the proposed physician realism gate
 
+W3_DESIGN = ROOT / "docs" / "petri_wave3_design.md"
+PREREG = ROOT / "docs" / "preregistration_advice.md"
+PROTOCOL = ROOT / "docs" / "verification_protocol.md"
+NUMBER_WORDS = dict(enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen "
+    "eighteen nineteen twenty".split()))
 
-def test_the_proposed_realism_gate_names_the_rated_scripts_and_their_realism_keys(plan, w3_set):
-    """The gate (PROPOSED 2026-10-04; docs/petri_wave3_design.md section 13) reads one round's import summary. The
-    bundle it names must be the file it hashes to and hold one script item per wave-3 seed, rated on these exact
-    seeds: a seed edited after the bundle was exported fails here until the gate names a round that rated the new
-    text. Its gate keys must be the import's own keys for the per-version five-point question, one per arm, and
-    flag_adds the item's other five-point questions, which the import's flag also covers."""
-    from scripts.import_verification_ratings import is_five_point, item_keys
 
-    gate = plan["physician_realism_gate"]
-    assert gate["status"].startswith("PROPOSED") and "not in force" in gate["status"]
-    assert gate["selection"] is None, "the selection is set by a dated amendment after the gate is applied"
+def _power_sim():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("petri_w2_power_sim", ROOT / "scripts" / "petri_w2_power_sim.py")
+    ps = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ps)
+    return ps
+
+
+def _t_quantile(p: float, df: int) -> float:
+    """Student's t quantile: bisection on the CDF, the CDF by Simpson's rule on the density from 0 (the dev install
+    has no scipy). Accurate to far better than the three decimals the plan records."""
+    import math
+
+    const = math.gamma((df + 1) / 2) / (math.sqrt(df * math.pi) * math.gamma(df / 2))
+
+    def cdf(x: float, steps: int = 2000) -> float:
+        h = x / steps
+        f = [const * (1 + (i * h) ** 2 / df) ** (-(df + 1) / 2) for i in range(steps + 1)]
+        return 0.5 + h / 3 * (f[0] + f[-1] + 4 * sum(f[1:-1:2]) + 2 * sum(f[2:-1:2]))
+
+    lo, hi = 0.0, 20.0
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if cdf(mid) < p else (lo, mid)
+    return (lo + hi) / 2
+
+
+def _rated_scripts(gate: dict) -> tuple[dict, dict[str, dict]]:
+    """The round's bundle, checked against the hashes the gate records, and its script items by seed id."""
     rnd = gate["round"]
     bundle_path = ROOT / rnd["bundle"]
     assert hashlib.sha256(bundle_path.read_bytes()).hexdigest() == rnd["bundle_sha256"]
     bundle = load_json(bundle_path)
     assert bundle["bundle_id"] == rnd["bundle_id"]
+    assert bundle["questions_sha256"] == rnd["questions_sha256"]
     script_items = [i for i in bundle["items"] if i["question_set"] == rnd["question_set"]]
     by_seed = {i["provenance"]["source_id"]: i for i in script_items}
     assert len(by_seed) == len(script_items), "one item per seed"
-    assert sorted(by_seed) == sorted(w3_set.seeds), "the round rated every seed in the seed file"
-    for seed_id, item in by_seed.items():
-        assert item["provenance"]["source_path"] == plan["seed_file"], seed_id
-        assert seeds.seed_digest(w3_set.seeds[seed_id]) == item["provenance"]["seed_sha256"], seed_id
+    return bundle, by_seed
+
+
+def _rated_seed_mismatches(by_seed: dict[str, dict], seeds_by_id: dict[str, dict]) -> list[str]:
+    """Seeds the bundle rated that the seed file no longer holds, or holds with another digest than the one the bundle
+    recorded when physicians were given them to rate."""
+    return sorted(sid for sid, item in by_seed.items()
+                  if sid not in seeds_by_id or seeds.seed_digest(seeds_by_id[sid]) != item["provenance"]["seed_sha256"])
+
+
+def _check_realism_gate(plan: dict, seeds_by_id: dict[str, dict]) -> None:
+    """The gate block against its bundle, and, once approved, against the seed file. The bundle must be the file it
+    hashes to and hold one script item per seed id, with gate keys that are the import's own keys for the per-version
+    five-point question, one per arm, and flag_adds the item's other five-point questions, which the import's flag
+    also covers. Those checks compare the block with the bundle it names, a committed file that is never rewritten,
+    so they bind nothing else. Every comparison with the seed file (that the bundle rated each of its seeds, from its
+    path, on its current digests: item_match) runs only once the owner has approved the gate. While the gate is
+    proposed, the draft seeds may still be edited, added or removed, and the suite must not enforce a rule nobody has
+    approved."""
+    from scripts.import_verification_ratings import is_five_point, item_keys
+
+    gate = plan["physician_realism_gate"]
+    approval = gate["approval"]
+    if approval["approved"]:
+        assert approval["approved_by"] and approval["approved_on"], "an approval names who approved it and when"
+    else:
+        assert gate["status"].startswith("PROPOSED") and "not in force" in gate["status"]
+        assert approval["approved_by"] is None and approval["approved_on"] is None
+    bundle, by_seed = _rated_scripts(gate)
+    for item in by_seed.values():
         five_point = {k: spec for k, spec in item_keys(item, bundle["questions"]).items() if is_five_point(spec.scale)}
         assert sorted(k for k, spec in five_point.items() if spec.arm is not None) == sorted(gate["gate_keys"])
         assert sorted({spec.arm for spec in five_point.values() if spec.arm is not None}) == sorted(ARMS)
         assert sorted(k for k, spec in five_point.items() if spec.arm is None) == sorted(gate["flag_adds"])
+    if approval["approved"]:
+        for seed_id, item in by_seed.items():
+            assert item["provenance"]["source_path"] == plan["seed_file"], seed_id
+        unrated = sorted(set(seeds_by_id) - set(by_seed))
+        mismatched = _rated_seed_mismatches(by_seed, seeds_by_id)
+        assert not unrated and not mismatched, (
+            f"seed(s) {unrated} of the seed file not rated in the round's bundle, and rated seed(s) {mismatched} "
+            "edited or removed since it was exported: a script can pass only after a round rates its current text "
+            "(item_match)")
     assert gate["not_flagged"] is True
     assert 2 <= gate["min_complete_ratings"] and 2 <= gate["min_answers_per_key"]
     assert 1 < gate["min_median"] <= 5
+    closes = gate["round"]["closes"]
+    assert "min_complete_ratings" in closes and "min_answers_per_key" in closes, \
+        "the round closes on the rule's own counts, so it cannot close with items the rule then drops"
+
+
+def test_the_proposed_realism_gate_names_the_rated_scripts_and_their_realism_keys(plan, w3_set):
+    """The gate (PROPOSED 2026-10-04; docs/petri_wave3_design.md section 13) reads one round's import summary and the
+    bundle it names; _check_realism_gate holds the checks. It is a draft: not approved, and no selection yet. Its
+    thresholds are the proposed values that A6.9, section 13 and the verification protocol state (they are checked
+    against that prose in test_the_gate_reads_the_same_in_the_plan_a69_section_13_and_the_protocol); the dated
+    approval that changes one changes this line with it."""
+    gate = plan["physician_realism_gate"]
+    assert gate["approval"]["approved"] is False, "approving the gate is a dated owner decision"
+    assert gate["selection"] is None, "the selection is set by a dated amendment after the gate is applied"
+    proposed = {"min_complete_ratings": 2, "min_answers_per_key": 2, "min_median": 4, "min_scenarios": 6}
+    assert {k: gate[k] for k in proposed} == proposed
+    _check_realism_gate(plan, w3_set.seeds)
+
+
+def test_a_changed_seed_file_fails_the_gate_check_only_once_the_gate_is_approved(plan, w3_set):
+    """Editing, adding or removing a draft seed is allowed while the gate is proposed and caught, by seed id, once
+    it is approved (item_match). The changes are made to copies, and the test holds whatever the seed file holds
+    today: it never requires the seed file to match the bundle, which would bind the proposed rule."""
+    gate = plan["physician_realism_gate"]
+    _bundle, by_seed = _rated_scripts(gate)
+    rated = sorted(set(by_seed) & set(w3_set.seeds))
+    before = _rated_seed_mismatches(by_seed, w3_set.seeds)
+    base = (rated or sorted(w3_set.seeds))[0]
+    new_id = f"{base}-new"
+    cases = [({**copy.deepcopy(w3_set.seeds), new_id: copy.deepcopy(w3_set.seeds[base])}, new_id)]
+    if rated:   # editing or removing needs a seed the bundle rated
+        first, last = rated[0], rated[-1]
+        edited = copy.deepcopy(w3_set.seeds)
+        edited[first]["texts"][0]["text"] += " Edited."
+        assert _rated_seed_mismatches(by_seed, edited) == sorted({*before, first})
+        cases += [(edited, first), ({k: v for k, v in w3_set.seeds.items() if k != last}, last)]
+    proposed, approved = copy.deepcopy(plan), copy.deepcopy(plan)
+    proposed["physician_realism_gate"]["approval"].update(approved=False, approved_by=None, approved_on=None)
+    approved["physician_realism_gate"]["approval"].update(approved=True, approved_by="owner", approved_on="2026-10-05")
+    if not before and set(w3_set.seeds) == set(by_seed):
+        _check_realism_gate(approved, w3_set.seeds)   # the approved check passes on a seed file the bundle rated
+    for changed, named in cases:
+        _check_realism_gate(proposed, changed)
+        with pytest.raises(AssertionError, match=re.escape(f"'{named}'")):
+            _check_realism_gate(approved, changed)
 
 
 def test_the_realism_gate_floor_and_counts_follow_from_the_plan(plan):
-    """min_scenarios is the fewest scenario means whose sign-flip gate can reach alpha (its smallest p is 2/2^S), and
-    each row of counts_by_scenarios_passing is the plan's own arithmetic at S seeds: 3S triples, the sign test's
-    majority, and power.plug_in's exact method at 3S triples with that block's recorded q and p. The eight-seed row
-    is the plan as drafted."""
-    import importlib.util
+    """min_scenarios is the fewest scenario means whose sign-flip gate can reach alpha (its smallest p is 2/2^S with
+    no zero mean), and each row of counts_by_scenarios_passing is the plan's own arithmetic at S seeds: 3S triples,
+    the sign test's majority, the most zero scenario means at which the gate can still reach alpha (by the power
+    simulation's own sign_flip_p), the t multiplier of the interval across scenario means, and power.plug_in's exact
+    method at 3S triples with that block's recorded q and p. referral_by_referral_seeds_passing is the referral
+    outcome's counts at each number of passing referral seeds. The eight-seed and two-referral-seed rows are the plan
+    as drafted, wording included."""
     from fractions import Fraction
     from math import comb
 
-    spec = importlib.util.spec_from_file_location("petri_w2_power_sim", ROOT / "scripts" / "petri_w2_power_sim.py")
-    ps = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(ps)
+    ps = _power_sim()
     gate = plan["physician_realism_gate"]
     alpha = plan["alpha"]
     floor = min(s for s in range(1, 64) if 2 / 2 ** s < alpha)
@@ -655,9 +762,190 @@ def test_the_realism_gate_floor_and_counts_follow_from_the_plan(plan):
         need = row["majority_needed_non_tied"]
         assert ps.sign_test_p(need, n) < alpha <= ps.sign_test_p(need - 1, n), s
         assert row["general_headline_gate_smallest_p"] == f"2/{2 ** s}"
+        z = row["gate_reachable_with_zero_means_at_most"]
+        assert ps.sign_flip_p([0.0] * z + [1.0] * (s - z)) < alpha <= ps.sign_flip_p([0.0] * (z + 1) + [1.0] * (s - z - 1))
+        assert row["effect_size_t_975"] == round(_t_quantile(0.975, s - 1), 3), s
         for name, (q, p) in zip(names, rates, strict=True):
             assert row["plug_in_power"][name] == pytest.approx(round(plug_in(n, q, p), 3), abs=1e-9), (s, name)
     full = rows[0]
     assert full["triples_per_target"] == plan["final_triples_per_target"]
     assert full["majority_needed_non_tied"] == plan["primary"]["majority_needed_at_24_non_tied"]
     assert [full["plug_in_power"][name] for name in names] == [r["power"] for r in plug[:len(names)]]
+    interval = plan["effect_size"]["reported"][2]
+    assert f"t(0.975, {all_seeds - 1})" in interval and f"t = {full['effect_size_t_975']}" in interval
+    assert plan["general_headline_gate"]["smallest_attainable_p"].startswith(full["general_headline_gate_smallest_p"])
+
+    referral = plan["exploratory_outcomes"]["restricted_to_seeds"]["referral_specificity"]
+    pooled_over = len(plan["targets"])
+    ref_rows = gate["referral_by_referral_seeds_passing"]
+    assert [r["referral_seeds"] for r in ref_rows] == list(range(len(referral), -1, -1))
+    for row in ref_rows:
+        n = row["referral_seeds"] * epochs
+        pooled = n * pooled_over
+        assert row["triples_per_target"] == n and row["pooled_triples"] == pooled
+        if n:
+            assert row["per_target_smallest_p"] == f"2/{2 ** n}"
+            need = row["pooled_majority_needed_non_tied"]
+            assert ps.sign_test_p(need, pooled) < alpha <= ps.sign_test_p(need - 1, pooled), row
+        else:
+            assert row["per_target_smallest_p"] is None and row["pooled_majority_needed_non_tied"] is None
+    drafted = plan["exploratory_outcomes"]["referral_specificity"]
+    assert f"{ref_rows[0]['triples_per_target']} triples there" in drafted["per_target"]
+    assert f"({ref_rows[0]['pooled_triples']} with three targets)" in drafted["across_targets"]
+    assert f"needs {ref_rows[0]['pooled_majority_needed_non_tied']} of one sign" in drafted["across_targets"]
+
+
+def _plan_nodes(value: object, path: str = "") -> Iterable[tuple[str, object]]:
+    """(path, value) for every node of the plan below value, and (path, the key's words) for every key, so a key that
+    names a count is scanned too. Paths are dotted keys, with [id] or [name] for a list entry that has one, else
+    [index]: the spelling if_applied uses."""
+    if isinstance(value, dict):
+        children = [(f"{path}.{k}" if path else k, v, k) for k, v in value.items()]
+    elif isinstance(value, list):
+        children = [(f"{path}[{next((v[k] for k in ('id', 'name') if isinstance(v, dict) and isinstance(v.get(k), str)), i)}]",
+                     v, None) for i, v in enumerate(value)]
+    else:
+        return
+    for here, sub, key in children:
+        if key is not None:
+            yield here, key.replace("_", " ")
+        yield here, sub
+        yield from _plan_nodes(sub, here)
+
+
+def test_if_applied_names_every_field_that_depends_on_the_passing_seeds(plan):
+    """if_applied is the checklist of the amendment that applies the gate. Every field of the plan (outside the gate
+    block) that holds a value tied to the seed set must be in fields, or in unchanged with a reason: the number of
+    scenarios as a number or a word, 3S, 9S, 2^S, the primary's majority, t(0.975, S - 1) and its value, a
+    mechanism's seed and triple counts as words, the referral seeds' triples, pooled triples and pooled majority, and
+    every seed id. The values are derived from the plan, so the scan still means something after an amendment. A
+    field can depend on the seeds without holding one of these values; if_applied lists those as well, and the scan
+    cannot check them. Every listed field must exist, and every test named under tests must be in this module."""
+    gate = plan["physician_realism_gate"]
+    applied = gate["if_applied"]
+    fields, unchanged = applied["fields"], applied["unchanged"]
+    assert not set(fields) & set(unchanged)
+    body = {k: v for k, v in plan.items() if k != "physician_realism_gate"}
+    nodes = list(_plan_nodes(body))
+    assert sorted((set(fields) | set(unchanged)) - {p for p, _ in nodes}) == [], "every listed field exists in the plan"
+
+    ids = plan["scenario_sets"][plan["decomposition_set"]]
+    s, epochs, targets = len(ids), plan["epochs_per_target"], len(plan["targets"])
+    per_mechanism = max(len(v) for v in plan["mechanisms"].values())
+    referral = len(plan["exploratory_outcomes"]["restricted_to_seeds"]["referral_specificity"])
+    numbers = {s, epochs * s, epochs * s * len(ARMS), epochs * s * targets, 2 ** s,
+               gate["counts_by_scenarios_passing"][0]["majority_needed_non_tied"],
+               epochs * referral, epochs * referral * targets,
+               gate["referral_by_referral_seeds_passing"][0]["pooled_majority_needed_non_tied"]}
+    number_re = re.compile(r"(?<![\w.\-])(" + "|".join(str(n) for n in sorted(numbers, reverse=True)) + r")(?![\w]|\.\d)")
+    t_value = f"{_t_quantile(0.975, s - 1):.3f}"
+    phrases = [NUMBER_WORDS[s], f"{NUMBER_WORDS[per_mechanism]} per mechanism", f"{NUMBER_WORDS[per_mechanism]} seeds",
+               f"{NUMBER_WORDS[per_mechanism]} scenarios", f"{NUMBER_WORDS[epochs * per_mechanism]} triples"]
+    phrase_re = re.compile(r"\b(" + "|".join(re.escape(p) for p in phrases) + r")\b")
+
+    def tied_to_the_seeds(value: object) -> bool:
+        if isinstance(value, bool):
+            return False
+        if isinstance(value, int):
+            return value in numbers
+        if isinstance(value, str):
+            return bool(number_re.search(value) or phrase_re.search(value) or f"t(0.975, {s - 1})" in value
+                        or t_value in value or any(seed_id in value for seed_id in ids))
+        return False
+
+    found = sorted({path for path, value in nodes if tied_to_the_seeds(value)})
+    listed = [*fields, *unchanged]
+    uncovered = [p for p in found
+                 if not any(p == q or p.startswith(q + ".") or p.startswith(q + "[") for q in listed)]
+    assert uncovered == [], f"fields tied to the seed set that if_applied does not list: {uncovered}"
+    # The scan finds what it is for: the fields an independent check found missing from the first draft's list.
+    assert {"effect_size.reported[2]", "statements.primary[row1].text", "statements.primary[row2].text",
+            "general_headline_gate.test", "general_headline_gate.smallest_attainable_p", "decomposition.registered",
+            "decomposition.prespecified_secondary", "sensitivity[leave_one_scenario_out].rule",
+            "sensitivity[each_mechanism_alone].rule", "exploratory_outcomes.referral_specificity.per_target",
+            "exploratory_outcomes.referral_specificity.across_targets",
+            "exploratory_outcomes.restricted_to_seeds.referral_specificity[0]",
+            "primary.majority_needed_at_24_non_tied"} <= set(found)
+    assert [t for t in applied["tests"] if not callable(globals().get(t))] == []
+
+
+def _section(text: str, start: str, stop: str | None) -> str:
+    i = text.index(start)
+    return text[i:text.index(stop, i + len(start))] if stop else text[i:]
+
+
+def _md_table(text: str, header_start: str) -> list[list[str]]:
+    lines = text.splitlines()
+    i = next(k for k, line in enumerate(lines) if line.startswith(header_start))
+    rows = []
+    for line in lines[i + 2:]:
+        if not line.startswith("|"):
+            break
+        rows.append([cell.strip() for cell in line.strip().strip("|").split("|")])
+    return rows
+
+
+def test_the_gate_reads_the_same_in_the_plan_a69_section_13_and_the_protocol(plan):
+    """The rule is written in four places: the plan's gate block (data), A6.9 of the preregistration, section 13 of
+    the wave-3 design note and the verification protocol. Its thresholds, the round's closing counts and the round's
+    bundle must agree in all of them, so a change to one that misses another fails here."""
+    gate = plan["physician_realism_gate"]
+    rnd = gate["round"]
+    prereg = PREREG.read_text(encoding="utf-8")
+    one_line = functools.partial(re.sub, r"\s+", " ")
+    a69 = one_line(_section(prereg, "### A6.9 Physician realism gate", "### Approval record"))
+    record = one_line(_section(prereg, "### Approval record", None))
+    s13 = one_line(_section(W3_DESIGN.read_text(encoding="utf-8"), "## 13. Physician realism gate", None))
+    proto = one_line(_section(PROTOCOL.read_text(encoding="utf-8"), "**Which items the paid runs use", "\n- **"))
+    ratings, answers, median = gate["min_complete_ratings"], gate["min_answers_per_key"], gate["min_median"]
+    words = {w: n for n, w in NUMBER_WORDS.items()}
+
+    def found(text: str, pattern: str) -> list[tuple[int, ...]]:
+        hits = [m if isinstance(m, tuple) else (m,) for m in re.findall(pattern, text)]
+        assert hits, f"{pattern!r} not found"
+        return [tuple(int(x) if x.isdigit() else words[x] for x in hit) for hit in hits]
+
+    checks = [
+        (a69, r"`ratings_complete` is at least (\d+), and for each question the gate reads, `five_point\.<key>\.n` "
+              r"is at least (\d+)", (ratings, answers)),
+        (a69, r"`five_point\.<key>\.median` is at least (\d+)", (median,)),
+        (a69, r"closes when every advice and multi-turn item has at least (\w+) complete ratings by included "
+              r"physicians and at least (\w+) numeric answers", (ratings, answers)),
+        (a69, r"A median of at least (\d+) \(\"Likely\"\) on every question", (median,)),
+        (a69, r"At least (\d+) complete ratings, with at least (\d+) numeric", (ratings, answers)),
+        (a69, r"(\w+) complete ratings and (\w+) numeric answers on every question the gate reads", (ratings, answers)),
+        (record, r"threshold `<median at least (\d+) on every question read>`, minimum ratings `<(\d+)>`",
+         (median, ratings)),
+        (s13, r"at least (\d+) complete ratings, and at least (\d+) numeric answers", (ratings, answers)),
+        (s13, r"a median of at least (\d+) \(\"Likely\"\)", (median,)),
+        (proto, r"at least (\w+) complete ratings, at least (\w+) numeric answers", (ratings, answers)),
+        (proto, r"a median of at least (\d+)", (median,)),
+    ]
+    for text, pattern, expected in checks:
+        assert set(found(text, pattern)) == {expected}, pattern
+    for value in (rnd["bundle"], rnd["bundle_id"], rnd["bundle_sha256"], rnd["questions_sha256"]):
+        assert value in a69, value
+    assert rnd["bundle"] in s13
+    assert "round 1 bundle `<bundle id>`" in record and "Re-pointed before the first physician's login" in record
+
+
+def test_section_13_tables_are_the_plan_rows(plan):
+    """Section 13 shows the gate's counts as three tables; they must be the plan's rows, which the suite recomputes
+    (test_the_realism_gate_floor_and_counts_follow_from_the_plan)."""
+    gate = plan["physician_realism_gate"]
+    s13 = _section(W3_DESIGN.read_text(encoding="utf-8"), "## 13. Physician realism gate", None)
+    rows = gate["counts_by_scenarios_passing"]
+    assert _md_table(s13, "| Scenarios passing (S) | Triples per target |") == [
+        [str(r["scenarios"]), str(r["triples_per_target"]), str(r["conversations_per_target"]),
+         str(r["majority_needed_non_tied"]), r["general_headline_gate_smallest_p"],
+         *(f"{r['plug_in_power'][k]:.3f}" for k in ("primary", "exchanges_6_10",
+                                                    "decomposition_paired_difference_before_holm"))]
+        for r in rows]
+    assert _md_table(s13, "| Scenarios passing (S) | t(0.975, S - 1) |") == [
+        [str(r["scenarios"]), f"{r['effect_size_t_975']:.3f}", str(r["gate_reachable_with_zero_means_at_most"])]
+        for r in rows]
+    assert _md_table(s13, "| Referral seeds passing |") == [
+        [str(r["referral_seeds"]), str(r["triples_per_target"]), r["per_target_smallest_p"] or "not computable",
+         str(r["pooled_triples"]),
+         "not computable" if r["pooled_majority_needed_non_tied"] is None else str(r["pooled_majority_needed_non_tied"])]
+        for r in gate["referral_by_referral_seeds_passing"]]
