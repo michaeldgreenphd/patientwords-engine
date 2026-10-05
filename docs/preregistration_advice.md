@@ -1508,10 +1508,9 @@ their own before it.
     write"; this changes neither the rule nor which items pass.
   - Median threshold: "every question the gate reads" in the "As approved"
     line above means every question rule 2 reads, so not a script's
-    course-of-events question,
-    which counts only through the flag; the verification protocol and
-    decision 1 now say so; this changes neither the rule nor which items
-    pass.
+    course-of-events question, which counts only through the flag; the
+    verification protocol and decision 1 now say so; this changes neither
+    the rule nor which items pass.
   - Wave R selection files: if decision 6 splits Wave R by family, each
     family's selection has its own path,
     `realism_gate_waveR_<family>_<export stamp>.json`, and the count of the
