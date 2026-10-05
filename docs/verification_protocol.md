@@ -156,11 +156,15 @@ stop at any time.
 - **Which items the paid runs use (proposed 2026-10-04, not in force).**
   Amendment 6, A6.9, of `docs/preregistration_advice.md` and section 13 of
   `docs/petri_wave3_design.md` propose that the advice waves and Petri wave 3
-  use only the items whose realism ratings in this round pass a rule fixed
-  before physicians start: at least two physicians' answers, a median of at
-  least 4 on each realism question (each version of a script), and no flag.
-  To count as fixed in advance, the rule must be approved before the first
-  physician other than the owner's test account is given a login.
+  use only the items whose ratings in this round pass a rule fixed before
+  physicians start: at least two complete ratings, at least two numeric
+  answers ("Can't judge" not counted) and a median of at least 4 on each
+  question the rule reads, and no flag. The rule reads the realism question
+  of each message (each version of a script), and the plausibility question
+  for the nine advice items cut off mid-sentence. The round closes when every
+  advice and multi-turn item has those counts, or on a closing date set at
+  approval. To count as fixed in advance, the rule must be approved before the
+  first physician other than the owner's test account is given a login.
 - **Reference urgency for the advice preregistration.** The physicians'
   answers on the 24 new questions are candidate adjudicated reference tiers.
   The analysis takes one tier per item, so a rule for combining physicians

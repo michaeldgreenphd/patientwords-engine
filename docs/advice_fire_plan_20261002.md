@@ -566,8 +566,10 @@ elicits over fully covered cells of `stimuli_20260827T141036Z` (0 calls,
 
 Amendment 6, A6.9, proposes that Wave A and Wave R elicit only the items that
 physicians rated realistic in round 1 of the physician verification study. If
-the owner approves it, this section replaces the item counts of sections 1 to
-3; everything else in this plan stands. Nothing here has been fired.
+the owner approves it, this section replaces the stimuli files, item counts,
+calls, costs and `max_spend` of sections 1 to 3, and sections 0, 4, 6 and 7
+change as listed under "Other sections" at the end of this section. Nothing
+else in this plan changes. Nothing here has been fired.
 
 **Stimuli files.** The full fires name the gated stimuli files that
 `build-stimuli --source selection` writes from the gate's two selection files
@@ -642,7 +644,11 @@ high for the five).
 gated fire commits at most what the same fire commits with all items (fewer
 items at the same per-item rates), and a chunk with no items is not fired, so
 section 4's worst cases are upper bounds and every day stays under its
-ceiling.
+ceiling. This holds with one gated file per wave. Under decision 6's first
+option (one rerun file per family) each R fire runs once per file, and each
+of those fires adds its own worst-case call and rounding to its `max_spend`,
+so section 4's Wave R days are recomputed for the split fires, with or
+without the gate.
 
 **Plan checks.** Each `elicit --dry-run` of section 3 is run against the
 gated file and must print the per-item calls times the items in the fire: 12
@@ -653,3 +659,53 @@ for A4 and `judging 78 x n_R response(s)` for R4.
 
 **Timing.** Wave A and Wave R wait for round 1 to close and for the gate's
 files to be committed. The probes do not wait.
+
+**Other sections.** Under the gate, these parts of the plan change as well:
+
+- **Section 0.** Condition 4's plan check of R1 prints 18 x n_R calls, not
+  270 (see "Plan checks" above). Condition 6 applies.
+- **Section 3.** Every full fire's `stimuli_file`, `offset`, `limit`,
+  `max_spend` and (judge fires) `judge_max_spend`, every plan check's
+  `--stimuli`, `--offset`, `--limit`, `--max-spend` and expected output, and
+  the dollar figures in every authorisation sentence take the gated file and
+  this section's values. Each fire's cost and runtime scale with its items. The
+  archives are named after the stimuli file, so the judge checks read
+  `data/advice/responses_<gated stem>.jsonl`, where `<gated stem>` is the
+  gated file's name without `.json`.
+- **Section 4.** With one gated file per wave, the days and their order stand
+  and the worst cases are upper bounds (see "Days and ceilings" above).
+- **Section 6.**
+  - Wave A's reference scoring reads the gated file and its judgments:
+    `analyze --judgments data/advice/judgments_<gated Wave A stem>.jsonl
+    --stimuli <gated Wave A file>`, with `--rubric` and `--out` as in
+    section 6. Its
+    `not_adjudicated_ids` holds the n_A kept ids, not all 24.
+  - The replication readout's cell count and null expectation, 36 of 87 cells
+    against 17.3 and 23 of 59 against 9.9 in the sensitivity reading, are
+    recomputed over the kept items as A6.9 says, and the readout reports the
+    recomputed figures that the approval record holds. If item #1 is dropped,
+    prediction 2 is reported as not tested, for that reason.
+  - The exporter limits apply to the gated files unchanged. A file built by
+    `--source selection` takes the families of every file it copied from,
+    and of the files those copied from in turn (`_families_of_source` in
+    `scripts/export_advice_scenarios.py`), whichever items it keeps. So the
+    gated Wave A file has the family the Wave A file it is selected from
+    declares, and is refused if that file declares none;
+    `stimuli_20261002T080026Z.json` declares none today (decision 7). A gated Wave R
+    file selected from the rerun file as built inherits all five files the
+    rerun file copied from, both families, so the exporter refuses it even if
+    every item it keeps is of one family, as it refuses the rerun file
+    (decision 6). Under decision 6's first option, each gated Wave R file is
+    selected from one per-family rerun file and has that one family (A6.9).
+    The gated Wave R file's items keep their ids, so it is never exported in
+    the same call as the rerun file or the files that one was selected from.
+- **Section 7.**
+  - Decision 6: under its first option, one file per family, the Wave R
+    selection is split by family into two selection files, each built into its
+    own gated file, and each R fire runs once per gated file with the chunks
+    of this section. The counts are the kept items' by family, which the gate
+    report gives, not 11 sentence-completion and 4 natural-question items.
+  - Decision 7: the gate's Wave A selection names the Wave A file that exists
+    when the gate is applied (A6.9). If decision 7's first option rebuilds
+    that file under a new stamp after the gate is applied, the Wave A
+    selection is written again for the new file before Wave A fires.

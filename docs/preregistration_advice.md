@@ -1078,12 +1078,40 @@ fires. The same round and rule select the Petri wave-3 scenarios
   the questions of `data/verification/questions.json` (sha256
   `d2ce0e262aee7dba000ef927cc84ddf59ce95f5c418f81d24cb667c0c67445fb`). It
   holds the 24 new questions, the 15 rerun items and the 8 wave-3 scripts.
+- **Which bundle.** That bundle is round 1's until the first physician other
+  than the owner's test account is given a login. If the bundle is exported
+  again before then (for example because the dummy-physician test or a
+  wording pilot changes `data/verification/questions.json`, which is version
+  1.1-draft and not yet tested with a physician), round 1 moves to the new
+  bundle. A dated note in the approval record below, and the same edit to the
+  wave-3 plan's `physician_realism_gate.round`, name the new bundle's id,
+  sha256 and questions sha256; the rule is otherwise unchanged. After that
+  first login the bundle is fixed for round 1, and a new bundle starts a later
+  round. The round's export must hold ratings on that one bundle only: the
+  import refuses an export with events on two bundles, and checks this before
+  it excludes any physician. So if the bundle changes after the
+  dummy-physician test, the test's ratings on the earlier bundle must not be
+  in the round's export.
 - Round 1 is every rating saved on that bundle until the round closes. It
   closes when every advice and multi-turn item has at least two complete
-  ratings by included physicians, or on a closing date the owner records at
-  approval, whichever comes first. At close the owner downloads one export,
-  and that export is the gate's input. Ratings saved after it, on tracing
-  pairs or anything else, do not count for the gate.
+  ratings by included physicians and at least two numeric answers on every
+  question the gate reads for it (rule 1 below), or on a closing date the
+  owner records at approval, whichever comes first. Two complete ratings
+  alone do not close an item: the import counts a rating complete when every
+  required question has an answer, and "Can't judge" is an answer, but it adds
+  no numeric answer. With two physicians, one "Can't judge" on a question the
+  gate reads leaves that question one answer short. At close the owner
+  downloads one export, and that export is the gate's input. Ratings saved
+  after it, on tracing pairs or anything else, do not count for the gate.
+- **Items short of answers.** The app tops up an item only while fewer than
+  `RATERS_PER_ITEM` active physicians are assigned to it, whatever their
+  answers (`assignTopUp_` in the app's `src/Logic.gs`), and its admin menu has
+  no command that assigns a physician to one item. So a "Can't judge" does not
+  by itself bring the item another physician; raising `RATERS_PER_ITEM` and
+  running Assign items again tops up every item. An item still short of
+  either count when the round closes on its date does not pass. It is
+  reported as "not enough ratings", with its counts and whether ratings or
+  numeric answers were short.
 - Excluded physicians: the owner's test account and any wording-pilot
   physician, named in writing before the export is imported. No physician is
   excluded after their ratings have been seen.
@@ -1159,7 +1187,11 @@ copies each item's messages byte for byte and keeps its id. The Wave A and
 Wave R fires name those files in place of `stimuli_20261002T080026Z.json` and
 `stimuli_20261002T081803Z.json`. If fire-plan decision 6 or 7 replaces either
 file before the gate is applied, the selection names the replacement, whose
-items keep the same ids, and the message check above applies to it.
+items keep the same ids, and the message check above applies to it. If
+decision 6 replaces the rerun file with one file per family, the Wave R
+selection is written as one selection file per family, each naming only its
+own family's file: a file built by `--source selection` carries the families
+of every file it copies from, and the exporter refuses one that carries both.
 
 **What changes in the waves.**
 
@@ -1204,7 +1236,8 @@ items keep the same ids, and the message check above applies to it.
 tests, after this section is approved and before the first gated fire, so
 that it implements the rule as approved. It reads only the committed summary
 and the bundle. It refuses, writing nothing, when the summary names another
-bundle sha256 than the one above, an advice or script item is missing from
+bundle sha256 than round 1's (the one above, unless the approval record
+re-points it under "Which bundle"), an advice or script item is missing from
 the summary, a question the gate reads is missing from an item's
 `five_point`, or a message or seed digest does not match. A wave with no
 passing item is reported by name, and no selection file is written for it.
@@ -1223,21 +1256,26 @@ passing item is reported by name, and no selection file is written for it.
 2. **Minimum ratings.** At least 2 complete ratings, with at least 2 numeric
    answers on each question the gate reads (proposed; the app assigns every
    item to at least two physicians). At least 3 gives steadier medians but
-   needs `RATERS_PER_ITEM` of 3 or more and a longer round.
+   needs `RATERS_PER_ITEM` of 3 or more and a longer round. A related
+   setting, not a change to the rule: `RATERS_PER_ITEM` of 3 with the
+   minimum kept at 2 lets an item absorb one "Can't judge" per question
+   without falling short, at the cost of a third rating on every item.
 3. **Failing items: dropped or rewritten.** Dropped (proposed). Only the new
    questions and the scripts can be rewritten, and a rewrite is a new item
    that physicians must rate in a later round, which delays its wave until
    that round closes.
 4. **Timing.** This section approved before any physician other than the test
    account is given a login (proposed), with the closing rule above: two
-   complete ratings on every advice and multi-turn item, or a closing date set
-   at approval, whichever comes first.
+   complete ratings and two numeric answers on every question the gate reads,
+   on every advice and multi-turn item, or a closing date set at approval,
+   whichever comes first.
 5. **Scope.** The gate applies to Wave A, Wave R and Petri wave 3 (proposed).
    Leaving Wave R ungated keeps the replication on all 15 items as A6.4
    registers it, with the physicians' ratings reported beside it.
 6. **Petri wave 3's own decisions** (`docs/petri_wave3_design.md`, section
-   13): which versions of a script must pass (proposed: all three), and what
-   happens when fewer than six scenarios pass.
+   13): which versions of a script must pass (proposed: all three), what
+   happens when fewer than six scenarios pass, and whether the floor is six
+   (proposed) or seven, which tolerates one scenario mean of exactly zero.
 
 ### Approval record (to fill)
 
@@ -1251,7 +1289,11 @@ Physician realism gate (A6.9): `<approved / changed / rejected>`, date (UTC)
 `<date>`, which must be before the first physician's login (or else: date the
 first physician started `<date>`, recorded as a deviation). As approved:
 threshold `<median at least 4 on every question read>`, minimum ratings `<2>`,
-closing date `<date>`, excluded physicians `<rater codes>`. At application:
+closing date `<date>`, excluded physicians `<rater codes>`, round 1 bundle
+`<bundle id>` (sha256 `<sha256>`, questions sha256 `<sha256>`). Re-pointed
+before the first physician's login (A6.9, "Which bundle"), each on its own
+dated line: `<date>`: `<old bundle id>` to `<new bundle id>` (sha256
+`<sha256>`, questions sha256 `<sha256>`). At application:
 import summary `<path>` (sha256 `<sha256>`), gate report `<path>` (sha256
 `<sha256>`), gated stimuli files `<Wave A path, sha256>` and `<Wave R path,
 sha256>`, n_A `<n>` of 24, n_R `<n>` of 15, and Wave R's recomputed baselines:
