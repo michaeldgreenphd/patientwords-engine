@@ -1128,7 +1128,14 @@ round 1 and, if fewer than six pass, later rounds ("Rounds" below;
   closes when every advice and multi-turn item has at least two complete
   ratings by included physicians and at least two numeric answers on every
   question the gate reads for it (rule 1 below), or on the closing date,
-  2026-10-31 (UTC), whichever comes first. Two complete ratings alone do not
+  2026-10-31 (UTC), whichever comes first. The round ends at the end of its
+  closing date in force in UTC, 23:59:59Z (a fraction of that last second
+  still counts: the close time's UTC date is the closing date or earlier).
+  For 2026-10-31 that is 18:59:59 CDT, the owner's US Central time, because
+  daylight time is still in force that day (it ends on 2026-11-01). The
+  closing date in force is 2026-10-31, or the date set by the last recorded
+  extension (below). An early close, once every item has both counts, may
+  be at any time before then. Two complete ratings alone do not
   close an item: the import counts a rating complete when every required
   question has an answer, and "Can't judge" is an answer, but it adds no
   numeric answer. With two physicians, one "Can't judge" on a question the
@@ -1141,12 +1148,19 @@ round 1 and, if fewer than six pass, later rounds ("Rounds" below;
   `physician_realism_gate.rounds[0].closing_export`. The program that applies
   the gate refuses a summary of any other export ("Code still to write"
   below), so a later export of the same spreadsheet, holding ratings saved
-  after the close, cannot be its input.
+  after the close, cannot be its input. It also refuses a closing export
+  whose close time falls after the end of the closing date in force, so an
+  export downloaded after the deadline cannot be the input either, even when
+  its sha256 and time are the ones recorded.
 - **Extending the closing date.** The owner set 2026-10-31 at approval and
   noted that it may need to be extended. An extension is recorded as a dated
   note in the approval record below, with the new closing date, before the
-  current closing date passes; the same edit changes the wave-3 plan's
-  `physician_realism_gate.rounds[0].closing_date`. It is decided on rating counts
+  current closing date passes; the same edit appends it to the wave-3
+  plan's `physician_realism_gate.rounds[0].closing_date_extensions`, as the
+  date it was recorded and the new closing date, and `closing_date` keeps
+  the registered 2026-10-31. The program that applies the gate refuses an
+  extension recorded after the closing date it replaces, or one that sets
+  no later date. It is decided on rating counts
   only (how many complete ratings, and numeric answers, the items have),
   never on realism scores or anything computed from them. Before the round
   closes, these counts are read from the counts report ("Code still to
@@ -1380,7 +1394,13 @@ compares:
   `closing_export.closed_utc` (`rounds[0].closing_export` for round 1),
   exactly: a summary built from any other export of the round's
   spreadsheet, such as a later one that holds ratings saved after the
-  close, is a refusal.
+  close, is a refusal;
+- the round's `closing_export.closed_utc` with the end, 23:59:59Z (UTC),
+  of its closing date in force: its `closing_date`, or the closing date of
+  the last of its `closing_date_extensions`. A close time whose UTC date is
+  later than that date is a refusal, so an export downloaded after the
+  deadline cannot be the closing export even when the summary matches the
+  record.
 
 For the items it compares:
 
@@ -1416,7 +1436,10 @@ or "never created"), do not agree with the spreadsheet the round ran in
 ("Excluded physicians" above) or give two accounts one code, a round's
 `closing_export` is not filled (a value still null, a sha256 that is not
 64 lowercase hexadecimal characters, or a time that is not an ISO-8601 UTC
-time), a comparison above fails, a seed of the seed file has a current
+time), a round's close time falls after the end of its closing date in
+force, an entry of a round's `closing_date_extensions` is not two dates
+(YYYY-MM-DD), was recorded after the closing date it replaces or sets no
+later one, a comparison above fails, a seed of the seed file has a current
 digest that no round rated, a round's item at a seed's current digest
 records other turn hashes than the ones the program computes from the
 seed, a later round follows rounds over which six or more wave-3 seeds
@@ -1594,7 +1617,9 @@ their own before it.
   its own dated line (to fill if it happens): `<date>`: `<old bundle id>` to
   `<new bundle id>` (sha256 `<sha256>`, questions sha256 `<sha256>`).
 - Closing date extensions (A6.9, "Extending the closing date"), each on its
-  own dated line, written before the closing date it replaces: none.
+  own dated line, written before the closing date it replaces, and by the
+  same edit appended to the wave-3 plan's
+  `physician_realism_gate.rounds[0].closing_date_extensions`: none.
 - Excluded physicians (to fill before the export is imported, by one dated
   edit that also fills the wave-3 plan's
   `physician_realism_gate.rounds[0].expected_exclusions` with the same values),
@@ -1608,7 +1633,7 @@ their own before it.
   edit as the excluded physicians, which also fills the wave-3 plan's
   `physician_realism_gate.rounds[0].closing_export` with the same values):
   sha256 `<sha256 of the export file>`, closed `<the export's exported_utc>`
-  (UTC).
+  (UTC), no later than the end, 23:59:59Z, of the closing date in force.
 - At application (to fill): import summary `<path>` (sha256 `<sha256>`), gate
   report `<path>` (sha256 `<sha256>`), gated stimuli files `<Wave A path,
   sha256>` and `<Wave R path, sha256>` (one Wave R file per family if
@@ -1693,6 +1718,12 @@ their own before it.
     any), not round 1 alone, and A6.9 and section 13 say wave 3 may be
     selected from later rounds; this changes neither the rule nor which
     items pass.
+  - The deadline: the gate program refuses a closing export whose close
+    time is after the end, 23:59:59Z (UTC; 18:59:59 CDT on 2026-10-31), of
+    the closing date in force, which is 2026-10-31 or the date of the last
+    extension recorded in the plan's `closing_date_extensions` before the
+    date it replaces; `closing_date` keeps the registered date; this
+    changes neither the rule nor which items pass.
 - Owner's decision, 2026-10-05 (after the approval; it can change which
   seeds pass, so it is recorded here as a decision, not as a
   clarification). Asked in the agent session whether a later round may

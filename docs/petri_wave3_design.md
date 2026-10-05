@@ -738,6 +738,11 @@ time (the export's own `exported_utc`) are written down before the import, in A6
 approval record and in the plan's `physician_realism_gate.rounds[0].closing_export`.
 The program that applies the gate refuses a summary whose `inputs.export` differs from
 them, so a summary of a later export of the same spreadsheet cannot reach the selection.
+It also refuses a close time after the end of the closing date in force, 23:59:59Z (UTC)
+on 2026-10-31, or on a later date set by an extension recorded before the date it
+replaces (`physician_realism_gate.rounds[0].closing_date_extensions`), so an export
+downloaded after the deadline cannot be the closing export. An early close, once every
+item has both counts, may be at any time before then.
 
 **Why all three versions, not each version on its own.**
 

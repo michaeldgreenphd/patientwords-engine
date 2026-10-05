@@ -166,7 +166,11 @@ stop at any time.
   course-of-events question, which has no median threshold: it counts only
   through the flag, and needs two numeric answers like the others. The round closes
   when every advice and multi-turn item has those counts, or on 2026-10-31
-  (UTC), whichever comes first; A6.9 says how that date may be extended. The
+  (UTC), whichever comes first; A6.9 says how that date may be extended.
+  The round ends at the end of that date in UTC, 23:59:59Z, which is
+  18:59:59 CDT in US Central time, and the program that applies the rule
+  refuses an export downloaded after then, unless an extension recorded
+  before the date moved it. The
   owner approved A6.9 on 2026-10-05, before anyone had a login, so the rule
   is fixed in advance. Only A6.9 is approved: the rest of Amendment 6, which
   proposes the advice waves themselves, is still proposed. Three accounts

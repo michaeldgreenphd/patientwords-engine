@@ -720,7 +720,8 @@ def _check_realism_gate(plan: dict, seeds_by_id: dict[str, dict], bundles: dict[
                 f"round {n + 1} follows round {n}, whose closing export is not recorded"
             path = _summary_path(rnd)
             summary = (summaries or {}).get(path) or load_json(ROOT / path)
-            assert _closing_export_refusal(summary["inputs"]["export"], closing) is None, path
+            assert _closing_export_refusal(summary["inputs"]["export"], closing, _closing_date_in_force(rnd)) is None, \
+                path
             assert summary["inputs"]["bundle"]["bundle_id"] == rnd["bundle_id"], path
             assert summary["inputs"]["bundle"]["sha256"] == rnd["bundle_sha256"], path
             rows_by_round.append({row["item_id"]: row for row in summary["items"]})
@@ -1846,18 +1847,57 @@ def test_the_gate_checks_that_the_import_excluded_exactly_the_recorded_accounts(
     assert "'never created'" in rnd["excluded_raters"]
 
 
-def _closing_export_refusal(summary_export: dict, closing: dict) -> str | None:
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _closing_date_in_force(rnd: dict) -> str:
+    """A round's closing date in force (closing_date_rule): its registered closing_date, or the closing date of the
+    last of its closing_date_extensions. Each extension is two dates, YYYY-MM-DD, recorded on or before the closing
+    date it replaces (before that date has passed) and setting a later one; anything else raises ValueError, because
+    the program that applies the gate refuses. A reference for that program."""
+    from datetime import date
+
+    in_force = rnd["closing_date"]
+    for ext in rnd["closing_date_extensions"]:
+        if set(ext) != {"recorded_on", "closing_date"} or not all(
+                isinstance(v, str) and DATE_RE.match(v) for v in ext.values()):
+            raise ValueError(f"an extension not of its form: {ext}")
+        try:
+            for v in ext.values():
+                date.fromisoformat(v)
+        except ValueError:
+            raise ValueError(f"an extension with a date that does not exist: {ext}") from None
+        if ext["recorded_on"] > in_force:
+            raise ValueError(f"an extension recorded on {ext['recorded_on']}, after the closing date {in_force} it "
+                             "replaces")
+        if ext["closing_date"] <= in_force:
+            raise ValueError(f"an extension to {ext['closing_date']}, not later than {in_force}")
+        in_force = ext["closing_date"]
+    return in_force
+
+
+def _closing_export_refusal(summary_export: dict, closing: dict, in_force: str) -> str | None:
     """The closing-export check as the plan's rounds[0].closing_export states it, applied to the import summary's
-    inputs.export: None when the summary was built from the recorded closing export, else why the program that
-    applies the gate refuses. A reference for that program."""
+    inputs.export and the round's closing date in force (_closing_date_in_force): None when the summary was built
+    from the recorded closing export and that export's close time falls no later than the end of the closing date in
+    force (23:59:59Z, UTC: its UTC date, its first ten characters, is that date or earlier), else why the program
+    that applies the gate refuses. A reference for that program."""
+    from datetime import date
+
     from scripts.import_verification_ratings import ISO_UTC_RE, SHA256_RE
 
     if closing["sha256"] is None or closing["closed_utc"] is None:
         return "not filled"
     if not SHA256_RE.match(closing["sha256"]) or not ISO_UTC_RE.match(closing["closed_utc"]):
         return "not a recorded value"
+    try:
+        closed_on = date.fromisoformat(closing["closed_utc"][:10])
+    except ValueError:
+        return "not a recorded value"
     if summary_export["sha256"] != closing["sha256"] or summary_export["exported_utc"] != closing["closed_utc"]:
         return "another export"
+    if closed_on > date.fromisoformat(in_force):
+        return "after the closing date"
     return None
 
 
@@ -1879,7 +1919,8 @@ def test_the_gate_reads_only_the_summary_of_the_recorded_closing_export(plan, tm
     assert "expected_exclusions" in closing["values"]
     assert "closing export (closing_export)" in rnd["reader"] and "inputs.export with closing_export" in rnd["reader"]
     if closing["sha256"] is None and closing["closed_utc"] is None:
-        assert _closing_export_refusal({"sha256": "", "exported_utc": ""}, closing) == "not filled"
+        assert _closing_export_refusal({"sha256": "", "exported_utc": ""}, closing, _closing_date_in_force(rnd)) \
+            == "not filled"
 
     def summarise(export: dict, name: str, indent: int | None = None) -> dict:
         path = tmp_path / f"{name}.json"   # an export is refused inside the repository
@@ -1909,7 +1950,8 @@ def test_the_gate_reads_only_the_summary_of_the_recorded_closing_export(plan, tm
         (at_close, {**recorded, "closed_utc": "2026-10-20"}, "not a recorded value"),
     ]
     for summary_export, record, reason in cases:
-        assert _closing_export_refusal(summary_export, record) == reason, (summary_export["exported_utc"], record)
+        assert _closing_export_refusal(summary_export, record, _closing_date_in_force(rnd)) == reason, (
+            summary_export["exported_utc"], record)
 
     one_line = functools.partial(re.sub, r"\s+", " ")
     prereg = PREREG.read_text(encoding="utf-8")
@@ -1936,6 +1978,105 @@ def test_the_gate_reads_only_the_summary_of_the_recorded_closing_export(plan, tm
     assert "refuses a summary of any other export" in proto
     assert "its `inputs.export` sha256" not in spec, \
         "the first draft read the export's sha256 and compared it with nothing"
+
+
+def test_the_gate_refuses_a_closing_export_taken_after_the_closing_date_in_force(plan, tmp_path):
+    """The closing-export check compared the summary with the recorded export and its time, but never related that
+    time to the closing date: an export downloaded after the end of the date, recorded as the closing export, passed,
+    and the ratings saved after the deadline counted (Codex review of PR #87, 2026-10-05). The program now refuses a
+    close time after the end, 23:59:59Z (UTC), of the closing date in force: the registered 2026-10-31, or a later date
+    set by an extension recorded in closing_date_extensions before the date it replaces. closing_date keeps the
+    registered date, so an extension is a dated record, not an edit. An early close may be at any time before the end.
+    This changes neither the rule nor which items pass."""
+    from datetime import date, datetime, timedelta, timezone
+
+    from scripts.import_verification_ratings import main as import_main
+
+    rnd = plan["physician_realism_gate"]["rounds"][0]
+    assert rnd["closing_date"] == "2026-10-31" and rnd["closing_date_extensions"] == []
+    assert _closing_date_in_force(rnd) == "2026-10-31"
+
+    def summarise(exported_utc: str) -> dict:
+        """The import's inputs.export for the committed synthetic export, downloaded at exported_utc."""
+        fixture = load_json(ROOT / "tests" / "fixtures" / "verification_export_synthetic.json")
+        name = exported_utc.replace(":", "")
+        path = tmp_path / f"{name}.json"
+        path.write_text(json.dumps({**fixture, "exported_utc": exported_utc}), encoding="utf-8")
+        import_main(["--export", str(path), "--out-dir", str(tmp_path / f"out_{name}"), "--resamples", "50"])
+        return load_json(next((tmp_path / f"out_{name}").glob("*.summary.json")))["inputs"]["export"]
+
+    def recorded(export: dict) -> dict:
+        return {"sha256": export["sha256"], "closed_utc": export["exported_utc"]}
+
+    early, last_second, last_fraction, late = (summarise(t) for t in (
+        "2026-10-20T02:00:00.000Z", "2026-10-31T23:59:59.000Z", "2026-10-31T23:59:59.999Z", "2026-11-01T00:00:00.000Z"))
+    extended = {**rnd, "closing_date_extensions": [{"recorded_on": "2026-10-30", "closing_date": "2026-11-15"}]}
+    after_extension = summarise("2026-11-15T12:00:00.000Z")
+    cases = [
+        (early, rnd, None),                          # an early close
+        (last_second, rnd, None),                    # on the closing date
+        (last_fraction, rnd, None),                  # the last second's fraction still counts
+        (late, rnd, "after the closing date"),       # downloaded after the deadline, though recorded as the close
+        (after_extension, rnd, "after the closing date"),        # without the extension recorded
+        (after_extension, extended, None),                       # with it
+        (summarise("2026-11-16T00:00:00.000Z"), extended, "after the closing date"),
+    ]
+    for export, entry, reason in cases:
+        assert _closing_export_refusal(export, recorded(export), _closing_date_in_force(entry)) == reason, (
+            export["exported_utc"], entry["closing_date_extensions"])
+    # Two extensions, each recorded before the date it replaces; and the extensions the program refuses.
+    chained = [{"recorded_on": "2026-10-30", "closing_date": "2026-11-15"},
+               {"recorded_on": "2026-11-15", "closing_date": "2026-11-30"}]
+    assert _closing_date_in_force({**rnd, "closing_date_extensions": chained}) == "2026-11-30"
+    for bad, why in (
+            ([{"recorded_on": "2026-11-01", "closing_date": "2026-11-15"}], "after the closing date 2026-10-31"),
+            ([chained[0], {"recorded_on": "2026-11-16", "closing_date": "2026-11-30"}], "after the closing date "
+                                                                                         "2026-11-15"),
+            ([{"recorded_on": "2026-10-20", "closing_date": "2026-10-31"}], "not later than 2026-10-31"),
+            ([{"recorded_on": "2026-10-20", "closing_date": "2026-11-31"}], "a date that does not exist"),
+            ([{"recorded_on": "2026-10-20", "closing_date": "15 November"}], "not of its form"),
+            ([{"closing_date": "2026-11-15"}], "not of its form")):
+        with pytest.raises(ValueError, match=re.escape(why)):
+            _closing_date_in_force({**rnd, "closing_date_extensions": bad})
+
+    # The end of 2026-10-31 in UTC is 18:59:59 in US Central time: daylight time (UTC-5) ends at 02:00 local on the
+    # first Sunday of November, 2026-11-01, after the closing date (computed here without time-zone data).
+    first_sunday = next(date(2026, 11, d) for d in range(1, 8) if date(2026, 11, d).weekday() == 6)
+    assert first_sunday == date(2026, 11, 1) > date.fromisoformat(rnd["closing_date"])
+    end = datetime.fromisoformat(f"{rnd['closing_date']}T23:59:59+00:00")
+    assert end.astimezone(timezone(timedelta(hours=-5))).strftime("%H:%M:%S") == "18:59:59"
+
+    one_line = functools.partial(re.sub, r"\s+", " ")
+    prereg = PREREG.read_text(encoding="utf-8")
+    a69 = one_line(_section(prereg, "### A6.9 Physician realism gate", "### Approval record"))
+    round_bullet = _section(a69, "- Round 1 is every rating saved on that bundle", "- **Extending the closing date.**")
+    extension = _section(a69, "- **Extending the closing date.**", "- **Items short of answers.**")
+    spec = one_line(_section(prereg, "**Code still to write.**", "**Owner decisions"))
+    compares = _section(spec, "It reads files 4 and 5", "It compares items, not whole files")
+    refuses = _section(spec, "It refuses, writing nothing", "with no passing item")
+    record = one_line(_section(prereg, "### Approval record", None))
+    s13 = one_line(_section(W3_DESIGN.read_text(encoding="utf-8"), "**Which export counts.**", "**Why all three"))
+    proto = one_line(_section(PROTOCOL.read_text(encoding="utf-8"), "**Which items the paid runs use", "\n- **"))
+    for name, text in (("plan closing_date_rule", rnd["closing_date_rule"]), ("A6.9 round bullet", round_bullet),
+                       ("section 13", s13), ("protocol", proto)):
+        assert "23:59:59Z" in text and "UTC" in text, name
+    for name, text in (("plan closing_date_rule", rnd["closing_date_rule"]), ("A6.9 round bullet", round_bullet),
+                       ("protocol", proto)):
+        assert "18:59:59 CDT" in text, name
+    assert "closing_date_extensions" in rnd["closing_date_rule"] and "the same edit changes closing_date here" \
+        not in rnd["closing_date_rule"]
+    assert "falls after the end of the round's closing date in force" in rnd["closing_export"]["check"]
+    assert "no later than the end, 23:59:59Z, of the round's closing date in force" in rnd["closing_export"]["values"]
+    assert "at the end of the closing date in force (closing_date_rule)" in rnd["closes"]
+    assert "`physician_realism_gate.rounds[0].closing_date_extensions`" in extension
+    assert "`physician_realism_gate.rounds[0].closing_date`. It is decided" not in extension
+    assert "`closing_export.closed_utc` with the end, 23:59:59Z (UTC), of its closing date in force" in compares
+    assert "a round's close time falls after the end of its closing date in force" in refuses
+    assert "was recorded after the closing date it replaces or sets no later one" in refuses
+    assert "`physician_realism_gate.rounds[0].closing_date_extensions`: none." in record
+    assert "no later than the end, 23:59:59Z, of the closing date in force" in record
+    line = _clarification(record, "- The deadline:")
+    assert "18:59:59 CDT" in line and line.rstrip().endswith("this changes neither the rule nor which items pass.")
 
 
 def test_the_closing_counts_are_read_from_a_report_that_shows_no_scores(plan):
