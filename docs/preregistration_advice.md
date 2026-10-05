@@ -1086,20 +1086,43 @@ fires. The same round and rule select the Petri wave-3 scenarios
   the questions of `data/verification/questions.json` (sha256
   `d2ce0e262aee7dba000ef927cc84ddf59ce95f5c418f81d24cb667c0c67445fb`). It
   holds the 24 new questions, the 15 rerun items and the 8 wave-3 scripts.
-- **Which bundle.** That bundle is round 1's until the first physician other
-  than the owner's test account is given a login. If the bundle is exported
-  again before then (for example because the dummy-physician test or a
-  wording pilot changes `data/verification/questions.json`, which is version
-  1.1-draft and not yet tested with a physician), round 1 moves to the new
-  bundle. A dated note in the approval record below, and the same edit to the
-  wave-3 plan's `physician_realism_gate.round`, name the new bundle's id,
-  sha256 and questions sha256; the rule is otherwise unchanged. After that
-  first login the bundle is fixed for round 1, and a new bundle starts a later
-  round. The round's export must hold ratings on that one bundle only: the
-  import refuses an export with events on two bundles, and checks this before
-  it excludes any physician. So if the bundle changes after the
-  dummy-physician test, the test's ratings on the earlier bundle must not be
-  in the round's export.
+- **Which bundle.** Three accounts rate before round 1 and are not part of
+  it: the owner's test account (the app's dummy test, its DEPLOY.md step 12),
+  the owner's own pilot account, and the account of the physician who rates
+  the wording pilot (about 10 items). Their logins do not fix the bundle,
+  and their ratings are excluded (below). That bundle is round 1's until the
+  first login of any other account fixes it. The rule names accounts, not
+  people. If the bundle is exported again before it is
+  fixed (for example because the dummy test or the wording pilot changes
+  `data/verification/questions.json`, which is version 1.1-draft and not yet
+  tested with a physician), round 1 moves to the new bundle. A dated note in
+  the approval record below, and the same edit to the wave-3 plan's
+  `physician_realism_gate.round`, name the new bundle's id, sha256 and
+  questions sha256; the rule is otherwise unchanged. Once the bundle is
+  fixed, a new bundle starts a later round.
+- **Ratings on an earlier bundle stay out of the round's export.** The
+  round's export must hold ratings on one bundle only. The import refuses an
+  export with events on two bundles (`event_bundle_mismatch`), and checks
+  this before it excludes any physician, so excluding the three accounts
+  does not admit their ratings on another bundle. The app does not drop
+  ratings either. Its Ratings tab is never edited, so every rating saved in
+  a spreadsheet is in every export from it. Its bundle switch (DEPLOY.md
+  section 19) points the same spreadsheet at the new bundle, so the earlier
+  bundle's ratings stay in it. So:
+  - If round 1 moves to a new bundle after anything was rated on the earlier
+    one, round 1 runs in a new spreadsheet, set up with the new bundle by
+    repeating steps 2 to 11 of the app's DEPLOY.md (the steps its section
+    18 D gives for setting up a new spreadsheet). Its export holds only
+    ratings saved there, on the new bundle. It has its own web app URL and
+    its own rater ids, which start again at `md01`. Physicians are given
+    logins there only. The pilot's spreadsheet is closed as DEPLOY.md
+    section 15 says for the end of a study (a last backup and export,
+    `STUDY_OPEN` set to `false`, and its backup trigger deleted). Its export
+    is the pilot's record, never the gate's input.
+  - If the bundle does not change, round 1 may run in the same spreadsheet.
+    The pilot accounts are removed there (Remove physician, DEPLOY.md
+    section 15) before the round's Assign items, so that they are given no
+    round-1 items, and they are excluded at import.
 - Round 1 is every rating saved on that bundle until the round closes. It
   closes when every advice and multi-turn item has at least two complete
   ratings by included physicians and at least two numeric answers on every
@@ -1128,9 +1151,14 @@ fires. The same round and rule select the Petri wave-3 scenarios
   either count when the round closes on its date does not pass. It is
   reported as "not enough ratings", with its counts and whether ratings or
   numeric answers were short.
-- Excluded physicians: the owner's test account and any wording-pilot
-  physician, named in writing before the export is imported. No physician is
-  excluded after their ratings have been seen.
+- Excluded physicians: the owner's test account, the owner's own pilot
+  account and the wording-pilot physician's account, by the rater codes they
+  hold in the round's export, named in writing in the approval record before
+  the export is imported. An account that is not in the round's export
+  (because round 1 ran in a new spreadsheet) is recorded as absent and not
+  passed to the import, which refuses `--exclude-rater` for a rater the
+  export does not hold (`unknown_excluded_rater`). No physician is excluded
+  after their ratings have been seen.
 - The export is read once by `scripts/import_verification_ratings.py`
   (version 1.0.0, or a later version that computes the per-item fields below
   the same way), with `--exclude-rater` for each excluded physician. Its
@@ -1347,13 +1375,17 @@ their own before it.
   `29817d70e3414834b35c0f316ab3e1953a59ddab229e9ceb9de2760b9265650a`,
   questions sha256
   `d2ce0e262aee7dba000ef927cc84ddf59ce95f5c418f81d24cb667c0c67445fb`).
-- Re-pointed before round 1's bundle is fixed (A6.9, "Which bundle"), each on
+- Re-pointed before round 1's bundle is fixed (A6.9, "Which bundle": by the
+  first login of an account other than the test and pilot accounts), each on
   its own dated line (to fill if it happens): `<date>`: `<old bundle id>` to
   `<new bundle id>` (sha256 `<sha256>`, questions sha256 `<sha256>`).
 - Closing date extensions (A6.9, "Extending the closing date"), each on its
   own dated line, written before the closing date it replaces: none.
-- Excluded physicians (to fill before the export is imported): `<rater
-  codes>`.
+- Excluded physicians (to fill before the export is imported), each with
+  its rater code in the round's export or "not in the export": the owner's
+  test account `<rater code>`, the owner's own pilot account `<rater code>`,
+  the wording-pilot physician's account `<rater code>`. The spreadsheet
+  round 1 ran in: `<the pilot's, or a new one>`.
 - At application (to fill): import summary `<path>` (sha256 `<sha256>`), gate
   report `<path>` (sha256 `<sha256>`), gated stimuli files `<Wave A path,
   sha256>` and `<Wave R path, sha256>`, n_A `<n>` of 24, n_R `<n>` of 15, and

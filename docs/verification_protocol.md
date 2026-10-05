@@ -166,7 +166,13 @@ stop at any time.
   (UTC), whichever comes first; A6.9 says how that date may be extended. The
   owner approved A6.9 on 2026-10-05, before anyone had a login, so the rule
   is fixed in advance. Only A6.9 is approved: the rest of Amendment 6, which
-  proposes the advice waves themselves, is still proposed.
+  proposes the advice waves themselves, is still proposed. Three accounts
+  are excluded: the owner's test account, the owner's own pilot account and
+  the wording-pilot physician's account. Their logins do not fix the round's
+  bundle; the first login of any other account does. If the wording pilot changes the
+  bundle, round 1 runs in a new spreadsheet, because the import cannot read
+  an export holding ratings on two bundles (A6.9, "Ratings on an earlier
+  bundle stay out of the round's export").
 - **Reference urgency for the advice preregistration.** The physicians'
   answers on the 24 new questions are candidate adjudicated reference tiers.
   The analysis takes one tier per item, so a rule for combining physicians

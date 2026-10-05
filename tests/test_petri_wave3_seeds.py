@@ -13,6 +13,7 @@ import copy
 import csv
 import functools
 import hashlib
+import json
 import re
 from collections.abc import Iterable
 from pathlib import Path
@@ -946,6 +947,19 @@ def test_the_gate_reads_the_same_in_the_plan_a69_section_13_and_the_protocol(pla
     assert f"closing date {closing} (UTC)" in record and "Closing date extensions" in record
     assert f"or on {closing} (UTC)" in proto
     assert "Re-pointed before round 1's bundle is fixed" in record
+    # The accounts that rate before round 1 (the owner's test and pilot accounts, the wording-pilot physician) neither
+    # fix the bundle nor count, everywhere the rule is written. The first draft fixed the bundle at the first login of
+    # anyone but the test account, so the pilot physician's login would have fixed it before the pilot could reword it.
+    accounts = rnd["accounts_that_do_not_fix_the_bundle"]
+    assert len(accounts) == 3 and "pilot" in " ".join(accounts)
+    for text in (a69, record, s13, proto):
+        assert all(account in text for account in accounts), [a for a in accounts if a not in text]
+    assert all("accounts_that_do_not_fix_the_bundle" in rnd[k] for k in ("bundle_rule", "excluded_raters"))
+    stale = "first physician other than the owner's test account"
+    assert [name for name, text in (("A6.9", a69), ("record", record), ("section 13", s13), ("protocol", proto),
+                                    ("plan", one_line(json.dumps(gate)))) if stale in text] == []
+    assert all("round 1 runs in a new spreadsheet" in text for text in (a69, rnd["earlier_bundle_ratings"])), \
+        "how ratings on an earlier bundle stay out of the round's export"
 
 
 def test_section_13_tables_are_the_plan_rows(plan):

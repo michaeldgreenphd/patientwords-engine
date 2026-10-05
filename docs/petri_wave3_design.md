@@ -822,9 +822,10 @@ the seed file, until the plan names a round that rated the seed file as it then 
 Before the approval the suite compared the gate block only with the bundle it names,
 never with the seed file, so that the draft seeds could still be edited while the rule
 was only proposed. An edit made now fails the suite, and physicians would rate the old
-text, unless the bundle is exported again, and the plan re-pointed to it, before the
-first physician other than the owner's test account is given a login (A6.9, "Which
-bundle").
+text, unless the bundle is exported again, and the plan re-pointed to it, before round
+1's bundle is fixed: by the first login of an account other than the owner's test
+account, the owner's own pilot account and the wording-pilot physician's account (A6.9,
+"Which bundle").
 
 **Decisions specific to wave 3, as the owner chose them on 2026-10-05** (the shared
 ones are in A6.9; the owner's words are quoted in its approval record as "Gate 6a" to
