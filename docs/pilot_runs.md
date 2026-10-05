@@ -46,11 +46,14 @@ recorded run (2026-09-30)*) records the decision.
   `docs/triggers.md` (the `logits-eval` row) has every rule it applies.
 - In both trees each run's outputs sit in a folder of its own, named by the run
   id: the directory directly under `pilot/runs/` that holds the pairs file
-  (2026-10-05). Under either pilot root the pairs file is also named for its run,
-  `pilot/runs/<run_id>/.../<run_id>_<name>.json` (2026-10-04), so a folder's name
-  says which run it holds; `pilot/analysis/trace_pairs.py` writes
-  `<run-dir>/trace/<run_id>_trace_pairs.json` by default. The fire path and both
-  workflows' params jobs refuse any other name.
+  (2026-10-05). Under either pilot root the pairs file also sits in its run's
+  `trace/` directory and is named for its run, with no `__` in its name:
+  `pilot/runs/<run_id>/trace/<run_id>_<name>.json` (2026-10-04, 2026-10-05). So a
+  folder's name says which run it holds, and two files or two models of one run
+  never share a folder (the lanes name a folder `<stem>__<model>`);
+  `pilot/analysis/trace_pairs.py` writes `<run-dir>/trace/<run_id>_trace_pairs.json`
+  by default. The fire path and both workflows' params jobs refuse any other
+  path.
 - Before 2026-10-05 an output folder was named by the pairs file's stem alone, so
   two runs could share one (two files named `trace/trace_pairs.json`, or runs `a`
   and `a_b` each holding an `a_b_pairs.json`) and replace each other's parts. Two

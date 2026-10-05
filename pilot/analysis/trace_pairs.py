@@ -10,9 +10,11 @@ row by the 1-based index the lane assigns.
 It is a consumer of a finished run, like the review page: it reads the run directory and never writes inside the
 run's sealed files. The output goes to <run>/trace/<run_id>_trace_pairs.json by default (default_out), with a
 sidecar recording the selection rule, the counts (selected, not selected and why, refused and why) and the sha256 of
-every input. The file is named for its run because both pilot lanes (circuit-trace's pilot/traces/, logits-eval's
-pilot/logits/) refuse a pilot pairs file whose name does not start with its run id (docs/triggers.md). They name the
-output folder <root>/<run_id>/<the file's stem>[__<model>] (2026-10-05), so the name says which run a folder holds.
+every input. The file is named for its run, in the run's trace/ directory, because both pilot lanes (circuit-trace's
+pilot/traces/, logits-eval's pilot/logits/) refuse a pilot pairs file that is not at
+pilot/runs/<run_id>/trace/<run_id>_<name>.json or whose name holds "__" (docs/triggers.md); an --out elsewhere writes a
+file they refuse. They name the output folder <root>/<run_id>/<the file's stem>[__<model>] (2026-10-05), so the name
+says which run a folder holds, and two files or two models of one run never share one.
 Before 2026-10-04 every run's default was trace/trace_pairs.json, and the lanes named the folder by the stem alone,
 so two runs' traces would have shared one folder. Run 2's committed trace/trace_pairs.json keeps its name; to trace
 it again, re-run this script on run 2 with --review-sample, whose default writes a byte-identical
@@ -207,7 +209,8 @@ def build(run_dir: Path, include_controls: bool = False, review_sample: bool = F
 
 def default_out(run_dir: Path) -> Path:
     """<run-dir>/trace/<run_id>_trace_pairs.json, run_id being the run directory's name (as build() records it): the
-    name both pilot lanes accept for a pilot-root fire, pilot/runs/<run_id>/.../<run_id>_<name>.json."""
+    path both pilot lanes accept for a pilot-root fire, pilot/runs/<run_id>/trace/<run_id>_<name>.json (a run id
+    holding "__" gives a name they refuse)."""
     return run_dir / "trace" / f"{run_dir.name}_trace_pairs.json"
 
 

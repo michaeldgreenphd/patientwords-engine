@@ -29,10 +29,11 @@ ceiling. Follow these steps in order; every failure mode here is silent.
 4. A pilot-root fire (circuit-trace `output_root: pilot/traces`, logits-eval
    `output_root: pilot/logits`) writes into its run's own folder,
    `<root>/<run_id>/<stem>[__<model>]/`, where `<run_id>` is the directory directly
-   under `pilot/runs/` (2026-10-05). It reads a pairs file named for its run,
-   `pilot/runs/<run_id>/.../<run_id>_<name>.json`; `fire` refuses any other name with
+   under `pilot/runs/` (2026-10-05). It reads a pairs file in its run's `trace/`
+   directory, named for its run with no `__` in its name,
+   `pilot/runs/<run_id>/trace/<run_id>_<name>.json`; `fire` refuses any other path with
    exit 3 (as the params jobs do), and `pilot/analysis/trace_pairs.py` writes that
-   name by default. A run id of `trace_pairs` or `pilot_v3_20261004_trace_pairs`
+   path by default. A run id of `trace_pairs` or `pilot_v3_20261004_trace_pairs`
    (the two flat folders under `pilot/traces/` from before 2026-10-05) is refused the
    same way. Run 2's legacy `trace/trace_pairs.json` is refused: to fire run 2 again,
    re-run `pilot/analysis/trace_pairs.py --run-dir pilot/runs/pilot_v2_20261002
