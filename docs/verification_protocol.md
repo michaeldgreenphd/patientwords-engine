@@ -62,15 +62,22 @@ recorded command still gives that bundle's items unchanged.
 - **Traces.** By default every pilot pair must have a trace result: the run's
   trace pairs file must hold the row, and the trace results in
   `pilot/traces/<that file's name without .json>/` must carry it with the same
-  prompts. Physicians rate the sentences, not the trace, so a pair does not
-  need its trace to be rated; the trace matters when ratings are later
-  compared with trace measures. A run's traces may land after its bundle is
-  wanted, so `--pilot-trace-optional <run id>` exports that run without
-  requiring a trace or reading trace results. Its items are then the same
-  before and after the traces land, and a rating joins its trace later by run
-  and row id. Such a run reads no trace file at all, except Run 2: its item
-  ids are keyed on its trace pairs file (see *Labels and ids*), so that file
-  is still read, for the sha256 its items record, and must exist.
+  prompts. That directory is gemma-2-2b's. The circuit-trace lane writes another
+  graph model's results to `pilot/traces/<name without .json>__<model>/`, and
+  `--pilot-trace-model <run id> <model>` reads that model's directory and no
+  other. With no model named, the export reads the one model whose directory
+  holds results. It stops if there are none (`missing_trace`), or if more than
+  one model has results (`ambiguous_trace`), so it never chooses between models
+  for you. The selection block records the model it read. Physicians rate the
+  sentences, not the trace, so a pair does not need its trace to be rated; the
+  trace matters when ratings are later compared with trace measures. A run's
+  traces may land after its bundle is wanted, so
+  `--pilot-trace-optional <run id>` exports that run without requiring a trace
+  or reading trace results. Its items are then the same before and after the
+  traces land, and a rating joins its trace later by run and row id. Such a
+  run reads no trace file at all, except Run 2: its item ids are keyed on its
+  trace pairs file (see *Labels and ids*), so that file is still read, for the
+  sha256 its items record, and must exist.
 - **Which trace pairs file a selection needs.** `pilot/analysis/trace_pairs.py`
   builds a run's trace pairs file in one of three ways. With `--review-sample`
   it holds exactly the review sample and records each pair's review id, which
@@ -83,13 +90,29 @@ recorded command still gives that bundle's items unchanged.
   all of them once the checker has said no to any row. In practice
   `--pilot-all-rows` therefore goes with `--pilot-trace-optional` for the same
   run.
-- **One trace directory per run.** The circuit-trace lane writes a pilot trace
-  to `pilot/traces/<pairs file name without .json>/`. Run 2's pairs file is
-  `trace/trace_pairs.json`, so a later run whose pairs file keeps that name
-  would write into Run 2's directory and overwrite its committed results. The
-  export refuses two runs that would read one directory. Give each run's trace
-  pairs file its own name (`pilot/analysis/trace_pairs.py --out`) before its
-  trace is fired.
+- **One trace directory per run: name the pairs file after the run.** The
+  circuit-trace lane writes a pilot trace to
+  `pilot/traces/<pairs file name without .json>/` (with `__<model>` added for a
+  model other than gemma-2-2b). It takes the directory from the file name
+  alone. Run 2's pairs file is `trace/trace_pairs.json`, so a later run whose
+  pairs file kept that name would write into Run 2's directory and overwrite its
+  committed results. A run's trace pairs file must therefore be named after the
+  run: `<run id>_<name>.json`, where `<name>` is not empty. This is the rule
+  the circuit-trace and logits-eval lanes apply to a pairs file under their
+  pilot roots (`scripts/fire_trigger.py`'s `pilot_pairs_run_name_problem`,
+  added by PR #85), so a run the export accepts is one the lane will trace. A
+  bare run id, or the run id followed by anything but `_`, is refused by both.
+  Run 3's file is `trace/pilot_v3_20261004_trace_pairs.json`, traced into
+  `pilot/traces/pilot_v3_20261004_trace_pairs/`. Run 2's `trace_pairs.json`
+  predates the rule and keeps its name and its directory, because its items'
+  ids are keyed on that file. The export stops (`bad_input`) on a trace pairs
+  file that is not named after its run, on one whose name holds `__` (the
+  lane's model separator), and on two runs whose files share a name. It checks
+  this for every run it exports, including one exported with
+  `--pilot-trace-optional`, because that run's trace may still be fired. For
+  such a run it reads only the file names, not the files. Build a run's file
+  with `pilot/analysis/trace_pairs.py --out pilot/runs/<run id>/trace/<run id>_trace_pairs.json`
+  before its trace is fired.
 - **Labels and ids.** Each item's provenance names its run: `pilot_run2` for
   Run 2, as in the first bundle, and `pilot:<run id>` for any other run.
   Physicians never see it. A later run's item ids are keyed on its generated
@@ -326,14 +349,14 @@ main-study pairs, the 39 advice questions and the 8 scripts. Before round 2
 starts, take round 1's final export and import it. That summary is round 1's
 result.
 
-**Round 2** adds pilot Run 3 (`pilot/runs/pilot_v3_<date>/`). Run 3 must be
-finalized, seal-checked and committed first, since the exporter reads it from
-the repository. Its bundle is round 1's command with Run 3 added, under a new
-stamp:
+**Round 2** adds pilot Run 3 (`pilot/runs/pilot_v3_20261004/`). Run 3 and
+its trace results must be finalized, seal-checked and committed first, since
+the exporter reads them from the repository. Its bundle is round 1's command
+with Run 3 added, under a new stamp:
 
 ```bash
 python scripts/export_verification_tasks.py --site ../patientwords \
-    --pilot-run pilot_v2_20261002 --pilot-run pilot_v3_<date> \
+    --pilot-run pilot_v2_20261002 --pilot-run pilot_v3_20261004 \
     --previous-bundle data/verification/tasks_20261004T042945Z.json
 python scripts/seal_check.py --site ../patientwords
 ```
@@ -363,15 +386,18 @@ python scripts/seal_check.py --site ../patientwords
   the site payload at export time, so a pair published since round 1 can push
   a round 1 pair out of the top 40. The export then stops and names its item
   id, and a larger `--main-pairs` keeps it while it is still published.
-- The command above takes Run 3's review sample and requires its traces, so
-  Run 3's trace pairs file must be built with
-  `pilot/analysis/trace_pairs.py --review-sample --out pilot/runs/pilot_v3_<date>/trace/<its own name>.json`
-  before its trace is fired (see *Which trace pairs file a selection needs* and
-  *One trace directory per run*).
-- Add `--pilot-trace-optional pilot_v3_<date>` if Run 3's traces have not
+- The command above takes Run 3's review sample and requires its gemma-2-2b
+  traces. Run 3's trace pairs file, `trace/pilot_v3_20261004_trace_pairs.json`,
+  was built with `pilot/analysis/trace_pairs.py --review-sample` and named after
+  the run, so its traces land in `pilot/traces/pilot_v3_20261004_trace_pairs/`,
+  beside Run 2's `pilot/traces/trace_pairs/` (see *Which trace pairs file a
+  selection needs* and *One trace directory per run*). If Run 3 is also traced
+  with another graph model, add `--pilot-trace-model pilot_v3_20261004 <model>`
+  to say whose traces the bundle requires.
+- Add `--pilot-trace-optional pilot_v3_20261004` if Run 3's traces have not
   landed when the bundle is wanted.
-- Add `--pilot-all-rows pilot_v3_<date>` to send every Run 3 pair rather than
-  its review sample, together with `--pilot-trace-optional pilot_v3_<date>`:
+- Add `--pilot-all-rows pilot_v3_20261004` to send every Run 3 pair rather than
+  its review sample, together with `--pilot-trace-optional pilot_v3_20261004`:
   no trace pairs file `trace_pairs.py` builds holds every non-control row once
   the checker has said no to one, so a required trace would stop the export
   (`missing_trace`). Every added item needs at least two physicians.
