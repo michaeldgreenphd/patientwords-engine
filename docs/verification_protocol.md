@@ -48,7 +48,8 @@ earlier batch, then the lower index.
 A bundle takes pilot pairs from each pilot run named with `--pilot-run <run id>`
 (a directory under `pilot/runs/`; the option can be repeated). With none named
 it takes `pilot_v2_20261002` (Run 2) alone, as the first bundle did, so the
-recorded command still gives that bundle's items unchanged.
+first bundle's command still gives that bundle's items unchanged (see
+*Reproducing the first bundle* below).
 
 - **Which runs.** A run must be finalized (its `manifest.json` has
   `finalized_utc`) and version 2 (`design.json` has `harness_version` 2, the
@@ -159,11 +160,11 @@ recorded command still gives that bundle's items unchanged.
   `pilot/traces/pilot_v2_20261002/pilot_v2_20261002_trace_pairs[__<model>]/`.
   They are results of the same pairs, so the export reads them as Run 2's.
   Traced with another graph model, they sit beside the legacy gemma-2-2b
-  results without conflict. The first bundle's recorded command names no
-  model, so it then finds two models and stops (`ambiguous_trace`); adding
-  `--pilot-trace-model pilot_v2_20261002 gemma-2-2b` gives the first bundle's
-  items unchanged. Traced with gemma-2-2b, they are a second gemma-2-2b trace
-  of Run 2 beside the legacy one, and the export stops
+  results without conflict. A command that names no model then finds two
+  models and stops (`ambiguous_trace`). That is why the reproduction command
+  below names `--pilot-trace-model pilot_v2_20261002 gemma-2-2b`, which still
+  gives the first bundle's items unchanged. Traced with gemma-2-2b, they are a
+  second gemma-2-2b trace of Run 2 beside the legacy one, and the export stops
   (`trace_layout_conflict`) until the owner decides which set stands. When a
   run's trace is required, any other second file under its `trace/`, including
   a copy that differs, stops the export (`bad_input`). A run exported with
@@ -180,6 +181,33 @@ recorded command still gives that bundle's items unchanged.
 - **Repeats.** A pair whose two sentences repeat an earlier pilot pair in the
   same bundle is kept, since each row is its run's output, and counted in its
   run's selection block.
+- **Reproducing the first bundle.** This command rebuilds the first bundle,
+  `data/verification/tasks_20261004T042945Z.json`, from the committed files.
+  Write it to a scratch directory, since the export never overwrites a bundle:
+
+  ```bash
+  python scripts/export_verification_tasks.py --site ../patientwords \
+      --stamp 20261004T042945Z \
+      --pilot-trace-model pilot_v2_20261002 gemma-2-2b \
+      --out-dir <scratch directory>
+  ```
+
+  It names Run 2's graph model because Run 2's first traces are gemma-2-2b's.
+  Once Run 2 is traced again with another model (see *Tracing Run 2 again*), a
+  command that names no model finds two models and stops (`ambiguous_trace`).
+  Naming gemma-2-2b reads the traces the first bundle was built from, so the
+  command keeps working after any such trace. Naming the model changes no
+  item: no item records the model, only the selection block does, and it is
+  gemma-2-2b either way. The first bundle was exported before this option
+  existed, without it.
+
+  Compare from `"items": [` to the end of the file. Those bytes come out
+  identical to the committed bundle's while the site payload and the engine
+  inputs it recorded are unchanged, and
+  `test_the_recorded_command_reproduces_the_first_bundles_items_byte_for_byte`
+  checks exactly that. The rest of the file differs by design. The exporter
+  has changed since the first bundle: `sources` has more entries and new role
+  names, and `selection` has per-run blocks.
 
 ## What physicians are asked
 

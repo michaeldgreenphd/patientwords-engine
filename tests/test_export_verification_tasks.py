@@ -28,7 +28,8 @@ synthetic, abstract and non-medical (the medical vocabulary rule in AGENTS.md); 
 tests/test_seal_check.py and tests/test_tierb_split.py. The committed-bundle tests check every bundle under
 data/verification/ against the contract, with failure messages naming item ids only, never row text, and re-export
 the first bundle from the committed engine files: the default run gives its pilot items unchanged, and with the site
-payload it recorded the recorded command gives its items byte for byte.
+payload it recorded, the reproduction command (its stamp, Run 2's graph model named) gives its items byte for byte,
+compared from the items onward.
 """
 from __future__ import annotations
 
@@ -1254,9 +1255,10 @@ def test_run2s_copy_leaves_its_export_unchanged_and_its_traces_are_run2s_in_its_
     # copy, pilot_v2_20261002_trace_pairs.json, beside it, and its results land in Run 2's own folder,
     # pilot/traces/pilot_v2_20261002/pilot_v2_20261002_trace_pairs[__<model>]/. A copy alone changes nothing: the
     # export still reads trace_pairs.json, which Run 2's ids are keyed on, and the legacy results. The copy's results
-    # are Run 2's: for another model they are read by the model rules (the recorded command, which names no model,
-    # then finds two models; naming gemma-2-2b gives the first bundle's items), and for gemma-2-2b they conflict with
-    # the legacy ones. The optional path reads no trace results. Without the legacy results the copy's are read.
+    # are Run 2's: for another model they are read by the model rules (a command naming no model then finds two
+    # models; naming gemma-2-2b, as the reproduction command does, gives the same items), and for gemma-2-2b they
+    # conflict with the legacy ones. The optional path reads no trace results. Without the legacy results the copy's
+    # are read.
     paths = write_world(tmp_path, world_data())
     root = paths["pilot_trace_root"]
     before, before_raw = rerun(paths, tmp_path / "before")
@@ -1276,8 +1278,8 @@ def test_run2s_copy_leaves_its_export_unchanged_and_its_traces_are_run2s_in_its_
     write_traces(paths, RUN2, copy_name, pairs, "qwen3-4b", layout="flat")
     _, flat_raw = rerun(paths, tmp_path / "flat")
     assert flat_raw == after_raw
-    # the copy traced with another model in Run 2's own folder: not a conflict, but two models, so the recorded command
-    # (no model named) stops as ambiguous_trace; naming either model reads its one folder and gives the same items
+    # the copy traced with another model in Run 2's own folder: not a conflict, but two models, so a command naming no
+    # model stops as ambiguous_trace; naming either model reads its one folder and gives the same items
     write_traces(paths, RUN2, copy_name, pairs, "qwen3-4b")
     own_qwen = root / RUN2 / f"{copy_name}__qwen3-4b"
     message = refused_paths(paths, "ambiguous_trace")
@@ -2048,12 +2050,19 @@ def test_answer_contracts_refuse_a_questions_value_that_is_not_an_object():
 # ---- the first bundle, re-exported --------------------------------------------------------------------------
 
 FIRST_BUNDLE = ROOT / "data" / "verification" / "tasks_20261004T042945Z.json"
+# The first bundle's command as docs/verification_protocol.md gives it for reproduction (Reproducing the first
+# bundle): its stamp, and Run 2's graph model named. Run 2's first traces are gemma-2-2b's; once Run 2 is traced
+# again with another model, a command naming no model finds two and stops (ambiguous_trace). No item records the
+# model (it is in the selection block only, the same value either way), so naming it changes no item byte.
+REPRODUCE = ["--stamp", "20261004T042945Z", "--pilot-trace-model", "pilot_v2_20261002", "gemma-2-2b"]
 
 
 def test_the_default_run_still_gives_the_first_bundles_pilot_items(tmp_path, capsys):
-    # Reads the committed Run 2 files (sealed by its finalized manifest) and compares items; prints no row text.
+    """The default run (Run 2), read from the committed Run 2 files (sealed by its finalized manifest) with the
+    reproduction options (REPRODUCE) and no main-study pairs, gives the first bundle's 40 Run 2 items unchanged,
+    compared as parsed items, nothing else. Needs no site checkout; prints no row text."""
     committed = json.loads(FIRST_BUNDLE.read_text(encoding="utf-8"))
-    assert evt.main(["--main-pairs", "0", "--stamp", "20261004T042945Z", "--out-dir", str(tmp_path)]) == 0
+    assert evt.main(["--main-pairs", "0", *REPRODUCE, "--out-dir", str(tmp_path)]) == 0
     new = json.loads((tmp_path / FIRST_BUNDLE.name).read_text(encoding="utf-8"))
     mine = {i["item_id"]: i for i in _pilot(new, "pilot_run2")}
     first = {i["item_id"]: i for i in _pilot(committed, "pilot_run2")}
@@ -2061,9 +2070,13 @@ def test_the_default_run_still_gives_the_first_bundles_pilot_items(tmp_path, cap
 
 
 def test_the_recorded_command_reproduces_the_first_bundles_items_byte_for_byte(tmp_path, capsys):
-    # docs/verification_protocol.md's command with the bundle's own stamp. Its items also depend on the site payload
-    # and the engine inputs it recorded, so this runs only when every one of them (but the daily dashboard, of which
-    # only the Tier B start is read) still hashes as recorded.
+    """The first bundle's reproduction command (REPRODUCE, docs/verification_protocol.md, Reproducing the first
+    bundle) gives its items byte for byte. Only the items are compared: the bytes from '"items": [' to the end of the
+    file. The rest differs by design (the exporter has changed since: sources gained entries and role names, selection
+    gained per-run blocks), and naming Run 2's graph model changes none of it but selection's record of the model,
+    which is gemma-2-2b either way. The items also depend on the site payload and the engine inputs the bundle
+    recorded, so this runs only when every one of them (but the daily dashboard, of which only the Tier B start is
+    read) still hashes as recorded, and is skipped otherwise."""
     raw = FIRST_BUNDLE.read_bytes()
     committed = json.loads(raw)
     site = ROOT.parent / "patientwords"
@@ -2077,7 +2090,7 @@ def test_the_recorded_command_reproduces_the_first_bundles_items_byte_for_byte(t
     if changed:
         pytest.skip(f"inputs changed or absent since the first bundle: {changed}")
     assert committed["seed"] == evt.DEFAULT_SEED
-    assert evt.main(["--site", str(site), "--stamp", "20261004T042945Z", "--out-dir", str(tmp_path)]) == 0
+    assert evt.main(["--site", str(site), *REPRODUCE, "--out-dir", str(tmp_path)]) == 0
     new_raw = (tmp_path / FIRST_BUNDLE.name).read_bytes()
     marker = b'\n "items": ['
     assert new_raw[new_raw.index(marker):] == raw[raw.index(marker):]
