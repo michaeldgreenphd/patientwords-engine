@@ -16,10 +16,11 @@ trace pairs file beside it (allowed, and never read for traces), and the refusal
 not version 2, changed since it was finalized, missing a required trace, whose trace pairs file is not named after
 it, holds "__" or shares a stem with another run's (optional runs included), that holds a second trace pairs file
 other than such a copy while its trace is required (an optional run's second file is checked by name only), or whose
-review map, trace pairs file or sidecar does not fit it; and later rounds (--previous-bundle): a previous item
-dropped or changed, a question id dropped or kept with another scale, answer values (of another JSON type included),
-phase, requirement or lock, a required question added to a set previous items use (an optional one, or one in a set
-no previous item uses, kept), another notes limit, and a previous bundle of another shape. Every input here is
+review map, trace pairs file or sidecar does not fit it, and a next word outside the version-2 rule (the trace-pairs
+builder's check, with the trace optional or required); and later rounds (--previous-bundle): a previous item dropped
+or changed, a question id dropped or kept with another scale, answer values (of another JSON type included), phase,
+requirement or lock, a required question added to a set previous items use (an optional one, or one in a set no
+previous item uses, kept), another notes limit, and a previous bundle of another shape. Every input here is
 synthetic, abstract and non-medical (the medical vocabulary rule in AGENTS.md); the seal fixtures follow
 tests/test_seal_check.py and tests/test_tierb_split.py. The committed-bundle tests check every bundle under
 data/verification/ against the contract, with failure messages naming item ids only, never row text, and re-export
@@ -1545,6 +1546,54 @@ def test_a_sealed_row_in_any_run_refuses_the_export(tmp_path):
     message = refused_paths(paths, "sealed_row", "--pilot-run", RUN2, "--pilot-run", RUN_NEW,
                             "--pilot-trace-optional", RUN_NEW)
     assert rows[1]["id"] in message and SEALED not in message
+
+
+# next words the version-2 rule refuses: two words, an uppercase letter, punctuation, a leading space, a digit, the
+# underscore, two hyphens, empty, and values that are not strings
+BAD_NEXT_WORDS = ["two words", "Aunt", "aunt.", " aunt", "aunt2", "au_nt", "self-made-up", "", None, 7, ["aunt"]]
+
+
+@pytest.mark.parametrize("word", BAD_NEXT_WORDS)
+def test_a_next_word_outside_the_version_2_rule_is_refused_when_the_trace_is_optional(tmp_path, word):
+    # Codex review of PR #86 (4183566207): with --pilot-trace-optional no trace pairs file is read, and the exporter
+    # checked only that next_word was a non-empty string, so a malformed or schema-drifted run put a next word the
+    # parser and the trace-pairs builder refuse in front of physicians. The message names the row, never the word.
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    rows[1]["next_word"] = word
+    write_run(paths, RUN_NEW, rows, traced=[])
+    for extra in ((), ("--pilot-all-rows", RUN_NEW)):
+        message = refused_paths(paths, "bad_next_word", *ONLY_NEW_OPTIONAL, *extra)
+        assert rows[1]["id"] in message and "version-2 rule" in message
+        assert not (isinstance(word, str) and word.strip() and word in message)
+
+
+@pytest.mark.parametrize("word", ["two words", "Aunt", "aunt."])
+def test_a_next_word_outside_the_version_2_rule_is_refused_when_the_trace_is_required(tmp_path, word):
+    # the trace pairs file here carries the same word as its target, so only the row check can refuse it
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    rows[0]["next_word"] = word
+    write_run(paths, RUN_NEW, rows)
+    assert rows[0]["id"] in refused_paths(paths, "bad_next_word", "--pilot-run", RUN_NEW)
+
+
+def test_next_words_the_version_2_rule_accepts_are_exported(tmp_path, capsys):
+    paths = write_world(tmp_path, world_data())
+    rows = _new_run_rows()
+    words = ["well-known", "o\u2019clock", "na\u00efve"]      # a hyphen, a typographic apostrophe, a non-ASCII letter
+    for row, word in zip(rows, words):
+        row["next_word"] = word
+    write_run(paths, RUN_NEW, rows, traced=[])
+    bundle, _ = rerun(paths, paths["out_dir"], *ONLY_NEW_OPTIONAL)
+    assert sorted(i["display"]["next_word"] for i in _pilot(bundle, NEW_LABEL)) == sorted(words)
+
+
+def test_the_next_word_rule_is_the_trace_pairs_builders():
+    # reused, not copied: the exporter's check is pilot/analysis/trace_pairs.py's next_word_ok, which
+    # tests/test_pilot_trace_pairs.py holds equal to the parser's pilot/scripts/common.next_word_ok
+    assert Path(evt.next_word_ok.__code__.co_filename) == ROOT / "pilot" / "analysis" / "trace_pairs.py"
+    assert not any(evt.next_word_ok(w) for w in BAD_NEXT_WORDS)
 
 
 def test_a_pair_that_repeats_an_earlier_pilot_pair_is_kept_and_counted(tmp_path, capsys):

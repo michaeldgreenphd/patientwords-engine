@@ -58,7 +58,12 @@ recorded command still gives that bundle's items unchanged.
 - **Which rows.** By default a run gives its blind review sample, the rows its
   `review_map.json` names (for Run 2, the 40 pairs the owner reviewed). With
   `--pilot-all-rows <run id>` it gives every generated row that is not a
-  control row instead; negative controls are left out and counted.
+  control row instead; negative controls are left out and counted. Every row
+  exported must have an expected next word that follows the version-2 rule:
+  one lowercase word of letters, with at most one internal hyphen or
+  apostrophe. This is the check the parser and `pilot/analysis/trace_pairs.py`
+  apply, and the export uses the latter's. A row that breaks it stops the
+  export (`bad_next_word`), whether or not the run's trace is required.
 - **Traces.** By default every pilot pair must have a trace result: the run's
   trace pairs file must hold the row, and the trace results in
   `pilot/traces/<that file's name without .json>/` must carry it with the same

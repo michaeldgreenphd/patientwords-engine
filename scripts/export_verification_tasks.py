@@ -16,7 +16,8 @@ Three families, every item from a committed engine file or the published site pa
     ``review_map.json``) must hash as the finalized manifest's ``output_hashes`` records. Each run contributes its
     blind review sample (the rows ``review_map.json`` names, in review-id order), or with ``--pilot-all-rows <run
     id>`` every generated row whose ``control`` is ``none`` (negative controls are excluded and counted), each shown
-    as its template with the clinical and the patient term and the row's next word. By default every pair needs a
+    as its template with the clinical and the patient term and the row's next word, which must follow the version-2
+    next_word rule (one lowercase word, ``next_word_ok``; ``bad_next_word``). By default every pair needs a
     trace result: the run's one trace pairs file (the JSON file under ``<run>/trace/`` beside its ``.meta.json``
     sidecar) must hold the row, and the trace results in ``<--pilot-trace-root>/<that file's stem>/`` (default
     ``pilot/traces/``, where the circuit-trace lane's pilot root writes them; ``<stem>__<model>/`` for a graph
@@ -92,7 +93,8 @@ item keeps its id across bundles while its source keeps its path and id.
 Refusals (a named SystemExit, and nothing is written): a missing or unreadable input, a field the exporter does not
 know in a record it reads (a new field may carry meaning the selection must respect, so a person decides), a shape
 it cannot use, a text whose sha256 no longer matches, a pilot run that is not finalized (``run_not_finalized``) or
-not version 2 (``run_not_version_2``), a trace pairs file not named after its run or sharing a stem with another
+not version 2 (``run_not_version_2``), a pilot row whose next word breaks the version-2 rule (``bad_next_word``),
+whether or not its trace is required, a trace pairs file not named after its run or sharing a stem with another
 run's, a second file under the ``trace/`` of a run whose trace is required (for Run 2, one that is not a
 byte-identical copy of its pairs file; an optional run reads no pairs file but Run 2's id key, so only the names of
 its files are checked), a pilot pair without its required trace (``missing_trace``) or whose trace result carries
@@ -127,6 +129,7 @@ from __future__ import annotations
 import argparse
 import glob
 import hashlib
+import importlib.util
 import json
 import math
 import os
@@ -149,6 +152,25 @@ from scripts import tierb_split  # noqa: E402
 from scripts.petri_audit.seeds import seed_digest  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _load_pilot_module(rel: str, name: str) -> Any:
+    """A module of this checkout's pilot/ loaded by its path (pilot/ is not a package, and an import by name could
+    resolve to another engine checkout on sys.path)."""
+    spec = importlib.util.spec_from_file_location(name, REPO_ROOT / rel)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {rel}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+# The version-2 next_word rule: one lowercase word of letters, at most one internal hyphen or apostrophe. The parser
+# applies pilot/scripts/common.next_word_ok to every version-2 row, and the trace-pairs builder applies its copy
+# before it builds a pair (tests/test_pilot_trace_pairs.py holds the two equal). The exporter uses the builder's, not
+# a third copy: the builder is standard library only and reads nothing when imported, whereas importing common reads
+# the pilot design (or PILOT_DIR's) at import time.
+next_word_ok = _load_pilot_module("pilot/analysis/trace_pairs.py", "_pilot_trace_pairs_builder").next_word_ok
 
 SCHEMA = "patientwords-verification-tasks/1"
 QUESTIONS_SCHEMA = "patientwords-verification-questions/1"
@@ -868,7 +890,16 @@ def pilot_items(inp: Inputs, seal: Seal, runs_dir: Path, trace_root: Path,
             refuse("bad_input", f"{label}: template does not hold exactly one blank")
         clinical_term = need_str(row.get("clinical_term"), f"{label} clinical_term")
         patient_term = need_str(row.get("patient_term"), f"{label} patient_term")
-        next_word = need_str(row.get("next_word"), f"{label} next_word")
+        next_word = row.get("next_word")
+        if not next_word_ok(next_word):
+            # every row, whether or not its trace is required: a trace-optional run builds no trace pairs, so nothing
+            # else would refuse a next word the parser and the trace-pairs builder refuse (the value is row text, so
+            # the message does not quote it)
+            refuse("bad_next_word", f"{label}: next_word breaks the version-2 rule, one lowercase word of letters "
+                                    "with at most one internal hyphen or apostrophe (pilot/scripts/common.py "
+                                    "next_word_ok, which the parser and pilot/analysis/trace_pairs.py apply). A "
+                                    "physician would be asked to judge an expected next word the study's next-token "
+                                    "target is never built from")
         top, bottom = template.replace(BLANK, clinical_term), template.replace(BLANK, patient_term)
         trace_index = None
         if run.trace_required:
