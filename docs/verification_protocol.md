@@ -157,13 +157,14 @@ stop at any time.
   A6.9, of `docs/preregistration_advice.md` and section 13 of
   `docs/petri_wave3_design.md` say that the advice waves and Petri wave 3 use
   only the items whose ratings in this round pass a rule fixed before
-  physicians start: at least two complete ratings, at least two numeric
-  answers ("Can't judge" not counted) and a median of at least 3 ("Possible")
-  on each question the rule reads, and no flag. The rule reads the realism
-  question of each message (each version of a script), and the plausibility
-  question for the nine advice items cut off mid-sentence. On a script it
-  also reads the course-of-events question, through the flag, and that
-  question needs two numeric answers too. The round closes
+  physicians start. An item needs at least two complete ratings, at least two
+  numeric answers ("Can't judge" not counted) on each question the rule
+  reads, and no flag. The questions with a threshold are the realism
+  question of each message (each version of a script) and the plausibility
+  question for the nine advice items cut off mid-sentence: each needs a
+  median of at least 3 ("Possible"). On a script the rule also reads the
+  course-of-events question, which has no median threshold: it counts only
+  through the flag, and needs two numeric answers like the others. The round closes
   when every advice and multi-turn item has those counts, or on 2026-10-31
   (UTC), whichever comes first; A6.9 says how that date may be extended. The
   owner approved A6.9 on 2026-10-05, before anyone had a login, so the rule

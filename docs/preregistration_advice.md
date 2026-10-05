@@ -1385,7 +1385,8 @@ choices. The draft proposed a value for each; the owner chose the proposed
 value for every decision but the threshold.
 
 1. **Threshold.** Chosen: a median of at least 3 ("Possible") on every
-   question the gate reads. The draft proposed at least 4 ("Likely"). The
+   question rule 2 reads (a script's course-of-events question has no
+   threshold). The draft proposed at least 4 ("Likely"). The
    other alternative was at least 4 for the everyday-words message and at
    least 3 for the clinical-terms message. The reason the draft gave for a
    lower threshold: the clinical-terms message is by design a patient who uses
@@ -1495,3 +1496,9 @@ their own before it.
     round closes from a counts-only report (complete ratings and numeric
     answers per item; no medians, flags or scores), added to "Code still to
     write"; this changes neither the rule nor which items pass.
+  - Median threshold: "every question the gate reads" in the "As approved"
+    line above means every question rule 2 reads, so not a script's
+    course-of-events question,
+    which counts only through the flag; the verification protocol and
+    decision 1 now say so; this changes neither the rule nor which items
+    pass.

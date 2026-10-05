@@ -948,6 +948,20 @@ def _md_table(text: str, header_start: str) -> list[list[str]]:
     return rows
 
 
+MEDIAN_OVER_EVERY_QUESTION_READ = re.compile(
+    r"\b(?:each|every|all) (?:the )?questions? (?:that )?(?:the )?(?:rule|gate|it) reads\b", re.IGNORECASE)
+COURSE_QUESTION = re.compile(r"course[- ]of[- ]events|course_plausible", re.IGNORECASE)
+
+
+def _median_overreach(text: str) -> list[str]:
+    """Sentences (or clauses split at ';' and ':') that put the median threshold on every question the rule reads, or
+    on the course-of-events question, unless they say it has none. On a script the rule reads course_plausible for the
+    answer floor and the flag only; gate_keys alone have the median (Codex review of PR #87, 2026-10-05)."""
+    clauses = re.split(r"(?<=[.;:])\s+", text)
+    return [c for c in clauses if "median" in c and not re.search(r"\bno (?:median )?threshold\b", c)
+            and (MEDIAN_OVER_EVERY_QUESTION_READ.search(c) or COURSE_QUESTION.search(c))]
+
+
 def test_the_gate_reads_the_same_in_the_plan_a69_section_13_and_the_protocol(plan):
     """The rule is written in four places: the plan's gate block (data), A6.9 of the preregistration, section 13 of
     the wave-3 design note and the verification protocol. Its thresholds, the round's closing counts, its closing date
@@ -990,6 +1004,19 @@ def test_the_gate_reads_the_same_in_the_plan_a69_section_13_and_the_protocol(pla
     ]
     for text, pattern, expected in checks:
         assert set(found(text, pattern)) == {expected}, pattern
+    # The median threshold applies to gate_keys only. A sentence that puts it on every question the rule reads, which
+    # on a script includes course_plausible, or on the course-of-events question itself, states a stricter gate than
+    # the approved one. The protocol's first wording did (Codex review of PR #87, 2026-10-05).
+    assert not set(gate["flag_adds"]) & set(gate["gate_keys"])
+    decision_1 = one_line(_section(prereg, "1. **Threshold.**", "2. **Minimum ratings.**"))
+    assert {name: _median_overreach(text) for name, text in (("protocol", proto), ("section 13", s13),
+                                                             ("A6.9 decision 1", decision_1))
+            if _median_overreach(text)} == {}
+    assert re.search(r"course-of-events question, which has no median threshold", proto)
+    assert _median_overreach("a median of at least 3 on each question the rule reads, and no flag.")
+    assert _median_overreach("Each needs a median of at least 3, the course-of-events question too.")
+    assert _median_overreach("Every question it reads needs a median of at least 3.")
+    assert not _median_overreach("The course-of-events question has no median threshold.")
     assert answers == ratings, "the owner chose one minimum (Gate 2), for complete ratings and numeric answers alike"
     for value in (rnd["bundle"], rnd["bundle_id"], rnd["bundle_sha256"], rnd["questions_sha256"]):
         assert value in a69, value
