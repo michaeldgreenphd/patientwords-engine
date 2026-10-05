@@ -63,9 +63,11 @@ cost $12.97 at measured lengths and $19.40 in the high case, and with about
    entry, and the trigger is parked.
 6. Under the physician realism gate (Amendment 6, A6.9, approved
    2026-10-05): round 1 of the physician verification study has closed, the
-   import summary and the gate's three files are committed, the gated stimuli
-   files are built, and every full fire below names its gated file with the
-   counts and `max_spend` of section 8. The probes do not wait for this.
+   import summary and the gate's files (its report and its selection files,
+   one per wave, or per Wave R family under decision 6's first option; A6.9)
+   are committed, the gated stimuli files are built, and every full fire
+   below names its gated file with the counts and `max_spend` of section 8.
+   The probes do not wait for this.
 
 Fires are sent by the operator with
 `python scripts/fire_trigger.py fire --trigger advice-eval --params-file <file holding the JSON below> --note "<fire id> of docs/advice_fire_plan_20261002.md"`,
@@ -575,8 +577,9 @@ sections 0, 4, 6 and 7 change as listed under "Other sections" at the end of
 this section. Nothing else in this plan changes. Nothing here has been fired.
 
 **Stimuli files.** The full fires name the gated stimuli files that
-`build-stimuli --source selection` writes from the gate's two selection files
-(A6.9), in place of `stimuli_20261002T080026Z.json` (Wave A) and
+`build-stimuli --source selection` writes from the gate's selection files
+(A6.9: one for Wave A, and one for Wave R, or one per family under decision
+6's first option), in place of `stimuli_20261002T080026Z.json` (Wave A) and
 `stimuli_20261002T081803Z.json` (Wave R). Below, n_A is the number of new
 questions kept (of 24) and n_R the number of rerun items kept (of 15). The
 probes are unchanged.
@@ -704,8 +707,10 @@ files to be committed. The probes do not wait.
     the same call as the rerun file or the files that one was selected from.
 - **Section 7.**
   - Decision 6: under its first option, one file per family, the Wave R
-    selection is split by family into two selection files, each built into its
-    own gated file, and each R fire runs once per gated file with the chunks
+    selection is split by family into two selection files,
+    `data/advice/realism_gate_waveR_sentence_completions_<export stamp>.json`
+    and `data/advice/realism_gate_waveR_natural_questions_<export stamp>.json`
+    (A6.9), each built into its own gated file, and each R fire runs once per gated file with the chunks
     of this section. The counts are the kept items' by family, which the gate
     report gives, not 11 sentence-completion and 4 natural-question items.
   - Decision 7: the gate's Wave A selection names the Wave A file that exists

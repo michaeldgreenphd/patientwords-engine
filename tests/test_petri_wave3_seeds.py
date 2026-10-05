@@ -588,6 +588,7 @@ def test_the_plan_power_figures_reproduce_from_the_recorded_seed(plan):
 W3_DESIGN = ROOT / "docs" / "petri_wave3_design.md"
 PREREG = ROOT / "docs" / "preregistration_advice.md"
 PROTOCOL = ROOT / "docs" / "verification_protocol.md"
+FIRE_PLAN = ROOT / "docs" / "advice_fire_plan_20261002.md"
 NUMBER_WORDS = dict(enumerate(
     "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen "
     "eighteen nineteen twenty".split()))
@@ -1149,7 +1150,7 @@ def test_the_gate_checks_that_the_import_excluded_exactly_the_recorded_accounts(
     proto = one_line(_section(PROTOCOL.read_text(encoding="utf-8"), "**Which items the paid runs use", "\n- **"))
     inputs = _section(spec, "It reads these files and no others", "It reads files 4 and 5")
     compares = _section(spec, "It reads files 4 and 5", "It compares items, not whole files")
-    refuses = _section(spec, "It refuses, writing nothing", "A wave with no passing item")
+    refuses = _section(spec, "It refuses, writing nothing", "with no passing item")
     assert "`round.expected_exclusions`" in inputs and "`exclusions.excluded_raters`" in inputs, \
         "the gate program reads the recorded exclusions and the summary's"
     assert re.search(r"`exclusions\.excluded_raters` with the rater codes in `round\.expected_exclusions`, exactly",
@@ -1183,6 +1184,33 @@ def test_the_closing_counts_are_read_from_a_report_that_shows_no_scores(plan):
     assert "counts report" in rnd["closing_date_rule"] and "no median, flag or score" in rnd["closing_date_rule"]
     assert "counts report" in rnd["closes"]
 
+
+def test_a_split_wave_r_has_one_selection_path_per_family():
+    """If fire-plan decision 6 splits Wave R by family, the gate writes one Wave R selection file per family. The first
+    draft defined a single realism_gate_waveR path and counted the gate's output as three files (two selection files)
+    everywhere, so the two families' selections had no names of their own and one could overwrite the other (Codex
+    review of PR #87, 2026-10-05). A6.9 now gives each family its own path, named by the family names the stimuli
+    builder offers, and every count of the gate's files allows for the split. This changes neither the rule nor which
+    items pass."""
+    from scripts.advice_eval import STIMULI_FAMILIES
+
+    one_line = functools.partial(re.sub, r"\s+", " ")
+    prereg = PREREG.read_text(encoding="utf-8")
+    a69 = one_line(_section(prereg, "### A6.9 Physician realism gate", "### Approval record"))
+    fire_plan = one_line(FIRE_PLAN.read_text(encoding="utf-8"))
+    recorded = _section(a69, "**How the selection is recorded.**", "`build-stimuli --source selection` then writes")
+    assert "`data/advice/realism_gate_waveR_<family>_<export stamp>.json`" in recorded
+    assert "`data/advice/realism_gate_waveR_<export stamp>.json`" in recorded, "the path when Wave R is not split"
+    assert all(f"`{family}`" in recorded for family in STIMULI_FAMILIES)
+    split = _section(fire_plan, "- Decision 6: under its first option", "- Decision 7:")
+    assert all(f"`data/advice/realism_gate_waveR_{family}_<export stamp>.json`" in split for family in STIMULI_FAMILIES)
+    named = re.findall(r"realism_gate_waveR_([a-z][a-z_]*?)_<export stamp>", a69 + " " + fire_plan)
+    assert named and set(named) <= set(STIMULI_FAMILIES), named
+    stale = re.compile(r"\b(?:the gate's|the) (?:three|two) (?:gate |selection )?files\b|\bThree files, written together"
+                       r"|\btwo selection files, `data/advice/realism_gate_waveA")
+    assert [name for name, text in (("A6.9", a69), ("fire plan", fire_plan)) if stale.search(text)] == []
+    counts = [a69[m.end():m.end() + 40] for m in re.finditer(r"\bthree files\b", a69, re.IGNORECASE)]
+    assert counts and all(c.startswith(", or four if fire-plan decision 6 splits") for c in counts), counts
 
 def test_section_13_tables_are_the_plan_rows(plan):
     """Section 13 shows the gate's counts as three tables; they must be the plan's rows, which the suite recomputes

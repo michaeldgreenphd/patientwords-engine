@@ -1236,8 +1236,10 @@ of the stimuli item it selects, computed from the stimuli file when the gate
 is applied, or the gate refuses. On 2026-10-04 all 39 advice items of the
 bundle match their stimuli files.
 
-**How the selection is recorded.** Three files, written together before any
-gated fire:
+**How the selection is recorded.** The gate report and one selection file
+for each wave with a passing item, written together before any gated fire:
+three files, or four if fire-plan decision 6 splits Wave R by family, and
+one fewer for each wave, or Wave R family, with no passing item:
 
 - the gate report, `data/verification/realism_gate_vtasks_20261004T042945Z_<export
   stamp>.json`: the rule as approved; the summary's path and sha256; the
@@ -1245,15 +1247,19 @@ gated fire:
   summary records them; the spreadsheet round 1 ran in; for each of the 39
   advice items and the 8 scripts, the verification item id, the source file
   and id, the question set, `ratings_complete`, each question's `n` and
-  `median`, `flagged`, the decision and its reason; and the kept items' counts by proposed tier and
-  syntax style (Wave A) and by form (Wave R);
-- two selection files, `data/advice/realism_gate_waveA_<export stamp>.json`
-  and `data/advice/realism_gate_waveR_<export stamp>.json`, in the shape
-  `build-stimuli --source selection` reads (`{rule, items: [{file, id}],
-  notes}`). Each lists the passing items in their stimuli file's order, with
-  `file` and `id` taken from the bundle's `provenance.source_path` and
-  `provenance.source_id`, and its `notes` carry the gate report's and the
-  summary's sha256.
+  `median`, `flagged`, the decision and its reason; and the kept items'
+  counts by proposed tier and syntax style (Wave A) and by form (Wave R);
+- the selection files, in the shape `build-stimuli --source selection` reads
+  (`{rule, items: [{file, id}], notes}`):
+  `data/advice/realism_gate_waveA_<export stamp>.json` for Wave A; for Wave R,
+  `data/advice/realism_gate_waveR_<export stamp>.json`, or, if decision 6
+  splits Wave R by family, one file per family,
+  `data/advice/realism_gate_waveR_<family>_<export stamp>.json`, where
+  `<family>` is `sentence_completions` or `natural_questions` (the family
+  names of `advice_eval.STIMULI_FAMILIES`). Each lists the passing items in
+  their stimuli file's order, with `file` and `id` taken from the bundle's
+  `provenance.source_path` and `provenance.source_id`, and its `notes` carry
+  the gate report's and the summary's sha256.
 
 `build-stimuli --source selection` then writes the gated stimuli files. It
 copies each item's messages byte for byte and keeps its id. The Wave A and
@@ -1262,9 +1268,10 @@ Wave R fires name those files in place of `stimuli_20261002T080026Z.json` and
 file before the gate is applied, the selection names the replacement, whose
 items keep the same ids, and the message check above applies to it. If
 decision 6 replaces the rerun file with one file per family, the Wave R
-selection is written as one selection file per family, each naming only its
-own family's file: a file built by `--source selection` carries the families
-of every file it copies from, and the exporter refuses one that carries both.
+selection is written as one selection file per family, at the per-family
+paths above, each naming only its own family's file: a file built by
+`--source selection` carries the families of every file it copies from, and
+the exporter refuses one that carries both.
 
 **What changes in the waves.**
 
@@ -1300,9 +1307,10 @@ of every file it copies from, and the exporter refuses one that carries both.
   id; it needs ratings in a later round and can enter only a later wave.
 - **Probes** (A0a to A0c, R0a and R0b) run against the probe file, do not
   depend on the gate, and may run before round 1 closes.
-- **Order.** No full Wave A or Wave R fire runs until round 1 has closed, the
-  summary and the three gate files are committed, and the approval record
-  below holds n_A, n_R and Wave R's recomputed baselines.
+- **Order.** No full Wave A or Wave R fire runs until round 1 has closed,
+  the summary and the gate's files (its report and its selection files, as
+  "How the selection is recorded" counts them) are committed, and the
+  approval record below holds n_A, n_R and Wave R's recomputed baselines.
 
 **Code still to write.** The program that applies the rule (proposed name
 `scripts/apply_realism_gate.py`) does not exist yet. It is written, with
@@ -1359,8 +1367,9 @@ files is missing or unreadable, `round.expected_exclusions` is not filled
 export", or two accounts with one code), a comparison above fails, an
 advice or script item of the bundle is missing from the summary, a passing item is
 missing from the stimuli file or seed file it reads, or a question the gate
-reads is missing from an item's `five_point`. A wave with no passing item is
-reported by name, and no selection file is written for it. It does not
+reads is missing from an item's `five_point`. A wave, or under decision 6's
+split a Wave R family, with no passing item is reported by name, and no
+selection file is written for it. It does not
 compute Wave R's recomputed baselines, which come from the ranking report as
 "What changes in the waves" says.
 
@@ -1482,7 +1491,8 @@ their own before it.
   spreadsheet round 1 ran in: `<the pilot's, or a new one>`.
 - At application (to fill): import summary `<path>` (sha256 `<sha256>`), gate
   report `<path>` (sha256 `<sha256>`), gated stimuli files `<Wave A path,
-  sha256>` and `<Wave R path, sha256>`, n_A `<n>` of 24, n_R `<n>` of 15, and
+  sha256>` and `<Wave R path, sha256>` (one Wave R file per family if
+  decision 6 splits Wave R), n_A `<n>` of 24, n_R `<n>` of 15, and
   Wave R's recomputed baselines: primary `<downgrades>` of `<cells>` against
   `<null>`, sensitivity `<downgrades>` of `<cells>` against `<null>`.
 - Clarifications after approval (2026-10-05), from Codex's review of pull
@@ -1502,3 +1512,8 @@ their own before it.
     which counts only through the flag; the verification protocol and
     decision 1 now say so; this changes neither the rule nor which items
     pass.
+  - Wave R selection files: if decision 6 splits Wave R by family, each
+    family's selection has its own path,
+    `realism_gate_waveR_<family>_<export stamp>.json`, and the count of the
+    gate's files depends on that split and on which waves have a passing
+    item; this changes neither the rule nor which items pass.
