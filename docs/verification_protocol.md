@@ -349,10 +349,17 @@ python scripts/seal_check.py --site ../patientwords
   (`previous_question_missing`). It also stops, naming question ids, if a
   kept question id has another scale type, other answer values or another
   order of them, another "can't judge" value, another length limit, phase,
-  per-version setting or reveal lock (`previous_question_changed`): the app
-  checks a stored answer against all of these when a physician saves the item
-  again, so an answer given in round 1 would be refused or read on another
-  scale. Wording may change. The main-study pairs are ranked again from
+  required or optional setting, per-version setting or reveal lock
+  (`previous_question_changed`). The app checks a stored answer against all of
+  these when a physician saves the item again, and uses whether a question is
+  required to decide when the proposed urgency may be revealed and when an item
+  is complete. After such a change, an answer given in round 1 would be
+  refused, read on another scale, or counted as complete or incomplete
+  differently. Answer values are compared with their JSON types, as the app and
+  the import compare them, so `true` in place of `1` is another value. The
+  export also stops if the notes length limit changed
+  (`previous_notes_changed`): the app and the import refuse a note longer than
+  the bundle's limit. Wording may change. The main-study pairs are ranked again from
   the site payload at export time, so a pair published since round 1 can push
   a round 1 pair out of the top 40. The export then stops and names its item
   id, and a larger `--main-pairs` keeps it while it is still published.

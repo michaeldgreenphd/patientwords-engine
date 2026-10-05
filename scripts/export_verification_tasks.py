@@ -89,10 +89,13 @@ and every seal failure above.
 Rounds. Each physician round uses one bundle (the ratings import reads one bundle per export). A later round's
 bundle is built with ``--previous-bundle <the previous round's bundle>``, which refuses unless every item of that
 bundle is in the new one under the same id with the same question set, display and reveal (``previous_item_missing``,
-``previous_item_changed``) and every question id it uses is kept (``previous_question_missing``) with the same scale
-type, answer values, abstain value, text length limit, phase, per_arm and reveal lock (``previous_question_changed``):
-the app needs every item a physician holds to stay in the bundle it switches to, stores answers under item and
-question ids, and validates a stored answer against the question's current scale, phase and lock.
+``previous_item_changed``), every question id it uses is kept (``previous_question_missing``) with the same scale
+type, answer values, abstain value, text length limit, phase, required, per_arm and reveal lock
+(``previous_question_changed``), and the notes length limit is the same (``previous_notes_changed``): the app needs
+every item a physician holds to stay in the bundle it switches to, stores answers under item and question ids,
+validates a stored answer and note against the question's current scale, phase and lock and the notes limit, and
+gates the reveal and an item's completeness on ``required``. These are compared as canonical JSON, so a value of
+another JSON type (true for 1) is a change, as it is to the app and the import.
 docs/verification_protocol.md (Rounds) has how round 2 is built.
 
 Usage (from the engine root):
@@ -1108,10 +1111,13 @@ def multiturn_items(inp: Inputs, seeds_path: Path) -> tuple[list[dict], dict]:
 def answer_contracts(questions: Any, where: str) -> dict[str, dict]:
     """{"<question set>.<question id>": what a stored answer to that question means} for a questions document: the
     scale's type, its option values in order, its abstain value and (a text scale) its max_length, and the
-    question's phase, per_arm and locks_on_reveal. Labels, definitions, text and hint are wording, which may change.
-    The app validates a stored answer against all of these when a physician saves the item again
-    (patientwords-verify src/Logic.gs: validValue_, answerKeys_, validateAnswers_), and the import reads it against
-    them. A document of another shape is refused, naming where, never skipped."""
+    question's phase, required, per_arm and locks_on_reveal. Labels, definitions, text and hint are wording, which
+    may change. The app validates a stored answer against all of these when a physician saves the item again
+    (patientwords-verify src/Logic.gs: validValue_, answerKeys_, validateAnswers_), gates the reveal and an item's
+    completeness on ``required`` (blindComplete_, itemComplete_), and the import reads a rating against all of them
+    (its is_complete and reveal checks read ``required``). required, per_arm and locks_on_reveal are read as the app
+    and the import read them, by truth value. A document of another shape is refused, naming where, never
+    skipped."""
     def bad(what: str) -> NoReturn:
         refuse("bad_input", f"{where}: {what}")
 
@@ -1141,18 +1147,32 @@ def answer_contracts(questions: Any, where: str) -> dict[str, dict]:
                 "scale_type": scale.get("type"), "values": [o["value"] for o in options],
                 "abstain": abstain["value"] if abstain is not None else None,
                 "max_length": scale.get("max_length") if scale.get("type") == "text" else None,
-                "phase": q.get("phase"), "per_arm": bool(q.get("per_arm")),
+                "phase": q.get("phase"), "required": bool(q.get("required")), "per_arm": bool(q.get("per_arm")),
                 "locks_on_reveal": bool(q.get("locks_on_reveal"))}
     return out
 
 
+def notes_limit(questions: Any, where: str) -> int:
+    """The questions document's notes.max_length: the longest note (in UTF-16 code units) the app saves and the import
+    accepts with a rating (src/Logic.gs validateAnswers_; the import's notes_too_long). Refused, never skipped, when
+    it is not a positive integer."""
+    notes = questions.get("notes") if isinstance(questions, dict) else None
+    limit = notes.get("max_length") if isinstance(notes, dict) else None
+    if not (isinstance(limit, int) and not isinstance(limit, bool) and limit > 0):
+        refuse("bad_input", f"{where}: questions.notes.max_length is not a positive integer")
+    return limit
+
+
 def check_previous_bundle(inp: Inputs, path: Path, items: list[dict], questions: dict) -> dict:
     """The previous round's bundle, checked against this one: every item it holds is here under the same id, with
-    the same question set, display and reveal, and every question id of each of its question sets is still in that
-    set with the same answer contract (``answer_contracts``). The app needs every item a physician holds to stay in
-    the bundle it switches to, and stores answers under the item id and the question id (its DEPLOY.md section 19),
-    so a missing item or question, another text under the same id, or another scale, set of answer values, phase,
-    per_arm or reveal lock under the same question id is refused (ids only)."""
+    the same question set, display and reveal, every question id of each of its question sets is still in that
+    set with the same answer contract (``answer_contracts``), and the notes limit (``notes_limit``) is the same. The
+    app needs every item a physician holds to stay in the bundle it switches to, and stores answers under the item
+    id and the question id (its DEPLOY.md section 19), so a missing item or question, another text under the same
+    id, another scale, set of answer values, phase, required, per_arm or reveal lock under the same question id, or
+    another notes limit is refused (ids only). Contracts are compared as canonical JSON, never with Python's ==: the
+    app (===) and the import (same_value) keep JSON types apart, so true is not 1 and 1.0 is not 1 here either,
+    though the app would take 1.0 for 1 (refusing that is the safe side)."""
     role = "previous round's bundle"
     data = inp.read_bytes(path, role)
     prev = _json_of(data, path, role)
@@ -1185,13 +1205,24 @@ def check_previous_bundle(inp: Inputs, path: Path, items: list[dict], questions:
         refuse("previous_question_missing", f"question id(s) of {prev.get('bundle_id')} are not in this bundle's "
                                             f"questions: {lost}. Wording may change between bundles; "
                                             "question ids may not")
-    altered = sorted(f"{k} ({', '.join(f for f in old_contracts[k] if old_contracts[k][f] != new_contracts[k][f])})"
-                     for k in old_contracts if old_contracts[k] != new_contracts[k])
+    altered = []
+    for k, old_contract in old_contracts.items():
+        fields = [f for f in old_contract if canonical(old_contract[f]) != canonical(new_contracts[k][f])]
+        if fields:
+            altered.append(f"{k} ({', '.join(fields)})")
+    altered.sort()
     if altered:
         refuse("previous_question_changed", f"question id(s) of {prev.get('bundle_id')} keep their id with another "
                                             f"answer contract: {altered}. An answer stored under the id would be "
-                                            "read on another scale, phase or lock. Wording may change between "
-                                            "bundles; what an answer means may not")
+                                            "read on another scale, phase, requirement or lock. Wording may change "
+                                            "between bundles; what an answer means may not")
+    old_notes = notes_limit(prev["questions"], f"--previous-bundle {path}")
+    new_notes = notes_limit(questions, "this bundle's questions")
+    if old_notes != new_notes:
+        refuse("previous_notes_changed", f"the notes limit (questions.notes.max_length) of {prev.get('bundle_id')} is "
+                                         f"{old_notes} and this bundle's is {new_notes}. The app and the import refuse "
+                                         "a note longer than the bundle's limit, so the limit a saved note was written "
+                                         "under may not change between bundles (a lower one would refuse it)")
     return {"path": logical_path(path), "bundle_id": prev.get("bundle_id"), "sha256": sha256_bytes(data),
             "items_kept": len(prev["items"]), "items_added": len(items) - len(prev["items"])}
 
@@ -1385,7 +1416,8 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
                     help="take every non-control generated row of this run instead of its blind review sample")
     ap.add_argument("--previous-bundle", default=None, metavar="PATH",
                     help="the previous round's bundle: refuse unless every item it holds is in this one, unchanged, "
-                         "and every question id it uses is kept with the same scale, answer values, phase and lock")
+                         "every question id it uses is kept with the same scale, answer values, phase, requirement "
+                         "and lock, and the notes limit is the same")
     ap.add_argument("--pilot-trace-optional", action="append", metavar="RUN_ID",
                     help="do not require (or read) trace results for this run's pairs; by default every pilot "
                          "pair needs one (Run 2's trace pairs file is still read: its item ids are keyed on it)")

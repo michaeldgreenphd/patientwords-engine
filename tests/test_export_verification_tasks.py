@@ -1328,6 +1328,16 @@ CONTRACT_CHANGES = {
               "advice_new.proposed_tier_agree", "phase"),
     "per_arm": (lambda q: _question(q, "multiturn_script", "realism").update(per_arm=False),
                 "multiturn_script.realism", "per_arm"),
+    # Codex review of PR #86 (4179127689): required gates the reveal and an item's completeness in the app
+    # (blindComplete_, itemComplete_) and the import (is_complete), in both directions
+    "required_on": (lambda q: _question(q, "tracing_pair", "keep").update(required=True), "tracing_pair.keep",
+                    "required"),
+    "required_off": (lambda q: _question(q, "tracing_pair", "same").update(required=False), "tracing_pair.same",
+                     "required"),
+    # Codex review of PR #86 (4179127694): Python's == takes true for 1, the app's === and the import's same_value
+    # do not, so a stored 1 would be refused under a scale whose option is true
+    "value_type": (lambda q: q["scales"]["realism5"]["options"][0].update(value=True),
+                   "advice_new.realism_patient", "values"),
 }
 
 
@@ -1341,6 +1351,32 @@ def test_a_kept_question_id_whose_answer_contract_changed_is_refused(tmp_path, c
     paths["questions"] = dump(tmp_path / "questions.json", questions)
     message = refused_paths(paths, "previous_question_changed", "--previous-bundle", str(previous))
     assert re.search(re.escape(key) + r" \([^)]*\b" + field + r"\b", message), message
+
+
+def test_an_abstain_value_of_another_json_type_is_refused(tmp_path):
+    # Codex review of PR #86 (4179127694), for the abstain value: 0 and false are equal in Python, not in the app
+    paths, first, previous = _round1(tmp_path)
+    first["questions"]["scales"]["yes_no"]["abstain"]["value"] = 0
+    dump(previous, first)
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    questions["scales"]["yes_no"]["abstain"]["value"] = False
+    paths["questions"] = dump(tmp_path / "questions.json", questions)
+    message = refused_paths(paths, "previous_question_changed", "--previous-bundle", str(previous))
+    assert "tracing_pair.same (abstain)" in message
+
+
+@pytest.mark.parametrize("limit", [2000, 8000])
+def test_another_notes_limit_is_refused(tmp_path, limit):
+    # Codex review of PR #86 (4179236828): the app and the import refuse a note longer than the bundle's
+    # notes.max_length, so a lower limit would refuse a note saved under round 1's. The limit is compared exactly,
+    # as a text scale's max_length is, so a higher one is refused too.
+    paths, first, previous = _round1(tmp_path)
+    dump(previous, first)
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    questions["notes"]["max_length"] = limit
+    paths["questions"] = dump(tmp_path / "questions.json", questions)
+    message = refused_paths(paths, "previous_notes_changed", "--previous-bundle", str(previous))
+    assert f"is {first['questions']['notes']['max_length']} and this bundle's is {limit}" in message
 
 
 def test_a_question_that_gained_or_lost_the_reveal_lock_is_refused(tmp_path):
@@ -1376,6 +1412,9 @@ def test_a_question_reworded_or_on_a_renamed_identical_scale_is_kept(tmp_path, c
     (lambda q: _question(q, "tracing_pair", "keep").update(scale="keep9"), "tracing_pair.keep: its scale is not"),
     (lambda q: q["scales"]["keep3"].update(options=["keep", "edit"]), "tracing_pair.keep: its scale is not"),
     (lambda q: q["scales"]["yes_no"].update(abstain="cant_tell"), "its scale's abstain is not"),
+    (lambda q: q["notes"].pop("max_length"), "questions.notes.max_length is not a positive integer"),
+    (lambda q: q["notes"].update(max_length=True), "questions.notes.max_length is not a positive integer"),
+    (lambda q: q.pop("notes"), "questions.notes.max_length is not a positive integer"),
 ])
 def test_a_previous_bundle_whose_questions_are_malformed_is_refused_not_skipped(tmp_path, change, fragment):
     paths, first, previous = _round1(tmp_path)
@@ -1392,7 +1431,8 @@ def test_answer_contracts_refuse_a_questions_value_that_is_not_an_object():
     contracts = evt.answer_contracts(json.loads(QUESTIONS.read_text(encoding="utf-8")), "questions.json")
     assert contracts["advice_new.own_tier"] == {
         "scale_type": "ordinal", "values": ["self_care", "routine", "urgent", "emergency"], "abstain": "cant_tell",
-        "max_length": None, "phase": "blind", "per_arm": False, "locks_on_reveal": True}
+        "max_length": None, "phase": "blind", "required": True, "per_arm": False, "locks_on_reveal": True}
+    assert contracts["tracing_pair.keep"]["required"] is False
 
 
 # ---- the first bundle, re-exported --------------------------------------------------------------------------
