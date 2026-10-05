@@ -1498,7 +1498,8 @@ edit to those alone changes the digest and not the script. So:
   refuses while the seed file holds one). A seed edited only in fields
   physicians never see runs once the edit is undone, or once a later
   round's bundle records its new digest; that round's ratings of its
-  unchanged turns do not decide it.
+  unchanged turns decide it only if every earlier round that rated those
+  turns was short.
 
 Applied again after a later round, the program writes a new gate report for
 wave 3 alone, named after the latest round's bundle id and export stamp,

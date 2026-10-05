@@ -904,8 +904,8 @@ applies the gate, which reads the seed file as it is when it runs, refuses while
 a seed whose current digest no round's bundle recorded ("Later rounds" above; A6.9, "Code
 still to write", lists every file the program reads). An edit only to fields physicians
 never see (notes, hypotheses, generation settings) changes the digest and not the script:
-the round that rated the script's turns still decides it, and the seed runs once the edit
-is undone or a later round's bundle records the new digest.
+the earliest round that rated the script's turns with enough ratings still decides it, and
+the seed runs once the edit is undone or a later round's bundle records the new digest.
 Since the owner approved the gate (`physician_realism_gate.approval.approved`), the
 suite also fails as soon as a rated seed is edited, or a seed is added to or removed from
 the seed file, until a round in the plan's `rounds` has rated each seed as it then is.
