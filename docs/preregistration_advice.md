@@ -1135,7 +1135,13 @@ round 1 and, if fewer than six pass, later rounds ("Rounds" below;
   daylight time is still in force that day (it ends on 2026-11-01). The
   closing date in force is 2026-10-31, or the date set by the last recorded
   extension (below). An early close, once every item has both counts, may
-  be at any time before then. Two complete ratings alone do not
+  be at any time before then. The program that applies the gate checks
+  this: a closing export dated (in UTC) before the closing date in force
+  is accepted only if its summary shows every advice and multi-turn item at
+  both counts; with any item short, the round had not closed, and it
+  refuses. An export dated on the closing date in force is not checked for
+  these counts, and an item still short then is "not enough ratings". Two
+  complete ratings alone do not
   close an item: the import counts a rating complete when every required
   question has an answer, and "Can't judge" is an answer, but it adds no
   numeric answer. With two physicians, one "Can't judge" on a question the
@@ -1400,7 +1406,14 @@ compares:
   the last of its `closing_date_extensions`. A close time whose UTC date is
   later than that date is a refusal, so an export downloaded after the
   deadline cannot be the closing export even when the summary matches the
-  record.
+  record;
+- when that close time's UTC date is before the closing date in force (an
+  early close), the summary's row for every advice and multi-turn item of
+  the round's bundle with both of rule 1's counts: `ratings_complete` at
+  least 2, and `five_point.<key>.n` at least 2 on every question the gate
+  reads for it. Any item short is a refusal, because the round had not
+  closed. An export dated on the closing date in force is not checked for
+  these counts.
 
 For the items it compares:
 
@@ -1437,7 +1450,9 @@ or "never created"), do not agree with the spreadsheet the round ran in
 `closing_export` is not filled (a value still null, a sha256 that is not
 64 lowercase hexadecimal characters, or a time that is not an ISO-8601 UTC
 time), a round's close time falls after the end of its closing date in
-force, an entry of a round's `closing_date_extensions` is not two dates
+force, a round's close time falls before its closing date in force while an
+advice or multi-turn item of its summary is short of either closing count,
+an entry of a round's `closing_date_extensions` is not two dates
 (YYYY-MM-DD), was recorded after the closing date it replaces or sets no
 later one, a comparison above fails, a seed of the seed file has a current
 digest that no round rated, a round's item at a seed's current digest
@@ -1725,6 +1740,13 @@ their own before it.
     extension recorded in the plan's `closing_date_extensions` before the
     date it replaces; `closing_date` keeps the registered date; this
     changes neither the rule nor which items pass.
+  - An early close: a closing export dated (UTC) before the closing date
+    in force is accepted only if its summary shows every advice and
+    multi-turn item at both closing counts, and the gate program refuses
+    it otherwise, because the round had not closed; one dated on the
+    closing date in force is not checked for them, and items still short
+    then are "not enough ratings"; this changes neither the rule nor which
+    items pass.
 - Owner's decision, 2026-10-05 (after the approval; it can change which
   seeds pass, so it is recorded here as a decision, not as a
   clarification). Asked in the agent session whether a later round may

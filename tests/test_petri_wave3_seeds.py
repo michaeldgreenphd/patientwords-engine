@@ -690,9 +690,10 @@ def _check_realism_gate(plan: dict, seeds_by_id: dict[str, dict], bundles: dict[
         assert gate["status"].startswith("PROPOSED") and "not in force" in gate["status"]
         assert approval["approved_by"] is None and approval["approved_on"] is None
     assert isinstance(gate["rounds"], list) and gate["rounds"], "rounds lists round 1 and any later round, in order"
-    rated = []
+    rated, round_bundles = [], []
     for rnd in gate["rounds"]:
         bundle, by_seed = _rated_scripts(rnd, (bundles or {}).get(rnd["bundle"]))
+        round_bundles.append(bundle)
         for item in by_seed.values():
             five_point = {k: spec for k, spec in item_keys(item, bundle["questions"]).items()
                           if is_five_point(spec.scale)}
@@ -724,7 +725,10 @@ def _check_realism_gate(plan: dict, seeds_by_id: dict[str, dict], bundles: dict[
                 path
             assert summary["inputs"]["bundle"]["bundle_id"] == rnd["bundle_id"], path
             assert summary["inputs"]["bundle"]["sha256"] == rnd["bundle_sha256"], path
-            rows_by_round.append({row["item_id"]: row for row in summary["items"]})
+            rows = {row["item_id"]: row for row in summary["items"]}
+            early = _early_close_refusal(closing, _closing_date_in_force(rnd), round_bundles[n - 1], rows, gate)
+            assert early is None, f"{path}: {early}"
+            rows_by_round.append(rows)
         refusal = _later_round_refusal([*zip(rated[:-1], rows_by_round), (rated[-1], {})], gate)
         assert refusal is None, refusal
     assert gate["not_flagged"] is True
@@ -930,13 +934,16 @@ def _selection_record(selection: dict[str, Decided]) -> dict[str, list[dict]]:
     return {"passing": passing, "failing": failing}
 
 
-def _with_round_summaries(plan: dict, rows_by_round: list[dict[str, dict]]) -> dict[str, dict]:
+def _with_round_summaries(plan: dict, rows_by_round: list[dict[str, dict]],
+                          closed_utc: str | None = None) -> dict[str, dict]:
     """For a copy of the plan that a test builds: record a closing export for each of its first rounds, one per entry
     of rows_by_round, and return the summaries the suite then reads for them, by path, holding what the gate reads of
-    a summary (its inputs.export and inputs.bundle, and its items rows)."""
+    a summary (its inputs.export and inputs.bundle, and its items rows). Each export is dated on its round's closing
+    date unless closed_utc is given, so the early-close counts (_early_close_refusal) are not checked."""
     out = {}
     for n, (rnd, rows) in enumerate(zip(plan["physician_realism_gate"]["rounds"], rows_by_round, strict=False), start=1):
-        rnd["closing_export"].update(sha256=f"{n:064x}", closed_utc=f"2026-10-{19 + n}T02:00:00.000Z")
+        rnd["closing_export"].update(sha256=f"{n:064x}",
+                                     closed_utc=closed_utc or f"{rnd['closing_date']}T{n:02d}:00:00.000Z")
         out[_summary_path(rnd)] = {
             "inputs": {"export": {"sha256": rnd["closing_export"]["sha256"],
                                   "exported_utc": rnd["closing_export"]["closed_utc"]},
@@ -1901,6 +1908,46 @@ def _closing_export_refusal(summary_export: dict, closing: dict, in_force: str) 
     return None
 
 
+CLOSING_SETS = ("advice_new", "advice_rerun", "advice_rerun_truncated", "multiturn_script")
+
+
+def _closing_counts_short(bundle: dict, rows: dict[str, dict], gate: dict) -> list[str]:
+    """The advice and multi-turn items of a round's bundle that its summary rows show short of either closing count:
+    ratings_complete below min_complete_ratings, or five_point.<key>.n below min_answers_per_key on a question the gate
+    reads for the item. Those questions are every five-point question of these items (A6.9's table and its rule 3;
+    for a script, min_answers_keys, as _check_realism_gate checks); tracing items do not count. A row or a question
+    missing from the summary is a KeyError: the program refuses that on its own."""
+    from scripts.import_verification_ratings import is_five_point, item_keys
+
+    short = []
+    for item in bundle["items"]:
+        if item["question_set"] not in CLOSING_SETS:
+            continue
+        keys = [k for k, spec in item_keys(item, bundle["questions"]).items() if is_five_point(spec.scale)]
+        row = rows[item["item_id"]]
+        if row["ratings_complete"] < gate["min_complete_ratings"] or any(
+                row["five_point"][k]["n"] < gate["min_answers_per_key"] for k in keys):
+            short.append(item["item_id"])
+    return short
+
+
+def _early_close_refusal(closing: dict, in_force: str, bundle: dict, rows: dict[str, dict], gate: dict) -> str | None:
+    """The early-close check as the plan's closing_export.check states it. A closing export dated (its UTC date)
+    before the closing date in force is accepted only if the round closed early, that is if its summary shows every
+    advice and multi-turn item of the round's bundle at both closing counts; else the round had not closed, and the
+    program refuses. An export dated on the closing date in force is not checked, and an item still short then is
+    'not enough ratings'. One dated after it is _closing_export_refusal's refusal. A reference for that program."""
+    from datetime import date
+
+    if date.fromisoformat(closing["closed_utc"][:10]) >= date.fromisoformat(in_force):
+        return None
+    short = _closing_counts_short(bundle, rows, gate)
+    if short:
+        return (f"closed early with {len(short)} advice or multi-turn item(s) short of the closing counts: the round "
+                "had not closed")
+    return None
+
+
 def test_the_gate_reads_only_the_summary_of_the_recorded_closing_export(plan, tmp_path):
     """Ratings saved after round 1 closes do not count, but the gate program compared the summary only with the bundle
     and the exclusions, so a summary built from a later export of the same spreadsheet, holding ratings saved after
@@ -2013,7 +2060,7 @@ def test_the_gate_refuses_a_closing_export_taken_after_the_closing_date_in_force
     extended = {**rnd, "closing_date_extensions": [{"recorded_on": "2026-10-30", "closing_date": "2026-11-15"}]}
     after_extension = summarise("2026-11-15T12:00:00.000Z")
     cases = [
-        (early, rnd, None),                          # an early close
+        (early, rnd, None),                          # an early close (its counts: _early_close_refusal)
         (last_second, rnd, None),                    # on the closing date
         (last_fraction, rnd, None),                  # the last second's fraction still counts
         (late, rnd, "after the closing date"),       # downloaded after the deadline, though recorded as the close
@@ -2077,6 +2124,140 @@ def test_the_gate_refuses_a_closing_export_taken_after_the_closing_date_in_force
     assert "no later than the end, 23:59:59Z, of the closing date in force" in record
     line = _clarification(record, "- The deadline:")
     assert "18:59:59 CDT" in line and line.rstrip().endswith("this changes neither the rule nor which items pass.")
+
+
+def test_an_early_closing_export_counts_only_once_every_item_has_both_counts(plan, w3_set, tmp_path):
+    """The round closes when every advice and multi-turn item has both closing counts, or at the end of the closing
+    date in force. The deadline check (test_the_gate_refuses_a_closing_export_taken_after_the_closing_date_in_force)
+    bounds the close from above, but an export taken before the date while items were still short would have cut the
+    round short and passed every check. A closing export dated (UTC) before the closing date in force is now accepted
+    only if its summary shows every advice and multi-turn item at both counts; on the date it is not checked, and items
+    still short are 'not enough ratings'. A clarification of the approved closing rule (owner's instruction relayed in
+    the session, 2026-10-05); it changes neither the rule nor which items pass."""
+    from scripts.import_verification_ratings import is_five_point, item_keys
+    from scripts.import_verification_ratings import main as import_main
+
+    gate = plan["physician_realism_gate"]
+    rnd = gate["rounds"][0]
+    in_force = _closing_date_in_force(rnd)
+    bundle = load_json(ROOT / rnd["bundle"])
+    # The questions each advice set's items have are the ones A6.9's table says the gate reads.
+    prereg = PREREG.read_text(encoding="utf-8")
+    table = {re.sub(r"`", "", row[0]): sorted(re.findall(r"`([^`]+)`", row[2]))
+             for row in _md_table(prereg, "| Question set | Items | Questions the gate reads")}
+    by_set = {}
+    for item in bundle["items"]:
+        by_set.setdefault(item["question_set"], set()).add(
+            tuple(sorted(k for k, spec in item_keys(item, bundle["questions"]).items() if is_five_point(spec.scale))))
+    assert {qs: [list(ks) for ks in by_set[qs]] for qs in table} == {qs: [keys] for qs, keys in table.items()}
+    assert set(CLOSING_SETS) == set(table) | {rnd["question_set"]}
+
+    def rows_with(changes: dict[str, dict]) -> dict[str, dict]:
+        """A summary row for every item of the bundle, each at both counts, with the given rows replaced."""
+        rows = {}
+        for item in bundle["items"]:
+            keys = [k for k, spec in item_keys(item, bundle["questions"]).items() if is_five_point(spec.scale)]
+            rows[item["item_id"]] = {"item_id": item["item_id"], "question_set": item["question_set"],
+                                     **_summary_row(dict.fromkeys(keys, (4, 4)))}
+        rows.update(changes)
+        return rows
+
+    first = {qs: next(i for i in bundle["items"] if i["question_set"] == qs) for qs in by_set}
+    script, advice, tracing = first[rnd["question_set"]], first["advice_rerun_truncated"], first["tracing_pair"]
+    script_keys = gate["min_answers_keys"]
+    short_script = _summary_row({**dict.fromkeys(script_keys, (4, 4)), gate["flag_adds"][0]: ("cant_judge", 4)})
+    short_advice = _summary_row({k: ("cant_judge", 4) for k in table["advice_rerun_truncated"]})
+    one_rating = _summary_row(dict.fromkeys(table["advice_new"], (4,)))
+    early = {"closed_utc": "2026-10-20T02:00:00.000Z"}
+    on_date = {"closed_utc": f"{in_force}T12:00:00.000Z"}
+    refused = "closed early with 1 advice or multi-turn item(s) short of the closing counts: the round had not closed"
+    cases = [
+        (early, {}, None),                                                       # early, every count met
+        (early, {script["item_id"]: short_script}, refused),                     # early, a script short of answers
+        (early, {advice["item_id"]: short_advice}, refused),                     # early, an advice item short
+        (early, {first["advice_new"]["item_id"]: one_rating}, refused),          # early, one complete rating
+        # Both counts are checked as the rule states them, even on a row the import cannot write (n counts numeric
+        # answers in complete ratings, so it is never above ratings_complete).
+        (early, {first["advice_new"]["item_id"]: {**_summary_row(dict.fromkeys(table["advice_new"], (4, 4))),
+                                                  "ratings_complete": 1}}, refused),
+        (early, {tracing["item_id"]: _summary_row({"patient_realism": (4,)})}, None),   # a tracing item does not count
+        (on_date, {script["item_id"]: short_script, advice["item_id"]: short_advice}, None),   # on the date: no check
+        ({"closed_utc": f"{in_force}T00:00:00.000Z"}, {script["item_id"]: short_script}, None),
+        ({"closed_utc": "2026-10-30T23:59:59.999Z"}, {script["item_id"]: short_script}, refused),
+    ]
+    for closing, changes, reason in cases:
+        assert _early_close_refusal(closing, in_force, bundle, rows_with(changes), gate) == reason, (closing, changes)
+    # Under an extension the closing date in force moves, and so does the line between early and on the date.
+    extended = _closing_date_in_force({**rnd, "closing_date_extensions": [
+        {"recorded_on": "2026-10-30", "closing_date": "2026-11-15"}]})
+    assert _early_close_refusal(on_date, extended, bundle, rows_with({script["item_id"]: short_script}), gate) \
+        == refused
+    # On the date, the items still short are 'not enough ratings': the script through the selection, and the advice
+    # item by the same rule over its own set's questions.
+    rows = rows_with({script["item_id"]: short_script, advice["item_id"]: short_advice})
+    _bundle, by_seed = _rated_scripts(rnd)
+    sid = script["provenance"]["source_id"]
+    assert _cumulative_selection([(by_seed, rows)], w3_set.seeds, gate)[sid] == (None, SHORT, (1,))
+    advice_keys = table["advice_rerun_truncated"]
+    assert _gate_decision(rows[advice["item_id"]], {**gate, "gate_keys": advice_keys,
+                                                    "min_answers_keys": advice_keys}) == SHORT
+
+    # The import's own summary of the committed synthetic export, in which most items are short: dated early it is
+    # refused, and dated on the closing date it is accepted.
+    fixture = load_json(ROOT / "tests" / "fixtures" / "verification_export_synthetic.json")
+    for when, accepted in (("2026-10-20T02:00:00.000Z", False), (f"{in_force}T18:00:00.000Z", True)):
+        path = tmp_path / f"export_{when[:10]}.json"
+        path.write_text(json.dumps({**fixture, "exported_utc": when}), encoding="utf-8")
+        out = tmp_path / f"out_{when[:10]}"
+        import_main(["--export", str(path), "--out-dir", str(out), "--resamples", "50"])
+        summary = load_json(next(out.glob("*.summary.json")))
+        closing = {"closed_utc": summary["inputs"]["export"]["exported_utc"]}
+        refusal = _early_close_refusal(closing, in_force, bundle, {r["item_id"]: r for r in summary["items"]}, gate)
+        assert (refusal is None) == accepted, (when, refusal)
+
+    # The approved check applies it to a round that a later round follows.
+    ids = sorted(by_seed)
+    two = copy.deepcopy(plan)
+    entry = {**copy.deepcopy(rnd), "name": "round 2 (a copy made for this test)", "bundle": "round2_for_this_test.json",
+             "bundle_id": "vtasks_round2_for_this_test", "bundle_sha256": None}
+    two["physician_realism_gate"]["rounds"].append(entry)
+    bundles = {entry["bundle"]: {**copy.deepcopy(bundle), "bundle_id": entry["bundle_id"], "items": []}}
+    bad = _summary_row({**dict.fromkeys(script_keys, (4, 4)), gate["gate_keys"][0]: (1, 2)})
+    below = {by_seed[s]["item_id"]: {"item_id": by_seed[s]["item_id"], "question_set": rnd["question_set"], **bad}
+             for s in ids[:3]}
+    seeds_now = w3_set.seeds
+    _check_realism_gate(two, seeds_now, bundles, _with_round_summaries(two, [rows_with(below)], early["closed_utc"]))
+    with pytest.raises(AssertionError, match=re.escape(refused)):
+        _check_realism_gate(two, seeds_now, bundles, _with_round_summaries(
+            two, [rows_with({**below, advice["item_id"]: short_advice})], early["closed_utc"]))
+
+    one_line = functools.partial(re.sub, r"\s+", " ")
+    a69 = one_line(_section(prereg, "### A6.9 Physician realism gate", "### Approval record"))
+    round_bullet = _section(a69, "- Round 1 is every rating saved on that bundle", "- **Extending the closing date.**")
+    spec = one_line(_section(prereg, "**Code still to write.**", "**Owner decisions"))
+    compares = _section(spec, "It reads files 4 and 5", "It compares items, not whole files")
+    refuses = _section(spec, "It refuses, writing nothing", "with no passing item")
+    record = one_line(_section(prereg, "### Approval record", None))
+    s13 = one_line(_section(W3_DESIGN.read_text(encoding="utf-8"), "**Which export counts.**", "**Why all three"))
+    proto = one_line(_section(PROTOCOL.read_text(encoding="utf-8"), "**Which items the paid runs use", "\n- **"))
+    assert "the program refuses it unless the summary's row for every advice and multi-turn item of the round's " \
+           "bundle has ratings_complete >= min_complete_ratings and five_point.<key>.n >= min_answers_per_key" \
+           in rnd["closing_export"]["check"]
+    assert "An export dated on the closing date in force is not checked for these counts" in \
+        rnd["closing_export"]["check"]
+    assert "accepts it only if its summary shows every advice and multi-turn item of the round at both counts" \
+        in rnd["closes"]
+    for name, text in (("A6.9 round bullet", round_bullet), ("section 13", s13)):
+        assert re.search(r"dated \(?(?:in )?UTC\)? before the closing date in force is accepted only if its summary "
+                         r"shows every advice and multi-turn item at both counts", text), name
+        assert "not checked for these counts" in text, name
+    assert "when that close time's UTC date is before the closing date in force (an early close)" in compares
+    assert "a round's close time falls before its closing date in force while an advice or multi-turn item of its " \
+           "summary is short of either closing count" in refuses
+    assert "An export downloaded before that date counts only if every advice and multi-turn item already has both " \
+           "counts" in proto
+    line = _clarification(record, "- An early close:")
+    assert line.rstrip().endswith("this changes neither the rule nor which items pass.")
 
 
 def test_the_closing_counts_are_read_from_a_report_that_shows_no_scores(plan):

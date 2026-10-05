@@ -742,7 +742,11 @@ It also refuses a close time after the end of the closing date in force, 23:59:5
 on 2026-10-31, or on a later date set by an extension recorded before the date it
 replaces (`physician_realism_gate.rounds[0].closing_date_extensions`), so an export
 downloaded after the deadline cannot be the closing export. An early close, once every
-item has both counts, may be at any time before then.
+item has both counts, may be at any time before then, and the program checks it: an
+export dated (UTC) before the closing date in force is accepted only if its summary shows
+every advice and multi-turn item at both counts, and refused otherwise, because the round
+had not closed. An export dated on the closing date in force is not checked for these
+counts, and a script still short then is "not enough ratings".
 
 **Why all three versions, not each version on its own.**
 

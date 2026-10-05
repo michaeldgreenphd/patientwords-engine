@@ -170,7 +170,9 @@ stop at any time.
   The round ends at the end of that date in UTC, 23:59:59Z, which is
   18:59:59 CDT in US Central time, and the program that applies the rule
   refuses an export downloaded after then, unless an extension recorded
-  before the date moved it. The
+  before the date moved it. An export downloaded before that date counts
+  only if every advice and multi-turn item already has both counts;
+  otherwise the program refuses it, because the round has not closed. The
   owner approved A6.9 on 2026-10-05, before anyone had a login, so the rule
   is fixed in advance. Only A6.9 is approved: the rest of Amendment 6, which
   proposes the advice waves themselves, is still proposed. Three accounts
