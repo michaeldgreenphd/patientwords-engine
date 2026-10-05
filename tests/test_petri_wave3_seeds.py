@@ -1135,6 +1135,28 @@ def test_the_gate_checks_that_the_import_excluded_exactly_the_recorded_accounts(
     assert all("expected_exclusions" in rnd[k] for k in ("excluded_raters", "reader"))
 
 
+def test_the_closing_counts_are_read_from_a_report_that_shows_no_scores(plan):
+    """The round closes early, or has its closing date extended, on counts only: complete ratings and numeric answers.
+    The only report the first draft allowed before close, the app's Progress report, shows complete ratings and not
+    numeric answers, and the import summary that has them puts each median beside them, so the owner could not apply
+    the rule's own criterion without reading scores (Codex review of PR #87, 2026-10-05). A6.9 now specifies a counts
+    report among the code still to write: per item, complete ratings and numeric answers on each question the gate
+    reads, and no median, flag or score. This changes neither the rule nor which items pass."""
+    rnd = plan["physician_realism_gate"]["round"]
+    one_line = functools.partial(re.sub, r"\s+", " ")
+    prereg = PREREG.read_text(encoding="utf-8")
+    extension = one_line(_section(prereg, "- **Extending the closing date.**", "- **Items short of answers.**"))
+    counts = one_line(_section(prereg, "**The counts report**", "**Owner decisions"))
+    assert "counts report" in extension and "numeric answers" in extension
+    assert "so it can be read for this" not in extension, "the Progress report alone does not show numeric answers"
+    for needed in ("`ratings_complete`", "`five_point.<key>.n`", "for each question the gate reads",
+                   "no median", "no share of low answers", "no flag", "no answer and no note",
+                   "writes no file in the repository", "decide an extension"):
+        assert needed in counts, f"the counts report's spec does not say {needed!r}"
+    assert "counts report" in rnd["closing_date_rule"] and "no median, flag or score" in rnd["closing_date_rule"]
+    assert "counts report" in rnd["closes"]
+
+
 def test_section_13_tables_are_the_plan_rows(plan):
     """Section 13 shows the gate's counts as three tables; they must be the plan's rows, which the suite recomputes
     (test_the_realism_gate_floor_and_counts_follow_from_the_plan)."""

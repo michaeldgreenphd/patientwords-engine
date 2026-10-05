@@ -1140,12 +1140,17 @@ model output until it fires. The same round and rule select the Petri wave-3 sce
   current closing date passes; the same edit changes the wave-3 plan's
   `physician_realism_gate.round.closing_date`. It is decided on rating counts
   only (how many complete ratings, and numeric answers, the items have),
-  never on realism scores or anything computed from them. The app's Progress
-  report (its DEPLOY.md section 15) gives each item's complete ratings and
-  shows no answers, so it can be read for this. The import's summary puts
-  each question's median beside its answer count, so it is not read before
-  the round closes. A closing date that has passed is not extended: the
-  round has closed on it.
+  never on realism scores or anything computed from them. Before the round
+  closes, these counts are read from the counts report ("Code still to
+  write" below), which gives each item's complete ratings and numeric
+  answers and nothing else; whether the round has closed early on its counts
+  is read from it too. The app's Progress report (its DEPLOY.md section 15)
+  gives each item's complete ratings and shows no answers, so it may also be
+  read, but it cannot show an item that has two complete ratings and is
+  still short of numeric answers. The import's summary puts each question's
+  median beside its answer count, so it is not read before the round
+  closes. A closing date that has passed is not extended: the round has
+  closed on it.
 - **Items short of answers.** The app tops up an item only while fewer than
   `RATERS_PER_ITEM` active physicians are assigned to it, whatever their
   answers (`assignTopUp_` in the app's `src/Logic.gs`), and its admin menu has
@@ -1359,6 +1364,22 @@ reported by name, and no selection file is written for it. It does not
 compute Wave R's recomputed baselines, which come from the ranking report as
 "What changes in the waves" says.
 
+**The counts report**, also still to write, before the round's closing date
+(proposed: a `--counts-only` option of `scripts/import_verification_ratings.py`,
+which already checks an export and applies `--exclude-rater`). It reads an
+export taken while the round is open, with `--exclude-rater` for the
+excluded accounts, and prints, for each advice and script item of the
+bundle, its complete ratings by included physicians and, for each question
+the gate reads for it, the numeric answers in those ratings: the counts the
+summary records as `ratings_complete` and `five_point.<key>.n`, computed the
+same way. It also prints whether each item has both of the round's closing
+counts, and how many items do not. It prints no median, no share of low
+answers, no flag, no agreement coefficient, no answer and no note, and it
+writes no file in the repository (the export stays outside it, as for the
+import). Before the round closes, it and the app's Progress report are what
+the owner reads about the ratings: to see whether the round has closed on its
+counts, and to decide an extension ("Extending the closing date" above).
+
 **Owner decisions, as chosen on 2026-10-05.** The text above applies these
 choices. The draft proposed a value for each; the owner chose the proposed
 value for every decision but the threshold.
@@ -1470,3 +1491,7 @@ their own before it.
     `round.expected_exclusions`, which the gate program compares with the
     summary's excluded raters, refusing on any difference; this changes
     neither the rule nor which items pass.
+  - Counts report: the closing counts and any extension are read before the
+    round closes from a counts-only report (complete ratings and numeric
+    answers per item; no medians, flags or scores), added to "Code still to
+    write"; this changes neither the rule nor which items pass.
