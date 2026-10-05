@@ -106,11 +106,13 @@ bundle is built with ``--previous-bundle <the previous round's bundle>``, which 
 bundle is in the new one under the same id with the same question set, display and reveal (``previous_item_missing``,
 ``previous_item_changed``), every question id it uses is kept (``previous_question_missing``) with the same scale
 type, answer values, abstain value, text length limit, phase, required, per_arm and reveal lock
-(``previous_question_changed``), and the notes length limit is the same (``previous_notes_changed``): the app needs
-every item a physician holds to stay in the bundle it switches to, stores answers under item and question ids,
-validates a stored answer and note against the question's current scale, phase and lock and the notes limit, and
-gates the reveal and an item's completeness on ``required``. These are compared as canonical JSON, so a value of
-another JSON type (true for 1) is a change, as it is to the app and the import.
+(``previous_question_changed``), no question set the previous items use has gained a required question
+(``previous_required_question_added``; a new optional question is allowed), and the notes length limit is the same
+(``previous_notes_changed``): the app needs every item a physician holds to stay in the bundle it switches to, stores
+answers under item and question ids, validates a stored answer and note against the question's current scale, phase
+and lock and the notes limit, and gates the reveal and an item's completeness on ``required``, so a required
+question added to a set has no stored answer and would turn a completed rating incomplete. These are compared as
+canonical JSON, so a value of another JSON type (true for 1) is a change, as it is to the app and the import.
 docs/verification_protocol.md (Rounds) has how round 2 is built.
 
 Usage (from the engine root):
@@ -1303,13 +1305,15 @@ def notes_limit(questions: Any, where: str) -> int:
 def check_previous_bundle(inp: Inputs, path: Path, items: list[dict], questions: dict) -> dict:
     """The previous round's bundle, checked against this one: every item it holds is here under the same id, with
     the same question set, display and reveal, every question id of each of its question sets is still in that
-    set with the same answer contract (``answer_contracts``), and the notes limit (``notes_limit``) is the same. The
-    app needs every item a physician holds to stay in the bundle it switches to, and stores answers under the item
-    id and the question id (its DEPLOY.md section 19), so a missing item or question, another text under the same
-    id, another scale, set of answer values, phase, required, per_arm or reveal lock under the same question id, or
-    another notes limit is refused (ids only). Contracts are compared as canonical JSON, never with Python's ==: the
-    app (===) and the import (same_value) keep JSON types apart, so true is not 1 and 1.0 is not 1 here either,
-    though the app would take 1.0 for 1 (refusing that is the safe side)."""
+    set with the same answer contract (``answer_contracts``), no question set its items use has gained a required
+    question, and the notes limit (``notes_limit``) is the same. The app needs every item a physician holds to stay
+    in the bundle it switches to, and stores answers under the item id and the question id (its DEPLOY.md section
+    19), so a missing item or question, another text under the same id, another scale, set of answer values, phase,
+    required, per_arm or reveal lock under the same question id, a new required question that stored ratings cannot
+    have answered (a new optional one is kept), or another notes limit is refused (ids only). Contracts are compared
+    as canonical JSON, never with Python's ==: the app (===) and the import (same_value) keep JSON types apart, so
+    true is not 1 and 1.0 is not 1 here either, though the app would take 1.0 for 1 (refusing that is the safe
+    side)."""
     role = "previous round's bundle"
     data = inp.read_bytes(path, role)
     prev = _json_of(data, path, role)
@@ -1353,6 +1357,24 @@ def check_previous_bundle(inp: Inputs, path: Path, items: list[dict], questions:
                                             f"answer contract: {altered}. An answer stored under the id would be "
                                             "read on another scale, phase, requirement or lock. Wording may change "
                                             "between bundles; what an answer means may not")
+    # Every previous item is here with the same question set (checked above), so these are the sets whose items may
+    # hold stored ratings. A question added to one of them as required makes each such rating lack a required
+    # answer: the app (itemComplete_, blindComplete_) and the import (is_complete; reveal_blind_incomplete for a
+    # blind one) would count a completed item as incomplete and refuse a stored reveal. An optional one changes
+    # neither, and a set no previous item uses holds no stored rating.
+    retained_sets = sorted({now[old["item_id"]]["question_set"] for old in prev["items"]})
+    added_required = [f"{set_name}.{q['id']}" for set_name in retained_sets
+                      for q in questions["question_sets"][set_name]["questions"]
+                      if f"{set_name}.{q['id']}" not in old_contracts
+                      and new_contracts[f"{set_name}.{q['id']}"]["required"]]
+    if added_required:
+        refuse("previous_required_question_added", f"question set(s) that items of {prev.get('bundle_id')} use "
+                                                   f"gained required question(s): {sorted(added_required)}. A "
+                                                   "rating saved on the previous bundle holds no answer to them, so "
+                                                   "the app and the import would count a completed item as "
+                                                   "incomplete (and refuse a stored reveal that lacks a required "
+                                                   "blind answer). Add a question to such a set as optional "
+                                                   "(required false)")
     old_notes = notes_limit(prev["questions"], f"--previous-bundle {path}")
     new_notes = notes_limit(questions, "this bundle's questions")
     if old_notes != new_notes:
@@ -1554,7 +1576,8 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     ap.add_argument("--previous-bundle", default=None, metavar="PATH",
                     help="the previous round's bundle: refuse unless every item it holds is in this one, unchanged, "
                          "every question id it uses is kept with the same scale, answer values, phase, requirement "
-                         "and lock, and the notes limit is the same")
+                         "and lock, no question set its items use gains a required question, and the notes limit is "
+                         "the same")
     ap.add_argument("--pilot-trace-optional", action="append", metavar="RUN_ID",
                     help="do not require (or read) trace results for this run's pairs; by default every pilot "
                          "pair needs one (Run 2's trace pairs file is still read: its item ids are keyed on it)")

@@ -18,7 +18,8 @@ it, holds "__" or shares a stem with another run's (optional runs included), tha
 other than such a copy while its trace is required (an optional run's second file is checked by name only), or whose
 review map, trace pairs file or sidecar does not fit it; and later rounds (--previous-bundle): a previous item
 dropped or changed, a question id dropped or kept with another scale, answer values (of another JSON type included),
-phase, requirement or lock, another notes limit, and a previous bundle of another shape. Every input here is
+phase, requirement or lock, a required question added to a set previous items use (an optional one, or one in a set
+no previous item uses, kept), another notes limit, and a previous bundle of another shape. Every input here is
 synthetic, abstract and non-medical (the medical vocabulary rule in AGENTS.md); the seal fixtures follow
 tests/test_seal_check.py and tests/test_tierb_split.py. The committed-bundle tests check every bundle under
 data/verification/ against the contract, with failure messages naming item ids only, never row text, and re-export
@@ -1731,6 +1732,57 @@ def test_a_question_reworded_or_on_a_renamed_identical_scale_is_kept(tmp_path, c
     paths["questions"] = dump(tmp_path / "questions.json", questions)
     second, _ = rerun(paths, tmp_path / "round2", "--previous-bundle", str(previous))
     assert second["selection"]["previous_bundle"]["items_kept"] == len(first["items"])
+
+
+def _added_question(required: Any, phase: str = "blind") -> dict:
+    return {"id": "added_check", "scale": "yes_no", "required": required, "phase": phase,
+            "text": "Is anything else unclear?"}
+
+
+def _questions_with_added(tmp_path: Path, set_name: str, question: dict) -> Path:
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    questions["question_sets"][set_name]["questions"].append(question)
+    return dump(tmp_path / "questions.json", questions)
+
+
+@pytest.mark.parametrize("set_name, phase, required", [("tracing_pair", "blind", True), ("tracing_pair", "blind", 1),
+                                                       ("advice_new", "after_reveal", True),
+                                                       ("advice_new", "blind", True),
+                                                       ("multiturn_script", "blind", True)])
+def test_a_required_question_added_to_a_set_previous_items_use_is_refused(tmp_path, set_name, phase, required):
+    # Codex review of PR #86 (4183566200): the check compared only the question ids the previous bundle had, so a
+    # required question added to a set its items use passed. A rating saved on the previous bundle has no answer to
+    # it: the app and the import (is_complete) would count a completed item as incomplete, and the import would
+    # refuse a stored reveal lacking a required blind answer (reveal_blind_incomplete). required is read by truth
+    # value, as the app and the import read it.
+    paths, first, previous = _round1(tmp_path)
+    dump(previous, first)
+    paths["questions"] = _questions_with_added(tmp_path, set_name, _added_question(required, phase))
+    message = refused_paths(paths, "previous_required_question_added", "--previous-bundle", str(previous))
+    assert f"['{set_name}.added_check']" in message and first["bundle_id"] in message
+
+
+@pytest.mark.parametrize("required", [False, 0])
+def test_an_optional_question_added_to_a_set_previous_items_use_is_kept(tmp_path, capsys, required):
+    paths, first, previous = _round1(tmp_path)
+    dump(previous, first)
+    paths["questions"] = _questions_with_added(tmp_path, "tracing_pair", _added_question(required))
+    second, _ = rerun(paths, tmp_path / "round2", "--previous-bundle", str(previous))
+    assert second["selection"]["previous_bundle"]["items_kept"] == len(first["items"])
+    assert "added_check" in [q["id"] for q in second["questions"]["question_sets"]["tracing_pair"]["questions"]]
+
+
+def test_a_required_question_added_to_a_set_no_previous_item_uses_is_kept(tmp_path, capsys):
+    # a set that no previous item uses holds no stored rating, so it may gain a required question
+    paths, first, previous = _round1(tmp_path)
+    dump(previous, first)
+    paths["questions"] = _questions_with_added(tmp_path, "advice_rerun_truncated", _added_question(True))
+    assert "advice_rerun_truncated.added_check" in refused_paths(paths, "previous_required_question_added",
+                                                                 "--previous-bundle", str(previous))
+    first["items"] = [i for i in first["items"] if i["question_set"] != "advice_rerun_truncated"]
+    dump(previous, first)
+    second, _ = rerun(paths, tmp_path / "round2", "--previous-bundle", str(previous))
+    assert second["selection"]["previous_bundle"]["items_added"] == 1
 
 
 @pytest.mark.parametrize("change, fragment", [

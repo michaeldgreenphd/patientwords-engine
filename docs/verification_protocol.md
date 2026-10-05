@@ -401,7 +401,13 @@ python scripts/seal_check.py --site ../patientwords
   is complete. After such a change, an answer given in round 1 would be
   refused, read on another scale, or counted as complete or incomplete
   differently. Answer values are compared with their JSON types, as the app and
-  the import compare them, so `true` in place of `1` is another value. The
+  the import compare them, so `true` in place of `1` is another value. A new
+  question may be added to a question set that round 1 items use only as
+  optional: the export stops, naming question ids, on a new required one
+  (`previous_required_question_added`), because no round 1 rating answers it,
+  so the app and the import would count a completed item as incomplete, and the
+  import would refuse a stored reveal that lacks a required blind answer. A set
+  that no round 1 item uses may gain required questions. The
   export also stops if the notes length limit changed
   (`previous_notes_changed`): the app and the import refuse a note longer than
   the bundle's limit. Wording may change. The main-study pairs are ranked again from
