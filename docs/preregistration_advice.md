@@ -1075,8 +1075,9 @@ verification study (`docs/verification_protocol.md`). Items that fail are not
 elicited in these waves. The rule reads only the physicians' realism and
 plausibility answers. It does not read their urgency answers, the agreement
 coefficients, their notes or any model output; none of these waves has any
-model output until it fires. The same round and rule select the Petri wave-3 scenarios
-(`docs/petri_wave3_design.md`, section 13).
+model output until it fires. The same rule selects the Petri wave-3 scenarios, from
+round 1 and, if fewer than six pass, later rounds ("Rounds" below;
+`docs/petri_wave3_design.md`, section 13).
 
 **Round 1, its export and how it is read.**
 
@@ -1686,6 +1687,12 @@ their own before it.
     later round if six or more wave-3 seeds already pass there, and the
     suite checks the same from the committed summaries; this changes
     neither the rule nor which items pass.
+  - Wave 3's statements: once the gate is applied, the wording every
+    statement carries names the rounds that decided the passing scenarios
+    ("round 1", or for example "rounds 1 and 2" if a later round decided
+    any), not round 1 alone, and A6.9 and section 13 say wave 3 may be
+    selected from later rounds; this changes neither the rule nor which
+    items pass.
 - Owner's decision, 2026-10-05 (after the approval; it can change which
   seeds pass, so it is recorded here as a decision, not as a
   clarification). Asked in the agent session whether a later round may

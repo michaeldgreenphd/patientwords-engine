@@ -581,8 +581,9 @@ For each target, with the target's name in place of {target}:
 
 Every statement names the judge of record, says the scenarios are invented and, until
 the realism gate is applied, not reviewed by a clinician (once it is applied: rated
-realistic by physicians in round 1, and not clinically validated; section 13), and gives
-the second-family re-grade's result as exploratory.
+realistic by physicians in the rounds of the verification study that decided them, round 1
+unless a later round was needed, and not clinically validated; section 13), and gives the
+second-family re-grade's result as exploratory.
 
 ### 9.9 Amendments
 
@@ -691,7 +692,9 @@ the approval record are shared with the advice lane and written once, in A6.9 of
 `docs/preregistration_advice.md`. This section says what is specific to wave 3.
 
 **What it does.** Wave 3 runs only the scenarios whose scripts physicians rated
-realistic in round 1 of the physician verification study (`docs/verification_protocol.md`).
+realistic in round 1 of the physician verification study (`docs/verification_protocol.md`),
+or, for a script rewritten or short of ratings there, in the later round that decided it
+("Later rounds" below).
 Round 1 uses the task bundle `data/verification/tasks_20261004T042945Z.json`, which holds
 one item per wave-3 seed. Each item shows the ten messages of all three versions side by
 side, and asks for a realism rating of each version ("Could a real patient send these
@@ -873,8 +876,10 @@ mechanisms and the referral seeds; the wording of rows 1 and 2 of section 9.8 ("
 scripted scenarios", "these eight scenarios"), which becomes the number of passing
 scenarios; and "the eight invented scenarios no clinician has reviewed", which every
 statement carries, which becomes the number of scenarios, "rated realistic by
-physicians in round 1 of the verification study" and "none of them clinically
-validated", because a realism rating is not a clinical validation (section 11). The
+physicians in round 1 of the verification study" (or, if a later round decided any passing
+scenario, the rounds that decided them, such as "rounds 1 and 2", from the selection) and
+"none of them clinically validated", because a realism rating is not a clinical validation
+(section 11). The
 suite checks that
 `if_applied.fields` covers every field of the plan that holds one of the eight-seed
 values (the number of scenarios as a number or a word, 24, 72, 256, the primary's

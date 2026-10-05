@@ -2008,11 +2008,69 @@ def test_the_limitations_separate_the_realism_rating_from_clinical_validation(pl
     assert "(section 13)" in s11 and "(section 13)" in grounding
     assert "That rating is not clinical validation" in s11 and "`scenario.reference` is null" in s11
     for name, text in (("section 9.8", s98), ("section 13", s13), ("plan if_applied", applied)):
-        assert "rated realistic by physicians in round 1" in text, name
+        assert "rated realistic by physicians in" in text, name
         assert re.search(r"not (?:a )?clinical(?:ly)? validat|none of them clinically validated", text), name
     assert "until the realism gate is applied, not reviewed by a clinician" in s98
     assert "no clinician has reviewed" in plan["statements"]["every_statement_carries"], \
         "the pre-application wording, which if_applied replaces"
+
+def _rounds_phrase(rounds: Iterable[int]) -> str:
+    """The rounds that decided the passing seeds, as the statements name them (if_applied, every_statement_carries):
+    'round 1', 'rounds 1 and 2', 'rounds 1, 2 and 3'."""
+    ks = [str(k) for k in sorted(set(rounds))]
+    return f"round {ks[0]}" if len(ks) == 1 else f"rounds {', '.join(ks[:-1])} and {ks[-1]}"
+
+
+def test_the_statements_name_the_rounds_that_decided_the_passing_scenarios(plan, w3_set):
+    """Once the gate is applied, every wave-3 statement carries the scenarios' realism rating. The plan's wording said
+    every passing scenario was "rated realistic by physicians in round 1", but a rewritten script, or one short of
+    ratings in round 1, is decided by a later round, and round 1 rated a rewritten script's earlier text and rejected
+    it (Codex review of PR #87, 2026-10-05). The wording now names the rounds that decided the passing scenarios,
+    from the selection: "round 1" when round 1 decided all of them, else those rounds. Section 9.8, section 13 and
+    A6.9 say the same. This changes neither the rule nor which items pass."""
+    gate = plan["physician_realism_gate"]
+    applied = gate["if_applied"]["fields"]["statements.every_statement_carries"]
+    template = re.search(r"becomes '([^']*)'", applied).group(1)
+    assert "round 1 of the verification study" not in template, "the wording is true whichever round decided"
+    assert "R the rounds that decided the passing seeds (selection.passing[].round)" in applied
+    examples = re.findall(r"'(rounds? [\d, and]+?)'", applied)
+    cases = {(1, 1, 1): "round 1", (2,): "round 2", (1, 2, 1): "rounds 1 and 2", (3, 1, 2): "rounds 1, 2 and 3"}
+    assert all(_rounds_phrase(rounds) == phrase for rounds, phrase in cases.items())
+    assert examples and set(examples) <= set(cases.values()), examples
+
+    # From a selection a later round completed: round 1 left five scenarios passing, and round 2 decided a sixth.
+    _bundle1, round1 = _rated_scripts(gate["rounds"][0])
+    ids = sorted(w3_set.seeds)
+    fine = dict.fromkeys(gate["min_answers_keys"], (4, 4))
+    good, bad = _summary_row(fine), _summary_row({**fine, gate["gate_keys"][0]: (1, 2)})
+    short = _summary_row({**fine, gate["flag_adds"][0]: ("cant_judge", 4)})
+    rows1 = {item["item_id"]: {ids[0]: short, ids[1]: bad, ids[2]: bad}.get(sid, good) for sid, item in round1.items()}
+    item2 = {**copy.deepcopy(round1[ids[0]]), "item_id": "round2_item"}
+    record = _selection_record(_cumulative_selection([(round1, rows1), ({ids[0]: item2}, {"round2_item": good})],
+                                                     w3_set.seeds, gate))
+    rounds = [e["round"] for e in record["passing"]]
+    assert sorted(rounds) == [1, 1, 1, 1, 1, 2]
+    statement = template.replace("S", NUMBER_WORDS[len(rounds)], 1).replace(" R ", f" {_rounds_phrase(rounds)} ", 1)
+    assert statement == ("the six invented scenarios rated realistic by physicians in rounds 1 and 2 of the "
+                         "verification study, none of them clinically validated")
+
+    one_line = functools.partial(re.sub, r"\s+", " ")
+    design = W3_DESIGN.read_text(encoding="utf-8")
+    s98 = one_line(_section(design, "### 9.8 What each outcome permits", "### 9.9"))
+    s13 = one_line(_section(design, "## 13. Physician realism gate", None))
+    prereg = PREREG.read_text(encoding="utf-8")
+    a69_what = one_line(_section(prereg, "**What it does.** Wave A elicits", "**Round 1, its export"))
+    record_text = one_line(_section(prereg, "### Approval record", None))
+    assert "rated realistic by physicians in the rounds of the verification study that decided them, round 1 " \
+           "unless a later round was needed" in s98
+    assert "realistic by physicians in round 1, and not clinically validated" not in s98
+    assert "or, for a script rewritten or short of ratings there, in the later round that decided it" in s13
+    assert 'the rounds that decided them, such as "rounds 1 and 2", from the selection' in s13
+    assert "The same round and rule select the Petri wave-3 scenarios" not in a69_what
+    assert "from round 1 and, if fewer than six pass, later rounds" in a69_what
+    line = _clarification(record_text, "- Wave 3's statements:")
+    assert '"rounds 1 and 2"' in line and line.rstrip().endswith("this changes neither the rule nor which items pass.")
+
 
 def test_section_13_tables_are_the_plan_rows(plan):
     """Section 13 shows the gate's counts as three tables; they must be the plan's rows, which the suite recomputes
