@@ -722,9 +722,9 @@ edited after rating" below).
 account, the owner's own pilot account and the wording-pilot physician's account) are
 excluded at import. Their rater codes in the round's export and the spreadsheet round 1
 ran in are written down before the import: in A6.9's approval record and, by the same
-dated edit, in the plan's `physician_realism_gate.round.expected_exclusions`. In a new
-spreadsheet all three are "not in the export"; in the pilot's, each has its own code, or
-is "never created" if it was never created there. The program that applies the gate
+dated edit, in the plan's `physician_realism_gate.rounds[0].expected_exclusions`. In a
+new spreadsheet all three are "not in the export"; in the pilot's, each has its own code,
+or is "never created" if it was never created there. The program that applies the gate
 refuses a record that disagrees with the spreadsheet, and refuses unless the summary
 excluded exactly the recorded codes, so a forgotten `--exclude-rater`, or a physician of
 the round excluded, cannot reach the selection.
@@ -732,9 +732,9 @@ the round excluded, cannot reach the selection.
 **Which export counts.** The export the owner downloads when round 1 closes is the
 gate's only input, and ratings saved after it do not count. Its sha256 and the close
 time (the export's own `exported_utc`) are written down before the import, in A6.9's
-approval record and in the plan's `physician_realism_gate.round.closing_export`. The
-program that applies the gate refuses a summary whose `inputs.export` differs from them,
-so a summary of a later export of the same spreadsheet cannot reach the selection.
+approval record and in the plan's `physician_realism_gate.rounds[0].closing_export`.
+The program that applies the gate refuses a summary whose `inputs.export` differs from
+them, so a summary of a later export of the same spreadsheet cannot reach the selection.
 
 **Why all three versions, not each version on its own.**
 
@@ -803,7 +803,22 @@ tolerate two (the table above). When more means are zero than that, the gate's p
 reported and the statements apply as written, so row 2 applies when the primary passes.
 If fewer than six scenarios pass, wave 3 does not fire as registered: the failing
 scripts are rewritten, physicians rate them again in a later round, and the gate is then
-applied again (the owner's choice; decision 2 below).
+applied again (the owner's choice; decision 2 below), across the rounds ("Later rounds"
+below).
+
+**Later rounds.** The plan's `physician_realism_gate.rounds` lists the rating rounds in
+order, earliest first; today it holds round 1 alone. A later round is appended, by a dated
+amendment (section 9.9) and a dated note in A6.9's approval record, before its bundle is
+given to any physician. Its bundle need hold only the rewritten scripts, and its
+exclusions and closing export are recorded before its import and checked as round 1's
+are. The gate then selects across the rounds: each seed is decided by the earliest round
+whose bundle rated it at its current digest. So a script that passed in round 1 and has
+not been edited since keeps its round-1 result and is not rated again; a rewritten
+script, which has a new digest, is decided by the later round that rated it; a later
+round that rates a script at a digest an earlier round already rated does not replace
+the earlier result; and a script whose current digest no round rated cannot pass. Only
+wave 3 has later rounds: the advice items that fail are dropped, not rewritten (A6.9,
+decision 3), so Wave A and Wave R are selected from round 1 alone.
 
 **Cost.** Section 5's estimates scale with the conversations, three per scenario per
 epoch. At wave-2 rates and reply lengths, per target (three epochs):
@@ -825,9 +840,10 @@ eight). Section 5's suggested judge ceilings remain enough.
 **How the selection is recorded.** The gate report that A6.9 describes lists all eight
 scripts with their values and decisions. A dated amendment to the plan (section 9.9),
 made before the pilot epoch, then sets `physician_realism_gate.selection` to the gate
-report and the import summary (paths and sha256), the passing seed ids and the failing
-ones with their reasons. The same amendment changes every field of the plan whose value
-depends on which seeds pass, as the plan's `if_applied.fields` says for each one. Among
+report and each round's import summary (paths and sha256), the passing seed ids and the
+failing ones with their reasons, each with the round that decided it. The same amendment
+changes every field of the plan whose value depends on which seeds pass, as the plan's
+`if_applied.fields` says for each one. Among
 them: the passing seeds and 3S samples in `fires_rule`; the counts; the interval's
 multiplier, t(0.975, S - 1); the number of sign assignments of the scenario gate; the
 mechanisms and the referral seeds; the wording of rows 1 and 2 of section 9.8 ("eight new
@@ -851,12 +867,12 @@ the reason. Every fire then selects the passing seeds by `seed_ids`.
 **Scripts edited after rating.** The seed file is a draft, and a script can still be
 edited before its first run, but an edited script is not the script physicians rated. It
 can pass only after physicians rate the new text in a later round, and the program that
-applies the gate, which reads the seed file as it is when it runs, refuses a passing seed
-whose digest differs from the one the bundle recorded (A6.9, "Code still to write", lists
-every file the program reads).
+applies the gate, which reads the seed file as it is when it runs, refuses while it holds
+a seed whose current digest no round's bundle recorded ("Later rounds" above; A6.9, "Code
+still to write", lists every file the program reads).
 Since the owner approved the gate (`physician_realism_gate.approval.approved`), the
 suite also fails as soon as a rated seed is edited, or a seed is added to or removed from
-the seed file, until the plan names a round that rated the seed file as it then is.
+the seed file, until a round in the plan's `rounds` has rated each seed as it then is.
 Before the approval the suite compared the gate block only with the bundle it names,
 never with the seed file, so that the draft seeds could still be edited while the rule
 was only proposed. An edit made now fails the suite, and physicians would rate the old

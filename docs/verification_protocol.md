@@ -181,7 +181,9 @@ stop at any time.
   bundle stay out of the round's export"). The sha256 and time of the
   export downloaded at close are written down before the import too, and
   the program refuses a summary of any other export, so a rating saved
-  after the close cannot count.
+  after the close cannot count. If fewer than six wave-3 scripts pass, the
+  failing ones are rewritten and rated in a later round, and the scripts
+  that passed keep their round-1 result and are not rated again.
 - **Reference urgency for the advice preregistration.** The physicians'
   answers on the 24 new questions are candidate adjudicated reference tiers.
   The analysis takes one tier per item, so a rule for combining physicians

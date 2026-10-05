@@ -622,12 +622,14 @@ def _t_quantile(p: float, df: int) -> float:
     return (lo + hi) / 2
 
 
-def _rated_scripts(gate: dict) -> tuple[dict, dict[str, dict]]:
-    """The round's bundle, checked against the hashes the gate records, and its script items by seed id."""
-    rnd = gate["round"]
-    bundle_path = ROOT / rnd["bundle"]
-    assert hashlib.sha256(bundle_path.read_bytes()).hexdigest() == rnd["bundle_sha256"]
-    bundle = load_json(bundle_path)
+def _rated_scripts(rnd: dict, bundle: dict | None = None) -> tuple[dict, dict[str, dict]]:
+    """One round's bundle, checked against the hashes its entry in the gate's rounds records, and its script items by
+    seed id. A bundle passed in (a later round a test builds, which has no file) is checked against the entry's id and
+    questions sha256 only."""
+    if bundle is None:
+        bundle_path = ROOT / rnd["bundle"]
+        assert hashlib.sha256(bundle_path.read_bytes()).hexdigest() == rnd["bundle_sha256"]
+        bundle = load_json(bundle_path)
     assert bundle["bundle_id"] == rnd["bundle_id"]
     assert bundle["questions_sha256"] == rnd["questions_sha256"]
     script_items = [i for i in bundle["items"] if i["question_set"] == rnd["question_set"]]
@@ -643,15 +645,28 @@ def _rated_seed_mismatches(by_seed: dict[str, dict], seeds_by_id: dict[str, dict
                   if sid not in seeds_by_id or seeds.seed_digest(seeds_by_id[sid]) != item["provenance"]["seed_sha256"])
 
 
-def _check_realism_gate(plan: dict, seeds_by_id: dict[str, dict]) -> None:
-    """The gate block against its bundle, and, once approved, against the seed file. The bundle must be the file it
-    hashes to and hold one script item per seed id, with gate keys that are the import's own keys for the per-version
-    five-point question, one per arm, and flag_adds the item's other five-point questions, which the import's flag
-    also covers. Those checks compare the block with the bundle it names, a committed file that is never rewritten,
-    so they bind nothing else. Every comparison with the seed file (that the bundle rated each of its seeds, from its
-    path, on its current digests: item_match) runs only once the owner has approved the gate, which the owner did on
-    2026-10-05. A gate that is only proposed leaves the draft seeds free to be edited, added or removed, because the
-    suite must not enforce a rule nobody has approved."""
+def _deciding_rounds(rated: list[dict[str, dict]], seeds_by_id: dict[str, dict]) -> dict[str, int | None]:
+    """cumulative_selection: for each seed of the seed file, the index in rounds of the earliest round whose bundle
+    rated it at its current digest (seed_digest), or None when no round did. rated holds each round's script items by
+    seed id, in the order of rounds."""
+    deciding: dict[str, int | None] = {}
+    for sid, seed in seeds_by_id.items():
+        digest = seeds.seed_digest(seed)
+        deciding[sid] = next((k for k, by_seed in enumerate(rated)
+                              if sid in by_seed and by_seed[sid]["provenance"]["seed_sha256"] == digest), None)
+    return deciding
+
+
+def _check_realism_gate(plan: dict, seeds_by_id: dict[str, dict], bundles: dict[str, dict] | None = None) -> None:
+    """The gate block against the bundle of each of its rounds, and, once approved, against the seed file. Each bundle
+    must be the file it hashes to (or one a test passes in bundles, by path) and hold one script item per seed id,
+    with gate keys that are the import's own keys for the per-version five-point question, one per arm, and flag_adds
+    the item's other five-point questions, which the import's flag also covers. Those checks compare the block with
+    the bundles it names, committed files that are never rewritten, so they bind nothing else. Every comparison with
+    the seed file (that some round rated each of its seeds, from its path, at its current digest, and that every seed
+    a round rated is still in it: item_match, cumulative_selection) runs only once the owner has approved the gate,
+    which the owner did on 2026-10-05. A gate that is only proposed leaves the draft seeds free to be edited, added or
+    removed, because the suite must not enforce a rule nobody has approved."""
     from scripts.import_verification_ratings import is_five_point, item_keys
 
     gate = plan["physician_realism_gate"]
@@ -662,26 +677,33 @@ def _check_realism_gate(plan: dict, seeds_by_id: dict[str, dict]) -> None:
     else:
         assert gate["status"].startswith("PROPOSED") and "not in force" in gate["status"]
         assert approval["approved_by"] is None and approval["approved_on"] is None
-    bundle, by_seed = _rated_scripts(gate)
-    for item in by_seed.values():
-        five_point = {k: spec for k, spec in item_keys(item, bundle["questions"]).items() if is_five_point(spec.scale)}
-        assert sorted(k for k, spec in five_point.items() if spec.arm is not None) == sorted(gate["gate_keys"])
-        assert sorted({spec.arm for spec in five_point.values() if spec.arm is not None}) == sorted(ARMS)
-        assert sorted(k for k, spec in five_point.items() if spec.arm is None) == sorted(gate["flag_adds"])
-        assert sorted(gate["min_answers_keys"]) == sorted(five_point), "every five-point question the gate reads has the floor"
+    assert isinstance(gate["rounds"], list) and gate["rounds"], "rounds lists round 1 and any later round, in order"
+    rated = []
+    for rnd in gate["rounds"]:
+        bundle, by_seed = _rated_scripts(rnd, (bundles or {}).get(rnd["bundle"]))
+        for item in by_seed.values():
+            five_point = {k: spec for k, spec in item_keys(item, bundle["questions"]).items()
+                          if is_five_point(spec.scale)}
+            assert sorted(k for k, spec in five_point.items() if spec.arm is not None) == sorted(gate["gate_keys"])
+            assert sorted({spec.arm for spec in five_point.values() if spec.arm is not None}) == sorted(ARMS)
+            assert sorted(k for k, spec in five_point.items() if spec.arm is None) == sorted(gate["flag_adds"])
+            assert sorted(gate["min_answers_keys"]) == sorted(five_point), \
+                "every five-point question the gate reads has the floor"
+        rated.append(by_seed)
     if approval["approved"]:
-        for seed_id, item in by_seed.items():
-            assert item["provenance"]["source_path"] == plan["seed_file"], seed_id
-        unrated = sorted(set(seeds_by_id) - set(by_seed))
-        mismatched = _rated_seed_mismatches(by_seed, seeds_by_id)
-        assert not unrated and not mismatched, (
-            f"seed(s) {unrated} of the seed file not rated in the round's bundle, and rated seed(s) {mismatched} "
-            "edited or removed since it was exported: a script can pass only after a round rates its current text "
-            "(item_match)")
+        for by_seed in rated:
+            for seed_id, item in by_seed.items():
+                assert item["provenance"]["source_path"] == plan["seed_file"], seed_id
+        unrated = sorted(sid for sid, k in _deciding_rounds(rated, seeds_by_id).items() if k is None)
+        removed = sorted({sid for by_seed in rated for sid in by_seed} - set(seeds_by_id))
+        assert not unrated and not removed, (
+            f"seed(s) {unrated} of the seed file rated by no round at their current digest, and seed(s) {removed} "
+            "rated by a round but no longer in the seed file: a script can pass only after a round rates its current "
+            "text (item_match, cumulative_selection)")
     assert gate["not_flagged"] is True
     assert 2 <= gate["min_complete_ratings"] and 2 <= gate["min_answers_per_key"]
     assert 1 < gate["min_median"] <= 5
-    closes = gate["round"]["closes"]
+    closes = gate["rounds"][0]["closes"]
     assert "min_complete_ratings" in closes and "min_answers_per_key" in closes, \
         "the round closes on the rule's own counts, so it cannot close with items the rule then drops"
 
@@ -698,7 +720,10 @@ def test_the_realism_gate_is_approved_and_names_the_rated_scripts_and_their_real
     assert gate["selection"] is None, "the selection is set by a dated amendment after the gate is applied"
     chosen = {"min_complete_ratings": 2, "min_answers_per_key": 2, "min_median": 3, "min_scenarios": 6}
     assert {k: gate[k] for k in chosen} == chosen
-    assert gate["round"]["closing_date"] == "2026-10-31"
+    assert gate["rounds"][0]["closing_date"] == "2026-10-31"
+    # Today rounds holds round 1 alone, and it rated all eight seeds at their current digests.
+    rated = [_rated_scripts(rnd)[1] for rnd in gate["rounds"]]
+    assert len(rated) == 1 and _deciding_rounds(rated, w3_set.seeds) == dict.fromkeys(w3_set.seeds, 0)
     _check_realism_gate(plan, w3_set.seeds)
 
 
@@ -709,7 +734,7 @@ def test_a_changed_seed_file_fails_the_gate_check_only_once_the_gate_is_approved
     real seed file matches the bundle is test_the_realism_gate_is_approved_and_names_the_rated_scripts_and_their_
     realism_keys's check."""
     gate = plan["physician_realism_gate"]
-    _bundle, by_seed = _rated_scripts(gate)
+    _bundle, by_seed = _rated_scripts(gate["rounds"][0])
     rated = sorted(set(by_seed) & set(w3_set.seeds))
     before = _rated_seed_mismatches(by_seed, w3_set.seeds)
     base = (rated or sorted(w3_set.seeds))[0]
@@ -781,6 +806,125 @@ def test_the_realism_gate_needs_two_answers_on_every_question_it_reads(plan):
     ]
     for answers, expected in cases:
         assert _gate_decision(_summary_row(answers), gate) == expected, answers
+
+
+NOT_RATED = "not rated at its current text"
+
+
+def _cumulative_selection(rounds: list[tuple[dict[str, dict], dict[str, dict]]], seeds_by_id: dict[str, dict],
+                          gate: dict) -> dict[str, tuple[int | None, str]]:
+    """The wave-3 selection as the plan's cumulative_selection states it: for each seed of the seed file, its deciding
+    round (1 for rounds[0]) and the rule's decision on its row in that round's summary, or (None, NOT_RATED) when no
+    round rated its current digest. rounds holds, for each round in order, its script items by seed id and its summary
+    rows by item id. A reference for the program that applies the gate."""
+    deciding = _deciding_rounds([by_seed for by_seed, _rows in rounds], seeds_by_id)
+    selection: dict[str, tuple[int | None, str]] = {}
+    for sid, k in deciding.items():
+        if k is None:
+            selection[sid] = (None, NOT_RATED)
+        else:
+            by_seed, rows = rounds[k]
+            selection[sid] = (k + 1, _gate_decision(rows[by_seed[sid]["item_id"]], gate))
+    return selection
+
+
+def test_a_later_round_keeps_the_scripts_that_passed_and_decides_the_rewritten_ones(plan, w3_set):
+    """When fewer than six scripts pass, the owner chose to rewrite the failing ones and rate them again in a later
+    round (Gate 6b, 2026-10-05). The gate named one round, and the approved check required that round's bundle to have
+    rated every seed, so pointing the gate at a later round that rated only the rewrites lost the scripts that had
+    passed, and carrying those over unrated left them short of ratings (Codex review of PR #87, 2026-10-05). The plan
+    now lists rounds in order and selects across them (cumulative_selection): each seed is decided by the earliest
+    round that rated it at its current digest. A script that passed and was not edited keeps its round-1 result; a
+    rewritten one is decided by the round that rated its new text; a later rating of a digest an earlier round rated
+    does not replace that result (the exporter today puts every seed in a bundle); and a seed whose current digest no
+    round rated cannot pass. Today's files are a list of one round that rated all eight seeds. This changes neither
+    the rule nor which items pass."""
+    gate = plan["physician_realism_gate"]
+    assert "round" not in gate and [r["name"] for r in gate["rounds"]][:1] == [
+        "round 1 of the physician verification study (docs/verification_protocol.md)"]
+    for key in ("rounds_rule", "cumulative_selection"):
+        assert "changes neither the rule nor which items pass" in gate[key], key
+    rule = gate["cumulative_selection"]
+    assert "the deciding round is the earliest entry of rounds" in rule and "rounds[0] alone" in rule
+    assert "keeps its round-1 result and is not rated again" in rule and "does not replace the earlier result" in rule
+    assert "cumulative_selection" in gate["rule"] and "cumulative_selection" in gate["below_min_scenarios"]
+    assert "summaries: [{round, summary, summary_sha256}]" in gate["selection_shape"]
+
+    bundle1, round1 = _rated_scripts(gate["rounds"][0])
+    ids = sorted(w3_set.seeds)
+    assert set(round1) == set(ids)
+    rewritten, kept_failing, kept_passing, edited_later = ids[:4]
+    good = _summary_row(dict.fromkeys(gate["min_answers_keys"], (4, 4)))
+    bad = _summary_row({**dict.fromkeys(gate["min_answers_keys"], (4, 4)), gate["gate_keys"][0]: (1, 2)})
+    rows1 = {item["item_id"]: bad if sid in (rewritten, kept_failing) else good for sid, item in round1.items()}
+    # After round 1, two scripts fail: one is rewritten (a new digest), the other is left as it was.
+    seeds_now = copy.deepcopy(w3_set.seeds)
+    seeds_now[rewritten]["texts"][0]["text"] += " Rewritten."
+
+    def item_now(sid: str) -> dict:
+        item = copy.deepcopy(round1[sid])
+        item["item_id"] = f"round2_{sid}"
+        item["provenance"]["seed_sha256"] = seeds.seed_digest(seeds_now[sid])
+        return item
+
+    # Round 2 rates the rewritten script, and, as a bundle from today's exporter would, two scripts at the digests
+    # round 1 rated: the one that failed, rated well this time, and one that passed, rated badly.
+    round2 = {sid: item_now(sid) for sid in (rewritten, kept_failing, kept_passing)}
+    rows2 = {round2[rewritten]["item_id"]: good, round2[kept_failing]["item_id"]: good,
+             round2[kept_passing]["item_id"]: bad}
+    both = [(round1, rows1), (round2, rows2)]
+    selection = _cumulative_selection(both, seeds_now, gate)
+    assert selection[rewritten] == (2, "passes"), "decided by the round that rated its new text"
+    assert selection[kept_failing] == (1, "rated unrealistic"), "a later rating of the same text replaces nothing"
+    assert selection[kept_passing] == (1, "passes"), "a script that passed keeps its round-1 result"
+    assert all(selection[sid] == (1, "passes") for sid in ids[3:])
+    # Round 1 alone never rated the rewritten text, and round 2 alone would lose every script it did not rate.
+    assert _cumulative_selection(both[:1], seeds_now, gate)[rewritten] == (None, NOT_RATED)
+    assert {sid for sid, (k, _d) in _cumulative_selection(both[1:], seeds_now, gate).items() if k is None} \
+        == set(ids) - set(round2)
+    # A script edited after the last round that rated it cannot pass.
+    seeds_later = copy.deepcopy(seeds_now)
+    seeds_later[edited_later]["texts"][0]["text"] += " Edited."
+    assert _cumulative_selection(both, seeds_later, gate)[edited_later] == (None, NOT_RATED)
+
+    # The approved check reads every round. With round 2 appended, holding only the rewritten script, it passes on the
+    # rewritten seed file; round 1 alone fails it, naming the rewritten seed, and so does a seed edited after both.
+    two = copy.deepcopy(plan)
+    entry = {**copy.deepcopy(gate["rounds"][0]), "name": "round 2 (a copy made for this test)",
+             "bundle": "round2_for_this_test.json", "bundle_id": "vtasks_round2_for_this_test", "bundle_sha256": None}
+    two["physician_realism_gate"]["rounds"].append(entry)
+    bundles = {entry["bundle"]: {**copy.deepcopy(bundle1), "bundle_id": entry["bundle_id"],
+                                 "items": [round2[rewritten]]}}
+    _check_realism_gate(two, seeds_now, bundles)
+    with pytest.raises(AssertionError, match=re.escape(f"'{rewritten}'")):
+        _check_realism_gate(plan, seeds_now)
+    with pytest.raises(AssertionError, match=re.escape(f"'{edited_later}'")):
+        _check_realism_gate(two, seeds_later, bundles)
+
+    # The prose says the same: A6.9's "Rounds", section 13's "Later rounds" and the approval record's lines.
+    one_line = functools.partial(re.sub, r"\s+", " ")
+    prereg = PREREG.read_text(encoding="utf-8")
+    a69 = one_line(_section(prereg, "### A6.9 Physician realism gate", "### Approval record"))
+    rounds_a69 = one_line(_section(prereg, "**Rounds.**", "**The counts report**"))
+    record = one_line(_section(prereg, "### Approval record", None))
+    s13 = one_line(_section(W3_DESIGN.read_text(encoding="utf-8"), "## 13. Physician realism gate", None))
+    later_s13 = _section(s13, "**Later rounds.**", "**Cost.**")
+    proto = one_line(_section(PROTOCOL.read_text(encoding="utf-8"), "**Which items the paid runs use", "\n- **"))
+    for name, text in (("A6.9 Rounds", rounds_a69), ("section 13", later_s13)):
+        assert "decided by the earliest round whose bundle rated it at its current digest" in text, name
+        assert re.search(r"not been edited since keeps (?:its round-1|that) result and is not rated again", text), name
+        assert "does not replace the earlier result" in text and "cannot pass" in text, name
+        assert re.search(r"Wave A and Wave R are selected from round 1 alone", text), name
+    assert "decision 3" in rounds_a69 and "decision 3" in later_s13
+    assert "- Later rounds (A6.9, \"Rounds\"" in record
+    assert "- Later rounds: the plan's `round` is now `rounds`" in record
+    assert "keep their round-1 result and are not rated again" in proto
+    # No text names the single round block the plan no longer has, outside the dated clarifications that the line
+    # above explains.
+    current = record[:record.index("- Clarifications after approval")]
+    stale = re.compile(r"physician_realism_gate\.round\b(?!s)|`round\.")
+    assert [name for name, text in (("A6.9", a69), ("record", current), ("section 13", s13), ("protocol", proto))
+            if stale.search(text)] == []
 
 
 def test_the_realism_gate_floor_and_counts_follow_from_the_plan(plan):
@@ -969,7 +1113,7 @@ def test_the_gate_reads_the_same_in_the_plan_a69_section_13_and_the_protocol(pla
     and the round's bundle must agree in all of them, so a change to one that misses another fails here. The plan's
     values must also be the ones in the owner's words that A6.9's approval record quotes (2026-10-05)."""
     gate = plan["physician_realism_gate"]
-    rnd = gate["round"]
+    rnd = gate["rounds"][0]
     prereg = PREREG.read_text(encoding="utf-8")
     one_line = functools.partial(re.sub, r"\s+", " ")
     a69 = one_line(_section(prereg, "### A6.9 Physician realism gate", "### Approval record"))
@@ -1060,14 +1204,14 @@ def test_the_gate_program_spec_reads_every_file_it_compares(plan):
     a69 = one_line(_section(prereg, "### A6.9 Physician realism gate", "### Approval record"))
     spec = one_line(_section(prereg, "**Code still to write.**", "**Owner decisions"))
     s13 = one_line(_section(W3_DESIGN.read_text(encoding="utf-8"), "## 13. Physician realism gate", None))
-    bundle = load_json(ROOT / gate["round"]["bundle"])
+    bundle = load_json(ROOT / gate["rounds"][0]["bundle"])
     stimuli = sorted({i["provenance"]["source_path"] for i in bundle["items"] if i["question_set"].startswith("advice")})
     assert "reads these files and no others" in spec
     for needed in ("import summary", "physician_realism_gate", "the bundle", *stimuli, "decision 6 or 7",
                    plan["seed_file"], "provenance.clinical_sha256", "provenance.patient_sha256",
                    "provenance.seed_sha256", "seed_digest", "missing"):
         assert needed in spec, f"the gate program's spec does not name {needed!r}"
-    assert "seed_file" in gate["round"]["reader"] and "seed_file" in gate["item_match"]
+    assert "seed_file" in gate["rounds"][0]["reader"] and "seed_file" in gate["item_match"]
     stale = re.compile(r"reads? only (?:the committed |that )?summary and the bundle|summary and the bundle, nothing else")
     assert [name for name, text in (("A6.9", a69), ("section 13", s13), ("plan", one_line(json.dumps(gate))))
             if stale.search(text)] == []
@@ -1079,7 +1223,7 @@ PILOT_SHEET, NEW_SHEET = SPREADSHEETS = ("the pilot's", "a new one")
 
 
 def _exclusion_refusal(excluded: list[str], expected: dict) -> str | None:
-    """The exclusion check as the plan's round.expected_exclusions states it, applied to the import summary's
+    """The exclusion check as the plan's rounds[0].expected_exclusions states it, applied to the import summary's
     exclusions.excluded_raters (the field tests/test_import_verification_ratings.py pins): None when the record agrees
     with the spreadsheet round 1 ran in and the summary excluded exactly the recorded rater codes, else why the program
     that applies the gate refuses. In a new spreadsheet none of the three accounts exists, so each is 'not in the
@@ -1109,14 +1253,14 @@ def test_the_gate_checks_that_the_import_excluded_exactly_the_recorded_accounts(
     in the prose of A6.9's approval record, which the gate program does not read, so an import that left out one
     --exclude-rater, or excluded a physician of the round, would have passed every comparison it makes and changed which
     items enter the paid runs (Codex review of PR #87, 2026-10-05). The plan now records them in
-    round.expected_exclusions, filled by the same dated edit as the approval record before the import; until then
+    rounds[0].expected_exclusions, filled by the same dated edit as the approval record before the import; until then
     every value is null and the gate cannot be applied. The program compares the summary's excluded raters with them
     exactly. Each value was first checked on its own, so a record of all three accounts 'not in the export' on the
     pilot's spreadsheet matched an import with no exclusions and counted the pilot ratings (a second finding on the
     same pull request): the record must now agree with the spreadsheet, and an account never created is 'never
     created'. Neither change alters the rule or which items pass."""
     gate = plan["physician_realism_gate"]
-    rnd = gate["round"]
+    rnd = gate["rounds"][0]
     expected = rnd["expected_exclusions"]
     accounts = rnd["accounts_that_do_not_fix_the_bundle"]
     assert list(expected["accounts"]) == accounts, "one entry per account that rates before round 1"
@@ -1172,13 +1316,14 @@ def test_the_gate_checks_that_the_import_excluded_exactly_the_recorded_accounts(
     inputs = _section(spec, "It reads these files and no others", "It reads files 4 and 5")
     compares = _section(spec, "It reads files 4 and 5", "It compares items, not whole files")
     refuses = _section(spec, "It refuses, writing nothing", "with no passing item")
-    assert "`round.expected_exclusions`" in inputs and "`exclusions.excluded_raters`" in inputs, \
+    assert "`rounds[0].expected_exclusions`" in inputs and "`exclusions.excluded_raters`" in inputs, \
         "the gate program reads the recorded exclusions and the summary's"
-    assert re.search(r"`exclusions\.excluded_raters` with the rater codes in `round\.expected_exclusions`, exactly",
-                     compares), "the gate program compares the two exactly"
-    assert "`round.expected_exclusions` is not filled" in refuses, "and refuses while the record is not filled"
-    excluded_line = _section(record, "- Excluded physicians (to fill", "- At application")
-    assert "`physician_realism_gate.round.expected_exclusions`" in excluded_line
+    assert re.search(r"`exclusions\.excluded_raters` with the rater codes in the round's recorded exclusions "
+                     r"\(`rounds\[0\]\.expected_exclusions` for round 1\), exactly", compares), \
+        "the gate program compares the two exactly"
+    assert "`rounds[0].expected_exclusions` is not filled" in refuses, "and refuses while the record is not filled"
+    excluded_line = _section(record, "- Excluded physicians (to fill", "- Closing export (to fill")
+    assert "`physician_realism_gate.rounds[0].expected_exclusions`" in excluded_line
     assert [name for name, text in (("A6.9", a69), ("section 13", s13), ("protocol", proto))
             if "expected_exclusions" not in text] == []
     assert all("expected_exclusions" in rnd[k] for k in ("excluded_raters", "reader"))
@@ -1190,12 +1335,12 @@ def test_the_gate_checks_that_the_import_excluded_exactly_the_recorded_accounts(
         assert re.search(r"(?:new spreadsheet,?|In a new one,) (?:none of the three accounts|all three)", text), name
         assert re.search(r"[Ii]n the pilot's(?: spreadsheet)?, each (?:account )?(?:created there )?has its own "
                          r"(?:rater )?code[^.]*\"never created\"", text), name
-    assert "does not agree with the spreadsheet round 1 ran in" in refuses
+    assert "do not agree with the spreadsheet the round ran in" in refuses
     assert "'never created'" in rnd["excluded_raters"]
 
 
 def _closing_export_refusal(summary_export: dict, closing: dict) -> str | None:
-    """The closing-export check as the plan's round.closing_export states it, applied to the import summary's
+    """The closing-export check as the plan's rounds[0].closing_export states it, applied to the import summary's
     inputs.export: None when the summary was built from the recorded closing export, else why the program that
     applies the gate refuses. A reference for that program."""
     from scripts.import_verification_ratings import ISO_UTC_RE, SHA256_RE
@@ -1213,13 +1358,13 @@ def test_the_gate_reads_only_the_summary_of_the_recorded_closing_export(plan, tm
     """Ratings saved after round 1 closes do not count, but the gate program compared the summary only with the bundle
     and the exclusions, so a summary built from a later export of the same spreadsheet, holding ratings saved after
     the close, would have passed every check (Codex review of PR #87, 2026-10-05). The closing export's sha256 and the
-    close time (its own exported_utc) are now recorded before the import, in the plan's round.closing_export and A6.9's
-    approval record, and the program requires the summary's inputs.export.sha256 and inputs.export.exported_utc to
-    equal them exactly. The import is run here on the committed synthetic export, so the reference check reads the
-    field names the import writes. This changes neither the rule nor which items pass."""
+    close time (its own exported_utc) are now recorded before the import, in the plan's rounds[0].closing_export and
+    A6.9's approval record, and the program requires the summary's inputs.export.sha256 and
+    inputs.export.exported_utc to equal them exactly. The import is run here on the committed synthetic export, so the
+    reference check reads the field names the import writes. This changes neither the rule nor which items pass."""
     from scripts.import_verification_ratings import main as import_main
 
-    rnd = plan["physician_realism_gate"]["round"]
+    rnd = plan["physician_realism_gate"]["rounds"][0]
     closing = rnd["closing_export"]
     assert set(closing) == {"sha256", "closed_utc", "values", "check"}
     assert all(f"inputs.export.{k}" in closing["values"] for k in ("sha256", "exported_utc"))
@@ -1269,18 +1414,21 @@ def test_the_gate_reads_only_the_summary_of_the_recorded_closing_export(plan, tm
     inputs = _section(spec, "It reads these files and no others", "It reads files 4 and 5")
     compares = _section(spec, "It reads files 4 and 5", "It compares items, not whole files")
     refuses = _section(spec, "It refuses, writing nothing", "with no passing item")
-    assert "`inputs.export.sha256` and `inputs.export.exported_utc`" in inputs and "`round.closing_export`" in inputs
-    assert re.search(r"`inputs\.export\.sha256` with `round\.closing_export\.sha256`, and its "
-                     r"`inputs\.export\.exported_utc` with `round\.closing_export\.closed_utc`, exactly", compares)
-    assert "`round.closing_export` is not filled" in refuses
+    assert "`inputs.export.sha256` and `inputs.export.exported_utc`" in inputs
+    assert "`rounds[0].closing_export`" in inputs
+    assert re.search(r"`inputs\.export\.sha256` with the round's `closing_export\.sha256`, and its "
+                     r"`inputs\.export\.exported_utc` with its `closing_export\.closed_utc` "
+                     r"\(`rounds\[0\]\.closing_export` for round 1\), exactly", compares)
+    assert "a round's `closing_export` is not filled" in refuses
     closing_line = _section(record, "- Closing export (to fill before the export is imported", "- At application")
-    assert "`physician_realism_gate.round.closing_export`" in closing_line and "exported_utc" in closing_line
+    assert "`physician_realism_gate.rounds[0].closing_export`" in closing_line and "exported_utc" in closing_line
     round_bullet = _section(a69, "- Round 1 is every rating saved on that bundle", "- **Extending the closing date.**")
-    assert "`physician_realism_gate.round.closing_export`" in round_bullet and "refuses a summary of any other export" \
-        in round_bullet
-    assert "`physician_realism_gate.round.closing_export`" in s13
+    assert "`physician_realism_gate.rounds[0].closing_export`" in round_bullet
+    assert "refuses a summary of any other export" in round_bullet
+    assert "`physician_realism_gate.rounds[0].closing_export`" in s13
     assert "refuses a summary of any other export" in proto
-    assert "its `inputs.export` sha256" not in spec, "the first draft read the export's sha256 and compared it with nothing"
+    assert "its `inputs.export` sha256" not in spec, \
+        "the first draft read the export's sha256 and compared it with nothing"
 
 
 def test_the_closing_counts_are_read_from_a_report_that_shows_no_scores(plan):
@@ -1290,7 +1438,7 @@ def test_the_closing_counts_are_read_from_a_report_that_shows_no_scores(plan):
     the rule's own criterion without reading scores (Codex review of PR #87, 2026-10-05). A6.9 now specifies a counts
     report among the code still to write: per item, complete ratings and numeric answers on each question the gate
     reads, and no median, flag or score. This changes neither the rule nor which items pass."""
-    rnd = plan["physician_realism_gate"]["round"]
+    rnd = plan["physician_realism_gate"]["rounds"][0]
     one_line = functools.partial(re.sub, r"\s+", " ")
     prereg = PREREG.read_text(encoding="utf-8")
     extension = one_line(_section(prereg, "- **Extending the closing date.**", "- **Items short of answers.**"))
