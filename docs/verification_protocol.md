@@ -114,14 +114,18 @@ recorded command still gives that bundle's items unchanged.
 
   The export reads each of these two folders for its own run only, and only
   while the run still holds the pairs file the folder is named after. It never
-  reads any other folder directly under `pilot/traces/`. A run with results in
-  both its legacy folder and its own folder stops the export
-  (`trace_layout_conflict`), whatever models they are for. The two sets would
-  be two traces of one pairs file, and the export never chooses between them.
-  A person decides which set stands; moving or removing committed results is
-  a decision, made in a pull request. Until then
+  reads any other folder directly under `pilot/traces/`. A run that has one
+  graph model's results in both its legacy folder and its own folder stops the
+  export (`trace_layout_conflict`), whichever model is named. The two sets
+  would be two traces of one pairs file by one model, and the export never
+  chooses between them. A person decides which set stands; moving or removing
+  committed results is a decision, made in a pull request. Until then
   `--pilot-trace-optional <run id>` exports the run without reading either
-  set. A run id that is one of the two legacy folder names is refused
+  set. Different models in different layouts are not a conflict: a run traced
+  again with another model keeps its gemma-2-2b results where they were, and
+  the model rules above apply across both layouts. Name the model with
+  `--pilot-trace-model`; with none named, two models stop the export
+  (`ambiguous_trace`). A run id that is one of the two legacy folder names is refused
   (`bad_input`), as the lanes refuse it, because that run's own folder would
   sit inside the old one.
 - **Name the pairs file after the run.** A run's trace pairs file must be named
@@ -153,10 +157,14 @@ recorded command still gives that bundle's items unchanged.
   on, and its results in `pilot/traces/trace_pairs/`. Results traced from the
   copy land in Run 2's own folder,
   `pilot/traces/pilot_v2_20261002/pilot_v2_20261002_trace_pairs[__<model>]/`.
-  They are results of the same pairs, so the export reads them as Run 2's. With
-  Run 2's legacy results still in place, though, Run 2 then has results in both
-  layouts and the export stops (`trace_layout_conflict`). The first bundle's
-  recorded command stops too, until the owner decides which set stands. When a
+  They are results of the same pairs, so the export reads them as Run 2's.
+  Traced with another graph model, they sit beside the legacy gemma-2-2b
+  results without conflict. The first bundle's recorded command names no
+  model, so it then finds two models and stops (`ambiguous_trace`); adding
+  `--pilot-trace-model pilot_v2_20261002 gemma-2-2b` gives the first bundle's
+  items unchanged. Traced with gemma-2-2b, they are a second gemma-2-2b trace
+  of Run 2 beside the legacy one, and the export stops
+  (`trace_layout_conflict`) until the owner decides which set stands. When a
   run's trace is required, any other second file under its `trace/`, including
   a copy that differs, stops the export (`bad_input`). A run exported with
   `--pilot-trace-optional` reads no trace pairs file (Run 2 reads only
@@ -448,9 +456,11 @@ python scripts/seal_check.py --site ../patientwords
   the run. Its traces were fired before PR #85's per-run layout and are in
   `pilot/traces/pilot_v3_20261004_trace_pairs/`, beside Run 2's
   `pilot/traces/trace_pairs/` (see *Which trace pairs file a selection needs*
-  and *Where a run's traces are*). Tracing Run 3 again, with any graph model,
-  writes `pilot/traces/pilot_v3_20261004/`. The export then stops
-  (`trace_layout_conflict`) until the owner decides which set stands.
+  and *Where a run's traces are*). Tracing Run 3 again writes
+  `pilot/traces/pilot_v3_20261004/`. If that is another graph model, add
+  `--pilot-trace-model pilot_v3_20261004 gemma-2-2b` (or the other model) to
+  say whose traces the bundle requires. If it is gemma-2-2b again, the export
+  stops (`trace_layout_conflict`) until the owner decides which set stands.
 - Add `--pilot-trace-optional pilot_v3_20261004` if Run 3's traces have not
   landed when the bundle is wanted.
 - Add `--pilot-all-rows pilot_v3_20261004` to send every Run 3 pair rather than

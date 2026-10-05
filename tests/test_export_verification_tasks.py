@@ -10,25 +10,25 @@ up), and the pilot runs: which runs, the review sample or every non-control row,
 optional one is not read, so the items do not change when traces land; Run 2's trace pairs file is still read as its
 id key), a trace pairs file with or without review ids, a row's id under every option, which trace results directory
 a run reads (PR #85's per-run layout, <run id>/<stem>/ named after its pairs file, and Run 2's and Run 3's two
-legacy folders, never a flat folder for another run, results in both layouts refused whatever the model;
-<stem>__<model>/ for another graph model, named or the one found, two found refused, and every summary there
-declaring the model it is read as), the naming rule for a trace pairs file (<run id>_<name>.json, the lanes' rule,
-compared with fire_trigger's when it has one), a byte-identical copy of Run 2's trace pairs file beside it (allowed;
-its results, in Run 2's own folder, are Run 2's, and conflict with the legacy ones), and the refusals for a run that
-is not finalized, not version 2, changed since it was finalized, missing a required trace, whose trace pairs file is
-not named after it or holds "__" (optional runs included; two runs' files may share a stem), whose run id is a
-legacy folder's name, that holds a second trace pairs file other than such a copy while its trace is required (an
-optional run's second file is checked by name only), or whose review map, trace pairs file or sidecar does not fit
-it, and a next word outside the version-2 rule (the trace-pairs builder's check, with the trace optional or
-required); and later rounds (--previous-bundle): a previous item dropped or changed, a question id dropped or kept
-with another scale, answer values (of another JSON type included), phase, requirement or lock, a required question
-added to a set previous items use (an optional one, or one in a set no previous item uses, kept), another notes
-limit, and a previous bundle of another shape. Every input here is synthetic, abstract and non-medical (the medical
-vocabulary rule in AGENTS.md); the seal fixtures follow tests/test_seal_check.py and tests/test_tierb_split.py. The
-committed-bundle tests check every bundle under data/verification/ against the contract, with failure messages
-naming item ids only, never row text, and re-export the first bundle from the committed engine files: the default
-run gives its pilot items unchanged, and with the site payload it recorded the recorded command gives its items byte
-for byte.
+legacy folders, never a flat folder for another run, one model's results in both layouts refused, different models
+in different layouts read by the model rules; <stem>__<model>/ for another graph model, named or the one found, two
+found refused, and every summary there declaring the model it is read as), the naming rule for a trace pairs file
+(<run id>_<name>.json, the lanes' rule, compared with fire_trigger's when it has one), a byte-identical copy of Run
+2's trace pairs file beside it (allowed; its results, in Run 2's own folder, are Run 2's, and conflict with the
+legacy ones), and the refusals for a run that is not finalized, not version 2, changed since it was finalized,
+missing a required trace, whose trace pairs file is not named after it or holds "__" (optional runs included; two
+runs' files may share a stem), whose run id is a legacy folder's name, that holds a second trace pairs file other
+than such a copy while its trace is required (an optional run's second file is checked by name only), or whose
+review map, trace pairs file or sidecar does not fit it, and a next word outside the version-2 rule (the trace-pairs
+builder's check, with the trace optional or required); and later rounds (--previous-bundle): a previous item dropped
+or changed, a question id dropped or kept with another scale, answer values (of another JSON type included), phase,
+requirement or lock, a required question added to a set previous items use (an optional one, or one in a set no
+previous item uses, kept), another notes limit, and a previous bundle of another shape. Every input here is
+synthetic, abstract and non-medical (the medical vocabulary rule in AGENTS.md); the seal fixtures follow
+tests/test_seal_check.py and tests/test_tierb_split.py. The committed-bundle tests check every bundle under
+data/verification/ against the contract, with failure messages naming item ids only, never row text, and re-export
+the first bundle from the committed engine files: the default run gives its pilot items unchanged, and with the site
+payload it recorded the recorded command gives its items byte for byte.
 """
 from __future__ import annotations
 
@@ -1253,9 +1253,10 @@ def test_run2s_copy_leaves_its_export_unchanged_and_its_traces_are_run2s_in_its_
     # PR #85's lanes refuse Run 2's legacy trace_pairs.json for a new fire; tracing Run 2 again needs a byte-identical
     # copy, pilot_v2_20261002_trace_pairs.json, beside it, and its results land in Run 2's own folder,
     # pilot/traces/pilot_v2_20261002/pilot_v2_20261002_trace_pairs[__<model>]/. A copy alone changes nothing: the
-    # export still reads trace_pairs.json, which Run 2's ids are keyed on, and the legacy results. Once the copy's
-    # results land, Run 2 has results in both layouts and the export stops rather than choose; the optional path,
-    # which reads no trace results, still exports. Without the legacy results the copy's are read as Run 2's.
+    # export still reads trace_pairs.json, which Run 2's ids are keyed on, and the legacy results. The copy's results
+    # are Run 2's: for another model they are read by the model rules (the recorded command, which names no model,
+    # then finds two models; naming gemma-2-2b gives the first bundle's items), and for gemma-2-2b they conflict with
+    # the legacy ones. The optional path reads no trace results. Without the legacy results the copy's are read.
     paths = write_world(tmp_path, world_data())
     root = paths["pilot_trace_root"]
     before, before_raw = rerun(paths, tmp_path / "before")
@@ -1275,21 +1276,31 @@ def test_run2s_copy_leaves_its_export_unchanged_and_its_traces_are_run2s_in_its_
     write_traces(paths, RUN2, copy_name, pairs, "qwen3-4b", layout="flat")
     _, flat_raw = rerun(paths, tmp_path / "flat")
     assert flat_raw == after_raw
-    # the copy traced in Run 2's own folder: results in both layouts, whatever the model read
+    # the copy traced with another model in Run 2's own folder: not a conflict, but two models, so the recorded command
+    # (no model named) stops as ambiguous_trace; naming either model reads its one folder and gives the same items
     write_traces(paths, RUN2, copy_name, pairs, "qwen3-4b")
-    for extra in ((), ("--pilot-trace-model", RUN2, "qwen3-4b"), ("--pilot-trace-model", RUN2, "gemma-2-2b")):
+    own_qwen = root / RUN2 / f"{copy_name}__qwen3-4b"
+    message = refused_paths(paths, "ambiguous_trace")
+    assert f"gemma-2-2b: {root / 'trace_pairs'}" in message and f"qwen3-4b: {own_qwen}" in message
+    for model, folder in (("gemma-2-2b", root / "trace_pairs"), ("qwen3-4b", own_qwen)):
+        named, named_raw = rerun(paths, tmp_path / f"named_{model}", "--pilot-trace-model", RUN2, model)
+        assert _items_bytes(named_raw) == _items_bytes(before_raw)
+        sel = named["selection"]["tracing_pair"]["pilot_run2"]
+        assert sel["trace_results"] == evt.logical_path(folder) and sel["trace_model"] == model
+    # the copy traced with gemma-2-2b too: one model in both layouts, refused whichever model is named
+    write_traces(paths, RUN2, copy_name, pairs)
+    for extra in ((), ("--pilot-trace-model", RUN2, "gemma-2-2b"), ("--pilot-trace-model", RUN2, "qwen3-4b")):
         message = refused_paths(paths, "trace_layout_conflict", *extra)
-        assert f"gemma-2-2b: {root / 'trace_pairs'}" in message
-        assert f"qwen3-4b: {root / RUN2 / f'{copy_name}__qwen3-4b'}" in message
+        assert f"gemma-2-2b: {root / 'trace_pairs'}" in message and f"gemma-2-2b: {root / RUN2 / copy_name}" in message
+        assert f"qwen3-4b: {own_qwen}" not in message
     _, optional_raw = rerun(paths, tmp_path / "optional", "--pilot-trace-optional", RUN2)
     assert b'"trace_index": null' in _items_bytes(optional_raw)
     # without the legacy results (moving or removing them is the owner's decision), the copy's are Run 2's
     shutil.rmtree(root / "trace_pairs")
-    own, own_raw = rerun(paths, tmp_path / "own")
+    own, own_raw = rerun(paths, tmp_path / "own", "--pilot-trace-model", RUN2, "gemma-2-2b")
     assert _items_bytes(own_raw) == _items_bytes(before_raw)              # the same trace indexes, the same items
     sel = own["selection"]["tracing_pair"]["pilot_run2"]
-    assert sel["trace_model"] == "qwen3-4b" and sel["trace_results"] == evt.logical_path(
-        root / RUN2 / f"{copy_name}__qwen3-4b")
+    assert sel["trace_model"] == "gemma-2-2b" and sel["trace_results"] == evt.logical_path(root / RUN2 / copy_name)
 
 
 def test_a_second_file_under_run2s_trace_that_is_not_a_copy_is_refused(tmp_path):
@@ -1455,20 +1466,33 @@ def test_run3s_legacy_folder_is_read_for_any_model_and_its_own_folder_once_the_l
     assert _items_bytes(own_raw) == _items_bytes(legacy_raw)
 
 
-# (the model traced again in the run's own folder, the model named): every pair is refused, whatever the models
-LAYOUT_CONFLICTS = [("gemma-2-2b", None), ("qwen3-4b", None), ("qwen3-4b", "qwen3-4b"), ("qwen3-4b", "gemma-2-2b"),
-                    ("gemma-2-2b", "gemma-2-2b")]
+# (the model the run is traced again with, into its own folder; a second model already in its legacy folder, or None;
+# the model named, or None; the outcome): a conflict, an ambiguity, or the layout whose folder the named model is read
+# from. The legacy folder always holds gemma-2-2b, as Run 2's and Run 3's do.
+LAYOUT_CASES = [
+    ("gemma-2-2b", None, None, "conflict"),                 # one model in both layouts
+    ("gemma-2-2b", None, "gemma-2-2b", "conflict"),
+    ("gemma-2-2b", None, "qwen3-4b", "conflict"),           # the conflict is the run's, whichever model is named
+    ("qwen3-4b", "qwen3-4b", "qwen3-4b", "conflict"),       # a second model in both layouts
+    ("qwen3-4b", None, None, "ambiguous"),                  # two models, one per layout, none named
+    ("qwen3-4b", None, "qwen3-4b", "own"),                  # the named model's one folder is the run's own
+    ("qwen3-4b", None, "gemma-2-2b", "legacy"),             # the named model's one folder is the legacy one
+]
 
 
 @pytest.mark.parametrize("run_id", [RUN2, RUN3])
-@pytest.mark.parametrize("model, named", LAYOUT_CONFLICTS)
-def test_a_run_with_results_in_both_layouts_is_refused_never_chosen_between(tmp_path, capsys, run_id, model, named):
+@pytest.mark.parametrize("model, legacy_extra, named, outcome", LAYOUT_CASES)
+def test_one_models_results_in_both_layouts_are_refused_and_other_models_are_read_by_the_model_rules(
+        tmp_path, capsys, run_id, model, legacy_extra, named, outcome):
     # PR #85 keeps Run 2's and Run 3's parts in their flat folders; a fire of either run since writes its own folder.
-    # Results in both are two traces of one pairs file, and the export does not pick one, even when the named
-    # model's results sit in one layout only. Run 2 is traced again from its run-named copy (the lanes refuse its
+    # One model's results in both are two traces of one pairs file by one model, and the export does not pick one
+    # (trace_layout_conflict). Different models in different layouts are not a conflict (owner's decision of
+    # 2026-10-05): re-tracing Run 2 or Run 3 with another model leaves its gemma-2-2b results readable, and the model
+    # rules apply across both layouts. Run 2 is traced again from its run-named copy (the lanes refuse its
     # trace_pairs.json), Run 3 from its own pairs file.
     paths = write_world(tmp_path, world_data())
     root = paths["pilot_trace_root"]
+    label = "pilot_run2" if run_id == RUN2 else f"pilot:{RUN3}"
     if run_id == RUN3:
         write_run(paths, RUN3, _new_run_rows())
         stem = f"{RUN3}_trace_pairs"
@@ -1477,14 +1501,34 @@ def test_a_run_with_results_in_both_layouts_is_refused_never_chosen_between(tmp_
         stem = f"{RUN2}_trace_pairs"
         for suffix in (".json", ".meta.json"):
             shutil.copy2(run / "trace" / f"trace_pairs{suffix}", run / "trace" / f"{stem}{suffix}")
+    _, before_raw = rerun(paths, tmp_path / "before", "--pilot-run", run_id)
     pairs = json.loads((paths["pilot_runs_dir"] / run_id / "trace" / f"{stem}.json").read_text())
+    legacy = root / LEGACY_FOLDERS[run_id]
+    if legacy_extra:
+        write_traces(paths, run_id, LEGACY_FOLDERS[run_id], pairs, legacy_extra, layout="flat")
     write_traces(paths, run_id, stem, pairs, model, layout="per_run")
-    extra = ("--pilot-trace-model", run_id, named) if named else ()
-    message = refused_paths(paths, "trace_layout_conflict", "--pilot-run", run_id, *extra)
-    own = root / run_id / (stem if model == "gemma-2-2b" else f"{stem}__{model}")
-    assert f"gemma-2-2b: {root / LEGACY_FOLDERS[run_id]}" in message and f"{model}: {own}" in message
-    assert f"--pilot-trace-optional {run_id}" in message
-    rerun(paths, tmp_path / "optional", "--pilot-run", run_id, "--pilot-trace-optional", run_id)
+
+    def folder(base: Path, m: str) -> Path:
+        return base if m == "gemma-2-2b" else base.with_name(f"{base.name}__{m}")
+
+    extra = ("--pilot-run", run_id) + (("--pilot-trace-model", run_id, named) if named else ())
+    if outcome == "conflict":
+        message = refused_paths(paths, "trace_layout_conflict", *extra)
+        assert f"has {model} trace results in both layouts" in message
+        assert f"{model}: {folder(legacy, model)}" in message
+        assert f"{model}: {folder(root / run_id / stem, model)}" in message
+        assert f"--pilot-trace-optional {run_id}" in message
+        rerun(paths, tmp_path / "optional", "--pilot-run", run_id, "--pilot-trace-optional", run_id)
+    elif outcome == "ambiguous":
+        message = refused_paths(paths, "ambiguous_trace", *extra)
+        assert f"gemma-2-2b: {legacy}" in message and f"{model}: {folder(root / run_id / stem, model)}" in message
+        assert f"--pilot-trace-model {run_id} <model>" in message
+    else:
+        bundle, raw = rerun(paths, tmp_path / "named", *extra)
+        expected = folder(legacy if outcome == "legacy" else root / run_id / stem, named)
+        sel = bundle["selection"]["tracing_pair"][label]
+        assert sel["trace_results"] == evt.logical_path(expected) and sel["trace_model"] == named
+        assert _items_bytes(raw) == _items_bytes(before_raw)         # the same pairs, the same trace indexes
 
 
 @pytest.mark.parametrize("optional", [False, True], ids=["required", "optional"])

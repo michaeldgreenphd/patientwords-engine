@@ -17,41 +17,42 @@ Three families, every item from a committed engine file or the published site pa
     blind review sample (the rows ``review_map.json`` names, in review-id order), or with ``--pilot-all-rows <run
     id>`` every generated row whose ``control`` is ``none`` (negative controls are excluded and counted), each shown
     as its template with the clinical and the patient term and the row's next word, which must follow the version-2
-    next_word rule (one lowercase word, ``next_word_ok``; ``bad_next_word``). By default every pair needs a
-    trace result: the run's one trace pairs file (the JSON file under ``<run>/trace/`` beside its ``.meta.json``
-    sidecar) must hold the row, and the trace results must carry its index with the same prompts. They are read
-    where the circuit-trace lane's pilot root writes them under PR #85's per-run layout: ``<--pilot-trace-root>/<run
-    id>/<that file's stem>/`` (default root ``pilot/traces/``), or ``<stem>__<model>/`` there for a graph model other
-    than gemma-2-2b. The two folders written before that layout stay where they are and are read for their own runs
+    next_word rule (one lowercase word, ``next_word_ok``; ``bad_next_word``). By default every pair needs a trace
+    result: the run's one trace pairs file (the JSON file under ``<run>/trace/`` beside its ``.meta.json`` sidecar)
+    must hold the row, and the trace results must carry its index with the same prompts. They are read where the
+    circuit-trace lane's pilot root writes them under PR #85's per-run layout: ``<--pilot-trace-root>/<run id>/<that
+    file's stem>/`` (default root ``pilot/traces/``), or ``<stem>__<model>/`` there for a graph model other than
+    gemma-2-2b. The two folders written before that layout stay where they are and are read for their own runs
     (``LEGACY_TRACE_FOLDERS``): Run 2's ``pilot/traces/trace_pairs/`` and Run 3's
-    ``pilot/traces/pilot_v3_20261004_trace_pairs/`` (with ``__<model>`` likewise). A run with results in both layouts
-    is refused (``trace_layout_conflict``), never chosen between, and a run id that is one of those folder names is
-    refused, as the lanes refuse it. The model is the one ``--pilot-trace-model <run id> <model>`` names, read from
-    its own directory only; with none named, the one model whose directory holds results, and results for none or in
-    more than one directory are refused (``missing_trace``, ``ambiguous_trace``), never guessed between. Every trace
-    summary read must declare that model in its ``graph_model`` field, as the hosted summaries do
-    (``trace_model_mismatch``), so a summary placed in another model's directory is never recorded under that
-    directory's model. A trace pairs file must be named after its run, ``<run id>_<name>.json`` with ``<name>`` not
-    empty, the rule the lane's pilot root applies before it traces a file, and its stem may not hold ``__``; both
-    are checked for a run with optional traces too (only names are read). Two runs' files may share a stem, since
-    each run's results are in its own folder. Run 2's ``trace_pairs.json`` predates the naming rule and keeps its
-    name; its ``trace/`` may also hold byte-identical copies named for the run (the lane needs one to trace Run 2
-    again). The exporter still reads ``trace_pairs.json``, which Run 2's item ids are keyed on, and reads a copy's
-    trace results as the same pairs' results, in Run 2's own folder ``<root>/pilot_v2_20261002/<copy's stem>/``;
-    with Run 2's legacy results present that is a ``trace_layout_conflict``. A trace pairs file built with
-    ``trace_pairs.py --review-sample`` records each pair's
-    review id, which must be the one ``review_map.json`` gives its row; one built without it records none (a file
-    recording some is refused). The review sample therefore needs a ``--review-sample`` trace pairs file (or one
-    that holds every review row), and ``--pilot-all-rows`` one that holds every non-control row, which neither of
-    ``trace_pairs.py``'s selections gives once the checker has judged any row not equivalent; in practice it goes
-    with ``--pilot-trace-optional``. With ``--pilot-trace-optional <run id>`` that run's pairs need no trace and its
-    trace results are not read, so its items do not change when its traces land; a pair joins its trace later by run
-    and row id. Such a run reads no trace file at all, except Run 2, whose item ids are keyed on its trace pairs file:
-    that file is still read (and must exist) for the items' ``source_sha256``. A pair whose two sentences repeat an
-    earlier pilot item's is kept (each row is its run's output) and counted. Item ids are keyed on the run's
-    generated rows file and the row id, so a row keeps one id under every selection and trace option; Run 2's are
-    keyed on its trace pairs file and labelled ``pilot_run2``, as in the first bundle (``LEGACY_PILOT_RUNS``), and
-    every other run's items are labelled ``pilot:<run id>``. Labels are provenance, never shown to a rater;
+    ``pilot/traces/pilot_v3_20261004_trace_pairs/`` (with ``__<model>`` likewise). A run with one graph model's
+    results in both layouts is refused (``trace_layout_conflict``), never chosen between (different models in
+    different layouts are read by the model rules below), and a run id that is one of those folder names is refused,
+    as the lanes refuse it. The model is the one ``--pilot-trace-model <run id> <model>`` names, read from its own
+    directory only; with none named, the one model whose directory holds results, and results for none or in more than
+    one directory are refused (``missing_trace``, ``ambiguous_trace``), never guessed between. Every trace summary
+    read must declare that model in its ``graph_model`` field, as the hosted summaries do (``trace_model_mismatch``),
+    so a summary placed in another model's directory is never recorded under that directory's model. A trace pairs
+    file must be named after its run, ``<run id>_<name>.json`` with ``<name>`` not empty, the rule the lane's pilot
+    root applies before it traces a file, and its stem may not hold ``__``; both are checked for a run with optional
+    traces too (only names are read). Two runs' files may share a stem, since each run's results are in its own
+    folder. Run 2's ``trace_pairs.json`` predates the naming rule and keeps its name; its ``trace/`` may also hold
+    byte-identical copies named for the run (the lane needs one to trace Run 2 again). The exporter still reads
+    ``trace_pairs.json``, which Run 2's item ids are keyed on, and reads a copy's trace results as the same pairs'
+    results, in Run 2's own folder ``<root>/pilot_v2_20261002/<copy's stem>/``; with Run 2's legacy results present, a
+    copy traced with gemma-2-2b is a ``trace_layout_conflict``, and one traced with another model makes two models
+    (name one). A trace pairs file built with ``trace_pairs.py --review-sample`` records each pair's review id, which
+    must be the one ``review_map.json`` gives its row; one built without it records none (a file recording some is
+    refused). The review sample therefore needs a ``--review-sample`` trace pairs file (or one that holds every review
+    row), and ``--pilot-all-rows`` one that holds every non-control row, which neither of ``trace_pairs.py``'s
+    selections gives once the checker has judged any row not equivalent; in practice it goes with
+    ``--pilot-trace-optional``. With ``--pilot-trace-optional <run id>`` that run's pairs need no trace and its trace
+    results are not read, so its items do not change when its traces land; a pair joins its trace later by run and row
+    id. Such a run reads no trace file at all, except Run 2, whose item ids are keyed on its trace pairs file: that
+    file is still read (and must exist) for the items' ``source_sha256``. A pair whose two sentences repeat an earlier
+    pilot item's is kept (each row is its run's output) and counted. Item ids are keyed on the run's generated rows
+    file and the row id, so a row keeps one id under every selection and trace option; Run 2's are keyed on its trace
+    pairs file and labelled ``pilot_run2``, as in the first bundle (``LEGACY_PILOT_RUNS``), and every other run's
+    items are labelled ``pilot:<run id>``. Labels are provenance, never shown to a rater;
   - the ``--main-pairs`` (default 40) main-study pairs already published in the site payload
     (``<site>/data/simulated_scenarios.json``) whose ``--rank-model`` (default gemma-2-2b) language penalty is
     largest in absolute value, compared at ``RANK_DECIMALS`` decimals so that penalties equal at their recorded
@@ -106,10 +107,10 @@ that is not a byte-identical copy of its pairs file; an optional run reads no pa
 the names of its files are checked), a pilot pair without its required trace (``missing_trace``) or whose trace
 result carries other prompts (``trace_mismatch``), trace results in more than one directory for the model read, or
 for more than one graph model with none named (``ambiguous_trace``), trace results in both the legacy and the per-run
-layout (``trace_layout_conflict``), a trace summary that does not declare the graph model its directory is read as
-(``trace_model_mismatch``), a questions file that does not fit the items, fewer main-study candidates than requested,
-an item id collision, an existing output file (a bundle is an archive, never rewritten), and every seal failure
-above.
+layout for one model (``trace_layout_conflict``), a trace summary that does not declare the graph model its directory
+is read as (``trace_model_mismatch``), a questions file that does not fit the items, fewer main-study candidates than
+requested, an item id collision, an existing output file (a bundle is an archive, never rewritten), and every seal
+failure above.
 
 Rounds. Each physician round uses one bundle (the ratings import reads one bundle per export). A later round's
 bundle is built with ``--previous-bundle <the previous round's bundle>``, which refuses unless every item of that
@@ -213,7 +214,8 @@ MODEL_SEPARATOR = "__"
 # written that way and stay where they are (fire_trigger.PILOT_LEGACY_OUTPUT_FOLDERS, PR #85): Run 2's in
 # pilot/traces/trace_pairs/ and Run 3's in pilot/traces/pilot_v3_20261004_trace_pairs/. The exporter reads such a
 # folder for its own run only, and only while the run still holds the pairs file the folder is named after. A run with
-# results both there and in its own folder is refused (trace_layout_conflict), never chosen between. The lanes refuse
+# one model's results both there and in its own folder is refused (trace_layout_conflict), never chosen between;
+# another model's results in its own folder are not a conflict. The lanes refuse
 # a run id that is one of these folder names, since that run's own folder would sit inside the old one, and so does
 # the exporter. A test holds the names equal to fire_trigger's list when fire_trigger has one.
 LEGACY_TRACE_FOLDERS = {"pilot_v2_20261002": "trace_pairs", "pilot_v3_20261004": "pilot_v3_20261004_trace_pairs"}
@@ -697,28 +699,31 @@ def trace_results_dir(trace_root: Path, run: PilotRun, stems: list[str]) -> tupl
     run's trace pairs file and of its byte-identical copies (Run 2's), any of which the lane may have traced. Two
     layouts are read (PR #85): the run's own folder, <root>/<run id>/<stem>[__<model>]/, where every pilot fire since
     2026-10-05 writes; and, for a run in LEGACY_TRACE_FOLDERS, the folder written before then,
-    <root>/<legacy folder>[__<model>]/, while the run still holds the pairs file it is named after. A run with
-    results in both layouts is refused (``trace_layout_conflict``) whatever their models, never chosen between: the
-    two would be two traces of one pairs file. Within the one layout that holds results, a model named with
-    --pilot-trace-model is read from its own directory and nowhere else; with none named, the one model whose
-    directory holds results is read; none, or more than one directory, is refused (``missing_trace``,
-    ``ambiguous_trace``), never guessed between."""
+    <root>/<legacy folder>[__<model>]/, while the run still holds the pairs file it is named after. A run with one
+    graph model's results in both layouts is refused (``trace_layout_conflict``), whichever model is named: those would
+    be two traces of one pairs file by one model, and the export never chooses between them. Different models in
+    different layouts are not a conflict (a run traced again with another model keeps its first model's results where
+    they were): across both layouts, a model named with --pilot-trace-model is read from its one directory and nowhere
+    else; with none named, the one model whose directory holds results is read; none, or more than one directory, is
+    refused (``missing_trace``, ``ambiguous_trace``), never guessed between."""
     run_id = run.run_id
     legacy_folder = LEGACY_TRACE_FOLDERS.get(run_id)
     legacy_bases = [trace_root / legacy_folder] if legacy_folder in stems else []
     own_bases = [trace_root / run_id / stem for stem in stems]
     legacy = [hit for base in legacy_bases for hit in _results_found(base)]
     own = [hit for base in own_bases for hit in _results_found(base)]
-    if legacy and own:
-        refuse("trace_layout_conflict", f"pilot run {run_id} has trace results in both layouts: in the folder "
-                                        "written before 2026-10-05 "
-                                        f"({', '.join(f'{m}: {d}' for m, d in legacy)}) and in the run's own folder "
-                                        f"under PR #85's per-run layout ({', '.join(f'{m}: {d}' for m, d in own)}). "
-                                        "The export does not choose between them; a person decides which set stands "
-                                        "(moving or removing committed results is a decision, made in a pull "
-                                        f"request), or pass --pilot-trace-optional {run_id} to export the run "
-                                        "without trace results")
-    found = legacy or own
+    both = sorted({m for m, _ in legacy} & {m for m, _ in own})
+    if both:
+        refuse("trace_layout_conflict", f"pilot run {run_id} has {', '.join(both)} trace results in both layouts: in "
+                                        "the folder written before 2026-10-05 "
+                                        f"({', '.join(f'{m}: {d}' for m, d in legacy if m in both)}) and in the run's "
+                                        "own folder under PR #85's per-run layout "
+                                        f"({', '.join(f'{m}: {d}' for m, d in own if m in both)}). The export does not "
+                                        "choose between two traces of one pairs file by one model; a person decides "
+                                        "which set stands (moving or removing committed results is a decision, made "
+                                        f"in a pull request), or pass --pilot-trace-optional {run_id} to export the "
+                                        "run without trace results")
+    found = legacy + own
     if run.trace_model is not None:
         found = [(m, d) for m, d in found if m == run.trace_model]
     if len(found) > 1:
