@@ -1072,8 +1072,8 @@ a deviation.
 **What it does.** Wave A elicits only the new questions, and Wave R only the
 rerun items, that physicians rated realistic in round 1 of the physician
 verification study (`docs/verification_protocol.md`). Items that fail are not
-elicited in these waves. The rule reads only the physicians' realism answers.
-It does not read their urgency answers, the agreement coefficients, their
+elicited in these waves. The rule reads only the physicians' realism and
+plausibility answers. It does not read their urgency answers, the agreement coefficients, their
 notes or any model output; none of these waves has any model output until it
 fires. The same round and rule select the Petri wave-3 scenarios
 (`docs/petri_wave3_design.md`, section 13).
@@ -1194,6 +1194,14 @@ hold:
    sets every five-point question is one the gate reads, so rule 2 already
    implies this; it is stated so that the rule reads the same for the wave-3
    scripts, where it also covers the course-of-events question.
+
+On a wave-3 script (`multiturn_script`) the gate reads the realism question of
+each of the three versions, for rules 1 and 2, and the course-of-events
+question (`course_plausible`), for rules 1 and 3 (section 13 of
+`docs/petri_wave3_design.md`). The course-of-events question needs at least 2
+numeric answers like the others: the flag counts numeric answers only, so
+with two physicians and one "Can't judge" there, the other physician's answer
+alone would decide the flag. Such a script is "not enough ratings".
 
 So with two physicians an item passes when, on every question the gate
 reads, the two answers add up to at least 6: 3 and 3, 2 and 4, and 1 and 5

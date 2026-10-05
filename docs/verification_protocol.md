@@ -161,7 +161,9 @@ stop at any time.
   answers ("Can't judge" not counted) and a median of at least 3 ("Possible")
   on each question the rule reads, and no flag. The rule reads the realism
   question of each message (each version of a script), and the plausibility
-  question for the nine advice items cut off mid-sentence. The round closes
+  question for the nine advice items cut off mid-sentence. On a script it
+  also reads the course-of-events question, through the flag, and that
+  question needs two numeric answers too. The round closes
   when every advice and multi-turn item has those counts, or on 2026-10-31
   (UTC), whichever comes first; A6.9 says how that date may be extended. The
   owner approved A6.9 on 2026-10-05, before anyone had a login, so the rule

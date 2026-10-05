@@ -696,7 +696,11 @@ edited after rating" below).
 
 1. at least 2 complete ratings, and at least 2 numeric answers ("Can't judge" not
    counted) on the realism question of each of the three versions (`realism.clinical`,
-   `realism.colloquial`, `realism.lay_careful`);
+   `realism.colloquial`, `realism.lay_careful`) and on the course-of-events question
+   (`course_plausible`), which rule 3 reads. The flag counts numeric answers only, so
+   with two physicians and one "Can't judge" on the course of events, the other
+   physician's answer alone would otherwise decide it; such a scenario is "not enough
+   ratings";
 2. a median of at least 3 ("Possible") on each of the three; with two answers, 2 and 3
    give 2.5 and fail, while 2 and 4, and 1 and 5, give 3 and pass;
 3. no flag: the import flags an item when more than half of the answers to any of its

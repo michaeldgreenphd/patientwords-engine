@@ -667,6 +667,7 @@ def _check_realism_gate(plan: dict, seeds_by_id: dict[str, dict]) -> None:
         assert sorted(k for k, spec in five_point.items() if spec.arm is not None) == sorted(gate["gate_keys"])
         assert sorted({spec.arm for spec in five_point.values() if spec.arm is not None}) == sorted(ARMS)
         assert sorted(k for k, spec in five_point.items() if spec.arm is None) == sorted(gate["flag_adds"])
+        assert sorted(gate["min_answers_keys"]) == sorted(five_point), "every five-point question the gate reads has the floor"
     if approval["approved"]:
         for seed_id, item in by_seed.items():
             assert item["provenance"]["source_path"] == plan["seed_file"], seed_id
@@ -731,6 +732,54 @@ def test_a_changed_seed_file_fails_the_gate_check_only_once_the_gate_is_approved
         _check_realism_gate(proposed, changed)
         with pytest.raises(AssertionError, match=re.escape(f"'{named}'")):
             _check_realism_gate(approved, changed)
+
+
+def _gate_decision(row: dict, gate: dict) -> str:
+    """The rule as the plan's gate block states it, applied to one item row of the import summary: 'not enough
+    ratings', 'rated unrealistic' or 'passes'. A reference for the program that will apply the gate."""
+    five_point = row["five_point"]
+    if row["ratings_complete"] < gate["min_complete_ratings"] or any(
+            five_point[k]["n"] < gate["min_answers_per_key"] for k in gate["min_answers_keys"]):
+        return "not enough ratings"
+    if any(five_point[k]["median"] < gate["min_median"] for k in gate["gate_keys"]) or (gate["not_flagged"]
+                                                                                       and row["flagged"]):
+        return "rated unrealistic"
+    return "passes"
+
+
+def _summary_row(answers: dict[str, tuple]) -> dict:
+    """An item row as the import writes it, from each five-point key's answers in complete ratings ("cant_judge" for
+    Can't judge), with five_point and flagged computed by the import's own five_point_stats."""
+    from scripts.import_verification_ratings import five_point_stats
+
+    five_point = {k: five_point_stats(v) for k, v in answers.items()}
+    return {"ratings_complete": len(next(iter(answers.values()))), "five_point": five_point,
+            "flagged": any(s["majority_low"] for s in five_point.values())}
+
+
+def test_the_realism_gate_needs_two_answers_on_every_question_it_reads(plan):
+    """The gate reads a script's course-of-events question through the flag, and the flag is computed over numeric
+    answers only. So with two physicians and one Can't judge on course_plausible, the other physician's answer alone
+    would decide the flag: a 1 would drop the scenario and a 5 would pass it. The answer floor therefore covers every
+    question the gate reads, flag_adds as well as gate_keys (Codex review of PR #87, 2026-10-05), and such a scenario
+    is 'not enough ratings'. The other cases are the worked examples of A6.9 and section 13 at a median of 3."""
+    gate = plan["physician_realism_gate"]
+    assert sorted(gate["min_answers_keys"]) == sorted([*gate["gate_keys"], *gate["flag_adds"]])
+    fine = {k: (4, 4) for k in gate["gate_keys"]}
+    cases = [
+        ({**fine, "course_plausible": ("cant_judge", 5)}, "not enough ratings"),
+        ({**fine, "course_plausible": ("cant_judge", 1)}, "not enough ratings"),
+        ({**fine, "realism.clinical": ("cant_judge", 5), "course_plausible": (4, 4)}, "not enough ratings"),
+        ({**fine, "course_plausible": (4,)}, "not enough ratings"),
+        ({**fine, "course_plausible": (3, 4)}, "passes"),
+        ({k: (1, 5) for k in gate["gate_keys"]} | {"course_plausible": (1, 5)}, "passes"),
+        ({**fine, "realism.colloquial": (2, 4), "course_plausible": (3, 3)}, "passes"),
+        ({**fine, "realism.clinical": (2, 3), "course_plausible": (4, 4)}, "rated unrealistic"),
+        ({**fine, "course_plausible": (1, 2)}, "rated unrealistic"),
+        ({**fine, "course_plausible": (2, 5, 1)} | {k: (4, 4, 4) for k in gate["gate_keys"]}, "rated unrealistic"),
+    ]
+    for answers, expected in cases:
+        assert _gate_decision(_summary_row(answers), gate) == expected, answers
 
 
 def test_the_realism_gate_floor_and_counts_follow_from_the_plan(plan):
@@ -947,6 +996,10 @@ def test_the_gate_reads_the_same_in_the_plan_a69_section_13_and_the_protocol(pla
     assert f"closing date {closing} (UTC)" in record and "Closing date extensions" in record
     assert f"or on {closing} (UTC)" in proto
     assert "Re-pointed before round 1's bundle is fixed" in record
+    floor_keys = sorted(gate["min_answers_keys"])
+    assert all(f"(`{k}`)" in a69 and f"`{k}`" in s13 for k in gate["flag_adds"]), \
+        "A6.9 and section 13 say the answer floor covers the flag's own questions"
+    assert floor_keys == sorted([*gate["gate_keys"], *gate["flag_adds"]])
     # The accounts that rate before round 1 (the owner's test and pilot accounts, the wording-pilot physician) neither
     # fix the bundle nor count, everywhere the rule is written. The first draft fixed the bundle at the first login of
     # anyone but the test account, so the pilot physician's login would have fixed it before the pilot could reword it.
