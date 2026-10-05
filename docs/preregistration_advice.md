@@ -1166,7 +1166,10 @@ model output until it fires. The same round and rule select the Petri wave-3 sce
   running Assign items again tops up every item. An item still short of
   either count when the round closes on its date does not pass. It is
   reported as "not enough ratings", with its counts and whether ratings or
-  numeric answers were short.
+  numeric answers were short. A wave-3 script short in round 1 may be rated
+  again, unedited, in a later round, which then decides it ("Rounds" below;
+  the owner's decision of 2026-10-05). An advice item may not: Wave A and
+  Wave R are selected from round 1 alone.
 - Excluded physicians: the owner's test account, the owner's own pilot
   account and the wording-pilot physician's account, by the rater codes they
   hold in the round's export, named in writing before the export is
@@ -1389,7 +1392,8 @@ For the items it compares:
   digest of the seed, computed with `seed_digest`
   (`scripts/petri_audit/seeds.py`), with the `provenance.seed_sha256` of
   its item in each round's bundle, earliest round first: the first round
-  whose item has that digest decides the seed ("Rounds" below).
+  whose item has that digest and in which the seed reached both of rule 1's
+  counts decides it ("Rounds" below).
 
 It compares items, not whole files: a file that replaces a stimuli file under
 decision 6 or 7 has another file sha256 than the bundle's
@@ -1424,16 +1428,29 @@ are. Wave A and Wave R are selected from round 1 alone: their failing items
 are dropped (decision 3), not rewritten, so no later round rates an item
 they can use, and a rewritten new question is a new item for a later wave.
 Wave 3 selects across the rounds. Each seed is decided by the earliest
-round whose bundle rated it at its current digest. So a script that passed
-in round 1 and has not been edited since keeps that result and is not rated
-again; a rewritten script, which has a new digest, is decided by the later
-round that rated it; a later round that rates a script at a digest an
-earlier round rated does not replace the earlier result; and a script whose
-current digest no round rated cannot pass (the program refuses while the
-seed file holds one). Applied again after a later round, the program writes
-a new gate report for wave 3 alone, named after the latest round's bundle
-id and export stamp, with each script's deciding round; the Wave A and
-Wave R selection files written at round 1's application stand.
+round whose bundle rated it at its current digest and in which it reached
+both of rule 1's counts (`min_complete_ratings` complete ratings, and
+`min_answers_per_key` numeric answers on every question the gate reads for
+it). A round in which it was short does not decide it; that is the owner's
+decision of 2026-10-05 (approval record below). So:
+
+- a script that passed in round 1, or was rated unrealistic there, and has
+  not been edited since keeps that result and is not rated again;
+- a script short of ratings in round 1 may be rated again, unedited, in a
+  later round, which then decides it;
+- a rewritten script, which has a new digest, is decided by the earliest
+  later round that rated it and reached the counts;
+- a later round that rates a script at a digest an earlier round has
+  already decided does not replace the earlier result;
+- a script rated at its current digest only in rounds where it was short is
+  "not enough ratings";
+- a script whose current digest no round rated cannot pass (the program
+  refuses while the seed file holds one).
+
+Applied again after a later round, the program writes a new gate report for
+wave 3 alone, named after the latest round's bundle id and export stamp,
+with each script's deciding round, or the rounds in which it was short; the
+Wave A and Wave R selection files written at round 1's application stand.
 
 **The counts report**, also still to write, before the round's closing date
 (proposed: a `--counts-only` option of `scripts/import_verification_ratings.py`,
@@ -1568,8 +1585,10 @@ their own before it.
   scripts pass), each on its own dated line, written before its bundle is
   given to any physician: `<date>`: round `<n>`, bundle `<id>` (sha256
   `<sha256>`, questions sha256 `<sha256>`), the rewritten seeds `<ids>`,
-  closing date `<date>`; and, before its export is imported, its excluded
-  physicians and its closing export (sha256, closed). None so far.
+  the seeds rated again unedited because every earlier round that rated
+  them was short `<ids>`, closing date `<date>`; and, before its export is
+  imported, its excluded physicians and its closing export (sha256,
+  closed). None so far.
 - Clarifications after approval (2026-10-05), from Codex's review of pull
   request #87. Each says how the approved rule is carried out; none changes
   the rule or which items pass.
@@ -1616,3 +1635,25 @@ their own before it.
     again while the rewritten ones are (Gate 6b), and Wave A and Wave R are
     selected from round 1 alone, since their failing items are dropped
     (Gate 3); this changes neither the rule nor which items pass.
+- Owner's decision, 2026-10-05 (after the approval; it can change which
+  seeds pass, so it is recorded here as a decision, not as a
+  clarification). Asked in the agent session whether a later round may
+  rate the same unedited script when round 1 had too few ratings, the
+  owner chose "Yes, if short", the option described as:
+
+  > A round where the script had too few ratings doesn't count. The first
+  > round with enough ratings decides. A script that actually failed on
+  > realism still can't be re-rated unless it is edited.
+
+  Applied in A6.9 ("Items short of answers" and "Rounds"), section 13 of
+  `docs/petri_wave3_design.md`, the verification protocol and the wave-3
+  plan's `cumulative_selection` and `rounds_rule`. A wave-3 seed is decided
+  by the earliest round whose bundle rated it at its current digest and in
+  which it reached both of rule 1's counts. A round in which it was short
+  does not decide it, and a seed rated at its current digest only in such
+  rounds is "not enough ratings". "Failed on realism" is "rated
+  unrealistic" (a median below 3 or the flag), so a script decided that
+  way, like one that passed, is not rated again unless it is edited. This
+  replaces "the earliest round that rated it at its current digest" in the
+  "Later rounds" clarification above. Advice items are unaffected: Wave A
+  and Wave R are selected from round 1 alone.

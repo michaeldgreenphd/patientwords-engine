@@ -809,15 +809,26 @@ below).
 **Later rounds.** The plan's `physician_realism_gate.rounds` lists the rating rounds in
 order, earliest first; today it holds round 1 alone. A later round is appended, by a dated
 amendment (section 9.9) and a dated note in A6.9's approval record, before its bundle is
-given to any physician. Its bundle need hold only the rewritten scripts, and its
-exclusions and closing export are recorded before its import and checked as round 1's
-are. The gate then selects across the rounds: each seed is decided by the earliest round
-whose bundle rated it at its current digest. So a script that passed in round 1 and has
-not been edited since keeps its round-1 result and is not rated again; a rewritten
-script, which has a new digest, is decided by the later round that rated it; a later
-round that rates a script at a digest an earlier round already rated does not replace
-the earlier result; and a script whose current digest no round rated cannot pass. Only
-wave 3 has later rounds: the advice items that fail are dropped, not rewritten (A6.9,
+given to any physician. Its bundle need hold only the rewritten scripts and the scripts
+that were short of ratings, and its exclusions and closing export are recorded before its
+import and checked as round 1's are. The gate then selects across the rounds: each seed
+is decided by the earliest round whose bundle rated it at its current digest and in which
+it reached both of rule 1's counts. A round in which it was short does not decide it (the
+owner's decision of 2026-10-05, quoted in A6.9's approval record). So:
+
+- a script that passed in round 1, or was rated unrealistic there, and has not been
+  edited since keeps its round-1 result and is not rated again;
+- a script short of ratings in round 1 may be rated again, unedited, in a later round,
+  which then decides it;
+- a rewritten script, which has a new digest, is decided by the earliest later round that
+  rated it and reached the counts;
+- a later round that rates a script at a digest an earlier round has already decided
+  does not replace the earlier result;
+- a script rated at its current digest only in rounds where it was short is "not enough
+  ratings";
+- a script whose current digest no round rated cannot pass.
+
+Only wave 3 has later rounds: the advice items that fail are dropped, not rewritten (A6.9,
 decision 3), so Wave A and Wave R are selected from round 1 alone.
 
 **Cost.** Section 5's estimates scale with the conversations, three per scenario per

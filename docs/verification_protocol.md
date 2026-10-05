@@ -183,7 +183,10 @@ stop at any time.
   the program refuses a summary of any other export, so a rating saved
   after the close cannot count. If fewer than six wave-3 scripts pass, the
   failing ones are rewritten and rated in a later round, and the scripts
-  that passed keep their round-1 result and are not rated again.
+  that passed keep their round-1 result and are not rated again. A script
+  with too few ratings in a round may be rated again unchanged in a later
+  round, and the first round in which it has enough ratings decides it; a
+  script rated unrealistic must be rewritten before it is rated again.
 - **Reference urgency for the advice preregistration.** The physicians'
   answers on the 24 new questions are candidate adjudicated reference tiers.
   The analysis takes one tier per item, so a rule for combining physicians

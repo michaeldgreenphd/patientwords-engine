@@ -645,16 +645,17 @@ def _rated_seed_mismatches(by_seed: dict[str, dict], seeds_by_id: dict[str, dict
                   if sid not in seeds_by_id or seeds.seed_digest(seeds_by_id[sid]) != item["provenance"]["seed_sha256"])
 
 
-def _deciding_rounds(rated: list[dict[str, dict]], seeds_by_id: dict[str, dict]) -> dict[str, int | None]:
-    """cumulative_selection: for each seed of the seed file, the index in rounds of the earliest round whose bundle
-    rated it at its current digest (seed_digest), or None when no round did. rated holds each round's script items by
-    seed id, in the order of rounds."""
-    deciding: dict[str, int | None] = {}
+def _rounds_at_current_digest(rated: list[dict[str, dict]], seeds_by_id: dict[str, dict]) -> dict[str, list[int]]:
+    """For each seed of the seed file, the indices in rounds, in order, of the rounds whose bundle rated it at its
+    current digest (seed_digest); empty when no round did. rated holds each round's script items by seed id, in the
+    order of rounds. Bundles alone say this much; which of these rounds decides the seed needs its summaries
+    (cumulative_selection, _cumulative_selection)."""
+    at_digest: dict[str, list[int]] = {}
     for sid, seed in seeds_by_id.items():
         digest = seeds.seed_digest(seed)
-        deciding[sid] = next((k for k, by_seed in enumerate(rated)
-                              if sid in by_seed and by_seed[sid]["provenance"]["seed_sha256"] == digest), None)
-    return deciding
+        at_digest[sid] = [k for k, by_seed in enumerate(rated)
+                          if sid in by_seed and by_seed[sid]["provenance"]["seed_sha256"] == digest]
+    return at_digest
 
 
 def _check_realism_gate(plan: dict, seeds_by_id: dict[str, dict], bundles: dict[str, dict] | None = None) -> None:
@@ -694,7 +695,7 @@ def _check_realism_gate(plan: dict, seeds_by_id: dict[str, dict], bundles: dict[
         for by_seed in rated:
             for seed_id, item in by_seed.items():
                 assert item["provenance"]["source_path"] == plan["seed_file"], seed_id
-        unrated = sorted(sid for sid, k in _deciding_rounds(rated, seeds_by_id).items() if k is None)
+        unrated = sorted(sid for sid, ks in _rounds_at_current_digest(rated, seeds_by_id).items() if not ks)
         removed = sorted({sid for by_seed in rated for sid in by_seed} - set(seeds_by_id))
         assert not unrated and not removed, (
             f"seed(s) {unrated} of the seed file rated by no round at their current digest, and seed(s) {removed} "
@@ -723,7 +724,7 @@ def test_the_realism_gate_is_approved_and_names_the_rated_scripts_and_their_real
     assert gate["rounds"][0]["closing_date"] == "2026-10-31"
     # Today rounds holds round 1 alone, and it rated all eight seeds at their current digests.
     rated = [_rated_scripts(rnd)[1] for rnd in gate["rounds"]]
-    assert len(rated) == 1 and _deciding_rounds(rated, w3_set.seeds) == dict.fromkeys(w3_set.seeds, 0)
+    assert len(rated) == 1 and _rounds_at_current_digest(rated, w3_set.seeds) == {sid: [0] for sid in w3_set.seeds}
     _check_realism_gate(plan, w3_set.seeds)
 
 
@@ -809,22 +810,27 @@ def test_the_realism_gate_needs_two_answers_on_every_question_it_reads(plan):
 
 
 NOT_RATED = "not rated at its current text"
+SHORT = "not enough ratings"
 
 
 def _cumulative_selection(rounds: list[tuple[dict[str, dict], dict[str, dict]]], seeds_by_id: dict[str, dict],
                           gate: dict) -> dict[str, tuple[int | None, str]]:
     """The wave-3 selection as the plan's cumulative_selection states it: for each seed of the seed file, its deciding
-    round (1 for rounds[0]) and the rule's decision on its row in that round's summary, or (None, NOT_RATED) when no
-    round rated its current digest. rounds holds, for each round in order, its script items by seed id and its summary
-    rows by item id. A reference for the program that applies the gate."""
-    deciding = _deciding_rounds([by_seed for by_seed, _rows in rounds], seeds_by_id)
+    round (1 for rounds[0]) and the rule's decision on its row in that round's summary. The deciding round is the
+    earliest that rated the seed at its current digest and in which the seed reached the answer counts; a round in
+    which it was short does not decide it (the owner's decision of 2026-10-05). (None, SHORT) when every round that
+    rated its current digest was short, and (None, NOT_RATED) when none did. rounds holds, for each round in order,
+    its script items by seed id and its summary rows by item id. A reference for the program that applies the gate."""
+    at_digest = _rounds_at_current_digest([by_seed for by_seed, _rows in rounds], seeds_by_id)
     selection: dict[str, tuple[int | None, str]] = {}
-    for sid, k in deciding.items():
-        if k is None:
-            selection[sid] = (None, NOT_RATED)
-        else:
+    for sid, ks in at_digest.items():
+        selection[sid] = (None, SHORT if ks else NOT_RATED)
+        for k in ks:
             by_seed, rows = rounds[k]
-            selection[sid] = (k + 1, _gate_decision(rows[by_seed[sid]["item_id"]], gate))
+            decision = _gate_decision(rows[by_seed[sid]["item_id"]], gate)
+            if decision != SHORT:
+                selection[sid] = (k + 1, decision)
+                break
     return selection
 
 
@@ -834,11 +840,12 @@ def test_a_later_round_keeps_the_scripts_that_passed_and_decides_the_rewritten_o
     rated every seed, so pointing the gate at a later round that rated only the rewrites lost the scripts that had
     passed, and carrying those over unrated left them short of ratings (Codex review of PR #87, 2026-10-05). The plan
     now lists rounds in order and selects across them (cumulative_selection): each seed is decided by the earliest
-    round that rated it at its current digest. A script that passed and was not edited keeps its round-1 result; a
-    rewritten one is decided by the round that rated its new text; a later rating of a digest an earlier round rated
-    does not replace that result (the exporter today puts every seed in a bundle); and a seed whose current digest no
-    round rated cannot pass. Today's files are a list of one round that rated all eight seeds. This changes neither
-    the rule nor which items pass."""
+    round that rated it at its current digest and in which it reached the answer counts. A script that passed and was
+    not edited keeps its round-1 result; a rewritten one is decided by the round that rated its new text; a later
+    rating of a digest an earlier round decided does not replace that result (the exporter today puts every seed in a
+    bundle); and a seed whose current digest no round rated cannot pass. Today's files are a list of one round that
+    rated all eight seeds. This changes neither the rule nor which items pass. How a round in which a seed was short is
+    treated can change them; it is the owner's decision of 2026-10-05, tested in the next test."""
     gate = plan["physician_realism_gate"]
     assert "round" not in gate and [r["name"] for r in gate["rounds"]][:1] == [
         "round 1 of the physician verification study (docs/verification_protocol.md)"]
@@ -911,7 +918,8 @@ def test_a_later_round_keeps_the_scripts_that_passed_and_decides_the_rewritten_o
     later_s13 = _section(s13, "**Later rounds.**", "**Cost.**")
     proto = one_line(_section(PROTOCOL.read_text(encoding="utf-8"), "**Which items the paid runs use", "\n- **"))
     for name, text in (("A6.9 Rounds", rounds_a69), ("section 13", later_s13)):
-        assert "decided by the earliest round whose bundle rated it at its current digest" in text, name
+        assert "decided by the earliest round whose bundle rated it at its current digest and in which it reached " \
+               "both of rule 1's counts" in text, name
         assert re.search(r"not been edited since keeps (?:its round-1|that) result and is not rated again", text), name
         assert "does not replace the earlier result" in text and "cannot pass" in text, name
         assert re.search(r"Wave A and Wave R are selected from round 1 alone", text), name
@@ -925,6 +933,94 @@ def test_a_later_round_keeps_the_scripts_that_passed_and_decides_the_rewritten_o
     stale = re.compile(r"physician_realism_gate\.round\b(?!s)|`round\.")
     assert [name for name, text in (("A6.9", a69), ("record", current), ("section 13", s13), ("protocol", proto))
             if stale.search(text)] == []
+
+
+def test_a_round_where_a_script_was_short_does_not_decide_it(plan, w3_set):
+    """The owner's decision of 2026-10-05, after the approval ("Yes, if short"): "A round where the script had too few
+    ratings doesn't count. The first round with enough ratings decides. A script that actually failed on realism still
+    can't be re-rated unless it is edited." So a seed is decided by the earliest round that rated it at its current
+    digest and in which it reached the answer counts (min_complete_ratings, and min_answers_per_key on every key of
+    min_answers_keys). A seed short in round 1 may be rated again unedited; one rated unrealistic, or one that passed,
+    keeps that result; and one short in every round that rated its current digest is 'not enough ratings'. Unlike the
+    clarifications, this can change which seeds pass, so A6.9's approval record holds it as the owner's decision."""
+    gate = plan["physician_realism_gate"]
+    _bundle1, round1 = _rated_scripts(gate["rounds"][0])
+    ids = sorted(w3_set.seeds)
+    short_then_rated, failed_then_rated, short_everywhere, passed_then_short, short_twice_then_rated = ids[:5]
+    fine = dict.fromkeys(gate["min_answers_keys"], (4, 4))
+    good = _summary_row(fine)
+    bad = _summary_row({**fine, gate["gate_keys"][0]: (1, 2)})
+    short = _summary_row({**fine, gate["flag_adds"][0]: ("cant_judge", 4)})   # one numeric answer on the flag's key
+    lone = _summary_row(dict.fromkeys(gate["min_answers_keys"], (4,)))      # one complete rating
+    assert {_gate_decision(r, gate) for r in (short, lone)} == {SHORT}
+    assert (_gate_decision(good, gate), _gate_decision(bad, gate)) == ("passes", "rated unrealistic")
+
+    def later(n: int, sids: Iterable[str]) -> dict[str, dict]:
+        """Round n's items for these seeds, unedited: the digests round 1 rated."""
+        out = {}
+        for sid in sids:
+            item = copy.deepcopy(round1[sid])
+            item["item_id"] = f"round{n}_{sid}"
+            out[sid] = item
+        return out
+
+    first = {short_then_rated: short, failed_then_rated: bad, short_everywhere: lone, passed_then_short: good,
+             short_twice_then_rated: short}
+    rows1 = {item["item_id"]: first.get(sid, good) for sid, item in round1.items()}
+    round2 = later(2, first)   # every seed of round 1's first dict, unedited
+    second = {short_then_rated: good, failed_then_rated: good, short_everywhere: short, passed_then_short: short,
+              short_twice_then_rated: lone}
+    rows2 = {round2[sid]["item_id"]: row for sid, row in second.items()}
+    round3 = later(3, [short_twice_then_rated])
+    rows3 = {round3[short_twice_then_rated]["item_id"]: bad}
+    selection = _cumulative_selection([(round1, rows1), (round2, rows2), (round3, rows3)], w3_set.seeds, gate)
+    # Short in round 1, then decided by round 2 at the same digest.
+    assert selection[short_then_rated] == (2, "passes")
+    # Rated unrealistic in round 1: round 2's ratings of the same text are ignored.
+    assert selection[failed_then_rated] == (1, "rated unrealistic")
+    # Short in every round that rated it.
+    assert selection[short_everywhere] == (None, SHORT)
+    # A script that passed is decided by round 1, whatever a later round shows.
+    assert selection[passed_then_short] == (1, "passes")
+    # The first round with enough ratings decides, here round 3, and it can fail the script.
+    assert selection[short_twice_then_rated] == (3, "rated unrealistic")
+    assert all(selection[sid] == (1, "passes") for sid in ids[5:])
+    # Round 1 alone: the scripts short there are 'not enough ratings', not unrated.
+    alone = _cumulative_selection([(round1, rows1)], w3_set.seeds, gate)
+    assert {sid for sid, d in alone.items() if d == (None, SHORT)} == {short_then_rated, short_everywhere,
+                                                                        short_twice_then_rated}
+
+    # The owner's words are quoted where the decision is recorded, as a decision, after the clarifications.
+    one_line = functools.partial(re.sub, r"\s+", " ")
+    prereg = PREREG.read_text(encoding="utf-8")
+    record = one_line(_section(prereg, "### Approval record", None))
+    decision = record[record.index("- Owner's decision, 2026-10-05"):]
+    assert record.index("- Clarifications after approval") < record.index("- Owner's decision, 2026-10-05")
+    quoted = ("A round where the script had too few ratings doesn't count. The first round with enough ratings "
+              "decides. A script that actually failed on realism still can't be re-rated unless it is edited.")
+    assert '"Yes, if short"' in decision and one_line(quoted) in decision.replace("> ", "")
+    assert "it can change which seeds pass" in decision
+    rounds_a69 = one_line(_section(prereg, "**Rounds.**", "**The counts report**"))
+    short_a69 = one_line(_section(prereg, "- **Items short of answers.**", "- Excluded physicians"))
+    spec = one_line(_section(prereg, "**Code still to write.**", "**Owner decisions"))
+    later_s13 = one_line(_section(W3_DESIGN.read_text(encoding="utf-8"), "**Later rounds.**", "**Cost.**"))
+    proto = one_line(_section(PROTOCOL.read_text(encoding="utf-8"), "**Which items the paid runs use", "\n- **"))
+    for name, text in (("A6.9 Rounds", rounds_a69), ("section 13", later_s13)):
+        assert "A round in which it was short does not decide it" in text, name
+        assert "may be rated again, unedited, in a later round, which then decides it" in text, name
+        assert 'only in rounds where it was short is "not enough ratings"' in text, name
+        assert "owner's decision of 2026-10-05" in text, name
+    assert "may be rated again, unedited, in a later round" in short_a69 and "An advice item may not" in short_a69
+    assert "in which the seed reached both of rule 1's counts decides it" in spec
+    assert "may be rated again unchanged in a later round" in proto and "must be rewritten before it is rated again" \
+        in proto
+    cumulative = gate["cumulative_selection"]
+    assert "A round in which the seed was short of those counts does not decide it" in cumulative
+    assert "only in rounds where it was short is 'not enough ratings'" in cumulative
+    assert "the owner's decision of 2026-10-05 ('Yes, if short'" in cumulative and "can change which seeds pass" \
+        in cumulative
+    assert "the scripts short of ratings in every earlier round" in gate["rounds_rule"]
+    assert "may be rated again, unedited, in a later round" in gate["rounds"][0]["short_items"]
 
 
 def test_the_realism_gate_floor_and_counts_follow_from_the_plan(plan):
