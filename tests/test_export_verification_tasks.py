@@ -974,8 +974,9 @@ def _answer_label() -> str:
 @pytest.mark.parametrize("n, path, value, fragment", [
     (0, ("@", "caption"), "Compare it with what Gemma predicted.", "a model or vendor name"),
     (2, ("arms", 1, "turns", 0, "text"), "asked claude about it", "a model or vendor name"),
-    (1, ("clinical_message",), f"Where should I keep the brass key from {TIER_A}?", "a batch, run or item id"),
-    (0, ("@", "label"), "Sample vt_731162e6021a", "a batch, run or item id"),
+    (1, ("clinical_message",), f"Where should I keep the brass key from {TIER_A}?", "a batch, run, item, seed or scenario id"),
+    (0, ("@", "label"), "Sample vt_731162e6021a", "a batch, run, item, seed or scenario id"),
+    (2, ("@", "caption"), f"Compare it with {TIER_B}#1.", "a batch, run, item, seed or scenario id"),
     (1, ("patient_message",), "Where should I keep the 0.43 key?", "a decimal number or a percentage"),
     (0, ("@", "caption"), "Most physicians (60%) agree.", "a decimal number or a percentage"),
     (1, ("@", "caption"), "Here the answer is {answer}.", "the urgency level"),
@@ -1071,6 +1072,109 @@ def test_every_instructions_field_of_the_committed_questions_is_known():
     assert set(questions["instructions"]) <= evt.INSTRUCTIONS_KEYS
     assert {"version", "welcome", "consent", "families", "tier_scale_note"} <= set(questions["instructions"])
     evt.validate_questions(questions, "questions.json")
+
+
+def _study_ids() -> dict[str, list[str]]:
+    """Every id of every source an item or an example could be copied from, read from the committed data, by source:
+    the Petri seed files (seed ids, scenario ids, text keys), the pilot runs (run, row, call, cell and review ids),
+    the advice stimuli files (item ids, batches, rerun sources), the committed bundles (bundle, item and source ids),
+    the landed Petri runs, and the data/simulated and data/advice file stems."""
+    out: dict[str, list[str]] = {"Petri seed ids": [], "Petri scenario ids": [], "Petri text keys": []}
+    for path in sorted((ROOT / "docs" / "framework").glob("petri_seeds*.json")):
+        for seed in json.loads(path.read_text(encoding="utf-8"))["seeds"]:
+            out["Petri seed ids"].append(seed["seed_id"])
+            out["Petri scenario ids"].append(seed["scenario"]["id"])
+            out["Petri text keys"] += [t["key"] for t in seed["texts"] if not t["key"].isalpha()]
+    runs = sorted(p for p in (ROOT / "pilot" / "runs").iterdir() if (p / "generated" / "all_rows.jsonl").is_file())
+    out["pilot run ids"] = [p.name for p in runs]
+    out["pilot row, call and cell ids"] = [row[k] for p in runs
+                                           for row in map(json.loads, (p / "generated" / "all_rows.jsonl").read_text(
+                                               encoding="utf-8").splitlines()) if row
+                                           for k in ("id", "call_id", "cell") if isinstance(row.get(k), str)]
+    out["pilot review ids"] = [r for p in runs if (p / "review_map.json").is_file()
+                               for r in json.loads((p / "review_map.json").read_text(encoding="utf-8"))["map"]]
+    out["advice item and source ids"] = []
+    for path in sorted((ROOT / "data" / "advice").glob("stimuli_*.json")):
+        for item in json.loads(path.read_text(encoding="utf-8")).get("items", []):
+            ref, rerun = item.get("source_ref") or {}, (item.get("meta") or {}).get("rerun_of") or {}
+            out["advice item and source ids"] += [x for x in (item.get("id"), ref.get("batch"), rerun.get("id"))
+                                                  if isinstance(x, str)]
+    out["bundle, item and source ids"] = []
+    for path in COMMITTED:
+        bundle = json.loads(path.read_text(encoding="utf-8"))
+        out["bundle, item and source ids"] += [bundle["bundle_id"], *[i["item_id"] for i in bundle["items"]],
+                                               *[i["provenance"]["source_id"] for i in bundle["items"]]]
+    out["Petri run ids"] = [p.name for p in sorted((ROOT / "data" / "petri" / "runs").iterdir()) if p.is_dir()]
+    out["data/simulated and data/advice file stems"] = sorted(
+        {p.name.split(".")[0] for d in ("simulated", "advice") for p in (ROOT / "data" / d).glob("*.json")})
+    return out
+
+
+def test_every_id_of_every_source_is_refused_in_an_example():
+    # Regression (Codex review of PR #88): the id check listed a few batch prefixes, so Petri seed and scenario ids
+    # (the sources of the script items an example imitates) passed. The shapes now come from the data, and every id of
+    # every source must be matched.
+    sources = _study_ids()
+    assert all(sources.values()), {k: len(v) for k, v in sources.items()}
+    # A Petri text key that is one plain word is an ordinary English word, not an id shape, and refusing it would
+    # refuse ordinary text, so _study_ids leaves it out. There is one; a new one shows here.
+    plain = {t["key"] for path in (ROOT / "docs" / "framework").glob("petri_seeds*.json")
+             for seed in json.loads(path.read_text(encoding="utf-8"))["seeds"] for t in seed["texts"]
+             if t["key"].isalpha()}
+    assert plain == {"proposition"}
+    missed = {name: sorted({i for i in ids if not evt.EXAMPLE_IDS.search(i)})[:5] for name, ids in sources.items()}
+    assert {k: v for k, v in missed.items() if v} == {}
+
+
+def _id_from(source: str) -> str:
+    """One real id of a source, read from the data (the ids carry medical words, so none is written here). For the
+    Petri sources, the two ids the Codex finding named: the w3 seed with "pressure" in its id, and its scenario."""
+    if source in ("Petri seed ids", "Petri scenario ids"):
+        seeds = json.loads((ROOT / "docs" / "framework" / "petri_seeds_w3.draft.json").read_text(encoding="utf-8"))
+        seed = next(s for s in seeds["seeds"] if "-pressure-" in s["seed_id"] and "injury" in s["scenario"]["id"])
+        return seed["seed_id"] if source == "Petri seed ids" else seed["scenario"]["id"]
+    return _study_ids()[source][-1]
+
+
+ID_SOURCES = ["Petri seed ids", "Petri scenario ids", "Petri text keys", "pilot run ids",
+              "pilot row, call and cell ids", "pilot review ids", "advice item and source ids",
+              "bundle, item and source ids", "Petri run ids", "data/simulated and data/advice file stems"]
+
+
+@pytest.mark.parametrize("source", ID_SOURCES)
+def test_a_real_id_from_each_source_inside_example_text_is_refused(tmp_path, source):
+    study_id = _id_from(source)
+    examples = _examples()
+    examples[2]["display"]["arms"][1]["turns"][0]["text"] = f"see {study_id} for this one"
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "a batch, run, item, seed or scenario id" in message and "instructions.examples[2]" in message, message
+    assert study_id not in message
+
+
+def test_the_arm_ids_and_display_kind_are_not_read_as_ids(tmp_path, capsys):
+    # Arm ids and the display kind are snake_case by the display contract (lay_careful, pair_sentence) and are not
+    # text a physician reads (the app shows Version A/B/C), so the id check skips them.
+    examples = _examples()
+    arms = examples[2]["display"]["arms"]
+    arms[0]["arm"] = arms[2]["turns"][1]["same_as"] = "patient_clinical"       # a real arm id shape, also in same_as
+    assert "_" in arms[2]["arm"] and "_" in examples[0]["display"]["kind"]
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    bundle, _ = rerun(paths, tmp_path / "out")
+    assert bundle["questions"]["instructions"]["examples"] == examples
+
+
+def test_ordinary_text_with_hyphens_and_short_codes_is_not_read_as_an_id(tmp_path, capsys):
+    # A Petri scenario id ends in a four-digit number (w3-<slug>-0001), so a short code or a hyphenated word alone is
+    # not one.
+    examples = _examples()
+    examples[1]["caption"] = "Take the w4 bus or the well-known 12-minute walk to room r12."
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    bundle, _ = rerun(paths, tmp_path / "out")
+    assert bundle["questions"]["instructions"]["examples"][1]["caption"] == examples[1]["caption"]
 
 
 def _module_value_node(rel: str, name: str) -> ast.expr:

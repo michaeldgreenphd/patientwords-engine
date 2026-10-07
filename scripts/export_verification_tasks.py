@@ -352,7 +352,19 @@ EXAMPLE_MODEL_PATTERNS = (
 )
 EXAMPLE_MODEL_NAMES = re.compile("|".join([*map(re.escape, EXAMPLE_MODEL_SUBSTRINGS), *EXAMPLE_MODEL_PATTERNS]),
                                  re.I)
-EXAMPLE_IDS = re.compile(r"\b(pairs|advman|advnat|advmc|advprobe|stimuli|vtasks|pilot)_\w|\bvt_[0-9a-f]{4}", re.I)
+# The study's ids, by the shapes they take in the data (Codex review of PR #88 found the first pattern, a list of batch
+# prefixes, let the Petri seed and scenario ids through). tests/test_export_verification_tasks.py reads every id of
+# every source below and fails when one is not matched.
+EXAMPLE_IDS = re.compile("|".join((
+    # an underscore joining two letters or digits: every stamped batch, run and bundle id and its index
+    # (pairs_<stamp>#17, advman_<date>#01, vtasks_<stamp>, pilot_v2_<date>, run_<number>_1, the data/simulated and
+    # data/advice file stems), a bundle item id (vt_<hex>), a pilot row, call or cell id (A__<cell>__L01) and a Petri
+    # text key (t01_clinical); patient text has no underscores
+    r"[^\W_]_+[^\W_]",
+    r"\bpw-petri-",                                            # Petri seed ids (docs/framework/petri_seeds*.json)
+    r"\b(?:synthetic-h|w)\d+[a-z]?(?:-[a-z0-9]+)*-\d{4}\b",   # Petri scenario ids (w3-<slug>-0001, synthetic-h1-0001)
+    r"\br\d{3}\b",                                            # pilot review ids (review_map.json: r001)
+)), re.I)
 EXAMPLE_MEASURED = re.compile(r"\d[.,]\d|%")
 
 _STAMP_RE = re.compile(r"^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$")
@@ -642,6 +654,27 @@ def example_texts(example: dict) -> list[str]:
     return [example["label"], example["caption"], *strings_in(example["display"])]
 
 
+# Display fields that hold the contract's own vocabulary, not text a physician reads: the display kind, and a
+# script's arm ids, which the app replaces with Version A/B/C and same_as names. Both are snake_case
+# (pair_sentence, lay_careful), so the id check skips them.
+NOT_SHOWN_DISPLAY_FIELDS = frozenset({"kind", "arm", "same_as"})
+
+
+def example_shown_texts(example: dict) -> list[str]:
+    """The text of an example a physician reads: its label, its caption, and its display's strings except the
+    display kind and the arm ids (NOT_SHOWN_DISPLAY_FIELDS)."""
+    def shown(obj: Any) -> list[str]:
+        if isinstance(obj, str):
+            return [obj]
+        if isinstance(obj, dict):
+            return [s for k, v in obj.items() if k not in NOT_SHOWN_DISPLAY_FIELDS for s in shown(v)]
+        if isinstance(obj, list):
+            return [s for v in obj for s in shown(v)]
+        return []
+
+    return [example["label"], example["caption"], *shown(example["display"])]
+
+
 def _example_display_problem(display: Any, set_name: str) -> str | None:
     """How an example's display departs from the display every item of question set ``set_name`` has, or None. The
     rules are the ones the item builders follow, so the app renders an example exactly as it renders an item."""
@@ -734,9 +767,10 @@ def validate_examples(doc: dict, where: str) -> None:
             refuse("bad_example", f"{at} ({family}): {problem}")
         texts = example_texts(example)
         shown = [what for what, pattern in (("a model or vendor name", EXAMPLE_MODEL_NAMES),
-                                            ("a batch, run or item id", EXAMPLE_IDS),
                                             ("a decimal number or a percentage", EXAMPLE_MEASURED))
                  if any(pattern.search(t) for t in texts)]
+        if any(EXAMPLE_IDS.search(t) for t in example_shown_texts(example)):
+            shown.append("a batch, run, item, seed or scenario id")
         shown += [f"the urgency level {term!r}" for term in answer_terms
                   if any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", t, re.I) for t in texts)]
         if shown:

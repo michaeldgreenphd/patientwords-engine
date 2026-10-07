@@ -262,7 +262,11 @@ problem:
 - **What a physician may not see** (`example_not_blind`): a model or vendor
   name from any of the engine's model registries, found even inside another
   word (BioMistral, MedGemma, ChatGPT; a test fails when a registered model
-  is not matched); a batch, run or item id; a decimal number or a percentage, which is
+  is not matched); any of the study's ids, by the shapes they take in the
+  data: batch, run, bundle and item ids, pilot row and review ids, and the
+  Petri seed and scenario ids of the scripts (a test fails when an id of
+  any source is not matched; an example's arm ids and display kind, which a
+  physician does not read, are not checked); a decimal number or a percentage, which is
   how a measured value is written; or any urgency level the study can
   propose, by its label or by the value a proposed tier is stored as (with
   an underscore written as a space or a hyphen too), read from the
