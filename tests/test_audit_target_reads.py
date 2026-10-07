@@ -315,3 +315,18 @@ def test_relations_keep_the_leading_space():
     assert audit.relation(out(" "), " xab") == "whitespace_token"
     assert audit.is_substitution("space_variant", "logits") and audit.is_substitution("short_leading_wordpiece", "hosted")
     assert not audit.is_substitution("short_leading_wordpiece", "logits")
+
+
+def test_the_first_part_rule_skips_translated_corpus_directories(tmp_path):
+    # urgency_shift.py never ingests txcorpus_ directories: their "patient" side is a rewrite
+    root = tmp_path / "engine"
+    stem = "txcorpus_20990101T000000Z"
+    write(root / f"data/simulated/{stem}.json", [pair(1, " qzr")])
+    write(root / f"trace_out/{stem}/batch_summary.part_01.json", {"mode": "2panel", "backend": "hosted",
+          "graph_model": "gemma-2-2b", "results": [result(1, out(" to"), 0.6, 0.3, [[out(" to"), 0.6]],
+                                                          [[out(" to"), 0.3]])]})
+    rep = run(root, tmp_path)
+    assert rep["counts"]["overall"]["substitutions"] == 1
+    assert rep["counts_urgency_first_part"]["overall"] == {}
+    (s,) = subs(rep)
+    assert s["effective"] is True and s["urgency_read"] is False

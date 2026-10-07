@@ -152,23 +152,31 @@ def _bare(label):
     return (m.group(1) if m else label).strip() or None
 
 
-def _spread_prob(spread, intended, exact=False):
+def _exact_side(r, side):
+    """A side of a result written since 2026-10-07 (it carries ``target_read``):
+    the probability that result recorded for its measured token
+    (``target_token``, which may be the intended word's leading wordpiece or
+    its spaced form, and may sit below the stored spread), else that token
+    searched in the side's spread with ``targets.same_token``. Never a
+    neighbour's value: a side the exact read recorded as missing stays
+    missing."""
+    recorded = (r.get("probabilities") or {}).get(side)
+    if isinstance(recorded, (int, float)) and not isinstance(recorded, bool):
+        return recorded, "exact"
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from medlang_circuits.targets import same_token
+    token = r.get("target_token")
+    hit = next((p for tok, p in (r.get("predictive_spread") or {}).get(side) or [] if same_token(tok, token)), None)
+    return (hit, "exact") if hit is not None else (None, None)
+
+
+def _spread_prob(spread, intended):
     """Probability of the intended token in a traced spread, tolerating the
     casing and wordpiece-fragment mismatches that break strict anchoring
-    (' Qtok' vs ' qtok', ' qtokens' vs ' qtoken').
-
-    With ``exact`` - a result written since 2026-10-07, whose ``target_read``
-    block records how each side was read - only the intended token itself
-    counts, compared as ``targets.same_token`` compares it: a side the exact
-    read recorded as missing is not recovered from a neighbour's value.
-    Results written before then keep the tolerant recovery, so the committed
-    validity numbers stay reproducible."""
-    if exact:
-        import sys
-        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-        from medlang_circuits.targets import same_token
-        hit = next((p for tok, p in spread or [] if same_token(tok, intended)), None)
-        return (hit, "exact") if hit is not None else (None, None)
+    (' Qtok' vs ' qtok', ' qtokens' vs ' qtoken'). Used for results written
+    before 2026-10-07 only, so the committed validity numbers stay
+    reproducible; newer results go through ``_exact_side``."""
     want = (_bare(intended) or "").casefold()
     if not want:
         return None, None
@@ -217,9 +225,12 @@ if hand.is_file():
         # biases the correlation toward the weak cases.
         sp = r.get("predictive_spread") or {}
         intended = pair.get("target_clinical_token")
-        exact = isinstance(r.get("target_read"), dict)
-        p_c, how_c = _spread_prob(sp.get("clinical"), intended, exact)
-        p_p, how_p = _spread_prob(sp.get("patient"), intended, exact)
+        if isinstance(r.get("target_read"), dict):
+            p_c, how_c = _exact_side(r, "clinical")
+            p_p, how_p = _exact_side(r, "patient")
+        else:
+            p_c, how_c = _spread_prob(sp.get("clinical"), intended)
+            p_p, how_p = _spread_prob(sp.get("patient"), intended)
         if p_c is not None and p_p is not None:
             live.append(round(p_p - p_c, 4))
             handv.append(round(po - co, 4))
