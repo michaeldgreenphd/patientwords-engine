@@ -1397,9 +1397,21 @@ def test_an_example_that_copies_an_item_of_this_bundle_or_an_unselected_source_r
     message = _copy_refused(tmp_path / "pilot", examples)
     assert f"pilot run {RUN2} row {pilot['id']}" in message, message
     examples = _examples()
-    examples[1]["caption"] = MARK_RATIONALE
+    examples[1]["display"]["patient_message"] = MARK_RATIONALE
     message = _copy_refused(tmp_path / "seed", examples)
     assert "seeds.json seed" in message, message
+
+
+def test_a_next_word_equal_to_a_committed_target_is_not_a_copy(tmp_path, capsys):
+    # Regression (Gemini review of PR #88): the copy check indexed a pair's next word as a study text, so an invented
+    # pair whose next word was any committed pair's target was refused as repeating that item. The check compares
+    # sentences, messages and turns only.
+    item = _committed_item("tracing_pair", lambda d: evt.next_word_ok(d["next_word"]))
+    examples = _examples()
+    examples[0]["display"]["next_word"] = item["display"]["next_word"]
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    rerun(paths, tmp_path / "out")
 
 
 def _long_advice_message() -> str:

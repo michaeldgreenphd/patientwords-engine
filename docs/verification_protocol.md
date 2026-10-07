@@ -291,8 +291,9 @@ problem:
   an example may not.
 - **The holdout seal** (`seal_hit`): every string of every example is
   scanned for sealed phrases, as an item's texts are.
-- **A study item** (`example_copies_item`): no text of an example a
-  physician reads may repeat, or nearly repeat, a study text: any sentence,
+- **A study item** (`example_copies_item`): no sentence, message or turn
+  of an example may repeat, or nearly repeat, a study text (a pair's next
+  word is not compared, since a one-word target is not a stimulus): any sentence,
   message or script text of the pilot runs, the published payload, the
   advice stimuli and the Petri seeds the export reads (selected or not), or
   of an item of any bundle committed in `data/verification`. Texts are

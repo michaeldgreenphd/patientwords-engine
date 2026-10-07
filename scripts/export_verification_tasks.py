@@ -797,7 +797,8 @@ class StudyTextIndex:
 
 
 def check_example_copies(inp: "Inputs", examples: list[dict]) -> None:
-    """Refuse an example any text of which repeats or nearly repeats a study text (Codex review of PR #88: a copied
+    """Refuse an example any sentence, message or turn of which (copy_texts) repeats or nearly repeats a study text
+    (Codex review of PR #88: a copied
     item display passed every other check, and a physician would rate the same stimulus after seeing it as an example).
     The study texts are every text the inputs hold, selected for this bundle or not (Inputs.study_texts; every item
     of this bundle is built from them), and the item displays of every committed bundle in data/verification, which
@@ -806,11 +807,11 @@ def check_example_copies(inp: "Inputs", examples: list[dict]) -> None:
     for path in sorted(COMMITTED_BUNDLES_DIR.glob("tasks_*.json")):
         bundle, _ = inp.read_json(path, "committed bundle (an example may not copy its items)")
         for item in bundle.get("items", []) if isinstance(bundle, dict) else []:
-            texts += [(t, f"item {item.get('item_id')} of {path.name}") for t in item_shown_texts(item.get("display"))]
+            texts += [(t, f"item {item.get('item_id')} of {path.name}") for t in copy_texts(item.get("display"))]
     index = StudyTextIndex(texts)
     found = []
     for n, example in enumerate(examples):
-        for text in example_shown_texts(example):
+        for text in copy_texts(example["display"]):
             copy = index.copy_of(text)
             if copy:
                 found.append(f"instructions.examples[{n}] ({example['family']}) {copy[0]} {copy[2]} "
@@ -819,6 +820,16 @@ def check_example_copies(inp: "Inputs", examples: list[dict]) -> None:
     if found:
         refuse("example_copies_item", "an example is a study item, or nearly one, so a physician would see it before "
                                       "rating it: " + "; ".join(found) + ". Examples are invented")
+
+
+def copy_texts(display: Any) -> list[str]:
+    """The texts of a display the copy check compares: its sentences, messages and turns. A pair's next word is left
+    out (Gemini review of PR #88: as a one-word study text it made any example whose next word was a committed pair's
+    target "repeat" that item); next words have their own rules (next_word_ok and the blinding checks)."""
+    if isinstance(display, dict):
+        return [s for k, v in display.items() if k not in NOT_SHOWN_DISPLAY_FIELDS | {"next_word"}
+                for s in item_shown_texts(v)]
+    return item_shown_texts(display)
 
 
 def item_shown_texts(display: Any) -> list[str]:
