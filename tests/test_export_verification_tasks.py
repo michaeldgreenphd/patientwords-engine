@@ -1013,6 +1013,95 @@ def test_an_ellipsis_or_a_sentence_end_before_a_number_is_not_a_decimal(tmp_path
     rerun(paths, tmp_path / "out")
 
 
+EXAMPLE_OF_SET = {"tracing_pair": 0, "advice_new": 1, "advice_rerun": 1, "advice_rerun_truncated": 1,
+                  "multiturn_script": 2}
+
+
+def _example_for_set(set_name: str) -> tuple[list[dict], int]:
+    """_examples() with the example whose display fits question set set_name moved to that set; its index."""
+    examples, n = _examples(), EXAMPLE_OF_SET[set_name]
+    examples[n]["family"] = set_name
+    if set_name == "advice_rerun_truncated":
+        examples[n]["display"]["cut_off"] = True
+    return examples, n
+
+
+def _statement_labels() -> list[tuple[str, str]]:
+    """(question set, label) for every option label, abstentions included, of every scale a question set uses that
+    is a statement of its own: four or more words, or numbered ("4 - Likely"). Read from the questions data."""
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    out = set()
+    for set_name in evt.QUESTION_SETS:
+        for q in questions["question_sets"][set_name]["questions"]:
+            scale = questions["scales"][q["scale"]]
+            for o in scale["options"] + ([scale["abstain"]] if scale["abstain"] else []):
+                if re.match(r"\s*\d+\s*-", o["label"]) or len(re.findall(r"[^\W_]+", o["label"])) >= 4:
+                    out.add((set_name, o["label"]))
+    return sorted(out)
+
+
+def test_every_statement_label_of_every_scale_is_refused_in_its_sets_examples(tmp_path):
+    # Regression (Codex review of PR #88): only the reveal's scale was read, so a caption could state the realism,
+    # plausibility, keep or any other answer. Every such label, of every scale each set uses, is tried.
+    labels = _statement_labels()
+    assert len(labels) > 20 and {s for s, _ in labels} == set(evt.QUESTION_SETS)
+    passed = []
+    for k, (set_name, label) in enumerate(labels):
+        examples, n = _example_for_set(set_name)
+        examples[n]["caption"] = f"This one: {label}."
+        paths = write_world(tmp_path / f"w{k}", world_data())
+        paths["questions"] = _questions_with(tmp_path / f"w{k}", examples)
+        with pytest.raises(SystemExit) as exc:
+            evt.main(argv(paths))
+        if "[example_not_blind]" not in str(exc.value) or "the answer label" not in str(exc.value):
+            passed.append((set_name, label))
+    assert passed == []
+
+
+def _scale_value(set_name: str, kind: type) -> tuple[Any, str, int | None]:
+    """(a value, its label, the scale's highest value if it is an ordinal number scale) of a scale set_name uses."""
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    for q in questions["question_sets"][set_name]["questions"]:
+        scale = questions["scales"][q["scale"]]
+        values = [o["value"] for o in scale["options"]]
+        if values and all(isinstance(v, kind) and not isinstance(v, bool) for v in values):
+            top = max(values) if kind is int and scale["type"] == "ordinal" else None
+            return scale["options"][1]["value"], scale["options"][1]["label"], top
+    raise AssertionError(f"{set_name} uses no scale of {kind.__name__} values")
+
+
+@pytest.mark.parametrize("form", ["The correct rating is {v}.", "This was rated {v}.", "It scores {v}.",
+                                  "The score: {v}.", "{v} out of {top}", "The answer is {s}.", "THE ANSWER IS {S}.",
+                                  "Rated as {label}.",
+                                  "The verdict would be {label}."])
+def test_a_rating_or_answer_stated_outright_is_refused(tmp_path, form):
+    v, label, top = _scale_value("tracing_pair", int)
+    s, _, _ = _scale_value("tracing_pair", str)
+    examples = _examples()
+    examples[0]["caption"] = form.format(v=v, top=top, s=s, S=str(s).upper(), label=label.split(" - ")[-1])
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "a rating" in message, message
+
+
+def test_describing_the_task_with_short_labels_and_values_is_not_refused(tmp_path, capsys):
+    # The line drawn: a short label or a value as an ordinary word is not an answer, so a caption can say what a
+    # physician judges, and "N out of M" is refused only with M a rating scale's top.
+    _, label, _ = _scale_value("tracing_pair", int)
+    s, s_label, _ = _scale_value("tracing_pair", str)
+    examples = _examples()
+    examples[0]["caption"] = (f"Please answer {s} or not, and say how {label.split(' - ')[-1].lower()} it is that a real "
+                              f"person would write it ({s_label.lower()} is one choice), even if none of them "
+                              "would.")
+    examples[1]["display"]["patient_message"] = "It was 3 out of 10 on my own scale; where should I keep the key?"
+    examples[2]["display"]["arms"][1]["turns"][0]["text"] = "the yellow thingy is wobbly and none of them fit"
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    bundle, _ = rerun(paths, tmp_path / "out")
+    assert bundle["questions"]["instructions"]["examples"] == examples
+
+
 def _reveal_options() -> list[dict]:
     """The options of the reveal's scale, read from the questions data (no level is written here)."""
     questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))

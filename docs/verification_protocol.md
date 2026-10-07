@@ -270,7 +270,14 @@ problem:
   how a measured value is written; or any urgency level the study can
   propose, by its label or by the value a proposed tier is stored as (with
   an underscore written as a space or a hyphen too), read from the
-  questions file. An item's display is
+  questions file; or an answer to any question of the example's own
+  question set, read from every scale it uses, abstentions included: a
+  label that is a statement of its own (four or more words, or numbered,
+  such as "4 - Likely") as a phrase, and any label or value inside a rating
+  statement ("the rating is 4", "rated Likely", "the answer is yes",
+  "4 out of 5"). A short label or value as an ordinary word ("how likely",
+  "none of them") is not refused, so a caption can say what a physician
+  judges. An item's display is
   built only from the texts physicians rate, so it carries none of the
   study's own models, ids, measurements or answers. An example is written by
   hand, so its text is checked instead, and more strictly than an item's

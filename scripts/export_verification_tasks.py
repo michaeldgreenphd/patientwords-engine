@@ -652,6 +652,59 @@ def example_answer_terms(doc: dict) -> list[str]:
     return sorted(terms)
 
 
+# An answer stated outright: "rating/score/answer/verdict" with a linking verb or sign, or "rated/scored/scores", before
+# an answer. "Answer yes or no" (no link) describes the task and is not one.
+_ASSERTION_LEAD = (r"\b(?:(?:rating|score|answer|verdict)\s*(?:is|was|would\s+be|should\s+be|will\s+be|=|:)"
+                   r"|(?:rated|scored|scores)(?:\s+(?:as|at))?)\s*")
+
+
+def _label_pattern(label: str) -> str:
+    """A label as a phrase: flexible whitespace, and a numbered label's separator ("4 - Likely") as any dash or a colon."""
+    words = [re.escape(w) for w in label.split()]
+    return r"\s*".join(w if w not in ("\\-", "-") else r"[-\u2013\u2014:]" for w in words)
+
+
+def example_answer_rules(doc: dict, set_name: str) -> list[tuple[str, re.Pattern]]:
+    """(what it shows, pattern) for the answers to the questions of question set ``set_name``, read from every scale
+    those questions use, abstentions included (Codex review of PR #88: only the reveal's scale was read). Where the line
+    is drawn: a label is refused as a phrase when it is a statement of its own, four or more words or a numbered
+    label ("4 - Likely", "I could hear this from a real patient", "Entirely plausible; I have seen this"); a shorter
+    label ("Likely", "Possible", "Yes", "None of them", "Can't tell") and every answer value are refused only inside a
+    rating statement ("the rating is 4", "rated Likely", "the answer is yes"), and an ordinal number scale's values as
+    "N out of M" with M its highest value. Refusing the short labels as bare words would refuse a caption that says
+    what a physician judges ("how likely a real patient is ...")."""
+    rules: list[tuple[str, re.Pattern]] = []
+    stated: set[str] = set()
+    for q in doc["question_sets"][set_name]["questions"]:
+        scale = doc["scales"][q["scale"]]
+        options = list(scale.get("options", [])) + ([scale["abstain"]] if scale.get("abstain") else [])
+        for option in options:
+            label, value = option.get("label"), option.get("value")
+            if isinstance(value, (int, str)) and not isinstance(value, bool) and str(value).strip():
+                stated |= {str(value), str(value).replace("_", " "), str(value).replace("_", "-")}
+            if not isinstance(label, str) or not label.strip():
+                continue
+            stated.add(label)
+            numbered = re.fullmatch(r"\s*(\d+)\s*-\s*(.+)", label)
+            if numbered:
+                stated.add(numbered.group(2))
+            if numbered or len(re.findall(r"[^\W_]+", label)) >= 4:
+                rules.append((f"the answer label {label!r}",
+                              re.compile(rf"(?<!\w){_label_pattern(label)}(?!\w)", re.I)))
+            if numbered and len(re.findall(r"[^\W_]+", numbered.group(2))) >= 4:
+                rules.append((f"the answer label {numbered.group(2)!r}",
+                              re.compile(rf"(?<!\w){_label_pattern(numbered.group(2))}(?!\w)", re.I)))
+        values = [o.get("value") for o in scale.get("options", [])]
+        if scale.get("type") == "ordinal" and values and all(isinstance(v, int) and not isinstance(v, bool)
+                                                             for v in values):
+            top = max(values)
+            rules.append((f"a rating out of {top}",
+                          re.compile(rf"\b(?:{'|'.join(map(str, values))})\s*(?:out\s+of|/)\s*{top}\b", re.I)))
+    alternatives = "|".join(_label_pattern(s) for s in sorted(stated, key=len, reverse=True))
+    rules.append(("a rating or answer stated outright", re.compile(rf"{_ASSERTION_LEAD}(?:{alternatives})(?!\w)", re.I)))
+    return list(dict(rules).items())                    # one rule per description (questions can share a scale)
+
+
 def example_texts(example: dict) -> list[str]:
     """Every string an example shows a physician: its label, its caption and every string of its display."""
     return [example["label"], example["caption"], *strings_in(example["display"])]
@@ -776,6 +829,7 @@ def validate_examples(doc: dict, where: str) -> None:
             shown.append("a batch, run, item, seed or scenario id")
         shown += [f"the urgency level {term!r}" for term in answer_terms
                   if any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", t, re.I) for t in texts)]
+        shown += [what for what, pattern in example_answer_rules(doc, family) if any(pattern.search(t) for t in texts)]
         if shown:
             refuse("example_not_blind", f"{at} ({family}) shows {', '.join(shown)}; an example shows a physician no "
                                         "model, method, measured value or answer")
