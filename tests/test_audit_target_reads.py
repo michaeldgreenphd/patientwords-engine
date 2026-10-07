@@ -438,3 +438,11 @@ def test_an_index_repeated_within_one_part_is_read_as_each_consumer_reads_it(tmp
     (sub,) = subs(rep)
     assert (sub["position"], sub["effective"], sub["urgency_read"]) == (0, False, True)
     assert rep["superseded_duplicate_results"] == 1
+
+
+def test_a_well_formed_dialect_spread_is_read(engine, tmp_path):
+    r = {"index": 1, "mode": "dialect", "baseline_probability": 0.5, "target_token": out(" qa"),
+         "variants": [{"probability": 0.2}], "predictive_spread": {"baseline": [[out(" qa"), 0.5]],
+                                                                  "variants": [[[out(" qa"), 0.2]]]}}
+    write(engine / f"trace_out/{STEM}/batch_summary.part_99.json", {"mode": "dialect", "results": [r]})
+    assert run(engine, tmp_path)["counts"]["overall"]["sides.consistent"] > 0
