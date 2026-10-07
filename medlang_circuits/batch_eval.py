@@ -104,6 +104,7 @@ from medlang_circuits.targets import (
     AttributionTargets,
     bare_token,
     logit_spread,
+    metric_view,
     read_exact,
     resolve_target,
     returned_logits,
@@ -478,7 +479,10 @@ def _target_read(
     target was given. ``sides`` holds one read record per side, shaped like
     ``predictive_spread``; a side whose record is ``missing`` has a null
     probability and names the reason. ``intended_read`` (only when the intended
-    target was given but not read) says why it was not."""
+    target was given but not read) says why it was not. ``intended_spacing``
+    (only for an intended target written without its leading space) says which
+    spelling ``resolve_target`` read: leading_space_added, as_written or
+    both_tried."""
     has_intended = bool(token_key(anchor))
     measured = _measured_token(reference)
     block: dict[str, Any] = {
@@ -491,6 +495,8 @@ def _target_read(
         "sides": sides,
     }
     intended_read = reference.get("intended_read")
+    if intended_read is not None and intended_read.get("intended_spacing"):
+        block["intended_spacing"] = intended_read["intended_spacing"]
     if intended_read is not None and intended_read.get("status") not in FOUND_STATUSES:
         block["intended_read"] = intended_read
     return block
@@ -653,8 +659,8 @@ def evaluate_pair(
                 "target_token": observed[0] if observed else None,
                 "probabilities": {"clinical": observed[1] if observed else None, "patient": None},
                 "language_penalty": None,
-                "clinical_mass": {"clinical": clinical_mass_fraction(clinical_graph)},
-                "error_share": {"clinical": error_node_share(clinical_graph)},
+                "clinical_mass": {"clinical": clinical_mass_fraction(metric_view(clinical_graph))},
+                "error_share": {"clinical": error_node_share(metric_view(clinical_graph))},
                 "screening": {
                     "status": "screened_out",
                     "min_prob": screen_targets,
@@ -662,9 +668,11 @@ def evaluate_pair(
                     "observed_clinical": list(observed) if observed else None,
                     "probe_extension": extension,
                     "reason": reason,
+                    **({"intended_spacing": observed_read["intended_spacing"]}
+                       if observed_read and observed_read.get("intended_spacing") else {}),
                 },
                 "forced_targets": list(force_tokens),
-                "predictive_spread": {"clinical": logit_spread(clinical_graph)},
+                "predictive_spread": {"clinical": logit_spread(metric_view(clinical_graph))},
                 "target_read": _target_read(anchor, screen_ref, "clinical", {"clinical": screen_ref["read"]}),
                 "outputs": {},
             }
@@ -674,6 +682,8 @@ def evaluate_pair(
             "intended_target": anchor,
             "observed_clinical": list(observed),
             "probe_extension": extension,
+            **({"intended_spacing": observed_read["intended_spacing"]}
+               if observed_read and observed_read.get("intended_spacing") else {}),
         }
 
     prompts = [clinical_prompt, patient_prompt]
@@ -736,6 +746,8 @@ def evaluate_pair(
     render_panels_png(diff_panels, str(diff_png), badges=[diff_badge], dpi=dpi, subtitle=penalty)
 
     result_screening = {"screening": screening} if screening else {}
+    # Metrics, steering choices and the spread on the top-K view: a node kept for the read changes none of them.
+    views = [metric_view(g) for g in graphs]
     return {
         "index": index,
         "mode": "2panel",
@@ -743,14 +755,14 @@ def evaluate_pair(
         "target_token": target_token,
         "probabilities": dict(zip(roles, probs)),
         "language_penalty": (probs[1] - probs[0]) if probs[0] is not None and probs[1] is not None else None,
-        "clinical_mass": {role: clinical_mass_fraction(g) for role, g in zip(roles, graphs)},
-        "error_share": {role: error_node_share(g) for role, g in zip(roles, graphs)},
-        "top_path": {role: path_text(top_attribution_path(g)) for role, g in zip(roles, graphs)},
-        **({"steering": _steer_validation(prompts[1], graphs[1], steer_validate, source_set)}
+        "clinical_mass": {role: clinical_mass_fraction(g) for role, g in zip(roles, views)},
+        "error_share": {role: error_node_share(g) for role, g in zip(roles, views)},
+        "top_path": {role: path_text(top_attribution_path(g)) for role, g in zip(roles, views)},
+        **({"steering": _steer_validation(prompts[1], views[1], steer_validate, source_set)}
            if steer_validate else {}),
-        **({"steering_boost": _steer_boost(prompts[1], graphs[0], steer_boost, source_set)}
+        **({"steering_boost": _steer_boost(prompts[1], views[0], steer_boost, source_set)}
            if steer_boost else {}),
-        **({"steering_placebo": _steer_placebo(prompts[1], graphs[1], steer_placebo, source_set)}
+        **({"steering_placebo": _steer_placebo(prompts[1], views[1], steer_placebo, source_set)}
            if steer_placebo else {}),
         **result_screening,
         "mitigation_recovery": (
@@ -759,7 +771,7 @@ def evaluate_pair(
         "translation_method": translation_method,
         "translation_model": translation_model,
         "forced_targets": list(force_tokens),
-        "predictive_spread": {role: logit_spread(g) for role, g in zip(roles, graphs)},
+        "predictive_spread": {role: logit_spread(g) for role, g in zip(roles, views)},
         "target_read": _target_read(anchor, reference, "clinical", dict(zip(roles, reads))),
         "circuit_diff": diff_counts,
         "outputs": {"html": str(html_path), "png": str(png_path),
@@ -916,7 +928,7 @@ def evaluate_quadrant(
         "variety_shift_deltas": {"medical_lexicon": _delta("A", "B"),
                                  "patient_language": _delta("C", "D")},
         "forced_targets": list(force_tokens),
-        "predictive_spread": {key: logit_spread(graphs[key]) for key in QUAD_KEYS},
+        "predictive_spread": {key: logit_spread(metric_view(graphs[key])) for key in QUAD_KEYS},
         "target_read": _target_read(anchor, reference, "A", reads),
         "outputs": {"html": str(html_path), "png": str(png_path), "edge_views": edge_views},
     }
@@ -1000,8 +1012,8 @@ def evaluate_translation(
         ),
         "forced_targets": list(force_tokens),
         "predictive_spread": {
-            "patient": logit_spread(patient_graph),
-            "translated": logit_spread(translated_graph),
+            "patient": logit_spread(metric_view(patient_graph)),
+            "translated": logit_spread(metric_view(translated_graph)),
         },
         "target_read": _target_read(anchor, reference, "translated",
                                     {"patient": patient_read, "translated": reference["read"]}),
@@ -1110,7 +1122,7 @@ def evaluate_dialect(
     # Small-multiples companion: baseline + the most consequential framings
     # side by side, structural scaffolding stripped so the clinical/off-target
     # contrast carries the row (multi_NN.* lands beside index_NN.*).
-    spreads = [logit_spread(g) for g in variant_graphs]
+    spreads = [logit_spread(metric_view(g)) for g in variant_graphs]
     selected = _select_multiples_variants(variants, probs, spreads, target_token, p_baseline)
     multiples_panels = build_multiples_panels(
         [baseline_graph] + [variant_graphs[j] for j in selected],
@@ -1145,13 +1157,13 @@ def evaluate_dialect(
         ],
         "forced_targets": list(force_tokens),
         "predictive_spread": {
-            "baseline": logit_spread(baseline_graph),
+            "baseline": logit_spread(metric_view(baseline_graph)),
             "variants": spreads,
         },
         "target_read": _target_read(anchor, reference, "baseline",
                                     {"baseline": reference["read"], "variants": variant_reads}),
-        "error_share": {"baseline": error_node_share(baseline_graph)},
-        "top_path": {"baseline": path_text(top_attribution_path(baseline_graph))},
+        "error_share": {"baseline": error_node_share(metric_view(baseline_graph))},
+        "top_path": {"baseline": path_text(top_attribution_path(metric_view(baseline_graph)))},
         "multiples": {"variants": [variants[j]["dialect"] for j in selected]},
         "outputs": {"html": str(html_path), "png": str(png_path),
                     "multi_html": str(multi_html_path), "multi_png": str(multi_png_path)},

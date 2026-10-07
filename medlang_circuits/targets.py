@@ -185,7 +185,8 @@ def select_logits(
     Keeps the union of: the top ``keep_top_k`` logits by probability (the
     predictive spread), any logits matching ``targets``, any logit whose label
     is in ``keep_labels`` (the measured target, so a target read at rank 6-10
-    keeps its node in the rendered graph), and logits whose probability can't
+    keeps its node in the rendered graph; ``metric_view`` removes those nodes
+    again for every metric), and logits whose probability can't
     be parsed (unrankable). Everything else - and any links touching it - is
     removed. Unlike ``retarget_graph`` this preserves the surrounding
     distribution so the spread of competing predictions stays visible. Records
@@ -196,20 +197,23 @@ def select_logits(
     keep_ids = {nid for nid, (_, prob) in parsed.items() if prob is None}
     if targets:
         keep_ids |= {nid for nid, (token, _) in parsed.items() if targets.matches(token)}
-    if keep_labels:
-        keep_ids |= {nid for nid, (token, _) in parsed.items() if token in set(keep_labels)}
     if keep_top_k:
         ranked = sorted(
             (nid for nid, (_, prob) in parsed.items() if prob is not None),
             key=lambda nid: -parsed[nid][1],
         )
         keep_ids |= set(ranked[:keep_top_k])
+    # Nodes kept only for the read: recorded so every metric can be computed without them (metric_view).
+    measurement_ids = ({nid for nid, (token, _) in parsed.items() if token in set(keep_labels)} - keep_ids
+                       if keep_labels else set())
+    keep_ids |= measurement_ids
 
     dropped = [n for n in logits if n["node_id"] not in keep_ids]
     info: dict[str, Any] = {
         "keep_top_k": keep_top_k,
         "requested_targets": list(targets.tokens) if targets else [],
-        **({"kept_for_measurement": list(keep_labels)} if keep_labels else {}),
+        **({"kept_for_measurement": list(keep_labels),
+            "kept_for_measurement_ids": sorted(measurement_ids)} if keep_labels else {}),
         "kept": [n.get("clerp") for n in logits if n["node_id"] in keep_ids],
         "dropped": [n.get("clerp") for n in dropped],
     }
@@ -223,6 +227,23 @@ def select_logits(
         ]
     graph.setdefault("metadata", {})["logit_selection"] = info
     return info
+
+
+def metric_view(graph: dict[str, Any]) -> dict[str, Any]:
+    """The graph as top-K pruning alone leaves it: the logit nodes ``select_logits``
+    kept only for the read (``kept_for_measurement_ids``) and their links removed.
+    Every metric and the predictive spread are computed on this view, so keeping
+    a node for the read and the render changes no published number. Returns the
+    graph itself when nothing was kept for the read."""
+    selection = (graph.get("metadata") or {}).get("logit_selection") or {}
+    extra = set(selection.get("kept_for_measurement_ids") or [])
+    if not extra:
+        return graph
+    view = dict(graph)
+    view["nodes"] = [n for n in graph.get("nodes", []) if n.get("node_id") not in extra]
+    view["links"] = [link for link in graph.get("links", [])
+                     if link.get("source") not in extra and link.get("target") not in extra]
+    return view
 
 
 def target_probability(
@@ -481,19 +502,21 @@ def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any
     target (' xabicors' for ' xabicor') is never taken: it is another token.
 
     An intended target written without its leading space ('xab', as some
-    pairs files spell it) is read as written first; when that finds nothing it
-    is read again with the space a word after a word carries (' xab'), and the
-    record says so with ``"intended_spacing": "leading_space_added"``.
+    pairs files spell it) is read with the space first (' xab': after a prompt
+    that ends in a word, the next word's token carries it), then as written.
+    The record always says which: ``"intended_spacing"`` is
+    ``"leading_space_added"`` (the spaced form was read), ``"as_written"``
+    (only the unspaced form was returned) or ``"both_tried"`` (neither was
+    read; ``forms_tried`` lists them, and the reason is the most specific of
+    the two reads').
     """
     if not token_key(intended):
         return read_exact(graph, intended)
-    forms = [intended] + ([" " + intended] if _unspaced(intended) else [])
-    first = None
-    for form in forms:
-        exact = read_exact(graph, form)
-        if exact["status"] == "exact" or exact.get("reason") not in ("target_not_in_returned_logits",):
+    forms = [" " + intended, intended] if _unspaced(intended) else [intended]
+    reads = [read_exact(graph, form) for form in forms]
+    for form, exact in zip(forms, reads):
+        if exact["status"] == "exact":
             return _spaced(exact, form, intended)
-        first = first or exact
     logits = returned_logits(graph)
     for form in forms:
         pieces = [(label, prob) for label, prob in logits if _is_leading_piece(label, form)]
@@ -504,10 +527,15 @@ def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any
             if others:
                 record["alternatives"] = others
             return _spaced(record, form, intended)
-    return first
+    specific = [r for r in reads if r.get("reason") in ("unparseable_probability", "ambiguous_exact_match")]
+    missed = dict(specific[0] if specific else reads[0])
+    if len(forms) > 1:
+        missed["intended_spacing"] = "both_tried"
+        missed["forms_tried"] = forms
+    return missed
 
 
 def _spaced(record: dict[str, Any], form: str, intended: str) -> dict[str, Any]:
-    if form != intended:
-        record["intended_spacing"] = "leading_space_added"
+    if _unspaced(intended):
+        record["intended_spacing"] = "leading_space_added" if form != intended else "as_written"
     return record

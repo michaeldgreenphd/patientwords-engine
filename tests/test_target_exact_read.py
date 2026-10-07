@@ -168,17 +168,33 @@ def test_resolve_target_respects_the_leading_space_of_pieces():
     assert read["token"] == label(" xab") and "alternatives" not in read
 
 
-def test_an_unspaced_intended_target_is_read_with_its_space_on_the_record():
-    # Some pairs files spell the intended word without the space a word after a word carries.
+def test_an_unspaced_intended_target_is_read_with_its_space_first_on_the_record():
+    # Some pairs files spell the intended word without the space a word after a word carries. After a prompt that
+    # ends in a word, the spaced token is the intended one, so it is read first.
     read = resolve_target(hosted_graph([(" qdoc", 0.4), (" zz", 0.1)]), "qdoc")
     assert read["status"] == "exact" and read["token"] == label(" qdoc")
     assert read["intended_spacing"] == "leading_space_added"
-    # written as the token is returned: read as written, nothing added
-    both = resolve_target(hosted_graph([(" qdoc", 0.4), ("qdoc", 0.1)]), "qdoc")
-    assert both["token"] == label("qdoc") and "intended_spacing" not in both
+    both = resolve_target(hosted_graph([("qdoc", 0.4), (" qdoc", 0.1)]), "qdoc")
+    assert both["token"] == label(" qdoc") and both["intended_spacing"] == "leading_space_added"
+    only_unspaced = resolve_target(hosted_graph([("qdoc", 0.4), (" zz", 0.1)]), "qdoc")
+    assert only_unspaced["token"] == label("qdoc") and only_unspaced["intended_spacing"] == "as_written"
     piece = resolve_target(hosted_graph([(" xab", 0.4)]), "xabmel")
     assert piece["status"] == "leading_wordpiece" and piece["intended_spacing"] == "leading_space_added"
     assert "intended_spacing" not in resolve_target(hosted_graph([(" qdoc", 0.4)]), " qdoc")
+
+
+def test_the_spaced_form_is_read_when_the_unspaced_one_is_unparseable_and_both_misses_are_recorded():
+    g = hosted_graph([(" qdoc", 0.3)])
+    g["nodes"].append({"node_id": "L_np", "feature_type": "logit", "clerp": 'Output "qdoc"'})  # no probability
+    read = resolve_target(g, "qdoc")
+    assert read["token"] == label(" qdoc") and read["intended_spacing"] == "leading_space_added"
+    neither = resolve_target(hosted_graph([(" zz", 0.3)]), "qdoc")
+    assert neither["status"] == "missing" and neither["reason"] == "target_not_in_returned_logits"
+    assert neither["intended_spacing"] == "both_tried" and neither["forms_tried"] == [" qdoc", "qdoc"]
+    g2 = hosted_graph([(" zz", 0.3)])
+    g2["nodes"].append({"node_id": "L_np", "feature_type": "logit", "clerp": 'Output "qdoc"'})
+    unparsed = resolve_target(g2, "qdoc")
+    assert unparsed["reason"] == "unparseable_probability" and unparsed["intended_spacing"] == "both_tried"
 
 
 # ---- through run_batch -----------------------------------------------------------------------------------------
@@ -365,3 +381,20 @@ def test_translation_and_mitigation_missing_sides_are_null(tmp_path, monkeypatch
                              fetcher=build_fetcher())[0]
     assert m["probabilities"]["translated"] is None and m["mitigation_recovery"] is None
     assert m["language_penalty"] == pytest.approx(0.2 - 0.6)
+
+
+def test_the_spacing_flag_is_surfaced_in_target_read_and_screening(tmp_path, monkeypatch):
+    r = _run(tmp_path, monkeypatch, {"clin": [(" qdoc", 0.5), ("qdoc", 0.1)], "pat": [(" qdoc", 0.2)]},
+             {"top_prompt": "clin ten", "bottom_prompt": "pat ten", "target_clinical_token": "qdoc"},
+             screen_targets=0.02)
+    assert r["target_token"] == label(" qdoc") and r["probabilities"] == {"clinical": 0.5, "patient": 0.2}
+    assert r["target_read"]["intended_spacing"] == "leading_space_added"
+    assert r["screening"]["intended_spacing"] == "leading_space_added"
+
+
+def test_a_screened_out_unspaced_target_records_both_spellings_tried(tmp_path, monkeypatch):
+    r = _run(tmp_path, monkeypatch, {"clin": [(" zz", 0.5)], "pat": [(" zz", 0.2)]},
+             {"top_prompt": "clin eleven", "bottom_prompt": "pat eleven", "target_clinical_token": "qdoc"},
+             screen_targets=0.02)
+    assert r["screening"]["status"] == "screened_out" and r["screening"]["intended_spacing"] == "both_tried"
+    assert r["target_read"]["intended_spacing"] == "both_tried"
