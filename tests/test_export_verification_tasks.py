@@ -1072,7 +1072,8 @@ def _scale_value(set_name: str, kind: type) -> tuple[Any, str, int | None]:
 
 @pytest.mark.parametrize("form", ["The correct rating is {v}.", "This was rated {v}.", "It scores {v}.",
                                   "The score: {v}.", "A rating of {v} fits.", "Given a score of {v}.",
-                                  "{v} out of {top}", "The answer is {s}.", "THE ANSWER IS {S}.",
+                                  "{v} out of {top}", "I rated it {v}.", "I rate this example {v}.",
+                                  "They scored the pair {v}.", "Rate this one a {v}.", "Rate it a {v}.", "I would rate them as {label}.", "The answer is {s}.", "THE ANSWER IS {S}.",
                                   "Rated as {label}.",
                                   "The verdict would be {label}."])
 def test_a_rating_or_answer_stated_outright_is_refused(tmp_path, form):
@@ -1095,7 +1096,8 @@ def test_describing_the_task_with_short_labels_and_values_is_not_refused(tmp_pat
     examples[0]["caption"] = (f"Please answer {s} or not, and say how {label.split(' - ')[-1].lower()} it is that a real "
                               f"person would write it ({s_label.lower()} is one choice), even if none of them "
                               "would.")
-    examples[1]["display"]["patient_message"] = "It was 3 out of 10 on my own scale; where should I keep the key?"
+    examples[1]["display"]["patient_message"] = ("It was 3 out of 10 on my own scale, and the exchange rate went up 2 "
+                                                 "points; where should I keep the key?")
     examples[2]["display"]["arms"][1]["turns"][0]["text"] = "the yellow thingy is wobbly and none of them fit"
     paths = write_world(tmp_path, world_data())
     paths["questions"] = _questions_with(tmp_path, examples)
