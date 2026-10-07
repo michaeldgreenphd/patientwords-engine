@@ -325,7 +325,7 @@ EXAMPLE_CUT_OFF = {"tracing_pair": True, "advice_new": False, "advice_rerun": Fa
 # or vendor name, the study's batch, run or item ids, and a decimal number or a percentage, the forms in which a
 # measured value is written. An item's display, built from the texts a physician rates, carries none of the study's
 # own; an example is written by hand, so its text is checked, more strictly than an item's could be (a patient's
-# message may hold a decimal number). Urgency-level labels are read from the questions data (example_answer_labels).
+# message may hold a decimal number). Urgency levels are read from the questions data (example_answer_terms).
 #
 # The model and vendor names are those of every model registry the engine has: scripts/logits_eval.py HF_IDS (and
 # scripts/activation_patch.py's), medlang_circuits/graph_client.py MODEL_REGISTRY, medlang_circuits/evaluate_models.py
@@ -619,14 +619,22 @@ def validate_questions(doc: Any, where: str) -> dict:
     return doc
 
 
-def example_answer_labels(doc: dict) -> list[str]:
-    """The labels of the options of every scale a reveal-locked question of the exporter's question sets uses: the
-    urgency levels a proposed tier is one of, read from the questions data (so no level is written in this file). An
-    example whose text names one would show a physician an answer."""
+def example_answer_terms(doc: dict) -> list[str]:
+    """The urgency levels a proposed tier is one of, as an example could write them: for every option of every scale a
+    reveal-locked question of the exporter's question sets uses, its label, its value (the tier a reveal stores), and
+    the value with an underscore written as a space or a hyphen. Read from the questions data, so no level is written
+    in this file. An example whose text names one would show a physician an answer; Codex review of PR #88 found
+    that checking labels alone let the bare values (the tier ids) through."""
     scales = {q["scale"] for set_name in QUESTION_SETS for q in doc["question_sets"][set_name]["questions"]
               if q.get("locks_on_reveal")}
-    return sorted({o["label"] for s in scales for o in doc["scales"][s].get("options", [])
-                   if isinstance(o.get("label"), str) and o["label"].strip()})
+    terms: set[str] = set()
+    for s in scales:
+        for option in doc["scales"][s].get("options", []):
+            for field in ("label", "value"):
+                term = option.get(field)
+                if isinstance(term, str) and term.strip():
+                    terms |= {term, term.replace("_", " "), term.replace("_", "-")}
+    return sorted(terms)
 
 
 def example_texts(example: dict) -> list[str]:
@@ -704,7 +712,7 @@ def validate_examples(doc: dict, where: str) -> None:
     examples = instructions["examples"]
     if not isinstance(examples, list) or not examples:
         refuse("bad_example", f"{where}: instructions.examples is not a non-empty list (leave it out for none)")
-    answer_labels = example_answer_labels(doc)
+    answer_terms = example_answer_terms(doc)
     for n, example in enumerate(examples):
         at = f"{where} instructions.examples[{n}]"
         if not isinstance(example, dict):
@@ -729,8 +737,8 @@ def validate_examples(doc: dict, where: str) -> None:
                                             ("a batch, run or item id", EXAMPLE_IDS),
                                             ("a decimal number or a percentage", EXAMPLE_MEASURED))
                  if any(pattern.search(t) for t in texts)]
-        shown += [f"the urgency level {label!r}" for label in answer_labels
-                  if any(re.search(rf"(?<!\w){re.escape(label)}(?!\w)", t, re.I) for t in texts)]
+        shown += [f"the urgency level {term!r}" for term in answer_terms
+                  if any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", t, re.I) for t in texts)]
         if shown:
             refuse("example_not_blind", f"{at} ({family}) shows {', '.join(shown)}; an example shows a physician no "
                                         "model, method, measured value or answer")

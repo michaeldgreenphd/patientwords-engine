@@ -991,6 +991,55 @@ def test_an_example_that_shows_a_model_id_measured_value_or_answer_is_refused(tm
     assert planted not in message                                  # names what it shows, never the text
 
 
+def _reveal_options() -> list[dict]:
+    """The options of the reveal's scale, read from the questions data (no level is written here)."""
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    locking = next(q for q in questions["question_sets"]["advice_new"]["questions"] if q.get("locks_on_reveal"))
+    return questions["scales"][locking["scale"]]["options"]
+
+
+@pytest.mark.parametrize("n", range(4))
+@pytest.mark.parametrize("form", ["value", "value with spaces", "value in capitals", "label"])
+def test_an_example_naming_an_urgency_level_by_value_or_label_is_refused(tmp_path, n, form):
+    # Regression (Codex review of PR #88): only the scale labels were checked, so an example could name the tier a
+    # reveal stores (its value) and pass. Every option of the reveal's scale is tried, in each form.
+    option = _reveal_options()[n]
+    term = {"value": option["value"], "value with spaces": option["value"].replace("_", " "),
+            "value in capitals": option["value"].upper(), "label": option["label"]}[form]
+    examples = _examples()
+    examples[1]["caption"] = f"The proposed answer here is {term}."
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "the urgency level" in message and "instructions.examples[1]" in message, message
+
+
+def test_a_label_that_does_not_contain_its_value_is_refused_too(tmp_path):
+    # In the committed scale every label contains its value as a word, so the value alone would catch the label.
+    # A synthetic label that does not shows the labels are checked in their own right.
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    locking = next(q for q in questions["question_sets"]["advice_new"]["questions"] if q.get("locks_on_reveal"))
+    questions["scales"][locking["scale"]]["options"][0]["label"] = "Plan Zeta"
+    examples = _examples()
+    examples[1]["caption"] = "Here the answer is plan zeta."
+    questions["instructions"]["examples"] = examples
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = dump(tmp_path / "questions_relabelled.json", questions)
+    message = refused_paths(paths, "example_not_blind")
+    assert "the urgency level 'Plan Zeta'" in message, message
+
+
+def test_an_urgency_value_inside_a_longer_word_is_not_refused(tmp_path, capsys):
+    # The match is a whole word, so an ordinary longer word that begins with a level's value is still usable.
+    longer = [o["value"] + "ly" for o in _reveal_options() if "_" not in o["value"]]
+    examples = _examples()
+    examples[1]["caption"] = "Judge it " + " and ".join(longer) + "."
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    bundle, _ = rerun(paths, tmp_path / "out")
+    assert bundle["questions"]["instructions"]["examples"][1]["caption"] == examples[1]["caption"]
+
+
 def test_a_sealed_phrase_in_an_example_refuses_the_export_and_names_the_example(tmp_path):
     examples = _examples()
     examples[1]["display"]["patient_message"] = "Before that, " + SEALED.upper().replace(" ", "   ") + " and then?"

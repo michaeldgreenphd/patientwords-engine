@@ -263,8 +263,10 @@ problem:
   name from any of the engine's model registries, found even inside another
   word (BioMistral, MedGemma, ChatGPT; a test fails when a registered model
   is not matched); a batch, run or item id; a decimal number or a percentage, which is
-  how a measured value is written; or the name of any urgency level the
-  study can propose, read from the questions file. An item's display is
+  how a measured value is written; or any urgency level the study can
+  propose, by its label or by the value a proposed tier is stored as (with
+  an underscore written as a space or a hyphen too), read from the
+  questions file. An item's display is
   built only from the texts physicians rate, so it carries none of the
   study's own models, ids, measurements or answers. An example is written by
   hand, so its text is checked instead, and more strictly than an item's
