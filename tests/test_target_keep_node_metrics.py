@@ -43,7 +43,9 @@ def run(tmp_path: Path, monkeypatch, mode: str, pair: dict[str, Any], keep: bool
     config.write_text(json.dumps(TEST_KEYWORD_CONFIG), encoding="utf-8")
     monkeypatch.setenv("MEDLANG_KEYWORD_CONFIG", str(config))
     monkeypatch.setattr(batch_eval, "generate_graph", lambda prompt, slug=None, backend="hosted", **params:
-                        weighted_graph(TOP if prompt.startswith(("ref", "tx")) else LOW))  # "low ...": LOW
+                        # reference prompts ("ref ...", a translation "tx ...") get TOP; anything naming
+                        # "low", including the translation "tx low ...", gets LOW, with the target below the cut
+                        weighted_graph(TOP if prompt.startswith(("ref", "tx")) and "low" not in prompt else LOW))
     monkeypatch.setattr(batch_eval, "translate_to_clinical",
                         lambda text, use_llm=True, model=None: {"text": "tx " + text, "method": "stub"})
     monkeypatch.setattr(batch_eval, "steer_ablate", lambda prompt, features, **kw: {"features": features})
@@ -82,7 +84,8 @@ KEPT = f'Output "{TARGET}" (p=0.04)'
      {"steer_validate": 2, "steer_boost": 2, "steer_placebo": 2}, "clinical"),
     ("dialect", {"baseline_prompt": "low one", "target_clinical_token": TARGET,
                  "variants": [{"dialect": "d1", "prompt": "var one"}]}, {}, "baseline"),
-    ("translation", {"patient_prompt": "low one", "target_clinical_token": TARGET}, {}, "patient"),
+    # translation's reference is the translated side ("tx low one"): its kept node changes no metric
+    ("translation", {"patient_prompt": "low one", "target_clinical_token": TARGET}, {}, "translated"),
     ("4quadrant", {"quadrants": {"A": "low a", "B": "var b", "C": "var c", "D": "var d"},
                    "target_clinical_token": TARGET}, {}, "quad_a"),
 ])
