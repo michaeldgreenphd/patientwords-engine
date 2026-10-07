@@ -883,7 +883,8 @@ _EXAMPLE_SUBJECT = (r"(?:(?:the|this|that|these|those|each|every|its|their)\s+(?
                     r"exchanges?|turns?|ones?)|it|this|that|they|these|those)")
 _EXAMPLE_COPULA = r"(?:is|are|was|were|seems?|appears?|sounds?|looks?|reads?|feels?)(?:\s+to\s+be)?"
 _INTENSIFIERS = ("entirely", "completely", "wholly", "very", "quite", "fairly", "highly", "mostly", "somewhat",
-                 "clearly", "perfectly", "totally", "rather", "so", "really", "medically", "definitely", "probably")
+                 "clearly", "perfectly", "totally", "rather", "so", "as", "really", "medically", "definitely",
+                 "probably")
 # The verbs that open a task directive, and only those (Gemini review of PR #88, round 3): "note", "consider", "ask",
 # "read", "look" and "think" also introduce an assertion ("Note that the conversation is plausible"), so they are not
 # here, and a directive followed by "that" introduces one too ("Say that this message is realistic") and exempts
@@ -934,11 +935,28 @@ def example_predicates(doc: dict, set_name: str) -> list[str]:
     return sorted({p.lower() for p in found}, key=lambda p: (-len(p), p))
 
 
-# Where one clause ends and the next begins: sentence punctuation, a comma, or a coordinating or contrasting
-# conjunction. Each clause is checked on its own, so a directive or a "whether" in one clause does not exempt an
-# evaluation in the next (Gemini review of PR #88, round 3: "Judge whether the conversation is plausible, but this
-# message is realistic" passed).
-_CLAUSE_BREAK = re.compile(r"[.;:!?,]+|\b(?:but|and|yet|while|although|however)\b", re.I)
+# Where one clause ends and the next begins: sentence punctuation, a comma, a coordinating or contrasting conjunction,
+# or a subordinating one (because, since, as, so). Each clause is checked on its own, so a directive or a "whether" in
+# one clause does not exempt an evaluation in the next (Gemini review of PR #88, round 3: "Judge whether the
+# conversation is plausible, but this message is realistic" passed; Codex review: "... agree because this conversation
+# is entirely plausible" passed). "as" and "so" are also degree words ("is as realistic as", "is so realistic"), so
+# they end a clause only when the word before them is not a copula, "not" or an intensifier (_clauses).
+_CLAUSE_BREAK = re.compile(r"[.;:!?,]+|\b(?:but|and|yet|while|although|however|because|since|as|so)\b", re.I)
+_DEGREE_AFTER = {"is", "are", "was", "were", "be", "seem", "seems", "appear", "appears", "sound", "sounds", "look",
+                 "looks", "read", "reads", "feel", "feels", "not"}
+
+
+def _clauses(text: str) -> list[str]:
+    """The clauses of a text (_CLAUSE_BREAK), keeping "as" and "so" inside a clause where they are degree words."""
+    parts, start = [], 0
+    for m in _CLAUSE_BREAK.finditer(text):
+        if m.group(0).lower() in ("as", "so"):
+            before = re.findall(r"[a-z']+", text[start:m.start()].lower())
+            if before and (before[-1] in _DEGREE_AFTER or before[-1] in _INTENSIFIERS):
+                continue
+        parts.append(text[start:m.start()])
+        start = m.end()
+    return parts + [text[start:]]
 
 
 def example_evaluations(text: str, predicates: list[str]) -> list[str]:
@@ -948,13 +966,22 @@ def example_evaluations(text: str, predicates: list[str]) -> list[str]:
         return []
     pattern = re.compile(rf"\b{_EXAMPLE_SUBJECT}\s+{_EXAMPLE_COPULA}\s+(?:not\s+)?(?:(?:{'|'.join(_INTENSIFIERS)})\s+)*"
                          rf"(?P<pred>{'|'.join(_label_pattern(p) for p in predicates)})(?!\w)", re.I)
+    # a clause that opens with a relative "which" ("the versions, which are entirely plausible") evaluates its noun
+    relative = re.compile(rf"^\s*which\s+{_EXAMPLE_COPULA}\s+(?:not\s+)?(?:(?:{'|'.join(_INTENSIFIERS)})\s+)*"
+                          rf"(?P<pred>{'|'.join(_label_pattern(p) for p in predicates)})(?!\w)", re.I)
     out = []
-    for clause in _CLAUSE_BREAK.split(text):
+    for clause in _clauses(text):
         opener = re.match(r"\s*([a-z]+)(\s+that\b)?", clause, re.I)
         if opener and opener.group(1).lower() in _TASK_SENTENCE_OPENERS and not opener.group(2):
             continue
+        found = relative.match(clause)
+        if found:
+            out.append(found.group("pred"))
+            continue
         for m in pattern.finditer(clause):
-            if not re.search(r"\b(?:whether|if|how)\b", clause[:m.start()], re.I):
+            # a question word before the evaluation makes it what the physician is asked, not a claim; "which" and
+            # "what" are question words here because a relative "which" opens its own clause, after a comma
+            if not re.search(r"\b(?:whether|if|how|which|what)\b", clause[:m.start()], re.I):
                 out.append(m.group("pred"))
     return out
 

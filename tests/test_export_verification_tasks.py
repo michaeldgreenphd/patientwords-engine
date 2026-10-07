@@ -1178,6 +1178,27 @@ def test_an_evaluation_after_a_word_that_is_not_a_directive_is_refused(tmp_path,
     assert "an evaluation of the example as" in message, message
 
 
+@pytest.mark.parametrize("set_name, text", [
+    ("multiturn_script", "Judge whether the versions agree because this conversation is entirely plausible."),  # Codex
+    ("advice_new", "Judge whether the messages agree since this message is realistic."),
+    ("multiturn_script", "Judge whether the versions agree as the conversation is entirely plausible."),
+    ("advice_new", "Say whether the messages agree so this message is realistic."),
+    ("multiturn_script", "Judge the versions, which are entirely plausible."),
+    ("advice_new", "This message is as realistic as any."),
+    ("advice_new", "This message is so realistic."),
+])
+def test_an_evaluation_after_a_subordinating_word_is_refused(tmp_path, set_name, text):
+    # Regression (Codex review of PR #88): "because" and "since" were not clause breaks, so an exemption earlier in the
+    # sentence covered an evaluation after them. "as" and "so" also end a clause unless they are degree words after a
+    # copula ("is as realistic", "is so realistic"), and a clause that opens with a relative "which" evaluates its noun.
+    examples, n = _example_for_set(set_name)
+    examples[n]["caption"] = text
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "an evaluation of the example as" in message, message
+
+
 DRAFT_CAPTIONS = [   # the three draft examples' captions (questions 1.2-draft)
     "You judge whether the two sentences mean the same thing, how likely a real patient is to use the underlined "
     "everyday wording, and whether the word shown underneath would be a natural next word.",
@@ -1197,7 +1218,10 @@ def test_captions_that_describe_the_task_are_kept(tmp_path, capsys):
                                            "Rate how plausible the course of events is. If the message is unclear, say so. " \
                                            "Check whether the message is realistic. Decide the message is realistic or not. " \
                                            "This one is 3 messages long. " \
-                                           "You judge whether the conversation is plausible."
+                                           "You judge whether the conversation is plausible. " \
+                                           "You judge which of the versions is likely. Say what the message is. " \
+                                           "Rate it as you would any message. Judge qualities such as whether the " \
+                                           "message is realistic, so judge whether it is likely."
     examples[1]["display"]["patient_message"] = "It seems possible the key fell behind the shed; where is it likely?"
     paths = write_world(tmp_path, world_data())
     paths["questions"] = _questions_with(tmp_path, examples)
