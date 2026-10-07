@@ -62,8 +62,8 @@ Three families, every item from a committed engine file or the published site pa
     a repeat of a higher-ranked prompt pair are excluded and counted. The ranking is a way to pick pairs worth a
     physician's look, not a measurement: AGENTS.md's known limitations say no claim may rest on one pair's penalty.
   The highlight on each sentence is the shortest span where the two sentences differ, widened to whole words, so
-  "they differ only in the highlighted words" is true by construction. Offsets are JavaScript string indices
-  (UTF-16 code units), end exclusive.
+  the family instruction that the two sentences differ only in the marked words is true by construction. Offsets
+  are JavaScript string indices (UTF-16 code units), end exclusive.
 * ``advice`` (display kind ``message_pair``): the 24 new questions (``data/advice/stimuli_20261002T080026Z.json``,
   question set ``advice_new``, ``reveal`` = the proposed reference tier) and the 15 rerun items
   (``data/advice/stimuli_20261002T081803Z.json``): ``advice_rerun_truncated`` for an item whose source stimuli file
@@ -79,6 +79,21 @@ Display fields carry only the texts a physician rates, the highlight spans and t
 number, model name, batch id, rationale, topic, checker verdict or proposed tier. The script display's ``arm`` ids
 are the one exception the contract makes: the app replaces them with "Version A/B/C" per physician before sending
 an item. ``provenance`` keeps source path, source id and sha256s; the app never sends it to a physician.
+
+Examples. The questions file may hold ``instructions.examples``, invented examples the app shows a physician before
+the first item: a list of ``{family, label, caption, display}``, where ``family`` names a question set (a key of
+``QUESTION_SETS``: tracing_pair, advice_new, advice_rerun, advice_rerun_truncated or multiturn_script; the set's own
+``family`` gives its item family and so its entry in ``instructions.families``), ``label`` and ``caption`` are text,
+and ``display`` has exactly the shape that set's items' display has (``validate_examples``): the same kind and
+fields, a highlight that is the span ``diff_spans`` gives, the cut-off flag the set's items carry, a script's turns
+``n_turns`` long with ``same_as`` set as ``multiturn_items`` sets it. An example carries nothing else: no answer,
+reveal or provenance. An item's display is built only from the texts a physician rates, so it carries none of the
+study's own model names, ids, measurements or answers; an example is written by hand, so its text is checked
+instead, and more strictly than an item's could be: it may not hold a model or vendor name, a batch, run or item id,
+a decimal number or a percentage (how a measured value is written, though a patient's message in an item may hold
+one), or the label of an urgency level a reveal can propose (read from the questions data). Every example string is
+seal-scanned as an item's display strings are.
+The bundle copies the questions file, examples included, unchanged. A questions file without ``examples`` is valid.
 
 Holdout seal, failing closed. Every tracing and advice row is checked with ``tierb_split.sealed_pair`` (for an advice
 or payload row naming a non-Tier-B batch whose file exists, the batch's accepted prompt as well, the pattern of
@@ -108,9 +123,10 @@ the names of its files are checked), a pilot pair without its required trace (``
 result carries other prompts (``trace_mismatch``), trace results in more than one directory for the model read, or
 for more than one graph model with none named (``ambiguous_trace``), trace results in both the legacy and the per-run
 layout for one model (``trace_layout_conflict``), a trace summary that does not declare the graph model its directory
-is read as (``trace_model_mismatch``), a questions file that does not fit the items, fewer main-study candidates than
+is read as (``trace_model_mismatch``), a questions file that does not fit the items, an example that is malformed
+(``bad_example``) or shows what a physician may not see (``example_not_blind``), fewer main-study candidates than
 requested, an item id collision, an existing output file (a bundle is an archive, never rewritten), and every seal
-failure above.
+failure above (a sealed phrase in an example is ``seal_hit``, naming the example).
 
 Rounds. Each physician round uses one bundle (the ratings import reads one bundle per export). A later round's
 bundle is built with ``--previous-bundle <the previous round's bundle>``, which refuses unless every item of that
@@ -290,6 +306,26 @@ SCALE_KEYS = frozenset({"type", "options", "abstain", "max_length"})
 OPTION_KEYS = frozenset({"value", "label", "definition"})
 SCALE_TYPES = frozenset({"ordinal", "nominal", "multi", "text"})
 PHASES = frozenset({"blind", "after_reveal"})
+
+# ---- instructions.examples (optional): invented examples shown before the first item ---------------------------
+EXAMPLE_KEYS = frozenset({"family", "label", "caption", "display"})
+# The display an item of each family has (pair_display, _advice_display, multiturn_items build them), by its fields.
+DISPLAY_KIND = {"tracing_pair": "pair_sentence", "advice": "message_pair", "multiturn": "script"}
+DISPLAY_FIELDS = {"pair_sentence": frozenset({"kind", "clinical", "patient", "next_word", "cut_off"}),
+                  "message_pair": frozenset({"kind", "clinical_message", "patient_message", "cut_off"}),
+                  "script": frozenset({"kind", "n_turns", "arms"})}
+# The cut_off flag every item of a question set carries: a tracing sentence always stops before its next word, and
+# advice_rerun_truncated holds exactly the cut-off messages (advice_items). A script has no cut_off field.
+EXAMPLE_CUT_OFF = {"tracing_pair": True, "advice_new": False, "advice_rerun": False, "advice_rerun_truncated": True}
+# What an example's text may not show a physician (the blinding section of docs/verification_protocol.md): a model
+# or vendor name, the study's batch, run or item ids, and a decimal number or a percentage, the forms in which a
+# measured value is written. An item's display, built from the texts a physician rates, carries none of the study's
+# own; an example is written by hand, so its text is checked, more strictly than an item's could be (a patient's
+# message may hold a decimal number). Urgency-level labels are read from the questions data (example_answer_labels).
+EXAMPLE_MODEL_NAMES = re.compile(r"\b(gemma|qwen|llama|claude|anthropic|openai|gpt|gemini|grok|deepseek|kimi|"
+                                 r"moonshot|mistral|haiku|sonnet|opus|neuronpedia|openrouter)\b", re.I)
+EXAMPLE_IDS = re.compile(r"\b(pairs|advman|advnat|advmc|advprobe|stimuli|vtasks|pilot)_\w|\bvt_[0-9a-f]{4}", re.I)
+EXAMPLE_MEASURED = re.compile(r"\d[.,]\d|%")
 
 _STAMP_RE = re.compile(r"^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$")
 
@@ -551,7 +587,125 @@ def validate_questions(doc: Any, where: str) -> dict:
     families = instructions.get("families") if isinstance(instructions, dict) else None
     if not isinstance(families, dict) or sorted(families) != sorted(FAMILIES):
         refuse("questions_mismatch", f"{where}: instructions.families must name exactly {list(FAMILIES)}")
+    validate_examples(doc, where)
     return doc
+
+
+def example_answer_labels(doc: dict) -> list[str]:
+    """The labels of the options of every scale a reveal-locked question of the exporter's question sets uses: the
+    urgency levels a proposed tier is one of, read from the questions data (so no level is written in this file). An
+    example whose text names one would show a physician an answer."""
+    scales = {q["scale"] for set_name in QUESTION_SETS for q in doc["question_sets"][set_name]["questions"]
+              if q.get("locks_on_reveal")}
+    return sorted({o["label"] for s in scales for o in doc["scales"][s].get("options", [])
+                   if isinstance(o.get("label"), str) and o["label"].strip()})
+
+
+def example_texts(example: dict) -> list[str]:
+    """Every string an example shows a physician: its label, its caption and every string of its display."""
+    return [example["label"], example["caption"], *strings_in(example["display"])]
+
+
+def _example_display_problem(display: Any, set_name: str) -> str | None:
+    """How an example's display departs from the display every item of question set ``set_name`` has, or None. The
+    rules are the ones the item builders follow, so the app renders an example exactly as it renders an item."""
+    kind = DISPLAY_KIND[QUESTION_SETS[set_name]]
+    if not isinstance(display, dict):
+        return "display is not an object"
+    if display.get("kind") != kind:
+        return f"display kind is {display.get('kind')!r}; an item of question set {set_name!r} has {kind!r}"
+    if set(display) != DISPLAY_FIELDS[kind]:
+        return (f"display fields are {sorted(display)}; a {kind} display has exactly {sorted(DISPLAY_FIELDS[kind])} "
+                "(an example carries no answer, reveal, tier or provenance)")
+
+    def text(value: Any) -> bool:
+        return isinstance(value, str) and bool(value.strip())
+
+    if kind == "pair_sentence":
+        for side in ("clinical", "patient"):
+            part = display[side]
+            if not isinstance(part, dict) or set(part) != {"text", "highlight"} or not text(part["text"]):
+                return f"display.{side} is not an object of exactly a non-empty text and its highlight"
+        expected = diff_spans(display["clinical"]["text"], display["patient"]["text"])
+        if None in expected:
+            return "the two sentences do not each have words where they differ, so nothing would be marked"
+        if canonical([display["clinical"]["highlight"], display["patient"]["highlight"]]) != canonical(list(expected)):
+            return ("a highlight is not the span where the two sentences differ, widened to whole words, in UTF-16 "
+                    f"code units (the exporter gives {list(expected)} for these sentences)")
+        if not next_word_ok(display["next_word"]):
+            return "next_word is not one lowercase word (the version-2 next_word rule an item's next word follows)"
+    elif kind == "message_pair":
+        if not (text(display["clinical_message"]) and text(display["patient_message"])):
+            return "a message is not a non-empty string"
+        if display["clinical_message"] == display["patient_message"]:
+            return "the two messages are the same text"
+    else:
+        n_turns, arms = display["n_turns"], display["arms"]
+        if isinstance(n_turns, bool) or not isinstance(n_turns, int) or n_turns < 1:
+            return "n_turns is not a positive integer"
+        if not isinstance(arms, list) or len(arms) < 2:
+            return "arms is not a list of at least two versions"
+        seen: list[dict] = []
+        for arm in arms:
+            if not isinstance(arm, dict) or set(arm) != {"arm", "turns"} or not text(arm["arm"]):
+                return "an arm is not an object of exactly a non-empty arm id and its turns"
+            if any(a["arm"] == arm["arm"] for a in seen):
+                return f"arm {arm['arm']!r} appears twice"
+            if not isinstance(arm["turns"], list) or len(arm["turns"]) != n_turns:
+                return f"arm {arm['arm']!r}: its turns are not a list of n_turns ({n_turns}) entries"
+            for t, turn in enumerate(arm["turns"]):
+                if not isinstance(turn, dict) or set(turn) != {"text", "same_as"} or not text(turn["text"]):
+                    return f"arm {arm['arm']!r} turn {t + 1} is not an object of exactly a non-empty text and same_as"
+                same_as = next((a["arm"] for a in seen if a["turns"][t]["text"] == turn["text"]), None)
+                if canonical(turn["same_as"]) != canonical(same_as):
+                    return (f"arm {arm['arm']!r} turn {t + 1}: same_as is {turn['same_as']!r}; an item names the first "
+                            f"earlier arm whose turn is word for word the same ({same_as!r})")
+            seen.append(arm)
+    if kind != "script" and display["cut_off"] is not EXAMPLE_CUT_OFF[set_name]:
+        return f"cut_off is {display['cut_off']!r}; every item of question set {set_name!r} has {EXAMPLE_CUT_OFF[set_name]}"
+    return None
+
+
+def validate_examples(doc: dict, where: str) -> None:
+    """Refuse an ``instructions.examples`` the app could not render as it renders an item, or whose text shows a
+    model, an id, a measured value or an answer (names only, never text). Absent is valid: a questions file needs no
+    examples. The seal scan of example text is build_bundle's (it needs the sealed registry)."""
+    instructions = doc["instructions"]
+    if "examples" not in instructions:
+        return
+    examples = instructions["examples"]
+    if not isinstance(examples, list) or not examples:
+        refuse("bad_example", f"{where}: instructions.examples is not a non-empty list (leave it out for none)")
+    answer_labels = example_answer_labels(doc)
+    for n, example in enumerate(examples):
+        at = f"{where} instructions.examples[{n}]"
+        if not isinstance(example, dict):
+            refuse("bad_example", f"{at} is not an object")
+        fields = set(example)
+        if fields != EXAMPLE_KEYS:
+            refuse("bad_example", f"{at}: fields {sorted(fields)}; an example has exactly {sorted(EXAMPLE_KEYS)} "
+                                  f"(missing {sorted(EXAMPLE_KEYS - fields)}, not allowed {sorted(fields - EXAMPLE_KEYS)}: "
+                                  "an example carries no answer, reveal, tier or provenance)")
+        family = example["family"]
+        if not isinstance(family, str) or family not in QUESTION_SETS:
+            refuse("bad_example", f"{at}: family {family!r} is not one of the item question sets "
+                                  f"{sorted(QUESTION_SETS)}")
+        for field in ("label", "caption"):
+            if not isinstance(example[field], str) or not example[field].strip():
+                refuse("bad_example", f"{at} ({family}): {field} is not a non-empty string")
+        problem = _example_display_problem(example["display"], family)
+        if problem:
+            refuse("bad_example", f"{at} ({family}): {problem}")
+        texts = example_texts(example)
+        shown = [what for what, pattern in (("a model or vendor name", EXAMPLE_MODEL_NAMES),
+                                            ("a batch, run or item id", EXAMPLE_IDS),
+                                            ("a decimal number or a percentage", EXAMPLE_MEASURED))
+                 if any(pattern.search(t) for t in texts)]
+        shown += [f"the urgency level {label!r}" for label in answer_labels
+                  if any(re.search(rf"(?<!\w){re.escape(label)}(?!\w)", t, re.I) for t in texts)]
+        if shown:
+            refuse("example_not_blind", f"{at} ({family}) shows {', '.join(shown)}; an example shows a physician no "
+                                        "model, method, measured value or answer")
 
 
 def reveal_scale_values(questions: dict, set_name: str) -> list[Any]:
@@ -1562,6 +1716,16 @@ def build_bundle(args: argparse.Namespace) -> tuple[dict, str]:
     if hits:
         refuse("seal_hit", f"rater-visible text of {len(hits)} item(s) contains a sealed holdout phrase: "
                            + "; ".join(f"{k} :: {', '.join(v)}" for k, v in sorted(hits.items())))
+    # an example's strings are shown to every physician, so each is swept as an item's display strings are, and a hit
+    # names the example (the whole-bundle sweep below would catch it too, but could not say where)
+    example_hits: dict[str, list[str]] = {}
+    for n, example in enumerate(questions["instructions"].get("examples", [])):
+        found = sorted({label for text in example_texts(example) for label in seal.scan(text)})
+        if found:
+            example_hits[f"instructions.examples[{n}] ({example['family']})"] = found
+    if example_hits:
+        refuse("seal_hit", f"rater-visible text of {len(example_hits)} example(s) contains a sealed holdout phrase: "
+                           + "; ".join(f"{k} :: {', '.join(v)}" for k, v in sorted(example_hits.items())))
 
     items.sort(key=lambda i: i["item_id"])
     random.Random(args.seed).shuffle(items)

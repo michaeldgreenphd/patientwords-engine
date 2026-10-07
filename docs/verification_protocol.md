@@ -19,7 +19,8 @@ nothing here is medical advice.
   wording, the selection rules and counts, and the seal result. The owner
   uploads it to Google Drive. A bundle is never rewritten; a new export gets a
   new stamp.
-- **The questions** (wording, answer scales, instructions) are data in
+- **The questions** (wording, answer scales, instructions, and any examples
+  shown before the first item) are data in
   `data/verification/questions.json`. Each bundle copies that file verbatim
   and records its sha256, so every rating can be traced to the wording it
   answered.
@@ -234,6 +235,44 @@ asks whether they agree. The first answer cannot be changed after that.
 No question, hint or instruction says what answer to expect. The realism
 ratings are what the questions measure, so a hint predicting a low score for
 the clinical-terms version would anchor the rating it asks for.
+
+### Examples before the first item
+
+The questions file may hold examples (`instructions.examples`) that the app
+shows before a physician's first item, so they know what each kind of item
+looks like. Each example names the question set whose items it imitates
+(`tracing_pair`, `advice_new`, `advice_rerun`, `advice_rerun_truncated` or
+`multiturn_script`; that set's `family` gives its family instructions), a
+label, a one-sentence caption saying what the physician judges, and a display
+of exactly the shape that set's items have, so the app draws it as it draws an
+item. Examples are invented. They carry no answer, no proposed urgency and no
+rating, and they are none of the study's items.
+
+The exporter checks each example and stops, naming the example, on any
+problem:
+
+- **Shape** (`bad_example`): a question set that is not one of the five, a
+  missing or extra field, or a display that is not the set's. For a sentence
+  pair the marked words must be exactly the ones the exporter would mark, the
+  words where the two sentences differ, and the next word must follow the
+  version-2 rule. A message pair must have the set's cut-off setting. A
+  conversation's versions must all have `n_turns` messages, and a message
+  that repeats an earlier version word for word must say so (`same_as`), as
+  an item's does.
+- **What a physician may not see** (`example_not_blind`): a model or vendor
+  name; a batch, run or item id; a decimal number or a percentage, which is
+  how a measured value is written; or the name of any urgency level the
+  study can propose, read from the questions file. An item's display is
+  built only from the texts physicians rate, so it carries none of the
+  study's own models, ids, measurements or answers. An example is written by
+  hand, so its text is checked instead, and more strictly than an item's
+  could be: a patient's message in an item may contain a decimal number, but
+  an example may not.
+- **The holdout seal** (`seal_hit`): every string of every example is
+  scanned for sealed phrases, as an item's texts are.
+
+The bundle copies the questions file, examples included, unchanged. A
+questions file without examples is still valid.
 
 ## Assignment and order
 

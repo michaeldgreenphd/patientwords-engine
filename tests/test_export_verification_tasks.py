@@ -23,7 +23,10 @@ review map, trace pairs file or sidecar does not fit it, and a next word outside
 builder's check, with the trace optional or required); and later rounds (--previous-bundle): a previous item dropped
 or changed, a question id dropped or kept with another scale, answer values (of another JSON type included), phase,
 requirement or lock, a required question added to a set previous items use (an optional one, or one in a set no
-previous item uses, kept), another notes limit, and a previous bundle of another shape. Every input here is
+previous item uses, kept), another notes limit, and a previous bundle of another shape; and the optional
+instructions.examples (each refused by name when malformed, when it shows a model, an id, a measured value or an
+urgency level, or when it holds a sealed phrase, and otherwise copied into the bundle unchanged; a questions file
+without examples still exports, with the same items). Every input here is
 synthetic, abstract and non-medical (the medical vocabulary rule in AGENTS.md); the seal fixtures follow
 tests/test_seal_check.py and tests/test_tierb_split.py. The committed-bundle tests check every bundle under
 data/verification/ against the contract, with failure messages naming item ids only, never row text, and re-export
@@ -449,31 +452,7 @@ def check_contract(bundle: dict) -> list[str]:
         if kind != FAMILY_KIND.get(family) or set(display) != DISPLAY_KEYS[kind]:
             problems.append(f"{iid}: display kind or keys")
             continue
-        if kind == "pair_sentence":
-            for side in ("clinical", "patient"):
-                part = display[side]
-                n16 = len(part["text"].encode("utf-16-le")) // 2
-                span = part["highlight"]
-                if set(part) != {"text", "highlight"} or not (
-                        span is None or (len(span) == 2 and 0 <= span[0] < span[1] <= n16)):
-                    problems.append(f"{iid}: {side} highlight")
-            if display["cut_off"] is not True or not display["next_word"].strip():
-                problems.append(f"{iid}: cut_off or next_word")
-        elif kind == "message_pair":
-            if not (display["clinical_message"].strip() and display["patient_message"].strip()):
-                problems.append(f"{iid}: empty message")
-        else:
-            ids = [a["arm"] for a in display["arms"]]
-            for k, arm in enumerate(display["arms"]):
-                if set(arm) != {"arm", "turns"} or len(arm["turns"]) != display["n_turns"]:
-                    problems.append(f"{iid}: arm shape")
-                    continue
-                for t, turn in enumerate(arm["turns"]):
-                    if set(turn) != {"text", "same_as"} or turn["same_as"] not in [None] + ids[:k]:
-                        problems.append(f"{iid}: turn shape")
-                    elif turn["same_as"] and display["arms"][ids.index(turn["same_as"])]["turns"][t]["text"] \
-                            != turn["text"]:
-                        problems.append(f"{iid}: same_as names an arm with a different turn")
+        problems += display_problems(iid, kind, display)
         has_after = any(q["phase"] == "after_reveal" for q in questions["question_sets"][qset]["questions"])
         reveal = item["reveal"]
         if (reveal is not None) != has_after or (reveal is not None and (
@@ -492,6 +471,52 @@ def check_contract(bundle: dict) -> list[str]:
         problems.append("counts do not match the items")
     if counts.get("with_reveal") != sum(1 for i in bundle["items"] if i["reveal"] is not None):
         problems.append("with_reveal count")
+    # instructions.examples (optional): each has the display of the question set it names, and nothing else
+    for n, example in enumerate(questions["instructions"].get("examples", [])):
+        where = f"instructions.examples[{n}]"
+        if not isinstance(example, dict) or set(example) != {"family", "label", "caption", "display"}:
+            problems.append(f"{where}: example keys")
+            continue
+        qset, display = example["family"], example["display"]
+        kind = display.get("kind") if isinstance(display, dict) else None
+        if kind not in DISPLAY_KEYS or kind != FAMILY_KIND.get(questions["question_sets"].get(qset, {}).get("family")) \
+                or set(display) != DISPLAY_KEYS[kind]:
+            problems.append(f"{where}: display kind or keys")
+            continue
+        problems += display_problems(where, kind, display)
+        if kind != "script" and display["cut_off"] is not (qset in ("tracing_pair", "advice_rerun_truncated")):
+            problems.append(f"{where}: cut_off is not its question set's")
+    return problems
+
+
+def display_problems(iid: str, kind: str, display: dict) -> list[str]:
+    """How a display of a known kind with the contract's keys departs from the contract, as lines naming iid."""
+    problems = []
+    if kind == "pair_sentence":
+        for side in ("clinical", "patient"):
+            part = display[side]
+            n16 = len(part["text"].encode("utf-16-le")) // 2
+            span = part["highlight"]
+            if set(part) != {"text", "highlight"} or not (
+                    span is None or (len(span) == 2 and 0 <= span[0] < span[1] <= n16)):
+                problems.append(f"{iid}: {side} highlight")
+        if display["cut_off"] is not True or not display["next_word"].strip():
+            problems.append(f"{iid}: cut_off or next_word")
+    elif kind == "message_pair":
+        if not (display["clinical_message"].strip() and display["patient_message"].strip()):
+            problems.append(f"{iid}: empty message")
+    else:
+        ids = [a["arm"] for a in display["arms"]]
+        for k, arm in enumerate(display["arms"]):
+            if set(arm) != {"arm", "turns"} or len(arm["turns"]) != display["n_turns"]:
+                problems.append(f"{iid}: arm shape")
+                continue
+            for t, turn in enumerate(arm["turns"]):
+                if set(turn) != {"text", "same_as"} or turn["same_as"] not in [None] + ids[:k]:
+                    problems.append(f"{iid}: turn shape")
+                elif turn["same_as"] and display["arms"][ids.index(turn["same_as"])]["turns"][t]["text"] \
+                        != turn["text"]:
+                    problems.append(f"{iid}: same_as names an arm with a different turn")
     return problems
 
 
@@ -508,7 +533,8 @@ def keys_in(obj: Any) -> set[str]:
 
 def forbidden_in_display(bundle: dict) -> list[str]:
     """Item ids whose display carries a model name, a batch id or any field outside the display contract (such as
-    reveal, a tier, provenance, a rationale, a topic or a measured number); never the text."""
+    reveal, a tier, provenance, a rationale, a topic or a measured number), and likewise instructions.examples[n] for
+    an example (its label and caption included); never the text."""
     bad = []
     for item in bundle["items"]:
         texts = strings_in(item["display"])
@@ -516,6 +542,11 @@ def forbidden_in_display(bundle: dict) -> list[str]:
             bad.append(item["item_id"])
         if keys_in(item["display"]) - ALLOWED_DISPLAY_KEYS:
             bad.append(item["item_id"])
+    for n, example in enumerate(bundle["questions"]["instructions"].get("examples", [])):
+        texts = [example.get("label", ""), example.get("caption", ""), *strings_in(example.get("display"))]
+        if any(MODEL_NAMES.search(t) or BATCH_ID.search(t) for t in texts) \
+                or keys_in(example.get("display")) - ALLOWED_DISPLAY_KEYS:
+            bad.append(f"instructions.examples[{n}]")
     return bad
 
 
@@ -777,6 +808,7 @@ def rater_wording(questions: dict) -> list[tuple[str, str]]:
     out += [(f"families.{f}[{n}]", t) for f, lines in ins["families"].items() for n, t in enumerate(lines)]
     out += [("tier_scale_note", ins["tier_scale_note"]), ("notes.label", questions["notes"]["label"]),
             ("notes.hint", questions["notes"]["hint"])]
+    out += [(f"examples[{n}].{k}", e[k]) for n, e in enumerate(ins.get("examples", [])) for k in ("label", "caption")]
     return out
 
 
@@ -804,6 +836,169 @@ def test_raters_are_asked_not_to_look_the_scenarios_up():
     # The blinding holds only inside the app: the answers are in public files (docs/verification_protocol.md).
     welcome = json.loads(QUESTIONS.read_text(encoding="utf-8"))["instructions"]["welcome"]
     assert any(re.search(r"do not search for it online", p) for p in welcome)
+
+
+# ---- instructions.examples: invented examples shown before the first item -------------------------------------
+
+def _examples() -> list[dict]:
+    """One synthetic example per display kind (abstract and non-medical, like every input here), each with the display
+    an item of its question set has. Highlights are written out, not computed with the exporter's diff_spans."""
+    pair = ("The blue ledger on my desk is full, so today I will buy a new",
+            "The notebook on my desk is full, so today I will buy a new")
+    return [
+        {"family": "tracing_pair", "label": "Sample sentence pair", "caption": "Judge the two sentences.",
+         "display": {"kind": "pair_sentence", "clinical": {"text": pair[0], "highlight": [4, 15]},
+                     "patient": {"text": pair[1], "highlight": [4, 12]}, "next_word": "one", "cut_off": True}},
+        {"family": "advice_new", "label": "Sample message pair", "caption": "Judge the two messages.",
+         "display": {"kind": "message_pair", "clinical_message": "Where should I keep the brass key?",
+                     "patient_message": "Where should I keep the little key for the shed?", "cut_off": False}},
+        {"family": "multiturn_script", "label": "Sample conversation", "caption": "Judge the three versions.",
+         "display": {"kind": "script", "n_turns": 2, "arms": [
+             {"arm": "clinical", "turns": [{"text": "The ochre bracket is loose.", "same_as": None},
+                                           {"text": "I tightened it today.", "same_as": None}]},
+             {"arm": "colloquial", "turns": [{"text": "the yellow thingy is wobbly", "same_as": None},
+                                             {"text": "tightened it today", "same_as": None}]},
+             {"arm": "lay_careful", "turns": [{"text": "The yellow part is loose.", "same_as": None},
+                                              {"text": "I tightened it today.", "same_as": "clinical"}]}]}},
+    ]
+
+
+def _questions_with(tmp_path: Path, examples: Any = None, drop: bool = False) -> Path:
+    """The committed questions file with instructions.examples replaced (or, with drop, removed), written to tmp."""
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    if drop:
+        questions["instructions"].pop("examples", None)
+    else:
+        questions["instructions"]["examples"] = examples
+    return dump(tmp_path / "questions_examples.json", questions)
+
+
+def _example_texts(examples: list[dict]) -> int:
+    return sum(2 + len(strings_in(e["display"])) for e in examples)
+
+
+def test_examples_are_validated_and_carried_into_the_bundle_unchanged(tmp_path, capsys):
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, drop=True)
+    bare, _ = rerun(paths, tmp_path / "bare")
+    assert "examples" not in bare["questions"]["instructions"]        # a questions file with none stays valid
+    assert check_contract(bare) == [] and forbidden_in_display(bare) == []
+    examples = _examples()
+    paths["questions"] = _questions_with(tmp_path, examples)
+    bundle, raw = rerun(paths, tmp_path / "with")
+    assert bundle["questions"]["instructions"]["examples"] == examples
+    assert bundle["questions_sha256"] == hashlib.sha256(paths["questions"].read_bytes()).hexdigest()
+    assert check_contract(bundle) == [] and forbidden_in_display(bundle) == []
+    # each example string is seal-scanned like an item's display strings, and the items do not change
+    assert bundle["seal"]["rater_visible_texts_scanned"] == (bare["seal"]["rater_visible_texts_scanned"]
+                                                             + _example_texts(examples))
+    assert bundle["items"] == bare["items"]
+    # the suite's own contract checks see a broken example in a bundle
+    for change in (lambda d: d.update(cut_off=False), lambda d: d.update(reveal=None),
+                   lambda d: d["patient"].update(text="gemma " + d["patient"]["text"])):
+        broken = copy.deepcopy(bundle)
+        change(broken["questions"]["instructions"]["examples"][0]["display"])
+        assert check_contract(broken) or forbidden_in_display(broken)
+
+
+def _ex(n: int, *path: Any) -> Any:
+    """A function that sets the value at path in example n's display (or, with the first key '@', in the example)."""
+    def setter(examples: list[dict], value: Any) -> None:
+        target = examples[n] if path[0] == "@" else examples[n]["display"]
+        keys = path[1:] if path[0] == "@" else path
+        for k in keys[:-1]:
+            target = target[k]
+        target[keys[-1]] = value
+    return setter
+
+
+MALFORMED_EXAMPLES = {
+    "not_a_list": (lambda ex: {"examples": ex}, "is not a non-empty list"),
+    "empty_list": (lambda ex: [], "is not a non-empty list"),
+    "not_an_object": (lambda ex: ["sample", *ex[1:]], "[0] is not an object"),
+    "item_family_name": (lambda ex: _ex(1, "@", "family")(ex, "advice") or ex, "is not one of the item question sets"),
+    "unknown_family": (lambda ex: _ex(0, "@", "family")(ex, "tracing") or ex, "is not one of the item question sets"),
+    "missing_caption": (lambda ex: ex[1].pop("caption") and ex, "missing ['caption']"),
+    "reveal_field": (lambda ex: _ex(1, "@", "reveal")(ex, {"proposed_tier": "x"}) or ex, "not allowed ['reveal']"),
+    "blank_label": (lambda ex: _ex(2, "@", "label")(ex, "  ") or ex, "label is not a non-empty string"),
+    "caption_not_text": (lambda ex: _ex(0, "@", "caption")(ex, ["a"]) or ex, "caption is not a non-empty string"),
+    "display_of_another_set": (lambda ex: _ex(0, "@", "display")(ex, ex[1]["display"]) or ex,
+                               "display kind is 'message_pair'"),
+    "display_not_object": (lambda ex: _ex(2, "@", "display")(ex, "script") or ex, "display is not an object"),
+    "display_extra_field": (lambda ex: _ex(1, "proposed_tier")(ex, "x") or ex, "display fields are"),
+    "display_missing_field": (lambda ex: ex[0]["display"].pop("next_word") and ex, "display fields are"),
+    "highlight_off": (lambda ex: _ex(0, "clinical", "highlight")(ex, [4, 14]) or ex, "a highlight is not the span"),
+    "highlight_floats": (lambda ex: _ex(0, "patient", "highlight")(ex, [4.0, 12.0]) or ex,
+                         "a highlight is not the span"),
+    "side_extra_field": (lambda ex: _ex(0, "clinical", "bold")(ex, True) or ex, "display.clinical is not an object"),
+    "same_sentences": (lambda ex: _ex(0, "patient")(ex, copy.deepcopy(ex[0]["display"]["clinical"])) or ex,
+                       "do not each have words where they differ"),
+    "next_word_two_words": (lambda ex: _ex(0, "next_word")(ex, "one more") or ex, "next_word is not one lowercase"),
+    "tracing_not_cut_off": (lambda ex: _ex(0, "cut_off")(ex, False) or ex, "cut_off is False"),
+    "advice_new_cut_off": (lambda ex: _ex(1, "cut_off")(ex, True) or ex, "cut_off is True"),
+    "truncated_not_cut_off": (lambda ex: _ex(1, "@", "family")(ex, "advice_rerun_truncated") or ex,
+                              "every item of question set 'advice_rerun_truncated' has True"),
+    "cut_off_not_bool": (lambda ex: _ex(1, "cut_off")(ex, 0) or ex, "cut_off is 0"),
+    "same_messages": (lambda ex: _ex(1, "patient_message")(ex, ex[1]["display"]["clinical_message"]) or ex,
+                      "the two messages are the same text"),
+    "blank_message": (lambda ex: _ex(1, "clinical_message")(ex, " ") or ex, "a message is not a non-empty string"),
+    "n_turns_not_turns": (lambda ex: _ex(2, "n_turns")(ex, 3) or ex, "not a list of n_turns (3) entries"),
+    "n_turns_bool": (lambda ex: _ex(2, "n_turns")(ex, True) or ex, "n_turns is not a positive integer"),
+    "one_arm": (lambda ex: _ex(2, "arms")(ex, ex[2]["display"]["arms"][:1]) or ex, "at least two versions"),
+    "arm_twice": (lambda ex: _ex(2, "arms", 2, "arm")(ex, "clinical") or ex, "arm 'clinical' appears twice"),
+    "turn_extra_field": (lambda ex: _ex(2, "arms", 0, "turns", 0, "reply")(ex, "x") or ex,
+                         "turn 1 is not an object of exactly"),
+    "same_as_left_out": (lambda ex: _ex(2, "arms", 2, "turns", 1, "same_as")(ex, None) or ex, "same_as is None"),
+    "same_as_wrong_arm": (lambda ex: _ex(2, "arms", 1, "turns", 0, "same_as")(ex, "clinical") or ex,
+                          "same_as is 'clinical'"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(MALFORMED_EXAMPLES))
+def test_a_malformed_example_is_refused_by_name(tmp_path, case):
+    change, fragment = MALFORMED_EXAMPLES[case]
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, change(_examples()))
+    message = refused_paths(paths, "bad_example")
+    assert fragment in message, message
+
+
+def _answer_label() -> str:
+    """The label of an option of the reveal's scale, read from the questions data (no level is written here)."""
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    locking = next(q for q in questions["question_sets"]["advice_new"]["questions"] if q.get("locks_on_reveal"))
+    return questions["scales"][locking["scale"]]["options"][-1]["label"]
+
+
+@pytest.mark.parametrize("n, path, value, fragment", [
+    (0, ("@", "caption"), "Compare it with what Gemma predicted.", "a model or vendor name"),
+    (2, ("arms", 1, "turns", 0, "text"), "asked claude about it", "a model or vendor name"),
+    (1, ("clinical_message",), f"Where should I keep the brass key from {TIER_A}?", "a batch, run or item id"),
+    (0, ("@", "label"), "Sample vt_731162e6021a", "a batch, run or item id"),
+    (1, ("patient_message",), "Where should I keep the 0.43 key?", "a decimal number or a percentage"),
+    (0, ("@", "caption"), "Most physicians (60%) agree.", "a decimal number or a percentage"),
+    (1, ("@", "caption"), "Here the answer is {answer}.", "the urgency level"),
+])
+def test_an_example_that_shows_a_model_id_measured_value_or_answer_is_refused(tmp_path, n, path, value, fragment):
+    examples = _examples()
+    planted = value.format(answer=_answer_label().lower())
+    _ex(n, *path)(examples, planted)
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert fragment in message and f"instructions.examples[{n}]" in message, message
+    assert planted not in message                                  # names what it shows, never the text
+
+
+def test_a_sealed_phrase_in_an_example_refuses_the_export_and_names_the_example(tmp_path):
+    examples = _examples()
+    examples[1]["display"]["patient_message"] = "Before that, " + SEALED.upper().replace(" ", "   ") + " and then?"
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "seal_hit")
+    assert f"instructions.examples[1] (advice_new) :: {TIER_B}#1" in message, message
+    assert "serialized bundle" not in message                      # the per-string sweep caught it first
+    assert SEALED not in message and SEALED.upper() not in message
 
 
 # ---- other refusals -----------------------------------------------------------------------------------------
