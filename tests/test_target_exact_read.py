@@ -80,8 +80,8 @@ def test_a_missing_read_lists_neighbours_in_both_directions_as_diagnostics_only(
 
 
 def test_identity_normalises_only_the_leading_space():
-    g = hosted_graph([(" Ant", 0.5), (" ant", 0.2), ("▁doc", 0.1)])
-    assert token_key(label(" ant")) == "ant" and token_key(label("▁doc")) == "doc"
+    g = hosted_graph([(" Ant", 0.5), (" ant", 0.2), ("\u2581doc", 0.1)])
+    assert token_key(label(" ant")) == "ant" and token_key(label("\u2581doc")) == "doc"
     assert read_exact(g, "ant")["probability"] == 0.2          # a target written without its leading space
     assert read_exact(g, label(" ant"))["probability"] == 0.2  # case is identity: ' Ant' is another token
     assert read_exact(g, " doc")["probability"] == 0.1         # the SentencePiece marker is a leading space
@@ -92,8 +92,8 @@ def test_two_tokens_differing_only_in_the_leading_space_are_told_apart_or_refuse
     g = hosted_graph([(" ant", 0.3), ("ant", 0.2)])
     assert read_exact(g, label(" ant"))["probability"] == 0.3
     assert read_exact(g, label("ant"))["probability"] == 0.2
-    # a target spelt like neither ('Ġant' normalises to ' ant'): picks ' ant'; two ' ant' labels: refused
-    assert read_exact(g, "Ġant")["probability"] == 0.3
+    # a target spelt like neither ('\u0120ant' normalises to ' ant'): picks ' ant'; two ' ant' labels: refused
+    assert read_exact(g, "\u0120ant")["probability"] == 0.3
     dup = hosted_graph([(" ant", 0.3), (" ant", 0.2)])
     read = read_exact(dup, label(" ant"))
     assert read["status"] == "missing" and read["reason"] == "ambiguous_exact_match"
@@ -276,3 +276,15 @@ def test_quadrant_and_dialect_sides_read_exactly(tmp_path, monkeypatch):
                              fetcher=build_fetcher())[0]
     assert d["baseline_probability"] == 0.6 and d["variants"][0]["probability"] is None
     assert d["target_read"]["sides"]["variants"][0]["status"] == "missing"
+
+
+def test_a_whitespace_top_logit_is_not_measured(tmp_path, monkeypatch):
+    # The legacy fallback measured a bare-space top token as the target (' ' for an intended word the tokenizer
+    # splits after its space). It has no text to read: the result records why and claims no substitution.
+    r = _run(tmp_path, monkeypatch, {"clin": [(" ", 0.5), (" to", 0.2)], "pat": [(" ", 0.4)]},
+             {"top_prompt": "clin eight", "bottom_prompt": "pat eight", "target_clinical_token": " qz9"})
+    assert r["target_token"] is None and r["probabilities"] == {"clinical": None, "patient": None}
+    tr = r["target_read"]
+    assert tr["match"] == "top_logit" and tr["substituted"] is False and tr["measured_token"] is None
+    assert tr["sides"]["clinical"]["reason"] == "no_target_token"
+    assert tr["intended_read"]["reason"] == "target_not_in_returned_logits"

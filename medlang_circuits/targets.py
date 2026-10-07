@@ -277,7 +277,7 @@ def target_probability(
 FOUND_STATUSES = ("exact", "leading_wordpiece")
 
 # SentencePiece '▁' and byte-level BPE 'Ġ': how tokenizers spell a leading space.
-SPACE_MARKERS = "▁Ġ"
+SPACE_MARKERS = "\u2581\u0120"
 
 # The shortest leading piece accepted for a split target, as anchor_matches has
 # it: stub tokens (' a', ' an') must not stand for every word they begin.

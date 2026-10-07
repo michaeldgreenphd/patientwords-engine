@@ -465,18 +465,20 @@ def _target_read(
     (``_resolve_reference``); ``substituted`` is true when an intended target
     was given and the measured token is another token chosen by the
     forced-target or top-logit step, false when the intended target (or its
-    leading wordpiece) was measured or nothing was, null when no intended
+    leading wordpiece) was measured or nothing was (a whitespace top logit has
+    no text to read: its side says ``no_target_token``), null when no intended
     target was given. ``sides`` holds one read record per side, shaped like
     ``predictive_spread``; a side whose record is ``missing`` has a null
     probability and names the reason. ``intended_read`` (only when the intended
     target was given but not read) says why it was not."""
     has_intended = bool(token_key(anchor))
+    measured = _measured_token(reference)
     block: dict[str, Any] = {
         "rule": TARGET_READ_RULE,
         "intended_target": anchor,
-        "measured_token": _measured_token(reference),
+        "measured_token": measured,
         "match": reference["match"],
-        "substituted": (reference["match"] in SUBSTITUTE_MATCHES) if has_intended else None,
+        "substituted": (reference["match"] in SUBSTITUTE_MATCHES and measured is not None) if has_intended else None,
         "reference_side": reference_side,
         "sides": sides,
     }
