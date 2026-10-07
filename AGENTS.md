@@ -410,14 +410,18 @@ rather than only in a doc because nobody thinks to go looking.
   hardcode bfloat16. Only gemma-2-2b has a second implementation to check
   against; for the other nine models the error is present but unmeasured.
   `mode: verify` on the logits lane measures it for any model in `HF_IDS` at $0.
-* **The hosted path misread one target token.** Index 20 of
-  `pairs_20260710T011743Z`, patient side: target `" ant"`, hosted recorded 0.068,
-  which is the probability of `" anti"` in hosted's own spread; the correct 0.041
-  sits one row below it. One row in 71, hosted only — both CPU paths agree with
-  their own spreads on every row — but the mechanism fires whenever a target
-  token is a proper prefix of a higher-probability neighbour, which wordpiece
-  vocabularies make routine. Not yet fixed; the hosted extraction path is what to
-  inspect.
+* **The hosted path read some targets off another token.** Until 2026-10-07 its
+  prefix match kept the likeliest logit related to the target in either
+  direction: `" ant"` read as `" anti"` (index 20 of `pairs_20260710T011743Z`:
+  0.068 recorded, 0.041 correct) and `" antibiotic"` as its first part `" anti"`.
+  `scripts/audit_target_reads.py` over every committed summary (2026-10-07): 63
+  hosted results carry another token's value, 42 published (40 on the patient
+  side); 23 measured a leading piece of a word the vocabulary holds whole (17
+  published); an unscreened target missing from the reference side was replaced
+  by the top logit (253 published rows flagged `anchor_fallback`, 8 the flag
+  misses). The CPU lanes read by token id; pilot traces are clean. New traces
+  read exactly and record `target_read`. Re-measuring and republishing is the
+  owner's decision.
 * **Per-pair penalties and flip labels are not stable measurements.** The negative
   control of 2026-09-04 (`docs/negative_control_20260904.md`, numbers regenerable
   from `ops/negative_control_20260904.json`, seed 7) measured each clinical

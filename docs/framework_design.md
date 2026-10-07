@@ -242,7 +242,11 @@ or any other match, is emitted as a named
 `target_identity_unverified` result for that side and counted, never a
 probability. The framework adapter applies this rule on top of the existing
 hosted path rather than changing it, since changing that path re-publishes
-numbers that are live on the site, which is a decision and not a fix.
+numbers that are live on the site, which is a decision and not a fix. Since
+2026-10-07 new hosted traces read the target exactly (`resolve_target` and
+`read_exact` in `targets.py`) and record how in each result's `target_read`
+block; values published before then were read the old way, and
+`scripts/audit_target_reads.py` lists the ones that took a neighbour's number.
 
 ## 4. The framework of differences
 
