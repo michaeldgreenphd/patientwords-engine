@@ -1102,6 +1102,52 @@ def test_describing_the_task_with_short_labels_and_values_is_not_refused(tmp_pat
     assert bundle["questions"]["instructions"]["examples"] == examples
 
 
+@pytest.mark.parametrize("set_name, field, text", [
+    ("multiturn_script", "caption", "The conversation is entirely plausible."),     # the Codex example
+    ("advice_new", "caption", "This message is realistic."),
+    ("tracing_pair", "caption", "This one is not likely."),
+    ("advice_new", "caption", "The situation is medically coherent."),
+    ("advice_rerun_truncated", "caption", "It seems very unusual, so judge it."),
+    ("tracing_pair", "label", "A pair that is likely"),
+    ("multiturn_script", "caption", "The course of events is unusual."),
+])
+def test_a_caption_or_label_that_evaluates_the_example_is_refused(tmp_path, set_name, field, text):
+    # Regression (Codex review of PR #88, 4210041435, answered by Gemini and adopted by the owner): a caption says what
+    # a physician judges and never evaluates the example. The predicates are read from the questions data.
+    examples, n = _example_for_set(set_name)
+    examples[n][field] = text
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "an evaluation of the example as" in message and f"instructions.examples[{n}]" in message, message
+
+
+DRAFT_CAPTIONS = [   # the three draft examples' captions (questions 1.2-draft)
+    "You judge whether the two sentences mean the same thing, how likely a real patient is to use the underlined "
+    "everyday wording, and whether the word shown underneath would be a natural next word.",
+    "You judge whether a real patient could send each message, whether the two describe the same situation, and how "
+    "urgently the person should seek care.",
+    "You judge whether a real patient could send each version's messages, whether the three versions give the same "
+    "facts message by message, and how urgently the person should seek care as the conversation goes on.",
+]
+
+
+def test_captions_that_describe_the_task_are_kept(tmp_path, capsys):
+    # A task description puts the quality under "whether", "if" or "how", or opens with an imperative; a patient's own
+    # words in a display are not a caption and are not read for evaluations.
+    examples = _examples()
+    for n, caption in enumerate(DRAFT_CAPTIONS):
+        examples[n]["caption"] = caption + " Judge whether the conversation is plausible. Say how likely it is. " \
+                                           "Rate how plausible the course of events is. If the message is unclear, say so. " \
+                                           "Consider that the message is realistic or not. This one is 3 messages long. " \
+                                           "You judge whether the conversation is plausible."
+    examples[1]["display"]["patient_message"] = "It seems possible the key fell behind the shed; where is it likely?"
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    bundle, _ = rerun(paths, tmp_path / "out")
+    assert bundle["questions"]["instructions"]["examples"] == examples
+
+
 def _reveal_options() -> list[dict]:
     """The options of the reveal's scale, read from the questions data (no level is written here)."""
     questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))

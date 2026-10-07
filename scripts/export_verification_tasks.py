@@ -855,6 +855,71 @@ def item_shown_texts(display: Any) -> list[str]:
     return []
 
 
+# A caption says what a physician judges; it never evaluates the example. An evaluation is a declarative clause that
+# applies an answer to the example: a subject that is the example ("the conversation", "this message", "it"), a
+# copula, an optional "not" and intensifiers, then a predicate read from the questions data (example_predicates).
+# Codex review of PR #88 asked whether "The conversation is entirely plausible" should pass; the owner adopted Gemini's
+# answer that it should not, while a task description must: a clause under "whether", "if" or "how", or a sentence
+# that opens with an imperative ("Judge whether the conversation is plausible", "Say how likely it is").
+_EXAMPLE_SUBJECT = (r"(?:(?:the|this|that|these|those|each|every|its|their)\s+(?:[a-z-]+\s+){0,2}?"
+                    r"(?:conversations?|scripts?|scenarios?|situations?|stor(?:y|ies)|examples?|items?|pairs?|"
+                    r"sentences?|messages?|versions?|wordings?|course(?:\s+of\s+events)?|events|cases?|texts?|"
+                    r"exchanges?|turns?|ones?)|it|this|that|they|these|those)")
+_EXAMPLE_COPULA = r"(?:is|are|was|were|seems?|appears?|sounds?|looks?|reads?|feels?)(?:\s+to\s+be)?"
+_INTENSIFIERS = ("entirely", "completely", "wholly", "very", "quite", "fairly", "highly", "mostly", "somewhat",
+                 "clearly", "perfectly", "totally", "rather", "so", "really", "medically", "definitely", "probably")
+_TASK_SENTENCE_OPENERS = ("judge", "rate", "say", "decide", "assess", "determine", "consider", "check", "tell",
+                          "choose", "note", "ask", "read", "look", "think")
+
+
+def example_predicates(doc: dict, set_name: str) -> list[str]:
+    """What an evaluation of an example of question set set_name could call it, read from the questions data: the
+    label of every option of every ordinal scale the set's questions use (an ordinal scale rates a degree, so its
+    labels are evaluations; a nominal scale's, such as a message number, and an abstention are not), without its
+    number ("4 - Likely" gives "Likely") or what follows a ";" or "(", when that is three words or fewer, and its last
+    word when it opens with an intensifier ("Entirely plausible" gives "plausible"); the last word of each of the
+    set's yes/no questions (a nominal scale of two options) that asks "is the ... X?" ("coherent"); and the qualities the welcome text says physicians
+    judge ("whether each one is realistic and checkable")."""
+    found: set[str] = set()
+    for q in doc["question_sets"][set_name]["questions"]:
+        scale = doc["scales"][q["scale"]]
+        for option in scale.get("options", []) if scale.get("type") == "ordinal" else []:
+            label = option.get("label")
+            if not isinstance(label, str):
+                continue
+            core = re.split(r"[;(]", re.sub(r"^\s*\d+\s*-\s*", "", label))[0].strip()
+            words = re.findall(r"[^\W_][\w'-]*", core)
+            if 0 < len(words) <= 3:
+                found.add(core)
+                if len(words) > 1 and words[0].lower() in _INTENSIFIERS:
+                    found.add(words[-1])
+        asks = re.search(r"\bis the\b[^?]*\b([a-z]+)\?\s*$", q.get("text", ""), re.I)
+        if asks and scale.get("type") == "nominal" and len(scale.get("options", [])) == 2:
+            found.add(asks.group(1))
+    for line in (doc.get("instructions") or {}).get("welcome", []):
+        for qualities in re.findall(r"\bwhether each one is ([a-z]+(?: and [a-z]+)*)", line, re.I):
+            found |= set(qualities.split(" and "))
+    return sorted({p.lower() for p in found}, key=lambda p: (-len(p), p))
+
+
+def example_evaluations(text: str, predicates: list[str]) -> list[str]:
+    """The predicates a text applies to the example in an evaluation (see _EXAMPLE_SUBJECT), skipping a clause under
+    "whether", "if" or "how" and a sentence that opens with an imperative."""
+    if not predicates:
+        return []
+    pattern = re.compile(rf"\b{_EXAMPLE_SUBJECT}\s+{_EXAMPLE_COPULA}\s+(?:not\s+)?(?:(?:{'|'.join(_INTENSIFIERS)})\s+)*"
+                         rf"(?P<pred>{'|'.join(_label_pattern(p) for p in predicates)})(?!\w)", re.I)
+    out = []
+    for sentence in re.split(r"[.;:!?]+", text):
+        opener = re.match(r"\s*([a-z]+)", sentence, re.I)
+        if opener and opener.group(1).lower() in _TASK_SENTENCE_OPENERS:
+            continue
+        for m in pattern.finditer(sentence):
+            if not re.search(r"\b(?:whether|if|how)\b", sentence[:m.start()], re.I):
+                out.append(m.group("pred"))
+    return out
+
+
 def example_texts(example: dict) -> list[str]:
     """Every string an example shows a physician: its label, its caption and every string of its display."""
     return [example["label"], example["caption"], *strings_in(example["display"])]
@@ -973,6 +1038,9 @@ def validate_examples(doc: dict, where: str) -> None:
         shown += [f"the urgency level {name!r}" for name, terms in answer_levels
                   if any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", t, re.I) for term in terms for t in texts)]
         shown += [what for what, pattern in example_answer_rules(doc, family) if any(pattern.search(t) for t in texts)]
+        predicates = example_predicates(doc, family)
+        evaluated = sorted({p.lower() for t in (example["label"], example["caption"]) for p in example_evaluations(t, predicates)})
+        shown += [f"an evaluation of the example as {p!r}" for p in evaluated]
         if shown:
             refuse("example_not_blind", f"{at} ({family}) shows {', '.join(shown)}; an example shows a physician no "
                                         "model, method, measured value or answer")

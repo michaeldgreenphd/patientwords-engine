@@ -243,7 +243,9 @@ shows before a physician's first item, so they know what each kind of item
 looks like. Each example names the question set whose items it imitates
 (`tracing_pair`, `advice_new`, `advice_rerun`, `advice_rerun_truncated` or
 `multiturn_script`; that set's `family` gives its family instructions), a
-label, a one-sentence caption saying what the physician judges, and a display
+label, a one-sentence caption saying what the physician judges (a task
+directive, such as "Judge whether the conversation is plausible"; it never
+evaluates the example), and a display
 of exactly the shape that set's items have, so the app draws it as it draws an
 item. Examples are invented. They carry no answer, no proposed urgency and no
 rating, and they are none of the study's items.
@@ -283,7 +285,16 @@ problem:
   statement ("the rating is 4", "rated Likely", "the answer is yes",
   "4 out of 5"). A short label or value as an ordinary word ("how likely",
   "none of them") is not refused, so a caption can say what a physician
-  judges. An item's display is
+  judges. A label or caption that evaluates the example is refused too: a
+  clause whose subject is the example ("the conversation", "this message",
+  "it"), with a copula and a word an answer could be ("The conversation is
+  entirely plausible", "This message is realistic"). Those words are read
+  from the questions file: the labels of the ordinal scales the example's
+  questions use, the adjectives of its "is the ...?" yes/no questions, and
+  the qualities the welcome text names. A clause under "whether", "if" or
+  "how", or a sentence that opens with an imperative ("Judge whether the
+  conversation is plausible", "Say how likely it is"), is a task directive
+  and is kept. A patient's own words in a display are not read for this. An item's display is
   built only from the texts physicians rate, so it carries none of the
   study's own models, ids, measurements or answers. An example is written by
   hand, so its text is checked instead, and more strictly than an item's
