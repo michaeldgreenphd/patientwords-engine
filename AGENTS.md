@@ -414,15 +414,15 @@ rather than only in a doc because nobody thinks to go looking.
   case-blind prefix match kept the likeliest logit related to the target in
   either direction: `" ant"` read as `" anti"` (index 20 of
   `pairs_20260710T011743Z`: 0.068 recorded, 0.041 correct) and `" antibiotic"`
-  as its first part `" anti"`.
-  `scripts/audit_target_reads.py` over every committed summary (2026-10-07): 63
-  hosted results carry another token's value, 42 published (40 on the patient
-  side); 23 measured a leading piece of a word the vocabulary holds whole (17
-  published); an unscreened target missing from the reference side was replaced
-  by the top logit (253 published rows flagged `anchor_fallback`, 8 the flag
-  misses). The CPU lanes read by token id; pilot traces are clean. New traces
-  read exactly and record `target_read`. Re-measuring and republishing is the
-  owner's decision.
+  as its first part `" anti"`. `scripts/audit_target_reads.py` (2026-10-07,
+  last part per index): 63 hosted results carry another token's value, 40 in a
+  published field; 23 measured a leading piece of a word the vocabulary holds
+  whole (17 published). Of 262 published substituted rows, 251 are the
+  unscreened top-logit fallback, 8 the prefix match itself (6 extensions, 2
+  case variants; 4 screened) and 3 the logits lane's bare-space first token;
+  `anchor_fallback` misses 9. Pilot traces are clean. New traces read exactly
+  and record `target_read`. Re-measuring and republishing is the owner's
+  decision.
 * **Per-pair penalties and flip labels are not stable measurements.** The negative
   control of 2026-09-04 (`docs/negative_control_20260904.md`, numbers regenerable
   from `ops/negative_control_20260904.json`, seed 7) measured each clinical
