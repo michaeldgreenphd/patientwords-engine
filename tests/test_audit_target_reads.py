@@ -369,3 +369,29 @@ def test_numeric_part_order_is_marked_beside_the_exporters_name_order(tmp_path):
                                                 "numeric_last_part": f"trace_out/{stem}/batch_summary.part_100.json"}]
     (sub,) = subs(rep)  # the part_100 substitution: backend_agreement's reading, not the exporter's
     assert sub["numeric_last_part"] is True and sub["effective"] is False
+
+
+@pytest.mark.parametrize("bad,why", [
+    ({"mode": "2panel"}, "no results"), ({"results": None}, "results is not a list"),
+    ({"results": {"1": {}}}, "results is not a list"), ([], "root is not an object"),
+    ({"results": [1, "x"]}, "a result is not an object"),
+])
+def test_a_malformed_summary_is_refused_not_read_as_zero_rows(engine, tmp_path, bad, why):
+    write(engine / f"trace_out/{STEM}/batch_summary.part_99.json", bad)
+    with pytest.raises(audit.AuditRefusal, match=rf"trace_out/{STEM}/batch_summary.part_99.json \({why}\)"):
+        audit.main(["--root", str(engine), "--out", str(tmp_path / "r.json")])
+    assert not (tmp_path / "r.json").exists()
+
+
+def test_an_empty_summary_is_read_and_listed(engine, tmp_path):
+    write(engine / f"trace_out/{STEM}/batch_summary.part_99.json", {"mode": "2panel", "results": []})
+    rep = run(engine, tmp_path)
+    assert rep["empty_summaries"] == [f"trace_out/{STEM}/batch_summary.part_99.json"]
+    assert rep["counts"]["overall"]["results"] == 16
+
+
+def test_the_report_rules_name_the_reader_of_each_order(engine, tmp_path):
+    counting = run(engine, tmp_path)["rules"]["counting"]
+    exporter_rule = counting.split(";")[0]
+    assert "file-name order" in exporter_rule and "backend_agreement" not in exporter_rule
+    assert "numeric_last_part" in counting

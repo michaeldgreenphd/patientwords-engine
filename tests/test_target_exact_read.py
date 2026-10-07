@@ -411,3 +411,13 @@ def test_an_exact_token_that_cannot_be_read_is_reported_not_replaced_by_a_piece(
     spaced["nodes"].append({"node_id": "L_np", "feature_type": "logit", "clerp": 'Output " xabicor"'})
     unspaced = resolve_target(spaced, "xabicor")
     assert unspaced["reason"] == "unparseable_probability" and unspaced["intended_spacing"] == "both_tried"
+
+
+def test_a_duplicated_leading_wordpiece_is_ambiguous_not_guessed():
+    read = resolve_target(hosted_graph([(" xabi", 0.3), (" xabi", 0.1)]), " xabicor")
+    assert read["status"] == "missing" and read["reason"] == "ambiguous_wordpiece" and "probability" not in read
+    assert read["wordpiece_candidates"] == [[label(" xabi"), 0.3], [label(" xabi"), 0.1]]
+    # a duplicate among the other pieces does not touch the chosen one, and stays listed
+    other = resolve_target(hosted_graph([(" xabi", 0.3), (" xab", 0.1), (" xab", 0.05)]), " xabicor")
+    assert other["status"] == "leading_wordpiece" and other["token"] == label(" xabi")
+    assert other["alternatives"] == [[label(" xab"), 0.1], [label(" xab"), 0.05]]

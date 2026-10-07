@@ -91,6 +91,11 @@ directory can hold one index in more than one part:
 Every occurrence is listed in ``findings`` and ``substitutions`` with both
 marks.
 
+A summary whose shape would read as zero rows (a root that is not an object,
+no ``results``, ``results`` that is not a list, or a result that is not an
+object) is refused with every such file named. A well-formed summary with an
+empty ``results`` list is read, and listed under ``empty_summaries``.
+
 Published rows (``--site-payload``, the site's ``data/simulated_scenarios.json``,
 optional): an effective finding in a part the site exporter reads for that
 model (``trace_out/<stem>`` for gemma-2-2b, ``trace_out/<stem>__<model>`` for
@@ -418,6 +423,25 @@ def read_payload(path: Path | None) -> tuple[dict[tuple[str, int, str], dict], d
                   "scenarios": len(payload.get("scenarios", []))}
 
 
+def malformed_summaries(root: Path, loaded: dict[Path, list[tuple[Path, Any]]]) -> list[tuple[str, str]]:
+    """Every summary whose shape would make it read as zero rows: a root that is not an object, no ``results``,
+    ``results`` that is not a list, or a result that is not an object. An empty ``results`` list is well formed;
+    the report lists it under ``empty_summaries``."""
+    bad = []
+    for parts in loaded.values():
+        for part, summary in parts:
+            rel = part.relative_to(root).as_posix()
+            if not isinstance(summary, dict):
+                bad.append((rel, "root is not an object"))
+            elif "results" not in summary:
+                bad.append((rel, "no results"))
+            elif not isinstance(summary["results"], list):
+                bad.append((rel, "results is not a list"))
+            elif any(not isinstance(r, dict) for r in summary["results"]):
+                bad.append((rel, "a result is not an object"))
+    return bad
+
+
 def urgency_reads(root: Path, loaded: dict[Path, list[tuple[Path, dict]]]) -> set[tuple[str, Any]]:
     """(part, index) of every result ``urgency_shift.py`` ingests: trace_out/*/batch_summary.part_*.json in sorted
     order, txcorpus_ directories skipped, the first result per (model, batch, index) with a non-empty clinical and
@@ -479,6 +503,12 @@ def audit(root: Path, trace_roots: list[str], payload_path: Path | None) -> dict
     dirs = trace_dirs(root, trace_roots)
     loaded = {d: [(part, json.loads(part.read_text(encoding="utf-8")))
                   for part in sorted(d.glob("batch_summary*.json"))] for _, d in dirs}
+    malformed = malformed_summaries(root, loaded)
+    if malformed:
+        refuse("malformed batch summaries, which would read as zero rows: "
+               + "; ".join(f"{path} ({why})" for path, why in malformed))
+    empty = sorted(part.relative_to(root).as_posix() for parts in loaded.values() for part, s in parts
+                   if not s["results"])
     vocabulary = token_vocabulary(loaded)
     urgency = urgency_reads(root, loaded)
     wordpiece_tokens: list[dict[str, Any]] = []
@@ -626,14 +656,19 @@ def audit(root: Path, trace_roots: list[str], payload_path: Path | None) -> dict
                         "clinical or patient side",
             "substitution": "measured token vs intended target on token_form; substitutions are "
                             + ", ".join(SUBSTITUTION_RELATIONS) + ", and short_leading_wordpiece on hosted",
-            "counting": "counts: the last part per index (site exporter, export_archive, backend_agreement, "
-                        "paired_stats validity); counts_urgency_first_part: urgency_shift.py's first result per "
+            "counting": "counts: the last part per index in sorted file-name order (site exporter, export_archive, "
+                        "paired_stats validity); backend_agreement takes the last part in numeric part order, marked "
+                        "numeric_last_part, with part_order_disagreements listing every index where the two orders "
+                        "differ; counts_urgency_first_part: urgency_shift.py's first result per "
                         "(model, batch, index) with both spreads (its rows feed paired_stats, paired_stats_rigor, "
                         "convergence_tracker); findings and substitutions list every occurrence with both marks",
         },
         "counts": last.report(),
         "counts_urgency_first_part": first.report(),
         "superseded_duplicate_results": superseded,
+        # well-formed summaries that hold no result (none in the committed data on 2026-10-07), listed so an empty
+        # summary is never read as a clean one
+        "empty_summaries": empty,
         # backend_agreement.py orders parts numerically (part_100 after part_36); the exporter, export_archive and
         # paired_stats validity sort file names. Every index where the two orders pick different parts:
         "part_order_disagreements": order_disagreements,

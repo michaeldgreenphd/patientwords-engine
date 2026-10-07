@@ -502,7 +502,10 @@ def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any
     target (' xabicors' for ' xabicor') is never taken: it is another token.
     When the intended token itself was returned but cannot be read
     (``unparseable_probability``, ``ambiguous_exact_match``), that failure is
-    the record: no shorter piece stands in for it.
+    the record: no shorter piece stands in for it. When the likeliest piece
+    was returned more than once, the read is missing with reason
+    ``ambiguous_wordpiece`` and the duplicates in ``wordpiece_candidates``, as
+    for an ambiguous exact token: no value is guessed.
 
     An intended target written without its leading space ('xab', as some
     pairs files spell it) is read with the space first (' xab': after a prompt
@@ -530,6 +533,11 @@ def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any
         pieces = [(label, prob) for label, prob in logits if _is_leading_piece(label, form)]
         if pieces:
             label, prob = max(pieces, key=lambda c: c[1])
+            if sum(1 for lab, _ in pieces if lab == label) > 1:
+                # the chosen piece was returned more than once: which value is its own cannot be told
+                record = _missing("ambiguous_wordpiece", logits, form)
+                record["wordpiece_candidates"] = [[lab, p] for lab, p in pieces if lab == label]
+                return _spaced(record, form, intended)
             record = _found(logits, "leading_wordpiece", label, prob)
             others = [[lab, p] for lab, p in pieces if lab != label]
             if others:
