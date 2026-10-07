@@ -411,9 +411,10 @@ rather than only in a doc because nobody thinks to go looking.
   against; for the other nine models the error is present but unmeasured.
   `mode: verify` on the logits lane measures it for any model in `HF_IDS` at $0.
 * **The hosted path read some targets off another token.** Until 2026-10-07 its
-  prefix match kept the likeliest logit related to the target in either
-  direction: `" ant"` read as `" anti"` (index 20 of `pairs_20260710T011743Z`:
-  0.068 recorded, 0.041 correct) and `" antibiotic"` as its first part `" anti"`.
+  case-blind prefix match kept the likeliest logit related to the target in
+  either direction: `" ant"` read as `" anti"` (index 20 of
+  `pairs_20260710T011743Z`: 0.068 recorded, 0.041 correct) and `" antibiotic"`
+  as its first part `" anti"`.
   `scripts/audit_target_reads.py` over every committed summary (2026-10-07): 63
   hosted results carry another token's value, 42 published (40 on the patient
   side); 23 measured a leading piece of a word the vocabulary holds whole (17
