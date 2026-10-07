@@ -99,12 +99,17 @@ from medlang_circuits.steering import (
 )
 from medlang_circuits.targets import (
     display_token,
+    FOUND_STATUSES,
     TOP_K_SPREAD_DEFAULT,
     AttributionTargets,
     bare_token,
     logit_spread,
+    read_exact,
+    resolve_target,
+    returned_logits,
     select_logits,
     target_probability,
+    token_key,
 )
 from medlang_circuits.translate import translate_to_clinical
 
@@ -404,23 +409,81 @@ def _trace(
     return graph
 
 
+# The rule every new result's ``target_read`` block follows (see _target_read).
+TARGET_READ_RULE = "exact_token/2026-10-07"
+
+# Reference steps that measure a token other than the intended target.
+SUBSTITUTE_MATCHES = ("forced_target", "top_logit")
+
+
 def _resolve_reference(
     graph: dict[str, Any], anchor: str | None, targets: AttributionTargets | None
-) -> tuple[str, float] | None:
-    """Target medical token on the reference graph: anchor -> forced targets -> top logit."""
-    reference = target_probability(graph, anchor=anchor) if anchor else None
-    if reference is None and targets:
-        reference = target_probability(graph, targets=targets)
-    if reference is None:
-        reference = target_probability(graph)
-    return reference
+) -> dict[str, Any]:
+    """The measured token on the reference graph, every step recorded.
+
+    Steps, first that applies: the intended target (``anchor``) read exactly or
+    on its leading wordpiece (``resolve_target``) -> the likeliest forced
+    target -> the top logit. Returns ``{"match", "read", "intended_read"}``:
+    ``match`` names the step that chose the token ("exact",
+    "leading_wordpiece", "forced_target", "top_logit"; None when the graph
+    returned no logits), ``read`` is the reference side's read record, and
+    ``intended_read`` the intended target's own read (None without one). The
+    last two steps substitute another token for an intended target; the
+    result's ``target_read`` block flags that, it is never silent."""
+    intended_read = resolve_target(graph, anchor) if anchor else None
+    if intended_read is not None and intended_read["status"] in FOUND_STATUSES:
+        return {"match": intended_read["status"], "read": intended_read, "intended_read": intended_read}
+    logits = returned_logits(graph)
+    if targets:
+        forced = [label for label, _ in logits if targets.matches(label)]
+        if forced:
+            return {"match": "forced_target", "read": read_exact(graph, forced[0]),
+                    "intended_read": intended_read}
+    if logits:
+        return {"match": "top_logit", "read": read_exact(graph, logits[0][0]), "intended_read": intended_read}
+    return {"match": None, "read": intended_read or read_exact(graph, None), "intended_read": intended_read}
 
 
-def _probability_for(graph: dict[str, Any], token: str | None) -> float | None:
-    if token is None:
-        return None
-    result = target_probability(graph, anchor=token)
-    return result[1] if result else None
+def _read_probability(read: dict[str, Any] | None) -> float | None:
+    """A read record's probability; None for a missing read (never a neighbour's value)."""
+    return read.get("probability") if read and read.get("status") in FOUND_STATUSES else None
+
+
+def _measured_token(reference: dict[str, Any]) -> str | None:
+    return reference["read"].get("token") if reference["read"].get("status") in FOUND_STATUSES else None
+
+
+def _target_read(
+    anchor: str | None, reference: dict[str, Any], reference_side: str, sides: dict[str, Any]
+) -> dict[str, Any]:
+    """The result's ``target_read`` block (additive; results written before
+    2026-10-07 do not carry it): how the measured token was chosen and how each
+    side's probability was read.
+
+    ``intended_target`` is the pair's target_clinical_token; ``measured_token``
+    equals the result's ``target_token``; ``match`` is the reference step
+    (``_resolve_reference``); ``substituted`` is true when an intended target
+    was given and the measured token is another token chosen by the
+    forced-target or top-logit step, false when the intended target (or its
+    leading wordpiece) was measured or nothing was, null when no intended
+    target was given. ``sides`` holds one read record per side, shaped like
+    ``predictive_spread``; a side whose record is ``missing`` has a null
+    probability and names the reason. ``intended_read`` (only when the intended
+    target was given but not read) says why it was not."""
+    has_intended = bool(token_key(anchor))
+    block: dict[str, Any] = {
+        "rule": TARGET_READ_RULE,
+        "intended_target": anchor,
+        "measured_token": _measured_token(reference),
+        "match": reference["match"],
+        "substituted": (reference["match"] in SUBSTITUTE_MATCHES) if has_intended else None,
+        "reference_side": reference_side,
+        "sides": sides,
+    }
+    intended_read = reference.get("intended_read")
+    if intended_read is not None and intended_read.get("status") not in FOUND_STATUSES:
+        block["intended_read"] = intended_read
+    return block
 
 
 # ---------------------------------------------------------------------------
@@ -480,6 +543,26 @@ def _steer_placebo(patient_prompt: str, patient_graph: dict[str, Any], k: int,
     return {"placebo_features": features, **result}
 
 
+def _observed(read: dict[str, Any] | None) -> tuple[str, float] | None:
+    """(token, probability) of a found read, else None."""
+    if read is None or read.get("status") not in FOUND_STATUSES:
+        return None
+    return read["token"], read["probability"]
+
+
+def _screen_reference(graph: dict[str, Any], observed_read: dict[str, Any] | None) -> dict[str, Any]:
+    """The screened-out result's reference, shaped like _resolve_reference's:
+    the screen never falls back to a substitute, so ``match`` is the intended
+    target's own read status when it was found (below min_prob) and None when
+    it was not, or when the pair named no intended target."""
+    if observed_read is None:
+        read = {"status": "missing", "reason": "no_intended_target", "returned": len(returned_logits(graph))}
+        return {"match": None, "read": read, "intended_read": None}
+    found = observed_read.get("status") in FOUND_STATUSES
+    return {"match": observed_read["status"] if found else None, "read": observed_read,
+            "intended_read": observed_read}
+
+
 def evaluate_pair(
     pair: dict[str, Any],
     index: int,
@@ -502,8 +585,9 @@ def evaluate_pair(
 
     With ``screen_targets`` set, the clinical side is traced FIRST and the
     pair only proceeds if the intended target_clinical_token actually appears
-    in the clinical spread at >= that probability (strict anchor match - no
-    top-logit fallback for the screening decision). Screened-out pairs are
+    among the clinical side's returned logits at >= that probability (read
+    exactly or on its leading wordpiece - no prefix neighbour, no top-logit
+    fallback for the screening decision). Screened-out pairs are
     still recorded in full - clinical trace, observed spread, machine-readable
     reason - so the batch stays auditable and the failures can be fed back to
     the generator; they just skip the patient trace and the renders.
@@ -518,13 +602,19 @@ def evaluate_pair(
 
     screening: dict[str, Any] | None = None
     if screen_targets is not None:
-        observed = target_probability(clinical_graph, anchor=anchor) if anchor else None
+        # The screen reads the intended target exactly or on its leading
+        # wordpiece (resolve_target) - never a prefix neighbour, and never the
+        # forced-target/top-logit substitutes the unscreened path can fall to.
+        observed_read = resolve_target(clinical_graph, anchor) if anchor else None
+        observed = _observed(observed_read)
         extension: str | None = None
         if observed is None or observed[1] < screen_targets:
             # Probe extension: when the phrasing funnels into a function word
             # ('...I should go to' -> ' the'), the article is a staging token,
             # not a failed measurement. Extend BOTH prompts by it and
-            # re-measure one position deeper (once).
+            # re-measure one position deeper (once). The extension changes the
+            # prompts, recorded in screening.probe_extension; it never
+            # substitutes a token for the target.
             top = target_probability(clinical_graph)
             staged = bare_token(top[0]) if top else ""
             if staged in PROBE_EXTENSION_TOKENS:
@@ -534,7 +624,8 @@ def evaluate_pair(
                 logger.info("Pair %d: probe extended by %r, re-tracing clinical side", index, staged)
                 clinical_graph = _trace(clinical_prompt, "clinical", index, out_dir,
                                         backend, params, targets, fetcher)
-                observed = target_probability(clinical_graph, anchor=anchor) if anchor else None
+                observed_read = resolve_target(clinical_graph, anchor) if anchor else None
+                observed = _observed(observed_read)
         if observed is None or observed[1] < screen_targets:
             reason = (
                 "intended target not in the traced clinical spread" if observed is None
@@ -543,6 +634,7 @@ def evaluate_pair(
             if extension:
                 reason += f" (even after probe extension by '{extension}')"
             logger.info("Pair %d screened out: %s", index, reason)
+            screen_ref = _screen_reference(clinical_graph, observed_read)
             return {
                 "index": index,
                 "mode": "2panel",
@@ -562,6 +654,7 @@ def evaluate_pair(
                 },
                 "forced_targets": list(force_tokens),
                 "predictive_spread": {"clinical": logit_spread(clinical_graph)},
+                "target_read": _target_read(anchor, screen_ref, "clinical", {"clinical": screen_ref["read"]}),
                 "outputs": {},
             }
         screening = {
@@ -589,10 +682,9 @@ def evaluate_pair(
     ]
 
     reference = _resolve_reference(graphs[0], anchor, targets)
-    target_token = reference[0] if reference else None
-    probs = [reference[1] if reference else None] + [
-        _probability_for(g, target_token) for g in graphs[1:]
-    ]
+    target_token = _measured_token(reference)
+    reads = [reference["read"]] + [read_exact(g, target_token) for g in graphs[1:]]
+    probs = [_read_probability(read) for read in reads]
 
     # The wording gap summarizes the whole comparison, so it reads as a subtitle
     # under the header (render_panels_html ``subtitle``) rather than floating in the gap
@@ -658,6 +750,7 @@ def evaluate_pair(
         "translation_model": translation_model,
         "forced_targets": list(force_tokens),
         "predictive_spread": {role: logit_spread(g) for role, g in zip(roles, graphs)},
+        "target_read": _target_read(anchor, reference, "clinical", dict(zip(roles, reads))),
         "circuit_diff": diff_counts,
         "outputs": {"html": str(html_path), "png": str(png_path),
                     "diff_html": str(diff_html), "diff_png": str(diff_png)},
@@ -732,11 +825,12 @@ def evaluate_quadrant(
     }
 
     reference = _resolve_reference(graphs["A"], anchor, targets)  # A = prestige form
-    target_token = reference[0] if reference else None
-    probs = {
-        key: (reference[1] if key == "A" and reference else _probability_for(graphs[key], target_token))
+    target_token = _measured_token(reference)
+    reads = {
+        key: (reference["read"] if key == "A" else read_exact(graphs[key], target_token))
         for key in QUAD_KEYS
     }
+    probs = {key: _read_probability(reads[key]) for key in QUAD_KEYS}
 
     panels = build_panels(
         [graphs[k] for k in QUAD_GRID_ORDER],
@@ -813,6 +907,7 @@ def evaluate_quadrant(
                                  "patient_language": _delta("C", "D")},
         "forced_targets": list(force_tokens),
         "predictive_spread": {key: logit_spread(graphs[key]) for key in QUAD_KEYS},
+        "target_read": _target_read(anchor, reference, "A", reads),
         "outputs": {"html": str(html_path), "png": str(png_path), "edge_views": edge_views},
     }
 
@@ -852,9 +947,10 @@ def evaluate_translation(
 
     # The clinical target lives on the translated graph; read the same token on both.
     reference = _resolve_reference(translated_graph, anchor, targets)
-    target_token = reference[0] if reference else None
-    p_translated = reference[1] if reference else None
-    p_patient = _probability_for(patient_graph, target_token)
+    target_token = _measured_token(reference)
+    patient_read = read_exact(patient_graph, target_token)
+    p_translated = _read_probability(reference["read"])
+    p_patient = _read_probability(patient_read)
 
     panels = build_panels(
         [patient_graph, translated_graph],
@@ -895,6 +991,8 @@ def evaluate_translation(
             "patient": logit_spread(patient_graph),
             "translated": logit_spread(translated_graph),
         },
+        "target_read": _target_read(anchor, reference, "translated",
+                                    {"patient": patient_read, "translated": reference["read"]}),
         "outputs": {"html": str(html_path), "png": str(png_path)},
     }
 
@@ -972,9 +1070,10 @@ def evaluate_dialect(
     ]
 
     reference = _resolve_reference(baseline_graph, anchor, targets)  # falls back to the top logit
-    target_token = reference[0] if reference else None
-    p_baseline = reference[1] if reference else None
-    probs = [_probability_for(g, target_token) for g in variant_graphs]
+    target_token = _measured_token(reference)
+    p_baseline = _read_probability(reference["read"])
+    variant_reads = [read_exact(g, target_token) for g in variant_graphs]
+    probs = [_read_probability(read) for read in variant_reads]
 
     panels = build_panels(
         [baseline_graph] + variant_graphs,
@@ -1036,6 +1135,8 @@ def evaluate_dialect(
             "baseline": logit_spread(baseline_graph),
             "variants": spreads,
         },
+        "target_read": _target_read(anchor, reference, "baseline",
+                                    {"baseline": reference["read"], "variants": variant_reads}),
         "error_share": {"baseline": error_node_share(baseline_graph)},
         "top_path": {"baseline": path_text(top_attribution_path(baseline_graph))},
         "multiples": {"variants": [variants[j]["dialect"] for j in selected]},
