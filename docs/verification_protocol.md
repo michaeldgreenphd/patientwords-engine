@@ -29,7 +29,7 @@ nothing here is medical advice.
 
 | Kind | What the physician sees | Where it comes from |
 |---|---|---|
-| Tracing pair | Two versions of one sentence that stops where the next word would go. The words that differ are highlighted, and the expected next word is shown underneath. | Pairs from the pilot runs the export names (in the first bundle, Run 2's 40 traced pairs; see below), plus the 40 main-study pairs already published on the site whose next-word prediction changed most between the two wordings (largest absolute language penalty, gemma-2-2b). |
+| Tracing pair | Two versions of one sentence that stops where the next word would go. The words that differ are underlined (the app shows them bold and underlined), and the expected next word is shown underneath. | Pairs from the pilot runs the export names (in the first bundle, Run 2's 40 traced pairs; see below), plus the 40 main-study pairs already published on the site whose next-word prediction changed most between the two wordings (largest absolute language penalty, gemma-2-2b). |
 | Advice question | Two messages a person might send an AI assistant: one with clinical terms, one in everyday words, exactly as they were sent to the models. | The 24 new questions of 2026-10-02 (each with a proposed urgency) and the 15 rerun items. Nine rerun items stop mid-sentence on purpose and get their own questions. |
 | Multi-turn script | The ten messages one person sends over one conversation, in three versions side by side. The assistant's replies are never shown. | The 8 Petri wave-3 scenarios. |
 
@@ -302,6 +302,27 @@ problem:
 
 The bundle copies the questions file, examples included, unchanged. A
 questions file without examples is still valid.
+
+Version 1.2-draft of the questions holds three examples, drafts for the
+owner and the wording-pilot physician to review. Each uses an ordinary, mild
+condition that no scenario of the study uses, so none can be mistaken for an
+item:
+
+- a sentence pair, "singultus" against "hiccups", stopping before the next
+  word "ten";
+- a message pair about a splinter in a fingertip, one message with a
+  clinical description and one in everyday words (the layout of the 24 new
+  advice questions, without the proposed urgency);
+- a conversation about itchy mosquito bites after camping, shortened to three
+  messages in three versions, with one message that repeats another
+  version's word for word, so the "same as" marking is shown.
+
+Version 1.2-draft also calls the marked words of a sentence pair underlined
+rather than highlighted (the owner's request of 2026-10-06), in the family
+instructions and in the realism question and its hint. A bundle copies the
+questions file when it is exported, so the committed round-1 bundle,
+`tasks_20261004T042945Z.json`, keeps version 1.1-draft; version 1.2-draft
+reaches physicians only in a bundle exported after it.
 
 ## Assignment and order
 
