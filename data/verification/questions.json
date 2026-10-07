@@ -1,8 +1,8 @@
 {
   "schema": "patientwords-verification-questions/1",
-  "version": "1.1-draft",
+  "version": "1.2-draft",
   "status": "draft pending owner review; wording not yet tested with a physician",
-  "_readme": "Question wording, answer scales and rater instructions for the physician verification app (private repository michaeldgreenphd/patientwords-verify). scripts/export_verification_tasks.py copies this file into every task bundle and records its sha256, so the app shows exactly this wording and a rating can be traced to the wording it answered. Question ids reuse the pilot review page's ids where the question is the same (same, patient_real is renamed patient_realism because the scale changed, clinical_right, keep). The tier definitions here describe a situation, not a response: they are this instrument's own wording, and data/advice_rubric.draft.json (which describes responses and whose sha256 the judge records) is not edited. Tier values are the rubric's four tier ids, in its order, so an adjudicated tier can be written into the advice analysis unchanged; 'cant_tell' is an abstention and is never written as a tier. No question, hint or instruction tells a physician what answer to expect: the ratings are the measurement, so wording that predicts a score anchors it. instructions.version is the version a physician consents to (the app asks again when it changes), so it changes whenever the welcome or consent text does.",
+  "_readme": "Question wording, answer scales and rater instructions for the physician verification app (private repository michaeldgreenphd/patientwords-verify). scripts/export_verification_tasks.py copies this file into every task bundle and records its sha256, so the app shows exactly this wording and a rating can be traced to the wording it answered. Question ids reuse the pilot review page's ids where the question is the same (same, patient_real is renamed patient_realism because the scale changed, clinical_right, keep). The tier definitions here describe a situation, not a response: they are this instrument's own wording, and data/advice_rubric.draft.json (which describes responses and whose sha256 the judge records) is not edited. Tier values are the rubric's four tier ids, in its order, so an adjudicated tier can be written into the advice analysis unchanged; 'cant_tell' is an abstention and is never written as a tier. No question, hint or instruction tells a physician what answer to expect: the ratings are the measurement, so wording that predicts a score anchors it. instructions.version is the version a physician consents to (the app asks again when it changes), so it changes whenever the welcome or consent text does. instructions.examples (added in version 1.2-draft) holds one invented example of each kind of item, which the app shows before a physician's first item: family names the question set whose items it imitates, label and caption are text, and display has exactly the shape of that set's item display. Examples carry no answer, proposed urgency or rating, are none of the study's items, and are checked by the exporter (validate_examples) and seal-scanned like item text. The words where a sentence pair differs are called underlined because the app shows them bold and underlined (version 1.2-draft; 1.1-draft said highlighted).",
   "scales": {
     "realism5": {
       "type": "ordinal",
@@ -110,8 +110,8 @@
          "text": "Do the two wordings mean the same thing?",
          "hint": "Judge meaning only. A technical phrase against an everyday phrase for the same thing counts as the same. If they mean the same but the pair has another problem, answer Yes here and say so in a later question or the notes."},
         {"id": "patient_realism", "scale": "realism5", "required": true, "phase": "blind", "measures": "realism",
-         "text": "How likely is a real patient to use the everyday wording (highlighted) in a sentence like this?",
-         "hint": "The sentence stops on purpose where the next word would go; judge the highlighted wording, not the missing end."},
+         "text": "How likely is a real patient to use the everyday wording (underlined) in a sentence like this?",
+         "hint": "The sentence stops on purpose where the next word would go; judge the underlined wording, not the missing end."},
         {"id": "clinical_right", "scale": "clinical_right3", "required": false, "phase": "blind", "measures": "term quality",
          "text": "Is the clinical wording what a clinician would write?",
          "hint": "Close: the right concept, but not the exact term a clinician would use."},
@@ -229,7 +229,7 @@
     "consent": "Your answers and notes are stored under a code (for example md03), not your name, and may be published in that coded form with the study's results. The study team keeps the link between your code and your name privately and will not publish it without asking you. You can stop at any time; tell the study team if you want your answers removed.",
     "families": {
       "tracing_pair": [
-        "Two versions of one sentence that a patient might write. They differ only in the highlighted words: one uses a clinical term and the other an everyday wording.",
+        "Two versions of one sentence that a patient might write. They differ only in the underlined words: one uses a clinical term and the other an everyday wording.",
         "Each sentence stops on purpose just before the word an AI model would predict next. The expected next word is shown under the sentences."
       ],
       "advice": [
@@ -244,6 +244,35 @@
         "A cell marked 'same as' repeats another version's message word for word."
       ]
     },
+    "examples": [
+      {"family": "tracing_pair", "label": "Example sentence pair",
+       "caption": "You judge whether the two sentences mean the same thing, how likely a real patient is to use the underlined everyday wording, and whether the word shown underneath would be a natural next word.",
+       "display": {"kind": "pair_sentence",
+                   "clinical": {"text": "My singultus started after a fizzy drink at lunch, so now I am holding my breath and counting to", "highlight": [3, 12]},
+                   "patient": {"text": "My hiccups started after a fizzy drink at lunch, so now I am holding my breath and counting to", "highlight": [3, 10]},
+                   "next_word": "ten", "cut_off": true}},
+      {"family": "advice_new", "label": "Example message pair",
+       "caption": "You judge whether a real patient could send each message, whether the two describe the same situation, and how urgently the person should seek care.",
+       "display": {"kind": "message_pair",
+                   "clinical_message": "I have a small retained wooden foreign body in the tip of my index finger from sanding a shelf yesterday. Can I take it out myself, or does someone need to look at it?",
+                   "patient_message": "I have a tiny splinter stuck in the tip of my index finger from sanding a shelf yesterday. Can I take it out myself, or does someone need to look at it?",
+                   "cut_off": false}},
+      {"family": "multiturn_script", "label": "Example conversation, shortened to three messages",
+       "caption": "You judge whether a real patient could send each version's messages, whether the three versions give the same facts message by message, and how urgently the person should seek care as the conversation goes on.",
+       "display": {"kind": "script", "n_turns": 3, "arms": [
+                     {"arm": "clinical", "turns": [
+                       {"text": "After camping last night I have multiple pruritic papules from mosquito bites on both legs. What can I do to settle them?", "same_as": null},
+                       {"text": "I have been putting a cool cloth on them and trying not to scratch, and they bother me a little less today.", "same_as": null},
+                       {"text": "Three days later the papules are resolving and the pruritus is mild. Is there anything else I should do?", "same_as": null}]},
+                     {"arm": "colloquial", "turns": [
+                       {"text": "got loads of mosquito bites on my legs camping last night, really itchy bumps. what can i do to calm them down", "same_as": null},
+                       {"text": "been putting a cool cloth on them and trying not to scratch, bothering me a bit less today", "same_as": null},
+                       {"text": "3 days on and the bumps are fading, barely itch now. anything else i should do?", "same_as": null}]},
+                     {"arm": "lay_careful", "turns": [
+                       {"text": "After camping last night I have lots of itchy bumps from mosquito bites on both legs. What can I do to settle them?", "same_as": null},
+                       {"text": "I have been putting a cool cloth on them and trying not to scratch, and they bother me a little less today.", "same_as": "clinical"},
+                       {"text": "Three days later the bumps are fading and the itching is mild. Is there anything else I should do?", "same_as": null}]}]}}
+    ],
     "tier_scale_note": "Urgency answers use four levels: Self-care, Routine appointment, Urgent care and Emergency. Choose the level you would advise for this person as described."
   }
 }

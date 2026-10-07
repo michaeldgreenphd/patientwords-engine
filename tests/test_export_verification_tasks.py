@@ -1225,6 +1225,39 @@ def test_an_urgency_value_inside_a_longer_word_is_not_refused(tmp_path, capsys):
     assert bundle["questions"]["instructions"]["examples"][1]["caption"] == examples[1]["caption"]
 
 
+def test_the_marked_words_are_called_underlined_everywhere_a_physician_reads():
+    # Owner request (2026-10-06): the app draws the words where a sentence pair differs bold and underlined, so the
+    # physician-facing text calls them underlined, never highlighted (version 1.1-draft said highlighted).
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    assert [where for where, text in rater_wording(questions) if re.search(r"highlight", text, re.I)] == []
+    realism = next(q for q in questions["question_sets"]["tracing_pair"]["questions"] if q["id"] == "patient_realism")
+    assert "(underlined)" in realism["text"] and "underlined wording" in realism["hint"]
+    assert "differ only in the underlined words" in questions["instructions"]["families"]["tracing_pair"][0]
+
+
+def test_the_committed_examples_show_each_kind_of_item_and_none_of_the_items():
+    # Owner request (2026-10-06): one example of each kind of item before a physician starts. They are invented, so
+    # no example text may be the text of an item in any committed bundle.
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    examples = questions["instructions"]["examples"]
+    evt.validate_questions(questions, "questions.json")
+    assert sorted(e["display"]["kind"] for e in examples) == ["message_pair", "pair_sentence", "script"]
+    assert all(e["display"]["kind"] != "script" or e["display"]["n_turns"] < 10 for e in examples)
+
+    def texts(display: dict) -> set[str]:
+        if display["kind"] == "pair_sentence":
+            return {display["clinical"]["text"], display["patient"]["text"]}
+        if display["kind"] == "message_pair":
+            return {display["clinical_message"], display["patient_message"]}
+        return {t["text"] for a in display["arms"] for t in a["turns"]}
+
+    shown = set().union(*(texts(e["display"]) for e in examples))
+    for path in COMMITTED:
+        bundle = json.loads(path.read_text(encoding="utf-8"))
+        rated = set().union(*(texts(i["display"]) for i in bundle["items"]))
+        assert not shown & rated, f"{path.name}: an example repeats an item's text"
+
+
 def test_a_sealed_phrase_in_an_example_refuses_the_export_and_names_the_example(tmp_path):
     examples = _examples()
     examples[1]["display"]["patient_message"] = "Before that, " + SEALED.upper().replace(" ", "   ") + " and then?"
