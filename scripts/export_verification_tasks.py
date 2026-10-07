@@ -809,12 +809,27 @@ class StudyTextIndex:
         return count / len(grams), self.where[n]
 
 
+def study_payload(inp: "Inputs", site: Path) -> None:
+    """Add every prompt of the published payload to the study texts, whether or not main-study pairs are selected
+    (Codex review of PR #88: with --main-pairs 0 the payload was never read, so an example copied from a published
+    row passed). The payload is read once (Inputs reuses the bytes main_items read)."""
+    payload, _ = inp.read_json(site / SITE_PAYLOAD, "published site payload", SITE_LABEL)
+    scenarios = payload.get("scenarios") if isinstance(payload, dict) else None
+    if not isinstance(scenarios, list):
+        refuse("bad_input", f"{site / SITE_PAYLOAD} has no scenarios list")
+    for n, s in enumerate(scenarios, 1):
+        if not isinstance(s, dict):
+            refuse("bad_input", f"payload scenario {n} is not a JSON object")
+        for side in ("clinical_prompt", "patient_prompt"):
+            inp.study(s.get(side), f"payload row {s.get('batch')}#{s.get('batch_index')}")
+
+
 def check_example_copies(inp: "Inputs", examples: list[dict]) -> None:
     """Refuse an example any sentence, message or turn of which (copy_texts) repeats or nearly repeats a study text
     (Codex review of PR #88: a copied
     item display passed every other check, and a physician would rate the same stimulus after seeing it as an example).
     The study texts are every text the inputs hold, selected for this bundle or not (Inputs.study_texts; every item
-    of this bundle is built from them), and the item displays of every committed bundle in data/verification, which
+    of this bundle is built from them; the payload's are added by study_payload whether or not main pairs are), and the item displays of every committed bundle in data/verification, which
     are read for this and recorded in sources. Messages name the example and the place, never text."""
     texts = list(inp.study_texts)
     for path in sorted(COMMITTED_BUNDLES_DIR.glob("tasks_*.json")):
@@ -1599,8 +1614,6 @@ def main_items(inp: Inputs, seal: Seal, site: Path, allowlist: Path, n_pairs: in
         batch, index = s["batch"], s["batch_index"]
         label = f"{batch}#{index}"
         counts["payload_rows"] += 1
-        for side in ("clinical_prompt", "patient_prompt"):
-            inp.study(s[side], f"payload row {label}")
         if seal.row_sealed("tracing_main", batch, index, s["clinical_prompt"], f"payload row {label}"):
             refuse("sealed_row", f"the published payload carries the sealed row {label}: a holdout breach on the "
                                  "site. Stop and follow the breach protocol (seal_check.py) before any export")
@@ -2101,6 +2114,7 @@ def build_bundle(args: argparse.Namespace) -> tuple[dict, str]:
         refuse("seal_hit", f"rater-visible text of {len(example_hits)} example(s) contains a sealed holdout phrase: "
                            + "; ".join(f"{k} :: {', '.join(v)}" for k, v in sorted(example_hits.items())))
     if questions["instructions"].get("examples"):
+        study_payload(inp, Path(args.site))
         check_example_copies(inp, questions["instructions"]["examples"])
 
     items.sort(key=lambda i: i["item_id"])

@@ -1574,6 +1574,20 @@ def test_a_previous_bundle_that_is_also_a_committed_bundle_is_read_and_recorded_
     assert listed.count(evt.logical_path(previous)) == 1 and len(listed) == len(set(listed)), listed
 
 
+def test_the_payload_is_compared_even_when_no_main_pair_is_selected(tmp_path):
+    # Regression (Codex review of PR #88): with --main-pairs 0 the payload was never read, so an example copied from a
+    # published row passed. The copy check reads the payload whenever there are examples.
+    data = world_data()
+    row = data["payload"]["scenarios"][-1]
+    row["patient_prompt"] = "The violet kettle beside the north window needs a"        # a text only the payload holds
+    examples = _examples()
+    examples[1]["display"]["patient_message"] = row["patient_prompt"]
+    paths = write_world(tmp_path, data)
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_copies_item", main_pairs=0)
+    assert f"payload row {row['batch']}#{row['batch_index']}" in message, message
+
+
 def _long_advice_message() -> str:
     item = _committed_item("advice_new", lambda d: len(d["clinical_message"].split()) >= 14
                            and not evt.EXAMPLE_MEASURED.search(d["clinical_message"]))
