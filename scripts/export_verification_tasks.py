@@ -878,7 +878,8 @@ def example_predicates(doc: dict, set_name: str) -> list[str]:
     labels are evaluations; a nominal scale's, such as a message number, and an abstention are not), without its
     number ("4 - Likely" gives "Likely") or what follows a ";" or "(", when that is three words or fewer, and its last
     word when it opens with an intensifier ("Entirely plausible" gives "plausible"); the last word of each of the
-    set's yes/no questions (a nominal scale of two options) that asks "is the ... X?" ("coherent"); and the qualities the welcome text says physicians
+    set's yes/no questions (a nominal scale of two options) that asks "is the ... X?" ("coherent"), and what each of
+    those questions measures, after the last colon of its measures field ("medically coherent", "coherent"); and the qualities the welcome text says physicians
     judge ("whether each one is realistic and checkable")."""
     found: set[str] = set()
     for q in doc["question_sets"][set_name]["questions"]:
@@ -893,9 +894,21 @@ def example_predicates(doc: dict, set_name: str) -> list[str]:
                 found.add(core)
                 if len(words) > 1 and words[0].lower() in _INTENSIFIERS:
                     found.add(words[-1])
-        asks = re.search(r"\bis the\b[^?]*\b([a-z]+)\?\s*$", q.get("text", ""), re.I)
-        if asks and scale.get("type") == "nominal" and len(scale.get("options", [])) == 2:
-            found.add(asks.group(1))
+        if scale.get("type") == "nominal" and len(scale.get("options", [])) == 2:
+            asks = re.search(r"\bis the\b[^?]*\b([a-z]+)\?\s*$", q.get("text", ""), re.I)
+            if asks:
+                found.add(asks.group(1))
+            # what the question measures, after its last colon, without a parenthesis ("verifiability: medically
+            # coherent"): the same words for every set however its question is worded (Gemini review of PR #88,
+            # round 3: tracing_pair asks "Does the sentence make medical sense?")
+            measures = q.get("measures")
+            if isinstance(measures, str) and ":" in measures:
+                phrase = re.sub(r"\(.*?\)", "", measures.rsplit(":", 1)[1]).strip()
+                words = re.findall(r"[^\W_][\w'-]*", phrase)
+                if 0 < len(words) <= 3:
+                    found.add(phrase)
+                    if len(words) > 1 and words[0].lower() in _INTENSIFIERS:
+                        found.add(words[-1])
     for line in (doc.get("instructions") or {}).get("welcome", []):
         for qualities in re.findall(r"\bwhether each one is ([a-z]+(?: and [a-z]+)*)", line, re.I):
             found |= set(qualities.split(" and "))

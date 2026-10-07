@@ -1140,6 +1140,24 @@ def test_an_evaluation_in_a_later_clause_is_refused(tmp_path, set_name, text):
     assert "an evaluation of the example as" in message, message
 
 
+def test_every_set_gets_the_words_of_its_yes_no_questions_from_their_measures():
+    # Regression (Gemini review of PR #88, round 3): tracing_pair asks its coherence question as "Does the sentence
+    # make medical sense?", so reading only "is the ...?" wordings gave that set no "coherent". Each yes/no question's
+    # measures field is read too, so every set gets the same words; checked for all five sets.
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    for set_name in evt.QUESTION_SETS:
+        predicates = evt.example_predicates(questions, set_name)
+        for q in questions["question_sets"][set_name]["questions"]:
+            scale = questions["scales"][q["scale"]]
+            if scale["type"] == "nominal" and len(scale["options"]) == 2 and ":" in q.get("measures", ""):
+                phrase = re.sub(r"\(.*?\)", "", q["measures"].rsplit(":", 1)[1]).strip().lower()
+                assert phrase in predicates, (set_name, q["id"])
+    coherent = next(q for q in questions["question_sets"]["tracing_pair"]["questions"]
+                    if q["measures"].endswith("coherent"))["measures"].rsplit(" ", 1)[1]
+    predicates = evt.example_predicates(questions, "tracing_pair")
+    assert coherent in predicates and evt.example_evaluations(f"This sentence is {coherent}.", predicates)
+
+
 DRAFT_CAPTIONS = [   # the three draft examples' captions (questions 1.2-draft)
     "You judge whether the two sentences mean the same thing, how likely a real patient is to use the underlined "
     "everyday wording, and whether the word shown underneath would be a natural next word.",
