@@ -365,7 +365,10 @@ EXAMPLE_IDS = re.compile("|".join((
     r"\b(?:synthetic-h|w)\d+[a-z]?(?:-[a-z0-9]+)*-\d{4}\b",   # Petri scenario ids (w3-<slug>-0001, synthetic-h1-0001)
     r"\br\d{3}\b",                                            # pilot review ids (review_map.json: r001)
 )), re.I)
-EXAMPLE_MEASURED = re.compile(r"\d[.,]\d|%")
+# A measured value as it is written: a decimal with or without its leading digit (0.43, .43, -.43; not an ellipsis
+# before a number), a percent sign, or a percentage in words (percent, per cent, percentage, pct). Codex review of PR
+# #88 found the first version, digit-dot-digit and the sign only, let the leading-dot and word forms through.
+EXAMPLE_MEASURED = re.compile(r"\d[.,]\d|(?<![\w.])\.\d|%|\bper[\s-]?cent|\bpct\b", re.I)
 
 _STAMP_RE = re.compile(r"^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$")
 

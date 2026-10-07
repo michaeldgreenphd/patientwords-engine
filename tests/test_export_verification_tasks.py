@@ -992,6 +992,27 @@ def test_an_example_that_shows_a_model_id_measured_value_or_answer_is_refused(tm
     assert planted not in message                                  # names what it shows, never the text
 
 
+@pytest.mark.parametrize("text", ["The share was .43 here.", "It moved by -.43 overall.", "About 60 percent agree.",
+                                  "About 60 per cent agree.", "A 60-percent share.", "The percentage was high.",
+                                  "Roughly 60 PCT agree."])
+def test_a_measured_value_without_a_leading_digit_or_in_words_is_refused(tmp_path, text):
+    # Regression (Codex review of PR #88): only digit-dot-digit and the percent sign were refused.
+    examples = _examples()
+    examples[0]["caption"] = text
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "a decimal number or a percentage" in message, message
+
+
+def test_an_ellipsis_or_a_sentence_end_before_a_number_is_not_a_decimal(tmp_path, capsys):
+    examples = _examples()
+    examples[0]["caption"] = "Wait...3 days, then judge it."
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    rerun(paths, tmp_path / "out")
+
+
 def _reveal_options() -> list[dict]:
     """The options of the reveal's scale, read from the questions data (no level is written here)."""
     questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
