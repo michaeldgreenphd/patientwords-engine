@@ -439,6 +439,9 @@ class Inputs:
 
     def __init__(self) -> None:
         self.sources: list[dict[str, str]] = []
+        # each path is read and recorded once, under the role it was first read for; a later read reuses the bytes
+        # (Gemini review of PR #88: a previous bundle that is also a committed bundle was listed twice)
+        self._read: dict[Path, bytes] = {}
         # every study text the inputs hold, selected for the bundle or not, with where it is (ids only): an example may
         # not repeat or nearly repeat one (check_example_copies)
         self.study_texts: list[tuple[str, str]] = []
@@ -448,6 +451,9 @@ class Inputs:
             self.study_texts.append((text, where))
 
     def read_bytes(self, path: Path, role: str, label: str | None = None) -> bytes:
+        key = path.resolve()
+        if key in self._read:
+            return self._read[key]
         if not path.is_file():
             refuse("missing_input", f"{role}: {path} does not exist or is not a file")
         try:
@@ -455,6 +461,7 @@ class Inputs:
         except OSError as exc:
             refuse("unreadable_input", f"{role}: cannot read {path} ({type(exc).__name__})")
         self.sources.append({"path": label or logical_path(path), "role": role, "sha256": sha256_bytes(data)})
+        self._read[key] = data
         return data
 
     def read_json(self, path: Path, role: str, label: str | None = None) -> tuple[Any, str]:

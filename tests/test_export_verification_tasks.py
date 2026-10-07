@@ -1414,6 +1414,21 @@ def test_a_next_word_equal_to_a_committed_target_is_not_a_copy(tmp_path, capsys)
     rerun(paths, tmp_path / "out")
 
 
+def test_a_previous_bundle_that_is_also_a_committed_bundle_is_read_and_recorded_once(tmp_path, capsys, monkeypatch):
+    # Regression (Gemini review of PR #88): with --previous-bundle and examples, the previous bundle was read again by
+    # the copy check and listed twice in sources. Each input path is read once.
+    first, raw_first, paths = export(tmp_path)
+    committed = tmp_path / "committed"
+    previous = committed / f"tasks_{first['bundle_id'].removeprefix('vtasks_')}.json"
+    committed.mkdir()
+    previous.write_bytes(raw_first)
+    monkeypatch.setattr(evt, "COMMITTED_BUNDLES_DIR", committed)
+    paths["questions"] = _questions_with(tmp_path, _examples())
+    second, _ = rerun(paths, tmp_path / "round2", "--previous-bundle", str(previous))
+    listed = [s["path"] for s in second["sources"]]
+    assert listed.count(evt.logical_path(previous)) == 1 and len(listed) == len(set(listed)), listed
+
+
 def _long_advice_message() -> str:
     item = _committed_item("advice_new", lambda d: len(d["clinical_message"].split()) >= 14
                            and not evt.EXAMPLE_MEASURED.search(d["clinical_message"]))
