@@ -326,7 +326,7 @@ EXAMPLE_CUT_OFF = {"tracing_pair": True, "advice_new": False, "advice_rerun": Fa
 # or vendor name, the study's batch, run or item ids, and a decimal number or a percentage, the forms in which a
 # measured value is written. An item's display, built from the texts a physician rates, carries none of the study's
 # own; an example is written by hand, so its text is checked, more strictly than an item's could be (a patient's
-# message may hold a decimal number). Urgency levels are read from the questions data (example_answer_terms).
+# message may hold a decimal number). Urgency levels are read from the questions data (example_answer_levels).
 #
 # The model and vendor names are those of every model registry the engine has: scripts/logits_eval.py HF_IDS (and
 # scripts/activation_patch.py's), medlang_circuits/graph_client.py MODEL_REGISTRY, medlang_circuits/evaluate_models.py
@@ -676,22 +676,27 @@ def validate_questions(doc: Any, where: str) -> dict:
     return doc
 
 
-def example_answer_terms(doc: dict) -> list[str]:
-    """The urgency levels a proposed tier is one of, as an example could write them: for every option of every scale a
-    reveal-locked question of the exporter's question sets uses, its label, its value (the tier a reveal stores), and
-    the value with an underscore written as a space or a hyphen. Read from the questions data, so no level is written
-    in this file. An example whose text names one would show a physician an answer; Codex review of PR #88 found
-    that checking labels alone let the bare values (the tier ids) through."""
+def example_answer_levels(doc: dict) -> list[tuple[str, list[str]]]:
+    """The urgency levels a proposed tier is one of, one entry per option, as (its label, the terms an example could
+    write it as): for every option of every scale a reveal-locked question of the exporter's question sets uses, its
+    label, its value (the tier a reveal stores), and the value with an underscore written as a space or a hyphen. Read
+    from the questions data, so no level is written in this file. An example whose text names one would show a
+    physician an answer; Codex review of PR #88 found that checking labels alone let the bare values (the tier ids)
+    through. One entry per option, so a refusal names an option once (Gemini review of PR #88)."""
     scales = {q["scale"] for set_name in QUESTION_SETS for q in doc["question_sets"][set_name]["questions"]
               if q.get("locks_on_reveal")}
-    terms: set[str] = set()
-    for s in scales:
+    levels: dict[str, set[str]] = {}
+    for s in sorted(scales):
         for option in doc["scales"][s].get("options", []):
+            terms: set[str] = set()
             for field in ("label", "value"):
                 term = option.get(field)
                 if isinstance(term, str) and term.strip():
                     terms |= {term, term.replace("_", " "), term.replace("_", "-")}
-    return sorted(terms)
+            if terms:
+                name = option.get("label") if isinstance(option.get("label"), str) else str(option.get("value"))
+                levels.setdefault(name, set()).update(terms)
+    return [(name, sorted(terms)) for name, terms in levels.items()]
 
 
 # An answer stated outright: "rating/score/answer/verdict" with a linking verb or sign, or "rated/scored/scores", before
@@ -731,11 +736,11 @@ def example_answer_rules(doc: dict, set_name: str) -> list[tuple[str, re.Pattern
             if numbered:
                 stated.add(numbered.group(2))
             if numbered or len(re.findall(r"[^\W_]+", label)) >= 4:
+                # one rule per option: a numbered label, and its text when that is a statement too
+                forms = [label] + ([numbered.group(2)] if numbered
+                                   and len(re.findall(r"[^\W_]+", numbered.group(2))) >= 4 else [])
                 rules.append((f"the answer label {label!r}",
-                              re.compile(rf"(?<!\w){_label_pattern(label)}(?!\w)", re.I)))
-            if numbered and len(re.findall(r"[^\W_]+", numbered.group(2))) >= 4:
-                rules.append((f"the answer label {numbered.group(2)!r}",
-                              re.compile(rf"(?<!\w){_label_pattern(numbered.group(2))}(?!\w)", re.I)))
+                              re.compile("|".join(rf"(?<!\w){_label_pattern(f)}(?!\w)" for f in forms), re.I)))
         values = [o.get("value") for o in scale.get("options", [])]
         if scale.get("type") == "ordinal" and values and all(isinstance(v, int) and not isinstance(v, bool)
                                                              for v in values):
@@ -937,7 +942,7 @@ def validate_examples(doc: dict, where: str) -> None:
     examples = instructions["examples"]
     if not isinstance(examples, list) or not examples:
         refuse("bad_example", f"{where}: instructions.examples is not a non-empty list (leave it out for none)")
-    answer_terms = example_answer_terms(doc)
+    answer_levels = example_answer_levels(doc)
     for n, example in enumerate(examples):
         at = f"{where} instructions.examples[{n}]"
         if not isinstance(example, dict):
@@ -965,8 +970,8 @@ def validate_examples(doc: dict, where: str) -> None:
             shown.append("a batch, run, item, seed or scenario id")
         if any(EXAMPLE_METHOD_TERMS.search(t) for t in example_shown_texts(example)):
             shown.append("a method term")
-        shown += [f"the urgency level {term!r}" for term in answer_terms
-                  if any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", t, re.I) for t in texts)]
+        shown += [f"the urgency level {name!r}" for name, terms in answer_levels
+                  if any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", t, re.I) for term in terms for t in texts)]
         shown += [what for what, pattern in example_answer_rules(doc, family) if any(pattern.search(t) for t in texts)]
         if shown:
             refuse("example_not_blind", f"{at} ({family}) shows {', '.join(shown)}; an example shows a physician no "

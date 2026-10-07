@@ -1140,6 +1140,34 @@ def test_a_label_that_does_not_contain_its_value_is_refused_too(tmp_path):
     assert "the urgency level 'Plan Zeta'" in message, message
 
 
+def test_each_option_is_named_once_in_a_refusal(tmp_path):
+    # Regression (Gemini review of PR #88): a label and its value, or a numbered label and its text, matched as separate
+    # terms and the refusal named one option twice ("the urgency level 'Self-care', the urgency level 'self-care'").
+    option = next(o for o in _reveal_options() if "_" in o["value"])
+    statement = next(label for set_name, label in _statement_labels()
+                     if set_name == "tracing_pair" and re.match(r"\s*\d+\s*-", label)
+                     and len(re.findall(r"[^\W_]+", label.split("-", 1)[1])) >= 4)
+    examples = _examples()
+    examples[1]["caption"] = f"{option['label']}, that is {option['value'].replace('_', ' ')}."
+    message = _copy_free_refusal(tmp_path / "level", examples)
+    assert message.count("the urgency level") == 1 and f"the urgency level {option['label']!r}" in message, message
+    examples = _examples()
+    examples[0]["caption"] = f"This one: {statement}."
+    message = _copy_free_refusal(tmp_path / "label", examples)
+    assert message.count("the answer label") == 1 and f"the answer label {statement!r}" in message, message
+    # a numbered label's text alone, when it is a statement of its own, is the same option
+    examples = _examples()
+    examples[0]["caption"] = f"This one: {statement.split('-', 1)[1].strip()}."
+    message = _copy_free_refusal(tmp_path / "text", examples)
+    assert message.count("the answer label") == 1 and f"the answer label {statement!r}" in message, message
+
+
+def _copy_free_refusal(tmp_path: Path, examples: list[dict]) -> str:
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    return refused_paths(paths, "example_not_blind")
+
+
 def test_an_urgency_value_inside_a_longer_word_is_not_refused(tmp_path, capsys):
     # The match is a whole word, so an ordinary longer word that begins with a level's value is still usable.
     longer = [o["value"] + "ly" for o in _reveal_options() if "_" not in o["value"]]
