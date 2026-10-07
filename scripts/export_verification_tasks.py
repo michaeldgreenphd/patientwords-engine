@@ -304,6 +304,9 @@ QUESTION_SET_KEYS = frozenset({"family", "applies_to", "questions"})
 QUESTION_KEYS = frozenset({"id", "scale", "required", "phase", "per_arm", "locks_on_reveal", "text", "hint",
                            "measures"})
 SCALE_KEYS = frozenset({"type", "options", "abstain", "max_length"})
+# The fields of the questions file's instructions. Checked before anything reads it, so a misspelled field (example
+# for examples) is refused by name instead of reading as "no examples" (Codex review of PR #88).
+INSTRUCTIONS_KEYS = frozenset({"version", "welcome", "consent", "families", "examples", "tier_scale_note"})
 OPTION_KEYS = frozenset({"value", "label", "definition"})
 SCALE_TYPES = frozenset({"ordinal", "nominal", "multi", "text"})
 PHASES = frozenset({"blind", "after_reveal"})
@@ -608,8 +611,8 @@ def validate_questions(doc: Any, where: str) -> dict:
     notes = doc["notes"]
     if not isinstance(notes, dict) or not (isinstance(notes.get("max_length"), int) and notes["max_length"] > 0):
         refuse("questions_mismatch", f"{where}: notes.max_length is not a positive integer")
-    instructions = doc["instructions"]
-    families = instructions.get("families") if isinstance(instructions, dict) else None
+    instructions = check_keys(doc["instructions"], INSTRUCTIONS_KEYS, f"{where} instructions")
+    families = instructions.get("families")
     if not isinstance(families, dict) or sorted(families) != sorted(FAMILIES):
         refuse("questions_mismatch", f"{where}: instructions.families must name exactly {list(FAMILIES)}")
     validate_examples(doc, where)

@@ -1002,6 +1002,28 @@ def test_a_sealed_phrase_in_an_example_refuses_the_export_and_names_the_example(
     assert SEALED not in message and SEALED.upper() not in message
 
 
+@pytest.mark.parametrize("key", ["example", "Examples", "examples_draft"])
+def test_a_misspelled_instructions_field_is_refused_not_read_as_no_examples(tmp_path, key):
+    # Regression (Codex review of PR #88): instructions.example (no s) passed as a file with no examples, so
+    # physicians would silently get none. Every instructions field is now checked before the examples are read.
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    questions["instructions"].pop("examples", None)
+    questions["instructions"][key] = _examples()
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = dump(tmp_path / "questions_misspelled.json", questions)
+    message = refused_paths(paths, "unknown_field")
+    assert "instructions" in message and repr(key) in message, message
+
+
+def test_every_instructions_field_of_the_committed_questions_is_known():
+    # The fields the committed questions file uses (version, welcome, consent, families, tier_scale_note, and examples
+    # once it has them) are all accepted, so the check refuses nothing valid.
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    assert set(questions["instructions"]) <= evt.INSTRUCTIONS_KEYS
+    assert {"version", "welcome", "consent", "families", "tier_scale_note"} <= set(questions["instructions"])
+    evt.validate_questions(questions, "questions.json")
+
+
 def _module_value_node(rel: str, name: str) -> ast.expr:
     """The value of a module-level assignment in an engine file, as an ast node (the file is not imported: some of
     these run argparse or need network libraries at import)."""
