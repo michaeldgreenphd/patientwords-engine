@@ -293,13 +293,16 @@ problem:
   questions use, the adjectives of its "is the ...?" yes/no questions and
   what those questions measure ("medically coherent"), and the qualities
   the welcome text names. Each clause is judged on its own (clauses end at
-  sentence punctuation, a comma, or but, and, yet, while, although or
-  however). A clause under "whether", "if" or "how", or one that opens with
+  sentence punctuation, a comma, or but, and, yet, while, although,
+  however, because, since, as or so; "as" and "so" right after a copula are
+  degree words, as in "is as realistic as"). A clause that opens with a
+  relative "which" ("the versions, which are entirely plausible") evaluates
+  its noun. A clause under "whether", "if", "how", "which" or "what", or one that opens with
   a directive (judge, rate, say, decide, assess, determine, check, choose,
   tell) not followed by "that" ("Judge whether the conversation is
   plausible", "Say how likely it is"), is a task directive and is kept. A
   patient's own words in a display are not read for this. "A rating of 4"
-  is a rating statement, like "the rating is 4". An item's display is
+  and "I rated it 4" are rating statements, like "the rating is 4". An item's display is
   built only from the texts physicians rate, so it carries none of the
   study's own models, ids, measurements or answers. An example is written by
   hand, so its text is checked instead, and more strictly than an item's
@@ -312,7 +315,9 @@ problem:
   word is not compared, since a one-word target is not a stimulus): any sentence,
   message or script text of the pilot runs, the published payload, the
   advice stimuli and the Petri seeds the export reads (selected or not), or
-  of an item of any bundle committed in `data/verification`. Texts are
+  of an item of any bundle committed in `data/verification`. The published
+  payload is read for this whenever there are examples, even with
+  `--main-pairs 0`. Texts are
   compared in lower case with punctuation ignored; a near copy is a text
   with at least four word 4-grams of which at least half occur in one
   study text. The three draft examples share at most a quarter.
