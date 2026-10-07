@@ -500,6 +500,9 @@ def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any
     ``alternatives``. ``missing``: neither; the record names the reason and
     lists the prefix candidates. A returned token that only begins with the
     target (' xabicors' for ' xabicor') is never taken: it is another token.
+    When the intended token itself was returned but cannot be read
+    (``unparseable_probability``, ``ambiguous_exact_match``), that failure is
+    the record: no shorter piece stands in for it.
 
     An intended target written without its leading space ('xab', as some
     pairs files spell it) is read with the space first (' xab': after a prompt
@@ -507,8 +510,8 @@ def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any
     The record always says which: ``"intended_spacing"`` is
     ``"leading_space_added"`` (the spaced form was read), ``"as_written"``
     (only the unspaced form was returned) or ``"both_tried"`` (neither was
-    read; ``forms_tried`` lists them, and the reason is the most specific of
-    the two reads').
+    read; ``forms_tried`` lists them, and an unparseable or ambiguous read of
+    either form is the reason given).
     """
     if not token_key(intended):
         return read_exact(graph, intended)
@@ -517,6 +520,11 @@ def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any
     for form, exact in zip(forms, reads):
         if exact["status"] == "exact":
             return _spaced(exact, form, intended)
+    specific = [r for r in reads if r.get("reason") in ("unparseable_probability", "ambiguous_exact_match")]
+    if specific:
+        # The intended token itself was returned but could not be read: report that failure. A shorter
+        # leading piece would be another token's value under the intended word's name.
+        return _both_tried(dict(specific[0]), forms)
     logits = returned_logits(graph)
     for form in forms:
         pieces = [(label, prob) for label, prob in logits if _is_leading_piece(label, form)]
@@ -527,8 +535,10 @@ def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any
             if others:
                 record["alternatives"] = others
             return _spaced(record, form, intended)
-    specific = [r for r in reads if r.get("reason") in ("unparseable_probability", "ambiguous_exact_match")]
-    missed = dict(specific[0] if specific else reads[0])
+    return _both_tried(dict(reads[0]), forms)
+
+
+def _both_tried(missed: dict[str, Any], forms: list[str]) -> dict[str, Any]:
     if len(forms) > 1:
         missed["intended_spacing"] = "both_tried"
         missed["forms_tried"] = forms

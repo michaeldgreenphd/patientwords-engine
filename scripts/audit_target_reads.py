@@ -74,9 +74,13 @@ path has no tokenizer to tell the two cases apart).
 Two reading rules, because the readers disagree on duplicates. A trace
 directory can hold one index in more than one part:
 
-* ``counts`` (last part): the site exporter, ``export_archive.py``,
-  ``backend_agreement.py`` and ``paired_stats.py``'s validity section read the
-  last part in sorted filename order. ``effective`` marks that occurrence.
+* ``counts`` (last part): the site exporter, ``export_archive.py`` and
+  ``paired_stats.py``'s validity section read the last part in sorted
+  filename order. ``effective`` marks that occurrence. ``backend_agreement.py``
+  also takes the last part, but in numeric part order (``part_100`` after
+  ``part_36``); ``numeric_last_part`` marks its occurrence, and
+  ``part_order_disagreements`` lists every index where the two orders pick
+  different parts (none in the committed data on 2026-10-07).
 * ``counts_urgency_first_part``: ``urgency_shift.py`` reads
   ``trace_out/*/batch_summary.part_*.json`` in sorted order, skips
   ``txcorpus_`` directories and keeps the FIRST result per (model, batch,
@@ -93,6 +97,11 @@ model (``trace_out/<stem>`` for gemma-2-2b, ``trace_out/<stem>__<model>`` for
 the others) whose (batch, index, model) is a payload scenario's model object is
 marked ``published``, with the payload's own probability for that side.
 
+A requested trace root that does not exist is refused, never skipped: an absent
+root would read as an audit that found nothing. The report's ``engine_sha``
+carries ``scripts/provenance_stamp.py``'s ``+dirty`` marker when the scanned
+checkout has uncommitted or untracked changes.
+
 The report goes to ``--out``; there is no default, and a path under a trace
 root is refused, so nothing is ever written into ``trace_out/`` or
 ``pilot/traces/``. Prompt text is never written to the report.
@@ -108,7 +117,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import subprocess
+import re
 import sys
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
@@ -346,11 +355,17 @@ def trace_dirs(root: Path, trace_roots: list[str]) -> list[tuple[str, Path]]:
     dirs = set()
     for tr in trace_roots:
         base = root / tr
-        if not base.is_dir():
-            continue
+        if not base.is_dir():  # main refuses a missing root before audit() runs; a programmatic caller too
+            refuse(f"trace root {tr} is not a directory under {root}; an absent root would read as a clean audit")
         for part in base.rglob("batch_summary*.json"):
             dirs.add((tr, part.parent))
     return sorted(dirs, key=lambda d: (d[0], str(d[1])))
+
+
+def numeric_part_key(part_rel: str) -> tuple[int, int, str]:
+    """backend_agreement.py's part order: files without a part number first, then by part NUMBER."""
+    m = re.search(r"part_(\d+)", Path(part_rel).name)
+    return (1, int(m.group(1)), part_rel) if m else (0, 0, part_rel)
 
 
 def site_reads(trace_root: str, dir_name: str, stem: str | None, model: str, part_rel: str) -> bool:
@@ -382,9 +397,11 @@ def token_vocabulary(loaded: dict[Path, list[tuple[Path, dict]]]) -> dict[str, s
 
 
 def git_sha(root: Path) -> str | None:
-    proc = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True,
-                          check=False)
-    return proc.stdout.strip() or None if proc.returncode == 0 else None
+    """The scanned checkout's commit with provenance_stamp's ``+dirty`` marker when its working tree has
+    uncommitted or untracked changes, so counts from a modified tree are never attributed to a clean commit."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from provenance_stamp import engine_sha
+    return engine_sha(root)
 
 
 def read_payload(path: Path | None) -> tuple[dict[tuple[str, int, str], dict], dict[str, Any] | None]:
@@ -458,6 +475,7 @@ def audit(root: Path, trace_roots: list[str], payload_path: Path | None) -> dict
     payload_seen: set[tuple[str | None, Any, str]] = set()
     summaries = 0
     superseded = 0
+    order_disagreements: list[dict[str, Any]] = []
     dirs = trace_dirs(root, trace_roots)
     loaded = {d: [(part, json.loads(part.read_text(encoding="utf-8")))
                   for part in sorted(d.glob("batch_summary*.json"))] for _, d in dirs}
@@ -485,16 +503,25 @@ def audit(root: Path, trace_roots: list[str], payload_path: Path | None) -> dict
         last_part_for: dict[Any, str] = {}
         for part_rel, _, r in occurrences:
             last_part_for[r.get("index")] = part_rel
+        numeric_last_for: dict[Any, str] = {}
+        for part_rel, _, r in sorted(occurrences, key=lambda o: numeric_part_key(o[0])):
+            numeric_last_for[r.get("index")] = part_rel
+        for index, part_rel in last_part_for.items():
+            if numeric_last_for.get(index) != part_rel:
+                order_disagreements.append({"dir": rel_dir, "index": index, "last_part": part_rel,
+                                            "numeric_last_part": numeric_last_for.get(index)})
         for part_rel, summary, r in occurrences:
             index = r.get("index")
             model = summary.get("graph_model") or (d.name.split("__")[1] if "__" in d.name else BASE_MODEL)
             backend = summary.get("backend")
             effective = last_part_for.get(index) == part_rel
+            numeric_last = numeric_last_for.get(index) == part_rel
             urgency_read = (part_rel, index) in urgency
             superseded += not effective
             target = r.get("target_token")
             base = {"dir": rel_dir, "part": part_rel, "index": index, "batch": stem, "model": model,
-                    "backend": backend, "mode": r.get("mode"), "effective": effective, "urgency_read": urgency_read}
+                    "backend": backend, "mode": r.get("mode"), "effective": effective, "urgency_read": urgency_read,
+                    "numeric_last_part": numeric_last}
             payload_obj = (payload_rows.get((stem, index, model))
                            if effective and site_reads(trace_root, d.name, stem, model, part_rel) else None)
             keys = [("by_root", trace_root), ("by_dir", rel_dir), ("by_batch", stem or rel_dir),
@@ -607,6 +634,9 @@ def audit(root: Path, trace_roots: list[str], payload_path: Path | None) -> dict
         "counts": last.report(),
         "counts_urgency_first_part": first.report(),
         "superseded_duplicate_results": superseded,
+        # backend_agreement.py orders parts numerically (part_100 after part_36); the exporter, export_archive and
+        # paired_stats validity sort file names. Every index where the two orders pick different parts:
+        "part_order_disagreements": order_disagreements,
         "joins": dict(sorted(joins.items())),
         # payload model objects with no committed summary result the site exporter would read: not auditable here
         "payload_rows_without_summary": sorted([list(k) for k in set(payload_rows) - payload_seen],
@@ -634,6 +664,10 @@ def main(argv: list[str] | None = None) -> int:
     for tr in trace_roots:
         if out.is_relative_to((root / tr).resolve()):
             refuse(f"--out {out} is under the trace root {tr}; this audit writes nothing there")
+    missing = [tr for tr in trace_roots if not (root / tr).is_dir()]
+    if missing:
+        refuse(f"trace root(s) {', '.join(missing)} not found under {root}; an absent root would read as a clean "
+               "audit. Pass --trace-root for each root that exists")
     if args.site_payload is not None and not args.site_payload.is_file():
         refuse(f"--site-payload {args.site_payload} is not a file")
     report = audit(root, trace_roots, args.site_payload)

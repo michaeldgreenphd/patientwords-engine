@@ -398,3 +398,16 @@ def test_a_screened_out_unspaced_target_records_both_spellings_tried(tmp_path, m
              screen_targets=0.02)
     assert r["screening"]["status"] == "screened_out" and r["screening"]["intended_spacing"] == "both_tried"
     assert r["target_read"]["intended_spacing"] == "both_tried"
+
+
+def test_an_exact_token_that_cannot_be_read_is_reported_not_replaced_by_a_piece():
+    g = hosted_graph([(" xabi", 0.3)])
+    g["nodes"].append({"node_id": "L_np", "feature_type": "logit", "clerp": 'Output " xabicor"'})  # no probability
+    read = resolve_target(g, " xabicor")
+    assert read["status"] == "missing" and read["reason"] == "unparseable_probability"
+    dup = resolve_target(hosted_graph([(" xabicor", 0.2), (" xabicor", 0.1), (" xabi", 0.3)]), " xabicor")
+    assert dup["status"] == "missing" and dup["reason"] == "ambiguous_exact_match"
+    spaced = hosted_graph([(" xabi", 0.3)])
+    spaced["nodes"].append({"node_id": "L_np", "feature_type": "logit", "clerp": 'Output " xabicor"'})
+    unspaced = resolve_target(spaced, "xabicor")
+    assert unspaced["reason"] == "unparseable_probability" and unspaced["intended_spacing"] == "both_tried"

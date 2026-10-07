@@ -267,7 +267,7 @@ def test_results_written_by_the_new_read_carry_no_borrowed_value(tmp_path, monke
         "clin b": [(" xabicor", 0.64), (" xabi", 0.09)], "pat b": [(" qqq", 0.1), (" xabi", 0.094)]},
         [{"top_prompt": "clin a", "bottom_prompt": "pat a", "target_clinical_token": " xabmel"},
          {"top_prompt": "clin b", "bottom_prompt": "pat b", "target_clinical_token": " xabicor"}])
-    rep = run(root, tmp_path)
+    rep = run(root, tmp_path, "--trace-root", "trace_out")
     o = rep["counts"]["overall"]
     assert o["results"] == 2 and o.get("results_with_borrowed_value", 0) == 0
     assert o["sides.consistent"] == 3 and o["sides.not_measured"] == 1  # the absent target is null, not borrowed
@@ -285,7 +285,7 @@ def test_a_new_exact_read_tied_at_the_display_cut_is_consistent(tmp_path, monkey
     r = summary["results"][0]
     assert r["probabilities"]["patient"] == 0.041
     assert out(" xab") not in [t for t, _ in r["predictive_spread"]["patient"]]
-    rep = run(root, tmp_path)
+    rep = run(root, tmp_path, "--trace-root", "trace_out")
     assert rep["counts"]["overall"].get("results_with_borrowed_value", 0) == 0
     assert rep["counts"]["overall"]["sides.consistent"] == 2
 
@@ -325,8 +325,47 @@ def test_the_first_part_rule_skips_translated_corpus_directories(tmp_path):
     write(root / f"trace_out/{stem}/batch_summary.part_01.json", {"mode": "2panel", "backend": "hosted",
           "graph_model": "gemma-2-2b", "results": [result(1, out(" to"), 0.6, 0.3, [[out(" to"), 0.6]],
                                                           [[out(" to"), 0.3]])]})
-    rep = run(root, tmp_path)
+    rep = run(root, tmp_path, "--trace-root", "trace_out")
     assert rep["counts"]["overall"]["substitutions"] == 1
     assert rep["counts_urgency_first_part"]["overall"] == {}
     (s,) = subs(rep)
     assert s["effective"] is True and s["urgency_read"] is False
+
+
+def test_a_missing_trace_root_is_refused_not_read_as_clean(engine, tmp_path):
+    shutil.rmtree(engine / "pilot/traces")
+    with pytest.raises(audit.AuditRefusal, match="pilot/traces"):
+        audit.main(["--root", str(engine), "--out", str(tmp_path / "r.json")])
+    assert not (tmp_path / "r.json").exists()
+    assert run(engine, tmp_path, "--trace-root", "trace_out")["inputs"]["trace_roots"] == ["trace_out"]
+
+
+def test_a_dirty_checkout_is_marked_in_the_provenance(engine, tmp_path):
+    import subprocess
+    git = ["git", "-C", str(engine), "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+           "-c", "commit.gpgsign=false"]
+    subprocess.run([*git, "init", "-q"], check=True)
+    subprocess.run([*git, "add", "-A"], check=True)
+    subprocess.run([*git, "commit", "-q", "-m", "fixture"], check=True)
+    clean = run(engine, tmp_path)["engine_sha"]
+    assert clean and not clean.endswith("+dirty")
+    (engine / "trace_out" / "note.txt").write_text("uncommitted", encoding="utf-8")
+    assert run(engine, tmp_path)["engine_sha"] == clean + "+dirty"
+
+
+def test_numeric_part_order_is_marked_beside_the_exporters_name_order(tmp_path):
+    # backend_agreement.py reads part_100 after part_36; the exporter's name sort reads part_36 last
+    root = tmp_path / "engine"
+    stem = "pairs_20990404T000000Z"
+    write(root / f"data/simulated/{stem}.json", [pair(i, " qa") for i in range(1, 6)])
+    summary = {"mode": "2panel", "backend": "hosted", "graph_model": "gemma-2-2b"}
+    write(root / f"trace_out/{stem}/batch_summary.part_36.json", {**summary, "results": [
+        result(5, out(" qa"), 0.5, 0.2, [[out(" qa"), 0.5]], [[out(" qa"), 0.2]])]})
+    write(root / f"trace_out/{stem}/batch_summary.part_100.json", {**summary, "results": [
+        result(5, out(" to"), 0.5, 0.2, [[out(" to"), 0.5]], [[out(" to"), 0.2]])]})
+    rep = run(root, tmp_path, "--trace-root", "trace_out")
+    assert rep["part_order_disagreements"] == [{"dir": f"trace_out/{stem}", "index": 5,
+                                                "last_part": f"trace_out/{stem}/batch_summary.part_36.json",
+                                                "numeric_last_part": f"trace_out/{stem}/batch_summary.part_100.json"}]
+    (sub,) = subs(rep)  # the part_100 substitution: backend_agreement's reading, not the exporter's
+    assert sub["numeric_last_part"] is True and sub["effective"] is False

@@ -70,3 +70,13 @@ def test_a_new_traces_clinical_side_is_its_recorded_measured_token(tmp_path):
                  intended=(" xa1bcd", "xab", " xq"))
     assert [c["index"] for c in v["censored"]] == [1, 2, 3] and "unrecoverable_indices" not in v
     assert [c["p_clinical"] for c in v["censored"]] == [0.4, 0.4, 0.03]
+
+
+def test_a_side_the_read_recorded_as_missing_is_not_taken_from_the_spread(tmp_path):
+    # the exact read refused the patient side (two identical labels); the spread still holds the label
+    result = exact_result(1, " xab", 0.4, {"clinical": [['Output " xab"', 0.4]],
+                                           "patient": [['Output " xab"', 0.2], ['Output " xab"', 0.1]]})
+    result["target_read"]["sides"] = {"clinical": {"status": "exact", "token": 'Output " xab"', "probability": 0.4},
+                                      "patient": {"status": "missing", "reason": "ambiguous_exact_match"}}
+    v = validity(tmp_path, result)
+    assert v["matched"] == 0 and [c["index"] for c in v["censored"]] == [1]

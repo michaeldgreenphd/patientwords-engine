@@ -159,7 +159,17 @@ def _exact_side(r, side):
     its spaced form, and may sit below the stored spread), else that token
     searched in the side's spread with ``targets.same_token``. Never a
     neighbour's value: a side the exact read recorded as missing stays
-    missing."""
+    missing. When ``target_read.sides[side]`` records the read, it decides: a
+    missing read (for example ``ambiguous_exact_match``) is None, never a value
+    found in the spread; the spread is searched only when no read was recorded
+    for that side."""
+    read = ((r.get("target_read") or {}).get("sides") or {}).get(side)
+    if isinstance(read, dict):
+        p = read.get("probability")
+        if read.get("status") in ("exact", "leading_wordpiece") and isinstance(p, (int, float)) \
+                and not isinstance(p, bool):
+            return p, "exact"
+        return None, None
     recorded = (r.get("probabilities") or {}).get(side)
     if isinstance(recorded, (int, float)) and not isinstance(recorded, bool):
         return recorded, "exact"
