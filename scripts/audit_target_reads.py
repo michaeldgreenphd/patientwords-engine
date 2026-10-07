@@ -93,7 +93,9 @@ marks.
 
 A summary whose shape would read as zero rows (a root that is not an object,
 no ``results``, ``results`` that is not a list, or a result that is not an
-object) is refused with every such file named. A well-formed summary with an
+object), or that holds a malformed predictive_spread entry (not a
+[string label, finite probability] pair), is refused with every such file
+named: no entry is ever dropped silently. A well-formed summary with an
 empty ``results`` list is read, and listed under ``empty_summaries``.
 
 Published rows (``--site-payload``, the site's ``data/simulated_scenarios.json``,
@@ -122,6 +124,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
 import sys
 from collections import Counter, defaultdict
@@ -439,11 +442,42 @@ def malformed_summaries(root: Path, loaded: dict[Path, list[tuple[Path, Any]]]) 
                 bad.append((rel, "results is not a list"))
             elif any(not isinstance(r, dict) for r in summary["results"]):
                 bad.append((rel, "a result is not an object"))
+            else:
+                for r in summary["results"]:
+                    why = spread_problem(r)
+                    if why:
+                        bad.append((rel, f"index {r.get('index')}: {why}"))
+                        break
     return bad
 
 
-def urgency_reads(root: Path, loaded: dict[Path, list[tuple[Path, dict]]]) -> set[tuple[str, Any]]:
-    """(part, index) of every result ``urgency_shift.py`` ingests: trace_out/*/batch_summary.part_*.json in sorted
+def spread_problem(result: dict[str, Any]) -> str | None:
+    """Why a result's stored predictive_spread is malformed, or None. A result may carry no spread (the
+    activation-patching summaries do not): its sides are then unverifiable_no_spread, by name. A spread that is
+    present must be an object of sides, each a list of [label, probability] entries (a dialect result's
+    ``variants`` a list of such lists), every label a string and every probability a finite number."""
+    spread = result.get("predictive_spread")
+    if spread is None:
+        return None
+    if not isinstance(spread, dict):
+        return "predictive_spread is not an object"
+    for side, value in spread.items():
+        lists = value if side == "variants" and result.get("mode") == "dialect" else [value]
+        if not isinstance(lists, list):
+            return f"predictive_spread.{side} is not a list"
+        for entries in lists:
+            if not isinstance(entries, list):
+                return f"predictive_spread.{side} is not a list"
+            for entry in entries:
+                if not (isinstance(entry, (list, tuple)) and len(entry) == 2 and isinstance(entry[0], str)
+                        and is_num(entry[1]) and math.isfinite(entry[1])):
+                    return f"predictive_spread.{side} holds a malformed entry {json.dumps(entry)[:60]}"
+    return None
+
+
+def urgency_reads(root: Path, loaded: dict[Path, list[tuple[Path, dict]]]) -> set[tuple[str, int]]:
+    """(part, position in its results list) of every result ``urgency_shift.py`` ingests - the occurrence itself,
+    so an index repeated within one part is told apart: trace_out/*/batch_summary.part_*.json in sorted
     order, txcorpus_ directories skipped, the first result per (model, batch, index) with a non-empty clinical and
     patient spread."""
     seen: set[tuple[str, str, Any]] = set()
@@ -457,7 +491,7 @@ def urgency_reads(root: Path, loaded: dict[Path, list[tuple[Path, dict]]]) -> se
         if stem.startswith(URGENCY_SKIP_PREFIX):
             continue
         model = summary.get("graph_model") or suffix or BASE_MODEL
-        for r in summary.get("results", []) or []:
+        for position, r in enumerate(summary.get("results", []) or []):
             if not isinstance(r, dict) or (model, stem, r.get("index")) in seen:
                 continue
             spread = r.get("predictive_spread") or {}
@@ -465,7 +499,7 @@ def urgency_reads(root: Path, loaded: dict[Path, list[tuple[Path, dict]]]) -> se
                    for side in ("clinical", "patient")):
                 continue
             seen.add((model, stem, r.get("index")))
-            chosen.add((part.relative_to(root).as_posix(), r.get("index")))
+            chosen.add((part.relative_to(root).as_posix(), position))
     return chosen
 
 
@@ -524,32 +558,36 @@ def audit(root: Path, trace_roots: list[str], payload_path: Path | None) -> dict
                 unjoined_dirs[rel_dir] = "pairs_file_not_a_list"
         else:
             unjoined_dirs[rel_dir] = "no_pairs_file" if not candidates else "several_pairs_files"
-        occurrences: list[tuple[str, dict, dict]] = []
+        # Each occurrence is (part, position in its results list), so an index repeated within one part is told
+        # apart: the exporter, export_archive and backend_agreement keep the LAST occurrence (a later one
+        # overwrites), urgency_shift the FIRST eligible one.
+        occurrences: list[tuple[str, int, dict, dict]] = []
         for part, summary in loaded[d]:
             summaries += 1
-            for r in summary.get("results", []) or []:
+            for position, r in enumerate(summary.get("results", []) or []):
                 if isinstance(r, dict):
-                    occurrences.append((part.relative_to(root).as_posix(), summary, r))
-        last_part_for: dict[Any, str] = {}
-        for part_rel, _, r in occurrences:
-            last_part_for[r.get("index")] = part_rel
-        numeric_last_for: dict[Any, str] = {}
-        for part_rel, _, r in sorted(occurrences, key=lambda o: numeric_part_key(o[0])):
-            numeric_last_for[r.get("index")] = part_rel
-        for index, part_rel in last_part_for.items():
-            if numeric_last_for.get(index) != part_rel:
+                    occurrences.append((part.relative_to(root).as_posix(), position, summary, r))
+        last_for: dict[Any, tuple[str, int]] = {}
+        for part_rel, position, _, r in occurrences:
+            last_for[r.get("index")] = (part_rel, position)
+        numeric_last_for: dict[Any, tuple[str, int]] = {}
+        for part_rel, position, _, r in sorted(occurrences, key=lambda o: numeric_part_key(o[0])):
+            numeric_last_for[r.get("index")] = (part_rel, position)
+        for index, (part_rel, _) in last_for.items():
+            if numeric_last_for[index][0] != part_rel:
                 order_disagreements.append({"dir": rel_dir, "index": index, "last_part": part_rel,
-                                            "numeric_last_part": numeric_last_for.get(index)})
-        for part_rel, summary, r in occurrences:
+                                            "numeric_last_part": numeric_last_for[index][0]})
+        for part_rel, position, summary, r in occurrences:
             index = r.get("index")
             model = summary.get("graph_model") or (d.name.split("__")[1] if "__" in d.name else BASE_MODEL)
             backend = summary.get("backend")
-            effective = last_part_for.get(index) == part_rel
-            numeric_last = numeric_last_for.get(index) == part_rel
-            urgency_read = (part_rel, index) in urgency
+            effective = last_for.get(index) == (part_rel, position)
+            numeric_last = numeric_last_for.get(index) == (part_rel, position)
+            urgency_read = (part_rel, position) in urgency
             superseded += not effective
             target = r.get("target_token")
-            base = {"dir": rel_dir, "part": part_rel, "index": index, "batch": stem, "model": model,
+            base = {"dir": rel_dir, "part": part_rel, "position": position, "index": index, "batch": stem,
+                    "model": model,
                     "backend": backend, "mode": r.get("mode"), "effective": effective, "urgency_read": urgency_read,
                     "numeric_last_part": numeric_last}
             payload_obj = (payload_rows.get((stem, index, model))

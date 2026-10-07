@@ -395,3 +395,46 @@ def test_the_report_rules_name_the_reader_of_each_order(engine, tmp_path):
     exporter_rule = counting.split(";")[0]
     assert "file-name order" in exporter_rule and "backend_agreement" not in exporter_rule
     assert "numeric_last_part" in counting
+
+
+
+@pytest.mark.parametrize("spread,why", [
+    ({"clinical": [[out(" qa"), "bad"]]}, "malformed entry"), ({"clinical": [[out(" qa")]]}, "malformed entry"),
+    ({"clinical": [[3, 0.5]]}, "malformed entry"), ({"clinical": [[out(" qa"), float("nan")]]}, "malformed entry"),
+    ({"clinical": [[out(" qa"), True]]}, "malformed entry"), ({"clinical": None}, "is not a list"),
+    ([[out(" qa"), 0.5]], "is not an object"),
+])
+def test_a_malformed_spread_entry_is_refused_not_dropped(engine, tmp_path, spread, why):
+    r = result(1, out(" qa"), 0.5, 0.2, [[out(" qa"), 0.5]], [[out(" qa"), 0.2]])
+    r["predictive_spread"] = spread
+    path = engine / f"trace_out/{STEM}/batch_summary.part_99.json"
+    path.write_text(json.dumps({"mode": "2panel", "results": [r]}), encoding="utf-8")  # NaN is written as NaN
+    with pytest.raises(audit.AuditRefusal, match=rf"batch_summary.part_99.json \(index 1: predictive_spread.*{why}"):
+        audit.main(["--root", str(engine), "--out", str(tmp_path / "r.json")])
+
+
+def test_a_dialect_spreads_variants_are_validated_too(engine, tmp_path):
+    r = {"index": 1, "mode": "dialect", "baseline_probability": 0.5, "target_token": out(" qa"),
+         "variants": [{"probability": 0.2}], "predictive_spread": {"baseline": [[out(" qa"), 0.5]],
+                                                                  "variants": [[[out(" qa"), "x"]]]}}
+    write(engine / f"trace_out/{STEM}/batch_summary.part_99.json", {"mode": "dialect", "results": [r]})
+    with pytest.raises(audit.AuditRefusal, match="predictive_spread.variants holds a malformed entry"):
+        audit.main(["--root", str(engine), "--out", str(tmp_path / "r.json")])
+
+
+def test_an_index_repeated_within_one_part_is_read_as_each_consumer_reads_it(tmp_path):
+    # exporter and archive keep the LAST occurrence in a part; urgency_shift keeps the FIRST eligible one
+    root = tmp_path / "engine"
+    stem = "pairs_20990505T000000Z"
+    write(root / f"data/simulated/{stem}.json", [pair(1, " qa")])
+    first = result(1, out(" to"), 0.6, 0.3, [[out(" to"), 0.6]], [[out(" to"), 0.3]])   # a substitution
+    last = result(1, out(" qa"), 0.5, 0.2, [[out(" qa"), 0.5]], [[out(" qa"), 0.2]])    # exact
+    write(root / f"trace_out/{stem}/batch_summary.part_01.json",
+          {"mode": "2panel", "backend": "hosted", "graph_model": "gemma-2-2b", "results": [first, last]})
+    rep = run(root, tmp_path, "--trace-root", "trace_out")
+    assert rep["counts"]["overall"]["results"] == 1 and rep["counts_urgency_first_part"]["overall"]["results"] == 1
+    assert rep["counts"]["overall"].get("substitutions", 0) == 0
+    assert rep["counts_urgency_first_part"]["overall"]["substitutions"] == 1
+    (sub,) = subs(rep)
+    assert (sub["position"], sub["effective"], sub["urgency_read"]) == (0, False, True)
+    assert rep["superseded_duplicate_results"] == 1

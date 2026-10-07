@@ -513,21 +513,21 @@ def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any
     The record always says which: ``"intended_spacing"`` is
     ``"leading_space_added"`` (the spaced form was read), ``"as_written"``
     (only the unspaced form was returned) or ``"both_tried"`` (neither was
-    read; ``forms_tried`` lists them, and an unparseable or ambiguous read of
-    either form is the reason given).
+    read; ``forms_tried`` lists them). A preferred spaced form that is
+    returned but unparseable or ambiguous is that failure, recorded with
+    ``leading_space_added``: the as-written spelling never stands in for it.
     """
     if not token_key(intended):
         return read_exact(graph, intended)
     forms = [" " + intended, intended] if _unspaced(intended) else [intended]
     reads = [read_exact(graph, form) for form in forms]
-    for form, exact in zip(forms, reads):
+    for i, (form, exact) in enumerate(zip(forms, reads)):
         if exact["status"] == "exact":
             return _spaced(exact, form, intended)
-    specific = [r for r in reads if r.get("reason") in ("unparseable_probability", "ambiguous_exact_match")]
-    if specific:
-        # The intended token itself was returned but could not be read: report that failure. A shorter
-        # leading piece would be another token's value under the intended word's name.
-        return _both_tried(dict(specific[0]), forms)
+        if exact.get("reason") in ("unparseable_probability", "ambiguous_exact_match"):
+            # This form was returned but cannot be read: report that failure. Neither a later, less preferred
+            # spelling nor a shorter leading piece may stand in for it.
+            return _spaced(dict(exact), form, intended) if i == 0 else _both_tried(dict(exact), forms)
     logits = returned_logits(graph)
     for form in forms:
         pieces = [(label, prob) for label, prob in logits if _is_leading_piece(label, form)]

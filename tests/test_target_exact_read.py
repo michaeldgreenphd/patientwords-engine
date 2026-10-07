@@ -410,7 +410,8 @@ def test_an_exact_token_that_cannot_be_read_is_reported_not_replaced_by_a_piece(
     spaced = hosted_graph([(" xabi", 0.3)])
     spaced["nodes"].append({"node_id": "L_np", "feature_type": "logit", "clerp": 'Output " xabicor"'})
     unspaced = resolve_target(spaced, "xabicor")
-    assert unspaced["reason"] == "unparseable_probability" and unspaced["intended_spacing"] == "both_tried"
+    # the preferred spaced form is the one that failed: recorded as such
+    assert unspaced["reason"] == "unparseable_probability" and unspaced["intended_spacing"] == "leading_space_added"
 
 
 def test_a_duplicated_leading_wordpiece_is_ambiguous_not_guessed():
@@ -421,3 +422,14 @@ def test_a_duplicated_leading_wordpiece_is_ambiguous_not_guessed():
     other = resolve_target(hosted_graph([(" xabi", 0.3), (" xab", 0.1), (" xab", 0.05)]), " xabicor")
     assert other["status"] == "leading_wordpiece" and other["token"] == label(" xabi")
     assert other["alternatives"] == [[label(" xab"), 0.1], [label(" xab"), 0.05]]
+
+
+def test_a_failed_preferred_spaced_form_is_not_replaced_by_the_as_written_spelling():
+    # two ' qdoc' labels (the preferred spaced form, ambiguous) and one readable 'qdoc'
+    read = resolve_target(hosted_graph([(" qdoc", 0.3), (" qdoc", 0.2), ("qdoc", 0.1)]), "qdoc")
+    assert read["status"] == "missing" and read["reason"] == "ambiguous_exact_match" and "probability" not in read
+    assert read["intended_spacing"] == "leading_space_added"
+    g = hosted_graph([("qdoc", 0.1)])
+    g["nodes"].append({"node_id": "L_np", "feature_type": "logit", "clerp": 'Output " qdoc"'})  # spaced, unparseable
+    unparsed = resolve_target(g, "qdoc")
+    assert unparsed["reason"] == "unparseable_probability" and unparsed["intended_spacing"] == "leading_space_added"
