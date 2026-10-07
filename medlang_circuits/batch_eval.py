@@ -13,7 +13,7 @@ medlang_circuits.targets). Mode-specific fields:
 
 --mode 4quadrant - the morphosyntax-vs-lexicon matrix:
     {"frames": {"standard": "I have{term}, so ...", "nonstandard": "I been had{term}, so ..."},
-     "terms":  {"medical": " diabetes", "patient": " the sugar"}}
+     "terms":  {"medical": " xterm", "patient": " the yterm"}}
     (legacy key aliases: frames clinical=standard / patient=nonstandard,
     terms clinical=medical; explicit {"quadrants": {"A": ..., "B": ...,
     "C": ..., "D": ...}} is also accepted with the lettering below).
@@ -108,7 +108,6 @@ from medlang_circuits.targets import (
     resolve_target,
     returned_logits,
     select_logits,
-    target_probability,
     token_key,
 )
 from medlang_circuits.translate import translate_to_clinical
@@ -396,13 +395,22 @@ def _trace(
     params: dict[str, Any],
     targets: AttributionTargets | None,
     fetcher: Any,
+    intended: str | None = None,
+    measured: str | None = None,
 ) -> dict[str, Any]:
     """Generate + select the predictive spread + tag one graph, persisting the tagged JSON.
 
     Logits are pruned to the top-K spread (union any forced targets) instead of
-    hard-retargeting, so the cluster of competing predictions stays visible."""
+    hard-retargeting, so the cluster of competing predictions stays visible.
+    The node of the token the read will measure is kept too, read on the
+    unpruned graph: the ``intended`` target's (``resolve_target``) on a
+    reference side, the ``measured`` token's (``read_exact``) on every other,
+    so a target read at rank 6-10 is in the rendered graph."""
     graph = generate_graph(prompt, slug=slugify(prompt, f"medlang-{role}"), backend=backend, **params)
-    select_logits(graph, targets=targets, keep_top_k=TOP_K_SPREAD_DEFAULT)  # before tagging
+    keep = [read["token"] for read in (resolve_target(graph, intended) if intended else None,
+                                       read_exact(graph, measured) if measured else None)
+            if read is not None and read.get("status") in FOUND_STATUSES]
+    select_logits(graph, targets=targets, keep_top_k=TOP_K_SPREAD_DEFAULT, keep_labels=keep)  # before tagging
     annotate_graph(graph, fetcher=fetcher)
     with open(out_dir / f"pair_{index:02d}_{role}.tagged.json", "w", encoding="utf-8") as f:
         json.dump(graph, f)
@@ -600,7 +608,8 @@ def evaluate_pair(
     params = _generation_params(targets, generation_params, graph_model, source_set)
 
     clinical_prompt, patient_prompt = pair["top_prompt"], pair["bottom_prompt"]
-    clinical_graph = _trace(clinical_prompt, "clinical", index, out_dir, backend, params, targets, fetcher)
+    clinical_graph = _trace(clinical_prompt, "clinical", index, out_dir, backend, params, targets, fetcher,
+                            intended=anchor)
 
     screening: dict[str, Any] | None = None
     if screen_targets is not None:
@@ -617,15 +626,15 @@ def evaluate_pair(
             # re-measure one position deeper (once). The extension changes the
             # prompts, recorded in screening.probe_extension; it never
             # substitutes a token for the target.
-            top = target_probability(clinical_graph)
-            staged = bare_token(top[0]) if top else ""
+            top = returned_logits(clinical_graph)[:1]
+            staged = bare_token(top[0][0]) if top else ""
             if staged in PROBE_EXTENSION_TOKENS:
                 extension = staged
                 clinical_prompt = clinical_prompt.rstrip() + " " + staged
                 patient_prompt = patient_prompt.rstrip() + " " + staged
                 logger.info("Pair %d: probe extended by %r, re-tracing clinical side", index, staged)
                 clinical_graph = _trace(clinical_prompt, "clinical", index, out_dir,
-                                        backend, params, targets, fetcher)
+                                        backend, params, targets, fetcher, intended=anchor)
                 observed_read = resolve_target(clinical_graph, anchor) if anchor else None
                 observed = _observed(observed_read)
         if observed is None or observed[1] < screen_targets:
@@ -678,13 +687,12 @@ def evaluate_pair(
         translation_method = translation["method"]
         translation_model = translation.get("model")
 
+    reference = _resolve_reference(clinical_graph, anchor, targets)
+    target_token = _measured_token(reference)
     graphs = [clinical_graph] + [
-        _trace(prompt, role, index, out_dir, backend, params, targets, fetcher)
+        _trace(prompt, role, index, out_dir, backend, params, targets, fetcher, measured=target_token)
         for prompt, role in zip(prompts[1:], roles[1:])
     ]
-
-    reference = _resolve_reference(graphs[0], anchor, targets)
-    target_token = _measured_token(reference)
     reads = [reference["read"]] + [read_exact(g, target_token) for g in graphs[1:]]
     probs = [_read_probability(read) for read in reads]
 
@@ -821,13 +829,13 @@ def evaluate_quadrant(
     targets = AttributionTargets.of(force_tokens) if force_tokens else None
     params = _generation_params(targets, generation_params, graph_model, source_set)
 
-    graphs = {
-        key: _trace(prompts[key], f"quad_{key.lower()}", index, out_dir, backend, params, targets, fetcher)
-        for key in QUAD_KEYS
-    }
-
+    graphs = {"A": _trace(prompts["A"], "quad_a", index, out_dir, backend, params, targets, fetcher,
+                          intended=anchor)}
     reference = _resolve_reference(graphs["A"], anchor, targets)  # A = prestige form
     target_token = _measured_token(reference)
+    for key in QUAD_KEYS[1:]:
+        graphs[key] = _trace(prompts[key], f"quad_{key.lower()}", index, out_dir, backend, params, targets, fetcher,
+                             measured=target_token)
     reads = {
         key: (reference["read"] if key == "A" else read_exact(graphs[key], target_token))
         for key in QUAD_KEYS
@@ -944,12 +952,14 @@ def evaluate_translation(
     translation = translate_to_clinical(patient_prompt, use_llm=use_llm_translation, model=llm_model)
     translated_prompt = translation["text"]  # raw LLM output, traced natively below
 
-    patient_graph = _trace(patient_prompt, "patient", index, out_dir, backend, params, targets, fetcher)
-    translated_graph = _trace(translated_prompt, "translated", index, out_dir, backend, params, targets, fetcher)
-
-    # The clinical target lives on the translated graph; read the same token on both.
+    # The clinical target lives on the translated graph; read the same token on both. The
+    # translated side is traced first so the patient trace can keep the measured token's node.
+    translated_graph = _trace(translated_prompt, "translated", index, out_dir, backend, params, targets, fetcher,
+                              intended=anchor)
     reference = _resolve_reference(translated_graph, anchor, targets)
     target_token = _measured_token(reference)
+    patient_graph = _trace(patient_prompt, "patient", index, out_dir, backend, params, targets, fetcher,
+                           measured=target_token)
     patient_read = read_exact(patient_graph, target_token)
     p_translated = _read_probability(reference["read"])
     p_patient = _read_probability(patient_read)
@@ -1065,14 +1075,15 @@ def evaluate_dialect(
     targets = AttributionTargets.of(force_tokens) if force_tokens else None
     params = _generation_params(targets, generation_params, graph_model, source_set)
 
-    baseline_graph = _trace(baseline_prompt, "baseline", index, out_dir, backend, params, targets, fetcher)
-    variant_graphs = [
-        _trace(v["prompt"], f"variant_{j:02d}", index, out_dir, backend, params, targets, fetcher)
-        for j, v in enumerate(variants, start=1)
-    ]
-
+    baseline_graph = _trace(baseline_prompt, "baseline", index, out_dir, backend, params, targets, fetcher,
+                            intended=anchor)
     reference = _resolve_reference(baseline_graph, anchor, targets)  # falls back to the top logit
     target_token = _measured_token(reference)
+    variant_graphs = [
+        _trace(v["prompt"], f"variant_{j:02d}", index, out_dir, backend, params, targets, fetcher,
+               measured=target_token)
+        for j, v in enumerate(variants, start=1)
+    ]
     p_baseline = _read_probability(reference["read"])
     variant_reads = [read_exact(g, target_token) for g in variant_graphs]
     probs = [_read_probability(read) for read in variant_reads]

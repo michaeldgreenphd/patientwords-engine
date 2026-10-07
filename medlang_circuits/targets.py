@@ -3,7 +3,7 @@
 The tracer attributes from the top salient logits, and the single most probable
 next token is often a grammatical article (" a", " the") rather than the
 substantive recommendation. ``AttributionTargets`` names the tokens you care
-about (e.g. [" therapist", " hospital"]) and this module applies them at the
+about (e.g. [" xtok", " ytok"]) and this module applies them at the
 two points our pipeline controls:
 
 1. generation - ``to_generation_params()`` widens ``max_n_logits`` so the named
@@ -62,8 +62,8 @@ def bare_token(label: str) -> str:
 def anchor_matches(label: str, anchor: str) -> bool:
     """Wordpiece-tolerant anchor match.
 
-    Tokenizers split intended targets: the trace shows ' anti' for
-    ' antihistamines', ' ant' for ' antacid'. A traced token that is a
+    Tokenizers split intended targets: the trace shows ' xabi' for
+    ' xabihomes', ' xab' for ' xabmel'. A traced token that is a
     leading piece of the anchor (or vice versa) counts as the anchor,
     with a >=3-character guard so stub tokens can't match everything;
     exact matches work at any length.
@@ -88,7 +88,7 @@ def display_token(label: str | None) -> str:
 
 
 def parse_logit_clerp(clerp: str | None) -> tuple[str, float | None]:
-    """Split a logit node label like 'therapist (p=0.62)' into (token, probability)."""
+    """Split a logit node label like 'xtok (p=0.62)' into (token, probability)."""
     if not clerp:
         return "", None
     match = _CLERP_PROB_RE.match(clerp)
@@ -102,7 +102,7 @@ def parse_logit_clerp(clerp: str | None) -> tuple[str, float | None]:
 
 @dataclass(frozen=True)
 class AttributionTargets:
-    """Named next-token targets to attribute from, e.g. (" therapist", " hospital")."""
+    """Named next-token targets to attribute from, e.g. (" xtok", " ytok")."""
 
     tokens: tuple[str, ...]
 
@@ -178,21 +178,26 @@ def select_logits(
     graph: dict[str, Any],
     targets: AttributionTargets | None = None,
     keep_top_k: int | None = TOP_K_SPREAD_DEFAULT,
+    keep_labels: Sequence[str] = (),
 ) -> dict[str, Any]:
     """Prune the graph's logit set to the predictive spread, in place.
 
     Keeps the union of: the top ``keep_top_k`` logits by probability (the
-    predictive spread), any logits matching ``targets``, and logits whose
-    probability can't be parsed (unrankable). Everything else - and any links
-    touching it - is removed. Unlike ``retarget_graph`` this preserves the
-    surrounding distribution so the spread of competing predictions stays
-    visible. Records ``metadata["logit_selection"]`` and returns the info dict.
+    predictive spread), any logits matching ``targets``, any logit whose label
+    is in ``keep_labels`` (the measured target, so a target read at rank 6-10
+    keeps its node in the rendered graph), and logits whose probability can't
+    be parsed (unrankable). Everything else - and any links touching it - is
+    removed. Unlike ``retarget_graph`` this preserves the surrounding
+    distribution so the spread of competing predictions stays visible. Records
+    ``metadata["logit_selection"]`` and returns the info dict.
     """
     logits = _logit_nodes(graph)
     parsed = {n["node_id"]: parse_logit_clerp(n.get("clerp")) for n in logits}
     keep_ids = {nid for nid, (_, prob) in parsed.items() if prob is None}
     if targets:
         keep_ids |= {nid for nid, (token, _) in parsed.items() if targets.matches(token)}
+    if keep_labels:
+        keep_ids |= {nid for nid, (token, _) in parsed.items() if token in set(keep_labels)}
     if keep_top_k:
         ranked = sorted(
             (nid for nid, (_, prob) in parsed.items() if prob is not None),
@@ -204,6 +209,7 @@ def select_logits(
     info: dict[str, Any] = {
         "keep_top_k": keep_top_k,
         "requested_targets": list(targets.tokens) if targets else [],
+        **({"kept_for_measurement": list(keep_labels)} if keep_labels else {}),
         "kept": [n.get("clerp") for n in logits if n["node_id"] in keep_ids],
         "dropped": [n.get("clerp") for n in dropped],
     }
@@ -230,9 +236,9 @@ def target_probability(
     2026-10-07; new measurements use ``resolve_target`` and ``read_exact``.
     With an ``anchor`` it keeps the most probable logit that ``anchor_matches``
     accepts, a prefix match in either direction, so a likelier neighbour's
-    probability is returned under the target's name: ' ant' read as ' anti'
-    (the neighbour begins with the target) and ' antibiotic' read as ' anti'
-    (the neighbour is the target's first part).
+    probability is returned under the target's name: ' xab' read as ' xabi'
+    (the neighbour begins with the target) and ' xabicor' read as ' xabi'
+    (the neighbour is the target's first part). It also folds case.
 
     Selection order: the explicit ``anchor`` token if present among the traced
     logits, else the best-probability match from ``targets``, else the graph's
@@ -261,23 +267,25 @@ def target_probability(
 # Exact target reads (2026-10-07)
 # ---------------------------------------------------------------------------
 #
-# A read records the probability of exactly the target token. Token identity is
-# compared on ``token_key``: the text unwrapped from the hosted 'Output "..."'
-# label, with the leading space normalised the way tokenizers mark it (leading
-# whitespace and the SentencePiece / byte-level space markers removed), and
-# nothing else changed - no case folding, no prefix tolerance. The one
-# tolerance kept is the existing, intended wordpiece rule on the REFERENCE side
-# (``resolve_target``): an intended target the tokenizer splits (' antacid'
-# traced as ' ant', a multi-word target's first word) is measured on its
-# leading piece, and the record says so. Every other side is read with
-# ``read_exact`` on the measured token, so a likelier neighbour's probability
-# is never recorded under the target's name.
+# A read records the probability of exactly the target token. Identity is
+# ``same_token``: a hosted label ('Output "..."') is compared byte for byte on
+# ``token_form``, its text with the wrapper removed and a leading SentencePiece
+# or byte-level space marker spelt as a space - so the leading space counts
+# (' xab' is not 'xab') and so does case. A bare label (local/test format) has
+# had its surrounding whitespace stripped by parse_logit_clerp, so it can only
+# be compared without its leading space. The one tolerance kept is the
+# existing, intended wordpiece rule on the REFERENCE side (``resolve_target``):
+# an intended target the tokenizer splits (' xabmel' traced as ' xab', a
+# multi-word target's first word) is measured on its leading piece, and the
+# record says so. Every other side is read with ``read_exact`` on the measured
+# token, so a likelier neighbour's probability is never recorded under the
+# target's name.
 
 # Read record ``status`` values that carry a probability.
 FOUND_STATUSES = ("exact", "leading_wordpiece")
 
-# SentencePiece '▁' and byte-level BPE 'Ġ': how tokenizers spell a leading space.
-SPACE_MARKERS = "\u2581\u0120"
+# SentencePiece U+2581 and byte-level BPE U+0120: how tokenizers spell a leading space.
+SPACE_MARKERS = "▁Ġ"
 
 # The shortest leading piece accepted for a split target, as anchor_matches has
 # it: stub tokens (' a', ' an') must not stand for every word they begin.
@@ -296,31 +304,69 @@ def token_text(label: str | None) -> str | None:
     return match.group(1) if match else label
 
 
-def _canonical(label: str | None) -> str:
-    """token_text with leading space markers spelt as ordinary spaces."""
+def is_hosted_label(label: str | None) -> bool:
+    """A hosted logit label, 'Output "..."': its text keeps its leading space."""
+    return isinstance(label, str) and _HOSTED_OUTPUT_RE.match(label.strip()) is not None
+
+
+def token_form(label: str | None) -> str:
+    """The text an exact read compares: ``token_text`` with each leading space
+    marker spelt as an ordinary space. The leading space itself, case and every
+    other character are kept."""
     text = token_text(label) or ""
-    stripped = text.lstrip(SPACE_MARKERS + " ")
-    lead = text[: len(text) - len(stripped)]
-    return " " * len(lead) + stripped
+    body = text.lstrip(SPACE_MARKERS + " ")
+    lead = text[: len(text) - len(body)]
+    return lead.translate({ord(m): " " for m in SPACE_MARKERS}) + body
 
 
 def token_key(label: str | None) -> str:
-    """Identity key for an exact read: the token text with its leading space
-    normalised away (whitespace and SentencePiece/byte-level markers), case and
-    every other character kept. '' for a label with no text."""
+    """Loose key: the token text without its leading whitespace or space
+    markers, case kept. For diagnostics, for telling whether a label has any
+    text, and for bare labels whose spacing is already gone - never to equate
+    two hosted tokens ('Output " xab"' and 'Output "xab"' share this key)."""
     return (token_text(label) or "").lstrip(SPACE_MARKERS + " \t\r\n")
+
+
+def same_token(label: str | None, target: str | None) -> bool:
+    """Whether a returned logit ``label`` is the ``target`` token.
+
+    A hosted label is compared on ``token_form`` (leading space significant,
+    markers read as a space); a bare label, whose spacing parse_logit_clerp
+    has already stripped, on ``token_key``. A label with no text is never a
+    target."""
+    if not token_key(label) or not token_key(target):
+        return False
+    if is_hosted_label(label):
+        return token_form(label) == token_form(target)
+    return token_key(label) == token_key(target)
+
+
+def _is_leading_piece(label: str, intended: str) -> bool:
+    """``label`` is a proper leading piece of ``intended``, case-sensitive, at
+    least MIN_PIECE_CHARS long, compared the way ``same_token`` compares."""
+    if len(token_key(label)) < MIN_PIECE_CHARS:
+        return False
+    piece, whole = ((token_form(label), token_form(intended)) if is_hosted_label(label)
+                    else (token_key(label), token_key(intended)))
+    return len(piece) < len(whole) and whole.startswith(piece)
+
+
+def _clerps(graph: dict[str, Any]) -> list[Any]:
+    """Every logit label the service returned: the graph's logit nodes plus
+    those ``select_logits`` pruned for display."""
+    clerps = [n.get("clerp") for n in _logit_nodes(graph)]
+    selection = (graph.get("metadata") or {}).get("logit_selection") or {}
+    return clerps + list(selection.get("dropped") or [])
 
 
 def returned_logits(graph: dict[str, Any]) -> list[tuple[str, float]]:
     """Every logit the service returned for this graph, (label, probability),
     most probable first: the graph's logit nodes plus those ``select_logits``
     pruned for display (recorded in ``metadata.logit_selection.dropped``).
-    Logits whose probability cannot be parsed are left out."""
-    clerps = [n.get("clerp") for n in _logit_nodes(graph)]
-    selection = (graph.get("metadata") or {}).get("logit_selection") or {}
-    clerps += list(selection.get("dropped") or [])
+    Logits whose probability cannot be parsed are left out (``read_exact``
+    names that case when it is the target)."""
     scored = []
-    for clerp in clerps:
+    for clerp in _clerps(graph):
         token, prob = parse_logit_clerp(clerp)
         if prob is not None:
             scored.append((token, prob))
@@ -333,15 +379,20 @@ def _rank(logits: list[tuple[str, float]], prob: float) -> int:
 
 
 def prefix_relation(token: str | None, target: str | None) -> str | None:
-    """How a returned token relates to a target, compared case-insensitively
-    with the MIN_PIECE_CHARS guard (the relations the legacy prefix-tolerant
-    read accepted): 'token_is_leading_piece_of_target' (' anti' for
-    ' antibiotic'), 'target_is_leading_piece_of_token' (' anti' for ' ant'),
-    'case_variant' (' Ant' for ' ant'), or None. Diagnostic only; an exact
-    token is not a candidate."""
-    tok, tgt = token_key(token), token_key(target)
-    if not tok or not tgt or tok == tgt:
+    """How a returned token that is not the target relates to it, compared
+    without the leading space and case-insensitively, with the MIN_PIECE_CHARS
+    guard (the relations the legacy prefix-tolerant read accepted):
+    'space_variant' (the same text with a different leading space),
+    'case_variant' (' Xab' for ' xab'), 'token_is_leading_piece_of_target'
+    (' xabi' for ' xabicor'), 'target_is_leading_piece_of_token' (' xabi' for
+    ' xab'), or None. Diagnostic only."""
+    if same_token(token, target):
         return None
+    tok, tgt = token_key(token), token_key(target)
+    if not tok or not tgt:
+        return None
+    if tok == tgt:
+        return "space_variant"
     a, b = tok.casefold(), tgt.casefold()
     if a == b:
         return "case_variant"
@@ -373,19 +424,6 @@ def _missing(reason: str, logits: list[tuple[str, float]], target: str | None) -
     return record
 
 
-def _exact_hits(logits: list[tuple[str, float]], target: str) -> list[tuple[str, float]]:
-    """Returned logits whose key is the target's. When the leading-space
-    normalisation leaves several (' ant' and 'ant'), the one spelt like the
-    target is kept; if that does not leave exactly one, all are returned."""
-    key = token_key(target)
-    hits = [(label, prob) for label, prob in logits if token_key(label) == key]
-    if len(hits) > 1:
-        same = [h for h in hits if _canonical(h[0]) == _canonical(target)]
-        if len(same) == 1:
-            return same
-    return hits
-
-
 def _found(logits: list[tuple[str, float]], status: str, label: str, prob: float) -> dict[str, Any]:
     return {"status": status, "token": label, "probability": prob,
             "rank": _rank(logits, prob), "returned": len(logits)}
@@ -395,27 +433,37 @@ def read_exact(graph: dict[str, Any], token: str | None) -> dict[str, Any]:
     """Read exactly ``token``'s probability from the logits the service returned.
 
     Returns a read record: ``{"status": "exact", "token", "probability",
-    "rank", "returned"}`` when one returned logit is the token, else
-    ``{"status": "missing", "reason", "returned", "prefix_candidates"}`` with
-    reason ``no_target_token`` (nothing to read), ``no_returned_logits``,
-    ``target_not_in_returned_logits`` or ``ambiguous_exact_match``. A missing
-    read carries no probability: the prefix candidates are diagnostics, never
-    a value. ``rank`` above the stored predictive spread's length means the
-    value is not visible in ``predictive_spread``.
+    "rank", "returned"}`` when one returned logit is the token (``same_token``),
+    else ``{"status": "missing", "reason", "returned", "prefix_candidates"}``
+    with reason ``no_target_token`` (nothing to read), ``no_returned_logits``,
+    ``unparseable_probability`` (the token was returned without a probability
+    that parses), ``target_not_in_returned_logits`` or
+    ``ambiguous_exact_match``. A missing read carries no probability: the
+    prefix candidates are diagnostics, never a value. ``rank`` above the stored
+    predictive spread's length means the value is not visible in
+    ``predictive_spread``.
     """
     logits = returned_logits(graph)
     if not token_key(token):
         return {"status": "missing", "reason": "no_target_token", "returned": len(logits)}
-    if not logits:
-        return _missing("no_returned_logits", logits, token)
-    hits = _exact_hits(logits, token)
+    hits = [(label, prob) for label, prob in logits if same_token(label, token)]
     if len(hits) == 1:
         return _found(logits, "exact", *hits[0])
     if hits:
         record = _missing("ambiguous_exact_match", logits, token)
         record["exact_candidates"] = [[label, prob] for label, prob in hits]
         return record
+    unparsed = [parse_logit_clerp(c)[0] for c in _clerps(graph) if parse_logit_clerp(c)[1] is None]
+    if any(same_token(label, token) for label in unparsed):
+        return _missing("unparseable_probability", logits, token)
+    if not logits:
+        return _missing("no_returned_logits", logits, token)
     return _missing("target_not_in_returned_logits", logits, token)
+
+
+def _unspaced(intended: str) -> bool:
+    """An intended target written without a leading space or marker."""
+    return bool(intended) and intended[:1] not in SPACE_MARKERS + " \t\r\n"
 
 
 def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any]:
@@ -424,27 +472,42 @@ def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any
 
     ``exact``: a returned token is the intended target (``read_exact``).
     ``leading_wordpiece``: none is, but returned tokens are proper leading
-    pieces of it, case-sensitive and at least MIN_PIECE_CHARS long - a target
-    the tokenizer splits (' ant' for ' antacid', the first word of a
-    multi-word target). The likeliest piece is measured, as the earlier read
-    did, and every other piece is listed in ``alternatives``.
-    ``missing``: neither; the record names the reason and lists the prefix
-    candidates. A returned token that only begins with the target
-    (' antibiotics' for ' antibiotic') is never taken: it is another token.
+    pieces of it, case-sensitive, leading space included, at least
+    MIN_PIECE_CHARS long - a target the tokenizer splits (' xab' for
+    ' xabmel', the first word of a multi-word target). The likeliest piece is
+    measured, as the earlier read did, and every other piece is listed in
+    ``alternatives``. ``missing``: neither; the record names the reason and
+    lists the prefix candidates. A returned token that only begins with the
+    target (' xabicors' for ' xabicor') is never taken: it is another token.
+
+    An intended target written without its leading space ('xab', as some
+    pairs files spell it) is read as written first; when that finds nothing it
+    is read again with the space a word after a word carries (' xab'), and the
+    record says so with ``"intended_spacing": "leading_space_added"``.
     """
-    exact = read_exact(graph, intended)
-    if exact["status"] == "exact" or exact.get("reason") != "target_not_in_returned_logits":
-        return exact
+    if not token_key(intended):
+        return read_exact(graph, intended)
+    forms = [intended] + ([" " + intended] if _unspaced(intended) else [])
+    first = None
+    for form in forms:
+        exact = read_exact(graph, form)
+        if exact["status"] == "exact" or exact.get("reason") not in ("target_not_in_returned_logits",):
+            return _spaced(exact, form, intended)
+        first = first or exact
     logits = returned_logits(graph)
-    key = token_key(intended)
-    pieces = [(label, prob) for label, prob in logits
-              if len(token_key(label)) >= MIN_PIECE_CHARS
-              and len(token_key(label)) < len(key) and key.startswith(token_key(label))]
-    if not pieces:
-        return exact
-    label, prob = max(pieces, key=lambda c: c[1])
-    record = _found(logits, "leading_wordpiece", label, prob)
-    others = [[lab, p] for lab, p in pieces if lab != label]
-    if others:
-        record["alternatives"] = others
+    for form in forms:
+        pieces = [(label, prob) for label, prob in logits if _is_leading_piece(label, form)]
+        if pieces:
+            label, prob = max(pieces, key=lambda c: c[1])
+            record = _found(logits, "leading_wordpiece", label, prob)
+            others = [[lab, p] for lab, p in pieces if lab != label]
+            if others:
+                record["alternatives"] = others
+            return _spaced(record, form, intended)
+    return first
+
+
+def _spaced(record: dict[str, Any], form: str, intended: str) -> dict[str, Any]:
+    if form != intended:
+        record["intended_spacing"] = "leading_space_added"
     return record
