@@ -1122,6 +1122,24 @@ def test_a_caption_or_label_that_evaluates_the_example_is_refused(tmp_path, set_
     assert "an evaluation of the example as" in message and f"instructions.examples[{n}]" in message, message
 
 
+@pytest.mark.parametrize("set_name, text", [
+    ("advice_new", "Judge whether the conversation is plausible, but this message is realistic."),
+    ("advice_new", "You judge whether the conversation is plausible, and this message is realistic."),
+    ("multiturn_script", "Rate how plausible it is, yet the conversation is entirely plausible."),
+    ("advice_new", "Say whether it is realistic while the situation is medically coherent."),
+    ("advice_new", "Judge whether it is realistic, this message is realistic."),
+])
+def test_an_evaluation_in_a_later_clause_is_refused(tmp_path, set_name, text):
+    # Regression (Gemini review of PR #88, round 3): the directive and whether/if/how exemptions covered a whole
+    # sentence, so an evaluation after a comma or a coordinating conjunction passed. Each clause is checked on its own.
+    examples, n = _example_for_set(set_name)
+    examples[n]["caption"] = text
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "an evaluation of the example as" in message, message
+
+
 DRAFT_CAPTIONS = [   # the three draft examples' captions (questions 1.2-draft)
     "You judge whether the two sentences mean the same thing, how likely a real patient is to use the underlined "
     "everyday wording, and whether the word shown underneath would be a natural next word.",

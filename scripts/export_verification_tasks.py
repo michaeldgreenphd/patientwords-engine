@@ -902,20 +902,27 @@ def example_predicates(doc: dict, set_name: str) -> list[str]:
     return sorted({p.lower() for p in found}, key=lambda p: (-len(p), p))
 
 
+# Where one clause ends and the next begins: sentence punctuation, a comma, or a coordinating or contrasting
+# conjunction. Each clause is checked on its own, so a directive or a "whether" in one clause does not exempt an
+# evaluation in the next (Gemini review of PR #88, round 3: "Judge whether the conversation is plausible, but this
+# message is realistic" passed).
+_CLAUSE_BREAK = re.compile(r"[.;:!?,]+|\b(?:but|and|yet|while|although|however)\b", re.I)
+
+
 def example_evaluations(text: str, predicates: list[str]) -> list[str]:
-    """The predicates a text applies to the example in an evaluation (see _EXAMPLE_SUBJECT), skipping a clause under
-    "whether", "if" or "how" and a sentence that opens with an imperative."""
+    """The predicates a text applies to the example in an evaluation (see _EXAMPLE_SUBJECT), clause by clause
+    (_CLAUSE_BREAK), skipping a clause under "whether", "if" or "how" and a clause that opens with an imperative."""
     if not predicates:
         return []
     pattern = re.compile(rf"\b{_EXAMPLE_SUBJECT}\s+{_EXAMPLE_COPULA}\s+(?:not\s+)?(?:(?:{'|'.join(_INTENSIFIERS)})\s+)*"
                          rf"(?P<pred>{'|'.join(_label_pattern(p) for p in predicates)})(?!\w)", re.I)
     out = []
-    for sentence in re.split(r"[.;:!?]+", text):
-        opener = re.match(r"\s*([a-z]+)", sentence, re.I)
+    for clause in _CLAUSE_BREAK.split(text):
+        opener = re.match(r"\s*([a-z]+)", clause, re.I)
         if opener and opener.group(1).lower() in _TASK_SENTENCE_OPENERS:
             continue
-        for m in pattern.finditer(sentence):
-            if not re.search(r"\b(?:whether|if|how)\b", sentence[:m.start()], re.I):
+        for m in pattern.finditer(clause):
+            if not re.search(r"\b(?:whether|if|how)\b", clause[:m.start()], re.I):
                 out.append(m.group("pred"))
     return out
 
