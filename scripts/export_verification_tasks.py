@@ -868,8 +868,11 @@ _EXAMPLE_SUBJECT = (r"(?:(?:the|this|that|these|those|each|every|its|their)\s+(?
 _EXAMPLE_COPULA = r"(?:is|are|was|were|seems?|appears?|sounds?|looks?|reads?|feels?)(?:\s+to\s+be)?"
 _INTENSIFIERS = ("entirely", "completely", "wholly", "very", "quite", "fairly", "highly", "mostly", "somewhat",
                  "clearly", "perfectly", "totally", "rather", "so", "really", "medically", "definitely", "probably")
-_TASK_SENTENCE_OPENERS = ("judge", "rate", "say", "decide", "assess", "determine", "consider", "check", "tell",
-                          "choose", "note", "ask", "read", "look", "think")
+# The verbs that open a task directive, and only those (Gemini review of PR #88, round 3): "note", "consider", "ask",
+# "read", "look" and "think" also introduce an assertion ("Note that the conversation is plausible"), so they are not
+# here, and a directive followed by "that" introduces one too ("Say that this message is realistic") and exempts
+# nothing.
+_TASK_SENTENCE_OPENERS = ("judge", "rate", "say", "decide", "assess", "determine", "check", "choose", "tell")
 
 
 def example_predicates(doc: dict, set_name: str) -> list[str]:
@@ -931,8 +934,8 @@ def example_evaluations(text: str, predicates: list[str]) -> list[str]:
                          rf"(?P<pred>{'|'.join(_label_pattern(p) for p in predicates)})(?!\w)", re.I)
     out = []
     for clause in _CLAUSE_BREAK.split(text):
-        opener = re.match(r"\s*([a-z]+)", clause, re.I)
-        if opener and opener.group(1).lower() in _TASK_SENTENCE_OPENERS:
+        opener = re.match(r"\s*([a-z]+)(\s+that\b)?", clause, re.I)
+        if opener and opener.group(1).lower() in _TASK_SENTENCE_OPENERS and not opener.group(2):
             continue
         for m in pattern.finditer(clause):
             if not re.search(r"\b(?:whether|if|how)\b", clause[:m.start()], re.I):

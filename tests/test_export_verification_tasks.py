@@ -1158,6 +1158,25 @@ def test_every_set_gets_the_words_of_its_yes_no_questions_from_their_measures():
     assert coherent in predicates and evt.example_evaluations(f"This sentence is {coherent}.", predicates)
 
 
+@pytest.mark.parametrize("set_name, text", [
+    ("multiturn_script", "Note that the conversation is entirely plausible."),
+    ("advice_new", "Consider that the message is realistic."),
+    ("advice_new", "Think the message is realistic."),
+    ("multiturn_script", "Note the conversation is entirely plausible."),
+    ("advice_new", "Consider the message is realistic."),
+    ("advice_new", "Judge that the message is realistic."),
+])
+def test_an_evaluation_after_a_word_that_is_not_a_directive_is_refused(tmp_path, set_name, text):
+    # Regression (Gemini review of PR #88, round 3): "Note that ..." introduces an assertion, but "note" was a task
+    # opener. Only true directives exempt a clause, and not when they introduce a "that" clause.
+    examples, n = _example_for_set(set_name)
+    examples[n]["caption"] = text
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "an evaluation of the example as" in message, message
+
+
 DRAFT_CAPTIONS = [   # the three draft examples' captions (questions 1.2-draft)
     "You judge whether the two sentences mean the same thing, how likely a real patient is to use the underlined "
     "everyday wording, and whether the word shown underneath would be a natural next word.",
@@ -1175,7 +1194,8 @@ def test_captions_that_describe_the_task_are_kept(tmp_path, capsys):
     for n, caption in enumerate(DRAFT_CAPTIONS):
         examples[n]["caption"] = caption + " Judge whether the conversation is plausible. Say how likely it is. " \
                                            "Rate how plausible the course of events is. If the message is unclear, say so. " \
-                                           "Consider that the message is realistic or not. This one is 3 messages long. " \
+                                           "Check whether the message is realistic. Decide the message is realistic or not. " \
+                                           "This one is 3 messages long. " \
                                            "You judge whether the conversation is plausible."
     examples[1]["display"]["patient_message"] = "It seems possible the key fell behind the shed; where is it likely?"
     paths = write_world(tmp_path, world_data())
