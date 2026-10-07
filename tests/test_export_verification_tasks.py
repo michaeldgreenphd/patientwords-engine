@@ -1348,6 +1348,99 @@ def test_ordinary_words_that_are_also_method_terms_are_not_refused(tmp_path, cap
     assert bundle["questions"]["instructions"]["examples"][1]["caption"] == examples[1]["caption"]
 
 
+def _committed_item(question_set: str, ok=lambda display: True) -> dict:
+    """An item of the first committed bundle, read at run time (its text is never written here)."""
+    bundle = json.loads(FIRST_BUNDLE.read_text(encoding="utf-8"))
+    return next(i for i in bundle["items"] if i["question_set"] == question_set and ok(i["display"]))
+
+
+def _copy_refused(tmp_path: Path, examples: list[dict]) -> str:
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    return refused_paths(paths, "example_copies_item")
+
+
+def test_an_example_that_copies_a_committed_bundles_item_is_refused(tmp_path):
+    # Regression (Codex review of PR #88): the display of vt_78daa6060095 in the first bundle passed every check as an
+    # example, so a physician could see a stimulus as an example and then rate it.
+    bundle = json.loads(FIRST_BUNDLE.read_text(encoding="utf-8"))
+    item = next(i for i in bundle["items"] if i["item_id"] == "vt_78daa6060095")
+    examples = _examples()
+    n = EXAMPLE_OF_SET[item["question_set"]]
+    examples[n] = {"family": item["question_set"], "label": "Example", "caption": "Judge it.",
+                   "display": copy.deepcopy(item["display"])}
+    message = _copy_refused(tmp_path, examples)
+    assert f"instructions.examples[{n}]" in message and f"item vt_78daa6060095 of {FIRST_BUNDLE.name}" in message
+    assert "repeats" in message
+
+
+def test_an_example_that_copies_an_item_of_this_bundle_or_an_unselected_source_row_is_refused(tmp_path):
+    # the comparison is on normalised text, so a copy in capitals is still a copy
+    data = world_data()
+    advice = data["advice_new"]["items"][0]
+    examples = _examples()
+    examples[1]["display"].update(clinical_message=advice["clinical_message"].upper(),
+                                  patient_message="Where would the little key for the shed be safe?")
+    message = _copy_refused(tmp_path / "item", examples)
+    assert f"instructions.examples[1] (advice_new) repeats new.json item {advice['id']!r}" in message, message
+    # a published payload row that no selection takes (it has no measured penalty) is a study text all the same
+    row = next(s for s in data["payload"]["scenarios"]
+               if not isinstance((s["models"].get("gemma-2-2b") or {}).get("language_penalty"), (int, float)))
+    examples = _examples()
+    examples[1]["display"]["patient_message"] = row["patient_prompt"]
+    message = _copy_refused(tmp_path / "row", examples)
+    assert f"payload row {row['batch']}#{row['batch_index']}" in message, message
+    # a pilot run's sentence, and a Petri seed's text, are study texts too
+    pilot = data["pilot_rows"][1]
+    examples = _examples()
+    examples[1]["display"]["patient_message"] = pilot["template"].replace("___", pilot["patient_term"])
+    message = _copy_refused(tmp_path / "pilot", examples)
+    assert f"pilot run {RUN2} row {pilot['id']}" in message, message
+    examples = _examples()
+    examples[1]["caption"] = MARK_RATIONALE
+    message = _copy_refused(tmp_path / "seed", examples)
+    assert "seeds.json seed" in message, message
+
+
+def _long_advice_message() -> str:
+    item = _committed_item("advice_new", lambda d: len(d["clinical_message"].split()) >= 14
+                           and not evt.EXAMPLE_MEASURED.search(d["clinical_message"]))
+    return item["display"]["clinical_message"]
+
+
+def test_an_example_that_nearly_copies_a_study_text_is_refused(tmp_path):
+    # Twelve words of a real message with one changed share 5 of their 9 word 4-grams with it: over half, the share
+    # (COPY_SHARE) at which a text is a near copy, and under three quarters.
+    words = _long_advice_message().split()[:12]
+    original = evt.word_grams(" ".join(words))
+    words[5] = "zebra"
+    grams = evt.word_grams(" ".join(words))
+    assert evt.COPY_SHARE <= len(grams & original) / len(grams) < 0.75
+    examples = _examples()
+    examples[1]["display"]["clinical_message"] = " ".join(words)
+    message = _copy_refused(tmp_path, examples)
+    assert "nearly repeats" in message and "of its word 4-grams" in message, message
+
+
+def test_an_example_sharing_less_than_half_its_word_4grams_with_any_study_text_is_kept(tmp_path, capsys):
+    # The near-copy share is COPY_SHARE (half): an invented sentence that opens with a few words of a study text is not
+    # a copy. Here 4 of its 4-grams come from a real message, under a third of them.
+    opening = _long_advice_message().split()[:7]
+    text = " ".join(opening + "and then the blue ledger fell off the shelf".split())
+    grams = evt.word_grams(text)
+    assert 0.25 <= 4 / len(grams) < evt.COPY_SHARE
+    examples = _examples()
+    examples[1]["display"]["clinical_message"] = text
+    # a short text, under COPY_MIN_GRAMS 4-grams, is compared exactly only: five words, one 4-gram of them a study
+    # text's, are not a copy
+    short = " ".join(evt.normalised_words(" ".join(opening))[:4] + ["zebra"])
+    assert len(evt.word_grams(short)) < evt.COPY_MIN_GRAMS
+    examples[1]["display"]["patient_message"] = short
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    rerun(paths, tmp_path / "out")
+
+
 def _module_value_node(rel: str, name: str) -> ast.expr:
     """The value of a module-level assignment in an engine file, as an ast node (the file is not imported: some of
     these run argparse or need network libraries at import)."""

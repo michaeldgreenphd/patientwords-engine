@@ -125,7 +125,8 @@ result carries other prompts (``trace_mismatch``), trace results in more than on
 for more than one graph model with none named (``ambiguous_trace``), trace results in both the legacy and the per-run
 layout for one model (``trace_layout_conflict``), a trace summary that does not declare the graph model its directory
 is read as (``trace_model_mismatch``), a questions file that does not fit the items, an example that is malformed
-(``bad_example``) or shows what a physician may not see (``example_not_blind``), fewer main-study candidates than
+(``bad_example``), shows what a physician may not see (``example_not_blind``) or repeats or nearly repeats a study
+text (``example_copies_item``), fewer main-study candidates than
 requested, an item id collision, an existing output file (a bundle is an archive, never rewritten), and every seal
 failure above (a sealed phrase in an example is ``seal_hit``, naming the example).
 
@@ -438,6 +439,13 @@ class Inputs:
 
     def __init__(self) -> None:
         self.sources: list[dict[str, str]] = []
+        # every study text the inputs hold, selected for the bundle or not, with where it is (ids only): an example may
+        # not repeat or nearly repeat one (check_example_copies)
+        self.study_texts: list[tuple[str, str]] = []
+
+    def study(self, text: Any, where: str) -> None:
+        if isinstance(text, str) and text.strip():
+            self.study_texts.append((text, where))
 
     def read_bytes(self, path: Path, role: str, label: str | None = None) -> bytes:
         if not path.is_file():
@@ -732,6 +740,98 @@ def example_answer_rules(doc: dict, set_name: str) -> list[tuple[str, re.Pattern
     return list(dict(rules).items())                    # one rule per description (questions can share a scale)
 
 
+# Copies of study items. A text is normalised (lower case, every run of characters that are not letters or digits read
+# as one space) and compared exactly; a near copy is a text with at least COPY_MIN_GRAMS word 4-grams of which at
+# least COPY_SHARE occur in one single study text. The three draft examples of questions 1.2-draft share at most a
+# quarter of their 4-grams with any study text (stock phrases such as "is there anything else I should do"), so half
+# leaves them a clear margin while one changed word in a copied sentence of ten or more words is still caught.
+COPY_GRAM = 4
+COPY_MIN_GRAMS = 4
+COPY_SHARE = 0.5
+COMMITTED_BUNDLES_DIR = REPO_ROOT / "data" / "verification"
+
+
+def normalised_words(text: str) -> list[str]:
+    return re.findall(r"[^\W_]+", text.casefold())
+
+
+def word_grams(text: str) -> set[tuple[str, ...]]:
+    words = normalised_words(text)
+    return {tuple(words[i:i + COPY_GRAM]) for i in range(len(words) - COPY_GRAM + 1)}
+
+
+class StudyTextIndex:
+    """The study texts an example may not copy: their normalised forms, and an index from each word 4-gram to the
+    texts holding it."""
+
+    def __init__(self, texts: list[tuple[str, str]]) -> None:
+        self.where: list[str] = []
+        self.exact: dict[str, str] = {}
+        self.grams: dict[tuple[str, ...], set[int]] = {}
+        for text, where in texts:
+            n = len(self.where)
+            self.where.append(where)
+            self.exact.setdefault(" ".join(normalised_words(text)), where)
+            for gram in word_grams(text):
+                self.grams.setdefault(gram, set()).add(n)
+
+    def copy_of(self, text: str) -> tuple[str, float, str] | None:
+        """("repeats" or "nearly repeats", the share of the text's 4-grams found, where) for a copy, else None."""
+        key = " ".join(normalised_words(text))
+        if key and key in self.exact:
+            return "repeats", 1.0, self.exact[key]
+        share, where = self.overlap(text)
+        return ("nearly repeats", share, where or "") if share >= COPY_SHARE else None
+
+    def overlap(self, text: str) -> tuple[float, str | None]:
+        """The largest share of the text's 4-grams that one study text holds, and that text's place (0 and None for
+        a text with fewer than COPY_MIN_GRAMS 4-grams, which is compared exactly only)."""
+        grams = word_grams(text)
+        if len(grams) < COPY_MIN_GRAMS:
+            return 0.0, None
+        hits: Counter = Counter(n for gram in grams for n in self.grams.get(gram, ()))
+        if not hits:
+            return 0.0, None
+        n, count = max(hits.items(), key=lambda kv: (kv[1], -kv[0]))
+        return count / len(grams), self.where[n]
+
+
+def check_example_copies(inp: "Inputs", examples: list[dict]) -> None:
+    """Refuse an example any text of which repeats or nearly repeats a study text (Codex review of PR #88: a copied
+    item display passed every other check, and a physician would rate the same stimulus after seeing it as an example).
+    The study texts are every text the inputs hold, selected for this bundle or not (Inputs.study_texts; every item
+    of this bundle is built from them), and the item displays of every committed bundle in data/verification, which
+    are read for this and recorded in sources. Messages name the example and the place, never text."""
+    texts = list(inp.study_texts)
+    for path in sorted(COMMITTED_BUNDLES_DIR.glob("tasks_*.json")):
+        bundle, _ = inp.read_json(path, "committed bundle (an example may not copy its items)")
+        for item in bundle.get("items", []) if isinstance(bundle, dict) else []:
+            texts += [(t, f"item {item.get('item_id')} of {path.name}") for t in item_shown_texts(item.get("display"))]
+    index = StudyTextIndex(texts)
+    found = []
+    for n, example in enumerate(examples):
+        for text in example_shown_texts(example):
+            copy = index.copy_of(text)
+            if copy:
+                found.append(f"instructions.examples[{n}] ({example['family']}) {copy[0]} {copy[2]} "
+                             f"({copy[1]:.0%} of its word 4-grams)")
+                break
+    if found:
+        refuse("example_copies_item", "an example is a study item, or nearly one, so a physician would see it before "
+                                      "rating it: " + "; ".join(found) + ". Examples are invented")
+
+
+def item_shown_texts(display: Any) -> list[str]:
+    """The texts of an item display a physician reads (not its kind, arm ids or same_as; NOT_SHOWN_DISPLAY_FIELDS)."""
+    if isinstance(display, str):
+        return [display]
+    if isinstance(display, dict):
+        return [s for k, v in display.items() if k not in NOT_SHOWN_DISPLAY_FIELDS for s in item_shown_texts(v)]
+    if isinstance(display, list):
+        return [s for v in display for s in item_shown_texts(v)]
+    return []
+
+
 def example_texts(example: dict) -> list[str]:
     """Every string an example shows a physician: its label, its caption and every string of its display."""
     return [example["label"], example["caption"], *strings_in(example["display"])]
@@ -746,16 +846,7 @@ NOT_SHOWN_DISPLAY_FIELDS = frozenset({"kind", "arm", "same_as"})
 def example_shown_texts(example: dict) -> list[str]:
     """The text of an example a physician reads: its label, its caption, and its display's strings except the
     display kind and the arm ids (NOT_SHOWN_DISPLAY_FIELDS)."""
-    def shown(obj: Any) -> list[str]:
-        if isinstance(obj, str):
-            return [obj]
-        if isinstance(obj, dict):
-            return [s for k, v in obj.items() if k not in NOT_SHOWN_DISPLAY_FIELDS for s in shown(v)]
-        if isinstance(obj, list):
-            return [s for v in obj for s in shown(v)]
-        return []
-
-    return [example["label"], example["caption"], *shown(example["display"])]
+    return [example["label"], example["caption"], *item_shown_texts(example["display"])]
 
 
 def _example_display_problem(display: Any, set_name: str) -> str | None:
@@ -1156,6 +1247,11 @@ def pilot_items(inp: Inputs, seal: Seal, runs_dir: Path, trace_root: Path,
         if row["id"] in by_id:
             refuse("bad_input", f"{rows_path.name} repeats row id {row['id']!r}")
         by_id[row["id"]] = row
+        template = row.get("template")
+        if isinstance(template, str) and BLANK in template:
+            for side in ("clinical_term", "patient_term"):
+                if isinstance(row.get(side), str):
+                    inp.study(template.replace(BLANK, row[side]), f"pilot run {run_id} row {row['id']}")
 
     map_path = run_dir / "review_map.json"
     map_bytes = inp.read_bytes(map_path, f"pilot run {run_id} review map")
@@ -1388,6 +1484,8 @@ def main_items(inp: Inputs, seal: Seal, site: Path, allowlist: Path, n_pairs: in
         batch, index = s["batch"], s["batch_index"]
         label = f"{batch}#{index}"
         counts["payload_rows"] += 1
+        for side in ("clinical_prompt", "patient_prompt"):
+            inp.study(s[side], f"payload row {label}")
         if seal.row_sealed("tracing_main", batch, index, s["clinical_prompt"], f"payload row {label}"):
             refuse("sealed_row", f"the published payload carries the sealed row {label}: a holdout breach on the "
                                  "site. Stop and follow the breach protocol (seal_check.py) before any export")
@@ -1502,6 +1600,8 @@ def advice_items(inp: Inputs, seal: Seal, questions: dict, new_path: Path,
         if reference["tier"] not in tiers_allowed:
             refuse("bad_input", f"{where}: reference tier is not one of the reveal scale's values")
         _advice_seal(seal, item, where)
+        for field in ("clinical_message", "patient_message", "clinical_body", "patient_body"):
+            inp.study(item[field], where)
         display = _advice_display(item, where, cut_off=False)
         tier_counts[reference["tier"]] += 1
         item_id = item_id_for("advice", new_source, need_str(item["id"], f"{where} id"))
@@ -1541,6 +1641,8 @@ def advice_items(inp: Inputs, seal: Seal, questions: dict, new_path: Path,
             form = "truncated"
         forms[form] += 1
         _advice_seal(seal, item, where)
+        for field in ("clinical_message", "patient_message", "clinical_body", "patient_body"):
+            inp.study(item[field], where)
         display = _advice_display(item, where, cut_off=(form == "truncated"))
         item_id = item_id_for("advice", rerun_source, need_str(item["id"], f"{where} id"))
         seal.note_bucket(item_id, need_str(item["clinical_body"], f"{where} clinical_body"))
@@ -1598,6 +1700,7 @@ def multiturn_items(inp: Inputs, seeds_path: Path) -> tuple[list[dict], dict]:
             if sha256_text(entry["text"]) != entry["sha256"]:
                 refuse("hash_mismatch", f"{where}: text {entry['key']!r} no longer hashes to its recorded sha256")
             texts[entry["key"]] = entry["text"]
+            inp.study(entry["text"], where)
         n_turns = protocol["max_target_turns"]
         arms_out: list[dict] = []
         turn_sha: dict[str, list[str]] = {}
@@ -1882,6 +1985,8 @@ def build_bundle(args: argparse.Namespace) -> tuple[dict, str]:
     if example_hits:
         refuse("seal_hit", f"rater-visible text of {len(example_hits)} example(s) contains a sealed holdout phrase: "
                            + "; ".join(f"{k} :: {', '.join(v)}" for k, v in sorted(example_hits.items())))
+    if questions["instructions"].get("examples"):
+        check_example_copies(inp, questions["instructions"]["examples"])
 
     items.sort(key=lambda i: i["item_id"])
     random.Random(args.seed).shuffle(items)

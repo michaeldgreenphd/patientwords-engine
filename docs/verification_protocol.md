@@ -291,6 +291,14 @@ problem:
   an example may not.
 - **The holdout seal** (`seal_hit`): every string of every example is
   scanned for sealed phrases, as an item's texts are.
+- **A study item** (`example_copies_item`): no text of an example a
+  physician reads may repeat, or nearly repeat, a study text: any sentence,
+  message or script text of the pilot runs, the published payload, the
+  advice stimuli and the Petri seeds the export reads (selected or not), or
+  of an item of any bundle committed in `data/verification`. Texts are
+  compared in lower case with punctuation ignored; a near copy is a text
+  with at least four word 4-grams of which at least half occur in one
+  study text. The three draft examples share at most a quarter.
 
 The bundle copies the questions file, examples included, unchanged. A
 questions file without examples is still valid.
