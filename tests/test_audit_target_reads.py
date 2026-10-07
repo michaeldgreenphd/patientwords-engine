@@ -74,7 +74,8 @@ def engine(tmp_path: Path) -> Path:
         # 5: screened out
         result(5, None, None, None, [[out(" to"), 0.5]], None,
                screening={"status": "screened_out", "intended_target": " qq", "observed_clinical": None}),
-        # 6: the wordpiece rule measured ' xabi' for ' xabicor', a token this model returns (result 3)
+        # 6: the wordpiece rule measured ' xabi' for ' xabicor', a token this model returns (result 3); its
+        # translated side, which no published field carries, took a likelier extension's value
         result(6, out(" xabi"), 0.2, 0.1, [[out(" xabi"), 0.2]], [[out(" xabi"), 0.1]]),
         # 7: the legacy prefix match took a likelier extension of the intended word, on the screened path
         result(7, out(" qupel"), 0.5, 0.2, [[out(" qupel"), 0.5]], [[out(" qupel"), 0.2]], **passed(" qup")),
@@ -89,6 +90,8 @@ def engine(tmp_path: Path) -> Path:
         # 12: a case-variant leading piece the site's case-insensitive rule does not flag
         result(12, out(" Qam"), 0.3, 0.1, [[out(" Qam"), 0.3]], [[out(" Qam"), 0.1]], **passed(" qambel")),
     ]
+    hosted[5]["probabilities"]["translated"] = 0.09
+    hosted[5]["predictive_spread"]["translated"] = [[out(" xabis"), 0.09]]
     summary = {"mode": "2panel", "backend": "hosted", "graph_model": "gemma-2-2b"}
     write(root / f"trace_out/{STEM}/batch_summary.part_01.json", {**summary, "results": hosted})
     # a later part re-records index 3 unchanged: one more occurrence, the same effective result
@@ -138,11 +141,15 @@ def test_the_audit_flags_both_borrow_directions(engine, tmp_path):
     o = rep["counts"]["overall"]
     assert o["results"] == 16 and rep["superseded_duplicate_results"] == 2
     assert o["sides.prefix_mismatch"] == 1
-    assert o["sides.target_absent_from_spread.prefix_neighbour"] == 3  # hosted #3, the logits tie, the pilot row
+    # hosted #3, hosted #6's translated side, the logits tie, the pilot row
+    assert o["sides.target_absent_from_spread.prefix_neighbour"] == 4
     assert o["sides.target_absent_from_spread.unrelated_token"] == 1   # hosted #10
-    assert o["results_with_borrowed_value"] == 3                       # hosted #2 and #3, pilot #1
-    assert o["published_results_with_borrowed_value"] == 2
+    assert o["results_with_borrowed_value"] == 4                       # hosted #2, #3 and #6, pilot #1
+    assert o["published_results_with_borrowed_value"] == 3
+    # #6 is borrowed on its translated side only, which no published field carries
     assert o["published_results_with_borrowed_value_in_a_published_field"] == 2
+    (tx,) = [f for f in rep["findings"] if f["index"] == 6 and f["side"] == "translated"]
+    assert tx["borrowed"] is True and tx["published"] is True and tx["published_field"] is None
 
     (m,) = [f for f in rep["findings"] if f["status"] == "prefix_mismatch"]
     assert (m["index"], m["side"], m["recorded"], m["exact"]) == (2, "patient", 0.068, [0.041])
@@ -163,7 +170,7 @@ def test_the_audit_flags_both_borrow_directions(engine, tmp_path):
     c = rep["counts"]
     assert c["by_root"]["pilot/traces"]["results_with_borrowed_value"] == 1
     assert c["by_model"]["qwen3-4b"].get("results_with_borrowed_value", 0) == 0
-    assert c["by_batch"][STEM]["results_with_borrowed_value"] == 2
+    assert c["by_batch"][STEM]["results_with_borrowed_value"] == 3
 
 
 def test_the_audit_classifies_each_kind_of_substitution(engine, tmp_path):
@@ -281,3 +288,30 @@ def test_a_new_exact_read_tied_at_the_display_cut_is_consistent(tmp_path, monkey
     rep = run(root, tmp_path)
     assert rep["counts"]["overall"].get("results_with_borrowed_value", 0) == 0
     assert rep["counts"]["overall"]["sides.consistent"] == 2
+
+
+def test_a_sides_own_read_counts_only_when_it_records_that_value():
+    target = out(" xab")
+    spread = [[out(" qqq"), 0.448], [out(" xabi"), 0.068], [out(" xab"), 0.041]]
+    agrees = {"status": "exact", "token": target, "probability": 0.041}
+    assert audit.check_side(target, 0.041, spread, agrees) == {"status": "consistent", "identity": "target_read"}
+    differs = {"status": "exact", "token": target, "probability": 0.041}
+    assert audit.check_side(target, 0.068, spread, differs)["status"] == "prefix_mismatch"
+    other = {"status": "exact", "token": out(" xabi"), "probability": 0.068}
+    assert audit.check_side(target, 0.068, spread, other)["status"] == "prefix_mismatch"
+    missing = {"status": "missing", "reason": "target_not_in_returned_logits"}
+    assert audit.check_side(target, 0.068, spread, missing)["status"] == "prefix_mismatch"
+
+
+def test_relations_keep_the_leading_space():
+    assert audit.relation(out(" xab"), " xab") == "exact"
+    assert audit.relation(out(" xab"), "xab") == "exact"  # an unspaced intended word gets its space, as the read does
+    assert audit.relation(out("xab"), " xab") == "space_variant"
+    assert audit.relation(out("xab"), " xabmel") == "space_variant_wordpiece"
+    assert audit.relation(out(" xab"), " xabmel") == "leading_wordpiece"
+    assert audit.relation(out(" xa"), " xabmel") == "short_leading_wordpiece"
+    assert audit.relation(out(" Xab"), " xab") == "case_variant"
+    assert audit.relation(out(" xabicors"), " xabicor") == "extension"
+    assert audit.relation(out(" "), " xab") == "whitespace_token"
+    assert audit.is_substitution("space_variant", "logits") and audit.is_substitution("short_leading_wordpiece", "hosted")
+    assert not audit.is_substitution("short_leading_wordpiece", "logits")

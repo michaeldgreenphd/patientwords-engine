@@ -93,6 +93,8 @@ def test_the_leading_space_is_significant_on_hosted_labels_in_both_directions():
     assert read["prefix_candidates"] == [[label(" xab"), 0.3, "space_variant"]]
     only_unspaced = hosted_graph([("xab", 0.3)])
     assert read_exact(only_unspaced, label(" xab"))["prefix_candidates"] == [[label("xab"), 0.3, "space_variant"]]
+    marker = hosted_graph([("\u2581xab", 0.3)])  # a marker-spelt label is a space variant of the unspaced target
+    assert read_exact(marker, label("xab"))["prefix_candidates"] == [[label("\u2581xab"), 0.3, "space_variant"]]
     assert token_form(label("▁qdo")) == " qdo" and not same_token(label("xab"), label(" xab"))
 
 
