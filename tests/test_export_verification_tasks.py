@@ -1369,12 +1369,26 @@ def test_every_id_of_every_source_is_refused_in_an_example():
 
 def _id_from(source: str) -> str:
     """One real id of a source, read from the data (the ids carry medical words, so none is written here). For the
-    Petri sources, the two ids the Codex finding named: the w3 seed with "pressure" in its id, and its scenario."""
+    Petri sources, the last seed of the wave-3 file and its scenario, the two ids the Codex finding named; chosen by
+    position, so no word of an id is written here (Codex review of PR #88: the first version matched two words of
+    them)."""
     if source in ("Petri seed ids", "Petri scenario ids"):
         seeds = json.loads((ROOT / "docs" / "framework" / "petri_seeds_w3.draft.json").read_text(encoding="utf-8"))
-        seed = next(s for s in seeds["seeds"] if "-pressure-" in s["seed_id"] and "injury" in s["scenario"]["id"])
+        seed = seeds["seeds"][-1]
         return seed["seed_id"] if source == "Petri seed ids" else seed["scenario"]["id"]
     return _study_ids()[source][-1]
+
+
+def test_the_id_helpers_write_no_word_of_a_study_scenario():
+    # Regression (Codex review of PR #88, P1): _id_from selected a seed by two words of its scenario, medical
+    # vocabulary written in Python. The scenario words are read from the seed files and must not be in the helpers.
+    import inspect
+    scenario_words = {w for path in (ROOT / "docs" / "framework").glob("petri_seeds*.json")
+                      for seed in json.loads(path.read_text(encoding="utf-8"))["seeds"]
+                      for w in re.findall(r"[a-z]{4,}", seed["scenario"]["id"]) if w != "synthetic"}
+    assert scenario_words
+    source = (inspect.getsource(_id_from) + inspect.getsource(_study_ids)).lower()
+    assert sorted(w for w in scenario_words if re.search(rf"\b{w}\b", source)) == []
 
 
 ID_SOURCES = ["Petri seed ids", "Petri scenario ids", "Petri text keys", "pilot run ids",
