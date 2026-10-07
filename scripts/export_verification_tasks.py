@@ -89,7 +89,8 @@ fields, a highlight that is the span ``diff_spans`` gives, the cut-off flag the 
 ``n_turns`` long with ``same_as`` set as ``multiturn_items`` sets it. An example carries nothing else: no answer,
 reveal or provenance. An item's display is built only from the texts a physician rates, so it carries none of the
 study's own model names, ids, measurements or answers; an example is written by hand, so its text is checked
-instead, and more strictly than an item's could be: it may not hold a model or vendor name, a batch, run or item id,
+instead, and more strictly than an item's could be: it may not hold a model or vendor name from any of the engine's
+model registries (``EXAMPLE_MODEL_NAMES``; found inside another word too, as in BioMistral), a batch, run or item id,
 a decimal number or a percentage (how a measured value is written, though a patient's message in an item may hold
 one), or the label of an urgency level a reveal can propose (read from the questions data). Every example string is
 seal-scanned as an item's display strings are.
@@ -322,8 +323,32 @@ EXAMPLE_CUT_OFF = {"tracing_pair": True, "advice_new": False, "advice_rerun": Fa
 # measured value is written. An item's display, built from the texts a physician rates, carries none of the study's
 # own; an example is written by hand, so its text is checked, more strictly than an item's could be (a patient's
 # message may hold a decimal number). Urgency-level labels are read from the questions data (example_answer_labels).
-EXAMPLE_MODEL_NAMES = re.compile(r"\b(gemma|qwen|llama|claude|anthropic|openai|gpt|gemini|grok|deepseek|kimi|"
-                                 r"moonshot|mistral|haiku|sonnet|opus|neuronpedia|openrouter)\b", re.I)
+#
+# The model and vendor names are those of every model registry the engine has: scripts/logits_eval.py HF_IDS (and
+# scripts/activation_patch.py's), medlang_circuits/graph_client.py MODEL_REGISTRY, medlang_circuits/evaluate_models.py
+# PRICING, LEGACY_ALIASES and DEFAULT_MODELS, scripts/pab_probe_cost.py's price tables and presets,
+# data/advice_providers.json (every vendor block, consumer product and model id it names), the Petri lane's targets
+# and judges (it prices a target from the two tables above, and data/petri records the landed ones) and its park
+# target, plus the two services the study calls (Neuronpedia, OpenRouter). tests/test_export_verification_tasks.py
+# reads every one of those registries and fails when an id in any of them is not matched here, so a model added to a
+# registry must be named here too. A distinctive name is matched case-insensitively anywhere in a string, so a name
+# inside another (BioMistral, MedGemma, OpenMeditron, ChatGPT, Qwen3) is found; Codex review of PR #88 found the
+# first version's word-boundary pattern let those through.
+EXAMPLE_MODEL_SUBSTRINGS = ("gemma", "qwen", "llama", "olmo", "mistral", "meditron", "apertus", "claude", "openai",
+                            "gpt", "gemini", "grok", "deepseek", "kimi", "moonshot", "xai", "copilot", "allenai", "epfl",
+                            "mockllm", "neuronpedia", "openrouter")
+# Names that are ordinary words, or sit inside ordinary words, get an explicit pattern instead, so that the word in
+# the right column is not refused (measured against the system word list and every short string in the study's data).
+EXAMPLE_MODEL_PATTERNS = (
+    r"(?<![a-z])anthropic",                  # the vendor, not philanthropic, misanthropic
+    r"\b(?:opus|sonnet|haiku|fable)\b",      # Claude tiers named alone; inside octopus, affable
+    r"\bmuse[\s_-]*spark\b",                 # meta/muse-spark-1.3; both halves are ordinary words (amused, sparkle)
+    r"\bmeta(?:[\s_-]?ai\b|/|[\s_-]llama)",  # Meta AI, meta/<model>, meta-llama; not metal, metaphor
+    r"\bgoogle\b",                           # the vendor, not googled
+    r"\bnova[\s_-](?:micro|lite|pro|premier)\b",  # Amazon Nova (nova-lite-bedrock); not supernova, Casanova
+)
+EXAMPLE_MODEL_NAMES = re.compile("|".join([*map(re.escape, EXAMPLE_MODEL_SUBSTRINGS), *EXAMPLE_MODEL_PATTERNS]),
+                                 re.I)
 EXAMPLE_IDS = re.compile(r"\b(pairs|advman|advnat|advmc|advprobe|stimuli|vtasks|pilot)_\w|\bvt_[0-9a-f]{4}", re.I)
 EXAMPLE_MEASURED = re.compile(r"\d[.,]\d|%")
 

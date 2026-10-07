@@ -260,7 +260,9 @@ problem:
   that repeats an earlier version word for word must say so (`same_as`), as
   an item's does.
 - **What a physician may not see** (`example_not_blind`): a model or vendor
-  name; a batch, run or item id; a decimal number or a percentage, which is
+  name from any of the engine's model registries, found even inside another
+  word (BioMistral, MedGemma, ChatGPT; a test fails when a registered model
+  is not matched); a batch, run or item id; a decimal number or a percentage, which is
   how a measured value is written; or the name of any urgency level the
   study can propose, read from the questions file. An item's display is
   built only from the texts physicians rate, so it carries none of the

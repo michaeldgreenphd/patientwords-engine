@@ -36,6 +36,7 @@ compared from the items onward.
 """
 from __future__ import annotations
 
+import ast
 import copy
 import hashlib
 import importlib.util
@@ -999,6 +1000,115 @@ def test_a_sealed_phrase_in_an_example_refuses_the_export_and_names_the_example(
     assert f"instructions.examples[1] (advice_new) :: {TIER_B}#1" in message, message
     assert "serialized bundle" not in message                      # the per-string sweep caught it first
     assert SEALED not in message and SEALED.upper() not in message
+
+
+def _module_value_node(rel: str, name: str) -> ast.expr:
+    """The value of a module-level assignment in an engine file, as an ast node (the file is not imported: some of
+    these run argparse or need network libraries at import)."""
+    for node in ast.parse((ROOT / rel).read_text(encoding="utf-8")).body:
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target] if isinstance(node, ast.AnnAssign) \
+            else []
+        if any(isinstance(t, ast.Name) and t.id == name for t in targets):
+            return node.value
+    raise AssertionError(f"{rel} has no module-level {name}")
+
+
+def _module_literal(rel: str, name: str) -> Any:
+    return ast.literal_eval(_module_value_node(rel, name))
+
+
+def _registered_model_ids() -> dict[str, list[str]]:
+    """Every model id, vendor and product name in every model registry the engine has, by registry."""
+    def keys_and_values(rel: str, name: str) -> list[str]:
+        value = _module_literal(rel, name)
+        return [s for k, v in value.items() for s in (k, v) if isinstance(s, str)]
+
+    out = {
+        "logits_eval HF_IDS": keys_and_values("scripts/logits_eval.py", "HF_IDS"),
+        "activation_patch HF_IDS": keys_and_values("scripts/activation_patch.py", "HF_IDS"),
+        "graph_client MODEL_REGISTRY": keys_and_values("medlang_circuits/graph_client.py", "MODEL_REGISTRY"),
+        "neuronpedia_features MODEL_SOURCE_SETS": [   # keys only: a value names a constant
+            ast.literal_eval(k) for k in _module_value_node("medlang_circuits/neuronpedia_features.py",
+                                                            "MODEL_SOURCE_SETS").keys],
+        "evaluate_models PRICING, LEGACY_ALIASES, DEFAULT_MODELS": [
+            *_module_literal("medlang_circuits/evaluate_models.py", "PRICING"),
+            *keys_and_values("medlang_circuits/evaluate_models.py", "LEGACY_ALIASES"),
+            *_module_literal("medlang_circuits/evaluate_models.py", "DEFAULT_MODELS")],
+        "pab_probe_cost BEDROCK_PRICES, PRESETS": [
+            *_module_literal("scripts/pab_probe_cost.py", "BEDROCK_PRICES"),
+            *[m for preset in _module_literal("scripts/pab_probe_cost.py", "PRESETS").values()
+              for k, v in preset.items() if k.endswith(("_model", "_models"))
+              for m in ([v] if isinstance(v, str) else v)]],
+        "model lists of the exporters and planners": [
+            *_module_literal("scripts/backfill_planner.py", "MODELS"),
+            *_module_literal("scripts/export_frontend_simulated.py", "MODELS"),
+            *_module_literal("scripts/export_archive.py", "MODELS"),
+            *_module_literal("scripts/paired_stats_rigor.py", "_PREREG_MODELS"),
+            _module_literal("scripts/translate_corpus.py", "DEFAULT_MODEL")],
+        "Petri park target": [_module_literal("scripts/fire_trigger.py", "PETRI_MOCK_TARGET")],
+    }
+    providers = json.loads((ROOT / "data" / "advice_providers.json").read_text(encoding="utf-8"))
+    blocks = {k: v for k, v in providers.items() if not k.startswith("_")}
+    # openrouter is the aggregator: its consumer_product names no product, so it is not a name to look for
+    assert "aggregator" in blocks["openrouter"]["consumer_product"]
+    out["advice_providers.json"] = [
+        *blocks, *[b["consumer_product"] for k, b in blocks.items() if "consumer_product" in b and k != "openrouter"],
+        *[b["consumer_default"] for b in blocks.values() if "consumer_default" in b],
+        *[m for b in blocks.values() for field in ("pricing", "omit_temperature", "min_output_tokens")
+          for m in (b.get(field) or {})]]
+    petri = []
+    for path in sorted((ROOT / "data" / "petri").rglob("manifest.json")):
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        petri += [m["model"] for m in (manifest.get("models") or {}).values()
+                  if isinstance(m, dict) and isinstance(m.get("model"), str)]
+        judge = ((manifest.get("artifacts") or {}).get("judge_of_record") or {}).get("judge_model")
+        petri += [judge] if isinstance(judge, str) else []
+    out["Petri targets and judges of landed runs"] = petri
+    return out
+
+
+def test_every_model_in_every_registry_is_refused_in_an_example():
+    # Regression (Codex review of PR #88): the first pattern was a short word list with word boundaries, so BioMistral
+    # and MedGemma, registered in scripts/logits_eval.py, passed. Every registered id must now be matched.
+    registries = _registered_model_ids()
+    assert all(registries.values()) and sum(map(len, registries.values())) > 100, \
+        {k: len(v) for k, v in registries.items()}
+    missed = {name: sorted({m for m in ids if not evt.EXAMPLE_MODEL_NAMES.search(m)})
+              for name, ids in registries.items()}
+    assert {k: v for k, v in missed.items() if v} == {}
+
+
+@pytest.mark.parametrize("name", [
+    "BioMistral", "MedGemma",       # scripts/logits_eval.py, inside another name (the Codex finding)
+    "OLMo", "Apertus",              # scripts/logits_eval.py HF_IDS
+    "Qwen3-4B",                     # medlang_circuits/graph_client.py MODEL_REGISTRY
+    "Fable 5",                      # medlang_circuits/evaluate_models.py PRICING
+    "Nova Lite",                    # scripts/pab_probe_cost.py BEDROCK_PRICES
+    "ChatGPT", "Muse Spark",        # data/advice_providers.json (a consumer product, an openrouter slug)
+    "mockllm/model",                # the Petri lane's park target
+    "EPFL", "AllenAI",              # the labs behind registered models (epfl-llm, EPFLiGHT, allenai/OLMo)
+    "Neuronpedia",                  # the service that traces the graph models
+])
+def test_a_registered_model_name_inside_example_text_is_refused(tmp_path, name):
+    examples = _examples()
+    examples[0]["caption"] = f"Compare with what {name} wrote."
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "a model or vendor name" in message and "instructions.examples[0]" in message, message
+    assert name not in message
+
+
+def test_ordinary_words_that_contain_a_name_are_not_refused(tmp_path, capsys):
+    # The names that are ordinary words, or sit inside them, have explicit patterns (EXAMPLE_MODEL_PATTERNS), so an
+    # example may still use these words.
+    examples = _examples()
+    examples[0]["caption"] = ("An affable octopus wrote a metaphor about metal, googled a supernova and was amused by "
+                              "the sparkle of a philanthropic Casanova.")
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    bundle, _ = rerun(paths, tmp_path / "out")
+    assert bundle["questions"]["instructions"]["examples"][0]["caption"] == examples[0]["caption"]
 
 
 # ---- other refusals -----------------------------------------------------------------------------------------
