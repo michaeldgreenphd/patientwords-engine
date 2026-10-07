@@ -1071,7 +1071,8 @@ def _scale_value(set_name: str, kind: type) -> tuple[Any, str, int | None]:
 
 
 @pytest.mark.parametrize("form", ["The correct rating is {v}.", "This was rated {v}.", "It scores {v}.",
-                                  "The score: {v}.", "{v} out of {top}", "The answer is {s}.", "THE ANSWER IS {S}.",
+                                  "The score: {v}.", "A rating of {v} fits.", "Given a score of {v}.",
+                                  "{v} out of {top}", "The answer is {s}.", "THE ANSWER IS {S}.",
                                   "Rated as {label}.",
                                   "The verdict would be {label}."])
 def test_a_rating_or_answer_stated_outright_is_refused(tmp_path, form):

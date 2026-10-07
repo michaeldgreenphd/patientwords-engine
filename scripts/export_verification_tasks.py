@@ -699,9 +699,10 @@ def example_answer_levels(doc: dict) -> list[tuple[str, list[str]]]:
     return [(name, sorted(terms)) for name, terms in levels.items()]
 
 
-# An answer stated outright: "rating/score/answer/verdict" with a linking verb or sign, or "rated/scored/scores", before
-# an answer. "Answer yes or no" (no link) describes the task and is not one.
-_ASSERTION_LEAD = (r"\b(?:(?:rating|score|answer|verdict)\s*(?:is|was|would\s+be|should\s+be|will\s+be|=|:)"
+# An answer stated outright: "rating/score/answer/verdict" with a linking verb, "of" ("a rating of 4"; Gemini review of
+# PR #88, round 3) or a sign, or "rated/scored/scores", before an answer. "Answer yes or no" (no link) describes the
+# task and is not one.
+_ASSERTION_LEAD = (r"\b(?:(?:rating|score|answer|verdict)\s*(?:is|was|would\s+be|should\s+be|will\s+be|of|=|:)"
                    r"|(?:rated|scored|scores)(?:\s+(?:as|at))?)\s*")
 
 
