@@ -1287,6 +1287,67 @@ def test_ordinary_text_with_hyphens_and_short_codes_is_not_read_as_an_id(tmp_pat
     assert bundle["questions"]["instructions"]["examples"][1]["caption"] == examples[1]["caption"]
 
 
+# Field names of the payload and the trace summaries that are bookkeeping, not a method (data the item is made of,
+# file and run housekeeping), and method terms that are also ordinary single words, refused only inside their method
+# phrases (EXAMPLE_METHOD_TERMS). Everything else the study names a field or a lane must be refused.
+NOT_METHOD_FIELDS = {"batch", "batch index", "index", "start index", "clinical prompt", "patient prompt", "clinical term",
+                     "patient term", "intended target", "term", "prompts", "outputs", "html", "png", "trace url",
+                     "topic", "topics", "rationale", "urgency", "models", "mode", "backend", "completed", "partial",
+                     "pairs requested", "environment", "inference", "variants", "multiples", "continuations",
+                     "held fixed", "results"}
+ORDINARY_METHOD_WORDS = {"flipped", "screening", "steered", "steering", "patching"}
+
+
+def _method_terms() -> list[str]:
+    """The study's own method vocabulary, as phrases: every field of the site payload (PAYLOAD_SCENARIO_KEYS) and of
+    the committed trace summaries (top level and results), and every push-to-run lane name (fire_trigger.TRIGGERS),
+    with underscores and hyphens read as spaces."""
+    fields = set(evt.PAYLOAD_SCENARIO_KEYS)
+    for path in sorted((ROOT / "trace_out").glob("*/batch_summary*.json")):
+        summary = json.loads(path.read_text(encoding="utf-8"))
+        fields |= set(summary) | {k for r in summary.get("results", [])[:3] if isinstance(r, dict) for k in r}
+    fields |= set(_module_literal("scripts/fire_trigger.py", "TRIGGERS"))
+    return sorted({re.sub(r"[_-]+", " ", f).strip() for f in fields})
+
+
+def test_every_method_field_and_lane_name_is_refused_in_an_example():
+    # Regression (Codex review of PR #88): examples were not checked for method vocabulary at all.
+    terms = _method_terms()
+    assert len(terms) > 40
+    missed = [t for t in terms if t not in NOT_METHOD_FIELDS | ORDINARY_METHOD_WORDS
+              and not evt.EXAMPLE_METHOD_TERMS.search(t)]
+    assert missed == []
+    # the exemptions are real: an ordinary word on its own is not refused
+    assert [w for w in ORDINARY_METHOD_WORDS if evt.EXAMPLE_METHOD_TERMS.search(w)] == []
+
+
+@pytest.mark.parametrize("text", ["Selected by circuit tracing for its language penalty.", "Read from its attribution graph.",
+                                  "The logit lens shows it.", "Its next-token probability is high.",
+                                  "It changes the next token.", "The Jacobian lens shows it.",
+                                  "Selected by the study for review.",
+                                  "A transcoder feature fires.", "Traced on Neuronpedia.", "Feature steering changed it.",
+                                  "The selection rule picked it.", "It is a holdout pair.", "From Tier B.",
+                                  "The clinical mass is high.", "Run in a Petri audit.", "By activation patching."])
+def test_a_method_term_in_example_text_is_refused(tmp_path, text):
+    examples = _examples()
+    examples[1]["caption"] = text
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "a method term" in message or "a model or vendor name" in message, message
+
+
+def test_ordinary_words_that_are_also_method_terms_are_not_refused(tmp_path, capsys):
+    examples = _examples()
+    examples[1]["caption"] = ("Turn the steering wheel, probably; pick from a selection of keys, the circuit training "
+                              "room, a petri dish, the top shelf or the target practice; spread it; the language was "
+                              "plain; she flipped the page after a film screening, patching the tyre.")
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    bundle, _ = rerun(paths, tmp_path / "out")
+    assert bundle["questions"]["instructions"]["examples"][1]["caption"] == examples[1]["caption"]
+
+
 def _module_value_node(rel: str, name: str) -> ast.expr:
     """The value of a module-level assignment in an engine file, as an ast node (the file is not imported: some of
     these run argparse or need network libraries at import)."""

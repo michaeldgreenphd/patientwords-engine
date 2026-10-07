@@ -365,6 +365,33 @@ EXAMPLE_IDS = re.compile("|".join((
     r"\b(?:synthetic-h|w)\d+[a-z]?(?:-[a-z0-9]+)*-\d{4}\b",   # Petri scenario ids (w3-<slug>-0001, synthetic-h1-0001)
     r"\br\d{3}\b",                                            # pilot review ids (review_map.json: r001)
 )), re.I)
+# The study's method vocabulary, which an example may not show (the blinding section of docs/verification_protocol.md
+# says physicians never see method labels; Codex review of PR #88 found examples were not checked for it). The terms
+# are the study's own: the method fields of the site payload (PAYLOAD_SCENARIO_KEYS) and of the trace summaries, the
+# names of the push-to-run lanes (fire_trigger.TRIGGERS), and the method names AGENTS.md uses (attribution graphs,
+# transcoders, next-token probabilities, the holdout and Tier A/B; Neuronpedia is refused as a service name, with the
+# model names). tests/test_export_verification_tasks.py reads those
+# fields and lane names and fails when one is neither matched here nor listed there as bookkeeping or an ordinary word.
+# A term that is also an ordinary word is matched only in its method phrase: steering (feature steering, steering
+# boost; not the steering wheel), selection (selection rule, selected by; not a selection of), patching (activation
+# patching; not patching a tyre), circuit (circuit tracing or diff; not circuit training), petri (not a petri dish),
+# spread, top, target, model and set only in the payload's and summaries' own phrases.
+EXAMPLE_METHOD_TERMS = re.compile("|".join((
+    r"\blogit", r"transcoder", r"\battribution", r"\bprobabilit", r"\bj-?lens\b", r"\bjacobian\b",
+    r"\bnext[\s_-]+token", r"\bhold[\s_-]?out\b", r"\btier[\s_-]+[ab]\b",
+    r"\bcircuit[\s_-]*(?:trac|diff)", r"\blanguage[\s_-]+penalt", r"\bprob[\s_-]+(?:clinical|patient)\b",
+    r"\bclinical[\s_-]+mass\b", r"\bdepth[\s_-]+(?:class|readout|probe)", r"\banchor[\s_-]+fallback",
+    r"\btarget[\s_-]+tokens?\b", r"\btop[\s_-]+(?:clinical|patient|path)\b", r"\bspread[\s_-]+(?:clinical|patient)\b",
+    r"\bpredictive[\s_-]+spread", r"\berror[\s_-]+share", r"\bforced[\s_-]+targets?\b", r"\bmitigation[\s_-]+recovery",
+    r"\btranslation[\s_-]+(?:method|model)", r"\bgraph[\s_-]+models?\b", r"\bsource[\s_-]+sets?\b",
+    r"\bscreen(?:ing)?[\s_-]+targets?\b", r"\bgeneration[\s_-]+params?\b", r"\bbaseline[\s_-]+(?:prompt|probabilit)",
+    r"\bregister[\s_-]+(?:shift|gap|contrast)", r"\bvariety[\s_-]+shift", r"\bactivation[\s_-]+patch",
+    r"\bpatching[\s_-]+grid", r"\bsteer(?:ing|ed)[\s_-]+(?:boost|vector|feature|result|experiment)s?\b",
+    r"\b(?:causal|feature|activation)[\s_-]+steer", r"\bselection[\s_-]+(?:rule|heuristic|criteri|method)",
+    r"\bselected[\s_-]+by\b", r"\bscenario[\s_-]+generation", r"\bmodel[\s_-]+evaluation", r"\barchive[\s_-]+renders?\b",
+    r"\badvice[\s_-]+eval", r"\bpetri\b(?![\s_-]+dish)", r"\bpab[\s_-]+probe",
+)), re.I)
+
 # A measured value as it is written: a decimal with or without its leading digit (0.43, .43, -.43; not an ellipsis
 # before a number), a percent sign, or a percentage in words (percent, per cent, percentage, pct). Codex review of PR
 # #88 found the first version, digit-dot-digit and the sign only, let the leading-dot and word forms through.
@@ -827,6 +854,8 @@ def validate_examples(doc: dict, where: str) -> None:
                  if any(pattern.search(t) for t in texts)]
         if any(EXAMPLE_IDS.search(t) for t in example_shown_texts(example)):
             shown.append("a batch, run, item, seed or scenario id")
+        if any(EXAMPLE_METHOD_TERMS.search(t) for t in example_shown_texts(example)):
+            shown.append("a method term")
         shown += [f"the urgency level {term!r}" for term in answer_terms
                   if any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", t, re.I) for t in texts)]
         shown += [what for what, pattern in example_answer_rules(doc, family) if any(pattern.search(t) for t in texts)]

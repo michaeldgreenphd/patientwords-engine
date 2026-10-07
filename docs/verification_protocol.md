@@ -266,7 +266,13 @@ problem:
   data: batch, run, bundle and item ids, pilot row and review ids, and the
   Petri seed and scenario ids of the scripts (a test fails when an id of
   any source is not matched; an example's arm ids and display kind, which a
-  physician does not read, are not checked); a decimal number (.43 and -.43 too) or a percentage (with the sign or in words: percent, per cent, pct), which is
+  physician does not read, are not checked); the study's method vocabulary
+  (circuit tracing, attribution, language penalty, logits, probabilities,
+  transcoders, steering, the selection rule and the like: every method
+  field of the site payload and the trace summaries and every lane name,
+  a test fails when one is not matched; a method term that is also an
+  ordinary word, such as steering or selection, only in its method phrase);
+  a decimal number (.43 and -.43 too) or a percentage (with the sign or in words: percent, per cent, pct), which is
   how a measured value is written; or any urgency level the study can
   propose, by its label or by the value a proposed tier is stored as (with
   an underscore written as a space or a hyphen too), read from the
