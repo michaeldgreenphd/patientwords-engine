@@ -290,11 +290,16 @@ problem:
   "it"), with a copula and a word an answer could be ("The conversation is
   entirely plausible", "This message is realistic"). Those words are read
   from the questions file: the labels of the ordinal scales the example's
-  questions use, the adjectives of its "is the ...?" yes/no questions, and
-  the qualities the welcome text names. A clause under "whether", "if" or
-  "how", or a sentence that opens with an imperative ("Judge whether the
-  conversation is plausible", "Say how likely it is"), is a task directive
-  and is kept. A patient's own words in a display are not read for this. An item's display is
+  questions use, the adjectives of its "is the ...?" yes/no questions and
+  what those questions measure ("medically coherent"), and the qualities
+  the welcome text names. Each clause is judged on its own (clauses end at
+  sentence punctuation, a comma, or but, and, yet, while, although or
+  however). A clause under "whether", "if" or "how", or one that opens with
+  a directive (judge, rate, say, decide, assess, determine, check, choose,
+  tell) not followed by "that" ("Judge whether the conversation is
+  plausible", "Say how likely it is"), is a task directive and is kept. A
+  patient's own words in a display are not read for this. "A rating of 4"
+  is a rating statement, like "the rating is 4". An item's display is
   built only from the texts physicians rate, so it carries none of the
   study's own models, ids, measurements or answers. An example is written by
   hand, so its text is checked instead, and more strictly than an item's
