@@ -446,3 +446,32 @@ def test_equivalent_spellings_of_one_wordpiece_are_ambiguous():
     # a different piece is not a duplicate of the chosen one
     ok = resolve_target(hosted_graph([(" xabi", 0.3), ("▁xab", 0.1)]), " xabicor")
     assert ok["token"] == label(" xabi") and ok["alternatives"] == [[label("▁xab"), 0.1]]
+
+
+def unreadable(g: dict[str, Any], tok: str) -> dict[str, Any]:
+    """Add a logit node for ``tok`` whose probability does not parse."""
+    g["nodes"].append({"node_id": f"L_np{len(g['nodes'])}", "feature_type": "logit", "clerp": f'Output "{tok}"'})
+    return g
+
+
+def test_an_unreadable_copy_of_the_exact_token_makes_the_read_ambiguous():
+    read = read_exact(unreadable(hosted_graph([(" xab", 0.45), (" zz", 0.1)]), " xab"), label(" xab"))
+    assert read["status"] == "missing" and read["reason"] == "ambiguous_exact_match" and "probability" not in read
+    assert read["exact_candidates"] == [[label(" xab"), 0.45], [label(" xab"), None]]
+
+
+def test_unreadable_wordpieces_are_never_skipped():
+    # an unreadable copy of the chosen piece: ambiguous
+    dup = resolve_target(unreadable(hosted_graph([(" xabi", 0.3)]), " xabi"), " xabicor")
+    assert dup["reason"] == "ambiguous_wordpiece" and "probability" not in dup
+    assert dup["wordpiece_candidates"] == [[label(" xabi"), 0.3], [label(" xabi"), None]]
+    # a longer unreadable piece: the shorter readable one may not stand in for it
+    longer = resolve_target(unreadable(hosted_graph([(" xab", 0.3)]), " xabico"), " xabicor")
+    assert longer["status"] == "missing" and longer["reason"] == "unparseable_probability"
+    assert longer["wordpiece_candidates"] == [[label(" xab"), 0.3], [label(" xabico"), None]]
+    # only unreadable pieces
+    only = resolve_target(unreadable(hosted_graph([(" zz", 0.3)]), " xabi"), " xabicor")
+    assert only["reason"] == "unparseable_probability"
+    # an unreadable token that is not a piece changes nothing
+    fine = resolve_target(unreadable(hosted_graph([(" xabi", 0.3)]), " qq"), " xabicor")
+    assert fine["status"] == "leading_wordpiece" and fine["token"] == label(" xabi")

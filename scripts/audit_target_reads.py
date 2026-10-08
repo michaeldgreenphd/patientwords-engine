@@ -945,9 +945,12 @@ def main(argv: list[str] | None = None) -> int:
         refuse("--compact-out lists published rows, so it needs --site-payload")
     trace_roots = args.trace_root or list(DEFAULT_TRACE_ROOTS)
     out = args.out.resolve()
-    for tr in trace_roots:
-        if out.is_relative_to((root / tr).resolve()):
-            refuse(f"--out {out} is under the trace root {tr}; this audit writes nothing there")
+    compact_out = args.compact_out.resolve() if args.compact_out is not None else None
+    # every output path is checked before the audit runs, so a refusal has written nothing
+    for flag, path in (("--out", out), ("--compact-out", compact_out)):
+        for tr in trace_roots:
+            if path is not None and path.is_relative_to((root / tr).resolve()):
+                refuse(f"{flag} {path} is under the trace root {tr}; this audit writes nothing there")
     missing = [tr for tr in trace_roots if not (root / tr).is_dir()]
     if missing:
         refuse(f"trace root(s) {', '.join(missing)} not found under {root}; an absent root would read as a clean "
@@ -959,11 +962,7 @@ def main(argv: list[str] | None = None) -> int:
         report["inputs"]["site_payload"]["site_ref"] = args.site_ref
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-    if args.compact_out is not None:
-        compact_out = args.compact_out.resolve()
-        for tr in trace_roots:
-            if compact_out.is_relative_to((root / tr).resolve()):
-                refuse(f"--compact-out {compact_out} is under the trace root {tr}")
+    if compact_out is not None:
         invocation = (["scripts/audit_target_reads.py", "--root", portable_path(root), "--out", "<full report>"]
                       + [arg for tr in trace_roots for arg in ("--trace-root", tr)]
                       + ["--site-payload", portable_path(args.site_payload.resolve())]

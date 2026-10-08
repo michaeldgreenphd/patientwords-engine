@@ -590,3 +590,11 @@ def test_a_payload_row_with_another_target_token_is_stale(engine, tmp_path):
     assert [(x["index"], x["fields"]) for x in rep["published_stale"]] == [(4, ["target_token"])]
     (top,) = subs(rep, index=4, backend="hosted")
     assert top["published"] is False
+
+
+def test_a_bad_compact_out_is_refused_before_anything_is_written(engine, tmp_path):
+    report = tmp_path / "full.json"
+    with pytest.raises(audit.AuditRefusal, match="--compact-out .* is under the trace root trace_out"):
+        audit.main(["--root", str(engine), "--out", str(report), "--site-payload", str(engine / "site.json"),
+                    "--compact-out", str(engine / "trace_out" / "c.json")])
+    assert not report.exists() and not (engine / "trace_out" / "c.json").exists()

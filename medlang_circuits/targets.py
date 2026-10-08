@@ -380,6 +380,12 @@ def _clerps(graph: dict[str, Any]) -> list[Any]:
     return clerps + list(selection.get("dropped") or [])
 
 
+def unparsed_labels(graph: dict[str, Any]) -> list[str]:
+    """The labels of returned logits whose probability does not parse (``returned_logits`` leaves them out; the
+    reads consult them so an unreadable copy of a token is never ignored)."""
+    return [parse_logit_clerp(c)[0] for c in _clerps(graph) if parse_logit_clerp(c)[1] is None]
+
+
 def returned_logits(graph: dict[str, Any]) -> list[tuple[str, float]]:
     """Every logit the service returned for this graph, (label, probability),
     most probable first: the graph's logit nodes plus those ``select_logits``
@@ -468,14 +474,16 @@ def read_exact(graph: dict[str, Any], token: str | None) -> dict[str, Any]:
     if not token_key(token):
         return {"status": "missing", "reason": "no_target_token", "returned": len(logits)}
     hits = [(label, prob) for label, prob in logits if same_token(label, token)]
-    if len(hits) == 1:
+    # the token returned again without a probability that parses makes a single parsed hit ambiguous too
+    unparsed_hits = [label for label in unparsed_labels(graph) if same_token(label, token)]
+    if len(hits) == 1 and not unparsed_hits:
         return _found(logits, "exact", *hits[0])
     if hits:
         record = _missing("ambiguous_exact_match", logits, token)
-        record["exact_candidates"] = [[label, prob] for label, prob in hits]
+        record["exact_candidates"] = ([[label, prob] for label, prob in hits]
+                                      + [[label, None] for label in unparsed_hits])
         return record
-    unparsed = [parse_logit_clerp(c)[0] for c in _clerps(graph) if parse_logit_clerp(c)[1] is None]
-    if any(same_token(label, token) for label in unparsed):
+    if unparsed_hits:
         return _missing("unparseable_probability", logits, token)
     if not logits:
         return _missing("no_returned_logits", logits, token)
@@ -503,9 +511,12 @@ def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any
     When the intended token itself was returned but cannot be read
     (``unparseable_probability``, ``ambiguous_exact_match``), that failure is
     the record: no shorter piece stands in for it. When the likeliest piece
-    was returned more than once, the read is missing with reason
-    ``ambiguous_wordpiece`` and the duplicates in ``wordpiece_candidates``, as
-    for an ambiguous exact token: no value is guessed.
+    was returned more than once (an unreadable copy included), the read is
+    missing with reason ``ambiguous_wordpiece`` and the duplicates in
+    ``wordpiece_candidates``, as for an ambiguous exact token: no value is
+    guessed. When any other leading piece was returned without a readable
+    probability, the likeliest-piece rule cannot be applied: the read is
+    missing with reason ``unparseable_probability``.
 
     An intended target written without its leading space ('xab', as some
     pairs files spell it) is read with the space first (' xab': after a prompt
@@ -531,8 +542,23 @@ def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any
     logits = returned_logits(graph)
     for form in forms:
         pieces = [(label, prob) for label, prob in logits if _is_leading_piece(label, form)]
+        unreadable = [label for label in unparsed_labels(graph) if _is_leading_piece(label, form)]
+        if unreadable and not pieces:
+            return _spaced(_missing("unparseable_probability", logits, form), form, intended)
         if pieces:
             label, prob = max(pieces, key=lambda c: c[1])
+            if any(same_token(lab, label) for lab in unreadable):
+                # an unreadable copy of the chosen piece: which value is its own cannot be told
+                record = _missing("ambiguous_wordpiece", logits, form)
+                record["wordpiece_candidates"] = ([[lab, p] for lab, p in pieces if same_token(lab, label)]
+                                                  + [[lab, None] for lab in unreadable if same_token(lab, label)])
+                return _spaced(record, form, intended)
+            if unreadable:
+                # another leading piece was returned without a readable probability: the likeliest-piece rule
+                # cannot be applied, and a shorter readable piece may not stand in for a longer unreadable one
+                record = _missing("unparseable_probability", logits, form)
+                record["wordpiece_candidates"] = [[lab, p] for lab, p in pieces] + [[lab, None] for lab in unreadable]
+                return _spaced(record, form, intended)
             # the chosen piece returned more than once, compared as same_token compares (' xab' and a
             # marker-spelt '\u2581xab' are one token): which value is its own cannot be told
             same = [[lab, p] for lab, p in pieces if same_token(lab, label)]
