@@ -1718,6 +1718,34 @@ def test_a_study_text_in_an_examples_label_or_caption_is_refused(tmp_path, field
     assert f"instructions.examples[1] (advice_new) repeats payload row {row['batch']}#{row['batch_index']}" in message
 
 
+def _committed_text_of(words: int, item_id: str | None = None) -> str:
+    """A committed item's sentence, message or turn of exactly this many normalised words, read from the first
+    bundle (never written here)."""
+    bundle = json.loads(FIRST_BUNDLE.read_text(encoding="utf-8"))
+    return next(t for i in bundle["items"] if item_id in (None, i["item_id"]) for t in evt.copy_texts(i["display"])
+                if len(evt.normalised_words(t)) == words and not evt.EXAMPLE_MEASURED.search(t))
+
+
+def test_a_short_study_text_inside_a_longer_example_text_is_refused(tmp_path, capsys):
+    # Regression (Codex review of PR #88): a study text under COPY_MIN_GRAMS 4-grams (fewer than seven words) was never
+    # checked for containment, so a five-word turn of vt_f51de47d1933 pasted inside longer text passed. Such a text of at
+    # least COPY_CONTAIN_MIN_WORDS words is a copy when its words occur in the example as one run; a shorter one can be
+    # a stock reply (a committed four-word turn is one) and is compared exactly only.
+    examples = _examples()
+    five = _committed_text_of(5, "vt_f51de47d1933")
+    examples[1]["display"]["clinical_message"] = f"After the walk to the shed, {five.rstrip('.?!')}, and then I sat down."
+    message = _copy_refused(tmp_path / "five", examples)
+    assert "contains" in message and "instructions.examples[1]" in message, message
+    four = _committed_text_of(4)
+    examples = _examples()
+    examples[1]["display"]["clinical_message"] = f"After the walk to the shed, {four.rstrip('.?!')}, and then I sat down."
+    # the run is of whole words: the same five words with the last one running on into a longer word are not it
+    examples[1]["display"]["patient_message"] = f"Later on, {five.rstrip('.?!')}ish, I said at the gate."
+    paths = write_world(tmp_path / "four", world_data())
+    paths["questions"] = _questions_with(tmp_path / "four", examples)
+    rerun(paths, tmp_path / "four" / "out")
+
+
 def _long_advice_message() -> str:
     item = _committed_item("advice_new", lambda d: len(d["clinical_message"].split()) >= 14
                            and not evt.EXAMPLE_MEASURED.search(d["clinical_message"]))

@@ -328,7 +328,10 @@ problem:
   least half occur in one study text. A text contains a study text when at
   least half of that study text's 4-grams occur in it (counted for a study
   text of at least ten 4-grams, thirteen words, and for a shorter one only
-  when all of it is there, since a short one can be a stock question). The
+  when all of it is there, since a short one can be a stock question). A
+  study text of five or six words is contained when its words occur in the
+  example as one run; a four-word one (a stock reply) is compared exactly
+  only. The
   three draft examples share at most a quarter either way.
 
 The bundle copies the questions file, examples included, unchanged. A

@@ -774,9 +774,16 @@ def example_answer_rules(doc: dict, set_name: str) -> list[tuple[str, re.Pattern
 # thirteen words) or more. Shorter study texts count only when contained whole, because a stock question ("is there
 # anything else I should ...") gives the drafts three of the four 4-grams of a seven-word seed turn and three of the
 # eight of an eleven-word one (38%, too close to half).
+# A study text with fewer than COPY_MIN_GRAMS 4-grams (under seven words) has no gram share to speak of, so it is a
+# copy when its words occur in the example text as one run, if it has at least COPY_CONTAIN_MIN_WORDS words (Codex review
+# of PR #88: a five-word turn of vt_f51de47d1933 pasted inside longer text passed). Measured on the real inputs: 39
+# study texts have four to six words and none fewer; the drafts contain none of them; the one four-word text is a stock
+# reply ("ok thanks anything else"), so four-word texts are compared exactly only. Two five-word stock questions
+# ("anything else I should know", "anything else that might help") would be refused if an example pasted them whole.
 COPY_GRAM = 4
 COPY_MIN_GRAMS = 4
 COPY_CONTAIN_MIN_GRAMS = 10
+COPY_CONTAIN_MIN_WORDS = 5
 COPY_SHARE = 0.5
 COMMITTED_BUNDLES_DIR = REPO_ROOT / "data" / "verification"
 
@@ -798,13 +805,17 @@ class StudyTextIndex:
         self.where: list[str] = []
         self.size: list[int] = []
         self.exact: dict[str, str] = {}
+        self.short: dict[str, str] = {}
         self.grams: dict[tuple[str, ...], set[int]] = {}
         for text, where in texts:
             n = len(self.where)
             self.where.append(where)
             grams = word_grams(text)
             self.size.append(len(grams))
-            self.exact.setdefault(" ".join(normalised_words(text)), where)
+            words = normalised_words(text)
+            self.exact.setdefault(" ".join(words), where)
+            if COPY_CONTAIN_MIN_WORDS <= len(words) and len(grams) < COPY_MIN_GRAMS:
+                self.short.setdefault(" ".join(words), where)
             for gram in grams:
                 self.grams.setdefault(gram, set()).add(n)
 
@@ -815,6 +826,10 @@ class StudyTextIndex:
         key = " ".join(normalised_words(text))
         if key and key in self.exact:
             return "repeats", 1.0, self.exact[key], "its"
+        padded = f" {key} "
+        for run, where in self.short.items():
+            if f" {run} " in padded:
+                return "contains", 1.0, where, "the study text's"
         share, where, whose = self.overlap(text)
         if share < COPY_SHARE:
             return None
