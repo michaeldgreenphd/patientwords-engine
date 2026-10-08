@@ -114,6 +114,13 @@ root would read as an audit that found nothing. The report's ``engine_sha``
 carries ``scripts/provenance_stamp.py``'s ``+dirty`` marker when the scanned
 checkout has uncommitted or untracked changes.
 
+``--compact-out`` also writes the committed evidence form
+(``data/audits/target_reads_<date>.json``): provenance, both rules' counts,
+the figures AGENTS.md quotes, and one row per published (batch, index, model)
+the audit affects, with its kind - borrowed sides, the substitution and its
+mechanism, a wordpiece read of a whole-token word. Published rows only, no
+prompt text.
+
 The report goes to ``--out``; there is no default, and a path under a trace
 root is refused, so nothing is ever written into ``trace_out/`` or
 ``pilot/traces/``. Prompt text is never written to the report.
@@ -771,6 +778,88 @@ def audit(root: Path, trace_roots: list[str], payload_path: Path | None) -> dict
     }
 
 
+COMPACT_SCHEMA = "patientwords-target-read-audit-compact/1"
+PREFIX_MATCH_RELATIONS = ("extension", "case_variant", "case_variant_wordpiece", "space_variant",
+                          "space_variant_wordpiece")
+
+
+def mechanism(relation: str, backend: Any) -> str:
+    """What produced a substituted measured token: the legacy prefix match itself (it accepted extensions and
+    case/space variants), the unscreened top-logit fallback (an unrelated token, a bare space, a piece shorter than
+    the match accepts), or the logits lane's first-token rule."""
+    if backend not in TEXT_READ_BACKENDS:
+        return "logits_first_token"
+    return "prefix_match" if relation in PREFIX_MATCH_RELATIONS else "top_logit_fallback"
+
+
+def quoted_figures(rows: list[dict[str, Any]], counts: dict[str, Any]) -> dict[str, Any]:
+    """The figures AGENTS.md quotes, derived from the compact rows and the last-part counts (so a test can check
+    the quote against the rows it rests on)."""
+    hosted = counts["by_backend"].get("hosted", {})
+    subs_ = [r["substitution"] for r in rows if "substitution" in r]
+    by_mech = Counter(s["mechanism"] for s in subs_)
+    prefix = [s for s in subs_ if s["mechanism"] == "prefix_match"]
+    return {
+        "borrowed_hosted_results": hosted.get("results_with_borrowed_value", 0),
+        "published_scenarios_borrowed_in_a_published_field": sum(
+            1 for r in rows if any(b.get("published_field") for b in r.get("borrowed", []))),
+        "wordpiece_reads_of_whole_tokens": counts["overall"].get("target.leading_wordpiece.intended_is_a_returned_token", 0),
+        "published_wordpiece_reads_of_whole_tokens": sum(1 for r in rows if "wordpiece" in r),
+        "published_substituted_rows": len(subs_),
+        "published_substituted_rows_by_mechanism": dict(sorted(by_mech.items())),
+        "prefix_match_extensions": sum(1 for s in prefix if s["relation"] == "extension"),
+        "prefix_match_case_variants": sum(1 for s in prefix if s["relation"].startswith("case_variant")),
+        "prefix_match_screened": sum(1 for s in prefix if s.get("screening_status") == "passed"),
+        "published_substituted_rows_not_flagged": sum(1 for s in subs_ if not s.get("payload_anchor_fallback")),
+    }
+
+
+def compact_report(report: dict[str, Any], invocation: list[str]) -> dict[str, Any]:
+    """The committed evidence behind the figures AGENTS.md quotes: provenance, both rules' counts (overall and by
+    backend and root), and one row per PUBLISHED (batch, index, model) the audit affects - borrowed sides, the
+    substitution with its mechanism, a wordpiece read of a whole-token word. No prompt text; published rows only,
+    so no holdout row. The full report (every occurrence) is the --out file."""
+    rows: dict[tuple[Any, Any, Any], dict[str, Any]] = {}
+
+    def row(entry: dict[str, Any]) -> dict[str, Any]:
+        key = (entry["batch"], entry["index"], entry["model"])
+        return rows.setdefault(key, {"batch": key[0], "index": key[1], "model": key[2]})
+
+    for f in report["findings"]:
+        if f["effective"] and f["borrowed"] and f.get("published"):
+            row(f).setdefault("borrowed", []).append(
+                {k: f.get(k) for k in ("side", "status", "recorded", "exact", "value_source", "published_field")
+                 if f.get(k) is not None})
+    for s in report["substitutions"]:
+        if s["effective"] and s.get("published"):
+            row(s)["substitution"] = {
+                "relation": s["relation"], "mechanism": mechanism(s["relation"], s["backend"]),
+                "measured_token": s["measured_token"], "intended_target": s["intended_target"],
+                "screening_status": s.get("screening_status"), "payload_anchor_fallback": s.get("payload_anchor_fallback")}
+    for w in report["wordpiece_reads_of_returned_tokens"]:
+        if w["effective"] and w.get("published"):
+            row(w)["wordpiece"] = {"intended_target": w["intended_target"], "measured_token": w["measured_token"]}
+    ordered = [rows[k] for k in sorted(rows, key=lambda k: (str(k[0]), k[1] if isinstance(k[1], int) else -1,
+                                                             str(k[2])))]
+
+    def slim(counts: dict[str, Any]) -> dict[str, Any]:
+        return {k: counts[k] for k in ("overall", "by_backend", "by_root")}
+
+    return {
+        "schema": COMPACT_SCHEMA,
+        "generated_at": report["generated_at"],
+        "engine_sha": report["engine_sha"],
+        "site_payload": report["inputs"]["site_payload"],
+        "invocation": invocation,
+        "rules": report["rules"],
+        "counts_last_part": slim(report["counts"]),
+        "counts_urgency_first_part": slim(report["counts_urgency_first_part"]),
+        "part_order_disagreements": len(report["part_order_disagreements"]),
+        "quoted": quoted_figures(ordered, report["counts"]),
+        "published_rows": ordered,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", required=True, type=Path, help="report path (required; never under a trace root)")
@@ -779,8 +868,14 @@ def main(argv: list[str] | None = None) -> int:
                     help=f"trace root relative to --root, repeatable (default: {', '.join(DEFAULT_TRACE_ROOTS)})")
     ap.add_argument("--site-payload", type=Path, default=None,
                     help="the site's data/simulated_scenarios.json, to mark published rows (optional)")
+    ap.add_argument("--compact-out", type=Path, default=None,
+                    help="also write the compact evidence file (needs --site-payload), e.g. "
+                         "data/audits/target_reads_<date>.json")
+    ap.add_argument("--site-ref", default=None, help="the site revision the payload came from, recorded as given")
     args = ap.parse_args(argv)
     root = args.root.resolve()
+    if args.compact_out is not None and args.site_payload is None:
+        refuse("--compact-out lists published rows, so it needs --site-payload")
     trace_roots = args.trace_root or list(DEFAULT_TRACE_ROOTS)
     out = args.out.resolve()
     for tr in trace_roots:
@@ -793,8 +888,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.site_payload is not None and not args.site_payload.is_file():
         refuse(f"--site-payload {args.site_payload} is not a file")
     report = audit(root, trace_roots, args.site_payload)
+    if args.site_ref and report["inputs"]["site_payload"] is not None:
+        report["inputs"]["site_payload"]["site_ref"] = args.site_ref
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    if args.compact_out is not None:
+        compact_out = args.compact_out.resolve()
+        for tr in trace_roots:
+            if compact_out.is_relative_to((root / tr).resolve()):
+                refuse(f"--compact-out {compact_out} is under the trace root {tr}")
+        invocation = ["scripts/audit_target_reads.py", "--out", "<full report>", "--site-payload",
+                      "<site data/simulated_scenarios.json>"] + (["--site-ref", args.site_ref] if args.site_ref else [])
+        compact_out.parent.mkdir(parents=True, exist_ok=True)
+        compact_out.write_text(json.dumps(compact_report(report, invocation), indent=1, ensure_ascii=False) + "\n",
+                               encoding="utf-8")
     o, f = report["counts"]["overall"], report["counts_urgency_first_part"]["overall"]
     print(f"audit_target_reads: {report['inputs']['summaries']} summaries; last part: {o.get('results', 0)} results, "
           f"{o.get('results_with_borrowed_value', 0)} with a borrowed value, {o.get('substitutions', 0)} "

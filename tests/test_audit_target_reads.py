@@ -500,3 +500,35 @@ def test_a_dialect_join_checks_every_variant_prompt_in_order(tmp_path):
         rep = run(_dialect_engine(tmp_path / name, variants), tmp_path / name, "--trace-root", "trace_out")
         assert rep["joins"] == {"refused_prompt_mismatch": 1}, name
         assert rep["counts"]["overall"]["target.intended_unknown"] == 1 and not subs(rep), name
+
+
+def test_the_compact_evidence_lists_published_rows_and_the_quoted_figures(engine, tmp_path):
+    compact_path = tmp_path / "compact.json"
+    rep = run(engine, tmp_path, "--site-payload", str(engine / "site.json"), "--compact-out", str(compact_path),
+              "--site-ref", "site@abc")
+    c = json.loads(compact_path.read_text(encoding="utf-8"))
+    assert c["schema"] == "patientwords-target-read-audit-compact/1"
+    assert c["site_payload"]["sha256"] == rep["inputs"]["site_payload"]["sha256"]
+    assert c["site_payload"]["site_ref"] == "site@abc" and c["engine_sha"] == rep["engine_sha"]
+    assert c["counts_last_part"]["overall"] == rep["counts"]["overall"]
+    assert c["counts_urgency_first_part"]["overall"] == rep["counts_urgency_first_part"]["overall"]
+    rows = {r["index"]: r for r in c["published_rows"]}
+    # borrowed #2 (patient, published field) and #3; #6 translated-only borrow and wordpiece; substitutions #4,7,8,9,12
+    assert sorted(rows) == [2, 3, 4, 6, 7, 8, 9, 12]
+    assert rows[2]["borrowed"][0]["published_field"] == "prob_patient"
+    assert rows[6]["borrowed"][0]["side"] == "translated" and "published_field" not in rows[6]["borrowed"][0]
+    assert rows[6]["wordpiece"] == {"intended_target": " xabicor", "measured_token": out(" xabi")}
+    assert rows[7]["substitution"]["mechanism"] == "prefix_match"
+    assert rows[9]["substitution"]["mechanism"] == "top_logit_fallback"
+    q = c["quoted"]
+    assert q["published_scenarios_borrowed_in_a_published_field"] == 2
+    assert q["published_substituted_rows"] == 5 and q["published_substituted_rows_not_flagged"] == 3
+    assert q["published_substituted_rows_by_mechanism"] == {"prefix_match": 3, "top_logit_fallback": 2}
+    assert (q["prefix_match_extensions"], q["prefix_match_case_variants"], q["prefix_match_screened"]) == (1, 2, 2)
+    assert "clin " not in compact_path.read_text(encoding="utf-8")  # no prompt text
+
+
+def test_the_compact_evidence_needs_the_site_payload(engine, tmp_path):
+    with pytest.raises(audit.AuditRefusal, match="needs --site-payload"):
+        audit.main(["--root", str(engine), "--out", str(tmp_path / "r.json"), "--compact-out",
+                    str(tmp_path / "c.json")])
