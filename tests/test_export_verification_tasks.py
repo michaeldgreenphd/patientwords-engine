@@ -1703,6 +1703,21 @@ def test_a_short_study_text_counts_only_when_contained_whole(tmp_path, capsys):
     assert "contains payload row" in message, message
 
 
+@pytest.mark.parametrize("field", ["label", "caption"])
+def test_a_study_text_in_an_examples_label_or_caption_is_refused(tmp_path, field):
+    # Regression (Codex review of PR #88): only the display's texts were compared, so a study prompt pasted into a
+    # label or caption, with an invented display, passed. Every text of an example a physician reads is compared.
+    data = world_data()
+    row = data["payload"]["scenarios"][-1]
+    row["patient_prompt"] = "The violet kettle beside the north window needs a"        # a text only the payload holds
+    examples = _examples()
+    examples[1][field] = row["patient_prompt"]
+    paths = write_world(tmp_path, data)
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_copies_item")
+    assert f"instructions.examples[1] (advice_new) repeats payload row {row['batch']}#{row['batch_index']}" in message
+
+
 def _long_advice_message() -> str:
     item = _committed_item("advice_new", lambda d: len(d["clinical_message"].split()) >= 14
                            and not evt.EXAMPLE_MEASURED.search(d["clinical_message"]))

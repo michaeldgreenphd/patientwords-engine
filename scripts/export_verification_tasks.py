@@ -854,7 +854,8 @@ def study_payload(inp: "Inputs", site: Path) -> None:
 
 
 def check_example_copies(inp: "Inputs", examples: list[dict]) -> None:
-    """Refuse an example any sentence, message or turn of which (copy_texts) repeats or nearly repeats a study text
+    """Refuse an example whose label, caption, or any sentence, message or turn (copy_texts) repeats, nearly repeats or
+    contains a study text
     (Codex review of PR #88: a copied
     item display passed every other check, and a physician would rate the same stimulus after seeing it as an example).
     The study texts are every text the inputs hold, selected for this bundle or not (Inputs.study_texts; every item
@@ -868,7 +869,8 @@ def check_example_copies(inp: "Inputs", examples: list[dict]) -> None:
     index = StudyTextIndex(texts)
     found = []
     for n, example in enumerate(examples):
-        for text in copy_texts(example["display"]):
+        # the label and caption as well as the display's sentences, messages and turns (Codex review of PR #88)
+        for text in [example["label"], example["caption"], *copy_texts(example["display"])]:
             copy = index.copy_of(text)
             if copy:
                 found.append(f"instructions.examples[{n}] ({example['family']}) {copy[0]} {copy[2]} "
