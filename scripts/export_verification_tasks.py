@@ -759,12 +759,21 @@ def example_answer_rules(doc: dict, set_name: str) -> list[tuple[str, re.Pattern
 
 
 # Copies of study items. A text is normalised (lower case, every run of characters that are not letters or digits read
-# as one space) and compared exactly; a near copy is a text with at least COPY_MIN_GRAMS word 4-grams of which at
-# least COPY_SHARE occur in one single study text. The three draft examples of questions 1.2-draft share at most a
-# quarter of their 4-grams with any study text (stock phrases such as "is there anything else I should do"), so half
-# leaves them a clear margin while one changed word in a copied sentence of ten or more words is still caught.
+# as one space) and compared exactly. Beyond that, an example text and a study text are compared by their word 4-grams
+# in both directions, and the larger share decides, against COPY_SHARE (half):
+# - the share of the example text's 4-grams that occur in one study text (the example text has at least
+#   COPY_MIN_GRAMS of them): a near copy, such as a copied sentence with a word changed;
+# - the share of the study text's 4-grams that occur in the example text (Codex review of PR #88: a whole study prompt
+#   with novel words around it passed): counted for a study text of at least COPY_CONTAIN_MIN_GRAMS 4-grams, a
+#   stimulus rather than a stock phrase, and for any study text of at least COPY_MIN_GRAMS contained whole.
+# Measured on the real inputs: the three draft examples of questions 1.2-draft share at most a quarter of their own
+# 4-grams with any study text, and at most a ninth of any study text of COPY_CONTAIN_MIN_GRAMS (ten, a text of
+# thirteen words) or more. Shorter study texts count only when contained whole, because a stock question ("is there
+# anything else I should ...") gives the drafts three of the four 4-grams of a seven-word seed turn and three of the
+# eight of an eleven-word one (38%, too close to half).
 COPY_GRAM = 4
 COPY_MIN_GRAMS = 4
+COPY_CONTAIN_MIN_GRAMS = 10
 COPY_SHARE = 0.5
 COMMITTED_BUNDLES_DIR = REPO_ROOT / "data" / "verification"
 
@@ -784,34 +793,44 @@ class StudyTextIndex:
 
     def __init__(self, texts: list[tuple[str, str]]) -> None:
         self.where: list[str] = []
+        self.size: list[int] = []
         self.exact: dict[str, str] = {}
         self.grams: dict[tuple[str, ...], set[int]] = {}
         for text, where in texts:
             n = len(self.where)
             self.where.append(where)
+            grams = word_grams(text)
+            self.size.append(len(grams))
             self.exact.setdefault(" ".join(normalised_words(text)), where)
-            for gram in word_grams(text):
+            for gram in grams:
                 self.grams.setdefault(gram, set()).add(n)
 
-    def copy_of(self, text: str) -> tuple[str, float, str] | None:
-        """("repeats" or "nearly repeats", the share of the text's 4-grams found, where) for a copy, else None."""
+    def copy_of(self, text: str) -> tuple[str, float, str, str] | None:
+        """(how, the deciding share, where, whose 4-grams the share is of) for a copy, else None: "repeats" for the
+        same normalised text, "nearly repeats" when the example text's share decides, "contains" when the study
+        text's does."""
         key = " ".join(normalised_words(text))
         if key and key in self.exact:
-            return "repeats", 1.0, self.exact[key]
-        share, where = self.overlap(text)
-        return ("nearly repeats", share, where or "") if share >= COPY_SHARE else None
+            return "repeats", 1.0, self.exact[key], "its"
+        share, where, whose = self.overlap(text)
+        if share < COPY_SHARE:
+            return None
+        return ("nearly repeats" if whose == "its" else "contains"), share, where or "", whose
 
-    def overlap(self, text: str) -> tuple[float, str | None]:
-        """The largest share of the text's 4-grams that one study text holds, and that text's place (0 and None for
-        a text with fewer than COPY_MIN_GRAMS 4-grams, which is compared exactly only)."""
+    def overlap(self, text: str) -> tuple[float, str | None, str]:
+        """The largest share, over the study texts, of the larger of the two shares a study text and this text have
+        in common (see COPY_SHARE), that text's place, and whose 4-grams the share is of ("its", the example
+        text's, or "the study text's"); (0, None, "its") when no study text shares a 4-gram."""
         grams = word_grams(text)
-        if len(grams) < COPY_MIN_GRAMS:
-            return 0.0, None
         hits: Counter = Counter(n for gram in grams for n in self.grams.get(gram, ()))
-        if not hits:
-            return 0.0, None
-        n, count = max(hits.items(), key=lambda kv: (kv[1], -kv[0]))
-        return count / len(grams), self.where[n]
+        best: tuple[float, str | None, str] = (0.0, None, "its")
+        for n, count in sorted(hits.items()):
+            if len(grams) >= COPY_MIN_GRAMS and count / len(grams) > best[0]:
+                best = (count / len(grams), self.where[n], "its")
+            size = self.size[n]
+            if (size >= COPY_CONTAIN_MIN_GRAMS or (size >= COPY_MIN_GRAMS and count == size)) and count / size > best[0]:
+                best = (count / size, self.where[n], "the study text's")
+        return best
 
 
 def study_payload(inp: "Inputs", site: Path) -> None:
@@ -850,7 +869,7 @@ def check_example_copies(inp: "Inputs", examples: list[dict]) -> None:
             copy = index.copy_of(text)
             if copy:
                 found.append(f"instructions.examples[{n}] ({example['family']}) {copy[0]} {copy[2]} "
-                             f"({copy[1]:.0%} of its word 4-grams)")
+                             f"({copy[1]:.0%} of {copy[3]} word 4-grams)")
                 break
     if found:
         refuse("example_copies_item", "an example is a study item, or nearly one, so a physician would see it before "

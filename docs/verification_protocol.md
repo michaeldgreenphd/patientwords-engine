@@ -318,9 +318,14 @@ problem:
   of an item of any bundle committed in `data/verification`. The published
   payload is read for this whenever there are examples, even with
   `--main-pairs 0`. Texts are
-  compared in lower case with punctuation ignored; a near copy is a text
-  with at least four word 4-grams of which at least half occur in one
-  study text. The three draft examples share at most a quarter.
+  compared in lower case with punctuation ignored, and then by their word
+  4-grams in both directions; the larger share decides, against half. A
+  near copy is an example text with at least four 4-grams of which at
+  least half occur in one study text. A text contains a study text when at
+  least half of that study text's 4-grams occur in it (counted for a study
+  text of at least ten 4-grams, thirteen words, and for a shorter one only
+  when all of it is there, since a short one can be a stock question). The
+  three draft examples share at most a quarter either way.
 
 The bundle copies the questions file, examples included, unchanged. A
 questions file without examples is still valid.

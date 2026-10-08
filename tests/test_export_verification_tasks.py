@@ -1631,6 +1631,53 @@ def test_a_malformed_payload_row_is_refused_when_only_the_copy_check_reads_it(tm
     assert fragment in message and "payload scenario 3" in message, message
 
 
+NOVEL = "and then the blue ledger fell off the shelf again today before lunch at the club".split()
+
+
+def test_an_example_that_contains_a_study_text_with_novel_words_around_it_is_refused(tmp_path):
+    # Regression (Codex review of PR #88): the overlap was a share of the example text's 4-grams only, so a whole study
+    # prompt with enough novel words around it passed. The study text's share counts too.
+    bundle = json.loads(FIRST_BUNDLE.read_text(encoding="utf-8"))
+    words = next(evt.normalised_words(t) for i in bundle["items"] for t in evt.copy_texts(i["display"])
+                 if 13 <= len(evt.normalised_words(t)) <= 17 and not evt.EXAMPLE_MEASURED.search(t))
+    whole = " ".join(words + NOVEL)
+    assert len(evt.word_grams(" ".join(words))) / len(evt.word_grams(whole)) < evt.COPY_SHARE
+    examples = _examples()
+    examples[1]["display"]["clinical_message"] = whole
+    message = _copy_refused(tmp_path / "whole", examples)
+    assert "contains" in message and "of the study text's word 4-grams" in message, message
+    # most of a long study text: more than half of its 4-grams, under half of the example text's
+    k = next(k for k in range(4, len(words))
+             if (k - 3) / (len(words) - 3) >= evt.COPY_SHARE and k < len(words))
+    most = " ".join(words[:k] + NOVEL)
+    shared = len(evt.word_grams(" ".join(words[:k])))
+    assert len(words) - 3 >= evt.COPY_CONTAIN_MIN_GRAMS and shared / len(evt.word_grams(most)) < evt.COPY_SHARE
+    examples[1]["display"]["clinical_message"] = most
+    message = _copy_refused(tmp_path / "most", examples)
+    assert "contains" in message, message
+
+
+def test_a_short_study_text_counts_only_when_contained_whole(tmp_path, capsys):
+    # A study text under COPY_CONTAIN_MIN_GRAMS 4-grams may be a stock phrase (the drafts share three of the four
+    # 4-grams of a seven-word seed turn, and three of the eight of an eleven-word one), so most of it is not a copy,
+    # but all of it is.
+    data = world_data()
+    short = data["payload"]["scenarios"][-1]
+    short["patient_prompt"] = "The violet kettle beside the north window needs a"     # 6 word 4-grams
+    words = evt.normalised_words(short["patient_prompt"])
+    assert evt.COPY_MIN_GRAMS <= len(evt.word_grams(short["patient_prompt"])) < evt.COPY_CONTAIN_MIN_GRAMS
+    examples = _examples()
+    examples[1]["display"]["patient_message"] = " ".join(words[:7] + NOVEL)          # 4 of its 6 4-grams
+    paths = write_world(tmp_path / "most", data)
+    paths["questions"] = _questions_with(tmp_path / "most", examples)
+    rerun(paths, tmp_path / "most" / "out", main_pairs=0)
+    examples[1]["display"]["patient_message"] = " ".join(words + NOVEL)              # all of them
+    paths = write_world(tmp_path / "all", data)
+    paths["questions"] = _questions_with(tmp_path / "all", examples)
+    message = refused_paths(paths, "example_copies_item", main_pairs=0)
+    assert "contains payload row" in message, message
+
+
 def _long_advice_message() -> str:
     item = _committed_item("advice_new", lambda d: len(d["clinical_message"].split()) >= 14
                            and not evt.EXAMPLE_MEASURED.search(d["clinical_message"]))
