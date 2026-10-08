@@ -62,8 +62,8 @@ Three families, every item from a committed engine file or the published site pa
     a repeat of a higher-ranked prompt pair are excluded and counted. The ranking is a way to pick pairs worth a
     physician's look, not a measurement: AGENTS.md's known limitations say no claim may rest on one pair's penalty.
   The highlight on each sentence is the shortest span where the two sentences differ, widened to whole words, so
-  "they differ only in the highlighted words" is true by construction. Offsets are JavaScript string indices
-  (UTF-16 code units), end exclusive.
+  the family instruction that the two sentences differ only in the marked words is true by construction. Offsets
+  are JavaScript string indices (UTF-16 code units), end exclusive.
 * ``advice`` (display kind ``message_pair``): the 24 new questions (``data/advice/stimuli_20261002T080026Z.json``,
   question set ``advice_new``, ``reveal`` = the proposed reference tier) and the 15 rerun items
   (``data/advice/stimuli_20261002T081803Z.json``): ``advice_rerun_truncated`` for an item whose source stimuli file
@@ -79,6 +79,22 @@ Display fields carry only the texts a physician rates, the highlight spans and t
 number, model name, batch id, rationale, topic, checker verdict or proposed tier. The script display's ``arm`` ids
 are the one exception the contract makes: the app replaces them with "Version A/B/C" per physician before sending
 an item. ``provenance`` keeps source path, source id and sha256s; the app never sends it to a physician.
+
+Examples. The questions file may hold ``instructions.examples``, invented examples the app shows a physician before
+the first item: a list of ``{family, label, caption, display}``, where ``family`` names a question set (a key of
+``QUESTION_SETS``: tracing_pair, advice_new, advice_rerun, advice_rerun_truncated or multiturn_script; the set's own
+``family`` gives its item family and so its entry in ``instructions.families``), ``label`` and ``caption`` are text,
+and ``display`` has exactly the shape that set's items' display has (``validate_examples``): the same kind and
+fields, a highlight that is the span ``diff_spans`` gives, the cut-off flag the set's items carry, a script's turns
+``n_turns`` long with ``same_as`` set as ``multiturn_items`` sets it. An example carries nothing else: no answer,
+reveal or provenance. An item's display is built only from the texts a physician rates, so it carries none of the
+study's own model names, ids, measurements or answers; an example is written by hand, so its text is checked
+instead, and more strictly than an item's could be: it may not hold a model or vendor name from any of the engine's
+model registries (``EXAMPLE_MODEL_NAMES``; found inside another word too, as in BioMistral), a batch, run or item id,
+a decimal number or a percentage (how a measured value is written, though a patient's message in an item may hold
+one), or the label of an urgency level a reveal can propose (read from the questions data). Every example string is
+seal-scanned as an item's display strings are.
+The bundle copies the questions file, examples included, unchanged. A questions file without ``examples`` is valid.
 
 Holdout seal, failing closed. Every tracing and advice row is checked with ``tierb_split.sealed_pair`` (for an advice
 or payload row naming a non-Tier-B batch whose file exists, the batch's accepted prompt as well, the pattern of
@@ -108,9 +124,11 @@ the names of its files are checked), a pilot pair without its required trace (``
 result carries other prompts (``trace_mismatch``), trace results in more than one directory for the model read, or
 for more than one graph model with none named (``ambiguous_trace``), trace results in both the legacy and the per-run
 layout for one model (``trace_layout_conflict``), a trace summary that does not declare the graph model its directory
-is read as (``trace_model_mismatch``), a questions file that does not fit the items, fewer main-study candidates than
+is read as (``trace_model_mismatch``), a questions file that does not fit the items, an example that is malformed
+(``bad_example``), shows what a physician may not see (``example_not_blind``) or repeats or nearly repeats a study
+text (``example_copies_item``), fewer main-study candidates than
 requested, an item id collision, an existing output file (a bundle is an archive, never rewritten), and every seal
-failure above.
+failure above (a sealed phrase in an example is ``seal_hit``, naming the example).
 
 Rounds. Each physician round uses one bundle (the ratings import reads one bundle per export). A later round's
 bundle is built with ``--previous-bundle <the previous round's bundle>``, which refuses unless every item of that
@@ -287,9 +305,98 @@ QUESTION_SET_KEYS = frozenset({"family", "applies_to", "questions"})
 QUESTION_KEYS = frozenset({"id", "scale", "required", "phase", "per_arm", "locks_on_reveal", "text", "hint",
                            "measures"})
 SCALE_KEYS = frozenset({"type", "options", "abstain", "max_length"})
+# The fields of the questions file's instructions. Checked before anything reads it, so a misspelled field (example
+# for examples) is refused by name instead of reading as "no examples" (Codex review of PR #88).
+INSTRUCTIONS_KEYS = frozenset({"version", "welcome", "consent", "families", "examples", "tier_scale_note"})
 OPTION_KEYS = frozenset({"value", "label", "definition"})
 SCALE_TYPES = frozenset({"ordinal", "nominal", "multi", "text"})
 PHASES = frozenset({"blind", "after_reveal"})
+
+# ---- instructions.examples (optional): invented examples shown before the first item ---------------------------
+EXAMPLE_KEYS = frozenset({"family", "label", "caption", "display"})
+# The display an item of each family has (pair_display, _advice_display, multiturn_items build them), by its fields.
+DISPLAY_KIND = {"tracing_pair": "pair_sentence", "advice": "message_pair", "multiturn": "script"}
+DISPLAY_FIELDS = {"pair_sentence": frozenset({"kind", "clinical", "patient", "next_word", "cut_off"}),
+                  "message_pair": frozenset({"kind", "clinical_message", "patient_message", "cut_off"}),
+                  "script": frozenset({"kind", "n_turns", "arms"})}
+# The cut_off flag every item of a question set carries: a tracing sentence always stops before its next word, and
+# advice_rerun_truncated holds exactly the cut-off messages (advice_items). A script has no cut_off field.
+EXAMPLE_CUT_OFF = {"tracing_pair": True, "advice_new": False, "advice_rerun": False, "advice_rerun_truncated": True}
+# What an example's text may not show a physician (the blinding section of docs/verification_protocol.md): a model
+# or vendor name, the study's batch, run or item ids, and a decimal number or a percentage, the forms in which a
+# measured value is written. An item's display, built from the texts a physician rates, carries none of the study's
+# own; an example is written by hand, so its text is checked, more strictly than an item's could be (a patient's
+# message may hold a decimal number). Urgency levels are read from the questions data (example_answer_levels).
+#
+# The model and vendor names are those of every model registry the engine has: scripts/logits_eval.py HF_IDS (and
+# scripts/activation_patch.py's), medlang_circuits/graph_client.py MODEL_REGISTRY, medlang_circuits/evaluate_models.py
+# PRICING, LEGACY_ALIASES and DEFAULT_MODELS, scripts/pab_probe_cost.py's price tables and presets,
+# data/advice_providers.json (every vendor block, consumer product and model id it names), the Petri lane's targets
+# and judges (it prices a target from the two tables above, and data/petri records the landed ones) and its park
+# target, plus the two services the study calls (Neuronpedia, OpenRouter). tests/test_export_verification_tasks.py
+# reads every one of those registries and fails when an id in any of them is not matched here, so a model added to a
+# registry must be named here too. A distinctive name is matched case-insensitively anywhere in a string, so a name
+# inside another (BioMistral, MedGemma, OpenMeditron, ChatGPT, Qwen3) is found; Codex review of PR #88 found the
+# first version's word-boundary pattern let those through.
+EXAMPLE_MODEL_SUBSTRINGS = ("gemma", "qwen", "llama", "olmo", "mistral", "meditron", "apertus", "claude", "openai",
+                            "gpt", "gemini", "grok", "deepseek", "kimi", "moonshot", "xai", "copilot", "allenai", "epfl",
+                            "mockllm", "neuronpedia", "openrouter")
+# Names that are ordinary words, or sit inside ordinary words, get an explicit pattern instead, so that the word in
+# the right column is not refused (measured against the system word list and every short string in the study's data).
+EXAMPLE_MODEL_PATTERNS = (
+    r"(?<![a-z])anthropic",                  # the vendor, not philanthropic, misanthropic
+    r"\b(?:opus|sonnet|haiku|fable)\b",      # Claude tiers named alone; inside octopus, affable
+    r"\bmuse[\s_-]*spark\b",                 # meta/muse-spark-1.3; both halves are ordinary words (amused, sparkle)
+    r"\bmeta(?:[\s_-]?ai\b|/|[\s_-]llama)",  # Meta AI, meta/<model>, meta-llama; not metal, metaphor
+    r"\bgoogle\b",                           # the vendor, not googled
+    r"\bnova[\s_-](?:micro|lite|pro|premier)\b",  # Amazon Nova (nova-lite-bedrock); not supernova, Casanova
+)
+EXAMPLE_MODEL_NAMES = re.compile("|".join([*map(re.escape, EXAMPLE_MODEL_SUBSTRINGS), *EXAMPLE_MODEL_PATTERNS]),
+                                 re.I)
+# The study's ids, by the shapes they take in the data (Codex review of PR #88 found the first pattern, a list of batch
+# prefixes, let the Petri seed and scenario ids through). tests/test_export_verification_tasks.py reads every id of
+# every source below and fails when one is not matched.
+EXAMPLE_IDS = re.compile("|".join((
+    # an underscore joining two letters or digits: every stamped batch, run and bundle id and its index
+    # (pairs_<stamp>#17, advman_<date>#01, vtasks_<stamp>, pilot_v2_<date>, run_<number>_1, the data/simulated and
+    # data/advice file stems), a bundle item id (vt_<hex>), a pilot row, call or cell id (A__<cell>__L01) and a Petri
+    # text key (t01_clinical); patient text has no underscores
+    r"[^\W_]_+[^\W_]",
+    r"\bpw-petri-",                                            # Petri seed ids (docs/framework/petri_seeds*.json)
+    r"\b(?:synthetic-h|w)\d+[a-z]?(?:-[a-z0-9]+)*-\d{4}\b",   # Petri scenario ids (w3-<slug>-0001, synthetic-h1-0001)
+    r"\br\d{3}\b",                                            # pilot review ids (review_map.json: r001)
+)), re.I)
+# The study's method vocabulary, which an example may not show (the blinding section of docs/verification_protocol.md
+# says physicians never see method labels; Codex review of PR #88 found examples were not checked for it). The terms
+# are the study's own: the method fields of the site payload (PAYLOAD_SCENARIO_KEYS) and of the trace summaries, the
+# names of the push-to-run lanes (fire_trigger.TRIGGERS), and the method names AGENTS.md uses (attribution graphs,
+# transcoders, next-token probabilities, the holdout and Tier A/B; Neuronpedia is refused as a service name, with the
+# model names). tests/test_export_verification_tasks.py reads those
+# fields and lane names and fails when one is neither matched here nor listed there as bookkeeping or an ordinary word.
+# A term that is also an ordinary word is matched only in its method phrase: steering (feature steering, steering
+# boost; not the steering wheel), selection (selection rule, selected by; not a selection of), patching (activation
+# patching; not patching a tyre), circuit (circuit tracing or diff; not circuit training), petri (not a petri dish),
+# spread, top, target, model and set only in the payload's and summaries' own phrases.
+EXAMPLE_METHOD_TERMS = re.compile("|".join((
+    r"\blogit", r"transcoder", r"\battribution", r"\bprobabilit", r"\bj-?lens\b", r"\bjacobian\b",
+    r"\bnext[\s_-]+token", r"\bhold[\s_-]?out\b", r"\btier[\s_-]+[ab]\b",
+    r"\bcircuit[\s_-]*(?:trac|diff)", r"\blanguage[\s_-]+penalt", r"\bprob[\s_-]+(?:clinical|patient)\b",
+    r"\bclinical[\s_-]+mass\b", r"\bdepth[\s_-]+(?:class|readout|probe)", r"\banchor[\s_-]+fallback",
+    r"\btarget[\s_-]+tokens?\b", r"\btop[\s_-]+(?:clinical|patient|path)\b", r"\bspread[\s_-]+(?:clinical|patient)\b",
+    r"\bpredictive[\s_-]+spread", r"\berror[\s_-]+share", r"\bforced[\s_-]+targets?\b", r"\bmitigation[\s_-]+recovery",
+    r"\btranslation[\s_-]+(?:method|model)", r"\bgraph[\s_-]+models?\b", r"\bsource[\s_-]+sets?\b",
+    r"\bscreen(?:ing)?[\s_-]+targets?\b", r"\bgeneration[\s_-]+params?\b", r"\bbaseline[\s_-]+(?:prompt|probabilit)",
+    r"\bregister[\s_-]+(?:shift|gap|contrast)", r"\bvariety[\s_-]+shift", r"\bactivation[\s_-]+patch",
+    r"\bpatching[\s_-]+grid", r"\bsteer(?:ing|ed)[\s_-]+(?:boost|vector|feature|result|experiment)s?\b",
+    r"\b(?:causal|feature|activation)[\s_-]+steer", r"\bselection[\s_-]+(?:rule|heuristic|criteri|method)",
+    r"\bselected[\s_-]+by\b", r"\bscenario[\s_-]+generation", r"\bmodel[\s_-]+evaluation", r"\barchive[\s_-]+renders?\b",
+    r"\badvice[\s_-]+eval", r"\bpetri\b(?![\s_-]+dish)", r"\bpab[\s_-]+probe",
+)), re.I)
+
+# A measured value as it is written: a decimal with or without its leading digit (0.43, .43, -.43; not an ellipsis
+# before a number), a percent sign, or a percentage in words (percent, per cent, percentage, pct). Codex review of PR
+# #88 found the first version, digit-dot-digit and the sign only, let the leading-dot and word forms through.
+EXAMPLE_MEASURED = re.compile(r"\d[.,]\d|(?<![\w.])\.\d|%|\bper[\s-]?cent|\bpct\b", re.I)
 
 _STAMP_RE = re.compile(r"^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$")
 
@@ -332,8 +439,21 @@ class Inputs:
 
     def __init__(self) -> None:
         self.sources: list[dict[str, str]] = []
+        # each path is read and recorded once, under the role it was first read for; a later read reuses the bytes
+        # (Gemini review of PR #88: a previous bundle that is also a committed bundle was listed twice)
+        self._read: dict[Path, bytes] = {}
+        # every study text the inputs hold, selected for the bundle or not, with where it is (ids only): an example may
+        # not repeat or nearly repeat one (check_example_copies)
+        self.study_texts: list[tuple[str, str]] = []
+
+    def study(self, text: Any, where: str) -> None:
+        if isinstance(text, str) and text.strip():
+            self.study_texts.append((text, where))
 
     def read_bytes(self, path: Path, role: str, label: str | None = None) -> bytes:
+        key = path.resolve()
+        if key in self._read:
+            return self._read[key]
         if not path.is_file():
             refuse("missing_input", f"{role}: {path} does not exist or is not a file")
         try:
@@ -341,6 +461,7 @@ class Inputs:
         except OSError as exc:
             refuse("unreadable_input", f"{role}: cannot read {path} ({type(exc).__name__})")
         self.sources.append({"path": label or logical_path(path), "role": role, "sha256": sha256_bytes(data)})
+        self._read[key] = data
         return data
 
     def read_json(self, path: Path, role: str, label: str | None = None) -> tuple[Any, str]:
@@ -547,11 +668,531 @@ def validate_questions(doc: Any, where: str) -> dict:
     notes = doc["notes"]
     if not isinstance(notes, dict) or not (isinstance(notes.get("max_length"), int) and notes["max_length"] > 0):
         refuse("questions_mismatch", f"{where}: notes.max_length is not a positive integer")
-    instructions = doc["instructions"]
-    families = instructions.get("families") if isinstance(instructions, dict) else None
+    instructions = check_keys(doc["instructions"], INSTRUCTIONS_KEYS, f"{where} instructions")
+    families = instructions.get("families")
     if not isinstance(families, dict) or sorted(families) != sorted(FAMILIES):
         refuse("questions_mismatch", f"{where}: instructions.families must name exactly {list(FAMILIES)}")
+    validate_examples(doc, where)
     return doc
+
+
+def example_answer_levels(doc: dict) -> list[tuple[str, list[str]]]:
+    """The urgency levels a proposed tier is one of, one entry per option, as (its label, the terms an example could
+    write it as): for every option of every scale a reveal-locked question of the exporter's question sets uses, its
+    label, its value (the tier a reveal stores), and the value with an underscore written as a space or a hyphen. Read
+    from the questions data, so no level is written in this file. An example whose text names one would show a
+    physician an answer; Codex review of PR #88 found that checking labels alone let the bare values (the tier ids)
+    through. One entry per option, so a refusal names an option once (Gemini review of PR #88)."""
+    scales = {q["scale"] for set_name in QUESTION_SETS for q in doc["question_sets"][set_name]["questions"]
+              if q.get("locks_on_reveal")}
+    levels: dict[str, set[str]] = {}
+    for s in sorted(scales):
+        for option in doc["scales"][s].get("options", []):
+            terms: set[str] = set()
+            for field in ("label", "value"):
+                term = option.get(field)
+                if isinstance(term, str) and term.strip():
+                    terms |= {term, term.replace("_", " "), term.replace("_", "-")}
+            if terms:
+                name = option.get("label") if isinstance(option.get("label"), str) else str(option.get("value"))
+                levels.setdefault(name, set()).update(terms)
+    return [(name, sorted(terms)) for name, terms in levels.items()]
+
+
+# An answer stated outright: "rating/score/answer/verdict" with a linking verb, "of" ("a rating of 4"; Gemini review of
+# PR #88, round 3) or a sign, or "rated/scored/scores", before an answer. "Answer yes or no" (no link) describes the
+# task and is not one.
+_ASSERTION_LEAD = (r"\b(?:(?:rating|score|answer|verdict)\s*(?:is|was|would\s+be|should\s+be|will\s+be|of|=|:)"
+                   r"|(?:rated|scored|scores)(?:\s+(?:as|at))?"
+                   # a rating verb with its object, a pronoun or a determiner and up to eight words (of, in and for
+                   # phrases among them), before the answer ("I rated it 4", "I rate this example 4", "I rated the first
+                   # version of the conversation 4"; Codex review of PR #88). The object holds no copula or other verb
+                   # that ends a noun phrase, so a noun "rate" followed by its clause ("the exchange rate the whole week
+                   # was 4") is not read as one.
+                   r"|(?:rate|rates|rated|rating|score|scores|scored|scoring)\s+"
+                   # (quantifiers count as determiners, and "both" and "all" stand alone too: "I rate both messages 4",
+                   # "rated all three versions 2"; Codex review of PR #88)
+                   r"(?:it|this|that|them|these|those|both|all|(?:the|this|that|these|those|each|every|my|our|your|"
+                   r"both|all|either|neither|some|any|several|two|three|four|five|six|seven|eight|nine|ten)"
+                   r"(?:\s+(?!(?:is|are|was|were|be|been|went|got)\b)[\w'-]+){1,8}?)\s+(?:(?:as|at|a|an)\s+)?)\s*")
+
+
+def _label_pattern(label: str) -> str:
+    """A label as a phrase: flexible whitespace, and a numbered label's separator ("4 - Likely") as any dash or a colon."""
+    words = [re.escape(w) for w in label.split()]
+    return r"\s*".join(w if w not in ("\\-", "-") else r"[-\u2013\u2014:]" for w in words)
+
+
+def example_answer_rules(doc: dict, set_name: str) -> list[tuple[str, re.Pattern]]:
+    """(what it shows, pattern) for the answers to the questions of question set ``set_name``, read from every scale
+    those questions use, abstentions included (Codex review of PR #88: only the reveal's scale was read). Where the line
+    is drawn: a label is refused as a phrase when it is a statement of its own, four or more words or a numbered
+    label ("4 - Likely", "I could hear this from a real patient", "Entirely plausible; I have seen this"); a shorter
+    label ("Likely", "Possible", "Yes", "None of them", "Can't tell") and every answer value are refused only inside a
+    rating statement ("the rating is 4", "rated Likely", "the answer is yes"), and an ordinal number scale's values as
+    "N out of M" with M its highest value. Refusing the short labels as bare words would refuse a caption that says
+    what a physician judges ("how likely a real patient is ...")."""
+    rules: list[tuple[str, re.Pattern]] = []
+    stated: set[str] = set()
+    for q in doc["question_sets"][set_name]["questions"]:
+        scale = doc["scales"][q["scale"]]
+        options = list(scale.get("options", [])) + ([scale["abstain"]] if scale.get("abstain") else [])
+        for option in options:
+            label, value = option.get("label"), option.get("value")
+            if isinstance(value, (int, str)) and not isinstance(value, bool) and str(value).strip():
+                stated |= {str(value), str(value).replace("_", " "), str(value).replace("_", "-")}
+            if not isinstance(label, str) or not label.strip():
+                continue
+            stated.add(label)
+            numbered = re.fullmatch(r"\s*(\d+)\s*-\s*(.+)", label)
+            if numbered:
+                stated.add(numbered.group(2))
+            if numbered or len(re.findall(r"[^\W_]+", label)) >= 4:
+                # one rule per option: a numbered label, and its text when that is a statement too
+                forms = [label] + ([numbered.group(2)] if numbered
+                                   and len(re.findall(r"[^\W_]+", numbered.group(2))) >= 4 else [])
+                rules.append((f"the answer label {label!r}",
+                              re.compile("|".join(rf"(?<!\w){_label_pattern(f)}(?!\w)" for f in forms), re.I)))
+        values = [o.get("value") for o in scale.get("options", [])]
+        if scale.get("type") == "ordinal" and values and all(isinstance(v, int) and not isinstance(v, bool)
+                                                             for v in values):
+            top = max(values)
+            rules.append((f"a rating out of {top}",
+                          re.compile(rf"\b(?:{'|'.join(map(str, values))})\s*(?:out\s+of|/)\s*{top}\b", re.I)))
+    alternatives = "|".join(_label_pattern(s) for s in sorted(stated, key=len, reverse=True))
+    rules.append(("a rating or answer stated outright", re.compile(rf"{_ASSERTION_LEAD}(?:{alternatives})(?!\w)", re.I)))
+    return list(dict(rules).items())                    # one rule per description (questions can share a scale)
+
+
+# Copies of study items. A text is normalised (lower case, every run of characters that are not letters or digits read
+# as one space) and compared exactly. Beyond that, an example text and a study text are compared by their word 4-grams
+# in both directions, and the larger share decides, against COPY_SHARE (half):
+# - the share of the example text's 4-grams that occur in one study text (the example text has at least
+#   COPY_MIN_GRAMS of them): a near copy, such as a copied sentence with a word changed;
+# - the share of the study text's 4-grams that occur in the example text (Codex review of PR #88: a whole study prompt
+#   with novel words around it passed): counted for a study text of at least COPY_CONTAIN_MIN_GRAMS 4-grams, a
+#   stimulus rather than a stock phrase, and for any study text of at least COPY_MIN_GRAMS contained whole.
+# Measured on the real inputs: the three draft examples of questions 1.2-draft share at most a quarter of their own
+# 4-grams with any study text, and at most a ninth of any study text of COPY_CONTAIN_MIN_GRAMS (ten, a text of
+# thirteen words) or more. Shorter study texts count only when contained whole, because a stock question ("is there
+# anything else I should ...") gives the drafts three of the four 4-grams of a seven-word seed turn and three of the
+# eight of an eleven-word one (38%, too close to half).
+# A study text with fewer than COPY_MIN_GRAMS 4-grams (under seven words) has no gram share to speak of, so it is a
+# copy when its words occur in the example text as one run, if it has at least COPY_CONTAIN_MIN_WORDS words (Codex review
+# of PR #88: a five-word turn of vt_f51de47d1933 pasted inside longer text passed). Measured on the real inputs: 39
+# study texts have four to six words and none fewer; the drafts contain none of them; the one four-word text is a stock
+# reply ("ok thanks anything else"), so four-word texts are compared exactly only. Two five-word stock questions
+# ("anything else I should know", "anything else that might help") would be refused if an example pasted them whole.
+COPY_GRAM = 4
+COPY_MIN_GRAMS = 4
+COPY_CONTAIN_MIN_GRAMS = 10
+COPY_CONTAIN_MIN_WORDS = 5
+COPY_SHARE = 0.5
+COMMITTED_BUNDLES_DIR = REPO_ROOT / "data" / "verification"
+
+
+def normalised_words(text: str) -> list[str]:
+    return re.findall(r"[^\W_]+", text.casefold())
+
+
+def word_grams(text: str) -> set[tuple[str, ...]]:
+    words = normalised_words(text)
+    return {tuple(words[i:i + COPY_GRAM]) for i in range(len(words) - COPY_GRAM + 1)}
+
+
+class StudyTextIndex:
+    """The study texts an example may not copy: their normalised forms, and an index from each word 4-gram to the
+    texts holding it."""
+
+    def __init__(self, texts: list[tuple[str, str]]) -> None:
+        self.where: list[str] = []
+        self.size: list[int] = []
+        self.exact: dict[str, str] = {}
+        self.short: dict[str, str] = {}
+        self.grams: dict[tuple[str, ...], set[int]] = {}
+        for text, where in texts:
+            n = len(self.where)
+            self.where.append(where)
+            grams = word_grams(text)
+            self.size.append(len(grams))
+            words = normalised_words(text)
+            self.exact.setdefault(" ".join(words), where)
+            if COPY_CONTAIN_MIN_WORDS <= len(words) and len(grams) < COPY_MIN_GRAMS:
+                self.short.setdefault(" ".join(words), where)
+            for gram in grams:
+                self.grams.setdefault(gram, set()).add(n)
+
+    def copy_of(self, text: str) -> tuple[str, float, str, str] | None:
+        """(how, the deciding share, where, whose 4-grams the share is of) for a copy, else None: "repeats" for the
+        same normalised text, "nearly repeats" when the example text's share decides, "contains" when the study
+        text's does."""
+        key = " ".join(normalised_words(text))
+        if key and key in self.exact:
+            return "repeats", 1.0, self.exact[key], "its"
+        padded = f" {key} "
+        for run, where in self.short.items():
+            if f" {run} " in padded:
+                return "contains", 1.0, where, "the study text's"
+        share, where, whose = self.overlap(text)
+        if share < COPY_SHARE:
+            return None
+        return ("nearly repeats" if whose == "its" else "contains"), share, where or "", whose
+
+    def overlap(self, text: str) -> tuple[float, str | None, str]:
+        """The largest share, over the study texts, of the larger of the two shares a study text and this text have
+        in common (see COPY_SHARE), that text's place, and whose 4-grams the share is of ("its", the example
+        text's, or "the study text's"); (0, None, "its") when no study text shares a 4-gram."""
+        grams = word_grams(text)
+        hits: Counter = Counter(n for gram in grams for n in self.grams.get(gram, ()))
+        best: tuple[float, str | None, str] = (0.0, None, "its")
+        for n, count in sorted(hits.items()):
+            if len(grams) >= COPY_MIN_GRAMS and count / len(grams) > best[0]:
+                best = (count / len(grams), self.where[n], "its")
+            size = self.size[n]
+            if (size >= COPY_CONTAIN_MIN_GRAMS or (size >= COPY_MIN_GRAMS and count == size)) and count / size > best[0]:
+                best = (count / size, self.where[n], "the study text's")
+        return best
+
+
+def study_payload(inp: "Inputs", site: Path) -> None:
+    """Add every prompt of the published payload to the study texts, whether or not main-study pairs are selected
+    (Codex review of PR #88: with --main-pairs 0 the payload was never read, so an example copied from a published
+    row passed). The payload is read once (Inputs reuses the bytes main_items read)."""
+    payload, _ = inp.read_json(site / SITE_PAYLOAD, "published site payload", SITE_LABEL)
+    scenarios = payload.get("scenarios") if isinstance(payload, dict) else None
+    if not isinstance(scenarios, list):
+        refuse("bad_input", f"{site / SITE_PAYLOAD} has no scenarios list")
+    for n, s in enumerate(scenarios, 1):
+        # the same checks main_items makes, so a malformed row is refused by name, never skipped (Codex review of
+        # PR #88: with --main-pairs 0 this is the payload's only reader)
+        check_keys(s, PAYLOAD_SCENARIO_KEYS, f"payload scenario {n}", ("batch", "batch_index", "clinical_prompt",
+                                                                     "patient_prompt", "models"))
+        for side in ("clinical_prompt", "patient_prompt"):
+            inp.study(need_str(s[side], f"payload scenario {n} {side}"), f"payload row {s['batch']}#{s['batch_index']}")
+
+
+def check_example_copies(inp: "Inputs", examples: list[dict]) -> None:
+    """Refuse an example whose label, caption, or any sentence, message or turn (copy_texts) repeats, nearly repeats or
+    contains a study text
+    (Codex review of PR #88: a copied
+    item display passed every other check, and a physician would rate the same stimulus after seeing it as an example).
+    The study texts are every text the inputs hold, selected for this bundle or not (Inputs.study_texts; every item
+    of this bundle is built from them; the payload's are added by study_payload whether or not main pairs are), and the item displays of every committed bundle in data/verification, which
+    are read for this and recorded in sources. Messages name the example and the place, never text."""
+    texts = list(inp.study_texts)
+    for path in sorted(COMMITTED_BUNDLES_DIR.glob("tasks_*.json")):
+        bundle, _ = inp.read_json(path, "committed bundle (an example may not copy its items)")
+        for item in bundle.get("items", []) if isinstance(bundle, dict) else []:
+            texts += [(t, f"item {item.get('item_id')} of {path.name}") for t in copy_texts(item.get("display"))]
+    index = StudyTextIndex(texts)
+    found = []
+    for n, example in enumerate(examples):
+        # the label and caption as well as the display's sentences, messages and turns (Codex review of PR #88)
+        for text in [example["label"], example["caption"], *copy_texts(example["display"])]:
+            copy = index.copy_of(text)
+            if copy:
+                found.append(f"instructions.examples[{n}] ({example['family']}) {copy[0]} {copy[2]} "
+                             f"({copy[1]:.0%} of {copy[3]} word 4-grams)")
+                break
+    if found:
+        refuse("example_copies_item", "an example is a study item, or nearly one, so a physician would see it before "
+                                      "rating it: " + "; ".join(found) + ". Examples are invented")
+
+
+def copy_texts(display: Any) -> list[str]:
+    """The texts of a display the copy check compares: its sentences, messages and turns. A pair's next word is left
+    out (Gemini review of PR #88: as a one-word study text it made any example whose next word was a committed pair's
+    target "repeat" that item); next words have their own rules (next_word_ok and the blinding checks)."""
+    if isinstance(display, dict):
+        return [s for k, v in display.items() if k not in NOT_SHOWN_DISPLAY_FIELDS | {"next_word"}
+                for s in item_shown_texts(v)]
+    return item_shown_texts(display)
+
+
+def item_shown_texts(display: Any) -> list[str]:
+    """The texts of an item display a physician reads (not its kind, arm ids or same_as; NOT_SHOWN_DISPLAY_FIELDS)."""
+    if isinstance(display, str):
+        return [display]
+    if isinstance(display, dict):
+        return [s for k, v in display.items() if k not in NOT_SHOWN_DISPLAY_FIELDS for s in item_shown_texts(v)]
+    if isinstance(display, list):
+        return [s for v in display for s in item_shown_texts(v)]
+    return []
+
+
+# A caption says what a physician judges; it never evaluates the example. An evaluation is a declarative clause that
+# applies an answer to the example: a subject that is the example ("the conversation", "this message", "it"), a
+# copula, an optional "not" and intensifiers, then a predicate read from the questions data (example_predicates).
+# Codex review of PR #88 asked whether "The conversation is entirely plausible" should pass; the owner adopted Gemini's
+# answer that it should not, while a task description must: a clause under "whether", "if" or "how", or a sentence
+# that opens with an imperative ("Judge whether the conversation is plausible", "Say how likely it is").
+_EXAMPLE_SUBJECT = (r"(?:(?:the|this|that|these|those|each|every|its|their)\s+(?:[a-z-]+\s+){0,2}?"
+                    r"(?:conversations?|scripts?|scenarios?|situations?|stor(?:y|ies)|examples?|items?|pairs?|"
+                    r"sentences?|messages?|versions?|wordings?|course(?:\s+of\s+events)?|events|cases?|texts?|"
+                    r"exchanges?|turns?|ones?)|it|this|that|they|these|those)")
+_EXAMPLE_COPULA = r"(?:is|are|was|were|seems?|appears?|sounds?|looks?|reads?|feels?)(?:\s+to\s+be)?"
+_INTENSIFIERS = ("entirely", "completely", "wholly", "very", "quite", "fairly", "highly", "mostly", "somewhat",
+                 "clearly", "perfectly", "totally", "rather", "so", "as", "really", "medically", "definitely",
+                 "probably")
+# The verbs that open a task directive, and only those (Gemini review of PR #88, round 3): "note", "consider", "ask",
+# "read", "look" and "think" also introduce an assertion ("Note that the conversation is plausible"), so they are not
+# here, and a directive followed by "that" introduces one too ("Say that this message is realistic") and exempts
+# nothing.
+_TASK_SENTENCE_OPENERS = ("judge", "rate", "say", "decide", "assess", "determine", "check", "choose", "tell")
+
+
+def example_predicates(doc: dict, set_name: str) -> list[str]:
+    """What an evaluation of an example of question set set_name could call it, read from the questions data: the
+    label of every option of every ordinal scale the set's questions use (an ordinal scale rates a degree, so its
+    labels are evaluations; a nominal scale's, such as a message number, and an abstention are not), without its
+    number ("4 - Likely" gives "Likely") or what follows a ";" or "(", when that is three words or fewer, and its last
+    word when it opens with an intensifier ("Entirely plausible" gives "plausible"); the last word of each of the
+    set's yes/no questions (a nominal scale of two options) that asks "is the ... X?" ("coherent"), and what each of
+    those questions measures, after the last colon of its measures field ("medically coherent", "coherent"); and the qualities the welcome text says physicians
+    judge ("whether each one is realistic and checkable")."""
+    found: set[str] = set()
+    for q in doc["question_sets"][set_name]["questions"]:
+        scale = doc["scales"][q["scale"]]
+        for option in scale.get("options", []) if scale.get("type") == "ordinal" else []:
+            label = option.get("label")
+            if not isinstance(label, str):
+                continue
+            core = re.split(r"[;(]", re.sub(r"^\s*\d+\s*-\s*", "", label))[0].strip()
+            words = re.findall(r"[^\W_][\w'-]*", core)
+            if 0 < len(words) <= 3:
+                found.add(core)
+                if len(words) > 1 and words[0].lower() in _INTENSIFIERS:
+                    found.add(words[-1])
+        if scale.get("type") == "nominal" and len(scale.get("options", [])) == 2:
+            asks = re.search(r"\bis the\b[^?]*\b([a-z]+)\?\s*$", q.get("text", ""), re.I)
+            if asks:
+                found.add(asks.group(1))
+            # what the question measures, after its last colon, without a parenthesis ("verifiability: medically
+            # coherent"): the same words for every set however its question is worded (Gemini review of PR #88,
+            # round 3: tracing_pair asks "Does the sentence make medical sense?")
+            measures = q.get("measures")
+            if isinstance(measures, str) and ":" in measures:
+                phrase = re.sub(r"\(.*?\)", "", measures.rsplit(":", 1)[1]).strip()
+                words = re.findall(r"[^\W_][\w'-]*", phrase)
+                if 0 < len(words) <= 3:
+                    found.add(phrase)
+                    if len(words) > 1 and words[0].lower() in _INTENSIFIERS:
+                        found.add(words[-1])
+    for line in (doc.get("instructions") or {}).get("welcome", []):
+        for qualities in re.findall(r"\bwhether each one is ([a-z]+(?: and [a-z]+)*)", line, re.I):
+            found |= set(qualities.split(" and "))
+    return sorted({p.lower() for p in found}, key=lambda p: (-len(p), p))
+
+
+# Where one clause ends and the next begins: sentence punctuation, a comma, a coordinating or contrasting conjunction,
+# or a subordinating one (because, since, as, so). Each clause is checked on its own, so a directive or a "whether" in
+# one clause does not exempt an evaluation in the next (Gemini review of PR #88, round 3: "Judge whether the
+# conversation is plausible, but this message is realistic" passed; Codex review: "... agree because this conversation
+# is entirely plausible" passed). "as" and "so" are also degree words ("is as realistic as", "is so realistic"), so
+# they end a clause only when the word before them is not a copula, "not" or an intensifier (_clauses).
+_CLAUSE_BREAK = re.compile(r"[.;:!?,]+|\b(?:but|and|yet|while|although|however|because|since|as|so)\b", re.I)
+_DEGREE_AFTER = {"is", "are", "was", "were", "be", "seem", "seems", "appear", "appears", "sound", "sounds", "look",
+                 "looks", "read", "reads", "feel", "feels", "not"}
+
+
+def _clauses(text: str) -> list[tuple[str, bool]]:
+    """The clauses of a text (_CLAUSE_BREAK), keeping "as" and "so" inside a clause where they are degree words, each
+    with whether it opens a sentence (the text's start, or after . ; : ! or ?)."""
+    parts, start, opens = [], 0, True
+    for m in _CLAUSE_BREAK.finditer(text):
+        if m.group(0).lower() in ("as", "so"):
+            before = re.findall(r"[a-z']+", text[start:m.start()].lower())
+            if before and (before[-1] in _DEGREE_AFTER or before[-1] in _INTENSIFIERS):
+                continue
+        parts.append((text[start:m.start()], opens))
+        opens = any(c in ".;:!?" for c in m.group(0))
+        start = m.end()
+    return parts + [(text[start:], opens)]
+
+
+def example_evaluations(text: str, predicates: list[str]) -> list[str]:
+    """The predicates a text applies to the example in an evaluation (see _EXAMPLE_SUBJECT), clause by clause
+    (_CLAUSE_BREAK), skipping a clause under "whether", "if" or "how" and a clause that opens with an imperative."""
+    if not predicates:
+        return []
+    pattern = re.compile(rf"\b{_EXAMPLE_SUBJECT}\s+{_EXAMPLE_COPULA}\s+(?:not\s+)?(?:(?:{'|'.join(_INTENSIFIERS)})\s+)*"
+                         rf"(?P<pred>{'|'.join(_label_pattern(p) for p in predicates)})(?!\w)", re.I)
+    # a clause that opens with a relative "which" ("the versions, which are entirely plausible") evaluates its noun
+    relative = re.compile(rf"^\s*which\s+{_EXAMPLE_COPULA}\s+(?:not\s+)?(?:(?:{'|'.join(_INTENSIFIERS)})\s+)*"
+                          rf"(?P<pred>{'|'.join(_label_pattern(p) for p in predicates)})(?!\w)", re.I)
+    # A clause with no subject and copula of its own shares those of the nearest clause before it in the same sentence
+    # ("This message is brief but medically coherent"; Codex review of PR #88), and that clause's exemption, so "Judge
+    # whether the message is brief and medically coherent" stays a task directive.
+    head_pattern = re.compile(rf"(?P<subject>\b{_EXAMPLE_SUBJECT}|^\s*which)\s+{_EXAMPLE_COPULA}\b", re.I)
+    # a continuation that repeats the copula ("This message is brief but is medically coherent") takes the subject only
+    own_copula = re.compile(rf"\s*(?:not\s+)?{_EXAMPLE_COPULA}\b", re.I)
+    question = re.compile(r"\b(?:whether|if|how|which|what)\b", re.I)
+    out: list[str] = []
+    head: str | None = None
+    head_subject = ""
+    head_exempt = False
+    for clause, opens in _clauses(text):
+        if opens:
+            head, head_exempt = None, False
+        opener = re.match(r"\s*([a-z]+)(\s+that\b)?", clause, re.I)
+        directive = bool(opener and opener.group(1).lower() in _TASK_SENTENCE_OPENERS and not opener.group(2))
+        own = head_pattern.search(clause)
+        if own:
+            head, head_subject = own.group(0).strip(), own.group("subject").strip()
+            head_exempt = directive or bool(question.search(clause[:own.start()]))
+            checked, exempt = clause, directive
+        elif head is not None:
+            carried = head_subject if own_copula.match(clause) else head
+            checked, exempt = f"{carried} {clause.strip()}", directive or head_exempt
+        else:
+            checked, exempt = clause, directive
+        if exempt:
+            continue
+        found = relative.match(checked)
+        if found:
+            out.append(found.group("pred"))
+            continue
+        for m in pattern.finditer(checked):
+            # a question word before the evaluation makes it what the physician is asked, not a claim; "which" and
+            # "what" are question words here because a relative "which" opens its own clause, after a comma
+            if not question.search(checked[:m.start()]):
+                out.append(m.group("pred"))
+    return out
+
+
+def example_texts(example: dict) -> list[str]:
+    """Every string an example shows a physician: its label, its caption and every string of its display."""
+    return [example["label"], example["caption"], *strings_in(example["display"])]
+
+
+# Display fields that hold the contract's own vocabulary, not text a physician reads: the display kind, and a
+# script's arm ids, which the app replaces with Version A/B/C and same_as names. Both are snake_case
+# (pair_sentence, lay_careful), so the id check skips them.
+NOT_SHOWN_DISPLAY_FIELDS = frozenset({"kind", "arm", "same_as"})
+
+
+def example_shown_texts(example: dict) -> list[str]:
+    """The text of an example a physician reads: its label, its caption, and its display's strings except the
+    display kind and the arm ids (NOT_SHOWN_DISPLAY_FIELDS)."""
+    return [example["label"], example["caption"], *item_shown_texts(example["display"])]
+
+
+def _example_display_problem(display: Any, set_name: str) -> str | None:
+    """How an example's display departs from the display every item of question set ``set_name`` has, or None. The
+    rules are the ones the item builders follow, so the app renders an example exactly as it renders an item."""
+    kind = DISPLAY_KIND[QUESTION_SETS[set_name]]
+    if not isinstance(display, dict):
+        return "display is not an object"
+    if display.get("kind") != kind:
+        return f"display kind is {display.get('kind')!r}; an item of question set {set_name!r} has {kind!r}"
+    if set(display) != DISPLAY_FIELDS[kind]:
+        return (f"display fields are {sorted(display)}; a {kind} display has exactly {sorted(DISPLAY_FIELDS[kind])} "
+                "(an example carries no answer, reveal, tier or provenance)")
+
+    def text(value: Any) -> bool:
+        return isinstance(value, str) and bool(value.strip())
+
+    if kind == "pair_sentence":
+        for side in ("clinical", "patient"):
+            part = display[side]
+            if not isinstance(part, dict) or set(part) != {"text", "highlight"} or not text(part["text"]):
+                return f"display.{side} is not an object of exactly a non-empty text and its highlight"
+        expected = diff_spans(display["clinical"]["text"], display["patient"]["text"])
+        if None in expected:
+            return "the two sentences do not each have words where they differ, so nothing would be marked"
+        if canonical([display["clinical"]["highlight"], display["patient"]["highlight"]]) != canonical(list(expected)):
+            return ("a highlight is not the span where the two sentences differ, widened to whole words, in UTF-16 "
+                    f"code units (the exporter gives {list(expected)} for these sentences)")
+        if not next_word_ok(display["next_word"]):
+            return "next_word is not one lowercase word (the version-2 next_word rule an item's next word follows)"
+    elif kind == "message_pair":
+        if not (text(display["clinical_message"]) and text(display["patient_message"])):
+            return "a message is not a non-empty string"
+        if display["clinical_message"] == display["patient_message"]:
+            return "the two messages are the same text"
+    else:
+        n_turns, arms = display["n_turns"], display["arms"]
+        if isinstance(n_turns, bool) or not isinstance(n_turns, int) or n_turns < 1:
+            return "n_turns is not a positive integer"
+        if not isinstance(arms, list) or len(arms) < 2:
+            return "arms is not a list of at least two versions"
+        seen: list[dict] = []
+        for arm in arms:
+            if not isinstance(arm, dict) or set(arm) != {"arm", "turns"} or not text(arm["arm"]):
+                return "an arm is not an object of exactly a non-empty arm id and its turns"
+            if any(a["arm"] == arm["arm"] for a in seen):
+                return f"arm {arm['arm']!r} appears twice"
+            if not isinstance(arm["turns"], list) or len(arm["turns"]) != n_turns:
+                return f"arm {arm['arm']!r}: its turns are not a list of n_turns ({n_turns}) entries"
+            for t, turn in enumerate(arm["turns"]):
+                if not isinstance(turn, dict) or set(turn) != {"text", "same_as"} or not text(turn["text"]):
+                    return f"arm {arm['arm']!r} turn {t + 1} is not an object of exactly a non-empty text and same_as"
+                same_as = next((a["arm"] for a in seen if a["turns"][t]["text"] == turn["text"]), None)
+                if canonical(turn["same_as"]) != canonical(same_as):
+                    return (f"arm {arm['arm']!r} turn {t + 1}: same_as is {turn['same_as']!r}; an item names the first "
+                            f"earlier arm whose turn is word for word the same ({same_as!r})")
+            seen.append(arm)
+    if kind != "script" and display["cut_off"] is not EXAMPLE_CUT_OFF[set_name]:
+        return f"cut_off is {display['cut_off']!r}; every item of question set {set_name!r} has {EXAMPLE_CUT_OFF[set_name]}"
+    return None
+
+
+def validate_examples(doc: dict, where: str) -> None:
+    """Refuse an ``instructions.examples`` the app could not render as it renders an item, or whose text shows a
+    model, an id, a measured value or an answer (names only, never text). Absent is valid: a questions file needs no
+    examples. The seal scan of example text is build_bundle's (it needs the sealed registry)."""
+    instructions = doc["instructions"]
+    if "examples" not in instructions:
+        return
+    examples = instructions["examples"]
+    if not isinstance(examples, list) or not examples:
+        refuse("bad_example", f"{where}: instructions.examples is not a non-empty list (leave it out for none)")
+    answer_levels = example_answer_levels(doc)
+    # an option's definition says when that answer applies, so an example may not give it either (Codex review of
+    # PR #88): every non-empty definition of every option of the scales the question sets use, read from the
+    # questions data, compared with what a physician reads by the copy check's measure (StudyTextIndex)
+    definitions = StudyTextIndex(sorted({(o["definition"], f"the definition of the answer {o.get('label')!r}")
+                                         for set_name in QUESTION_SETS
+                                         for q in doc["question_sets"][set_name]["questions"]
+                                         for o in doc["scales"][q["scale"]].get("options", [])
+                                         if isinstance(o.get("definition"), str) and o["definition"].strip()}))
+    for n, example in enumerate(examples):
+        at = f"{where} instructions.examples[{n}]"
+        if not isinstance(example, dict):
+            refuse("bad_example", f"{at} is not an object")
+        fields = set(example)
+        if fields != EXAMPLE_KEYS:
+            refuse("bad_example", f"{at}: fields {sorted(fields)}; an example has exactly {sorted(EXAMPLE_KEYS)} "
+                                  f"(missing {sorted(EXAMPLE_KEYS - fields)}, not allowed {sorted(fields - EXAMPLE_KEYS)}: "
+                                  "an example carries no answer, reveal, tier or provenance)")
+        family = example["family"]
+        if not isinstance(family, str) or family not in QUESTION_SETS:
+            refuse("bad_example", f"{at}: family {family!r} is not one of the item question sets "
+                                  f"{sorted(QUESTION_SETS)}")
+        for field in ("label", "caption"):
+            if not isinstance(example[field], str) or not example[field].strip():
+                refuse("bad_example", f"{at} ({family}): {field} is not a non-empty string")
+        problem = _example_display_problem(example["display"], family)
+        if problem:
+            refuse("bad_example", f"{at} ({family}): {problem}")
+        texts = example_texts(example)
+        shown = [what for what, pattern in (("a model or vendor name", EXAMPLE_MODEL_NAMES),
+                                            ("a decimal number or a percentage", EXAMPLE_MEASURED))
+                 if any(pattern.search(t) for t in texts)]
+        if any(EXAMPLE_IDS.search(t) for t in example_shown_texts(example)):
+            shown.append("a batch, run, item, seed or scenario id")
+        if any(EXAMPLE_METHOD_TERMS.search(t) for t in example_shown_texts(example)):
+            shown.append("a method term")
+        shown += [f"the urgency level {name!r}" for name, terms in answer_levels
+                  if any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", t, re.I) for term in terms for t in texts)]
+        shown += [what for what, pattern in example_answer_rules(doc, family) if any(pattern.search(t) for t in texts)]
+        shown += sorted({copy[2] for t in example_shown_texts(example) for copy in [definitions.copy_of(t)] if copy})
+        predicates = example_predicates(doc, family)
+        evaluated = sorted({p.lower() for t in (example["label"], example["caption"]) for p in example_evaluations(t, predicates)})
+        shown += [f"an evaluation of the example as {p!r}" for p in evaluated]
+        if shown:
+            refuse("example_not_blind", f"{at} ({family}) shows {', '.join(shown)}; an example shows a physician no "
+                                        "model, method, measured value or answer")
 
 
 def reveal_scale_values(questions: dict, set_name: str) -> list[Any]:
@@ -846,6 +1487,11 @@ def pilot_items(inp: Inputs, seal: Seal, runs_dir: Path, trace_root: Path,
         if row["id"] in by_id:
             refuse("bad_input", f"{rows_path.name} repeats row id {row['id']!r}")
         by_id[row["id"]] = row
+        template = row.get("template")
+        if isinstance(template, str) and BLANK in template:
+            for side in ("clinical_term", "patient_term"):
+                if isinstance(row.get(side), str):
+                    inp.study(template.replace(BLANK, row[side]), f"pilot run {run_id} row {row['id']}")
 
     map_path = run_dir / "review_map.json"
     map_bytes = inp.read_bytes(map_path, f"pilot run {run_id} review map")
@@ -1192,6 +1838,8 @@ def advice_items(inp: Inputs, seal: Seal, questions: dict, new_path: Path,
         if reference["tier"] not in tiers_allowed:
             refuse("bad_input", f"{where}: reference tier is not one of the reveal scale's values")
         _advice_seal(seal, item, where)
+        for field in ("clinical_message", "patient_message", "clinical_body", "patient_body"):
+            inp.study(item[field], where)
         display = _advice_display(item, where, cut_off=False)
         tier_counts[reference["tier"]] += 1
         item_id = item_id_for("advice", new_source, need_str(item["id"], f"{where} id"))
@@ -1231,6 +1879,8 @@ def advice_items(inp: Inputs, seal: Seal, questions: dict, new_path: Path,
             form = "truncated"
         forms[form] += 1
         _advice_seal(seal, item, where)
+        for field in ("clinical_message", "patient_message", "clinical_body", "patient_body"):
+            inp.study(item[field], where)
         display = _advice_display(item, where, cut_off=(form == "truncated"))
         item_id = item_id_for("advice", rerun_source, need_str(item["id"], f"{where} id"))
         seal.note_bucket(item_id, need_str(item["clinical_body"], f"{where} clinical_body"))
@@ -1288,6 +1938,7 @@ def multiturn_items(inp: Inputs, seeds_path: Path) -> tuple[list[dict], dict]:
             if sha256_text(entry["text"]) != entry["sha256"]:
                 refuse("hash_mismatch", f"{where}: text {entry['key']!r} no longer hashes to its recorded sha256")
             texts[entry["key"]] = entry["text"]
+            inp.study(entry["text"], where)
         n_turns = protocol["max_target_turns"]
         arms_out: list[dict] = []
         turn_sha: dict[str, list[str]] = {}
@@ -1562,6 +2213,19 @@ def build_bundle(args: argparse.Namespace) -> tuple[dict, str]:
     if hits:
         refuse("seal_hit", f"rater-visible text of {len(hits)} item(s) contains a sealed holdout phrase: "
                            + "; ".join(f"{k} :: {', '.join(v)}" for k, v in sorted(hits.items())))
+    # an example's strings are shown to every physician, so each is swept as an item's display strings are, and a hit
+    # names the example (the whole-bundle sweep below would catch it too, but could not say where)
+    example_hits: dict[str, list[str]] = {}
+    for n, example in enumerate(questions["instructions"].get("examples", [])):
+        found = sorted({label for text in example_texts(example) for label in seal.scan(text)})
+        if found:
+            example_hits[f"instructions.examples[{n}] ({example['family']})"] = found
+    if example_hits:
+        refuse("seal_hit", f"rater-visible text of {len(example_hits)} example(s) contains a sealed holdout phrase: "
+                           + "; ".join(f"{k} :: {', '.join(v)}" for k, v in sorted(example_hits.items())))
+    if questions["instructions"].get("examples"):
+        study_payload(inp, Path(args.site))
+        check_example_copies(inp, questions["instructions"]["examples"])
 
     items.sort(key=lambda i: i["item_id"])
     random.Random(args.seed).shuffle(items)

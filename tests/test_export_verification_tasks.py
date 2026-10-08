@@ -23,7 +23,10 @@ review map, trace pairs file or sidecar does not fit it, and a next word outside
 builder's check, with the trace optional or required); and later rounds (--previous-bundle): a previous item dropped
 or changed, a question id dropped or kept with another scale, answer values (of another JSON type included), phase,
 requirement or lock, a required question added to a set previous items use (an optional one, or one in a set no
-previous item uses, kept), another notes limit, and a previous bundle of another shape. Every input here is
+previous item uses, kept), another notes limit, and a previous bundle of another shape; and the optional
+instructions.examples (each refused by name when malformed, when it shows a model, an id, a measured value or an
+urgency level, or when it holds a sealed phrase, and otherwise copied into the bundle unchanged; a questions file
+without examples still exports, with the same items). Every input here is
 synthetic, abstract and non-medical (the medical vocabulary rule in AGENTS.md); the seal fixtures follow
 tests/test_seal_check.py and tests/test_tierb_split.py. The committed-bundle tests check every bundle under
 data/verification/ against the contract, with failure messages naming item ids only, never row text, and re-export
@@ -33,6 +36,7 @@ compared from the items onward.
 """
 from __future__ import annotations
 
+import ast
 import copy
 import hashlib
 import importlib.util
@@ -449,31 +453,7 @@ def check_contract(bundle: dict) -> list[str]:
         if kind != FAMILY_KIND.get(family) or set(display) != DISPLAY_KEYS[kind]:
             problems.append(f"{iid}: display kind or keys")
             continue
-        if kind == "pair_sentence":
-            for side in ("clinical", "patient"):
-                part = display[side]
-                n16 = len(part["text"].encode("utf-16-le")) // 2
-                span = part["highlight"]
-                if set(part) != {"text", "highlight"} or not (
-                        span is None or (len(span) == 2 and 0 <= span[0] < span[1] <= n16)):
-                    problems.append(f"{iid}: {side} highlight")
-            if display["cut_off"] is not True or not display["next_word"].strip():
-                problems.append(f"{iid}: cut_off or next_word")
-        elif kind == "message_pair":
-            if not (display["clinical_message"].strip() and display["patient_message"].strip()):
-                problems.append(f"{iid}: empty message")
-        else:
-            ids = [a["arm"] for a in display["arms"]]
-            for k, arm in enumerate(display["arms"]):
-                if set(arm) != {"arm", "turns"} or len(arm["turns"]) != display["n_turns"]:
-                    problems.append(f"{iid}: arm shape")
-                    continue
-                for t, turn in enumerate(arm["turns"]):
-                    if set(turn) != {"text", "same_as"} or turn["same_as"] not in [None] + ids[:k]:
-                        problems.append(f"{iid}: turn shape")
-                    elif turn["same_as"] and display["arms"][ids.index(turn["same_as"])]["turns"][t]["text"] \
-                            != turn["text"]:
-                        problems.append(f"{iid}: same_as names an arm with a different turn")
+        problems += display_problems(iid, kind, display)
         has_after = any(q["phase"] == "after_reveal" for q in questions["question_sets"][qset]["questions"])
         reveal = item["reveal"]
         if (reveal is not None) != has_after or (reveal is not None and (
@@ -492,6 +472,52 @@ def check_contract(bundle: dict) -> list[str]:
         problems.append("counts do not match the items")
     if counts.get("with_reveal") != sum(1 for i in bundle["items"] if i["reveal"] is not None):
         problems.append("with_reveal count")
+    # instructions.examples (optional): each has the display of the question set it names, and nothing else
+    for n, example in enumerate(questions["instructions"].get("examples", [])):
+        where = f"instructions.examples[{n}]"
+        if not isinstance(example, dict) or set(example) != {"family", "label", "caption", "display"}:
+            problems.append(f"{where}: example keys")
+            continue
+        qset, display = example["family"], example["display"]
+        kind = display.get("kind") if isinstance(display, dict) else None
+        if kind not in DISPLAY_KEYS or kind != FAMILY_KIND.get(questions["question_sets"].get(qset, {}).get("family")) \
+                or set(display) != DISPLAY_KEYS[kind]:
+            problems.append(f"{where}: display kind or keys")
+            continue
+        problems += display_problems(where, kind, display)
+        if kind != "script" and display["cut_off"] is not (qset in ("tracing_pair", "advice_rerun_truncated")):
+            problems.append(f"{where}: cut_off is not its question set's")
+    return problems
+
+
+def display_problems(iid: str, kind: str, display: dict) -> list[str]:
+    """How a display of a known kind with the contract's keys departs from the contract, as lines naming iid."""
+    problems = []
+    if kind == "pair_sentence":
+        for side in ("clinical", "patient"):
+            part = display[side]
+            n16 = len(part["text"].encode("utf-16-le")) // 2
+            span = part["highlight"]
+            if set(part) != {"text", "highlight"} or not (
+                    span is None or (len(span) == 2 and 0 <= span[0] < span[1] <= n16)):
+                problems.append(f"{iid}: {side} highlight")
+        if display["cut_off"] is not True or not display["next_word"].strip():
+            problems.append(f"{iid}: cut_off or next_word")
+    elif kind == "message_pair":
+        if not (display["clinical_message"].strip() and display["patient_message"].strip()):
+            problems.append(f"{iid}: empty message")
+    else:
+        ids = [a["arm"] for a in display["arms"]]
+        for k, arm in enumerate(display["arms"]):
+            if set(arm) != {"arm", "turns"} or len(arm["turns"]) != display["n_turns"]:
+                problems.append(f"{iid}: arm shape")
+                continue
+            for t, turn in enumerate(arm["turns"]):
+                if set(turn) != {"text", "same_as"} or turn["same_as"] not in [None] + ids[:k]:
+                    problems.append(f"{iid}: turn shape")
+                elif turn["same_as"] and display["arms"][ids.index(turn["same_as"])]["turns"][t]["text"] \
+                        != turn["text"]:
+                    problems.append(f"{iid}: same_as names an arm with a different turn")
     return problems
 
 
@@ -508,7 +534,8 @@ def keys_in(obj: Any) -> set[str]:
 
 def forbidden_in_display(bundle: dict) -> list[str]:
     """Item ids whose display carries a model name, a batch id or any field outside the display contract (such as
-    reveal, a tier, provenance, a rationale, a topic or a measured number); never the text."""
+    reveal, a tier, provenance, a rationale, a topic or a measured number), and likewise instructions.examples[n] for
+    an example (its label and caption included); never the text."""
     bad = []
     for item in bundle["items"]:
         texts = strings_in(item["display"])
@@ -516,6 +543,11 @@ def forbidden_in_display(bundle: dict) -> list[str]:
             bad.append(item["item_id"])
         if keys_in(item["display"]) - ALLOWED_DISPLAY_KEYS:
             bad.append(item["item_id"])
+    for n, example in enumerate(bundle["questions"]["instructions"].get("examples", [])):
+        texts = [example.get("label", ""), example.get("caption", ""), *strings_in(example.get("display"))]
+        if any(MODEL_NAMES.search(t) or BATCH_ID.search(t) for t in texts) \
+                or keys_in(example.get("display")) - ALLOWED_DISPLAY_KEYS:
+            bad.append(f"instructions.examples[{n}]")
     return bad
 
 
@@ -777,6 +809,7 @@ def rater_wording(questions: dict) -> list[tuple[str, str]]:
     out += [(f"families.{f}[{n}]", t) for f, lines in ins["families"].items() for n, t in enumerate(lines)]
     out += [("tier_scale_note", ins["tier_scale_note"]), ("notes.label", questions["notes"]["label"]),
             ("notes.hint", questions["notes"]["hint"])]
+    out += [(f"examples[{n}].{k}", e[k]) for n, e in enumerate(ins.get("examples", [])) for k in ("label", "caption")]
     return out
 
 
@@ -804,6 +837,1093 @@ def test_raters_are_asked_not_to_look_the_scenarios_up():
     # The blinding holds only inside the app: the answers are in public files (docs/verification_protocol.md).
     welcome = json.loads(QUESTIONS.read_text(encoding="utf-8"))["instructions"]["welcome"]
     assert any(re.search(r"do not search for it online", p) for p in welcome)
+
+
+# ---- instructions.examples: invented examples shown before the first item -------------------------------------
+
+def _examples() -> list[dict]:
+    """One synthetic example per display kind (abstract and non-medical, like every input here), each with the display
+    an item of its question set has. Highlights are written out, not computed with the exporter's diff_spans."""
+    pair = ("The blue ledger on my desk is full, so today I will buy a new",
+            "The notebook on my desk is full, so today I will buy a new")
+    return [
+        {"family": "tracing_pair", "label": "Sample sentence pair", "caption": "Judge the two sentences.",
+         "display": {"kind": "pair_sentence", "clinical": {"text": pair[0], "highlight": [4, 15]},
+                     "patient": {"text": pair[1], "highlight": [4, 12]}, "next_word": "one", "cut_off": True}},
+        {"family": "advice_new", "label": "Sample message pair", "caption": "Judge the two messages.",
+         "display": {"kind": "message_pair", "clinical_message": "Where should I keep the brass key?",
+                     "patient_message": "Where should I keep the little key for the shed?", "cut_off": False}},
+        {"family": "multiturn_script", "label": "Sample conversation", "caption": "Judge the three versions.",
+         "display": {"kind": "script", "n_turns": 2, "arms": [
+             {"arm": "clinical", "turns": [{"text": "The ochre bracket is loose.", "same_as": None},
+                                           {"text": "I tightened it today.", "same_as": None}]},
+             {"arm": "colloquial", "turns": [{"text": "the yellow thingy is wobbly", "same_as": None},
+                                             {"text": "tightened it today", "same_as": None}]},
+             {"arm": "lay_careful", "turns": [{"text": "The yellow part is loose.", "same_as": None},
+                                              {"text": "I tightened it today.", "same_as": "clinical"}]}]}},
+    ]
+
+
+def _questions_with(tmp_path: Path, examples: Any = None, drop: bool = False) -> Path:
+    """The committed questions file with instructions.examples replaced (or, with drop, removed), written to tmp."""
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    if drop:
+        questions["instructions"].pop("examples", None)
+    else:
+        questions["instructions"]["examples"] = examples
+    return dump(tmp_path / "questions_examples.json", questions)
+
+
+def _example_texts(examples: list[dict]) -> int:
+    return sum(2 + len(strings_in(e["display"])) for e in examples)
+
+
+def test_examples_are_validated_and_carried_into_the_bundle_unchanged(tmp_path, capsys):
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, drop=True)
+    bare, _ = rerun(paths, tmp_path / "bare")
+    assert "examples" not in bare["questions"]["instructions"]        # a questions file with none stays valid
+    assert check_contract(bare) == [] and forbidden_in_display(bare) == []
+    examples = _examples()
+    paths["questions"] = _questions_with(tmp_path, examples)
+    bundle, raw = rerun(paths, tmp_path / "with")
+    assert bundle["questions"]["instructions"]["examples"] == examples
+    assert bundle["questions_sha256"] == hashlib.sha256(paths["questions"].read_bytes()).hexdigest()
+    assert check_contract(bundle) == [] and forbidden_in_display(bundle) == []
+    # each example string is seal-scanned like an item's display strings, and the items do not change
+    assert bundle["seal"]["rater_visible_texts_scanned"] == (bare["seal"]["rater_visible_texts_scanned"]
+                                                             + _example_texts(examples))
+    assert bundle["items"] == bare["items"]
+    # the suite's own contract checks see a broken example in a bundle
+    for change in (lambda d: d.update(cut_off=False), lambda d: d.update(reveal=None),
+                   lambda d: d["patient"].update(text="gemma " + d["patient"]["text"])):
+        broken = copy.deepcopy(bundle)
+        change(broken["questions"]["instructions"]["examples"][0]["display"])
+        assert check_contract(broken) or forbidden_in_display(broken)
+
+
+def _ex(n: int, *path: Any) -> Any:
+    """A function that sets the value at path in example n's display (or, with the first key '@', in the example)."""
+    def setter(examples: list[dict], value: Any) -> None:
+        target = examples[n] if path[0] == "@" else examples[n]["display"]
+        keys = path[1:] if path[0] == "@" else path
+        for k in keys[:-1]:
+            target = target[k]
+        target[keys[-1]] = value
+    return setter
+
+
+MALFORMED_EXAMPLES = {
+    "not_a_list": (lambda ex: {"examples": ex}, "is not a non-empty list"),
+    "empty_list": (lambda ex: [], "is not a non-empty list"),
+    "not_an_object": (lambda ex: ["sample", *ex[1:]], "[0] is not an object"),
+    "item_family_name": (lambda ex: _ex(1, "@", "family")(ex, "advice") or ex, "is not one of the item question sets"),
+    "unknown_family": (lambda ex: _ex(0, "@", "family")(ex, "tracing") or ex, "is not one of the item question sets"),
+    "missing_caption": (lambda ex: ex[1].pop("caption") and ex, "missing ['caption']"),
+    "reveal_field": (lambda ex: _ex(1, "@", "reveal")(ex, {"proposed_tier": "x"}) or ex, "not allowed ['reveal']"),
+    "blank_label": (lambda ex: _ex(2, "@", "label")(ex, "  ") or ex, "label is not a non-empty string"),
+    "caption_not_text": (lambda ex: _ex(0, "@", "caption")(ex, ["a"]) or ex, "caption is not a non-empty string"),
+    "display_of_another_set": (lambda ex: _ex(0, "@", "display")(ex, ex[1]["display"]) or ex,
+                               "display kind is 'message_pair'"),
+    "display_not_object": (lambda ex: _ex(2, "@", "display")(ex, "script") or ex, "display is not an object"),
+    "display_extra_field": (lambda ex: _ex(1, "proposed_tier")(ex, "x") or ex, "display fields are"),
+    "display_missing_field": (lambda ex: ex[0]["display"].pop("next_word") and ex, "display fields are"),
+    "highlight_off": (lambda ex: _ex(0, "clinical", "highlight")(ex, [4, 14]) or ex, "a highlight is not the span"),
+    "highlight_floats": (lambda ex: _ex(0, "patient", "highlight")(ex, [4.0, 12.0]) or ex,
+                         "a highlight is not the span"),
+    "side_extra_field": (lambda ex: _ex(0, "clinical", "bold")(ex, True) or ex, "display.clinical is not an object"),
+    "same_sentences": (lambda ex: _ex(0, "patient")(ex, copy.deepcopy(ex[0]["display"]["clinical"])) or ex,
+                       "do not each have words where they differ"),
+    "next_word_two_words": (lambda ex: _ex(0, "next_word")(ex, "one more") or ex, "next_word is not one lowercase"),
+    "tracing_not_cut_off": (lambda ex: _ex(0, "cut_off")(ex, False) or ex, "cut_off is False"),
+    "advice_new_cut_off": (lambda ex: _ex(1, "cut_off")(ex, True) or ex, "cut_off is True"),
+    "truncated_not_cut_off": (lambda ex: _ex(1, "@", "family")(ex, "advice_rerun_truncated") or ex,
+                              "every item of question set 'advice_rerun_truncated' has True"),
+    "cut_off_not_bool": (lambda ex: _ex(1, "cut_off")(ex, 0) or ex, "cut_off is 0"),
+    "same_messages": (lambda ex: _ex(1, "patient_message")(ex, ex[1]["display"]["clinical_message"]) or ex,
+                      "the two messages are the same text"),
+    "blank_message": (lambda ex: _ex(1, "clinical_message")(ex, " ") or ex, "a message is not a non-empty string"),
+    "n_turns_not_turns": (lambda ex: _ex(2, "n_turns")(ex, 3) or ex, "not a list of n_turns (3) entries"),
+    "n_turns_bool": (lambda ex: _ex(2, "n_turns")(ex, True) or ex, "n_turns is not a positive integer"),
+    "one_arm": (lambda ex: _ex(2, "arms")(ex, ex[2]["display"]["arms"][:1]) or ex, "at least two versions"),
+    "arm_twice": (lambda ex: _ex(2, "arms", 2, "arm")(ex, "clinical") or ex, "arm 'clinical' appears twice"),
+    "turn_extra_field": (lambda ex: _ex(2, "arms", 0, "turns", 0, "reply")(ex, "x") or ex,
+                         "turn 1 is not an object of exactly"),
+    "same_as_left_out": (lambda ex: _ex(2, "arms", 2, "turns", 1, "same_as")(ex, None) or ex, "same_as is None"),
+    "same_as_wrong_arm": (lambda ex: _ex(2, "arms", 1, "turns", 0, "same_as")(ex, "clinical") or ex,
+                          "same_as is 'clinical'"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(MALFORMED_EXAMPLES))
+def test_a_malformed_example_is_refused_by_name(tmp_path, case):
+    change, fragment = MALFORMED_EXAMPLES[case]
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, change(_examples()))
+    message = refused_paths(paths, "bad_example")
+    assert fragment in message, message
+
+
+def _answer_label() -> str:
+    """The label of an option of the reveal's scale, read from the questions data (no level is written here)."""
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    locking = next(q for q in questions["question_sets"]["advice_new"]["questions"] if q.get("locks_on_reveal"))
+    return questions["scales"][locking["scale"]]["options"][-1]["label"]
+
+
+@pytest.mark.parametrize("n, path, value, fragment", [
+    (0, ("@", "caption"), "Compare it with what Gemma predicted.", "a model or vendor name"),
+    (2, ("arms", 1, "turns", 0, "text"), "asked claude about it", "a model or vendor name"),
+    (1, ("clinical_message",), f"Where should I keep the brass key from {TIER_A}?", "a batch, run, item, seed or scenario id"),
+    (0, ("@", "label"), "Sample vt_731162e6021a", "a batch, run, item, seed or scenario id"),
+    (2, ("@", "caption"), f"Compare it with {TIER_B}#1.", "a batch, run, item, seed or scenario id"),
+    (1, ("patient_message",), "Where should I keep the 0.43 key?", "a decimal number or a percentage"),
+    (0, ("@", "caption"), "Most physicians (60%) agree.", "a decimal number or a percentage"),
+    (1, ("@", "caption"), "Here the answer is {answer}.", "the urgency level"),
+])
+def test_an_example_that_shows_a_model_id_measured_value_or_answer_is_refused(tmp_path, n, path, value, fragment):
+    examples = _examples()
+    planted = value.format(answer=_answer_label().lower())
+    _ex(n, *path)(examples, planted)
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert fragment in message and f"instructions.examples[{n}]" in message, message
+    assert planted not in message                                  # names what it shows, never the text
+
+
+@pytest.mark.parametrize("text", ["The share was .43 here.", "It moved by -.43 overall.", "About 60 percent agree.",
+                                  "About 60 per cent agree.", "A 60-percent share.", "The percentage was high.",
+                                  "Roughly 60 PCT agree."])
+def test_a_measured_value_without_a_leading_digit_or_in_words_is_refused(tmp_path, text):
+    # Regression (Codex review of PR #88): only digit-dot-digit and the percent sign were refused.
+    examples = _examples()
+    examples[0]["caption"] = text
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "a decimal number or a percentage" in message, message
+
+
+def test_an_ellipsis_or_a_sentence_end_before_a_number_is_not_a_decimal(tmp_path, capsys):
+    examples = _examples()
+    examples[0]["caption"] = "Wait...3 days, then judge it."
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    rerun(paths, tmp_path / "out")
+
+
+EXAMPLE_OF_SET = {"tracing_pair": 0, "advice_new": 1, "advice_rerun": 1, "advice_rerun_truncated": 1,
+                  "multiturn_script": 2}
+
+
+def _example_for_set(set_name: str) -> tuple[list[dict], int]:
+    """_examples() with the example whose display fits question set set_name moved to that set; its index."""
+    examples, n = _examples(), EXAMPLE_OF_SET[set_name]
+    examples[n]["family"] = set_name
+    if set_name == "advice_rerun_truncated":
+        examples[n]["display"]["cut_off"] = True
+    return examples, n
+
+
+def _statement_labels() -> list[tuple[str, str]]:
+    """(question set, label) for every option label, abstentions included, of every scale a question set uses that
+    is a statement of its own: four or more words, or numbered ("4 - Likely"). Read from the questions data."""
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    out = set()
+    for set_name in evt.QUESTION_SETS:
+        for q in questions["question_sets"][set_name]["questions"]:
+            scale = questions["scales"][q["scale"]]
+            for o in scale["options"] + ([scale["abstain"]] if scale["abstain"] else []):
+                if re.match(r"\s*\d+\s*-", o["label"]) or len(re.findall(r"[^\W_]+", o["label"])) >= 4:
+                    out.add((set_name, o["label"]))
+    return sorted(out)
+
+
+def test_every_statement_label_of_every_scale_is_refused_in_its_sets_examples(tmp_path):
+    # Regression (Codex review of PR #88): only the reveal's scale was read, so a caption could state the realism,
+    # plausibility, keep or any other answer. Every such label, of every scale each set uses, is tried.
+    labels = _statement_labels()
+    assert len(labels) > 20 and {s for s, _ in labels} == set(evt.QUESTION_SETS)
+    passed = []
+    for k, (set_name, label) in enumerate(labels):
+        examples, n = _example_for_set(set_name)
+        examples[n]["caption"] = f"This one: {label}."
+        paths = write_world(tmp_path / f"w{k}", world_data())
+        paths["questions"] = _questions_with(tmp_path / f"w{k}", examples)
+        with pytest.raises(SystemExit) as exc:
+            evt.main(argv(paths))
+        if "[example_not_blind]" not in str(exc.value) or "the answer label" not in str(exc.value):
+            passed.append((set_name, label))
+    assert passed == []
+
+
+def _scale_value(set_name: str, kind: type) -> tuple[Any, str, int | None]:
+    """(a value, its label, the scale's highest value if it is an ordinal number scale) of a scale set_name uses."""
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    for q in questions["question_sets"][set_name]["questions"]:
+        scale = questions["scales"][q["scale"]]
+        values = [o["value"] for o in scale["options"]]
+        if values and all(isinstance(v, kind) and not isinstance(v, bool) for v in values):
+            top = max(values) if kind is int and scale["type"] == "ordinal" else None
+            return scale["options"][1]["value"], scale["options"][1]["label"], top
+    raise AssertionError(f"{set_name} uses no scale of {kind.__name__} values")
+
+
+@pytest.mark.parametrize("form", ["The correct rating is {v}.", "This was rated {v}.", "It scores {v}.",
+                                  "The score: {v}.", "A rating of {v} fits.", "Given a score of {v}.",
+                                  "{v} out of {top}", "I rated it {v}.", "I rate this example {v}.",
+                                  "They scored the pair {v}.", "Rate this one a {v}.", "Rate it a {v}.", "I would rate them as {label}.",
+                                  "I rated the first version of the conversation {v}.",
+                                  "I rated the wording in this example {v}.",
+                                  "We scored each of the two short versions for this item a {v}.",
+                                  "I rate both messages {v}.", "I rated all three versions {v}.", "I rate both {v}.",
+                                  "Rated either message a {v}.", "We rated two of the versions {v}.", "The answer is {s}.", "THE ANSWER IS {S}.",
+                                  "Rated as {label}.",
+                                  "The verdict would be {label}."])
+def test_a_rating_or_answer_stated_outright_is_refused(tmp_path, form):
+    v, label, top = _scale_value("tracing_pair", int)
+    s, _, _ = _scale_value("tracing_pair", str)
+    examples = _examples()
+    examples[0]["caption"] = form.format(v=v, top=top, s=s, S=str(s).upper(), label=label.split(" - ")[-1])
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "a rating" in message, message
+
+
+def test_describing_the_task_with_short_labels_and_values_is_not_refused(tmp_path, capsys):
+    # The line drawn: a short label or a value as an ordinary word is not an answer, so a caption can say what a
+    # physician judges, and "N out of M" is refused only with M a rating scale's top.
+    _, label, _ = _scale_value("tracing_pair", int)
+    s, s_label, _ = _scale_value("tracing_pair", str)
+    examples = _examples()
+    examples[0]["caption"] = (f"Please answer {s} or not, and say how {label.split(' - ')[-1].lower()} it is that a real "
+                              f"person would write it ({s_label.lower()} is one choice), even if none of them "
+                              "would.")
+    examples[1]["display"]["patient_message"] = ("It was 3 out of 10 on my own scale, the exchange rate went up 2 "
+                                                 "points, and the exchange rate the whole week was 4; they rate the "
+                                                 "price of the small boxes on the top shelf near the old door 3 times "
+                                                 "a year; where should I keep the key?")
+    examples[2]["display"]["arms"][1]["turns"][0]["text"] = "the yellow thingy is wobbly and none of them fit"
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    bundle, _ = rerun(paths, tmp_path / "out")
+    assert bundle["questions"]["instructions"]["examples"] == examples
+
+
+@pytest.mark.parametrize("set_name, field, text", [
+    ("multiturn_script", "caption", "The conversation is entirely plausible."),     # the Codex example
+    ("advice_new", "caption", "This message is realistic."),
+    ("tracing_pair", "caption", "This one is not likely."),
+    ("advice_new", "caption", "The situation is medically coherent."),
+    ("advice_rerun_truncated", "caption", "It seems very unusual, so judge it."),
+    ("tracing_pair", "label", "A pair that is likely"),
+    ("multiturn_script", "caption", "The course of events is unusual."),
+])
+def test_a_caption_or_label_that_evaluates_the_example_is_refused(tmp_path, set_name, field, text):
+    # Regression (Codex review of PR #88, 4210041435, answered by Gemini and adopted by the owner): a caption says what
+    # a physician judges and never evaluates the example. The predicates are read from the questions data.
+    examples, n = _example_for_set(set_name)
+    examples[n][field] = text
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "an evaluation of the example as" in message and f"instructions.examples[{n}]" in message, message
+
+
+@pytest.mark.parametrize("set_name, text", [
+    ("advice_new", "Judge whether the conversation is plausible, but this message is realistic."),
+    ("advice_new", "You judge whether the conversation is plausible, and this message is realistic."),
+    ("multiturn_script", "Rate how plausible it is, yet the conversation is entirely plausible."),
+    ("advice_new", "Say whether it is realistic while the situation is medically coherent."),
+    ("advice_new", "Judge whether it is realistic, this message is realistic."),
+])
+def test_an_evaluation_in_a_later_clause_is_refused(tmp_path, set_name, text):
+    # Regression (Gemini review of PR #88, round 3): the directive and whether/if/how exemptions covered a whole
+    # sentence, so an evaluation after a comma or a coordinating conjunction passed. Each clause is checked on its own.
+    examples, n = _example_for_set(set_name)
+    examples[n]["caption"] = text
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "an evaluation of the example as" in message, message
+
+
+def test_every_set_gets_the_words_of_its_yes_no_questions_from_their_measures():
+    # Regression (Gemini review of PR #88, round 3): tracing_pair asks its coherence question as "Does the sentence
+    # make medical sense?", so reading only "is the ...?" wordings gave that set no "coherent". Each yes/no question's
+    # measures field is read too, so every set gets the same words; checked for all five sets.
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    for set_name in evt.QUESTION_SETS:
+        predicates = evt.example_predicates(questions, set_name)
+        for q in questions["question_sets"][set_name]["questions"]:
+            scale = questions["scales"][q["scale"]]
+            if scale["type"] == "nominal" and len(scale["options"]) == 2 and ":" in q.get("measures", ""):
+                phrase = re.sub(r"\(.*?\)", "", q["measures"].rsplit(":", 1)[1]).strip().lower()
+                assert phrase in predicates, (set_name, q["id"])
+    coherent = next(q for q in questions["question_sets"]["tracing_pair"]["questions"]
+                    if q["measures"].endswith("coherent"))["measures"].rsplit(" ", 1)[1]
+    predicates = evt.example_predicates(questions, "tracing_pair")
+    assert coherent in predicates and evt.example_evaluations(f"This sentence is {coherent}.", predicates)
+
+
+@pytest.mark.parametrize("set_name, text", [
+    ("multiturn_script", "Note that the conversation is entirely plausible."),
+    ("advice_new", "Consider that the message is realistic."),
+    ("advice_new", "Think the message is realistic."),
+    ("multiturn_script", "Note the conversation is entirely plausible."),
+    ("advice_new", "Consider the message is realistic."),
+    ("advice_new", "Judge that the message is realistic."),
+])
+def test_an_evaluation_after_a_word_that_is_not_a_directive_is_refused(tmp_path, set_name, text):
+    # Regression (Gemini review of PR #88, round 3): "Note that ..." introduces an assertion, but "note" was a task
+    # opener. Only true directives exempt a clause, and not when they introduce a "that" clause.
+    examples, n = _example_for_set(set_name)
+    examples[n]["caption"] = text
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "an evaluation of the example as" in message, message
+
+
+@pytest.mark.parametrize("set_name, text", [
+    ("multiturn_script", "Judge whether the versions agree because this conversation is entirely plausible."),  # Codex
+    ("advice_new", "Judge whether the messages agree since this message is realistic."),
+    ("multiturn_script", "Judge whether the versions agree as the conversation is entirely plausible."),
+    ("advice_new", "Say whether the messages agree so this message is realistic."),
+    ("multiturn_script", "Judge the versions, which are entirely plausible."),
+    ("advice_new", "This message is as realistic as any."),
+    ("advice_new", "This message is so realistic."),
+])
+def test_an_evaluation_after_a_subordinating_word_is_refused(tmp_path, set_name, text):
+    # Regression (Codex review of PR #88): "because" and "since" were not clause breaks, so an exemption earlier in the
+    # sentence covered an evaluation after them. "as" and "so" also end a clause unless they are degree words after a
+    # copula ("is as realistic", "is so realistic"), and a clause that opens with a relative "which" evaluates its noun.
+    examples, n = _example_for_set(set_name)
+    examples[n]["caption"] = text
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "an evaluation of the example as" in message, message
+
+
+@pytest.mark.parametrize("set_name, text", [
+    ("advice_new", "This message is brief but medically coherent."),                                  # the Codex example
+    ("advice_new", "This message is short, clear and realistic."),
+    ("multiturn_script", "The conversation is not long but entirely plausible."),
+    ("multiturn_script", "Judge the versions, which are brief and entirely plausible."),
+    ("advice_new", "This message is brief but the conversation is long, and realistic."),
+    ("advice_new", "This message is brief but is medically coherent."),                  # the copula repeated
+    ("multiturn_script", "The conversation is long and seems entirely plausible."),
+    ("multiturn_script", "Judge the versions, which are brief and are entirely plausible."),
+])
+def test_a_predicate_coordinated_with_an_elided_subject_is_refused(tmp_path, set_name, text):
+    # Regression (Codex review of PR #88): splitting at a conjunction separated a predicate from the subject and copula
+    # it shares with the clause before it. A clause with no subject of its own carries those of the clause before it.
+    examples, n = _example_for_set(set_name)
+    examples[n]["caption"] = text
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "an evaluation of the example as" in message, message
+
+
+DRAFT_CAPTIONS = [   # the three draft examples' captions (questions 1.2-draft)
+    "You judge whether the two sentences mean the same thing, how likely a real patient is to use the underlined "
+    "everyday wording, and whether the word shown underneath would be a natural next word.",
+    "You judge whether a real patient could send each message, whether the two describe the same situation, and how "
+    "urgently the person should seek care.",
+    "You judge whether a real patient could send each version's messages, whether the three versions give the same "
+    "facts message by message, and how urgently the person should seek care as the conversation goes on.",
+]
+
+
+def test_captions_that_describe_the_task_are_kept(tmp_path, capsys):
+    # A task description puts the quality under "whether", "if" or "how", or opens with an imperative; a patient's own
+    # words in a display are not a caption and are not read for evaluations.
+    examples = _examples()
+    for n, caption in enumerate(DRAFT_CAPTIONS):
+        examples[n]["caption"] = caption + " Judge whether the conversation is plausible. Say how likely it is. " \
+                                           "Rate how plausible the course of events is. If the message is unclear, say so. " \
+                                           "Check whether the message is realistic. Decide the message is realistic or not. " \
+                                           "This one is 3 messages long. " \
+                                           "You judge whether the conversation is plausible. " \
+                                           "You judge which of the versions is likely. Say what the message is. " \
+                                           "Rate it as you would any message. Judge qualities such as whether the " \
+                                           "message is realistic, so judge whether it is likely. " \
+                                           "Judge whether the message is brief and medically coherent. " \
+                                           "This one is short. Realistic or not, judge it."
+    examples[1]["display"]["patient_message"] = "It seems possible the key fell behind the shed; where is it likely?"
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    bundle, _ = rerun(paths, tmp_path / "out")
+    assert bundle["questions"]["instructions"]["examples"] == examples
+
+
+def _reveal_options() -> list[dict]:
+    """The options of the reveal's scale, read from the questions data (no level is written here)."""
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    locking = next(q for q in questions["question_sets"]["advice_new"]["questions"] if q.get("locks_on_reveal"))
+    return questions["scales"][locking["scale"]]["options"]
+
+
+@pytest.mark.parametrize("n", range(4))
+@pytest.mark.parametrize("form", ["value", "value with spaces", "value in capitals", "label"])
+def test_an_example_naming_an_urgency_level_by_value_or_label_is_refused(tmp_path, n, form):
+    # Regression (Codex review of PR #88): only the scale labels were checked, so an example could name the tier a
+    # reveal stores (its value) and pass. Every option of the reveal's scale is tried, in each form.
+    option = _reveal_options()[n]
+    term = {"value": option["value"], "value with spaces": option["value"].replace("_", " "),
+            "value in capitals": option["value"].upper(), "label": option["label"]}[form]
+    examples = _examples()
+    examples[1]["caption"] = f"The proposed answer here is {term}."
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "the urgency level" in message and "instructions.examples[1]" in message, message
+
+
+def test_a_label_that_does_not_contain_its_value_is_refused_too(tmp_path):
+    # In the committed scale every label contains its value as a word, so the value alone would catch the label.
+    # A synthetic label that does not shows the labels are checked in their own right.
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    locking = next(q for q in questions["question_sets"]["advice_new"]["questions"] if q.get("locks_on_reveal"))
+    questions["scales"][locking["scale"]]["options"][0]["label"] = "Plan Zeta"
+    examples = _examples()
+    examples[1]["caption"] = "Here the answer is plan zeta."
+    questions["instructions"]["examples"] = examples
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = dump(tmp_path / "questions_relabelled.json", questions)
+    message = refused_paths(paths, "example_not_blind")
+    assert "the urgency level 'Plan Zeta'" in message, message
+
+
+def test_each_option_is_named_once_in_a_refusal(tmp_path):
+    # Regression (Gemini review of PR #88): a label and its value, or a numbered label and its text, matched as separate
+    # terms and the refusal named one option twice ("the urgency level 'Self-care', the urgency level 'self-care'").
+    option = next(o for o in _reveal_options() if "_" in o["value"])
+    statement = next(label for set_name, label in _statement_labels()
+                     if set_name == "tracing_pair" and re.match(r"\s*\d+\s*-", label)
+                     and len(re.findall(r"[^\W_]+", label.split("-", 1)[1])) >= 4)
+    examples = _examples()
+    examples[1]["caption"] = f"{option['label']}, that is {option['value'].replace('_', ' ')}."
+    message = _copy_free_refusal(tmp_path / "level", examples)
+    assert message.count("the urgency level") == 1 and f"the urgency level {option['label']!r}" in message, message
+    examples = _examples()
+    examples[0]["caption"] = f"This one: {statement}."
+    message = _copy_free_refusal(tmp_path / "label", examples)
+    assert message.count("the answer label") == 1 and f"the answer label {statement!r}" in message, message
+    # a numbered label's text alone, when it is a statement of its own, is the same option
+    examples = _examples()
+    examples[0]["caption"] = f"This one: {statement.split('-', 1)[1].strip()}."
+    message = _copy_free_refusal(tmp_path / "text", examples)
+    assert message.count("the answer label") == 1 and f"the answer label {statement!r}" in message, message
+
+
+def _copy_free_refusal(tmp_path: Path, examples: list[dict]) -> str:
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    return refused_paths(paths, "example_not_blind")
+
+
+def _definitions() -> list[tuple[str, str]]:
+    """(label, definition) of every option with a definition, read from the questions data."""
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    return [(o["label"], o["definition"]) for scale in questions["scales"].values() for o in scale["options"]
+            if o.get("definition")]
+
+
+@pytest.mark.parametrize("form", ["whole", "within", "most", "one word changed"])
+def test_an_example_that_gives_an_answers_definition_is_refused(tmp_path, form):
+    # Regression (Codex review of PR #88): only an option's label and value were refused, so a caption could paste the
+    # definition of the intended answer. Definitions are read from the questions data and compared as study texts are.
+    defs = sorted(_definitions(), key=lambda d: -len(evt.word_grams(d[1])))
+    label, definition = defs[0]                                     # the longest, so "most" is a share of it
+    words = definition.rstrip(".").split()
+    text = {"whole": definition,
+            "within": f"Here, as I see it, {definition[0].lower()}{definition[1:]} That is all.",
+            "most": " ".join(words[: len(words) * 3 // 4]) + " and so on for the rest of the week at home",
+            "one word changed": " ".join(words[:5] + ["zebra"] + words[6:])}[form]
+    assert len(evt.word_grams(definition)) >= evt.COPY_CONTAIN_MIN_GRAMS
+    examples = _examples()
+    examples[1]["caption"] = text
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert f"the definition of the answer {label!r}" in message, message
+
+
+def test_an_urgency_value_inside_a_longer_word_is_not_refused(tmp_path, capsys):
+    # The match is a whole word, so an ordinary longer word that begins with a level's value is still usable.
+    longer = [o["value"] + "ly" for o in _reveal_options() if "_" not in o["value"]]
+    examples = _examples()
+    examples[1]["caption"] = "Judge it " + " and ".join(longer) + "."
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    bundle, _ = rerun(paths, tmp_path / "out")
+    assert bundle["questions"]["instructions"]["examples"][1]["caption"] == examples[1]["caption"]
+
+
+def test_a_sealed_phrase_in_an_example_refuses_the_export_and_names_the_example(tmp_path):
+    examples = _examples()
+    examples[1]["display"]["patient_message"] = "Before that, " + SEALED.upper().replace(" ", "   ") + " and then?"
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "seal_hit")
+    assert f"instructions.examples[1] (advice_new) :: {TIER_B}#1" in message, message
+    assert "serialized bundle" not in message                      # the per-string sweep caught it first
+    assert SEALED not in message and SEALED.upper() not in message
+
+
+@pytest.mark.parametrize("key", ["example", "Examples", "examples_draft"])
+def test_a_misspelled_instructions_field_is_refused_not_read_as_no_examples(tmp_path, key):
+    # Regression (Codex review of PR #88): instructions.example (no s) passed as a file with no examples, so
+    # physicians would silently get none. Every instructions field is now checked before the examples are read.
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    questions["instructions"].pop("examples", None)
+    questions["instructions"][key] = _examples()
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = dump(tmp_path / "questions_misspelled.json", questions)
+    message = refused_paths(paths, "unknown_field")
+    assert "instructions" in message and repr(key) in message, message
+
+
+def test_every_instructions_field_of_the_committed_questions_is_known():
+    # The fields the committed questions file uses (version, welcome, consent, families, tier_scale_note, and examples
+    # once it has them) are all accepted, so the check refuses nothing valid.
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    assert set(questions["instructions"]) <= evt.INSTRUCTIONS_KEYS
+    assert {"version", "welcome", "consent", "families", "tier_scale_note"} <= set(questions["instructions"])
+    evt.validate_questions(questions, "questions.json")
+
+
+def _study_ids() -> dict[str, list[str]]:
+    """Every id of every source an item or an example could be copied from, read from the committed data, by source:
+    the Petri seed files (seed ids, scenario ids, text keys), the pilot runs (run, row, call, cell and review ids),
+    the advice stimuli files (item ids, batches, rerun sources), the committed bundles (bundle, item and source ids),
+    the landed Petri runs, and the data/simulated and data/advice file stems."""
+    out: dict[str, list[str]] = {"Petri seed ids": [], "Petri scenario ids": [], "Petri text keys": []}
+    for path in sorted((ROOT / "docs" / "framework").glob("petri_seeds*.json")):
+        for seed in json.loads(path.read_text(encoding="utf-8"))["seeds"]:
+            out["Petri seed ids"].append(seed["seed_id"])
+            out["Petri scenario ids"].append(seed["scenario"]["id"])
+            out["Petri text keys"] += [t["key"] for t in seed["texts"] if not t["key"].isalpha()]
+    runs = sorted(p for p in (ROOT / "pilot" / "runs").iterdir() if (p / "generated" / "all_rows.jsonl").is_file())
+    out["pilot run ids"] = [p.name for p in runs]
+    out["pilot row, call and cell ids"] = [row[k] for p in runs
+                                           for row in map(json.loads, (p / "generated" / "all_rows.jsonl").read_text(
+                                               encoding="utf-8").splitlines()) if row
+                                           for k in ("id", "call_id", "cell") if isinstance(row.get(k), str)]
+    out["pilot review ids"] = [r for p in runs if (p / "review_map.json").is_file()
+                               for r in json.loads((p / "review_map.json").read_text(encoding="utf-8"))["map"]]
+    out["advice item and source ids"] = []
+    for path in sorted((ROOT / "data" / "advice").glob("stimuli_*.json")):
+        for item in json.loads(path.read_text(encoding="utf-8")).get("items", []):
+            ref, rerun = item.get("source_ref") or {}, (item.get("meta") or {}).get("rerun_of") or {}
+            out["advice item and source ids"] += [x for x in (item.get("id"), ref.get("batch"), rerun.get("id"))
+                                                  if isinstance(x, str)]
+    out["bundle, item and source ids"] = []
+    for path in COMMITTED:
+        bundle = json.loads(path.read_text(encoding="utf-8"))
+        out["bundle, item and source ids"] += [bundle["bundle_id"], *[i["item_id"] for i in bundle["items"]],
+                                               *[i["provenance"]["source_id"] for i in bundle["items"]]]
+    out["Petri run ids"] = [p.name for p in sorted((ROOT / "data" / "petri" / "runs").iterdir()) if p.is_dir()]
+    out["data/simulated and data/advice file stems"] = sorted(
+        {p.name.split(".")[0] for d in ("simulated", "advice") for p in (ROOT / "data" / d).glob("*.json")})
+    return out
+
+
+def test_every_id_of_every_source_is_refused_in_an_example():
+    # Regression (Codex review of PR #88): the id check listed a few batch prefixes, so Petri seed and scenario ids
+    # (the sources of the script items an example imitates) passed. The shapes now come from the data, and every id of
+    # every source must be matched.
+    sources = _study_ids()
+    assert all(sources.values()), {k: len(v) for k, v in sources.items()}
+    # A Petri text key that is one plain word is an ordinary English word, not an id shape, and refusing it would
+    # refuse ordinary text, so _study_ids leaves it out. There is one; a new one shows here.
+    plain = {t["key"] for path in (ROOT / "docs" / "framework").glob("petri_seeds*.json")
+             for seed in json.loads(path.read_text(encoding="utf-8"))["seeds"] for t in seed["texts"]
+             if t["key"].isalpha()}
+    assert plain == {"proposition"}
+    missed = {name: sorted({i for i in ids if not evt.EXAMPLE_IDS.search(i)})[:5] for name, ids in sources.items()}
+    assert {k: v for k, v in missed.items() if v} == {}
+
+
+def _id_from(source: str) -> str:
+    """One real id of a source, read from the data (the ids carry medical words, so none is written here). For the
+    Petri sources, the last seed of the wave-3 file and its scenario, the two ids the Codex finding named; chosen by
+    position, so no word of an id is written here (Codex review of PR #88: the first version matched two words of
+    them)."""
+    if source in ("Petri seed ids", "Petri scenario ids"):
+        seeds = json.loads((ROOT / "docs" / "framework" / "petri_seeds_w3.draft.json").read_text(encoding="utf-8"))
+        seed = seeds["seeds"][-1]
+        return seed["seed_id"] if source == "Petri seed ids" else seed["scenario"]["id"]
+    return _study_ids()[source][-1]
+
+
+def test_the_id_helpers_write_no_word_of_a_study_scenario():
+    # Regression (Codex review of PR #88, P1): _id_from selected a seed by two words of its scenario, medical
+    # vocabulary written in Python. The scenario words are read from the seed files and must not be in the helpers.
+    import inspect
+    scenario_words = {w for path in (ROOT / "docs" / "framework").glob("petri_seeds*.json")
+                      for seed in json.loads(path.read_text(encoding="utf-8"))["seeds"]
+                      for w in re.findall(r"[a-z]{4,}", seed["scenario"]["id"]) if w != "synthetic"}
+    assert scenario_words
+    source = (inspect.getsource(_id_from) + inspect.getsource(_study_ids)).lower()
+    assert sorted(w for w in scenario_words if re.search(rf"\b{w}\b", source)) == []
+
+
+ID_SOURCES = ["Petri seed ids", "Petri scenario ids", "Petri text keys", "pilot run ids",
+              "pilot row, call and cell ids", "pilot review ids", "advice item and source ids",
+              "bundle, item and source ids", "Petri run ids", "data/simulated and data/advice file stems"]
+
+
+@pytest.mark.parametrize("source", ID_SOURCES)
+def test_a_real_id_from_each_source_inside_example_text_is_refused(tmp_path, source):
+    study_id = _id_from(source)
+    examples = _examples()
+    examples[2]["display"]["arms"][1]["turns"][0]["text"] = f"see {study_id} for this one"
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "a batch, run, item, seed or scenario id" in message and "instructions.examples[2]" in message, message
+    assert study_id not in message
+
+
+def test_the_arm_ids_and_display_kind_are_not_read_as_ids(tmp_path, capsys):
+    # Arm ids and the display kind are snake_case by the display contract (lay_careful, pair_sentence) and are not
+    # text a physician reads (the app shows Version A/B/C), so the id check skips them.
+    examples = _examples()
+    arms = examples[2]["display"]["arms"]
+    arms[0]["arm"] = arms[2]["turns"][1]["same_as"] = "patient_clinical"       # a real arm id shape, also in same_as
+    assert "_" in arms[2]["arm"] and "_" in examples[0]["display"]["kind"]
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    bundle, _ = rerun(paths, tmp_path / "out")
+    assert bundle["questions"]["instructions"]["examples"] == examples
+
+
+def test_ordinary_text_with_hyphens_and_short_codes_is_not_read_as_an_id(tmp_path, capsys):
+    # A Petri scenario id ends in a four-digit number (w3-<slug>-0001), so a short code or a hyphenated word alone is
+    # not one.
+    examples = _examples()
+    examples[1]["caption"] = "Take the w4 bus or the well-known 12-minute walk to room r12."
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    bundle, _ = rerun(paths, tmp_path / "out")
+    assert bundle["questions"]["instructions"]["examples"][1]["caption"] == examples[1]["caption"]
+
+
+# Field names of the payload and the trace summaries that are bookkeeping, not a method (data the item is made of,
+# file and run housekeeping), and method terms that are also ordinary single words, refused only inside their method
+# phrases (EXAMPLE_METHOD_TERMS). Everything else the study names a field or a lane must be refused.
+NOT_METHOD_FIELDS = {"batch", "batch index", "index", "start index", "clinical prompt", "patient prompt", "clinical term",
+                     "patient term", "intended target", "term", "prompts", "outputs", "html", "png", "trace url",
+                     "topic", "topics", "rationale", "urgency", "models", "mode", "backend", "completed", "partial",
+                     "pairs requested", "environment", "inference", "variants", "multiples", "continuations",
+                     "held fixed", "results"}
+ORDINARY_METHOD_WORDS = {"flipped", "screening", "steered", "steering", "patching"}
+
+
+def _method_terms() -> list[str]:
+    """The study's own method vocabulary, as phrases: every field of the site payload (PAYLOAD_SCENARIO_KEYS) and of
+    the committed trace summaries (top level and results), and every push-to-run lane name (fire_trigger.TRIGGERS),
+    with underscores and hyphens read as spaces."""
+    fields = set(evt.PAYLOAD_SCENARIO_KEYS)
+    for path in sorted((ROOT / "trace_out").glob("*/batch_summary*.json")):
+        summary = json.loads(path.read_text(encoding="utf-8"))
+        fields |= set(summary) | {k for r in summary.get("results", [])[:3] if isinstance(r, dict) for k in r}
+    fields |= set(_module_literal("scripts/fire_trigger.py", "TRIGGERS"))
+    return sorted({re.sub(r"[_-]+", " ", f).strip() for f in fields})
+
+
+def test_every_method_field_and_lane_name_is_refused_in_an_example():
+    # Regression (Codex review of PR #88): examples were not checked for method vocabulary at all.
+    terms = _method_terms()
+    assert len(terms) > 40
+    missed = [t for t in terms if t not in NOT_METHOD_FIELDS | ORDINARY_METHOD_WORDS
+              and not evt.EXAMPLE_METHOD_TERMS.search(t)]
+    assert missed == []
+    # the exemptions are real: an ordinary word on its own is not refused
+    assert [w for w in ORDINARY_METHOD_WORDS if evt.EXAMPLE_METHOD_TERMS.search(w)] == []
+
+
+@pytest.mark.parametrize("text", ["Selected by circuit tracing for its language penalty.", "Read from its attribution graph.",
+                                  "The logit lens shows it.", "Its next-token probability is high.",
+                                  "It changes the next token.", "The Jacobian lens shows it.",
+                                  "Selected by the study for review.",
+                                  "A transcoder feature fires.", "Traced on Neuronpedia.", "Feature steering changed it.",
+                                  "The selection rule picked it.", "It is a holdout pair.", "From Tier B.",
+                                  "The clinical mass is high.", "Run in a Petri audit.", "By activation patching."])
+def test_a_method_term_in_example_text_is_refused(tmp_path, text):
+    examples = _examples()
+    examples[1]["caption"] = text
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "a method term" in message or "a model or vendor name" in message, message
+
+
+def test_ordinary_words_that_are_also_method_terms_are_not_refused(tmp_path, capsys):
+    examples = _examples()
+    examples[1]["caption"] = ("Turn the steering wheel, probably; pick from a selection of keys, the circuit training "
+                              "room, a petri dish, the top shelf or the target practice; spread it; the language was "
+                              "plain; she flipped the page after a film screening, patching the tyre.")
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    bundle, _ = rerun(paths, tmp_path / "out")
+    assert bundle["questions"]["instructions"]["examples"][1]["caption"] == examples[1]["caption"]
+
+
+def _committed_item(question_set: str, ok=lambda display: True) -> dict:
+    """An item of the first committed bundle, read at run time (its text is never written here)."""
+    bundle = json.loads(FIRST_BUNDLE.read_text(encoding="utf-8"))
+    return next(i for i in bundle["items"] if i["question_set"] == question_set and ok(i["display"]))
+
+
+def _copy_refused(tmp_path: Path, examples: list[dict]) -> str:
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    return refused_paths(paths, "example_copies_item")
+
+
+def test_an_example_that_copies_a_committed_bundles_item_is_refused(tmp_path):
+    # Regression (Codex review of PR #88): the display of vt_78daa6060095 in the first bundle passed every check as an
+    # example, so a physician could see a stimulus as an example and then rate it.
+    bundle = json.loads(FIRST_BUNDLE.read_text(encoding="utf-8"))
+    item = next(i for i in bundle["items"] if i["item_id"] == "vt_78daa6060095")
+    examples = _examples()
+    n = EXAMPLE_OF_SET[item["question_set"]]
+    examples[n] = {"family": item["question_set"], "label": "Example", "caption": "Judge it.",
+                   "display": copy.deepcopy(item["display"])}
+    message = _copy_refused(tmp_path, examples)
+    assert f"instructions.examples[{n}]" in message and f"item vt_78daa6060095 of {FIRST_BUNDLE.name}" in message
+    assert "repeats" in message
+
+
+def test_an_example_that_copies_an_item_of_this_bundle_or_an_unselected_source_row_is_refused(tmp_path):
+    # the comparison is on normalised text, so a copy in capitals is still a copy
+    data = world_data()
+    advice = data["advice_new"]["items"][0]
+    examples = _examples()
+    examples[1]["display"].update(clinical_message=advice["clinical_message"].upper(),
+                                  patient_message="Where would the little key for the shed be safe?")
+    message = _copy_refused(tmp_path / "item", examples)
+    assert f"instructions.examples[1] (advice_new) repeats new.json item {advice['id']!r}" in message, message
+    # a published payload row that no selection takes (it has no measured penalty) is a study text all the same
+    row = next(s for s in data["payload"]["scenarios"]
+               if not isinstance((s["models"].get("gemma-2-2b") or {}).get("language_penalty"), (int, float)))
+    examples = _examples()
+    examples[1]["display"]["patient_message"] = row["patient_prompt"]
+    message = _copy_refused(tmp_path / "row", examples)
+    assert f"payload row {row['batch']}#{row['batch_index']}" in message, message
+    # a pilot run's sentence, and a Petri seed's text, are study texts too
+    pilot = data["pilot_rows"][1]
+    examples = _examples()
+    examples[1]["display"]["patient_message"] = pilot["template"].replace("___", pilot["patient_term"])
+    message = _copy_refused(tmp_path / "pilot", examples)
+    assert f"pilot run {RUN2} row {pilot['id']}" in message, message
+    examples = _examples()
+    examples[1]["display"]["patient_message"] = MARK_RATIONALE
+    message = _copy_refused(tmp_path / "seed", examples)
+    assert "seeds.json seed" in message, message
+
+
+def test_a_next_word_equal_to_a_committed_target_is_not_a_copy(tmp_path, capsys):
+    # Regression (Gemini review of PR #88): the copy check indexed a pair's next word as a study text, so an invented
+    # pair whose next word was any committed pair's target was refused as repeating that item. The check compares
+    # sentences, messages and turns only.
+    item = _committed_item("tracing_pair", lambda d: evt.next_word_ok(d["next_word"]))
+    examples = _examples()
+    examples[0]["display"]["next_word"] = item["display"]["next_word"]
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    rerun(paths, tmp_path / "out")
+
+
+def test_a_previous_bundle_that_is_also_a_committed_bundle_is_read_and_recorded_once(tmp_path, capsys, monkeypatch):
+    # Regression (Gemini review of PR #88): with --previous-bundle and examples, the previous bundle was read again by
+    # the copy check and listed twice in sources. Each input path is read once.
+    first, raw_first, paths = export(tmp_path)
+    committed = tmp_path / "committed"
+    previous = committed / f"tasks_{first['bundle_id'].removeprefix('vtasks_')}.json"
+    committed.mkdir()
+    previous.write_bytes(raw_first)
+    monkeypatch.setattr(evt, "COMMITTED_BUNDLES_DIR", committed)
+    paths["questions"] = _questions_with(tmp_path, _examples())
+    second, _ = rerun(paths, tmp_path / "round2", "--previous-bundle", str(previous))
+    listed = [s["path"] for s in second["sources"]]
+    assert listed.count(evt.logical_path(previous)) == 1 and len(listed) == len(set(listed)), listed
+
+
+def test_the_payload_is_compared_even_when_no_main_pair_is_selected(tmp_path):
+    # Regression (Codex review of PR #88): with --main-pairs 0 the payload was never read, so an example copied from a
+    # published row passed. The copy check reads the payload whenever there are examples.
+    data = world_data()
+    row = data["payload"]["scenarios"][-1]
+    row["patient_prompt"] = "The violet kettle beside the north window needs a"        # a text only the payload holds
+    examples = _examples()
+    examples[1]["display"]["patient_message"] = row["patient_prompt"]
+    paths = write_world(tmp_path, data)
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_copies_item", main_pairs=0)
+    assert f"payload row {row['batch']}#{row['batch_index']}" in message, message
+
+
+@pytest.mark.parametrize("change, code, fragment", [
+    (lambda row: row.pop("patient_prompt"), "bad_input", "lacks required field(s) ['patient_prompt']"),
+    (lambda row: row.update(clinical_prompt=["not text"]), "bad_input", "clinical_prompt is not a non-empty string"),
+    (lambda row: row.update(patient_prompt="  "), "bad_input", "patient_prompt is not a non-empty string"),
+    (lambda row: row.update(withheld=True), "unknown_field", "withheld"),
+])
+def test_a_malformed_payload_row_is_refused_when_only_the_copy_check_reads_it(tmp_path, change, code, fragment):
+    # Regression (Codex review of PR #88): with --main-pairs 0 the copy check was the payload's only reader and skipped
+    # a missing or non-string prompt, so the copy index was silently incomplete. It refuses as main_items does.
+    data = world_data()
+    change(data["payload"]["scenarios"][2])
+    paths = write_world(tmp_path, data)
+    paths["questions"] = _questions_with(tmp_path, _examples())
+    message = refused_paths(paths, code, main_pairs=0)
+    assert fragment in message and "payload scenario 3" in message, message
+
+
+NOVEL = "and then the blue ledger fell off the shelf again today before lunch at the club".split()
+
+
+def test_an_example_that_contains_a_study_text_with_novel_words_around_it_is_refused(tmp_path):
+    # Regression (Codex review of PR #88): the overlap was a share of the example text's 4-grams only, so a whole study
+    # prompt with enough novel words around it passed. The study text's share counts too.
+    bundle = json.loads(FIRST_BUNDLE.read_text(encoding="utf-8"))
+    words = next(evt.normalised_words(t) for i in bundle["items"] for t in evt.copy_texts(i["display"])
+                 if 13 <= len(evt.normalised_words(t)) <= 17 and not evt.EXAMPLE_MEASURED.search(t))
+    whole = " ".join(words + NOVEL)
+    assert len(evt.word_grams(" ".join(words))) / len(evt.word_grams(whole)) < evt.COPY_SHARE
+    examples = _examples()
+    examples[1]["display"]["clinical_message"] = whole
+    message = _copy_refused(tmp_path / "whole", examples)
+    assert "contains" in message and "of the study text's word 4-grams" in message, message
+    # most of a long study text: more than half of its 4-grams, under half of the example text's
+    k = next(k for k in range(4, len(words))
+             if (k - 3) / (len(words) - 3) >= evt.COPY_SHARE and k < len(words))
+    most = " ".join(words[:k] + NOVEL)
+    shared = len(evt.word_grams(" ".join(words[:k])))
+    assert len(words) - 3 >= evt.COPY_CONTAIN_MIN_GRAMS and shared / len(evt.word_grams(most)) < evt.COPY_SHARE
+    examples[1]["display"]["clinical_message"] = most
+    message = _copy_refused(tmp_path / "most", examples)
+    assert "contains" in message, message
+
+
+def test_a_short_study_text_counts_only_when_contained_whole(tmp_path, capsys):
+    # A study text under COPY_CONTAIN_MIN_GRAMS 4-grams may be a stock phrase (the drafts share three of the four
+    # 4-grams of a seven-word seed turn, and three of the eight of an eleven-word one), so most of it is not a copy,
+    # but all of it is.
+    data = world_data()
+    short = data["payload"]["scenarios"][-1]
+    short["patient_prompt"] = "The violet kettle beside the north window needs a"     # 6 word 4-grams
+    words = evt.normalised_words(short["patient_prompt"])
+    assert evt.COPY_MIN_GRAMS <= len(evt.word_grams(short["patient_prompt"])) < evt.COPY_CONTAIN_MIN_GRAMS
+    examples = _examples()
+    examples[1]["display"]["patient_message"] = " ".join(words[:7] + NOVEL)          # 4 of its 6 4-grams
+    paths = write_world(tmp_path / "most", data)
+    paths["questions"] = _questions_with(tmp_path / "most", examples)
+    rerun(paths, tmp_path / "most" / "out", main_pairs=0)
+    examples[1]["display"]["patient_message"] = " ".join(words + NOVEL)              # all of them
+    paths = write_world(tmp_path / "all", data)
+    paths["questions"] = _questions_with(tmp_path / "all", examples)
+    message = refused_paths(paths, "example_copies_item", main_pairs=0)
+    assert "contains payload row" in message, message
+
+
+@pytest.mark.parametrize("field", ["label", "caption"])
+def test_a_study_text_in_an_examples_label_or_caption_is_refused(tmp_path, field):
+    # Regression (Codex review of PR #88): only the display's texts were compared, so a study prompt pasted into a
+    # label or caption, with an invented display, passed. Every text of an example a physician reads is compared.
+    data = world_data()
+    row = data["payload"]["scenarios"][-1]
+    row["patient_prompt"] = "The violet kettle beside the north window needs a"        # a text only the payload holds
+    examples = _examples()
+    examples[1][field] = row["patient_prompt"]
+    paths = write_world(tmp_path, data)
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_copies_item")
+    assert f"instructions.examples[1] (advice_new) repeats payload row {row['batch']}#{row['batch_index']}" in message
+
+
+def _committed_text_of(words: int, item_id: str | None = None) -> str:
+    """A committed item's sentence, message or turn of exactly this many normalised words, read from the first
+    bundle (never written here)."""
+    bundle = json.loads(FIRST_BUNDLE.read_text(encoding="utf-8"))
+    return next(t for i in bundle["items"] if item_id in (None, i["item_id"]) for t in evt.copy_texts(i["display"])
+                if len(evt.normalised_words(t)) == words and not evt.EXAMPLE_MEASURED.search(t))
+
+
+def test_a_short_study_text_inside_a_longer_example_text_is_refused(tmp_path, capsys):
+    # Regression (Codex review of PR #88): a study text under COPY_MIN_GRAMS 4-grams (fewer than seven words) was never
+    # checked for containment, so a five-word turn of vt_f51de47d1933 pasted inside longer text passed. Such a text of at
+    # least COPY_CONTAIN_MIN_WORDS words is a copy when its words occur in the example as one run; a shorter one can be
+    # a stock reply (a committed four-word turn is one) and is compared exactly only.
+    examples = _examples()
+    five = _committed_text_of(5, "vt_f51de47d1933")
+    examples[1]["display"]["clinical_message"] = f"After the walk to the shed, {five.rstrip('.?!')}, and then I sat down."
+    message = _copy_refused(tmp_path / "five", examples)
+    assert "contains" in message and "instructions.examples[1]" in message, message
+    four = _committed_text_of(4)
+    examples = _examples()
+    examples[1]["display"]["clinical_message"] = f"After the walk to the shed, {four.rstrip('.?!')}, and then I sat down."
+    # the run is of whole words: the same five words with the last one running on into a longer word are not it
+    examples[1]["display"]["patient_message"] = f"Later on, {five.rstrip('.?!')}ish, I said at the gate."
+    paths = write_world(tmp_path / "four", world_data())
+    paths["questions"] = _questions_with(tmp_path / "four", examples)
+    rerun(paths, tmp_path / "four" / "out")
+
+
+def _long_advice_message() -> str:
+    item = _committed_item("advice_new", lambda d: len(d["clinical_message"].split()) >= 14
+                           and not evt.EXAMPLE_MEASURED.search(d["clinical_message"]))
+    return item["display"]["clinical_message"]
+
+
+def test_an_example_that_nearly_copies_a_study_text_is_refused(tmp_path):
+    # Twelve words of a real message with one changed share 5 of their 9 word 4-grams with it: over half, the share
+    # (COPY_SHARE) at which a text is a near copy, and under three quarters.
+    words = _long_advice_message().split()[:12]
+    original = evt.word_grams(" ".join(words))
+    words[5] = "zebra"
+    grams = evt.word_grams(" ".join(words))
+    assert evt.COPY_SHARE <= len(grams & original) / len(grams) < 0.75
+    examples = _examples()
+    examples[1]["display"]["clinical_message"] = " ".join(words)
+    message = _copy_refused(tmp_path, examples)
+    assert "nearly repeats" in message and "of its word 4-grams" in message, message
+
+
+def test_an_example_sharing_less_than_half_its_word_4grams_with_any_study_text_is_kept(tmp_path, capsys):
+    # The near-copy share is COPY_SHARE (half): an invented sentence that opens with a few words of a study text is not
+    # a copy. Here 4 of its 4-grams come from a real message, under a third of them.
+    opening = _long_advice_message().split()[:7]
+    text = " ".join(opening + "and then the blue ledger fell off the shelf".split())
+    grams = evt.word_grams(text)
+    assert 0.25 <= 4 / len(grams) < evt.COPY_SHARE
+    examples = _examples()
+    examples[1]["display"]["clinical_message"] = text
+    # a short text, under COPY_MIN_GRAMS 4-grams, is compared exactly only: five words, one 4-gram of them a study
+    # text's, are not a copy
+    short = " ".join(evt.normalised_words(" ".join(opening))[:4] + ["zebra"])
+    assert len(evt.word_grams(short)) < evt.COPY_MIN_GRAMS
+    examples[1]["display"]["patient_message"] = short
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    rerun(paths, tmp_path / "out")
+
+
+def _module_value_node(rel: str, name: str) -> ast.expr:
+    """The value of a module-level assignment in an engine file, as an ast node (the file is not imported: some of
+    these run argparse or need network libraries at import)."""
+    for node in ast.parse((ROOT / rel).read_text(encoding="utf-8")).body:
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target] if isinstance(node, ast.AnnAssign) \
+            else []
+        if any(isinstance(t, ast.Name) and t.id == name for t in targets):
+            return node.value
+    raise AssertionError(f"{rel} has no module-level {name}")
+
+
+def _module_literal(rel: str, name: str) -> Any:
+    return ast.literal_eval(_module_value_node(rel, name))
+
+
+def _registered_model_ids() -> dict[str, list[str]]:
+    """Every model id, vendor and product name in every model registry the engine has, by registry."""
+    def keys_and_values(rel: str, name: str) -> list[str]:
+        value = _module_literal(rel, name)
+        return [s for k, v in value.items() for s in (k, v) if isinstance(s, str)]
+
+    out = {
+        "logits_eval HF_IDS": keys_and_values("scripts/logits_eval.py", "HF_IDS"),
+        "activation_patch HF_IDS": keys_and_values("scripts/activation_patch.py", "HF_IDS"),
+        "graph_client MODEL_REGISTRY": keys_and_values("medlang_circuits/graph_client.py", "MODEL_REGISTRY"),
+        "neuronpedia_features MODEL_SOURCE_SETS": [   # keys only: a value names a constant
+            ast.literal_eval(k) for k in _module_value_node("medlang_circuits/neuronpedia_features.py",
+                                                            "MODEL_SOURCE_SETS").keys],
+        "evaluate_models PRICING, LEGACY_ALIASES, DEFAULT_MODELS": [
+            *_module_literal("medlang_circuits/evaluate_models.py", "PRICING"),
+            *keys_and_values("medlang_circuits/evaluate_models.py", "LEGACY_ALIASES"),
+            *_module_literal("medlang_circuits/evaluate_models.py", "DEFAULT_MODELS")],
+        "pab_probe_cost BEDROCK_PRICES, PRESETS": [
+            *_module_literal("scripts/pab_probe_cost.py", "BEDROCK_PRICES"),
+            *[m for preset in _module_literal("scripts/pab_probe_cost.py", "PRESETS").values()
+              for k, v in preset.items() if k.endswith(("_model", "_models"))
+              for m in ([v] if isinstance(v, str) else v)]],
+        "model lists of the exporters and planners": [
+            *_module_literal("scripts/backfill_planner.py", "MODELS"),
+            *_module_literal("scripts/export_frontend_simulated.py", "MODELS"),
+            *_module_literal("scripts/export_archive.py", "MODELS"),
+            *_module_literal("scripts/paired_stats_rigor.py", "_PREREG_MODELS"),
+            _module_literal("scripts/translate_corpus.py", "DEFAULT_MODEL")],
+        "Petri park target": [_module_literal("scripts/fire_trigger.py", "PETRI_MOCK_TARGET")],
+    }
+    providers = json.loads((ROOT / "data" / "advice_providers.json").read_text(encoding="utf-8"))
+    blocks = {k: v for k, v in providers.items() if not k.startswith("_")}
+    # openrouter is the aggregator: its consumer_product names no product, so it is not a name to look for
+    assert "aggregator" in blocks["openrouter"]["consumer_product"]
+    out["advice_providers.json"] = [
+        *blocks, *[b["consumer_product"] for k, b in blocks.items() if "consumer_product" in b and k != "openrouter"],
+        *[b["consumer_default"] for b in blocks.values() if "consumer_default" in b],
+        *[m for b in blocks.values() for field in ("pricing", "omit_temperature", "min_output_tokens")
+          for m in (b.get(field) or {})]]
+    petri = []
+    for path in sorted((ROOT / "data" / "petri").rglob("manifest.json")):
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        petri += [m["model"] for m in (manifest.get("models") or {}).values()
+                  if isinstance(m, dict) and isinstance(m.get("model"), str)]
+        judge = ((manifest.get("artifacts") or {}).get("judge_of_record") or {}).get("judge_model")
+        petri += [judge] if isinstance(judge, str) else []
+    out["Petri targets and judges of landed runs"] = petri
+    return out
+
+
+def test_every_model_in_every_registry_is_refused_in_an_example():
+    # Regression (Codex review of PR #88): the first pattern was a short word list with word boundaries, so BioMistral
+    # and MedGemma, registered in scripts/logits_eval.py, passed. Every registered id must now be matched.
+    registries = _registered_model_ids()
+    assert all(registries.values()) and sum(map(len, registries.values())) > 100, \
+        {k: len(v) for k, v in registries.items()}
+    missed = {name: sorted({m for m in ids if not evt.EXAMPLE_MODEL_NAMES.search(m)})
+              for name, ids in registries.items()}
+    assert {k: v for k, v in missed.items() if v} == {}
+
+
+@pytest.mark.parametrize("name", [
+    "BioMistral", "MedGemma",       # scripts/logits_eval.py, inside another name (the Codex finding)
+    "OLMo", "Apertus",              # scripts/logits_eval.py HF_IDS
+    "Qwen3-4B",                     # medlang_circuits/graph_client.py MODEL_REGISTRY
+    "Fable 5",                      # medlang_circuits/evaluate_models.py PRICING
+    "Nova Lite",                    # scripts/pab_probe_cost.py BEDROCK_PRICES
+    "ChatGPT", "Muse Spark",        # data/advice_providers.json (a consumer product, an openrouter slug)
+    "mockllm/model",                # the Petri lane's park target
+    "EPFL", "AllenAI",              # the labs behind registered models (epfl-llm, EPFLiGHT, allenai/OLMo)
+    "Neuronpedia",                  # the service that traces the graph models
+])
+def test_a_registered_model_name_inside_example_text_is_refused(tmp_path, name):
+    examples = _examples()
+    examples[0]["caption"] = f"Compare with what {name} wrote."
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "a model or vendor name" in message and "instructions.examples[0]" in message, message
+    assert name not in message
+
+
+def test_ordinary_words_that_contain_a_name_are_not_refused(tmp_path, capsys):
+    # The names that are ordinary words, or sit inside them, have explicit patterns (EXAMPLE_MODEL_PATTERNS), so an
+    # example may still use these words.
+    examples = _examples()
+    examples[0]["caption"] = ("An affable octopus wrote a metaphor about metal, googled a supernova and was amused by "
+                              "the sparkle of a philanthropic Casanova.")
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    bundle, _ = rerun(paths, tmp_path / "out")
+    assert bundle["questions"]["instructions"]["examples"][0]["caption"] == examples[0]["caption"]
 
 
 # ---- other refusals -----------------------------------------------------------------------------------------

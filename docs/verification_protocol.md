@@ -19,7 +19,8 @@ nothing here is medical advice.
   wording, the selection rules and counts, and the seal result. The owner
   uploads it to Google Drive. A bundle is never rewritten; a new export gets a
   new stamp.
-- **The questions** (wording, answer scales, instructions) are data in
+- **The questions** (wording, answer scales, instructions, and any examples
+  shown before the first item) are data in
   `data/verification/questions.json`. Each bundle copies that file verbatim
   and records its sha256, so every rating can be traced to the wording it
   answered.
@@ -234,6 +235,108 @@ asks whether they agree. The first answer cannot be changed after that.
 No question, hint or instruction says what answer to expect. The realism
 ratings are what the questions measure, so a hint predicting a low score for
 the clinical-terms version would anchor the rating it asks for.
+
+### Examples before the first item
+
+The questions file may hold examples (`instructions.examples`) that the app
+shows before a physician's first item, so they know what each kind of item
+looks like. Each example names the question set whose items it imitates
+(`tracing_pair`, `advice_new`, `advice_rerun`, `advice_rerun_truncated` or
+`multiturn_script`; that set's `family` gives its family instructions), a
+label, a one-sentence caption saying what the physician judges (a task
+directive, such as "Judge whether the conversation is plausible"; it never
+evaluates the example), and a display
+of exactly the shape that set's items have, so the app draws it as it draws an
+item. Examples are invented. They carry no answer, no proposed urgency and no
+rating, and they are none of the study's items.
+
+The exporter checks each example and stops, naming the example, on any
+problem:
+
+- **Shape** (`bad_example`): a question set that is not one of the five, a
+  missing or extra field, or a display that is not the set's. For a sentence
+  pair the marked words must be exactly the ones the exporter would mark, the
+  words where the two sentences differ, and the next word must follow the
+  version-2 rule. A message pair must have the set's cut-off setting. A
+  conversation's versions must all have `n_turns` messages, and a message
+  that repeats an earlier version word for word must say so (`same_as`), as
+  an item's does.
+- **What a physician may not see** (`example_not_blind`): a model or vendor
+  name from any of the engine's model registries, found even inside another
+  word (BioMistral, MedGemma, ChatGPT; a test fails when a registered model
+  is not matched); any of the study's ids, by the shapes they take in the
+  data: batch, run, bundle and item ids, pilot row and review ids, and the
+  Petri seed and scenario ids of the scripts (a test fails when an id of
+  any source is not matched; an example's arm ids and display kind, which a
+  physician does not read, are not checked); the study's method vocabulary
+  (circuit tracing, attribution, language penalty, logits, probabilities,
+  transcoders, steering, the selection rule and the like: every method
+  field of the site payload and the trace summaries and every lane name,
+  a test fails when one is not matched; a method term that is also an
+  ordinary word, such as steering or selection, only in its method phrase);
+  a decimal number (.43 and -.43 too) or a percentage (with the sign or in words: percent, per cent, pct), which is
+  how a measured value is written; or any urgency level the study can
+  propose, by its label or by the value a proposed tier is stored as (with
+  an underscore written as a space or a hyphen too), read from the
+  questions file, or by its definition (repeated, nearly repeated or
+  contained, by the copy check's measure); or an answer to any question of the example's own
+  question set, read from every scale it uses, abstentions included: a
+  label that is a statement of its own (four or more words, or numbered,
+  such as "4 - Likely") as a phrase, and any label or value inside a rating
+  statement ("the rating is 4", "rated Likely", "the answer is yes",
+  "4 out of 5"). A short label or value as an ordinary word ("how likely",
+  "none of them") is not refused, so a caption can say what a physician
+  judges. A label or caption that evaluates the example is refused too: a
+  clause whose subject is the example ("the conversation", "this message",
+  "it"), with a copula and a word an answer could be ("The conversation is
+  entirely plausible", "This message is realistic"). Those words are read
+  from the questions file: the labels of the ordinal scales the example's
+  questions use, the adjectives of its "is the ...?" yes/no questions and
+  what those questions measure ("medically coherent"), and the qualities
+  the welcome text names. Each clause is judged on its own (clauses end at
+  sentence punctuation, a comma, or but, and, yet, while, although,
+  however, because, since, as or so; "as" and "so" right after a copula are
+  degree words, as in "is as realistic as"). A clause that opens with a
+  relative "which" ("the versions, which are entirely plausible") evaluates
+  its noun. A clause with no subject of its own shares the subject and verb
+  of the clause before it in the same sentence, and that clause's
+  exemption, so "This message is brief but medically coherent" is refused
+  and "Judge whether the message is brief and medically coherent" is kept. A clause under "whether", "if", "how", "which" or "what", or one that opens with
+  a directive (judge, rate, say, decide, assess, determine, check, choose,
+  tell) not followed by "that" ("Judge whether the conversation is
+  plausible", "Say how likely it is"), is a task directive and is kept. A
+  patient's own words in a display are not read for this. "A rating of 4"
+  and "I rated it 4" are rating statements, like "the rating is 4". An item's display is
+  built only from the texts physicians rate, so it carries none of the
+  study's own models, ids, measurements or answers. An example is written by
+  hand, so its text is checked instead, and more strictly than an item's
+  could be: a patient's message in an item may contain a decimal number, but
+  an example may not.
+- **The holdout seal** (`seal_hit`): every string of every example is
+  scanned for sealed phrases, as an item's texts are.
+- **A study item** (`example_copies_item`): no label, caption, sentence,
+  message or turn of an example may repeat, nearly repeat or contain a
+  study text (a pair's next
+  word is not compared, since a one-word target is not a stimulus): any sentence,
+  message or script text of the pilot runs, the published payload, the
+  advice stimuli and the Petri seeds the export reads (selected or not), or
+  of an item of any bundle committed in `data/verification`. The published
+  payload is read for this whenever there are examples, even with
+  `--main-pairs 0`. Texts are
+  compared in lower case with punctuation ignored, and then by their word
+  4-grams in both directions; the larger share decides, against half. A
+  near copy is an example text with at least four 4-grams of which at
+  least half occur in one study text. A text contains a study text when at
+  least half of that study text's 4-grams occur in it (counted for a study
+  text of at least ten 4-grams, thirteen words, and for a shorter one only
+  when all of it is there, since a short one can be a stock question). A
+  study text of five or six words is contained when its words occur in the
+  example as one run; a four-word one (a stock reply) is compared exactly
+  only. The
+  three draft examples share at most a quarter either way.
+
+The bundle copies the questions file, examples included, unchanged. A
+questions file without examples is still valid.
 
 ## Assignment and order
 
