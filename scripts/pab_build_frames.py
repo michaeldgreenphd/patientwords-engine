@@ -19,9 +19,12 @@ strip non-empty). A pair is BUILT only when both arms yield a span; every
 exclusion is counted in the build-metadata sidecar, never silent.
 
 Schema finding (read from medlang_circuits/batch_eval.py `evaluate_pair` and
-medlang_circuits/targets.py, 2026-08-07): under ``--screen-targets``,
+medlang_circuits/targets.py, 2026-08-07; the read named here changed
+2026-10-07, the consequences did not): under ``--screen-targets``,
 ``target_clinical_token`` IS REQUIRED. The screening measurement is
-``target_probability(clinical_graph, anchor=anchor) if anchor else None`` -
+``resolve_target(clinical_graph, anchor) if anchor else None`` (exact, or the
+anchor's leading wordpiece; before 2026-10-07 it was the prefix-tolerant
+``target_probability(clinical_graph, anchor=anchor)``) -
 ``force_target_tokens`` is never consulted by screening, and with no anchor
 ``observed`` stays None through both the initial measure and the single
 probe-extension re-measure, so every anchor-less pair is unconditionally

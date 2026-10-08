@@ -20,12 +20,13 @@ import subprocess
 from datetime import datetime, timezone
 
 
-def engine_sha() -> str | None:
-    """Commit of the running checkout: git first, CI env second, else None."""
+def engine_sha(root: str | os.PathLike | None = None) -> str | None:
+    """Commit of the running checkout (or of ``root``): git first, CI env second, else None."""
+    where = ["-C", str(root)] if root is not None else []
     try:
-        sha = subprocess.run(["git", "rev-parse", "--short=12", "HEAD"],
+        sha = subprocess.run(["git", *where, "rev-parse", "--short=12", "HEAD"],
                              capture_output=True, text=True, check=True).stdout.strip()
-        dirty = subprocess.run(["git", "status", "--porcelain"],
+        dirty = subprocess.run(["git", *where, "status", "--porcelain"],
                                capture_output=True, text=True, check=True).stdout.strip()
         return sha + ("+dirty" if dirty else "")
     except (subprocess.CalledProcessError, OSError):

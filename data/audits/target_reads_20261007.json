@@ -1,0 +1,4452 @@
+{
+ "schema": "patientwords-target-read-audit-compact/1",
+ "generated_at": "2026-10-08T14:54:29Z",
+ "engine_sha": "0b56b00ecd5c",
+ "site_payload": {
+  "sha256": "ffae735d376b2ad0d591e915cc85b463b20a1aee8910be990cfe0b248edcbb44",
+  "scenarios": 1774,
+  "site_ref": "patientwords@35b3bf556121f0e29df4cf8eb34a5973bd4aebd1"
+ },
+ "invocation": [
+  "scripts/audit_target_reads.py",
+  "--root",
+  ".",
+  "--out",
+  "<full report>",
+  "--trace-root",
+  "trace_out",
+  "--trace-root",
+  "pilot/traces",
+  "--site-payload",
+  "<outside the working directory>/site_payload_35b3bf5.json",
+  "--site-ref",
+  "patientwords@35b3bf556121f0e29df4cf8eb34a5973bd4aebd1",
+  "--compact-out",
+  "data/audits/target_reads_20261007.json"
+ ],
+ "trace_roots": [
+  "trace_out",
+  "pilot/traces"
+ ],
+ "published_stale": 2,
+ "rules": {
+  "sides": "recorded probability vs the exact target token's probability in the same side's stored predictive_spread, or the side's own target_read record; statuses consistent, prefix_mismatch, target_absent_from_spread (value_source prefix_neighbour, unrelated_token, not_in_spread), unverifiable_no_spread, not_measured",
+  "borrowed": "a hosted side is borrowed when it is a prefix_mismatch or its recorded value is carried by a prefix neighbour in the spread; in a published field only on a published 2panel row's clinical or patient side",
+  "substitution": "measured token vs intended target on token_form; substitutions are space_variant, space_variant_wordpiece, case_variant, case_variant_wordpiece, extension, unrelated, whitespace_token, and short_leading_wordpiece on hosted",
+  "counting": "counts: the last part per index in sorted file-name order (site exporter, export_archive, paired_stats validity); backend_agreement takes the last part in numeric part order, marked numeric_last_part, with part_order_disagreements listing every index where the two orders differ; counts_urgency_first_part: urgency_shift.py's first result per (model, batch, index) with both spreads (its rows feed paired_stats, paired_stats_rigor, convergence_tracker); findings and substitutions list every occurrence with both marks"
+ },
+ "counts_last_part": {
+  "overall": {
+   "published_results": 5900,
+   "published_results_with_borrowed_value": 42,
+   "published_results_with_borrowed_value_in_a_published_field": 40,
+   "published_substitutions": 262,
+   "published_substitutions_not_flagged": 9,
+   "results": 20693,
+   "results_with_borrowed_value": 63,
+   "sides.consistent": 32089,
+   "sides.not_measured": 1531,
+   "sides.prefix_mismatch": 36,
+   "sides.target_absent_from_spread": 8524,
+   "sides.target_absent_from_spread.not_in_spread": 8315,
+   "sides.target_absent_from_spread.prefix_neighbour": 32,
+   "sides.target_absent_from_spread.unrelated_token": 177,
+   "sides.unverifiable_no_spread": 170,
+   "substitutions": 429,
+   "target.case_variant": 5,
+   "target.case_variant_wordpiece": 2,
+   "target.exact": 14697,
+   "target.extension": 12,
+   "target.intended_unknown": 1,
+   "target.leading_wordpiece": 4617,
+   "target.leading_wordpiece.intended_is_a_returned_token": 23,
+   "target.no_intended_target": 51,
+   "target.no_measured_token": 426,
+   "target.short_leading_wordpiece": 479,
+   "target.unrelated": 384,
+   "target.whitespace_token": 19
+  },
+  "by_backend": {
+   "activation_patch": {
+    "results": 85,
+    "sides.unverifiable_no_spread": 170,
+    "target.exact": 85
+   },
+   "hosted": {
+    "published_results": 1774,
+    "published_results_with_borrowed_value": 42,
+    "published_results_with_borrowed_value_in_a_published_field": 40,
+    "published_substitutions": 259,
+    "published_substitutions_not_flagged": 6,
+    "results": 3097,
+    "results_with_borrowed_value": 63,
+    "sides.consistent": 5562,
+    "sides.not_measured": 1531,
+    "sides.prefix_mismatch": 36,
+    "sides.target_absent_from_spread": 29,
+    "sides.target_absent_from_spread.prefix_neighbour": 29,
+    "substitutions": 421,
+    "target.case_variant": 5,
+    "target.case_variant_wordpiece": 2,
+    "target.exact": 1628,
+    "target.extension": 12,
+    "target.intended_unknown": 1,
+    "target.leading_wordpiece": 570,
+    "target.leading_wordpiece.intended_is_a_returned_token": 23,
+    "target.no_intended_target": 51,
+    "target.no_measured_token": 426,
+    "target.short_leading_wordpiece": 7,
+    "target.unrelated": 384,
+    "target.whitespace_token": 11
+   },
+   "logits": {
+    "published_results": 4126,
+    "published_substitutions": 3,
+    "published_substitutions_not_flagged": 3,
+    "results": 17511,
+    "sides.consistent": 26527,
+    "sides.target_absent_from_spread": 8495,
+    "sides.target_absent_from_spread.not_in_spread": 8315,
+    "sides.target_absent_from_spread.prefix_neighbour": 3,
+    "sides.target_absent_from_spread.unrelated_token": 177,
+    "substitutions": 8,
+    "target.exact": 12984,
+    "target.leading_wordpiece": 4047,
+    "target.short_leading_wordpiece": 472,
+    "target.whitespace_token": 8
+   }
+  },
+  "by_root": {
+   "pilot/traces": {
+    "results": 80,
+    "sides.consistent": 151,
+    "sides.not_measured": 9,
+    "target.exact": 74,
+    "target.leading_wordpiece": 2,
+    "target.no_measured_token": 4
+   },
+   "trace_out": {
+    "published_results": 5900,
+    "published_results_with_borrowed_value": 42,
+    "published_results_with_borrowed_value_in_a_published_field": 40,
+    "published_substitutions": 262,
+    "published_substitutions_not_flagged": 9,
+    "results": 20613,
+    "results_with_borrowed_value": 63,
+    "sides.consistent": 31938,
+    "sides.not_measured": 1522,
+    "sides.prefix_mismatch": 36,
+    "sides.target_absent_from_spread": 8524,
+    "sides.target_absent_from_spread.not_in_spread": 8315,
+    "sides.target_absent_from_spread.prefix_neighbour": 32,
+    "sides.target_absent_from_spread.unrelated_token": 177,
+    "sides.unverifiable_no_spread": 170,
+    "substitutions": 429,
+    "target.case_variant": 5,
+    "target.case_variant_wordpiece": 2,
+    "target.exact": 14623,
+    "target.extension": 12,
+    "target.intended_unknown": 1,
+    "target.leading_wordpiece": 4615,
+    "target.leading_wordpiece.intended_is_a_returned_token": 23,
+    "target.no_intended_target": 51,
+    "target.no_measured_token": 422,
+    "target.short_leading_wordpiece": 479,
+    "target.unrelated": 384,
+    "target.whitespace_token": 19
+   }
+  }
+ },
+ "counts_urgency_first_part": {
+  "overall": {
+   "published_results": 5557,
+   "published_results_with_borrowed_value": 39,
+   "published_results_with_borrowed_value_in_a_published_field": 38,
+   "published_substitutions": 247,
+   "published_substitutions_not_flagged": 8,
+   "results": 18170,
+   "results_with_borrowed_value": 58,
+   "sides.consistent": 28157,
+   "sides.not_measured": 531,
+   "sides.prefix_mismatch": 30,
+   "sides.target_absent_from_spread": 7845,
+   "sides.target_absent_from_spread.not_in_spread": 7654,
+   "sides.target_absent_from_spread.prefix_neighbour": 31,
+   "sides.target_absent_from_spread.unrelated_token": 160,
+   "substitutions": 402,
+   "target.case_variant": 3,
+   "target.case_variant_wordpiece": 2,
+   "target.exact": 13197,
+   "target.extension": 11,
+   "target.intended_unknown": 1,
+   "target.leading_wordpiece": 4109,
+   "target.leading_wordpiece.intended_is_a_returned_token": 22,
+   "target.no_intended_target": 3,
+   "target.short_leading_wordpiece": 459,
+   "target.unrelated": 370,
+   "target.whitespace_token": 15
+  },
+  "by_backend": {
+   "hosted": {
+    "published_results": 1431,
+    "published_results_with_borrowed_value": 39,
+    "published_results_with_borrowed_value_in_a_published_field": 38,
+    "published_substitutions": 244,
+    "published_substitutions_not_flagged": 5,
+    "results": 2345,
+    "results_with_borrowed_value": 58,
+    "sides.consistent": 4324,
+    "sides.not_measured": 531,
+    "sides.prefix_mismatch": 30,
+    "sides.target_absent_from_spread": 28,
+    "sides.target_absent_from_spread.prefix_neighbour": 28,
+    "substitutions": 394,
+    "target.case_variant": 3,
+    "target.case_variant_wordpiece": 2,
+    "target.exact": 1446,
+    "target.extension": 11,
+    "target.intended_unknown": 1,
+    "target.leading_wordpiece": 501,
+    "target.leading_wordpiece.intended_is_a_returned_token": 22,
+    "target.no_intended_target": 3,
+    "target.short_leading_wordpiece": 1,
+    "target.unrelated": 370,
+    "target.whitespace_token": 7
+   },
+   "logits": {
+    "published_results": 4126,
+    "published_substitutions": 3,
+    "published_substitutions_not_flagged": 3,
+    "results": 15825,
+    "sides.consistent": 23833,
+    "sides.target_absent_from_spread": 7817,
+    "sides.target_absent_from_spread.not_in_spread": 7654,
+    "sides.target_absent_from_spread.prefix_neighbour": 3,
+    "sides.target_absent_from_spread.unrelated_token": 160,
+    "substitutions": 8,
+    "target.exact": 11751,
+    "target.leading_wordpiece": 3608,
+    "target.short_leading_wordpiece": 458,
+    "target.whitespace_token": 8
+   }
+  },
+  "by_root": {
+   "trace_out": {
+    "published_results": 5557,
+    "published_results_with_borrowed_value": 39,
+    "published_results_with_borrowed_value_in_a_published_field": 38,
+    "published_substitutions": 247,
+    "published_substitutions_not_flagged": 8,
+    "results": 18170,
+    "results_with_borrowed_value": 58,
+    "sides.consistent": 28157,
+    "sides.not_measured": 531,
+    "sides.prefix_mismatch": 30,
+    "sides.target_absent_from_spread": 7845,
+    "sides.target_absent_from_spread.not_in_spread": 7654,
+    "sides.target_absent_from_spread.prefix_neighbour": 31,
+    "sides.target_absent_from_spread.unrelated_token": 160,
+    "substitutions": 402,
+    "target.case_variant": 3,
+    "target.case_variant_wordpiece": 2,
+    "target.exact": 13197,
+    "target.extension": 11,
+    "target.intended_unknown": 1,
+    "target.leading_wordpiece": 4109,
+    "target.leading_wordpiece.intended_is_a_returned_token": 22,
+    "target.no_intended_target": 3,
+    "target.short_leading_wordpiece": 459,
+    "target.unrelated": 370,
+    "target.whitespace_token": 15
+   }
+  }
+ },
+ "part_order_disagreements": 0,
+ "quoted": {
+  "borrowed_hosted_results": 63,
+  "published_scenarios_borrowed_in_a_published_field": 40,
+  "wordpiece_reads_of_whole_tokens": 23,
+  "published_wordpiece_reads_of_whole_tokens": 16,
+  "published_substituted_rows": 262,
+  "published_substituted_rows_by_mechanism": {
+   "logits_first_token": 3,
+   "prefix_match": 8,
+   "top_logit_fallback": 251
+  },
+  "prefix_match_extensions": 6,
+  "prefix_match_case_variants": 2,
+  "prefix_match_screened": 4,
+  "published_substituted_rows_not_flagged": 9
+ },
+ "published_fields_by_kind": {
+  "borrowed": "the side's published_field, and language_penalty",
+  "substitution": [
+   "target_token",
+   "prob_clinical",
+   "prob_patient",
+   "language_penalty"
+  ],
+  "wordpiece": [
+   "target_token",
+   "prob_clinical",
+   "prob_patient",
+   "language_penalty"
+  ]
+ },
+ "published_rows": [
+  {
+   "batch": "pairs_20260706T201750Z",
+   "index": 11,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.078,
+     "exact": [
+      0.058
+     ],
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260707T154345Z",
+   "index": 17,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "extension",
+    "mechanism": "prefix_match",
+    "measured_token": "Output \" pillow\"",
+    "intended_target": " pill",
+    "screening_status": "passed",
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260707T171223Z",
+   "index": 1,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "case_variant_wordpiece",
+    "mechanism": "prefix_match",
+    "measured_token": "Output \" Amb\"",
+    "intended_target": " ambien",
+    "screening_status": "passed",
+    "payload_anchor_fallback": false
+   }
+  },
+  {
+   "batch": "pairs_20260707T171223Z",
+   "index": 16,
+   "model": "gemma-2-2b",
+   "wordpiece": {
+    "intended_target": " pills",
+    "measured_token": "Output \" pill\""
+   }
+  },
+  {
+   "batch": "pairs_20260707T171223Z",
+   "index": 41,
+   "model": "gemma-2-2b",
+   "wordpiece": {
+    "intended_target": " pills",
+    "measured_token": "Output \" pill\""
+   }
+  },
+  {
+   "batch": "pairs_20260707T171223Z",
+   "index": 46,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "extension",
+    "mechanism": "prefix_match",
+    "measured_token": "Output \" bedtime\"",
+    "intended_target": " bed",
+    "screening_status": "passed",
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260707T171223Z",
+   "index": 67,
+   "model": "gemma-2-2b",
+   "wordpiece": {
+    "intended_target": " pills",
+    "measured_token": "Output \" pill\""
+   }
+  },
+  {
+   "batch": "pairs_20260707T171223Z",
+   "index": 73,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.335,
+     "exact": [
+      0.241
+     ],
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260707T215921Z",
+   "index": 24,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.058,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260707T215921Z",
+   "index": 75,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "extension",
+    "mechanism": "prefix_match",
+    "measured_token": "Output \" prescription\"",
+    "intended_target": " pre",
+    "screening_status": "passed",
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260710T011743Z",
+   "index": 20,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.068,
+     "exact": [
+      0.041
+     ],
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260710T050657Z",
+   "index": 48,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.042,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ],
+   "wordpiece": {
+    "intended_target": " antibiotic",
+    "measured_token": "Output \" anti\""
+   }
+  },
+  {
+   "batch": "pairs_20260710T092635Z",
+   "index": 17,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.058,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260710T163230Z",
+   "index": 7,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.089,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260711T131752Z",
+   "index": 16,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.139,
+     "exact": [
+      0.131
+     ],
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260711T131752Z",
+   "index": 31,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.104,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260712T163501Z",
+   "index": 65,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.053,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260712T163501Z",
+   "index": 76,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.345,
+     "exact": [
+      0.159
+     ],
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260712T163501Z",
+   "index": 83,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.081,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 1,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" socks\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 4,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" bladder\"",
+    "intended_target": " pelvic",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 6,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" ovulation\"",
+    "intended_target": " exam",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 9,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" anti\"",
+    "intended_target": " evaluation",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 14,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" Pap\"",
+    "intended_target": " culture",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 16,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" estrogen\"",
+    "intended_target": " evaluation",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 17,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" cold\"",
+    "intended_target": " virus",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 22,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" bladder\"",
+    "intended_target": " kidneys",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 23,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" meds\"",
+    "intended_target": " temperature",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 24,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.182,
+     "exact": [
+      0.067
+     ],
+     "published_field": "prob_patient"
+    }
+   ],
+   "wordpiece": {
+    "intended_target": " antiviral",
+    "measured_token": "Output \" anti\""
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 28,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.057,
+     "exact": [
+      0.034
+     ],
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 29,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" condition\"",
+    "intended_target": " fever",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 30,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" bladder\"",
+    "intended_target": " pelvic",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 35,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" adrenal\"",
+    "intended_target": " evaluation",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 38,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" sleep\"",
+    "intended_target": " condition",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 43,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" operation\"",
+    "intended_target": " evaluation",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 44,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" anti\"",
+    "intended_target": " evaluation",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 45,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.065,
+     "exact": [
+      0.051
+     ],
+     "published_field": "prob_patient"
+    }
+   ],
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" Pap\"",
+    "intended_target": " culture",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 47,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" cancer\"",
+    "intended_target": " infection",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 50,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" anti\"",
+    "intended_target": " evaluation",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 59,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" kidneys\"",
+    "intended_target": " endocrine",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 60,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" vas\"",
+    "intended_target": " symptom",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 64,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" bladder\"",
+    "intended_target": " glucose",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 65,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" sweat\"",
+    "intended_target": " thyroid",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 66,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" sweat\"",
+    "intended_target": " thyroid",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 67,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" cold\"",
+    "intended_target": " viral infection",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 71,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" cold\"",
+    "intended_target": " virus",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 72,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" skin\"",
+    "intended_target": " disorder",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 75,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "extension",
+    "mechanism": "prefix_match",
+    "measured_token": "Output \" hormones\"",
+    "intended_target": " hormone",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 78,
+   "model": "gemma-2-2b",
+   "wordpiece": {
+    "intended_target": " labs",
+    "measured_token": "Output \" lab\""
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 81,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" thyroid\"",
+    "intended_target": " disorder",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 86,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" sinus\"",
+    "intended_target": " bacterial",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 87,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" bladder\"",
+    "intended_target": " glucose",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 89,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" case\"",
+    "intended_target": " fever",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 94,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "case_variant",
+    "mechanism": "prefix_match",
+    "measured_token": "Output \" UTI\"",
+    "intended_target": " uti",
+    "screening_status": null,
+    "payload_anchor_fallback": false
+   }
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 95,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.086,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ],
+   "wordpiece": {
+    "intended_target": " antiviral",
+    "measured_token": "Output \" anti\""
+   }
+  },
+  {
+   "batch": "pairs_20260715T132350Z",
+   "index": 9,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" meds\"",
+    "intended_target": " temperature",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260715T132350Z",
+   "index": 28,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "extension",
+    "mechanism": "prefix_match",
+    "measured_token": "Output \" ears\"",
+    "intended_target": " ear",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260715T132350Z",
+   "index": 60,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" thyroid\"",
+    "intended_target": " glucose",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260715T132350Z",
+   "index": 69,
+   "model": "gemma-2-2b",
+   "wordpiece": {
+    "intended_target": " antibiotic",
+    "measured_token": "Output \" anti\""
+   }
+  },
+  {
+   "batch": "pairs_20260716T133552Z",
+   "index": 2,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "whitespace_token",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" \"",
+    "intended_target": " test",
+    "screening_status": null,
+    "payload_anchor_fallback": false
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 1,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \"cyclo\"",
+    "intended_target": " antibiotic",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 9,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" UTI\"",
+    "intended_target": " infection",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 10,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" doctor\"",
+    "intended_target": " nephrologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 11,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" husband\"",
+    "intended_target": " semen",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 13,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" thyroid\"",
+    "intended_target": " fever",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 14,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" cold\"",
+    "intended_target": " infection",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 17,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" prescription\"",
+    "intended_target": " culture",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 18,
+   "model": "gemma-2-2b",
+   "wordpiece": {
+    "intended_target": " kidneys",
+    "measured_token": "Output \" kidney\""
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 23,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" cold\"",
+    "intended_target": " bacterial",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 28,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" penis\"",
+    "intended_target": " urologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 30,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" period\"",
+    "intended_target": " hemoglobin",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 34,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" blood\"",
+    "intended_target": " glucose",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 35,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" checked\"",
+    "intended_target": " evaluated",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 36,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" pad\"",
+    "intended_target": " specialist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 38,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" UTI\"",
+    "intended_target": " diabetes",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 42,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" UTI\"",
+    "intended_target": " infection",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 43,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" cold\"",
+    "intended_target": " virus",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 44,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" period\"",
+    "intended_target": " hormone",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 45,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.127,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ],
+   "wordpiece": {
+    "intended_target": " problem",
+    "measured_token": "Output \" pro\""
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 46,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" bacterial\"",
+    "intended_target": " infection",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 48,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" trans\"",
+    "intended_target": " biopsy",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 49,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" to\"",
+    "intended_target": " blood",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 54,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.233,
+     "exact": [
+      0.076
+     ],
+     "published_field": "prob_patient"
+    }
+   ],
+   "wordpiece": {
+    "intended_target": " antiviral",
+    "measured_token": "Output \" anti\""
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 55,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" checked\"",
+    "intended_target": " evaluated",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 57,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" sperm\"",
+    "intended_target": " analysis",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 60,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" a\"",
+    "intended_target": " ultrasound",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 63,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" blood\"",
+    "intended_target": " glucose",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 67,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" p\"",
+    "intended_target": " specialist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 68,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" checked\"",
+    "intended_target": " examined",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 70,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" blood\"",
+    "intended_target": " insulin",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 71,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" checked\"",
+    "intended_target": " examined",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 72,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" pad\"",
+    "intended_target": " specialist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 80,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" a\"",
+    "intended_target": " examined",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 84,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" blood\"",
+    "intended_target": " glucose",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 86,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" hyster\"",
+    "intended_target": " biopsy",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 93,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "extension",
+    "mechanism": "prefix_match",
+    "measured_token": "Output \" kidneys\"",
+    "intended_target": " kidney",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 94,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.206,
+     "exact": [
+      0.046
+     ],
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 3,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.086,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 7,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" doctor\"",
+    "intended_target": " gynecologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 8,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" sleep\"",
+    "intended_target": " infection",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 10,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" blood\"",
+    "intended_target": " vitamins",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 11,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.098,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 12,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" pads\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 22,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" snacks\"",
+    "intended_target": " juice",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 23,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" blood\"",
+    "intended_target": " imaging",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 26,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" uro\"",
+    "intended_target": " gynecologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 29,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" thyroid\"",
+    "intended_target": " fever",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 35,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" time\"",
+    "intended_target": " fluids",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 38,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.049,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 40,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" doctor\"",
+    "intended_target": " gynecologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 41,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" blood\"",
+    "intended_target": " imaging",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 45,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" sort\"",
+    "intended_target": " hormonal",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 51,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.157,
+     "exact": [
+      0.139
+     ],
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 52,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" medicine\"",
+    "intended_target": " temperature",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 53,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" doctor\"",
+    "intended_target": " gynecologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 62,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" meds\"",
+    "intended_target": " hormone",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 64,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.059,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 69,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" blood\"",
+    "intended_target": " thyroid",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 71,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" help\"",
+    "intended_target": " hormone",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 72,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" pregnancy\"",
+    "intended_target": " test",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 74,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" meds\"",
+    "intended_target": " temperature",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 84,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" pelvic\"",
+    "intended_target": " weakness",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 85,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" pregnancy\"",
+    "intended_target": " test",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 90,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" sort\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 91,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.014,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 92,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" kind\"",
+    "intended_target": " change",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 94,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.208,
+     "exact": [
+      0.098
+     ],
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 95,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" ec\"",
+    "intended_target": " ultrasound",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 98,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" bacterial\"",
+    "intended_target": " meningococcemia",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 1,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" shirt\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 15,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" doctor\"",
+    "intended_target": " physician",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 16,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" meds\"",
+    "intended_target": " temperature",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 19,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.094,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    },
+    {
+     "side": "translated",
+     "status": "prefix_mismatch",
+     "recorded": 0.196,
+     "exact": [
+      0.105
+     ]
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 23,
+   "model": "gemma-2-2b",
+   "wordpiece": {
+    "intended_target": " antibiotic",
+    "measured_token": "Output \" anti\""
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 27,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" sore\"",
+    "intended_target": " fever",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 28,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" hands\"",
+    "intended_target": " thyroid",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 29,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.244,
+     "exact": [
+      0.102
+     ],
+     "published_field": "prob_patient"
+    }
+   ],
+   "wordpiece": {
+    "intended_target": " antibiotic",
+    "measured_token": "Output \" anti\""
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 30,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" vul\"",
+    "intended_target": " pH",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 31,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" own\"",
+    "intended_target": " thyroid",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 32,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" doctor\"",
+    "intended_target": " cardiologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 33,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" noct\"",
+    "intended_target": " prostate",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 37,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" hands\"",
+    "intended_target": " thyroid",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 39,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" own\"",
+    "intended_target": " doctor",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 42,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" diet\"",
+    "intended_target": " prophylaxis",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 44,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" thyroid\"",
+    "intended_target": " TSH",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 46,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" I\"",
+    "intended_target": " evaluation",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 50,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" an\"",
+    "intended_target": " hyperglycemia",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 53,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" alarm\"",
+    "intended_target": " evaluation",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 57,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" hands\"",
+    "intended_target": " thyroid",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 59,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" doctor\"",
+    "intended_target": " gynecologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 63,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" bladder\"",
+    "intended_target": " glucose",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 68,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.11,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    },
+    {
+     "side": "translated",
+     "status": "prefix_mismatch",
+     "recorded": 0.185,
+     "exact": [
+      0.127
+     ]
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 69,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "translated",
+     "status": "target_absent_from_spread",
+     "recorded": 0.088,
+     "value_source": "prefix_neighbour"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 70,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" a\"",
+    "intended_target": " diabetes",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 75,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" hands\"",
+    "intended_target": " levels",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 77,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" an\"",
+    "intended_target": " diabetes",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 82,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" a\"",
+    "intended_target": " diabetes",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 86,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "short_leading_wordpiece",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" ec\"",
+    "intended_target": " ectopic",
+    "screening_status": null,
+    "payload_anchor_fallback": false
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 87,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" to\"",
+    "intended_target": " diabetes",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 88,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" feet\"",
+    "intended_target": " thyroid",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 90,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "whitespace_token",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" \"",
+    "intended_target": " menopause",
+    "screening_status": null,
+    "payload_anchor_fallback": false
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 91,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" stre\"",
+    "intended_target": " pharyngitis",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 92,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" aspirin\"",
+    "intended_target": " antipyretic",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 96,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "translated",
+     "status": "prefix_mismatch",
+     "recorded": 0.123,
+     "exact": [
+      0.096
+     ]
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 97,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" enlarged\"",
+    "intended_target": " issue",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 21,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" doctor\"",
+    "intended_target": " specialist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 23,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" therapist\"",
+    "intended_target": " psychiatrist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 25,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" blood\"",
+    "intended_target": " antiemetic",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 27,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" doctor\"",
+    "intended_target": " neurologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 29,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" pain\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 34,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.018,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 35,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" a\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 40,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" own\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 41,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" heart\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 42,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" of\"",
+    "intended_target": " propranolol",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 45,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" own\"",
+    "intended_target": " moisturizer",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 47,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \"topic\"",
+    "intended_target": " flare",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 54,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" massage\"",
+    "intended_target": " chiropractor",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 58,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" blood\"",
+    "intended_target": " hormone",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 64,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" hands\"",
+    "intended_target": " assessed",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 66,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" hernia\"",
+    "intended_target": " disorder",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 73,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" shoes\"",
+    "intended_target": " diuretic",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 76,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" pain\"",
+    "intended_target": " anti-inflammatory",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 78,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" anti\"",
+    "intended_target": " abortive",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 83,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" dementia\"",
+    "intended_target": " infection",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 85,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.32,
+     "exact": [
+      0.283
+     ],
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 90,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" doctor\"",
+    "intended_target": " dermatologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 97,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.33,
+     "exact": [
+      0.227
+     ],
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 98,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.256,
+     "exact": [
+      0.199
+     ],
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 100,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" something\"",
+    "intended_target": " an",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260803T132340Z",
+   "index": 51,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.334,
+     "exact": [
+      0.14
+     ],
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260803T132340Z",
+   "index": 78,
+   "model": "gemma-2-2b",
+   "wordpiece": {
+    "intended_target": " nitrates",
+    "measured_token": "Output \" nit\""
+   }
+  },
+  {
+   "batch": "pairs_20260803T132340Z",
+   "index": 81,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" time\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260803T132340Z",
+   "index": 84,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" little\"",
+    "intended_target": " problem",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260803T132340Z",
+   "index": 88,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" time\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260803T132340Z",
+   "index": 89,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" dry\"",
+    "intended_target": " condition",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260803T132340Z",
+   "index": 90,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" genetic\"",
+    "intended_target": " condition",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260803T132340Z",
+   "index": 92,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" lot\"",
+    "intended_target": " disorder",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260803T132340Z",
+   "index": 99,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" feet\"",
+    "intended_target": " doctor",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260803T132340Z",
+   "index": 100,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" sleep\"",
+    "intended_target": " workup",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 2,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" a\"",
+    "intended_target": " dementia",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 5,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" to\"",
+    "intended_target": " asthma",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 6,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" anything\"",
+    "intended_target": " dairy",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 8,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" time\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 14,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" to\"",
+    "intended_target": " inflammation",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 16,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" glasses\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 20,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" a\"",
+    "intended_target": " stroke",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 22,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" meds\"",
+    "intended_target": " temperature",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 25,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" to\"",
+    "intended_target": " arrhythmia",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 28,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" to\"",
+    "intended_target": " anemia",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 33,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.393,
+     "exact": [
+      0.238
+     ],
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 39,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" to\"",
+    "intended_target": " an",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 44,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" doctor\"",
+    "intended_target": " neurologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 45,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.181,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 51,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" PTSD\"",
+    "intended_target": " depersonalization",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 54,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.221,
+     "exact": [
+      0.152
+     ],
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 55,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" a\"",
+    "intended_target": " neuropathy",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 60,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "prefix_mismatch",
+     "recorded": 0.379,
+     "exact": [
+      0.123
+     ],
+     "published_field": "prob_patient"
+    }
+   ],
+   "wordpiece": {
+    "intended_target": " antibiotic",
+    "measured_token": "Output \" anti\""
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 61,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" a\"",
+    "intended_target": " disease",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 64,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" to\"",
+    "intended_target": " an",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 65,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.451,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 71,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" a\"",
+    "intended_target": " dementia",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 76,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" contacts\"",
+    "intended_target": " antihistamine",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 82,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" little\"",
+    "intended_target": " optometrist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 83,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" to\"",
+    "intended_target": " anemia",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 84,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" anti\"",
+    "intended_target": " electrolyte",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 88,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" nausea\"",
+    "intended_target": " antiemetic",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 5,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" idea\"",
+    "intended_target": " infection",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 7,
+   "model": "gemma-2-2b",
+   "wordpiece": {
+    "intended_target": " antiviral",
+    "measured_token": "Output \" anti\""
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 9,
+   "model": "gemma-2-2b",
+   "borrowed": [
+    {
+     "side": "patient",
+     "status": "target_absent_from_spread",
+     "recorded": 0.055,
+     "value_source": "prefix_neighbour",
+     "published_field": "prob_patient"
+    }
+   ]
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 10,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" favorite\"",
+    "intended_target": " trigger",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 14,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" opinion\"",
+    "intended_target": " appointment",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 17,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" insight\"",
+    "intended_target": " arthritis",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 25,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" air\"",
+    "intended_target": " examination",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 27,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" medicine\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 31,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" hands\"",
+    "intended_target": " nerves",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 34,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" anxiety\"",
+    "intended_target": " evaluation",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 37,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" massage\"",
+    "intended_target": " relaxation",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 39,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" blood\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 42,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" doctor\"",
+    "intended_target": " audiologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 45,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" anti\"",
+    "intended_target": " evaluation",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 52,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" own\"",
+    "intended_target": " diet",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 53,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" upper\"",
+    "intended_target": " endoscopy",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 58,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" enlarged\"",
+    "intended_target": " optometrist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 59,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" MRI\"",
+    "intended_target": " exam",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 66,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" immune\"",
+    "intended_target": " system",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 70,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" problem\"",
+    "intended_target": " deficiency",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 80,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" ENT\"",
+    "intended_target": " otolaryngologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 83,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" extra\"",
+    "intended_target": " evaluation",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 86,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" doctor\"",
+    "intended_target": " physician",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 91,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" good\"",
+    "intended_target": " neurological",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 95,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" sleep\"",
+    "intended_target": " disorder",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 96,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" blood\"",
+    "intended_target": " strength",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 98,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" of\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 100,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" blood\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 3,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" facts\"",
+    "intended_target": " brain",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 6,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" precautions\"",
+    "intended_target": " water",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 9,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" vestibular\"",
+    "intended_target": " disorder",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 10,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" good\"",
+    "intended_target": " prescription",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 12,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" favorite\"",
+    "intended_target": " triggers",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 14,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" endoc\"",
+    "intended_target": " oncologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 17,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" antibiotics\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 21,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" CP\"",
+    "intended_target": " study",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 26,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" bowel\"",
+    "intended_target": " blockage",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 27,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" ablation\"",
+    "intended_target": " ECG",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 31,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" prism\"",
+    "intended_target": " referral",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 32,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" form\"",
+    "intended_target": " condition",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 35,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" little\"",
+    "intended_target": " condition",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 36,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" few\"",
+    "intended_target": " physiotherapist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 38,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" ENT\"",
+    "intended_target": " otolaryngologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 39,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" magnesium\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 42,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" dog\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 44,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" urine\"",
+    "intended_target": " urinalysis",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 48,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" probiotics\"",
+    "intended_target": " antispasmodics",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 49,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" MRI\"",
+    "intended_target": " evaluation",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 50,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" good\"",
+    "intended_target": " condition",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 53,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" favorite\"",
+    "intended_target": " intake",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 55,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" hearing\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 60,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" ENT\"",
+    "intended_target": " otolaryngologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 69,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" problem\"",
+    "intended_target": " flare",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 75,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" tea\"",
+    "intended_target": " antibiotic",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 77,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" problem\"",
+    "intended_target": " condition",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 78,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" mouth\"",
+    "intended_target": " rinse",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 79,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" blood\"",
+    "intended_target": " magnesium",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 82,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" few\"",
+    "intended_target": " problem",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 83,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" orthopedic\"",
+    "intended_target": " neurologist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 85,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" little\"",
+    "intended_target": " condition",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 89,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" meds\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 92,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" vitamin\"",
+    "intended_target": " medication",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 94,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" insulin\"",
+    "intended_target": " glucose",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 97,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" similar\"",
+    "intended_target": " nerve",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 1,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" nerve\"",
+    "intended_target": " drug",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 3,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" inhal\"",
+    "intended_target": " oxygen",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 4,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "whitespace_token",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" \"",
+    "intended_target": " 911",
+    "screening_status": null,
+    "payload_anchor_fallback": false
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 4,
+   "model": "gemma-3-4b-it",
+   "substitution": {
+    "relation": "whitespace_token",
+    "mechanism": "logits_first_token",
+    "measured_token": "Output \" \"",
+    "intended_target": " 911",
+    "screening_status": null,
+    "payload_anchor_fallback": false
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 4,
+   "model": "qwen3-1.7b",
+   "substitution": {
+    "relation": "whitespace_token",
+    "mechanism": "logits_first_token",
+    "measured_token": "Output \" \"",
+    "intended_target": " 911",
+    "screening_status": null,
+    "payload_anchor_fallback": false
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 4,
+   "model": "qwen3-4b",
+   "substitution": {
+    "relation": "whitespace_token",
+    "mechanism": "logits_first_token",
+    "measured_token": "Output \" \"",
+    "intended_target": " 911",
+    "screening_status": null,
+    "payload_anchor_fallback": false
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 9,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" wine\"",
+    "intended_target": " pill",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 10,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" bottle\"",
+    "intended_target": " pill",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 11,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" phone\"",
+    "intended_target": " pills",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 19,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" medication\"",
+    "intended_target": " pill",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 22,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" CP\"",
+    "intended_target": " mask",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 23,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" phone\"",
+    "intended_target": " pills",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 31,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" banana\"",
+    "intended_target": " snack",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 33,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" clothes\"",
+    "intended_target": " pills",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 43,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" blood\"",
+    "intended_target": " pulse",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 50,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" prescription\"",
+    "intended_target": " referral",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 67,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" monitor\"",
+    "intended_target": " scan",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260811T190638Z",
+   "index": 9,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" neuro\"",
+    "intended_target": " doctor",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260811T190638Z",
+   "index": 44,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" movie\"",
+    "intended_target": " therapist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260811T190638Z",
+   "index": 55,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" doctor\"",
+    "intended_target": " pharmacist",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  },
+  {
+   "batch": "pairs_20260811T190638Z",
+   "index": 61,
+   "model": "gemma-2-2b",
+   "substitution": {
+    "relation": "unrelated",
+    "mechanism": "top_logit_fallback",
+    "measured_token": "Output \" doctor\"",
+    "intended_target": " nurse",
+    "screening_status": null,
+    "payload_anchor_fallback": true
+   }
+  }
+ ]
+}
