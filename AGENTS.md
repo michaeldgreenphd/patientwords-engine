@@ -417,7 +417,7 @@ rather than only in a doc because nobody thinks to go looking.
   as its first part `" anti"`. `scripts/audit_target_reads.py` (2026-10-07,
   last part per index; rows in `data/audits/target_reads_20261007.json`): 63
   hosted results carry another token's value, 40 in a published field; 23
-  measured a leading piece of a word the vocabulary holds whole (17
+  measured a leading piece of a word the vocabulary holds whole (16
   published). Of 262 published substituted rows, 251 are the unscreened
   top-logit fallback, 8 the prefix match itself (6 extensions, 2 case
   variants; 4 screened) and 3 the logits lane's bare-space first token;

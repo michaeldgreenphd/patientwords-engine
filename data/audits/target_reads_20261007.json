@@ -1,7 +1,7 @@
 {
  "schema": "patientwords-target-read-audit-compact/1",
- "generated_at": "2026-10-08T00:21:14Z",
- "engine_sha": "b1b47222a39c",
+ "generated_at": "2026-10-08T11:41:10Z",
+ "engine_sha": "bab9b650e460",
  "site_payload": {
   "sha256": "ffae735d376b2ad0d591e915cc85b463b20a1aee8910be990cfe0b248edcbb44",
   "scenarios": 1774,
@@ -9,13 +9,26 @@
  },
  "invocation": [
   "scripts/audit_target_reads.py",
+  "--root",
+  ".",
   "--out",
   "<full report>",
+  "--trace-root",
+  "trace_out",
+  "--trace-root",
+  "pilot/traces",
   "--site-payload",
-  "<site data/simulated_scenarios.json>",
+  "<outside the working directory>/site_payload_35b3bf5.json",
   "--site-ref",
-  "patientwords@35b3bf556121f0e29df4cf8eb34a5973bd4aebd1"
+  "patientwords@35b3bf556121f0e29df4cf8eb34a5973bd4aebd1",
+  "--compact-out",
+  "data/audits/target_reads_20261007.json"
  ],
+ "trace_roots": [
+  "trace_out",
+  "pilot/traces"
+ ],
+ "published_stale": 2,
  "rules": {
   "sides": "recorded probability vs the exact target token's probability in the same side's stored predictive_spread, or the side's own target_read record; statuses consistent, prefix_mismatch, target_absent_from_spread (value_source prefix_neighbour, unrelated_token, not_in_spread), unverifiable_no_spread, not_measured",
   "borrowed": "a hosted side is borrowed when it is a prefix_mismatch or its recorded value is carried by a prefix neighbour in the spread; in a published field only on a published 2panel row's clinical or patient side",
@@ -24,7 +37,7 @@
  },
  "counts_last_part": {
   "overall": {
-   "published_results": 5902,
+   "published_results": 5900,
    "published_results_with_borrowed_value": 42,
    "published_results_with_borrowed_value_in_a_published_field": 40,
    "published_substitutions": 262,
@@ -60,7 +73,7 @@
     "target.exact": 85
    },
    "hosted": {
-    "published_results": 1776,
+    "published_results": 1774,
     "published_results_with_borrowed_value": 42,
     "published_results_with_borrowed_value_in_a_published_field": 40,
     "published_substitutions": 259,
@@ -113,7 +126,7 @@
     "target.no_measured_token": 4
    },
    "trace_out": {
-    "published_results": 5902,
+    "published_results": 5900,
     "published_results_with_borrowed_value": 42,
     "published_results_with_borrowed_value_in_a_published_field": 40,
     "published_substitutions": 262,
@@ -146,7 +159,7 @@
  },
  "counts_urgency_first_part": {
   "overall": {
-   "published_results": 5559,
+   "published_results": 5557,
    "published_results_with_borrowed_value": 39,
    "published_results_with_borrowed_value_in_a_published_field": 38,
    "published_substitutions": 247,
@@ -175,7 +188,7 @@
   },
   "by_backend": {
    "hosted": {
-    "published_results": 1433,
+    "published_results": 1431,
     "published_results_with_borrowed_value": 39,
     "published_results_with_borrowed_value_in_a_published_field": 38,
     "published_substitutions": 244,
@@ -219,7 +232,7 @@
   },
   "by_root": {
    "trace_out": {
-    "published_results": 5559,
+    "published_results": 5557,
     "published_results_with_borrowed_value": 39,
     "published_results_with_borrowed_value_in_a_published_field": 38,
     "published_substitutions": 247,
@@ -253,7 +266,7 @@
   "borrowed_hosted_results": 63,
   "published_scenarios_borrowed_in_a_published_field": 40,
   "wordpiece_reads_of_whole_tokens": 23,
-  "published_wordpiece_reads_of_whole_tokens": 17,
+  "published_wordpiece_reads_of_whole_tokens": 16,
   "published_substituted_rows": 262,
   "published_substituted_rows_by_mechanism": {
    "logits_first_token": 3,
@@ -281,15 +294,6 @@
   ]
  },
  "published_rows": [
-  {
-   "batch": "pairs_20260706T201750Z",
-   "index": 1,
-   "model": "qwen3-4b",
-   "wordpiece": {
-    "intended_target": " sleeping",
-    "measured_token": "Output \" sleep\""
-   }
-  },
   {
    "batch": "pairs_20260706T201750Z",
    "index": 11,
