@@ -297,7 +297,10 @@ problem:
   however, because, since, as or so; "as" and "so" right after a copula are
   degree words, as in "is as realistic as"). A clause that opens with a
   relative "which" ("the versions, which are entirely plausible") evaluates
-  its noun. A clause under "whether", "if", "how", "which" or "what", or one that opens with
+  its noun. A clause with no subject of its own shares the subject and verb
+  of the clause before it in the same sentence, and that clause's
+  exemption, so "This message is brief but medically coherent" is refused
+  and "Judge whether the message is brief and medically coherent" is kept. A clause under "whether", "if", "how", "which" or "what", or one that opens with
   a directive (judge, rate, say, decide, assess, determine, check, choose,
   tell) not followed by "that" ("Judge whether the conversation is
   plausible", "Say how likely it is"), is a task directive and is kept. A

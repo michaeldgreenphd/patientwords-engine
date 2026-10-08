@@ -975,17 +975,19 @@ _DEGREE_AFTER = {"is", "are", "was", "were", "be", "seem", "seems", "appear", "a
                  "looks", "read", "reads", "feel", "feels", "not"}
 
 
-def _clauses(text: str) -> list[str]:
-    """The clauses of a text (_CLAUSE_BREAK), keeping "as" and "so" inside a clause where they are degree words."""
-    parts, start = [], 0
+def _clauses(text: str) -> list[tuple[str, bool]]:
+    """The clauses of a text (_CLAUSE_BREAK), keeping "as" and "so" inside a clause where they are degree words, each
+    with whether it opens a sentence (the text's start, or after . ; : ! or ?)."""
+    parts, start, opens = [], 0, True
     for m in _CLAUSE_BREAK.finditer(text):
         if m.group(0).lower() in ("as", "so"):
             before = re.findall(r"[a-z']+", text[start:m.start()].lower())
             if before and (before[-1] in _DEGREE_AFTER or before[-1] in _INTENSIFIERS):
                 continue
-        parts.append(text[start:m.start()])
+        parts.append((text[start:m.start()], opens))
+        opens = any(c in ".;:!?" for c in m.group(0))
         start = m.end()
-    return parts + [text[start:]]
+    return parts + [(text[start:], opens)]
 
 
 def example_evaluations(text: str, predicates: list[str]) -> list[str]:
@@ -998,19 +1000,38 @@ def example_evaluations(text: str, predicates: list[str]) -> list[str]:
     # a clause that opens with a relative "which" ("the versions, which are entirely plausible") evaluates its noun
     relative = re.compile(rf"^\s*which\s+{_EXAMPLE_COPULA}\s+(?:not\s+)?(?:(?:{'|'.join(_INTENSIFIERS)})\s+)*"
                           rf"(?P<pred>{'|'.join(_label_pattern(p) for p in predicates)})(?!\w)", re.I)
-    out = []
-    for clause in _clauses(text):
+    # A clause with no subject and copula of its own shares those of the nearest clause before it in the same sentence
+    # ("This message is brief but medically coherent"; Codex review of PR #88), and that clause's exemption, so "Judge
+    # whether the message is brief and medically coherent" stays a task directive.
+    head_pattern = re.compile(rf"(?:\b{_EXAMPLE_SUBJECT}|^\s*which)\s+{_EXAMPLE_COPULA}\b", re.I)
+    question = re.compile(r"\b(?:whether|if|how|which|what)\b", re.I)
+    out: list[str] = []
+    head: str | None = None
+    head_exempt = False
+    for clause, opens in _clauses(text):
+        if opens:
+            head, head_exempt = None, False
         opener = re.match(r"\s*([a-z]+)(\s+that\b)?", clause, re.I)
-        if opener and opener.group(1).lower() in _TASK_SENTENCE_OPENERS and not opener.group(2):
+        directive = bool(opener and opener.group(1).lower() in _TASK_SENTENCE_OPENERS and not opener.group(2))
+        own = head_pattern.search(clause)
+        if own:
+            head = own.group(0).strip()
+            head_exempt = directive or bool(question.search(clause[:own.start()]))
+            checked, exempt = clause, directive
+        elif head is not None:
+            checked, exempt = f"{head} {clause.strip()}", directive or head_exempt
+        else:
+            checked, exempt = clause, directive
+        if exempt:
             continue
-        found = relative.match(clause)
+        found = relative.match(checked)
         if found:
             out.append(found.group("pred"))
             continue
-        for m in pattern.finditer(clause):
+        for m in pattern.finditer(checked):
             # a question word before the evaluation makes it what the physician is asked, not a claim; "which" and
             # "what" are question words here because a relative "which" opens its own clause, after a comma
-            if not re.search(r"\b(?:whether|if|how|which|what)\b", clause[:m.start()], re.I):
+            if not question.search(checked[:m.start()]):
                 out.append(m.group("pred"))
     return out
 

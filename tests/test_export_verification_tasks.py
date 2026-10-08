@@ -1206,6 +1206,24 @@ def test_an_evaluation_after_a_subordinating_word_is_refused(tmp_path, set_name,
     assert "an evaluation of the example as" in message, message
 
 
+@pytest.mark.parametrize("set_name, text", [
+    ("advice_new", "This message is brief but medically coherent."),                                  # the Codex example
+    ("advice_new", "This message is short, clear and realistic."),
+    ("multiturn_script", "The conversation is not long but entirely plausible."),
+    ("multiturn_script", "Judge the versions, which are brief and entirely plausible."),
+    ("advice_new", "This message is brief but the conversation is long, and realistic."),
+])
+def test_a_predicate_coordinated_with_an_elided_subject_is_refused(tmp_path, set_name, text):
+    # Regression (Codex review of PR #88): splitting at a conjunction separated a predicate from the subject and copula
+    # it shares with the clause before it. A clause with no subject of its own carries those of the clause before it.
+    examples, n = _example_for_set(set_name)
+    examples[n]["caption"] = text
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert "an evaluation of the example as" in message, message
+
+
 DRAFT_CAPTIONS = [   # the three draft examples' captions (questions 1.2-draft)
     "You judge whether the two sentences mean the same thing, how likely a real patient is to use the underlined "
     "everyday wording, and whether the word shown underneath would be a natural next word.",
@@ -1228,7 +1246,9 @@ def test_captions_that_describe_the_task_are_kept(tmp_path, capsys):
                                            "You judge whether the conversation is plausible. " \
                                            "You judge which of the versions is likely. Say what the message is. " \
                                            "Rate it as you would any message. Judge qualities such as whether the " \
-                                           "message is realistic, so judge whether it is likely."
+                                           "message is realistic, so judge whether it is likely. " \
+                                           "Judge whether the message is brief and medically coherent. " \
+                                           "This one is short. Realistic or not, judge it."
     examples[1]["display"]["patient_message"] = "It seems possible the key fell behind the shed; where is it likely?"
     paths = write_world(tmp_path, world_data())
     paths["questions"] = _questions_with(tmp_path, examples)
