@@ -578,3 +578,15 @@ def test_the_compact_invocation_records_the_actual_arguments(engine, tmp_path, m
     assert inv[inv.index("--compact-out") + 1] == "engine/audits/c.json"
     assert str(tmp_path) not in compact.read_text(encoding="utf-8")  # no local absolute path
     assert audit.portable_path(Path("/nowhere/else/x.json")) == "<outside the working directory>/x.json"
+
+
+def test_a_payload_row_with_another_target_token_is_stale(engine, tmp_path):
+    site = json.loads((engine / "site.json").read_text(encoding="utf-8"))
+    for s in site["scenarios"]:
+        if s["batch_index"] == 4:  # same probabilities, but the payload measured another token
+            s["models"]["gemma-2-2b"]["target_token"] = "qzr"
+    (engine / "site.json").write_text(json.dumps(site), encoding="utf-8")
+    rep = run(engine, tmp_path, "--site-payload", str(engine / "site.json"))
+    assert [(x["index"], x["fields"]) for x in rep["published_stale"]] == [(4, ["target_token"])]
+    (top,) = subs(rep, index=4, backend="hosted")
+    assert top["published"] is False
