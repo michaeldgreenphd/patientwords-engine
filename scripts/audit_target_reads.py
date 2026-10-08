@@ -114,7 +114,16 @@ trace (a later fill-in or retrace): it is listed under ``published_stale`` and
 never counted as published.
 
 A requested trace root that does not exist is refused, never skipped: an absent
-root would read as an audit that found nothing. The report's ``engine_sha``
+root would read as an audit that found nothing. Overlapping trace roots (the
+same directory, or one inside another) are refused too: they would count every
+directory they share twice. ``--out``, ``--compact-out`` and
+``--site-payload`` must be three different files (paths and hard links are
+compared before anything is written). Every result's ``index`` must be a
+positive integer within its batch file's row count when that file is known; a
+condition-arm directory such as ``<stem>__context`` joins to its own file. The
+site payload must hold a ``scenarios`` list of objects with a batch, an integer
+batch_index and a models object, and each (batch, batch_index, model) may be
+published once. The report's ``engine_sha``
 carries ``scripts/provenance_stamp.py``'s ``+dirty`` marker when the scanned
 checkout has uncommitted or untracked changes.
 
@@ -141,6 +150,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import re
 import sys
 from collections import Counter, defaultdict
@@ -380,7 +390,19 @@ def prompts_match(result: dict[str, Any], pair: dict[str, Any]) -> bool:
 # ---- scan ---------------------------------------------------------------------------------------------------
 
 
+def overlapping_roots(root: Path, trace_roots: list[str]) -> list[tuple[str, str]]:
+    """Pairs of requested trace roots that are the same directory or nested one inside the other: scanning both
+    would count every summary directory they share twice."""
+    resolved = [(tr, (root / tr).resolve()) for tr in trace_roots]
+    return [(a, b) for i, (a, pa) in enumerate(resolved) for b, pb in resolved[i + 1:]
+            if pa == pb or pa.is_relative_to(pb) or pb.is_relative_to(pa)]
+
+
 def trace_dirs(root: Path, trace_roots: list[str]) -> list[tuple[str, Path]]:
+    overlap = overlapping_roots(root, trace_roots)
+    if overlap:  # main refuses this before audit() runs; a programmatic caller too
+        refuse("overlapping trace roots, which would count the directories they share twice: "
+               + "; ".join(f"{a} and {b}" for a, b in overlap))
     dirs = set()
     for tr in trace_roots:
         base = root / tr
@@ -455,13 +477,28 @@ def read_payload(path: Path | None) -> tuple[dict[tuple[str, int, str], dict], d
         return {}, None
     raw = path.read_bytes()
     payload = json.loads(raw.decode("utf-8"))
+    scenarios = payload.get("scenarios") if isinstance(payload, dict) else None
+    if not isinstance(scenarios, list):
+        refuse(f"--site-payload {path}: no scenarios list; an absent collection would read as nothing published")
     rows: dict[tuple[str, int, str], dict] = {}
-    for s in payload.get("scenarios", []):
-        for model, obj in (s.get("models") or {}).items():
-            if isinstance(obj, dict):
-                rows[(s.get("batch"), s.get("batch_index"), model)] = obj
-    return rows, {"path": str(path), "sha256": hashlib.sha256(raw).hexdigest(),
-                  "scenarios": len(payload.get("scenarios", []))}
+    problems: list[str] = []
+    for n, s in enumerate(scenarios, start=1):
+        if not (isinstance(s, dict) and isinstance(s.get("batch"), str) and isinstance(s.get("batch_index"), int)
+                and not isinstance(s.get("batch_index"), bool) and isinstance(s.get("models"), dict)):
+            problems.append(f"scenario {n} lacks a batch, an integer batch_index or a models object")
+            continue
+        for model, obj in s["models"].items():
+            key = (s["batch"], s["batch_index"], model)
+            if not isinstance(obj, dict):
+                problems.append(f"{key[0]}#{key[1]} {model}: the model entry is not an object")
+            elif key in rows:
+                problems.append(f"{key[0]}#{key[1]} {model}: published more than once")
+            else:
+                rows[key] = obj
+    if problems:
+        refuse(f"--site-payload {path} is malformed: " + "; ".join(problems[:20])
+               + (f"; and {len(problems) - 20} more" if len(problems) > 20 else ""))
+    return rows, {"path": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "scenarios": len(scenarios)}
 
 
 def malformed_summaries(root: Path, loaded: dict[Path, list[tuple[Path, Any]]]) -> list[tuple[str, str]]:
@@ -482,7 +519,7 @@ def malformed_summaries(root: Path, loaded: dict[Path, list[tuple[Path, Any]]]) 
                 bad.append((rel, "a result is not an object"))
             else:
                 for r in summary["results"]:
-                    why = probability_problem(r) or read_problem(r) or spread_problem(r)
+                    why = index_problem(r) or probability_problem(r) or read_problem(r) or spread_problem(r)
                     if why:
                         bad.append((rel, f"index {r.get('index')}: {why}"))
                         break
@@ -493,6 +530,39 @@ def malformed_summaries(root: Path, loaded: dict[Path, list[tuple[Path, Any]]]) 
 REQUIRED_SIDES = {"2panel": {"clinical", "patient"}, "translation": {"patient", "translated"},
                   "4quadrant": {"A", "B", "C", "D"}}
 OPTIONAL_SIDES = {"2panel": {"translated"}}
+
+
+def index_problem(result: dict[str, Any]) -> str | None:
+    """A missing or invalid global join key: ``index`` must be a positive integer (its range against the batch
+    file is checked once the batch file is known, in ``out_of_range_indices``)."""
+    index = result.get("index")
+    if not isinstance(index, int) or isinstance(index, bool) or index < 1:
+        return f"index {index!r} is missing or not a positive integer"
+    return None
+
+
+def pairs_file_for(pairs_index: dict[str, list[Path]], dir_name: str, stem: str | None) -> list[Path]:
+    """The batch files a trace directory may join to: one named exactly like the directory first (a condition arm
+    such as <stem>__context has its own file), else the stem's."""
+    return pairs_index.get(dir_name) or pairs_index.get(stem or "", [])
+
+
+def out_of_range_indices(root: Path, dirs: list[tuple[str, Path]], loaded: dict[Path, list[tuple[Path, Any]]],
+                         pairs_index: dict[str, list[Path]]) -> list[str]:
+    """Every result whose index exceeds its batch file's row count, when that file is known and is a list."""
+    bad = []
+    for trace_root, d in dirs:
+        stem = d.name.split("__")[0] if d.name != Path(trace_root).name else None
+        candidates = pairs_file_for(pairs_index, d.name, stem)
+        pairs = load_pairs(candidates[0]) if len(candidates) == 1 else None
+        if pairs is None:
+            continue
+        for part, summary in loaded[d]:
+            for r in summary["results"]:
+                if r["index"] > len(pairs):
+                    bad.append(f"{part.relative_to(root).as_posix()} index {r['index']} "
+                               f"(its batch file has {len(pairs)} rows)")
+    return bad
 
 
 def num_or_null(value: Any) -> bool:
@@ -529,14 +599,27 @@ def probability_problem(result: dict[str, Any]) -> str | None:
 
 
 def read_problem(result: dict[str, Any]) -> str | None:
-    """Why a result's own ``target_read`` side records contradict its recorded probabilities, or None: a side
-    recorded as missing beside a numeric probability, or a found read beside a different or null probability. The
-    side record is authoritative; a contradiction is refused, never resolved from the spread."""
+    """Why a result's own ``target_read`` block is incomplete or contradicts its recorded probabilities, or None.
+    When the block is present, every side the mode records must have a record - found (a token and a numeric
+    probability) or missing (a reason) - and a missing record beside a numeric probability, or a found read beside
+    a different or null probability, is a contradiction. The side records are authoritative: an incomplete or
+    contradictory block is refused, never resolved from the spread. A result without the block is legacy."""
+    if "target_read" not in result:
+        return None  # a result written before 2026-10-07: the legacy checks apply
+    block = result["target_read"]
+    if not isinstance(block, dict) or not isinstance(block.get("sides"), dict):
+        return "target_read has no sides object"
     for side, recorded, _ in iter_sides(result):
         read = target_read_side(result, side)
         if read is None:
-            continue
-        found = read.get("status") in FOUND_STATUSES
+            return f"target_read has no record for {side}"
+        status = read.get("status")
+        if status in FOUND_STATUSES:
+            if not isinstance(read.get("token"), str) or not is_num(read.get("probability")):
+                return f"target_read's {side} record is found but lacks a token or a numeric probability"
+        elif status != "missing" or not isinstance(read.get("reason"), str):
+            return f"target_read's {side} record is neither found nor missing with a reason"
+        found = status in FOUND_STATUSES
         if not found and is_num(recorded):
             return f"target_read records {side} as {read.get('status')} but a probability is recorded"
         if found and read.get("probability") != recorded:
@@ -635,6 +718,10 @@ def audit(root: Path, trace_roots: list[str], payload_path: Path | None) -> dict
     if malformed:
         refuse("malformed batch summaries, which would read as zero rows: "
                + "; ".join(f"{path} ({why})" for path, why in malformed))
+    beyond = out_of_range_indices(root, dirs, loaded, pairs_index)
+    if beyond:
+        refuse("result indices beyond their batch file, which would join to no row: " + "; ".join(beyond[:20])
+               + (f"; and {len(beyond) - 20} more" if len(beyond) > 20 else ""))
     empty = sorted(part.relative_to(root).as_posix() for parts in loaded.values() for part, s in parts
                    if not s["results"])
     vocabulary = token_vocabulary(loaded)
@@ -645,7 +732,7 @@ def audit(root: Path, trace_roots: list[str], payload_path: Path | None) -> dict
         rel_dir = d.relative_to(root).as_posix()
         stem = d.name.split("__")[0] if d.name != Path(trace_root).name else None
         pairs: list[Any] | None = None
-        candidates = pairs_index.get(stem or "", [])
+        candidates = pairs_file_for(pairs_index, d.name, stem)
         if len(candidates) == 1:
             pairs = load_pairs(candidates[0])
             if pairs is None:
@@ -951,6 +1038,17 @@ def main(argv: list[str] | None = None) -> int:
         for tr in trace_roots:
             if path is not None and path.is_relative_to((root / tr).resolve()):
                 refuse(f"{flag} {path} is under the trace root {tr}; this audit writes nothing there")
+    payload = args.site_payload.resolve() if args.site_payload is not None else None
+    named = [(flag, path) for flag, path in (("--out", out), ("--compact-out", compact_out),
+                                             ("--site-payload", payload)) if path is not None]
+    for i, (flag_a, a) in enumerate(named):
+        for flag_b, b in named[i + 1:]:
+            if a == b or (a.exists() and b.exists() and os.path.samefile(a, b)):
+                refuse(f"{flag_a} and {flag_b} are the same file ({a}); one would overwrite the other")
+    overlap = overlapping_roots(root, trace_roots)
+    if overlap:
+        refuse("overlapping trace roots, which would count the directories they share twice: "
+               + "; ".join(f"{a} and {b}" for a, b in overlap) + ". Pass each directory once")
     missing = [tr for tr in trace_roots if not (root / tr).is_dir()]
     if missing:
         refuse(f"trace root(s) {', '.join(missing)} not found under {root}; an absent root would read as a clean "

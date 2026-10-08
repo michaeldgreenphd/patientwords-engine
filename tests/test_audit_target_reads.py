@@ -544,7 +544,8 @@ def test_the_compact_evidence_needs_the_site_payload(engine, tmp_path):
 ])
 def test_a_probability_contradicting_its_own_read_record_is_refused(engine, tmp_path, sides, why):
     r = result(1, out(" qa"), 0.5, 0.2, [[out(" qa"), 0.5]], [[out(" qa"), 0.2]])
-    r["target_read"] = {"rule": "exact_token/2026-10-07", "sides": sides}
+    clinical = {"clinical": {"status": "exact", "token": out(" qa"), "probability": 0.5}}
+    r["target_read"] = {"rule": "exact_token/2026-10-07", "sides": {**clinical, **sides}}
     write(engine / f"trace_out/{STEM}/batch_summary.part_99.json", {"mode": "2panel", "results": [r]})
     with pytest.raises(audit.AuditRefusal, match=rf"part_99.json \(index 1: target_read {why}"):
         audit.main(["--root", str(engine), "--out", str(tmp_path / "r.json")])
@@ -598,3 +599,103 @@ def test_a_bad_compact_out_is_refused_before_anything_is_written(engine, tmp_pat
         audit.main(["--root", str(engine), "--out", str(report), "--site-payload", str(engine / "site.json"),
                     "--compact-out", str(engine / "trace_out" / "c.json")])
     assert not report.exists() and not (engine / "trace_out" / "c.json").exists()
+
+
+
+@pytest.mark.parametrize("target_read,why", [
+    ({"rule": "x"}, "target_read has no sides object"),
+    ({"sides": []}, "target_read has no sides object"),
+    ({"sides": {}}, "target_read has no record for clinical"),
+    ({"sides": {"clinical": {"status": "exact", "token": out(" qa"), "probability": 0.5}}},
+     "target_read has no record for patient"),
+    ({"sides": {"clinical": {"status": "exact", "probability": 0.5},
+                "patient": {"status": "exact", "token": out(" qa"), "probability": 0.2}}},
+     "clinical record is found but lacks a token"),
+    ({"sides": {"clinical": {"status": "exact", "token": out(" qa"), "probability": 0.5},
+                "patient": {"status": "missing"}}}, "patient record is neither found nor missing with a reason"),
+    ({"sides": {"clinical": {"status": "exact", "token": out(" qa"), "probability": 0.5},
+                "patient": {"status": "odd", "reason": "x"}}}, "patient record is neither found nor missing"),
+])
+def test_an_incomplete_target_read_block_is_refused_not_read_as_legacy(engine, tmp_path, target_read, why):
+    r = result(1, out(" qa"), 0.5, 0.2, [[out(" qa"), 0.5]], [[out(" qa"), 0.2]])
+    r["target_read"] = target_read
+    write(engine / f"trace_out/{STEM}/batch_summary.part_99.json", {"mode": "2panel", "results": [r]})
+    with pytest.raises(audit.AuditRefusal, match=why):
+        audit.main(["--root", str(engine), "--out", str(tmp_path / "r.json")])
+
+
+@pytest.mark.parametrize("index", [None, 0, -1, 1.5, "1", True])
+def test_a_result_without_a_valid_index_is_refused(engine, tmp_path, index):
+    r = result(1, out(" qa"), 0.5, 0.2, [[out(" qa"), 0.5]], [[out(" qa"), 0.2]])
+    if index is None:
+        del r["index"]
+    else:
+        r["index"] = index
+    write(engine / f"trace_out/{STEM}/batch_summary.part_99.json", {"mode": "2panel", "results": [r]})
+    with pytest.raises(audit.AuditRefusal, match="is missing or not a positive integer"):
+        audit.main(["--root", str(engine), "--out", str(tmp_path / "r.json")])
+
+
+def test_an_index_beyond_its_batch_file_is_refused(engine, tmp_path):
+    r = result(13, out(" qa"), 0.5, 0.2, [[out(" qa"), 0.5]], [[out(" qa"), 0.2]])  # the batch file has 12 rows
+    write(engine / f"trace_out/{STEM}/batch_summary.part_99.json", {"mode": "2panel", "results": [r]})
+    with pytest.raises(audit.AuditRefusal, match=r"part_99.json index 13 \(its batch file has 12 rows\)"):
+        audit.main(["--root", str(engine), "--out", str(tmp_path / "r.json")])
+
+
+def test_a_condition_arm_directory_joins_to_its_own_batch_file(tmp_path):
+    # <stem>__context holds 2 rows of its own; the bare stem's file has 1. The arm joins (and range-checks) to
+    # its own file, so its row 2 is in range and verified
+    root = tmp_path / "engine"
+    stem = "urgency_20990707T1"
+    write(root / f"data/simulated/{stem}.json", [pair(1, " qa")])
+    write(root / f"data/simulated/{stem}__context.json", [pair(1, " qa"), pair(2, " qzr")])
+    write(root / f"trace_out/{stem}__context/batch_summary.part_01.json",
+          {"mode": "2panel", "backend": "hosted", "graph_model": "gemma-2-2b", "results": [
+              result(2, out(" to"), 0.6, 0.3, [[out(" to"), 0.6]], [[out(" to"), 0.3]])]})
+    rep = run(root, tmp_path, "--trace-root", "trace_out")
+    assert rep["joins"] == {"verified": 1} and rep["counts"]["overall"]["substitutions"] == 1
+
+
+def test_overlapping_trace_roots_are_refused_so_nothing_is_counted_twice(engine, tmp_path):
+    for roots in ((".", "trace_out"), ("trace_out", "trace_out"), ("trace_out", "trace_out/" + STEM)):
+        args = [arg for tr in roots for arg in ("--trace-root", tr)]
+        with pytest.raises(audit.AuditRefusal, match="overlapping trace roots"):
+            audit.main(["--root", str(engine), "--out", str(tmp_path / "r.json"), *args])
+        assert not (tmp_path / "r.json").exists()
+    with pytest.raises(audit.AuditRefusal, match="overlapping trace roots"):
+        audit.trace_dirs(engine, [".", "trace_out"])  # a programmatic caller too
+    # disjoint roots are fine
+    assert run(engine, tmp_path, "--trace-root", "trace_out", "--trace-root", "pilot/traces")["counts"]["overall"][
+        "results"] == 16
+
+
+def test_outputs_and_the_payload_must_be_three_different_files(engine, tmp_path):
+    import os
+    site = engine / "site.json"
+    before = site.read_bytes()
+    report = tmp_path / "r.json"
+    link = tmp_path / "site_link.json"
+    os.link(site, link)
+    for extra in (["--out", str(site), "--site-payload", str(site)],
+                  ["--out", str(report), "--site-payload", str(site), "--compact-out", str(report)],
+                  ["--out", str(link), "--site-payload", str(site)],
+                  ["--out", str(report), "--site-payload", str(site), "--compact-out", str(link)]):
+        with pytest.raises(audit.AuditRefusal, match="are the same file"):
+            audit.main(["--root", str(engine), *extra])
+    assert site.read_bytes() == before and not report.exists()
+
+
+@pytest.mark.parametrize("payload,why", [
+    ({}, "no scenarios list"), ({"scenarios": {}}, "no scenarios list"), ([], "no scenarios list"),
+    ({"scenarios": [{"batch": STEM, "models": {}}]}, "scenario 1 lacks a batch"),
+    ({"scenarios": [{"batch": STEM, "batch_index": 1, "models": {"gemma-2-2b": []}}]}, "is not an object"),
+    ({"scenarios": [{"batch": STEM, "batch_index": 1, "models": {"gemma-2-2b": {}}},
+                    {"batch": STEM, "batch_index": 1, "models": {"gemma-2-2b": {}}}]}, "published more than once"),
+])
+def test_a_malformed_site_payload_is_refused(engine, tmp_path, payload, why):
+    write(engine / "site.json", payload)
+    with pytest.raises(audit.AuditRefusal, match=why):
+        audit.main(["--root", str(engine), "--out", str(tmp_path / "r.json"), "--site-payload",
+                    str(engine / "site.json")])
+    assert not (tmp_path / "r.json").exists()
