@@ -779,6 +779,8 @@ def audit(root: Path, trace_roots: list[str], payload_path: Path | None) -> dict
 
 
 COMPACT_SCHEMA = "patientwords-target-read-audit-compact/1"
+# The payload fields a measured token other than the intended word's own reaches (the site exporter's model object).
+MEASURED_TOKEN_FIELDS = ["target_token", "prob_clinical", "prob_patient", "language_penalty"]
 PREFIX_MATCH_RELATIONS = ("extension", "case_variant", "case_variant_wordpiece", "space_variant",
                           "space_variant_wordpiece")
 
@@ -849,13 +851,18 @@ def compact_report(report: dict[str, Any], invocation: list[str]) -> dict[str, A
         "schema": COMPACT_SCHEMA,
         "generated_at": report["generated_at"],
         "engine_sha": report["engine_sha"],
-        "site_payload": report["inputs"]["site_payload"],
+        # the payload's digest and revision, not the local path it was read from
+        "site_payload": {k: v for k, v in (report["inputs"]["site_payload"] or {}).items() if k != "path"},
         "invocation": invocation,
         "rules": report["rules"],
         "counts_last_part": slim(report["counts"]),
         "counts_urgency_first_part": slim(report["counts_urgency_first_part"]),
         "part_order_disagreements": len(report["part_order_disagreements"]),
         "quoted": quoted_figures(ordered, report["counts"]),
+        # which published fields each kind reaches: a borrowed side its own published_field (prob_patient or
+        # prob_clinical, and the penalty); a substitution or wordpiece read every field of the measured token
+        "published_fields_by_kind": {"borrowed": "the side's published_field, and language_penalty",
+                                     "substitution": MEASURED_TOKEN_FIELDS, "wordpiece": MEASURED_TOKEN_FIELDS},
         "published_rows": ordered,
     }
 

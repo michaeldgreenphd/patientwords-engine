@@ -517,7 +517,10 @@ def test_the_compact_evidence_lists_published_rows_and_the_quoted_figures(engine
     assert sorted(rows) == [2, 3, 4, 6, 7, 8, 9, 12]
     assert rows[2]["borrowed"][0]["published_field"] == "prob_patient"
     assert rows[6]["borrowed"][0]["side"] == "translated" and "published_field" not in rows[6]["borrowed"][0]
-    assert rows[6]["wordpiece"] == {"intended_target": " xabicor", "measured_token": out(" xabi")}
+    assert rows[6]["wordpiece"]["measured_token"] == out(" xabi")
+    assert c["published_fields_by_kind"]["wordpiece"] == ["target_token", "prob_clinical", "prob_patient",
+                                                          "language_penalty"]
+    assert "path" not in c["site_payload"]  # no local path in the committed form
     assert rows[7]["substitution"]["mechanism"] == "prefix_match"
     assert rows[9]["substitution"]["mechanism"] == "top_logit_fallback"
     q = c["quoted"]
