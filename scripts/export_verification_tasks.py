@@ -1020,10 +1020,13 @@ def example_evaluations(text: str, predicates: list[str]) -> list[str]:
     # A clause with no subject and copula of its own shares those of the nearest clause before it in the same sentence
     # ("This message is brief but medically coherent"; Codex review of PR #88), and that clause's exemption, so "Judge
     # whether the message is brief and medically coherent" stays a task directive.
-    head_pattern = re.compile(rf"(?:\b{_EXAMPLE_SUBJECT}|^\s*which)\s+{_EXAMPLE_COPULA}\b", re.I)
+    head_pattern = re.compile(rf"(?P<subject>\b{_EXAMPLE_SUBJECT}|^\s*which)\s+{_EXAMPLE_COPULA}\b", re.I)
+    # a continuation that repeats the copula ("This message is brief but is medically coherent") takes the subject only
+    own_copula = re.compile(rf"\s*(?:not\s+)?{_EXAMPLE_COPULA}\b", re.I)
     question = re.compile(r"\b(?:whether|if|how|which|what)\b", re.I)
     out: list[str] = []
     head: str | None = None
+    head_subject = ""
     head_exempt = False
     for clause, opens in _clauses(text):
         if opens:
@@ -1032,11 +1035,12 @@ def example_evaluations(text: str, predicates: list[str]) -> list[str]:
         directive = bool(opener and opener.group(1).lower() in _TASK_SENTENCE_OPENERS and not opener.group(2))
         own = head_pattern.search(clause)
         if own:
-            head = own.group(0).strip()
+            head, head_subject = own.group(0).strip(), own.group("subject").strip()
             head_exempt = directive or bool(question.search(clause[:own.start()]))
             checked, exempt = clause, directive
         elif head is not None:
-            checked, exempt = f"{head} {clause.strip()}", directive or head_exempt
+            carried = head_subject if own_copula.match(clause) else head
+            checked, exempt = f"{carried} {clause.strip()}", directive or head_exempt
         else:
             checked, exempt = clause, directive
         if exempt:

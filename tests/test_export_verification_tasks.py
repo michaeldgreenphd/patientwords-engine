@@ -1212,6 +1212,9 @@ def test_an_evaluation_after_a_subordinating_word_is_refused(tmp_path, set_name,
     ("multiturn_script", "The conversation is not long but entirely plausible."),
     ("multiturn_script", "Judge the versions, which are brief and entirely plausible."),
     ("advice_new", "This message is brief but the conversation is long, and realistic."),
+    ("advice_new", "This message is brief but is medically coherent."),                  # the copula repeated
+    ("multiturn_script", "The conversation is long and seems entirely plausible."),
+    ("multiturn_script", "Judge the versions, which are brief and are entirely plausible."),
 ])
 def test_a_predicate_coordinated_with_an_elided_subject_is_refused(tmp_path, set_name, text):
     # Regression (Codex review of PR #88): splitting at a conjunction separated a predicate from the subject and copula
