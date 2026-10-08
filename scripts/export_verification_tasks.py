@@ -823,10 +823,12 @@ def study_payload(inp: "Inputs", site: Path) -> None:
     if not isinstance(scenarios, list):
         refuse("bad_input", f"{site / SITE_PAYLOAD} has no scenarios list")
     for n, s in enumerate(scenarios, 1):
-        if not isinstance(s, dict):
-            refuse("bad_input", f"payload scenario {n} is not a JSON object")
+        # the same checks main_items makes, so a malformed row is refused by name, never skipped (Codex review of
+        # PR #88: with --main-pairs 0 this is the payload's only reader)
+        check_keys(s, PAYLOAD_SCENARIO_KEYS, f"payload scenario {n}", ("batch", "batch_index", "clinical_prompt",
+                                                                     "patient_prompt", "models"))
         for side in ("clinical_prompt", "patient_prompt"):
-            inp.study(s.get(side), f"payload row {s.get('batch')}#{s.get('batch_index')}")
+            inp.study(need_str(s[side], f"payload scenario {n} {side}"), f"payload row {s['batch']}#{s['batch_index']}")
 
 
 def check_example_copies(inp: "Inputs", examples: list[dict]) -> None:

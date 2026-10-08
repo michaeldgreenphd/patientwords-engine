@@ -1614,6 +1614,23 @@ def test_the_payload_is_compared_even_when_no_main_pair_is_selected(tmp_path):
     assert f"payload row {row['batch']}#{row['batch_index']}" in message, message
 
 
+@pytest.mark.parametrize("change, code, fragment", [
+    (lambda row: row.pop("patient_prompt"), "bad_input", "lacks required field(s) ['patient_prompt']"),
+    (lambda row: row.update(clinical_prompt=["not text"]), "bad_input", "clinical_prompt is not a non-empty string"),
+    (lambda row: row.update(patient_prompt="  "), "bad_input", "patient_prompt is not a non-empty string"),
+    (lambda row: row.update(withheld=True), "unknown_field", "withheld"),
+])
+def test_a_malformed_payload_row_is_refused_when_only_the_copy_check_reads_it(tmp_path, change, code, fragment):
+    # Regression (Codex review of PR #88): with --main-pairs 0 the copy check was the payload's only reader and skipped
+    # a missing or non-string prompt, so the copy index was silently incomplete. It refuses as main_items does.
+    data = world_data()
+    change(data["payload"]["scenarios"][2])
+    paths = write_world(tmp_path, data)
+    paths["questions"] = _questions_with(tmp_path, _examples())
+    message = refused_paths(paths, code, main_pairs=0)
+    assert fragment in message and "payload scenario 3" in message, message
+
+
 def _long_advice_message() -> str:
     item = _committed_item("advice_new", lambda d: len(d["clinical_message"].split()) >= 14
                            and not evt.EXAMPLE_MEASURED.search(d["clinical_message"]))
