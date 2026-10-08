@@ -660,7 +660,8 @@ def test_a_condition_arm_directory_joins_to_its_own_batch_file(tmp_path):
 def test_overlapping_trace_roots_are_refused_so_nothing_is_counted_twice(engine, tmp_path):
     for roots in ((".", "trace_out"), ("trace_out", "trace_out"), ("trace_out", "trace_out/" + STEM)):
         args = [arg for tr in roots for arg in ("--trace-root", tr)]
-        with pytest.raises(audit.AuditRefusal, match="overlapping trace roots"):
+        # refused in main, before the audit reads anything
+        with pytest.raises(audit.AuditRefusal, match="overlapping trace roots.*Pass each directory once"):
             audit.main(["--root", str(engine), "--out", str(tmp_path / "r.json"), *args])
         assert not (tmp_path / "r.json").exists()
     with pytest.raises(audit.AuditRefusal, match="overlapping trace roots"):
