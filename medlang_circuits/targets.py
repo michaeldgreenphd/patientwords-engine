@@ -520,7 +520,9 @@ def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any
 
     An intended target written without its leading space ('xab', as some
     pairs files spell it) is read with the space first (' xab': after a prompt
-    that ends in a word, the next word's token carries it), then as written.
+    that ends in a word, the next word's token carries it), then as written;
+    each spelling is resolved completely (exact, then its leading wordpiece)
+    before the next is tried.
     The record always says which: ``"intended_spacing"`` is
     ``"leading_space_added"`` (the spaced form was read), ``"as_written"``
     (only the unspaced form was returned) or ``"both_tried"`` (neither was
@@ -532,6 +534,9 @@ def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any
         return read_exact(graph, intended)
     forms = [" " + intended, intended] if _unspaced(intended) else [intended]
     reads = [read_exact(graph, form) for form in forms]
+    logits = returned_logits(graph)
+    # each form is resolved completely - exact, then its leading wordpiece - before the next, less preferred
+    # spelling is tried: a spaced piece (' xab' for 'xabmel') wins over an unspaced exact token ('xabmel')
     for i, (form, exact) in enumerate(zip(forms, reads)):
         if exact["status"] == "exact":
             return _spaced(exact, form, intended)
@@ -539,39 +544,45 @@ def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any
             # This form was returned but cannot be read: report that failure. Neither a later, less preferred
             # spelling nor a shorter leading piece may stand in for it.
             return _spaced(dict(exact), form, intended) if i == 0 else _both_tried(dict(exact), forms)
-    logits = returned_logits(graph)
-    for form in forms:
-        pieces = [(label, prob) for label, prob in logits if _is_leading_piece(label, form)]
-        unreadable = [label for label in unparsed_labels(graph) if _is_leading_piece(label, form)]
-        if unreadable and not pieces:
-            return _spaced(_missing("unparseable_probability", logits, form), form, intended)
-        if pieces:
-            label, prob = max(pieces, key=lambda c: c[1])
-            if any(same_token(lab, label) for lab in unreadable):
-                # an unreadable copy of the chosen piece: which value is its own cannot be told
-                record = _missing("ambiguous_wordpiece", logits, form)
-                record["wordpiece_candidates"] = ([[lab, p] for lab, p in pieces if same_token(lab, label)]
-                                                  + [[lab, None] for lab in unreadable if same_token(lab, label)])
-                return _spaced(record, form, intended)
-            if unreadable:
-                # another leading piece was returned without a readable probability: the likeliest-piece rule
-                # cannot be applied, and a shorter readable piece may not stand in for a longer unreadable one
-                record = _missing("unparseable_probability", logits, form)
-                record["wordpiece_candidates"] = [[lab, p] for lab, p in pieces] + [[lab, None] for lab in unreadable]
-                return _spaced(record, form, intended)
-            # the chosen piece returned more than once, compared as same_token compares (' xab' and a
-            # marker-spelt '\u2581xab' are one token): which value is its own cannot be told
-            same = [[lab, p] for lab, p in pieces if same_token(lab, label)]
-            if len(same) > 1:
-                record = _missing("ambiguous_wordpiece", logits, form)
-                record["wordpiece_candidates"] = same
-                return _spaced(record, form, intended)
-            record = _found(logits, "leading_wordpiece", label, prob)
-            others = [[lab, p] for lab, p in pieces if not same_token(lab, label)]
-            if others:
-                record["alternatives"] = others
-            return _spaced(record, form, intended)
+        piece = _wordpiece(graph, logits, form)
+        if piece is not None:
+            return _spaced(piece, form, intended)
     return _both_tried(dict(reads[0]), forms)
+
+
+def _wordpiece(graph: dict[str, Any], logits: list[tuple[str, float]], form: str) -> dict[str, Any] | None:
+    """The leading-wordpiece read of one form of the intended target, or None when no piece was returned."""
+    pieces = [(label, prob) for label, prob in logits if _is_leading_piece(label, form)]
+    unreadable = [label for label in unparsed_labels(graph) if _is_leading_piece(label, form)]
+    if unreadable and not pieces:
+        return _missing("unparseable_probability", logits, form)
+    if not pieces:
+        return None
+    label, prob = max(pieces, key=lambda c: c[1])
+    if any(same_token(lab, label) for lab in unreadable):
+        # an unreadable copy of the chosen piece: which value is its own cannot be told
+        record = _missing("ambiguous_wordpiece", logits, form)
+        record["wordpiece_candidates"] = ([[lab, p] for lab, p in pieces if same_token(lab, label)]
+                                          + [[lab, None] for lab in unreadable if same_token(lab, label)])
+        return record
+    if unreadable:
+        # another leading piece was returned without a readable probability: the likeliest-piece rule cannot be
+        # applied, and a shorter readable piece may not stand in for a longer unreadable one
+        record = _missing("unparseable_probability", logits, form)
+        record["wordpiece_candidates"] = [[lab, p] for lab, p in pieces] + [[lab, None] for lab in unreadable]
+        return record
+    # the chosen piece returned more than once, compared as same_token compares (' xab' and a marker-spelt
+    # '\u2581xab' are one token): which value is its own cannot be told
+    same = [[lab, p] for lab, p in pieces if same_token(lab, label)]
+    if len(same) > 1:
+        record = _missing("ambiguous_wordpiece", logits, form)
+        record["wordpiece_candidates"] = same
+        return record
+    record = _found(logits, "leading_wordpiece", label, prob)
+    others = [[lab, p] for lab, p in pieces if not same_token(lab, label)]
+    if others:
+        record["alternatives"] = others
+    return record
 
 
 def _both_tried(missed: dict[str, Any], forms: list[str]) -> dict[str, Any]:

@@ -475,3 +475,14 @@ def test_unreadable_wordpieces_are_never_skipped():
     # an unreadable token that is not a piece changes nothing
     fine = resolve_target(unreadable(hosted_graph([(" xabi", 0.3)]), " qq"), " xabicor")
     assert fine["status"] == "leading_wordpiece" and fine["token"] == label(" xabi")
+
+
+def test_the_preferred_spelling_is_resolved_completely_before_the_next():
+    # intended 'xabmel' (unspaced): the spaced form's leading piece ' xab' is the next word; the unspaced exact
+    # token 'xabmel' would concatenate onto the prompt's last word
+    read = resolve_target(hosted_graph([(" xab", 0.3), ("xabmel", 0.2)]), "xabmel")
+    assert read["status"] == "leading_wordpiece" and read["token"] == label(" xab")
+    assert read["intended_spacing"] == "leading_space_added"
+    # with no spaced exact token or piece, the as-written spelling is read
+    as_written = resolve_target(hosted_graph([("xabmel", 0.2), (" zz", 0.3)]), "xabmel")
+    assert as_written["token"] == label("xabmel") and as_written["intended_spacing"] == "as_written"
