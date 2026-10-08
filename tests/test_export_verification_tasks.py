@@ -1327,6 +1327,33 @@ def _copy_free_refusal(tmp_path: Path, examples: list[dict]) -> str:
     return refused_paths(paths, "example_not_blind")
 
 
+def _definitions() -> list[tuple[str, str]]:
+    """(label, definition) of every option with a definition, read from the questions data."""
+    questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
+    return [(o["label"], o["definition"]) for scale in questions["scales"].values() for o in scale["options"]
+            if o.get("definition")]
+
+
+@pytest.mark.parametrize("form", ["whole", "within", "most", "one word changed"])
+def test_an_example_that_gives_an_answers_definition_is_refused(tmp_path, form):
+    # Regression (Codex review of PR #88): only an option's label and value were refused, so a caption could paste the
+    # definition of the intended answer. Definitions are read from the questions data and compared as study texts are.
+    defs = sorted(_definitions(), key=lambda d: -len(evt.word_grams(d[1])))
+    label, definition = defs[0]                                     # the longest, so "most" is a share of it
+    words = definition.rstrip(".").split()
+    text = {"whole": definition,
+            "within": f"Here, as I see it, {definition[0].lower()}{definition[1:]} That is all.",
+            "most": " ".join(words[: len(words) * 3 // 4]) + " and so on for the rest of the week at home",
+            "one word changed": " ".join(words[:5] + ["zebra"] + words[6:])}[form]
+    assert len(evt.word_grams(definition)) >= evt.COPY_CONTAIN_MIN_GRAMS
+    examples = _examples()
+    examples[1]["caption"] = text
+    paths = write_world(tmp_path, world_data())
+    paths["questions"] = _questions_with(tmp_path, examples)
+    message = refused_paths(paths, "example_not_blind")
+    assert f"the definition of the answer {label!r}" in message, message
+
+
 def test_an_urgency_value_inside_a_longer_word_is_not_refused(tmp_path, capsys):
     # The match is a whole word, so an ordinary longer word that begins with a level's value is still usable.
     longer = [o["value"] + "ly" for o in _reveal_options() if "_" not in o["value"]]

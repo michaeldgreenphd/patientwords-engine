@@ -278,7 +278,8 @@ problem:
   how a measured value is written; or any urgency level the study can
   propose, by its label or by the value a proposed tier is stored as (with
   an underscore written as a space or a hyphen too), read from the
-  questions file; or an answer to any question of the example's own
+  questions file, or by its definition (repeated, nearly repeated or
+  contained, by the copy check's measure); or an answer to any question of the example's own
   question set, read from every scale it uses, abstentions included: a
   label that is a statement of its own (four or more words, or numbered,
   such as "4 - Likely") as a phrase, and any label or value inside a rating

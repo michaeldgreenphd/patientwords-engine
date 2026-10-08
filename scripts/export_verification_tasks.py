@@ -1148,6 +1148,14 @@ def validate_examples(doc: dict, where: str) -> None:
     if not isinstance(examples, list) or not examples:
         refuse("bad_example", f"{where}: instructions.examples is not a non-empty list (leave it out for none)")
     answer_levels = example_answer_levels(doc)
+    # an option's definition says when that answer applies, so an example may not give it either (Codex review of
+    # PR #88): every non-empty definition of every option of the scales the question sets use, read from the
+    # questions data, compared with what a physician reads by the copy check's measure (StudyTextIndex)
+    definitions = StudyTextIndex(sorted({(o["definition"], f"the definition of the answer {o.get('label')!r}")
+                                         for set_name in QUESTION_SETS
+                                         for q in doc["question_sets"][set_name]["questions"]
+                                         for o in doc["scales"][q["scale"]].get("options", [])
+                                         if isinstance(o.get("definition"), str) and o["definition"].strip()}))
     for n, example in enumerate(examples):
         at = f"{where} instructions.examples[{n}]"
         if not isinstance(example, dict):
@@ -1178,6 +1186,7 @@ def validate_examples(doc: dict, where: str) -> None:
         shown += [f"the urgency level {name!r}" for name, terms in answer_levels
                   if any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", t, re.I) for term in terms for t in texts)]
         shown += [what for what, pattern in example_answer_rules(doc, family) if any(pattern.search(t) for t in texts)]
+        shown += sorted({copy[2] for t in example_shown_texts(example) for copy in [definitions.copy_of(t)] if copy})
         predicates = example_predicates(doc, family)
         evaluated = sorted({p.lower() for t in (example["label"], example["caption"]) for p in example_evaluations(t, predicates)})
         shown += [f"an evaluation of the example as {p!r}" for p in evaluated]
