@@ -704,11 +704,14 @@ def example_answer_levels(doc: dict) -> list[tuple[str, list[str]]]:
 # task and is not one.
 _ASSERTION_LEAD = (r"\b(?:(?:rating|score|answer|verdict)\s*(?:is|was|would\s+be|should\s+be|will\s+be|of|=|:)"
                    r"|(?:rated|scored|scores)(?:\s+(?:as|at))?"
-                   # a rating verb with its object, a pronoun or a short determiner phrase, before the answer ("I rated
-                   # it 4", "I rate this example 4", "scored the pair 5"; Codex review of PR #88)
+                   # a rating verb with its object, a pronoun or a determiner and up to eight words (of, in and for
+                   # phrases among them), before the answer ("I rated it 4", "I rate this example 4", "I rated the first
+                   # version of the conversation 4"; Codex review of PR #88). The object holds no copula or other verb
+                   # that ends a noun phrase, so a noun "rate" followed by its clause ("the exchange rate the whole week
+                   # was 4") is not read as one.
                    r"|(?:rate|rates|rated|rating|score|scores|scored|scoring)\s+"
-                   r"(?:it|this|that|them|these|those|(?:the|this|that|these|those|each|every|my|our|your)\s+[\w-]+"
-                   r"(?:\s+[\w-]+)?)\s+(?:(?:as|at|a|an)\s+)?)\s*")
+                   r"(?:it|this|that|them|these|those|(?:the|this|that|these|those|each|every|my|our|your)"
+                   r"(?:\s+(?!(?:is|are|was|were|be|been|went|got)\b)[\w'-]+){1,8}?)\s+(?:(?:as|at|a|an)\s+)?)\s*")
 
 
 def _label_pattern(label: str) -> str:
