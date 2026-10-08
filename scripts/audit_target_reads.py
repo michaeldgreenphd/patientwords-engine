@@ -50,7 +50,8 @@ intended target, taken from ``screening.intended_target``, else
 ``target_read.intended_target``, else the pairs file the trace directory was
 made from (``data/**/<stem>.json`` or ``pilot/runs/**/<stem>.json``) joined on
 ``results[i]["index"]`` and verified by the result's prompt text (a screening
-probe extension accepted), a join that does not verify being counted as
+probe extension accepted; for a dialect result the baseline and every variant
+prompt, in order), a join that does not verify being counted as
 ``intended_unknown``, never guessed. An intended target written without its
 leading space is compared with the space added, as the read does. Relations:
 ``exact``; ``leading_wordpiece`` (the measured token is a proper leading piece
@@ -93,9 +94,13 @@ marks.
 
 A summary whose shape would read as zero rows (a root that is not an object,
 no ``results``, ``results`` that is not a list, or a result that is not an
-object), or that holds a malformed predictive_spread entry (not a
-[string label, finite probability] pair), is refused with every such file
-named: no entry is ever dropped silently. A well-formed summary with an
+object), whose recorded probabilities are malformed (an unknown mode; a
+missing or non-object ``probabilities``, or one without exactly its mode's
+sides; a dialect result without ``baseline_probability`` or with malformed
+``variants``; any value that is not a finite number or null), or that holds
+a malformed predictive_spread entry (not a [string label, finite
+probability] pair), is refused with every such file named: nothing is ever
+read as an empty collection or dropped silently. A well-formed summary with an
 empty ``results`` list is read, and listed under ``empty_summaries``.
 
 Published rows (``--site-payload``, the site's ``data/simulated_scenarios.json``,
@@ -342,7 +347,12 @@ def prompts_match(result: dict[str, Any], pair: dict[str, Any]) -> bool:
 
     mode = result.get("mode")
     if mode == "dialect":
-        return same(result.get("baseline_prompt"), pair.get("baseline_prompt") or pair.get("top_prompt"))
+        # the baseline and every variant prompt, in order: a pairs file re-finalised with the same baseline but
+        # other variants is another trace's source
+        traced = [v.get("prompt") if isinstance(v, dict) else None for v in result.get("variants") or []]
+        source = [v.get("prompt") if isinstance(v, dict) else None for v in pair.get("variants") or []]
+        return (same(result.get("baseline_prompt"), pair.get("baseline_prompt") or pair.get("top_prompt"))
+                and len(traced) == len(source) and all(same(t, w) for t, w in zip(traced, source)))
     if mode == "4quadrant":
         from medlang_circuits.batch_eval import _quadrant_prompts  # lazy: plotting stack
         try:
@@ -444,11 +454,50 @@ def malformed_summaries(root: Path, loaded: dict[Path, list[tuple[Path, Any]]]) 
                 bad.append((rel, "a result is not an object"))
             else:
                 for r in summary["results"]:
-                    why = spread_problem(r)
+                    why = probability_problem(r) or spread_problem(r)
                     if why:
                         bad.append((rel, f"index {r.get('index')}: {why}"))
                         break
     return bad
+
+
+# The probability sides each mode must record (2panel may add the translated mitigation side).
+REQUIRED_SIDES = {"2panel": {"clinical", "patient"}, "translation": {"patient", "translated"},
+                  "4quadrant": {"A", "B", "C", "D"}}
+OPTIONAL_SIDES = {"2panel": {"translated"}}
+
+
+def num_or_null(value: Any) -> bool:
+    return value is None or (is_num(value) and math.isfinite(value))
+
+
+def probability_problem(result: dict[str, Any]) -> str | None:
+    """Why a result's recorded probabilities are malformed, or None: an unknown mode; a dialect result without
+    ``baseline_probability`` or with ``variants`` that are not a list of objects each holding ``probability``; any
+    other mode without a ``probabilities`` object holding exactly its sides. Every value must be a finite number or
+    null (a side recorded as not measured). An absent or malformed collection would otherwise read as no sides."""
+    mode = result.get("mode")
+    if mode == "dialect":
+        if "baseline_probability" not in result or not num_or_null(result["baseline_probability"]):
+            return "baseline_probability is absent or not a number or null"
+        variants = result.get("variants")
+        if not isinstance(variants, list) or any(not isinstance(v, dict) or "probability" not in v
+                                                 or not num_or_null(v["probability"]) for v in variants):
+            return "variants is not a list of objects each with a probability"
+        return None
+    if mode not in REQUIRED_SIDES:
+        return f"unknown mode {mode!r}"
+    probabilities = result.get("probabilities")
+    if not isinstance(probabilities, dict):
+        return "probabilities is absent or not an object"
+    sides, required = set(probabilities), REQUIRED_SIDES[mode]
+    if not required <= sides:
+        return f"probabilities lacks {', '.join(sorted(required - sides))}"
+    if sides - required - OPTIONAL_SIDES.get(mode, set()):
+        return f"probabilities has unexpected sides {', '.join(sorted(sides - required - OPTIONAL_SIDES.get(mode, set())))}"
+    if not all(num_or_null(v) for v in probabilities.values()):
+        return "a probability is not a number or null"
+    return None
 
 
 def spread_problem(result: dict[str, Any]) -> str | None:

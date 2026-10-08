@@ -446,3 +446,57 @@ def test_a_well_formed_dialect_spread_is_read(engine, tmp_path):
                                                                   "variants": [[[out(" qa"), 0.2]]]}}
     write(engine / f"trace_out/{STEM}/batch_summary.part_99.json", {"mode": "dialect", "results": [r]})
     assert run(engine, tmp_path)["counts"]["overall"]["sides.consistent"] > 0
+
+
+@pytest.mark.parametrize("change,why", [
+    ({"probabilities": []}, "probabilities is absent or not an object"),
+    ({"probabilities": None}, "probabilities is absent or not an object"),
+    ({"probabilities": {"clinical": 0.5}}, "probabilities lacks patient"),
+    ({"probabilities": {"clinical": 0.5, "patient": 0.2, "x": 0.1}}, "probabilities has unexpected sides x"),
+    ({"probabilities": {"clinical": "0.5", "patient": 0.2}}, "a probability is not a number or null"),
+    ({"mode": "fivepanel"}, "unknown mode"),
+])
+def test_a_malformed_probability_collection_is_refused_not_read_as_no_sides(engine, tmp_path, change, why):
+    r = result(1, out(" qa"), 0.5, 0.2, [[out(" qa"), 0.5]], [[out(" qa"), 0.2]])
+    r.update(change)
+    write(engine / f"trace_out/{STEM}/batch_summary.part_99.json", {"mode": "2panel", "results": [r]})
+    with pytest.raises(audit.AuditRefusal, match=rf"part_99.json \(index 1: {why}"):
+        audit.main(["--root", str(engine), "--out", str(tmp_path / "r.json")])
+
+
+@pytest.mark.parametrize("change,why", [
+    ({"baseline_probability": "x"}, "baseline_probability is absent"),
+    ({"variants": [{"prompt": "v"}]}, "variants is not a list of objects each with a probability"),
+    ({"variants": None}, "variants is not a list of objects each with a probability"),
+])
+def test_a_malformed_dialect_probability_is_refused(engine, tmp_path, change, why):
+    r = {"index": 1, "mode": "dialect", "baseline_probability": 0.5, "target_token": out(" qa"),
+         "variants": [{"probability": 0.2}], "predictive_spread": {"baseline": [[out(" qa"), 0.5]]}}
+    r.update(change)
+    write(engine / f"trace_out/{STEM}/batch_summary.part_99.json", {"mode": "dialect", "results": [r]})
+    with pytest.raises(audit.AuditRefusal, match=why):
+        audit.main(["--root", str(engine), "--out", str(tmp_path / "r.json")])
+
+
+def _dialect_engine(tmp_path: Path, source_variants: list[str]) -> Path:
+    root = tmp_path / "engine"
+    stem = "dialects_20990606T000000Z"
+    write(root / f"data/simulated/{stem}.json", [{"baseline_prompt": "base one", "target_clinical_token": " qzr",
+                                                 "variants": [{"dialect": f"d{i}", "prompt": p}
+                                                              for i, p in enumerate(source_variants)]}])
+    r = {"index": 1, "mode": "dialect", "baseline_prompt": "base one", "target_token": out(" to"),
+         "baseline_probability": 0.5, "variants": [{"prompt": "var a", "probability": 0.2},
+                                                   {"prompt": "var b", "probability": 0.1}],
+         "predictive_spread": {"baseline": [[out(" to"), 0.5]], "variants": [[[out(" to"), 0.2]], [[out(" to"), 0.1]]]}}
+    write(root / f"trace_out/{stem}/batch_summary.part_01.json", {"mode": "dialect", "backend": "hosted",
+                                                                  "graph_model": "gemma-2-2b", "results": [r]})
+    return root
+
+
+def test_a_dialect_join_checks_every_variant_prompt_in_order(tmp_path):
+    rep = run(_dialect_engine(tmp_path / "same", ["var a", "var b"]), tmp_path / "same", "--trace-root", "trace_out")
+    assert rep["joins"] == {"verified": 1} and rep["counts"]["overall"]["substitutions"] == 1
+    for name, variants in (("order", ["var b", "var a"]), ("other", ["var a", "var c"]), ("fewer", ["var a"])):
+        rep = run(_dialect_engine(tmp_path / name, variants), tmp_path / name, "--trace-root", "trace_out")
+        assert rep["joins"] == {"refused_prompt_mismatch": 1}, name
+        assert rep["counts"]["overall"]["target.intended_unknown"] == 1 and not subs(rep), name
