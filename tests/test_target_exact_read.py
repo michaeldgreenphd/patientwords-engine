@@ -433,3 +433,16 @@ def test_a_failed_preferred_spaced_form_is_not_replaced_by_the_as_written_spelli
     g["nodes"].append({"node_id": "L_np", "feature_type": "logit", "clerp": 'Output " qdoc"'})  # spaced, unparseable
     unparsed = resolve_target(g, "qdoc")
     assert unparsed["reason"] == "unparseable_probability" and unparsed["intended_spacing"] == "leading_space_added"
+
+
+def test_equivalent_spellings_of_one_wordpiece_are_ambiguous():
+    # ' xab' and the marker-spelt '▁xab' are one token under same_token: two values, no way to choose
+    read = resolve_target(hosted_graph([(" xab", 0.3), ("▁xab", 0.1)]), " xabmel")
+    assert read["status"] == "missing" and read["reason"] == "ambiguous_wordpiece"
+    assert read["wordpiece_candidates"] == [[label(" xab"), 0.3], [label("▁xab"), 0.1]]
+    # the exact read already compares by same_token, so the same pair is ambiguous there too
+    exact = read_exact(hosted_graph([(" xab", 0.3), ("▁xab", 0.1)]), label(" xab"))
+    assert exact["reason"] == "ambiguous_exact_match"
+    # a different piece is not a duplicate of the chosen one
+    ok = resolve_target(hosted_graph([(" xabi", 0.3), ("▁xab", 0.1)]), " xabicor")
+    assert ok["token"] == label(" xabi") and ok["alternatives"] == [[label("▁xab"), 0.1]]

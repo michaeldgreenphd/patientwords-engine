@@ -533,13 +533,15 @@ def resolve_target(graph: dict[str, Any], intended: str | None) -> dict[str, Any
         pieces = [(label, prob) for label, prob in logits if _is_leading_piece(label, form)]
         if pieces:
             label, prob = max(pieces, key=lambda c: c[1])
-            if sum(1 for lab, _ in pieces if lab == label) > 1:
-                # the chosen piece was returned more than once: which value is its own cannot be told
+            # the chosen piece returned more than once, compared as same_token compares (' xab' and a
+            # marker-spelt '\u2581xab' are one token): which value is its own cannot be told
+            same = [[lab, p] for lab, p in pieces if same_token(lab, label)]
+            if len(same) > 1:
                 record = _missing("ambiguous_wordpiece", logits, form)
-                record["wordpiece_candidates"] = [[lab, p] for lab, p in pieces if lab == label]
+                record["wordpiece_candidates"] = same
                 return _spaced(record, form, intended)
             record = _found(logits, "leading_wordpiece", label, prob)
-            others = [[lab, p] for lab, p in pieces if lab != label]
+            others = [[lab, p] for lab, p in pieces if not same_token(lab, label)]
             if others:
                 record["alternatives"] = others
             return _spaced(record, form, intended)

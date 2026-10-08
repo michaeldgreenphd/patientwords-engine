@@ -116,7 +116,8 @@ def engine(tmp_path: Path) -> Path:
     write(root / "site.json", {"scenarios": [
         {"batch": STEM, "batch_index": i, "models": {"gemma-2-2b": {
             "prob_clinical": r["probabilities"]["clinical"], "prob_patient": r["probabilities"]["patient"],
-            "anchor_fallback": i in (4, 7)}}} for i, r in published.items()]})
+            "target_token": audit.payload_token(r["target_token"]), "anchor_fallback": i in (4, 7)}}}
+        for i, r in published.items()]})
     return root
 
 
@@ -535,3 +536,45 @@ def test_the_compact_evidence_needs_the_site_payload(engine, tmp_path):
     with pytest.raises(audit.AuditRefusal, match="needs --site-payload"):
         audit.main(["--root", str(engine), "--out", str(tmp_path / "r.json"), "--compact-out",
                     str(tmp_path / "c.json")])
+
+
+@pytest.mark.parametrize("sides,why", [
+    ({"patient": {"status": "missing", "reason": "ambiguous_exact_match"}}, "records patient as missing"),
+    ({"patient": {"status": "exact", "token": out(" qa"), "probability": 0.3}}, "records patient at 0.3 but 0.2"),
+])
+def test_a_probability_contradicting_its_own_read_record_is_refused(engine, tmp_path, sides, why):
+    r = result(1, out(" qa"), 0.5, 0.2, [[out(" qa"), 0.5]], [[out(" qa"), 0.2]])
+    r["target_read"] = {"rule": "exact_token/2026-10-07", "sides": sides}
+    write(engine / f"trace_out/{STEM}/batch_summary.part_99.json", {"mode": "2panel", "results": [r]})
+    with pytest.raises(audit.AuditRefusal, match=rf"part_99.json \(index 1: target_read {why}"):
+        audit.main(["--root", str(engine), "--out", str(tmp_path / "r.json")])
+
+
+def test_a_payload_row_that_predates_the_trace_is_stale_not_published(engine, tmp_path):
+    site = json.loads((engine / "site.json").read_text(encoding="utf-8"))
+    for s in site["scenarios"]:
+        if s["batch_index"] == 2:  # the payload still holds an older measurement of #2
+            s["models"]["gemma-2-2b"]["prob_patient"] = 0.099
+    (engine / "site.json").write_text(json.dumps(site), encoding="utf-8")
+    rep = run(engine, tmp_path, "--site-payload", str(engine / "site.json"))
+    assert [(x["index"], x["fields"]) for x in rep["published_stale"]] == [(2, ["prob_patient"])]
+    (m,) = [f for f in rep["findings"] if f["status"] == "prefix_mismatch"]
+    assert m["index"] == 2 and m["published"] is False
+    o = rep["counts"]["overall"]
+    assert o["published_results_with_borrowed_value"] == 2 and o["published_results"] == 9
+    assert all(k[1] != 2 for k in rep["payload_rows_without_summary"])  # stale, not unmatched
+
+
+def test_the_compact_invocation_records_the_actual_arguments(engine, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    compact = engine / "audits" / "c.json"
+    run(engine, tmp_path, "--trace-root", "trace_out", "--site-payload", str(engine / "site.json"),
+        "--compact-out", str(compact))
+    c = json.loads(compact.read_text(encoding="utf-8"))
+    assert c["trace_roots"] == ["trace_out"]
+    inv = c["invocation"]
+    assert inv[inv.index("--root") + 1] == "engine" and inv[inv.index("--trace-root") + 1] == "trace_out"
+    assert inv[inv.index("--site-payload") + 1] == "engine/site.json"
+    assert inv[inv.index("--compact-out") + 1] == "engine/audits/c.json"
+    assert str(tmp_path) not in compact.read_text(encoding="utf-8")  # no local absolute path
+    assert audit.portable_path(Path("/nowhere/else/x.json")) == "<outside the working directory>/x.json"

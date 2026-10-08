@@ -107,7 +107,11 @@ Published rows (``--site-payload``, the site's ``data/simulated_scenarios.json``
 optional): an effective finding in a part the site exporter reads for that
 model (``trace_out/<stem>`` for gemma-2-2b, ``trace_out/<stem>__<model>`` for
 the others) whose (batch, index, model) is a payload scenario's model object is
-marked ``published``, with the payload's own probability for that side.
+marked ``published``, with the payload's own probability for that side - but
+only when that payload row carries exactly this result's target token and
+clinical and patient probabilities. A row whose values differ predates this
+trace (a later fill-in or retrace): it is listed under ``published_stale`` and
+never counted as published.
 
 A requested trace root that does not exist is refused, never skipped: an absent
 root would read as an audit that found nothing. The report's ``engine_sha``
@@ -393,6 +397,23 @@ def numeric_part_key(part_rel: str) -> tuple[int, int, str]:
     return (1, int(m.group(1)), part_rel) if m else (0, 0, part_rel)
 
 
+def payload_token(label: Any) -> str | None:
+    """export_frontend_simulated.tok: the bare token as the payload stores it."""
+    if not isinstance(label, str):
+        return None
+    m = re.match(r'Output "\s*(.*)"$', label)
+    return (m.group(1) if m else label).strip() or None
+
+
+def payload_differs(payload_obj: dict[str, Any], result: dict[str, Any]) -> list[str]:
+    """The payload fields whose values differ from this result's, as the exporter would have written them:
+    target_token, prob_clinical, prob_patient. Empty when the payload carries exactly this result."""
+    probs = result.get("probabilities") if isinstance(result.get("probabilities"), dict) else {}
+    want = {"target_token": payload_token(result.get("target_token")),
+            "prob_clinical": probs.get("clinical"), "prob_patient": probs.get("patient")}
+    return [field for field, value in want.items() if payload_obj.get(field) != value]
+
+
 def site_reads(trace_root: str, dir_name: str, stem: str | None, model: str, part_rel: str) -> bool:
     """The site exporter reads this part for this model: trace_out/<stem> for the base model and
     trace_out/<stem>__<model> for every other (export_frontend_simulated.model_dir), part files only."""
@@ -461,7 +482,7 @@ def malformed_summaries(root: Path, loaded: dict[Path, list[tuple[Path, Any]]]) 
                 bad.append((rel, "a result is not an object"))
             else:
                 for r in summary["results"]:
-                    why = probability_problem(r) or spread_problem(r)
+                    why = probability_problem(r) or read_problem(r) or spread_problem(r)
                     if why:
                         bad.append((rel, f"index {r.get('index')}: {why}"))
                         break
@@ -504,6 +525,22 @@ def probability_problem(result: dict[str, Any]) -> str | None:
         return f"probabilities has unexpected sides {', '.join(sorted(sides - required - OPTIONAL_SIDES.get(mode, set())))}"
     if not all(num_or_null(v) for v in probabilities.values()):
         return "a probability is not a number or null"
+    return None
+
+
+def read_problem(result: dict[str, Any]) -> str | None:
+    """Why a result's own ``target_read`` side records contradict its recorded probabilities, or None: a side
+    recorded as missing beside a numeric probability, or a found read beside a different or null probability. The
+    side record is authoritative; a contradiction is refused, never resolved from the spread."""
+    for side, recorded, _ in iter_sides(result):
+        read = target_read_side(result, side)
+        if read is None:
+            continue
+        found = read.get("status") in FOUND_STATUSES
+        if not found and is_num(recorded):
+            return f"target_read records {side} as {read.get('status')} but a probability is recorded"
+        if found and read.get("probability") != recorded:
+            return f"target_read records {side} at {read.get('probability')} but {recorded} is recorded"
     return None
 
 
@@ -590,6 +627,7 @@ def audit(root: Path, trace_roots: list[str], payload_path: Path | None) -> dict
     summaries = 0
     superseded = 0
     order_disagreements: list[dict[str, Any]] = []
+    published_stale: list[dict[str, Any]] = []
     dirs = trace_dirs(root, trace_roots)
     loaded = {d: [(part, json.loads(part.read_text(encoding="utf-8")))
                   for part in sorted(d.glob("batch_summary*.json"))] for _, d in dirs}
@@ -648,6 +686,14 @@ def audit(root: Path, trace_roots: list[str], payload_path: Path | None) -> dict
                     "numeric_last_part": numeric_last}
             payload_obj = (payload_rows.get((stem, index, model))
                            if effective and site_reads(trace_root, d.name, stem, model, part_rel) else None)
+            stale = payload_differs(payload_obj, r) if payload_obj is not None else []
+            if stale:
+                # the payload holds other values for this row (it predates this trace): not what was published
+                published_stale.append({**{k: v for k, v in (("dir", rel_dir), ("part", part_rel),
+                                                              ("index", index), ("batch", stem), ("model", model))},
+                                        "fields": stale})
+                payload_seen.add((stem, index, model))
+                payload_obj = None
             keys = [("by_root", trace_root), ("by_dir", rel_dir), ("by_batch", stem or rel_dir),
                     ("by_model", model), ("by_backend", str(backend))]
 
@@ -768,6 +814,9 @@ def audit(root: Path, trace_roots: list[str], payload_path: Path | None) -> dict
         "part_order_disagreements": order_disagreements,
         "joins": dict(sorted(joins.items())),
         # payload model objects with no committed summary result the site exporter would read: not auditable here
+        # payload rows whose token or probabilities differ from the trace the exporter would read now (the payload
+        # predates a later fill-in or retrace): listed here, never counted as published
+        "published_stale": published_stale,
         "payload_rows_without_summary": sorted([list(k) for k in set(payload_rows) - payload_seen],
                                                key=lambda k: (str(k[0]), k[1] if isinstance(k[1], int) else -1,
                                                               str(k[2]))),
@@ -854,6 +903,8 @@ def compact_report(report: dict[str, Any], invocation: list[str]) -> dict[str, A
         # the payload's digest and revision, not the local path it was read from
         "site_payload": {k: v for k, v in (report["inputs"]["site_payload"] or {}).items() if k != "path"},
         "invocation": invocation,
+        "trace_roots": report["inputs"]["trace_roots"],
+        "published_stale": len(report["published_stale"]),
         "rules": report["rules"],
         "counts_last_part": slim(report["counts"]),
         "counts_urgency_first_part": slim(report["counts_urgency_first_part"]),
@@ -865,6 +916,15 @@ def compact_report(report: dict[str, Any], invocation: list[str]) -> dict[str, A
                                      "substitution": MEASURED_TOKEN_FIELDS, "wordpiece": MEASURED_TOKEN_FIELDS},
         "published_rows": ordered,
     }
+
+
+def portable_path(path: Path) -> str:
+    """A path for the committed evidence: relative to the working directory when under it, else redacted to its
+    last component, so no local absolute path is committed."""
+    try:
+        return path.relative_to(Path.cwd().resolve()).as_posix() or "."
+    except ValueError:
+        return f"<outside the working directory>/{path.name}"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -904,8 +964,11 @@ def main(argv: list[str] | None = None) -> int:
         for tr in trace_roots:
             if compact_out.is_relative_to((root / tr).resolve()):
                 refuse(f"--compact-out {compact_out} is under the trace root {tr}")
-        invocation = ["scripts/audit_target_reads.py", "--out", "<full report>", "--site-payload",
-                      "<site data/simulated_scenarios.json>"] + (["--site-ref", args.site_ref] if args.site_ref else [])
+        invocation = (["scripts/audit_target_reads.py", "--root", portable_path(root), "--out", "<full report>"]
+                      + [arg for tr in trace_roots for arg in ("--trace-root", tr)]
+                      + ["--site-payload", portable_path(args.site_payload.resolve())]
+                      + (["--site-ref", args.site_ref] if args.site_ref else [])
+                      + ["--compact-out", portable_path(compact_out)])
         compact_out.parent.mkdir(parents=True, exist_ok=True)
         compact_out.write_text(json.dumps(compact_report(report, invocation), indent=1, ensure_ascii=False) + "\n",
                                encoding="utf-8")
