@@ -1076,7 +1076,9 @@ def _scale_value(set_name: str, kind: type) -> tuple[Any, str, int | None]:
                                   "They scored the pair {v}.", "Rate this one a {v}.", "Rate it a {v}.", "I would rate them as {label}.",
                                   "I rated the first version of the conversation {v}.",
                                   "I rated the wording in this example {v}.",
-                                  "We scored each of the two short versions for this item a {v}.", "The answer is {s}.", "THE ANSWER IS {S}.",
+                                  "We scored each of the two short versions for this item a {v}.",
+                                  "I rate both messages {v}.", "I rated all three versions {v}.", "I rate both {v}.",
+                                  "Rated either message a {v}.", "We rated two of the versions {v}.", "The answer is {s}.", "THE ANSWER IS {S}.",
                                   "Rated as {label}.",
                                   "The verdict would be {label}."])
 def test_a_rating_or_answer_stated_outright_is_refused(tmp_path, form):

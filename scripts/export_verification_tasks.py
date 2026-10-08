@@ -710,7 +710,10 @@ _ASSERTION_LEAD = (r"\b(?:(?:rating|score|answer|verdict)\s*(?:is|was|would\s+be
                    # that ends a noun phrase, so a noun "rate" followed by its clause ("the exchange rate the whole week
                    # was 4") is not read as one.
                    r"|(?:rate|rates|rated|rating|score|scores|scored|scoring)\s+"
-                   r"(?:it|this|that|them|these|those|(?:the|this|that|these|those|each|every|my|our|your)"
+                   # (quantifiers count as determiners, and "both" and "all" stand alone too: "I rate both messages 4",
+                   # "rated all three versions 2"; Codex review of PR #88)
+                   r"(?:it|this|that|them|these|those|both|all|(?:the|this|that|these|those|each|every|my|our|your|"
+                   r"both|all|either|neither|some|any|several|two|three|four|five|six|seven|eight|nine|ten)"
                    r"(?:\s+(?!(?:is|are|was|were|be|been|went|got)\b)[\w'-]+){1,8}?)\s+(?:(?:as|at|a|an)\s+)?)\s*")
 
 
