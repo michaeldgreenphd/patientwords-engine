@@ -13,8 +13,8 @@ Each pair's split is reconstructed from the two committed batch_summary scalars:
   clin = (1 - E) * C,  off = (1 - E) * (1 - C),  struct = E     (sums to 1).
 
 clinical_mass is aggregated only for calibrated feature models
-(feature_models.clinical_mass_publishable: the model is in CALIBRATED_FEATURE_MODELS, today
-gemma-2-2b alone, AND the summary names a source set). A NullFetcher summary's mass is ~0, an
+(feature_models.clinical_mass_publishable: the summary's exact (graph_model, source_set) pair
+is in CALIBRATED_FEATURE_SOURCES, today gemma-2-2b with gemmascope-transcoder-16k alone). A NullFetcher summary's mass is ~0, an
 artifact; qwen3-4b's summaries name source set transcoder-hp since 2026-10-09, but its labels
 are not yet calibrated against gemma-2-2b's, so it stays out until the owner rules. Tier B
 holdout pairs are excluded (Amendment 1/3 seal). $0, offline - reads only committed batch_summary parts.

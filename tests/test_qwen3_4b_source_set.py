@@ -192,6 +192,8 @@ def test_run_batch_tags_qwen3_4b_with_transcoder_hp(qwen_batch):
     tagged = json.loads((out / "pair_01_clinical.tagged.json").read_text(encoding="utf-8"))
     descs = {n["medlang"]["description"] for n in tagged["nodes"] if n["feature_type"] == "cross layer transcoder"}
     assert descs == {"label 3/42", "label 7/7", "label 9/1"}
+    # the tagger records which source set the labels came from (read by the calibration script)
+    assert tagged["metadata"]["medlang_summary"]["feature_source_set"] == "transcoder-hp"
 
 
 def test_registration_leaves_the_hosted_graph_request_unchanged(qwen_batch):
@@ -239,14 +241,15 @@ def test_unregistered_models_still_trace_with_null_fetcher(qwen_batch, monkeypat
 
 
 # ---------------------------------------------------------------------------
-# The publication gate: calibrated feature models only
+# The publication gate: calibrated (model, source set) pairs only
 # ---------------------------------------------------------------------------
 
 
-def test_calibrated_set_is_gemma_only_and_a_subset_of_labelled_models():
+def test_calibrated_pairs_are_gemma_with_its_registered_set():
+    assert feature_models.CALIBRATED_FEATURE_SOURCES == frozenset({("gemma-2-2b", "gemmascope-transcoder-16k")})
     assert feature_models.CALIBRATED_FEATURE_MODELS == frozenset({"gemma-2-2b"})
-    labelled = {m for m, s in MODEL_SOURCE_SETS.items() if s}
-    assert feature_models.CALIBRATED_FEATURE_MODELS <= labelled
+    # every calibrated pair is a model's registered default set
+    assert all(MODEL_SOURCE_SETS.get(m) == s for m, s in feature_models.CALIBRATED_FEATURE_SOURCES)
 
 
 @pytest.mark.parametrize("model, source_set, expected", [
@@ -255,15 +258,18 @@ def test_calibrated_set_is_gemma_only_and_a_subset_of_labelled_models():
     (None, "gemmascope-transcoder-16k", True),   # pre-cross-model summaries name no model
     ("qwen3-4b", "transcoder-hp", False),   # labelled, not calibrated
     ("qwen3-4b", None, False),
+    # Regression (Codex review of PR #93): gemma tagged from another set via --source-set
+    ("gemma-2-2b", "some-other-set", False),
+    (None, "some-other-set", False),
 ])
 def test_clinical_mass_publishable(model, source_set, expected):
     assert feature_models.clinical_mass_publishable(model, source_set) is expected
 
 
-def test_exporters_take_featured_from_the_shared_set():
+def test_exporters_gate_each_row_on_the_shared_pair_rule():
     for name in ("export_frontend_simulated.py", "export_archive.py"):
         src = (ROOT / "scripts" / name).read_text(encoding="utf-8")
-        assert "FEATURED = set(CALIBRATED_FEATURE_MODELS)" in src, name
+        assert "clinical_mass_publishable" in src and "FEATURED" not in src, name
 
 
 STAMP = "20260801T000000Z"
@@ -389,6 +395,45 @@ def test_export_archive_leaves_qwen3_4b_clinical_mass_empty(tmp_path):
     csv_text = out.with_suffix(".csv").read_text(encoding="utf-8")
     qwen_lines = [line for line in csv_text.splitlines() if ",qwen3-4b," in line]
     assert len(qwen_lines) == 2 and all(line.endswith(",,") for line in qwen_lines)  # empty mass columns
+
+
+def _gemma_other_set(engine: Path) -> None:
+    """Re-tag the gemma-2-2b part as if traced with an explicit, uncalibrated --source-set."""
+    part = engine / "trace_out" / STEM / "batch_summary.part_01.json"
+    summary = json.loads(part.read_text(encoding="utf-8"))
+    summary["source_set"] = "some-other-set"
+    part.write_text(json.dumps(summary), encoding="utf-8")
+
+
+def test_exporter_nulls_gemma_mass_tagged_from_an_uncalibrated_set(tmp_path):
+    # Regression (Codex review of PR #93): the gate was model-only, so gemma traced with
+    # another --source-set published its clinical_mass.
+    engine, site = tmp_path / "engine", tmp_path / "site"
+    _engine(engine, {STAMP: [HOSTED_TAGGED]})
+    _gemma_other_set(engine)
+    proc = _export(engine, site, STAMP)
+    assert proc.returncode == 0, proc.stderr + proc.stdout
+    payload = json.loads((site / "data" / "simulated_scenarios.json").read_text(encoding="utf-8"))
+    assert all(s["models"]["gemma-2-2b"]["clinical_mass"] is None for s in payload["scenarios"])
+    assert all(s["clinical_mass"] is None for s in payload["scenarios"])     # the top-level mirror too
+    meta = {m["id"]: m for m in payload["models_meta"]}
+    assert meta["gemma-2-2b"]["features"] is False
+    assert meta["gemma-2-2b"]["source_set"] == "some-other-set"
+
+
+def test_export_archive_nulls_gemma_mass_tagged_from_an_uncalibrated_set(tmp_path):
+    engine = tmp_path / "engine"
+    _engine(engine, {STAMP: [HOSTED_TAGGED]})
+    _gemma_other_set(engine)
+    out = tmp_path / "archive"
+    proc = subprocess.run([sys.executable, str(ROOT / "scripts" / "export_archive.py"),
+                           "--engine", str(engine), "--out", str(out)],
+                          capture_output=True, text=True, cwd=str(engine))
+    assert proc.returncode == 0, proc.stderr + proc.stdout
+    rows = [r for r in json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
+            if r["graph_model"] == "gemma-2-2b"]
+    assert len(rows) == 2
+    assert all(r["has_features"] is False and r["clinical_mass_clinical"] is None for r in rows)
 
 
 def test_export_tag_mass_excludes_labelled_but_uncalibrated_models(tmp_path, monkeypatch):

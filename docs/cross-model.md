@@ -72,7 +72,7 @@ which type, each feature has. A sample this small shows the difference exists,
 not how large it is. The keyword rule may
 therefore tag a different share of features clinical for reasons that are about
 the labels, not the model. The exporters keep nulling qwen3-4b's
-`clinical_mass` (`scripts/feature_models.py`, `CALIBRATED_FEATURE_MODELS`) until
+`clinical_mass` (`scripts/feature_models.py`, `CALIBRATED_FEATURE_SOURCES`) until
 the owner decides, after `scripts/feature_label_calibration.py` has compared the
 two models' labels and clinical mass on the same pairs. The divergence is logged
 in `docs/prereg_divergence_log.md` (2026-10-09).
@@ -106,7 +106,8 @@ mid-study.
   into `scenario.models[<id>]`, mirrors gemma to the top level for backward
   compatibility, and emits `payload.models_meta` (the selector's source of
   truth). `clinical_mass` is nulled for every model outside
-  `feature_models.CALIBRATED_FEATURE_MODELS` (gemma-2-2b alone): NullFetcher
+  calibrated (model, source set) pair, `feature_models.CALIBRATED_FEATURE_SOURCES`
+  (gemma-2-2b with `gemmascope-transcoder-16k` alone), checked per row: NullFetcher
   models would otherwise report a false 0%, and qwen3-4b's labels are not yet
   calibrated against gemma-2-2b's.
 - **UI** — the simulated-scenarios index and per-scenario page grow a **model**

@@ -182,9 +182,10 @@ auto-degrade to `NullFetcher`: tracing and probabilities still work, but every f
 untagged, so their `clinical_mass` comes out ~0.0 — an artifact, not a finding. Labelled
 is not publishable: qwen3-4b's labels are not yet calibrated against gemma-2-2b's, so its
 `clinical_mass` is exploratory. Anything that publishes or aggregates clinical mass gates
-on `scripts/feature_models.py` (`CALIBRATED_FEATURE_MODELS`, gemma-2-2b alone), not on
-`source_set` being non-null; the exporters' `FEATURED` sets are built from it, and a model
-joins it only by owner decision after `scripts/feature_label_calibration.py`.
+per row on `scripts/feature_models.py`'s `clinical_mass_publishable` (the exact (model,
+source set) pair is calibrated; today only gemma-2-2b with `gemmascope-transcoder-16k`), not
+on `source_set` being non-null; a pair is added only by owner decision after
+`scripts/feature_label_calibration.py`.
 
 **Behavior without graphs (`scripts/logits_eval.py`).** Models Neuronpedia can't trace are
 measured by direct CPU inference in CI, emitting **the same `batch_summary` schema** so

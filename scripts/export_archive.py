@@ -6,8 +6,9 @@ traced it - gemma-2-2b from trace_out/<batch-stem>/ and the others from
 trace_out/<batch-stem>__<model>/. Writes one flat row per (pair x model):
 generation provenance, the traced graph_model, screening verdicts,
 probabilities, penalties, flips, and clinical-mass metrics (populated only for
-models in feature_models.CALIBRATED_FEATURE_MODELS, today gemma-2-2b). Pairs that no model traced
-still get one "untraced" row, so the export is the complete archive, not just
+rows tagged from a calibrated (model, source set) pair,
+feature_models.CALIBRATED_FEATURE_SOURCES, today gemma-2-2b with
+gemmascope-transcoder-16k). Pairs that no model traced still get one "untraced" row, so the export is the complete archive, not just
 the measured subset. This is the collaborator download that pairs with the
 GitHub Release render bundle.
 
@@ -30,9 +31,9 @@ except ImportError:  # direct invocation from repo root
     from tierb_split import holdout_phrases, is_holdout, is_tierb_batch, tierb_start_stamp
 
 try:
-    from scripts.feature_models import CALIBRATED_FEATURE_MODELS
+    from scripts.feature_models import clinical_mass_publishable
 except ImportError:  # direct invocation from repo root (path inserted above)
-    from feature_models import CALIBRATED_FEATURE_MODELS
+    from feature_models import clinical_mass_publishable
 
 parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
 parser.add_argument("--engine", default=".", help="engine repo root (default: cwd)")
@@ -43,11 +44,11 @@ ENGINE = Path(args.engine)
 
 # The circuit-tracer models. gemma-2-2b keeps the bare trace_out stem; the
 # others write to trace_out/<stem>__<model>. clinical_mass is exported only for
-# calibrated feature models (nulled for the rest): qwen3-4b carries labels since
-# 2026-10-09 but its mass is not yet comparable with gemma-2-2b's.
+# a row whose summary part was tagged from a calibrated (model, source set) pair
+# (nulled for the rest): qwen3-4b carries labels since 2026-10-09 but its mass
+# is not yet comparable with gemma-2-2b's.
 MODELS = ["gemma-2-2b", "gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b"]
 BASE_MODEL = "gemma-2-2b"
-FEATURED = set(CALIBRATED_FEATURE_MODELS)
 
 COLUMNS = [
     "batch", "batch_index", "graph_model", "has_features",
@@ -72,18 +73,23 @@ def model_trace_dir(stem, model):
 
 
 def read_model_results(stem, model):
-    """Return (results_by_index, graph_model) for a model's trace dir, or None."""
+    """Return (results_by_index, graph_model, tagged_by) for a model's trace dir, or None.
+
+    tagged_by maps each index to the (graph_model, source_set) of the part its
+    result came from, which decides whether that row's clinical_mass is exported."""
     tdir = model_trace_dir(stem, model)
     if not tdir.is_dir():
         return None
     results = {}
+    tagged_by = {}
     graph_model = None
     for part in sorted(tdir.glob("batch_summary.part_*.json")):
         summary = json.loads(part.read_text(encoding="utf-8"))
         graph_model = summary.get("graph_model") or graph_model
         for r in summary.get("results", []):
             results[r["index"]] = r
-    return (results, graph_model or model) if results else None
+            tagged_by[r["index"]] = (summary.get("graph_model") or model, summary.get("source_set"))
+    return (results, graph_model or model, tagged_by) if results else None
 
 
 rows = []
@@ -136,21 +142,22 @@ for batch_path in sorted(ENGINE.glob("data/simulated/pairs_*.json")):
             rows.append({col: base_row.get(col) for col in COLUMNS})
             continue
         for model in traced:
-            results, graph_model = per_model[model]
+            results, graph_model, tagged_by = per_model[model]
             r = results[i]
+            featured = clinical_mass_publishable(*tagged_by[i])
             sc = r.get("screening") or {}
             spread = r.get("predictive_spread") or {}
             probs = r.get("probabilities") or {}
-            # clinical_mass is exported only for calibrated feature models:
-            # NullFetcher models report ~0.0 and uncalibrated labels (qwen3-4b)
-            # are not comparable, so drop it for every other model.
-            mass = r.get("clinical_mass") or {} if model in FEATURED else {}
+            # clinical_mass is exported only for a calibrated (model, source set)
+            # pair: NullFetcher rows report ~0.0 and uncalibrated labels (qwen3-4b,
+            # or gemma under another --source-set) are not comparable.
+            mass = r.get("clinical_mass") or {} if featured else {}
             top_c = (spread.get("clinical") or [[None]])[0][0]
             top_p = (spread.get("patient") or [[None]])[0][0]
             row = dict(base_row)
             row.update({
                 "graph_model": graph_model,
-                "has_features": model in FEATURED,
+                "has_features": featured,
                 "status": sc.get("status", "measured"),
                 "screening_reason": sc.get("reason"),
                 "probe_extension": sc.get("probe_extension"),

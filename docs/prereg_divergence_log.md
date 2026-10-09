@@ -218,10 +218,13 @@ clinical mass could be a property of the labels rather than the model.
 in its trace summaries, published nowhere, and used by no endpoint. The
 exporters (`export_frontend_simulated.py`, `export_archive.py`,
 `export_tag_mass.py`), `interp_analyses.py` and `retrace_consistency.py` gate on
-`scripts/feature_models.py`'s `CALIBRATED_FEATURE_MODELS`, which holds
-gemma-2-2b alone. After a $0 re-trace of pilot Runs 2 and 3 on qwen3-4b,
-`scripts/feature_label_calibration.py` reports both models' label coverage,
-clinical-tag rate and per-pair clinical mass side by side on the same pairs;
-adding qwen3-4b to the set is then the owner's decision, to be recorded here
+`scripts/feature_models.py`'s `CALIBRATED_FEATURE_SOURCES`, which holds
+the one pair (gemma-2-2b, `gemmascope-transcoder-16k`). After a $0 re-trace of
+pilot Runs 2 and 3 on both gemma-2-2b and qwen3-4b (the tagger records each
+graph's label source set only from 2026-10-09, and the calibration script
+refuses graphs without it), `scripts/feature_label_calibration.py` reports both
+models' label coverage, clinical-tag rate and per-pair clinical mass side by
+side on the same pairs; adding (qwen3-4b, `transcoder-hp`) to the set is then
+the owner's decision, to be recorded here
 before any qwen3-4b clinical mass is published. The pre-registered endpoints
 are unaffected.

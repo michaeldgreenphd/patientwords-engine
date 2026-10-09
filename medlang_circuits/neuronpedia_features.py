@@ -40,7 +40,7 @@ MAX_TOP_TOKENS = 12
 # feature is untagged and clinical_mass is a ~0 artifact.
 #
 # Registering a set here does NOT make a model's clinical_mass publishable:
-# that is scripts/feature_models.py's CALIBRATED_FEATURE_MODELS, an owner
+# that is scripts/feature_models.py's CALIBRATED_FEATURE_SOURCES, an owner
 # decision taken after a calibration check (scripts/feature_label_calibration.py).
 MODEL_SOURCE_SETS: dict[str, str | None] = {
     "gemma-2-2b": DEFAULT_SOURCE_SET,

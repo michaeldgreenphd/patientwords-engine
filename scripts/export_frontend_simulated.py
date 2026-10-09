@@ -62,9 +62,9 @@ except ImportError:
     from payload_summary import build_summary
 
 try:
-    from scripts.feature_models import CALIBRATED_FEATURE_MODELS
+    from scripts.feature_models import clinical_mass_publishable
 except ImportError:
-    from feature_models import CALIBRATED_FEATURE_MODELS
+    from feature_models import clinical_mass_publishable
 
 try:
     from scripts.render_prune import (ReferenceScanError, hidden_references, hidden_renders, prune,
@@ -75,10 +75,11 @@ except ImportError:
 
 # The circuit-tracer models, in registry order (gemma-2-2b is the base/default).
 # Clinical-feature attribution (the "Med circuit" meter) is published only for
-# models in feature_models.CALIBRATED_FEATURE_MODELS. A model can carry labels
-# without being in it: qwen3-4b's summaries name source set transcoder-hp since
-# 2026-10-09, but its clinical_mass stays nulled until the owner rules on the
-# calibration check (scripts/feature_label_calibration.py).
+# a calibrated (model, source set) pair, feature_models.CALIBRATED_FEATURE_SOURCES,
+# checked per result row against the summary part it came from. A model can carry
+# labels without being calibrated: qwen3-4b's summaries name source set
+# transcoder-hp since 2026-10-09, but its clinical_mass stays nulled until the
+# owner rules on the calibration check (scripts/feature_label_calibration.py).
 BASE_MODEL = "gemma-2-2b"
 MODELS = ["gemma-2-2b", "gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b"]
 LABELS = {
@@ -87,7 +88,6 @@ LABELS = {
     "qwen3-4b": "Qwen3 4B",
     "qwen3-1.7b": "Qwen3 1.7B · LoRSA attn",
 }
-FEATURED = set(CALIBRATED_FEATURE_MODELS)  # models whose clinical_mass is published
 QK = {"qwen3-1.7b"}                # traced with LoRSA attention replacement
 # Base-model fields mirrored to the top level for backward compatibility, so a
 # reader that doesn't understand scenario.models still shows the gemma view.
@@ -223,8 +223,11 @@ def read_trace_dir(trace_dir):
     that holds results, None for an untagged one: models_meta names one source
     set per model, so the export refuses a model whose hosted parts disagree.
     Logits and activation-patching parts have no graph, so their null source
-    set is not a tagging claim and is left out."""
+    set is not a tagging claim and is left out. ``tagged_by`` maps each index to
+    the (graph_model, source_set) of the part its result came from, which decides
+    whether that row's clinical_mass is published."""
     results = {}
+    tagged_by = {}
     meta = {}
     screen = None
     graph_source_sets = set()
@@ -239,7 +242,8 @@ def read_trace_dir(trace_dir):
             graph_source_sets.add(summary.get("source_set"))
         for r in summary.get("results", []):
             results[r["index"]] = r
-    return results, meta, screen, graph_source_sets
+            tagged_by[r["index"]] = (summary.get("graph_model"), summary.get("source_set"))
+    return results, meta, screen, graph_source_sets, tagged_by
 
 
 def build_model_obj(r, pair, featured):
@@ -249,7 +253,7 @@ def build_model_obj(r, pair, featured):
     probs = r.get("probabilities", {})
     measured = tok(r.get("target_token"))
     intended = (pair.get("target_clinical_token") or "").strip()
-    # clinical_mass is published only for a calibrated feature model (FEATURED).
+    # clinical_mass is published only for a calibrated (model, source set) pair.
     # NullFetcher models report ~0.0 (no feature is tagged clinical), which would
     # read as a false "zero clinical mass"; a labelled but uncalibrated model
     # (qwen3-4b) reports a number not yet comparable with gemma-2-2b's. Both are
@@ -292,15 +296,17 @@ for stamp in STAMPS:
     report = json.loads((ENGINE / f"data/simulated/{stem}.report.json").read_text(encoding="utf-8"))
 
     results_by_model = {}
+    tagged_by_model = {}
     screen_targets = None
     for m in WANT_MODELS:
         d = model_dir(stem, m)
         if not d.is_dir():
             continue
-        res, meta, scr, graph_sets = read_trace_dir(d)
+        res, meta, scr, graph_sets, tagged_by = read_trace_dir(d)
         if not res:
             continue
         results_by_model[m] = res
+        tagged_by_model[m] = tagged_by
         traced_by_model.setdefault(m, meta)
         for source_set in graph_sets:
             graph_sets_by_model.setdefault(m, {}).setdefault(source_set, []).append(str(d))
@@ -332,7 +338,8 @@ for stamp in STAMPS:
         display_index += 1
         gen = pair.get("generation", {})
 
-        models_obj = {m: build_model_obj(res[index], pair, m in FEATURED)
+        models_obj = {m: build_model_obj(res[index], pair, clinical_mass_publishable(
+                          tagged_by_model[m][index][0] or m, tagged_by_model[m][index][1]))
                       for m, res in results_by_model.items() if index in res}
         base = models_obj.get(BASE_MODEL) or next(iter(models_obj.values()))
 
@@ -488,16 +495,22 @@ if first_preview is not None and not DRY:
             shutil.copy2(candidate, FRONTEND / "modes/simulated/preview.png")
             break
 
+def _graph_source_set(m):
+    """The one source set of the model's graphs (enforced above); a model with no
+    hosted part (logits lane only) keeps its metadata's value, null."""
+    if m in graph_sets_by_model:
+        return next(iter(graph_sets_by_model[m]))
+    return traced_by_model.get(m, {}).get("source_set")
+
+
 models_meta = [
     {
         "id": m,
         "label": LABELS.get(m, m),
         "graph_model": traced_by_model.get(m, {}).get("graph_model", m),
-        # the one source set of the model's graphs (enforced above); a model with
-        # no hosted part (logits lane only) keeps its metadata's value, null
-        "source_set": (next(iter(graph_sets_by_model[m])) if m in graph_sets_by_model
-                       else traced_by_model.get(m, {}).get("source_set")),
-        "features": m in FEATURED,
+        "source_set": _graph_source_set(m),
+        # true only for a calibrated (model, source set) pair, as each row's mass
+        "features": clinical_mass_publishable(m, _graph_source_set(m)),
         "attention_replacement": m in QK,
         # whether this model has an attribution graph at all. The logits backend
         # (models Neuronpedia can't render) measures next-token behavior only, so
