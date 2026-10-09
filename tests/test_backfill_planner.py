@@ -185,7 +185,7 @@ def _complete_originals(root, monkeypatch, sizes, skip=()):
 
 
 def test_exploratory_models_are_registered_pinned_and_chunked_inside_the_timeout():
-    assert set(bp.EXPLORATORY) == set(PROBE_SECONDS_PER_PAIR)
+    assert set(bp.EXPLORATORY) == set(PROBE_SECONDS_PER_PAIR) == set(bp.SWEEP_MODELS) | {bp.MEDGEMMA15}
     assert set(bp.EXPLORATORY) <= set(bp.MODELS)
     assert not set(bp.EXPLORATORY) & (bp.DEFERRED_LAST | bp.MEDICAL)
     wf = yaml.safe_load((_ROOT / ".github" / "workflows" / "logits_evaluation.yml").read_text(encoding="utf-8"))
@@ -195,31 +195,31 @@ def test_exploratory_models_are_registered_pinned_and_chunked_inside_the_timeout
         assert m in logits_eval.HF_IDS and re.fullmatch(r"[0-9a-f]{40}", logits_eval.HF_REVISIONS[m]), m
         chunk = bp._logits_chunk(m)
         assert chunk >= 1
-        # well inside the job timeout: a full chunk's measured compute stays under half of it, which leaves
+        # well inside the job timeout: a full chunk's measured compute stays at or under half of it, which leaves
         # room for the weight load and for a rate measured on only three pairs
         assert chunk * secs <= timeout_min * 60 / 2, (m, chunk, secs, timeout_min)
-    # the slow model is in the small-chunk class; the fast one covers the largest batch (119 pairs) in one fire
-    assert "medgemma-1.5-4b-it" in bp.BIG and bp._logits_chunk("medgemma-1.5-4b-it") == bp.LOGITS_CHUNK_BIG
-    assert bp._logits_chunk("gemma-4-e2b") >= 119
-    assert bp._logits_chunk("qwen3.5-2b-base") == bp.LOGITS_CHUNK
+    # the sweep fires a whole batch (the largest is 119 pairs) for both models; medgemma-1.5 uses the small chunk
+    assert all(bp._logits_chunk(m) >= 119 for m in bp.SWEEP_MODELS)
+    assert bp.MEDGEMMA15 in bp.BIG and bp._logits_chunk(bp.MEDGEMMA15) == bp.LOGITS_CHUNK_BIG
 
 
-def test_exploratory_models_never_displace_an_original_gap(tmp_path, monkeypatch):
+def test_exploratory_models_never_enter_the_default_plan(tmp_path, monkeypatch):
     _setup(tmp_path, monkeypatch)                       # sparse: every original model has gaps
     cov = bp.coverage()
     for defer in (True, False):
         assert bp.plan(cov, defer_8b_medical=defer)["logits-eval"]["params"]["models"] not in bp.EXPLORATORY
-    # once every original model is complete, the 8B gate opens although the exploratory models have nothing,
-    # and the default plan reaches them, fastest first
+    # once every original model is complete the 8B gate opens although the exploratory models have nothing,
+    # and the default plan still has nothing to fire: the exploratory models are planned only by --exploratory
     root = tmp_path / "complete"
     root.mkdir()
     _complete_originals(root, monkeypatch, {"pairs_A": 2})
     cov = bp.coverage()
     assert bp._others_complete(cov) is True
-    assert bp.plan(cov)["logits-eval"]["params"]["models"] == "gemma-4-e2b"
+    assert bp.plan(cov)["logits-eval"] is None
+    assert bp.plan(cov, exploratory_only=True)["logits-eval"]["params"]["models"] == "gemma-4-e2b,qwen3.5-2b-base"
 
 
-def test_exploratory_target_is_parity_with_the_original_models(tmp_path, monkeypatch):
+def test_the_sweep_fires_both_models_a_whole_batch_at_a_time_to_parity(tmp_path, monkeypatch):
     # pairs_A: 130 pairs, every original model complete; pairs_B: 3 pairs nothing has measured (as with the
     # unbooked pairs_20260721T132205Z and the one-pair parks), so parity never sends an exploratory model there
     tr = _complete_originals(tmp_path, monkeypatch, {"pairs_A": 130, "pairs_B": 3}, skip=("pairs_B",))
@@ -227,24 +227,63 @@ def test_exploratory_target_is_parity_with_the_original_models(tmp_path, monkeyp
     assert bp._parity_target(cov["pairs_A"]) == 130 and bp._parity_target(cov["pairs_B"]) == 0
     steps = bp.plan(cov, exploratory_only=True)
     assert set(steps) == {"logits-eval"}               # this mode plans no other lane
-    assert steps["logits-eval"]["params"] == {"models": "gemma-4-e2b", "pairs_file": "data/simulated/pairs_A.json",
+    assert steps["logits-eval"]["params"] == {"models": "gemma-4-e2b,qwen3.5-2b-base",
+                                              "pairs_file": "data/simulated/pairs_A.json",
                                               "limit": "120", "offset": "0", "commit_outputs": "true"}
     assert "exploratory" in steps["logits-eval"]["note"]
-    # resume at the next offset, then hand over to the next model in EXPLORATORY order once at parity
+    # --next 2 plans the second leg as if the first had landed: the rest of the batch, both models
+    legs = bp.exploratory_legs(cov, count=5)
+    assert [(x["params"]["offset"], x["params"]["limit"]) for x in legs] == [("0", "120"), ("120", "10")]
+    # one model's leg failed: the lagging model is fired alone for its own gap, never re-measuring the other
     _write_summary(tr, "pairs_A__gemma-4-e2b", range(1, 121))
-    step = bp.plan(bp.coverage(), exploratory_only=True)["logits-eval"]
-    assert (step["params"]["models"], step["params"]["offset"], step["params"]["limit"]) == \
-        ("gemma-4-e2b", "120", "10")
+    _write_summary(tr, "pairs_A__qwen3.5-2b-base", range(1, 121))
     _write_summary(tr, "pairs_A__gemma-4-e2b", range(121, 131), part="part_121")
     step = bp.plan(bp.coverage(), exploratory_only=True)["logits-eval"]
-    assert (step["params"]["models"], step["params"]["limit"]) == ("qwen3.5-2b-base", str(bp.LOGITS_CHUNK))
-    # every exploratory model at parity: nothing to fire, although pairs_B is unmeasured
-    for m in bp.EXPLORATORY:
-        _write_summary(tr, f"pairs_A__{m}", range(1, 131))
+    assert (step["params"]["models"], step["params"]["offset"], step["params"]["limit"]) == \
+        ("qwen3.5-2b-base", "120", "10")
+    # both at parity: nothing to fire, although pairs_B is unmeasured; medgemma-1.5 is not in the sweep
+    _write_summary(tr, "pairs_A__qwen3.5-2b-base", range(121, 131), part="part_121")
     cov = bp.coverage()
     assert bp.plan(cov, exploratory_only=True)["logits-eval"] is None
-    assert all(p["batches_at_parity"] == p["batches"] == 1 and p["pairs"] == p["target_pairs"] == 130
-               for p in bp.exploratory_parity(cov).values())
+    par = bp.exploratory_parity(cov)
+    assert all(par[m]["pairs"] == par[m]["target_pairs"] == 130 for m in bp.SWEEP_MODELS)
+    assert par[bp.MEDGEMMA15]["pairs"] == 0
+    # --include-medgemma15 then plans the rest for medgemma-1.5 alone, in its small chunks
+    step = bp.plan(cov, exploratory_only=True, include_medgemma15=True)["logits-eval"]
+    assert step["params"] == {"models": bp.MEDGEMMA15, "pairs_file": "data/simulated/pairs_A.json",
+                              "limit": str(bp.LOGITS_CHUNK_BIG), "offset": "0", "commit_outputs": "true"}
+
+
+def test_medgemma15_selection_first_then_the_rest_without_overlap_or_part_collision(tmp_path, monkeypatch):
+    """The priority selection is measured as `indices` fires inside the original batch; the rest later fills only
+    the gaps, and every part is named for its first index, so no part name repeats and no pair is measured twice."""
+    tr = _complete_originals(tmp_path, monkeypatch, {"pairs_A": 60})
+    sel_file = tmp_path / "sel.json"
+    sel_file.write_text(json.dumps({"pairs": [{"batch": "pairs_A", "index": i} for i in (5, 6, 7, 30, 58)]}))
+    selection = bp.load_selection(sel_file)
+    legs = bp.exploratory_plan(bp.coverage(), count=10, medgemma15_selection=selection)
+    assert len(legs) == 1 and legs[0]["params"]["indices"] == "5,6,7,30,58"
+    assert "limit" not in legs[0]["params"] and "offset" not in legs[0]["params"]
+    assert ft.validate_params("logits-eval", legs[0]["params"]) is None
+    parts = {"part_05"}                                  # the part logits_eval.py and the workflow name for it
+    _write_summary(tr, f"pairs_A__{bp.MEDGEMMA15}", [5, 6, 7, 30, 58], part="part_05")
+    assert bp.exploratory_plan(bp.coverage(), count=10, medgemma15_selection=selection) == []
+    # the rest: every remaining index exactly once, in chunks of LOGITS_CHUNK_BIG, sweep at parity first
+    for m in bp.SWEEP_MODELS:
+        _write_summary(tr, f"pairs_A__{m}", range(1, 61))
+    rest = bp.exploratory_plan(bp.coverage(), count=10, include_medgemma15=True)
+    covered = []
+    for leg in rest:
+        p = leg["params"]
+        assert p["models"] == bp.MEDGEMMA15 and ft.validate_params("logits-eval", p) is None
+        idx = [int(i) for i in p["indices"].split(",")] if "indices" in p else \
+            list(range(int(p["offset"]) + 1, int(p["offset"]) + int(p["limit"]) + 1))
+        assert len(idx) <= bp.LOGITS_CHUNK_BIG
+        part = f"part_{idx[0]:02d}"
+        assert part not in parts, part
+        parts.add(part)
+        covered += idx
+    assert sorted(covered) == sorted(set(range(1, 61)) - {5, 6, 7, 30, 58})
 
 
 def test_emitted_exploratory_command_passes_fire_trigger_and_the_park_queues_behind_it(tmp_path, monkeypatch,
@@ -282,13 +321,13 @@ def test_the_routine_step_runs_this_mode_and_stops_on_the_string_it_prints(tmp_p
     for token in ("python scripts/backfill_planner.py --exploratory", "AT PARITY", "0 active journal entries",
                   "python scripts/fire_trigger.py park --trigger logits-eval --keep-dashboard"):
         assert token in step_text, token
+    assert "--include-medgemma15" not in step_text and "--medgemma15-selection" not in step_text
     assert "§3e" in prompt[prompt.index("\n## 4 "):]
     tr = _complete_originals(tmp_path, monkeypatch, {"pairs_A": 4})
-    monkeypatch.setattr("sys.argv", ["backfill_planner.py", "--exploratory"])
-    assert bp.main() == 0
+    assert bp.main(["--exploratory"]) == 0
     out = capsys.readouterr().out
     assert "AT PARITY" not in out and "--trigger logits-eval" in out and "--trigger circuit-trace" not in out
-    for m in bp.EXPLORATORY:
+    for m in bp.SWEEP_MODELS:
         _write_summary(tr, f"pairs_A__{m}", range(1, 5))
-    assert bp.main() == 0
+    assert bp.main(["--exploratory"]) == 0
     assert "AT PARITY" in capsys.readouterr().out

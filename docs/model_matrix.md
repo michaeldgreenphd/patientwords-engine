@@ -35,16 +35,49 @@ pinned commit, the post-load revision check passed, and the clinical/patient pro
 the same range as the ten existing models' on those pairs. Support in `scripts/depth_probe.py`
 (interp-engine 1.5.1) and `scripts/activation_patch.py` (transformer_lens) is still unverified, and
 none is in `activation_patch.HF_IDS`. Since 2026-10-09 they are in `backfill_planner.MODELS` and its
-`EXPLORATORY` tuple, and the Routine's §3e (`docs/routine_standing_prompt.md`) fires their backfill.
+`EXPLORATORY` tuple.
 
-**Backfill to parity: runner time.** These are first-probe timings on three pairs each, read from
-the gaps between consecutive pairs in the step log; a full-size leg is the first real check of them.
+**The backfill plan (owner decision, 2026-10-09).** "Gemma 4 and Qwen 3.5 then at the end set it up so
+that I can do the MedGemma 1.5 on the most interesting stimuli from the current sets then do the rest
+after." So:
 
-| Model | s/pair | Pairs per fire (planner class) | Fires to parity | Per-fire overhead | Runner time to parity |
+1. **The sweep: `gemma-4-e2b` and `qwen3.5-2b-base` together.** One logits-eval fire per batch carries
+   both models (the workflow fans `models` out as a matrix, two cells at a time), a whole batch per
+   fire. No batch needs splitting: the largest is 119 pairs, about 119 minutes for `qwen3.5-2b-base` at
+   ~60 s/pair, half the 240-minute job timeout. `python scripts/backfill_planner.py --exploratory`
+   plans it; the Routine's §3e fires it one batch per cycle (`docs/routine_standing_prompt.md`).
+2. **`medgemma-1.5-4b-it` on a priority selection first**, when the owner chooses:
+   `python scripts/select_priority_pairs.py --site ../patientwords` writes the selection (the
+   proposal on the branch is `data/selections/medgemma15_priority_20261009.json`), and
+   `python scripts/backfill_planner.py --exploratory --medgemma15-selection <that file>` plans its
+   fires. The criteria are a proposal awaiting the owner's confirmation:
+   - (a) the 40 main-study tracing pairs of the physician task bundle
+     (`data/verification/tasks_20261004T042945Z.json`, read by identifier only), and
+   - (b) pairs whose published urgency rows show a directional urgency-tier flip (downgrade or
+     upgrade) in at least 5 of the ten original models. Cross-model agreement is the signal, not one
+     model's penalty, which the 2026-09-04 negative control showed is not a stable measurement;
+   - excluding every pair the Tier B holdout seals; task-set pairs first, then by models flipping;
+     capped at 100. Deterministic, no seed.
+   With these defaults it selects **84 pairs in 23 batches** (40 + 46, two in both), all measured
+   inside their original batches: 23 fires, about 3.3 runner-hours. k = 4 gives 100 (capped from 113)
+   in 28 batches, k = 6 gives 64 in 22.
+3. **`medgemma-1.5-4b-it` on the rest**: `--exploratory --include-medgemma15`, after the sweep is at
+   parity. It fills only pairs not yet measured: a contiguous gap is an `offset`/`limit` fire, any
+   other gap an `indices` fire (`docs/triggers.md`). Every part is named for the first index it
+   measures, so no part name repeats and no pair is measured twice.
+
+Until the owner releases them, every collector that would pool these models into a published number
+skips them by name (`scripts/publication_hold.py`): landed parts change no site file.
+
+**Runner time.** The per-pair rates are first-probe timings on three pairs each, read from the gaps
+between consecutive pairs in the step log; a full-size leg is the first real check of them.
+
+| Phase | Fires | Pairs | s/pair | Per-cell overhead | Runner time |
 |---|---|---|---|---|---|
-| `gemma-4-e2b` | ~5 | 120 (`FAST`: a whole batch) | 39 | ~110 s | ~4.4 h |
-| `qwen3.5-2b-base` | ~60 | 50 (default) | 57 | ~64 s | ~40 h |
-| `medgemma-1.5-4b-it` | ~120 | 25 (`BIG`) | 102 | ~75 s | ~80 h |
+| Sweep, `gemma-4-e2b` cells | 39 | 2,343 | ~5 | ~110 s | ~4.4 h |
+| Sweep, `qwen3.5-2b-base` cells | (same 39) | 2,343 | ~60 | ~64 s | ~40 h |
+| `medgemma-1.5-4b-it`, priority selection | 23 | 84 | ~120 | ~75 s | ~3.3 h |
+| `medgemma-1.5-4b-it`, the rest | 101 | 2,259 | ~120 | ~75 s | ~77 h |
 
 Method. Parity is `backfill_planner._parity_target`: for each of the 43 `data/simulated/pairs_*.json`
 batches the planner reads, the deepest any of the ten original models has measured it. On `main` on
@@ -52,17 +85,19 @@ batches the planner reads, the deepest any of the ten original models has measur
 closed on (`docs/coordination/backfill_8b_complete_20260826.md`). The other four batches have a
 target of 0 because no model has measured them: `pairs_20260721T132205Z` (100 pairs, never booked to
 Tier B) and three one-pair scenario-generation parks; a raw count of the 43 files would give 2,446.
-Fires = the sum over batches of ceil(target / pairs per fire). Runner time = 2,343 × s/pair + fires ×
-per-fire overhead, where the overhead is the probe job's wall time minus its three pairs (setup,
-install, weight download and load). Each fire also queues a one-pair park behind it (§3e), a few more
-runner-minutes per fire, not counted above. Total for the three: about 125 runner-hours, $0.
+Fires are the planner's own output (`--next` large enough to list them all). Runner time = pairs ×
+s/pair + fires × per-cell overhead, the overhead being the probe job's wall time minus its three
+pairs (setup, install, weight download and load). Not counted: the one-pair park §3e queues behind
+each Routine fire.
 
-At one fire per Routine cycle on the Tue/Fri cadence, 198 fires take about 99 weeks: `gemma-4-e2b`
-reaches parity after 39 cycles, `qwen3.5-2b-base` 57 cycles later, `medgemma-1.5-4b-it` 102 after
-that. A session chaining the same planner commands (one leg running, harvest, next) is bounded by the
-runner time instead. The chunk classes keep each fire's measured compute near an hour or less of the
-workflow's 240-minute timeout; with a full-size leg confirming the rate, `qwen3.5-2b-base` at 100 and
-`medgemma-1.5-4b-it` at 50 pairs per fire (~100 min each) would cut the fire count to 40 and 57.
+**Calendar time.** The sweep's 39 fires each take about as long as its `qwen3.5-2b-base` cell, about
+an hour on average (60 pairs per batch) and two hours for the largest batch, so about 40 hours of
+wall time back to back. At one fire per Routine cycle (Tue/Fri) the same 39 fires take about 20
+weeks. **A session may chain the same planner commands to finish faster**: keep one running and one
+pending (`--next 2` prints two legs, the second planned as if the first had landed), harvest each as
+it lands, fire the next, and re-park the lane at the end (`fire_trigger.py park --trigger logits-eval`).
+A session chain and §3e must not both fire into the lane: §3e fires only when the lane has no active
+journal entry.
 
 The Gemma gate on Hugging Face is one shared license acknowledgement across `google/gemma*`
 repos, so the acceptance already made for `google/gemma-3-4b-it` (the grant behind the

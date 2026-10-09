@@ -156,10 +156,11 @@ content a cheap no-op — the resting-state rule. If any OTHER trigger file
 was left un-parked by a stray fire, re-park that lane too once terminal.
 
 3e. **Exploratory predictions backfill (added 2026-10-09; $0; owner-approved;
-stops at parity).** One `logits-eval` leg per cycle for the three
-exploratory models (`gemma-4-e2b`, `qwen3.5-2b-base`, `medgemma-1.5-4b-it`;
-`docs/model_matrix.md`), nothing else. Run
-`python scripts/backfill_planner.py --exploratory`. If it prints
+stops at parity).** One `logits-eval` leg per cycle for the exploratory
+sweep: `gemma-4-e2b` and `qwen3.5-2b-base` together, one batch per fire
+(`docs/model_matrix.md`), nothing else; `medgemma-1.5-4b-it` is not this
+step's (the owner runs it). A session may chain the same commands faster.
+Run `python scripts/backfill_planner.py --exploratory`. If it prints
 `AT PARITY`, fire nothing, and add a `decisions_pending` entry asking the
 owner to retire this step. Otherwise fire only when the `logits-eval` lane
 has 0 active journal entries after §2, and never when the journal already
@@ -172,8 +173,9 @@ add `--keep-dashboard` to the fire too, and `--ignore-settle` to both only
 when §2 resolved a `logits-eval` entry this cycle after confirming it
 terminal. The park queues behind the leg (one running + one pending, never
 a third) and runs after it, so the file at rest is always the park. The next
-cycle's §2 harvests both entries. A landed leg is not new measurement for §5:
-whether these models' rows reach the site is the owner's decision.
+cycle's §2 harvests both entries. A landed leg changes no published file: the
+collectors skip these models (`scripts/publication_hold.py`) until the owner
+releases them, so it is no reason to run §5.
 
 ## 4 · No other fires
 
