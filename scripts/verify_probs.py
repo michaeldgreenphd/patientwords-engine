@@ -161,7 +161,7 @@ def build_result(index, pair, model, tokenizer, measure_fn, topk):
 
 
 def build_summary(model_id, hf_id, results, start_index=1, dtype=DEFAULT_DTYPE,
-                  topk=DEFAULT_TOPK, completed=True, revision=None):
+                  topk=DEFAULT_TOPK, completed=True, revision=None, revision_pinned=None):
     return {
         "mode": "2panel",
         # Distinct from both "hosted" and "logits": this is a verification run,
@@ -176,6 +176,7 @@ def build_summary(model_id, hf_id, results, start_index=1, dtype=DEFAULT_DTYPE,
         "screen_targets": None,
         "inference": {"method": "interp-engine-eager", "hf_id": hf_id, "dtype": dtype,
                       "device": "cpu", "topk": topk, "revision": revision,
+                      "revision_pinned": revision_pinned,
                       "environment": environment()},
         "results": results,
     }
@@ -189,7 +190,7 @@ def write_summary(out_dir, summary, start_index):
     return path
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--pairs", required=True)
     parser.add_argument("--model", required=True,
@@ -201,35 +202,52 @@ def main():
     parser.add_argument("--dtype", default=DEFAULT_DTYPE,
                         help="float32 (default, removes dtype as a candidate cause) or bfloat16 "
                              "(matches logits_eval.py, to isolate the engine alone)")
-    args = parser.parse_args()
+    parser.add_argument("--revision", default=None,
+                        help="exact 40-hex Hugging Face commit (logits_eval.resolve_pinned_model)")
+    args = parser.parse_args(argv)
+
+    # Same short-id and pin tables as logits_eval; one place to add models.
+    from logits_eval import (PinError, check_resolved_revision, engine_revision,
+                             load_pinned_tokenizer, refuse, resolve_pinned_model)
+
+    model_id = args.model
+    try:  # before anything is imported or downloaded
+        hf_id, pinned = resolve_pinned_model(model_id, args.revision)
+    except PinError as exc:
+        refuse(exc)
 
     from interp_engine import load_model, sync_model
 
-    from logits_eval import HF_IDS  # same short-id table; one place to add models
-
-    model_id = args.model
-    hf_id = HF_IDS.get(model_id, model_id)
     pairs = json.loads(Path(args.pairs).read_text(encoding="utf-8"))
     if args.offset:
         pairs = pairs[args.offset:]
     if args.limit:
         pairs = pairs[:args.limit]
 
-    print(f"Loading {hf_id} via interp-engine eager (cpu, {args.dtype}) ...", flush=True)
+    print(f"Loading {hf_id} @ {pinned} via interp-engine eager (cpu, {args.dtype}) ...", flush=True)
     # Eager is the only backend that ships the full logit vector, and the only
     # one that runs without CUDA. trust_remote_code stays off: we never execute
-    # checkpoint-bundled code.
+    # checkpoint-bundled code. interp-engine has no revision argument of its
+    # own, so the pin goes in twice: the tokenizer is loaded pinned and handed
+    # over, and model_kwargs reaches the weights' from_pretrained.
     model = load_model(hf_id, backend="eager", device="cpu",
-                       dtype=args.dtype, trust_remote_code=False)
+                       dtype=args.dtype, trust_remote_code=False,
+                       tokenizer=load_pinned_tokenizer(hf_id, pinned),
+                       model_kwargs={"revision": pinned})
+    # The resolved HF commit, for the W5 pin table -- the same field
+    # logits_eval.py records. Without it a verify artifact cannot be tied to
+    # the checkpoint it measured (every run before 2026-09-04 recorded null).
+    # A commit other than the pin is refused before anything is measured.
+    revision = engine_revision(model)
+    try:
+        check_resolved_revision(hf_id, pinned, revision)
+    except PinError as exc:
+        refuse(exc)
     # sync_model is ONLY for the async lifecycle methods; the raw model goes to
     # generate_stream, which is itself a sync free function (depth_probe.py).
     lifecycle = sync_model(model)
     lifecycle.warmup()
     tokenizer = model.tokenizer
-    # The resolved HF commit, for the W5 pin table -- the same field
-    # logits_eval.py records. Without it a verify artifact cannot be tied to
-    # the checkpoint it measured (every run before 2026-09-04 recorded null).
-    revision = getattr(getattr(getattr(model, "hf_model", None), "config", None), "_commit_hash", None)
 
     start_index = args.offset + 1   # global 1-based join key, matching the trace path
     results = []
@@ -239,7 +257,8 @@ def main():
         # the measured prefix even when a slow CPU run is killed mid-batch.
         write_summary(args.out, build_summary(
             model_id, hf_id, results, start_index, dtype=args.dtype,
-            topk=args.topk, completed=completed, revision=revision), start_index)
+            topk=args.topk, completed=completed, revision=revision,
+            revision_pinned=pinned), start_index)
 
     def measure_fn(prompt, target_id, topk):
         return measure(model, tokenizer, prompt, target_id, topk)

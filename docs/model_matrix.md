@@ -4,7 +4,8 @@ Registry of every short model id accepted by `scripts/logits_eval.py` (`HF_IDS`)
 logits-eval workflow. The first five additions were the owner-approved expansion from
 `docs/fable_week_plan.md`: C1 (Llama-3.2-3B), C3 (OLMo-2), C4 (medical-tuned 7B),
 B2 (gemma-2-9b), B3 (gemma-2-2b-it). All models run the same single code path —
-bfloat16 on CPU, `low_cpu_mem_usage=True` — no per-model dtype or kwargs.
+bfloat16 on CPU, `low_cpu_mem_usage=True` — no per-model dtype or kwargs. Every load is
+pinned to one exact Hugging Face commit (`HF_REVISIONS`; see *Pinned revisions* below).
 
 ## Matrix
 
@@ -12,15 +13,17 @@ bfloat16 on CPU, `low_cpu_mem_usage=True` — no per-model dtype or kwargs.
 |---|---|---|---|---|---|
 | `gemma-2-2b` | `google/gemma-2-2b` | 2.6B | Gemma 2 (Google) | Gated — Gemma license (accepted; graph path already uses it) | Base/anchor model; only hosted-graph model, logits path is its backend cross-check |
 | `gemma-3-4b-it` | `google/gemma-3-4b-it` | 4.3B | Gemma 3 (Google) | Gated — Gemma license (accepted; already runs in CI with `HF_TOKEN`) | Cross-generation Gemma, instruction-tuned |
-| `qwen3-4b` | `Qwen/Qwen3-4B` | 4.0B | Qwen3 (Alibaba) | Ungated (Apache-2.0) | Second family |
-| `qwen3-1.7b` | `Qwen/Qwen3-1.7B` | 1.7B | Qwen3 (Alibaba) | Ungated (Apache-2.0) | Second family, small scale |
+| `qwen3-4b` | `Qwen/Qwen3-4B` | 4.0B | Qwen3 (Alibaba) | Ungated (Apache-2.0) | Second family. **Post-trained, thinking-enabled checkpoint, not a base model** (base: `Qwen/Qwen3-4B-Base`) |
+| `qwen3-1.7b` | `Qwen/Qwen3-1.7B` | 1.7B | Qwen3 (Alibaba) | Ungated (Apache-2.0) | Second family, small scale. **Post-trained, thinking-enabled checkpoint, not a base model** (base: `Qwen/Qwen3-1.7B-Base`) |
 | `llama-3.2-3b` | `meta-llama/Llama-3.2-3B` | 3.2B | Llama 3.2 (Meta) | Gated — Meta contact-info form (owner accepted 2026-07-19 on the CI `HF_TOKEN` account; probe-confirm pending) | **C1** — third model family |
 | `olmo-2-1b` | `allenai/OLMo-2-0425-1B` | ~1.5B | OLMo 2 (Ai2) | Ungated (Apache-2.0) | **C3** — fully-open provenance (open data, training code, checkpoints) |
 | `biomistral-7b` | `BioMistral/BioMistral-7B` | 7.2B | Mistral 7B derivative (PubMed Central continued pretraining) | **DROPPED 2026-07-13** — upstream ships pickle-only weights, incompatible with the safetensors-only posture | was **C4**; role moved to `meditron-7b` |
-| `meditron-7b` | `epfl-llm/meditron-7b` | 7B | Llama-2 derivative (PubMed continued pretraining, EPFL) | Probe pending — format verified by the limit-3 probe | **C4** — medical-domain contrast (7B chunking caution applies) |
+| `meditron-7b` | `epfl-llm/meditron-7b` | 7B | Llama-2 derivative (PubMed continued pretraining, EPFL) | **SUPERSEDED 2026-07-17** — gated (403) and two years old; kept as a record, unpinned, so it cannot be loaded | was **C4**; role moved to `meditron3-8b` and `apertus-8b-meditronfo` |
 | `gemma-2-2b-it` | `google/gemma-2-2b-it` | 2.6B | Gemma 2 (Google) | Gated — Gemma license (owner confirmed access 2026-07-19 on the CI `HF_TOKEN` account; probe-confirm pending) | **B3** — instruction-tuning contrast: same base as `gemma-2-2b` ± IT |
 | `gemma-2-9b` | `google/gemma-2-9b` | 9.2B | Gemma 2 (Google) | **SKIPPED 2026-07-12** — two weight-load deaths on the standard runner; revisit only with a larger runner | **B2** — scale universality (on hold) |
 | `medgemma-4b-it` | `google/medgemma-4b-it` | 4.3B | MedGemma / Gemma 3 (Google, Health AI Developer Foundations) | Gated — HAI-DEF terms (owner accepted 2026-07-13 on the CI `HF_TOKEN` account) | Medical-tuned twin of `gemma-3-4b-it` (same base, same size): the paired contrast isolates what medical fine-tuning does to the colloquial-vs-clinical gap |
+| `meditron3-8b` | `EPFLiGHT/Meditron3-8B` (was `OpenMeditron/Meditron3-8B`, which now HTTP-307-redirects here) | 8.0B | Meditron 3 / Llama 3.1 (EPFL), fine-tuned from `meta-llama/Llama-3.1-8B-Instruct` | Gated — Llama 3.1 license acknowledgment (owner signed 2026-07-17 on the CI `HF_TOKEN` account) | Medical-tuned, instruction-tuned 8B (C4 successor, owner 2026-07-17); 8B class: swap step and small chunks |
+| `apertus-8b-meditronfo` | `EPFLiGHT/Apertus-8B-MeditronFO` | 8.1B | Apertus (Swiss AI) + MeditronFO medical tuning (EPFL), fine-tuned from an Apertus-8B instruct checkpoint | Ungated (Apache-2.0) | Medical-tuned, instruction-tuned 8B (C4 successor, owner 2026-07-17); 8B class: swap step and small chunks. **Upstream replaced the weights on 2026-10-06; the study stays pinned to the 2026-06-26 weights** (see below) |
 
 The Gemma gate on Hugging Face is one shared license acknowledgement across `google/gemma*`
 repos, so the acceptance already made for `google/gemma-3-4b-it` (the grant behind the
@@ -118,14 +121,63 @@ Every model in the matrix must satisfy ALL of:
    CI runners whose only secret is the read-scoped HF token — never on the
    owner's machine or a dev container. Worst case for a hostile repo is a
    burned read token, which is rotatable and grants nothing.
-5. **Pin after probe.** The first successful probe run of each model records
-   the resolved commit SHA in this file; subsequent fires SHOULD pass that
-   revision so a later force-push to the repo cannot silently swap weights.
-   (Nightly critic task: fill the table below as probes land.)
+5. **Pinned revisions, enforced (since 2026-10-09).** Every load passes an exact
+   40-hex commit SHA as `revision=` to both the tokenizer and the model, from
+   `HF_REVISIONS` in `scripts/logits_eval.py`. The loaders refuse, with a named
+   error (`UnpinnedModelError`, `RevisionMismatchError`) and a nonzero exit, to load
+   a short id with no pin (the three tombstones), a repo id passed without
+   `--revision <sha>`, a `--revision` that contradicts a registered pin, or a load
+   whose resolved `_commit_hash` differs from the pin. A new model is pinned when
+   it is added, to the commit its limit-3 probe will measure. Each summary records
+   `inference.revision_pinned` beside the resolved `inference.revision`.
+   (Until 2026-10-09 the pin was only recorded after the fact, and this item read
+   "subsequent fires SHOULD pass that revision".)
 
-| short id | pinned revision | probe date |
-|---|---|---|
-| `llama-3.2-3b` | `13afe5124825` (probe 2026-07-11) |
-| `olmo-2-1b` | `a1847dff3500` (probe 2026-07-11) |
-| `gemma-2-2b-it` | `299a8560bedf` (probe 2026-07-11) |
-| `medgemma-4b-it` | `290cda5eeccb` (probe 2026-07-13) |
+## Pinned revisions
+
+Every active model, with the commit its loads are pinned to. Each pin is the single
+non-null `inference.revision` that model's landed logits summaries recorded
+(`trace_out/*__<model>/batch_summary*.json`, and `trace_out/*/` for gemma-2-2b's logits
+cross-check runs), so a new fire measures the same weights as the published numbers. No
+model recorded more than one commit. Summaries written before revision capture began
+(commit `100eac49`, 2026-07-12) carry no `revision` key; for each model that has them, the
+pinned commit predates the study and is still the head of the repo's `main` on
+2026-10-09, so those runs very probably loaded the same commit (inferred, not recorded).
+Every pin was confirmed to exist on Hugging Face through the public
+`/api/models/<repo>/revision/<sha>` endpoint on 2026-10-09; gated repos answer that
+endpoint without authentication.
+
+| Short id | HF repo | Pinned commit | Commit date | Summaries recording it (+ pre-capture, no key) | Head of `main` on 2026-10-09 |
+|---|---|---|---|---|---|
+| `gemma-2-2b` | `google/gemma-2-2b` | `c5ebcd40d208330abc697524c919956e692655cf` | 2024-08-07 | 14 (+6) | same |
+| `gemma-3-4b-it` | `google/gemma-3-4b-it` | `093f9f388b31de276ce2de164bdc2081324b9767` | 2025-03-21 | 17 (+12) | same |
+| `qwen3-4b` | `Qwen/Qwen3-4B` | `1cfa9a7208912126459214e8b04321603b3df60c` | 2025-07-26 | 14 (+9) | same |
+| `qwen3-1.7b` | `Qwen/Qwen3-1.7B` | `70d244cc86ccca08cf5af4e1e306ecf908b1ad5e` | 2025-07-26 | 15 (+10) | same |
+| `llama-3.2-3b` | `meta-llama/Llama-3.2-3B` | `13afe5124825b4f3751f836b40dafda64c1ed062` | 2024-10-24 | 20 | same |
+| `olmo-2-1b` | `allenai/OLMo-2-0425-1B` | `a1847dff35000b4271fa70afc5db10fd29fedbdf` | 2025-05-28 | 19 | same |
+| `gemma-2-2b-it` | `google/gemma-2-2b-it` | `299a8560bedf22ed1c72a8a11e7dce4a7f9f51f8` | 2024-08-27 | 19 (+1) | same |
+| `medgemma-4b-it` | `google/medgemma-4b-it` | `290cda5eeccbee130f987c4ad74a59ae6f196408` | 2025-10-28 | 47 | same |
+| `meditron3-8b` | `EPFLiGHT/Meditron3-8B` | `783c241b18b84692689e0336170b345e5732e48e` | 2026-06-25 | 104 | same (under both the old and the new org path) |
+| `apertus-8b-meditronfo` | `EPFLiGHT/Apertus-8B-MeditronFO` | `ef2b141da7ccc347c2a13b2518370ba6a8a2b745` | 2026-06-26 | 102 | **no**: `dd868922fa74…` |
+
+Tombstones (`biomistral-7b`, `meditron-7b`, `gemma-2-9b`) stay in `HF_IDS` as records,
+have no pin, and are refused by every loader.
+
+**The 2026-10-06 Apertus upstream change.** On 2026-10-06 `EPFLiGHT/Apertus-8B-MeditronFO`
+committed `4409c940755421bb9b2e2e6ad8df48f52b02932f`, "Update weights to the ICLR run
+(meditronfo_gptoss_v1 corpus)", followed by a model-card commit (`dd868922fa74…`). All 102
+landed `apertus-8b-meditronfo` summaries measured `ef2b141d…` (2026-06-26). Before pinning
+was enforced, the next fire would have loaded the new weights under the same short id. The
+study stays on `ef2b141d…`; the new weights would be a new model with its own short id, which
+is an owner decision, not a refresh.
+
+**The Meditron3-8B move.** `OpenMeditron/Meditron3-8B` now redirects (HTTP 307) to
+`EPFLiGHT/Meditron3-8B`; the registry names the new path. The pinned commit `783c241b…` is
+the head of `main` at the new path, and the public API reports it under both paths. Nothing in
+the engine or the site joins on `inference.hf_id`, so landed summaries keep the old string
+and new ones record the new one.
+
+**Activation patching and transformer_lens.** Activation patching (`scripts/activation_patch.py`) reads the
+same pins for its four models and passes `revision` to transformer_lens as well; transformer_lens
+3.5.1 forwards it to its one remaining Hugging Face read (a config lookup for non-Gemma, non-Llama
+names), established by reading its source, not by a run.
