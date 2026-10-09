@@ -282,28 +282,46 @@ def _write(path: Path, payload: Any) -> None:
     path.write_text(payload if isinstance(payload, str) else json.dumps(payload), encoding="utf-8")
 
 
-def test_exporter_keeps_nulling_qwen3_4b_clinical_mass(tmp_path):
-    engine, site = tmp_path / "engine", tmp_path / "site"
-    # explore-split phrases (no Tier B start covers this stamp, so nothing is withheld)
-    rows = ["zq open words 0 so a", "zq open words 1 so a"]
+ROWS = ["zq open words 0 so a", "zq open words 1 so a"]   # explore-split phrases
+
+
+def _engine(engine: Path, qwen_parts: dict[str, list[dict[str, Any]]]) -> None:
+    """A minimal engine checkout: per stamp, a gemma-2-2b hosted trace and the given qwen3-4b parts."""
+    # no Tier B start covers these stamps, so nothing is withheld
     _write(engine / "ops" / "dashboard.json", {"tierb": {"start_utc": "2026-09-30T00:00:00Z"}})
-    _write(engine / "data" / "simulated" / f"{STEM}.json",
-           [{"top_prompt": r, "bottom_prompt": f"{r} plain", "target_clinical_token": " tok"} for r in rows])
-    _write(engine / "data" / "simulated" / f"{STEM}.report.json", {"accepted": 2})
-    _write(engine / "trace_out" / STEM / "batch_summary.part_01.json",
-           {"graph_model": "gemma-2-2b", "source_set": "gemmascope-transcoder-16k", "backend": "hosted",
-            "results": [_result(i, r, 0.3) for i, r in enumerate(rows, start=1)]})
-    _write(engine / "trace_out" / f"{STEM}__qwen3-4b" / "batch_summary.part_01.json",
-           {"graph_model": "qwen3-4b", "source_set": "transcoder-hp", "backend": "hosted",
-            "results": [_result(i, r, 0.5) for i, r in enumerate(rows, start=1)]})
-    for d in (STEM, f"{STEM}__qwen3-4b"):
-        for i in (1, 2):
-            _write(engine / "trace_out" / d / f"index_{i:02d}.html", f"<html>{d} {i}</html>")
-    (site / "data").mkdir(parents=True)
-    proc = subprocess.run([sys.executable, str(ROOT / "scripts" / "export_frontend_simulated.py"),
-                           "--engine", str(engine), "--frontend", str(site), "--stamps", STAMP,
+    for stamp, parts in qwen_parts.items():
+        stem = f"pairs_{stamp}"
+        _write(engine / "data" / "simulated" / f"{stem}.json",
+               [{"top_prompt": r, "bottom_prompt": f"{r} plain", "target_clinical_token": " tok"} for r in ROWS])
+        _write(engine / "data" / "simulated" / f"{stem}.report.json", {"accepted": 2})
+        _write(engine / "trace_out" / stem / "batch_summary.part_01.json",
+               {"graph_model": "gemma-2-2b", "source_set": "gemmascope-transcoder-16k", "backend": "hosted",
+                "results": [_result(i, r, 0.3) for i, r in enumerate(ROWS, start=1)]})
+        for n, part in enumerate(parts, start=1):
+            _write(engine / "trace_out" / f"{stem}__qwen3-4b" / f"batch_summary.part_{n:02d}.json",
+                   {**part, "results": [_result(i, r, 0.5) for i, r in enumerate(ROWS, start=1)]})
+        for d in (stem, f"{stem}__qwen3-4b"):
+            for i in (1, 2):
+                _write(engine / "trace_out" / d / f"index_{i:02d}.html", f"<html>{d} {i}</html>")
+
+
+def _export(engine: Path, site: Path, stamps: str) -> subprocess.CompletedProcess:
+    (site / "data").mkdir(parents=True, exist_ok=True)
+    return subprocess.run([sys.executable, str(ROOT / "scripts" / "export_frontend_simulated.py"),
+                           "--engine", str(engine), "--frontend", str(site), "--stamps", stamps,
                            "--models", "gemma-2-2b,qwen3-4b"],
                           capture_output=True, text=True, cwd=str(engine))
+
+
+HOSTED_TAGGED = {"graph_model": "qwen3-4b", "source_set": "transcoder-hp", "backend": "hosted"}
+HOSTED_UNTAGGED = {"graph_model": "qwen3-4b", "source_set": None, "backend": "hosted"}
+LOGITS = {"graph_model": "qwen3-4b", "source_set": None, "backend": "logits"}
+
+
+def test_exporter_keeps_nulling_qwen3_4b_clinical_mass(tmp_path):
+    engine, site = tmp_path / "engine", tmp_path / "site"
+    _engine(engine, {STAMP: [HOSTED_TAGGED]})
+    proc = _export(engine, site, STAMP)
     assert proc.returncode == 0, proc.stderr + proc.stdout
     payload = json.loads((site / "data" / "simulated_scenarios.json").read_text(encoding="utf-8"))
     assert len(payload["scenarios"]) == 2
@@ -315,6 +333,62 @@ def test_exporter_keeps_nulling_qwen3_4b_clinical_mass(tmp_path):
     assert meta["gemma-2-2b"]["features"] is True
     assert meta["qwen3-4b"]["features"] is False
     assert meta["qwen3-4b"]["source_set"] == "transcoder-hp"  # recorded, not published as mass
+
+
+def test_exporter_refuses_a_model_whose_traces_mix_source_sets(tmp_path):
+    # Regression (Codex review of PR #93): models_meta names one source set per model, and
+    # took the first stamp's, so an untagged and a transcoder-hp qwen3-4b trace in one export
+    # had all their scenarios described by whichever came first.
+    engine, site = tmp_path / "engine", tmp_path / "site"
+    later = "20260802T000000Z"
+    _engine(engine, {STAMP: [HOSTED_UNTAGGED], later: [HOSTED_TAGGED]})
+    proc = _export(engine, site, f"{STAMP},{later}")
+    assert proc.returncode != 0
+    assert "refusing" in proc.stderr and "qwen3-4b" in proc.stderr
+    assert "untagged" in proc.stderr and "transcoder-hp" in proc.stderr
+    assert not (site / "data" / "simulated_scenarios.json").exists()   # nothing written
+    # within one trace dir too
+    engine2 = tmp_path / "engine2"
+    _engine(engine2, {STAMP: [HOSTED_UNTAGGED, HOSTED_TAGGED]})
+    assert _export(engine2, tmp_path / "site2", STAMP).returncode != 0
+
+
+def test_logits_parts_are_not_a_source_set_and_meta_names_the_graphs_set(tmp_path):
+    # a logits-lane part has no graph: its null source set is no tagging claim. models_meta
+    # names the hosted parts' set even when the first stamp's metadata came from a logits dir.
+    engine, site = tmp_path / "engine", tmp_path / "site"
+    later = "20260802T000000Z"
+    _engine(engine, {STAMP: [LOGITS], later: [HOSTED_TAGGED]})
+    proc = _export(engine, site, f"{STAMP},{later}")
+    assert proc.returncode == 0, proc.stderr + proc.stdout
+    payload = json.loads((site / "data" / "simulated_scenarios.json").read_text(encoding="utf-8"))
+    meta = {m["id"]: m for m in payload["models_meta"]}
+    assert meta["qwen3-4b"]["source_set"] == "transcoder-hp"
+    assert all(s["models"]["qwen3-4b"]["clinical_mass"] is None for s in payload["scenarios"])
+
+
+def test_export_archive_leaves_qwen3_4b_clinical_mass_empty(tmp_path):
+    engine = tmp_path / "engine"
+    _engine(engine, {STAMP: [HOSTED_TAGGED]})
+    out = tmp_path / "archive"
+    proc = subprocess.run([sys.executable, str(ROOT / "scripts" / "export_archive.py"),
+                           "--engine", str(engine), "--out", str(out)],
+                          capture_output=True, text=True, cwd=str(engine))
+    assert proc.returncode == 0, proc.stderr + proc.stdout
+    rows = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
+    by_model: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        by_model.setdefault(row["graph_model"], []).append(row)
+    assert len(by_model["qwen3-4b"]) == 2 and len(by_model["gemma-2-2b"]) == 2
+    for row in by_model["qwen3-4b"]:
+        assert row["has_features"] is False
+        assert row["clinical_mass_clinical"] is None and row["clinical_mass_patient"] is None
+        assert row["prob_clinical"] == 0.4                     # behavior still exported
+    for row in by_model["gemma-2-2b"]:
+        assert row["has_features"] is True and row["clinical_mass_clinical"] == 0.3
+    csv_text = out.with_suffix(".csv").read_text(encoding="utf-8")
+    qwen_lines = [line for line in csv_text.splitlines() if ",qwen3-4b," in line]
+    assert len(qwen_lines) == 2 and all(line.endswith(",,") for line in qwen_lines)  # empty mass columns
 
 
 def test_export_tag_mass_excludes_labelled_but_uncalibrated_models(tmp_path, monkeypatch):
@@ -333,18 +407,39 @@ def test_export_tag_mass_excludes_labelled_but_uncalibrated_models(tmp_path, mon
     assert acc["clinical"][0][0] == pytest.approx(0.9 * 0.3)   # gemma's row, not qwen's
 
 
+def _retrace_run(root: Path, run: str, model: str, source_set: str | None, mass: float, p_clin: float = 0.5):
+    _write(root / run / "batch_summary.part_01.json", {
+        "backend": "hosted", "graph_model": model, "source_set": source_set,
+        "results": [{"prompts": {"clinical": "clin A", "patient": "pat A"},
+                     "probabilities": {"clinical": p_clin, "patient": 0.2},
+                     "clinical_mass": {"clinical": mass, "patient": mass}}]})
+
+
 def test_retrace_consistency_never_compares_mass_across_source_sets(tmp_path):
     from scripts.retrace_consistency import collect, compare
 
-    for run, source_set, mass in (("run_null", None, 0.0), ("run_tagged", "transcoder-hp", 0.4)):
-        _write(tmp_path / run / "batch_summary.part_01.json", {
-            "backend": "hosted", "graph_model": "qwen3-4b", "source_set": source_set,
-            "results": [{"prompts": {"clinical": "clin A", "patient": "pat A"},
-                         "probabilities": {"clinical": 0.5, "patient": 0.2},
-                         "clinical_mass": {"clinical": mass, "patient": mass}}]})
+    # a calibrated model traced once untagged and once tagged: a tagging change, not noise
+    _retrace_run(tmp_path, "run_null", "gemma-2-2b", None, 0.0)
+    _retrace_run(tmp_path, "run_tagged", "gemma-2-2b", "gemmascope-transcoder-16k", 0.4)
     rows = compare(collect(tmp_path))
-    assert rows[0]["cmass_param_variants"] == 2          # a tagging change, reported as a variant
-    assert rows[0]["cmass_same_params_spread"] is None   # not as instrument noise
+    assert rows[0]["cmass_param_variants"] == 1          # the untagged run's mass is not read at all
+    assert rows[0]["cmass_same_params_spread"] is None
+
+
+def test_retrace_consistency_keeps_uncalibrated_mass_out_of_every_aggregate(tmp_path):
+    # Regression (Codex review of PR #93): two tagged qwen3-4b retraces share one
+    # source-set signature, so their mass spread entered the global maximum.
+    from scripts.retrace_consistency import collect, compare
+
+    _retrace_run(tmp_path, "run_a", "qwen3-4b", "transcoder-hp", 0.1, p_clin=0.5)
+    _retrace_run(tmp_path, "run_b", "qwen3-4b", "transcoder-hp", 0.6, p_clin=0.4)
+    _retrace_run(tmp_path, "run_c", "gemma-2-2b", "gemmascope-transcoder-16k", 0.30)
+    _retrace_run(tmp_path, "run_d", "gemma-2-2b", "gemmascope-transcoder-16k", 0.31)
+    rows = {r["model"]: r for r in compare(collect(tmp_path))}
+    assert rows["qwen3-4b"]["spread_p_clinical"] == 0.1          # probability consistency kept
+    assert rows["qwen3-4b"]["cmass_same_params_spread"] is None  # mass kept out
+    assert rows["qwen3-4b"]["cmass_param_variants"] == 0
+    assert rows["gemma-2-2b"]["cmass_same_params_spread"] == pytest.approx(0.01)
 
 
 def test_interp_named_features_reads_calibrated_models_only():

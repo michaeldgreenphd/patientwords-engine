@@ -99,7 +99,7 @@ default (`--site ../patientwords`), and `--site ''` skips it.
 | `payload_summary.py` | The one definition of the site payload's headline `summary` | live | nothing itself | imported by `export_frontend_simulated.py` |
 | `render_prune.py` | Chooses and deletes site renders that no export lists | live | deletes files under the site's `modes/simulated/` | imported by `export_frontend_simulated.py` |
 | `sparse_guard.py` | Lists tracked files a checkout keeps off disk, so tools refuse a sparse site checkout | live | nothing | imported by `render_prune.py` and `seal_check.py` |
-| `feature_models.py` | The set of traced models whose `clinical_mass` may be published (`CALIBRATED_FEATURE_MODELS`, gemma-2-2b alone as of 2026-10-09), separate from which models have feature labels | live | nothing | imported by `export_frontend_simulated.py`, `export_archive.py`, `export_tag_mass.py` and `interp_analyses.py`; a model joins only by owner decision after `feature_label_calibration.py` |
+| `feature_models.py` | The set of traced models whose `clinical_mass` may be published (`CALIBRATED_FEATURE_MODELS`, gemma-2-2b alone as of 2026-10-09), separate from which models have feature labels | live | nothing | imported by `export_frontend_simulated.py`, `export_archive.py`, `export_tag_mass.py`, `interp_analyses.py` and `retrace_consistency.py`; a model joins only by owner decision after `feature_label_calibration.py` |
 
 ## Site data written outside the publish chain
 

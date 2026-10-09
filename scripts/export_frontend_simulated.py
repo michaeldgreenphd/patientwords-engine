@@ -217,10 +217,17 @@ def model_dir(stem, model):
 
 
 def read_trace_dir(trace_dir):
-    """Collect per-index results + traced-model metadata from a dir's part files."""
+    """Collect per-index results + traced-model metadata from a dir's part files.
+
+    Also returns the feature source set of every hosted (graph-bearing) part
+    that holds results, None for an untagged one: models_meta names one source
+    set per model, so the export refuses a model whose hosted parts disagree.
+    Logits and activation-patching parts have no graph, so their null source
+    set is not a tagging claim and is left out."""
     results = {}
     meta = {}
     screen = None
+    graph_source_sets = set()
     for part in sorted(trace_dir.glob("batch_summary.part_*.json")):
         summary = json.loads(part.read_text(encoding="utf-8"))
         for key in ("graph_model", "source_set", "mode", "backend"):
@@ -228,9 +235,11 @@ def read_trace_dir(trace_dir):
                 meta[key] = summary[key]
         if summary.get("screen_targets") is not None:
             screen = summary["screen_targets"]
+        if summary.get("backend") in (None, "hosted") and summary.get("results"):
+            graph_source_sets.add(summary.get("source_set"))
         for r in summary.get("results", []):
             results[r["index"]] = r
-    return results, meta, screen
+    return results, meta, screen, graph_source_sets
 
 
 def build_model_obj(r, pair, featured):
@@ -270,6 +279,8 @@ def build_model_obj(r, pair, featured):
 batches = []
 scenarios = []
 traced_by_model = {}
+# model -> {source set of its hosted parts (None = untagged) -> [trace dirs]}
+graph_sets_by_model = {}
 display_index = 0
 first_preview = None
 _TIERB_START = tierb_start_stamp(str(ENGINE / "ops/dashboard.json"))
@@ -286,11 +297,13 @@ for stamp in STAMPS:
         d = model_dir(stem, m)
         if not d.is_dir():
             continue
-        res, meta, scr = read_trace_dir(d)
+        res, meta, scr, graph_sets = read_trace_dir(d)
         if not res:
             continue
         results_by_model[m] = res
         traced_by_model.setdefault(m, meta)
+        for source_set in graph_sets:
+            graph_sets_by_model.setdefault(m, {}).setdefault(source_set, []).append(str(d))
         if m == BASE_MODEL and scr is not None:
             screen_targets = scr
 
@@ -362,6 +375,20 @@ for stamp in STAMPS:
         },
         "screen_targets": screen_targets,
     })
+
+# One feature source set per model's graphs, or no export (Codex review of
+# PR #93): models_meta.source_set describes every scenario of a model, so an
+# export mixing, say, an untagged qwen3-4b trace with a transcoder-hp one would
+# misdescribe some of them whichever value it named. Checked before any write.
+_mixed = {m: sets for m, sets in graph_sets_by_model.items() if len(sets) > 1}
+if _mixed:
+    sys.exit("refusing: these models' hosted traces were tagged from different feature source sets, and "
+             "models_meta names one per model: "
+             + "; ".join(f"{m}: " + ", ".join(f"{s or 'untagged'} ({', '.join(sorted(dirs))})"
+                                               for s, dirs in sorted(sets.items(), key=lambda kv: str(kv[0])))
+                         for m, sets in sorted(_mixed.items()))
+             + ". Export stamps whose traces share one source set (or leave the model out with --models), "
+               "or re-trace the rest on the same set. Nothing was written or pruned.")
 
 # Public site keeps interactive renders only for the most consequential
 # scenarios (flips first, then largest |wording gap|); every scenario
@@ -466,7 +493,10 @@ models_meta = [
         "id": m,
         "label": LABELS.get(m, m),
         "graph_model": traced_by_model.get(m, {}).get("graph_model", m),
-        "source_set": traced_by_model.get(m, {}).get("source_set"),
+        # the one source set of the model's graphs (enforced above); a model with
+        # no hosted part (logits lane only) keeps its metadata's value, null
+        "source_set": (next(iter(graph_sets_by_model[m])) if m in graph_sets_by_model
+                       else traced_by_model.get(m, {}).get("source_set")),
         "features": m in FEATURED,
         "attention_replacement": m in QK,
         # whether this model has an attribution graph at all. The logits backend

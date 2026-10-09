@@ -16,7 +16,9 @@ Three layers are compared, each at the precision the files record
   because the attribution graph is parameter-sensitive by design and the mass
   depends on which labels tagged it (a NullFetcher run's ~0 against a run tagged
   from qwen3-4b's transcoder-hp, registered 2026-10-09, is a tagging change, not
-  instrument noise); cross-variant differences are reported separately.
+  instrument noise); cross-variant differences are reported separately. Mass
+  is read only for calibrated feature models (scripts/feature_models.py), so a
+  labelled but uncalibrated model's mass enters no row or aggregate.
 
 Writes ops/retrace_consistency.json; the printed last line is the summary
 verdict. No medical vocabulary lives in this file.
@@ -37,6 +39,7 @@ except ImportError:
     from provenance_stamp import provenance
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from feature_models import clinical_mass_publishable  # noqa: E402
 from tierb_split import holdout_phrases  # noqa: E402  (script-style module)
 
 
@@ -70,7 +73,12 @@ def collect(trace_root: Path):
                 continue  # amendment 3: phrase-keyed holdout seal, all runs
             outputs = row.get("outputs") or {}
             spread = row.get("predictive_spread") or {}
-            cmass = row.get("clinical_mass") or {}
+            # Mass enters the comparison only for a calibrated feature model
+            # (feature_models): a labelled but uncalibrated model's mass
+            # (qwen3-4b, transcoder-hp) is exploratory and stays out of every
+            # aggregate; its probabilities and top words are still compared.
+            publishable = clinical_mass_publishable(summary.get("graph_model"), summary.get("source_set"))
+            cmass = (row.get("clinical_mass") or {}) if publishable else {}
             groups[(model, clin, pat)].append({
                 "run": part.parent.name,
                 "part": part.name,

@@ -217,7 +217,7 @@ clinical mass could be a property of the labels rather than the model.
 **Disposition.** qwen3-4b's clinical mass is exploratory: computed and stored
 in its trace summaries, published nowhere, and used by no endpoint. The
 exporters (`export_frontend_simulated.py`, `export_archive.py`,
-`export_tag_mass.py`) and `interp_analyses.py` gate on
+`export_tag_mass.py`), `interp_analyses.py` and `retrace_consistency.py` gate on
 `scripts/feature_models.py`'s `CALIBRATED_FEATURE_MODELS`, which holds
 gemma-2-2b alone. After a $0 re-trace of pilot Runs 2 and 3 on qwen3-4b,
 `scripts/feature_label_calibration.py` reports both models' label coverage,
