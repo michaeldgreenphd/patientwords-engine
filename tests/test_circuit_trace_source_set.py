@@ -8,7 +8,9 @@ Held here, each by running or parsing what CI runs:
 - the fire path (scripts/fire_trigger.py, exit 3) and the params job's push-path
   heredoc, run as CI runs it, accept a slug and refuse the same values: anything
   that is not a short lower-case slug, a source set with more than one graph
-  model, and a source set committed into trace_out/;
+  model, and a source set with commit_outputs true under either output root
+  (trace_out/ would publish uncalibrated clinical mass; a pilot part's path does
+  not name the set, so another set's fire would replace it: Codex on PR #96);
 - the params job's `defaults` dict carries the key with an empty default, the
   dispatch path reads it, and the run step passes `--source-set` only when the
   resolved value is non-empty;
@@ -158,10 +160,9 @@ _NO_LIST = {k: v for k, v in PROBE.items() if k != "graph_models"}
     {**PROBE, "graph_models": "gemma-3-4b-it"},
     {**_NO_LIST, "graph_model": "gemma-3-4b-it"},
     {**_NO_LIST, "graph_model": "gemma-3-4b-it", "graph_models": ""},
-    # the pilot root commits only summary parts, where no collector reads
-    {**PROBE, "commit_outputs": True, "output_root": "pilot/traces",
-     "pairs_file": "pilot/runs/run_a/trace/run_a_p.json"},
-], ids=["list", "string", "graph_model", "empty-graph_models", "pilot-root-commit"])
+    # the pilot root, uncommitted
+    {**PROBE, "output_root": "pilot/traces", "pairs_file": "pilot/runs/run_a/trace/run_a_p.json"},
+], ids=["list", "string", "graph_model", "empty-graph_models", "pilot-root-uncommitted"])
 def test_the_fire_path_accepts_a_slug_for_one_model(repo, params):
     assert ft.circuit_trace_source_set_problems(params) == []
     assert ft.validate_params("circuit-trace", params) is None
@@ -187,10 +188,19 @@ def test_the_fire_path_refuses_a_source_set_with_several_graph_models(repo, mode
     assert not (repo / "ops" / "trigger_journal.jsonl").exists()
 
 
+PILOT_PROBE = {**PROBE, "output_root": "pilot/traces", "pairs_file": "pilot/runs/run_a/trace/run_a_p.json"}
+
+
+@pytest.mark.parametrize("base", [PROBE, PILOT_PROBE], ids=["trace_out", "pilot-root"])
 @pytest.mark.parametrize("commit", ["true", True, "TRUE"], ids=repr)
-def test_the_fire_path_refuses_a_source_set_committed_into_trace_out(repo, commit, capsys):
-    assert _fire(repo, {**PROBE, "commit_outputs": commit}) == 3
-    assert "uncalibrated clinical mass" in capsys.readouterr().err
+def test_the_fire_path_refuses_a_committed_source_set_under_either_root(repo, base, commit, capsys):
+    """Into trace_out/ the summary would feed export_tag_mass.py; under pilot/traces the part's path,
+    <run_id>/<stem>[__<model>]/batch_summary.part_NN.json, does not name the set, so a second fire with another set
+    would replace the first one's part (Codex on PR #96)."""
+    assert _fire(repo, {**base, "commit_outputs": commit}) == 3
+    err = capsys.readouterr().err
+    assert "commit_outputs true" in err and "replace" in err and "uncalibrated clinical mass" in err
+    assert not (repo / "ops" / "trigger_journal.jsonl").exists()
 
 
 def test_without_a_source_set_every_earlier_shape_still_passes():
@@ -258,12 +268,22 @@ def test_the_params_job_refuses_every_value_the_fire_path_refuses(tmp_path, valu
     {**PROBE, "graph_models": "all"},
     {**PROBE, "commit_outputs": True},
     {**PROBE, "commit_outputs": "true"},
-], ids=["two-models", "all", "commit-bool", "commit-str"])
+    {**PILOT_PROBE, "commit_outputs": True},
+    {**PILOT_PROBE, "commit_outputs": "true"},
+], ids=["two-models", "all", "commit-bool", "commit-str", "pilot-commit-bool", "pilot-commit-str"])
 def test_the_params_job_and_the_fire_path_refuse_the_same_shapes(tmp_path, cfg):
     assert ft.circuit_trace_source_set_problems(cfg)
+    assert ft.circuit_trace_output_root_problems(cfg) == []     # the source-set rule is what refuses it
     rc, outputs, err = _run_params(tmp_path, cfg)
     assert rc != 0 and outputs == {}, err
     assert "source_set" in err
+
+
+def test_the_params_job_runs_an_uncommitted_pilot_source_set_fire(tmp_path):
+    rc, outputs, err = _run_params(tmp_path, PILOT_PROBE)
+    assert rc == 0, err
+    config = json.loads(outputs["config"])
+    assert config["source_set"] == GEMMA3_SET and config["output_root"] == "pilot/traces"
 
 
 def test_the_dispatch_path_reads_the_input(tmp_path):

@@ -45,14 +45,15 @@ LOCAL_SERVER_URL = os.environ.get("GRAPH_SERVER_URL", "http://localhost:5004")
 # HostedHTTPError carries: gemma-3-4b-it has no default graph source set, so a
 # request that omits sourceSetName (this study's default) gets "Source Set
 # Missing"; qwen3-1.7b has a 10-token prompt cap for LORSA models ("Prompt Too
-# Long"; a study prompt was 17 tokens). The unserved models stay here so the
+# Long"; the probe's first prompt was 17 tokens, and most study prompts are
+# longer than the cap). The unserved models stay here so the
 # cross-model trace matrix and the front-end model selector light up if
 # Neuronpedia enables them.
 MODEL_REGISTRY: dict[str, str] = {
     "gemma-2-2b": "google/gemma-2-2b",       # confirmed working
     "gemma-3-4b-it": "google/gemma-3-4b-it", # registered; 400 unless --source-set: no default (confirmed 2026-10-09)
     "qwen3-4b": "Qwen/Qwen3-4B",             # SERVES GRAPHS since 2026-09-02
-    "qwen3-1.7b": "Qwen/Qwen3-1.7B",         # registered; 400 on study prompts: 10-token cap (confirmed 2026-10-09)
+    "qwen3-1.7b": "Qwen/Qwen3-1.7B",         # registered; 400 above a 10-token prompt (confirmed 2026-10-09)
 }
 
 DEFAULT_GRAPH_MODEL = "gemma-2-2b"

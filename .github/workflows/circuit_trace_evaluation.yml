@@ -39,7 +39,9 @@ name: Circuit Trace Evaluation (medlang-circuits)
 # gemma-3-4b-it has no default ("Source Set Missing", run 37960184793) and traces
 # only with one. The params job refuses a value that is not a short lower-case
 # slug, a source set with more than one graph model, and a source set with
-# commit_outputs true into trace_out/ (scripts/fire_trigger.py
+# commit_outputs true under either root: trace_out/ summaries naming a source set
+# feed scripts/export_tag_mass.py, and a pilot part's path does not name the set,
+# so another set's fire would replace it (scripts/fire_trigger.py
 # circuit_trace_source_set_problems refuses the same at a fire).
 
 on:
@@ -323,10 +325,13 @@ jobs:
               if len(models) > 1:
                   raise SystemExit(f"source_set {source_set!r} with {len(models)} graph models {models}: fire each "
                                    "model on its own")
-              # scripts/export_tag_mass.py aggregates clinical_mass from every committed summary naming a source set
-              if root == "" and params["commit_outputs"].strip().lower() == "true":
-                  raise SystemExit(f"source_set {source_set!r} with commit_outputs true into trace_out/ would publish "
-                                   "uncalibrated clinical mass; use commit_outputs false or output_root pilot/traces")
+              # under either root: scripts/export_tag_mass.py aggregates clinical_mass from every trace_out/ summary
+              # naming a source set, and a pilot part's path (<run_id>/<stem>[__<model>]/part_NN) does not name the
+              # set, so a fire with another set would replace it
+              if params["commit_outputs"].strip().lower() == "true":
+                  raise SystemExit(f"source_set {source_set!r} with commit_outputs true is refused under either root "
+                                   "(trace_out/ would publish uncalibrated clinical mass; a pilot part would be "
+                                   "replaced by another set's fire); use commit_outputs false")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               out.write("config=" + json.dumps(params) + "\n")
               out.write("offsets=" + json.dumps(offsets) + "\n")

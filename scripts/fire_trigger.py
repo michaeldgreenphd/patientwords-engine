@@ -155,10 +155,13 @@ CIRCUIT_TRACE_JOB_DEFAULTS = {
 # every fire before this key. gemma-3-4b-it has no server default ("Source Set Missing", run 37960184793), so it
 # traces only with one. The value reaches a bash command line, so it must be a short lower-case slug that cannot read
 # as an option: a letter or digit, then letters, digits or hyphens, 64 characters at most. A source set is per
-# model, so a fire whose graph_models resolve to more than one model is refused with it. And a fire with it never
-# commits into trace_out/ (commit_outputs true with output_root ""): on main, scripts/export_tag_mass.py aggregates
-# clinical_mass from every committed summary that names a source set, so a gemma-3-4b-it summary there would publish
-# uncalibrated clinical mass. The pilot root, which no collector reads, and commit_outputs false are unaffected.
+# model, so a fire whose graph_models resolve to more than one model is refused with it. And a fire with it commits
+# nothing (commit_outputs true is refused under either root), for two reasons. Into trace_out/: on main,
+# scripts/export_tag_mass.py aggregates clinical_mass from every committed summary that names a source set, so a
+# gemma-3-4b-it summary there would publish uncalibrated clinical mass. Under pilot/traces: the output folder is
+# <run_id>/<stem>[__<model>] and the part is named by offset alone, so two fires of one pairs file, model and offset
+# with two source sets would write one batch_summary.part_NN.json, the second replacing the first (Codex on PR #96).
+# A source-set fire's outputs stay in its workflow artifact until the output path names the set.
 # circuit_trace_evaluation.yml's params job refuses the same; tests/test_circuit_trace_source_set.py holds the two
 # together.
 CIRCUIT_TRACE_SOURCE_SET_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,63}")
@@ -1152,7 +1155,7 @@ def circuit_trace_models(params: dict) -> list[str]:
 def circuit_trace_source_set_problems(params: dict) -> list[str]:
     """circuit-trace's `source_set` rules (CIRCUIT_TRACE_SOURCE_SET_RE above), as the workflow's params job applies
     them: absent or "" is the server default and always passes; any other value is a slug, the fire traces exactly
-    one model, and it does not commit into trace_out/."""
+    one model, and it commits nothing, under either output root."""
     source_set = _circuit_trace_job_value(params, "source_set")
     if not source_set:
         return []
@@ -1165,12 +1168,11 @@ def circuit_trace_source_set_problems(params: dict) -> list[str]:
         problems.append(f"circuit-trace source_set {source_set!r} with {len(models)} graph models {models}: a source "
                         "set belongs to one model, and the matrix would send it to every cell; fire each model "
                         "on its own")
-    commit = _circuit_trace_job_value(params, "commit_outputs").strip().lower() == "true"
-    if commit and _circuit_trace_job_value(params, "output_root") == "":
-        problems.append(f"circuit-trace source_set {source_set!r} with commit_outputs true into trace_out/: "
-                        "scripts/export_tag_mass.py aggregates clinical_mass from every committed summary that names "
-                        "a source set, so the summary would publish uncalibrated clinical mass; fire with "
-                        "commit_outputs false, or under output_root 'pilot/traces'")
+    if _circuit_trace_job_value(params, "commit_outputs").strip().lower() == "true":
+        problems.append(f"circuit-trace source_set {source_set!r} with commit_outputs true: into trace_out/, "
+                        "scripts/export_tag_mass.py would aggregate the summary's uncalibrated clinical mass; under "
+                        "pilot/traces, the part's path does not name the source set, so a fire with another set would "
+                        "replace it. Fire with commit_outputs false; the outputs stay in the workflow artifact")
     return problems
 
 

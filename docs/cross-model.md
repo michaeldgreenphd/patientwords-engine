@@ -62,13 +62,24 @@ non-retryable error" above had no recorded cause. A $0 two-pair re-probe on
   "gemmascope-2-transcoder-262k"` and `commit_outputs: false`. Whatever it
   returns, gemma-3-4b-it's `clinical_mass` stays unpublished: the exporters
   null it for every model outside `FEATURED`, and the fire path and the
-  workflow refuse a `source_set` fire that would commit into `trace_out/`,
-  where `scripts/export_tag_mass.py` would otherwise aggregate it.
-- **qwen3-1.7b** cannot be traced on this study's prompts. Its hosted graphs
-  cap a prompt at 10 tokens, and the probe's prompt was 17. No parameter
-  lifts the cap; tracing it would mean writing prompts of 10 tokens or fewer,
-  which changes the stimuli. That is a study-design decision, not a fix, and
-  nothing here makes it.
+  workflow refuse a `source_set` fire with `commit_outputs: true`, so no
+  summary of it reaches `trace_out/`, where `scripts/export_tag_mass.py`
+  would otherwise aggregate it.
+- **qwen3-1.7b** refused the probe's first prompt, which was 17 tokens,
+  because its hosted graphs cap a prompt at 10 tokens. That is all the run
+  shows: a 400 aborts the batch, so the second pair was never sent. Most of
+  the study's prompts are longer than the cap allows. Across the archived
+  pairs under `data/simulated/` (excluding the control files), the median
+  prompt is 14 words, and 1.9% of 9,806 prompts have 8 words or fewer
+  (word counts, measured 2026-10-09; token counts, which are usually higher,
+  were not measured). So most study pairs would be refused. Shorter pairs do
+  exist: the control files
+  (`control_identity_20260710T011743Z.json`,
+  `control_qualified_20260710T011743Z.json`) hold prompts of 5 words and up,
+  15% of them 8 words or fewer. None of them has been tried on this model.
+  Tracing qwen3-1.7b on study material would mean choosing or writing
+  prompts that fit the cap, which changes the stimuli; that is a
+  study-design decision, not a fix, and nothing here makes it.
 
 ## What's built (dormant until >1 model traces)
 
