@@ -40,12 +40,21 @@ def _row(index: int, prompt: str, clinical: float | None, patient: float | None)
 
 
 def _trace_dir(root: Path, model: str, source_set: str | None, rows: list[dict[str, Any]],
-               graphs: dict[str, dict[str, Any]] | None) -> Path:
+               graphs: dict[str, dict[str, Any]] | None, complete: bool = True) -> Path:
+    """A trace dir. With ``complete``, every (index, role) the rows report as traced and
+    ``graphs`` does not name gets a graph with no feature nodes, so the set matches."""
     d = root / model
     d.mkdir(parents=True)
     (d / "batch_summary.part_01.json").write_text(json.dumps(
         {"graph_model": model, "source_set": source_set, "results": rows}), encoding="utf-8")
-    for name, graph in (graphs or {}).items():
+    if graphs is None:
+        return d
+    graphs = dict(graphs)
+    if complete:
+        for row in rows:
+            for role in row.get("clinical_mass") or {}:
+                graphs.setdefault(f"pair_{row['index']:02d}_{role}.tagged.json", _graph(model, []))
+    for name, graph in graphs.items():
         (d / name).write_text(json.dumps(graph), encoding="utf-8")
     return d
 
@@ -77,7 +86,7 @@ def test_label_coverage_and_clinical_share_per_model(two_models):
     report = flc.build_report(a, b, examples=0)
     ma, mb = report["models"]["a"], report["models"]["b"]
     assert (ma["graph_model"], ma["source_set"]) == ("gemma-2-2b", "gemmascope-transcoder-16k")
-    assert ma["tagged_graphs"] == 2
+    assert ma["tagged_graphs"] == 6                               # pairs 1-3, both sides
     assert ma["feature_nodes"]["n"] == 5                          # structural node excluded
     assert ma["feature_nodes"]["share_described"] == 0.8          # 4 of 5 nodes
     assert ma["feature_nodes"]["share_clinical"] == 0.4           # 2 of 5 nodes
@@ -185,6 +194,28 @@ def test_refuses_a_tagged_graph_from_another_model(tmp_path):
     (qwen / "pair_01_clinical.tagged.json").write_text(json.dumps(no_scan), encoding="utf-8")
     with pytest.raises(flc.GraphModelMismatchError):
         flc.build_report(gemma, qwen)
+
+
+def test_refuses_an_incomplete_or_foreign_set_of_tagged_graphs(tmp_path, capsys):
+    # Regression (Codex review of PR #93): with one of a chunked run's offset artifacts
+    # downloaded, label coverage came from one chunk while clinical_mass covered every
+    # summary part. The graphs must be exactly the (index, role) pairs the summaries traced.
+    rows = [_row(1, "p one", 0.3, 0.2), _row(2, "p two", 0.4, 0.1),
+            {**_row(3, "p three", 0.5, None), "clinical_mass": {"clinical": 0.5}}]   # screened out
+    chunk_one = {"pair_01_clinical.tagged.json": _graph("qwen3-4b", [_node(1, 1, 1, "clinical", "x")]),
+                 "pair_01_patient.tagged.json": _graph("qwen3-4b", [])}
+    partial = _trace_dir(tmp_path / "partial", "qwen3-4b", "transcoder-hp", rows, chunk_one, complete=False)
+    with pytest.raises(flc.TaggedGraphSetMismatchError, match=r"Missing 3: 2/clinical, 2/patient, 3/clinical"):
+        flc.build_report(partial, partial)
+    assert flc.main([str(partial), str(partial)]) == 2
+    assert "refused: TaggedGraphSetMismatchError" in capsys.readouterr().err
+    # a screened-out pair needs no patient graph; with every expected graph present it passes
+    full = _trace_dir(tmp_path / "full", "qwen3-4b", "transcoder-hp", rows, chunk_one)
+    assert flc.build_report(full, full, examples=0)["models"]["a"]["tagged_graphs"] == 5
+    # a graph no summary part accounts for (another chunk's artifact) is refused too
+    (full / "pair_07_clinical.tagged.json").write_text(json.dumps(_graph("qwen3-4b", [])), encoding="utf-8")
+    with pytest.raises(flc.TaggedGraphSetMismatchError, match=r"Not in any summary 1: 7/clinical"):
+        flc.build_report(full, full)
 
 
 def test_out_creates_a_missing_parent_directory(two_models, tmp_path):

@@ -28,9 +28,14 @@ workflow artifact, ``circuit-trace-<model>-<mode>-<run>-offset<k>``, not in git)
 The tagged graphs are the only place a trace stores feature descriptions, so a
 directory without them is refused (MissingTaggedGraphsError) rather than
 reported from the summaries alone (download the artifact into the directory
-first), and so is a tagged graph whose ``metadata.scan`` is not the summaries'
-graph_model (GraphModelMismatchError). No network: nothing is fetched, and the fetcher's on-disk cache is not
-read (it lives on the CI runner and is not uploaded).
+first). So is a directory whose tagged graphs are not exactly the (index, role)
+pairs its summaries report as traced (TaggedGraphSetMismatchError: a chunked run
+has one artifact per offset, and every one is needed), and a tagged graph whose
+``metadata.scan`` is not the summaries' graph_model (GraphModelMismatchError).
+Label coverage and clinical_mass are thus always measured over the same pairs.
+No network: nothing is fetched, and the fetcher's on-disk cache is not read (it
+lives on the CI runner and is not uploaded). This is a 2panel tool: the traced
+sides are read from each result's ``clinical_mass`` keys.
 
 Statistics. Shares are plain proportions over the stated denominator, which is
 reported beside each. clinical_mass quantiles use linear interpolation between
@@ -103,6 +108,10 @@ class DuplicateIndexError(CalibrationInputError):
     """Two summary parts in one directory both report the same pair index."""
 
 
+class TaggedGraphSetMismatchError(CalibrationInputError):
+    """The tagged graphs are not exactly the (index, role) set the summaries report as traced."""
+
+
 class GraphModelMismatchError(CalibrationInputError):
     """A tagged graph's metadata.scan is missing or names another model than the summaries."""
 
@@ -141,17 +150,46 @@ def _share(numerator: int, denominator: int) -> float | None:
     return round(numerator / denominator, 4) if denominator else None
 
 
-def tagged_graph_stats(trace_dir: Path, graph_model: str | None, examples: int, seed: int) -> dict[str, Any]:
+def expected_graphs(results: dict[int, dict[str, Any]]) -> set[tuple[int, str]]:
+    """(index, role) of every graph the summaries say was traced and tagged.
+
+    A 2panel result's ``clinical_mass`` has one key per traced side (a screened-out
+    pair has ``clinical`` only; --show-mitigation adds ``translated``), and each
+    traced side wrote ``pair_NN_<role>.tagged.json``."""
+    return {(index, role) for index, row in results.items() for role in (row.get("clinical_mass") or {})}
+
+
+def _list_preview(items: list[tuple[int, str]], limit: int = 10) -> str:
+    shown = ", ".join(f"{i}/{r}" for i, r in items[:limit])
+    return shown + (f" and {len(items) - limit} more" if len(items) > limit else "")
+
+
+def tagged_graph_stats(trace_dir: Path, graph_model: str | None, expected: set[tuple[int, str]],
+                       examples: int, seed: int) -> dict[str, Any]:
     """Label coverage and clinical tagging over every tagged graph in the directory.
 
-    Every graph must name ``graph_model`` (the summaries' model) in metadata.scan:
-    a wrong or stale artifact downloaded into the directory is refused, not counted."""
+    The graphs must be exactly the ``expected`` (index, role) set the summaries
+    report as traced: a missing graph (only some of a chunked run's offset
+    artifacts downloaded) or an extra one (an artifact whose summary part is not
+    here) would measure labels over a different population of pairs than the
+    clinical_mass the same report gives, so either is refused. Every graph must
+    also name ``graph_model`` (the summaries' model) in metadata.scan: a wrong or
+    stale artifact downloaded into the directory is refused, not counted."""
     paths = sorted(p for p in trace_dir.glob("pair_*.tagged.json") if TAGGED_RE.match(p.name))
     if not paths:
         raise MissingTaggedGraphsError(
             f"{trace_dir}: no pair_NN_<role>.tagged.json. Feature descriptions are stored only in the "
             "tagged graphs, which CI keeps in the circuit-trace workflow artifact "
             "(circuit-trace-<model>-<mode>-<run>-offset<k>); download it into this directory")
+    found = {(int(m.group(1)), m.group(2)) for p in paths if (m := TAGGED_RE.match(p.name))}
+    missing, extra = sorted(expected - found), sorted(found - expected)
+    if missing or extra:
+        raise TaggedGraphSetMismatchError(
+            f"{trace_dir}: the tagged graphs do not match the summaries' traced pairs (index/role). "
+            + (f"Missing {len(missing)}: {_list_preview(missing)}; download every "
+               "circuit-trace-<model>-<mode>-<run>-offset<k> artifact of the run. " if missing else "")
+            + (f"Not in any summary {len(extra)}: {_list_preview(extra)}; add the matching "
+               "batch_summary part or remove these graphs." if extra else ""))
     nodes = described = clinical = multi = undecodable = 0
     words: list[int] = []
     methods: Counter[str] = Counter()
@@ -257,7 +295,7 @@ def model_report(trace_dir: Path, examples: int, seed: int) -> tuple[dict[str, A
         "source_set": summaries["source_set"],
         "summary_parts": summaries["parts"],
         "n_results": len(results),
-        **tagged_graph_stats(trace_dir, summaries["graph_model"], examples, seed),
+        **tagged_graph_stats(trace_dir, summaries["graph_model"], expected_graphs(results), examples, seed),
         "clinical_mass": {role: distribution([_mass(row, role) for row in results.values()]) for role in roles},
     }
     if summaries["source_set"] is None:
