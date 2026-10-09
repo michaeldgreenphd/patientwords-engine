@@ -39,6 +39,7 @@ Usage:
 import argparse
 import json
 import math
+import sys
 from pathlib import Path
 
 # Short id -> Hugging Face repo. Mirrors logits_eval.HF_IDS; patching needs only
@@ -216,7 +217,8 @@ def build_result(index, pair, layers, hook_point):
     return assemble_result(index, pair, patching)
 
 
-def build_summary(model_id, hf_id, results, layers, hook_point, measured, start_index=1):
+def build_summary(model_id, hf_id, results, layers, hook_point, measured, start_index=1,
+                  revision=None, revision_pinned=None):
     """Top-level ``batch_summary`` for a patching run, in the logits-path schema."""
     return {
         "mode": "2panel",
@@ -238,6 +240,10 @@ def build_summary(model_id, hf_id, results, layers, hook_point, measured, start_
             "hf_id": hf_id,
             "dtype": "bfloat16",
             "measured": measured,   # False for a --scaffold run
+            # Added 2026-10-09: the resolved HF commit and the pin the load was
+            # held to (refused unless equal); both null for a --scaffold run.
+            "revision": revision,
+            "revision_pinned": revision_pinned,
         },
         "results": results,
     }
@@ -253,7 +259,27 @@ def write_summary(out_dir, summary):
     return path
 
 
-def load_model(model_name):
+def _logits_eval():
+    """scripts/logits_eval.py, which holds the pin table (scripts/ is not a package)."""
+    scripts = str(Path(__file__).resolve().parent)
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    import logits_eval
+
+    return logits_eval
+
+
+def resolve_model(model_name: str, revision: str | None = None) -> tuple[str, str]:
+    """(hf_repo_id, pinned_commit) for a --model value, or a logits_eval.PinError.
+
+    A short id must be in this script's HF_IDS (the models transformer_lens is
+    known to support) and loads its logits_eval.HF_REVISIONS pin; any other
+    value is a repo id and needs an explicit full-SHA `revision`.
+    """
+    return _logits_eval().resolve_pinned_model(model_name, revision, registry=HF_IDS)
+
+
+def load_model(model_name, revision=None):
     """HookedTransformer for the real run (CI only; guarded transformer_lens import).
 
     transformer_lens resolves both official short names ('gemma-2-2b') and the
@@ -275,14 +301,25 @@ def load_model(model_name):
         from transformers import AutoModelForCausalLM, AutoTokenizer
     except ImportError as exc:
         raise ImportError(_TL_IMPORT_ERROR) from exc
-    hf_id = HF_IDS.get(model_name, model_name)
-    tokenizer = AutoTokenizer.from_pretrained(hf_id, trust_remote_code=False)
+    le = _logits_eval()
+    hf_id, pinned = resolve_model(model_name, revision)
+    # Pinned to one exact commit (refused otherwise; logits_eval.HF_REVISIONS).
+    # The tokenizer and weights load here at that commit. transformer_lens 3.5.1
+    # (constraints.txt) forwards `revision` from from_pretrained_kwargs to the
+    # one Hugging Face read it still makes with a model handed in, the
+    # AutoConfig lookup for non-Gemma/Llama names (read from its source,
+    # loading_from_pretrained.convert_hf_model_config, 2026-10-09; not run here).
+    tokenizer = AutoTokenizer.from_pretrained(hf_id, revision=pinned, trust_remote_code=False)
     hf_model = AutoModelForCausalLM.from_pretrained(
-        hf_id, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True,
+        hf_id, revision=pinned, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True,
         trust_remote_code=False, use_safetensors=True)
+    resolved = le.loaded_commit(hf_id, pinned, hf_model.config)
+    le.check_resolved_revision(hf_id, pinned, resolved)
     model = HookedTransformer.from_pretrained_no_processing(
-        model_name, hf_model=hf_model, tokenizer=tokenizer, dtype=torch.bfloat16)
+        hf_id, hf_model=hf_model, tokenizer=tokenizer, dtype=torch.bfloat16, revision=pinned)
     model.eval()
+    # Recorded in the summary's inference block (main()); equal to the pin here.
+    model.resolved_revision = resolved
     return model
 
 
@@ -408,10 +445,14 @@ def main(argv=None):
                         help="residual-stream site to patch (default: %s)" % DEFAULT_HOOK_POINT)
     parser.add_argument("--scaffold", action="store_true",
                         help="emit the schema shape from placeholder data without loading a model")
+    parser.add_argument("--revision", default=None,
+                        help="exact 40-hex Hugging Face commit: required for a repo id outside HF_IDS; "
+                             "for a short id it may only repeat its logits_eval.HF_REVISIONS pin")
     args = parser.parse_args(argv)
 
     model_id = args.model
     hf_id = HF_IDS.get(model_id, model_id)
+    revision = revision_pinned = None
     pairs = load_pairs(args.pairs, args.limit, args.start_index)
 
     if args.scaffold:
@@ -420,8 +461,18 @@ def main(argv=None):
                    for i, pair in enumerate(pairs, start=args.start_index)]
         measured = False
     else:
-        print(f"Loading {hf_id} as a HookedTransformer (cpu, bfloat16) ...", flush=True)
-        model = load_model(hf_id)
+        le = _logits_eval()
+        try:  # before anything is imported or downloaded
+            hf_id, revision_pinned = resolve_model(model_id, args.revision)
+        except le.PinError as exc:
+            le.refuse(exc)
+        print(f"Loading {hf_id} @ {revision_pinned} as a HookedTransformer (cpu, bfloat16) ...",
+              flush=True)
+        try:
+            model = load_model(model_id, args.revision)
+        except le.PinError as exc:
+            le.refuse(exc)
+        revision = model.resolved_revision
         grid_layers = args.layers or model.cfg.n_layers
         positions = parse_positions(args.positions)
         results = []
@@ -446,7 +497,8 @@ def main(argv=None):
         measured = True
 
     summary = build_summary(model_id, hf_id, results, grid_layers, args.hook_point,
-                            measured, args.start_index)
+                            measured, args.start_index, revision=revision,
+                            revision_pinned=revision_pinned)
     path = write_summary(args.out, summary)
     print(f"Wrote {len(results)} results -> {path}"
           f"{' (scaffold: placeholder numbers)' if not measured else ''}")
