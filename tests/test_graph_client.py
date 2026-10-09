@@ -392,3 +392,215 @@ def test_hosted_gives_up_after_max_attempts(monkeypatch):
     with pytest.raises(RuntimeError, match="after 4 attempts"):
         gc.generate_graph("the quick brown fox", slug="s", backend="hosted")
     assert calls["post"] == gc.HOSTED_ATTEMPTS
+
+
+# ---------------------------------------------------------------------------
+# Hosted error bodies (2026-10-09): a non-2xx response keeps what the server said
+# ---------------------------------------------------------------------------
+
+_API_KEY = "np-secret-key-value-do-not-log"
+_SIGNED_GRAPH_URL = "https://files.example/graph.json?X-Amz-Signature=abc123"
+
+
+class _ErrResp:
+    """A response that fails raise_for_status the way requests does."""
+
+    def __init__(self, status=200, text="", payload=None):
+        self.status_code = status
+        self.text = text
+        self._payload = payload if payload is not None else {}
+
+    def raise_for_status(self):
+        import requests as real_requests
+
+        if self.status_code >= 400:
+            raise real_requests.exceptions.HTTPError(f"{self.status_code} Client Error", response=self)
+
+    def json(self):
+        return self._payload
+
+
+def _scripted_requests(post_responses, meta_response=None, download_response=None):
+    """A fake requests module whose generate POSTs return ``post_responses`` in order."""
+    calls = {"post": 0, "meta": 0, "download": 0}
+
+    class Sess:
+        def __init__(self):
+            self.headers = {}
+
+        def post(self, url, json=None, timeout=None):
+            resp = post_responses[min(calls["post"], len(post_responses) - 1)]
+            calls["post"] += 1
+            return resp
+
+        def get(self, url, timeout=None):
+            calls["meta"] += 1
+            return meta_response or _ErrResp(payload={"url": _SIGNED_GRAPH_URL})
+
+    class Req:
+        def Session(self):
+            return Sess()
+
+        def get(self, url, timeout=None):
+            calls["download"] += 1
+            return download_response or _ErrResp(payload={"nodes": [], "links": []})
+
+    return Req(), calls
+
+
+@pytest.fixture
+def hosted_env(monkeypatch):
+    monkeypatch.setattr(gc, "HOSTED_RETRY_SLEEP", 0.0)
+    monkeypatch.setenv("NEURONPEDIA_API_KEY", _API_KEY)
+
+
+def _all_log_text(caplog):
+    return "\n".join(rec.getMessage() for rec in caplog.records)
+
+
+def test_hosted_400_body_reaches_exception_and_log_without_retry(monkeypatch, hosted_env, caplog):
+    import requests as real_requests
+
+    body = '{"error":"Prompt Too Long","message":"LORSA models accept at most 10 tokens"}'
+    fake, calls = _scripted_requests([_ErrResp(status=400, text=body)])
+    monkeypatch.setattr(gc, "requests", fake)
+    caplog.set_level("INFO", logger=gc.logger.name)
+
+    with pytest.raises(gc.HostedHTTPError) as excinfo:
+        gc.generate_graph("the quick brown fox", slug="s", backend="hosted", model_id="qwen3-1.7b")
+
+    err = excinfo.value
+    assert calls["post"] == 1  # a 400 is not retryable: exactly one attempt
+    assert calls["meta"] == 0
+    # still an HTTPError carrying the response, so existing handlers and the
+    # retry classification see the same object shape as before
+    assert isinstance(err, real_requests.exceptions.HTTPError)
+    assert err.response.status_code == 400
+    assert err.status == 400 and err.step == "generate" and err.model_id == "qwen3-1.7b"
+    assert err.body == body
+    assert "Prompt Too Long" in str(err)
+    assert "HTTP 400" in str(err) and "model=qwen3-1.7b" in str(err)
+    errors = [rec for rec in caplog.records if rec.levelname == "ERROR"]
+    assert len(errors) == 1
+    assert "Prompt Too Long" in errors[0].getMessage()
+    assert "qwen3-1.7b" in errors[0].getMessage()
+
+
+@pytest.mark.parametrize("status", sorted(gc.RETRYABLE_HOSTED_STATUS))
+def test_hosted_retryable_status_still_retries_with_body(monkeypatch, hosted_env, caplog, status):
+    fake, calls = _scripted_requests([_ErrResp(status=status, text="GPUs Busy"), _ErrResp(payload={})])
+    monkeypatch.setattr(gc, "requests", fake)
+    caplog.set_level("INFO", logger=gc.logger.name)
+
+    graph = gc.generate_graph("the quick brown fox", slug="s", backend="hosted")
+
+    assert graph == {"nodes": [], "links": []}
+    assert calls["post"] == 2  # the retryable status was waited out, as before
+    warnings = [rec.getMessage() for rec in caplog.records if rec.levelname == "WARNING"]
+    assert any("GPUs Busy" in msg and f"HTTP {status}" in msg for msg in warnings)
+    assert not [rec for rec in caplog.records if rec.levelname == "ERROR"]
+
+
+def test_retryable_status_set_is_unchanged():
+    assert gc.RETRYABLE_HOSTED_STATUS == {429, 500, 502, 503, 504}
+
+
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 422])
+def test_hosted_non_retryable_statuses_raise_after_one_attempt(monkeypatch, hosted_env, status):
+    fake, calls = _scripted_requests([_ErrResp(status=status, text="nope")])
+    monkeypatch.setattr(gc, "requests", fake)
+    with pytest.raises(gc.HostedHTTPError):
+        gc.generate_graph("the quick brown fox", slug="s", backend="hosted")
+    assert calls["post"] == 1
+
+
+def test_hosted_exhausted_retries_name_the_last_body(monkeypatch, hosted_env):
+    fake, calls = _scripted_requests([_ErrResp(status=503, text="GPUs Busy")])
+    monkeypatch.setattr(gc, "requests", fake)
+    with pytest.raises(RuntimeError, match="after 4 attempts") as excinfo:
+        gc.generate_graph("the quick brown fox", slug="s", backend="hosted")
+    assert calls["post"] == gc.HOSTED_ATTEMPTS
+    assert "GPUs Busy" in str(excinfo.value)
+    assert isinstance(excinfo.value.__cause__, gc.HostedHTTPError)
+
+
+def test_hosted_error_body_is_truncated(monkeypatch, hosted_env, caplog):
+    huge = "x" * (gc.HOSTED_ERROR_BODY_LIMIT * 5)
+    fake, _ = _scripted_requests([_ErrResp(status=400, text=huge)])
+    monkeypatch.setattr(gc, "requests", fake)
+    caplog.set_level("INFO", logger=gc.logger.name)
+
+    with pytest.raises(gc.HostedHTTPError) as excinfo:
+        gc.generate_graph("the quick brown fox", slug="s", backend="hosted")
+
+    body = excinfo.value.body
+    assert body.startswith("x" * gc.HOSTED_ERROR_BODY_LIMIT)
+    assert body.count("x") == gc.HOSTED_ERROR_BODY_LIMIT
+    assert f"{len(huge)} chars total" in body
+    assert len(str(excinfo.value)) < gc.HOSTED_ERROR_BODY_LIMIT + 300
+    assert all(len(rec.getMessage()) < gc.HOSTED_ERROR_BODY_LIMIT + 300 for rec in caplog.records)
+
+
+def test_hosted_error_unreadable_body_is_recorded_as_missing(monkeypatch, hosted_env):
+    class NoBody:
+        status_code = 400
+
+        @property
+        def text(self):
+            raise ValueError("cannot decode")
+
+        def raise_for_status(self):
+            import requests as real_requests
+
+            raise real_requests.exceptions.HTTPError("400 Client Error", response=self)
+
+    fake, _ = _scripted_requests([NoBody()])
+    monkeypatch.setattr(gc, "requests", fake)
+    with pytest.raises(gc.HostedHTTPError) as excinfo:
+        gc.generate_graph("the quick brown fox", slug="s", backend="hosted")
+    assert excinfo.value.body is None
+    assert "<body unreadable>" in str(excinfo.value)
+
+
+def test_hosted_error_never_logs_headers_or_key(monkeypatch, hosted_env, caplog):
+    # even a server that echoes the key back must not get it into the log or exception
+    fake, _ = _scripted_requests([_ErrResp(status=400, text=f'{{"error":"bad key {_API_KEY}"}}')])
+    monkeypatch.setattr(gc, "requests", fake)
+    caplog.set_level("DEBUG")
+
+    with pytest.raises(gc.HostedHTTPError) as excinfo:
+        gc.generate_graph("the quick brown fox", slug="s", backend="hosted")
+
+    logged = _all_log_text(caplog)
+    assert _API_KEY not in logged
+    assert _API_KEY not in str(excinfo.value)
+    assert "[redacted]" in excinfo.value.body
+    assert "x-api-key" not in logged.lower()
+    assert "x-api-key" not in str(excinfo.value).lower()
+
+
+@pytest.mark.parametrize("step,failing", [("metadata", "meta"), ("graph download", "download")])
+def test_hosted_metadata_and_download_errors_carry_scrubbed_body(monkeypatch, hosted_env, caplog, step, failing):
+    s3_body = ("<Error><Code>SignatureDoesNotMatch</Code><AWSAccessKeyId>AKIAEXAMPLE</AWSAccessKeyId>"
+               "<StringToSign>GET\nsigned-material</StringToSign><SignatureProvided>sig</SignatureProvided>"
+               "<Url>https://files.example/graph.json?X-Amz-Signature=deadbeef&amp;x=1</Url></Error>")
+    bad = _ErrResp(status=403, text=s3_body)
+    if failing == "meta":
+        fake, calls = _scripted_requests([_ErrResp(payload={})], meta_response=bad)
+    else:
+        fake, calls = _scripted_requests([_ErrResp(payload={})], download_response=bad)
+    monkeypatch.setattr(gc, "requests", fake)
+    caplog.set_level("INFO", logger=gc.logger.name)
+
+    with pytest.raises(gc.HostedHTTPError) as excinfo:
+        gc.generate_graph("the quick brown fox", slug="s", backend="hosted")
+
+    err = excinfo.value
+    assert calls["post"] == 1  # 403 is not retryable
+    assert err.step == step and err.status == 403
+    assert "SignatureDoesNotMatch" in err.body
+    for leaked in ("AKIAEXAMPLE", "signed-material", "<SignatureProvided>sig<", "deadbeef", "abc123"):
+        assert leaked not in str(err)
+        assert leaked not in _all_log_text(caplog)
+    # the logged URL never carries the pre-signed query string
+    assert "?" not in err.url

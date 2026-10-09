@@ -34,18 +34,24 @@ NEURONPEDIA_BASE_URL = os.environ.get("NEURONPEDIA_BASE_URL", "https://www.neuro
 LOCAL_SERVER_URL = os.environ.get("GRAPH_SERVER_URL", "http://localhost:5004")
 
 # Neuronpedia model ID -> TransformerLens model ID. Registered candidates for
-# hosted graph generation. Tested against the live backend on 2026-07-07: only
-# gemma-2-2b actually produces graphs. gemma-3-4b-it and qwen3-1.7b return a
-# fast non-retryable error (not served), and qwen3-4b returns persistent 500s
-# from /api/graph/generate even with no parallel load. The others are kept here
-# so the cross-model trace matrix + front-end model selector light up
-# automatically if/when Neuronpedia enables them - re-run the 2-pair probe (a
-# graph_models circuit-trace trigger) to re-check before scaling.
+# hosted graph generation; docs/cross-model.md has the dated probe table, and
+# the hosted backend changes, so re-run the 2-pair probe (a graph_models
+# circuit-trace trigger) before relying on any of this. As of the 2026-09-02
+# re-probe: gemma-2-2b serves graphs and is the only model with a transcoder
+# source set; qwen3-4b has served graphs since 2026-09-02 (it returned
+# persistent 500s on 2026-07-07) but has no transcoders, so its features are
+# untagged; gemma-3-4b-it and qwen3-1.7b return a fast non-retryable error
+# whose cause is unrecorded, because the client discarded the response body
+# until HostedHTTPError began carrying it. For qwen3-1.7b the cause is probably
+# Neuronpedia's 10-token prompt cap for LORSA models ("Prompt Too Long"), which
+# is inferred from Neuronpedia's source, not observed. The unserved models stay
+# here so the cross-model trace matrix and the front-end model selector light
+# up if Neuronpedia enables them.
 MODEL_REGISTRY: dict[str, str] = {
     "gemma-2-2b": "google/gemma-2-2b",       # confirmed working
-    "gemma-3-4b-it": "google/gemma-3-4b-it", # registered; not served yet (400/404)
+    "gemma-3-4b-it": "google/gemma-3-4b-it", # registered; fast non-retryable error (cause unrecorded)
     "qwen3-4b": "Qwen/Qwen3-4B",             # SERVES GRAPHS since 2026-09-02 (no transcoders)
-    "qwen3-1.7b": "Qwen/Qwen3-1.7B",         # registered; not served yet (400/404)
+    "qwen3-1.7b": "Qwen/Qwen3-1.7B",         # registered; fast non-retryable error (likely 10-token LORSA cap)
 }
 
 DEFAULT_GRAPH_MODEL = "gemma-2-2b"
@@ -155,6 +161,117 @@ _HTTPError = requests.exceptions.HTTPError
 _ConnectionError = requests.exceptions.ConnectionError
 _Timeout = requests.exceptions.Timeout
 
+# Upper bound on the response body kept on a hosted error (log line and
+# exception message). Neuronpedia's error bodies are short JSON messages such as
+# "Prompt Too Long" or "Source Set Missing"; the bound only keeps an HTML error
+# page from flooding the CI log.
+HOSTED_ERROR_BODY_LIMIT = 2000
+
+# Signed-URL material that a storage error body (an S3-style
+# SignatureDoesNotMatch reply to the graph download) can echo back. The API key
+# travels only in a request header and is never logged; these are scrubbed from
+# the body before it is logged or raised because the repository is public.
+_SIGNED_BODY_ELEMENTS = re.compile(
+    r"<(AWSAccessKeyId|SignatureProvided|StringToSign|StringToSignBytes|CanonicalRequest|"
+    r"CanonicalRequestBytes)>.*?</\1>",
+    re.DOTALL,
+)
+_SIGNED_QUERY_PARAMS = re.compile(r"(X-Amz-(?:Signature|Credential|Security-Token)=)[^&\s\"'<]+")
+
+
+class HostedHTTPError(_HTTPError):
+    """A non-2xx response from the hosted backend, carrying what the server said.
+
+    Subclasses ``requests.exceptions.HTTPError`` and keeps the original
+    exception's ``response``, so ``err.response.status_code`` (the retry
+    classification in _generate_hosted) and any ``except HTTPError`` keep
+    working unchanged. The extra attributes record which request failed and the
+    bounded, scrubbed response body; ``body`` is None when it could not be read.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        response: Any,
+        status: int | None,
+        step: str,
+        model_id: str,
+        url: str,
+        body: str | None,
+    ) -> None:
+        super().__init__(message, response=response)
+        self.status = status
+        self.step = step
+        self.model_id = model_id
+        self.url = url
+        self.body = body
+
+
+def _redact_url(url: str) -> str:
+    """Drop the query string and fragment: the graph download is a pre-signed storage URL."""
+    return url.split("?", 1)[0].split("#", 1)[0]
+
+
+def _bounded_body(resp: Any, secrets: tuple[str, ...] = ()) -> str | None:
+    """The response body, scrubbed and truncated to HOSTED_ERROR_BODY_LIMIT characters.
+
+    Returns None when the body cannot be read, so a missing body is recorded as
+    missing rather than as an empty message.
+    """
+    try:
+        text = resp.text
+    except Exception:  # noqa: BLE001 - an unreadable body must not mask the HTTP error itself
+        return None
+    if text is None:
+        return None
+    if not isinstance(text, str):
+        text = str(text)
+    for secret in secrets:
+        if secret:
+            text = text.replace(secret, "[redacted]")
+    text = _SIGNED_BODY_ELEMENTS.sub(lambda m: f"<{m.group(1)}>[redacted]</{m.group(1)}>", text)
+    text = _SIGNED_QUERY_PARAMS.sub(r"\1[redacted]", text)
+    if len(text) > HOSTED_ERROR_BODY_LIMIT:
+        text = f"{text[:HOSTED_ERROR_BODY_LIMIT]}... [truncated; {len(text)} chars total]"
+    return text
+
+
+def _raise_for_hosted_status(
+    resp: Any, *, step: str, model_id: str, slug: str, url: str, secrets: tuple[str, ...] = ()
+) -> None:
+    """``resp.raise_for_status()``, except that a failure logs and carries the response body.
+
+    Re-raises as HostedHTTPError holding the original exception's ``response``,
+    so the status code the retry loop classifies on is exactly the one
+    raise_for_status reported. Only the step, status, model, slug, query-free URL
+    and scrubbed body are logged: never request headers, the session, or the
+    request body.
+    """
+    try:
+        resp.raise_for_status()
+    except _HTTPError as err:
+        response = err.response
+        status = getattr(response, "status_code", None)
+        body = _bounded_body(resp, secrets)
+        safe_url = _redact_url(url)
+        level = logging.WARNING if status in RETRYABLE_HOSTED_STATUS else logging.ERROR
+        logger.log(
+            level,
+            "Hosted %s failed: HTTP %s model=%s slug=%s url=%s body=%s",
+            step, status, model_id, slug, safe_url, body,
+        )
+        raise HostedHTTPError(
+            f"hosted {step} returned HTTP {status} for model={model_id} slug={slug} "
+            f"url={safe_url}: {body if body is not None else '<body unreadable>'}",
+            response=response,
+            status=status,
+            step=step,
+            model_id=model_id,
+            url=safe_url,
+            body=body,
+        ) from err
+
 
 def _generate_hosted(
     prompt: str, slug: str, model_id: str, source_set: str | None, timeout: float, **params: Any
@@ -207,7 +324,8 @@ def _generate_hosted(
         except (_ConnectionError, _Timeout) as err:
             last_err = err
     raise RuntimeError(
-        f"hosted graph generation failed after {HOSTED_ATTEMPTS} attempts for slug={slug!r}"
+        f"hosted graph generation failed after {HOSTED_ATTEMPTS} attempts for slug={slug!r}; "
+        f"last error: {last_err}"
     ) from last_err
 
 
@@ -215,15 +333,23 @@ def _hosted_attempt(
     session: Any, body: dict[str, Any], model_id: str, slug: str, timeout: float
 ) -> dict[str, Any]:
     logger.info("Requesting hosted graph generation: model=%s slug=%s", model_id, slug)
-    resp = session.post(f"{NEURONPEDIA_BASE_URL}/api/graph/generate", json=body, timeout=timeout)
-    resp.raise_for_status()
+    # The key is read only to scrub it from an error body should a server ever
+    # echo it back; it is never logged.
+    secrets = (session.headers.get("x-api-key") or "",)
+    generate_url = f"{NEURONPEDIA_BASE_URL}/api/graph/generate"
+    resp = session.post(generate_url, json=body, timeout=timeout)
+    _raise_for_hosted_status(resp, step="generate", model_id=model_id, slug=slug, url=generate_url,
+                             secrets=secrets)
 
     # Fetch metadata for the JSON file URL, then download the graph itself.
-    meta_resp = session.get(f"{NEURONPEDIA_BASE_URL}/api/graph/{model_id}/{slug}", timeout=60)
-    meta_resp.raise_for_status()
+    meta_url = f"{NEURONPEDIA_BASE_URL}/api/graph/{model_id}/{slug}"
+    meta_resp = session.get(meta_url, timeout=60)
+    _raise_for_hosted_status(meta_resp, step="metadata", model_id=model_id, slug=slug, url=meta_url,
+                             secrets=secrets)
     json_url = meta_resp.json()["url"]
     graph_resp = requests.get(json_url, timeout=120)
-    graph_resp.raise_for_status()
+    _raise_for_hosted_status(graph_resp, step="graph download", model_id=model_id, slug=slug, url=json_url,
+                             secrets=secrets)
     graph = graph_resp.json()
     logger.info(
         "Hosted graph ready: %s nodes, %s links (view at %s/%s/graph?slug=%s)",
