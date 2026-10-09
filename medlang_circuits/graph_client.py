@@ -37,20 +37,22 @@ LOCAL_SERVER_URL = os.environ.get("GRAPH_SERVER_URL", "http://localhost:5004")
 # hosted graph generation; docs/cross-model.md has the dated probe table, and
 # the hosted backend changes, so re-run the 2-pair probe (a graph_models
 # circuit-trace trigger) before relying on any of this. As of the 2026-09-02
-# re-probe: gemma-2-2b serves graphs and is the only model with a transcoder
-# source set; qwen3-4b has served graphs since 2026-09-02 (it returned
-# persistent 500s on 2026-07-07) but has no transcoders, so its features are
-# untagged; gemma-3-4b-it and qwen3-1.7b return a fast non-retryable error
-# whose cause is unrecorded, because the client discarded the response body
-# until HostedHTTPError began carrying it. For qwen3-1.7b the cause is probably
-# Neuronpedia's 10-token prompt cap for LORSA models ("Prompt Too Long"), which
-# is inferred from Neuronpedia's source, not observed. The unserved models stay
-# here so the cross-model trace matrix and the front-end model selector light
-# up if Neuronpedia enables them.
+# re-probe: gemma-2-2b and qwen3-4b serve graphs (qwen3-4b since 2026-09-02;
+# it returned persistent 500s on 2026-07-07). Which models have feature labels
+# is neuronpedia_features.MODEL_SOURCE_SETS, not this table. gemma-3-4b-it and
+# qwen3-1.7b return a fast non-retryable error whose cause is unrecorded,
+# because the client discarded the response body until HostedHTTPError began
+# carrying it. Both causes below are inferred from Neuronpedia's source and its
+# public model records (2026-10-09), not observed: gemma-3-4b-it has no default
+# graph source set, so a request that omits sourceSetName (this study's
+# default) gets "Source Set Missing"; qwen3-1.7b has a 10-token prompt cap for
+# LORSA models ("Prompt Too Long"). The unserved models stay here so the
+# cross-model trace matrix and the front-end model selector light up if
+# Neuronpedia enables them.
 MODEL_REGISTRY: dict[str, str] = {
     "gemma-2-2b": "google/gemma-2-2b",       # confirmed working
-    "gemma-3-4b-it": "google/gemma-3-4b-it", # registered; fast non-retryable error (cause unrecorded)
-    "qwen3-4b": "Qwen/Qwen3-4B",             # SERVES GRAPHS since 2026-09-02 (no transcoders)
+    "gemma-3-4b-it": "google/gemma-3-4b-it", # registered; fast non-retryable error (likely no default source set)
+    "qwen3-4b": "Qwen/Qwen3-4B",             # SERVES GRAPHS since 2026-09-02
     "qwen3-1.7b": "Qwen/Qwen3-1.7B",         # registered; fast non-retryable error (likely 10-token LORSA cap)
 }
 
