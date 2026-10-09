@@ -60,6 +60,10 @@ MODEL_FAMILY = {
     "medgemma-4b-it": "medical",
     "meditron3-8b": "medical",
     "apertus-8b-meditronfo": "medical",
+    # Post-registration additions (2026-10-09), unmeasured until their probes land.
+    "gemma-4-e2b": "base",
+    "qwen3.5-2b-base": "base",
+    "medgemma-1.5-4b-it": "medical",
 }
 
 _TOK_RE = re.compile(r'Output "\s*(.*)"$')

@@ -24,6 +24,17 @@ pinned to one exact Hugging Face commit (`HF_REVISIONS`; see *Pinned revisions* 
 | `medgemma-4b-it` | `google/medgemma-4b-it` | 4.3B | MedGemma / Gemma 3 (Google, Health AI Developer Foundations) | Gated — HAI-DEF terms (owner accepted 2026-07-13 on the CI `HF_TOKEN` account) | Medical-tuned twin of `gemma-3-4b-it` (same base, same size): the paired contrast isolates what medical fine-tuning does to the colloquial-vs-clinical gap |
 | `meditron3-8b` | `EPFLiGHT/Meditron3-8B` (was `OpenMeditron/Meditron3-8B`, which now HTTP-307-redirects here) | 8.0B | Meditron 3 / Llama 3.1 (EPFL), fine-tuned from `meta-llama/Llama-3.1-8B-Instruct` | Gated — Llama 3.1 license acknowledgment (owner signed 2026-07-17 on the CI `HF_TOKEN` account) | Medical-tuned, instruction-tuned 8B (C4 successor, owner 2026-07-17); 8B class: swap step and small chunks |
 | `apertus-8b-meditronfo` | `EPFLiGHT/Apertus-8B-MeditronFO` | 8.1B | Apertus (Swiss AI) + MeditronFO medical tuning (EPFL), fine-tuned from an Apertus-8B instruct checkpoint | Ungated (Apache-2.0) | Medical-tuned, instruction-tuned 8B (C4 successor, owner 2026-07-17); 8B class: swap step and small chunks. **Upstream replaced the weights on 2026-10-06; the study stays pinned to the 2026-06-26 weights** (see below) |
+| `gemma-4-e2b` | `google/gemma-4-E2B` | 5.1B stored (2.3B effective; per-layer embeddings plus vision and audio encoders), ~10.2 GB bf16 | Gemma 4 (Google), **base** (IT twin `google/gemma-4-E2B-it` not registered) | Ungated (Apache-2.0). **Awaiting limit-3 probe** | Post-registration exploratory addition (2026-10-09): newest Gemma generation as a base checkpoint, extending the `gemma-2-2b` → `gemma-3-4b-it` line. Loads as the full multimodal `Gemma4ForConditionalGeneration`; only the text stack runs |
+| `qwen3.5-2b-base` | `Qwen/Qwen3.5-2B-Base` | 2.3B, ~4.5 GB bf16 | Qwen3.5 (Alibaba), **base** | Ungated (Apache-2.0). **Awaiting limit-3 probe** | Post-registration exploratory addition (2026-10-09): the suite's only true Qwen base (the Qwen3 entries are post-trained), with a new 248,320-entry tokenizer and a hybrid Gated-DeltaNet/attention architecture; first load of the `qwen3_5` path in CI |
+| `medgemma-1.5-4b-it` | `google/medgemma-1.5-4b-it` | 4.3B, ~8.6 GB bf16 | MedGemma 1.5 / Gemma 3 (Google, HAI-DEF), **instruction-tuned** (no 1.5 PT exists) | Gated — HAI-DEF terms; the owner said on 2026-10-09 they will accept them on the CI `HF_TOKEN` account (acceptance may be per repository, so the `medgemma-4b-it` grant may not cover it). **Awaiting limit-3 probe** | Post-registration exploratory addition (2026-10-09): third medical-tune point on the Gemma 3 4B base beside `gemma-3-4b-it` and `medgemma-4b-it` |
+
+The three 2026-10-09 additions are in the exploratory family (`docs/prereg_divergence_log.md`).
+Their first fire is a limit-3 probe per model (protocol below), fired by a later session. Support in
+`scripts/depth_probe.py` (interp-engine 1.5.1) and `scripts/activation_patch.py` (transformer_lens) is
+unverified, and none is in `activation_patch.HF_IDS` or `backfill_planner.MODELS`. Reaching parity
+with the existing models costs about 31 runner-hours per model (about 39 batch legs at roughly one
+minute per pair, unmeasured for these three), on a lane that still had 125 of 390 cross-model legs
+outstanding at the last coverage line in `ops/dashboard.json`.
 
 The Gemma gate on Hugging Face is one shared license acknowledgement across `google/gemma*`
 repos, so the acceptance already made for `google/gemma-3-4b-it` (the grant behind the
@@ -86,6 +97,7 @@ Read the result per matrix leg in the Actions run:
   propagated). Otherwise click **Acknowledge license**, review Google's Gemma Terms of
   Use, and confirm. Instant grant, no review queue.
 - **`gemma-2-9b`** — same click-path at <https://huggingface.co/google/gemma-2-9b>.
+- **`medgemma-1.5-4b-it`** — open <https://huggingface.co/google/medgemma-1.5-4b-it> logged in as the `HF_TOKEN` account and accept the Health AI Developer Foundations terms before its probe; until then its leg fails with a gated-repo error.
 - **`olmo-2-1b`** — ungated; nothing to accept. **`medgemma-4b-it`** — HAI-DEF terms, accepted by the owner 2026-07-13 (probe verified). **`meditron-7b`** — ungated on paper; the probe confirms.
 
 If the token is fine-grained rather than classic, it also needs the
@@ -159,6 +171,17 @@ endpoint without authentication.
 | `medgemma-4b-it` | `google/medgemma-4b-it` | `290cda5eeccbee130f987c4ad74a59ae6f196408` | 2025-10-28 | 47 | same |
 | `meditron3-8b` | `EPFLiGHT/Meditron3-8B` | `783c241b18b84692689e0336170b345e5732e48e` | 2026-06-25 | 104 | same (under both the old and the new org path) |
 | `apertus-8b-meditronfo` | `EPFLiGHT/Apertus-8B-MeditronFO` | `ef2b141da7ccc347c2a13b2518370ba6a8a2b745` | 2026-06-26 | 102 | **no**: `dd868922fa74…` |
+
+Models added after pinning was enforced are pinned when they are added, to the head of `main`
+that day, read from the `sha` field of the public `https://huggingface.co/api/models/<repo>`
+endpoint (which answered for the gated `medgemma-1.5-4b-it` without authentication). Their
+limit-3 probes are the first loads at these commits:
+
+| Short id | HF repo | Pinned commit | Repo last modified | Added |
+|---|---|---|---|---|
+| `gemma-4-e2b` | `google/gemma-4-E2B` | `d29ff6b45f081a49ee2733a859c9c9c2d95d1a6f` | 2026-07-15 | 2026-10-09 |
+| `qwen3.5-2b-base` | `Qwen/Qwen3.5-2B-Base` | `b1485b2fa6dfa1287294f269f5fb618e03d52d7c` | 2026-04-23 | 2026-10-09 |
+| `medgemma-1.5-4b-it` | `google/medgemma-1.5-4b-it` | `91850547d9f0b2fdd21aa7c5f4f3d1a8a52c243b` | 2026-04-13 | 2026-10-09 |
 
 Tombstones (`biomistral-7b`, `meditron-7b`, `gemma-2-9b`) stay in `HF_IDS` as records,
 have no pin, and are refused by every loader.

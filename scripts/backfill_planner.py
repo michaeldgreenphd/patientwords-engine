@@ -35,6 +35,9 @@ ENGINE = Path(__file__).resolve().parents[1]
 
 # Cross-model prediction registry (order = fallback priority after medical).
 # Mirrors logits_eval.HF_IDS minus dropped/superseded ids; gemma-2-9b is on hold.
+# The 2026-10-09 additions (gemma-4-e2b, qwen3.5-2b-base, medgemma-1.5-4b-it) are
+# deliberately absent: each joins only after its limit-3 probe lands and the owner
+# decides to spend runner time on its backfill (~31 runner-hours per model).
 MODELS = [
     "gemma-2-2b", "gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b", "llama-3.2-3b",
     "olmo-2-1b", "gemma-2-2b-it", "medgemma-4b-it", "meditron3-8b", "apertus-8b-meditronfo",
