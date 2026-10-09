@@ -31,6 +31,18 @@ name: Circuit Trace Evaluation (medlang-circuits)
 # show_mitigation, mode translation, steering and generate_explanations under
 # it, it commits only the summary parts, and a fail-closed holdout seal check
 # runs before that commit.
+#
+# The key source_set (2026-10-09) names the Neuronpedia graph source set to trace
+# with (medlang-batch-eval --source-set: the hosted request's sourceSetName, and
+# the set features are tagged from). Absent or "" passes no --source-set, so the
+# server applies the model's default set, as every fire before the key did;
+# gemma-3-4b-it has no default ("Source Set Missing", run 37960184793) and traces
+# only with one. The params job refuses a value that is not a short lower-case
+# slug, a source set with more than one graph model, and a source set with
+# commit_outputs true under either root: trace_out/ summaries naming a source set
+# feed scripts/export_tag_mass.py, and a pilot part's path does not name the set,
+# so another set's fire would replace it (scripts/fire_trigger.py
+# circuit_trace_source_set_problems refuses the same at a fire).
 
 on:
   workflow_dispatch:
@@ -69,6 +81,10 @@ on:
         description: "(2panel) Trace a third panel: the patient sentence LLM-translated to clinical wording (uses ANTHROPIC_API_KEY)"
         type: boolean
         default: false
+      source_set:
+        description: "Neuronpedia graph source set (sourceSetName; lower-case slug, one model only; '' = the model's server default)"
+        type: string
+        default: ""
       screen_targets:
         description: "(2panel) Screen pairs: the intended target must reach this probability on the clinical side; screened-out pairs skip the patient trace but stay recorded ('' = off)"
         type: string
@@ -150,6 +166,7 @@ jobs:
           IN_OFFSETS: ${{ inputs.offsets }}
           IN_SAMPLE_SIZE: ${{ inputs.sample_size }}
           IN_SCREEN_TARGETS: ${{ inputs.screen_targets }}
+          IN_SOURCE_SET: ${{ inputs.source_set }}
           IN_SHOW_MITIGATION: ${{ inputs.show_mitigation }}
           IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
           IN_MAX_N_LOGITS: ${{ inputs.max_n_logits }}
@@ -159,7 +176,7 @@ jobs:
           IN_MAX_FEATURE_NODES: ${{ inputs.max_feature_nodes }}
         run: |
           python - <<'EOF'
-          import json, os, posixpath
+          import json, os, posixpath, re
           defaults = {
               "graph_model": "gemma-2-2b", "graph_models": "", "mode": "2panel",
               "pairs_file": "", "offsets": "0", "sample_size": "1",
@@ -170,7 +187,7 @@ jobs:
               "steer_validate": "0", "steer_boost": "0", "steer_placebo": "0",
               "steer_strength": "", "steer_boost_strength": "", "steer_rank_offset": "",
               "translation_model": "", "translation_placebo": "0",
-              "output_root": "",
+              "output_root": "", "source_set": "",
           }
           params = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
@@ -202,6 +219,13 @@ jobs:
           offsets = sorted({int(x) for x in params["offsets"].replace(",", " ").split()})
           if not offsets:
               raise SystemExit("no offsets to trace")
+          # source_set: "" passes no --source-set (the model's server default). Any other value reaches the run step's
+          # command line, so it must be a slug that cannot read as an option (fire_trigger.py
+          # CIRCUIT_TRACE_SOURCE_SET_RE); the one-model and trace_out-commit rules follow the models below.
+          source_set = params["source_set"]
+          if source_set and not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", source_set):
+              raise SystemExit(f"source_set {source_set!r}: a source set is a lower-case slug (a letter or digit, "
+                               "then letters, digits or hyphens, at most 64 characters)")
           # output_root: "" keeps trace_out/<stem>; "pilot/traces" is the pilot root, which no collector reads, and
           # each run traces into its own folder there, pilot/traces/<run_id>/<stem>[__<model>] (2026-10-05). A
           # pairs file under pilot/ goes with the pilot root and only with it, under that root it must sit under
@@ -296,6 +320,18 @@ jobs:
               models = ["gemma-2-2b", "gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b"]
           if not models:
               models = [params["graph_model"]]
+          if source_set:
+              # a source set belongs to one model, and the matrix passes it to every cell
+              if len(models) > 1:
+                  raise SystemExit(f"source_set {source_set!r} with {len(models)} graph models {models}: fire each "
+                                   "model on its own")
+              # under either root: scripts/export_tag_mass.py aggregates clinical_mass from every trace_out/ summary
+              # naming a source set, and a pilot part's path (<run_id>/<stem>[__<model>]/part_NN) does not name the
+              # set, so a fire with another set would replace it
+              if params["commit_outputs"].strip().lower() == "true":
+                  raise SystemExit(f"source_set {source_set!r} with commit_outputs true is refused under either root "
+                                   "(trace_out/ would publish uncalibrated clinical mass; a pilot part would be "
+                                   "replaced by another set's fire); use commit_outputs false")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               out.write("config=" + json.dumps(params) + "\n")
               out.write("offsets=" + json.dumps(offsets) + "\n")
@@ -437,6 +473,7 @@ jobs:
           NEURONPEDIA_STEER_RANK_OFFSET: ${{ fromJson(needs.params.outputs.config).steer_rank_offset }}
           MEDLANG_ANTHROPIC_MODEL: ${{ fromJson(needs.params.outputs.config).translation_model }}
           MEDLANG_TRANSLATION_PLACEBO: ${{ fromJson(needs.params.outputs.config).translation_placebo }}
+          SOURCE_SET: ${{ fromJson(needs.params.outputs.config).source_set }}
         run: |
           ARGS=(ci_pairs.json
             --mode "${{ fromJson(needs.params.outputs.config).mode }}"
@@ -451,6 +488,10 @@ jobs:
             --out "$OUT_DIR")
           if [ -n "$SCREEN" ]; then
             ARGS+=(--screen-targets "$SCREEN")
+          fi
+          # "" (the default) passes nothing, so the server applies the model's default graph source set
+          if [ -n "$SOURCE_SET" ]; then
+            ARGS+=(--source-set "$SOURCE_SET")
           fi
           if [ "$MITIGATE" = "true" ]; then
             ARGS+=(--show-mitigation)
