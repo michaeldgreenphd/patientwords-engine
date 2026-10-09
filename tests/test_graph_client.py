@@ -604,3 +604,80 @@ def test_hosted_metadata_and_download_errors_carry_scrubbed_body(monkeypatch, ho
         assert leaked not in _all_log_text(caplog)
     # the logged URL never carries the pre-signed query string
     assert "?" not in err.url
+
+
+# Gemini review of PR #90: requests' own messages quote the full URL ("for url: ..."), so neither the raised error nor
+# its chain may carry the original exception, and a connection error's text is scrubbed before it is logged or raised.
+
+class _RealisticErrResp(_ErrResp):
+    """Fails raise_for_status with requests' real message shape, which ends "for url: <url>"."""
+
+    def __init__(self, status, text, url):
+        super().__init__(status=status, text=text)
+        self.url = url
+
+    def raise_for_status(self):
+        import requests as real_requests
+
+        raise real_requests.exceptions.HTTPError(f"{self.status_code} Client Error: Forbidden for url: {self.url}",
+                                                 response=self)
+
+
+def test_download_failure_traceback_never_prints_the_signed_url(monkeypatch, hosted_env, caplog):
+    import traceback
+
+    bad = _RealisticErrResp(403, "<Error><Code>AccessDenied</Code></Error>", _SIGNED_GRAPH_URL)
+    fake, _ = _scripted_requests([_ErrResp(payload={})], download_response=bad)
+    monkeypatch.setattr(gc, "requests", fake)
+    caplog.set_level("INFO", logger=gc.logger.name)
+
+    with pytest.raises(gc.HostedHTTPError) as excinfo:
+        gc.generate_graph("the quick brown fox", slug="s", backend="hosted")
+
+    printed = "".join(traceback.format_exception(excinfo.value))
+    assert "AccessDenied" in printed  # the server's message still reaches the CI log
+    assert "abc123" not in printed and "X-Amz-Signature" not in printed
+    assert excinfo.value.__cause__ is None and excinfo.value.__suppress_context__
+    assert "abc123" not in _all_log_text(caplog)
+
+
+def test_exhausted_retries_scrub_a_connection_error_that_quotes_the_signed_url(monkeypatch, hosted_env, caplog):
+    import traceback
+
+    import requests as real_requests
+
+    class Req:
+        def Session(self):
+            sess, _ = _scripted_requests([_ErrResp(payload={})])
+            return sess.Session()
+
+        def get(self, url, timeout=None):
+            raise real_requests.exceptions.ConnectionError(
+                "HTTPSConnectionPool(host='files.example', port=443): Max retries exceeded with url: "
+                "/graph.json?X-Amz-Signature=abc123&X-Amz-Credential=cred456 (Caused by NewConnectionError)")
+
+    monkeypatch.setattr(gc, "requests", Req())
+    caplog.set_level("INFO", logger=gc.logger.name)
+
+    with pytest.raises(RuntimeError, match="after 4 attempts") as excinfo:
+        gc.generate_graph("the quick brown fox", slug="s", backend="hosted")
+
+    printed = "".join(traceback.format_exception(excinfo.value))
+    assert "ConnectionError" in printed and "/graph.json?[query redacted]" in printed
+    for leaked in ("abc123", "cred456", "X-Amz-"):
+        assert leaked not in printed
+        assert leaked not in _all_log_text(caplog)
+
+
+def test_hosted_http_error_survives_copy_and_pickle():
+    import copy
+    import pickle
+
+    err = gc.HostedHTTPError("hosted generate returned HTTP 400", response=None, status=400, step="generate",
+                             model_id="gemma-3-4b-it", url="https://www.neuronpedia.org/api/graph/generate",
+                             body="Source Set Missing")
+    for clone in (copy.copy(err), pickle.loads(pickle.dumps(err))):
+        assert isinstance(clone, gc.HostedHTTPError)
+        assert (clone.status, clone.step, clone.model_id, clone.body) == (400, "generate", "gemma-3-4b-it",
+                                                                           "Source Set Missing")
+        assert str(clone) == str(err)

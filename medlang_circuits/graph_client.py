@@ -195,13 +195,15 @@ class HostedHTTPError(_HTTPError):
         self,
         message: str,
         *,
-        response: Any,
-        status: int | None,
-        step: str,
-        model_id: str,
-        url: str,
-        body: str | None,
+        response: Any = None,
+        status: int | None = None,
+        step: str = "",
+        model_id: str = "",
+        url: str = "",
+        body: str | None = None,
     ) -> None:
+        # Defaults only so copy/pickle (which call cls(*self.args) and then
+        # restore __dict__) can rebuild the exception; every raise passes all.
         super().__init__(message, response=response)
         self.status = status
         self.step = step
@@ -213,6 +215,21 @@ class HostedHTTPError(_HTTPError):
 def _redact_url(url: str) -> str:
     """Drop the query string and fragment: the graph download is a pre-signed storage URL."""
     return url.split("?", 1)[0].split("#", 1)[0]
+
+
+_QUERY_STRING_RE = re.compile(r"\?[^\s'\"<>()]*")
+
+
+def _safe_error_text(err: BaseException | None) -> str:
+    """``type: message`` with every query string removed.
+
+    requests and urllib3 quote the request URL in their own messages ("for url:
+    ...", "Max retries exceeded with url: ..."), which for the graph download is
+    the pre-signed storage URL; a HostedHTTPError's message is already safe.
+    """
+    if err is None:
+        return "None"
+    return f"{type(err).__name__}: {_QUERY_STRING_RE.sub('?[query redacted]', str(err))}"
 
 
 def _bounded_body(resp: Any, secrets: tuple[str, ...] = ()) -> str | None:
@@ -272,7 +289,7 @@ def _raise_for_hosted_status(
             model_id=model_id,
             url=safe_url,
             body=body,
-        ) from err
+        ) from None  # the original HTTPError's message quotes the full URL; never chain it
 
 
 def _generate_hosted(
@@ -312,7 +329,7 @@ def _generate_hosted(
             wait = HOSTED_RETRY_SLEEP * 2 ** (attempt - 1)
             logger.warning(
                 "Hosted generation retry %d/%d for slug=%s in %.0fs (%s)",
-                attempt, HOSTED_ATTEMPTS - 1, attempt_slug, wait, last_err,
+                attempt, HOSTED_ATTEMPTS - 1, attempt_slug, wait, _safe_error_text(last_err),
             )
             time.sleep(wait)
         body["slug"] = attempt_slug
@@ -327,8 +344,11 @@ def _generate_hosted(
             last_err = err
     raise RuntimeError(
         f"hosted graph generation failed after {HOSTED_ATTEMPTS} attempts for slug={slug!r}; "
-        f"last error: {last_err}"
-    ) from last_err
+        f"last error: {_safe_error_text(last_err)}"
+    ) from (last_err if isinstance(last_err, HostedHTTPError) else None)
+    # A HostedHTTPError is already scrubbed and carries no chain of its own; any
+    # other last error (a connection error, a timeout) can quote the pre-signed
+    # URL in its message or its chain, so only its scrubbed text is kept.
 
 
 def _hosted_attempt(
