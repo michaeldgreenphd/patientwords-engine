@@ -169,3 +169,26 @@ def test_main_writes_the_report(two_models, tmp_path, capsys):
     report = json.loads(out.read_text(encoding="utf-8"))
     assert report["seed"] == 11 and report["rule"] == flc.REPORT_RULE
     assert "pairs joined 2" in capsys.readouterr().out
+
+
+def test_refuses_a_tagged_graph_from_another_model(tmp_path):
+    # Regression (Codex review of PR #93): a wrong artifact downloaded into a directory was
+    # counted as that directory's model; metadata.scan must match the summaries' graph_model.
+    gemma = _trace_dir(tmp_path, "gemma-2-2b", "gemmascope-transcoder-16k", [_row(1, "p", 0.3, 0.2)],
+                       {"pair_01_clinical.tagged.json": _graph("gemma-2-2b", [_node(1, 1, 1, "clinical", "x")])})
+    qwen = _trace_dir(tmp_path, "qwen3-4b", "transcoder-hp", [_row(1, "p", 0.1, 0.1)],
+                      {"pair_01_clinical.tagged.json": _graph("gemma-2-2b", [_node(1, 1, 1, "clinical", "x")])})
+    with pytest.raises(flc.GraphModelMismatchError, match="'gemma-2-2b'.*'qwen3-4b'"):
+        flc.build_report(gemma, qwen)
+    no_scan = _graph("qwen3-4b", [_node(1, 1, 1, "clinical", "x")])
+    del no_scan["metadata"]["scan"]
+    (qwen / "pair_01_clinical.tagged.json").write_text(json.dumps(no_scan), encoding="utf-8")
+    with pytest.raises(flc.GraphModelMismatchError):
+        flc.build_report(gemma, qwen)
+
+
+def test_out_creates_a_missing_parent_directory(two_models, tmp_path):
+    a, b = two_models
+    out = tmp_path / "reports" / "nested" / "report.json"
+    assert flc.main([str(a), str(b), "--out", str(out), "--examples", "0"]) == 0
+    assert json.loads(out.read_text(encoding="utf-8"))["pairs"]["n_joined"] == 2

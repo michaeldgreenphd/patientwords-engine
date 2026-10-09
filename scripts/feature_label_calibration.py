@@ -27,8 +27,9 @@ Inputs. A trace directory holds ``batch_summary*.json`` (committed) and
 workflow artifact, ``circuit-trace-<model>-<mode>-<run>-offset<k>``, not in git).
 The tagged graphs are the only place a trace stores feature descriptions, so a
 directory without them is refused (MissingTaggedGraphsError) rather than
-reported from the summaries alone; download the artifact into the directory
-first. No network: nothing is fetched, and the fetcher's on-disk cache is not
+reported from the summaries alone (download the artifact into the directory
+first), and so is a tagged graph whose ``metadata.scan`` is not the summaries'
+graph_model (GraphModelMismatchError). No network: nothing is fetched, and the fetcher's on-disk cache is not
 read (it lives on the CI runner and is not uploaded).
 
 Statistics. Shares are plain proportions over the stated denominator, which is
@@ -102,6 +103,10 @@ class DuplicateIndexError(CalibrationInputError):
     """Two summary parts in one directory both report the same pair index."""
 
 
+class GraphModelMismatchError(CalibrationInputError):
+    """A tagged graph's metadata.scan is missing or names another model than the summaries."""
+
+
 def _read_json(path: Path) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -136,8 +141,11 @@ def _share(numerator: int, denominator: int) -> float | None:
     return round(numerator / denominator, 4) if denominator else None
 
 
-def tagged_graph_stats(trace_dir: Path, examples: int, seed: int) -> dict[str, Any]:
-    """Label coverage and clinical tagging over every tagged graph in the directory."""
+def tagged_graph_stats(trace_dir: Path, graph_model: str | None, examples: int, seed: int) -> dict[str, Any]:
+    """Label coverage and clinical tagging over every tagged graph in the directory.
+
+    Every graph must name ``graph_model`` (the summaries' model) in metadata.scan:
+    a wrong or stale artifact downloaded into the directory is refused, not counted."""
     paths = sorted(p for p in trace_dir.glob("pair_*.tagged.json") if TAGGED_RE.match(p.name))
     if not paths:
         raise MissingTaggedGraphsError(
@@ -151,6 +159,10 @@ def tagged_graph_stats(trace_dir: Path, examples: int, seed: int) -> dict[str, A
     for path in paths:
         graph = _read_json(path)
         meta = graph.get("metadata") or {}
+        if meta.get("scan") != graph_model:
+            raise GraphModelMismatchError(
+                f"{path}: metadata.scan is {meta.get('scan')!r} but the directory's summaries name "
+                f"graph_model {graph_model!r}; a tagged graph from another model or run is in this directory")
         for node in graph.get("nodes", []):
             if not is_feature_node(node):
                 continue
@@ -165,7 +177,7 @@ def tagged_graph_stats(trace_dir: Path, examples: int, seed: int) -> dict[str, A
                 words.append(len(description.split()))
                 multi += EXPLANATION_JOIN in description
             clinical += note.get("category") == CLINICAL
-            key = node_layer_and_index(node, meta.get("schema_version"), meta.get("scan", ""))
+            key = node_layer_and_index(node, meta.get("schema_version"), meta["scan"])
             if key is None:
                 undecodable += 1
                 continue
@@ -245,7 +257,7 @@ def model_report(trace_dir: Path, examples: int, seed: int) -> tuple[dict[str, A
         "source_set": summaries["source_set"],
         "summary_parts": summaries["parts"],
         "n_results": len(results),
-        **tagged_graph_stats(trace_dir, examples, seed),
+        **tagged_graph_stats(trace_dir, summaries["graph_model"], examples, seed),
         "clinical_mass": {role: distribution([_mass(row, role) for row in results.values()]) for role in roles},
     }
     if summaries["source_set"] is None:
@@ -296,6 +308,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     _print_summary(report)
     if args.out:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(report, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
         print(f"wrote {args.out}")
     return 0
