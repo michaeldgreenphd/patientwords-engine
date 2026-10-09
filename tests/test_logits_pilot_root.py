@@ -349,7 +349,7 @@ def test_run_3s_pairs_file_is_accepted_and_run_2s_legacy_name_is_refused_for_a_n
 
 def test_the_park_default_resolves_exactly_as_before_with_an_empty_root(tmp_path):
     """The default root is unchanged for existing fires: the park default resolves to the same nine outputs as before
-    this change, plus output_root, empty."""
+    this change, plus output_root and indices (2026-10-09), both empty."""
     park = dict(ft.PARK_DEFAULTS["logits-eval"])
     assert ft.logits_eval_params_problems(park) == [] and ft.validate_params("logits-eval", park) is None
     rc, out, err = _run_params(tmp_path, park)
@@ -357,7 +357,7 @@ def test_the_park_default_resolves_exactly_as_before_with_an_empty_root(tmp_path
     assert out == ('models=["qwen3-1.7b"]\n'
                    "pairs_file=data/simulated/pairs_20260706T172135Z.json\n"
                    "limit=1\noffset=0\ncommit_outputs=false\nmode=logits\nlayers=all\ntopk=10\ndtype=float32\n"
-                   "output_root=\n")
+                   "output_root=\nindices=\n")
 
 
 def test_the_params_job_publishes_the_root_and_its_defaults_match_the_fire_path():
@@ -412,7 +412,8 @@ def test_a_clean_dispatch_writes_each_output_once(tmp_path):
     rc, out, err = _run_dispatch(tmp_path, DISPATCH_CLEAN)
     assert rc == 0, err
     keys = [line.split("=", 1)[0] for line in out.splitlines()]
-    assert sorted(keys) == sorted([*DISPATCH_CLEAN, "output_root"]), out
+    # output_root and indices have no dispatch input and resolve to their empty defaults
+    assert sorted(keys) == sorted([*DISPATCH_CLEAN, "output_root", "indices"]), out
     assert _outputs(out)["pairs_file"] == "data/x.json" and _outputs(out)["output_root"] == ""
 
 

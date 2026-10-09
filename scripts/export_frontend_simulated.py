@@ -145,6 +145,14 @@ _unknown_steered = STEERED - set(STAMPS)
 if _unknown_steered:
     sys.exit(f"--steered-stamps names stamps absent from --stamps: {sorted(_unknown_steered)}")
 WANT_MODELS = [m.strip() for m in args.models.split(",") if m.strip()]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from publication_hold import HELD_MODELS, Gate, ReleaseError  # noqa: E402  (script-style module)
+# unreleased logits parts are not read (scripts/publication_hold.py); counted in the summary printed below
+GATE = Gate(ENGINE)
+_held_wanted = sorted(set(WANT_MODELS) & HELD_MODELS)
+if _held_wanted:
+    sys.exit(f"--models names models held from publication (scripts/publication_hold.py): {_held_wanted}; "
+             "releasing one is a reviewed change to that file")
 
 # The render prune reads the working tree. A site checkout that keeps tracked
 # renders off disk (the cloud containers' sparse clone excludes modes/) would
@@ -216,6 +224,11 @@ def read_trace_dir(trace_dir):
     screen = None
     for part in sorted(trace_dir.glob("batch_summary.part_*.json")):
         summary = json.loads(part.read_text(encoding="utf-8"))
+        try:
+            if not GATE.admit(part, summary):
+                continue
+        except ReleaseError as exc:
+            sys.exit(f"refusing: {exc}; nothing was written or pruned")
         for key in ("graph_model", "source_set", "mode", "backend"):
             if summary.get(key):
                 meta[key] = summary[key]
@@ -508,6 +521,8 @@ model_line = ", ".join(f"{mm['id']} ({mm['n_traced']})" for mm in models_meta) o
 print(f"{len(scenarios)} scenarios ({measured_n} measured) across {len(batches)} batch(es) "
       f"-> {out_data} ({withheld_holdout} confirmatory-holdout pairs withheld)")
 print(f"  models: {model_line}")
+if GATE.report():
+    print(f"  {GATE.report()}")
 print(f"  {copied} interactive renders published (cap {args.max_renders or 'none'}); "
       f"{data_only} scenarios are data-only on the public site")
 print(f"  {pruned} unlisted render(s) {'would be pruned' if DRY else 'pruned'} from "
