@@ -62,6 +62,11 @@ except ImportError:
     from payload_summary import build_summary
 
 try:
+    from scripts.feature_models import CALIBRATED_FEATURE_MODELS
+except ImportError:
+    from feature_models import CALIBRATED_FEATURE_MODELS
+
+try:
     from scripts.render_prune import (ReferenceScanError, hidden_references, hidden_renders, prune,
                                       prune_candidates, referenced_renders)
 except ImportError:
@@ -69,9 +74,11 @@ except ImportError:
                               prune_candidates, referenced_renders)
 
 # The circuit-tracer models, in registry order (gemma-2-2b is the base/default).
-# Only gemma-2-2b has a transcoder source set, so clinical-feature attribution
-# (the "Med circuit" meter, auto-interp accents) is meaningful for it alone;
-# the others trace + measure next-token behavior but render structure-only.
+# Clinical-feature attribution (the "Med circuit" meter) is published only for
+# models in feature_models.CALIBRATED_FEATURE_MODELS. A model can carry labels
+# without being in it: qwen3-4b's summaries name source set transcoder-hp since
+# 2026-10-09, but its clinical_mass stays nulled until the owner rules on the
+# calibration check (scripts/feature_label_calibration.py).
 BASE_MODEL = "gemma-2-2b"
 MODELS = ["gemma-2-2b", "gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b"]
 LABELS = {
@@ -80,7 +87,7 @@ LABELS = {
     "qwen3-4b": "Qwen3 4B",
     "qwen3-1.7b": "Qwen3 1.7B · LoRSA attn",
 }
-FEATURED = {"gemma-2-2b"}          # models with a real transcoder source set
+FEATURED = set(CALIBRATED_FEATURE_MODELS)  # models whose clinical_mass is published
 QK = {"qwen3-1.7b"}                # traced with LoRSA attention replacement
 # Base-model fields mirrored to the top level for backward compatibility, so a
 # reader that doesn't understand scenario.models still shows the gemma view.
@@ -233,9 +240,11 @@ def build_model_obj(r, pair, featured):
     probs = r.get("probabilities", {})
     measured = tok(r.get("target_token"))
     intended = (pair.get("target_clinical_token") or "").strip()
-    # clinical_mass is only meaningful for a model with a transcoder source set.
+    # clinical_mass is published only for a calibrated feature model (FEATURED).
     # NullFetcher models report ~0.0 (no feature is tagged clinical), which would
-    # read as a false "zero clinical mass" - coerce to None so the UI shows "-".
+    # read as a false "zero clinical mass"; a labelled but uncalibrated model
+    # (qwen3-4b) reports a number not yet comparable with gemma-2-2b's. Both are
+    # coerced to None so the UI shows "-".
     return {
         "prob_clinical": probs.get("clinical"),
         "prob_patient": probs.get("patient"),

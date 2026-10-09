@@ -6,7 +6,7 @@ traced it - gemma-2-2b from trace_out/<batch-stem>/ and the others from
 trace_out/<batch-stem>__<model>/. Writes one flat row per (pair x model):
 generation provenance, the traced graph_model, screening verdicts,
 probabilities, penalties, flips, and clinical-mass metrics (populated only for
-the featured model with a transcoder source set). Pairs that no model traced
+models in feature_models.CALIBRATED_FEATURE_MODELS, today gemma-2-2b). Pairs that no model traced
 still get one "untraced" row, so the export is the complete archive, not just
 the measured subset. This is the collaborator download that pairs with the
 GitHub Release render bundle.
@@ -29,6 +29,11 @@ except ImportError:  # direct invocation from repo root
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from tierb_split import holdout_phrases, is_holdout, is_tierb_batch, tierb_start_stamp
 
+try:
+    from scripts.feature_models import CALIBRATED_FEATURE_MODELS
+except ImportError:  # direct invocation from repo root (path inserted above)
+    from feature_models import CALIBRATED_FEATURE_MODELS
+
 parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
 parser.add_argument("--engine", default=".", help="engine repo root (default: cwd)")
 parser.add_argument("--out", default="archive_export", help="output path prefix")
@@ -37,11 +42,12 @@ args = parser.parse_args()
 ENGINE = Path(args.engine)
 
 # The circuit-tracer models. gemma-2-2b keeps the bare trace_out stem; the
-# others write to trace_out/<stem>__<model>. Only gemma has a transcoder source
-# set, so clinical_mass is meaningful for it alone (nulled for the rest).
+# others write to trace_out/<stem>__<model>. clinical_mass is exported only for
+# calibrated feature models (nulled for the rest): qwen3-4b carries labels since
+# 2026-10-09 but its mass is not yet comparable with gemma-2-2b's.
 MODELS = ["gemma-2-2b", "gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b"]
 BASE_MODEL = "gemma-2-2b"
-FEATURED = {"gemma-2-2b"}
+FEATURED = set(CALIBRATED_FEATURE_MODELS)
 
 COLUMNS = [
     "batch", "batch_index", "graph_model", "has_features",
@@ -135,8 +141,9 @@ for batch_path in sorted(ENGINE.glob("data/simulated/pairs_*.json")):
             sc = r.get("screening") or {}
             spread = r.get("predictive_spread") or {}
             probs = r.get("probabilities") or {}
-            # clinical_mass is only meaningful with a transcoder source set;
-            # NullFetcher models report ~0.0, so drop it for non-featured models.
+            # clinical_mass is exported only for calibrated feature models:
+            # NullFetcher models report ~0.0 and uncalibrated labels (qwen3-4b)
+            # are not comparable, so drop it for every other model.
             mass = r.get("clinical_mass") or {} if model in FEATURED else {}
             top_c = (spread.get("clinical") or [[None]])[0][0]
             top_p = (spread.get("patient") or [[None]])[0][0]

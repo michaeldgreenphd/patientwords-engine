@@ -19,8 +19,15 @@ import argparse
 import json
 import math
 import re
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
+
+try:
+    from scripts.feature_models import clinical_mass_publishable
+except ImportError:  # invoked as `python scripts/interp_analyses.py`
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from feature_models import clinical_mass_publishable
 
 PATH_FEATURE = re.compile(r"\[L(\d+)·([A-Z])\]\s*([^→]+)")
 
@@ -57,12 +64,19 @@ def path_features(result: dict):
 
 def named_features(summaries):
     """Feature labels ranked by how often they anchor a top attribution path,
-    split by category; plus the exact feature set the boost arms steered."""
+    split by category; plus the exact feature set the boost arms steered.
+
+    Only calibrated feature models' summaries count (feature_models): a
+    category is a tagging outcome, and labels from different source sets
+    (qwen3-4b's transcoder-hp since 2026-10-09) are not yet comparable, so
+    mixing them would rank one model's labels against another's."""
     by_cat: dict[str, Counter] = defaultdict(Counter)
     layer_of: dict[str, list[int]] = defaultdict(list)
     boosted: Counter = Counter()
     boosted_meta: dict[str, dict] = {}
     for _, summary in summaries:
+        if not clinical_mass_publishable(summary.get("graph_model"), summary.get("source_set")):
+            continue
         for r in summary.get("results", []):
             for _panel, layer, cat, label in path_features(r):
                 by_cat[cat][label] += 1

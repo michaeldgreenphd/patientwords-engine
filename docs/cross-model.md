@@ -28,6 +28,62 @@ therefore buys graph structure and next-token behavior, and buys nothing for the
 clinical/off-target feature contrast until Neuronpedia publishes transcoders for
 it.
 
+## qwen3-4b feature labels (registered 2026-10-09)
+
+The paragraph above was true on 2026-09-02 and is no longer. Neuronpedia now
+serves an autointerp-labelled transcoder source set for `qwen3-4b`,
+**`transcoder-hp`** (Hanna & Piotrowski's `mwhanna/qwen3-4b-transcoders`, ~164k
+features per layer; labels by `gemini-2.0-flash`, explanation type
+`np_max-act`). Found by the owner's model survey of 2026-10-09 (kept outside
+the repository; Step 2, "Transcoders and labels") and registered the same day
+in `neuronpedia_features.MODEL_SOURCE_SETS`, so the next qwen3-4b trace tags
+its features and records `source_set: "transcoder-hp"`.
+
+Evidence, all public and checked 2026-10-09:
+
+- **It is the set the graphs already use.** Neuronpedia's model record for
+  `qwen3-4b` (embedded in https://www.neuronpedia.org/qwen3-4b/graph) has
+  `defaultGraphSourceSetName: "transcoder-hp"`; the generate route
+  (`apps/webapp/app/api/graph/generate/route.ts`) applies that default when a
+  request omits `sourceSetName`, which is how this study requests every graph.
+  The graph server labels `mwhanna/qwen3-4b-transcoders` graphs with
+  `neuronpedia.org/qwen3-4b/transcoder-hp`
+  (`apps/graph/neuronpedia_graph/server.py`), and Neuronpedia's own
+  ground-truth fixture is `apps/graph/tests/fixtures/graphs/123-qwen3-4b-transcoder-hp.json`.
+- **Node ids map to feature pages as for gemma.** qwen3-4b graphs are schema 1:
+  a node's `feature` is the Cantor pairing of (layer, index), and its `layer` is
+  the plain layer number. The fixture's node `1_19591_1` (feature 191952619)
+  decodes to layer 1, index 19591, and
+  `GET /api/feature/qwen3-4b/1-transcoder-hp/19591` returns its label ("URLs").
+  Two more fixture nodes (`0-transcoder-hp/116505`, `1-transcoder-hp/82024`)
+  and one of the survey's spot checks (`10-transcoder-hp/5`) resolved the same
+  way, each with one `gemini-2.0-flash` `np_max-act` explanation.
+- **The graph request is unchanged.** Registration selects the feature fetcher
+  only; `sourceSetName` is sent only with an explicit `--source-set`, which the
+  workflow never passes. A test pins this
+  (`tests/test_qwen3_4b_source_set.py`).
+
+**qwen3-4b's clinical mass is exploratory and unpublished.** Its labels differ
+from gemma-2-2b's in kind: the two gemma-2-2b features sampled on 2026-10-09
+carry two explanations each (`oai_token-act-pair`, a phrase, and `np_max-act`, a
+token or two), the four qwen3-4b features one short `np_max-act` label each. Both
+come from `gemini-2.0-flash`; the difference is in how many explanations, and of
+which type, each feature has. A sample this small shows the difference exists,
+not how large it is. The keyword rule may
+therefore tag a different share of features clinical for reasons that are about
+the labels, not the model. The exporters keep nulling qwen3-4b's
+`clinical_mass` (`scripts/feature_models.py`, `CALIBRATED_FEATURE_MODELS`) until
+the owner decides, after `scripts/feature_label_calibration.py` has compared the
+two models' labels and clinical mass on the same pairs. The divergence is logged
+in `docs/prereg_divergence_log.md` (2026-10-09).
+
+`gemma-3-4b-it` and `qwen3-1.7b` stay unregistered: the first has sparse labels
+(1 of 3 sampled features labelled) and hosted graphs that still fail for this
+study, pending a re-probe; the second is a LORSA model whose hosted graphs are
+capped at 10 prompt tokens, shorter than the study's prompts.
+
+## Two-model comparison
+
 A two-model *circuit-graph* comparison is now achievable for the first time:
 `gemma-2-2b` and `qwen3-4b` both render. The other two stay in `MODEL_REGISTRY`
 (`graph_client.py`) so the machinery lights up automatically if they get
@@ -49,8 +105,10 @@ mid-study.
 - **Export** — `export_frontend_simulated.py` merges every model's trace dir
   into `scenario.models[<id>]`, mirrors gemma to the top level for backward
   compatibility, and emits `payload.models_meta` (the selector's source of
-  truth). `clinical_mass` is nulled for non-featured models (they trace under
-  NullFetcher and would otherwise report a false 0%).
+  truth). `clinical_mass` is nulled for every model outside
+  `feature_models.CALIBRATED_FEATURE_MODELS` (gemma-2-2b alone): NullFetcher
+  models would otherwise report a false 0%, and qwen3-4b's labels are not yet
+  calibrated against gemma-2-2b's.
 - **UI** — the simulated-scenarios index and per-scenario page grow a **model**
   chip row that swaps which model's measurements the view shows. Suppressed when
   only one model is present, so today's page is unchanged.

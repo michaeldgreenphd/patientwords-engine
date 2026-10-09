@@ -99,6 +99,7 @@ default (`--site ../patientwords`), and `--site ''` skips it.
 | `payload_summary.py` | The one definition of the site payload's headline `summary` | live | nothing itself | imported by `export_frontend_simulated.py` |
 | `render_prune.py` | Chooses and deletes site renders that no export lists | live | deletes files under the site's `modes/simulated/` | imported by `export_frontend_simulated.py` |
 | `sparse_guard.py` | Lists tracked files a checkout keeps off disk, so tools refuse a sparse site checkout | live | nothing | imported by `render_prune.py` and `seal_check.py` |
+| `feature_models.py` | The set of traced models whose `clinical_mass` may be published (`CALIBRATED_FEATURE_MODELS`, gemma-2-2b alone as of 2026-10-09), separate from which models have feature labels | live | nothing | imported by `export_frontend_simulated.py`, `export_archive.py`, `export_tag_mass.py` and `interp_analyses.py`; a model joins only by owner decision after `feature_label_calibration.py` |
 
 ## Site data written outside the publish chain
 
@@ -130,6 +131,7 @@ out.
 | Script | What it does | Status | Writes | Who runs it |
 |---|---|---|---|---|
 | `paired_stats.py` | Paired cross-model statistics on the unified phrase set, and validity against the hand-measured pairs | operator tool | `--out`, default `paired_stats.json` (the committed `paired_stats.json` and `paired_stats_out.json` are from 2026-07-08) | owner or session; the published per-model numbers come from `paired_stats_rigor.py` |
+| `feature_label_calibration.py` | Compares two traced models' feature labels on the same pairs (share described, share tagged clinical, label length) and their per-pair `clinical_mass` side by side, from trace dirs holding the summaries and the tagged graphs; refuses a dir without tagged graphs; read only, no network | operator tool | `--out` only (the seed of its example draw recorded in it) | owner or session, after the qwen3-4b re-trace lands (2026-10-09 registration) |
 | `backend_agreement.py` | Whether two measurement backends report the same numbers for the same pairs | operator tool | `--out` (the `ops/backend_agreement_*` files, 2026-09-03 and 2026-09-04) | owner or session |
 | `audit_target_reads.py` | Lists every committed result whose recorded target probability is not the exact target token's in that side's stored spread (prefix borrows, both directions), and every substituted target, per batch, model and trace root, under both duplicate-reading rules (the exporter's last part, `urgency_shift.py`'s first); read only | operator tool | `--out` only (required; refused under a trace root), never into the repo by default | owner or session, first run 2026-10-07 |
 | `jlens_position_scan.py` | Per-position lens transport and top-K window sensitivity, from saved raw responses | live | `ops/jlens_position_scan.json` from its CLI (2026-07-14) | imported by `export_jlens_transport.py` (publish chain step 3); the CLI by owner or session |

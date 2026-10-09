@@ -12,10 +12,12 @@ Each pair's split is reconstructed from the two committed batch_summary scalars:
   E = error_share[phrasing]     (error-node share of feature+error mass)
   clin = (1 - E) * C,  off = (1 - E) * (1 - C),  struct = E     (sums to 1).
 
-Only gemma-2-2b carries a transcoder source set, so clinical_mass is meaningful there
-alone (every other model auto-degrades to NullFetcher and its mass is ~0 - an artifact);
-those summaries are excluded via the source_set gate. Tier B holdout pairs are excluded
-(Amendment 1/3 seal). $0, offline - reads only committed batch_summary parts.
+clinical_mass is aggregated only for calibrated feature models
+(feature_models.clinical_mass_publishable: the model is in CALIBRATED_FEATURE_MODELS, today
+gemma-2-2b alone, AND the summary names a source set). A NullFetcher summary's mass is ~0, an
+artifact; qwen3-4b's summaries name source set transcoder-hp since 2026-10-09, but its labels
+are not yet calibrated against gemma-2-2b's, so it stays out until the owner rules. Tier B
+holdout pairs are excluded (Amendment 1/3 seal). $0, offline - reads only committed batch_summary parts.
 
 empirical:true is emitted ONLY when real per-pair means are aggregated; when no measured
 featured pair is found the committed placeholder (empirical:false) is left untouched, so
@@ -40,6 +42,7 @@ except ImportError:
     from provenance_stamp import provenance
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from feature_models import clinical_mass_publishable  # noqa: E402
 from tierb_split import SealError, seal_config_error, sealed_pair  # noqa: E402
 
 
@@ -50,8 +53,9 @@ def three_way(c, e):
 
 
 def collect(trace_root):
-    """{'clinical': [(clin,off,struct),...], 'patient': [...]} over every FEATURED
-    (source_set set), non-holdout pair with both scalars for that phrasing.
+    """{'clinical': [(clin,off,struct),...], 'patient': [...]} over every calibrated
+    feature model's (clinical_mass_publishable), non-holdout pair with both scalars for
+    that phrasing.
 
     The holdout seal is tierb_split.sealed_pair (stamp_rows' rule, Amendments 1
     and 3), asked only of rows that would add a value; it raises SealError when
@@ -62,8 +66,8 @@ def collect(trace_root):
             summ = json.loads(Path(path).read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        if not summ.get("source_set"):
-            continue  # only gemma-2-2b's transcoder mass is meaningful
+        if not clinical_mass_publishable(summ.get("graph_model"), summ.get("source_set")):
+            continue  # NullFetcher artifact, or labels not yet calibrated (qwen3-4b)
         batch = Path(path).parent.name
         for r in summ.get("results", []):
             cmass = r.get("clinical_mass") or {}

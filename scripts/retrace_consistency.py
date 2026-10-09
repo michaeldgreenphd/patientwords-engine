@@ -12,9 +12,11 @@ Three layers are compared, each at the precision the files record
 - target-token probabilities and the full top-k spread lists (words + probs),
 - the top word under each wording,
 - clinical_mass, compared only between runs that share the same graph
-  parameters (node budget and thresholds), because the attribution graph is
-  parameter-sensitive by design; cross-parameter differences are reported
-  separately and are not noise.
+  parameters (node budget and thresholds) AND the same feature source set,
+  because the attribution graph is parameter-sensitive by design and the mass
+  depends on which labels tagged it (a NullFetcher run's ~0 against a run tagged
+  from qwen3-4b's transcoder-hp, registered 2026-10-09, is a tagging change, not
+  instrument noise); cross-variant differences are reported separately.
 
 Writes ops/retrace_consistency.json; the printed last line is the summary
 verdict. No medical vocabulary lives in this file.
@@ -57,7 +59,7 @@ def collect(trace_root: Path):
         model = summary.get("graph_model") or "gemma-2-2b"
         gp = summary.get("generation_params") or {}
         params_sig = json.dumps([gp.get("max_feature_nodes"), gp.get("node_threshold"),
-                                 gp.get("edge_threshold")])
+                                 gp.get("edge_threshold"), summary.get("source_set")])
         for row in summary.get("results", []):
             prompts = row.get("prompts") or {}
             clin, pat = prompts.get("clinical"), prompts.get("patient")
