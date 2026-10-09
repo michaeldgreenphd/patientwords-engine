@@ -13,10 +13,15 @@ tracing priorities, watchdog, critic) is preserved in git history as the
 parent of the 2026-08-29 maintenance rewrite:
 `git show fd5304c9^:docs/routine_standing_prompt.md`.
 
-**Why maintenance mode:** every measurement axis is complete (all six
-claim-grade models at 39/39 batches, backfill closed 2026-08-26 —
-`docs/coordination/backfill_8b_complete_20260826.md`), Tier B generation is
-done, and the owner has shifted to maintaining the repo. The cycle's job is
+**Why maintenance mode:** the hosted trace and j-lens axes are complete
+(39/39 batches), Tier B generation is done, and the owner has shifted to
+maintaining the repo. *Correction, 2026-10-09:* this paragraph said "all six
+claim-grade models at 39/39 batches", citing
+`docs/coordination/backfill_8b_complete_20260826.md`; that held only for
+`meditron3-8b`, `apertus-8b-meditronfo` and `gemma-2-2b`'s hosted traces.
+`gemma-3-4b-it`, `qwen3-1.7b` and `qwen3-4b`, and `llama-3.2-3b`, `olmo-2-1b`
+and `gemma-2-2b-it`, miss 702 to 1,140 of the 2,343 pairs each. The owner
+approved filling them (§3e, `docs/model_matrix.md`). The cycle's job is
 now: keep the drift sentinel alive, harvest anything that lands, keep the
 published data honest, and touch nothing else.
 
@@ -155,27 +160,30 @@ and say so in the brief. Parking keeps every trigger file's resting
 content a cheap no-op — the resting-state rule. If any OTHER trigger file
 was left un-parked by a stray fire, re-park that lane too once terminal.
 
-3e. **Exploratory predictions backfill (added 2026-10-09; $0; owner-approved;
-stops at parity).** One `logits-eval` leg per cycle for the exploratory
-sweep: `gemma-4-e2b` and `qwen3.5-2b-base` together, one batch per fire
-(`docs/model_matrix.md`), nothing else; `medgemma-1.5-4b-it` is not this
-step's (the owner runs it). A session may chain the same commands faster.
-Run `python scripts/backfill_planner.py --exploratory`. If it prints
+3e. **Predictions backfill campaign (added 2026-10-09; $0; owner-approved;
+stops at parity).** The fallback for `scripts/backfill_chain.py`, which
+normally runs the campaign (`docs/model_matrix.md`): one `logits-eval` leg
+per cycle, first the exploratory sweep (`gemma-4-e2b` and `qwen3.5-2b-base`
+together, one batch per fire), then the six original models' gaps; nothing
+else, and never `medgemma-1.5-4b-it` (the owner runs it).
+Run `python scripts/backfill_planner.py --campaign`. If it prints
 `AT PARITY`, fire nothing, and add a `decisions_pending` entry asking the
 owner to retire this step. Otherwise fire only when the `logits-eval` lane
-has 0 active journal entries after §2, and never when the journal already
-holds an entry whose note is exactly the planner's note: that leg ran and
-did not land, so put it in `blockers` and `decisions_pending` and skip this
-step until the owner answers. To fire, run the printed `fire_trigger.py fire`
+has 0 active journal entries after §2 (the chain may be running), and never
+when the journal already holds an entry whose note begins with the planner's
+note (the chain appends ` [backfill_chain]`): that leg ran and did not land,
+so put it in `blockers` and `decisions_pending` and skip this step until the
+owner answers. To fire, run the printed `fire_trigger.py fire`
 command, then at once
 `python scripts/fire_trigger.py park --trigger logits-eval --keep-dashboard`;
 add `--keep-dashboard` to the fire too, and `--ignore-settle` to both only
 when §2 resolved a `logits-eval` entry this cycle after confirming it
 terminal. The park queues behind the leg (one running + one pending, never
 a third) and runs after it, so the file at rest is always the park. The next
-cycle's §2 harvests both entries. A landed leg changes no published file: the
-collectors skip these models (`scripts/publication_hold.py`) until the owner
-releases them, so it is no reason to run §5.
+cycle's §2 harvests both entries. A landed leg changes no published file:
+the collectors read no logits part the owner has not released
+(`scripts/publication_hold.py`, `data/publication_release/logits_parts.json`),
+so it is no reason to run §5. Never run `scripts/publication_release.py`.
 
 ## 4 · No other fires
 
