@@ -24,11 +24,11 @@ from collections import defaultdict
 from pathlib import Path
 
 try:
-    from scripts.publication_hold import is_held
+    from scripts.publication_hold import Gate
     from scripts.tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp
 except ImportError:  # direct invocation from repo root
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from publication_hold import is_held
+    from publication_hold import Gate
     from tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp
 
 ENGINE = Path(__file__).resolve().parents[1]
@@ -40,15 +40,19 @@ def collect_rows(trace_root: Path) -> list[dict]:
     """One row per (model, batch, clinical_prompt, part-index) from logits summaries."""
     start = tierb_start_stamp(str(ENGINE / "ops/dashboard.json"))
     rows = []
+    # held models and unreleased logits parts are not read (scripts/publication_hold.py)
+    gate = Gate(trace_root.parent)
     for summary in sorted(trace_root.glob("*/batch_summary*.json")):
         stem = summary.parent.name
         model = stem.split("__", 1)[1] if "__" in stem else "gemma-2-2b"
         batch = stem.split("__", 1)[0]
-        if not _OBS_RE.fullmatch(batch) or is_held(model):   # held models: scripts/publication_hold.py
+        if not _OBS_RE.fullmatch(batch):
             continue
         data = json.loads(summary.read_text(encoding="utf-8"))
         if data.get("backend") != "logits":
             continue  # hosted traces are already screened; the sweep needs raw rows
+        if not gate.admit(summary, data, model):
+            continue
         for r in data.get("results", []):
             probs = r.get("probabilities") or {}
             clin, pat = probs.get("clinical"), probs.get("patient")
@@ -61,6 +65,8 @@ def collect_rows(trace_root: Path) -> list[dict]:
                 continue
             rows.append({"model": model, "batch": batch, "prompt": prompt,
                          "clinical_p": clin, "penalty": pat - clin})
+    if gate.report():
+        print(gate.report())
     return rows
 
 

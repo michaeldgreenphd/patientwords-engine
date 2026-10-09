@@ -21,12 +21,12 @@ from pathlib import Path
 
 try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
     from scripts.provenance_stamp import provenance
-    from scripts.publication_hold import is_held_run_dir
+    from scripts.publication_hold import Gate
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from provenance_stamp import provenance
-    from publication_hold import is_held_run_dir
+    from publication_hold import Gate
 
 MILESTONE_FILES = [
     ("docs/preregistration_tierB.md", "Tier B pre-registration committed"),
@@ -97,9 +97,13 @@ def main(argv=None):
 
     gen_batches = [b for b in batches if isinstance(b.get("cost_usd"), (int, float))
                    and b["cost_usd"] > 0]
-    # parts of models held from publication (scripts/publication_hold.py) are not counted until released
-    trace_parts = sum(1 for p in glob.glob("trace_out/*/batch_summary.part_*.json")
-                      if not is_held_run_dir(Path(p).parent.name))
+    # parts the publication hold keeps out (held models, unreleased logits parts: scripts/publication_hold.py)
+    # are not counted until the owner releases them
+    gate = Gate(".")
+    trace_parts = sum(1 for p in sorted(glob.glob("trace_out/*/batch_summary.part_*.json"))
+                      if gate.admit(Path(p), json.loads(Path(p).read_text(encoding="utf-8"))))
+    if gate.report():
+        print(gate.report())
     payload = {
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "provenance": ("every entry derives from a committed artifact: batch cost "
