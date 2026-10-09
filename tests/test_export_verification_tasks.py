@@ -1555,7 +1555,8 @@ def test_every_method_field_and_lane_name_is_refused_in_an_example():
                                   "Selected by the study for review.",
                                   "A transcoder feature fires.", "Traced on Neuronpedia.", "Feature steering changed it.",
                                   "The selection rule picked it.", "It is a holdout pair.", "From Tier B.",
-                                  "The clinical mass is high.", "Run in a Petri audit.", "By activation patching."])
+                                  "The clinical mass is high.", "Run in a Petri audit.", "By activation patching.",
+                                  "Its target read was exact."])
 def test_a_method_term_in_example_text_is_refused(tmp_path, text):
     examples = _examples()
     examples[1]["caption"] = text

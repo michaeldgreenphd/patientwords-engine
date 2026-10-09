@@ -382,7 +382,7 @@ EXAMPLE_METHOD_TERMS = re.compile("|".join((
     r"\bnext[\s_-]+token", r"\bhold[\s_-]?out\b", r"\btier[\s_-]+[ab]\b",
     r"\bcircuit[\s_-]*(?:trac|diff)", r"\blanguage[\s_-]+penalt", r"\bprob[\s_-]+(?:clinical|patient)\b",
     r"\bclinical[\s_-]+mass\b", r"\bdepth[\s_-]+(?:class|readout|probe)", r"\banchor[\s_-]+fallback",
-    r"\btarget[\s_-]+tokens?\b", r"\btop[\s_-]+(?:clinical|patient|path)\b", r"\bspread[\s_-]+(?:clinical|patient)\b",
+    r"\btarget[\s_-]+(?:tokens?|reads?)\b", r"\btop[\s_-]+(?:clinical|patient|path)\b", r"\bspread[\s_-]+(?:clinical|patient)\b",
     r"\bpredictive[\s_-]+spread", r"\berror[\s_-]+share", r"\bforced[\s_-]+targets?\b", r"\bmitigation[\s_-]+recovery",
     r"\btranslation[\s_-]+(?:method|model)", r"\bgraph[\s_-]+models?\b", r"\bsource[\s_-]+sets?\b",
     r"\bscreen(?:ing)?[\s_-]+targets?\b", r"\bgeneration[\s_-]+params?\b", r"\bbaseline[\s_-]+(?:prompt|probabilit)",
