@@ -31,7 +31,12 @@ reported from the summaries alone (download the artifact into the directory
 first). So is a directory whose tagged graphs are not exactly the (index, role)
 pairs its summaries report as traced (TaggedGraphSetMismatchError: a chunked run
 has one artifact per offset, and every one is needed), and a tagged graph whose
-``metadata.scan`` is not the summaries' graph_model (GraphModelMismatchError).
+``metadata.scan`` is not the summaries' graph_model (GraphModelMismatchError),
+or whose ``metadata.medlang_summary.feature_source_set`` (the set its labels
+were fetched from, recorded by the tagger since 2026-10-09) is missing or is not
+the summaries' ``source_set`` (TaggingSourceSetMismatchError: for example an
+untagged NullFetcher artifact of the same pairs). Graphs tagged before
+2026-10-09 record no source set, so both models must be traced after that date.
 Label coverage and clinical_mass are thus always measured over the same pairs.
 No network: nothing is fetched, and the fetcher's on-disk cache is not read (it
 lives on the CI runner and is not uploaded). This is a 2panel tool: the traced
@@ -71,9 +76,11 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from medlang_circuits.feature_tagger import FEATURE_SOURCE_SET_KEY, SUMMARY_KEY
     from medlang_circuits.schema_utils import is_feature_node, node_layer_and_index
 except ImportError:  # invoked as `python scripts/feature_label_calibration.py` without an install
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from medlang_circuits.feature_tagger import FEATURE_SOURCE_SET_KEY, SUMMARY_KEY
     from medlang_circuits.schema_utils import is_feature_node, node_layer_and_index
 
 REPORT_RULE = "feature_label_calibration/2026-10-09"
@@ -114,6 +121,10 @@ class TaggedGraphSetMismatchError(CalibrationInputError):
 
 class GraphModelMismatchError(CalibrationInputError):
     """A tagged graph's metadata.scan is missing or names another model than the summaries."""
+
+
+class TaggingSourceSetMismatchError(CalibrationInputError):
+    """A tagged graph does not record the summaries' source set as the set its labels came from."""
 
 
 def _read_json(path: Path) -> Any:
@@ -164,8 +175,8 @@ def _list_preview(items: list[tuple[int, str]], limit: int = 10) -> str:
     return shown + (f" and {len(items) - limit} more" if len(items) > limit else "")
 
 
-def tagged_graph_stats(trace_dir: Path, graph_model: str | None, expected: set[tuple[int, str]],
-                       examples: int, seed: int) -> dict[str, Any]:
+def tagged_graph_stats(trace_dir: Path, graph_model: str | None, source_set: str | None,
+                       expected: set[tuple[int, str]], examples: int, seed: int) -> dict[str, Any]:
     """Label coverage and clinical tagging over every tagged graph in the directory.
 
     The graphs must be exactly the ``expected`` (index, role) set the summaries
@@ -201,6 +212,15 @@ def tagged_graph_stats(trace_dir: Path, graph_model: str | None, expected: set[t
             raise GraphModelMismatchError(
                 f"{path}: metadata.scan is {meta.get('scan')!r} but the directory's summaries name "
                 f"graph_model {graph_model!r}; a tagged graph from another model or run is in this directory")
+        tagging = meta.get(SUMMARY_KEY) or {}
+        if FEATURE_SOURCE_SET_KEY not in tagging:
+            raise TaggingSourceSetMismatchError(
+                f"{path}: records no {SUMMARY_KEY}.{FEATURE_SOURCE_SET_KEY}, so the source set its labels came "
+                "from cannot be checked (graphs tagged before 2026-10-09 do not record it); re-trace the pairs")
+        if tagging[FEATURE_SOURCE_SET_KEY] != source_set:
+            raise TaggingSourceSetMismatchError(
+                f"{path}: labels were tagged from source set {tagging[FEATURE_SOURCE_SET_KEY]!r} but the "
+                f"directory's summaries name {source_set!r}; a tagged graph from another trace is in this directory")
         for node in graph.get("nodes", []):
             if not is_feature_node(node):
                 continue
@@ -295,7 +315,8 @@ def model_report(trace_dir: Path, examples: int, seed: int) -> tuple[dict[str, A
         "source_set": summaries["source_set"],
         "summary_parts": summaries["parts"],
         "n_results": len(results),
-        **tagged_graph_stats(trace_dir, summaries["graph_model"], expected_graphs(results), examples, seed),
+        **tagged_graph_stats(trace_dir, summaries["graph_model"], summaries["source_set"],
+                             expected_graphs(results), examples, seed),
         "clinical_mass": {role: distribution([_mass(row, role) for row in results.values()]) for role in roles},
     }
     if summaries["source_set"] is None:

@@ -55,6 +55,8 @@ def _trace_dir(root: Path, model: str, source_set: str | None, rows: list[dict[s
             for role in row.get("clinical_mass") or {}:
                 graphs.setdefault(f"pair_{row['index']:02d}_{role}.tagged.json", _graph(model, []))
     for name, graph in graphs.items():
+        # the tagger records the set its labels came from; a test that sets its own keeps it
+        graph["metadata"].setdefault("medlang_summary", {"feature_source_set": source_set})
         (d / name).write_text(json.dumps(graph), encoding="utf-8")
     return d
 
@@ -216,6 +218,25 @@ def test_refuses_an_incomplete_or_foreign_set_of_tagged_graphs(tmp_path, capsys)
     (full / "pair_07_clinical.tagged.json").write_text(json.dumps(_graph("qwen3-4b", [])), encoding="utf-8")
     with pytest.raises(flc.TaggedGraphSetMismatchError, match=r"Not in any summary 1: 7/clinical"):
         flc.build_report(full, full)
+
+
+def test_refuses_graphs_tagged_from_another_source_set(tmp_path):
+    # Regression (Codex review of PR #93): a complete artifact of the same model and pairs
+    # from another trace (an untagged NullFetcher run beside transcoder-hp summaries) passed
+    # the scan and index/role checks. Each graph must record the summaries' source set.
+    rows = [_row(1, "p", 0.1, 0.1)]
+    stale = _graph("qwen3-4b", [_node(1, 1, 1, "off_target", "")])
+    stale["metadata"]["medlang_summary"] = {"feature_source_set": None}       # NullFetcher-tagged
+    d = _trace_dir(tmp_path / "stale", "qwen3-4b", "transcoder-hp", rows,
+                   {"pair_01_clinical.tagged.json": stale})
+    with pytest.raises(flc.TaggingSourceSetMismatchError, match="None.*'transcoder-hp'"):
+        flc.build_report(d, d)
+    legacy = _graph("qwen3-4b", [_node(1, 1, 1, "off_target", "")])
+    legacy["metadata"]["medlang_summary"] = {"node_counts": {}}               # tagged before the field existed
+    d2 = _trace_dir(tmp_path / "legacy", "qwen3-4b", "transcoder-hp", rows,
+                    {"pair_01_clinical.tagged.json": legacy})
+    with pytest.raises(flc.TaggingSourceSetMismatchError, match="records no"):
+        flc.build_report(d2, d2)
 
 
 def test_out_creates_a_missing_parent_directory(two_models, tmp_path):
