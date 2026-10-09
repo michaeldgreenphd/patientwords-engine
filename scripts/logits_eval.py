@@ -198,9 +198,28 @@ def refuse(exc: PinError) -> NoReturn:
     raise SystemExit(f"refused: {type(exc).__name__}: {exc}")
 
 
-def engine_revision(model: Any) -> str | None:
-    """The resolved HF commit of an interp-engine model (its hf_model's config), or None."""
-    return getattr(getattr(getattr(model, "hf_model", None), "config", None), "_commit_hash", None)
+def loaded_commit(hf_id: str, revision: str, config: Any) -> str | None:
+    """The commit a pinned load resolved to: the loaded config's `_commit_hash`.
+
+    A composite (multimodal) checkpoint loaded through its text-only class has
+    none there: transformers 5.14.1's AutoModelForCausalLM narrows the config
+    to its `text_config`, which is built from a dict without the hash (read
+    from its auto_factory and configuration_utils, 2026-10-09; Qwen3.5's
+    Qwen3_5ForCausalLM is such a class). The top-level config at the same
+    revision carries it, so that is read instead (no weights are fetched).
+    """
+    commit = getattr(config, "_commit_hash", None)
+    if commit is None:
+        from transformers import AutoConfig
+
+        top = AutoConfig.from_pretrained(hf_id, revision=revision, trust_remote_code=False)
+        commit = getattr(top, "_commit_hash", None)
+    return commit
+
+
+def engine_revision(model: Any, hf_id: str, revision: str) -> str | None:
+    """The resolved HF commit of an interp-engine model (its hf_model's config; see loaded_commit)."""
+    return loaded_commit(hf_id, revision, getattr(getattr(model, "hf_model", None), "config", None))
 
 
 def load_pinned_tokenizer(hf_id: str, revision: str) -> Any:
@@ -210,8 +229,8 @@ def load_pinned_tokenizer(hf_id: str, revision: str) -> Any:
     return AutoTokenizer.from_pretrained(hf_id, revision=revision, trust_remote_code=False)
 
 
-def load_pinned(hf_id: str, revision: str) -> tuple[Any, Any]:
-    """(tokenizer, model) at exactly `revision`, refused if the load resolves elsewhere.
+def load_pinned(hf_id: str, revision: str) -> tuple[Any, Any, str]:
+    """(tokenizer, model, resolved commit) at exactly `revision`, refused if the load resolves elsewhere.
 
     Supply-chain posture: never execute repo code, never deserialize pickle
     weights. use_safetensors=True hard-fails on repos without safetensors
@@ -225,9 +244,10 @@ def load_pinned(hf_id: str, revision: str) -> tuple[Any, Any]:
     model = AutoModelForCausalLM.from_pretrained(
         hf_id, revision=revision, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True,
         trust_remote_code=False, use_safetensors=True)
-    check_resolved_revision(hf_id, revision, getattr(model.config, "_commit_hash", None))
+    resolved = loaded_commit(hf_id, revision, model.config)
+    check_resolved_revision(hf_id, revision, resolved)
     model.eval()
-    return tokenizer, model
+    return tokenizer, model, resolved
 
 
 def label(tokenizer, token_id):
@@ -359,7 +379,7 @@ def main(argv=None):
 
     print(f"Loading {hf_id} @ {pinned} (cpu, bfloat16) ...", flush=True)
     try:
-        tokenizer, model = load_pinned(hf_id, pinned)
+        tokenizer, model, resolved = load_pinned(hf_id, pinned)
     except PinError as exc:
         refuse(exc)
 
@@ -378,8 +398,7 @@ def main(argv=None):
         # run mid-batch - the third script to learn the 2026-07-28 lesson
         # (jlens_readout d36f944, jlens_steer 2989d4c).
         summary = build_summary(model_id, hf_id, results, start_index,
-                                revision=getattr(model.config, "_commit_hash", None),
-                                revision_pinned=pinned)
+                                revision=resolved, revision_pinned=pinned)
         summary["completed"] = completed
         if not completed:
             summary["_partial"] = "in-progress flush (crash/timeout protection)"

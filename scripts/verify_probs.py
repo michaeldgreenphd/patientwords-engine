@@ -238,7 +238,7 @@ def main(argv=None):
     # logits_eval.py records. Without it a verify artifact cannot be tied to
     # the checkpoint it measured (every run before 2026-09-04 recorded null).
     # A commit other than the pin is refused before anything is measured.
-    revision = engine_revision(model)
+    revision = engine_revision(model, hf_id, pinned)
     try:
         check_resolved_revision(hf_id, pinned, revision)
     except PinError as exc:

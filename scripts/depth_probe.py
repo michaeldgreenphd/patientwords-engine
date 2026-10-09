@@ -293,7 +293,7 @@ def main(argv=None):
                        dtype="bfloat16", trust_remote_code=False,
                        tokenizer=load_pinned_tokenizer(hf_id, pinned),
                        model_kwargs={"revision": pinned})
-    revision = engine_revision(model)
+    revision = engine_revision(model, hf_id, pinned)
     try:
         check_resolved_revision(hf_id, pinned, revision)
     except PinError as exc:

@@ -313,7 +313,7 @@ def load_model(model_name, revision=None):
     hf_model = AutoModelForCausalLM.from_pretrained(
         hf_id, revision=pinned, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True,
         trust_remote_code=False, use_safetensors=True)
-    resolved = getattr(hf_model.config, "_commit_hash", None)
+    resolved = le.loaded_commit(hf_id, pinned, hf_model.config)
     le.check_resolved_revision(hf_id, pinned, resolved)
     model = HookedTransformer.from_pretrained_no_processing(
         hf_id, hf_model=hf_model, tokenizer=tokenizer, dtype=torch.bfloat16, revision=pinned)

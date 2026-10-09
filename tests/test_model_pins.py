@@ -134,9 +134,16 @@ def test_check_resolved_revision_refuses_other_and_missing_commits():
 
 # --- fakes ------------------------------------------------------------------------------------------------------------
 
-def _fake_transformers(monkeypatch, commit):
-    """A transformers stand-in recording every from_pretrained call; the model's config resolves to `commit`."""
+def _fake_transformers(monkeypatch, commit, top_commit=None):
+    """A transformers stand-in recording every from_pretrained call; the model's config resolves to `commit`,
+    and AutoConfig (the top-level config, read only when the model's config has no hash) to `top_commit`."""
     calls = []
+
+    class _Config:
+        @staticmethod
+        def from_pretrained(repo, **kw):
+            calls.append(("config", repo, kw))
+            return types.SimpleNamespace(_commit_hash=top_commit)
 
     class _Tok:
         @staticmethod
@@ -153,6 +160,7 @@ def _fake_transformers(monkeypatch, commit):
     fake = types.ModuleType("transformers")
     fake.AutoTokenizer = _Tok
     fake.AutoModelForCausalLM = _Model
+    fake.AutoConfig = _Config
     fake_torch = types.ModuleType("torch")
     fake_torch.bfloat16 = "bf16"
     monkeypatch.setitem(sys.modules, "transformers", fake)
@@ -183,6 +191,22 @@ def test_load_pinned_refuses_a_resolved_commit_other_than_the_pin(monkeypatch):
     _fake_transformers(monkeypatch, OTHER_SHA)
     with pytest.raises(le.RevisionMismatchError):
         le.load_pinned("EPFLiGHT/Apertus-8B-MeditronFO", APERTUS_LANDED)
+
+
+def test_narrowed_text_config_reads_the_commit_from_the_top_level_config(monkeypatch):
+    """A composite checkpoint loaded through its text-only class (transformers narrows the config to
+    text_config, which carries no _commit_hash) is checked against the top-level config at the pin."""
+    calls = _fake_transformers(monkeypatch, None, top_commit=APERTUS_LANDED)
+    _, _, resolved = le.load_pinned("org/composite", APERTUS_LANDED)
+    assert resolved == APERTUS_LANDED
+    assert calls[-1] == ("config", "org/composite", {"revision": APERTUS_LANDED, "trust_remote_code": False})
+
+
+@pytest.mark.parametrize("top", [None, OTHER_SHA])
+def test_narrowed_text_config_without_a_matching_top_level_commit_is_refused(monkeypatch, top):
+    _fake_transformers(monkeypatch, None, top_commit=top)
+    with pytest.raises(le.RevisionMismatchError):
+        le.load_pinned("org/composite", APERTUS_LANDED)
 
 
 def _pairs(tmp_path, pairs=()):
