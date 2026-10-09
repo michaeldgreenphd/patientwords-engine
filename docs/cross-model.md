@@ -40,6 +40,36 @@ already complete, so it needs the step-2/step-3 sequence below and a note in
 `docs/prereg_divergence_log.md` recording that graphs became available
 mid-study.
 
+## Why gemma-3-4b-it and qwen3-1.7b fail (confirmed 2026-10-09)
+
+Until PR #90 the client discarded the body of a hosted error, so the "fast
+non-retryable error" above had no recorded cause. A $0 two-pair re-probe on
+2026-10-09 (run 37960184793, `commit_outputs: false`) logged both bodies:
+
+| Date | Run | Model | Status | Body |
+|---|---|---|---|---|
+| 2026-10-09 | 37960184793 | `gemma-3-4b-it` | HTTP 400 | `{"error":"Source Set Missing","message":"The model gemma-3-4b-it has no default graph source set, so you must provide one in the sourceSetName parameter."}` |
+| 2026-10-09 | 37960184793 | `qwen3-1.7b` | HTTP 400 | `{"error":"Prompt Too Long","message":"Max tokens supported is 10, your prompt was 17 tokens."}` |
+
+- **gemma-3-4b-it** fails because this study never sends `sourceSetName`, and
+  the model has no server default to fall back on. Neuronpedia's gemma-3-4b-it
+  page offers the transcoder set `gemmascope-2-transcoder-262k`; its labels are
+  sparse (1 of 3 features sampled on 2026-10-09 had one). The circuit-trace
+  lane's `source_set` key (2026-10-09, `docs/triggers.md`) passes a set
+  through `medlang-batch-eval --source-set`, which sends it as `sourceSetName`
+  and tags features from the same set. The next step is a $0 two-pair probe
+  with `graph_models: ["gemma-3-4b-it"]`, `source_set:
+  "gemmascope-2-transcoder-262k"` and `commit_outputs: false`. Whatever it
+  returns, gemma-3-4b-it's `clinical_mass` stays unpublished: the exporters
+  null it for every model outside `FEATURED`, and the fire path and the
+  workflow refuse a `source_set` fire that would commit into `trace_out/`,
+  where `scripts/export_tag_mass.py` would otherwise aggregate it.
+- **qwen3-1.7b** cannot be traced on this study's prompts. Its hosted graphs
+  cap a prompt at 10 tokens, and the probe's prompt was 17. No parameter
+  lifts the cap; tracing it would mean writing prompts of 10 tokens or fewer,
+  which changes the stimuli. That is a study-design decision, not a fix, and
+  nothing here makes it.
+
 ## What's built (dormant until >1 model traces)
 
 - **Workflow** — `circuit_trace_evaluation.yml` takes a `graph_models` list (or

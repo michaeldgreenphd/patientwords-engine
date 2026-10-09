@@ -142,12 +142,28 @@ PILOT_RUN2_RUN_NAMED_PAIRS = "pilot/runs/pilot_v2_20261002/trace/pilot_v2_202610
 # params jobs read the fired branch, without pilot/traces checked out, so a detected list could differ between the
 # two.
 PILOT_LEGACY_OUTPUT_FOLDERS = ("trace_pairs", "pilot_v3_20261004_trace_pairs")
-# the workflow's push-path defaults for the keys the pilot rules read
+# the workflow's push-path defaults for the keys the pilot and source-set rules read
 CIRCUIT_TRACE_JOB_DEFAULTS = {
     "mode": "2panel", "pairs_file": "", "offsets": "0", "sample_size": "1", "screen_targets": "",
     "show_mitigation": "false", "generate_explanations": "0", "steer_validate": "0", "steer_boost": "0",
-    "steer_placebo": "0", "output_root": "",
+    "steer_placebo": "0", "output_root": "", "graph_model": "gemma-2-2b", "graph_models": "",
+    "commit_outputs": "false", "source_set": "",
 }
+# circuit-trace `source_set` (2026-10-09): the Neuronpedia graph source set a fire traces with, passed to
+# medlang-batch-eval as --source-set, which sends it as the hosted request's sourceSetName and tags features from the
+# same set. Absent or "" omits --source-set, so the server applies the model's default graph source set, exactly as
+# every fire before this key. gemma-3-4b-it has no server default ("Source Set Missing", run 37960184793), so it
+# traces only with one. The value reaches a bash command line, so it must be a short lower-case slug that cannot read
+# as an option: a letter or digit, then letters, digits or hyphens, 64 characters at most. A source set is per
+# model, so a fire whose graph_models resolve to more than one model is refused with it. And a fire with it never
+# commits into trace_out/ (commit_outputs true with output_root ""): on main, scripts/export_tag_mass.py aggregates
+# clinical_mass from every committed summary that names a source set, so a gemma-3-4b-it summary there would publish
+# uncalibrated clinical mass. The pilot root, which no collector reads, and commit_outputs false are unaffected.
+# circuit_trace_evaluation.yml's params job refuses the same; tests/test_circuit_trace_source_set.py holds the two
+# together.
+CIRCUIT_TRACE_SOURCE_SET_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,63}")
+# what the params job expands graph_models "all" to (the hosted models it fans out over)
+CIRCUIT_TRACE_ALL_MODELS = ("gemma-2-2b", "gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b")
 # the run step passes each of these to medlang-batch-eval unless its value is "" or "0" (bash `-n` and `!= "0"`)
 CIRCUIT_TRACE_PILOT_OFF_ONLY = ("generate_explanations", "steer_validate", "steer_boost", "steer_placebo")
 # logits-eval `output_root` (2026-10-04): circuit-trace's pilot root carried over to the CPU next-token lane. "" keeps
@@ -1117,9 +1133,45 @@ def _circuit_trace_job_value(params: dict, key: str) -> str:
     if key not in params:
         return CIRCUIT_TRACE_JOB_DEFAULTS[key]
     value = params[key]
-    if isinstance(value, list) and key == "offsets":
+    if isinstance(value, list) and key in ("offsets", "graph_models"):
         return ",".join(str(v) for v in value)
     return str(value).lower() if isinstance(value, bool) else str(value)
+
+
+def circuit_trace_models(params: dict) -> list[str]:
+    """The models a circuit-trace fire's matrix traces, resolved as the params job resolves them: `graph_models`
+    (a list, or a comma/space-separated string; "all" expands to every hosted model), else the single
+    `graph_model`."""
+    raw = _circuit_trace_job_value(params, "graph_models") or _circuit_trace_job_value(params, "graph_model")
+    models = [m.strip() for m in raw.replace(",", " ").split() if m.strip()]
+    if "all" in models:
+        models = list(CIRCUIT_TRACE_ALL_MODELS)
+    return models or [_circuit_trace_job_value(params, "graph_model")]
+
+
+def circuit_trace_source_set_problems(params: dict) -> list[str]:
+    """circuit-trace's `source_set` rules (CIRCUIT_TRACE_SOURCE_SET_RE above), as the workflow's params job applies
+    them: absent or "" is the server default and always passes; any other value is a slug, the fire traces exactly
+    one model, and it does not commit into trace_out/."""
+    source_set = _circuit_trace_job_value(params, "source_set")
+    if not source_set:
+        return []
+    if not CIRCUIT_TRACE_SOURCE_SET_RE.fullmatch(source_set):
+        return [f"circuit-trace source_set {source_set!r}: a source set is a lower-case slug (a letter or digit, "
+                "then letters, digits or hyphens, at most 64 characters), e.g. 'gemmascope-2-transcoder-262k'"]
+    problems = []
+    models = circuit_trace_models(params)
+    if len(models) > 1:
+        problems.append(f"circuit-trace source_set {source_set!r} with {len(models)} graph models {models}: a source "
+                        "set belongs to one model, and the matrix would send it to every cell; fire each model "
+                        "on its own")
+    commit = _circuit_trace_job_value(params, "commit_outputs").strip().lower() == "true"
+    if commit and _circuit_trace_job_value(params, "output_root") == "":
+        problems.append(f"circuit-trace source_set {source_set!r} with commit_outputs true into trace_out/: "
+                        "scripts/export_tag_mass.py aggregates clinical_mass from every committed summary that names "
+                        "a source set, so the summary would publish uncalibrated clinical mass; fire with "
+                        "commit_outputs false, or under output_root 'pilot/traces'")
+    return problems
 
 
 def circuit_trace_pairs_path(params: dict) -> str:
@@ -1230,6 +1282,12 @@ def circuit_trace_pairs_outside_checkout(path: str) -> bool:
 
 
 def circuit_trace_params_problems(params: dict) -> list[str]:
+    """Every circuit-trace refusal the workflow's params job applies before tracing: the `source_set` rules
+    (circuit_trace_source_set_problems), then the `output_root` rules (circuit_trace_output_root_problems)."""
+    return circuit_trace_source_set_problems(params) + circuit_trace_output_root_problems(params)
+
+
+def circuit_trace_output_root_problems(params: dict) -> list[str]:
     """circuit-trace's `output_root` rules, as the workflow's params job applies them: the root is "" or
     pilot/traces; for either root the pairs path has no backslash and stays inside the checkout; a pairs file under
     pilot/ goes with the pilot root and only with it, and under that root sits in its run's trace/ directory
@@ -1439,14 +1497,15 @@ KNOWN_KEYS = {
     # commit_outputs, max_n_logits, desired_logit_prob, node_threshold, edge_threshold,
     # max_feature_nodes, generate_explanations, steer_validate, steer_boost, steer_placebo,
     # steer_strength, steer_boost_strength, steer_rank_offset, translation_model; output_root
-    # added 2026-10-01 (the pilot trace root, CIRCUIT_TRACE_OUTPUT_ROOTS).
+    # added 2026-10-01 (the pilot trace root, CIRCUIT_TRACE_OUTPUT_ROOTS); source_set added
+    # 2026-10-09 (the hosted graph source set, CIRCUIT_TRACE_SOURCE_SET_RE).
     "circuit-trace": frozenset({
         "graph_model", "graph_models", "mode", "pairs_file", "offsets", "sample_size",
         "screen_targets", "show_mitigation", "commit_outputs", "max_n_logits",
         "desired_logit_prob", "node_threshold", "edge_threshold", "max_feature_nodes",
         "generate_explanations", "steer_validate", "steer_boost", "steer_placebo",
         "steer_strength", "steer_boost_strength", "steer_rank_offset", "translation_model",
-        "translation_placebo", "output_root",
+        "translation_placebo", "output_root", "source_set",
     }),
     # logits_evaluation.yml `defaults` dict (re-verified 2026-09-04): models, pairs_file,
     # limit, offset, commit_outputs, mode, layers, topk, dtype. `dtype` belongs to
