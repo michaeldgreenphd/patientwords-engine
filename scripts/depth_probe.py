@@ -176,7 +176,7 @@ def build_result(index, pair, curves, threshold):
 
 
 def build_summary(model_id, hf_id, results, start_index=1, *, min_cov, topk,
-                  threshold, tiers_path, tiers_status, revision=None):
+                  threshold, tiers_path, tiers_status, revision=None, revision_pinned=None):
     return {
         "mode": "depth_probe",
         "backend": "interp-engine-eager",
@@ -196,6 +196,7 @@ def build_summary(model_id, hf_id, results, start_index=1, *, min_cov, topk,
         },
         "inference": {"method": "logit_lens", "hf_id": hf_id, "dtype": "bfloat16",
                       "device": "cpu", "revision": revision,
+                      "revision_pinned": revision_pinned,
                       "environment": environment()},
         "results": results,
     }
@@ -243,7 +244,7 @@ def resolve_layers(spec, n_layers):
     return out
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--pairs", required=True)
     parser.add_argument("--model", required=True,
@@ -258,14 +259,22 @@ def main():
     parser.add_argument("--min-coverage", type=float, default=DEFAULT_MIN_COVERAGE)
     parser.add_argument("--divergence-threshold", type=float, default=0.25,
                         help="tier gap magnitude that counts as the curves parting")
-    args = parser.parse_args()
+    parser.add_argument("--revision", default=None,
+                        help="exact 40-hex Hugging Face commit (logits_eval.resolve_pinned_model)")
+    args = parser.parse_args(argv)
+
+    # Same short-id and pin tables as logits_eval; one place to add models.
+    from logits_eval import (PinError, check_resolved_revision, engine_revision,
+                             load_pinned_tokenizer, refuse, resolve_pinned_model)
+
+    model_id = args.model
+    try:  # before anything is imported or downloaded
+        hf_id, pinned = resolve_pinned_model(model_id, args.revision)
+    except PinError as exc:
+        refuse(exc)
 
     from interp_engine import load_model, sync_model
 
-    from logits_eval import HF_IDS  # same short-id table; one place to add models
-
-    model_id = args.model
-    hf_id = HF_IDS.get(model_id, model_id)
     tiers_doc = json.loads(Path(args.tiers).read_text(encoding="utf-8"))
     vocab = tiers_doc["tokens"]
     pairs = json.loads(Path(args.pairs).read_text(encoding="utf-8"))
@@ -274,11 +283,21 @@ def main():
     if args.limit:
         pairs = pairs[:args.limit]
 
-    print(f"Loading {hf_id} via interp-engine eager (cpu, bfloat16) ...", flush=True)
+    print(f"Loading {hf_id} @ {pinned} via interp-engine eager (cpu, bfloat16) ...", flush=True)
     # Eager on CPU is the only backend that serves every point without CUDA, and
     # trust_remote_code stays off: we never execute checkpoint-bundled code.
+    # interp-engine has no revision argument of its own, so the pin goes in
+    # twice: the tokenizer is loaded pinned and handed over, and model_kwargs
+    # reaches the weights' from_pretrained. The resolved commit is then checked.
     model = load_model(hf_id, backend="eager", device="cpu",
-                       dtype="bfloat16", trust_remote_code=False)
+                       dtype="bfloat16", trust_remote_code=False,
+                       tokenizer=load_pinned_tokenizer(hf_id, pinned),
+                       model_kwargs={"revision": pinned})
+    revision = engine_revision(model, hf_id, pinned)
+    try:
+        check_resolved_revision(hf_id, pinned, revision)
+    except PinError as exc:
+        refuse(exc)
     # sync_model is ONLY for the async lifecycle methods. The raw model is what
     # goes to layer_logits, which wraps it itself (see measure_depth).
     lifecycle = sync_model(model)
@@ -299,7 +318,8 @@ def main():
             model_id, hf_id, results, start_index,
             min_cov=args.min_coverage, topk=args.topk,
             threshold=args.divergence_threshold,
-            tiers_path=args.tiers, tiers_status=tiers_doc.get("status"))
+            tiers_path=args.tiers, tiers_status=tiers_doc.get("status"),
+            revision=revision, revision_pinned=pinned)
         summary["completed"] = completed
         if not completed:
             summary["_partial"] = "in-progress flush (crash/timeout protection)"
