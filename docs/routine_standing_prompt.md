@@ -155,13 +155,33 @@ and say so in the brief. Parking keeps every trigger file's resting
 content a cheap no-op — the resting-state rule. If any OTHER trigger file
 was left un-parked by a stray fire, re-park that lane too once terminal.
 
+3e. **Exploratory predictions backfill (added 2026-10-09; $0; owner-approved;
+stops at parity).** One `logits-eval` leg per cycle for the three
+exploratory models (`gemma-4-e2b`, `qwen3.5-2b-base`, `medgemma-1.5-4b-it`;
+`docs/model_matrix.md`), nothing else. Run
+`python scripts/backfill_planner.py --exploratory`. If it prints
+`AT PARITY`, fire nothing, and add a `decisions_pending` entry asking the
+owner to retire this step. Otherwise fire only when the `logits-eval` lane
+has 0 active journal entries after §2, and never when the journal already
+holds an entry whose note is exactly the planner's note: that leg ran and
+did not land, so put it in `blockers` and `decisions_pending` and skip this
+step until the owner answers. To fire, run the printed `fire_trigger.py fire`
+command, then at once
+`python scripts/fire_trigger.py park --trigger logits-eval --keep-dashboard`;
+add `--keep-dashboard` to the fire too, and `--ignore-settle` to both only
+when §2 resolved a `logits-eval` entry this cycle after confirming it
+terminal. The park queues behind the leg (one running + one pending, never
+a third) and runs after it, so the file at rest is always the park. The next
+cycle's §2 harvests both entries. A landed leg is not new measurement for §5:
+whether these models' rows reach the site is the owner's decision.
+
 ## 4 · No other fires
 
-Maintenance mode fires NOTHING but the sentinel, the §3d PNG sweep and
-re-parks. Paid fires (`PAID_TRIGGERS`, `docs/triggers.md`) other than a
-lane's park default, plus circuit-trace with `show_mitigation: true` or
+Maintenance mode fires NOTHING but the sentinel, the §3d PNG sweep, the
+§3e exploratory leg and re-parks. Paid fires (`PAID_TRIGGERS`,
+`docs/triggers.md`) other than a lane's park default, plus circuit-trace with `show_mitigation: true` or
 `mode: translation`, need the owner's explicit words in a live chat.
-Measurement lanes stay parked; there is no backlog to advance.
+Measurement lanes stay parked; the only backlog advanced is §3e's.
 
 ## 5 · Publish data, never text
 

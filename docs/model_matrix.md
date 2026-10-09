@@ -24,17 +24,45 @@ pinned to one exact Hugging Face commit (`HF_REVISIONS`; see *Pinned revisions* 
 | `medgemma-4b-it` | `google/medgemma-4b-it` | 4.3B | MedGemma / Gemma 3 (Google, Health AI Developer Foundations) | Gated — HAI-DEF terms (owner accepted 2026-07-13 on the CI `HF_TOKEN` account) | Medical-tuned twin of `gemma-3-4b-it` (same base, same size): the paired contrast isolates what medical fine-tuning does to the colloquial-vs-clinical gap |
 | `meditron3-8b` | `EPFLiGHT/Meditron3-8B` (was `OpenMeditron/Meditron3-8B`, which now HTTP-307-redirects here) | 8.0B | Meditron 3 / Llama 3.1 (EPFL), fine-tuned from `meta-llama/Llama-3.1-8B-Instruct` | Gated — Llama 3.1 license acknowledgment (owner signed 2026-07-17 on the CI `HF_TOKEN` account) | Medical-tuned, instruction-tuned 8B (C4 successor, owner 2026-07-17); 8B class: swap step and small chunks |
 | `apertus-8b-meditronfo` | `EPFLiGHT/Apertus-8B-MeditronFO` | 8.1B | Apertus (Swiss AI) + MeditronFO medical tuning (EPFL), fine-tuned from an Apertus-8B instruct checkpoint | Ungated (Apache-2.0) | Medical-tuned, instruction-tuned 8B (C4 successor, owner 2026-07-17); 8B class: swap step and small chunks. **Upstream replaced the weights on 2026-10-06; the study stays pinned to the 2026-06-26 weights** (see below) |
-| `gemma-4-e2b` | `google/gemma-4-E2B` | 5.1B stored (2.3B effective; per-layer embeddings plus vision and audio encoders), ~10.2 GB bf16 | Gemma 4 (Google), **base** (IT twin `google/gemma-4-E2B-it` not registered) | Ungated (Apache-2.0). **Awaiting limit-3 probe** | Post-registration exploratory addition (2026-10-09): newest Gemma generation as a base checkpoint, extending the `gemma-2-2b` → `gemma-3-4b-it` line. Loads as the full multimodal `Gemma4ForConditionalGeneration`; only the text stack runs |
-| `qwen3.5-2b-base` | `Qwen/Qwen3.5-2B-Base` | 2.3B, ~4.5 GB bf16 | Qwen3.5 (Alibaba), **base** | Ungated (Apache-2.0). **Awaiting limit-3 probe** | Post-registration exploratory addition (2026-10-09): the suite's only true Qwen base (the Qwen3 entries are post-trained), with a new 248,320-entry tokenizer and a hybrid Gated-DeltaNet/attention architecture; first load of the `qwen3_5` path in CI |
-| `medgemma-1.5-4b-it` | `google/medgemma-1.5-4b-it` | 4.3B, ~8.6 GB bf16 | MedGemma 1.5 / Gemma 3 (Google, HAI-DEF), **instruction-tuned** (no 1.5 PT exists) | Gated — HAI-DEF terms; the owner said on 2026-10-09 they will accept them on the CI `HF_TOKEN` account (acceptance may be per repository, so the `medgemma-4b-it` grant may not cover it). **Awaiting limit-3 probe** | Post-registration exploratory addition (2026-10-09): third medical-tune point on the Gemma 3 4B base beside `gemma-3-4b-it` and `medgemma-4b-it` |
+| `gemma-4-e2b` | `google/gemma-4-E2B` | 5.1B stored (2.3B effective; per-layer embeddings plus vision and audio encoders), ~10.2 GB bf16 | Gemma 4 (Google), **base** (IT twin `google/gemma-4-E2B-it` not registered) | Ungated (Apache-2.0). **Limit-3 probe passed 2026-10-09 (run 37960095244)**: ~5 s/pair; weight download and load ~70 s (1,951 tensors, the full multimodal model) | Post-registration exploratory addition (2026-10-09): newest Gemma generation as a base checkpoint, extending the `gemma-2-2b` → `gemma-3-4b-it` line. Loads as the full multimodal `Gemma4ForConditionalGeneration`; only the text stack runs |
+| `qwen3.5-2b-base` | `Qwen/Qwen3.5-2B-Base` | 2.3B, ~4.5 GB bf16 | Qwen3.5 (Alibaba), **base** | Ungated (Apache-2.0). **Limit-3 probe passed 2026-10-09 (run 37960095244)**: ~60 s/pair; weight download and load ~19 s (320 tensors); the `qwen3_5` path's first CI load worked | Post-registration exploratory addition (2026-10-09): the suite's only true Qwen base (the Qwen3 entries are post-trained), with a new 248,320-entry tokenizer and a hybrid Gated-DeltaNet/attention architecture; first load of the `qwen3_5` path in CI |
+| `medgemma-1.5-4b-it` | `google/medgemma-1.5-4b-it` | 4.3B, ~8.6 GB bf16 | MedGemma 1.5 / Gemma 3 (Google, HAI-DEF), **instruction-tuned** (no 1.5 PT exists) | Gated — HAI-DEF terms; the owner said on 2026-10-09 they will accept them on the CI `HF_TOKEN` account (acceptance may be per repository, so the `medgemma-4b-it` grant may not cover it). **Limit-3 probe passed 2026-10-09 (run 37960095244)**, so the CI token's gate acceptance is in effect: ~120 s/pair, the slowest of the three; weight download and load ~31 s (883 tensors) | Post-registration exploratory addition (2026-10-09): third medical-tune point on the Gemma 3 4B base beside `gemma-3-4b-it` and `medgemma-4b-it` |
 
 The three 2026-10-09 additions are in the exploratory family (`docs/prereg_divergence_log.md`).
-Their first fire is a limit-3 probe per model (protocol below), fired by a later session. Support in
-`scripts/depth_probe.py` (interp-engine 1.5.1) and `scripts/activation_patch.py` (transformer_lens) is
-unverified, and none is in `activation_patch.HF_IDS` or `backfill_planner.MODELS`. Reaching parity
-with the existing models costs about 31 runner-hours per model (about 39 batch legs at roughly one
-minute per pair, unmeasured for these three), on a lane that still had 125 of 390 cross-model legs
-outstanding at the last coverage line in `ops/dashboard.json`.
+**All three passed their limit-3 probe on 2026-10-09** (one logits-eval fire, run 37960095244,
+`pairs_20260707T171223Z` pairs 1-3, `commit_outputs` false, so nothing landed): each loaded at its
+pinned commit, the post-load revision check passed, and the clinical/patient probabilities sat in
+the same range as the ten existing models' on those pairs. Support in `scripts/depth_probe.py`
+(interp-engine 1.5.1) and `scripts/activation_patch.py` (transformer_lens) is still unverified, and
+none is in `activation_patch.HF_IDS`. Since 2026-10-09 they are in `backfill_planner.MODELS` and its
+`EXPLORATORY` tuple, and the Routine's §3e (`docs/routine_standing_prompt.md`) fires their backfill.
+
+**Backfill to parity: runner time.** These are first-probe timings on three pairs each, read from
+the gaps between consecutive pairs in the step log; a full-size leg is the first real check of them.
+
+| Model | s/pair | Pairs per fire (planner class) | Fires to parity | Per-fire overhead | Runner time to parity |
+|---|---|---|---|---|---|
+| `gemma-4-e2b` | ~5 | 120 (`FAST`: a whole batch) | 39 | ~110 s | ~4.4 h |
+| `qwen3.5-2b-base` | ~60 | 50 (default) | 57 | ~64 s | ~40 h |
+| `medgemma-1.5-4b-it` | ~120 | 25 (`BIG`) | 102 | ~75 s | ~80 h |
+
+Method. Parity is `backfill_planner._parity_target`: for each of the 43 `data/simulated/pairs_*.json`
+batches the planner reads, the deepest any of the ten original models has measured it. On `main` on
+2026-10-09 that is every pair of 39 batches, **2,343 pairs**, the same 2,343 rows the 8B backfill
+closed on (`docs/coordination/backfill_8b_complete_20260826.md`). The other four batches have a
+target of 0 because no model has measured them: `pairs_20260721T132205Z` (100 pairs, never booked to
+Tier B) and three one-pair scenario-generation parks; a raw count of the 43 files would give 2,446.
+Fires = the sum over batches of ceil(target / pairs per fire). Runner time = 2,343 × s/pair + fires ×
+per-fire overhead, where the overhead is the probe job's wall time minus its three pairs (setup,
+install, weight download and load). Each fire also queues a one-pair park behind it (§3e), a few more
+runner-minutes per fire, not counted above. Total for the three: about 125 runner-hours, $0.
+
+At one fire per Routine cycle on the Tue/Fri cadence, 198 fires take about 99 weeks: `gemma-4-e2b`
+reaches parity after 39 cycles, `qwen3.5-2b-base` 57 cycles later, `medgemma-1.5-4b-it` 102 after
+that. A session chaining the same planner commands (one leg running, harvest, next) is bounded by the
+runner time instead. The chunk classes keep each fire's measured compute near an hour or less of the
+workflow's 240-minute timeout; with a full-size leg confirming the rate, `qwen3.5-2b-base` at 100 and
+`medgemma-1.5-4b-it` at 50 pairs per fire (~100 min each) would cut the fire count to 40 and 57.
 
 The Gemma gate on Hugging Face is one shared license acknowledgement across `google/gemma*`
 repos, so the acceptance already made for `google/gemma-3-4b-it` (the grant behind the
