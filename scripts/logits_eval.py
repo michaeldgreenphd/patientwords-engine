@@ -90,6 +90,19 @@ HF_IDS = {
 
     "gemma-2-2b-it": "google/gemma-2-2b-it",
     "gemma-2-9b": "google/gemma-2-9b",
+    # Post-registration additions to the exploratory family (owner 2026-10-09;
+    # docs/model_matrix.md, docs/prereg_divergence_log.md). Each is awaiting its
+    # limit-3 probe; depth_probe and activation_patch support is unverified.
+    # Gemma 4 base (Apache-2.0, ungated). AutoModelForCausalLM resolves to the
+    # full multimodal Gemma4ForConditionalGeneration; only the text stack runs.
+    "gemma-4-e2b": "google/gemma-4-E2B",
+    # A true Qwen base (the Qwen3 entries above are post-trained); new
+    # 248k-vocab tokenizer, hybrid Gated-DeltaNet/attention (Apache-2.0, ungated).
+    "qwen3.5-2b-base": "Qwen/Qwen3.5-2B-Base",
+    # Third medical-tune point on the Gemma 3 4B base beside gemma-3-4b-it and
+    # medgemma-4b-it. Gated by HAI-DEF terms: the owner accepts them on the CI
+    # HF_TOKEN account (said 2026-10-09); until then its probe fails at download.
+    "medgemma-1.5-4b-it": "google/medgemma-1.5-4b-it",
 }
 
 # Ids kept in HF_IDS as records only. They have no pin, so resolve_pinned_model
@@ -120,6 +133,11 @@ HF_REVISIONS = {
     "apertus-8b-meditronfo": "ef2b141da7ccc347c2a13b2518370ba6a8a2b745",
     "medgemma-4b-it": "290cda5eeccbee130f987c4ad74a59ae6f196408",
     "gemma-2-2b-it": "299a8560bedf22ed1c72a8a11e7dce4a7f9f51f8",
+    # Head of `main` on 2026-10-09 from the public HF API (`sha` of
+    # /api/models/<repo>; for the gated medgemma repo too), when each was added.
+    "gemma-4-e2b": "d29ff6b45f081a49ee2733a859c9c9c2d95d1a6f",
+    "qwen3.5-2b-base": "b1485b2fa6dfa1287294f269f5fb618e03d52d7c",
+    "medgemma-1.5-4b-it": "91850547d9f0b2fdd21aa7c5f4f3d1a8a52c243b",
 }
 
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
