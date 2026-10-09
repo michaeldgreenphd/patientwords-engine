@@ -24,9 +24,11 @@ from collections import defaultdict
 from pathlib import Path
 
 try:
+    from scripts.publication_hold import is_held
     from scripts.tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp
 except ImportError:  # direct invocation from repo root
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from publication_hold import is_held
     from tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp
 
 ENGINE = Path(__file__).resolve().parents[1]
@@ -42,7 +44,7 @@ def collect_rows(trace_root: Path) -> list[dict]:
         stem = summary.parent.name
         model = stem.split("__", 1)[1] if "__" in stem else "gemma-2-2b"
         batch = stem.split("__", 1)[0]
-        if not _OBS_RE.fullmatch(batch):
+        if not _OBS_RE.fullmatch(batch) or is_held(model):   # held models: scripts/publication_hold.py
             continue
         data = json.loads(summary.read_text(encoding="utf-8"))
         if data.get("backend") != "logits":

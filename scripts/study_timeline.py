@@ -21,10 +21,12 @@ from pathlib import Path
 
 try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
     from scripts.provenance_stamp import provenance
+    from scripts.publication_hold import is_held_run_dir
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from provenance_stamp import provenance
+    from publication_hold import is_held_run_dir
 
 MILESTONE_FILES = [
     ("docs/preregistration_tierB.md", "Tier B pre-registration committed"),
@@ -95,7 +97,9 @@ def main(argv=None):
 
     gen_batches = [b for b in batches if isinstance(b.get("cost_usd"), (int, float))
                    and b["cost_usd"] > 0]
-    trace_parts = len(glob.glob("trace_out/*/batch_summary.part_*.json"))
+    # parts of models held from publication (scripts/publication_hold.py) are not counted until released
+    trace_parts = sum(1 for p in glob.glob("trace_out/*/batch_summary.part_*.json")
+                      if not is_held_run_dir(Path(p).parent.name))
     payload = {
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "provenance": ("every entry derives from a committed artifact: batch cost "

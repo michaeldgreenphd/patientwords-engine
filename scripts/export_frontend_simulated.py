@@ -145,6 +145,12 @@ _unknown_steered = STEERED - set(STAMPS)
 if _unknown_steered:
     sys.exit(f"--steered-stamps names stamps absent from --stamps: {sorted(_unknown_steered)}")
 WANT_MODELS = [m.strip() for m in args.models.split(",") if m.strip()]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from publication_hold import HELD_MODELS  # noqa: E402  (script-style module)
+_held_wanted = sorted(set(WANT_MODELS) & HELD_MODELS)
+if _held_wanted:
+    sys.exit(f"--models names models held from publication (scripts/publication_hold.py): {_held_wanted}; "
+             "releasing one is a reviewed change to that file")
 
 # The render prune reads the working tree. A site checkout that keeps tracked
 # renders off disk (the cloud containers' sparse clone excludes modes/) would
