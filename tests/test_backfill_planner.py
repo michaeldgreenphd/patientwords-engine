@@ -6,6 +6,7 @@ import re
 import shlex
 from pathlib import Path
 
+import pytest
 import yaml
 
 
@@ -314,20 +315,100 @@ def test_emitted_exploratory_command_passes_fire_trigger_and_the_park_queues_beh
 
 
 def test_the_routine_step_runs_this_mode_and_stops_on_the_string_it_prints(tmp_path, monkeypatch, capsys):
-    """docs/routine_standing_prompt.md section 3e runs `--exploratory` and stops on `AT PARITY`; both must stay
+    """docs/routine_standing_prompt.md section 3e runs `--campaign` and stops on `AT PARITY`; both must stay
     what the planner accepts and prints, or the step fires forever or never."""
     prompt = (_ROOT / "docs" / "routine_standing_prompt.md").read_text(encoding="utf-8")
     step_text = " ".join(prompt[prompt.index("\n3e. "):prompt.index("\n## 4 ")].split())
-    for token in ("python scripts/backfill_planner.py --exploratory", "AT PARITY", "0 active journal entries",
+    for token in ("python scripts/backfill_planner.py --campaign", "AT PARITY", "0 active journal entries",
                   "python scripts/fire_trigger.py park --trigger logits-eval --keep-dashboard"):
         assert token in step_text, token
     assert "--include-medgemma15" not in step_text and "--medgemma15-selection" not in step_text
     assert "§3e" in prompt[prompt.index("\n## 4 "):]
     tr = _complete_originals(tmp_path, monkeypatch, {"pairs_A": 4})
-    assert bp.main(["--exploratory"]) == 0
+    assert bp.main(["--campaign"]) == 0
     out = capsys.readouterr().out
     assert "AT PARITY" not in out and "--trigger logits-eval" in out and "--trigger circuit-trace" not in out
     for m in bp.SWEEP_MODELS:
         _write_summary(tr, f"pairs_A__{m}", range(1, 5))
-    assert bp.main(["--exploratory"]) == 0
+    assert bp.main(["--campaign"]) == 0
     assert "AT PARITY" in capsys.readouterr().out
+
+
+# --- the original models' gaps (owner decision 2026-10-09) and the campaign order ---
+
+def _gap_root(tmp_path, monkeypatch, n=100, measured=None, stray=None):
+    """One n-pair batch every non-gap original has measured in full; the six gap models have `measured`."""
+    monkeypatch.setattr(bp, "ENGINE", tmp_path)
+    sim = tmp_path / "data" / "simulated"
+    sim.mkdir(parents=True)
+    (sim / "pairs_A.json").write_text(json.dumps([{"top_prompt": "x", "bottom_prompt": "y"}] * n))
+    tr = tmp_path / "trace_out"
+    for m in bp.MODELS:
+        if m not in bp.EXPLORATORY and m not in bp.GAP_MODELS:
+            _write_summary(tr, f"pairs_A__{m}", range(1, n + 1))
+    for m, idx in (measured or {}).items():
+        _write_summary(tr, f"pairs_A__{m}", idx)
+    for m, name in (stray or {}).items():
+        (tr / f"pairs_A__{m}").mkdir(parents=True, exist_ok=True)
+        (tr / f"pairs_A__{m}" / name).write_text(json.dumps({"results": []}))
+    return tr
+
+
+def test_gap_legs_share_fires_and_keep_every_leg_inside_half_the_timeout(tmp_path, monkeypatch):
+    _gap_root(tmp_path, monkeypatch, n=100, measured={"gemma-3-4b-it": range(1, 61)})
+    cov = bp.coverage()
+    legs = bp.gap_legs(cov, count=100)
+    covered = {m: [] for m in bp.GAP_MODELS}
+    names = {m: {"batch_summary.part_01.json"} if m == "gemma-3-4b-it" else set() for m in bp.GAP_MODELS}
+    for leg in legs:
+        p = leg["params"]
+        assert ft.validate_params("logits-eval", p) is None and not ft.is_paid_fire("logits-eval", p)
+        idx = bp.leg_indices(leg)
+        for m in p["models"].split(","):
+            assert len(idx) * bp.SECONDS_PER_PAIR[m] <= bp.HALF_TIMEOUT_S, (m, len(idx))
+            name = f"batch_summary.part_{idx[0]:02d}.json"
+            assert name not in names[m], (m, name)                   # no part name repeats or collides
+            names[m].add(name)
+            covered[m] += idx
+    assert sorted(covered["gemma-3-4b-it"]) == list(range(61, 101))
+    assert all(sorted(covered[m]) == list(range(1, 101)) for m in bp.GAP_MODELS if m != "gemma-3-4b-it")
+    # the shared range 61-100 went out once, carrying all six models
+    assert any(set(leg["params"]["models"].split(",")) == set(bp.GAP_MODELS) for leg in legs)
+    assert len(legs) <= 6                                              # 6 models x 100 pairs in a handful of fires
+
+
+def test_a_stray_part_where_a_fire_would_write_blocks_that_model_and_is_reported(tmp_path, monkeypatch):
+    _gap_root(tmp_path, monkeypatch, n=10, stray={"olmo-2-1b": "batch_summary.part_01.json"})
+    blocked = []
+    legs = bp.gap_legs(bp.coverage(), count=50, blocked=blocked)
+    assert blocked == [("pairs_A", "olmo-2-1b", "batch_summary.part_01.json")]
+    assert all("olmo-2-1b" not in leg["params"]["models"] for leg in legs)
+    assert {m for leg in legs for m in leg["params"]["models"].split(",")} == set(bp.GAP_MODELS) - {"olmo-2-1b"}
+
+
+def test_the_campaign_runs_sweep_then_gaps_then_priority_then_the_rest(tmp_path, monkeypatch):
+    _gap_root(tmp_path, monkeypatch, n=30)
+    sel = {"pairs_A": {3, 7}}
+    legs = bp.campaign_plan(bp.coverage(), count=100, include_medgemma15=True, medgemma15_selection=sel)
+    phases = [("sweep" if set(leg["params"]["models"].split(",")) == set(bp.SWEEP_MODELS) else
+               "gaps" if set(leg["params"]["models"].split(",")) <= set(bp.GAP_MODELS) else
+               "priority" if "priority" in leg["note"] else "rest") for leg in legs]
+    assert phases == sorted(phases, key=["sweep", "gaps", "priority", "rest"].index)
+    assert phases.count("priority") == 1 and phases[0] == "sweep"
+    med = [i for leg in legs if leg["params"]["models"] == bp.MEDGEMMA15 for i in bp.leg_indices(leg)]
+    assert sorted(med) == list(range(1, 31))                           # priority + rest, each pair once
+    # without the medgemma flags the campaign stops after the gaps
+    plain = bp.campaign_plan(bp.coverage(), count=100)
+    assert not any(bp.MEDGEMMA15 in leg["params"]["models"] for leg in plain)
+
+
+def test_fill_gaps_cli_and_json(tmp_path, monkeypatch, capsys):
+    _gap_root(tmp_path, monkeypatch, n=5)
+    assert bp.main(["--fill-gaps", "--next", "3"]) == 0
+    out = capsys.readouterr().out
+    assert "NEXT FILL-GAPS LEG" in out and "original-model gap fill" in out
+    assert bp.main(["--campaign", "--json"]) == 0
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["original_gaps"]["qwen3-4b"]["target_pairs"] == 5 and doc["next_legs"]
+    with pytest.raises(SystemExit):
+        bp.main(["--fill-gaps", "--campaign"])

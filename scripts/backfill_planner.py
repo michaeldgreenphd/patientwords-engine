@@ -88,6 +88,30 @@ LOGITS_CHUNK_BIG = 25
 LOGITS_CHUNK = 50
 LOGITS_CHUNK_FAST = 120
 
+# The six original models whose cross-model PREDICTIONS coverage was found short on 2026-10-09 (the
+# 2026-08-26 "39/39" claim held only for meditron3-8b, apertus-8b-meditronfo and gemma-2-2b's hosted traces;
+# docs/coordination/backfill_8b_complete_20260826.md, correction). `--fill-gaps` / `--campaign` fill them to
+# parity; owner decision 2026-10-09, with publication held until the owner releases (publication_hold.py).
+GAP_MODELS = ("gemma-3-4b-it", "qwen3-1.7b", "qwen3-4b", "llama-3.2-3b", "olmo-2-1b", "gemma-2-2b-it")
+# Measured CPU seconds per pair on the logits-eval runner, for sizing gap-fill fires: each model's leg must stay
+# within half the 240-minute job timeout. RATES_SOURCE says where each number comes from.
+SECONDS_PER_PAIR = {
+    "gemma-3-4b-it": 160.6, "qwen3-1.7b": 67.2, "qwen3-4b": 155.8, "llama-3.2-3b": 129.4, "olmo-2-1b": 44.0,
+    "gemma-2-2b-it": 88.5,
+}
+RATES_SOURCE = ("the SLOWEST rate each model showed in its successful logits-eval runs on GitHub Actions up to "
+                "2026-10-09: the 'Measure next-token behavior' step's duration (model load included) over the pairs "
+                "the run's trigger file asked for. Medians were about half these (gemma-3-4b-it 94, qwen3-1.7b 33, "
+                "qwen3-4b 76, llama-3.2-3b 69, olmo-2-1b 37, gemma-2-2b-it 79 s/pair), so sizing on the slowest "
+                "keeps a slow runner inside the timeout too")
+HALF_TIMEOUT_S = 240 * 60 // 2
+
+
+def _rate_chunk(model: str) -> int:
+    """Most pairs one fire may give `model` so that its leg stays within half the job timeout at its measured
+    rate, never more than a whole batch (LOGITS_CHUNK_FAST)."""
+    return max(1, min(LOGITS_CHUNK_FAST, int(HALF_TIMEOUT_S // SECONDS_PER_PAIR[model])))
+
 
 def _logits_chunk(model: str) -> int:
     """Pairs per logits-eval fire, by the model's speed class (BIG, FAST, else the 2-4B default).
@@ -162,16 +186,18 @@ def coverage() -> dict:
     rows = {}
     for b in batches():
         n = _pair_count(b)
-        measured = {m: _indices(f"{b}__{m}", "batch_summary*.json") for m in EXPLORATORY}
+        measured = {m: _indices(f"{b}__{m}", "batch_summary*.json") for m in MODELS}
         rows[b] = {
             "n": n,
             "trace": _max_index(b, "batch_summary*.json"),
             "lens": min(_max_index(f"{b}__jlens_gemma-2-2b", "jlens_summary*.json"),
                         # lens is only useful with save_raw; gate lens depth on raw depth
                         _saveraw_pairs(f"{b}__jlens_gemma-2-2b") or 0),
-            "models": {m: (max(measured[m], default=0) if m in measured
-                           else _max_index(f"{b}__{m}", "batch_summary*.json")) for m in MODELS},
+            "models": {m: max(measured[m], default=0) for m in MODELS},
             "measured": measured,
+            # existing part file names per model, so no planned fire is named like a part already there
+            "parts": {m: {p.name for p in (ENGINE / "trace_out" / f"{b}__{m}").glob("batch_summary*.json")}
+                      for m in MODELS},
         }
     return rows
 
@@ -265,34 +291,63 @@ def _leg(batch: str, n: int, models: list[str], chosen: list[int], label: str) -
             "note": f"backfill PREDICTIONS ({label}): {batch} {where} x {'+'.join(models)}"}
 
 
-def exploratory_legs(cov: dict, models: tuple[str, ...] = SWEEP_MODELS, count: int = 1,
-                     selection: dict[str, set[int]] | None = None, label: str = "exploratory, to parity") -> list:
-    """The next `count` fires bringing `models` to parity, oldest batch first. Each fire covers the
-    first pairs (at most the smallest chunk among `models`) the lead model - the first in `models`
-    still short on that batch - has not measured, and carries every model in `models` that has
-    measured none of them; models are fired together whenever their gaps agree, which is always the
-    case for a sweep that only ever fired them together. Later fires are planned as if the earlier
-    ones had landed. With `selection`, the target is only the selected indices of each batch."""
+def plan_legs(cov: dict, models: tuple[str, ...], count: int = 1, selection: dict[str, set[int]] | None = None,
+              label: str = "exploratory, to parity", chunk_fn=_logits_chunk, blocked: list | None = None) -> list:
+    """The next `count` fires bringing `models` to parity, oldest batch first.
+
+    In each batch the lead model is the first in `models` still short there. A fire takes the lead's first
+    unmeasured pairs - at most the smallest chunk_fn() among the models short at the lead's first pair, so every
+    leg of the fire stays within its model's limit - and carries every model in `models` that has measured
+    none of those pairs. Models whose gaps agree (a sweep fired together, or original models missing the same
+    batch) therefore share fires. Later fires are planned as if the earlier ones had landed. With `selection`,
+    the target is only the selected indices of each batch.
+
+    Part names: a fire's part is named for its first index (logits_eval.py). That index is unmeasured for
+    every model the fire carries, so it cannot be the first index of any landed part; a part FILE of that name
+    can still exist for another reason (an empty or hand-made part), and then that model is left out of the
+    batch and reported in `blocked` instead of being planned onto it."""
     measured = {b: {m: set(cov[b]["measured"][m]) for m in models} for b in cov}
-    chunk = min(_logits_chunk(m) for m in models)
     legs = []
     for b in sorted(cov):
         target = set(range(1, _parity_target(cov[b]) + 1))
         if selection is not None:
             target &= selection.get(b, set())
+        skip: set[str] = set()
         while len(legs) < count:
-            missing = {m: sorted(target - measured[b][m]) for m in models}
-            lead = next((m for m in models if missing[m]), None)
+            missing = {m: sorted(target - measured[b][m]) for m in models if m not in skip}
+            lead = next((m for m in models if missing.get(m)), None)
             if lead is None:
                 break
+            first = missing[lead][0]
+            name = f"batch_summary.part_{first:02d}.json"
+            clash = [m for m in missing if missing[m] and missing[m][0] == first
+                     and name in cov[b].get("parts", {}).get(m, set())]
+            if clash:
+                skip.update(clash)
+                if blocked is not None:
+                    blocked.extend((b, m, name) for m in clash)
+                continue
+            sharing = [m for m in missing if first in missing[m]]
+            chunk = min(chunk_fn(m) for m in sharing)
             chosen = missing[lead][:chunk]
-            fired = [m for m in models if set(chosen) <= set(missing[m])]
+            fired = [m for m in models if m in missing and set(chosen) <= set(missing[m])]
             legs.append(_leg(b, cov[b]["n"], fired, chosen, label))
             for m in fired:
                 measured[b][m].update(chosen)
         if len(legs) >= count:
             break
     return legs
+
+
+def exploratory_legs(cov: dict, models: tuple[str, ...] = SWEEP_MODELS, count: int = 1,
+                     selection: dict[str, set[int]] | None = None, label: str = "exploratory, to parity") -> list:
+    """plan_legs for exploratory models, sized by their speed class (_logits_chunk)."""
+    return plan_legs(cov, models, count, selection, label, _logits_chunk)
+
+
+def gap_legs(cov: dict, count: int = 1, blocked: list | None = None) -> list:
+    """plan_legs for the six original models' gaps, each leg sized by its model's measured rate (_rate_chunk)."""
+    return plan_legs(cov, GAP_MODELS, count, None, "original-model gap fill", _rate_chunk, blocked)
 
 
 def _others_complete(cov: dict) -> bool:
@@ -308,19 +363,65 @@ def _others_complete(cov: dict) -> bool:
     return True
 
 
-def exploratory_parity(cov: dict) -> dict:
-    """Per exploratory model: pairs measured toward parity, the parity target in pairs, and
-    batches at parity out of the batches with a nonzero target."""
+def parity(cov: dict, models) -> dict:
+    """Per model: pairs measured toward parity, the parity target in pairs, and batches at parity out of the
+    batches with a nonzero target."""
     out = {}
     targets = {b: set(range(1, _parity_target(r) + 1)) for b, r in cov.items()}
     due = [b for b in cov if targets[b]]
-    for m in EXPLORATORY:
+    for m in models:
         out[m] = {
             "pairs": sum(len(targets[b] & cov[b]["measured"][m]) for b in due),
             "target_pairs": sum(len(targets[b]) for b in due),
             "batches_at_parity": sum(1 for b in due if targets[b] <= cov[b]["measured"][m]),
             "batches": len(due),
         }
+    return out
+
+
+def exploratory_parity(cov: dict) -> dict:
+    """parity() for the exploratory models."""
+    return parity(cov, EXPLORATORY)
+
+
+def campaign_plan(cov: dict, count: int = 1, include_medgemma15: bool = False,
+                  medgemma15_selection: dict[str, set[int]] | None = None, blocked: list | None = None) -> list:
+    """The 2026-10 backfill campaign in the owner's order (2026-10-09): (1) the gemma-4-e2b + qwen3.5-2b-base
+    sweep; (2) the six original models' gaps; (3) medgemma-1.5-4b-it's priority selection, only when one is
+    given; (4) medgemma-1.5-4b-it's rest, only with include_medgemma15. Each phase's legs come after every leg of
+    the phases before it (planned as if those had landed)."""
+    legs = exploratory_legs(cov, SWEEP_MODELS, count)
+    if len(legs) < count:
+        legs += gap_legs(cov, count - len(legs), blocked)
+    if medgemma15_selection is not None and len(legs) < count:
+        priority = exploratory_legs(cov, (MEDGEMMA15,), count - len(legs), medgemma15_selection,
+                                    label="exploratory, medgemma-1.5 priority selection")
+        legs += priority
+        cov = _as_if_landed(cov, priority)   # the rest must not plan the selected pairs again
+    if include_medgemma15 and len(legs) < count:
+        legs += exploratory_legs(cov, (MEDGEMMA15,), count - len(legs), label="exploratory, to parity")
+    return legs
+
+
+def leg_indices(leg: dict) -> list[int]:
+    """The global 1-based indices a planned leg measures."""
+    p = leg["params"]
+    if p.get("indices"):
+        return [int(i) for i in str(p["indices"]).split(",")]
+    first = int(p["offset"]) + 1
+    return list(range(first, first + int(p["limit"])))
+
+
+def leg_batch(leg: dict) -> str:
+    return Path(leg["params"]["pairs_file"]).stem
+
+
+def _as_if_landed(cov: dict, legs: list) -> dict:
+    """A copy of `cov` in which every model of every leg has measured that leg's pairs."""
+    out = {b: {**r, "measured": {m: set(v) for m, v in r["measured"].items()}} for b, r in cov.items()}
+    for leg in legs:
+        for m in leg["params"]["models"].split(","):
+            out[leg_batch(leg)]["measured"][m].update(leg_indices(leg))
     return out
 
 
@@ -377,6 +478,9 @@ def summarize(cov: dict) -> None:
     print("  exploratory, at parity with the original models (pairs; batches):",
           " ".join(f"{m}:{p['pairs']}/{p['target_pairs']};{p['batches_at_parity']}/{p['batches']}"
                    for m, p in exploratory_parity(cov).items()))
+    print("  original-model gaps, toward the same parity (pairs; batches):",
+          " ".join(f"{m}:{p['pairs']}/{p['target_pairs']};{p['batches_at_parity']}/{p['batches']}"
+                   for m, p in parity(cov, GAP_MODELS).items()))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -388,42 +492,67 @@ def main(argv: list[str] | None = None) -> int:
                     help="plan only the 2026-10-09 exploratory models' next PREDICTIONS legs toward parity "
                          "(logits-eval lane only): the gemma-4-e2b + qwen3.5-2b-base sweep, one fire per batch; "
                          "the Routine's section 3e")
+    ap.add_argument("--fill-gaps", action="store_true",
+                    help="plan only the six original models' missing pairs (GAP_MODELS) to parity; several models "
+                         "missing the same pairs share a fire")
+    ap.add_argument("--campaign", action="store_true",
+                    help="the 2026-10 campaign in order: the exploratory sweep, then the original models' gaps, "
+                         "then (only when asked) medgemma-1.5-4b-it's priority selection and its rest; "
+                         "scripts/backfill_chain.py runs this")
     ap.add_argument("--include-medgemma15", action="store_true",
-                    help="with --exploratory: after the sweep reaches parity, plan medgemma-1.5-4b-it's remaining "
-                         "pairs (only pairs it has not measured)")
-    ap.add_argument("--medgemma15-selection", metavar="FILE",
-                    help="with --exploratory: plan medgemma-1.5-4b-it on this selection's pairs only "
-                         "(scripts/select_priority_pairs.py output), before anything else for it")
+                    help="with --exploratory or --campaign: after the earlier phases, plan medgemma-1.5-4b-it's "
+                         "remaining pairs (only pairs it has not measured)")
+    ap.add_argument("--medgemma15-selection", "--medgemma15-priority", dest="medgemma15_selection", metavar="FILE",
+                    help="with --exploratory: plan medgemma-1.5-4b-it on this selection's pairs only; with "
+                         "--campaign: plan them after the sweep and the gaps (scripts/select_priority_pairs.py "
+                         "output)")
     ap.add_argument("--next", type=int, default=1, metavar="N",
-                    help="with --exploratory: print the next N legs, each planned as if the earlier ones had "
-                         "landed (a session keeping one running and one pending uses 2)")
+                    help="with --exploratory, --fill-gaps or --campaign: print the next N legs, each planned as if "
+                         "the earlier ones had landed (a session keeping one running and one pending uses 2)")
     args = ap.parse_args(argv)
-    if (args.include_medgemma15 or args.medgemma15_selection or args.next != 1) and not args.exploratory:
-        ap.error("--include-medgemma15, --medgemma15-selection and --next go with --exploratory")
-    if args.include_medgemma15 and args.medgemma15_selection:
+    modes = [m for m in ("exploratory", "fill_gaps", "campaign") if getattr(args, m)]
+    if len(modes) > 1:
+        ap.error("--exploratory, --fill-gaps and --campaign are separate plans; pick one")
+    leg_mode = modes[0] if modes else None
+    if (args.include_medgemma15 or args.medgemma15_selection) and leg_mode not in ("exploratory", "campaign"):
+        ap.error("--include-medgemma15 and --medgemma15-selection go with --exploratory or --campaign")
+    if args.next != 1 and not leg_mode:
+        ap.error("--next goes with --exploratory, --fill-gaps or --campaign")
+    if leg_mode == "exploratory" and args.include_medgemma15 and args.medgemma15_selection:
         ap.error("--medgemma15-selection plans the priority pairs alone; run --include-medgemma15 separately")
     if args.next < 1:
         ap.error("--next must be at least 1")
     cov = coverage()
     selection = load_selection(args.medgemma15_selection) if args.medgemma15_selection else None
-    if args.exploratory:
+    blocked: list = []
+    if leg_mode == "exploratory":
         legs = exploratory_plan(cov, args.next, args.include_medgemma15, selection)
-        steps = {"logits-eval": legs[0] if legs else None}
+    elif leg_mode == "fill_gaps":
+        legs = gap_legs(cov, args.next, blocked)
+    elif leg_mode == "campaign":
+        legs = campaign_plan(cov, args.next, args.include_medgemma15, selection, blocked)
     else:
         legs = []
+    for b, m, name in blocked:
+        print(f"BLOCKED: {m} on {b}: a part named {name} already exists where its next fire would write; "
+              "inspect that file - the planner will not fire onto it")
+    if leg_mode:
+        steps = {"logits-eval": legs[0] if legs else None}
+    else:
         steps = plan(cov, defer_8b_medical=not args.include_8b_medical)
     if args.json:
         print(json.dumps({"coverage": {b: {"n": r["n"], "trace": r["trace"], "lens": r["lens"],
                                            "models_complete": sum(_complete(r["models"][m], r["n"])
                                                                   for m in _reference_models())}
                                        for b, r in cov.items()},
-                          "exploratory_parity": exploratory_parity(cov), "next": steps,
-                          **({"next_legs": legs} if args.exploratory else {})}, indent=1))
+                          "exploratory_parity": exploratory_parity(cov),
+                          "original_gaps": parity(cov, GAP_MODELS), "next": steps,
+                          **({"next_legs": legs, "blocked": blocked} if leg_mode else {})}, indent=1))
         return 0
     summarize(cov)
-    if args.exploratory:
-        print(f"\nNEXT EXPLORATORY LEG{'S' if args.next > 1 else ''} (logits-eval only; fire only when the lane "
-              "has room - one running + one pending):")
+    if leg_mode:
+        print(f"\nNEXT {leg_mode.upper().replace('_', '-')} LEG{'S' if args.next > 1 else ''} (logits-eval only; "
+              "fire only when the lane has room - one running + one pending):")
         if not legs:
             print("\n[logits-eval] AT PARITY - nothing to fire for the models planned.")
         for step in legs:
