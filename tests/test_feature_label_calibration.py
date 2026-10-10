@@ -28,10 +28,13 @@ def _node(layer: int, index: int, ctx: int, category: str | None, description: s
             "ctx_idx": ctx, "feature_type": "cross layer transcoder", "medlang": note}
 
 
-def _graph(model: str, nodes: list[dict[str, Any]]) -> dict[str, Any]:
+def _graph(model: str, nodes: list[dict[str, Any]], prompt: str | None = None) -> dict[str, Any]:
     structural = [{"node_id": "err_1_1", "feature_type": "mlp reconstruction error", "layer": "1",
                    "medlang": {"category": "structural"}}]
-    return {"metadata": {"scan": model, "schema_version": 1}, "nodes": nodes + structural, "links": []}
+    meta: dict[str, Any] = {"scan": model, "schema_version": 1}
+    if prompt is not None:
+        meta["prompt"] = prompt
+    return {"metadata": meta, "nodes": nodes + structural, "links": []}
 
 
 def _row(index: int, prompt: str, clinical: float | None, patient: float | None) -> dict[str, Any]:
@@ -50,13 +53,21 @@ def _trace_dir(root: Path, model: str, source_set: str | None, rows: list[dict[s
     if graphs is None:
         return d
     graphs = dict(graphs)
+    row_by_index = {row["index"]: row for row in rows}
     if complete:
         for row in rows:
             for role in row.get("clinical_mass") or {}:
-                graphs.setdefault(f"pair_{row['index']:02d}_{role}.tagged.json", _graph(model, []))
+                prompt = (row.get("prompts") or {}).get(role, "")
+                graphs.setdefault(f"pair_{row['index']:02d}_{role}.tagged.json", _graph(model, [], prompt=prompt))
     for name, graph in graphs.items():
         # the tagger records the set its labels came from; a test that sets its own keeps it
         graph["metadata"].setdefault("medlang_summary", {"feature_source_set": source_set})
+        m = flc.TAGGED_RE.match(name)
+        if m:
+            pair_idx, role = int(m.group(1)), m.group(2)
+            if pair_idx in row_by_index:
+                prompt = (row_by_index[pair_idx].get("prompts") or {}).get(role, "")
+                graph["metadata"].setdefault("prompt", prompt)
         (d / name).write_text(json.dumps(graph), encoding="utf-8")
     return d
 
@@ -244,3 +255,44 @@ def test_out_creates_a_missing_parent_directory(two_models, tmp_path):
     out = tmp_path / "reports" / "nested" / "report.json"
     assert flc.main([str(a), str(b), "--out", str(out), "--examples", "0"]) == 0
     assert json.loads(out.read_text(encoding="utf-8"))["pairs"]["n_joined"] == 2
+
+
+def test_refuses_a_tagged_graph_with_mismatched_prompt(tmp_path, capsys):
+    # Regression (Codex review of PR #93, thread 4234427508): a complete artifact from a
+    # different run of the same model and source set with matching indices/roles passed all
+    # checks. metadata.prompt must match the summarized prompt.
+    rows = [_row(1, "p one", 0.3, 0.2)]
+    d = _trace_dir(tmp_path / "mismatch", "gemma-2-2b", "gemmascope-transcoder-16k", rows,
+                   {"pair_01_clinical.tagged.json": _graph("gemma-2-2b", [_node(1, 1, 1, "clinical", "x")],
+                                                           prompt="completely different prompt")})
+    with pytest.raises(flc.GraphPromptMismatchError, match="does not match summary prompt"):
+        flc.build_report(d, d)
+    assert flc.main([str(d), str(d)]) == 2
+    assert "refused: GraphPromptMismatchError" in capsys.readouterr().err
+
+
+def test_refuses_a_tagged_graph_with_missing_prompt(tmp_path):
+    rows = [_row(1, "p one", 0.3, 0.2)]
+    bare = _graph("gemma-2-2b", [_node(1, 1, 1, "clinical", "x")])
+    bare["metadata"]["medlang_summary"] = {"feature_source_set": "gemmascope-transcoder-16k"}
+    bare["metadata"].pop("prompt", None)
+    d = _trace_dir(tmp_path / "noprompt", "gemma-2-2b", "gemmascope-transcoder-16k", rows, {})
+    (d / "pair_01_clinical.tagged.json").write_text(json.dumps(bare), encoding="utf-8")
+    with pytest.raises(flc.GraphPromptMismatchError):
+        flc.build_report(d, d)
+
+
+def test_accepts_tagged_graphs_with_special_tokens_or_bos(tmp_path):
+    rows = [_row(1, "p one", 0.3, 0.2)]
+    g1 = _graph("gemma-2-2b", [_node(1, 1, 1, "clinical", "x")], prompt="<bos>p one")
+    d1 = _trace_dir(tmp_path / "d1", "gemma-2-2b", "gemmascope-transcoder-16k", rows,
+                    {"pair_01_clinical.tagged.json": g1})
+    rep1 = flc.build_report(d1, d1, examples=0)
+    assert rep1["models"]["a"]["tagged_graphs"] == 2
+
+    g2 = _graph("qwen3-4b", [_node(1, 1, 1, "clinical", "x")], prompt="<|endoftext|> p one")
+    d2 = _trace_dir(tmp_path / "d2", "qwen3-4b", "transcoder-hp", rows,
+                    {"pair_01_clinical.tagged.json": g2})
+    rep2 = flc.build_report(d2, d2, examples=0)
+    assert rep2["models"]["a"]["tagged_graphs"] == 2
+

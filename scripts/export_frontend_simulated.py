@@ -216,7 +216,7 @@ def model_dir(stem, model):
     return ENGINE / f"trace_out/{stem}__{model}"
 
 
-def read_trace_dir(trace_dir):
+def read_trace_dir(trace_dir, expected_model=None):
     """Collect per-index results + traced-model metadata from a dir's part files.
 
     Also returns the feature source set of every hosted (graph-bearing) part
@@ -233,6 +233,13 @@ def read_trace_dir(trace_dir):
     graph_source_sets = set()
     for part in sorted(trace_dir.glob("batch_summary.part_*.json")):
         summary = json.loads(part.read_text(encoding="utf-8"))
+        part_model = summary.get("graph_model") or BASE_MODEL
+        if expected_model and part_model != expected_model:
+            sys.exit(
+                f"refusing: trace part {part} records graph_model {part_model!r}, but directory is for "
+                f"{expected_model!r}. Stale or misplaced parts must be cleaned up before exporting. "
+                "Nothing was written or pruned."
+            )
         for key in ("graph_model", "source_set", "mode", "backend"):
             if summary.get(key):
                 meta[key] = summary[key]
@@ -302,7 +309,7 @@ for stamp in STAMPS:
         d = model_dir(stem, m)
         if not d.is_dir():
             continue
-        res, meta, scr, graph_sets, tagged_by = read_trace_dir(d)
+        res, meta, scr, graph_sets, tagged_by = read_trace_dir(d, expected_model=m)
         if not res:
             continue
         results_by_model[m] = res

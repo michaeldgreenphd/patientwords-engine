@@ -127,6 +127,33 @@ class TaggingSourceSetMismatchError(CalibrationInputError):
     """A tagged graph does not record the summaries' source set as the set its labels came from."""
 
 
+class GraphPromptMismatchError(CalibrationInputError):
+    """A tagged graph's metadata.prompt does not match the prompt recorded in the summary."""
+
+
+BOS_TOKENS_RE = re.compile(r"^(?:<\|[a-zA-Z0-9_.-]+\|>|<[a-zA-Z0-9_.-]+>|\s)+")
+
+
+def prompts_match(graph_prompt: Any, summary_prompt: Any) -> bool:
+    """True when graph metadata.prompt matches the prompt recorded in the summary part.
+
+    Neuronpedia may record the prompt with a prepended model BOS or special token
+    (such as '<bos>' or '<|endoftext|>'), so leading special tokens are stripped
+    or checked via suffix match."""
+    if not isinstance(graph_prompt, str) or not isinstance(summary_prompt, str):
+        return False
+    g, s = graph_prompt.strip(), summary_prompt.strip()
+    if not g or not s:
+        return False
+    if g == s:
+        return True
+    g_clean = BOS_TOKENS_RE.sub("", g).strip()
+    s_clean = BOS_TOKENS_RE.sub("", s).strip()
+    if g_clean == s_clean:
+        return True
+    return g.endswith(s)
+
+
 def _read_json(path: Path) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -176,7 +203,7 @@ def _list_preview(items: list[tuple[int, str]], limit: int = 10) -> str:
 
 
 def tagged_graph_stats(trace_dir: Path, graph_model: str | None, source_set: str | None,
-                       expected: set[tuple[int, str]], examples: int, seed: int) -> dict[str, Any]:
+                       results: dict[int, dict[str, Any]], examples: int, seed: int) -> dict[str, Any]:
     """Label coverage and clinical tagging over every tagged graph in the directory.
 
     The graphs must be exactly the ``expected`` (index, role) set the summaries
@@ -184,8 +211,10 @@ def tagged_graph_stats(trace_dir: Path, graph_model: str | None, source_set: str
     artifacts downloaded) or an extra one (an artifact whose summary part is not
     here) would measure labels over a different population of pairs than the
     clinical_mass the same report gives, so either is refused. Every graph must
-    also name ``graph_model`` (the summaries' model) in metadata.scan: a wrong or
-    stale artifact downloaded into the directory is refused, not counted."""
+    also name ``graph_model`` (the summaries' model) in metadata.scan, record
+    ``source_set`` in its tagging metadata, and match the prompt recorded in the
+    summary for that pair and role."""
+    expected = expected_graphs(results)
     paths = sorted(p for p in trace_dir.glob("pair_*.tagged.json") if TAGGED_RE.match(p.name))
     if not paths:
         raise MissingTaggedGraphsError(
@@ -206,6 +235,9 @@ def tagged_graph_stats(trace_dir: Path, graph_model: str | None, source_set: str
     methods: Counter[str] = Counter()
     unique: dict[tuple[int, int], dict[str, Any]] = {}
     for path in paths:
+        m = TAGGED_RE.match(path.name)
+        assert m is not None
+        pair_idx, role = int(m.group(1)), m.group(2)
         graph = _read_json(path)
         meta = graph.get("metadata") or {}
         if meta.get("scan") != graph_model:
@@ -221,6 +253,12 @@ def tagged_graph_stats(trace_dir: Path, graph_model: str | None, source_set: str
             raise TaggingSourceSetMismatchError(
                 f"{path}: labels were tagged from source set {tagging[FEATURE_SOURCE_SET_KEY]!r} but the "
                 f"directory's summaries name {source_set!r}; a tagged graph from another trace is in this directory")
+        summary_prompt = (results.get(pair_idx, {}).get("prompts") or {}).get(role)
+        if not prompts_match(meta.get("prompt"), summary_prompt):
+            raise GraphPromptMismatchError(
+                f"{path}: metadata.prompt ({meta.get('prompt')!r}) does not match summary prompt for pair "
+                f"{pair_idx}/{role} ({summary_prompt!r}); a tagged graph from another run or prompt set is in "
+                "this directory")
         for node in graph.get("nodes", []):
             if not is_feature_node(node):
                 continue
@@ -316,7 +354,7 @@ def model_report(trace_dir: Path, examples: int, seed: int) -> tuple[dict[str, A
         "summary_parts": summaries["parts"],
         "n_results": len(results),
         **tagged_graph_stats(trace_dir, summaries["graph_model"], summaries["source_set"],
-                             expected_graphs(results), examples, seed),
+                             results, examples, seed),
         "clinical_mass": {role: distribution([_mass(row, role) for row in results.values()]) for role in roles},
     }
     if summaries["source_set"] is None:

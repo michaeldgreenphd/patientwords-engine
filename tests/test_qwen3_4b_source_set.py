@@ -359,6 +359,24 @@ def test_exporter_refuses_a_model_whose_traces_mix_source_sets(tmp_path):
     assert _export(engine2, tmp_path / "site2", STAMP).returncode != 0
 
 
+def test_exporter_refuses_trace_part_with_mismatched_model(tmp_path):
+    # Regression (Codex review of PR #93, thread 4234427502): a stale or misplaced part
+    # naming another model (e.g. gemma part under __qwen3-4b) would publish mass while
+    # models_meta emits features:false, breaking frontend contracts.
+    engine, site = tmp_path / "engine", tmp_path / "site"
+    _engine(engine, {STAMP: [HOSTED_TAGGED]})
+    foreign_part = engine / "trace_out" / f"{STEM}__qwen3-4b" / "batch_summary.part_02.json"
+    _write(foreign_part, {
+        "graph_model": "gemma-2-2b", "source_set": "gemmascope-transcoder-16k", "backend": "hosted",
+        "results": [_result(1, ROWS[0], 0.3)]
+    })
+    proc = _export(engine, site, STAMP)
+    assert proc.returncode != 0
+    assert "refusing: trace part" in proc.stderr
+    assert "gemma-2-2b" in proc.stderr and "qwen3-4b" in proc.stderr
+    assert not (site / "data" / "simulated_scenarios.json").exists()
+
+
 def test_logits_parts_are_not_a_source_set_and_meta_names_the_graphs_set(tmp_path):
     # a logits-lane part has no graph: its null source set is no tagging claim. models_meta
     # names the hosted parts' set even when the first stamp's metadata came from a logits dir.
