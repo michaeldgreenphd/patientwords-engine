@@ -10,6 +10,9 @@ The owner decided on 2026-10-09 that whether these rows are published is their c
 skips the models named here and says how many parts it skipped.
 
 Releasing a model is removing it from HELD_MODELS, in a reviewed pull request; the next publish then pools it.
+Because scripts/export_frontend_simulated.py defines candidate models in MODELS and LABELS and derives its
+default active models as those not in HELD_MODELS, removing a model from HELD_MODELS automatically includes it
+in the frontend export and models_meta without requiring code changes to the exporter.
 """
 from __future__ import annotations
 
