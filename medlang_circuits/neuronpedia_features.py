@@ -7,7 +7,10 @@ feature API and caches each feature JSON on disk.
 
 For gemma-2-2b with Gemma Scope transcoders the source is
 ``{layer}-gemmascope-transcoder-16k`` (e.g. layer 12, index 4321 ->
-GET /api/feature/gemma-2-2b/12-gemmascope-transcoder-16k/4321).
+GET /api/feature/gemma-2-2b/12-gemmascope-transcoder-16k/4321). For qwen3-4b
+it is ``{layer}-transcoder-hp`` (layer 1, index 19591 ->
+GET /api/feature/qwen3-4b/1-transcoder-hp/19591), with (layer, index) decoded
+from the schema-1 graph node's Cantor-paired ``feature`` value.
 """
 
 from __future__ import annotations
@@ -28,15 +31,31 @@ DEFAULT_SOURCE_SET = "gemmascope-transcoder-16k"
 DEFAULT_CACHE_DIR = ".medlang_cache/features"
 MAX_TOP_TOKENS = 12
 
-# Per-model default autointerp source sets for feature-description fetching.
-# None is a PLACEHOLDER: the model is traceable but its autointerp source name
-# hasn't been confirmed yet - replace None with the right source name from
-# neuronpedia.org; until then callers must pass --source-set explicitly.
+# Per-model default autointerp source sets for feature-description fetching
+# (GET /api/feature/<model>/<layer>-<source set>/<index>). This map selects the
+# FEATURE FETCHER only: the hosted graph request carries sourceSetName solely
+# when --source-set is passed explicitly (batch_eval._generation_params), so a
+# registry entry never changes which transcoders a graph is generated with.
+# None means no usable labelled set: batch runs trace with NullFetcher, every
+# feature is untagged and clinical_mass is a ~0 artifact.
+#
+# Registering a set here does NOT make a model's clinical_mass publishable:
+# that is scripts/feature_models.py's CALIBRATED_FEATURE_SOURCES, an owner
+# decision taken after a calibration check (scripts/feature_label_calibration.py).
 MODEL_SOURCE_SETS: dict[str, str | None] = {
     "gemma-2-2b": DEFAULT_SOURCE_SET,
-    "gemma-3-4b-it": None,  # PLACEHOLDER
-    "qwen3-4b": None,  # PLACEHOLDER
-    "qwen3-1.7b": None,  # PLACEHOLDER
+    # Gemma Scope 2 transcoders exist (gemmascope-2-transcoder-262k), but labels
+    # are sparse (1 of 3 sampled features labelled, 2026-10-09 survey) and the
+    # hosted graphs this study requests still fail; a re-probe is pending.
+    "gemma-3-4b-it": None,
+    # Hanna & Piotrowski transcoders (mwhanna/qwen3-4b-transcoders), labelled by
+    # gemini-2.0-flash (np_max-act). It is also Neuronpedia's default graph source
+    # set for qwen3-4b, so the tags describe the transcoders the graphs use.
+    # Registered 2026-10-09; clinical_mass stays unpublished pending calibration.
+    "qwen3-4b": "transcoder-hp",
+    # A LORSA model: Neuronpedia caps its hosted graphs at 10 prompt tokens,
+    # which the study's prompts exceed, so there are no traces to tag.
+    "qwen3-1.7b": None,
 }
 
 

@@ -232,14 +232,17 @@ The local backend additionally honors `batch_size` (default 48) and `compress`
 TransformerLens model ID.
 
 **Source-set caveat for non-gemma models:** feature tagging fetches autointerp
-descriptions per source set, and only `gemma-2-2b` has a registered default
-(`gemmascope-transcoder-16k`). For the other models the per-model map
-(`neuronpedia_features.MODEL_SOURCE_SETS`) holds a placeholder that raises a
-"set `--source-set` explicitly" error until the right autointerp source names
-are filled in — pass `--source-set` with the model's source name from
-neuronpedia.org in the meantime. The chosen model and source set are recorded
-in each run's `summary.json` / `batch_summary.json`, so outputs are
-self-describing.
+descriptions per source set. `gemma-2-2b` (`gemmascope-transcoder-16k`) and,
+since 2026-10-09, `qwen3-4b` (`transcoder-hp`) have registered defaults in
+`neuronpedia_features.MODEL_SOURCE_SETS`; for `gemma-3-4b-it` and `qwen3-1.7b`
+the entry is `None`, so `medlang-compare` raises a "set `--source-set`
+explicitly" error and `medlang-batch-eval` traces with untagged features
+(NullFetcher). The registry selects the feature fetcher only: the hosted graph
+request names a source set only when `--source-set` is passed. A registered set
+does not make a model's `clinical_mass` publishable; that is
+`scripts/feature_models.py` (`docs/cross-model.md`). The chosen model and source
+set are recorded in each run's `summary.json` / `batch_summary.json`, so outputs
+are self-describing.
 
 ```bash
 # Trace a different model with tightened thresholds

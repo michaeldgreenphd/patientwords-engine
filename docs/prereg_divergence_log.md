@@ -20,6 +20,7 @@ retro-edited into the frozen document.
 | 2026-07-12 → 2026-09-23 (site PR michaeldgreenphd/patientwords#8, merged 19:48Z as `d04ab5a`) | a render of holdout row `pairs_20260710T163230Z#44` stayed served on the site | Amendment 3: holdout phrases withheld from every public file | `modes/simulated/pairs_20260710T163230Z/index_44.html` carried the row's sealed clinical phrase and its patient sentence; withholding took the row out of the payload on 2026-07-14, but the exporter never deleted renders and the seal check skipped `modes/`, so the file stayed live, unlinked, until its removal. The 2026-07-13 → 07-17 row above ("every public file holdout-clean") was wrong about this file | **breach** (owner ruling 2, 2026-09-23); removed by site PR #8; the exporter now prunes unlisted renders; disclose the window in the endpoint writeup. Detail below |
 | 2026-09-23 (on the site since 2026-08-08) | the sealed phrase of `pairs_20260712T163501Z#17` occurs inside the accepted clinical prompt of explore row `pairs_20260806T135728Z#9` | the seal is the exact accepted clinical prompt (Amendment 1 hash; Amendment 3 phrase-keyed) | #9's prompt is a different, longer phrase that hashes explore; it is published in three site data files and one traces-site render; the two are near-duplicates | **not a leak** under the registered exact-phrase seal (owner ruling 1, 2026-09-23); allowlisted by the containing field's full sha256 in `data/seal_allowlist.json`; covered by the near-twin readout (Tier B Amendment 5). No number changes. Detail below |
 | 2026-07-19 → removal: first site publish after the engine PR "Make the Tier B seal hold on the public site" merges (date: ____) | patient-side text of holdout rows published in site `data/jlens_swaps.json` | Amendment 3 withholds holdout phrases from public data files; the registered seal covers the clinical phrase only | `scripts/export_pair_swaps.py` had no holdout filter, so the file carried, keyed by label, the verbatim patient sentence, patient-side swap span and target token of holdout rows (34 keys in its first version, 32 by the accepted prompt and 2 by the trace-time prompt; 187 at site `0756f2a`, 184 and 3) | not a breach of the seal's letter (patient side); withheld from now on (owner ruling 3, 2026-09-23); disclose. Detail below |
+| 2026-10-09 | feature labels for a second traced model arrived mid-study | circuit-level secondary analyses on hosted gemma-2-2b traces only (the registration's Measurement section); gemma-2-2b the one traced model with labelled transcoders | Neuronpedia published an autointerp-labelled transcoder set for qwen3-4b (`transcoder-hp`, the set its hosted graphs already use); registered in `neuronpedia_features.MODEL_SOURCE_SETS`, so qwen3-4b traces from now on carry tagged features and a non-null clinical_mass | exploratory and unpublished: no endpoint uses it; every exporter keeps qwen3-4b's clinical_mass null (`scripts/feature_models.py`) until the owner rules on comparability after `scripts/feature_label_calibration.py`. Detail below |
 | 2026-07-21 → 2026-09-23 | the daily seal check did not read most of the site | a seal check over every published artifact (holdout-seal-check skill; Routine publish gate) | `scripts/seal_check.py` skipped any path whose string contained `data/simulated`, `modes`, `.git` or `trace_out`, and matched raw text only; on the site that left 468 of 524 scannable files unread, including the three per-row data files and every render, and it could not see an HTML-escaped phrase | corrective (2026-09-23): excludes only the engine's own `data/simulated/` and `trace_out/` by resolved path and `.git` by path component, decodes HTML entities and JSON escapes, reads a hash-keyed allowlist; every daily "CLEAN" in the window is qualified accordingly. Detail below |
 | 2026-10-09 → | three models added to the CPU-logits matrix after registration | CPU logits on four models (the 2026-07-11 row's additions already secondary/exploratory) | registered and pinned, nothing measured yet; the first fire of each is a limit-3 probe: `gemma-4-e2b` (`google/gemma-4-E2B`, base), the newest Gemma generation as a base checkpoint, extending the `gemma-2-2b` → `gemma-3-4b-it` line; `qwen3.5-2b-base` (`Qwen/Qwen3.5-2B-Base`, base), a true Qwen base where the registered Qwen3 entries are post-trained, with a new tokenizer and a hybrid linear-attention architecture; `medgemma-1.5-4b-it` (`google/medgemma-1.5-4b-it`, instruction-tuned), the only new small medical checkpoint of 2026 and a third medical-tune point on the Gemma 3 4B base beside `gemma-3-4b-it` and `medgemma-4b-it` (`docs/model_matrix.md`) | post-registration exploratory family (owner approval 2026-10-09); no primary endpoint uses them; disclose in writeup |
 
@@ -194,3 +195,37 @@ engine's `data/tag_mass.json` is regenerated: n 2,693 / 2,308 becomes
 shares move by 0.1 percentage point (off-target 66.1 to 66.2, structural 10.0
 to 9.9). The site copy is replaced at the next run of the publish chain. No
 endpoint changes; disclose in the endpoint writeup.
+
+## 2026-10-09 — qwen3-4b feature labels registered; its clinical mass is exploratory
+
+**What changed.** Until 2026-10-09 gemma-2-2b was the only traced model with
+labelled transcoders, and qwen3-4b, whose hosted graphs have been served since
+2026-09-02, traced with no labels: its `clinical_mass` was the NullFetcher ~0
+artifact and every exporter nulled it. Neuronpedia now serves labels for
+qwen3-4b's default graph source set, `transcoder-hp` (`docs/cross-model.md`
+has the evidence), and the engine registers that set, so a qwen3-4b trace now
+tags its features and records `source_set: "transcoder-hp"` and a real
+`clinical_mass`. Hosted graph requests are unchanged; only the tagging is new.
+
+**Why it is not comparable yet.** clinical_mass counts features the keyword
+rule tags clinical from their labels. gemma-2-2b's labels and qwen3-4b's come
+from the same explainer (`gemini-2.0-flash`) but not in the same form: the
+gemma-2-2b features sampled carry a phrase-length `oai_token-act-pair`
+explanation as well as a short `np_max-act` one, the qwen3-4b features only the
+short one. Fewer and shorter labels match fewer keywords, so a lower qwen3-4b
+clinical mass could be a property of the labels rather than the model.
+
+**Disposition.** qwen3-4b's clinical mass is exploratory: computed and stored
+in its trace summaries, published nowhere, and used by no endpoint. The
+exporters (`export_frontend_simulated.py`, `export_archive.py`,
+`export_tag_mass.py`), `interp_analyses.py` and `retrace_consistency.py` gate on
+`scripts/feature_models.py`'s `CALIBRATED_FEATURE_SOURCES`, which holds
+the one pair (gemma-2-2b, `gemmascope-transcoder-16k`). After a $0 re-trace of
+pilot Runs 2 and 3 on both gemma-2-2b and qwen3-4b (the tagger records each
+graph's label source set only from 2026-10-09, and the calibration script
+refuses graphs without it), `scripts/feature_label_calibration.py` reports both
+models' label coverage, clinical-tag rate and per-pair clinical mass side by
+side on the same pairs; adding (qwen3-4b, `transcoder-hp`) to the set is then
+the owner's decision, to be recorded here
+before any qwen3-4b clinical mass is published. The pre-registered endpoints
+are unaffected.

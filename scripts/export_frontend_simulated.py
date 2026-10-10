@@ -62,6 +62,11 @@ except ImportError:
     from payload_summary import build_summary
 
 try:
+    from scripts.feature_models import clinical_mass_publishable
+except ImportError:
+    from feature_models import clinical_mass_publishable
+
+try:
     from scripts.render_prune import (ReferenceScanError, hidden_references, hidden_renders, prune,
                                       prune_candidates, referenced_renders)
 except ImportError:
@@ -69,9 +74,12 @@ except ImportError:
                               prune_candidates, referenced_renders)
 
 # The circuit-tracer models, in registry order (gemma-2-2b is the base/default).
-# Only gemma-2-2b has a transcoder source set, so clinical-feature attribution
-# (the "Med circuit" meter, auto-interp accents) is meaningful for it alone;
-# the others trace + measure next-token behavior but render structure-only.
+# Clinical-feature attribution (the "Med circuit" meter) is published only for
+# a calibrated (model, source set) pair, feature_models.CALIBRATED_FEATURE_SOURCES,
+# checked per result row against the summary part it came from. A model can carry
+# labels without being calibrated: qwen3-4b's summaries name source set
+# transcoder-hp since 2026-10-09, but its clinical_mass stays nulled until the
+# owner rules on the calibration check (scripts/feature_label_calibration.py).
 BASE_MODEL = "gemma-2-2b"
 MODELS = ["gemma-2-2b", "gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b"]
 LABELS = {
@@ -80,7 +88,6 @@ LABELS = {
     "qwen3-4b": "Qwen3 4B",
     "qwen3-1.7b": "Qwen3 1.7B · LoRSA attn",
 }
-FEATURED = {"gemma-2-2b"}          # models with a real transcoder source set
 QK = {"qwen3-1.7b"}                # traced with LoRSA attention replacement
 # Base-model fields mirrored to the top level for backward compatibility, so a
 # reader that doesn't understand scenario.models still shows the gemma view.
@@ -209,21 +216,41 @@ def model_dir(stem, model):
     return ENGINE / f"trace_out/{stem}__{model}"
 
 
-def read_trace_dir(trace_dir):
-    """Collect per-index results + traced-model metadata from a dir's part files."""
+def read_trace_dir(trace_dir, expected_model=None):
+    """Collect per-index results + traced-model metadata from a dir's part files.
+
+    Also returns the feature source set of every hosted (graph-bearing) part
+    that holds results, None for an untagged one: models_meta names one source
+    set per model, so the export refuses a model whose hosted parts disagree.
+    Logits and activation-patching parts have no graph, so their null source
+    set is not a tagging claim and is left out. ``tagged_by`` maps each index to
+    the (graph_model, source_set) of the part its result came from, which decides
+    whether that row's clinical_mass is published."""
     results = {}
+    tagged_by = {}
     meta = {}
     screen = None
+    graph_source_sets = set()
     for part in sorted(trace_dir.glob("batch_summary.part_*.json")):
         summary = json.loads(part.read_text(encoding="utf-8"))
+        part_model = summary.get("graph_model") or BASE_MODEL
+        if expected_model and part_model != expected_model:
+            sys.exit(
+                f"refusing: trace part {part} records graph_model {part_model!r}, but directory is for "
+                f"{expected_model!r}. Stale or misplaced parts must be cleaned up before exporting. "
+                "Nothing was written or pruned."
+            )
         for key in ("graph_model", "source_set", "mode", "backend"):
             if summary.get(key):
                 meta[key] = summary[key]
         if summary.get("screen_targets") is not None:
             screen = summary["screen_targets"]
+        if summary.get("backend") in (None, "hosted") and summary.get("results"):
+            graph_source_sets.add(summary.get("source_set"))
         for r in summary.get("results", []):
             results[r["index"]] = r
-    return results, meta, screen
+            tagged_by[r["index"]] = (summary.get("graph_model"), summary.get("source_set"))
+    return results, meta, screen, graph_source_sets, tagged_by
 
 
 def build_model_obj(r, pair, featured):
@@ -233,9 +260,11 @@ def build_model_obj(r, pair, featured):
     probs = r.get("probabilities", {})
     measured = tok(r.get("target_token"))
     intended = (pair.get("target_clinical_token") or "").strip()
-    # clinical_mass is only meaningful for a model with a transcoder source set.
+    # clinical_mass is published only for a calibrated (model, source set) pair.
     # NullFetcher models report ~0.0 (no feature is tagged clinical), which would
-    # read as a false "zero clinical mass" - coerce to None so the UI shows "-".
+    # read as a false "zero clinical mass"; a labelled but uncalibrated model
+    # (qwen3-4b) reports a number not yet comparable with gemma-2-2b's. Both are
+    # coerced to None so the UI shows "-".
     return {
         "prob_clinical": probs.get("clinical"),
         "prob_patient": probs.get("patient"),
@@ -261,6 +290,8 @@ def build_model_obj(r, pair, featured):
 batches = []
 scenarios = []
 traced_by_model = {}
+# model -> {source set of its hosted parts (None = untagged) -> [trace dirs]}
+graph_sets_by_model = {}
 display_index = 0
 first_preview = None
 _TIERB_START = tierb_start_stamp(str(ENGINE / "ops/dashboard.json"))
@@ -272,16 +303,20 @@ for stamp in STAMPS:
     report = json.loads((ENGINE / f"data/simulated/{stem}.report.json").read_text(encoding="utf-8"))
 
     results_by_model = {}
+    tagged_by_model = {}
     screen_targets = None
     for m in WANT_MODELS:
         d = model_dir(stem, m)
         if not d.is_dir():
             continue
-        res, meta, scr = read_trace_dir(d)
+        res, meta, scr, graph_sets, tagged_by = read_trace_dir(d, expected_model=m)
         if not res:
             continue
         results_by_model[m] = res
+        tagged_by_model[m] = tagged_by
         traced_by_model.setdefault(m, meta)
+        for source_set in graph_sets:
+            graph_sets_by_model.setdefault(m, {}).setdefault(source_set, []).append(str(d))
         if m == BASE_MODEL and scr is not None:
             screen_targets = scr
 
@@ -310,7 +345,8 @@ for stamp in STAMPS:
         display_index += 1
         gen = pair.get("generation", {})
 
-        models_obj = {m: build_model_obj(res[index], pair, m in FEATURED)
+        models_obj = {m: build_model_obj(res[index], pair, clinical_mass_publishable(
+                          tagged_by_model[m][index][0] or m, tagged_by_model[m][index][1]))
                       for m, res in results_by_model.items() if index in res}
         base = models_obj.get(BASE_MODEL) or next(iter(models_obj.values()))
 
@@ -353,6 +389,20 @@ for stamp in STAMPS:
         },
         "screen_targets": screen_targets,
     })
+
+# One feature source set per model's graphs, or no export (Codex review of
+# PR #93): models_meta.source_set describes every scenario of a model, so an
+# export mixing, say, an untagged qwen3-4b trace with a transcoder-hp one would
+# misdescribe some of them whichever value it named. Checked before any write.
+_mixed = {m: sets for m, sets in graph_sets_by_model.items() if len(sets) > 1}
+if _mixed:
+    sys.exit("refusing: these models' hosted traces were tagged from different feature source sets, and "
+             "models_meta names one per model: "
+             + "; ".join(f"{m}: " + ", ".join(f"{s or 'untagged'} ({', '.join(sorted(dirs))})"
+                                               for s, dirs in sorted(sets.items(), key=lambda kv: str(kv[0])))
+                         for m, sets in sorted(_mixed.items()))
+             + ". Export stamps whose traces share one source set (or leave the model out with --models), "
+               "or re-trace the rest on the same set. Nothing was written or pruned.")
 
 # Public site keeps interactive renders only for the most consequential
 # scenarios (flips first, then largest |wording gap|); every scenario
@@ -452,13 +502,22 @@ if first_preview is not None and not DRY:
             shutil.copy2(candidate, FRONTEND / "modes/simulated/preview.png")
             break
 
+def _graph_source_set(m):
+    """The one source set of the model's graphs (enforced above); a model with no
+    hosted part (logits lane only) keeps its metadata's value, null."""
+    if m in graph_sets_by_model:
+        return next(iter(graph_sets_by_model[m]))
+    return traced_by_model.get(m, {}).get("source_set")
+
+
 models_meta = [
     {
         "id": m,
         "label": LABELS.get(m, m),
         "graph_model": traced_by_model.get(m, {}).get("graph_model", m),
-        "source_set": traced_by_model.get(m, {}).get("source_set"),
-        "features": m in FEATURED,
+        "source_set": _graph_source_set(m),
+        # true only for a calibrated (model, source set) pair, as each row's mass
+        "features": clinical_mass_publishable(m, _graph_source_set(m)),
         "attention_replacement": m in QK,
         # whether this model has an attribution graph at all. The logits backend
         # (models Neuronpedia can't render) measures next-token behavior only, so
