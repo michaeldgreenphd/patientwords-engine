@@ -8,6 +8,9 @@ audit_target_reads.py mirror of urgency_shift's ingestion):
 1. HELD_MODELS. The three post-registration exploratory logits models added on 2026-10-09
    (docs/model_matrix.md, docs/prereg_divergence_log.md) are skipped entirely, whatever has landed. Releasing
    one is removing it from HELD_MODELS in a reviewed pull request and then running the release command below.
+   Because scripts/export_frontend_simulated.py defines candidate models in MODELS and LABELS and derives its
+   default active models as those not in HELD_MODELS, removing a model from HELD_MODELS automatically includes it
+   in the frontend export and models_meta without requiring code changes to the exporter.
 
 2. The logits release manifest (data/publication_release/logits_parts.json; owner decision 2026-10-09,
    "republish only when you say so"). A CPU-logits part (``"backend": "logits"``) is read only when its path is

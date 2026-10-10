@@ -100,8 +100,16 @@ def main(argv=None):
     # parts the publication hold keeps out (held models, unreleased logits parts: scripts/publication_hold.py)
     # are not counted until the owner releases them
     gate = Gate(".")
-    trace_parts = sum(1 for p in sorted(glob.glob("trace_out/*/batch_summary.part_*.json"))
-                      if gate.admit(Path(p), json.loads(Path(p).read_text(encoding="utf-8"))))
+    trace_parts = 0
+    for p in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):
+        part_path = Path(p)
+        try:
+            summary = json.loads(part_path.read_text(encoding="utf-8"))
+        except Exception:
+            summary = {}
+        if gate.admit(part_path, summary):
+            trace_parts += 1
+    held_parts = sum(gate.held.values())
     if gate.report():
         print(gate.report())
     payload = {
@@ -119,6 +127,7 @@ def main(argv=None):
             "tierb_accepted": sum(b["accepted"] for b in gen_batches
                                   if b.get("tierb") and isinstance(b.get("accepted"), int)),
             "trace_summary_parts": trace_parts,
+            "held_trace_summary_parts": held_parts,
             "first_utc": batches[0]["utc"] if batches else None,
             "last_utc": batches[-1]["utc"] if batches else None,
         },

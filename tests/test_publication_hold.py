@@ -178,6 +178,8 @@ def test_the_timeline_counts_only_publishable_parts(engine_root, monkeypatch):
     before = json.loads((engine_root / "before.json").read_text())
     after = json.loads((engine_root / "after.json").read_text())
     assert before["totals"]["trace_summary_parts"] == after["totals"]["trace_summary_parts"] == 2
+    assert before["totals"]["held_trace_summary_parts"] == 0
+    assert after["totals"]["held_trace_summary_parts"] == 4
 
 
 def test_screen_sensitivity_reads_only_released_logits_parts(engine_root):
@@ -268,3 +270,42 @@ def test_every_released_part_is_still_committed_with_its_released_bytes():
     committed = release.committed_logits_parts(ROOT)
     assert len(manifest) >= 409
     assert {p: committed.get(p) for p in manifest} == manifest
+
+
+def test_the_exporter_candidate_models_and_labels_cover_held_models():
+    src = (SCRIPTS / "export_frontend_simulated.py").read_text(encoding="utf-8")
+    for m in hold.HELD_MODELS:
+        assert f'"{m}"' in src
+
+
+def test_releasing_held_model_includes_it_in_models_meta(engine_root, tmp_path):
+    _land_held_parts(engine_root)
+    _write(engine_root / "data" / "simulated" / f"{BATCH}.report.json", {"accepted": 3, "cost_usd": 0.0})
+    gemma4_part = Path(f"trace_out/{BATCH}__gemma-4-e2b/batch_summary.part_01.json")
+    _manifest(engine_root, [QWEN_PART, gemma4_part])
+    (engine_root / "trace_out" / BATCH / "index_01.html").write_text("render 1", encoding="utf-8")
+    (engine_root / "trace_out" / f"{BATCH}__gemma-4-e2b" / "index_01.html").write_text("render 1", encoding="utf-8")
+
+    site = tmp_path / "site"
+    (site / "modes" / "simulated").mkdir(parents=True)
+    (site / "data").mkdir(parents=True)
+    override_code = (
+        "import sys; "
+        f"sys.path.insert(0, {str(SCRIPTS)!r}); "
+        "import publication_hold as ph; "
+        "import sys as _sys; _sys.modules['scripts.publication_hold'] = ph; "
+        "ph.HELD_MODELS = frozenset(ph.HELD_MODELS - {'gemma-4-e2b'}); "
+        "import export_frontend_simulated\n"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", override_code, "--engine", str(engine_root),
+         "--frontend", str(site), "--stamps", "20200101T000000Z"],
+        cwd=engine_root, capture_output=True, text=True, timeout=120,
+    )
+    assert proc.returncode == 0, proc.stderr
+    payload = json.loads((site / "data" / "simulated_scenarios.json").read_text(encoding="utf-8"))
+    meta_ids = [m["id"] for m in payload["models_meta"]]
+    assert "gemma-4-e2b" in meta_ids
+    gemma4_meta = next(m for m in payload["models_meta"] if m["id"] == "gemma-4-e2b")
+    assert gemma4_meta["label"] == "Gemma 4 E2B"
+    assert gemma4_meta["available"] is True
