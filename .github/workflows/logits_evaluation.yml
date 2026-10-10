@@ -99,6 +99,7 @@ jobs:
       topk: ${{ steps.params.outputs.topk }}
       dtype: ${{ steps.params.outputs.dtype }}
       output_root: ${{ steps.params.outputs.output_root }}
+      indices: ${{ steps.params.outputs.indices }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -131,13 +132,15 @@ jobs:
                       "pairs_file": "data/simulated/pairs_20260706T201750Z.json",
                       "limit": "0", "offset": "0", "commit_outputs": "false",
                       "mode": "logits", "layers": "all", "topk": "10",
-                      "dtype": "float32", "output_root": ""}
+                      "dtype": "float32", "output_root": "", "indices": ""}
           p = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/logits-eval.json", encoding="utf-8") as f:
                   cfg = json.load(f)
               if isinstance(cfg.get("models"), list):
                   cfg["models"] = " ".join(str(m) for m in cfg["models"])
+              if isinstance(cfg.get("indices"), list):
+                  cfg["indices"] = ",".join(str(i) for i in cfg["indices"])
               p.update({k: (str(v).lower() if isinstance(v, bool) else str(v))
                         for k, v in cfg.items() if k in defaults})
           else:
@@ -160,6 +163,18 @@ jobs:
           models = [m.strip() for m in p["models"].replace(",", " ").split() if m.strip()]
           if not models:
               raise SystemExit("no models to evaluate")
+          # indices (2026-10-09): comma-separated global 1-based pair indices, strictly ascending, measured instead of
+          # an offset/limit range; the part is named for the first index (logits_eval.py --indices). Mode logits under
+          # trace_out only, never with a nonzero offset or limit (fire_trigger.py logits_eval_params_problems refuses
+          # the same). A workflow_dispatch has no indices input, so it keeps "".
+          if p["indices"]:
+              idx = p["indices"].split(",")
+              if not all(i.isdigit() and int(i) >= 1 for i in idx) or any(
+                      int(b) <= int(a) for a, b in zip(idx, idx[1:])):
+                  raise SystemExit(f"indices must be strictly ascending positive integers, got {p['indices']!r}")
+              if p["mode"] != "logits" or p["output_root"] or p["offset"] not in ("", "0") or \
+                      p["limit"] not in ("", "0"):
+                  raise SystemExit("indices goes only with mode logits, output_root '' and offset/limit 0")
           # output_root: "" keeps trace_out/<stem>__<model>; "pilot/logits" is the pilot root, which no collector reads,
           # and each run measures into its own folder there, pilot/logits/<run_id>/<stem>__<model>. A pairs file under
           # pilot/ goes with the pilot root and only with it, under that root it must sit under pilot/runs/ (the one
@@ -239,9 +254,10 @@ jobs:
               f.write("topk=" + p["topk"] + "\n")
               f.write("dtype=" + p["dtype"] + "\n")
               f.write("output_root=" + root + "\n")
+              f.write("indices=" + p["indices"] + "\n")
           print("models:", models, "| pairs:", p["pairs_file"], "| mode:", p["mode"],
                 "| limit:", p["limit"], "| offset:", p["offset"], "| layers:", p["layers"],
-                "| output_root:", repr(root))
+                "| output_root:", repr(root), "| indices:", p["indices"] or "-")
           EOF
 
   eval:
@@ -308,9 +324,15 @@ jobs:
           MODE: ${{ needs.params.outputs.mode }}
           TOPK: ${{ needs.params.outputs.topk }}
           OUTPUT_ROOT: ${{ needs.params.outputs.output_root }}
+          INDICES: ${{ needs.params.outputs.indices }}
         run: |
           STEM=$(basename "$PAIRS_FILE" .json)
-          PART=$(printf 'part_%02d' $((OFFSET + 1)))
+          if [ -n "$INDICES" ]; then
+            # an --indices part is named for its first index, as a range part is (offset + 1 = its first index)
+            PART=$(printf 'part_%02d' "$((10#${INDICES%%,*}))")
+          else
+            PART=$(printf 'part_%02d' $((OFFSET + 1)))
+          fi
           echo "PART=$PART" >> "$GITHUB_ENV"
           if [ "$OUTPUT_ROOT" = "pilot/logits" ]; then
             # pilot pairs: outside trace_out/, where every collector reads measurements; the params job admits only
@@ -359,10 +381,16 @@ jobs:
           PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
           LIMIT: ${{ needs.params.outputs.limit }}
           OFFSET: ${{ needs.params.outputs.offset }}
+          INDICES: ${{ needs.params.outputs.indices }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}   # only needed for gated models (gemma)
         run: |
-          python scripts/logits_eval.py --pairs "$PAIRS_FILE" --model "$MODEL" \
-            --out "$OUT_DIR" --limit "$LIMIT" --offset "$OFFSET"
+          if [ -n "$INDICES" ]; then
+            python scripts/logits_eval.py --pairs "$PAIRS_FILE" --model "$MODEL" \
+              --out "$OUT_DIR" --indices "$INDICES"
+          else
+            python scripts/logits_eval.py --pairs "$PAIRS_FILE" --model "$MODEL" \
+              --out "$OUT_DIR" --limit "$LIMIT" --offset "$OFFSET"
+          fi
 
       - name: Measure per-layer tier curves (depth mode)
         if: ${{ needs.params.outputs.mode == 'depth' }}

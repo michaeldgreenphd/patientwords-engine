@@ -68,17 +68,34 @@ except ImportError:
     from render_prune import (ReferenceScanError, hidden_references, hidden_renders, prune,
                               prune_candidates, referenced_renders)
 
+try:
+    from scripts.publication_hold import HELD_MODELS
+except ImportError:
+    from publication_hold import HELD_MODELS
+
 # The circuit-tracer models, in registry order (gemma-2-2b is the base/default).
 # Only gemma-2-2b has a transcoder source set, so clinical-feature attribution
 # (the "Med circuit" meter, auto-interp accents) is meaningful for it alone;
 # the others trace + measure next-token behavior but render structure-only.
 BASE_MODEL = "gemma-2-2b"
-MODELS = ["gemma-2-2b", "gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b"]
+MODELS = [
+    "gemma-2-2b",
+    "gemma-3-4b-it",
+    "qwen3-4b",
+    "qwen3-1.7b",
+    "gemma-4-e2b",
+    "qwen3.5-2b-base",
+    "medgemma-1.5-4b-it",
+]
+DEFAULT_MODELS = [m for m in MODELS if m not in HELD_MODELS]
 LABELS = {
     "gemma-2-2b": "Gemma 2 2B",
     "gemma-3-4b-it": "Gemma 3 4B-it",
     "qwen3-4b": "Qwen3 4B",
     "qwen3-1.7b": "Qwen3 1.7B · LoRSA attn",
+    "gemma-4-e2b": "Gemma 4 E2B",
+    "qwen3.5-2b-base": "Qwen3.5 2B Base",
+    "medgemma-1.5-4b-it": "MedGemma 1.5 4B-it",
 }
 FEATURED = {"gemma-2-2b"}          # models with a real transcoder source set
 QK = {"qwen3-1.7b"}                # traced with LoRSA attention replacement
@@ -101,9 +118,9 @@ parser.add_argument("--steered-stamps", default="",
                          "out of every pooled headline figure - the share over a set "
                          "selected to flip describes the selection, not the models "
                          "(owner decision 2026-08-15).")
-parser.add_argument("--models", default=",".join(MODELS),
+parser.add_argument("--models", default=",".join(DEFAULT_MODELS),
                     help="comma-separated circuit-tracer models to merge; a model's "
-                         "trace dir is used only where present (default: all four)")
+                         "trace dir is used only where present (default: active non-held models)")
 parser.add_argument("--preview-models", choices=["base", "all"], default="base",
                     help="'base' publishes only gemma renders for the demo cap (the site "
                          "stays a lightweight preview); 'all' also publishes each other "
@@ -145,6 +162,10 @@ _unknown_steered = STEERED - set(STAMPS)
 if _unknown_steered:
     sys.exit(f"--steered-stamps names stamps absent from --stamps: {sorted(_unknown_steered)}")
 WANT_MODELS = [m.strip() for m in args.models.split(",") if m.strip()]
+_held_wanted = sorted(set(WANT_MODELS) & HELD_MODELS)
+if _held_wanted:
+    sys.exit(f"--models names models held from publication (scripts/publication_hold.py): {_held_wanted}; "
+             "releasing one is a reviewed change to that file")
 
 # The render prune reads the working tree. A site checkout that keeps tracked
 # renders off disk (the cloud containers' sparse clone excludes modes/) would
@@ -470,7 +491,7 @@ models_meta = [
         "default": m == BASE_MODEL,
     }
     for m in MODELS
-    if any(m in s.get("models", {}) for s in scenarios)
+    if m in WANT_MODELS and any(m in s.get("models", {}) for s in scenarios)
 ]
 
 accepted_total = sum((b.get("generated") or {}).get("accepted") or 0 for b in batches)

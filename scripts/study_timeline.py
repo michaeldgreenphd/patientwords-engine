@@ -21,10 +21,12 @@ from pathlib import Path
 
 try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
     from scripts.provenance_stamp import provenance
+    from scripts.publication_hold import is_held_run_dir
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from provenance_stamp import provenance
+    from publication_hold import is_held_run_dir
 
 MILESTONE_FILES = [
     ("docs/preregistration_tierB.md", "Tier B pre-registration committed"),
@@ -95,7 +97,14 @@ def main(argv=None):
 
     gen_batches = [b for b in batches if isinstance(b.get("cost_usd"), (int, float))
                    and b["cost_usd"] > 0]
-    trace_parts = len(glob.glob("trace_out/*/batch_summary.part_*.json"))
+    # parts of models held from publication (scripts/publication_hold.py) are not counted until released
+    trace_parts = 0
+    held_parts = 0
+    for p in glob.glob("trace_out/*/batch_summary.part_*.json"):
+        if is_held_run_dir(Path(p).parent.name):
+            held_parts += 1
+        else:
+            trace_parts += 1
     payload = {
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "provenance": ("every entry derives from a committed artifact: batch cost "
@@ -111,6 +120,7 @@ def main(argv=None):
             "tierb_accepted": sum(b["accepted"] for b in gen_batches
                                   if b.get("tierb") and isinstance(b.get("accepted"), int)),
             "trace_summary_parts": trace_parts,
+            "held_trace_summary_parts": held_parts,
             "first_utc": batches[0]["utc"] if batches else None,
             "last_utc": batches[-1]["utc"] if batches else None,
         },
@@ -121,6 +131,8 @@ def main(argv=None):
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
     print(f"-> {out}")
+    if held_parts:
+        print(f"held from publication (scripts/publication_hold.py), parts omitted from timeline: {held_parts}")
     if args.site:
         site = Path(args.site) / "data" / "timeline.json"
         site.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
