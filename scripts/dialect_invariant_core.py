@@ -22,6 +22,11 @@ import os
 import re
 import sys
 
+try:
+    from scripts.feature_models import clinical_mass_publishable
+except ImportError:
+    from feature_models import clinical_mass_publishable
+
 _NORM_RE = re.compile(r"\(norm ([0-9.]+)\)")
 
 
@@ -90,13 +95,33 @@ def core_for_item(panels: list[list[dict]], top_n: int = 8) -> dict:
     }
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("trace_dir")
     ap.add_argument("--dialects-json", required=True,
                     help="frontend data/dialects.json to augment in place")
     ap.add_argument("--top", type=int, default=8)
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
+
+    with open(args.dialects_json, encoding="utf-8") as f:
+        data = json.load(f)
+    graph_model = data.get("graph_model")
+    source_set = data.get("source_set")
+    for part in sorted(glob.glob(os.path.join(args.trace_dir, "batch_summary*.json"))):
+        try:
+            with open(part, encoding="utf-8") as f:
+                s = json.load(f)
+            graph_model = s.get("graph_model") or graph_model
+            source_set = s.get("source_set") or source_set
+        except (OSError, ValueError):
+            pass
+
+    if not clinical_mass_publishable(graph_model, source_set):
+        sys.exit(
+            f"refusing: dialect-invariant clinical core cannot be published for uncalibrated "
+            f"model/source_set ({graph_model!r}, {source_set!r}); clinical_mass_publishable() is false. "
+            f"Nothing was written to {args.dialects_json}."
+        )
 
     cores: dict[int, dict] = {}
     for path in sorted(glob.glob(os.path.join(args.trace_dir, "index_*.html"))):

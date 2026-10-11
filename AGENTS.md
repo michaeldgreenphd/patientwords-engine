@@ -165,22 +165,18 @@ workflows (`fire_trigger.py budget-gate`).
 ## Architecture
 
 **Tracing (`graph_client.py` → `batch_eval.py`).** `MODEL_REGISTRY` lists four Neuronpedia
-model ids. **`gemma-2-2b` is the only model with both hosted graphs and a transcoder
-source set**; `docs/cross-model.md` has the dated per-model status (re-probe before
-relying on it). Hosted requests retry on
-{429,500,502,503,504} with fresh slugs; a 400 aborts the batch immediately, and `run_batch`
-has no per-pair error records — a mid-batch failure just truncates `results`.
-`medlang-batch-eval` has four modes (`2panel`, `4quadrant`, `dialect`, `translation`;
-`README.md` describes each mode) with different result schemas. In `2panel`, `--screen-targets`
-records an unmeasurable pair as `screening.status == "screened_out"` without its patient
-trace, and `--show-mitigation`'s translated third panel is the only Anthropic call.
+model ids (`gemma-2-2b` and `qwen3-4b` have hosted graphs and labelled transcoders;
+`docs/cross-model.md` has dated status). Hosted requests retry on {429,500,502,503,504};
+a 400 aborts immediately, and mid-batch failure truncates `results`. Modes: `2panel`,
+`4quadrant`, `dialect`, `translation` (`README.md`). `--screen-targets` marks unmeasurable
+pairs `screened_out`; `--show-mitigation` is the only Anthropic call.
 
-**Feature tagging.** Only gemma-2-2b has a transcoder source set
-(`neuronpedia_features.MODEL_SOURCE_SETS`); other models auto-degrade to `NullFetcher`:
-tracing and probabilities still work, but every feature is untagged, so their
-`clinical_mass` comes out ~0.0 — an artifact, not a finding. Anything consuming
-per-model results must null clinical-mass for models whose `source_set` is null
-(the frontend exporter does this via its `FEATURED` set).
+**Feature tagging.** `neuronpedia_features.MODEL_SOURCE_SETS` registers labelled source
+sets for gemma-2-2b and qwen3-4b; other models use `NullFetcher` (~0.0 clinical mass artifact).
+Labelled is not publishable: qwen3-4b's mass is exploratory pending calibration. Anything
+publishing or aggregating clinical mass gates per row on `scripts/feature_models.py`'s
+`clinical_mass_publishable` (today only gemma-2-2b with `gemmascope-transcoder-16k`); additions
+require owner decision after `scripts/feature_label_calibration.py`.
 
 **Behavior without graphs (`scripts/logits_eval.py`).** Models Neuronpedia can't trace are
 measured by direct CPU inference in CI, emitting **the same `batch_summary` schema** so

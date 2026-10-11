@@ -748,6 +748,11 @@ def evaluate_pair(
     result_screening = {"screening": screening} if screening else {}
     # Metrics, steering choices and the spread on the top-K view: a node kept for the read changes none of them.
     views = [metric_view(g) for g in graphs]
+    # Steering names features as <layer>-<source set>, so it must use the set the
+    # features were tagged from: the explicit --source-set, else the fetcher's
+    # registry default (qwen3-4b: transcoder-hp). Without that, a qwen3-4b feature
+    # would be steered under steer_ablate's gemma default name.
+    steer_set = source_set or getattr(fetcher, "source_set", None)
     return {
         "index": index,
         "mode": "2panel",
@@ -758,11 +763,11 @@ def evaluate_pair(
         "clinical_mass": {role: clinical_mass_fraction(g) for role, g in zip(roles, views)},
         "error_share": {role: error_node_share(g) for role, g in zip(roles, views)},
         "top_path": {role: path_text(top_attribution_path(g)) for role, g in zip(roles, views)},
-        **({"steering": _steer_validation(prompts[1], views[1], steer_validate, source_set)}
+        **({"steering": _steer_validation(prompts[1], views[1], steer_validate, steer_set)}
            if steer_validate else {}),
-        **({"steering_boost": _steer_boost(prompts[1], views[0], steer_boost, source_set)}
+        **({"steering_boost": _steer_boost(prompts[1], views[0], steer_boost, steer_set)}
            if steer_boost else {}),
-        **({"steering_placebo": _steer_placebo(prompts[1], views[1], steer_placebo, source_set)}
+        **({"steering_placebo": _steer_placebo(prompts[1], views[1], steer_placebo, steer_set)}
            if steer_placebo else {}),
         **result_screening,
         "mitigation_recovery": (

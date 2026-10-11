@@ -196,8 +196,10 @@ def test_fetcher_default_source_set_for_gemma():
     assert fetcher.source_set == "gemmascope-transcoder-16k"
 
 
-@pytest.mark.parametrize("model", ["gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b"])
+@pytest.mark.parametrize("model", ["gemma-3-4b-it", "qwen3-1.7b"])
 def test_fetcher_placeholder_models_require_explicit_source_set(model):
+    # qwen3-4b left this list on 2026-10-09 (transcoder-hp registered);
+    # tests/test_qwen3_4b_source_set.py covers it.
     with pytest.raises(ValueError, match="--source-set"):
         FeatureFetcher(model_id=model)
 

@@ -422,12 +422,14 @@ def test_gemma_3_clinical_mass_stays_unpublished(script):
     summary that names a source set still publishes none. (PR #93 replaces FEATURED with CALIBRATED_FEATURE_MODELS;
     gemma-3-4b-it is in neither.)"""
     path = ROOT / "scripts" / script
-    if "CALIBRATED_FEATURE_MODELS" in path.read_text(encoding="utf-8"):
+    text = path.read_text(encoding="utf-8")
+    if "clinical_mass_publishable" in text or "CALIBRATED_FEATURE_MODELS" in text:
         sys.path.insert(0, str(ROOT / "scripts"))
         try:
-            from feature_models import CALIBRATED_FEATURE_MODELS  # type: ignore[import-not-found]
+            from feature_models import CALIBRATED_FEATURE_MODELS, clinical_mass_publishable  # type: ignore[import-not-found]
         finally:
             sys.path.pop(0)
         assert "gemma-3-4b-it" not in CALIBRATED_FEATURE_MODELS
+        assert not clinical_mass_publishable("gemma-3-4b-it", "gemmascope-2-transcoder-262k")
     else:
         assert "gemma-3-4b-it" not in _featured_set(path)
