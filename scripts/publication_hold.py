@@ -2,8 +2,8 @@
 
 Two rules, both enforced by every collector that would pool trace_out/ summaries into a published number
 (urgency_shift.py, whose rows also feed paired_stats_rigor.py, tier_sensitivity.py and embed_scenario_joins.py;
-study_timeline.py; screen_sensitivity.py; export_frontend_simulated.py; export_archive.py; and the
-audit_target_reads.py mirror of urgency_shift's ingestion):
+study_timeline.py; screen_sensitivity.py; export_frontend_simulated.py; export_archive.py;
+interp_analyses.py; and the audit_target_reads.py mirror of urgency_shift's ingestion):
 
 1. HELD_MODELS. The three post-registration exploratory logits models added on 2026-10-09
    (docs/model_matrix.md, docs/prereg_divergence_log.md) are skipped entirely, whatever has landed. Releasing
@@ -74,8 +74,10 @@ def load_manifest(root: Path) -> dict[str, str]:
                            "manifest (python scripts/publication_release.py --release writes it)") from None
     except (OSError, ValueError) as exc:
         raise ReleaseError(f"{path} is unreadable: {exc}") from None
-    parts = doc.get("parts") if isinstance(doc, dict) else None
-    if doc.get("schema") != MANIFEST_SCHEMA or not isinstance(parts, dict) or not all(
+    if not isinstance(doc, dict) or doc.get("schema") != MANIFEST_SCHEMA:
+        raise ReleaseError(f"{path} is not a {MANIFEST_SCHEMA} manifest with a {{path: sha256}} 'parts' map")
+    parts = doc.get("parts")
+    if not isinstance(parts, dict) or not all(
             isinstance(k, str) and isinstance(v, str) and len(v) == 64 for k, v in parts.items()):
         raise ReleaseError(f"{path} is not a {MANIFEST_SCHEMA} manifest with a {{path: sha256}} 'parts' map")
     return parts

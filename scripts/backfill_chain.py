@@ -247,6 +247,25 @@ class Chain:
                            "check it in the Actions tab; rerun this chain once it has finished (it resumes)")
             self.sleep(self.args.poll_seconds)
 
+    def wait_running(self, entry: dict) -> None:
+        """Wait until this entry's workflow run is active (status not in QUEUED_STATES), so a second
+        fire queues cleanly in GitHub Actions without evicting an unstarted run."""
+        sha = self.fire_commit(entry)
+        run = self.find_run(sha)
+        run_id = run["databaseId"]
+        deadline = self.now() + timedelta(minutes=self.args.find_run_minutes)
+        while True:
+            rc, out, _ = self.gh("run", "view", str(run_id), "--json", "status")
+            if rc:
+                raise Stop(f"gh run view {run_id} failed", "check gh and the network, then rerun")
+            status = json.loads(out).get("status")
+            if status not in QUEUED_STATES:
+                return
+            if self.now() >= deadline:
+                raise Stop(f"run {run_id} stayed queued past {self.args.find_run_minutes} min",
+                           "wait for it to start running, then rerun")
+            self.sleep(self.args.poll_seconds)
+
     def nothing_queued(self) -> bool:
         rc, out, _ = self.gh("run", "list", "--workflow", WORKFLOW, "--branch", BRANCH, "--limit", "20",
                              "--json", "databaseId,status")
@@ -355,8 +374,10 @@ class Chain:
         cov = self.bp._as_if_landed(cov, flying)
         blocked: list = []
         legs = self.bp.campaign_plan(cov, count, self.args.include_medgemma15, self.selection, blocked)
-        for b, m, name in blocked:
-            self.log(f"BLOCKED by an existing part name: {m} on {b} ({name}); the planner skips it")
+        if blocked:
+            b0, m0, name0 = blocked[0]
+            raise Stop(f"planner encountered {len(blocked)} blocked gap(s): {m0} on {b0} ({name0})",
+                       "resolve colliding part files before continuing backfill")
         return legs
 
     def check_leg(self, leg: dict) -> None:
@@ -420,6 +441,8 @@ class Chain:
                     self.harvest(legs[0], verify=True)
                     continue
                 break
+            if legs:
+                self.wait_running(legs[0])
             self.check_leg(nxt)
             self.require_clean()
             # a fresh _nonce (ignored by CI) so a leg re-planned after a failed run still changes the trigger file

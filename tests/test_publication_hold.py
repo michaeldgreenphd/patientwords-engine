@@ -140,6 +140,14 @@ def test_without_a_manifest_the_collector_refuses_and_writes_nothing(engine_root
     assert rows == b"" and site == b""
 
 
+def test_malformed_non_dict_manifest_raises_release_error(tmp_path):
+    manifest_path = tmp_path / hold.RELEASE_MANIFEST
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text("[1, 2, 3]", encoding="utf-8")
+    with pytest.raises(hold.ReleaseError, match="not a logits_release/1 manifest"):
+        hold.load_manifest(tmp_path)
+
+
 def test_hosted_parts_need_no_manifest(engine_root):
     (engine_root / QWEN_PART).unlink()
     (engine_root / hold.RELEASE_MANIFEST).unlink()
@@ -213,6 +221,16 @@ def test_export_archive_reads_only_released_logits_parts(engine_root, tmp_path):
     _land_unreleased_original_part(engine_root)
     after, out = export("after")
     assert after == before and "unreleased logits part 1" in out
+
+
+def test_interp_analyses_reads_only_released_parts(engine_root):
+    interp = _load("interp_analyses")
+    _land_held_parts(engine_root)
+    _land_unreleased_original_part(engine_root)
+    parts = list(interp.load_parts(engine_root / "trace_out"))
+    # only the 2 released parts: gemma-2-2b and qwen3-4b part 1
+    assert len(parts) == 2
+    assert {name for name, _ in parts} == {BATCH, f"{BATCH}__qwen3-4b"}
 
 
 def test_the_exporter_refuses_to_merge_a_held_model(tmp_path):

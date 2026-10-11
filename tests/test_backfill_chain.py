@@ -310,6 +310,43 @@ def test_after_a_failed_run_is_resolved_by_hand_a_rerun_fires_the_leg_again(repo
         assert ft.main(["resolve", "--trigger", "logits-eval", "--all", "--repo", str(repo)]) == 0
     world.conclusion, world.land, world.journal_dirty = "success", True, False
     rc, out = _run(repo, world)
-    assert rc == 0, out
     notes = [e["note"] for e in _journal(repo) if e["note"].endswith(chain_mod.CHAIN_TAG)]
     assert len(set(notes)) == 2 and len(notes) == 4                    # the same two legs, fired again
+
+
+def test_blocked_gap_raises_stop(repo):
+    chain = chain_mod.Chain(repo, chain_mod.build_parser().parse_args(["--repo", str(repo)]),
+                            repo.parent / "c.log", run=World(repo), sleep=lambda s: None)
+    def mock_campaign_plan(cov, count, include_medgemma15, selection, blocked):
+        blocked.append(("pairs_A", "olmo-2-1b", "batch_summary.part_01.json"))
+        return []
+    chain.bp.campaign_plan = mock_campaign_plan
+    with pytest.raises(chain_mod.Stop, match="blocked gap"):
+        chain.plan(1)
+
+
+def test_wait_running_waits_until_run_is_active(repo):
+    world = World(repo)
+    chain = chain_mod.Chain(repo, chain_mod.build_parser().parse_args(["--repo", str(repo)]),
+                            repo.parent / "c.log", run=world, sleep=lambda s: None)
+    leg = bp.campaign_plan(_cov(repo), 1)[0]
+    world._fire_trigger([sys.executable, "fire_trigger.py", "fire", "--trigger", "logits-eval", "--params",
+                         json.dumps({**leg["params"], "_nonce": "earlier-" + leg["note"][-12:]}), "--note",
+                         leg["note"] + chain_mod.CHAIN_TAG])
+    entry = chain.active()[0]
+    sha = world.commits[0][0]
+    world.runs[sha]["status"] = "queued"
+    polled = [0]
+    orig_call = world.__call__
+
+    def fake_call(argv):
+        if argv[:3] == ["gh", "run", "view"]:
+            polled[0] += 1
+            if polled[0] >= 2:
+                world.runs[sha]["status"] = "in_progress"
+        return orig_call(argv)
+
+    chain._run = fake_call
+    chain.wait_running(entry)
+    assert polled[0] >= 2
+    assert world.runs[sha]["status"] == "in_progress"

@@ -42,12 +42,25 @@ from pathlib import Path
 ENGINE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from publication_hold import HELD_MODELS  # noqa: E402  (script-style module)
 from tierb_split import SealError, sealed_pair  # noqa: E402  (script-style module)
 
 SCHEMA = "priority_pairs/1"
 DIRECTIONAL = ("downgrade", "upgrade")
 _BATCH_RE = re.compile(r"pairs_\d{8}T\d{6}Z(?:_[a-z0-9]+)?")
+
+# The ten original models of the study, whose published urgency rows define consensus.
+ORIGINAL_MODELS: frozenset[str] = frozenset({
+    "apertus-8b-meditronfo",
+    "gemma-2-2b",
+    "gemma-2-2b-it",
+    "gemma-3-4b-it",
+    "llama-3.2-3b",
+    "medgemma-4b-it",
+    "meditron3-8b",
+    "olmo-2-1b",
+    "qwen3-1.7b",
+    "qwen3-4b",
+})
 
 
 def _sha256(path: Path) -> str:
@@ -146,10 +159,13 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(f"refused: {urgency_path} not found; pass --site <a site checkout>")
     bundle = json.loads(tasks_path.read_text(encoding="utf-8"))
     rows = json.loads(urgency_path.read_text(encoding="utf-8"))["rows"]
-    batch_sizes = {p.stem: len(json.loads(p.read_text(encoding="utf-8")))
-                   for p in sorted((ENGINE / "data" / "simulated").glob("pairs_*.json"))
-                   if not p.name.endswith(".report.json")}
-    originals = {r["model"] for r in rows} - HELD_MODELS
+    batch_files = sorted((ENGINE / "data" / "simulated").glob("pairs_*.json"))
+    batch_files = [p for p in batch_files if not p.name.endswith(".report.json")]
+    batch_sizes = {p.stem: len(json.loads(p.read_text(encoding="utf-8"))) for p in batch_files}
+    present_models = {r["model"] for r in rows}
+    missing_models = sorted(ORIGINAL_MODELS - present_models)
+    if missing_models:
+        raise SystemExit(f"refused: {urgency_path} is missing expected original model(s): {missing_models}")
     task_pairs = [] if args.no_task_set else task_set_pairs(bundle)
 
     def sealed(batch: str, index: int) -> bool:
@@ -158,8 +174,19 @@ def main(argv: list[str] | None = None) -> int:
         except SealError as exc:
             raise SystemExit(f"refused: the holdout seal cannot be evaluated for {batch}#{index}: {exc}")
 
-    pairs, stats = select(task_pairs, consensus_counts(rows, originals), args.k, args.cap, batch_sizes, sealed)
+    pairs, stats = select(task_pairs, consensus_counts(rows, ORIGINAL_MODELS), args.k, args.cap, batch_sizes, sealed)
     now = datetime.now(timezone.utc)
+    dashboard_path = ENGINE / "ops" / "dashboard.json"
+    sources = [
+        {"path": str(tasks_path.relative_to(ENGINE)) if tasks_path.is_relative_to(ENGINE)
+         else str(tasks_path), "sha256": _sha256(tasks_path)},
+        {"path": "patientwords:data/urgency_shift.json", "sha256": _sha256(urgency_path)},
+    ]
+    if dashboard_path.is_file():
+        sources.append({"path": "ops/dashboard.json", "sha256": _sha256(dashboard_path)})
+    for p in batch_files:
+        sources.append({"path": str(p.relative_to(ENGINE)), "sha256": _sha256(p)})
+
     doc = {
         "schema": SCHEMA,
         "created_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -171,15 +198,13 @@ def main(argv: list[str] | None = None) -> int:
             "main-study tracing pairs of the physician task bundle, in its rank order",
             "consensus": f"directional urgency-tier flip (downgrade or upgrade) in >= {args.k} of the original "
                          "models' published urgency rows",
-            "k": args.k, "cap": args.cap, "models_counted": sorted(originals),
+            "k": args.k, "cap": args.cap, "models_counted": sorted(ORIGINAL_MODELS),
             "excluded": "pairs the Tier B holdout seals (tierb_split.sealed_pair, accepted prompt); pairs outside "
                         "the committed data/simulated/pairs_*.json batches",
             "order": "task-set pairs first (bundle rank), then consensus pairs by models flipping (most first), "
                      "batch, index",
         },
-        "sources": [{"path": str(tasks_path.relative_to(ENGINE)) if tasks_path.is_relative_to(ENGINE)
-                     else str(tasks_path), "sha256": _sha256(tasks_path)},
-                    {"path": "patientwords:data/urgency_shift.json", "sha256": _sha256(urgency_path)}],
+        "sources": sources,
         "counts": stats,
         "pairs": pairs,
     }
