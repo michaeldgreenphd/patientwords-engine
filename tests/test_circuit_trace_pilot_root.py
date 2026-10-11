@@ -429,7 +429,7 @@ def test_a_dispatch_input_carrying_a_newline_is_refused_with_nothing_written(tmp
     """A dispatch never passes through scripts/fire_trigger.py, so the params job is the one place a control character
     is refused for it; the select step would otherwise write the value's lines to $GITHUB_ENV (through the pairs
     file's name). On main the params job refused none (2026-10-05)."""
-    assert len(DISPATCH_INPUTS) == 13 and "pairs_file" in DISPATCH_INPUTS
+    assert len(DISPATCH_INPUTS) == 14 and "pairs_file" in DISPATCH_INPUTS
     rc, out, err = _run_dispatch(tmp_path, {key: "1\nOUT_DIR=trace_out/x"})
     assert rc != 0 and out == "" and "must not carry a control character" in err, err
 
