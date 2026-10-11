@@ -165,7 +165,7 @@ LOGITS_EVAL_OUTPUT_ROOTS = ("", LOGITS_EVAL_PILOT_ROOT)
 LOGITS_EVAL_PILOT_MODE = "logits"
 # the workflow's push-path defaults for the keys the pilot rules read
 LOGITS_EVAL_JOB_DEFAULTS = {"pairs_file": "data/simulated/pairs_20260706T201750Z.json", "mode": "logits",
-                            "output_root": ""}
+                            "output_root": "", "indices": "", "offset": "0", "limit": "0"}
 
 # Resting-state parks: the cheapest legitimate stage per trigger, with
 # commit_outputs false wherever the workflow supports the key. A trigger file
@@ -1340,6 +1340,27 @@ def _logits_eval_job_value(params: dict, key: str) -> str:
     return str(value).lower() if isinstance(value, bool) else str(value)
 
 
+def logits_eval_indices_problem(params: dict) -> str | None:
+    """logits-eval's `indices` (2026-10-09), as the workflow's params job checks it: empty, or comma-separated
+    global 1-based pair indices, strictly ascending; only with mode logits, the trace_out root and a zero
+    offset and limit, since the indices name the pairs themselves and the part is named for the first one.
+    A JSON list is joined with commas first, as the params job does."""
+    raw = params.get("indices", "")
+    value = ",".join(str(i) for i in raw) if isinstance(raw, list) else _logits_eval_job_value(params, "indices")
+    if not value:
+        return None
+    parts = value.split(",")
+    if not all(p.isdigit() and int(p) >= 1 for p in parts) or any(
+            int(b) <= int(a) for a, b in zip(parts, parts[1:])):
+        return f"logits-eval indices {value!r}: give strictly ascending positive integers, comma-separated"
+    if (_logits_eval_job_value(params, "mode") != "logits" or _logits_eval_job_value(params, "output_root")
+            or _logits_eval_job_value(params, "offset") not in ("", "0")
+            or _logits_eval_job_value(params, "limit") not in ("", "0")):
+        return ("logits-eval indices goes only with mode 'logits', output_root '' and offset/limit 0: the "
+                "indices name the pairs themselves")
+    return None
+
+
 def logits_eval_params_problems(params: dict) -> list[str]:
     """logits-eval's `output_root` rules, as the workflow's params job applies them: the root is "" or pilot/logits;
     for either root the pairs path has no backslash and stays inside the checkout; a pairs file under pilot/ goes with
@@ -1352,6 +1373,9 @@ def logits_eval_params_problems(params: dict) -> list[str]:
     root = _logits_eval_job_value(params, "output_root")
     if root not in LOGITS_EVAL_OUTPUT_ROOTS:
         return [f"logits-eval output_root {root!r}: only \"\" (trace_out) or {LOGITS_EVAL_PILOT_ROOT!r} is accepted"]
+    indices_problem = logits_eval_indices_problem(params)
+    if indices_problem:
+        return [indices_problem]
     path = _logits_eval_job_value(params, "pairs_file")
     if "\\" in path:
         # the Linux runner reads a backslash as part of a file name, so a Windows spelling (pilot\runs\x.json, C:\...)
@@ -1451,9 +1475,10 @@ KNOWN_KEYS = {
     # logits_evaluation.yml `defaults` dict (re-verified 2026-09-04): models, pairs_file,
     # limit, offset, commit_outputs, mode, layers, topk, dtype. `dtype` belongs to
     # mode: verify (float32 vs bfloat16); the other two modes ignore it. output_root
-    # added 2026-10-04 (the pilot logits root, LOGITS_EVAL_OUTPUT_ROOTS).
+    # added 2026-10-04 (the pilot logits root, LOGITS_EVAL_OUTPUT_ROOTS); indices added
+    # 2026-10-09 (a list of global pair indices instead of an offset/limit range).
     "logits-eval": frozenset({"models", "pairs_file", "limit", "offset", "commit_outputs",
-                              "mode", "layers", "topk", "dtype", "output_root"}),
+                              "mode", "layers", "topk", "dtype", "output_root", "indices"}),
     # activation_patching.yml `defaults` dict (verified 2026-07-09): pairs_file, limit,
     # layers, positions, model, offsets, commit_outputs.
     "activation-patching": frozenset({

@@ -161,6 +161,10 @@ from typing import Any, Iterator
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+if str(ROOT / "scripts") not in sys.path:
+    sys.path.insert(0, str(ROOT / "scripts"))
+
+from publication_hold import is_held  # noqa: E402  (script-style module)
 
 from medlang_circuits.targets import (  # noqa: E402
     FOUND_STATUSES,
@@ -667,6 +671,8 @@ def urgency_reads(root: Path, loaded: dict[Path, list[tuple[Path, dict]]]) -> se
         if stem.startswith(URGENCY_SKIP_PREFIX):
             continue
         model = summary.get("graph_model") or suffix or BASE_MODEL
+        if is_held(model) or is_held(suffix):   # urgency_shift skips held models' parts (publication_hold.py)
+            continue
         for position, r in enumerate(summary.get("results", []) or []):
             if not isinstance(r, dict) or (model, stem, r.get("index")) in seen:
                 continue

@@ -164,7 +164,10 @@ for bf in glob.glob("data/simulated/pairs_*.json"):
         topics[(stem, i)] = (pair.get("generation") or {}).get("topic")
 
 # engine trace_out summaries first - they carry continuations
+from publication_hold import is_held  # noqa: E402  (script-style module)
+
 seen = set()
+held_parts = {}  # model -> parts skipped under the publication hold, reported on stdout
 # all 2panel-schema runs: generated batches AND curated subsets (mitigation etc.);
 # non-2panel dirs are skipped harmlessly because add() requires clinical+patient spreads
 for part in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):
@@ -179,6 +182,11 @@ for part in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):
         continue
     summary = json.loads(Path(part).read_text(encoding="utf-8"))
     model = summary.get("graph_model") or model_suffix or "gemma-2-2b"
+    if is_held(model) or is_held(model_suffix):
+        # held from publication until the owner releases the model (scripts/publication_hold.py): its rows
+        # would otherwise pool into every aggregate below, the headline pick, and the rows the stats read
+        held_parts[model] = held_parts.get(model, 0) + 1
+        continue
     for r in summary.get("results", []):
         if (model, stem, r["index"]) in seen:
             continue
@@ -479,3 +487,6 @@ for r in sorted(down, key=lambda r: -(r["p_top_patient"] or 0))[:20]:
           f"{r['top_patient']!r}(t{r['tier_top_patient']}, p={r['p_top_patient']}) | "
           f"{(r['clinical_prompt'] or '')[:52]}")
 print(f"-> {args.out}")
+if held_parts:
+    print("held from publication (scripts/publication_hold.py), parts skipped: "
+          + ", ".join(f"{m} {n}" for m, n in sorted(held_parts.items())))

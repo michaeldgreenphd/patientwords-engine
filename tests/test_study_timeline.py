@@ -56,5 +56,28 @@ def test_main_tierb_flag_and_totals(tmp_path, monkeypatch):
     assert t["accepted_pairs"] == 158
     assert t["tierb_accepted"] == 100
     assert t["generation_usd"] == 0.35
+    assert t["trace_summary_parts"] == 0
+    assert t["held_trace_summary_parts"] == 0
     # no git repo in tmp -> milestone lookup degrades; Tier B start still present
     assert any(m["label"] == "Tier B collection started" for m in payload["milestones"])
+
+
+def test_main_counts_held_parts_separately(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "ops").mkdir()
+    (tmp_path / "ops" / "dashboard.json").write_text("{}", encoding="utf-8")
+    part_held = tmp_path / "trace_out" / "pairs_20260710T010000Z__gemma-4-e2b"
+    part_held.mkdir(parents=True)
+    (part_held / "batch_summary.part_01.json").write_text("{}", encoding="utf-8")
+    part_active = tmp_path / "trace_out" / "pairs_20260710T010000Z__qwen3-4b"
+    part_active.mkdir(parents=True)
+    (part_active / "batch_summary.part_01.json").write_text("{}", encoding="utf-8")
+
+    rc = tl.main(["--out", "out.json", "--site", ""])
+    assert rc == 0
+    payload = json.loads((tmp_path / "out.json").read_text(encoding="utf-8"))
+    t = payload["totals"]
+    assert t["trace_summary_parts"] == 1
+    assert t["held_trace_summary_parts"] == 1
+    out = capsys.readouterr().out
+    assert "held from publication (scripts/publication_hold.py), parts omitted from timeline: 1" in out
