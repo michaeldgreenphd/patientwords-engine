@@ -189,7 +189,8 @@ everything downstream merges unchanged (`backend: "logits"`, `source_set: null`,
 
 **Output layout & checkpointing.** Each run writes `trace_out/<pairs-stem>/`; non-default
 models get `trace_out/<stem>__<model>/`. CI renames each chunk's summary to
-`batch_summary.part_NN.json` (NN = 1-based start offset) so chunks never clobber — all
+`batch_summary.part_NN.json` (NN = the first 1-based index the part measures: `offset + 1`
+for a range, the first listed index for a logits-eval `indices` fire) so chunks never clobber — all
 consumers must glob `batch_summary*.json`, and `results[i]["index"]` is the global 1-based
 join key back into the batch file. Generation archives and trace outputs both commit to
 `main` (the dispatched branch); CI's commits interleave with
@@ -201,7 +202,10 @@ every `trace_out/*/batch_summary.part_*`, scores urgency tiers and flip classes 
 docstring defines them and the translated panel as `urgency_recovery`; `--publish` writes
 the site's `data/urgency_shift.json`);
 `scripts/paired_stats.py` consumes its row file. `scripts/export_archive.py` writes the
-flat per-(pair × model) collaborator CSV.
+flat per-(pair × model) collaborator CSV. `scripts/publication_hold.py`'s `HELD_MODELS`, and
+logits parts missing from `data/publication_release/logits_parts.json`, stay out of every published
+number: each collector that pools `trace_out/*` skips them with a count (its docstring lists them; a new
+one must too). Only the owner releases (`scripts/publication_release.py --release`).
 
 **Publishing (`scripts/export_frontend_simulated.py`).** Merges every model's trace dir per
 batch stamp into `scenario.models[<id>]`, mirrors the gemma base to the top level for

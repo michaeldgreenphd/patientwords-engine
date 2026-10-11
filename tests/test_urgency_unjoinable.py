@@ -171,7 +171,8 @@ def _write(path, obj):
 
 
 def _summary(indexes, graph_model=None):
-    out = {"results": [{"index": i, "prompts": {"clinical": f"alpha prompt {i}", "patient": f"beta prompt {i}"},
+    out = {"backend": "hosted",
+           "results": [{"index": i, "prompts": {"clinical": f"alpha prompt {i}", "patient": f"beta prompt {i}"},
                         "predictive_spread": _SPREAD, "language_penalty": 0.1} for i in indexes]}
     if graph_model:
         out["graph_model"] = graph_model

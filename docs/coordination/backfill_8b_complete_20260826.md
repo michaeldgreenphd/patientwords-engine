@@ -48,3 +48,17 @@ queue since the last look.
   scale batch; ox-branch merge to main (keep main's trigger files unchanged
   when merging); site `model_provenance.json` hand-sync; Neuronpedia hosted
   graph generation outage (no output since 08-21, j-lens control healthy).
+
+## Correction (2026-10-09)
+
+The sentence "With this, all six claim-grade models (gemma-2-2b, gemma-3-4b-it, qwen3-1.7b, qwen3-4b,
+meditron3-8b, apertus-8b-meditronfo) have full-parity coverage" was not true, and this record keeps it as
+written. Counted on 2026-10-09 against the committed `trace_out/` parts of the same 39 batches (2,343 pairs,
+meditron3-8b's coverage as the reference): `gemma-2-2b` was complete through its hosted traces, and the two 8B
+models as stated above; `gemma-3-4b-it` missed 702 pairs (24/39 batches complete), `qwen3-1.7b` 764 (24/39),
+`qwen3-4b` 947 (21/39). Of the other original models, `llama-3.2-3b` missed 975, `olmo-2-1b` 985 and
+`gemma-2-2b-it` 1,140. The site's published `data/urgency_shift.json` agrees (rows for gemma-3-4b-it on 25
+batches, qwen3-1.7b 24, qwen3-4b 23). The 2026-08-28 brief's "262 of 390 batch-legs" was right; the
+2026-08-29 maintenance rewrite of the Routine prompt repeated the claim above. The owner approved filling
+the gaps on 2026-10-09 (`docs/model_matrix.md`, "Running the campaign"); the filled values publish only when
+the owner releases them (`scripts/publication_release.py`).

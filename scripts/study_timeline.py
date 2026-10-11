@@ -21,10 +21,12 @@ from pathlib import Path
 
 try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
     from scripts.provenance_stamp import provenance
+    from scripts.publication_hold import Gate
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from provenance_stamp import provenance
+    from publication_hold import Gate
 
 MILESTONE_FILES = [
     ("docs/preregistration_tierB.md", "Tier B pre-registration committed"),
@@ -95,7 +97,23 @@ def main(argv=None):
 
     gen_batches = [b for b in batches if isinstance(b.get("cost_usd"), (int, float))
                    and b["cost_usd"] > 0]
-    trace_parts = len(glob.glob("trace_out/*/batch_summary.part_*.json"))
+    # parts the publication hold keeps out (held models, unreleased logits parts: scripts/publication_hold.py)
+    # are not counted until the owner releases them
+    gate = Gate(".")
+    trace_parts = 0
+    for p in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):
+        part_path = Path(p)
+        try:
+            summary = json.loads(part_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            raise ValueError(f"unreadable or malformed summary at {part_path}: {e}") from e
+        if not isinstance(summary, dict):
+            raise ValueError(f"summary at {part_path} is not a JSON object: {type(summary).__name__}")
+        if gate.admit(part_path, summary):
+            trace_parts += 1
+    held_parts = sum(gate.held.values())
+    if gate.report():
+        print(gate.report())
     payload = {
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "provenance": ("every entry derives from a committed artifact: batch cost "
@@ -111,6 +129,7 @@ def main(argv=None):
             "tierb_accepted": sum(b["accepted"] for b in gen_batches
                                   if b.get("tierb") and isinstance(b.get("accepted"), int)),
             "trace_summary_parts": trace_parts,
+            "held_trace_summary_parts": held_parts,
             "first_utc": batches[0]["utc"] if batches else None,
             "last_utc": batches[-1]["utc"] if batches else None,
         },

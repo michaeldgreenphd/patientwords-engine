@@ -24,9 +24,11 @@ import sys
 from pathlib import Path
 
 try:
+    from scripts.publication_hold import Gate, ReleaseError
     from scripts.tierb_split import holdout_phrases, is_holdout, is_tierb_batch, tierb_start_stamp
 except ImportError:  # direct invocation from repo root
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from publication_hold import Gate, ReleaseError
     from tierb_split import holdout_phrases, is_holdout, is_tierb_batch, tierb_start_stamp
 
 parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -35,11 +37,24 @@ parser.add_argument("--out", default="archive_export", help="output path prefix"
 args = parser.parse_args()
 
 ENGINE = Path(args.engine)
+# held models and unreleased logits parts are not read (scripts/publication_hold.py); counted on stdout
+GATE = Gate(ENGINE)
 
 # The circuit-tracer models. gemma-2-2b keeps the bare trace_out stem; the
 # others write to trace_out/<stem>__<model>. Only gemma has a transcoder source
 # set, so clinical_mass is meaningful for it alone (nulled for the rest).
-MODELS = ["gemma-2-2b", "gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b"]
+MODELS = [
+    "gemma-2-2b",
+    "gemma-3-4b-it",
+    "qwen3-4b",
+    "qwen3-1.7b",
+    "llama-3.2-3b",
+    "olmo-2-1b",
+    "gemma-2-2b-it",
+    "gemma-4-e2b",
+    "qwen3.5-2b-base",
+    "medgemma-1.5-4b-it",
+]
 BASE_MODEL = "gemma-2-2b"
 FEATURED = {"gemma-2-2b"}
 
@@ -74,7 +89,15 @@ def read_model_results(stem, model):
     graph_model = None
     for part in sorted(tdir.glob("batch_summary.part_*.json")):
         summary = json.loads(part.read_text(encoding="utf-8"))
-        graph_model = summary.get("graph_model") or graph_model
+        try:
+            if not GATE.admit(part, summary, model):
+                continue
+        except ReleaseError as exc:
+            sys.exit(f"refusing: {exc}; nothing written")
+        part_model = summary.get("graph_model") or model
+        if part_model != model:
+            sys.exit(f"refusing: {part}: summary graph_model {part_model!r} does not match directory model {model!r}; nothing written")
+        graph_model = part_model
         for r in summary.get("results", []):
             results[r["index"]] = r
     return (results, graph_model or model) if results else None
@@ -172,3 +195,5 @@ traced = sum(1 for r in rows if r["status"] != "untraced")
 print(f"{len(rows)} pairs across {len({r['batch'] for r in rows})} batches "
       f"({traced} traced) -> {csv_path} + {json_path}"
       + (f" ({withheld_holdout} confirmatory-holdout pairs withheld)" if withheld_holdout else ""))
+if GATE.report():
+    print(GATE.report())

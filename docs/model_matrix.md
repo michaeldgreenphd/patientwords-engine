@@ -24,17 +24,123 @@ pinned to one exact Hugging Face commit (`HF_REVISIONS`; see *Pinned revisions* 
 | `medgemma-4b-it` | `google/medgemma-4b-it` | 4.3B | MedGemma / Gemma 3 (Google, Health AI Developer Foundations) | Gated — HAI-DEF terms (owner accepted 2026-07-13 on the CI `HF_TOKEN` account) | Medical-tuned twin of `gemma-3-4b-it` (same base, same size): the paired contrast isolates what medical fine-tuning does to the colloquial-vs-clinical gap |
 | `meditron3-8b` | `EPFLiGHT/Meditron3-8B` (was `OpenMeditron/Meditron3-8B`, which now HTTP-307-redirects here) | 8.0B | Meditron 3 / Llama 3.1 (EPFL), fine-tuned from `meta-llama/Llama-3.1-8B-Instruct` | Gated — Llama 3.1 license acknowledgment (owner signed 2026-07-17 on the CI `HF_TOKEN` account) | Medical-tuned, instruction-tuned 8B (C4 successor, owner 2026-07-17); 8B class: swap step and small chunks |
 | `apertus-8b-meditronfo` | `EPFLiGHT/Apertus-8B-MeditronFO` | 8.1B | Apertus (Swiss AI) + MeditronFO medical tuning (EPFL), fine-tuned from an Apertus-8B instruct checkpoint | Ungated (Apache-2.0) | Medical-tuned, instruction-tuned 8B (C4 successor, owner 2026-07-17); 8B class: swap step and small chunks. **Upstream replaced the weights on 2026-10-06; the study stays pinned to the 2026-06-26 weights** (see below) |
-| `gemma-4-e2b` | `google/gemma-4-E2B` | 5.1B stored (2.3B effective; per-layer embeddings plus vision and audio encoders), ~10.2 GB bf16 | Gemma 4 (Google), **base** (IT twin `google/gemma-4-E2B-it` not registered) | Ungated (Apache-2.0). **Awaiting limit-3 probe** | Post-registration exploratory addition (2026-10-09): newest Gemma generation as a base checkpoint, extending the `gemma-2-2b` → `gemma-3-4b-it` line. Loads as the full multimodal `Gemma4ForConditionalGeneration`; only the text stack runs |
-| `qwen3.5-2b-base` | `Qwen/Qwen3.5-2B-Base` | 2.3B, ~4.5 GB bf16 | Qwen3.5 (Alibaba), **base** | Ungated (Apache-2.0). **Awaiting limit-3 probe** | Post-registration exploratory addition (2026-10-09): the suite's only true Qwen base (the Qwen3 entries are post-trained), with a new 248,320-entry tokenizer and a hybrid Gated-DeltaNet/attention architecture; first load of the `qwen3_5` path in CI |
-| `medgemma-1.5-4b-it` | `google/medgemma-1.5-4b-it` | 4.3B, ~8.6 GB bf16 | MedGemma 1.5 / Gemma 3 (Google, HAI-DEF), **instruction-tuned** (no 1.5 PT exists) | Gated — HAI-DEF terms; the owner said on 2026-10-09 they will accept them on the CI `HF_TOKEN` account (acceptance may be per repository, so the `medgemma-4b-it` grant may not cover it). **Awaiting limit-3 probe** | Post-registration exploratory addition (2026-10-09): third medical-tune point on the Gemma 3 4B base beside `gemma-3-4b-it` and `medgemma-4b-it` |
+| `gemma-4-e2b` | `google/gemma-4-E2B` | 5.1B stored (2.3B effective; per-layer embeddings plus vision and audio encoders), ~10.2 GB bf16 | Gemma 4 (Google), **base** (IT twin `google/gemma-4-E2B-it` not registered) | Ungated (Apache-2.0). **Limit-3 probe passed 2026-10-09 (run 37960095244)**: ~5 s/pair; weight download and load ~70 s (1,951 tensors, the full multimodal model) | Post-registration exploratory addition (2026-10-09): newest Gemma generation as a base checkpoint, extending the `gemma-2-2b` → `gemma-3-4b-it` line. Loads as the full multimodal `Gemma4ForConditionalGeneration`; only the text stack runs |
+| `qwen3.5-2b-base` | `Qwen/Qwen3.5-2B-Base` | 2.3B, ~4.5 GB bf16 | Qwen3.5 (Alibaba), **base** | Ungated (Apache-2.0). **Limit-3 probe passed 2026-10-09 (run 37960095244)**: ~60 s/pair; weight download and load ~19 s (320 tensors); the `qwen3_5` path's first CI load worked | Post-registration exploratory addition (2026-10-09): the suite's only true Qwen base (the Qwen3 entries are post-trained), with a new 248,320-entry tokenizer and a hybrid Gated-DeltaNet/attention architecture; first load of the `qwen3_5` path in CI |
+| `medgemma-1.5-4b-it` | `google/medgemma-1.5-4b-it` | 4.3B, ~8.6 GB bf16 | MedGemma 1.5 / Gemma 3 (Google, HAI-DEF), **instruction-tuned** (no 1.5 PT exists) | Gated — HAI-DEF terms; the owner said on 2026-10-09 they will accept them on the CI `HF_TOKEN` account (acceptance may be per repository, so the `medgemma-4b-it` grant may not cover it). **Limit-3 probe passed 2026-10-09 (run 37960095244)**, so the CI token's gate acceptance is in effect: ~120 s/pair, the slowest of the three; weight download and load ~31 s (883 tensors) | Post-registration exploratory addition (2026-10-09): third medical-tune point on the Gemma 3 4B base beside `gemma-3-4b-it` and `medgemma-4b-it` |
 
 The three 2026-10-09 additions are in the exploratory family (`docs/prereg_divergence_log.md`).
-Their first fire is a limit-3 probe per model (protocol below), fired by a later session. Support in
-`scripts/depth_probe.py` (interp-engine 1.5.1) and `scripts/activation_patch.py` (transformer_lens) is
-unverified, and none is in `activation_patch.HF_IDS` or `backfill_planner.MODELS`. Reaching parity
-with the existing models costs about 31 runner-hours per model (about 39 batch legs at roughly one
-minute per pair, unmeasured for these three), on a lane that still had 125 of 390 cross-model legs
-outstanding at the last coverage line in `ops/dashboard.json`.
+**All three passed their limit-3 probe on 2026-10-09** (one logits-eval fire, run 37960095244,
+`pairs_20260707T171223Z` pairs 1-3, `commit_outputs` false, so nothing landed): each loaded at its
+pinned commit, the post-load revision check passed, and the clinical/patient probabilities sat in
+the same range as the ten existing models' on those pairs. Support in `scripts/depth_probe.py`
+(interp-engine 1.5.1) and `scripts/activation_patch.py` (transformer_lens) is still unverified, and
+none is in `activation_patch.HF_IDS`. Since 2026-10-09 they are in `backfill_planner.MODELS` and its
+`EXPLORATORY` tuple.
+
+**The backfill campaign (owner decisions, 2026-10-09).** "Gemma 4 and Qwen 3.5 then at the end set it up
+so that I can do the MedGemma 1.5 on the most interesting stimuli from the current sets then do the rest
+after." The same day the owner added the original models' coverage gaps to the same chain ("republish only
+when you say so"). `python scripts/backfill_planner.py --campaign` plans it in this order:
+
+1. **The sweep: `gemma-4-e2b` and `qwen3.5-2b-base` together.** One logits-eval fire per batch carries
+   both models (the workflow fans `models` out as a matrix, two cells at a time), a whole batch per
+   fire. No batch needs splitting: the largest is 119 pairs, about 119 minutes for `qwen3.5-2b-base` at
+   ~60 s/pair, half the 240-minute job timeout.
+2. **The six original models' gaps** (`--fill-gaps`): `gemma-3-4b-it` 702 pairs, `qwen3-1.7b` 764,
+   `qwen3-4b` 947, `llama-3.2-3b` 975, `olmo-2-1b` 985, `gemma-2-2b-it` 1,140, toward the same parity
+   (the coverage the 2026-08-26 completion note claimed and did not have; see its correction). Models
+   missing the same pairs share a fire; each fire is sized so every model's cell stays within half the
+   timeout at the slowest rate that model ever showed on the lane (`SECONDS_PER_PAIR` in the planner:
+   gemma-3-4b-it 161, qwen3-4b 156, llama-3.2-3b 129, gemma-2-2b-it 89, qwen3-1.7b 67, olmo-2-1b 44
+   s/pair, model load included; medians were about half). A partial batch is a contiguous
+   `offset`/`limit` fire or an `indices` fire (`docs/triggers.md`). Every part is named for the first
+   index it measures, which no landed part of that model can share; a stray file of that name blocks
+   that model on that batch, and the planner says so instead of writing over it.
+3. **`medgemma-1.5-4b-it` on a priority selection**, only when asked (`--medgemma15-priority FILE`):
+   `python scripts/select_priority_pairs.py --site ../patientwords` writes the selection (the proposal
+   on this branch is `data/selections/medgemma15_priority_20261009.json`). The criteria await the
+   owner's confirmation:
+   - (a) the 40 main-study tracing pairs of the physician task bundle
+     (`data/verification/tasks_20261004T042945Z.json`, read by identifier only), and
+   - (b) pairs whose published urgency rows show a directional urgency-tier flip (downgrade or
+     upgrade) in at least 5 of the ten original models. Cross-model agreement is the signal, not one
+     model's penalty, which the 2026-09-04 negative control showed is not a stable measurement;
+   - excluding every pair the Tier B holdout seals; task-set pairs first, then by models flipping;
+     capped at 100. Deterministic, no seed.
+   With these defaults it selects **84 pairs in 23 batches** (40 + 46, two in both), measured inside
+   their original batches as `indices` fires. k = 4 gives 100 (capped from 113) in 28 batches, k = 6
+   gives 64 in 22.
+4. **`medgemma-1.5-4b-it` on the rest**, only when asked (`--include-medgemma15`): only pairs it has not
+   measured, so nothing is measured twice and no part is overwritten.
+
+**Nothing the campaign lands is published until the owner releases it.** The collectors skip the three
+exploratory models by name, and read a CPU-logits part only when the release manifest
+(`data/publication_release/logits_parts.json`) lists it with the sha256 of its bytes
+(`scripts/publication_hold.py`). The manifest on this branch lists the 409 logits parts committed on
+2026-10-09, so today's published numbers are unchanged; each skip is counted on the collector's output.
+To publish what has landed: `python scripts/publication_release.py` (shows what is unreleased), then
+`python scripts/publication_release.py --release` and commit the manifest; the next publish includes it.
+Releasing an exploratory model is first removing it from `HELD_MODELS`. Neither the Routine nor the
+chain ever releases.
+
+**Fires and runner time.** Counted from the planner's own output (`--campaign --next` large enough to
+list everything). Runner time uses each model's median rate (the 2026-10-09 probe for the new models,
+the lane's history for the original six) plus ~90 s per cell for setup and model load; wall time
+assumes two cells at a time.
+
+| Phase | Fires | Cells | Pairs | Runner time | Wall time |
+|---|---|---|---|---|---|
+| 1. Sweep (gemma-4-e2b + qwen3.5-2b-base) | 39 | 78 | 2,343 each | ~44 h | ~40 h |
+| 2. Original models' gaps (six models) | 46 | 199 | 5,513 | ~104 h | ~56 h |
+| 3. medgemma-1.5-4b-it, priority selection | 23 | 23 | 84 | ~3.4 h | ~3.4 h |
+| 4. medgemma-1.5-4b-it, the rest | 101 | 101 | 2,259 | ~78 h | ~78 h |
+
+Phase 2's 46 fires carry six models in 23 of them, five in one, four in six, three in seven, two in two and
+one in seven. The new models' rates are first-probe timings on three pairs; the original six show a
+slowest-to-median ratio of about 2 on this lane, so a slow runner can push a whole-batch sweep cell for
+`qwen3.5-2b-base` toward the timeout. A cell that times out still commits the pairs it measured (the
+workflow flushes after every pair); the chain then stops on the partial part, and a rerun plans only the
+pairs still missing.
+
+Parity is `backfill_planner._parity_target`: for each of the 43 `data/simulated/pairs_*.json` batches the
+planner reads, the deepest any original model has measured it. On `main` on 2026-10-09 that is every pair
+of 39 batches, **2,343 pairs**. The other four batches have a target of 0 because no model has measured
+them: `pairs_20260721T132205Z` (100 pairs, never booked to Tier B) and three one-pair scenario-generation
+parks; a raw count of the 43 files would give 2,446.
+
+### Running the campaign
+
+The chain runner, `scripts/backfill_chain.py`, runs phases 1 and 2 (and 3 or 4 when their flags are
+given) with no Claude session: it fires each leg through `scripts/fire_trigger.py`, keeps at most one
+running and one pending, waits for each run, verifies its parts on `origin/main`, resolves and pushes the
+journal, and parks the lane at the end. It stops, with a plain-English reason and the next step, on any
+fire_trigger refusal, a failed or cancelled run, missing or partial outputs, an unexpected entry in the
+lane, a dirty checkout, `main` that will not fast-forward, or `gh` missing. Rerunning it resumes. It never
+releases anything for publication. The Routine's §3e is a one-leg-per-cycle fallback and fires only when
+the lane is idle.
+
+The owner's one-line command, from a clean checkout of `main` with `gh` logged in:
+
+```
+cd ~/patientwords-engine && git switch main && git pull --ff-only && caffeinate -i python3 scripts/backfill_chain.py --gh ~/.local/bin/gh
+```
+
+Add `--medgemma15-priority data/selections/medgemma15_priority_20261009.json` once the criteria are
+confirmed, `--include-medgemma15` for the rest, `--stop-after N` to fire at most N legs, `--dry-run` to see
+the next legs without firing. `--gh` names the owner's gh, which is not on PATH; drop it where gh is. The
+log goes to a file in the system temp directory, named on the first line.
+
+A prompt for Antigravity (Gemini), to paste as is:
+
+```
+In the terminal, in the directory ~/patientwords-engine, run exactly this one command and nothing else:
+
+cd ~/patientwords-engine && git switch main && git pull --ff-only && caffeinate -i python3 scripts/backfill_chain.py --gh ~/.local/bin/gh
+
+It can run for days. Do not edit, create, delete, commit or push any file, and do not run any other
+command, before, during or after it. When it finishes, report its exit code and the last 40 lines of its
+output, word for word. If it stops (any exit code other than 0), do nothing else; report.
+```
 
 The Gemma gate on Hugging Face is one shared license acknowledgement across `google/gemma*`
 repos, so the acceptance already made for `google/gemma-3-4b-it` (the grant behind the
