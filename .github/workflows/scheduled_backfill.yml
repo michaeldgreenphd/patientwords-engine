@@ -1,0 +1,86 @@
+name: Scheduled Logits Backfill (medlang-circuits)
+
+# Runs the next-token logits backfill campaign unattended on GitHub Actions.
+# Runs on a schedule every 3 hours (or manual workflow_dispatch).
+# Costs $0 (CPU inference on GitHub's free runners for public repositories).
+# Adheres strictly to AGENTS.md:
+#   - Pinned model revisions enforced by scripts/logits_eval.py
+#   - Holdout seal checked before commit (scripts/seal_check.py)
+#   - Measurements kept under publication hold (scripts/publication_hold.py)
+#   - Zero external paid APIs, zero local machine dependence.
+
+on:
+  schedule:
+    - cron: "0 */3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scheduled-backfill-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  run-leg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+
+      - name: Check campaign plan and lane status
+        id: check_plan
+        run: |
+          set -euo pipefail
+          python scripts/scheduled_backfill_leg.py --dry-run
+
+      - name: Provision swap for model loading
+        run: |
+          sudo fallocate -l 12G /mnt/logits-swapfile
+          sudo chmod 600 /mnt/logits-swapfile
+          sudo mkswap /mnt/logits-swapfile
+          sudo swapon /mnt/logits-swapfile
+          free -h
+
+      - name: Install CPU torch + transformers
+        run: |
+          pip install --quiet -c constraints.txt torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet -c constraints.txt transformers accelerate
+
+      - name: Execute planned backfill leg
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python scripts/scheduled_backfill_leg.py
+
+      - name: Verify holdout seal
+        run: |
+          python scripts/seal_check.py --site "$RUNNER_TEMP/no-site" --extra "trace_out"
+
+      - name: Commit and push measurements
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add trace_out/ ops/trigger_journal.jsonl
+          if git diff --staged --quiet; then
+            echo "No new measurements to commit"
+            exit 0
+          fi
+          git commit -m "Logits backfill (scheduled): automated campaign leg"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase -X theirs origin main && git push origin HEAD:refs/heads/main; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 2))
+          done
+          exit 1
