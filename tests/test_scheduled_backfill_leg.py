@@ -67,9 +67,14 @@ def test_reserve_and_resolve(tmp_path: Path):
     j_path = repo / "ops" / "trigger_journal.jsonl"
     j_path.write_text("", encoding="utf-8")
 
-    # Reserve
-    sbl.reserve_leg(repo, "test note", "nonce-123", {"models": "m1"})
+    # Reserve succeeds when lane is free
+    ok = sbl.reserve_leg(repo, "test note", "nonce-123", {"models": "m1"})
+    assert ok is True
     assert sbl.has_active_entries(repo, "logits-eval")
+
+    # Second reserve fails because lane has active entries
+    ok_second = sbl.reserve_leg(repo, "test note 2", "nonce-456", {"models": "m1"})
+    assert ok_second is False
 
     # Resolve
     sbl.resolve_leg(repo, "nonce-123")
@@ -90,3 +95,17 @@ def test_cmd_plan_dry_run(monkeypatch, tmp_path: Path):
     assert "should_run=true" in content
     assert "models=" in content
     assert "pairs_file=" in content
+
+
+def test_get_next_leg_raises_on_blocked_gaps(monkeypatch, tmp_path: Path):
+    import pytest
+    class MockPlanner:
+        def coverage(self):
+            return {}
+        def campaign_plan(self, cov, count, include_medgemma15, medgemma15_selection, blocked):
+            blocked.append(("batch1", "model1", "blocked_part"))
+            return []
+    monkeypatch.setattr(sbl, "load_backfill_planner", lambda repo: MockPlanner())
+    monkeypatch.setattr(sbl, "has_active_entries", lambda repo, trigger: False)
+    with pytest.raises(RuntimeError, match="Encountered blocked gaps"):
+        sbl.get_next_leg(tmp_path)

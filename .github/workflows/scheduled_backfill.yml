@@ -27,7 +27,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: scheduled-backfill-${{ github.ref }}
+  group: logits-eval-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -36,7 +36,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
-      should_run: ${{ steps.plan.outputs.should_run }}
+      should_run: ${{ steps.reserve.outputs.aborted != 'true' && steps.plan.outputs.should_run }}
       models: ${{ steps.plan.outputs.models }}
       pairs_file: ${{ steps.plan.outputs.pairs_file }}
       limit: ${{ steps.plan.outputs.limit }}
@@ -64,6 +64,7 @@ jobs:
           python scripts/scheduled_backfill_leg.py --plan
 
       - name: Reserve logits lane in journal
+        id: reserve
         if: steps.plan.outputs.should_run == 'true'
         env:
           NONCE: ${{ steps.plan.outputs.nonce }}
@@ -73,27 +74,43 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          pushed=false
           for i in 1 2 3 4 5; do
             git fetch origin main
             git checkout origin/main -- ops/trigger_journal.jsonl || true
+            rc=0
             python scripts/scheduled_backfill_leg.py --reserve \
               --nonce "$NONCE" \
               --note "$NOTE" \
-              --params "$PARAMS_JSON"
+              --params "$PARAMS_JSON" || rc=$?
+            if [ "$rc" -eq 2 ]; then
+              echo "logits-eval lane became busy between plan and reserve; aborting scheduled run"
+              echo "aborted=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            elif [ "$rc" -ne 0 ]; then
+              echo "Error during reserve_leg execution"
+              exit "$rc"
+            fi
             git add ops/trigger_journal.jsonl
             if git diff --staged --quiet; then
               echo "Journal already reserved"
+              pushed=true
               break
             fi
             git commit -m "Logits backfill (scheduled): reserve lane ($NONCE)"
             if git push origin HEAD:refs/heads/main; then
               echo "Successfully pushed reservation to origin/main"
+              pushed=true
               break
             fi
             echo "Push rejected; retrying..."
             git reset --hard origin/main
             sleep $((i * 2))
           done
+          if [ "$pushed" != "true" ]; then
+            echo "Error: Failed to push reservation to origin/main after 5 attempts"
+            exit 1
+          fi
 
   eval:
     needs: plan
@@ -217,6 +234,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          pushed=false
           for i in 1 2 3 4 5; do
             git fetch origin main
             git checkout origin/main -- ops/trigger_journal.jsonl || true
@@ -226,14 +244,20 @@ jobs:
             git add ops/trigger_journal.jsonl
             if git diff --staged --quiet; then
               echo "Journal already resolved"
+              pushed=true
               break
             fi
             git commit -m "Logits backfill (scheduled): resolve lane ($NONCE)"
             if git push origin HEAD:refs/heads/main; then
               echo "Successfully pushed resolution to origin/main"
+              pushed=true
               break
             fi
             echo "Push rejected; retrying..."
             git reset --hard origin/main
             sleep $((i * 2))
           done
+          if [ "$pushed" != "true" ]; then
+            echo "Error: Failed to push resolution to origin/main after 5 attempts"
+            exit 1
+          fi

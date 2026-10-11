@@ -157,7 +157,9 @@ class Chain:
         if rc or branch.strip() != BRANCH:
             raise Stop(f"the checkout is on {branch.strip() or '?'}, not {BRANCH}",
                        f"`git switch {BRANCH}` in a clean checkout, then rerun")
-        self.sync()
+        if self.sync():
+            raise Stop("local HEAD changed during sync with origin/main",
+                       "re-run scripts/backfill_chain.py to load updated code from the new checkout")
 
     def require_clean(self, allow: tuple[str, ...] = ()) -> None:
         rc, out, _ = self.git("status", "--porcelain", "--untracked-files=no")
@@ -166,11 +168,14 @@ class Chain:
             raise Stop(f"the working tree has uncommitted changes to tracked files: {dirty}",
                        "commit or restore them (never commit ops/dashboard.json from here), then rerun")
 
-    def sync(self) -> None:
+    def sync(self) -> bool:
+        rc_before, before, _ = self.git("rev-parse", "HEAD")
         rc, _, _ = self.git("pull", "--ff-only", "origin", BRANCH)
         if rc:
             raise Stop(f"local {BRANCH} cannot be fast-forwarded to origin/{BRANCH}",
                        f"inspect `git log origin/{BRANCH}..{BRANCH}`; publish or drop local commits, then rerun")
+        rc_after, after, _ = self.git("rev-parse", "HEAD")
+        return rc_before == 0 and rc_after == 0 and before.strip() != after.strip()
 
     def journal(self) -> list[dict]:
         return self.ft.load_journal(self.repo / JOURNAL)

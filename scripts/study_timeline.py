@@ -107,6 +107,8 @@ def main(argv=None):
             summary = json.loads(part_path.read_text(encoding="utf-8"))
         except Exception as e:
             raise ValueError(f"unreadable or malformed summary at {part_path}: {e}") from e
+        if not isinstance(summary, dict):
+            raise ValueError(f"summary at {part_path} is not a JSON object: {type(summary).__name__}")
         if gate.admit(part_path, summary):
             trace_parts += 1
     held_parts = sum(gate.held.values())

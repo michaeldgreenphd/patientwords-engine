@@ -96,3 +96,15 @@ def test_main_refuses_malformed_summary(tmp_path, monkeypatch):
 
     with pytest.raises(ValueError, match="unreadable or malformed summary"):
         tl.main(["--out", "out.json", "--site", ""])
+
+
+def test_main_refuses_non_object_summary(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "ops").mkdir()
+    (tmp_path / "ops" / "dashboard.json").write_text("{}", encoding="utf-8")
+    part_bad = tmp_path / "trace_out" / "pairs_20260710T010000Z__qwen3-4b"
+    part_bad.mkdir(parents=True)
+    (part_bad / "batch_summary.part_01.json").write_text("[]", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="is not a JSON object"):
+        tl.main(["--out", "out.json", "--site", ""])

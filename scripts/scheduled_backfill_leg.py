@@ -62,22 +62,26 @@ def get_next_leg(repo: Path) -> tuple[dict | None, str]:
     blocked: list = []
     plan = bp.campaign_plan(cov, 1, include_medgemma15=False, medgemma15_selection=None, blocked=blocked)
     if blocked:
-        return None, f"Encountered blocked gaps in planner: {blocked}"
+        raise RuntimeError(f"Encountered blocked gaps in planner: {blocked}")
     if not plan:
         return None, "Backfill campaign is AT PARITY; all models measured."
 
     return plan[0], "ok"
 
 
-def reserve_leg(repo: Path, note: str, nonce: str, params: dict) -> None:
+def reserve_leg(repo: Path, note: str, nonce: str, params: dict) -> bool:
     ft = load_fire_trigger(repo)
     journal_path = repo / "ops" / "trigger_journal.jsonl"
     entries = ft.load_journal(journal_path)
+    now = datetime.now(timezone.utc)
+    if ft.active_entries(entries, "logits-eval", now, ft.expire_hours_from_env()):
+        print(f"Notice: logits-eval lane has active entries; refusing to reserve nonce {nonce}", file=sys.stderr)
+        return False
     for e in entries:
         if e.get("nonce") == nonce:
             print(f"Nonce {nonce} already present in journal; skipping duplicate reserve")
-            return
-    now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            return True
+    now_utc = ft.iso_utc(now)
     params_content = json.dumps(params, sort_keys=True)
     entry = {
         "trigger": "logits-eval",
@@ -93,6 +97,7 @@ def reserve_leg(repo: Path, note: str, nonce: str, params: dict) -> None:
     entries.append(entry)
     ft.save_journal(journal_path, entries)
     print(f"Reserved lane with nonce {nonce}")
+    return True
 
 
 def resolve_leg(repo: Path, nonce: str, status: str = "success") -> None:
@@ -177,8 +182,8 @@ def main(argv: list[str] | None = None) -> int:
         if not args.nonce:
             print("Error: --reserve requires --nonce", file=sys.stderr)
             return 1
-        reserve_leg(repo, args.note, args.nonce, json.loads(args.params))
-        return 0
+        ok = reserve_leg(repo, args.note, args.nonce, json.loads(args.params))
+        return 0 if ok else 2
     elif args.resolve:
         if not args.nonce:
             print("Error: --resolve requires --nonce", file=sys.stderr)
