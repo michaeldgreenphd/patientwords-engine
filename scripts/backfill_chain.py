@@ -177,6 +177,13 @@ class Chain:
         rc_after, after, _ = self.git("rev-parse", "HEAD")
         return rc_before == 0 and rc_after == 0 and before.strip() != after.strip()
 
+    def code_changed_between(self, before: str, after: str) -> bool:
+        rc, out, _ = self.git("diff", "--name-only", before, after)
+        if rc:
+            return True
+        code_roots = ("scripts/", "medlang_circuits/", ".github/", "pyproject.toml")
+        return any(line.strip().startswith(code_roots) for line in out.splitlines())
+
     def journal(self) -> list[dict]:
         return self.ft.load_journal(self.repo / JOURNAL)
 
@@ -363,8 +370,14 @@ class Chain:
         self.wait_run(int(run["databaseId"]))
         if verify:
             self.verify_outputs(entry["note"])
+        rc_before, before, _ = self.git("rev-parse", "HEAD")
         self.sync()
+        rc_after, after, _ = self.git("rev-parse", "HEAD")
         self.resolve_oldest(entry)
+        if rc_before == 0 and rc_after == 0 and before.strip() != after.strip():
+            if self.code_changed_between(before.strip(), after.strip()):
+                raise Stop("code changed on origin/main during harvest sync",
+                           "re-run scripts/backfill_chain.py to load updated code from the new checkout")
 
     # ------------------------------------------------------------------ the loop
     def plan(self, count: int, in_flight: list[dict] = ()) -> list[dict]:

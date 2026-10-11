@@ -320,7 +320,7 @@ def plan_legs(cov: dict, models: tuple[str, ...], count: int = 1, selection: dic
                 break
             first = missing[lead][0]
             name = f"batch_summary.part_{first:02d}.json"
-            clash = [m for m in missing if missing[m] and missing[m][0] == first
+            clash = [m for m in missing if first in missing[m]
                      and name in cov[b].get("parts", {}).get(m, set())]
             if clash:
                 skip.update(clash)

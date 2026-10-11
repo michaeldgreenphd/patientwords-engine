@@ -89,12 +89,33 @@ def test_reserve_and_resolve(tmp_path: Path):
 def test_cmd_plan_dry_run(monkeypatch, tmp_path: Path):
     out_file = tmp_path / "github_output"
     monkeypatch.setenv("GITHUB_OUTPUT", str(out_file))
+    fake_leg = {
+        "note": "test leg",
+        "params": {
+            "models": "gemma-4-e2b",
+            "pairs_file": "data/simulated/pairs_20260701T000000Z.json",
+            "limit": "20",
+            "offset": "0",
+            "indices": "",
+        },
+    }
+    monkeypatch.setattr(sbl, "get_next_leg", lambda repo: (fake_leg, ""))
     rc = sbl.cmd_plan(ROOT, dry_run=True)
     assert rc == 0
     content = out_file.read_text(encoding="utf-8")
     assert "should_run=true" in content
-    assert "models=" in content
-    assert "pairs_file=" in content
+    assert 'models=["gemma-4-e2b"]' in content
+    assert "pairs_file=data/simulated/pairs_20260701T000000Z.json" in content
+
+
+def test_cmd_plan_no_leg(monkeypatch, tmp_path: Path):
+    out_file = tmp_path / "github_output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(out_file))
+    monkeypatch.setattr(sbl, "get_next_leg", lambda repo: (None, "no missing pairs"))
+    rc = sbl.cmd_plan(ROOT, dry_run=True)
+    assert rc == 0
+    content = out_file.read_text(encoding="utf-8")
+    assert "should_run=false" in content
 
 
 def test_get_next_leg_raises_on_blocked_gaps(monkeypatch, tmp_path: Path):
