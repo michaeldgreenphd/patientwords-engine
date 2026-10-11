@@ -107,8 +107,13 @@ class Gate:
         if is_held(model) or is_held(summary.get("graph_model")) or is_held_run_dir(part.parent.name):
             self.held[f"held model {model or summary.get('graph_model') or run_dir_model(part.parent.name)}"] += 1
             return False
-        if summary.get("backend") != "logits":
+        backend = summary.get("backend")
+        if backend is None:
+            raise ReleaseError(f"{part}: summary missing required 'backend' key; cannot determine publication hold")
+        if backend in ("hosted", "activation_patch"):
             return True
+        if backend != "logits":
+            raise ReleaseError(f"{part}: unrecognized backend {backend!r}; expected 'logits', 'hosted', or 'activation_patch'")
         if self._manifest is None:
             if self.manifest_optional and not (self.root / RELEASE_MANIFEST).exists():
                 return True

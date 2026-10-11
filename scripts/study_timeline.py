@@ -105,8 +105,8 @@ def main(argv=None):
         part_path = Path(p)
         try:
             summary = json.loads(part_path.read_text(encoding="utf-8"))
-        except Exception:
-            summary = {}
+        except Exception as e:
+            raise ValueError(f"unreadable or malformed summary at {part_path}: {e}") from e
         if gate.admit(part_path, summary):
             trace_parts += 1
     held_parts = sum(gate.held.values())

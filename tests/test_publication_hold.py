@@ -327,3 +327,18 @@ def test_releasing_held_model_includes_it_in_models_meta(engine_root, tmp_path):
     gemma4_meta = next(m for m in payload["models_meta"] if m["id"] == "gemma-4-e2b")
     assert gemma4_meta["label"] == "Gemma 4 E2B"
     assert gemma4_meta["available"] is True
+
+
+def test_gate_fails_closed_on_missing_or_unknown_backend(tmp_path):
+    gate = hold.Gate(tmp_path)
+    part = tmp_path / "trace_out" / "pairs_A__qwen3-4b" / "batch_summary.part_01.json"
+    part.parent.mkdir(parents=True)
+    part.write_text("{}", encoding="utf-8")
+
+    # Missing backend
+    with pytest.raises(hold.ReleaseError, match="missing required 'backend' key"):
+        gate.admit(part, {})
+
+    # Unknown backend
+    with pytest.raises(hold.ReleaseError, match="unrecognized backend"):
+        gate.admit(part, {"backend": "future_backend"})

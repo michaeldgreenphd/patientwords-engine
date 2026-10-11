@@ -8,6 +8,15 @@ name: Scheduled Logits Backfill (medlang-circuits)
 #   - Holdout seal checked before commit (scripts/seal_check.py)
 #   - Measurements kept under publication hold (scripts/publication_hold.py)
 #   - Zero external paid APIs, zero local machine dependence.
+#
+# Architecture:
+#   1. plan: Checks logits-eval lane; if free, plans the next leg and reserves
+#      the lane in ops/trigger_journal.jsonl on main.
+#   2. eval: Matrix fan-out across planned models (up to max-parallel: 2).
+#      Each matrix job runs CPU inference, checks holdout seal, and commits only
+#      its unique part file (trace_out/<stem>__<model>/batch_summary.part_*.json).
+#   3. resolve: Always runs after eval; marks the reservation resolved in the
+#      journal on main, ensuring no concurrent journal entries are overwritten.
 
 on:
   schedule:
@@ -22,13 +31,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  run-leg:
+  plan:
+    # Restrict unattended and manual execution to main only.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    outputs:
+      should_run: ${{ steps.plan.outputs.should_run }}
+      models: ${{ steps.plan.outputs.models }}
+      pairs_file: ${{ steps.plan.outputs.pairs_file }}
+      limit: ${{ steps.plan.outputs.limit }}
+      offset: ${{ steps.plan.outputs.offset }}
+      indices: ${{ steps.plan.outputs.indices }}
+      nonce: ${{ steps.plan.outputs.nonce }}
+      note: ${{ steps.plan.outputs.note }}
+      params_json: ${{ steps.plan.outputs.params_json }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: main
           fetch-depth: 0
 
       - name: Setup Python
@@ -36,11 +57,65 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Check campaign plan and lane status
-        id: check_plan
+      - name: Compute campaign leg plan
+        id: plan
         run: |
           set -euo pipefail
-          python scripts/scheduled_backfill_leg.py --dry-run
+          python scripts/scheduled_backfill_leg.py --plan
+
+      - name: Reserve logits lane in journal
+        if: steps.plan.outputs.should_run == 'true'
+        env:
+          NONCE: ${{ steps.plan.outputs.nonce }}
+          NOTE: ${{ steps.plan.outputs.note }}
+          PARAMS_JSON: ${{ steps.plan.outputs.params_json }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for i in 1 2 3 4 5; do
+            git fetch origin main
+            git checkout origin/main -- ops/trigger_journal.jsonl || true
+            python scripts/scheduled_backfill_leg.py --reserve \
+              --nonce "$NONCE" \
+              --note "$NOTE" \
+              --params "$PARAMS_JSON"
+            git add ops/trigger_journal.jsonl
+            if git diff --staged --quiet; then
+              echo "Journal already reserved"
+              break
+            fi
+            git commit -m "Logits backfill (scheduled): reserve lane ($NONCE)"
+            if git push origin HEAD:refs/heads/main; then
+              echo "Successfully pushed reservation to origin/main"
+              break
+            fi
+            echo "Push rejected; retrying..."
+            git reset --hard origin/main
+            sleep $((i * 2))
+          done
+
+  eval:
+    needs: plan
+    if: github.ref == 'refs/heads/main' && needs.plan.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        model: ${{ fromJson(needs.plan.outputs.models) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
 
       - name: Provision swap for model loading
         run: |
@@ -55,27 +130,60 @@ jobs:
           pip install --quiet -c constraints.txt torch --index-url https://download.pytorch.org/whl/cpu
           pip install --quiet -c constraints.txt transformers accelerate
 
-      - name: Execute planned backfill leg
+      - name: Resolve output path
         env:
+          MODEL: ${{ matrix.model }}
+          PAIRS_FILE: ${{ needs.plan.outputs.pairs_file }}
+          OFFSET: ${{ needs.plan.outputs.offset }}
+          INDICES: ${{ needs.plan.outputs.indices }}
+        run: |
+          STEM=$(basename "$PAIRS_FILE" .json)
+          if [ -n "$INDICES" ]; then
+            PART=$(printf 'part_%02d' "$((10#${INDICES%%,*}))")
+          else
+            PART=$(printf 'part_%02d' $((OFFSET + 1)))
+          fi
+          echo "OUT_DIR=trace_out/${STEM}__${MODEL}" >> "$GITHUB_ENV"
+          echo "SUMMARY_FILE=batch_summary.$PART.json" >> "$GITHUB_ENV"
+
+      - name: Measure next-token behavior
+        env:
+          MODEL: ${{ matrix.model }}
+          PAIRS_FILE: ${{ needs.plan.outputs.pairs_file }}
+          LIMIT: ${{ needs.plan.outputs.limit }}
+          OFFSET: ${{ needs.plan.outputs.offset }}
+          INDICES: ${{ needs.plan.outputs.indices }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          python scripts/scheduled_backfill_leg.py
+          if [ -n "$INDICES" ]; then
+            python scripts/logits_eval.py --pairs "$PAIRS_FILE" --model "$MODEL" \
+              --out "$OUT_DIR" --indices "$INDICES"
+          else
+            python scripts/logits_eval.py --pairs "$PAIRS_FILE" --model "$MODEL" \
+              --out "$OUT_DIR" --limit "$LIMIT" --offset "$OFFSET"
+          fi
 
       - name: Verify holdout seal
         run: |
-          python scripts/seal_check.py --site "$RUNNER_TEMP/no-site" --extra "trace_out"
+          python scripts/seal_check.py --site "$RUNNER_TEMP/no-site" --extra "$OUT_DIR/$SUMMARY_FILE"
 
-      - name: Commit and push measurements
+      - name: Commit and push model measurement
+        env:
+          MODEL: ${{ matrix.model }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add trace_out/ ops/trigger_journal.jsonl
-          if git diff --staged --quiet; then
-            echo "No new measurements to commit"
+          if [ ! -f "$OUT_DIR/$SUMMARY_FILE" ]; then
+            echo "No summary to commit"
             exit 0
           fi
-          git commit -m "Logits backfill (scheduled): automated campaign leg"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$OUT_DIR/$SUMMARY_FILE"
+          if git diff --staged --quiet; then
+            echo "Measurement already committed"
+            exit 0
+          fi
+          git commit -m "Logits backfill (scheduled): $OUT_DIR ($SUMMARY_FILE)"
           for i in 1 2 3 4 5; do
             if git pull --rebase -X theirs origin main && git push origin HEAD:refs/heads/main; then
               exit 0
@@ -84,3 +192,48 @@ jobs:
             sleep $((i * 2))
           done
           exit 1
+
+  resolve:
+    needs: [plan, eval]
+    if: always() && github.ref == 'refs/heads/main' && needs.plan.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+
+      - name: Resolve logits lane in journal
+        env:
+          NONCE: ${{ needs.plan.outputs.nonce }}
+          EVAL_RESULT: ${{ needs.eval.result }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for i in 1 2 3 4 5; do
+            git fetch origin main
+            git checkout origin/main -- ops/trigger_journal.jsonl || true
+            python scripts/scheduled_backfill_leg.py --resolve \
+              --nonce "$NONCE" \
+              --status "$EVAL_RESULT"
+            git add ops/trigger_journal.jsonl
+            if git diff --staged --quiet; then
+              echo "Journal already resolved"
+              break
+            fi
+            git commit -m "Logits backfill (scheduled): resolve lane ($NONCE)"
+            if git push origin HEAD:refs/heads/main; then
+              echo "Successfully pushed resolution to origin/main"
+              break
+            fi
+            echo "Push rejected; retrying..."
+            git reset --hard origin/main
+            sleep $((i * 2))
+          done

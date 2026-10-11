@@ -8,6 +8,8 @@ import importlib.util
 import json
 from pathlib import Path
 
+import pytest
+
 _ROOT = Path(__file__).resolve().parents[1]
 _SPEC = importlib.util.spec_from_file_location(
     "study_timeline", _ROOT / "scripts" / "study_timeline.py")
@@ -68,10 +70,10 @@ def test_main_counts_held_parts_separately(tmp_path, monkeypatch, capsys):
     (tmp_path / "ops" / "dashboard.json").write_text("{}", encoding="utf-8")
     part_held = tmp_path / "trace_out" / "pairs_20260710T010000Z__gemma-4-e2b"
     part_held.mkdir(parents=True)
-    (part_held / "batch_summary.part_01.json").write_text("{}", encoding="utf-8")
+    (part_held / "batch_summary.part_01.json").write_text(json.dumps({"backend": "hosted"}), encoding="utf-8")
     part_active = tmp_path / "trace_out" / "pairs_20260710T010000Z__qwen3-4b"
     part_active.mkdir(parents=True)
-    (part_active / "batch_summary.part_01.json").write_text("{}", encoding="utf-8")
+    (part_active / "batch_summary.part_01.json").write_text(json.dumps({"backend": "hosted"}), encoding="utf-8")
 
     rc = tl.main(["--out", "out.json", "--site", ""])
     assert rc == 0
@@ -82,3 +84,15 @@ def test_main_counts_held_parts_separately(tmp_path, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "publication hold (scripts/publication_hold.py), parts not read:" in out
     assert "held model gemma-4-e2b 1" in out
+
+
+def test_main_refuses_malformed_summary(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "ops").mkdir()
+    (tmp_path / "ops" / "dashboard.json").write_text("{}", encoding="utf-8")
+    part_bad = tmp_path / "trace_out" / "pairs_20260710T010000Z__qwen3-4b"
+    part_bad.mkdir(parents=True)
+    (part_bad / "batch_summary.part_01.json").write_text("{malformed json", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="unreadable or malformed summary"):
+        tl.main(["--out", "out.json", "--site", ""])
