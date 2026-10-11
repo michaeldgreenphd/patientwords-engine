@@ -296,3 +296,15 @@ def test_accepts_tagged_graphs_with_special_tokens_or_bos(tmp_path):
     rep2 = flc.build_report(d2, d2, examples=0)
     assert rep2["models"]["a"]["tagged_graphs"] == 2
 
+
+def test_refuses_arbitrary_prompt_prefix():
+    # Regression (Codex review of PR #93, thread 4236354643): arbitrary prefixes
+    # must not be accepted by prompts_match via suffix check.
+    assert not flc.prompts_match("unrelated prefix p one", "p one")
+    assert not flc.prompts_match("some extra words p one", "p one")
+    assert not flc.prompts_match("p one extra suffix", "p one")
+    assert flc.prompts_match("p one", "p one")
+    assert flc.prompts_match("<bos>p one", "p one")
+    assert flc.prompts_match("<|endoftext|> p one", "p one")
+
+

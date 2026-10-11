@@ -85,6 +85,13 @@ def read_model_results(stem, model):
     graph_model = None
     for part in sorted(tdir.glob("batch_summary.part_*.json")):
         summary = json.loads(part.read_text(encoding="utf-8"))
+        part_model = summary.get("graph_model") or BASE_MODEL
+        if model and part_model != model:
+            sys.exit(
+                f"refusing: trace part {part} records graph_model {part_model!r}, but directory is for "
+                f"{model!r}. Stale or misplaced parts must be cleaned up before exporting. "
+                "Nothing was written."
+            )
         graph_model = summary.get("graph_model") or graph_model
         for r in summary.get("results", []):
             results[r["index"]] = r

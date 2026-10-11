@@ -138,8 +138,8 @@ def prompts_match(graph_prompt: Any, summary_prompt: Any) -> bool:
     """True when graph metadata.prompt matches the prompt recorded in the summary part.
 
     Neuronpedia may record the prompt with a prepended model BOS or special token
-    (such as '<bos>' or '<|endoftext|>'), so leading special tokens are stripped
-    or checked via suffix match."""
+    (such as '<bos>' or '<|endoftext|>'), so leading special tokens matching
+    BOS_TOKENS_RE are stripped before comparing."""
     if not isinstance(graph_prompt, str) or not isinstance(summary_prompt, str):
         return False
     g, s = graph_prompt.strip(), summary_prompt.strip()
@@ -149,9 +149,7 @@ def prompts_match(graph_prompt: Any, summary_prompt: Any) -> bool:
         return True
     g_clean = BOS_TOKENS_RE.sub("", g).strip()
     s_clean = BOS_TOKENS_RE.sub("", s).strip()
-    if g_clean == s_clean:
-        return True
-    return g.endswith(s)
+    return g_clean == s_clean
 
 
 def _read_json(path: Path) -> Any:

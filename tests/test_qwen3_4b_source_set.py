@@ -415,6 +415,26 @@ def test_export_archive_leaves_qwen3_4b_clinical_mass_empty(tmp_path):
     assert len(qwen_lines) == 2 and all(line.endswith(",,") for line in qwen_lines)  # empty mass columns
 
 
+def test_export_archive_refuses_trace_part_with_mismatched_model(tmp_path):
+    # Regression (Codex review of PR #93, thread 4236354640): reject archive parts
+    # whose graph_model does not match the directory's expected model.
+    engine = tmp_path / "engine"
+    _engine(engine, {STAMP: [HOSTED_TAGGED]})
+    foreign_part = engine / "trace_out" / f"{STEM}__qwen3-4b" / "batch_summary.part_02.json"
+    _write(foreign_part, {
+        "graph_model": "gemma-2-2b", "source_set": "gemmascope-transcoder-16k", "backend": "hosted",
+        "results": [_result(1, ROWS[0], 0.3)]
+    })
+    out = tmp_path / "archive"
+    proc = subprocess.run([sys.executable, str(ROOT / "scripts" / "export_archive.py"),
+                           "--engine", str(engine), "--out", str(out)],
+                          capture_output=True, text=True, cwd=str(engine))
+    assert proc.returncode != 0
+    assert "refusing: trace part" in proc.stderr
+    assert "gemma-2-2b" in proc.stderr and "qwen3-4b" in proc.stderr
+    assert not out.with_suffix(".json").exists()
+
+
 def _gemma_other_set(engine: Path) -> None:
     """Re-tag the gemma-2-2b part as if traced with an explicit, uncalibrated --source-set."""
     part = engine / "trace_out" / STEM / "batch_summary.part_01.json"
