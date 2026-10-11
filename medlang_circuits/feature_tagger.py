@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_CATEGORY = CATEGORY_OFF_TARGET  # unmatched, non-structural features default here
 METADATA_KEY = "medlang"
 SUMMARY_KEY = "medlang_summary"
+FEATURE_SOURCE_SET_KEY = "feature_source_set"  # in metadata[SUMMARY_KEY], since 2026-10-09
 
 # Tie-break priority when keyword scores are equal (domain evidence wins).
 _PRIORITY = (CATEGORY_CLINICAL, CATEGORY_STRUCTURAL, CATEGORY_OFF_TARGET)
@@ -149,6 +150,10 @@ def annotate_graph(
         methods[annotation["method"]] += 1
 
     metadata[SUMMARY_KEY] = _build_summary(graph, counts, methods)
+    # Provenance of the labels: the source set the descriptions were fetched from
+    # (None for NullFetcher or a fetcher that names none). Additive; read by
+    # scripts/feature_label_calibration.py to refuse graphs tagged from another set.
+    metadata[SUMMARY_KEY][FEATURE_SOURCE_SET_KEY] = getattr(fetcher, "source_set", None)
     graph["metadata"] = metadata
     logger.info("Tagged %s: %s", metadata.get("slug", "graph"), dict(counts))
     return graph
