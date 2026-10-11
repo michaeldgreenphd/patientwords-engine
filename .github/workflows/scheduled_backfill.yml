@@ -12,7 +12,11 @@ name: Scheduled Logits Backfill (medlang-circuits)
 # Architecture:
 #   1. plan: Checks logits-eval lane; if free, plans the next leg and reserves
 #      the lane in ops/trigger_journal.jsonl on main.
-#   2. eval: Matrix fan-out across planned models (up to max-parallel: 2).
+#   2. eval: Matrix fan-out across planned models (up to max-parallel: 3).
+#      With at most 6 models (GAP_MODELS), max-parallel: 3 bounds matrix execution
+#      to at most ceil(6/3) = 2 waves * 240m = 480m = 8 hours. Against the 12h
+#      (720m) cron interval, this guarantees 4 full hours (240m) of headroom for
+#      plan, queueing, and resolve overhead, preventing cron runs from entering an occupied group.
 #      Each matrix job runs CPU inference, checks holdout seal, and commits only
 #      its unique part file (trace_out/<stem>__<model>/batch_summary.part_*.json).
 #   3. resolve: Always runs after eval; marks the reservation resolved in the
@@ -119,7 +123,7 @@ jobs:
     timeout-minutes: 240
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 3
       matrix:
         model: ${{ fromJson(needs.plan.outputs.models) }}
     steps:
