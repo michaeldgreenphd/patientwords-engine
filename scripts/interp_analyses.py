@@ -19,19 +19,30 @@ import argparse
 import json
 import math
 import re
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
+
+try:
+    from scripts.publication_hold import Gate
+except ImportError:
+    from publication_hold import Gate
 
 PATH_FEATURE = re.compile(r"\[L(\d+)·([A-Z])\]\s*([^→]+)")
 
 
-def load_parts(trace_root: Path):
+def load_parts(trace_root: Path, gate: Gate | None = None):
     """Yield (dir_name, summary_dict) for every landed chunk summary."""
+    if gate is None:
+        gate = Gate(trace_root.parent if trace_root.name == "trace_out" else ".")
     for part in sorted(trace_root.glob("*/batch_summary.part_*.json")):
         try:
-            yield part.parent.name, json.loads(part.read_text(encoding="utf-8"))
+            summary = json.loads(part.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             continue
+        if not gate.admit(part, summary):
+            continue
+        yield part.parent.name, summary
 
 
 def pearson(xs, ys):
@@ -169,7 +180,10 @@ def main() -> None:
     ap.add_argument("--out", default=None, type=Path,
                     help="write the JSON bundle here")
     args = ap.parse_args()
-    summaries = list(load_parts(args.trace_root))
+    gate = Gate(args.trace_root.parent if args.trace_root.name == "trace_out" else ".")
+    summaries = list(load_parts(args.trace_root, gate=gate))
+    if gate.report():
+        print(gate.report(), file=sys.stderr)
     bundle = {
         "named_features": named_features(summaries),
         "consistency": consistency(summaries),

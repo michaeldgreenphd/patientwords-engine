@@ -202,9 +202,10 @@ every `trace_out/*/batch_summary.part_*`, scores urgency tiers and flip classes 
 docstring defines them and the translated panel as `urgency_recovery`; `--publish` writes
 the site's `data/urgency_shift.json`);
 `scripts/paired_stats.py` consumes its row file. `scripts/export_archive.py` writes the
-flat per-(pair × model) collaborator CSV. Models in `scripts/publication_hold.py`
-`HELD_MODELS` stay out of every published number: each collector that pools `trace_out/*`
-skips them with a printed count (that file's docstring lists them); a new one must too.
+flat per-(pair × model) collaborator CSV. `scripts/publication_hold.py`'s `HELD_MODELS`, and
+logits parts missing from `data/publication_release/logits_parts.json`, stay out of every published
+number: each collector that pools `trace_out/*` skips them with a count (its docstring lists them; a new
+one must too). Only the owner releases (`scripts/publication_release.py --release`).
 
 **Publishing (`scripts/export_frontend_simulated.py`).** Merges every model's trace dir per
 batch stamp into `scenario.models[<id>]`, mirrors the gemma base to the top level for

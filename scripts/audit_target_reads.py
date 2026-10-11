@@ -164,7 +164,7 @@ if str(ROOT) not in sys.path:
 if str(ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(ROOT / "scripts"))
 
-from publication_hold import is_held  # noqa: E402  (script-style module)
+from publication_hold import Gate  # noqa: E402  (script-style module)
 
 from medlang_circuits.targets import (  # noqa: E402
     FOUND_STATUSES,
@@ -662,6 +662,9 @@ def urgency_reads(root: Path, loaded: dict[Path, list[tuple[Path, dict]]]) -> se
     patient spread."""
     seen: set[tuple[str, str, Any]] = set()
     chosen: set[tuple[str, Any]] = set()
+    # urgency_shift does not read held models or unreleased logits parts (publication_hold.py); a root with no
+    # release manifest (a synthetic one) is read as before the gate, since this audit publishes nothing
+    gate = Gate(root, manifest_optional=True)
     parts = sorted(((part, summary) for parts in loaded.values() for part, summary in parts
                     if part.parent.parent == root / "trace_out" and part.name.startswith("batch_summary.part_")),
                    key=lambda item: item[0].relative_to(root).as_posix())  # urgency_shift sorts glob strings
@@ -671,7 +674,7 @@ def urgency_reads(root: Path, loaded: dict[Path, list[tuple[Path, dict]]]) -> se
         if stem.startswith(URGENCY_SKIP_PREFIX):
             continue
         model = summary.get("graph_model") or suffix or BASE_MODEL
-        if is_held(model) or is_held(suffix):   # urgency_shift skips held models' parts (publication_hold.py)
+        if not gate.admit(part, summary, model):
             continue
         for position, r in enumerate(summary.get("results", []) or []):
             if not isinstance(r, dict) or (model, stem, r.get("index")) in seen:

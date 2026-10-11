@@ -69,9 +69,9 @@ except ImportError:
                               prune_candidates, referenced_renders)
 
 try:
-    from scripts.publication_hold import HELD_MODELS
+    from scripts.publication_hold import HELD_MODELS, Gate, ReleaseError
 except ImportError:
-    from publication_hold import HELD_MODELS
+    from publication_hold import HELD_MODELS, Gate, ReleaseError
 
 # The circuit-tracer models, in registry order (gemma-2-2b is the base/default).
 # Only gemma-2-2b has a transcoder source set, so clinical-feature attribution
@@ -83,6 +83,9 @@ MODELS = [
     "gemma-3-4b-it",
     "qwen3-4b",
     "qwen3-1.7b",
+    "llama-3.2-3b",
+    "olmo-2-1b",
+    "gemma-2-2b-it",
     "gemma-4-e2b",
     "qwen3.5-2b-base",
     "medgemma-1.5-4b-it",
@@ -93,6 +96,9 @@ LABELS = {
     "gemma-3-4b-it": "Gemma 3 4B-it",
     "qwen3-4b": "Qwen3 4B",
     "qwen3-1.7b": "Qwen3 1.7B · LoRSA attn",
+    "llama-3.2-3b": "Llama 3.2 3B",
+    "olmo-2-1b": "OLMo 2 1B",
+    "gemma-2-2b-it": "Gemma 2 2B-it",
     "gemma-4-e2b": "Gemma 4 E2B",
     "qwen3.5-2b-base": "Qwen3.5 2B Base",
     "medgemma-1.5-4b-it": "MedGemma 1.5 4B-it",
@@ -162,6 +168,8 @@ _unknown_steered = STEERED - set(STAMPS)
 if _unknown_steered:
     sys.exit(f"--steered-stamps names stamps absent from --stamps: {sorted(_unknown_steered)}")
 WANT_MODELS = [m.strip() for m in args.models.split(",") if m.strip()]
+# unreleased logits parts are not read (scripts/publication_hold.py); counted in the summary printed below
+GATE = Gate(ENGINE)
 _held_wanted = sorted(set(WANT_MODELS) & HELD_MODELS)
 if _held_wanted:
     sys.exit(f"--models names models held from publication (scripts/publication_hold.py): {_held_wanted}; "
@@ -237,6 +245,11 @@ def read_trace_dir(trace_dir):
     screen = None
     for part in sorted(trace_dir.glob("batch_summary.part_*.json")):
         summary = json.loads(part.read_text(encoding="utf-8"))
+        try:
+            if not GATE.admit(part, summary):
+                continue
+        except ReleaseError as exc:
+            sys.exit(f"refusing: {exc}; nothing was written or pruned")
         for key in ("graph_model", "source_set", "mode", "backend"):
             if summary.get(key):
                 meta[key] = summary[key]
@@ -529,6 +542,8 @@ model_line = ", ".join(f"{mm['id']} ({mm['n_traced']})" for mm in models_meta) o
 print(f"{len(scenarios)} scenarios ({measured_n} measured) across {len(batches)} batch(es) "
       f"-> {out_data} ({withheld_holdout} confirmatory-holdout pairs withheld)")
 print(f"  models: {model_line}")
+if GATE.report():
+    print(f"  {GATE.report()}")
 print(f"  {copied} interactive renders published (cap {args.max_renders or 'none'}); "
       f"{data_only} scenarios are data-only on the public site")
 print(f"  {pruned} unlisted render(s) {'would be pruned' if DRY else 'pruned'} from "

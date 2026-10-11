@@ -76,3 +76,36 @@ def test_the_committed_proposal_is_identifiers_only_and_consistent():
         n = len(json.loads((ROOT / "data" / "simulated" / f"{p['batch']}.json").read_text(encoding="utf-8")))
         assert 1 <= p["index"] <= n
         assert not sp.sealed_pair(p["batch"], p["index"], None)
+
+
+def test_original_models_registry_matches_expected_set():
+    assert len(sp.ORIGINAL_MODELS) == 10
+    assert "medgemma-1.5-4b-it" not in sp.ORIGINAL_MODELS
+    assert "gemma-4-e2b" not in sp.ORIGINAL_MODELS
+    assert "qwen3.5-2b-base" not in sp.ORIGINAL_MODELS
+    assert "gemma-2-2b" in sp.ORIGINAL_MODELS
+
+
+def test_main_refuses_when_required_original_models_are_missing(tmp_path):
+    import pytest
+    site = tmp_path / "site"
+    (site / "data").mkdir(parents=True)
+    (site / "data" / "urgency_shift.json").write_text(
+        json.dumps({"rows": [{"model": "gemma-2-2b", "batch": A, "index": 1, "flip_class": "downgrade"}]}),
+        encoding="utf-8",
+    )
+    with pytest.raises(SystemExit, match="missing expected original model"):
+        sp.main(["--site", str(site)])
+
+
+def test_committed_proposal_records_hashes_for_all_sources():
+    path = ROOT / "data" / "selections" / "medgemma15_priority_20261009.json"
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    sources = doc.get("sources", [])
+    assert len(sources) > 40
+    paths = {s["path"] for s in sources}
+    assert "ops/dashboard.json" in paths
+    assert "patientwords:data/urgency_shift.json" in paths
+    assert any(p.startswith("data/simulated/pairs_") for p in paths)
+    for s in sources:
+        assert isinstance(s.get("sha256"), str) and len(s["sha256"]) == 64
