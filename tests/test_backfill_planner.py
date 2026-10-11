@@ -386,6 +386,16 @@ def test_a_stray_part_where_a_fire_would_write_blocks_that_model_and_is_reported
     assert {m for leg in legs for m in leg["params"]["models"].split(",")} == set(bp.GAP_MODELS) - {"olmo-2-1b"}
 
 
+def test_campaign_propagates_exploratory_blocked_collisions(tmp_path, monkeypatch):
+    _gap_root(tmp_path, monkeypatch, n=10, stray={"gemma-4-e2b": "batch_summary.part_01.json"})
+    blocked = []
+    bp.campaign_plan(bp.coverage(), count=50, blocked=blocked)
+    assert ("pairs_A", "gemma-4-e2b", "batch_summary.part_01.json") in blocked
+    blocked_exp = []
+    bp.exploratory_plan(bp.coverage(), count=50, blocked=blocked_exp)
+    assert ("pairs_A", "gemma-4-e2b", "batch_summary.part_01.json") in blocked_exp
+
+
 def test_the_campaign_runs_sweep_then_gaps_then_priority_then_the_rest(tmp_path, monkeypatch):
     _gap_root(tmp_path, monkeypatch, n=30)
     sel = {"pairs_A": {3, 7}}

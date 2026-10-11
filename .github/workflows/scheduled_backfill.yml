@@ -1,7 +1,7 @@
 name: Scheduled Logits Backfill (medlang-circuits)
 
 # Runs the next-token logits backfill campaign unattended on GitHub Actions.
-# Runs on a schedule every 6 hours (or manual workflow_dispatch).
+# Runs on a schedule every 12 hours (or manual workflow_dispatch).
 # Costs $0 (CPU inference on GitHub's free runners for public repositories).
 # Adheres strictly to AGENTS.md:
 #   - Pinned model revisions enforced by scripts/logits_eval.py
@@ -20,7 +20,7 @@ name: Scheduled Logits Backfill (medlang-circuits)
 
 on:
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 */12 * * *"
   workflow_dispatch:
 
 permissions:

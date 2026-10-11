@@ -340,9 +340,10 @@ def plan_legs(cov: dict, models: tuple[str, ...], count: int = 1, selection: dic
 
 
 def exploratory_legs(cov: dict, models: tuple[str, ...] = SWEEP_MODELS, count: int = 1,
-                     selection: dict[str, set[int]] | None = None, label: str = "exploratory, to parity") -> list:
+                     selection: dict[str, set[int]] | None = None, label: str = "exploratory, to parity",
+                     blocked: list | None = None) -> list:
     """plan_legs for exploratory models, sized by their speed class (_logits_chunk)."""
-    return plan_legs(cov, models, count, selection, label, _logits_chunk)
+    return plan_legs(cov, models, count, selection, label, _logits_chunk, blocked)
 
 
 def gap_legs(cov: dict, count: int = 1, blocked: list | None = None) -> list:
@@ -390,16 +391,16 @@ def campaign_plan(cov: dict, count: int = 1, include_medgemma15: bool = False,
     sweep; (2) the six original models' gaps; (3) medgemma-1.5-4b-it's priority selection, only when one is
     given; (4) medgemma-1.5-4b-it's rest, only with include_medgemma15. Each phase's legs come after every leg of
     the phases before it (planned as if those had landed)."""
-    legs = exploratory_legs(cov, SWEEP_MODELS, count)
+    legs = exploratory_legs(cov, SWEEP_MODELS, count, blocked=blocked)
     if len(legs) < count:
         legs += gap_legs(cov, count - len(legs), blocked)
     if medgemma15_selection is not None and len(legs) < count:
         priority = exploratory_legs(cov, (MEDGEMMA15,), count - len(legs), medgemma15_selection,
-                                    label="exploratory, medgemma-1.5 priority selection")
+                                    label="exploratory, medgemma-1.5 priority selection", blocked=blocked)
         legs += priority
         cov = _as_if_landed(cov, priority)   # the rest must not plan the selected pairs again
     if include_medgemma15 and len(legs) < count:
-        legs += exploratory_legs(cov, (MEDGEMMA15,), count - len(legs), label="exploratory, to parity")
+        legs += exploratory_legs(cov, (MEDGEMMA15,), count - len(legs), label="exploratory, to parity", blocked=blocked)
     return legs
 
 
@@ -426,16 +427,16 @@ def _as_if_landed(cov: dict, legs: list) -> dict:
 
 
 def exploratory_plan(cov: dict, count: int = 1, include_medgemma15: bool = False,
-                     medgemma15_selection: dict[str, set[int]] | None = None) -> list:
+                     medgemma15_selection: dict[str, set[int]] | None = None, blocked: list | None = None) -> list:
     """The exploratory legs a caller asked for: medgemma-1.5-4b-it's selected pairs alone when a
     selection is given; otherwise the sweep, then (with include_medgemma15) medgemma-1.5-4b-it's rest
     once the sweep is at parity."""
     if medgemma15_selection is not None:
         return exploratory_legs(cov, (MEDGEMMA15,), count, medgemma15_selection,
-                                label="exploratory, medgemma-1.5 priority selection")
-    legs = exploratory_legs(cov, SWEEP_MODELS, count)
+                                label="exploratory, medgemma-1.5 priority selection", blocked=blocked)
+    legs = exploratory_legs(cov, SWEEP_MODELS, count, blocked=blocked)
     if include_medgemma15 and len(legs) < count:
-        legs += exploratory_legs(cov, (MEDGEMMA15,), count - len(legs), label="exploratory, to parity")
+        legs += exploratory_legs(cov, (MEDGEMMA15,), count - len(legs), label="exploratory, to parity", blocked=blocked)
     return legs
 
 
@@ -526,7 +527,7 @@ def main(argv: list[str] | None = None) -> int:
     selection = load_selection(args.medgemma15_selection) if args.medgemma15_selection else None
     blocked: list = []
     if leg_mode == "exploratory":
-        legs = exploratory_plan(cov, args.next, args.include_medgemma15, selection)
+        legs = exploratory_plan(cov, args.next, args.include_medgemma15, selection, blocked)
     elif leg_mode == "fill_gaps":
         legs = gap_legs(cov, args.next, blocked)
     elif leg_mode == "campaign":

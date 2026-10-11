@@ -52,7 +52,14 @@ def committed_logits_parts(root: Path) -> dict[str, str]:
             summary = json.loads((root / path).read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
             raise SystemExit(f"refused: {rel} is tracked but unreadable ({exc}); nothing was written")
-        if summary.get("backend") != "logits" or is_held(summary.get("graph_model")):
+        backend = summary.get("backend")
+        if backend is None:
+            raise SystemExit(f"refused: {rel} is missing required 'backend' key; nothing was written")
+        if backend in ("hosted", "activation_patch"):
+            continue
+        if backend != "logits":
+            raise SystemExit(f"refused: {rel} has unrecognized backend {backend!r}; nothing was written")
+        if is_held(summary.get("graph_model")):
             continue
         out[rel] = sha256_file(root / path)
     return out

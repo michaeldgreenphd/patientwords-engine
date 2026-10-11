@@ -342,3 +342,52 @@ def test_gate_fails_closed_on_missing_or_unknown_backend(tmp_path):
     # Unknown backend
     with pytest.raises(hold.ReleaseError, match="unrecognized backend"):
         gate.admit(part, {"backend": "future_backend"})
+
+
+def test_committed_logits_parts_refuses_missing_or_unknown_backend(git_root):
+    bad_part = git_root / "trace_out" / f"{BATCH}__olmo-2-1b" / "batch_summary.part_01.json"
+    _write(bad_part, {"graph_model": "olmo-2-1b"})
+    _git(git_root, "-c", "user.email=t@example.invalid", "-c", "user.name=t", "add", "-A")
+    _git(git_root, "-c", "user.email=t@example.invalid", "-c", "user.name=t", "commit", "-qm", "bad1")
+    with pytest.raises(SystemExit, match="missing required 'backend' key"):
+        release.committed_logits_parts(git_root)
+
+    _write(bad_part, {"graph_model": "olmo-2-1b", "backend": "unknown_backend"})
+    _git(git_root, "-c", "user.email=t@example.invalid", "-c", "user.name=t", "add", "-A")
+    _git(git_root, "-c", "user.email=t@example.invalid", "-c", "user.name=t", "commit", "-qm", "bad2")
+    with pytest.raises(SystemExit, match="unrecognized backend"):
+        release.committed_logits_parts(git_root)
+
+
+def test_translation_scale_reads_only_released_logits_parts(engine_root):
+    ts = _load("translation_scale")
+    corpus = [{"top_prompt": "translated", "bottom_prompt": "patient",
+               "target_clinical_token": " alpha", "generation": {"source_batch": BATCH, "source_index": 1}}]
+    _write(engine_root / "data" / "simulated" / "txcorpus_A.json", corpus)
+    # released part
+    _write(engine_root / "trace_out" / "txcorpus_A__qwen3-4b" / "batch_summary.part_01.json",
+           {"backend": "logits", "graph_model": "qwen3-4b", "results": [
+               {"index": 1, "target_token": 'Output "alpha"',
+                "probabilities": {"clinical": 0.5, "patient": 0.2},
+                "predictive_spread": {"clinical": [['Output "alpha"', 0.5]], "patient": [['Output "beta"', 0.2]]}}]})
+    _manifest(engine_root, [QWEN_PART, "trace_out/txcorpus_A__qwen3-4b/batch_summary.part_01.json"])
+    # unreleased part
+    _write(engine_root / "trace_out" / "txcorpus_A__olmo-2-1b" / "batch_summary.part_01.json",
+           {"backend": "logits", "graph_model": "olmo-2-1b", "results": [
+               {"index": 1, "target_token": 'Output "alpha"',
+                "probabilities": {"clinical": 0.5, "patient": 0.2},
+                "predictive_spread": {"clinical": [['Output "alpha"', 0.5]], "patient": [['Output "beta"', 0.2]]}}]})
+    # held model part
+    _write(engine_root / "trace_out" / "txcorpus_A__gemma-4-e2b" / "batch_summary.part_01.json",
+           {"backend": "logits", "graph_model": "gemma-4-e2b", "results": [
+               {"index": 1, "target_token": 'Output "alpha"',
+                "probabilities": {"clinical": 0.5, "patient": 0.2},
+                "predictive_spread": {"clinical": [['Output "alpha"', 0.5]], "patient": [['Output "beta"', 0.2]]}}]})
+
+    gate = hold.Gate(engine_root)
+    out = ts.analyze(engine_root / "trace_out", engine_root / "data" / "simulated", gate=gate)
+    assert "qwen3-4b" in out["per_model"]
+    assert "olmo-2-1b" not in out["per_model"]
+    assert "gemma-4-e2b" not in out["per_model"]
+    assert "unreleased logits part" in gate.report()
+    assert "held model gemma-4-e2b" in gate.report()

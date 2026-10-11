@@ -3,7 +3,7 @@
 Two rules, both enforced by every collector that would pool trace_out/ summaries into a published number
 (urgency_shift.py, whose rows also feed paired_stats_rigor.py, tier_sensitivity.py and embed_scenario_joins.py;
 study_timeline.py; screen_sensitivity.py; export_frontend_simulated.py; export_archive.py;
-interp_analyses.py; and the audit_target_reads.py mirror of urgency_shift's ingestion):
+interp_analyses.py; translation_scale.py; and the audit_target_reads.py mirror of urgency_shift's ingestion):
 
 1. HELD_MODELS. The three post-registration exploratory logits models added on 2026-10-09
    (docs/model_matrix.md, docs/prereg_divergence_log.md) are skipped entirely, whatever has landed. Releasing
