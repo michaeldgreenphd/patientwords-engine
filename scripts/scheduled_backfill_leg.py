@@ -74,13 +74,13 @@ def reserve_leg(repo: Path, note: str, nonce: str, params: dict) -> bool:
     journal_path = repo / "ops" / "trigger_journal.jsonl"
     entries = ft.load_journal(journal_path)
     now = datetime.now(timezone.utc)
-    if ft.active_entries(entries, "logits-eval", now, ft.expire_hours_from_env()):
-        print(f"Notice: logits-eval lane has active entries; refusing to reserve nonce {nonce}", file=sys.stderr)
-        return False
     for e in entries:
         if e.get("nonce") == nonce:
             print(f"Nonce {nonce} already present in journal; skipping duplicate reserve")
             return True
+    if ft.active_entries(entries, "logits-eval", now, ft.expire_hours_from_env()):
+        print(f"Notice: logits-eval lane has active entries; refusing to reserve nonce {nonce}", file=sys.stderr)
+        return False
     now_utc = ft.iso_utc(now)
     params_content = json.dumps(params, sort_keys=True)
     entry = {

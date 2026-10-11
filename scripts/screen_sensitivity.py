@@ -49,10 +49,10 @@ def collect_rows(trace_root: Path) -> list[dict]:
         if not _OBS_RE.fullmatch(batch):
             continue
         data = json.loads(summary.read_text(encoding="utf-8"))
-        if data.get("backend") != "logits":
-            continue  # hosted traces are already screened; the sweep needs raw rows
         if not gate.admit(summary, data, model):
             continue
+        if data.get("backend") != "logits":
+            continue  # hosted traces are already screened; the sweep needs raw rows
         for r in data.get("results", []):
             probs = r.get("probabilities") or {}
             clin, pat = probs.get("clinical"), probs.get("patient")

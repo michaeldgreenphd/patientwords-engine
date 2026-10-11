@@ -43,7 +43,15 @@ GATE = Gate(ENGINE)
 # The circuit-tracer models. gemma-2-2b keeps the bare trace_out stem; the
 # others write to trace_out/<stem>__<model>. Only gemma has a transcoder source
 # set, so clinical_mass is meaningful for it alone (nulled for the rest).
-MODELS = ["gemma-2-2b", "gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b"]
+MODELS = [
+    "gemma-2-2b",
+    "gemma-3-4b-it",
+    "qwen3-4b",
+    "qwen3-1.7b",
+    "gemma-4-e2b",
+    "qwen3.5-2b-base",
+    "medgemma-1.5-4b-it",
+]
 BASE_MODEL = "gemma-2-2b"
 FEATURED = {"gemma-2-2b"}
 
@@ -80,7 +88,10 @@ def read_model_results(stem, model):
         summary = json.loads(part.read_text(encoding="utf-8"))
         if not GATE.admit(part, summary, model):
             continue
-        graph_model = summary.get("graph_model") or graph_model
+        part_model = summary.get("graph_model") or model
+        if part_model != model:
+            continue
+        graph_model = part_model
         for r in summary.get("results", []):
             results[r["index"]] = r
     return (results, graph_model or model) if results else None

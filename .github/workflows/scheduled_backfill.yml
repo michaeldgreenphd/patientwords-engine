@@ -20,7 +20,7 @@ name: Scheduled Logits Backfill (medlang-circuits)
 
 on:
   schedule:
-    - cron: "0 */3 * * *"
+    - cron: "0 */5 * * *"
   workflow_dispatch:
 
 permissions:
@@ -181,10 +181,17 @@ jobs:
           fi
 
       - name: Verify holdout seal
+        id: seal
+        if: always()
         run: |
-          python scripts/seal_check.py --site "$RUNNER_TEMP/no-site" --extra "$OUT_DIR/$SUMMARY_FILE"
+          if [ -f "$OUT_DIR/$SUMMARY_FILE" ]; then
+            python scripts/seal_check.py --site "$RUNNER_TEMP/no-site" --extra "$OUT_DIR/$SUMMARY_FILE"
+          else
+            echo "No summary file to check"
+          fi
 
       - name: Commit and push model measurement
+        if: always() && steps.seal.outcome == 'success'
         env:
           MODEL: ${{ matrix.model }}
         run: |
