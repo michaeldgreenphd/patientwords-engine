@@ -55,11 +55,13 @@ from pathlib import Path
 
 try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
     from scripts.provenance_stamp import provenance
+    from scripts.publication_hold import is_held
     from scripts.sign_test_exact import sign_test  # exact, unrounded; shared with urgency_shift.py
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from provenance_stamp import provenance
+    from publication_hold import is_held
     from sign_test_exact import sign_test
 
 # Observational generation batches: the confirmatory population. Everything
@@ -101,6 +103,14 @@ def load_rows(path):
     """
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     rows = data["rows"]
+    # Models held from publication (scripts/publication_hold.py) never enter these statistics, so they cannot
+    # change a published family, Bonferroni m or model count. urgency_shift.py already skips them; this guards a
+    # rows file written by anything else.
+    held = [r for r in rows if is_held(r.get("model"))]
+    if held:
+        rows = [r for r in rows if not is_held(r.get("model"))]
+        print(f"publication hold: excluded {len(held)} rows of "
+              f"{sorted({r['model'] for r in held})} (scripts/publication_hold.py)")
     # Phrase-keyed exclusion (2026-07-14): a phrase flagged holdout anywhere is
     # excluded everywhere, so re-runs of a holdout phrase in split-less batches
     # cannot leak into interim numbers (found by the independent replication).

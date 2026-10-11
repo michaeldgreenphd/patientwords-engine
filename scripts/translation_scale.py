@@ -40,10 +40,12 @@ from pathlib import Path
 
 try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
     from scripts.provenance_stamp import provenance
+    from scripts.publication_hold import Gate
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from provenance_stamp import provenance
+    from publication_hold import Gate
 
 ENGINE = Path(__file__).resolve().parents[1]
 
@@ -60,6 +62,10 @@ MODEL_FAMILY = {
     "medgemma-4b-it": "medical",
     "meditron3-8b": "medical",
     "apertus-8b-meditronfo": "medical",
+    # Post-registration additions (2026-10-09), unmeasured until their probes land.
+    "gemma-4-e2b": "base",
+    "qwen3.5-2b-base": "base",
+    "medgemma-1.5-4b-it": "medical",
 }
 
 _TOK_RE = re.compile(r'Output "\s*(.*)"$')
@@ -72,7 +78,7 @@ def _tok(label):
     return (m.group(1) if m else label).strip() or None
 
 
-def _results(trace_root: Path, stem_prefix: str) -> dict:
+def _results(trace_root: Path, stem_prefix: str, gate: Gate | None = None) -> dict:
     """{(stem, model, index): result} for every summary under matching dirs."""
     out = {}
     for part in sorted(trace_root.glob(f"{stem_prefix}*/batch_summary*.json")):
@@ -80,6 +86,8 @@ def _results(trace_root: Path, stem_prefix: str) -> dict:
         stem, _, model_suffix = run_dir.partition("__")
         data = json.loads(part.read_text(encoding="utf-8"))
         model = model_suffix or data.get("graph_model") or "gemma-2-2b"
+        if gate is not None and not gate.admit(part, data, model):
+            continue
         for r in data.get("results", []):
             out[(stem, model, r["index"])] = r
     return out
@@ -160,12 +168,14 @@ def lens_recovery(trace_root: Path, simulated_dir: Path) -> dict:
     }
 
 
-def analyze(trace_root: Path, simulated_dir: Path) -> dict:
+def analyze(trace_root: Path, simulated_dir: Path, gate: Gate | None = None) -> dict:
     corpora = [c for c in sorted(simulated_dir.glob("txcorpus_*.json"))
                if not c.name.endswith(".report.json")]
     if not corpora:
         return {"_": "no txcorpus batch landed yet", "corpora": [], "per_model": {}}
-    tx_results = _results(trace_root, "txcorpus_")
+    if gate is None:
+        gate = Gate(trace_root.parent if trace_root.name == "trace_out" else ENGINE, manifest_optional=True)
+    tx_results = _results(trace_root, "txcorpus_", gate=gate)
 
     per_model: dict[str, list[dict]] = {}
     measured_stems: set[str] = set()
@@ -242,9 +252,13 @@ def main() -> int:
     parser.add_argument("--site", default=None,
                         help="site repo root; also writes data/translation_scale.json there")
     args = parser.parse_args()
-    result = analyze(Path(args.trace_root), Path(args.simulated_dir))
+    gate = Gate(Path(args.trace_root).parent if Path(args.trace_root).name == "trace_out" else ENGINE)
+    result = analyze(Path(args.trace_root), Path(args.simulated_dir), gate=gate)
     result["lens_recovery"] = lens_recovery(Path(args.trace_root), Path(args.simulated_dir))
     result["_provenance"] = provenance("translation_scale.py")
+    rep = gate.report()
+    if rep:
+        print(rep)
     Path(args.out).write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
     for model, s in result["per_model"].items():
         print(f"{model} [{s['family']}]: n={s['n']} mean recovery {s['mean_recovery']:+.4f} "

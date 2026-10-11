@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import copy
 import functools
+import hashlib
 import importlib.util
 import json
 import subprocess
@@ -309,6 +310,18 @@ def _engine(engine: Path, qwen_parts: dict[str, list[dict[str, Any]]]) -> None:
         for d in (stem, f"{stem}__qwen3-4b"):
             for i in (1, 2):
                 _write(engine / "trace_out" / d / f"index_{i:02d}.html", f"<html>{d} {i}</html>")
+    manifest_parts = {}
+    for p in sorted((engine / "trace_out").glob("*/*.json")):
+        try:
+            doc = json.loads(p.read_text(encoding="utf-8"))
+            if doc.get("backend") == "logits":
+                rel = p.relative_to(engine).as_posix()
+                manifest_parts[rel] = hashlib.sha256(p.read_bytes()).hexdigest()
+        except Exception:
+            pass
+    if manifest_parts:
+        _write(engine / "data" / "publication_release" / "logits_parts.json",
+               {"schema": "logits_release/1", "parts": manifest_parts})
 
 
 def _export(engine: Path, site: Path, stamps: str) -> subprocess.CompletedProcess:

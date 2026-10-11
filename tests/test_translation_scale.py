@@ -90,3 +90,16 @@ def test_empty_when_no_corpus(tmp_path):
     out = ts.analyze(tmp_path / "trace_out", tmp_path / "data" / "simulated")
     assert out["per_model"] == {}
     assert out["corpora"] == []
+
+
+def test_every_active_logits_model_has_a_family():
+    # Gemini review of PR #94: a model missing from MODEL_FAMILY renders as "other" with no error, and the three
+    # 2026-10-09 additions had no test, so a reverted or mistyped entry would have passed.
+    path = Path(__file__).resolve().parents[1] / "scripts" / "logits_eval.py"
+    spec = importlib.util.spec_from_file_location("logits_eval", path)
+    le = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(le)
+    active = set(le.HF_IDS) - set(le.TOMBSTONES)
+    assert sorted(active - set(ts.MODEL_FAMILY)) == []
+    assert {m: ts.MODEL_FAMILY[m] for m in ("gemma-4-e2b", "qwen3.5-2b-base", "medgemma-1.5-4b-it")} == {
+        "gemma-4-e2b": "base", "qwen3.5-2b-base": "base", "medgemma-1.5-4b-it": "medical"}

@@ -74,7 +74,7 @@ def build(tmp_path):
     _write(engine / "data" / "simulated" / f"{STEM}.report.json", json.dumps({"accepted": 3}))
     trace = engine / "trace_out" / STEM
     _write(trace / "batch_summary.part_01.json", json.dumps(
-        {"graph_model": "gemma-2-2b", "results": [_result(i, r) for i, r in enumerate(rows, start=1)]}))
+        {"graph_model": "gemma-2-2b", "backend": "hosted", "results": [_result(i, r) for i, r in enumerate(rows, start=1)]}))
     for i in (1, 2, 3):
         _write(trace / f"index_{i:02d}.html", f"<html>render {i}</html>")
     sim = site / "modes" / "simulated"
@@ -354,7 +354,7 @@ def test_a_missing_model_render_with_a_site_copy_refuses_under_preview_models_al
     engine, site, files = build(tmp_path)
     mdir = engine / "trace_out" / f"{STEM}__qwen3-4b"
     _write(mdir / "batch_summary.part_01.json", json.dumps(
-        {"graph_model": "qwen3-4b", "results": [_result(2, json.loads(
+        {"graph_model": "qwen3-4b", "backend": "hosted", "results": [_result(2, json.loads(
             (engine / "trace_out" / STEM / "batch_summary.part_01.json").read_text())["results"][1]["prompts"]
             ["clinical"])]}))
     proc = export(engine, site, "--models", "gemma-2-2b,qwen3-4b", "--preview-models", "all")

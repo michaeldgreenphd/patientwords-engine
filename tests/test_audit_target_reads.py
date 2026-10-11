@@ -385,7 +385,7 @@ def test_a_malformed_summary_is_refused_not_read_as_zero_rows(engine, tmp_path, 
 
 
 def test_an_empty_summary_is_read_and_listed(engine, tmp_path):
-    write(engine / f"trace_out/{STEM}/batch_summary.part_99.json", {"mode": "2panel", "results": []})
+    write(engine / f"trace_out/{STEM}/batch_summary.part_99.json", {"mode": "2panel", "backend": "hosted", "results": []})
     rep = run(engine, tmp_path)
     assert rep["empty_summaries"] == [f"trace_out/{STEM}/batch_summary.part_99.json"]
     assert rep["counts"]["overall"]["results"] == 16
@@ -445,7 +445,7 @@ def test_a_well_formed_dialect_spread_is_read(engine, tmp_path):
     r = {"index": 1, "mode": "dialect", "baseline_probability": 0.5, "target_token": out(" qa"),
          "variants": [{"probability": 0.2}], "predictive_spread": {"baseline": [[out(" qa"), 0.5]],
                                                                   "variants": [[[out(" qa"), 0.2]]]}}
-    write(engine / f"trace_out/{STEM}/batch_summary.part_99.json", {"mode": "dialect", "results": [r]})
+    write(engine / f"trace_out/{STEM}/batch_summary.part_99.json", {"mode": "dialect", "backend": "hosted", "results": [r]})
     assert run(engine, tmp_path)["counts"]["overall"]["sides.consistent"] > 0
 
 

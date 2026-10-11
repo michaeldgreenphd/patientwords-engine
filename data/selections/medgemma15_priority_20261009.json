@@ -1,0 +1,900 @@
+{
+ "schema": "priority_pairs/1",
+ "created_utc": "2026-10-09T21:07:28Z",
+ "for_model": "medgemma-1.5-4b-it",
+ "status": "proposal: criteria await owner confirmation (docs/model_matrix.md)",
+ "randomness": "none: a deterministic ranking, so there is no seed",
+ "criteria": {
+  "task_set": "main-study tracing pairs of the physician task bundle, in its rank order",
+  "consensus": "directional urgency-tier flip (downgrade or upgrade) in >= 5 of the original models' published urgency rows",
+  "k": 5,
+  "cap": 100,
+  "models_counted": [
+   "apertus-8b-meditronfo",
+   "gemma-2-2b",
+   "gemma-2-2b-it",
+   "gemma-3-4b-it",
+   "llama-3.2-3b",
+   "medgemma-4b-it",
+   "meditron3-8b",
+   "olmo-2-1b",
+   "qwen3-1.7b",
+   "qwen3-4b"
+  ],
+  "excluded": "pairs the Tier B holdout seals (tierb_split.sealed_pair, accepted prompt); pairs outside the committed data/simulated/pairs_*.json batches",
+  "order": "task-set pairs first (bundle rank), then consensus pairs by models flipping (most first), batch, index"
+ },
+ "sources": [
+  {
+   "path": "data/verification/tasks_20261004T042945Z.json",
+   "sha256": "29817d70e3414834b35c0f316ab3e1953a59ddab229e9ceb9de2760b9265650a"
+  },
+  {
+   "path": "patientwords:data/urgency_shift.json",
+   "sha256": "b4f3862dd989c18e3716f8e1da144b4c627ad6511dc4711fe67eaa2c4c878be1"
+  },
+  {
+   "path": "ops/dashboard.json",
+   "sha256": "280d60e9f0e666e2543825c693c3aa3a050da412e5b0da2d3e7d04c6b09b60b3"
+  },
+  {
+   "path": "data/simulated/pairs_20260706T172135Z.json",
+   "sha256": "33da675eaa8f298d35588f9366710f5da6c137c566f5e5ad66b7c64eb8790b29"
+  },
+  {
+   "path": "data/simulated/pairs_20260706T175614Z.json",
+   "sha256": "67b74e6e1e40e39f8c4c79d4cf2599a021fffcfbe712e714d1c25e3899f2b832"
+  },
+  {
+   "path": "data/simulated/pairs_20260706T201750Z.json",
+   "sha256": "cc988a39539e03cc9d3d0cd9d9bccc9dedbc46d7fe1995e2b48bfd87b119d854"
+  },
+  {
+   "path": "data/simulated/pairs_20260706T210703Z.json",
+   "sha256": "1fb923c06b45c34b48180057a2fd7003e41453582c765a011db94d93dc8704ea"
+  },
+  {
+   "path": "data/simulated/pairs_20260707T023656Z.json",
+   "sha256": "798554732f3a24ba10754f3215a413f89b075fcf797fddb697b07d549f18e358"
+  },
+  {
+   "path": "data/simulated/pairs_20260707T023704Z.json",
+   "sha256": "d9482665989ca63e97726777976d379089a3713f43d6c9a07e2bc08078414f84"
+  },
+  {
+   "path": "data/simulated/pairs_20260707T023706Z.json",
+   "sha256": "df850dbf0e152eb5be67479eef43e16c35886943a4b01dbf6d2ba66d3924d015"
+  },
+  {
+   "path": "data/simulated/pairs_20260707T025842Z.json",
+   "sha256": "5bb2962a5391fccb9c0253f63d15a6faabc548d8560c9535b94c16487ed46046"
+  },
+  {
+   "path": "data/simulated/pairs_20260707T154345Z.json",
+   "sha256": "d6f53f324f635a7b4410c39502a502b6347c790395b4ca113f135d86fe7f64bf"
+  },
+  {
+   "path": "data/simulated/pairs_20260707T171223Z.json",
+   "sha256": "354d4bbe9fd4f81b7a9afafcccf18618c49adf33e588a1bceec876f7f9c8e454"
+  },
+  {
+   "path": "data/simulated/pairs_20260707T215921Z.json",
+   "sha256": "d45e90c0d1d8d0ff1f939069161ecb065cb9b719b0cd67155902f4bd5db46200"
+  },
+  {
+   "path": "data/simulated/pairs_20260707T221438Z.json",
+   "sha256": "0e040cecf1010c42b4aa5cd36b95bec993e0eefb9185fcf288cea001761d4322"
+  },
+  {
+   "path": "data/simulated/pairs_20260710T011743Z.json",
+   "sha256": "d09140ff49baacd878a21a1c25173a17cc09500bb53746392dec989bf9544601"
+  },
+  {
+   "path": "data/simulated/pairs_20260710T050657Z.json",
+   "sha256": "f5e8dd4f68cc22e80548c8041a1c1f414dedeb8ae6d5e861bd715e3f65ef8f71"
+  },
+  {
+   "path": "data/simulated/pairs_20260710T092635Z.json",
+   "sha256": "d7b24284cd68b21b01c870d10705d4c3469f783847d536211a104e71efd21b3f"
+  },
+  {
+   "path": "data/simulated/pairs_20260710T133708Z.json",
+   "sha256": "c45a2ca417c11031891e0bfbc67c9519ec834e1701fb6792a1155d3cc3dda7d6"
+  },
+  {
+   "path": "data/simulated/pairs_20260710T163230Z.json",
+   "sha256": "497507d5c3ad7bb08ec4e73c79beb977f29837b92c0e4a7e3cd8b431c4867e3e"
+  },
+  {
+   "path": "data/simulated/pairs_20260711T051145Z.json",
+   "sha256": "1b38cdb78ef70f0d37b411f7fa1dd7cfcf2796f80840d9b300290da3d1f3b6a5"
+  },
+  {
+   "path": "data/simulated/pairs_20260711T051145Z_txopus.json",
+   "sha256": "1b38cdb78ef70f0d37b411f7fa1dd7cfcf2796f80840d9b300290da3d1f3b6a5"
+  },
+  {
+   "path": "data/simulated/pairs_20260711T051145Z_txplacebo.json",
+   "sha256": "1b38cdb78ef70f0d37b411f7fa1dd7cfcf2796f80840d9b300290da3d1f3b6a5"
+  },
+  {
+   "path": "data/simulated/pairs_20260711T131752Z.json",
+   "sha256": "9ed3cc61e9d4aaf171cda3e8dd818de70745781e6cedd7269a37dc8959e9c970"
+  },
+  {
+   "path": "data/simulated/pairs_20260712T051903Z.json",
+   "sha256": "b3c141263a501ed57cdbee48c615a3c37b16acc11ebc9dc9313bd0406f03a2e1"
+  },
+  {
+   "path": "data/simulated/pairs_20260712T163501Z.json",
+   "sha256": "10c294a59e3defe7ff635b32996c9cdf2e384afc9568b74d8032c6b5157027bd"
+  },
+  {
+   "path": "data/simulated/pairs_20260713T031252Z.json",
+   "sha256": "52b85d06e955d0e822f92f0418906a980e8595c86b7c845a93d6c56f13214cee"
+  },
+  {
+   "path": "data/simulated/pairs_20260713T050939Z.json",
+   "sha256": "0c46eb810b62ef6abc1bcf81eb59f1f369a810cb84bfabd69270b6f10336c445"
+  },
+  {
+   "path": "data/simulated/pairs_20260713T135755Z.json",
+   "sha256": "2f4ce0f29673f2b015735a7caa4ac2e7c5363e152b3425a6fbcabd5ab4660a90"
+  },
+  {
+   "path": "data/simulated/pairs_20260714T135150Z.json",
+   "sha256": "7c2d17ae7e0cb0cdf5094b6a1d8faed9bf9e7312380fa600fbca4fc0b5c7aa8e"
+  },
+  {
+   "path": "data/simulated/pairs_20260715T132350Z.json",
+   "sha256": "120a1e7afee4cdbdeb11ea55e05cceaa772c21286938785334a5ee83b16b5e3f"
+  },
+  {
+   "path": "data/simulated/pairs_20260716T133552Z.json",
+   "sha256": "071db184abb97ae7e16bfca7b4478d65f42ab0e749bc41102ec00c7961729c4b"
+  },
+  {
+   "path": "data/simulated/pairs_20260717T132235Z.json",
+   "sha256": "4c26c4cb5b96997c6fa5676c3ef5792b92e084b22a1b1d7e5385ad7e3b667e9f"
+  },
+  {
+   "path": "data/simulated/pairs_20260718T133020Z.json",
+   "sha256": "d1696c02d63719dfc3a1ef51ac5d1847cc7d7c9079ddca4ac663c8707748eb29"
+  },
+  {
+   "path": "data/simulated/pairs_20260719T132706Z.json",
+   "sha256": "8f33db01ab2dd32afcef257500ea21ec929d1d63c4dd1cd015d7cb9b625a8a20"
+  },
+  {
+   "path": "data/simulated/pairs_20260721T132205Z.json",
+   "sha256": "7ae9c7a9a9418876270e19319cfda21ec4c97a1f6b8cca751005058f7474fa70"
+  },
+  {
+   "path": "data/simulated/pairs_20260731T211704Z.json",
+   "sha256": "56a8a5ac41a62f47f7c98028895ba6221001b2c7681aefe4c8ed65569ced3256"
+  },
+  {
+   "path": "data/simulated/pairs_20260803T132340Z.json",
+   "sha256": "9831b03508a5dd69e2bb3498e2aceae64a5959e1008a62617009ea1ca25c9508"
+  },
+  {
+   "path": "data/simulated/pairs_20260804T190615Z.json",
+   "sha256": "8a65433812ba67635548456d665f0dc87f8b321daca506f0da6f735f2606cbd5"
+  },
+  {
+   "path": "data/simulated/pairs_20260805T140130Z.json",
+   "sha256": "6589bbb8fd99783d13eff0bcb60709adea9e19cad2a04f41a25f1572b1ca8fb3"
+  },
+  {
+   "path": "data/simulated/pairs_20260806T135728Z.json",
+   "sha256": "940aa3c43e59fd3d01bd02f4663086107bc2d43c564c69214ed070372029fa2e"
+  },
+  {
+   "path": "data/simulated/pairs_20260809T172338Z.json",
+   "sha256": "f7fd64818cbbc5656b4ba4c1befe361a251c621d2a534716606843fa19b29ec0"
+  },
+  {
+   "path": "data/simulated/pairs_20260811T190638Z.json",
+   "sha256": "270f333d9896382c97f2786c1f67d7fc49bc00951ecf65a368d20a8ad66d79cd"
+  },
+  {
+   "path": "data/simulated/pairs_20260829T200716Z.json",
+   "sha256": "c51cca21ceb260231658a01d43c9e6fce7f83068c4adfcedf69dbad166c687dd"
+  },
+  {
+   "path": "data/simulated/pairs_20260903T211234Z.json",
+   "sha256": "6c51fbf995bf0c6127b88e6bf779f61564bcde1fa0ffc34d1a2aa19ad6069407"
+  },
+  {
+   "path": "data/simulated/pairs_20260904T223033Z.json",
+   "sha256": "5b33bf4e62c281b373ebdf4a7acee2752bfcc2121f7e7679bba1d67821e4b43d"
+  }
+ ],
+ "counts": {
+  "task_set_pairs": 40,
+  "consensus_pairs": 46,
+  "excluded_not_a_batch_pair": 0,
+  "excluded_sealed": 0,
+  "duplicates_merged": 2,
+  "eligible": 84,
+  "kept": 84,
+  "dropped_by_cap": 0,
+  "batches": 23
+ },
+ "pairs": [
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 19,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 48,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 4
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 36,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 3
+  },
+  {
+   "batch": "pairs_20260707T171223Z",
+   "index": 49,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 4
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 25,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260715T132350Z",
+   "index": 84,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260707T171223Z",
+   "index": 5,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260707T171223Z",
+   "index": 114,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260715T132350Z",
+   "index": 65,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260719T132706Z",
+   "index": 19,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 3
+  },
+  {
+   "batch": "pairs_20260715T132350Z",
+   "index": 95,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260711T131752Z",
+   "index": 5,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 4
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 66,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260713T050939Z",
+   "index": 1,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 2
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 3,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 4
+  },
+  {
+   "batch": "pairs_20260717T132235Z",
+   "index": 20,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260707T215921Z",
+   "index": 20,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 1
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 11,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 3
+  },
+  {
+   "batch": "pairs_20260707T215921Z",
+   "index": 1,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 2
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 38,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 3
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 81,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260711T131752Z",
+   "index": 34,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 63,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 3
+  },
+  {
+   "batch": "pairs_20260811T190638Z",
+   "index": 46,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260716T133552Z",
+   "index": 3,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260710T011743Z",
+   "index": 6,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 1
+  },
+  {
+   "batch": "pairs_20260805T140130Z",
+   "index": 1,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 2
+  },
+  {
+   "batch": "pairs_20260712T163501Z",
+   "index": 7,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 2
+  },
+  {
+   "batch": "pairs_20260809T172338Z",
+   "index": 14,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260718T133020Z",
+   "index": 51,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 4
+  },
+  {
+   "batch": "pairs_20260712T163501Z",
+   "index": 83,
+   "reasons": [
+    "task_set",
+    "tier_flip_in_6_models"
+   ],
+   "tier_flip_models": 6
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 25,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260706T201750Z",
+   "index": 11,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 1
+  },
+  {
+   "batch": "pairs_20260710T011743Z",
+   "index": 48,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 39,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 3
+  },
+  {
+   "batch": "pairs_20260707T171223Z",
+   "index": 12,
+   "reasons": [
+    "task_set",
+    "tier_flip_in_6_models"
+   ],
+   "tier_flip_models": 6
+  },
+  {
+   "batch": "pairs_20260715T132350Z",
+   "index": 93,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260710T163230Z",
+   "index": 31,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 1
+  },
+  {
+   "batch": "pairs_20260707T215921Z",
+   "index": 51,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260713T050939Z",
+   "index": 66,
+   "reasons": [
+    "task_set"
+   ],
+   "tier_flip_models": 0
+  },
+  {
+   "batch": "pairs_20260710T163230Z",
+   "index": 35,
+   "reasons": [
+    "tier_flip_in_10_models"
+   ],
+   "tier_flip_models": 10
+  },
+  {
+   "batch": "pairs_20260711T051145Z",
+   "index": 45,
+   "reasons": [
+    "tier_flip_in_10_models"
+   ],
+   "tier_flip_models": 10
+  },
+  {
+   "batch": "pairs_20260707T171223Z",
+   "index": 119,
+   "reasons": [
+    "tier_flip_in_9_models"
+   ],
+   "tier_flip_models": 9
+  },
+  {
+   "batch": "pairs_20260712T163501Z",
+   "index": 11,
+   "reasons": [
+    "tier_flip_in_9_models"
+   ],
+   "tier_flip_models": 9
+  },
+  {
+   "batch": "pairs_20260710T163230Z",
+   "index": 24,
+   "reasons": [
+    "tier_flip_in_8_models"
+   ],
+   "tier_flip_models": 8
+  },
+  {
+   "batch": "pairs_20260710T163230Z",
+   "index": 38,
+   "reasons": [
+    "tier_flip_in_8_models"
+   ],
+   "tier_flip_models": 8
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 23,
+   "reasons": [
+    "tier_flip_in_8_models"
+   ],
+   "tier_flip_models": 8
+  },
+  {
+   "batch": "pairs_20260803T132340Z",
+   "index": 69,
+   "reasons": [
+    "tier_flip_in_8_models"
+   ],
+   "tier_flip_models": 8
+  },
+  {
+   "batch": "pairs_20260710T163230Z",
+   "index": 27,
+   "reasons": [
+    "tier_flip_in_7_models"
+   ],
+   "tier_flip_models": 7
+  },
+  {
+   "batch": "pairs_20260711T051145Z",
+   "index": 32,
+   "reasons": [
+    "tier_flip_in_7_models"
+   ],
+   "tier_flip_models": 7
+  },
+  {
+   "batch": "pairs_20260712T163501Z",
+   "index": 36,
+   "reasons": [
+    "tier_flip_in_7_models"
+   ],
+   "tier_flip_models": 7
+  },
+  {
+   "batch": "pairs_20260803T132340Z",
+   "index": 85,
+   "reasons": [
+    "tier_flip_in_7_models"
+   ],
+   "tier_flip_models": 7
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 60,
+   "reasons": [
+    "tier_flip_in_7_models"
+   ],
+   "tier_flip_models": 7
+  },
+  {
+   "batch": "pairs_20260707T171223Z",
+   "index": 4,
+   "reasons": [
+    "tier_flip_in_6_models"
+   ],
+   "tier_flip_models": 6
+  },
+  {
+   "batch": "pairs_20260712T163501Z",
+   "index": 74,
+   "reasons": [
+    "tier_flip_in_6_models"
+   ],
+   "tier_flip_models": 6
+  },
+  {
+   "batch": "pairs_20260712T163501Z",
+   "index": 98,
+   "reasons": [
+    "tier_flip_in_6_models"
+   ],
+   "tier_flip_models": 6
+  },
+  {
+   "batch": "pairs_20260713T050939Z",
+   "index": 50,
+   "reasons": [
+    "tier_flip_in_6_models"
+   ],
+   "tier_flip_models": 6
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 27,
+   "reasons": [
+    "tier_flip_in_6_models"
+   ],
+   "tier_flip_models": 6
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 69,
+   "reasons": [
+    "tier_flip_in_6_models"
+   ],
+   "tier_flip_models": 6
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 10,
+   "reasons": [
+    "tier_flip_in_6_models"
+   ],
+   "tier_flip_models": 6
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 36,
+   "reasons": [
+    "tier_flip_in_6_models"
+   ],
+   "tier_flip_models": 6
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 37,
+   "reasons": [
+    "tier_flip_in_6_models"
+   ],
+   "tier_flip_models": 6
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 67,
+   "reasons": [
+    "tier_flip_in_6_models"
+   ],
+   "tier_flip_models": 6
+  },
+  {
+   "batch": "pairs_20260811T190638Z",
+   "index": 57,
+   "reasons": [
+    "tier_flip_in_6_models"
+   ],
+   "tier_flip_models": 6
+  },
+  {
+   "batch": "pairs_20260707T171223Z",
+   "index": 83,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260707T171223Z",
+   "index": 90,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260707T215921Z",
+   "index": 2,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260707T215921Z",
+   "index": 14,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260707T215921Z",
+   "index": 54,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260710T011743Z",
+   "index": 12,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260710T011743Z",
+   "index": 13,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260710T092635Z",
+   "index": 33,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260710T163230Z",
+   "index": 15,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260714T135150Z",
+   "index": 2,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 29,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 33,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260731T211704Z",
+   "index": 59,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260803T132340Z",
+   "index": 64,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260804T190615Z",
+   "index": 47,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260806T135728Z",
+   "index": 80,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260811T190638Z",
+   "index": 11,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260811T190638Z",
+   "index": 16,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260811T190638Z",
+   "index": 22,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  },
+  {
+   "batch": "pairs_20260811T190638Z",
+   "index": 47,
+   "reasons": [
+    "tier_flip_in_5_models"
+   ],
+   "tier_flip_models": 5
+  }
+ ]
+}

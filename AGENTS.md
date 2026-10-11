@@ -165,27 +165,18 @@ workflows (`fire_trigger.py budget-gate`).
 ## Architecture
 
 **Tracing (`graph_client.py` → `batch_eval.py`).** `MODEL_REGISTRY` lists four Neuronpedia
-model ids. **`gemma-2-2b` and `qwen3-4b` have both hosted graphs and a labelled
-transcoder source set** (qwen3-4b's `transcoder-hp` registered 2026-10-09);
-`docs/cross-model.md` has the dated per-model status (re-probe before relying on it). Hosted requests retry on
-{429,500,502,503,504} with fresh slugs; a 400 aborts the batch immediately, and `run_batch`
-has no per-pair error records — a mid-batch failure just truncates `results`.
-`medlang-batch-eval` has four modes (`2panel`, `4quadrant`, `dialect`, `translation`;
-`README.md` describes each mode) with different result schemas. In `2panel`, `--screen-targets`
-records an unmeasurable pair as `screening.status == "screened_out"` without its patient
-trace, and `--show-mitigation`'s translated third panel is the only Anthropic call.
+model ids (`gemma-2-2b` and `qwen3-4b` have hosted graphs and labelled transcoders;
+`docs/cross-model.md` has dated status). Hosted requests retry on {429,500,502,503,504};
+a 400 aborts immediately, and mid-batch failure truncates `results`. Modes: `2panel`,
+`4quadrant`, `dialect`, `translation` (`README.md`). `--screen-targets` marks unmeasurable
+pairs `screened_out`; `--show-mitigation` is the only Anthropic call.
 
-**Feature tagging.** `neuronpedia_features.MODEL_SOURCE_SETS` registers a labelled
-source set for gemma-2-2b and qwen3-4b; it selects the feature fetcher only (the hosted
-graph request names a source set only with an explicit `--source-set`). Other models
-auto-degrade to `NullFetcher`: tracing and probabilities still work, but every feature is
-untagged, so their `clinical_mass` comes out ~0.0 — an artifact, not a finding. Labelled
-is not publishable: qwen3-4b's labels are not yet calibrated against gemma-2-2b's, so its
-`clinical_mass` is exploratory. Anything that publishes or aggregates clinical mass gates
-per row on `scripts/feature_models.py`'s `clinical_mass_publishable` (the exact (model,
-source set) pair is calibrated; today only gemma-2-2b with `gemmascope-transcoder-16k`), not
-on `source_set` being non-null; a pair is added only by owner decision after
-`scripts/feature_label_calibration.py`.
+**Feature tagging.** `neuronpedia_features.MODEL_SOURCE_SETS` registers labelled source
+sets for gemma-2-2b and qwen3-4b; other models use `NullFetcher` (~0.0 clinical mass artifact).
+Labelled is not publishable: qwen3-4b's mass is exploratory pending calibration. Anything
+publishing or aggregating clinical mass gates per row on `scripts/feature_models.py`'s
+`clinical_mass_publishable` (today only gemma-2-2b with `gemmascope-transcoder-16k`); additions
+require owner decision after `scripts/feature_label_calibration.py`.
 
 **Behavior without graphs (`scripts/logits_eval.py`).** Models Neuronpedia can't trace are
 measured by direct CPU inference in CI, emitting **the same `batch_summary` schema** so
@@ -194,7 +185,8 @@ everything downstream merges unchanged (`backend: "logits"`, `source_set: null`,
 
 **Output layout & checkpointing.** Each run writes `trace_out/<pairs-stem>/`; non-default
 models get `trace_out/<stem>__<model>/`. CI renames each chunk's summary to
-`batch_summary.part_NN.json` (NN = 1-based start offset) so chunks never clobber — all
+`batch_summary.part_NN.json` (NN = the first 1-based index the part measures: `offset + 1`
+for a range, the first listed index for a logits-eval `indices` fire) so chunks never clobber — all
 consumers must glob `batch_summary*.json`, and `results[i]["index"]` is the global 1-based
 join key back into the batch file. Generation archives and trace outputs both commit to
 `main` (the dispatched branch); CI's commits interleave with
@@ -206,7 +198,10 @@ every `trace_out/*/batch_summary.part_*`, scores urgency tiers and flip classes 
 docstring defines them and the translated panel as `urgency_recovery`; `--publish` writes
 the site's `data/urgency_shift.json`);
 `scripts/paired_stats.py` consumes its row file. `scripts/export_archive.py` writes the
-flat per-(pair × model) collaborator CSV.
+flat per-(pair × model) collaborator CSV. `scripts/publication_hold.py`'s `HELD_MODELS`, and
+logits parts missing from `data/publication_release/logits_parts.json`, stay out of every published
+number: each collector that pools `trace_out/*` skips them with a count (its docstring lists them; a new
+one must too). Only the owner releases (`scripts/publication_release.py --release`).
 
 **Publishing (`scripts/export_frontend_simulated.py`).** Merges every model's trace dir per
 batch stamp into `scenario.models[<id>]`, mirrors the gemma base to the top level for

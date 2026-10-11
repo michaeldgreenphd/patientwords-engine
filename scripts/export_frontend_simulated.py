@@ -73,6 +73,11 @@ except ImportError:
     from render_prune import (ReferenceScanError, hidden_references, hidden_renders, prune,
                               prune_candidates, referenced_renders)
 
+try:
+    from scripts.publication_hold import HELD_MODELS, Gate, ReleaseError
+except ImportError:
+    from publication_hold import HELD_MODELS, Gate, ReleaseError
+
 # The circuit-tracer models, in registry order (gemma-2-2b is the base/default).
 # Clinical-feature attribution (the "Med circuit" meter) is published only for
 # a calibrated (model, source set) pair, feature_models.CALIBRATED_FEATURE_SOURCES,
@@ -81,12 +86,30 @@ except ImportError:
 # transcoder-hp since 2026-10-09, but its clinical_mass stays nulled until the
 # owner rules on the calibration check (scripts/feature_label_calibration.py).
 BASE_MODEL = "gemma-2-2b"
-MODELS = ["gemma-2-2b", "gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b"]
+MODELS = [
+    "gemma-2-2b",
+    "gemma-3-4b-it",
+    "qwen3-4b",
+    "qwen3-1.7b",
+    "llama-3.2-3b",
+    "olmo-2-1b",
+    "gemma-2-2b-it",
+    "gemma-4-e2b",
+    "qwen3.5-2b-base",
+    "medgemma-1.5-4b-it",
+]
+DEFAULT_MODELS = [m for m in MODELS if m not in HELD_MODELS]
 LABELS = {
     "gemma-2-2b": "Gemma 2 2B",
     "gemma-3-4b-it": "Gemma 3 4B-it",
     "qwen3-4b": "Qwen3 4B",
     "qwen3-1.7b": "Qwen3 1.7B · LoRSA attn",
+    "llama-3.2-3b": "Llama 3.2 3B",
+    "olmo-2-1b": "OLMo 2 1B",
+    "gemma-2-2b-it": "Gemma 2 2B-it",
+    "gemma-4-e2b": "Gemma 4 E2B",
+    "qwen3.5-2b-base": "Qwen3.5 2B Base",
+    "medgemma-1.5-4b-it": "MedGemma 1.5 4B-it",
 }
 QK = {"qwen3-1.7b"}                # traced with LoRSA attention replacement
 # Base-model fields mirrored to the top level for backward compatibility, so a
@@ -108,9 +131,9 @@ parser.add_argument("--steered-stamps", default="",
                          "out of every pooled headline figure - the share over a set "
                          "selected to flip describes the selection, not the models "
                          "(owner decision 2026-08-15).")
-parser.add_argument("--models", default=",".join(MODELS),
+parser.add_argument("--models", default=",".join(DEFAULT_MODELS),
                     help="comma-separated circuit-tracer models to merge; a model's "
-                         "trace dir is used only where present (default: all four)")
+                         "trace dir is used only where present (default: active non-held models)")
 parser.add_argument("--preview-models", choices=["base", "all"], default="base",
                     help="'base' publishes only gemma renders for the demo cap (the site "
                          "stays a lightweight preview); 'all' also publishes each other "
@@ -152,6 +175,12 @@ _unknown_steered = STEERED - set(STAMPS)
 if _unknown_steered:
     sys.exit(f"--steered-stamps names stamps absent from --stamps: {sorted(_unknown_steered)}")
 WANT_MODELS = [m.strip() for m in args.models.split(",") if m.strip()]
+# unreleased logits parts are not read (scripts/publication_hold.py); counted in the summary printed below
+GATE = Gate(ENGINE)
+_held_wanted = sorted(set(WANT_MODELS) & HELD_MODELS)
+if _held_wanted:
+    sys.exit(f"--models names models held from publication (scripts/publication_hold.py): {_held_wanted}; "
+             "releasing one is a reviewed change to that file")
 
 # The render prune reads the working tree. A site checkout that keeps tracked
 # renders off disk (the cloud containers' sparse clone excludes modes/) would
@@ -233,6 +262,11 @@ def read_trace_dir(trace_dir, expected_model=None):
     graph_source_sets = set()
     for part in sorted(trace_dir.glob("batch_summary.part_*.json")):
         summary = json.loads(part.read_text(encoding="utf-8"))
+        try:
+            if not GATE.admit(part, summary, expected_model):
+                continue
+        except ReleaseError as exc:
+            sys.exit(f"refusing: {exc}; nothing was written or pruned")
         part_model = summary.get("graph_model") or BASE_MODEL
         if expected_model and part_model != expected_model:
             sys.exit(
@@ -529,7 +563,7 @@ models_meta = [
         "default": m == BASE_MODEL,
     }
     for m in MODELS
-    if any(m in s.get("models", {}) for s in scenarios)
+    if m in WANT_MODELS and any(m in s.get("models", {}) for s in scenarios)
 ]
 
 accepted_total = sum((b.get("generated") or {}).get("accepted") or 0 for b in batches)
@@ -567,6 +601,8 @@ model_line = ", ".join(f"{mm['id']} ({mm['n_traced']})" for mm in models_meta) o
 print(f"{len(scenarios)} scenarios ({measured_n} measured) across {len(batches)} batch(es) "
       f"-> {out_data} ({withheld_holdout} confirmatory-holdout pairs withheld)")
 print(f"  models: {model_line}")
+if GATE.report():
+    print(f"  {GATE.report()}")
 print(f"  {copied} interactive renders published (cap {args.max_renders or 'none'}); "
       f"{data_only} scenarios are data-only on the public site")
 print(f"  {pruned} unlisted render(s) {'would be pruned' if DRY else 'pruned'} from "

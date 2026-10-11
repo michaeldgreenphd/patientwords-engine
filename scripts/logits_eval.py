@@ -19,6 +19,14 @@ the sandbox (whose egress proxy blocks huggingface.co).
 Usage:
   python scripts/logits_eval.py --pairs data/simulated/pairs_<STAMP>.json \
       --model qwen3-4b --out trace_out/pairs_<STAMP>__qwen3-4b [--limit 13] [--topk 10]
+
+``--indices 4,17,52`` (added 2026-10-09) measures only those pairs, by their global
+1-based index in the batch, instead of a contiguous ``--offset``/``--limit`` range.
+Each result keeps its global index, and the part is named for the first index it
+measures (``batch_summary.part_04.json``), the same rule as a range's part
+(``offset + 1`` is a range's first index). Two parts of one batch collide only if they
+start at the same index, so a later fire that measures only pairs not yet measured
+never overwrites an earlier part.
 """
 
 import argparse
@@ -90,6 +98,19 @@ HF_IDS = {
 
     "gemma-2-2b-it": "google/gemma-2-2b-it",
     "gemma-2-9b": "google/gemma-2-9b",
+    # Post-registration additions to the exploratory family (owner 2026-10-09;
+    # docs/model_matrix.md, docs/prereg_divergence_log.md). Each is awaiting its
+    # limit-3 probe; depth_probe and activation_patch support is unverified.
+    # Gemma 4 base (Apache-2.0, ungated). AutoModelForCausalLM resolves to the
+    # full multimodal Gemma4ForConditionalGeneration; only the text stack runs.
+    "gemma-4-e2b": "google/gemma-4-E2B",
+    # A true Qwen base (the Qwen3 entries above are post-trained); new
+    # 248k-vocab tokenizer, hybrid Gated-DeltaNet/attention (Apache-2.0, ungated).
+    "qwen3.5-2b-base": "Qwen/Qwen3.5-2B-Base",
+    # Third medical-tune point on the Gemma 3 4B base beside gemma-3-4b-it and
+    # medgemma-4b-it. Gated by HAI-DEF terms: the owner accepts them on the CI
+    # HF_TOKEN account (said 2026-10-09); until then its probe fails at download.
+    "medgemma-1.5-4b-it": "google/medgemma-1.5-4b-it",
 }
 
 # Ids kept in HF_IDS as records only. They have no pin, so resolve_pinned_model
@@ -120,6 +141,11 @@ HF_REVISIONS = {
     "apertus-8b-meditronfo": "ef2b141da7ccc347c2a13b2518370ba6a8a2b745",
     "medgemma-4b-it": "290cda5eeccbee130f987c4ad74a59ae6f196408",
     "gemma-2-2b-it": "299a8560bedf22ed1c72a8a11e7dce4a7f9f51f8",
+    # Head of `main` on 2026-10-09 from the public HF API (`sha` of
+    # /api/models/<repo>; for the gated medgemma repo too), when each was added.
+    "gemma-4-e2b": "d29ff6b45f081a49ee2733a859c9c9c2d95d1a6f",
+    "qwen3.5-2b-base": "b1485b2fa6dfa1287294f269f5fb618e03d52d7c",
+    "medgemma-1.5-4b-it": "91850547d9f0b2fdd21aa7c5f4f3d1a8a52c243b",
 }
 
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
@@ -328,6 +354,32 @@ def build_result(index, pair, tokenizer, measure_fn, topk):
     }
 
 
+def parse_indices(text: str, n_pairs: int) -> list[int]:
+    """`--indices`: comma-separated global 1-based pair indices, strictly ascending, each within the batch.
+    ValueError names the first problem; nothing is reordered, deduplicated or dropped silently."""
+    parts = [p.strip() for p in text.split(",")]
+    if not parts or any(not p.isdigit() for p in parts):
+        raise ValueError(f"--indices must be comma-separated positive integers, got {text!r}")
+    indices = [int(p) for p in parts]
+    if any(b <= a for a, b in zip(indices, indices[1:])):
+        raise ValueError(f"--indices must be strictly ascending with no repeats, got {text!r}")
+    if indices[0] < 1 or indices[-1] > n_pairs:
+        raise ValueError(f"--indices must lie in 1..{n_pairs} (the batch's pair count), got {text!r}")
+    return indices
+
+
+def select_pairs(pairs: list, offset: int = 0, limit: int = 0,
+                 indices: list[int] | None = None) -> list[tuple[int, Any]]:
+    """[(global 1-based index, pair)] to measure: the listed indices, or the contiguous
+    offset/limit range (limit 0 = to the end)."""
+    if indices:
+        return [(i, pairs[i - 1]) for i in indices]
+    chosen = pairs[offset:]
+    if limit:
+        chosen = chosen[:limit]
+    return list(enumerate(chosen, start=offset + 1))
+
+
 def build_summary(model_id, hf_id, results, start_index=1, revision=None, revision_pinned=None):
     return {
         "mode": "2panel",
@@ -361,6 +413,9 @@ def main(argv=None):
                              "too slow to finish a big batch inside the CI timeout; result indices "
                              "and the part filename stay global, matching the trace path)")
     parser.add_argument("--topk", type=int, default=10, help="spread size per phrasing")
+    parser.add_argument("--indices", default="",
+                        help="comma-separated global 1-based pair indices to measure, ascending (instead of "
+                             "--offset/--limit); the part is named for the first index")
     parser.add_argument("--revision", default=None,
                         help="exact 40-hex Hugging Face commit: required for a repo id outside HF_IDS; "
                              "for a short id it may only repeat that id's HF_REVISIONS pin")
@@ -371,11 +426,16 @@ def main(argv=None):
         hf_id, pinned = resolve_pinned_model(model_id, args.revision)
     except PinError as exc:
         refuse(exc)
-    pairs = json.loads(Path(args.pairs).read_text(encoding="utf-8"))
-    if args.offset:
-        pairs = pairs[args.offset:]
-    if args.limit:
-        pairs = pairs[:args.limit]
+    all_pairs = json.loads(Path(args.pairs).read_text(encoding="utf-8"))
+    indices = None
+    if args.indices:
+        if args.offset or args.limit:
+            parser.error("--indices names the pairs itself; it cannot be combined with --offset or --limit")
+        try:
+            indices = parse_indices(args.indices, len(all_pairs))
+        except ValueError as exc:
+            parser.error(str(exc))
+    selected = select_pairs(all_pairs, args.offset, args.limit, indices)
 
     print(f"Loading {hf_id} @ {pinned} (cpu, bfloat16) ...", flush=True)
     try:
@@ -386,7 +446,10 @@ def main(argv=None):
     def measure_fn(prompt, target_id, topk):
         return measure(model, tokenizer, prompt, target_id, topk)
 
-    start_index = args.offset + 1  # global 1-based join key, matching the trace path
+    # global 1-based join key of the first pair measured, matching the trace path; it names the part
+    # (an empty range past the batch's end keeps its old part name, offset + 1, and writes no results)
+    start_index = selected[0][0] if selected else args.offset + 1
+    last_index = selected[-1][0] if selected else args.offset
     results = []
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -400,15 +463,17 @@ def main(argv=None):
         summary = build_summary(model_id, hf_id, results, start_index,
                                 revision=resolved, revision_pinned=pinned)
         summary["completed"] = completed
+        if indices:
+            summary["indices_requested"] = indices   # only on an --indices part; a range part is unchanged
         if not completed:
             summary["_partial"] = "in-progress flush (crash/timeout protection)"
         summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
 
-    for i, pair in enumerate(pairs, start=start_index):
+    for i, pair in selected:
         results.append(build_result(i, pair, tokenizer, measure_fn, args.topk))
         flush(completed=False)
         r = results[-1]
-        print(f"  [{i}/{args.offset + len(pairs)}] clin={r['probabilities']['clinical']} "
+        print(f"  [{i}/{last_index}] clin={r['probabilities']['clinical']} "
               f"pat={r['probabilities']['patient']} pen={r['language_penalty']}", flush=True)
 
     flush(completed=True)

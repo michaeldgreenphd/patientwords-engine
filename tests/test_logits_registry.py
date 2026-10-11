@@ -33,6 +33,10 @@ EXPECTED_IDS = {
     # meditron successors, owner 2026-07-17 (3-8B ack signed; Apertus ungated)
     "meditron3-8b",
     "apertus-8b-meditronfo",
+    # post-registration exploratory additions, owner 2026-10-09
+    "gemma-4-e2b",
+    "qwen3.5-2b-base",
+    "medgemma-1.5-4b-it",
 }
 
 
@@ -56,6 +60,20 @@ def test_expansion_maps_to_approved_repos():
     assert logits_eval.HF_IDS["biomistral-7b"] == "BioMistral/BioMistral-7B"
     assert logits_eval.HF_IDS["gemma-2-2b-it"] == "google/gemma-2-2b-it"
     assert logits_eval.HF_IDS["gemma-2-9b"] == "google/gemma-2-9b"
+
+
+def test_2026_10_09_additions_map_to_approved_repos_and_pins():
+    # The three owner-approved additions (2026-10-09): exact repos and their pinned commits (head of main on that
+    # day, public HF API). A near-miss repo (the -it twin of a base, or MedGemma 1 for 1.5) would measure other weights.
+    expected = {
+        "gemma-4-e2b": ("google/gemma-4-E2B", "d29ff6b45f081a49ee2733a859c9c9c2d95d1a6f"),
+        "qwen3.5-2b-base": ("Qwen/Qwen3.5-2B-Base", "b1485b2fa6dfa1287294f269f5fb618e03d52d7c"),
+        "medgemma-1.5-4b-it": ("google/medgemma-1.5-4b-it", "91850547d9f0b2fdd21aa7c5f4f3d1a8a52c243b"),
+    }
+    for short_id, (repo, pin) in expected.items():
+        assert logits_eval.HF_IDS[short_id] == repo
+        assert logits_eval.HF_REVISIONS[short_id] == pin
+        assert short_id not in logits_eval.TOMBSTONES
 
 
 def test_model_loading_supply_chain_posture():
