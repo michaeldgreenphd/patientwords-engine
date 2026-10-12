@@ -127,3 +127,29 @@ def test_audit_calibration_archive_and_petri(tmp_path):
     advice_tokens = sum(180 for _ in doc["cases"])  # 180 per case in mock
     petri_tokens = sum(p.get("input_tokens", 0) for p in petri_cases)
     assert total_tokens == advice_tokens + petri_tokens
+
+
+def test_audit_calibration_all_mode(tmp_path):
+    out_md = tmp_path / "report_all.md"
+    out_json = tmp_path / "report_all.json"
+
+    ret = main([
+        "--archive", "data/advice/responses_stimuli_20260721T235403Z.jsonl",
+        "--archive-samples", "0",
+        "--petri-transcripts", "data/petri/runs/run_35937014168_1/transcripts.jsonl",
+        "--petri-conversations", "0",
+        "--out-markdown", str(out_md),
+        "--out-json", str(out_json),
+    ])
+    assert ret == 0
+    assert out_md.is_file()
+    assert out_json.is_file()
+
+    doc = json.loads(out_json.read_text(encoding="utf-8"))
+    assert doc["metadata"]["parameters"]["petri_conversations"] == "all"
+    assert doc["metadata"]["parameters"]["archive_samples"] == "all"
+    assert doc["metadata"]["petri_transcripts"]["max_conversations"] == "all"
+    assert len(doc["cases"]) > 1000
+    conv_ids = {p["conversation_id"] for p in doc["petri_cases"]}
+    assert len(conv_ids) == 30
+

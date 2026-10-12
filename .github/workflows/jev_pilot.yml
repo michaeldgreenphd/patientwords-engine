@@ -8,22 +8,32 @@ name: Jev Classifier Pilot (Advice & Petri)
 on:
   workflow_dispatch:
     inputs:
+      scale:
+        description: "Evaluation Scale"
+        type: choice
+        default: "pilot (10 advice, 3 petri)"
+        options:
+          - "pilot (10 advice, 3 petri)"
+          - "slightly_bigger (50 advice, 10 petri)"
+          - "much_bigger (200 advice, 25 petri)"
+          - "everything (all available archive & petri)"
+          - "custom (use manual inputs below)"
+      advice_samples:
+        description: "Custom advice count (only if scale is custom; 0 = all)"
+        type: string
+        default: "10"
+      petri_conversations:
+        description: "Custom Petri count (only if scale is custom; 0 = all)"
+        type: string
+        default: "3"
+      max_spend:
+        description: "Custom spend ceiling USD (only if scale is custom)"
+        type: string
+        default: "0.10"
       model:
         description: "Decisions model ID"
         type: string
         default: "typesafe/jev-1.13"
-      advice_samples:
-        description: "Number of advice responses to evaluate"
-        type: string
-        default: "10"
-      petri_conversations:
-        description: "Number of Petri conversations to audit"
-        type: string
-        default: "3"
-      max_spend:
-        description: "Hard spend ceiling in USD"
-        type: string
-        default: "0.10"
 
 concurrency:
   group: jev-pilot-${{ github.ref }}
@@ -32,7 +42,7 @@ concurrency:
 jobs:
   jev_pilot:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Set up Python
@@ -45,13 +55,51 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .
 
+      - name: Resolve evaluation scale parameters
+        id: params
+        shell: bash
+        run: |
+          SCALE="${{ inputs.scale }}"
+          echo "Selected scale preset: $SCALE"
+          case "$SCALE" in
+            pilot*)
+              echo "advice_samples=10" >> $GITHUB_OUTPUT
+              echo "petri_conversations=3" >> $GITHUB_OUTPUT
+              echo "max_spend=0.05" >> $GITHUB_OUTPUT
+              ;;
+            *slightly*|medium*)
+              echo "advice_samples=50" >> $GITHUB_OUTPUT
+              echo "petri_conversations=10" >> $GITHUB_OUTPUT
+              echo "max_spend=0.25" >> $GITHUB_OUTPUT
+              ;;
+            *much*|large*)
+              echo "advice_samples=200" >> $GITHUB_OUTPUT
+              echo "petri_conversations=25" >> $GITHUB_OUTPUT
+              echo "max_spend=0.75" >> $GITHUB_OUTPUT
+              ;;
+            *everything*|full*)
+              echo "advice_samples=0" >> $GITHUB_OUTPUT
+              echo "petri_conversations=0" >> $GITHUB_OUTPUT
+              echo "max_spend=1.50" >> $GITHUB_OUTPUT
+              ;;
+            custom*)
+              echo "advice_samples=${{ inputs.advice_samples }}" >> $GITHUB_OUTPUT
+              echo "petri_conversations=${{ inputs.petri_conversations }}" >> $GITHUB_OUTPUT
+              echo "max_spend=${{ inputs.max_spend }}" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Refused: Unknown scale preset '$SCALE'" >&2
+              exit 1
+              ;;
+          esac
+
       - name: Run Jev Live Pilot (Advice & Petri)
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           MODEL: ${{ inputs.model }}
-          ADVICE_SAMPLES: ${{ inputs.advice_samples }}
-          PETRI_CONVERSATIONS: ${{ inputs.petri_conversations }}
-          MAX_SPEND: ${{ inputs.max_spend }}
+          ADVICE_SAMPLES: ${{ steps.params.outputs.advice_samples }}
+          PETRI_CONVERSATIONS: ${{ steps.params.outputs.petri_conversations }}
+          MAX_SPEND: ${{ steps.params.outputs.max_spend }}
           PYTHONPATH: .
         run: |
           mkdir -p artifacts
@@ -62,6 +110,7 @@ jobs:
             --petri-conversations "$PETRI_CONVERSATIONS" \
             --max-spend "$MAX_SPEND" \
             --rubric "data/advice_rubric.draft.json" \
+            --register-rubric "data/register_rubric.json" \
             --model "$MODEL" \
             --ci-live \
             --out-markdown "artifacts/jev_pilot_report.md" \

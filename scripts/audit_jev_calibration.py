@@ -291,7 +291,7 @@ def evaluate_petri_classifier(
                     })
             if has_assistant_turn:
                 conversations_count += 1
-                if conversations_count >= max_conversations:
+                if max_conversations > 0 and conversations_count >= max_conversations:
                     break
     return results
 
@@ -454,7 +454,7 @@ def load_advice_archive_with_judgments(
                 "primary_judge_tier": pj_tier,
                 "expected_flags": pj_flags,
             })
-            if len(cases) >= max_samples:
+            if max_samples > 0 and len(cases) >= max_samples:
                 break
     return cases
 
@@ -699,8 +699,8 @@ def main(argv: list[str] | None = None) -> int:
                 "sha256": reg_rubric_sha,
             },
             "parameters": {
-                "archive_samples": args.archive_samples if arch_p else None,
-                "petri_conversations": args.petri_conversations if petri_p else None,
+                "archive_samples": (args.archive_samples if args.archive_samples > 0 else "all") if arch_p else None,
+                "petri_conversations": (args.petri_conversations if args.petri_conversations > 0 else "all") if petri_p else None,
                 "max_spend": args.max_spend,
             },
         }
@@ -725,7 +725,7 @@ def main(argv: list[str] | None = None) -> int:
             prov["petri_transcripts"] = {
                 "path": str(petri_p),
                 "sha256": hashlib.sha256(petri_p.read_bytes()).hexdigest(),
-                "max_conversations": args.petri_conversations,
+                "max_conversations": args.petri_conversations if args.petri_conversations > 0 else "all",
                 "turns_evaluated": len(petri_results) if petri_results else 0,
             }
 
