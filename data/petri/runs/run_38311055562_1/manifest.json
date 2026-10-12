@@ -1,0 +1,380 @@
+{
+  "manifest_version": "0.2",
+  "run_id": "gU7NawuzZLHbCdjasQKsZV",
+  "eval_id": "Hbzud4BXTGwcLqCEqdLaJT",
+  "created_utc": "2026-10-12T21:31:50Z",
+  "harness": {
+    "name": "inspect_petri",
+    "commit": "e199ec1abcd10267c60cd7eb03035a76567d9e52",
+    "version_string": "0.1.dev150",
+    "inspect_ai_version": "0.3.237",
+    "inspect_scout_version": "0.4.39",
+    "python_version": "3.12.3",
+    "environment_lock_path": "docs/framework/petri_environment.lock.json",
+    "environment_lock_sha256": "4aecf38c856ea4b68567bb76335954d4b92f16a112de200f9b9eb7e432aa0eff"
+  },
+  "adapter": {
+    "name": "petri_audit.adapter",
+    "version": "0.2",
+    "engine_sha": "6b477475ea35070d1a7581c2c570b3542a466595"
+  },
+  "framework": {
+    "transcript_schema_version": "0.2",
+    "framing_registry_sha256": "28b0a5dce73e286baaba1f4d3a29d749a0880f9f313602574ddb4fb589c9effe",
+    "outcome_registry_sha256": "ea2042a3e71ecc592398ca8643b39fd8b89d90ebf2b1caf0900484ce764c2f3a",
+    "seed_schema_version": "0.2"
+  },
+  "execution": {
+    "mode": "scripted",
+    "claim_grade_eligible": false,
+    "contract_checks": {
+      "stimulus_digest_identity": {
+        "status": "pass",
+        "detail": "every record carries exactly the texts its condition and branch declare; staging records agree and every retained raw request is a branch prefix"
+      },
+      "arms_in_one_run": {
+        "status": "pass",
+        "detail": "every condition of every selected seed ran 1 time(s) in this eval"
+      },
+      "generation_config_pinned": {
+        "status": "pass",
+        "detail": "every raw request carries the seed's sampling keys and one served model string"
+      },
+      "no_prefill": {
+        "status": "pass",
+        "detail": "no prefill"
+      },
+      "no_cache": {
+        "status": "pass",
+        "detail": "no cached generation"
+      },
+      "tool_results_from_data": {
+        "status": "not_applicable",
+        "detail": "no tools declared by this run's seeds"
+      },
+      "holdout_seal": {
+        "status": "pass",
+        "detail": "183 sealed phrases, no hits in the exports"
+      }
+    },
+    "prefill_enabled": false,
+    "cache_enabled": false,
+    "target_tools_mode": "none",
+    "max_turns": 10,
+    "max_tool_rounds_per_turn": 4,
+    "epochs": 1,
+    "auditor_instruction_sha256": null,
+    "log_model_api": true
+  },
+  "models": {
+    "target": {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "inspect_name": "anthropic/claude-haiku-4-5",
+      "registry_spec": "anthropic:claude-haiku-4-5",
+      "served_model_strings": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "stop_reasons": [
+        {
+          "stop_reason": "stop",
+          "calls": 59
+        }
+      ],
+      "upstream_providers": null,
+      "config": {
+        "max_tokens": 4096,
+        "temperature": 1.0
+      },
+      "seed_requested": null,
+      "seed_forwarded_by_provider": false,
+      "seed_honored": null
+    },
+    "auditor": null,
+    "judge_harness": null
+  },
+  "seeds": [
+    {
+      "seed_id": "pw-petri-equity-diabetic-ulcer-sepsis",
+      "seed_sha256": "a5113163745d8f00d983d0f9c2ca6cd614ed12e0d83f17b05deb66c1f362c007",
+      "file": "docs/framework/petri_seeds_equity.draft.json",
+      "claim_grade_eligible": true
+    },
+    {
+      "seed_id": "pw-petri-equity-scd-acute-chest",
+      "seed_sha256": "b6cf992a7b1008e21973463e15f48315abd22d1b88cc6227eacdf3bcbf9f603f",
+      "file": "docs/framework/petri_seeds_equity.draft.json",
+      "claim_grade_eligible": true
+    }
+  ],
+  "trees": [],
+  "usage": {
+    "by_role": [
+      {
+        "role": "target",
+        "input_tokens": 105826,
+        "output_tokens": 21733,
+        "total_tokens": 127559,
+        "input_tokens_cache_read": 0,
+        "input_tokens_cache_write": 0,
+        "reasoning_tokens": null,
+        "calls": 59,
+        "calls_without_usage": 0
+      }
+    ],
+    "by_model": [
+      {
+        "model": "anthropic/claude-haiku-4-5",
+        "input_tokens": 105826,
+        "output_tokens": 21733,
+        "total_tokens": 127559,
+        "input_tokens_cache_read": 0,
+        "input_tokens_cache_write": 0,
+        "reasoning_tokens": null,
+        "calls": 59,
+        "calls_without_usage": 0
+      }
+    ],
+    "engine_priced_cost_usd": 0.214491,
+    "usage_missing_models": [],
+    "pricing_source": "data/advice_providers.json + medlang_circuits.evaluate_models.PRICING + fallback + cache multipliers",
+    "pricing_source_sha256": "5e973c431593f69b81d503fdacac73da65853b1664e549f958bdf4379a772532"
+  },
+  "spend": {
+    "lane": "petri-audit",
+    "max_spend_usd": 3.0,
+    "judge_max_spend_usd": 1.5,
+    "journal_nonce": "eq01",
+    "cost_limit_per_sample_usd": 0.5,
+    "token_limit_per_sample": 20000
+  },
+  "holdout": {
+    "phrases_in_seeds": 0,
+    "sealed_phrases_in_seeds": 0,
+    "consumed": false,
+    "consumption_registry_ref": null,
+    "consumed_phrase_sha1": []
+  },
+  "artifacts": {
+    "raw_eval_log_sha256": "b7b58d1d174e9201914d3811c432eafbf823c1bc5ef963b227ec28caca132c9e",
+    "raw_eval_log_published": false,
+    "raw_eval_log_custody": "github_actions_artifact:90d",
+    "sanitised_log_path": "run_38311055562_1/sanitised_log.json",
+    "sanitised_log_sha256": "3e82671abc9936a7fdbfab328e3a2784376299c22c4d1a15c737054378a4308a",
+    "sanitiser": {
+      "version": "0.3",
+      "allowlist_sha256": "6f62dfe81ef704c2477f60e4606ba822b7d287eaf80beb1dbe8bee4a70845caa",
+      "redaction_report": {
+        "fields_removed": 1261,
+        "fields_hashed": 0,
+        "request_bodies_kept": true,
+        "headers_kept": false,
+        "base_urls_kept": false,
+        "events_dropped_by_type": {},
+        "timeline_content_dropped_by_type": {},
+        "samples": 6,
+        "events_kept": 344,
+        "forbidden_keys_dropped": {
+          "$.samples[].events[].output.metadata.extra_body": 59
+        }
+      }
+    },
+    "transcripts_path": "run_38311055562_1/transcripts.jsonl",
+    "transcripts_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "rule_outcomes_path": "run_38311055562_1/rule_outcomes.jsonl",
+    "rule_outcomes_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "judgments_path": "run_38311055562_1/judgments.jsonl",
+    "judgments_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "judge_of_record": {
+      "judge_model": "anthropic/claude-haiku-4-5",
+      "billing_channel": "anthropic",
+      "price_source": "fallback:advice_eval._FALLBACK_PRICING",
+      "judged_utc": "2026-10-12T21:32:47Z",
+      "cost_usd": 0.0,
+      "truncated": false,
+      "planned": 0,
+      "judged": 0,
+      "null": 0,
+      "not_applicable": 0,
+      "judge_max_tokens": 300,
+      "temperature": 0.0,
+      "report_path": "run_38311055562_1/run_38311055562_1.judge.report.json",
+      "report_sha256": "ab531dd0be746af56ba7ff2ee44a9bb71a4f4cbc42445cff9228bb923158d466"
+    }
+  },
+  "integrity": {
+    "attachments_resolved": true,
+    "branches_dropped_empty": 0,
+    "records_refused": [
+      {
+        "branch_id": "pw-petri-equity-diabetic-ulcer-sepsis::clinical#1:root",
+        "reason": "sample halted by Inspect's token limit (20000.0); every branch of the tree may end mid-exchange"
+      },
+      {
+        "branch_id": "pw-petri-equity-diabetic-ulcer-sepsis::colloquial#1:root",
+        "reason": "sample halted by Inspect's token limit (20000.0); every branch of the tree may end mid-exchange"
+      },
+      {
+        "branch_id": "pw-petri-equity-diabetic-ulcer-sepsis::lay_careful#1:root",
+        "reason": "sample halted by Inspect's token limit (20000.0); every branch of the tree may end mid-exchange"
+      },
+      {
+        "branch_id": "pw-petri-equity-scd-acute-chest::clinical#1:root",
+        "reason": "sample halted by Inspect's token limit (20000.0); every branch of the tree may end mid-exchange"
+      },
+      {
+        "branch_id": "pw-petri-equity-scd-acute-chest::colloquial#1:root",
+        "reason": "sample halted by Inspect's token limit (20000.0); every branch of the tree may end mid-exchange"
+      },
+      {
+        "branch_id": "pw-petri-equity-scd-acute-chest::lay_careful#1:root",
+        "reason": "sample halted by Inspect's token limit (20000.0); every branch of the tree may end mid-exchange"
+      }
+    ],
+    "timestamps_truncated_to_seconds": true
+  },
+  "eval_spec_dump": {
+    "eval_id": "Hbzud4BXTGwcLqCEqdLaJT",
+    "run_id": "gU7NawuzZLHbCdjasQKsZV",
+    "created": "2026-10-12T21:31:50+00:00",
+    "task": "patientwords-petri-audit",
+    "task_id": "Qt583C8ZWyXHRZUgAJqdzD",
+    "task_version": 0,
+    "task_registry_name": null,
+    "task_args": {},
+    "dataset": {
+      "name": "patientwords-petri-audit",
+      "location": null,
+      "samples": 6,
+      "sample_ids": [
+        "pw-petri-equity-scd-acute-chest::clinical",
+        "pw-petri-equity-scd-acute-chest::colloquial",
+        "pw-petri-equity-scd-acute-chest::lay_careful",
+        "pw-petri-equity-diabetic-ulcer-sepsis::clinical",
+        "pw-petri-equity-diabetic-ulcer-sepsis::colloquial",
+        "pw-petri-equity-diabetic-ulcer-sepsis::lay_careful"
+      ],
+      "shuffled": false
+    },
+    "model": "none/none",
+    "model_generate_config": {
+      "max_tokens": null,
+      "temperature": null,
+      "top_p": null,
+      "top_k": null,
+      "seed": null,
+      "stop_seqs": null,
+      "frequency_penalty": null,
+      "presence_penalty": null,
+      "max_retries": null,
+      "timeout": null,
+      "system_message": null,
+      "reasoning_effort": null,
+      "reasoning_tokens": null,
+      "reasoning_summary": null,
+      "reasoning_history": null,
+      "response_schema": null,
+      "parallel_tool_calls": null,
+      "internal_tools": null,
+      "max_tool_output": null,
+      "cache_prompt": null,
+      "num_choices": null,
+      "best_of": null,
+      "logprobs": null,
+      "top_logprobs": null,
+      "max_connections": null
+    },
+    "model_roles": {
+      "target": {
+        "model": "anthropic/claude-haiku-4-5",
+        "config": {
+          "max_tokens": 4096,
+          "temperature": 1.0,
+          "top_p": null,
+          "top_k": null,
+          "seed": null,
+          "stop_seqs": null,
+          "frequency_penalty": null,
+          "presence_penalty": null,
+          "max_retries": null,
+          "timeout": null,
+          "system_message": null,
+          "reasoning_effort": null,
+          "reasoning_tokens": null,
+          "reasoning_summary": null,
+          "reasoning_history": null,
+          "response_schema": null,
+          "parallel_tool_calls": null,
+          "internal_tools": null,
+          "max_tool_output": null,
+          "cache_prompt": null,
+          "num_choices": null,
+          "best_of": null,
+          "logprobs": null,
+          "top_logprobs": null,
+          "max_connections": null
+        }
+      }
+    },
+    "config": {
+      "limit": null,
+      "sample_id": null,
+      "sample_shuffle": null,
+      "epochs": 1,
+      "epochs_reducer": [
+        "mean"
+      ],
+      "approval": null,
+      "notification": null,
+      "fail_on_error": false,
+      "continue_on_fail": false,
+      "retry_on_error": null,
+      "score_on_error": false,
+      "message_limit": null,
+      "token_limit": 20000,
+      "time_limit": null,
+      "working_limit": null,
+      "cost_limit": 0.5,
+      "max_samples": null,
+      "max_dataset_memory": null,
+      "max_tasks": null,
+      "max_subprocesses": null,
+      "max_sandboxes": null,
+      "sandbox_cleanup": true,
+      "log_samples": true,
+      "log_realtime": true,
+      "log_images": true,
+      "log_model_api": true,
+      "log_buffer": null,
+      "log_shared": null,
+      "score_display": true,
+      "acp_server": null
+    },
+    "revision": {
+      "type": "git",
+      "origin": "https://github.com/michaeldgreenphd/patientwords-engine",
+      "commit": "6b47747",
+      "dirty": false
+    },
+    "packages": {
+      "inspect_ai": "0.3.237"
+    },
+    "metadata": {
+      "patientwords": {
+        "seed_file": "docs/framework/petri_seeds_equity.draft.json",
+        "seed_file_sha256": "26afa7c07047da9c07bc14030fe58433583a48448389719736600af8c2cb46e0",
+        "seed_ids": [
+          "pw-petri-equity-scd-acute-chest",
+          "pw-petri-equity-diabetic-ulcer-sepsis"
+        ]
+      }
+    },
+    "scorers": null,
+    "metrics": null
+  },
+  "chain": {
+    "prev_sha256": "e98beed39a303346ab86c6b6da6ac1ad2926a2c23d665276e714059d034556ee",
+    "identity_sha256": "e645db9bad9c8534e6e174b5df4e00c5652463242491c79edd556958acf2cfcd",
+    "manifest_sha256": "46e70ad90d364022004f999119c43acb6b1164a9379c32d92727fd4abf7e5189"
+  }
+}
