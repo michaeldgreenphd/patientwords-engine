@@ -45,7 +45,7 @@ def test_build_decisions_payload():
     questions = {
         "q_choice": ChoiceQuestion("Pick one", {"opt1": "first", "opt2": "second"}),
         "q_noul": NoulQuestion("Is this true?"),
-        "q_score": ScoreQuestion("Score 1-3", {"1": "low", "2": "med", "3": "high"}),
+        "q_score": ScoreQuestion("Score 1-3", ["low", "med", "high"]),
     }
     state = {"text": "hello world"}
     payload = build_decisions_payload(state, questions, model="typesafe/jev-1.13")
@@ -56,6 +56,7 @@ def test_build_decisions_payload():
     assert payload["questions"]["q_choice"]["criteria"]["opt1"] == "first"
     assert payload["questions"]["q_noul"]["type"] == "noul"
     assert payload["questions"]["q_score"]["type"] == "score"
+    assert payload["questions"]["q_score"]["criteria"] == ["low", "med", "high"]
 
 
 def test_build_decisions_payload_requires_questions():
@@ -108,7 +109,6 @@ def test_parse_decisions_response():
     ref_ans = res.answers["flag_referral"]
     assert isinstance(ref_ans, NoulAnswer)
     assert ref_ans.noul == 0.92
-    assert ref_ans.confidence == 0.90
 
     scale_ans = res.answers["scale"]
     assert isinstance(scale_ans, ScoreAnswer)
@@ -178,8 +178,8 @@ def test_advice_answer_classifier_workflow():
                 probabilities={"tier_a": 0.05, "tier_b": 0.90, "tier_c": 0.05},
                 confidence=0.92,
             ),
-            "flag_referral": NoulAnswer(noul=0.88, confidence=0.85),
-            "flag_disclaimer": NoulAnswer(noul=0.12, confidence=0.90),
+            "flag_referral": NoulAnswer(noul=0.88),
+            "flag_disclaimer": NoulAnswer(noul=0.12),
             "technicality_score": ScoreAnswer(
                 score=1.8,
                 probabilities={"0": 0.0, "1": 0.3, "2": 0.6, "3": 0.1},
@@ -213,7 +213,7 @@ def test_petri_register_classifier_workflow():
                 probabilities={"colloquial": 0.15, "mixed": 0.75, "clinical": 0.10},
                 confidence=0.82,
             ),
-            "register_drift": NoulAnswer(noul=0.35, confidence=0.70),
+            "register_drift": NoulAnswer(noul=0.35),
             "severity_score": ScoreAnswer(
                 score=1.2,
                 probabilities={"0": 0.1, "1": 0.6, "2": 0.3, "3": 0.0},

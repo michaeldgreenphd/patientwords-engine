@@ -8,9 +8,9 @@ Model:
 
 Jev is a non-generative, typed decision model. Instead of streaming free-form prose,
 it evaluates structured questions over a given state context and returns:
-- choice: categorized selection with probability distribution across criteria
+- choice: categorized selection with probability distribution across criteria and confidence score
 - noul: calibrated probability (0.0 to 1.0) of a condition being true
-- score: continuous expected score across an ordered scale
+- score: continuous expected score across an ordered scale (criteria passed as ordered array of strings)
 
 Conventions honored:
 - No medical terms hardcoded in Python source (AGENTS.md).
@@ -75,14 +75,14 @@ class NoulQuestion:
 @dataclass(frozen=True)
 class ScoreQuestion:
     instructions: str
-    criteria: dict[str, str]
+    criteria: list[str]
     type: Literal["score"] = "score"
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "type": "score",
             "instructions": self.instructions,
-            "criteria": self.criteria,
+            "criteria": list(self.criteria),
         }
 
 
@@ -100,7 +100,6 @@ class ChoiceAnswer:
 @dataclass(frozen=True)
 class NoulAnswer:
     noul: float
-    confidence: float
     type: Literal["noul"] = "noul"
 
 
@@ -172,7 +171,6 @@ def parse_decisions_response(data: dict[str, Any]) -> JevResponse:
             val = float(ans.get("noul") or 0.0)
             parsed_answers[qid] = NoulAnswer(
                 noul=val,
-                confidence=conf,
             )
         elif atype == "score" or "score" in ans:
             score = float(ans.get("score") or 0.0)
@@ -183,7 +181,6 @@ def parse_decisions_response(data: dict[str, Any]) -> JevResponse:
                 confidence=conf,
             )
         else:
-            # Fallback for unrecognized answer shape
             raise ValueError(f"Unrecognized answer format for question {qid!r}: {ans}")
 
     usage_raw = data.get("usage") or {}
@@ -250,4 +247,3 @@ class JevClient:
             raise JevApiError(e.code, e.reason, body=err_body) from e
         except urllib.error.URLError as e:
             raise JevError(f"Network error connecting to {self.base_url}: {e.reason}") from e
-

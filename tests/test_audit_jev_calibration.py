@@ -12,17 +12,20 @@ from scripts.audit_jev_calibration import (
 )
 
 
+TIER_ORDER = ["self_care", "routine", "urgent", "emergency"]
+
+
 def test_compute_brier_score_perfect():
     preds = [{"self_care": 1.0, "routine": 0.0, "urgent": 0.0, "emergency": 0.0}]
     truth = ["self_care"]
-    assert compute_brier_score(preds, truth) == 0.0
+    assert compute_brier_score(preds, truth, TIER_ORDER) == 0.0
 
 
 def test_compute_brier_score_imperfect():
     preds = [{"self_care": 0.8, "routine": 0.2, "urgent": 0.0, "emergency": 0.0}]
     truth = ["self_care"]
     # (0.8 - 1)^2 + (0.2 - 0)^2 = 0.04 + 0.04 = 0.08
-    assert pytest.approx(compute_brier_score(preds, truth), 1e-4) == 0.08
+    assert pytest.approx(compute_brier_score(preds, truth, TIER_ORDER), 1e-4) == 0.08
 
 
 def test_audit_calibration_main_mock(tmp_path):
