@@ -318,3 +318,197 @@ def test_audit_calibration_interrupted_warning_report(tmp_path):
         ])
         assert ret == 6
 
+
+def test_secondary_judge_rows_ignored_and_primary_preserved(tmp_path):
+    from scripts.advice_eval import canonical_json, sha256_text
+
+    rec = {
+        "record_type": "advice",
+        "stimulus_id": "stim_01",
+        "arm": "patient",
+        "sample_k": 1,
+        "model_requested": "vendor/model-a",
+        "response_text": "Response text A from model A",
+        "response_sha256": "aaaa1111222233334444555566667777888899990000aaaabbbbccccddddeeee",
+        "prev_sha256": None,
+    }
+    rec["record_sha256"] = sha256_text(canonical_json(rec))
+
+    resp_file = tmp_path / "responses.jsonl"
+    resp_file.write_text(json.dumps(rec) + "\n", encoding="utf-8")
+
+    # Primary judge row followed by secondary judge row for the same response_sha256
+    j_primary = {
+        "response_sha256": rec["response_sha256"],
+        "judge_model": "claude-haiku-4-5",
+        "tier": "routine",
+        "flags": {"safety_netting": True},
+    }
+    j_secondary = {
+        "response_sha256": rec["response_sha256"],
+        "judge_model": "openrouter:stealth/ox-alpha",
+        "tier": "emergency",
+        "flags": {"safety_netting": False},
+    }
+    judg_file = tmp_path / "judgments.jsonl"
+    judg_file.write_text(
+        json.dumps(j_primary) + "\n" + json.dumps(j_secondary) + "\n",
+        encoding="utf-8",
+    )
+
+    # By default, primary judge claude-haiku-4-5 is selected; secondary is ignored
+    cases, unmatched = load_advice_archive_with_judgments(resp_file, judgments_path=judg_file, max_samples=0)
+    assert len(cases) == 1
+    assert unmatched == 0
+    assert cases[0]["expected_tier"] == "routine"
+    assert cases[0]["expected_flags"]["safety_netting"] is True
+
+    # When explicit judge_model is specified, that judge is loaded
+    cases_sec, _ = load_advice_archive_with_judgments(
+        resp_file,
+        judgments_path=judg_file,
+        max_samples=0,
+        judge_model="openrouter:stealth/ox-alpha",
+    )
+    assert len(cases_sec) == 1
+    assert cases_sec[0]["expected_tier"] == "emergency"
+    assert cases_sec[0]["expected_flags"]["safety_netting"] is False
+
+
+def test_checkpoint_metadata_validation_refusal(tmp_path):
+    checkpoint_file = tmp_path / "checkpoint.json"
+    out_md = tmp_path / "report_cp.md"
+    out_json = tmp_path / "report_cp.json"
+
+    # Initial run creates checkpoint with metadata
+    ret = main([
+        "--golden", "data/classifier_benchmark_golden.json",
+        "--checkpoint", str(checkpoint_file),
+        "--model", "typesafe/jev-1.13",
+        "--out-markdown", str(out_md),
+        "--out-json", str(out_json),
+    ])
+    assert ret == 0
+    assert checkpoint_file.is_file()
+
+    cp_doc = json.loads(checkpoint_file.read_text(encoding="utf-8"))
+    assert cp_doc["metadata"]["model"] == "typesafe/jev-1.13"
+    assert "rubric_sha256" in cp_doc["metadata"]
+    assert "input_sha256" in cp_doc["metadata"]
+
+    # Attempting to resume with a different model must refuse with exit code 1
+    ret_mismatched_model = main([
+        "--golden", "data/classifier_benchmark_golden.json",
+        "--checkpoint", str(checkpoint_file),
+        "--model", "typesafe/different-model",
+        "--out-markdown", str(tmp_path / "bad.md"),
+        "--out-json", str(tmp_path / "bad.json"),
+    ])
+    assert ret_mismatched_model == 1
+
+    # Attempting to resume with a modified golden file must refuse with exit code 1
+    modified_golden = tmp_path / "modified_golden.json"
+    modified_golden.write_text(json.dumps({"cases": [{"id": "diff", "text": "diff"}]}), encoding="utf-8")
+    ret_mismatched_input = main([
+        "--golden", str(modified_golden),
+        "--checkpoint", str(checkpoint_file),
+        "--model", "typesafe/jev-1.13",
+        "--out-markdown", str(tmp_path / "bad2.md"),
+        "--out-json", str(tmp_path / "bad2.json"),
+    ])
+    assert ret_mismatched_input == 1
+
+
+def test_advice_checkpoint_persists_input_tokens(tmp_path):
+    checkpoint_file = tmp_path / "checkpoint_tokens.json"
+    out_md = tmp_path / "report_tokens.md"
+    out_json = tmp_path / "report_tokens.json"
+
+    ret = main([
+        "--golden", "data/classifier_benchmark_golden.json",
+        "--checkpoint", str(checkpoint_file),
+        "--out-markdown", str(out_md),
+        "--out-json", str(out_json),
+    ])
+    assert ret == 0
+
+    cp_doc = json.loads(checkpoint_file.read_text(encoding="utf-8"))
+    for case_rep in cp_doc["advice_cases"]:
+        assert "input_tokens" in case_rep
+        assert case_rep["input_tokens"] > 0
+
+    # Resume run also correctly counts input tokens from the checkpoint
+    out_json2 = tmp_path / "report_tokens2.json"
+    ret2 = main([
+        "--golden", "data/classifier_benchmark_golden.json",
+        "--checkpoint", str(checkpoint_file),
+        "--out-markdown", str(tmp_path / "report_tokens2.md"),
+        "--out-json", str(out_json2),
+    ])
+    assert ret2 == 0
+    doc2 = json.loads(out_json2.read_text(encoding="utf-8"))
+    assert doc2["metrics"]["total_input_tokens"] > 0
+    assert doc2["metrics"]["total_input_tokens"] == sum(c["input_tokens"] for c in doc2["cases"])
+
+
+def test_interrupted_provenance_samples_evaluated_accuracy(tmp_path):
+    from unittest.mock import patch
+    from scripts.audit_jev_calibration import EvaluationInterruptedError
+
+    out_md = tmp_path / "interrupted_prov.md"
+    out_json = tmp_path / "interrupted_prov.json"
+    checkpoint_file = tmp_path / "interrupted_prov_cp.json"
+
+    # Simulate an interruption with partial case reports
+    partial_case = {
+        "id": "c1",
+        "text": "test",
+        "gold_tier": "routine",
+        "predicted_tier": "routine",
+        "tier_confidence": 0.9,
+        "tier_probabilities": {"routine": 0.9},
+        "flags": {},
+        "technicality_score": 1.0,
+        "served_model": "typesafe/jev-1.13",
+        "input_tokens": 100,
+        "cost_usd": None,
+        "estimated_cost_usd": 0.001,
+    }
+    with patch("scripts.audit_jev_calibration.evaluate_advice_classifier") as mock_eval:
+        from scripts.audit_jev_calibration import EvaluationMetrics
+        partial_metrics = EvaluationMetrics(
+            total_cases=1,
+            has_ground_truth=True,
+            exact_tier_matches=1,
+            exact_accuracy=1.0,
+            within_one_tier_matches=1,
+            within_one_accuracy=1.0,
+            brier_score=0.01,
+            flag_metrics={},
+            total_cost_usd=0.0,
+            total_estimated_cost_usd=0.001,
+            total_input_tokens=100,
+            confusion_matrix=None,
+            tier_order=["routine"],
+            served_models=["typesafe/jev-1.13"],
+            unbilled_calls_count=0,
+        )
+        mock_eval.side_effect = EvaluationInterruptedError(
+            "Ceiling reached",
+            exit_code=6,
+            metrics=partial_metrics,
+            case_reports=[partial_case],
+        )
+        ret = main([
+            "--golden", "data/classifier_benchmark_golden.json",
+            "--checkpoint", str(checkpoint_file),
+            "--out-markdown", str(out_md),
+            "--out-json", str(out_json),
+        ])
+        assert ret == 6
+
+    # Verify that in interrupted output, cases_evaluated is 1 (len(case_reports)), not 6
+    doc = json.loads(out_json.read_text(encoding="utf-8"))
+    assert doc["metadata"]["golden_benchmark"]["cases_evaluated"] == 1
+    assert doc["metadata"]["golden_benchmark"]["cases_requested"] == 6
+

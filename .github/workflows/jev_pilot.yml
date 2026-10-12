@@ -38,6 +38,10 @@ on:
         description: "Decisions model ID"
         type: string
         default: "typesafe/jev-1.13"
+      resume_run_id:
+        description: "Prior GitHub run ID to restore checkpoint artifact from (for resuming an interrupted run)"
+        type: string
+        default: ""
 
 concurrency:
   group: jev-pilot-${{ github.ref }}
@@ -109,6 +113,24 @@ jobs:
               ;;
           esac
 
+      - name: Restore checkpoint from prior run artifact
+        if: ${{ inputs.resume_run_id != '' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: jev-pilot-report
+          run-id: ${{ inputs.resume_run_id }}
+          github-token: ${{ github.token }}
+          path: artifacts
+
+      - name: Restore checkpoint cache
+        if: ${{ inputs.resume_run_id == '' }}
+        uses: actions/cache/restore@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
+        with:
+          path: artifacts/jev_pilot_checkpoint.json
+          key: jev-checkpoint-${{ github.ref_name }}-${{ steps.params.outputs.advice_samples }}-${{ steps.params.outputs.petri_conversations }}-${{ inputs.model }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            jev-checkpoint-${{ github.ref_name }}-${{ steps.params.outputs.advice_samples }}-${{ steps.params.outputs.petri_conversations }}-${{ inputs.model }}-
+
       - name: Run Jev Live Pilot (Advice & Petri)
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -132,6 +154,13 @@ jobs:
             --checkpoint "artifacts/jev_pilot_checkpoint.json" \
             --out-markdown "artifacts/jev_pilot_report.md" \
             --out-json "artifacts/jev_pilot_report.json"
+
+      - name: Save checkpoint cache
+        if: always() && hashFiles('artifacts/jev_pilot_checkpoint.json') != ''
+        uses: actions/cache/save@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
+        with:
+          path: artifacts/jev_pilot_checkpoint.json
+          key: jev-checkpoint-${{ github.ref_name }}-${{ steps.params.outputs.advice_samples }}-${{ steps.params.outputs.petri_conversations }}-${{ inputs.model }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Add Report to Workflow Summary
         if: always()

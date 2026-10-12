@@ -22,6 +22,7 @@ Conventions honored:
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import os
@@ -79,10 +80,12 @@ def save_checkpoint(
     checkpoint_path: Path,
     advice_cases: list[dict[str, Any]],
     petri_cases: list[dict[str, Any]] | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> None:
     """Save intermediate evaluation progress to disk atomically."""
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     doc = {
+        "metadata": metadata or {},
         "advice_cases": advice_cases,
         "petri_cases": petri_cases or [],
         "updated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -204,6 +207,7 @@ def evaluate_advice_classifier(
     checkpoint_path: Path | None = None,
     cached_cases: list[dict[str, Any]] | None = None,
     cached_petri: list[dict[str, Any]] | None = None,
+    checkpoint_metadata: dict[str, Any] | None = None,
     max_spend: float | None = None,
     checkpoint_interval: int = 25,
 ) -> tuple[EvaluationMetrics, list[dict[str, Any]]]:
@@ -248,7 +252,8 @@ def evaluate_advice_classifier(
 
                 est_cost = cached_rep.get("estimated_cost_usd") or 0.0
                 total_est_cost += est_cost
-                total_tokens += cached_rep.get("input_tokens") or 0
+                in_tokens = cached_rep.get("input_tokens") or 0
+                total_tokens += in_tokens
 
                 res_tier_probs = cached_rep.get("tier_probabilities") or {}
                 flag_report = cached_rep.get("flags") or {}
@@ -258,7 +263,7 @@ def evaluate_advice_classifier(
             else:
                 if not is_mock and max_spend is not None and total_actual_cost > max_spend:
                     if checkpoint_path:
-                        save_checkpoint(checkpoint_path, case_reports, cached_petri)
+                        save_checkpoint(checkpoint_path, case_reports, cached_petri, metadata=checkpoint_metadata)
                     part_m = build_advice_metrics(
                         len(case_reports), has_ground_truth, exact_matches, within_one, gold_tiers,
                         prob_vectors, tier_order, flag_stats, confusion, total_actual_cost, total_est_cost,
@@ -287,7 +292,8 @@ def evaluate_advice_classifier(
                         total_actual_cost += actual_cost
                 est_cost = res.estimated_cost_usd or 0.0
                 total_est_cost += est_cost
-                total_tokens += res.input_tokens
+                in_tokens = res.input_tokens
+                total_tokens += in_tokens
                 res_tier_probs = res.tier_probabilities
                 res_flags = res.flags
                 pred_confidence = res.tier_confidence
@@ -356,18 +362,19 @@ def evaluate_advice_classifier(
                 "flags": flag_report,
                 "technicality_score": res_reg_score,
                 "served_model": served_model,
+                "input_tokens": in_tokens,
                 "cost_usd": actual_cost,
                 "estimated_cost_usd": est_cost,
             })
 
             if checkpoint_path and (count % checkpoint_interval == 0 or count == len(cases)):
-                save_checkpoint(checkpoint_path, case_reports, cached_petri)
+                save_checkpoint(checkpoint_path, case_reports, cached_petri, metadata=checkpoint_metadata)
 
     except EvaluationInterruptedError:
         raise
     except Exception as exc:
         if checkpoint_path and case_reports:
-            save_checkpoint(checkpoint_path, case_reports, cached_petri)
+            save_checkpoint(checkpoint_path, case_reports, cached_petri, metadata=checkpoint_metadata)
         part_m = build_advice_metrics(
             len(case_reports), has_ground_truth, exact_matches, within_one, gold_tiers,
             prob_vectors, tier_order, flag_stats, confusion, total_actual_cost, total_est_cost,
@@ -398,6 +405,7 @@ def evaluate_petri_classifier(
     cached_petri: list[dict[str, Any]] | None = None,
     prior_advice_cases: list[dict[str, Any]] | None = None,
     prior_metrics: EvaluationMetrics | None = None,
+    checkpoint_metadata: dict[str, Any] | None = None,
     max_spend: float | None = None,
     checkpoint_interval: int = 25,
 ) -> list[dict[str, Any]]:
@@ -430,7 +438,7 @@ def evaluate_petri_classifier(
                             active_cost = current_cost + sum(r["cost_usd"] for r in results if r["cost_usd"] is not None)
                             if active_cost > max_spend:
                                 if checkpoint_path:
-                                    save_checkpoint(checkpoint_path, prior_advice_cases or [], results)
+                                    save_checkpoint(checkpoint_path, prior_advice_cases or [], results, metadata=checkpoint_metadata)
                                 if prior_metrics:
                                     update_metrics_with_petri(prior_metrics, results)
                                 raise EvaluationInterruptedError(
@@ -467,7 +475,7 @@ def evaluate_petri_classifier(
                             "served_model": served_m,
                         })
                         if checkpoint_path and len(results) % checkpoint_interval == 0:
-                            save_checkpoint(checkpoint_path, prior_advice_cases or [], results)
+                            save_checkpoint(checkpoint_path, prior_advice_cases or [], results, metadata=checkpoint_metadata)
 
                 if has_assistant_turn:
                     conversations_count += 1
@@ -475,13 +483,13 @@ def evaluate_petri_classifier(
                         break
 
         if checkpoint_path:
-            save_checkpoint(checkpoint_path, prior_advice_cases or [], results)
+            save_checkpoint(checkpoint_path, prior_advice_cases or [], results, metadata=checkpoint_metadata)
 
     except EvaluationInterruptedError:
         raise
     except Exception as exc:
         if checkpoint_path:
-            save_checkpoint(checkpoint_path, prior_advice_cases or [], results)
+            save_checkpoint(checkpoint_path, prior_advice_cases or [], results, metadata=checkpoint_metadata)
         if prior_metrics:
             update_metrics_with_petri(prior_metrics, results)
         raise EvaluationInterruptedError(
@@ -501,6 +509,7 @@ def format_markdown_report(
     model_name: str,
     is_mock: bool = True,
     petri_results: list[dict[str, Any]] | None = None,
+    judge_model: str = "claude-haiku-4-5",
 ) -> str:
     """Generate a clean, structured audit report readable by humans and agents."""
     if metrics.unbilled_calls_count > 0:
@@ -571,10 +580,11 @@ def format_markdown_report(
             lines.append(f"| `{fid}` | {m['accuracy']*100:.1f}% | {prec_str} | {sens_str} | {spec_str} |")
         lines.append("")
 
+    judge_label = judge_model.split("/")[-1] if "/" in judge_model else judge_model
     lines.extend([
         "## Advice Evaluation Predictions",
         "",
-        "| Case ID | Primary Judge (Claude) | Pred Tier (Jev) | Conf | Match? | Tech Score |",
+        f"| Case ID | Primary Judge ({judge_label}) | Pred Tier (Jev) | Conf | Match? | Tech Score |",
         "|---|---|---|---|---|---|",
     ])
     for cr in case_reports:
@@ -613,9 +623,13 @@ def load_advice_archive_with_judgments(
     judgments_path: Path | None = None,
     max_samples: int = 10,
     allow_unmatched: bool = False,
+    judge_model: str = "claude-haiku-4-5",
 ) -> tuple[list[dict[str, Any]], int]:
     """Sample real responses from an existing advice responses archive (responses_*.jsonl)
-    paired with Claude Haiku's judgments by response_sha256 if judgments_*.jsonl exists.
+    paired with primary judge judgments by response_sha256 if judgments_*.jsonl exists.
+
+    Filters judgments to the specified primary `judge_model` (default: "claude-haiku-4-5")
+    so secondary re-judge rows cannot overwrite the primary reference.
 
     Returns:
         tuple of (cases, unmatched_count)
@@ -631,13 +645,18 @@ def load_advice_archive_with_judgments(
                 if not line:
                     continue
                 rec = json.loads(line)
+                jm = rec.get("judge_model")
+                if judge_model and jm is not None and jm != judge_model:
+                    continue
                 rsha = rec.get("response_sha256")
                 if rsha and rec.get("tier"):
-                    haiku_judgments[rsha] = {
-                        "tier": rec["tier"],
-                        "flags": rec.get("flags") or {},
-                        "model": rec.get("model"),
-                    }
+                    if rsha not in haiku_judgments:
+                        haiku_judgments[rsha] = {
+                            "tier": rec["tier"],
+                            "flags": rec.get("flags") or {},
+                            "model": rec.get("model"),
+                            "judge_model": jm,
+                        }
 
     with open(archive_path, encoding="utf-8") as f:
         rows = [json.loads(line) for line in f if line.strip()]
@@ -778,6 +797,7 @@ def write_reports(
     prov: dict[str, Any],
     petri_results: list[dict[str, Any]] | None = None,
     interrupted_reason: str | None = None,
+    judge_model: str = "claude-haiku-4-5",
 ) -> None:
     """Format and write human-readable markdown and structured JSON reports."""
     md_report = format_markdown_report(
@@ -786,6 +806,7 @@ def write_reports(
         model_name=model_name,
         is_mock=is_mock,
         petri_results=petri_results,
+        judge_model=judge_model,
     )
     if interrupted_reason:
         md_report = (
@@ -806,8 +827,12 @@ def write_reports(
     if out_json:
         out_json_p = Path(out_json)
         out_json_p.parent.mkdir(parents=True, exist_ok=True)
-        prov_copy = dict(prov)
+        prov_copy = copy.deepcopy(prov)
         prov_copy["models_served"] = metrics.served_models
+        if "advice_archive" in prov_copy:
+            prov_copy["advice_archive"]["samples_evaluated"] = len(case_reports)
+        if "golden_benchmark" in prov_copy:
+            prov_copy["golden_benchmark"]["cases_evaluated"] = len(case_reports)
         if interrupted_reason:
             prov_copy["interrupted"] = {
                 "reason": interrupted_reason,
@@ -837,6 +862,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rubric", default="data/advice_rubric.draft.json", help="Path to rubric JSON")
     parser.add_argument("--register-rubric", default="data/register_rubric.json", help="Path to register rubric JSON")
     parser.add_argument("--model", default="typesafe/jev-1.13", help="Classifier model name")
+    parser.add_argument("--judge-model", default="claude-haiku-4-5", help="Primary judge model to filter judgments by")
     parser.add_argument("--max-spend", type=float, default=0.25, help="Hard spend ceiling in USD")
     parser.add_argument("--ci-live", action="store_true", help="Gated CI run mode using live OPENROUTER_API_KEY in GitHub Actions")
     parser.add_argument("--checkpoint", help="Path to checkpoint JSON file to resume from and save intermediate state to")
@@ -865,6 +891,7 @@ def main(argv: list[str] | None = None) -> int:
     if not tier_order:
         print(f"Refused: Rubric {args.rubric} has no valid tier IDs.", file=sys.stderr)
         return 1
+    rubric_sha = hashlib.sha256(rubric_path.read_bytes()).hexdigest()
 
     reg_rubric_path = Path(args.register_rubric)
     if not reg_rubric_path.is_file():
@@ -895,12 +922,17 @@ def main(argv: list[str] | None = None) -> int:
                 judg_p = cand_judg
 
         try:
-            cases, unmatched_count = load_advice_archive_with_judgments(arch_p, judgments_path=judg_p, max_samples=args.archive_samples)
+            cases, unmatched_count = load_advice_archive_with_judgments(
+                arch_p,
+                judgments_path=judg_p,
+                max_samples=args.archive_samples,
+                judge_model=args.judge_model,
+            )
         except ValueError as exc:
             print(f"Refused: {exc}", file=sys.stderr)
             return 1
 
-        input_source_desc = f"Archive {args.archive} ({len(cases)} sampled responses, paired with Haiku judgments: {judg_p is not None})"
+        input_source_desc = f"Archive {args.archive} ({len(cases)} sampled responses, paired with {args.judge_model} judgments: {judg_p is not None})"
         input_sha = hashlib.sha256(arch_p.read_bytes()).hexdigest()
     else:
         golden_path = Path(args.golden)
@@ -922,6 +954,14 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Refused: Petri transcripts file not found: {petri_p}", file=sys.stderr)
             return 1
 
+    checkpoint_metadata = {
+        "model": args.model,
+        "rubric_sha256": rubric_sha,
+        "register_rubric_sha256": reg_rubric_sha,
+        "input_sha256": input_sha,
+        "input_type": "archive" if arch_p else "golden",
+    }
+
     # Checkpoint configuration
     checkpoint_path: Path | None = Path(args.checkpoint) if args.checkpoint else None
     cached_advice: list[dict[str, Any]] = []
@@ -929,15 +969,48 @@ def main(argv: list[str] | None = None) -> int:
     if checkpoint_path and checkpoint_path.is_file():
         try:
             cp_data = json.loads(checkpoint_path.read_text(encoding="utf-8"))
-            cached_advice = cp_data.get("advice_cases") or []
-            cached_petri = cp_data.get("petri_cases") or []
-            print(
-                f"Resuming from checkpoint {checkpoint_path}: "
-                f"{len(cached_advice)} advice cases, {len(cached_petri)} petri turns cached.",
-                file=sys.stderr,
-            )
         except Exception as exc:
-            print(f"Warning: Failed to load checkpoint {checkpoint_path} ({exc}); starting fresh.", file=sys.stderr)
+            print(f"Refused: Failed to parse checkpoint {checkpoint_path}: {exc}", file=sys.stderr)
+            return 1
+
+        cached_advice = cp_data.get("advice_cases") or []
+        cached_petri = cp_data.get("petri_cases") or []
+        cp_meta = cp_data.get("metadata") or {}
+
+        if cached_advice or cached_petri:
+            if not cp_meta:
+                print(f"Refused: Checkpoint {checkpoint_path} lacks metadata validation fields.", file=sys.stderr)
+                return 1
+            if cp_meta.get("model") != args.model:
+                print(
+                    f"Refused: Checkpoint model mismatch: {cp_meta.get('model')} != {args.model}",
+                    file=sys.stderr,
+                )
+                return 1
+            if cp_meta.get("rubric_sha256") != rubric_sha:
+                print(
+                    f"Refused: Checkpoint rubric mismatch: {cp_meta.get('rubric_sha256')} != {rubric_sha}",
+                    file=sys.stderr,
+                )
+                return 1
+            if cp_meta.get("input_sha256") != input_sha:
+                print(
+                    f"Refused: Checkpoint input mismatch: {cp_meta.get('input_sha256')} != {input_sha}",
+                    file=sys.stderr,
+                )
+                return 1
+            if cp_meta.get("register_rubric_sha256") != reg_rubric_sha:
+                print(
+                    f"Refused: Checkpoint register rubric mismatch: {cp_meta.get('register_rubric_sha256')} != {reg_rubric_sha}",
+                    file=sys.stderr,
+                )
+                return 1
+
+        print(
+            f"Resuming from checkpoint {checkpoint_path}: "
+            f"{len(cached_advice)} advice cases, {len(cached_petri)} petri turns cached.",
+            file=sys.stderr,
+        )
 
     # Determine execution mode: local runs are mock-only ($0); live requires --ci-live in CI with env key
     if args.ci_live:
@@ -953,7 +1026,6 @@ def main(argv: list[str] | None = None) -> int:
         is_live = False
         client = build_mock_client_for_cases(cases, tier_order=tier_order)
 
-    rubric_sha = hashlib.sha256(rubric_path.read_bytes()).hexdigest()
     prov: dict[str, Any] = {
         "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "model_requested": args.model,
@@ -977,6 +1049,7 @@ def main(argv: list[str] | None = None) -> int:
         prov["advice_archive"] = {
             "path": str(arch_p),
             "sha256": input_sha,
+            "samples_requested": len(cases),
             "samples_evaluated": len(cases),
             "unmatched_responses_omitted": unmatched_count,
         }
@@ -984,11 +1057,13 @@ def main(argv: list[str] | None = None) -> int:
             prov["advice_judgments"] = {
                 "path": str(judg_p),
                 "sha256": hashlib.sha256(judg_p.read_bytes()).hexdigest(),
+                "judge_model": args.judge_model,
             }
     elif golden_path:
         prov["golden_benchmark"] = {
             "path": str(golden_path),
             "sha256": input_sha,
+            "cases_requested": len(cases),
             "cases_evaluated": len(cases),
         }
     if petri_p:
@@ -1021,6 +1096,7 @@ def main(argv: list[str] | None = None) -> int:
             checkpoint_path=checkpoint_path,
             cached_cases=cached_advice,
             cached_petri=cached_petri,
+            checkpoint_metadata=checkpoint_metadata,
             max_spend=args.max_spend if is_live else None,
         )
 
@@ -1036,6 +1112,7 @@ def main(argv: list[str] | None = None) -> int:
                 cached_petri=cached_petri,
                 prior_advice_cases=case_reports,
                 prior_metrics=metrics,
+                checkpoint_metadata=checkpoint_metadata,
                 max_spend=args.max_spend if is_live else None,
             )
             if not petri_results:
@@ -1069,6 +1146,7 @@ def main(argv: list[str] | None = None) -> int:
             prov=prov,
             petri_results=petri_results,
             interrupted_reason=str(interrupted_exc) if interrupted_exc else None,
+            judge_model=args.judge_model,
         )
 
     if interrupted_exc:
