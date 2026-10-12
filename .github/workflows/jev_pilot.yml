@@ -151,6 +151,15 @@ jobs:
           restore-keys: |
             jev-checkpoint-${{ github.ref_name }}-${{ steps.params.outputs.advice_samples }}-${{ steps.params.outputs.petri_conversations }}-${{ inputs.model }}-
 
+      - name: Verify resumed checkpoint presence
+        if: ${{ inputs.resume || inputs.resume_run_id != '' || github.run_attempt > 1 }}
+        run: |
+          if [ ! -f artifacts/jev_pilot_checkpoint.json ]; then
+            echo "Refused: Resumption requested (resume=${{ inputs.resume }}, resume_run_id=${{ inputs.resume_run_id }}, attempt=${{ github.run_attempt }}) but artifacts/jev_pilot_checkpoint.json was not restored; failing closed." >&2
+            exit 1
+          fi
+          echo "Verified restored checkpoint: artifacts/jev_pilot_checkpoint.json exists."
+
       - name: Run Jev Live Pilot (Advice & Petri)
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

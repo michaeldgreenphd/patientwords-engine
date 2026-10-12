@@ -256,7 +256,22 @@ def evaluate_advice_classifier(
                 total_tokens += in_tokens
 
                 res_tier_probs = cached_rep.get("tier_probabilities") or {}
-                flag_report = cached_rep.get("flags") or {}
+                cached_flags = cached_rep.get("flags") or {}
+                flag_report = {}
+                for fid, exp_val in expected_flags.items():
+                    cf = cached_flags.get(fid) if isinstance(cached_flags.get(fid), dict) else {}
+                    flag_report[fid] = {
+                        "expected": exp_val,
+                        "predicted": cf.get("predicted"),
+                        "probability": cf.get("probability"),
+                    }
+                for fid, cf in cached_flags.items():
+                    if fid not in flag_report and isinstance(cf, dict):
+                        flag_report[fid] = {
+                            "expected": expected_flags.get(fid),
+                            "predicted": cf.get("predicted"),
+                            "probability": cf.get("probability"),
+                        }
                 res_flags = {fid: d.get("predicted") for fid, d in flag_report.items() if isinstance(d, dict)}
                 pred_confidence = cached_rep.get("tier_confidence") or 0.0
                 res_reg_score = cached_rep.get("technicality_score") or 0.0
@@ -967,12 +982,17 @@ def main(argv: list[str] | None = None) -> int:
     clf_file = Path(__file__).parent / "jev_classifier.py"
     classifier_sha = hashlib.sha256(clf_file.read_bytes()).hexdigest() if clf_file.is_file() else None
 
+    judgments_sha = hashlib.sha256(judg_p.read_bytes()).hexdigest() if (arch_p and judg_p and judg_p.is_file()) else None
+    judge_model_meta = args.judge_model if (arch_p and judg_p) else None
+
     checkpoint_metadata = {
         "model": args.model,
         "rubric_sha256": rubric_sha,
         "register_rubric_sha256": reg_rubric_sha,
         "input_sha256": input_sha,
         "input_type": "archive" if arch_p else "golden",
+        "judgments_sha256": judgments_sha,
+        "judge_model": judge_model_meta,
         "petri_transcripts_sha256": petri_sha,
         "classifier_sha256": classifier_sha,
     }
@@ -1017,6 +1037,18 @@ def main(argv: list[str] | None = None) -> int:
             if cp_meta.get("register_rubric_sha256") != reg_rubric_sha:
                 print(
                     f"Refused: Checkpoint register rubric mismatch: {cp_meta.get('register_rubric_sha256')} != {reg_rubric_sha}",
+                    file=sys.stderr,
+                )
+                return 1
+            if cp_meta.get("judgments_sha256") != judgments_sha:
+                print(
+                    f"Refused: Checkpoint judgments mismatch: {cp_meta.get('judgments_sha256')} != {judgments_sha}",
+                    file=sys.stderr,
+                )
+                return 1
+            if cp_meta.get("judge_model") != judge_model_meta:
+                print(
+                    f"Refused: Checkpoint judge model mismatch: {cp_meta.get('judge_model')} != {judge_model_meta}",
                     file=sys.stderr,
                 )
                 return 1

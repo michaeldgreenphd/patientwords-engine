@@ -8,6 +8,7 @@ import pytest
 
 from scripts.audit_jev_calibration import (
     compute_brier_score,
+    evaluate_advice_classifier,
     evaluate_petri_classifier,
     load_advice_archive_with_judgments,
     main,
@@ -699,6 +700,104 @@ def test_checkpoint_classifier_sha_mismatch_refused_on_resume(tmp_path):
         "--out-json", str(tmp_path / "bad.json"),
     ])
     assert ret_mismatch == 1
+
+
+def test_refresh_expected_flags_on_cached_case_reuse():
+    from unittest.mock import Mock
+
+    classifier = Mock()
+    cases = [{
+        "id": "case_1",
+        "response_text": "Sample response",
+        "expected_tier": "routine",
+        "expected_flags": {"safety_netting": True, "specialty_named": False},
+    }]
+    cached_cases = [{
+        "id": "case_1",
+        "predicted_tier": "routine",
+        "tier_confidence": 0.95,
+        "flags": {
+            "safety_netting": {"expected": False, "predicted": True, "probability": 0.9},
+            "specialty_named": {"expected": True, "predicted": False, "probability": 0.1},
+        },
+        "technicality_score": 0.2,
+        "cost_usd": 0.001,
+        "estimated_cost_usd": 0.001,
+        "input_tokens": 100,
+    }]
+    tier_order = ["emergency", "urgent", "routine", "self_care"]
+    metrics, reports = evaluate_advice_classifier(
+        cases=cases,
+        classifier=classifier,
+        tier_order=tier_order,
+        model_name="mock-model",
+        is_mock=True,
+        cached_cases=cached_cases,
+    )
+    assert len(reports) == 1
+    # Check that flags in the report reflect current expected_flags
+    assert reports[0]["flags"]["safety_netting"]["expected"] is True
+    assert reports[0]["flags"]["safety_netting"]["predicted"] is True
+    assert reports[0]["flags"]["specialty_named"]["expected"] is False
+    assert reports[0]["flags"]["specialty_named"]["predicted"] is False
+    # Check that flag_stats in metrics were updated with current expected_flags
+    assert metrics.flag_metrics["safety_netting"]["tp"] == 1
+    assert metrics.flag_metrics["specialty_named"]["tn"] == 1
+
+
+def test_checkpoint_judgments_mismatch_refused_on_resume(tmp_path):
+    from scripts.advice_eval import canonical_json, sha256_text
+
+    rec = {
+        "record_type": "advice",
+        "stimulus_id": "stim_01",
+        "arm": "patient",
+        "sample_k": 1,
+        "model_requested": "vendor/model-a",
+        "response_text": "Response text",
+        "response_sha256": "aaaa1111222233334444555566667777888899990000aaaabbbbccccddddeeee",
+        "prev_sha256": None,
+    }
+    rec["record_sha256"] = sha256_text(canonical_json(rec))
+    resp_file = tmp_path / "responses.jsonl"
+    resp_file.write_text(json.dumps(rec) + "\n", encoding="utf-8")
+
+    j1 = {
+        "response_sha256": rec["response_sha256"],
+        "judge_model": "claude-haiku-4-5",
+        "tier": "routine",
+        "flags": {"safety_netting": True},
+    }
+    judg_file = tmp_path / "judgments.jsonl"
+    judg_file.write_text(json.dumps(j1) + "\n", encoding="utf-8")
+
+    checkpoint_file = tmp_path / "cp.json"
+    ret = main([
+        "--archive", str(resp_file),
+        "--judgments", str(judg_file),
+        "--checkpoint", str(checkpoint_file),
+        "--out-markdown", str(tmp_path / "rep.md"),
+        "--out-json", str(tmp_path / "rep.json"),
+    ])
+    assert ret == 0
+
+    cp_doc = json.loads(checkpoint_file.read_text(encoding="utf-8"))
+    assert cp_doc["metadata"]["judgments_sha256"] is not None
+    assert cp_doc["metadata"]["judge_model"] == "claude-haiku-4-5"
+
+    # Modify judgments_sha256
+    cp_doc["metadata"]["judgments_sha256"] = "altered_judgments_sha"
+    checkpoint_file.write_text(json.dumps(cp_doc), encoding="utf-8")
+
+    ret_mismatch = main([
+        "--archive", str(resp_file),
+        "--judgments", str(judg_file),
+        "--checkpoint", str(checkpoint_file),
+        "--out-markdown", str(tmp_path / "bad.md"),
+        "--out-json", str(tmp_path / "bad.json"),
+    ])
+    assert ret_mismatch == 1
+
 
 
 
