@@ -276,7 +276,9 @@ def evaluate_advice_classifier(
                 pred_confidence = cached_rep.get("tier_confidence") or 0.0
                 res_reg_score = cached_rep.get("technicality_score") or 0.0
             else:
-                if not is_mock and max_spend is not None and total_actual_cost > max_spend:
+                cached_petri_cost = sum(r.get("cost_usd", 0.0) or 0.0 for r in (cached_petri or []))
+                active_cost = total_actual_cost + cached_petri_cost
+                if not is_mock and max_spend is not None and active_cost > max_spend:
                     if checkpoint_path:
                         save_checkpoint(checkpoint_path, case_reports, cached_petri, metadata=checkpoint_metadata)
                     part_m = build_advice_metrics(
@@ -285,7 +287,7 @@ def evaluate_advice_classifier(
                         total_tokens, served_models_set, unbilled_calls
                     )
                     raise EvaluationInterruptedError(
-                        f"Live spend ${total_actual_cost:.6f} exceeded max_spend ceiling ${max_spend:.6f}",
+                        f"Live spend ${active_cost:.6f} exceeded max_spend ceiling ${max_spend:.6f}",
                         exit_code=6,
                         metrics=part_m,
                         case_reports=case_reports,
@@ -981,11 +983,14 @@ def main(argv: list[str] | None = None) -> int:
 
     clf_file = Path(__file__).parent / "jev_classifier.py"
     client_file = Path(__file__).parent.parent / "medlang_circuits" / "jev_client.py"
+    eval_file = Path(__file__)
     clf_hasher = hashlib.sha256()
     if clf_file.is_file():
         clf_hasher.update(clf_file.read_bytes())
     if client_file.is_file():
         clf_hasher.update(client_file.read_bytes())
+    if eval_file.is_file():
+        clf_hasher.update(eval_file.read_bytes())
     classifier_sha = clf_hasher.hexdigest()
 
     judgments_sha = hashlib.sha256(judg_p.read_bytes()).hexdigest() if (arch_p and judg_p and judg_p.is_file()) else None
@@ -1113,6 +1118,8 @@ def main(argv: list[str] | None = None) -> int:
         },
         "classifier": {
             "path": str(clf_file),
+            "jev_client_path": str(client_file),
+            "evaluator_path": str(eval_file),
             "sha256": classifier_sha,
         },
         "parameters": {

@@ -282,9 +282,10 @@ class JevClient:
                     time.sleep(wait)
                     continue
                 raise JevApiError(e.code, e.reason, body=err_body) from e
-            except urllib.error.URLError as e:
+            except (urllib.error.URLError, TimeoutError, OSError) as e:
                 if attempt < self.max_retries:
                     wait = self.initial_backoff * (2 ** attempt)
                     time.sleep(wait)
                     continue
-                raise JevError(f"Network error connecting to {self.base_url}: {e.reason}") from e
+                reason = getattr(e, "reason", str(e))
+                raise JevError(f"Network error connecting to {self.base_url}: {reason}") from e

@@ -313,3 +313,62 @@ def test_jev_client_url_error_retry():
         mock_sleep.assert_called_once_with(0.01)
 
 
+def test_jev_client_timeout_error_retry():
+    mock_resp_json = json.dumps({
+        "id": "gen-mock-timeout-retry",
+        "model": "typesafe/jev-1.13",
+        "answers": {
+            "is_valid": {"type": "noul", "noul": 0.88, "confidence": 0.90},
+        },
+        "usage": {"input_tokens": 80, "output_tokens": 0, "cost": 0.0000035},
+    }).encode("utf-8")
+
+    client = JevClient(api_key="mock-key", max_retries=1, initial_backoff=0.01)
+
+    # First connection opens but response.read() raises TimeoutError
+    mock_cm_timeout = MagicMock()
+    mock_cm_timeout.read.side_effect = TimeoutError("socket read timed out")
+    mock_cm_timeout.__enter__.return_value = mock_cm_timeout
+
+    # Second attempt succeeds
+    mock_cm_ok = MagicMock()
+    mock_cm_ok.read.return_value = mock_resp_json
+    mock_cm_ok.__enter__.return_value = mock_cm_ok
+
+    with patch("urllib.request.urlopen", side_effect=[mock_cm_timeout, mock_cm_ok]) as mock_urlopen, patch("time.sleep") as mock_sleep:
+        res = client.decide(state="test state", questions={"is_valid": NoulQuestion("valid?")})
+        assert res.id == "gen-mock-timeout-retry"
+        assert mock_urlopen.call_count == 2
+        mock_sleep.assert_called_once_with(0.01)
+
+
+def test_jev_client_os_error_retry():
+    mock_resp_json = json.dumps({
+        "id": "gen-mock-oserror-retry",
+        "model": "typesafe/jev-1.13",
+        "answers": {
+            "is_valid": {"type": "noul", "noul": 0.95, "confidence": 0.95},
+        },
+        "usage": {"input_tokens": 80, "output_tokens": 0, "cost": 0.0000035},
+    }).encode("utf-8")
+
+    client = JevClient(api_key="mock-key", max_retries=1, initial_backoff=0.01)
+
+    # First connection opens but response.read() raises ConnectionResetError (subclass of OSError)
+    mock_cm_reset = MagicMock()
+    mock_cm_reset.read.side_effect = ConnectionResetError("Connection reset by peer")
+    mock_cm_reset.__enter__.return_value = mock_cm_reset
+
+    # Second attempt succeeds
+    mock_cm_ok = MagicMock()
+    mock_cm_ok.read.return_value = mock_resp_json
+    mock_cm_ok.__enter__.return_value = mock_cm_ok
+
+    with patch("urllib.request.urlopen", side_effect=[mock_cm_reset, mock_cm_ok]) as mock_urlopen, patch("time.sleep") as mock_sleep:
+        res = client.decide(state="test state", questions={"is_valid": NoulQuestion("valid?")})
+        assert res.id == "gen-mock-oserror-retry"
+        assert mock_urlopen.call_count == 2
+        mock_sleep.assert_called_once_with(0.01)
+
+
+

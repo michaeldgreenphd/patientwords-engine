@@ -826,6 +826,38 @@ def test_checkpoint_missing_classifier_sha_refused_on_resume(tmp_path):
     assert ret_mismatch == 1
 
 
+def test_advice_classifier_spend_guard_includes_cached_petri():
+    from unittest.mock import Mock
+    from scripts.audit_jev_calibration import EvaluationInterruptedError
+
+    classifier = Mock()
+    cases = [
+        {"id": "case_1", "response_text": "Response 1", "expected_tier": "routine"},
+    ]
+    # Cached Petri rows totaling $0.08
+    cached_petri = [
+        {"conversation_id": "c1", "turn_index": 1, "cost_usd": 0.05},
+        {"conversation_id": "c1", "turn_index": 2, "cost_usd": 0.03},
+    ]
+
+    tier_order = ["emergency", "urgent", "routine", "self_care"]
+    # With max_spend=0.07, the $0.08 cached Petri spend alone breaches the ceiling
+    with pytest.raises(EvaluationInterruptedError) as exc_info:
+        evaluate_advice_classifier(
+            cases=cases,
+            classifier=classifier,
+            tier_order=tier_order,
+            model_name="test-model",
+            is_mock=False,
+            cached_petri=cached_petri,
+            max_spend=0.07,
+        )
+    assert exc_info.value.exit_code == 6
+    assert "Live spend $0.080000 exceeded max_spend ceiling $0.070000" in str(exc_info.value)
+    classifier.classify.assert_not_called()
+
+
+
 
 
 
