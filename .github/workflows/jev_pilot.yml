@@ -1,29 +1,55 @@
 name: Jev Classifier Pilot (Advice & Petri)
 
-# Small, controlled pilot to evaluate TypeSafe AI's Jev (typesafe/jev-1.13)
+# Evaluation of TypeSafe AI's Jev (typesafe/jev-1.13) decisions classifier
 # on existing landed Advice responses and Petri multi-turn conversations.
 # Runs in GitHub Actions using OPENROUTER_API_KEY.
-# Total cost per run: ~$0.0003 (< 1/30th of a cent).
+# Estimated cost per preset:
+#   - pilot:           ~$0.003  (ceiling: $0.05)
+#   - slightly_bigger: ~$0.015  (ceiling: $0.25)
+#   - much_bigger:     ~$0.050  (ceiling: $0.75)
+#   - everything:      ~$0.180  (ceiling: $1.50)
 
 on:
   workflow_dispatch:
     inputs:
+      scale:
+        description: "Evaluation Scale preset"
+        type: choice
+        default: "pilot (10 advice, 3 petri)"
+        options:
+          - "pilot (10 advice, 3 petri)"
+          - "slightly_bigger (50 advice, 10 petri)"
+          - "much_bigger (200 advice, 25 petri)"
+          - "everything (all available archive & petri)"
+          - "custom (use manual inputs below)"
+      advice_samples:
+        description: "Advice count (used if scale is custom or custom counts provided; 0 = all)"
+        type: string
+        default: "10"
+      petri_conversations:
+        description: "Petri count (used if scale is custom or custom counts provided; 0 = all)"
+        type: string
+        default: "3"
+      max_spend:
+        description: "Spend ceiling USD (used if scale is custom or custom ceiling provided)"
+        type: string
+        default: "0.10"
       model:
         description: "Decisions model ID"
         type: string
         default: "typesafe/jev-1.13"
-      advice_samples:
-        description: "Number of advice responses to evaluate"
+      resume:
+        description: "Resume evaluation from checkpoint (set to true to reuse intermediate checkpoint; false starts fresh)"
+        type: boolean
+        default: false
+      resume_run_id:
+        description: "Prior GitHub run ID to restore checkpoint artifact from (for resuming an interrupted run)"
         type: string
-        default: "10"
-      petri_conversations:
-        description: "Number of Petri conversations to audit"
-        type: string
-        default: "3"
-      max_spend:
-        description: "Hard spend ceiling in USD"
-        type: string
-        default: "0.10"
+        default: ""
+
+permissions:
+  contents: read
+  actions: read # required for cross-run artifact recovery via actions/download-artifact
 
 concurrency:
   group: jev-pilot-${{ github.ref }}
@@ -32,7 +58,7 @@ concurrency:
 jobs:
   jev_pilot:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Set up Python
@@ -45,13 +71,102 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .
 
+      - name: Resolve evaluation scale parameters
+        id: params
+        shell: bash
+        run: |
+          SCALE="${{ inputs.scale }}"
+          ADVICE_IN="${{ inputs.advice_samples }}"
+          PETRI_IN="${{ inputs.petri_conversations }}"
+          SPEND_IN="${{ inputs.max_spend }}"
+          echo "Selected scale preset: $SCALE"
+
+          # If caller supplied non-default advice_samples, petri_conversations, or max_spend
+          # without selecting an explicit expansion preset (e.g., via legacy CLI: gh workflow run -f advice_samples=...),
+          # honor the legacy/custom inputs rather than silently clamping to the pilot preset.
+          if [[ "$SCALE" =~ ^pilot ]] && { [ "$ADVICE_IN" != "10" ] || [ "$PETRI_IN" != "3" ] || [ "$SPEND_IN" != "0.10" ]; }; then
+            echo "Notice: Non-default dispatch inputs detected with default scale ($ADVICE_IN advice, $PETRI_IN petri, \$$SPEND_IN ceiling); honoring custom parameters."
+            SCALE="custom"
+          fi
+
+          case "$SCALE" in
+            pilot*)
+              echo "advice_samples=10" >> $GITHUB_OUTPUT
+              echo "petri_conversations=3" >> $GITHUB_OUTPUT
+              echo "max_spend=0.05" >> $GITHUB_OUTPUT
+              ;;
+            *slightly*|medium*)
+              echo "advice_samples=50" >> $GITHUB_OUTPUT
+              echo "petri_conversations=10" >> $GITHUB_OUTPUT
+              echo "max_spend=0.25" >> $GITHUB_OUTPUT
+              ;;
+            *much*|large*)
+              echo "advice_samples=200" >> $GITHUB_OUTPUT
+              echo "petri_conversations=25" >> $GITHUB_OUTPUT
+              echo "max_spend=0.75" >> $GITHUB_OUTPUT
+              ;;
+            *everything*|full*)
+              echo "advice_samples=0" >> $GITHUB_OUTPUT
+              echo "petri_conversations=0" >> $GITHUB_OUTPUT
+              echo "max_spend=1.50" >> $GITHUB_OUTPUT
+              ;;
+            custom*)
+              echo "advice_samples=$ADVICE_IN" >> $GITHUB_OUTPUT
+              echo "petri_conversations=$PETRI_IN" >> $GITHUB_OUTPUT
+              echo "max_spend=$SPEND_IN" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Refused: Unknown scale preset '$SCALE'" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Restore checkpoint from prior run artifact
+        if: ${{ inputs.resume_run_id != '' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: jev-pilot-report
+          run-id: ${{ inputs.resume_run_id }}
+          github-token: ${{ github.token }}
+          path: /tmp/jev-restore
+
+      - name: Stage restored checkpoint file
+        if: ${{ inputs.resume_run_id != '' }}
+        run: |
+          mkdir -p artifacts
+          if [ -f /tmp/jev-restore/jev_pilot_checkpoint.json ]; then
+            cp /tmp/jev-restore/jev_pilot_checkpoint.json artifacts/
+            echo "Staged restored checkpoint file from prior run ${{ inputs.resume_run_id }}"
+          else
+            echo "Refused: Prior run ${{ inputs.resume_run_id }} artifact did not contain jev_pilot_checkpoint.json; refusing resume." >&2
+            exit 1
+          fi
+
+      - name: Restore checkpoint cache
+        if: ${{ (inputs.resume || github.run_attempt > 1) && inputs.resume_run_id == '' }}
+        uses: actions/cache/restore@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
+        with:
+          path: artifacts/jev_pilot_checkpoint.json
+          key: jev-checkpoint-${{ github.ref_name }}-${{ steps.params.outputs.advice_samples }}-${{ steps.params.outputs.petri_conversations }}-${{ inputs.model }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            jev-checkpoint-${{ github.ref_name }}-${{ steps.params.outputs.advice_samples }}-${{ steps.params.outputs.petri_conversations }}-${{ inputs.model }}-
+
+      - name: Verify resumed checkpoint presence
+        if: ${{ inputs.resume || inputs.resume_run_id != '' || github.run_attempt > 1 }}
+        run: |
+          if [ ! -f artifacts/jev_pilot_checkpoint.json ]; then
+            echo "Refused: Resumption requested (resume=${{ inputs.resume }}, resume_run_id=${{ inputs.resume_run_id }}, attempt=${{ github.run_attempt }}) but artifacts/jev_pilot_checkpoint.json was not restored; failing closed." >&2
+            exit 1
+          fi
+          echo "Verified restored checkpoint: artifacts/jev_pilot_checkpoint.json exists."
+
       - name: Run Jev Live Pilot (Advice & Petri)
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           MODEL: ${{ inputs.model }}
-          ADVICE_SAMPLES: ${{ inputs.advice_samples }}
-          PETRI_CONVERSATIONS: ${{ inputs.petri_conversations }}
-          MAX_SPEND: ${{ inputs.max_spend }}
+          ADVICE_SAMPLES: ${{ steps.params.outputs.advice_samples }}
+          PETRI_CONVERSATIONS: ${{ steps.params.outputs.petri_conversations }}
+          MAX_SPEND: ${{ steps.params.outputs.max_spend }}
           PYTHONPATH: .
         run: |
           mkdir -p artifacts
@@ -62,10 +177,19 @@ jobs:
             --petri-conversations "$PETRI_CONVERSATIONS" \
             --max-spend "$MAX_SPEND" \
             --rubric "data/advice_rubric.draft.json" \
+            --register-rubric "data/register_rubric.json" \
             --model "$MODEL" \
             --ci-live \
+            --checkpoint "artifacts/jev_pilot_checkpoint.json" \
             --out-markdown "artifacts/jev_pilot_report.md" \
             --out-json "artifacts/jev_pilot_report.json"
+
+      - name: Save checkpoint cache (on interruption, failure, or cancellation)
+        if: (failure() || cancelled()) && hashFiles('artifacts/jev_pilot_checkpoint.json') != ''
+        uses: actions/cache/save@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
+        with:
+          path: artifacts/jev_pilot_checkpoint.json
+          key: jev-checkpoint-${{ github.ref_name }}-${{ steps.params.outputs.advice_samples }}-${{ steps.params.outputs.petri_conversations }}-${{ inputs.model }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Add Report to Workflow Summary
         if: always()
