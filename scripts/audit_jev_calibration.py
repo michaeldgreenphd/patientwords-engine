@@ -75,120 +75,57 @@ def compute_brier_score(predictions: list[dict[str, float]], ground_truths: list
     return total_sq_err / len(predictions)
 
 
-def evaluate_advice_classifier(
-    cases: list[dict[str, Any]],
-    classifier: AdviceAnswerClassifier,
+def save_checkpoint(
+    checkpoint_path: Path,
+    advice_cases: list[dict[str, Any]],
+    petri_cases: list[dict[str, Any]] | None = None,
+) -> None:
+    """Save intermediate evaluation progress to disk atomically."""
+    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+    doc = {
+        "advice_cases": advice_cases,
+        "petri_cases": petri_cases or [],
+        "updated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    tmp_path = checkpoint_path.with_name(f"{checkpoint_path.name}.tmp")
+    tmp_path.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+    tmp_path.replace(checkpoint_path)
+
+
+class EvaluationInterruptedError(Exception):
+    """Raised when evaluation is interrupted by ceiling or error, carrying partial progress."""
+
+    def __init__(
+        self,
+        message: str,
+        exit_code: int = 1,
+        metrics: EvaluationMetrics | None = None,
+        case_reports: list[dict[str, Any]] | None = None,
+        petri_results: list[dict[str, Any]] | None = None,
+    ):
+        super().__init__(message)
+        self.exit_code = exit_code
+        self.metrics = metrics
+        self.case_reports = case_reports
+        self.petri_results = petri_results
+
+
+def build_advice_metrics(
+    n_cases: int,
+    has_ground_truth: bool,
+    exact_matches: int,
+    within_one: int,
+    gold_tiers: list[str],
+    prob_vectors: list[dict[str, float]],
     tier_order: list[str],
-    model_name: str,
-    is_mock: bool = True,
-) -> tuple[EvaluationMetrics, list[dict[str, Any]]]:
-    """Run classifier over benchmark cases and compute audit metrics."""
-    tier_rank = {t: i for i, t in enumerate(tier_order)}
-    has_ground_truth = any(c.get("expected_tier") is not None for c in cases)
-    confusion = [[0] * len(tier_order) for _ in tier_order] if has_ground_truth else None
-
-    exact_matches = 0
-    within_one = 0
-    prob_vectors: list[dict[str, float]] = []
-    gold_tiers: list[str] = []
-    flag_stats: dict[str, dict[str, int]] = {}
-
-    total_actual_cost = 0.0
-    total_est_cost = 0.0
-    total_tokens = 0
-    unbilled_calls = 0
-    case_reports: list[dict[str, Any]] = []
-    served_models_set: set[str] = set()
-
-    for c in cases:
-        text = c["response_text"]
-        expected_tier = c.get("expected_tier")
-        expected_flags = c.get("expected_flags", {})
-
-        res = classifier.classify(text, model=model_name)
-        pred_tier = res.tier
-        served_model = res.raw_response.model or model_name
-        served_models_set.add(served_model)
-
-        if is_mock:
-            actual_cost: float | None = 0.0
-        else:
-            if res.cost_usd is None:
-                actual_cost = None
-                unbilled_calls += 1
-            else:
-                actual_cost = res.cost_usd
-                total_actual_cost += actual_cost
-        est_cost = res.estimated_cost_usd or 0.0
-        total_est_cost += est_cost
-        total_tokens += res.input_tokens
-
-        pred_idx = tier_rank.get(pred_tier, -1)
-        gold_idx = tier_rank.get(expected_tier, -1) if expected_tier else -1
-
-        is_exact = False
-        is_within_one = False
-        if has_ground_truth and expected_tier is not None:
-            if gold_idx != -1 and pred_idx != -1 and confusion is not None:
-                confusion[gold_idx][pred_idx] += 1
-                if pred_tier == expected_tier:
-                    exact_matches += 1
-                    is_exact = True
-                if abs(pred_idx - gold_idx) <= 1:
-                    within_one += 1
-                    is_within_one = True
-
-            prob_vectors.append(res.tier_probabilities)
-            gold_tiers.append(expected_tier)
-
-        # Flag accuracy tracking
-        flag_report = {}
-        for fid, exp_val in expected_flags.items():
-            if fid not in res.flags:
-                raise ValueError(
-                    f"Classifier response missing expected flag {fid!r} present in reference judgment"
-                )
-            got_val = res.flags[fid]
-            stats = flag_stats.setdefault(fid, {"tp": 0, "tn": 0, "fp": 0, "fn": 0})
-            if exp_val and got_val:
-                stats["tp"] += 1
-            elif not exp_val and not got_val:
-                stats["tn"] += 1
-            elif not exp_val and got_val:
-                stats["fp"] += 1
-            else:
-                stats["fn"] += 1
-            flag_report[fid] = {
-                "expected": exp_val,
-                "predicted": got_val,
-                "probability": res.flag_probabilities.get(fid),
-            }
-        for fid, got_val in res.flags.items():
-            if fid not in flag_report:
-                flag_report[fid] = {
-                    "expected": None,
-                    "predicted": got_val,
-                    "probability": res.flag_probabilities.get(fid),
-                }
-
-        case_reports.append({
-            "id": c.get("id"),
-            "response_text": text,
-            "expected_tier": expected_tier,
-            "primary_judge_tier": c.get("primary_judge_tier"),
-            "predicted_tier": pred_tier,
-            "tier_confidence": res.tier_confidence,
-            "is_exact": is_exact if has_ground_truth else None,
-            "is_within_one": is_within_one if has_ground_truth else None,
-            "tier_probabilities": res.tier_probabilities,
-            "flags": flag_report,
-            "technicality_score": res.register_score,
-            "served_model": served_model,
-            "cost_usd": actual_cost,
-            "estimated_cost_usd": est_cost,
-        })
-
-    n = len(cases)
+    flag_stats: dict[str, dict[str, int]],
+    confusion: list[list[int]] | None,
+    total_actual_cost: float,
+    total_est_cost: float,
+    total_tokens: int,
+    served_models_set: set[str],
+    unbilled_calls: int,
+) -> EvaluationMetrics:
     if has_ground_truth and gold_tiers:
         brier: float | None = round(compute_brier_score(prob_vectors, gold_tiers, tier_order), 4)
         exact_acc: float | None = round(exact_matches / max(1, len(gold_tiers)), 4)
@@ -222,8 +159,8 @@ def evaluate_advice_classifier(
             "fn": fn,
         }
 
-    metrics = EvaluationMetrics(
-        total_cases=n,
+    return EvaluationMetrics(
+        total_cases=n_cases,
         has_ground_truth=has_ground_truth,
         exact_tier_matches=exact_match_count,
         exact_accuracy=exact_acc,
@@ -239,6 +176,215 @@ def evaluate_advice_classifier(
         served_models=sorted(served_models_set),
         unbilled_calls_count=unbilled_calls,
     )
+
+
+def update_metrics_with_petri(metrics: EvaluationMetrics, petri_results: list[dict[str, Any]]) -> None:
+    """Fold Petri evaluation results into existing evaluation metrics."""
+    petri_cost = sum(r["cost_usd"] for r in petri_results if r["cost_usd"] is not None)
+    unbilled_petri = sum(1 for r in petri_results if r["cost_usd"] is None)
+    petri_est_cost = sum(r["estimated_cost_usd"] for r in petri_results)
+    petri_tokens = sum(r.get("input_tokens", 0) for r in petri_results)
+    metrics.total_cost_usd = round(metrics.total_cost_usd + petri_cost, 6)
+    metrics.total_estimated_cost_usd = round(metrics.total_estimated_cost_usd + petri_est_cost, 6)
+    metrics.total_input_tokens += petri_tokens
+    metrics.unbilled_calls_count += unbilled_petri
+    for r in petri_results:
+        sm = r.get("served_model")
+        if sm and sm not in metrics.served_models:
+            metrics.served_models.append(sm)
+            metrics.served_models.sort()
+
+
+def evaluate_advice_classifier(
+    cases: list[dict[str, Any]],
+    classifier: AdviceAnswerClassifier,
+    tier_order: list[str],
+    model_name: str,
+    is_mock: bool = True,
+    checkpoint_path: Path | None = None,
+    cached_cases: list[dict[str, Any]] | None = None,
+    cached_petri: list[dict[str, Any]] | None = None,
+    max_spend: float | None = None,
+    checkpoint_interval: int = 25,
+) -> tuple[EvaluationMetrics, list[dict[str, Any]]]:
+    """Run classifier over benchmark cases and compute audit metrics."""
+    tier_rank = {t: i for i, t in enumerate(tier_order)}
+    has_ground_truth = any(c.get("expected_tier") is not None for c in cases)
+    confusion = [[0] * len(tier_order) for _ in tier_order] if has_ground_truth else None
+
+    exact_matches = 0
+    within_one = 0
+    prob_vectors: list[dict[str, float]] = []
+    gold_tiers: list[str] = []
+    flag_stats: dict[str, dict[str, int]] = {}
+
+    total_actual_cost = 0.0
+    total_est_cost = 0.0
+    total_tokens = 0
+    unbilled_calls = 0
+    case_reports: list[dict[str, Any]] = []
+    served_models_set: set[str] = set()
+
+    cached_map = {c["id"]: c for c in (cached_cases or []) if c.get("id")}
+
+    try:
+        for count, c in enumerate(cases, start=1):
+            cid = c.get("id")
+            text = c["response_text"]
+            expected_tier = c.get("expected_tier")
+            expected_flags = c.get("expected_flags", {})
+
+            if cid and cid in cached_map:
+                cached_rep = cached_map[cid]
+                pred_tier = cached_rep["predicted_tier"]
+                served_model = cached_rep.get("served_model") or model_name
+                served_models_set.add(served_model)
+
+                actual_cost = cached_rep.get("cost_usd")
+                if actual_cost is not None:
+                    total_actual_cost += actual_cost
+                elif not is_mock:
+                    unbilled_calls += 1
+
+                est_cost = cached_rep.get("estimated_cost_usd") or 0.0
+                total_est_cost += est_cost
+                total_tokens += cached_rep.get("input_tokens") or 0
+
+                res_tier_probs = cached_rep.get("tier_probabilities") or {}
+                flag_report = cached_rep.get("flags") or {}
+                res_flags = {fid: d.get("predicted") for fid, d in flag_report.items() if isinstance(d, dict)}
+                pred_confidence = cached_rep.get("tier_confidence") or 0.0
+                res_reg_score = cached_rep.get("technicality_score") or 0.0
+            else:
+                if not is_mock and max_spend is not None and total_actual_cost > max_spend:
+                    if checkpoint_path:
+                        save_checkpoint(checkpoint_path, case_reports, cached_petri)
+                    part_m = build_advice_metrics(
+                        len(case_reports), has_ground_truth, exact_matches, within_one, gold_tiers,
+                        prob_vectors, tier_order, flag_stats, confusion, total_actual_cost, total_est_cost,
+                        total_tokens, served_models_set, unbilled_calls
+                    )
+                    raise EvaluationInterruptedError(
+                        f"Live spend ${total_actual_cost:.6f} exceeded max_spend ceiling ${max_spend:.6f}",
+                        exit_code=6,
+                        metrics=part_m,
+                        case_reports=case_reports,
+                    )
+
+                res = classifier.classify(text, model=model_name)
+                pred_tier = res.tier
+                served_model = res.raw_response.model or model_name
+                served_models_set.add(served_model)
+
+                if is_mock:
+                    actual_cost = 0.0
+                else:
+                    if res.cost_usd is None:
+                        actual_cost = None
+                        unbilled_calls += 1
+                    else:
+                        actual_cost = res.cost_usd
+                        total_actual_cost += actual_cost
+                est_cost = res.estimated_cost_usd or 0.0
+                total_est_cost += est_cost
+                total_tokens += res.input_tokens
+                res_tier_probs = res.tier_probabilities
+                res_flags = res.flags
+                pred_confidence = res.tier_confidence
+                res_reg_score = res.register_score
+
+                flag_report = {}
+                for fid, exp_val in expected_flags.items():
+                    if fid not in res.flags:
+                        raise ValueError(
+                            f"Classifier response missing expected flag {fid!r} present in reference judgment"
+                        )
+                    got_val = res.flags[fid]
+                    flag_report[fid] = {
+                        "expected": exp_val,
+                        "predicted": got_val,
+                        "probability": res.flag_probabilities.get(fid),
+                    }
+                for fid, got_val in res.flags.items():
+                    if fid not in flag_report:
+                        flag_report[fid] = {
+                            "expected": None,
+                            "predicted": got_val,
+                            "probability": res.flag_probabilities.get(fid),
+                        }
+
+            pred_idx = tier_rank.get(pred_tier, -1)
+            gold_idx = tier_rank.get(expected_tier, -1) if expected_tier else -1
+
+            is_exact = False
+            is_within_one = False
+            if has_ground_truth and expected_tier is not None:
+                if gold_idx != -1 and pred_idx != -1 and confusion is not None:
+                    confusion[gold_idx][pred_idx] += 1
+                    if pred_tier == expected_tier:
+                        exact_matches += 1
+                        is_exact = True
+                    if abs(pred_idx - gold_idx) <= 1:
+                        within_one += 1
+                        is_within_one = True
+
+                prob_vectors.append(res_tier_probs)
+                gold_tiers.append(expected_tier)
+
+            for fid, exp_val in expected_flags.items():
+                got_val = res_flags.get(fid)
+                stats = flag_stats.setdefault(fid, {"tp": 0, "tn": 0, "fp": 0, "fn": 0})
+                if exp_val and got_val:
+                    stats["tp"] += 1
+                elif not exp_val and not got_val:
+                    stats["tn"] += 1
+                elif not exp_val and got_val:
+                    stats["fp"] += 1
+                else:
+                    stats["fn"] += 1
+
+            case_reports.append({
+                "id": c.get("id"),
+                "response_text": text,
+                "expected_tier": expected_tier,
+                "primary_judge_tier": c.get("primary_judge_tier"),
+                "predicted_tier": pred_tier,
+                "tier_confidence": pred_confidence,
+                "is_exact": is_exact if has_ground_truth else None,
+                "is_within_one": is_within_one if has_ground_truth else None,
+                "tier_probabilities": res_tier_probs,
+                "flags": flag_report,
+                "technicality_score": res_reg_score,
+                "served_model": served_model,
+                "cost_usd": actual_cost,
+                "estimated_cost_usd": est_cost,
+            })
+
+            if checkpoint_path and (count % checkpoint_interval == 0 or count == len(cases)):
+                save_checkpoint(checkpoint_path, case_reports, cached_petri)
+
+    except EvaluationInterruptedError:
+        raise
+    except Exception as exc:
+        if checkpoint_path and case_reports:
+            save_checkpoint(checkpoint_path, case_reports, cached_petri)
+        part_m = build_advice_metrics(
+            len(case_reports), has_ground_truth, exact_matches, within_one, gold_tiers,
+            prob_vectors, tier_order, flag_stats, confusion, total_actual_cost, total_est_cost,
+            total_tokens, served_models_set, unbilled_calls
+        ) if case_reports else None
+        raise EvaluationInterruptedError(
+            f"Classifier error during advice evaluation: {exc}",
+            exit_code=1,
+            metrics=part_m,
+            case_reports=case_reports,
+        ) from exc
+
+    metrics = build_advice_metrics(
+        len(cases), has_ground_truth, exact_matches, within_one, gold_tiers,
+        prob_vectors, tier_order, flag_stats, confusion, total_actual_cost, total_est_cost,
+        total_tokens, served_models_set, unbilled_calls
+    )
     return metrics, case_reports
 
 
@@ -248,53 +394,104 @@ def evaluate_petri_classifier(
     max_conversations: int = 5,
     model_name: str = "typesafe/jev-1.13",
     is_mock: bool = True,
+    checkpoint_path: Path | None = None,
+    cached_petri: list[dict[str, Any]] | None = None,
+    prior_advice_cases: list[dict[str, Any]] | None = None,
+    prior_metrics: EvaluationMetrics | None = None,
+    max_spend: float | None = None,
+    checkpoint_interval: int = 25,
 ) -> list[dict[str, Any]]:
     """Evaluate PetriRegisterClassifier on multi-turn conversation transcripts."""
     if max_conversations < 0:
         raise ValueError(f"max_conversations must be non-negative (got {max_conversations}; use 0 for all)")
-    results = []
+    results: list[dict[str, Any]] = []
     conversations_count = 0
-    with open(transcripts_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            rec = json.loads(line)
-            conv_id = rec.get("conversation_id", "conv")[:12]
-            turns = rec.get("turns", [])
-            has_assistant_turn = False
-            for i, t in enumerate(turns):
-                if t.get("role") == "assistant":
-                    has_assistant_turn = True
-                    asst_text = t.get("text", "")
-                    user_turn = turns[i - 1].get("text", "") if i > 0 else None
-                    prior = " ".join(pt.get("text", "") for pt in turns[: max(0, i - 1)]) if i > 1 else None
+    cached_turn_map = {(p["conversation_id"], p["turn_index"]): p for p in (cached_petri or [])}
+    current_cost = prior_metrics.total_cost_usd if prior_metrics else 0.0
 
-                    res = classifier.classify_turn(
-                        assistant_turn=asst_text,
-                        user_turn=user_turn,
-                        prior_context=prior,
-                        model=model_name,
-                    )
-                    actual_cost: float | None = 0.0 if is_mock else res.cost_usd
-                    served_m = res.raw_response.model or model_name
-                    results.append({
-                        "conversation_id": conv_id,
-                        "turn_index": i,
-                        "tone_choice": res.tone_choice,
-                        "tone_confidence": res.tone_confidence,
-                        "has_register_drift": res.has_register_drift,
-                        "drift_probability": res.drift_probability,
-                        "register_score": res.register_score,
-                        "cost_usd": actual_cost,
-                        "estimated_cost_usd": res.estimated_cost_usd or 0.0,
-                        "input_tokens": res.input_tokens,
-                        "served_model": served_m,
-                    })
-            if has_assistant_turn:
-                conversations_count += 1
-                if max_conversations > 0 and conversations_count >= max_conversations:
-                    break
+    try:
+        with open(transcripts_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                rec = json.loads(line)
+                conv_id = str(rec.get("conversation_id", "conv"))
+                turns = rec.get("turns", [])
+                has_assistant_turn = False
+                for i, t in enumerate(turns):
+                    if t.get("role") == "assistant":
+                        has_assistant_turn = True
+                        if (conv_id, i) in cached_turn_map:
+                            results.append(cached_turn_map[(conv_id, i)])
+                            continue
+
+                        if not is_mock and max_spend is not None:
+                            active_cost = current_cost + sum(r["cost_usd"] for r in results if r["cost_usd"] is not None)
+                            if active_cost > max_spend:
+                                if checkpoint_path:
+                                    save_checkpoint(checkpoint_path, prior_advice_cases or [], results)
+                                if prior_metrics:
+                                    update_metrics_with_petri(prior_metrics, results)
+                                raise EvaluationInterruptedError(
+                                    f"Live spend ${active_cost:.6f} exceeded max_spend ceiling ${max_spend:.6f}",
+                                    exit_code=6,
+                                    metrics=prior_metrics,
+                                    case_reports=prior_advice_cases,
+                                    petri_results=results,
+                                )
+
+                        asst_text = t.get("text", "")
+                        user_turn = turns[i - 1].get("text", "") if i > 0 else None
+                        prior = " ".join(pt.get("text", "") for pt in turns[: max(0, i - 1)]) if i > 1 else None
+
+                        res = classifier.classify_turn(
+                            assistant_turn=asst_text,
+                            user_turn=user_turn,
+                            prior_context=prior,
+                            model=model_name,
+                        )
+                        actual_cost: float | None = 0.0 if is_mock else res.cost_usd
+                        served_m = res.raw_response.model or model_name
+                        results.append({
+                            "conversation_id": conv_id,
+                            "turn_index": i,
+                            "tone_choice": res.tone_choice,
+                            "tone_confidence": res.tone_confidence,
+                            "has_register_drift": res.has_register_drift,
+                            "drift_probability": res.drift_probability,
+                            "register_score": res.register_score,
+                            "cost_usd": actual_cost,
+                            "estimated_cost_usd": res.estimated_cost_usd or 0.0,
+                            "input_tokens": res.input_tokens,
+                            "served_model": served_m,
+                        })
+                        if checkpoint_path and len(results) % checkpoint_interval == 0:
+                            save_checkpoint(checkpoint_path, prior_advice_cases or [], results)
+
+                if has_assistant_turn:
+                    conversations_count += 1
+                    if max_conversations > 0 and conversations_count >= max_conversations:
+                        break
+
+        if checkpoint_path:
+            save_checkpoint(checkpoint_path, prior_advice_cases or [], results)
+
+    except EvaluationInterruptedError:
+        raise
+    except Exception as exc:
+        if checkpoint_path:
+            save_checkpoint(checkpoint_path, prior_advice_cases or [], results)
+        if prior_metrics:
+            update_metrics_with_petri(prior_metrics, results)
+        raise EvaluationInterruptedError(
+            f"Classifier error during Petri evaluation: {exc}",
+            exit_code=1,
+            metrics=prior_metrics,
+            case_reports=prior_advice_cases,
+            petri_results=results,
+        ) from exc
+
     return results
 
 
@@ -415,12 +612,18 @@ def load_advice_archive_with_judgments(
     archive_path: Path,
     judgments_path: Path | None = None,
     max_samples: int = 10,
-) -> list[dict[str, Any]]:
+    allow_unmatched: bool = False,
+) -> tuple[list[dict[str, Any]], int]:
     """Sample real responses from an existing advice responses archive (responses_*.jsonl)
-    paired with Claude Haiku's judgments if judgments_*.jsonl exists."""
+    paired with Claude Haiku's judgments by response_sha256 if judgments_*.jsonl exists.
+
+    Returns:
+        tuple of (cases, unmatched_count)
+    """
     if max_samples < 0:
         raise ValueError(f"max_samples must be non-negative (got {max_samples}; use 0 for all)")
-    haiku_judgments = {}
+
+    haiku_judgments: dict[str, dict[str, Any]] = {}
     if judgments_path and judgments_path.is_file():
         with open(judgments_path, encoding="utf-8") as f:
             for line in f:
@@ -428,11 +631,12 @@ def load_advice_archive_with_judgments(
                 if not line:
                     continue
                 rec = json.loads(line)
-                if rec.get("tier"):
-                    key = (rec.get("stimulus_id"), rec.get("arm"), rec.get("sample_k"))
-                    haiku_judgments[key] = {
+                rsha = rec.get("response_sha256")
+                if rsha and rec.get("tier"):
+                    haiku_judgments[rsha] = {
                         "tier": rec["tier"],
                         "flags": rec.get("flags") or {},
+                        "model": rec.get("model"),
                     }
 
     with open(archive_path, encoding="utf-8") as f:
@@ -443,24 +647,55 @@ def load_advice_archive_with_judgments(
         raise ValueError(f"Broken hash chain in response archive {archive_path}: {msg}")
 
     cases = []
+    unmatched_count = 0
     for rec in rows:
         if rec.get("record_type") == "advice" and rec.get("response_text"):
             sid = rec.get("stimulus_id")
             arm = rec.get("arm")
             k = rec.get("sample_k")
-            pj_data = haiku_judgments.get((sid, arm, k), {})
-            pj_tier = pj_data.get("tier")
-            pj_flags = pj_data.get("flags", {})
+            model_req = rec.get("model_requested") or rec.get("model") or "unknown"
+            rsha = rec.get("response_sha256")
+
+            pj_tier = None
+            pj_flags = {}
+            if haiku_judgments:
+                if rsha and rsha in haiku_judgments:
+                    pj_data = haiku_judgments[rsha]
+                    pj_tier = pj_data.get("tier")
+                    pj_flags = pj_data.get("flags") or {}
+                else:
+                    unmatched_count += 1
+                    if not allow_unmatched:
+                        continue
+            case_id = f"{sid}_{arm}_{k}_{model_req}"
+            if rsha:
+                case_id = f"{case_id}_{rsha[:8]}"
             cases.append({
-                "id": f"{sid}_{arm}_{k}",
+                "id": case_id,
                 "response_text": rec["response_text"],
+                "response_sha256": rsha,
+                "model_requested": model_req,
                 "expected_tier": pj_tier,
                 "primary_judge_tier": pj_tier,
                 "expected_flags": pj_flags,
             })
             if max_samples > 0 and len(cases) >= max_samples:
                 break
-    return cases
+
+    if haiku_judgments and not cases:
+        raise ValueError(
+            f"No advice responses matched judgments in {judgments_path} by response_sha256 "
+            f"({unmatched_count} unmatched responses found)."
+        )
+
+    if unmatched_count > 0 and haiku_judgments:
+        print(
+            f"Paired {len(cases)} responses with judgments by response_sha256 "
+            f"({unmatched_count} unjudged responses omitted).",
+            file=sys.stderr,
+        )
+
+    return cases, unmatched_count
 
 
 def build_mock_client_for_cases(cases: list[dict[str, Any]], tier_order: list[str]) -> JevClient:
@@ -533,6 +768,64 @@ def build_mock_client_for_cases(cases: list[dict[str, Any]], tier_order: list[st
     return MockJevClient(api_key="mock")
 
 
+def write_reports(
+    out_markdown: str | None,
+    out_json: str | None,
+    metrics: EvaluationMetrics,
+    case_reports: list[dict[str, Any]],
+    model_name: str,
+    is_mock: bool,
+    prov: dict[str, Any],
+    petri_results: list[dict[str, Any]] | None = None,
+    interrupted_reason: str | None = None,
+) -> None:
+    """Format and write human-readable markdown and structured JSON reports."""
+    md_report = format_markdown_report(
+        metrics,
+        case_reports,
+        model_name=model_name,
+        is_mock=is_mock,
+        petri_results=petri_results,
+    )
+    if interrupted_reason:
+        md_report = (
+            f"> [!WARNING]\n"
+            f"> **Evaluation Interrupted**: {interrupted_reason}\n"
+            f"> Intermediate progress was saved to checkpoint; report reflects cases evaluated prior to interruption.\n\n"
+            + md_report
+        )
+
+    if out_markdown:
+        out_p = Path(out_markdown)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(md_report, encoding="utf-8")
+        print(f"Saved Markdown report -> {out_p}")
+    else:
+        print("\n" + md_report + "\n")
+
+    if out_json:
+        out_json_p = Path(out_json)
+        out_json_p.parent.mkdir(parents=True, exist_ok=True)
+        prov_copy = dict(prov)
+        prov_copy["models_served"] = metrics.served_models
+        if interrupted_reason:
+            prov_copy["interrupted"] = {
+                "reason": interrupted_reason,
+                "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
+        if petri_results is not None and "petri_transcripts" in prov_copy:
+            prov_copy["petri_transcripts"]["turns_evaluated"] = len(petri_results)
+
+        payload = {
+            "metadata": prov_copy,
+            "metrics": asdict(metrics),
+            "cases": case_reports,
+            "petri_cases": petri_results or [],
+        }
+        out_json_p.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"Saved JSON report -> {out_json_p}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Audit and benchmark classifier models.")
     parser.add_argument("--golden", default="data/classifier_benchmark_golden.json", help="Path to golden benchmark JSON")
@@ -546,6 +839,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model", default="typesafe/jev-1.13", help="Classifier model name")
     parser.add_argument("--max-spend", type=float, default=0.25, help="Hard spend ceiling in USD")
     parser.add_argument("--ci-live", action="store_true", help="Gated CI run mode using live OPENROUTER_API_KEY in GitHub Actions")
+    parser.add_argument("--checkpoint", help="Path to checkpoint JSON file to resume from and save intermediate state to")
     parser.add_argument("--out-markdown", help="Path to save markdown report")
     parser.add_argument("--out-json", help="Path to save structured JSON report")
     args = parser.parse_args(argv)
@@ -583,6 +877,7 @@ def main(argv: list[str] | None = None) -> int:
     judg_p: Path | None = None
     golden_path: Path | None = None
     petri_p: Path | None = None
+    unmatched_count = 0
 
     if args.archive:
         arch_p = Path(args.archive)
@@ -600,7 +895,7 @@ def main(argv: list[str] | None = None) -> int:
                 judg_p = cand_judg
 
         try:
-            cases = load_advice_archive_with_judgments(arch_p, judgments_path=judg_p, max_samples=args.archive_samples)
+            cases, unmatched_count = load_advice_archive_with_judgments(arch_p, judgments_path=judg_p, max_samples=args.archive_samples)
         except ValueError as exc:
             print(f"Refused: {exc}", file=sys.stderr)
             return 1
@@ -627,6 +922,23 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Refused: Petri transcripts file not found: {petri_p}", file=sys.stderr)
             return 1
 
+    # Checkpoint configuration
+    checkpoint_path: Path | None = Path(args.checkpoint) if args.checkpoint else None
+    cached_advice: list[dict[str, Any]] = []
+    cached_petri: list[dict[str, Any]] = []
+    if checkpoint_path and checkpoint_path.is_file():
+        try:
+            cp_data = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+            cached_advice = cp_data.get("advice_cases") or []
+            cached_petri = cp_data.get("petri_cases") or []
+            print(
+                f"Resuming from checkpoint {checkpoint_path}: "
+                f"{len(cached_advice)} advice cases, {len(cached_petri)} petri turns cached.",
+                file=sys.stderr,
+            )
+        except Exception as exc:
+            print(f"Warning: Failed to load checkpoint {checkpoint_path} ({exc}); starting fresh.", file=sys.stderr)
+
     # Determine execution mode: local runs are mock-only ($0); live requires --ci-live in CI with env key
     if args.ci_live:
         if os.environ.get("GITHUB_ACTIONS") != "true":
@@ -641,114 +953,127 @@ def main(argv: list[str] | None = None) -> int:
         is_live = False
         client = build_mock_client_for_cases(cases, tier_order=tier_order)
 
-    classifier = AdviceAnswerClassifier(rubric=rubric_doc, client=client)
-    metrics, case_reports = evaluate_advice_classifier(
-        cases=cases,
-        classifier=classifier,
-        tier_order=tier_order,
-        model_name=args.model,
-        is_mock=not is_live,
-    )
-
-    petri_results = None
+    rubric_sha = hashlib.sha256(rubric_path.read_bytes()).hexdigest()
+    prov: dict[str, Any] = {
+        "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "model_requested": args.model,
+        "models_served": [],
+        "is_mock": not is_live,
+        "rubric": {
+            "path": str(args.rubric),
+            "sha256": rubric_sha,
+        },
+        "register_rubric": {
+            "path": str(reg_rubric_path),
+            "sha256": reg_rubric_sha,
+        },
+        "parameters": {
+            "archive_samples": (args.archive_samples if args.archive_samples > 0 else "all") if arch_p else None,
+            "petri_conversations": (args.petri_conversations if args.petri_conversations > 0 else "all") if petri_p else None,
+            "max_spend": args.max_spend,
+        },
+    }
+    if arch_p:
+        prov["advice_archive"] = {
+            "path": str(arch_p),
+            "sha256": input_sha,
+            "samples_evaluated": len(cases),
+            "unmatched_responses_omitted": unmatched_count,
+        }
+        if judg_p and judg_p.is_file():
+            prov["advice_judgments"] = {
+                "path": str(judg_p),
+                "sha256": hashlib.sha256(judg_p.read_bytes()).hexdigest(),
+            }
+    elif golden_path:
+        prov["golden_benchmark"] = {
+            "path": str(golden_path),
+            "sha256": input_sha,
+            "cases_evaluated": len(cases),
+        }
     if petri_p:
-        petri_clf = PetriRegisterClassifier(client=client)
-        petri_results = evaluate_petri_classifier(
-            transcripts_path=petri_p,
-            classifier=petri_clf,
-            max_conversations=args.petri_conversations,
+        prov["petri_transcripts"] = {
+            "path": str(petri_p),
+            "sha256": hashlib.sha256(petri_p.read_bytes()).hexdigest(),
+            "max_conversations": args.petri_conversations if args.petri_conversations > 0 else "all",
+            "turns_evaluated": 0,
+        }
+    if checkpoint_path:
+        prov["checkpoint"] = {
+            "path": str(checkpoint_path),
+            "resumed_advice_count": len(cached_advice),
+            "resumed_petri_count": len(cached_petri),
+        }
+
+    classifier = AdviceAnswerClassifier(rubric=rubric_doc, client=client)
+    interrupted_exc: EvaluationInterruptedError | None = None
+    metrics: EvaluationMetrics | None = None
+    case_reports: list[dict[str, Any]] = []
+    petri_results: list[dict[str, Any]] | None = None
+
+    try:
+        metrics, case_reports = evaluate_advice_classifier(
+            cases=cases,
+            classifier=classifier,
+            tier_order=tier_order,
             model_name=args.model,
             is_mock=not is_live,
+            checkpoint_path=checkpoint_path,
+            cached_cases=cached_advice,
+            cached_petri=cached_petri,
+            max_spend=args.max_spend if is_live else None,
         )
-        if not petri_results:
-            print(f"Refused: No evaluable assistant turns found in Petri transcripts {petri_p}.", file=sys.stderr)
-            return 1
 
-        petri_cost = sum(r["cost_usd"] for r in petri_results if r["cost_usd"] is not None)
-        unbilled_petri = sum(1 for r in petri_results if r["cost_usd"] is None)
-        petri_est_cost = sum(r["estimated_cost_usd"] for r in petri_results)
-        petri_tokens = sum(r.get("input_tokens", 0) for r in petri_results)
-        metrics.total_cost_usd = round(metrics.total_cost_usd + petri_cost, 6)
-        metrics.total_estimated_cost_usd = round(metrics.total_estimated_cost_usd + petri_est_cost, 6)
-        metrics.total_input_tokens += petri_tokens
-        metrics.unbilled_calls_count += unbilled_petri
-        for r in petri_results:
-            sm = r.get("served_model")
-            if sm and sm not in metrics.served_models:
-                metrics.served_models.append(sm)
-                metrics.served_models.sort()
-
-    if is_live and metrics.total_cost_usd > args.max_spend:
-        print(f"Refused: Total spend ${metrics.total_cost_usd:.6f} exceeded max_spend ceiling ${args.max_spend:.6f}", file=sys.stderr)
-        return 6
-
-    md_report = format_markdown_report(metrics, case_reports, model_name=args.model, is_mock=not is_live, petri_results=petri_results)
-
-    if args.out_markdown:
-        out_p = Path(args.out_markdown)
-        out_p.parent.mkdir(parents=True, exist_ok=True)
-        out_p.write_text(md_report, encoding="utf-8")
-        print(f"Saved Markdown report -> {out_p}")
-    else:
-        print("\n" + md_report + "\n")
-
-    if args.out_json:
-        out_json_p = Path(args.out_json)
-        out_json_p.parent.mkdir(parents=True, exist_ok=True)
-        rubric_sha = hashlib.sha256(rubric_path.read_bytes()).hexdigest()
-
-        prov: dict[str, Any] = {
-            "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "model_requested": args.model,
-            "models_served": metrics.served_models,
-            "is_mock": not is_live,
-            "rubric": {
-                "path": str(args.rubric),
-                "sha256": rubric_sha,
-            },
-            "register_rubric": {
-                "path": str(reg_rubric_path),
-                "sha256": reg_rubric_sha,
-            },
-            "parameters": {
-                "archive_samples": (args.archive_samples if args.archive_samples > 0 else "all") if arch_p else None,
-                "petri_conversations": (args.petri_conversations if args.petri_conversations > 0 else "all") if petri_p else None,
-                "max_spend": args.max_spend,
-            },
-        }
-        if arch_p:
-            prov["advice_archive"] = {
-                "path": str(arch_p),
-                "sha256": input_sha,
-                "samples_evaluated": len(cases),
-            }
-            if judg_p and judg_p.is_file():
-                prov["advice_judgments"] = {
-                    "path": str(judg_p),
-                    "sha256": hashlib.sha256(judg_p.read_bytes()).hexdigest(),
-                }
-        elif golden_path:
-            prov["golden_benchmark"] = {
-                "path": str(golden_path),
-                "sha256": input_sha,
-                "cases_evaluated": len(cases),
-            }
         if petri_p:
-            prov["petri_transcripts"] = {
-                "path": str(petri_p),
-                "sha256": hashlib.sha256(petri_p.read_bytes()).hexdigest(),
-                "max_conversations": args.petri_conversations if args.petri_conversations > 0 else "all",
-                "turns_evaluated": len(petri_results) if petri_results else 0,
-            }
+            petri_clf = PetriRegisterClassifier(client=client)
+            petri_results = evaluate_petri_classifier(
+                transcripts_path=petri_p,
+                classifier=petri_clf,
+                max_conversations=args.petri_conversations,
+                model_name=args.model,
+                is_mock=not is_live,
+                checkpoint_path=checkpoint_path,
+                cached_petri=cached_petri,
+                prior_advice_cases=case_reports,
+                prior_metrics=metrics,
+                max_spend=args.max_spend if is_live else None,
+            )
+            if not petri_results:
+                print(f"Refused: No evaluable assistant turns found in Petri transcripts {petri_p}.", file=sys.stderr)
+                return 1
+            update_metrics_with_petri(metrics, petri_results)
 
-        payload = {
-            "metadata": prov,
-            "metrics": asdict(metrics),
-            "cases": case_reports,
-            "petri_cases": petri_results or [],
-        }
-        out_json_p.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        print(f"Saved JSON report -> {out_json_p}")
+    except EvaluationInterruptedError as exc:
+        interrupted_exc = exc
+        metrics = exc.metrics
+        case_reports = exc.case_reports or []
+        petri_results = exc.petri_results
+
+    if is_live and metrics and metrics.total_cost_usd > args.max_spend and not interrupted_exc:
+        interrupted_exc = EvaluationInterruptedError(
+            f"Total spend ${metrics.total_cost_usd:.6f} exceeded max_spend ceiling ${args.max_spend:.6f}",
+            exit_code=6,
+            metrics=metrics,
+            case_reports=case_reports,
+            petri_results=petri_results,
+        )
+
+    if metrics and case_reports:
+        write_reports(
+            out_markdown=args.out_markdown,
+            out_json=args.out_json,
+            metrics=metrics,
+            case_reports=case_reports,
+            model_name=args.model,
+            is_mock=not is_live,
+            prov=prov,
+            petri_results=petri_results,
+            interrupted_reason=str(interrupted_exc) if interrupted_exc else None,
+        )
+
+    if interrupted_exc:
+        print(f"Refused: {interrupted_exc}", file=sys.stderr)
+        return interrupted_exc.exit_code
 
     return 0
 

@@ -235,3 +235,81 @@ def test_petri_register_classifier_workflow():
     assert res.register_score == 1.2
     assert res.input_tokens == 310
 
+
+def test_jev_client_retry_backoff_success():
+    import urllib.error
+
+    mock_resp_json = json.dumps({
+        "id": "gen-mock-retry",
+        "model": "typesafe/jev-1.13",
+        "answers": {
+            "is_valid": {"type": "noul", "noul": 0.88, "confidence": 0.90},
+        },
+        "usage": {"input_tokens": 100, "output_tokens": 0, "cost": 0.0000042},
+    }).encode("utf-8")
+
+    client = JevClient(api_key="mock-key", max_retries=2, initial_backoff=0.01)
+    mock_err = urllib.error.HTTPError(
+        url="http://test",
+        code=429,
+        msg="Too Many Requests",
+        hdrs={},  # type: ignore
+        fp=MagicMock(read=lambda: b'{"error": "rate limit"}'),
+    )
+    mock_cm = MagicMock()
+    mock_cm.read.return_value = mock_resp_json
+    mock_cm.__enter__.return_value = mock_cm
+
+    with patch("urllib.request.urlopen", side_effect=[mock_err, mock_cm]) as mock_urlopen, patch("time.sleep") as mock_sleep:
+        res = client.decide(state="test state", questions={"is_valid": NoulQuestion("valid?")})
+        assert res.id == "gen-mock-retry"
+        assert res.answers["is_valid"].noul == 0.88
+        assert mock_urlopen.call_count == 2
+        mock_sleep.assert_called_once_with(0.01)
+
+
+def test_jev_client_retry_exhausted():
+    import urllib.error
+
+    client = JevClient(api_key="mock-key", max_retries=2, initial_backoff=0.01)
+    mock_err = urllib.error.HTTPError(
+        url="http://test",
+        code=500,
+        msg="Internal Server Error",
+        hdrs={},  # type: ignore
+        fp=MagicMock(read=lambda: b'{"error": "server error"}'),
+    )
+
+    with patch("urllib.request.urlopen", side_effect=mock_err) as mock_urlopen, patch("time.sleep") as mock_sleep:
+        with pytest.raises(JevApiError) as exc_info:
+            client.decide(state="test state", questions={"is_valid": NoulQuestion("valid?")})
+        assert exc_info.value.status_code == 500
+        assert mock_urlopen.call_count == 3  # initial + 2 retries
+        assert mock_sleep.call_count == 2
+
+
+def test_jev_client_url_error_retry():
+    import urllib.error
+
+    mock_resp_json = json.dumps({
+        "id": "gen-mock-url-retry",
+        "model": "typesafe/jev-1.13",
+        "answers": {
+            "is_valid": {"type": "noul", "noul": 0.77, "confidence": 0.85},
+        },
+        "usage": {"input_tokens": 80, "output_tokens": 0, "cost": 0.0000035},
+    }).encode("utf-8")
+
+    client = JevClient(api_key="mock-key", max_retries=1, initial_backoff=0.01)
+    mock_url_err = urllib.error.URLError(reason="connection reset")
+    mock_cm = MagicMock()
+    mock_cm.read.return_value = mock_resp_json
+    mock_cm.__enter__.return_value = mock_cm
+
+    with patch("urllib.request.urlopen", side_effect=[mock_url_err, mock_cm]) as mock_urlopen, patch("time.sleep") as mock_sleep:
+        res = client.decide(state="test state", questions={"is_valid": NoulQuestion("valid?")})
+        assert res.id == "gen-mock-url-retry"
+        assert mock_urlopen.call_count == 2
+        mock_sleep.assert_called_once_with(0.01)
+
+

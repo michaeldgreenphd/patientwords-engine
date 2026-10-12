@@ -165,6 +165,156 @@ def test_audit_calibration_all_mode(tmp_path):
     assert doc["metadata"]["parameters"]["archive_samples"] == "all"
     assert doc["metadata"]["petri_transcripts"]["max_conversations"] == "all"
     assert len(doc["cases"]) > 1000
+    assert doc["metadata"]["advice_archive"]["unmatched_responses_omitted"] >= 0
     conv_ids = {p["conversation_id"] for p in doc["petri_cases"]}
     assert len(conv_ids) == 30
+
+
+def test_load_advice_archive_joined_by_response_sha256(tmp_path):
+    from scripts.advice_eval import canonical_json, sha256_text
+
+    def make_record(rec_data: dict, prev_sha: str | None) -> dict:
+        body = dict(rec_data)
+        body["prev_sha256"] = prev_sha
+        body["record_sha256"] = sha256_text(canonical_json(body))
+        return body
+
+    rec1 = make_record({
+        "record_type": "advice",
+        "stimulus_id": "stim_01",
+        "arm": "patient",
+        "sample_k": 1,
+        "model_requested": "vendor/model-a",
+        "response_text": "Response text A from model A",
+        "response_sha256": "aaaa1111222233334444555566667777888899990000aaaabbbbccccddddeeee",
+    }, None)
+
+    rec2 = make_record({
+        "record_type": "advice",
+        "stimulus_id": "stim_01",
+        "arm": "patient",
+        "sample_k": 1,
+        "model_requested": "vendor/model-b",
+        "response_text": "Response text B from model B",
+        "response_sha256": "bbbb1111222233334444555566667777888899990000aaaabbbbccccddddeeee",
+    }, rec1["record_sha256"])
+
+    rec3 = make_record({
+        "record_type": "advice",
+        "stimulus_id": "stim_01",
+        "arm": "patient",
+        "sample_k": 1,
+        "model_requested": "vendor/model-c",
+        "response_text": "Response text C from model C (unparseable judgment)",
+        "response_sha256": "cccc1111222233334444555566667777888899990000aaaabbbbccccddddeeee",
+    }, rec2["record_sha256"])
+
+    resp_file = tmp_path / "responses.jsonl"
+    resp_file.write_text(
+        "\n".join(json.dumps(r) for r in [rec1, rec2, rec3]) + "\n",
+        encoding="utf-8",
+    )
+
+    # Synthetic judgments file keyed by response_sha256
+    j1 = {
+        "response_sha256": rec1["response_sha256"],
+        "tier": "routine",
+        "flags": {"safety_netting": True},
+    }
+    j2 = {
+        "response_sha256": rec2["response_sha256"],
+        "tier": "emergency",
+        "flags": {"safety_netting": False},
+    }
+    j3 = {
+        "response_sha256": rec3["response_sha256"],
+        "tier": None,
+        "judge_error": "unparseable or unknown tier",
+    }
+    judg_file = tmp_path / "judgments.jsonl"
+    judg_file.write_text(
+        "\n".join(json.dumps(j) for j in [j1, j2, j3]) + "\n",
+        encoding="utf-8",
+    )
+
+    cases, unmatched = load_advice_archive_with_judgments(resp_file, judgments_path=judg_file, max_samples=0)
+    assert len(cases) == 2
+    assert unmatched == 1
+
+    # Verify each case was paired strictly with its OWN judgment
+    assert cases[0]["model_requested"] == "vendor/model-a"
+    assert cases[0]["expected_tier"] == "routine"
+    assert cases[0]["expected_flags"]["safety_netting"] is True
+    assert "aaaa1111" in cases[0]["id"]
+
+    assert cases[1]["model_requested"] == "vendor/model-b"
+    assert cases[1]["expected_tier"] == "emergency"
+    assert cases[1]["expected_flags"]["safety_netting"] is False
+    assert "bbbb1111" in cases[1]["id"]
+
+    # Verify refusal when no responses match judgments
+    mismatched_judg = tmp_path / "mismatched_judg.jsonl"
+    mismatched_judg.write_text(
+        json.dumps({"response_sha256": "nonexistent_sha", "tier": "routine"}) + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="No advice responses matched judgments"):
+        load_advice_archive_with_judgments(resp_file, judgments_path=mismatched_judg, max_samples=0)
+
+
+def test_audit_calibration_checkpoint_save_and_resume(tmp_path):
+    checkpoint_file = tmp_path / "checkpoint.json"
+    out_md = tmp_path / "report_cp.md"
+    out_json = tmp_path / "report_cp.json"
+
+    # Initial run with checkpoint argument
+    ret = main([
+        "--golden", "data/classifier_benchmark_golden.json",
+        "--checkpoint", str(checkpoint_file),
+        "--out-markdown", str(out_md),
+        "--out-json", str(out_json),
+    ])
+    assert ret == 0
+    assert checkpoint_file.is_file()
+
+    cp_doc = json.loads(checkpoint_file.read_text(encoding="utf-8"))
+    assert len(cp_doc["advice_cases"]) == 6
+
+    # Second run resumes using the checkpoint file
+    out_md2 = tmp_path / "report_cp2.md"
+    out_json2 = tmp_path / "report_cp2.json"
+    ret2 = main([
+        "--golden", "data/classifier_benchmark_golden.json",
+        "--checkpoint", str(checkpoint_file),
+        "--out-markdown", str(out_md2),
+        "--out-json", str(out_json2),
+    ])
+    assert ret2 == 0
+    doc2 = json.loads(out_json2.read_text(encoding="utf-8"))
+    assert doc2["metadata"]["checkpoint"]["resumed_advice_count"] == 6
+
+
+def test_audit_calibration_interrupted_warning_report(tmp_path):
+    from unittest.mock import patch
+    from scripts.audit_jev_calibration import EvaluationInterruptedError
+
+    out_md = tmp_path / "interrupted.md"
+    out_json = tmp_path / "interrupted.json"
+    checkpoint_file = tmp_path / "interrupted_checkpoint.json"
+
+    # Simulate an interruption during advice evaluation that raises EvaluationInterruptedError
+    with patch("scripts.audit_jev_calibration.evaluate_advice_classifier") as mock_eval:
+        mock_eval.side_effect = EvaluationInterruptedError(
+            "Live spend $0.150000 exceeded max_spend ceiling $0.100000",
+            exit_code=6,
+            metrics=None,
+            case_reports=[],
+        )
+        ret = main([
+            "--golden", "data/classifier_benchmark_golden.json",
+            "--checkpoint", str(checkpoint_file),
+            "--out-markdown", str(out_md),
+            "--out-json", str(out_json),
+        ])
+        assert ret == 6
 

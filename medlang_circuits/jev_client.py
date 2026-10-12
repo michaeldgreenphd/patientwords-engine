@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
@@ -234,10 +235,14 @@ class JevClient:
         api_key: str | None = None,
         base_url: str = OPENROUTER_DECISIONS_URL,
         timeout: float = 60.0,
+        max_retries: int = 3,
+        initial_backoff: float = 2.0,
     ):
         self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
         self.base_url = base_url
         self.timeout = timeout
+        self.max_retries = max_retries
+        self.initial_backoff = initial_backoff
 
     def decide(
         self,
@@ -245,7 +250,7 @@ class JevClient:
         questions: dict[str, Question],
         model: str = DEFAULT_JEV_MODEL,
     ) -> JevResponse:
-        """Call OpenRouter Decisions API and return typed response."""
+        """Call OpenRouter Decisions API with retry backoff and return typed response."""
         if not self.api_key:
             raise JevError("OPENROUTER_API_KEY is not set or provided")
 
@@ -264,13 +269,22 @@ class JevClient:
             method="POST",
         )
 
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as response:
-                resp_bytes = response.read()
-                data = json.loads(resp_bytes.decode("utf-8"))
-                return parse_decisions_response(data, requested_questions=questions)
-        except urllib.error.HTTPError as e:
-            err_body = e.read().decode("utf-8", errors="replace")
-            raise JevApiError(e.code, e.reason, body=err_body) from e
-        except urllib.error.URLError as e:
-            raise JevError(f"Network error connecting to {self.base_url}: {e.reason}") from e
+        for attempt in range(self.max_retries + 1):
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as response:
+                    resp_bytes = response.read()
+                    data = json.loads(resp_bytes.decode("utf-8"))
+                    return parse_decisions_response(data, requested_questions=questions)
+            except urllib.error.HTTPError as e:
+                err_body = e.read().decode("utf-8", errors="replace")
+                if e.code in {429, 500, 502, 503, 504} and attempt < self.max_retries:
+                    wait = self.initial_backoff * (2 ** attempt)
+                    time.sleep(wait)
+                    continue
+                raise JevApiError(e.code, e.reason, body=err_body) from e
+            except urllib.error.URLError as e:
+                if attempt < self.max_retries:
+                    wait = self.initial_backoff * (2 ** attempt)
+                    time.sleep(wait)
+                    continue
+                raise JevError(f"Network error connecting to {self.base_url}: {e.reason}") from e
