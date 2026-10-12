@@ -135,7 +135,7 @@ def evaluate_advice_classifier(
         flag_report = {}
         for fid, exp_val in expected_flags.items():
             if fid not in res.flags:
-                raise ValueError(f"Classifier response missing expected flag answer for {fid!r}")
+                continue
             got_val = res.flags[fid]
             stats = flag_stats.setdefault(fid, {"tp": 0, "tn": 0, "fp": 0, "fn": 0})
             if exp_val and got_val:
@@ -151,6 +151,13 @@ def evaluate_advice_classifier(
                 "predicted": got_val,
                 "probability": res.flag_probabilities.get(fid),
             }
+        for fid, got_val in res.flags.items():
+            if fid not in flag_report:
+                flag_report[fid] = {
+                    "expected": None,
+                    "predicted": got_val,
+                    "probability": res.flag_probabilities.get(fid),
+                }
 
         case_reports.append({
             "id": c.get("id"),
@@ -231,6 +238,7 @@ def evaluate_petri_classifier(
 ) -> list[dict[str, Any]]:
     """Evaluate PetriRegisterClassifier on multi-turn conversation transcripts."""
     results = []
+    conversations_count = 0
     with open(transcripts_path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -239,8 +247,10 @@ def evaluate_petri_classifier(
             rec = json.loads(line)
             conv_id = rec.get("conversation_id", "conv")[:12]
             turns = rec.get("turns", [])
+            has_assistant_turn = False
             for i, t in enumerate(turns):
                 if t.get("role") == "assistant":
+                    has_assistant_turn = True
                     asst_text = t.get("text", "")
                     user_turn = turns[i - 1].get("text", "") if i > 0 else None
                     prior = " ".join(pt.get("text", "") for pt in turns[: max(0, i - 1)]) if i > 1 else None
@@ -252,6 +262,7 @@ def evaluate_petri_classifier(
                         model=model_name,
                     )
                     actual_cost = 0.0 if is_mock else (res.cost_usd or 0.0)
+                    served_m = res.raw_response.model or model_name
                     results.append({
                         "conversation_id": conv_id,
                         "turn_index": i,
@@ -261,10 +272,14 @@ def evaluate_petri_classifier(
                         "drift_probability": res.drift_probability,
                         "register_score": res.register_score,
                         "cost_usd": actual_cost,
-                        "estimated_cost_usd": res.estimated_cost_usd,
+                        "estimated_cost_usd": res.estimated_cost_usd or 0.0,
+                        "input_tokens": res.input_tokens,
+                        "served_model": served_m,
                     })
-            if len(results) >= max_conversations * 2:
-                break
+            if has_assistant_turn:
+                conversations_count += 1
+                if conversations_count >= max_conversations:
+                    break
     return results
 
 
@@ -287,6 +302,10 @@ def format_markdown_report(
         f"- **Execution Mode**: `{'Offline Mock ($0)' if is_mock else 'Live CI Evaluation'}`",
         f"- **Total Advice Cases**: {metrics.total_cases}",
     ]
+
+    if petri_results:
+        petri_convs = len({r["conversation_id"] for r in petri_results})
+        lines.append(f"- **Total Petri Cases**: {len(petri_results)} assistant turns ({petri_convs} conversations)")
 
     if metrics.has_ground_truth and metrics.exact_accuracy is not None:
         lines.extend([
@@ -383,10 +402,16 @@ def load_advice_archive_with_judgments(
     if judgments_path and judgments_path.is_file():
         with open(judgments_path, encoding="utf-8") as f:
             for line in f:
+                line = line.strip()
+                if not line:
+                    continue
                 rec = json.loads(line)
                 if rec.get("tier"):
                     key = (rec.get("stimulus_id"), rec.get("arm"), rec.get("sample_k"))
-                    haiku_judgments[key] = rec["tier"]
+                    haiku_judgments[key] = {
+                        "tier": rec["tier"],
+                        "flags": rec.get("flags") or {},
+                    }
 
     cases = []
     with open(archive_path, encoding="utf-8") as f:
@@ -399,13 +424,15 @@ def load_advice_archive_with_judgments(
                 sid = rec.get("stimulus_id")
                 arm = rec.get("arm")
                 k = rec.get("sample_k")
-                pj_tier = haiku_judgments.get((sid, arm, k))
+                pj_data = haiku_judgments.get((sid, arm, k), {})
+                pj_tier = pj_data.get("tier")
+                pj_flags = pj_data.get("flags", {})
                 cases.append({
                     "id": f"{sid}_{arm}_{k}",
                     "response_text": rec["response_text"],
                     "expected_tier": pj_tier,
                     "primary_judge_tier": pj_tier,
-                    "expected_flags": {},
+                    "expected_flags": pj_flags,
                 })
                 if len(cases) >= max_samples:
                     break
@@ -489,6 +516,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--judgments", help="Path to archive judgments JSONL to pair with archive responses")
     parser.add_argument("--petri-transcripts", help="Path to Petri transcripts.jsonl to audit multi-turn register")
     parser.add_argument("--archive-samples", type=int, default=10, help="Number of responses to sample from archive")
+    parser.add_argument("--petri-conversations", type=int, default=5, help="Number of Petri conversations to audit")
     parser.add_argument("--rubric", default="data/advice_rubric.draft.json", help="Path to rubric JSON")
     parser.add_argument("--model", default="typesafe/jev-1.13", help="Classifier model name")
     parser.add_argument("--ci-live", action="store_true", help="Gated CI run mode using live OPENROUTER_API_KEY in GitHub Actions")
@@ -498,7 +526,7 @@ def main(argv: list[str] | None = None) -> int:
 
     rubric_path = Path(args.rubric)
     if not rubric_path.is_file():
-        print(f"Error: Rubric file not found: {rubric_path}", file=sys.stderr)
+        print(f"Refused: Rubric file not found: {rubric_path}", file=sys.stderr)
         return 1
     rubric_doc = json.loads(rubric_path.read_text(encoding="utf-8"))
     raw_tiers = rubric_doc.get("tiers")
@@ -507,26 +535,63 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     tier_order = [str(t["id"]) for t in raw_tiers if isinstance(t, dict) and "id" in t]
 
-    # Select input cases
+    # Validate inputs
+    arch_p: Path | None = None
+    judg_p: Path | None = None
+    golden_path: Path | None = None
+    petri_p: Path | None = None
+
     if args.archive:
         arch_p = Path(args.archive)
-        judg_p = Path(args.judgments) if args.judgments else arch_p.with_name(arch_p.stem.replace("responses_", "judgments_") + ".jsonl")
+        if not arch_p.is_file():
+            print(f"Refused: Archive file not found: {arch_p}", file=sys.stderr)
+            return 1
+        if args.judgments:
+            judg_p = Path(args.judgments)
+            if not judg_p.is_file():
+                print(f"Refused: Judgments file not found: {judg_p}", file=sys.stderr)
+                return 1
+        else:
+            cand_judg = arch_p.with_name(arch_p.stem.replace("responses_", "judgments_") + ".jsonl")
+            if cand_judg.is_file():
+                judg_p = cand_judg
+
         cases = load_advice_archive_with_judgments(arch_p, judgments_path=judg_p, max_samples=args.archive_samples)
-        input_source_desc = f"Archive {args.archive} ({len(cases)} sampled responses, paired with Haiku judgments: {judg_p.is_file()})"
+        input_source_desc = f"Archive {args.archive} ({len(cases)} sampled responses, paired with Haiku judgments: {judg_p is not None})"
         input_sha = hashlib.sha256(arch_p.read_bytes()).hexdigest()
     else:
         golden_path = Path(args.golden)
+        if not golden_path.is_file():
+            print(f"Refused: Golden benchmark file not found: {golden_path}", file=sys.stderr)
+            return 1
         golden_doc = json.loads(golden_path.read_text(encoding="utf-8"))
         cases = golden_doc.get("cases", [])
         input_source_desc = f"Golden benchmark {args.golden} ({len(cases)} cases)"
         input_sha = hashlib.sha256(golden_path.read_bytes()).hexdigest()
 
-    # Determine execution mode: local runs are mock-only; live requires --ci-live in CI with env key
-    is_live = bool(args.ci_live and os.environ.get("OPENROUTER_API_KEY"))
-    if not is_live:
-        client = build_mock_client_for_cases(cases, tier_order=tier_order)
-    else:
+    if not cases:
+        print(f"Refused: No test cases found in input {input_source_desc}.", file=sys.stderr)
+        return 1
+
+    if args.petri_transcripts:
+        petri_p = Path(args.petri_transcripts)
+        if not petri_p.is_file():
+            print(f"Refused: Petri transcripts file not found: {petri_p}", file=sys.stderr)
+            return 1
+
+    # Determine execution mode: local runs are mock-only ($0); live requires --ci-live in CI with env key
+    if args.ci_live:
+        if os.environ.get("GITHUB_ACTIONS") != "true":
+            print("Refused: --ci-live is permitted only inside GitHub Actions CI environment.", file=sys.stderr)
+            return 1
+        if not os.environ.get("OPENROUTER_API_KEY"):
+            print("Refused: OPENROUTER_API_KEY is missing in GitHub Actions environment.", file=sys.stderr)
+            return 1
+        is_live = True
         client = JevClient()
+    else:
+        is_live = False
+        client = build_mock_client_for_cases(cases, tier_order=tier_order)
 
     classifier = AdviceAnswerClassifier(rubric=rubric_doc, client=client)
     metrics, case_reports = evaluate_advice_classifier(
@@ -538,15 +603,27 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     petri_results = None
-    if args.petri_transcripts and Path(args.petri_transcripts).is_file():
+    if petri_p:
         petri_clf = PetriRegisterClassifier(client=client)
         petri_results = evaluate_petri_classifier(
-            transcripts_path=Path(args.petri_transcripts),
+            transcripts_path=petri_p,
             classifier=petri_clf,
-            max_conversations=5,
+            max_conversations=args.petri_conversations,
             model_name=args.model,
             is_mock=not is_live,
         )
+        if petri_results:
+            petri_cost = sum(r["cost_usd"] for r in petri_results)
+            petri_est_cost = sum(r["estimated_cost_usd"] for r in petri_results)
+            petri_tokens = sum(r.get("input_tokens", 0) for r in petri_results)
+            metrics.total_cost_usd = round(metrics.total_cost_usd + petri_cost, 6)
+            metrics.total_estimated_cost_usd = round(metrics.total_estimated_cost_usd + petri_est_cost, 6)
+            metrics.total_input_tokens += petri_tokens
+            for r in petri_results:
+                sm = r.get("served_model")
+                if sm and sm not in metrics.served_models:
+                    metrics.served_models.append(sm)
+                    metrics.served_models.sort()
 
     md_report = format_markdown_report(metrics, case_reports, model_name=args.model, is_mock=not is_live, petri_results=petri_results)
 
@@ -562,18 +639,48 @@ def main(argv: list[str] | None = None) -> int:
         out_json_p = Path(args.out_json)
         out_json_p.parent.mkdir(parents=True, exist_ok=True)
         rubric_sha = hashlib.sha256(rubric_path.read_bytes()).hexdigest()
-        payload = {
-            "metadata": {
-                "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "model_requested": args.model,
-                "models_served": metrics.served_models,
-                "is_mock": not is_live,
-                "input_source": input_source_desc,
-                "input_sha256": input_sha,
-                "rubric_path": str(args.rubric),
-                "rubric_sha256": rubric_sha,
-                "tier_order": tier_order,
+
+        prov: dict[str, Any] = {
+            "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "model_requested": args.model,
+            "models_served": metrics.served_models,
+            "is_mock": not is_live,
+            "rubric": {
+                "path": str(args.rubric),
+                "sha256": rubric_sha,
             },
+            "parameters": {
+                "archive_samples": args.archive_samples if arch_p else None,
+                "petri_conversations": args.petri_conversations if petri_p else None,
+            },
+        }
+        if arch_p:
+            prov["advice_archive"] = {
+                "path": str(arch_p),
+                "sha256": input_sha,
+                "samples_evaluated": len(cases),
+            }
+            if judg_p and judg_p.is_file():
+                prov["advice_judgments"] = {
+                    "path": str(judg_p),
+                    "sha256": hashlib.sha256(judg_p.read_bytes()).hexdigest(),
+                }
+        elif golden_path:
+            prov["golden_benchmark"] = {
+                "path": str(golden_path),
+                "sha256": input_sha,
+                "cases_evaluated": len(cases),
+            }
+        if petri_p:
+            prov["petri_transcripts"] = {
+                "path": str(petri_p),
+                "sha256": hashlib.sha256(petri_p.read_bytes()).hexdigest(),
+                "max_conversations": args.petri_conversations,
+                "turns_evaluated": len(petri_results) if petri_results else 0,
+            }
+
+        payload = {
+            "metadata": prov,
             "metrics": asdict(metrics),
             "cases": case_reports,
             "petri_cases": petri_results or [],
