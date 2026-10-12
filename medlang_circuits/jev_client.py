@@ -276,7 +276,10 @@ class JevClient:
                     data = json.loads(resp_bytes.decode("utf-8"))
                     return parse_decisions_response(data, requested_questions=questions)
             except urllib.error.HTTPError as e:
-                err_body = e.read().decode("utf-8", errors="replace")
+                try:
+                    err_body = e.read().decode("utf-8", errors="replace")
+                except (TimeoutError, OSError):
+                    err_body = "<read timeout or socket error>"
                 if e.code in {429, 500, 502, 503, 504} and attempt < self.max_retries:
                     wait = self.initial_backoff * (2 ** attempt)
                     time.sleep(wait)

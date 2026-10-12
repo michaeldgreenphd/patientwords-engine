@@ -371,4 +371,66 @@ def test_jev_client_os_error_retry():
         mock_sleep.assert_called_once_with(0.01)
 
 
+def test_jev_client_http_error_body_read_timeout_retry():
+    import urllib.error
+
+    mock_resp_json = json.dumps({
+        "id": "gen-mock-http-body-read-timeout-retry",
+        "model": "typesafe/jev-1.13",
+        "answers": {
+            "is_valid": {"type": "noul", "noul": 0.95, "confidence": 0.95},
+        },
+        "usage": {"input_tokens": 80, "output_tokens": 0, "cost": 0.0000035},
+    }).encode("utf-8")
+
+    client = JevClient(api_key="mock-key", max_retries=1, initial_backoff=0.01)
+
+    # First attempt raises 429 HTTPError, and reading its error response body raises TimeoutError
+    mock_err_fp = MagicMock()
+    mock_err_fp.read.side_effect = TimeoutError("body read timeout")
+    mock_err = urllib.error.HTTPError(
+        url="http://test",
+        code=429,
+        msg="Too Many Requests",
+        hdrs={},  # type: ignore
+        fp=mock_err_fp,
+    )
+
+    # Second attempt succeeds
+    mock_cm_ok = MagicMock()
+    mock_cm_ok.read.return_value = mock_resp_json
+    mock_cm_ok.__enter__.return_value = mock_cm_ok
+
+    with patch("urllib.request.urlopen", side_effect=[mock_err, mock_cm_ok]) as mock_urlopen, patch("time.sleep") as mock_sleep:
+        res = client.decide(state="test state", questions={"is_valid": NoulQuestion("valid?")})
+        assert res.id == "gen-mock-http-body-read-timeout-retry"
+        assert mock_urlopen.call_count == 2
+        mock_sleep.assert_called_once_with(0.01)
+
+
+def test_jev_client_http_error_body_read_oserror_exhausted():
+    import urllib.error
+
+    client = JevClient(api_key="mock-key", max_retries=1, initial_backoff=0.01)
+
+    mock_err_fp = MagicMock()
+    mock_err_fp.read.side_effect = OSError("socket error during error body read")
+    mock_err = urllib.error.HTTPError(
+        url="http://test",
+        code=500,
+        msg="Internal Server Error",
+        hdrs={},  # type: ignore
+        fp=mock_err_fp,
+    )
+
+    with patch("urllib.request.urlopen", side_effect=mock_err) as mock_urlopen, patch("time.sleep") as mock_sleep:
+        with pytest.raises(JevApiError) as exc_info:
+            client.decide(state="test state", questions={"is_valid": NoulQuestion("valid?")})
+        assert exc_info.value.status_code == 500
+        assert exc_info.value.body == "<read timeout or socket error>"
+        assert mock_urlopen.call_count == 2
+        mock_sleep.assert_called_once_with(0.01)
+
+
+
 

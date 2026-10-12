@@ -183,10 +183,10 @@ def build_advice_metrics(
 
 def update_metrics_with_petri(metrics: EvaluationMetrics, petri_results: list[dict[str, Any]]) -> None:
     """Fold Petri evaluation results into existing evaluation metrics."""
-    petri_cost = sum(r["cost_usd"] for r in petri_results if r["cost_usd"] is not None)
-    unbilled_petri = sum(1 for r in petri_results if r["cost_usd"] is None)
-    petri_est_cost = sum(r["estimated_cost_usd"] for r in petri_results)
-    petri_tokens = sum(r.get("input_tokens", 0) for r in petri_results)
+    petri_cost = sum(r.get("cost_usd", 0.0) or 0.0 for r in petri_results if r.get("cost_usd") is not None)
+    unbilled_petri = sum(1 for r in petri_results if r.get("cost_usd") is None)
+    petri_est_cost = sum(r.get("estimated_cost_usd", 0.0) or 0.0 for r in petri_results)
+    petri_tokens = sum(r.get("input_tokens", 0) or 0 for r in petri_results)
     metrics.total_cost_usd = round(metrics.total_cost_usd + petri_cost, 6)
     metrics.total_estimated_cost_usd = round(metrics.total_estimated_cost_usd + petri_est_cost, 6)
     metrics.total_input_tokens += petri_tokens
@@ -210,6 +210,7 @@ def evaluate_advice_classifier(
     checkpoint_metadata: dict[str, Any] | None = None,
     max_spend: float | None = None,
     checkpoint_interval: int = 25,
+    max_petri_conversations: int | None = None,
 ) -> tuple[EvaluationMetrics, list[dict[str, Any]]]:
     """Run classifier over benchmark cases and compute audit metrics."""
     tier_rank = {t: i for i, t in enumerate(tier_order)}
@@ -230,6 +231,22 @@ def evaluate_advice_classifier(
     served_models_set: set[str] = set()
 
     cached_map = {c["id"]: c for c in (cached_cases or []) if c.get("id")}
+
+    # Scope cached_petri to conversations within the requested limit
+    scoped_cached_petri: list[dict[str, Any]] = []
+    if cached_petri:
+        if max_petri_conversations is not None and max_petri_conversations > 0:
+            seen_convs: list[str] = []
+            for r in cached_petri:
+                cid = r.get("conversation_id")
+                if cid and cid not in seen_convs:
+                    seen_convs.append(cid)
+            allowed_convs = set(seen_convs[:max_petri_conversations])
+            scoped_cached_petri = [r for r in cached_petri if r.get("conversation_id") in allowed_convs]
+        elif max_petri_conversations == 0:
+            scoped_cached_petri = []
+        else:
+            scoped_cached_petri = cached_petri
 
     try:
         for count, c in enumerate(cases, start=1):
@@ -276,7 +293,7 @@ def evaluate_advice_classifier(
                 pred_confidence = cached_rep.get("tier_confidence") or 0.0
                 res_reg_score = cached_rep.get("technicality_score") or 0.0
             else:
-                cached_petri_cost = sum(r.get("cost_usd", 0.0) or 0.0 for r in (cached_petri or []))
+                cached_petri_cost = sum(r.get("cost_usd", 0.0) or 0.0 for r in scoped_cached_petri)
                 active_cost = total_actual_cost + cached_petri_cost
                 if not is_mock and max_spend is not None and active_cost > max_spend:
                     if checkpoint_path:
@@ -286,11 +303,14 @@ def evaluate_advice_classifier(
                         prob_vectors, tier_order, flag_stats, confusion, total_actual_cost, total_est_cost,
                         total_tokens, served_models_set, unbilled_calls
                     )
+                    if scoped_cached_petri:
+                        update_metrics_with_petri(part_m, scoped_cached_petri)
                     raise EvaluationInterruptedError(
                         f"Live spend ${active_cost:.6f} exceeded max_spend ceiling ${max_spend:.6f}",
                         exit_code=6,
                         metrics=part_m,
                         case_reports=case_reports,
+                        petri_results=scoped_cached_petri if scoped_cached_petri else None,
                     )
 
                 res = classifier.classify(text, model=model_name)
@@ -397,11 +417,14 @@ def evaluate_advice_classifier(
             prob_vectors, tier_order, flag_stats, confusion, total_actual_cost, total_est_cost,
             total_tokens, served_models_set, unbilled_calls
         ) if case_reports else None
+        if scoped_cached_petri and part_m:
+            update_metrics_with_petri(part_m, scoped_cached_petri)
         raise EvaluationInterruptedError(
             f"Classifier error during advice evaluation: {exc}",
             exit_code=1,
             metrics=part_m,
             case_reports=case_reports,
+            petri_results=scoped_cached_petri if scoped_cached_petri else None,
         ) from exc
 
     metrics = build_advice_metrics(
@@ -744,7 +767,7 @@ def load_advice_archive_with_judgments(
 
 def build_mock_client_for_cases(cases: list[dict[str, Any]], tier_order: list[str]) -> JevClient:
     """Mock client returning realistic, normalized decisions for offline testing."""
-    case_map = {c["response_text"]: c for c in cases}
+    case_map = {c.get("response_text") or c.get("text", ""): c for c in cases}
 
     class MockJevClient(JevClient):
         def decide(self, state: Any, questions: Any, model: str = "typesafe/jev-1.13") -> JevResponse:
@@ -994,10 +1017,25 @@ def main(argv: list[str] | None = None) -> int:
     classifier_sha = clf_hasher.hexdigest()
 
     judgments_sha = hashlib.sha256(judg_p.read_bytes()).hexdigest() if (arch_p and judg_p and judg_p.is_file()) else None
+    # Determine execution mode: local runs are mock-only ($0); live requires --ci-live in CI with env key
+    if args.ci_live:
+        if os.environ.get("GITHUB_ACTIONS") != "true":
+            print("Refused: --ci-live is permitted only inside GitHub Actions CI environment.", file=sys.stderr)
+            return 1
+        if not os.environ.get("OPENROUTER_API_KEY"):
+            print("Refused: OPENROUTER_API_KEY is missing in GitHub Actions environment.", file=sys.stderr)
+            return 1
+        is_live = True
+        client = JevClient()
+    else:
+        is_live = False
+        client = build_mock_client_for_cases(cases, tier_order=tier_order)
+
     judge_model_meta = args.judge_model if (arch_p and judg_p) else None
 
     checkpoint_metadata = {
         "model": args.model,
+        "is_mock": not is_live,
         "rubric_sha256": rubric_sha,
         "register_rubric_sha256": reg_rubric_sha,
         "input_sha256": input_sha,
@@ -1026,6 +1064,18 @@ def main(argv: list[str] | None = None) -> int:
         if cached_advice or cached_petri:
             if not cp_meta:
                 print(f"Refused: Checkpoint {checkpoint_path} lacks metadata validation fields.", file=sys.stderr)
+                return 1
+            if cp_meta.get("is_mock") is None:
+                print(
+                    f"Refused: Checkpoint {checkpoint_path} lacks is_mock metadata validation field.",
+                    file=sys.stderr,
+                )
+                return 1
+            if cp_meta.get("is_mock") != (not is_live):
+                print(
+                    f"Refused: Checkpoint execution mode mismatch: checkpoint is_mock={cp_meta.get('is_mock')} != current is_mock={not is_live}",
+                    file=sys.stderr,
+                )
                 return 1
             if cp_meta.get("model") != args.model:
                 print(
@@ -1088,20 +1138,6 @@ def main(argv: list[str] | None = None) -> int:
             f"{len(cached_advice)} advice cases, {len(cached_petri)} petri turns cached.",
             file=sys.stderr,
         )
-
-    # Determine execution mode: local runs are mock-only ($0); live requires --ci-live in CI with env key
-    if args.ci_live:
-        if os.environ.get("GITHUB_ACTIONS") != "true":
-            print("Refused: --ci-live is permitted only inside GitHub Actions CI environment.", file=sys.stderr)
-            return 1
-        if not os.environ.get("OPENROUTER_API_KEY"):
-            print("Refused: OPENROUTER_API_KEY is missing in GitHub Actions environment.", file=sys.stderr)
-            return 1
-        is_live = True
-        client = JevClient()
-    else:
-        is_live = False
-        client = build_mock_client_for_cases(cases, tier_order=tier_order)
 
     prov: dict[str, Any] = {
         "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -1170,6 +1206,7 @@ def main(argv: list[str] | None = None) -> int:
     petri_results: list[dict[str, Any]] | None = None
 
     try:
+        max_petri_convs = args.petri_conversations if (petri_p and args.petri_conversations > 0) else (None if petri_p else 0)
         metrics, case_reports = evaluate_advice_classifier(
             cases=cases,
             classifier=classifier,
@@ -1181,6 +1218,7 @@ def main(argv: list[str] | None = None) -> int:
             cached_petri=cached_petri,
             checkpoint_metadata=checkpoint_metadata,
             max_spend=args.max_spend if is_live else None,
+            max_petri_conversations=max_petri_convs,
         )
 
         if petri_p:

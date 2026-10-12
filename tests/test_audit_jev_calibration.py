@@ -854,7 +854,103 @@ def test_advice_classifier_spend_guard_includes_cached_petri():
         )
     assert exc_info.value.exit_code == 6
     assert "Live spend $0.080000 exceeded max_spend ceiling $0.070000" in str(exc_info.value)
+    assert exc_info.value.petri_results == cached_petri
+    assert exc_info.value.metrics is not None
+    assert exc_info.value.metrics.total_cost_usd == pytest.approx(0.08)
     classifier.classify.assert_not_called()
+
+
+def test_advice_classifier_spend_guard_scopes_cached_petri():
+    from unittest.mock import Mock, MagicMock
+    from scripts.jev_classifier import AdviceClassificationResult
+
+    classifier = Mock()
+    mock_res = AdviceClassificationResult(
+        tier="routine",
+        tier_probabilities={"routine": 0.9},
+        tier_confidence=0.9,
+        flags={},
+        flag_probabilities={},
+        register_score=None,
+        cost_usd=0.01,
+        estimated_cost_usd=0.01,
+        input_tokens=50,
+        raw_response=MagicMock(model="test-model"),
+    )
+    classifier.classify.return_value = mock_res
+
+    cases = [
+        {"id": "case_1", "response_text": "Response 1", "expected_tier": "routine"},
+    ]
+    # Two conversations: c1 ($0.03) and c2 ($0.05). Total is $0.08.
+    cached_petri = [
+        {"conversation_id": "c1", "turn_index": 1, "cost_usd": 0.03},
+        {"conversation_id": "c2", "turn_index": 1, "cost_usd": 0.05},
+    ]
+
+    tier_order = ["emergency", "urgent", "routine", "self_care"]
+    # If scoped to 1 conversation, only c1 ($0.03) is in scope.
+    # With max_spend=0.05, ceiling is not breached before running advice case.
+    metrics, reports = evaluate_advice_classifier(
+        cases=cases,
+        classifier=classifier,
+        tier_order=tier_order,
+        model_name="test-model",
+        is_mock=False,
+        cached_petri=cached_petri,
+        max_spend=0.05,
+        max_petri_conversations=1,
+    )
+    assert len(reports) == 1
+    classifier.classify.assert_called_once()
+
+
+def test_checkpoint_is_mock_metadata_validation(tmp_path):
+    checkpoint_file = tmp_path / "checkpoint_mode.json"
+    out_md = tmp_path / "report_mode.md"
+    out_json = tmp_path / "report_mode.json"
+
+    # Initial mock run creates checkpoint with is_mock=True
+    ret = main([
+        "--golden", "data/classifier_benchmark_golden.json",
+        "--checkpoint", str(checkpoint_file),
+        "--out-markdown", str(out_md),
+        "--out-json", str(out_json),
+    ])
+    assert ret == 0
+    assert checkpoint_file.is_file()
+
+    cp_doc = json.loads(checkpoint_file.read_text(encoding="utf-8"))
+    assert cp_doc["metadata"]["is_mock"] is True
+
+    # Resuming with is_mock missing must refuse
+    cp_no_mock = dict(cp_doc)
+    cp_no_mock["metadata"] = dict(cp_doc["metadata"])
+    del cp_no_mock["metadata"]["is_mock"]
+    checkpoint_file.write_text(json.dumps(cp_no_mock), encoding="utf-8")
+
+    ret_missing = main([
+        "--golden", "data/classifier_benchmark_golden.json",
+        "--checkpoint", str(checkpoint_file),
+        "--out-markdown", str(tmp_path / "bad1.md"),
+        "--out-json", str(tmp_path / "bad1.json"),
+    ])
+    assert ret_missing == 1
+
+    # Resuming with is_mock=False (live) under local mock mode must refuse
+    cp_live = dict(cp_doc)
+    cp_live["metadata"] = dict(cp_doc["metadata"])
+    cp_live["metadata"]["is_mock"] = False
+    checkpoint_file.write_text(json.dumps(cp_live), encoding="utf-8")
+
+    ret_mismatch = main([
+        "--golden", "data/classifier_benchmark_golden.json",
+        "--checkpoint", str(checkpoint_file),
+        "--out-markdown", str(tmp_path / "bad2.md"),
+        "--out-json", str(tmp_path / "bad2.json"),
+    ])
+    assert ret_mismatch == 1
+
 
 
 
