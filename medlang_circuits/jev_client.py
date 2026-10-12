@@ -15,7 +15,8 @@ it evaluates structured questions over a given state context and returns:
 Conventions honored:
 - No medical terms hardcoded in Python source (AGENTS.md).
 - Strict typing, robust error handling, and mock support for offline testing.
-- Tracks input/output tokens and cost from API response usage blocks.
+- Distinguishes actual provider spend (`cost_usd`) from estimated list-price cost (`estimated_cost_usd`).
+- Fails loud on malformed or null answers instead of silently dropping them.
 """
 
 from __future__ import annotations
@@ -29,8 +30,8 @@ from typing import Any, Literal
 
 OPENROUTER_DECISIONS_URL = "https://openrouter.ai/api/alpha/decisions"
 DEFAULT_JEV_MODEL = "typesafe/jev-1.13"
-JEV_INPUT_PRICE_PER_M = 0.042  # $0.042 / million tokens
-JEV_OUTPUT_PRICE_PER_M = 0.0   # $0 / million tokens
+JEV_INPUT_PRICE_PER_M = 0.042  # $0.042 / million tokens list price
+JEV_OUTPUT_PRICE_PER_M = 0.0   # $0 / million tokens list price
 
 
 class JevError(Exception):
@@ -44,6 +45,10 @@ class JevApiError(JevError):
         super().__init__(f"HTTP {status_code}: {message}")
         self.status_code = status_code
         self.body = body
+
+
+class JevParseError(JevError):
+    """Error raised when provider returns an unrecognized or malformed answer."""
 
 
 @dataclass(frozen=True)
@@ -118,7 +123,8 @@ Answer = ChoiceAnswer | NoulAnswer | ScoreAnswer
 class JevUsage:
     input_tokens: int
     output_tokens: int
-    cost_usd: float
+    cost_usd: float | None = None
+    estimated_cost_usd: float | None = None
 
 
 @dataclass(frozen=True)
@@ -146,55 +152,76 @@ def build_decisions_payload(
     }
 
 
-def parse_decisions_response(data: dict[str, Any]) -> JevResponse:
-    """Parse raw OpenRouter Decisions JSON response into typed JevResponse."""
+def parse_decisions_response(data: dict[str, Any], requested_questions: dict[str, Question] | None = None) -> JevResponse:
+    """Parse raw OpenRouter Decisions JSON response into typed JevResponse.
+    Raises JevParseError on malformed, null, or missing answers.
+    """
     resp_id = str(data.get("id") or "")
     model = str(data.get("model") or "")
-    answers_raw = data.get("answers") or {}
+    answers_raw = data.get("answers")
+    if not isinstance(answers_raw, dict):
+        raise JevParseError(f"Decisions response missing 'answers' dict: {data}")
+
     parsed_answers: dict[str, Answer] = {}
 
     for qid, ans in answers_raw.items():
         if not isinstance(ans, dict):
-            continue
+            raise JevParseError(f"Malformed answer for question {qid!r}: expected dict, got {type(ans).__name__}")
         atype = ans.get("type")
-        conf = float(ans.get("confidence") or 0.0)
 
         if atype == "choice" or "choice" in ans:
             probs = {str(k): float(v) for k, v in (ans.get("probabilities") or {}).items()}
             choice = str(ans.get("choice") or "")
+            conf = float(ans.get("confidence") or 0.0)
             parsed_answers[qid] = ChoiceAnswer(
                 choice=choice,
                 probabilities=probs,
                 confidence=conf,
             )
         elif atype == "noul" or "noul" in ans:
-            val = float(ans.get("noul") or 0.0)
+            if ans.get("noul") is None:
+                raise JevParseError(f"Malformed noul answer for {qid!r}: 'noul' value missing")
+            val = float(ans["noul"])
             parsed_answers[qid] = NoulAnswer(
                 noul=val,
             )
         elif atype == "score" or "score" in ans:
-            score = float(ans.get("score") or 0.0)
+            if ans.get("score") is None:
+                raise JevParseError(f"Malformed score answer for {qid!r}: 'score' value missing")
+            score = float(ans["score"])
             probs = {str(k): float(v) for k, v in (ans.get("probabilities") or {}).items()}
+            conf = float(ans.get("confidence") or 0.0)
             parsed_answers[qid] = ScoreAnswer(
                 score=score,
                 probabilities=probs,
                 confidence=conf,
             )
         else:
-            raise ValueError(f"Unrecognized answer format for question {qid!r}: {ans}")
+            raise JevParseError(f"Unrecognized answer format for question {qid!r}: {ans}")
+
+    if requested_questions:
+        missing = set(requested_questions) - set(parsed_answers)
+        if missing:
+            raise JevParseError(f"Decisions response omitted answers for requested questions: {sorted(missing)}")
 
     usage_raw = data.get("usage") or {}
     in_tok = int(usage_raw.get("input_tokens") or usage_raw.get("prompt_tokens") or 0)
     out_tok = int(usage_raw.get("output_tokens") or usage_raw.get("completion_tokens") or 0)
-    cost = float(usage_raw.get("cost") or 0.0)
-    if cost == 0.0 and in_tok > 0:
-        cost = (in_tok * JEV_INPUT_PRICE_PER_M + out_tok * JEV_OUTPUT_PRICE_PER_M) / 1_000_000.0
+    
+    # Cost tracking: actual provider spend vs list-price estimate
+    cost_actual: float | None = float(usage_raw["cost"]) if "cost" in usage_raw and usage_raw["cost"] is not None else None
+    est_cost = (in_tok * JEV_INPUT_PRICE_PER_M + out_tok * JEV_OUTPUT_PRICE_PER_M) / 1_000_000.0 if in_tok > 0 else 0.0
 
     return JevResponse(
         id=resp_id,
         model=model,
         answers=parsed_answers,
-        usage=JevUsage(input_tokens=in_tok, output_tokens=out_tok, cost_usd=cost),
+        usage=JevUsage(
+            input_tokens=in_tok,
+            output_tokens=out_tok,
+            cost_usd=cost_actual,
+            estimated_cost_usd=est_cost,
+        ),
         raw=data,
     )
 
@@ -241,7 +268,7 @@ class JevClient:
             with urllib.request.urlopen(req, timeout=self.timeout) as response:
                 resp_bytes = response.read()
                 data = json.loads(resp_bytes.decode("utf-8"))
-                return parse_decisions_response(data)
+                return parse_decisions_response(data, requested_questions=questions)
         except urllib.error.HTTPError as e:
             err_body = e.read().decode("utf-8", errors="replace")
             raise JevApiError(e.code, e.reason, body=err_body) from e
