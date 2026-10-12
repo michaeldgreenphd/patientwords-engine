@@ -250,6 +250,8 @@ def evaluate_petri_classifier(
     is_mock: bool = True,
 ) -> list[dict[str, Any]]:
     """Evaluate PetriRegisterClassifier on multi-turn conversation transcripts."""
+    if max_conversations < 0:
+        raise ValueError(f"max_conversations must be non-negative (got {max_conversations}; use 0 for all)")
     results = []
     conversations_count = 0
     with open(transcripts_path, encoding="utf-8") as f:
@@ -416,6 +418,8 @@ def load_advice_archive_with_judgments(
 ) -> list[dict[str, Any]]:
     """Sample real responses from an existing advice responses archive (responses_*.jsonl)
     paired with Claude Haiku's judgments if judgments_*.jsonl exists."""
+    if max_samples < 0:
+        raise ValueError(f"max_samples must be non-negative (got {max_samples}; use 0 for all)")
     haiku_judgments = {}
     if judgments_path and judgments_path.is_file():
         with open(judgments_path, encoding="utf-8") as f:
@@ -545,6 +549,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out-markdown", help="Path to save markdown report")
     parser.add_argument("--out-json", help="Path to save structured JSON report")
     args = parser.parse_args(argv)
+
+    if args.archive_samples < 0:
+        print(f"Refused: --archive-samples must be non-negative (got {args.archive_samples}; use 0 for all).", file=sys.stderr)
+        return 1
+
+    if args.petri_conversations < 0:
+        print(f"Refused: --petri-conversations must be non-negative (got {args.petri_conversations}; use 0 for all).", file=sys.stderr)
+        return 1
 
     rubric_path = Path(args.rubric)
     if not rubric_path.is_file():

@@ -8,6 +8,8 @@ import pytest
 
 from scripts.audit_jev_calibration import (
     compute_brier_score,
+    evaluate_petri_classifier,
+    load_advice_archive_with_judgments,
     main,
 )
 
@@ -86,6 +88,19 @@ def test_audit_calibration_refusals(tmp_path, monkeypatch):
     user_only_petri = tmp_path / "user_only.jsonl"
     user_only_petri.write_text(json.dumps({"conversation_id": "c1", "turns": [{"role": "user", "text": "hello"}]}) + "\n", encoding="utf-8")
     assert main(["--petri-transcripts", str(user_only_petri)]) == 1
+
+    # 9. Negative archive samples CLI refusal
+    assert main(["--archive-samples", "-1"]) == 1
+
+    # 10. Negative petri conversations CLI refusal
+    assert main(["--petri-conversations", "-1"]) == 1
+
+    # 11. Function-level negative limit validation
+    with pytest.raises(ValueError, match="non-negative"):
+        load_advice_archive_with_judgments(tmp_path / "dummy.jsonl", max_samples=-1)
+
+    with pytest.raises(ValueError, match="non-negative"):
+        evaluate_petri_classifier(tmp_path / "dummy.jsonl", classifier=None, max_conversations=-1)  # type: ignore
 
 
 def test_audit_calibration_archive_and_petri(tmp_path):

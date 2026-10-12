@@ -1,15 +1,19 @@
 name: Jev Classifier Pilot (Advice & Petri)
 
-# Small, controlled pilot to evaluate TypeSafe AI's Jev (typesafe/jev-1.13)
+# Evaluation of TypeSafe AI's Jev (typesafe/jev-1.13) decisions classifier
 # on existing landed Advice responses and Petri multi-turn conversations.
 # Runs in GitHub Actions using OPENROUTER_API_KEY.
-# Total cost per run: ~$0.0003 (< 1/30th of a cent).
+# Estimated cost per preset:
+#   - pilot:           ~$0.003  (ceiling: $0.05)
+#   - slightly_bigger: ~$0.015  (ceiling: $0.25)
+#   - much_bigger:     ~$0.050  (ceiling: $0.75)
+#   - everything:      ~$0.180  (ceiling: $1.50)
 
 on:
   workflow_dispatch:
     inputs:
       scale:
-        description: "Evaluation Scale"
+        description: "Evaluation Scale preset"
         type: choice
         default: "pilot (10 advice, 3 petri)"
         options:
@@ -19,15 +23,15 @@ on:
           - "everything (all available archive & petri)"
           - "custom (use manual inputs below)"
       advice_samples:
-        description: "Custom advice count (only if scale is custom; 0 = all)"
+        description: "Advice count (used if scale is custom or custom counts provided; 0 = all)"
         type: string
         default: "10"
       petri_conversations:
-        description: "Custom Petri count (only if scale is custom; 0 = all)"
+        description: "Petri count (used if scale is custom or custom counts provided; 0 = all)"
         type: string
         default: "3"
       max_spend:
-        description: "Custom spend ceiling USD (only if scale is custom)"
+        description: "Spend ceiling USD (used if scale is custom or custom ceiling provided)"
         type: string
         default: "0.10"
       model:
@@ -60,7 +64,19 @@ jobs:
         shell: bash
         run: |
           SCALE="${{ inputs.scale }}"
+          ADVICE_IN="${{ inputs.advice_samples }}"
+          PETRI_IN="${{ inputs.petri_conversations }}"
+          SPEND_IN="${{ inputs.max_spend }}"
           echo "Selected scale preset: $SCALE"
+
+          # If caller supplied non-default advice_samples, petri_conversations, or max_spend
+          # without selecting an explicit expansion preset (e.g., via legacy CLI: gh workflow run -f advice_samples=...),
+          # honor the legacy/custom inputs rather than silently clamping to the pilot preset.
+          if [[ "$SCALE" =~ ^pilot ]] && { [ "$ADVICE_IN" != "10" ] || [ "$PETRI_IN" != "3" ] || [ "$SPEND_IN" != "0.10" ]; }; then
+            echo "Notice: Non-default dispatch inputs detected with default scale ($ADVICE_IN advice, $PETRI_IN petri, \$$SPEND_IN ceiling); honoring custom parameters."
+            SCALE="custom"
+          fi
+
           case "$SCALE" in
             pilot*)
               echo "advice_samples=10" >> $GITHUB_OUTPUT
@@ -83,9 +99,9 @@ jobs:
               echo "max_spend=1.50" >> $GITHUB_OUTPUT
               ;;
             custom*)
-              echo "advice_samples=${{ inputs.advice_samples }}" >> $GITHUB_OUTPUT
-              echo "petri_conversations=${{ inputs.petri_conversations }}" >> $GITHUB_OUTPUT
-              echo "max_spend=${{ inputs.max_spend }}" >> $GITHUB_OUTPUT
+              echo "advice_samples=$ADVICE_IN" >> $GITHUB_OUTPUT
+              echo "petri_conversations=$PETRI_IN" >> $GITHUB_OUTPUT
+              echo "max_spend=$SPEND_IN" >> $GITHUB_OUTPUT
               ;;
             *)
               echo "Refused: Unknown scale preset '$SCALE'" >&2
