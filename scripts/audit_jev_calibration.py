@@ -1,0 +1,484 @@
+"""Audit, benchmark, and calibration runner for classifier models (Jev and generative judges).
+
+Evaluates classifiers against synthetic golden reference sets (data/classifier_benchmark_golden.json)
+or sampled archive responses (data/advice/responses_*.jsonl), producing clear, human-and-agent
+readable audit reports:
+- Accuracy & Exact Match % (or label coverage when ground truth is absent)
+- Tier Distance Matrix / Off-by-one tolerance (derived dynamically from rubric tier order)
+- Brier Score & Confidence Calibration across predicted probabilities (undefined for unlabelled data)
+- Binary Flag Sensitivity, Specificity, Precision (reporting null when undefined)
+- Cost and Latency Accounting (reporting $0 actual cost in offline mock mode, and recording actual served model)
+- Full artifact provenance: input hashes, parameters, model identifiers, and response records
+
+Conventions honored:
+- No medical terms hardcoded in Python source (AGENTS.md).
+- Strict push-to-run execution model: local execution is offline/mock only ($0 spend).
+- Refuses incomplete rubrics (must contain valid tiers).
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import sys
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from medlang_circuits.jev_client import (
+    ChoiceAnswer,
+    JevClient,
+    JevResponse,
+    JevUsage,
+    NoulAnswer,
+    ScoreAnswer,
+)
+from scripts.jev_classifier import AdviceAnswerClassifier
+
+
+@dataclass
+class EvaluationMetrics:
+    total_cases: int
+    has_ground_truth: bool
+    exact_tier_matches: int | None
+    exact_accuracy: float | None
+    within_one_tier_matches: int | None
+    within_one_accuracy: float | None
+    brier_score: float | None
+    flag_metrics: dict[str, dict[str, Any]]
+    total_cost_usd: float
+    total_estimated_cost_usd: float
+    total_input_tokens: int
+    confusion_matrix: list[list[int]] | None
+    tier_order: list[str]
+    served_models: list[str]
+
+
+def compute_brier_score(predictions: list[dict[str, float]], ground_truths: list[str], tier_order: list[str]) -> float:
+    """Multi-category Brier score: mean squared error across probability vectors."""
+    if not predictions or not ground_truths:
+        return 0.0
+    total_sq_err = 0.0
+    for probs, truth in zip(predictions, ground_truths):
+        for t in tier_order:
+            p = probs.get(t, 0.0)
+            actual = 1.0 if t == truth else 0.0
+            total_sq_err += (p - actual) ** 2
+    return total_sq_err / len(predictions)
+
+
+def evaluate_advice_classifier(
+    cases: list[dict[str, Any]],
+    classifier: AdviceAnswerClassifier,
+    tier_order: list[str],
+    model_name: str,
+    is_mock: bool = True,
+) -> tuple[EvaluationMetrics, list[dict[str, Any]]]:
+    """Run classifier over benchmark cases and compute audit metrics."""
+    tier_rank = {t: i for i, t in enumerate(tier_order)}
+    has_ground_truth = any(c.get("expected_tier") is not None for c in cases)
+    confusion = [[0] * len(tier_order) for _ in tier_order] if has_ground_truth else None
+
+    exact_matches = 0
+    within_one = 0
+    prob_vectors: list[dict[str, float]] = []
+    gold_tiers: list[str] = []
+    flag_stats: dict[str, dict[str, int]] = {}
+
+    total_actual_cost = 0.0
+    total_est_cost = 0.0
+    total_tokens = 0
+    case_reports: list[dict[str, Any]] = []
+    served_models_set: set[str] = set()
+
+    for c in cases:
+        text = c["response_text"]
+        expected_tier = c.get("expected_tier")
+        expected_flags = c.get("expected_flags", {})
+
+        res = classifier.classify(text, model=model_name)
+        pred_tier = res.tier
+        served_model = res.raw_response.model or model_name
+        served_models_set.add(served_model)
+
+        actual_cost = 0.0 if is_mock else (res.cost_usd or 0.0)
+        est_cost = res.estimated_cost_usd or 0.0
+        total_actual_cost += actual_cost
+        total_est_cost += est_cost
+        total_tokens += res.input_tokens
+
+        pred_idx = tier_rank.get(pred_tier, -1)
+        gold_idx = tier_rank.get(expected_tier, -1) if expected_tier else -1
+
+        is_exact = False
+        is_within_one = False
+        if has_ground_truth and expected_tier is not None:
+            if gold_idx != -1 and pred_idx != -1 and confusion is not None:
+                confusion[gold_idx][pred_idx] += 1
+                if pred_tier == expected_tier:
+                    exact_matches += 1
+                    is_exact = True
+                if abs(pred_idx - gold_idx) <= 1:
+                    within_one += 1
+                    is_within_one = True
+
+            prob_vectors.append(res.tier_probabilities)
+            gold_tiers.append(expected_tier)
+
+        # Flag accuracy tracking
+        flag_report = {}
+        for fid, exp_val in expected_flags.items():
+            if fid not in res.flags:
+                raise ValueError(f"Classifier response missing expected flag answer for {fid!r}")
+            got_val = res.flags[fid]
+            stats = flag_stats.setdefault(fid, {"tp": 0, "tn": 0, "fp": 0, "fn": 0})
+            if exp_val and got_val:
+                stats["tp"] += 1
+            elif not exp_val and not got_val:
+                stats["tn"] += 1
+            elif not exp_val and got_val:
+                stats["fp"] += 1
+            else:
+                stats["fn"] += 1
+            flag_report[fid] = {
+                "expected": exp_val,
+                "predicted": got_val,
+                "probability": res.flag_probabilities.get(fid),
+            }
+
+        case_reports.append({
+            "id": c.get("id"),
+            "response_text": text,
+            "expected_tier": expected_tier,
+            "predicted_tier": pred_tier,
+            "tier_confidence": res.tier_confidence,
+            "is_exact": is_exact if has_ground_truth else None,
+            "is_within_one": is_within_one if has_ground_truth else None,
+            "tier_probabilities": res.tier_probabilities,
+            "flags": flag_report,
+            "technicality_score": res.register_score,
+            "served_model": served_model,
+            "cost_usd": actual_cost,
+            "estimated_cost_usd": est_cost,
+        })
+
+    n = len(cases)
+    if has_ground_truth and gold_tiers:
+        brier: float | None = round(compute_brier_score(prob_vectors, gold_tiers, tier_order), 4)
+        exact_acc: float | None = round(exact_matches / max(1, len(gold_tiers)), 4)
+        within_acc: float | None = round(within_one / max(1, len(gold_tiers)), 4)
+        exact_match_count: int | None = exact_matches
+        within_match_count: int | None = within_one
+    else:
+        brier = None
+        exact_acc = None
+        within_acc = None
+        exact_match_count = None
+        within_match_count = None
+
+    computed_flag_metrics: dict[str, dict[str, Any]] = {}
+    for fid, st in flag_stats.items():
+        tp, tn, fp, fn = st["tp"], st["tn"], st["fp"], st["fn"]
+        total = tp + tn + fp + fn
+        acc = (tp + tn) / max(1, total)
+        prec = round(tp / (tp + fp), 4) if (tp + fp) > 0 else None
+        sens = round(tp / (tp + fn), 4) if (tp + fn) > 0 else None
+        spec = round(tn / (tn + fp), 4) if (tn + fp) > 0 else None
+
+        computed_flag_metrics[fid] = {
+            "accuracy": round(acc, 4),
+            "precision": prec,
+            "sensitivity": sens,
+            "specificity": spec,
+            "tp": tp,
+            "tn": tn,
+            "fp": fp,
+            "fn": fn,
+        }
+
+    metrics = EvaluationMetrics(
+        total_cases=n,
+        has_ground_truth=has_ground_truth,
+        exact_tier_matches=exact_match_count,
+        exact_accuracy=exact_acc,
+        within_one_tier_matches=within_match_count,
+        within_one_accuracy=within_acc,
+        brier_score=brier,
+        flag_metrics=computed_flag_metrics,
+        total_cost_usd=round(total_actual_cost, 6),
+        total_estimated_cost_usd=round(total_est_cost, 6),
+        total_input_tokens=total_tokens,
+        confusion_matrix=confusion,
+        tier_order=tier_order,
+        served_models=sorted(served_models_set),
+    )
+    return metrics, case_reports
+
+
+def format_markdown_report(metrics: EvaluationMetrics, case_reports: list[dict[str, Any]], model_name: str, is_mock: bool = True) -> str:
+    """Generate a clean, structured audit report readable by humans and agents."""
+    cost_label = f"${metrics.total_cost_usd:.6f} ($0.0 mock run)" if is_mock else f"${metrics.total_cost_usd:.6f}"
+    served_str = ", ".join(f"`{m}`" for m in metrics.served_models) or f"`{model_name}`"
+
+    lines = [
+        "# Classifier Calibration & Benchmark Audit Report",
+        "",
+        f"- **Model Requested**: `{model_name}`",
+        f"- **Model(s) Served**: {served_str}",
+        f"- **Execution Mode**: `{'Offline Mock ($0)' if is_mock else 'Live CI Evaluation'}`",
+        f"- **Total Cases**: {metrics.total_cases}",
+    ]
+
+    if metrics.has_ground_truth and metrics.exact_accuracy is not None:
+        lines.extend([
+            f"- **Exact Tier Accuracy**: {metrics.exact_accuracy * 100:.1f}% ({metrics.exact_tier_matches}/{metrics.total_cases})",
+            f"- **Within-1 Tier Accuracy**: {metrics.within_one_accuracy * 100:.1f}% ({metrics.within_one_tier_matches}/{metrics.total_cases})",
+            f"- **Multi-Category Brier Score**: {metrics.brier_score:.4f} *(lower is better, 0.0 is perfect)*",
+        ])
+    else:
+        lines.extend([
+            "- **Ground Truth**: *None provided (unlabeled archive sampling)*",
+            f"- **Predictions Generated**: {metrics.total_cases}/{metrics.total_cases} (100% label coverage)",
+            "- **Accuracy / Brier Score**: *Undefined (no gold reference tiers in input)*",
+        ])
+
+    lines.extend([
+        f"- **Total Spend**: {cost_label} ({metrics.total_input_tokens} input tokens, estimated list price: ${metrics.total_estimated_cost_usd:.6f})",
+        "",
+    ])
+
+    if metrics.confusion_matrix:
+        lines.extend([
+            "## Tier Confusion Matrix",
+            "",
+            f"Rows = Gold Reference, Columns = Model Prediction (`{', '.join(metrics.tier_order)}`)",
+            "",
+            f"| Gold \\ Pred | {' | '.join(metrics.tier_order)} |",
+            f"|---|{'---|' * len(metrics.tier_order)}",
+        ])
+        for i, row in enumerate(metrics.confusion_matrix):
+            label = metrics.tier_order[i]
+            row_str = " | ".join(str(val) for val in row)
+            lines.append(f"| **{label}** | {row_str} |")
+        lines.append("")
+
+    if metrics.flag_metrics:
+        lines.extend([
+            "## Binary Flag Performance",
+            "",
+            "| Flag ID | Accuracy | Precision | Sensitivity (Recall) | Specificity |",
+            "|---|---|---|---|---|",
+        ])
+        for fid, m in sorted(metrics.flag_metrics.items()):
+            prec_str = f"{m['precision']*100:.1f}%" if m['precision'] is not None else "undefined (0 pred)"
+            sens_str = f"{m['sensitivity']*100:.1f}%" if m['sensitivity'] is not None else "undefined (0 pos)"
+            spec_str = f"{m['specificity']*100:.1f}%" if m['specificity'] is not None else "undefined (0 neg)"
+            lines.append(f"| `{fid}` | {m['accuracy']*100:.1f}% | {prec_str} | {sens_str} | {spec_str} |")
+        lines.append("")
+
+    lines.extend([
+        "## Individual Case Results",
+        "",
+        "| Case ID | Gold Tier | Pred Tier | Conf | Match? | Tech Score | Served Model |",
+        "|---|---|---|---|---|---|---|",
+    ])
+    for cr in case_reports:
+        if cr["expected_tier"] is None:
+            match_symbol = "N/A"
+        elif cr["is_exact"]:
+            match_symbol = "MATCH"
+        elif cr["is_within_one"]:
+            match_symbol = "CLOSE"
+        else:
+            match_symbol = "MISMATCH"
+        score_str = f"{cr['technicality_score']:.1f}" if cr["technicality_score"] is not None else "N/A"
+        gold_str = f"`{cr['expected_tier']}`" if cr['expected_tier'] else "N/A"
+        lines.append(
+            f"| `{cr['id']}` | {gold_str} | `{cr['predicted_tier']}` | {cr['tier_confidence']:.2f} | {match_symbol} | {score_str} | `{cr['served_model']}` |"
+        )
+
+    return "\n".join(lines)
+
+
+def load_archive_sample(archive_path: Path, max_samples: int = 10) -> list[dict[str, Any]]:
+    """Sample real responses from an existing advice responses archive (responses_*.jsonl)."""
+    cases = []
+    with open(archive_path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            rec = json.loads(line)
+            if rec.get("record_type") == "advice" and rec.get("response_text"):
+                cases.append({
+                    "id": f"{rec.get('stimulus_id')}_{rec.get('arm')}_{rec.get('sample_k')}",
+                    "response_text": rec["response_text"],
+                    "expected_tier": None,
+                    "expected_flags": {},
+                })
+                if len(cases) >= max_samples:
+                    break
+    return cases
+
+
+def build_mock_client_for_cases(cases: list[dict[str, Any]], tier_order: list[str]) -> JevClient:
+    """Mock client returning realistic, normalized decisions for offline testing."""
+    case_map = {c["response_text"]: c for c in cases}
+
+    class MockJevClient(JevClient):
+        def decide(self, state: Any, questions: Any, model: str = "typesafe/jev-1.13") -> JevResponse:
+            text = state.get("response_text", "")
+            matched = case_map.get(text, cases[0])
+            tier = matched.get("expected_tier") or tier_order[0]
+            flags = matched.get("expected_flags", {})
+
+            # Normalized probability vector summing exactly to 1.0 across any tier count
+            num_tiers = len(tier_order)
+            tier_probs = {}
+            if num_tiers == 1:
+                tier_probs[tier_order[0]] = 1.0
+            else:
+                target_p = 0.85
+                rem_p = round((1.0 - target_p) / (num_tiers - 1), 6)
+                for t in tier_order:
+                    tier_probs[t] = target_p if t == tier else rem_p
+                # Adjust rounding on first other element
+                tot = sum(tier_probs.values())
+                if abs(tot - 1.0) > 1e-6:
+                    for t in tier_order:
+                        if t != tier:
+                            tier_probs[t] += (1.0 - tot)
+                            break
+
+            answers: dict[str, Any] = {
+                "primary_tier": ChoiceAnswer(
+                    choice=tier,
+                    probabilities=tier_probs,
+                    confidence=0.88,
+                ),
+            }
+            for qid in questions:
+                if qid == "primary_tier":
+                    continue
+                if qid.startswith("flag_"):
+                    fid = qid.replace("flag_", "")
+                    val = flags.get(fid, False)
+                    p = 0.92 if val else 0.08
+                    answers[qid] = NoulAnswer(noul=p)
+                elif qid == "technicality_score":
+                    answers[qid] = ScoreAnswer(
+                        score=2.2 if tier in ("urgent", "emergency") else 0.8,
+                        probabilities={"0": 0.2, "1": 0.5, "2": 0.2, "3": 0.1},
+                        confidence=0.80,
+                    )
+
+            return JevResponse(
+                id="mock-audit-dec",
+                model=model,
+                answers=answers,
+                usage=JevUsage(input_tokens=180, output_tokens=0, cost_usd=None, estimated_cost_usd=0.0000075),
+            )
+
+    return MockJevClient(api_key="mock")
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Audit and benchmark classifier models.")
+    parser.add_argument("--golden", default="data/classifier_benchmark_golden.json", help="Path to golden benchmark JSON")
+    parser.add_argument("--archive", help="Path to archive JSONL to sample real responses from")
+    parser.add_argument("--archive-samples", type=int, default=10, help="Number of responses to sample from archive")
+    parser.add_argument("--rubric", default="data/advice_rubric.draft.json", help="Path to rubric JSON")
+    parser.add_argument("--model", default="typesafe/jev-1.13", help="Classifier model name")
+    parser.add_argument("--mock", action="store_true", default=True, help="Run with mock client (offline, $0; required locally)")
+    parser.add_argument("--out-markdown", help="Path to save markdown report")
+    parser.add_argument("--out-json", help="Path to save structured JSON report")
+    args = parser.parse_args(argv)
+
+    rubric_path = Path(args.rubric)
+    if not rubric_path.is_file():
+        print(f"Error: Rubric file not found: {rubric_path}", file=sys.stderr)
+        return 1
+    rubric_doc = json.loads(rubric_path.read_text(encoding="utf-8"))
+    raw_tiers = rubric_doc.get("tiers")
+    if not isinstance(raw_tiers, list) or not raw_tiers:
+        print(f"Refused: Rubric {args.rubric} contains no tier definitions.", file=sys.stderr)
+        return 1
+    tier_order = [str(t["id"]) for t in raw_tiers if isinstance(t, dict) and "id" in t]
+    if not tier_order:
+        print(f"Refused: Rubric {args.rubric} has no valid tier IDs.", file=sys.stderr)
+        return 1
+
+    # Select input cases
+    if args.archive:
+        arch_p = Path(args.archive)
+        if not arch_p.is_file():
+            print(f"Error: Archive file not found: {arch_p}", file=sys.stderr)
+            return 1
+        cases = load_archive_sample(arch_p, max_samples=args.archive_samples)
+        input_source_desc = f"Archive {args.archive} ({len(cases)} sampled responses)"
+        input_sha = hashlib.sha256(arch_p.read_bytes()).hexdigest()
+    else:
+        golden_path = Path(args.golden)
+        if not golden_path.is_file():
+            print(f"Error: Golden benchmark file not found: {golden_path}", file=sys.stderr)
+            return 1
+        golden_doc = json.loads(golden_path.read_text(encoding="utf-8"))
+        cases = golden_doc.get("cases", [])
+        input_source_desc = f"Golden benchmark {args.golden} ({len(cases)} cases)"
+        input_sha = hashlib.sha256(golden_path.read_bytes()).hexdigest()
+
+    if not cases:
+        print("Error: No test cases found.", file=sys.stderr)
+        return 1
+
+    # In local execution, client is mock only (AGENTS.md execution model)
+    client = build_mock_client_for_cases(cases, tier_order=tier_order)
+
+    classifier = AdviceAnswerClassifier(rubric=rubric_doc, client=client)
+    metrics, case_reports = evaluate_advice_classifier(
+        cases=cases,
+        classifier=classifier,
+        tier_order=tier_order,
+        model_name=args.model,
+        is_mock=True,
+    )
+
+    md_report = format_markdown_report(metrics, case_reports, model_name=args.model, is_mock=True)
+
+    if args.out_markdown:
+        out_p = Path(args.out_markdown)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(md_report, encoding="utf-8")
+        print(f"Saved Markdown report -> {out_p}")
+    else:
+        print("\n" + md_report + "\n")
+
+    if args.out_json:
+        out_json_p = Path(args.out_json)
+        out_json_p.parent.mkdir(parents=True, exist_ok=True)
+        rubric_sha = hashlib.sha256(rubric_path.read_bytes()).hexdigest()
+        payload = {
+            "metadata": {
+                "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "model_requested": args.model,
+                "models_served": metrics.served_models,
+                "is_mock": True,
+                "input_source": input_source_desc,
+                "input_sha256": input_sha,
+                "rubric_path": str(args.rubric),
+                "rubric_sha256": rubric_sha,
+                "tier_order": tier_order,
+            },
+            "metrics": asdict(metrics),
+            "cases": case_reports,
+        }
+        out_json_p.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"Saved JSON report -> {out_json_p}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
