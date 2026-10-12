@@ -39,6 +39,7 @@ from medlang_circuits.jev_client import (
     NoulAnswer,
     ScoreAnswer,
 )
+from scripts.advice_eval import verify_chain
 from scripts.jev_classifier import AdviceAnswerClassifier, PetriRegisterClassifier
 
 
@@ -58,6 +59,7 @@ class EvaluationMetrics:
     confusion_matrix: list[list[int]] | None
     tier_order: list[str]
     served_models: list[str]
+    unbilled_calls_count: int = 0
 
 
 def compute_brier_score(predictions: list[dict[str, float]], ground_truths: list[str], tier_order: list[str]) -> float:
@@ -94,6 +96,7 @@ def evaluate_advice_classifier(
     total_actual_cost = 0.0
     total_est_cost = 0.0
     total_tokens = 0
+    unbilled_calls = 0
     case_reports: list[dict[str, Any]] = []
     served_models_set: set[str] = set()
 
@@ -107,9 +110,16 @@ def evaluate_advice_classifier(
         served_model = res.raw_response.model or model_name
         served_models_set.add(served_model)
 
-        actual_cost = 0.0 if is_mock else (res.cost_usd or 0.0)
+        if is_mock:
+            actual_cost: float | None = 0.0
+        else:
+            if res.cost_usd is None:
+                actual_cost = None
+                unbilled_calls += 1
+            else:
+                actual_cost = res.cost_usd
+                total_actual_cost += actual_cost
         est_cost = res.estimated_cost_usd or 0.0
-        total_actual_cost += actual_cost
         total_est_cost += est_cost
         total_tokens += res.input_tokens
 
@@ -135,7 +145,9 @@ def evaluate_advice_classifier(
         flag_report = {}
         for fid, exp_val in expected_flags.items():
             if fid not in res.flags:
-                continue
+                raise ValueError(
+                    f"Classifier response missing expected flag {fid!r} present in reference judgment"
+                )
             got_val = res.flags[fid]
             stats = flag_stats.setdefault(fid, {"tp": 0, "tn": 0, "fp": 0, "fn": 0})
             if exp_val and got_val:
@@ -225,6 +237,7 @@ def evaluate_advice_classifier(
         confusion_matrix=confusion,
         tier_order=tier_order,
         served_models=sorted(served_models_set),
+        unbilled_calls_count=unbilled_calls,
     )
     return metrics, case_reports
 
@@ -261,7 +274,7 @@ def evaluate_petri_classifier(
                         prior_context=prior,
                         model=model_name,
                     )
-                    actual_cost = 0.0 if is_mock else (res.cost_usd or 0.0)
+                    actual_cost: float | None = 0.0 if is_mock else res.cost_usd
                     served_m = res.raw_response.model or model_name
                     results.append({
                         "conversation_id": conv_id,
@@ -291,7 +304,12 @@ def format_markdown_report(
     petri_results: list[dict[str, Any]] | None = None,
 ) -> str:
     """Generate a clean, structured audit report readable by humans and agents."""
-    cost_label = f"${metrics.total_cost_usd:.6f} ($0.0 mock run)" if is_mock else f"${metrics.total_cost_usd:.6f}"
+    if metrics.unbilled_calls_count > 0:
+        cost_label = f"${metrics.total_cost_usd:.6f} (+{metrics.unbilled_calls_count} calls with null provider billing)"
+    elif is_mock:
+        cost_label = f"${metrics.total_cost_usd:.6f} ($0.0 mock run)"
+    else:
+        cost_label = f"${metrics.total_cost_usd:.6f}"
     served_str = ", ".join(f"`{m}`" for m in metrics.served_models) or f"`{model_name}`"
 
     lines = [
@@ -413,29 +431,31 @@ def load_advice_archive_with_judgments(
                         "flags": rec.get("flags") or {},
                     }
 
-    cases = []
     with open(archive_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            rec = json.loads(line)
-            if rec.get("record_type") == "advice" and rec.get("response_text"):
-                sid = rec.get("stimulus_id")
-                arm = rec.get("arm")
-                k = rec.get("sample_k")
-                pj_data = haiku_judgments.get((sid, arm, k), {})
-                pj_tier = pj_data.get("tier")
-                pj_flags = pj_data.get("flags", {})
-                cases.append({
-                    "id": f"{sid}_{arm}_{k}",
-                    "response_text": rec["response_text"],
-                    "expected_tier": pj_tier,
-                    "primary_judge_tier": pj_tier,
-                    "expected_flags": pj_flags,
-                })
-                if len(cases) >= max_samples:
-                    break
+        rows = [json.loads(line) for line in f if line.strip()]
+
+    ok, msg = verify_chain(rows)
+    if not ok:
+        raise ValueError(f"Broken hash chain in response archive {archive_path}: {msg}")
+
+    cases = []
+    for rec in rows:
+        if rec.get("record_type") == "advice" and rec.get("response_text"):
+            sid = rec.get("stimulus_id")
+            arm = rec.get("arm")
+            k = rec.get("sample_k")
+            pj_data = haiku_judgments.get((sid, arm, k), {})
+            pj_tier = pj_data.get("tier")
+            pj_flags = pj_data.get("flags", {})
+            cases.append({
+                "id": f"{sid}_{arm}_{k}",
+                "response_text": rec["response_text"],
+                "expected_tier": pj_tier,
+                "primary_judge_tier": pj_tier,
+                "expected_flags": pj_flags,
+            })
+            if len(cases) >= max_samples:
+                break
     return cases
 
 
@@ -518,7 +538,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--archive-samples", type=int, default=10, help="Number of responses to sample from archive")
     parser.add_argument("--petri-conversations", type=int, default=5, help="Number of Petri conversations to audit")
     parser.add_argument("--rubric", default="data/advice_rubric.draft.json", help="Path to rubric JSON")
+    parser.add_argument("--register-rubric", default="data/register_rubric.json", help="Path to register rubric JSON")
     parser.add_argument("--model", default="typesafe/jev-1.13", help="Classifier model name")
+    parser.add_argument("--max-spend", type=float, default=0.25, help="Hard spend ceiling in USD")
     parser.add_argument("--ci-live", action="store_true", help="Gated CI run mode using live OPENROUTER_API_KEY in GitHub Actions")
     parser.add_argument("--out-markdown", help="Path to save markdown report")
     parser.add_argument("--out-json", help="Path to save structured JSON report")
@@ -534,6 +556,15 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Refused: Rubric {args.rubric} contains no tier definitions.", file=sys.stderr)
         return 1
     tier_order = [str(t["id"]) for t in raw_tiers if isinstance(t, dict) and "id" in t]
+    if not tier_order:
+        print(f"Refused: Rubric {args.rubric} has no valid tier IDs.", file=sys.stderr)
+        return 1
+
+    reg_rubric_path = Path(args.register_rubric)
+    if not reg_rubric_path.is_file():
+        print(f"Refused: Register rubric file not found: {reg_rubric_path}", file=sys.stderr)
+        return 1
+    reg_rubric_sha = hashlib.sha256(reg_rubric_path.read_bytes()).hexdigest()
 
     # Validate inputs
     arch_p: Path | None = None
@@ -556,7 +587,12 @@ def main(argv: list[str] | None = None) -> int:
             if cand_judg.is_file():
                 judg_p = cand_judg
 
-        cases = load_advice_archive_with_judgments(arch_p, judgments_path=judg_p, max_samples=args.archive_samples)
+        try:
+            cases = load_advice_archive_with_judgments(arch_p, judgments_path=judg_p, max_samples=args.archive_samples)
+        except ValueError as exc:
+            print(f"Refused: {exc}", file=sys.stderr)
+            return 1
+
         input_source_desc = f"Archive {args.archive} ({len(cases)} sampled responses, paired with Haiku judgments: {judg_p is not None})"
         input_sha = hashlib.sha256(arch_p.read_bytes()).hexdigest()
     else:
@@ -612,18 +648,27 @@ def main(argv: list[str] | None = None) -> int:
             model_name=args.model,
             is_mock=not is_live,
         )
-        if petri_results:
-            petri_cost = sum(r["cost_usd"] for r in petri_results)
-            petri_est_cost = sum(r["estimated_cost_usd"] for r in petri_results)
-            petri_tokens = sum(r.get("input_tokens", 0) for r in petri_results)
-            metrics.total_cost_usd = round(metrics.total_cost_usd + petri_cost, 6)
-            metrics.total_estimated_cost_usd = round(metrics.total_estimated_cost_usd + petri_est_cost, 6)
-            metrics.total_input_tokens += petri_tokens
-            for r in petri_results:
-                sm = r.get("served_model")
-                if sm and sm not in metrics.served_models:
-                    metrics.served_models.append(sm)
-                    metrics.served_models.sort()
+        if not petri_results:
+            print(f"Refused: No evaluable assistant turns found in Petri transcripts {petri_p}.", file=sys.stderr)
+            return 1
+
+        petri_cost = sum(r["cost_usd"] for r in petri_results if r["cost_usd"] is not None)
+        unbilled_petri = sum(1 for r in petri_results if r["cost_usd"] is None)
+        petri_est_cost = sum(r["estimated_cost_usd"] for r in petri_results)
+        petri_tokens = sum(r.get("input_tokens", 0) for r in petri_results)
+        metrics.total_cost_usd = round(metrics.total_cost_usd + petri_cost, 6)
+        metrics.total_estimated_cost_usd = round(metrics.total_estimated_cost_usd + petri_est_cost, 6)
+        metrics.total_input_tokens += petri_tokens
+        metrics.unbilled_calls_count += unbilled_petri
+        for r in petri_results:
+            sm = r.get("served_model")
+            if sm and sm not in metrics.served_models:
+                metrics.served_models.append(sm)
+                metrics.served_models.sort()
+
+    if is_live and metrics.total_cost_usd > args.max_spend:
+        print(f"Refused: Total spend ${metrics.total_cost_usd:.6f} exceeded max_spend ceiling ${args.max_spend:.6f}", file=sys.stderr)
+        return 6
 
     md_report = format_markdown_report(metrics, case_reports, model_name=args.model, is_mock=not is_live, petri_results=petri_results)
 
@@ -649,9 +694,14 @@ def main(argv: list[str] | None = None) -> int:
                 "path": str(args.rubric),
                 "sha256": rubric_sha,
             },
+            "register_rubric": {
+                "path": str(reg_rubric_path),
+                "sha256": reg_rubric_sha,
+            },
             "parameters": {
                 "archive_samples": args.archive_samples if arch_p else None,
                 "petri_conversations": args.petri_conversations if petri_p else None,
+                "max_spend": args.max_spend,
             },
         }
         if arch_p:

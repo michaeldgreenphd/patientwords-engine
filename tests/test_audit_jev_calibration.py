@@ -72,6 +72,21 @@ def test_audit_calibration_refusals(tmp_path, monkeypatch):
     empty_golden.write_text(json.dumps({"cases": []}), encoding="utf-8")
     assert main(["--golden", str(empty_golden)]) == 1
 
+    # 6. Rubric with no valid tier IDs
+    no_id_rubric = tmp_path / "no_id_rubric.json"
+    no_id_rubric.write_text(json.dumps({"tiers": [{}]}), encoding="utf-8")
+    assert main(["--rubric", str(no_id_rubric)]) == 1
+
+    # 7. Broken hash chain in response archive
+    broken_arch = tmp_path / "broken_arch.jsonl"
+    broken_arch.write_text(json.dumps({"record_type": "advice", "record_sha256": "bad", "prev_sha256": "none"}) + "\n", encoding="utf-8")
+    assert main(["--archive", str(broken_arch)]) == 1
+
+    # 8. Petri transcript with no assistant turns
+    user_only_petri = tmp_path / "user_only.jsonl"
+    user_only_petri.write_text(json.dumps({"conversation_id": "c1", "turns": [{"role": "user", "text": "hello"}]}) + "\n", encoding="utf-8")
+    assert main(["--petri-transcripts", str(user_only_petri)]) == 1
+
 
 def test_audit_calibration_archive_and_petri(tmp_path):
     out_md = tmp_path / "report_combined.md"
@@ -95,6 +110,7 @@ def test_audit_calibration_archive_and_petri(tmp_path):
     assert "advice_archive" in doc["metadata"]
     assert "advice_judgments" in doc["metadata"]
     assert "petri_transcripts" in doc["metadata"]
+    assert "register_rubric" in doc["metadata"]
     assert len(doc["cases"]) == 3
 
     # Check preserved flags from judgments file

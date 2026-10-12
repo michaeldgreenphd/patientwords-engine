@@ -20,6 +20,14 @@ on:
         description: "Number of Petri conversations to audit"
         type: string
         default: "3"
+      max_spend:
+        description: "Hard spend ceiling in USD"
+        type: string
+        default: "0.10"
+
+concurrency:
+  group: jev-pilot-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   jev_pilot:
@@ -32,12 +40,19 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
       - name: Run Jev Live Pilot (Advice & Petri)
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           MODEL: ${{ inputs.model }}
           ADVICE_SAMPLES: ${{ inputs.advice_samples }}
           PETRI_CONVERSATIONS: ${{ inputs.petri_conversations }}
+          MAX_SPEND: ${{ inputs.max_spend }}
+          PYTHONPATH: .
         run: |
           mkdir -p artifacts
           python scripts/audit_jev_calibration.py \
@@ -45,6 +60,7 @@ jobs:
             --archive-samples "$ADVICE_SAMPLES" \
             --petri-transcripts "data/petri/runs/run_35937014168_1/transcripts.jsonl" \
             --petri-conversations "$PETRI_CONVERSATIONS" \
+            --max-spend "$MAX_SPEND" \
             --rubric "data/advice_rubric.draft.json" \
             --model "$MODEL" \
             --ci-live \
