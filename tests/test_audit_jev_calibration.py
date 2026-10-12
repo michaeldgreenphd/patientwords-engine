@@ -33,7 +33,6 @@ def test_audit_calibration_main_mock(tmp_path):
     out_json = tmp_path / "report.json"
 
     ret = main([
-        "--mock",
         "--out-markdown", str(out_md),
         "--out-json", str(out_json),
     ])
@@ -49,3 +48,82 @@ def test_audit_calibration_main_mock(tmp_path):
     doc = json.loads(out_json.read_text(encoding="utf-8"))
     assert doc["metrics"]["exact_accuracy"] == 1.0
     assert len(doc["cases"]) == 6
+    assert "rubric" in doc["metadata"]
+    assert "golden_benchmark" in doc["metadata"]
+
+
+def test_audit_calibration_refusals(tmp_path, monkeypatch):
+    # 1. --ci-live outside GitHub Actions
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    assert main(["--ci-live"]) == 1
+
+    # 2. Missing archive
+    assert main(["--archive", str(tmp_path / "nonexistent.jsonl")]) == 1
+
+    # 3. Missing petri transcripts
+    assert main(["--petri-transcripts", str(tmp_path / "nonexistent.jsonl")]) == 1
+
+    # 4. Missing golden
+    assert main(["--golden", str(tmp_path / "nonexistent.json")]) == 1
+
+    # 5. Empty golden cases
+    empty_golden = tmp_path / "empty_golden.json"
+    empty_golden.write_text(json.dumps({"cases": []}), encoding="utf-8")
+    assert main(["--golden", str(empty_golden)]) == 1
+
+    # 6. Rubric with no valid tier IDs
+    no_id_rubric = tmp_path / "no_id_rubric.json"
+    no_id_rubric.write_text(json.dumps({"tiers": [{}]}), encoding="utf-8")
+    assert main(["--rubric", str(no_id_rubric)]) == 1
+
+    # 7. Broken hash chain in response archive
+    broken_arch = tmp_path / "broken_arch.jsonl"
+    broken_arch.write_text(json.dumps({"record_type": "advice", "record_sha256": "bad", "prev_sha256": "none"}) + "\n", encoding="utf-8")
+    assert main(["--archive", str(broken_arch)]) == 1
+
+    # 8. Petri transcript with no assistant turns
+    user_only_petri = tmp_path / "user_only.jsonl"
+    user_only_petri.write_text(json.dumps({"conversation_id": "c1", "turns": [{"role": "user", "text": "hello"}]}) + "\n", encoding="utf-8")
+    assert main(["--petri-transcripts", str(user_only_petri)]) == 1
+
+
+def test_audit_calibration_archive_and_petri(tmp_path):
+    out_md = tmp_path / "report_combined.md"
+    out_json = tmp_path / "report_combined.json"
+
+    ret = main([
+        "--archive", "data/advice/responses_stimuli_20260721T235403Z.jsonl",
+        "--archive-samples", "3",
+        "--petri-transcripts", "data/petri/runs/run_35937014168_1/transcripts.jsonl",
+        "--petri-conversations", "2",
+        "--out-markdown", str(out_md),
+        "--out-json", str(out_json),
+    ])
+    assert ret == 0
+    assert out_md.is_file()
+    assert out_json.is_file()
+
+    doc = json.loads(out_json.read_text(encoding="utf-8"))
+    assert doc["metadata"]["parameters"]["petri_conversations"] == 2
+    assert doc["metadata"]["parameters"]["archive_samples"] == 3
+    assert "advice_archive" in doc["metadata"]
+    assert "advice_judgments" in doc["metadata"]
+    assert "petri_transcripts" in doc["metadata"]
+    assert "register_rubric" in doc["metadata"]
+    assert len(doc["cases"]) == 3
+
+    # Check preserved flags from judgments file
+    assert any(c["flags"] for c in doc["cases"])
+
+    # Check that exactly 2 distinct Petri conversations were evaluated
+    petri_cases = doc["petri_cases"]
+    assert len(petri_cases) > 0
+    conv_ids = {p["conversation_id"] for p in petri_cases}
+    assert len(conv_ids) == 2
+
+    # Check that total tokens include both advice and petri
+    total_tokens = doc["metrics"]["total_input_tokens"]
+    advice_tokens = sum(180 for _ in doc["cases"])  # 180 per case in mock
+    petri_tokens = sum(p.get("input_tokens", 0) for p in petri_cases)
+    assert total_tokens == advice_tokens + petri_tokens

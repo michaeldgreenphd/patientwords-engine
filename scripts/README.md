@@ -105,6 +105,7 @@ default (`--site ../patientwords`), and `--site ''` skips it.
 | `render_prune.py` | Chooses and deletes site renders that no export lists | live | deletes files under the site's `modes/simulated/` | imported by `export_frontend_simulated.py` |
 | `sparse_guard.py` | Lists tracked files a checkout keeps off disk, so tools refuse a sparse site checkout | live | nothing | imported by `render_prune.py` and `seal_check.py` |
 | `feature_models.py` | The (model, feature source set) pairs whose `clinical_mass` may be published (`CALIBRATED_FEATURE_SOURCES`, gemma-2-2b with `gemmascope-transcoder-16k` alone as of 2026-10-09), separate from which models have feature labels | live | nothing | imported by `export_frontend_simulated.py`, `export_archive.py`, `export_tag_mass.py`, `interp_analyses.py` and `retrace_consistency.py`; a model joins only by owner decision after `feature_label_calibration.py` |
+| `jev_classifier.py` | Domain adapters compiling advice rubrics and Petri register drift into structured TypeSafe AI Jev questions | live | nothing | imported by `audit_jev_calibration.py` |
 
 ## Site data written outside the publish chain
 
@@ -151,6 +152,7 @@ out.
 | `find_grammar_2x2.py` | Searched committed data for a grammar-only 2x2 case for the Wording Differences page | one-off and done | nothing (prints) | session, 2026-07-19 |
 | `readability_report.py` | Reading-grade worklist of the site's pages | one-off and done | `docs/readability_report.md` (2026-07-13) | session |
 | `extract_site_text.py` | Extracts the site's page text into one Rmd for the owner's editing | operator tool | `ops/site_text_outline.Rmd` (default) | owner or session, on request |
+| `audit_jev_calibration.py` | Audits and benchmarks classifier calibration against golden sets, advice responses and Petri transcripts | live | `--out-markdown`, `--out-json` reports | owner or session, and `.github/workflows/jev_pilot.yml` in CI |
 
 ## Builders
 
