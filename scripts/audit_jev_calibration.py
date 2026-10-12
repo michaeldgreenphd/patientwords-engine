@@ -648,7 +648,7 @@ def load_advice_archive_with_judgments(
                 total_raw_judgments += 1
                 rec = json.loads(line)
                 jm = rec.get("judge_model")
-                if judge_model and jm is not None and jm != judge_model:
+                if judge_model and jm != judge_model:
                     continue
                 rsha = rec.get("response_sha256")
                 if rsha and rec.get("tier"):
@@ -660,7 +660,7 @@ def load_advice_archive_with_judgments(
                             "judge_model": jm,
                         }
 
-        if total_raw_judgments > 0 and not haiku_judgments:
+        if not haiku_judgments:
             raise ValueError(
                 f"No usable judgments found in {judgments_path} matching judge model {judge_model!r} "
                 f"({total_raw_judgments} rows examined; refusing empty judge set)."
@@ -964,6 +964,9 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         petri_sha = hashlib.sha256(petri_p.read_bytes()).hexdigest()
 
+    clf_file = Path(__file__).parent / "jev_classifier.py"
+    classifier_sha = hashlib.sha256(clf_file.read_bytes()).hexdigest() if clf_file.is_file() else None
+
     checkpoint_metadata = {
         "model": args.model,
         "rubric_sha256": rubric_sha,
@@ -971,6 +974,7 @@ def main(argv: list[str] | None = None) -> int:
         "input_sha256": input_sha,
         "input_type": "archive" if arch_p else "golden",
         "petri_transcripts_sha256": petri_sha,
+        "classifier_sha256": classifier_sha,
     }
 
     # Checkpoint configuration
@@ -1013,6 +1017,12 @@ def main(argv: list[str] | None = None) -> int:
             if cp_meta.get("register_rubric_sha256") != reg_rubric_sha:
                 print(
                     f"Refused: Checkpoint register rubric mismatch: {cp_meta.get('register_rubric_sha256')} != {reg_rubric_sha}",
+                    file=sys.stderr,
+                )
+                return 1
+            if cp_meta.get("classifier_sha256") and classifier_sha and cp_meta["classifier_sha256"] != classifier_sha:
+                print(
+                    f"Refused: Checkpoint classifier implementation mismatch: {cp_meta.get('classifier_sha256')} != {classifier_sha}",
                     file=sys.stderr,
                 )
                 return 1
@@ -1062,6 +1072,10 @@ def main(argv: list[str] | None = None) -> int:
         "register_rubric": {
             "path": str(reg_rubric_path),
             "sha256": reg_rubric_sha,
+        },
+        "classifier": {
+            "path": str(clf_file),
+            "sha256": classifier_sha,
         },
         "parameters": {
             "archive_samples": (args.archive_samples if args.archive_samples > 0 else "all") if arch_p else None,

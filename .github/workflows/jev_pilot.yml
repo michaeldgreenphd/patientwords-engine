@@ -138,7 +138,8 @@ jobs:
             cp /tmp/jev-restore/jev_pilot_checkpoint.json artifacts/
             echo "Staged restored checkpoint file from prior run ${{ inputs.resume_run_id }}"
           else
-            echo "Warning: Prior run artifact did not contain jev_pilot_checkpoint.json"
+            echo "Refused: Prior run ${{ inputs.resume_run_id }} artifact did not contain jev_pilot_checkpoint.json; refusing resume." >&2
+            exit 1
           fi
 
       - name: Restore checkpoint cache
@@ -174,8 +175,8 @@ jobs:
             --out-markdown "artifacts/jev_pilot_report.md" \
             --out-json "artifacts/jev_pilot_report.json"
 
-      - name: Save checkpoint cache (on interruption or failure)
-        if: failure() && hashFiles('artifacts/jev_pilot_checkpoint.json') != ''
+      - name: Save checkpoint cache (on interruption, failure, or cancellation)
+        if: (failure() || cancelled()) && hashFiles('artifacts/jev_pilot_checkpoint.json') != ''
         uses: actions/cache/save@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
         with:
           path: artifacts/jev_pilot_checkpoint.json

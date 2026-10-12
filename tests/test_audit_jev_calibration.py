@@ -218,16 +218,19 @@ def test_load_advice_archive_joined_by_response_sha256(tmp_path):
     # Synthetic judgments file keyed by response_sha256
     j1 = {
         "response_sha256": rec1["response_sha256"],
+        "judge_model": "claude-haiku-4-5",
         "tier": "routine",
         "flags": {"safety_netting": True},
     }
     j2 = {
         "response_sha256": rec2["response_sha256"],
+        "judge_model": "claude-haiku-4-5",
         "tier": "emergency",
         "flags": {"safety_netting": False},
     }
     j3 = {
         "response_sha256": rec3["response_sha256"],
+        "judge_model": "claude-haiku-4-5",
         "tier": None,
         "judge_error": "unparseable or unknown tier",
     }
@@ -255,7 +258,7 @@ def test_load_advice_archive_joined_by_response_sha256(tmp_path):
     # Verify refusal when no responses match judgments
     mismatched_judg = tmp_path / "mismatched_judg.jsonl"
     mismatched_judg.write_text(
-        json.dumps({"response_sha256": "nonexistent_sha", "tier": "routine"}) + "\n",
+        json.dumps({"response_sha256": "nonexistent_sha", "tier": "routine", "judge_model": "claude-haiku-4-5"}) + "\n",
         encoding="utf-8",
     )
     with pytest.raises(ValueError, match="No advice responses matched judgments"):
@@ -608,5 +611,94 @@ def test_petri_transcript_mismatch_refused_on_resume(tmp_path):
         "--out-json", str(tmp_path / "petri2.json"),
     ])
     assert ret_mismatch == 1
+
+
+def test_empty_judgments_file_refused(tmp_path):
+    from scripts.advice_eval import canonical_json, sha256_text
+
+    rec = {
+        "record_type": "advice",
+        "stimulus_id": "stim_01",
+        "arm": "patient",
+        "sample_k": 1,
+        "model_requested": "vendor/model-a",
+        "response_text": "Response text",
+        "response_sha256": "aaaa1111222233334444555566667777888899990000aaaabbbbccccddddeeee",
+        "prev_sha256": None,
+    }
+    rec["record_sha256"] = sha256_text(canonical_json(rec))
+
+    resp_file = tmp_path / "responses.jsonl"
+    resp_file.write_text(json.dumps(rec) + "\n", encoding="utf-8")
+
+    empty_judg = tmp_path / "empty_judgments.jsonl"
+    empty_judg.write_text("", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="refusing empty judge set"):
+        load_advice_archive_with_judgments(resp_file, judgments_path=empty_judg, max_samples=0)
+
+
+def test_untagged_legacy_judgments_refused_when_judge_model_requested(tmp_path):
+    from scripts.advice_eval import canonical_json, sha256_text
+
+    rec = {
+        "record_type": "advice",
+        "stimulus_id": "stim_01",
+        "arm": "patient",
+        "sample_k": 1,
+        "model_requested": "vendor/model-a",
+        "response_text": "Response text",
+        "response_sha256": "aaaa1111222233334444555566667777888899990000aaaabbbbccccddddeeee",
+        "prev_sha256": None,
+    }
+    rec["record_sha256"] = sha256_text(canonical_json(rec))
+
+    resp_file = tmp_path / "responses.jsonl"
+    resp_file.write_text(json.dumps(rec) + "\n", encoding="utf-8")
+
+    # Record omitting judge_model tag completely
+    untagged_judg = tmp_path / "untagged_judgments.jsonl"
+    untagged_judg.write_text(
+        json.dumps({"response_sha256": rec["response_sha256"], "tier": "routine"}) + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="refusing empty judge set"):
+        load_advice_archive_with_judgments(
+            resp_file,
+            judgments_path=untagged_judg,
+            max_samples=0,
+            judge_model="claude-haiku-4-5",
+        )
+
+
+def test_checkpoint_classifier_sha_mismatch_refused_on_resume(tmp_path):
+    checkpoint_file = tmp_path / "checkpoint_clf.json"
+    out_md = tmp_path / "report_clf.md"
+    out_json = tmp_path / "report_clf.json"
+
+    ret = main([
+        "--golden", "data/classifier_benchmark_golden.json",
+        "--checkpoint", str(checkpoint_file),
+        "--out-markdown", str(out_md),
+        "--out-json", str(out_json),
+    ])
+    assert ret == 0
+
+    cp_doc = json.loads(checkpoint_file.read_text(encoding="utf-8"))
+    assert "classifier_sha256" in cp_doc["metadata"]
+
+    # Alter the classifier sha in the checkpoint
+    cp_doc["metadata"]["classifier_sha256"] = "altered_classifier_sha256"
+    checkpoint_file.write_text(json.dumps(cp_doc), encoding="utf-8")
+
+    ret_mismatch = main([
+        "--golden", "data/classifier_benchmark_golden.json",
+        "--checkpoint", str(checkpoint_file),
+        "--out-markdown", str(tmp_path / "bad.md"),
+        "--out-json", str(tmp_path / "bad.json"),
+    ])
+    assert ret_mismatch == 1
+
 
 
