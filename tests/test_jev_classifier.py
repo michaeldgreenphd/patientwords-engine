@@ -234,3 +234,4 @@ def test_petri_register_classifier_workflow():
     assert res.drift_probability == 0.35
     assert res.register_score == 1.2
     assert res.input_tokens == 310
+

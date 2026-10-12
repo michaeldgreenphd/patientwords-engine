@@ -250,3 +250,4 @@ class JevClient:
             raise JevApiError(e.code, e.reason, body=err_body) from e
         except urllib.error.URLError as e:
             raise JevError(f"Network error connecting to {self.base_url}: {e.reason}") from e
+

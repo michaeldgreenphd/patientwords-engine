@@ -281,3 +281,4 @@ class PetriRegisterClassifier:
             input_tokens=res.usage.input_tokens,
             raw_response=res,
         )
+
