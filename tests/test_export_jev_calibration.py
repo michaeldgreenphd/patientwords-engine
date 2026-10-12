@@ -269,3 +269,87 @@ def test_missing_keys_in_report_refused(tmp_path):
     with pytest.raises(SystemExit) as exc:
         load_report(bad_report)
     assert exc.value.code == 2
+
+
+def test_interrupted_report_refused(tmp_path, mock_report_data):
+    mock_report_data["metadata"]["interrupted"] = True
+    rep_file = tmp_path / "interrupted.json"
+    rep_file.write_text(json.dumps(mock_report_data), encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        load_report(rep_file)
+    assert exc.value.code == 2
+
+
+def test_missing_is_mock_provenance_refused(mock_report_data):
+    del mock_report_data["metadata"]["is_mock"]
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_tier_order_loaded_from_data_when_missing_in_report(mock_report_data):
+    del mock_report_data["metrics"]["tier_order"]
+    payload = build_calibration_payload(mock_report_data, report_sha="sha")
+    assert isinstance(payload["tier_order"], list)
+    assert len(payload["tier_order"]) >= 4
+
+
+def test_unjudged_report_handles_null_metrics_cleanly(mock_report_data):
+    mock_report_data["metrics"]["exact_accuracy"] = None
+    mock_report_data["metrics"]["within_one_accuracy"] = None
+    mock_report_data["metrics"]["brier_score"] = None
+    mock_report_data["metrics"]["exact_tier_matches"] = None
+    mock_report_data["metrics"]["within_one_tier_matches"] = None
+    mock_report_data["metrics"]["confusion_matrix"] = None
+
+    payload = build_calibration_payload(mock_report_data, report_sha="sha")
+    head = payload["headline_metrics"]
+    assert head["exact_accuracy"] is None
+    assert head["within_one_accuracy"] is None
+    assert head["brier_score"] is None
+    assert head["exact_matches"] is None
+
+
+def test_incomplete_petri_row_refused(mock_report_data):
+    # Missing tone_choice in petri_cases
+    mock_report_data["petri_cases"] = [
+        {"conversation_id": "conv_bad", "turn_index": 1}
+    ]
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_unbilled_calls_caveat_preserved(mock_report_data):
+    mock_report_data["metrics"]["unbilled_calls_count"] = 5
+    mock_report_data["metrics"]["total_estimated_cost_usd"] = 0.0012
+    payload = build_calibration_payload(mock_report_data, report_sha="sha")
+    head = payload["headline_metrics"]
+    assert head["unbilled_calls_count"] == 5
+    assert head["total_estimated_cost_usd"] == 0.0012
+    assert head["cost_caveat"] is not None
+    assert "5 calls with null provider billing" in head["cost_caveat"]
+
+
+def test_stale_petri_output_cleaned_when_input_has_none(tmp_path, mock_report_data):
+    mock_report_data["petri_cases"] = []
+    report_file = tmp_path / "report.json"
+    report_file.write_text(json.dumps(mock_report_data), encoding="utf-8")
+
+    site_dir = tmp_path / "site"
+    site_data = site_dir / "data"
+    site_data.mkdir(parents=True)
+
+    # Pre-create a stale petri drift file
+    stale_petri = site_data / "petri_register_drift.json"
+    stale_petri.write_text('{"stale": true}', encoding="utf-8")
+    assert stale_petri.is_file()
+
+    ret = main([
+        "--report", str(report_file),
+        "--site", str(site_dir),
+    ])
+    assert ret == 0
+    # Stale file should be removed
+    assert not stale_petri.is_file()
+

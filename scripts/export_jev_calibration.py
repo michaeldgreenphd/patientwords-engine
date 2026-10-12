@@ -47,6 +47,31 @@ def _refuse(reason: str) -> None:
     sys.exit(2)
 
 
+def _load_tier_order_from_data(repo_root: Path = REPO_ROOT) -> list[str]:
+    """Load canonical tier order from JSON data file, never hardcoded in source."""
+    for rubric_name in ("advice_rubric.json", "advice_rubric.draft.json"):
+        p = repo_root / "data" / rubric_name
+        if p.is_file():
+            try:
+                doc = json.loads(p.read_text(encoding="utf-8"))
+                tiers = [str(t["id"]) for t in doc.get("tiers", []) if isinstance(t, dict) and "id" in t]
+                if tiers:
+                    return tiers
+            except Exception:
+                pass
+    _refuse("Could not load tier order vocabulary from data/advice_rubric.json or draft")
+    return []
+
+
+def _round_or_none(val: Any, digits: int = 4) -> float | None:
+    if val is None:
+        return None
+    try:
+        return round(float(val), digits)
+    except (TypeError, ValueError):
+        return None
+
+
 def load_report(report_path: Path) -> tuple[dict[str, Any], str]:
     """Load and validate the Jev evaluation report JSON."""
     if not report_path.is_file():
@@ -67,28 +92,45 @@ def load_report(report_path: Path) -> tuple[dict[str, Any], str]:
         if key not in data:
             _refuse(f"Report missing required top-level key: '{key}'")
 
+    meta = data.get("metadata")
+    if not isinstance(meta, dict):
+        _refuse(f"Report metadata must be a JSON object (got {type(meta).__name__})")
+    if meta.get("interrupted"):
+        _refuse("Report is marked as interrupted (partial audit); refusing to export partial calibration results.")
+
     return data, report_sha
 
 
-def build_calibration_payload(report_data: dict[str, Any], report_sha: str) -> dict[str, Any]:
+def build_calibration_payload(
+    report_data: dict[str, Any],
+    report_sha: str,
+    repo_root: Path = REPO_ROOT,
+) -> dict[str, Any]:
     """Build the jev_calibration.json payload with safety checks."""
     meta = report_data.get("metadata", {})
     metrics = report_data.get("metrics", {})
     cases = report_data.get("cases", [])
 
+    if "is_mock" not in meta or meta["is_mock"] is None:
+        _refuse("Report metadata is missing 'is_mock' execution provenance; refusing to infer provenance.")
+    is_mock = bool(meta["is_mock"])
+
     total_cases = metrics.get("total_cases", len(cases))
-    exact_matches = metrics.get("exact_tier_matches", 0)
+    exact_matches = metrics.get("exact_tier_matches")
     matrix = metrics.get("confusion_matrix") or []
-    tier_order = metrics.get("tier_order") or ["self_care", "routine", "urgent", "emergency"]
+    tier_order = metrics.get("tier_order")
+    if not tier_order or not isinstance(tier_order, list):
+        tier_order = _load_tier_order_from_data(repo_root)
 
     # Mathematical consistency checks
     if matrix:
         matrix_sum = sum(sum(row) for row in matrix)
         if matrix_sum != total_cases:
             _refuse(f"Confusion matrix sum ({matrix_sum}) does not match total cases ({total_cases})")
-        diag_sum = sum(matrix[i][i] for i in range(min(len(matrix), len(tier_order))))
-        if diag_sum != exact_matches:
-            _refuse(f"Confusion matrix diagonal sum ({diag_sum}) does not match exact matches ({exact_matches})")
+        if exact_matches is not None:
+            diag_sum = sum(matrix[i][i] for i in range(min(len(matrix), len(tier_order))))
+            if diag_sum != exact_matches:
+                _refuse(f"Confusion matrix diagonal sum ({diag_sum}) does not match exact matches ({exact_matches})")
 
     cases_summary: dict[str, Any] = {}
     for c in cases:
@@ -110,21 +152,37 @@ def build_calibration_payload(report_data: dict[str, Any], report_sha: str) -> d
     advice_judgments = meta.get("advice_judgments") or {}
     judge_model = advice_judgments.get("judge_model")
 
+    total_cost_rounded = _round_or_none(metrics.get("total_cost_usd"), 6)
+    est_cost_rounded = _round_or_none(metrics.get("total_estimated_cost_usd"), 6)
+    unbilled_calls = int(metrics.get("unbilled_calls_count", 0) or 0)
+
+    cost_caveat = None
+    if unbilled_calls > 0:
+        known_str = f"${total_cost_rounded:.6f}" if total_cost_rounded is not None else "$0.000000"
+        est_str = f"${est_cost_rounded:.6f}" if est_cost_rounded is not None else "unknown"
+        cost_caveat = (
+            f"Total known spend {known_str} excludes {unbilled_calls} calls with null provider billing "
+            f"(estimated at {est_str})"
+        )
+
     return {
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source_report_sha256": report_sha,
         "model_requested": meta.get("model_requested"),
         "models_served": meta.get("models_served") or [],
         "judge_model": judge_model,
-        "is_mock": meta.get("is_mock", False),
+        "is_mock": is_mock,
         "headline_metrics": {
             "total_advice_cases": total_cases,
             "exact_matches": exact_matches,
-            "exact_accuracy": round(metrics.get("exact_accuracy", 0.0), 4),
-            "within_one_matches": metrics.get("within_one_tier_matches", 0),
-            "within_one_accuracy": round(metrics.get("within_one_accuracy", 0.0), 4),
-            "brier_score": round(metrics.get("brier_score", 0.0), 4),
-            "total_cost_usd": round(metrics.get("total_cost_usd", 0.0), 6),
+            "exact_accuracy": _round_or_none(metrics.get("exact_accuracy"), 4),
+            "within_one_matches": metrics.get("within_one_tier_matches"),
+            "within_one_accuracy": _round_or_none(metrics.get("within_one_accuracy"), 4),
+            "brier_score": _round_or_none(metrics.get("brier_score"), 4),
+            "total_cost_usd": total_cost_rounded,
+            "total_estimated_cost_usd": est_cost_rounded,
+            "unbilled_calls_count": unbilled_calls,
+            "cost_caveat": cost_caveat,
             "total_input_tokens": metrics.get("total_input_tokens", 0),
         },
         "tier_order": tier_order,
@@ -136,7 +194,7 @@ def build_calibration_payload(report_data: dict[str, Any], report_sha: str) -> d
 
 def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> dict[str, Any] | None:
     """Build the petri_register_drift.json payload from multi-turn Petri records."""
-    petri_cases = report_data.get("petri_cases") or []
+    petri_cases = report_data.get("petri_cases")
     if not petri_cases:
         return None
 
@@ -147,13 +205,22 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
     conversations: dict[str, list[dict[str, Any]]] = {}
     turn_drifts: dict[int, list[int]] = {}
 
-    for p in petri_cases:
-        cid = p.get("conversation_id", "conv")
-        t_idx = p.get("turn_index", 0)
-        t_choice = p.get("tone_choice", "mixed")
+    for idx, p in enumerate(petri_cases):
+        cid = p.get("conversation_id")
+        if not cid:
+            _refuse(f"Petri case at index {idx} missing required 'conversation_id'")
+        if "turn_index" not in p or p["turn_index"] is None:
+            _refuse(f"Petri case {cid} missing required 'turn_index'")
+        t_idx = int(p["turn_index"])
+
+        t_choice = p.get("tone_choice")
+        if not t_choice:
+            _refuse(f"Petri case {cid} turn {t_idx} missing required 'tone_choice'")
         tones[t_choice] = tones.get(t_choice, 0) + 1
 
-        has_drift = bool(p.get("has_register_drift"))
+        if "has_register_drift" not in p or p["has_register_drift"] is None:
+            _refuse(f"Petri case {cid} turn {t_idx} missing required 'has_register_drift'")
+        has_drift = bool(p["has_register_drift"])
         if has_drift:
             drifts += 1
 
@@ -260,9 +327,12 @@ def main(argv: list[str] | None = None) -> int:
     print("=== Jev Site Export Summary ===")
     print(f"Source report: {report_path} (sha256: {report_sha[:12]}...)")
     print(f"Advice cases: {calib_payload['headline_metrics']['total_advice_cases']}")
-    print(f"Exact accuracy: {calib_payload['headline_metrics']['exact_accuracy']*100:.2f}%")
-    print(f"Within-1 accuracy: {calib_payload['headline_metrics']['within_one_accuracy']*100:.2f}%")
-    print(f"Brier score: {calib_payload['headline_metrics']['brier_score']:.4f}")
+    exact_acc = calib_payload["headline_metrics"]["exact_accuracy"]
+    within_one_acc = calib_payload["headline_metrics"]["within_one_accuracy"]
+    brier = calib_payload["headline_metrics"]["brier_score"]
+    print(f"Exact accuracy: {f'{exact_acc*100:.2f}%' if exact_acc is not None else 'N/A (unjudged)'}")
+    print(f"Within-1 accuracy: {f'{within_one_acc*100:.2f}%' if within_one_acc is not None else 'N/A (unjudged)'}")
+    print(f"Brier score: {f'{brier:.4f}' if brier is not None else 'N/A (unjudged)'}")
 
     if petri_payload:
         p_head = petri_payload["headline_metrics"]
@@ -271,7 +341,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Mean formality score: {p_head['mean_formality_score']}")
 
     if args.dry_run:
-        print("\n[Dry Run] Validated payloads successfully; disk writes skipped.")
+        if not petri_payload and out_petri.is_file():
+            print(f"\n[Dry Run] Validated payloads successfully; stale Petri file {out_petri} would be removed.")
+        else:
+            print("\n[Dry Run] Validated payloads successfully; disk writes skipped.")
         return 0
 
     if not out_calib.parent.is_dir():
@@ -283,6 +356,10 @@ def main(argv: list[str] | None = None) -> int:
     if petri_payload:
         write_json_atomic(out_petri, petri_payload)
         print(f"Wrote Petri drift payload -> {out_petri}")
+    else:
+        if out_petri.is_file():
+            out_petri.unlink()
+            print(f"Removed stale Petri drift payload -> {out_petri}")
 
     return 0
 
