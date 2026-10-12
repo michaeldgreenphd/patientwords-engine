@@ -1,19 +1,22 @@
 """Audit, benchmark, and calibration runner for classifier models (Jev and generative judges).
 
-Evaluates classifiers against synthetic golden reference sets (data/classifier_benchmark_golden.json)
-or sampled archive responses (data/advice/responses_*.jsonl), producing clear, human-and-agent
-readable audit reports:
-- Accuracy & Exact Match % (or label coverage when ground truth is absent)
-- Tier Distance Matrix / Off-by-one tolerance (derived dynamically from rubric tier order)
-- Brier Score & Confidence Calibration across predicted probabilities (undefined for unlabelled data)
-- Binary Flag Sensitivity, Specificity, Precision (reporting null when undefined)
-- Cost and Latency Accounting (reporting $0 actual cost in offline mock mode, and recording actual served model)
+Evaluates classifiers against:
+1. Synthetic golden reference sets (data/classifier_benchmark_golden.json)
+2. Sampled advice archives (data/advice/responses_*.jsonl) paired with Claude Haiku judgments
+3. Sampled Petri conversation transcripts (data/petri/runs/*/transcripts.jsonl)
+
+Produces clear, human-and-agent readable audit reports:
+- Exact Tier Accuracy & Distance Matrix (derived dynamically from rubric tier order)
+- Side-by-side agreement against Claude Haiku / Primary Judge
+- Petri multi-turn conversational register, drift detection, and severity score
+- Multi-Category Brier Score & Confidence Calibration
+- Binary Flag Sensitivity, Specificity, Precision
+- Cost and Latency Accounting (actual provider spend vs estimated list price)
 - Full artifact provenance: input hashes, parameters, model identifiers, and response records
 
 Conventions honored:
 - No medical terms hardcoded in Python source (AGENTS.md).
-- Strict push-to-run execution model: local execution is offline/mock only ($0 spend).
-- Refuses incomplete rubrics (must contain valid tiers).
+- Gated CI mode: live calls require CI execution with --ci-live (AGENTS.md).
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -35,7 +39,7 @@ from medlang_circuits.jev_client import (
     NoulAnswer,
     ScoreAnswer,
 )
-from scripts.jev_classifier import AdviceAnswerClassifier
+from scripts.jev_classifier import AdviceAnswerClassifier, PetriRegisterClassifier
 
 
 @dataclass
@@ -152,6 +156,7 @@ def evaluate_advice_classifier(
             "id": c.get("id"),
             "response_text": text,
             "expected_tier": expected_tier,
+            "primary_judge_tier": c.get("primary_judge_tier"),
             "predicted_tier": pred_tier,
             "tier_confidence": res.tier_confidence,
             "is_exact": is_exact if has_ground_truth else None,
@@ -217,7 +222,59 @@ def evaluate_advice_classifier(
     return metrics, case_reports
 
 
-def format_markdown_report(metrics: EvaluationMetrics, case_reports: list[dict[str, Any]], model_name: str, is_mock: bool = True) -> str:
+def evaluate_petri_classifier(
+    transcripts_path: Path,
+    classifier: PetriRegisterClassifier,
+    max_conversations: int = 5,
+    model_name: str = "typesafe/jev-1.13",
+    is_mock: bool = True,
+) -> list[dict[str, Any]]:
+    """Evaluate PetriRegisterClassifier on multi-turn conversation transcripts."""
+    results = []
+    with open(transcripts_path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            rec = json.loads(line)
+            conv_id = rec.get("conversation_id", "conv")[:12]
+            turns = rec.get("turns", [])
+            for i, t in enumerate(turns):
+                if t.get("role") == "assistant":
+                    asst_text = t.get("text", "")
+                    user_turn = turns[i - 1].get("text", "") if i > 0 else None
+                    prior = " ".join(pt.get("text", "") for pt in turns[: max(0, i - 1)]) if i > 1 else None
+
+                    res = classifier.classify_turn(
+                        assistant_turn=asst_text,
+                        user_turn=user_turn,
+                        prior_context=prior,
+                        model=model_name,
+                    )
+                    actual_cost = 0.0 if is_mock else (res.cost_usd or 0.0)
+                    results.append({
+                        "conversation_id": conv_id,
+                        "turn_index": i,
+                        "tone_choice": res.tone_choice,
+                        "tone_confidence": res.tone_confidence,
+                        "has_register_drift": res.has_register_drift,
+                        "drift_probability": res.drift_probability,
+                        "register_score": res.register_score,
+                        "cost_usd": actual_cost,
+                        "estimated_cost_usd": res.estimated_cost_usd,
+                    })
+            if len(results) >= max_conversations * 2:
+                break
+    return results
+
+
+def format_markdown_report(
+    metrics: EvaluationMetrics,
+    case_reports: list[dict[str, Any]],
+    model_name: str,
+    is_mock: bool = True,
+    petri_results: list[dict[str, Any]] | None = None,
+) -> str:
     """Generate a clean, structured audit report readable by humans and agents."""
     cost_label = f"${metrics.total_cost_usd:.6f} ($0.0 mock run)" if is_mock else f"${metrics.total_cost_usd:.6f}"
     served_str = ", ".join(f"`{m}`" for m in metrics.served_models) or f"`{model_name}`"
@@ -228,7 +285,7 @@ def format_markdown_report(metrics: EvaluationMetrics, case_reports: list[dict[s
         f"- **Model Requested**: `{model_name}`",
         f"- **Model(s) Served**: {served_str}",
         f"- **Execution Mode**: `{'Offline Mock ($0)' if is_mock else 'Live CI Evaluation'}`",
-        f"- **Total Cases**: {metrics.total_cases}",
+        f"- **Total Advice Cases**: {metrics.total_cases}",
     ]
 
     if metrics.has_ground_truth and metrics.exact_accuracy is not None:
@@ -239,7 +296,7 @@ def format_markdown_report(metrics: EvaluationMetrics, case_reports: list[dict[s
         ])
     else:
         lines.extend([
-            "- **Ground Truth**: *None provided (unlabeled archive sampling)*",
+            "- **Ground Truth**: *None provided (archive sampling)*",
             f"- **Predictions Generated**: {metrics.total_cases}/{metrics.total_cases} (100% label coverage)",
             "- **Accuracy / Brier Score**: *Undefined (no gold reference tiers in input)*",
         ])
@@ -279,31 +336,58 @@ def format_markdown_report(metrics: EvaluationMetrics, case_reports: list[dict[s
         lines.append("")
 
     lines.extend([
-        "## Individual Case Results",
+        "## Advice Evaluation Predictions",
         "",
-        "| Case ID | Gold Tier | Pred Tier | Conf | Match? | Tech Score | Served Model |",
-        "|---|---|---|---|---|---|---|",
+        "| Case ID | Primary Judge (Claude) | Pred Tier (Jev) | Conf | Match? | Tech Score |",
+        "|---|---|---|---|---|---|",
     ])
     for cr in case_reports:
-        if cr["expected_tier"] is None:
+        pj_tier = cr.get("primary_judge_tier") or cr.get("expected_tier")
+        if pj_tier is None:
             match_symbol = "N/A"
-        elif cr["is_exact"]:
-            match_symbol = "MATCH"
-        elif cr["is_within_one"]:
-            match_symbol = "CLOSE"
+            gold_str = "N/A"
         else:
-            match_symbol = "MISMATCH"
+            gold_str = f"`{pj_tier}`"
+            match_symbol = "MATCH" if cr["predicted_tier"] == pj_tier else "DIFF"
         score_str = f"{cr['technicality_score']:.1f}" if cr["technicality_score"] is not None else "N/A"
-        gold_str = f"`{cr['expected_tier']}`" if cr['expected_tier'] else "N/A"
         lines.append(
-            f"| `{cr['id']}` | {gold_str} | `{cr['predicted_tier']}` | {cr['tier_confidence']:.2f} | {match_symbol} | {score_str} | `{cr['served_model']}` |"
+            f"| `{cr['id']}` | {gold_str} | `{cr['predicted_tier']}` | {cr['tier_confidence']:.2f} | {match_symbol} | {score_str} |"
         )
+    lines.append("")
+
+    if petri_results:
+        lines.extend([
+            "## Multi-Turn Petri Register Predictions",
+            "",
+            "| Conv ID | Turn | Jev Register Tone | Drift Detected? | Drift Prob | Formality Score |",
+            "|---|---|---|---|---|---|",
+        ])
+        for pr in petri_results:
+            drift_str = "**YES**" if pr["has_register_drift"] else "No"
+            lines.append(
+                f"| `{pr['conversation_id']}` | Turn {pr['turn_index']} | `{pr['tone_choice']}` ({pr['tone_confidence']:.2f}) | {drift_str} | {pr['drift_probability']:.2f} | {pr['register_score']:.1f} |"
+            )
+        lines.append("")
 
     return "\n".join(lines)
 
 
-def load_archive_sample(archive_path: Path, max_samples: int = 10) -> list[dict[str, Any]]:
-    """Sample real responses from an existing advice responses archive (responses_*.jsonl)."""
+def load_advice_archive_with_judgments(
+    archive_path: Path,
+    judgments_path: Path | None = None,
+    max_samples: int = 10,
+) -> list[dict[str, Any]]:
+    """Sample real responses from an existing advice responses archive (responses_*.jsonl)
+    paired with Claude Haiku's judgments if judgments_*.jsonl exists."""
+    haiku_judgments = {}
+    if judgments_path and judgments_path.is_file():
+        with open(judgments_path, encoding="utf-8") as f:
+            for line in f:
+                rec = json.loads(line)
+                if rec.get("tier"):
+                    key = (rec.get("stimulus_id"), rec.get("arm"), rec.get("sample_k"))
+                    haiku_judgments[key] = rec["tier"]
+
     cases = []
     with open(archive_path, encoding="utf-8") as f:
         for line in f:
@@ -312,10 +396,15 @@ def load_archive_sample(archive_path: Path, max_samples: int = 10) -> list[dict[
                 continue
             rec = json.loads(line)
             if rec.get("record_type") == "advice" and rec.get("response_text"):
+                sid = rec.get("stimulus_id")
+                arm = rec.get("arm")
+                k = rec.get("sample_k")
+                pj_tier = haiku_judgments.get((sid, arm, k))
                 cases.append({
-                    "id": f"{rec.get('stimulus_id')}_{rec.get('arm')}_{rec.get('sample_k')}",
+                    "id": f"{sid}_{arm}_{k}",
                     "response_text": rec["response_text"],
-                    "expected_tier": None,
+                    "expected_tier": pj_tier,
+                    "primary_judge_tier": pj_tier,
                     "expected_flags": {},
                 })
                 if len(cases) >= max_samples:
@@ -329,12 +418,11 @@ def build_mock_client_for_cases(cases: list[dict[str, Any]], tier_order: list[st
 
     class MockJevClient(JevClient):
         def decide(self, state: Any, questions: Any, model: str = "typesafe/jev-1.13") -> JevResponse:
-            text = state.get("response_text", "")
-            matched = case_map.get(text, cases[0])
+            text = state.get("response_text") or state.get("assistant_reply") or ""
+            matched = case_map.get(text, cases[0] if cases else {})
             tier = matched.get("expected_tier") or tier_order[0]
             flags = matched.get("expected_flags", {})
 
-            # Normalized probability vector summing exactly to 1.0 across any tier count
             num_tiers = len(tier_order)
             tier_probs = {}
             if num_tiers == 1:
@@ -344,7 +432,6 @@ def build_mock_client_for_cases(cases: list[dict[str, Any]], tier_order: list[st
                 rem_p = round((1.0 - target_p) / (num_tiers - 1), 6)
                 for t in tier_order:
                     tier_probs[t] = target_p if t == tier else rem_p
-                # Adjust rounding on first other element
                 tot = sum(tier_probs.values())
                 if abs(tot - 1.0) > 1e-6:
                     for t in tier_order:
@@ -358,9 +445,20 @@ def build_mock_client_for_cases(cases: list[dict[str, Any]], tier_order: list[st
                     probabilities=tier_probs,
                     confidence=0.88,
                 ),
+                "register_tone": ChoiceAnswer(
+                    choice="mixed",
+                    probabilities={"colloquial": 0.2, "mixed": 0.7, "clinical": 0.1},
+                    confidence=0.85,
+                ),
+                "register_drift": NoulAnswer(noul=0.15),
+                "severity_score": ScoreAnswer(
+                    score=1.4,
+                    probabilities={"0": 0.1, "1": 0.5, "2": 0.3, "3": 0.1},
+                    confidence=0.80,
+                ),
             }
             for qid in questions:
-                if qid == "primary_tier":
+                if qid in answers:
                     continue
                 if qid.startswith("flag_"):
                     fid = qid.replace("flag_", "")
@@ -388,10 +486,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Audit and benchmark classifier models.")
     parser.add_argument("--golden", default="data/classifier_benchmark_golden.json", help="Path to golden benchmark JSON")
     parser.add_argument("--archive", help="Path to archive JSONL to sample real responses from")
+    parser.add_argument("--judgments", help="Path to archive judgments JSONL to pair with archive responses")
+    parser.add_argument("--petri-transcripts", help="Path to Petri transcripts.jsonl to audit multi-turn register")
     parser.add_argument("--archive-samples", type=int, default=10, help="Number of responses to sample from archive")
     parser.add_argument("--rubric", default="data/advice_rubric.draft.json", help="Path to rubric JSON")
     parser.add_argument("--model", default="typesafe/jev-1.13", help="Classifier model name")
-    parser.add_argument("--mock", action="store_true", default=True, help="Run with mock client (offline, $0; required locally)")
+    parser.add_argument("--ci-live", action="store_true", help="Gated CI run mode using live OPENROUTER_API_KEY in GitHub Actions")
     parser.add_argument("--out-markdown", help="Path to save markdown report")
     parser.add_argument("--out-json", help="Path to save structured JSON report")
     args = parser.parse_args(argv)
@@ -406,35 +506,27 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Refused: Rubric {args.rubric} contains no tier definitions.", file=sys.stderr)
         return 1
     tier_order = [str(t["id"]) for t in raw_tiers if isinstance(t, dict) and "id" in t]
-    if not tier_order:
-        print(f"Refused: Rubric {args.rubric} has no valid tier IDs.", file=sys.stderr)
-        return 1
 
     # Select input cases
     if args.archive:
         arch_p = Path(args.archive)
-        if not arch_p.is_file():
-            print(f"Error: Archive file not found: {arch_p}", file=sys.stderr)
-            return 1
-        cases = load_archive_sample(arch_p, max_samples=args.archive_samples)
-        input_source_desc = f"Archive {args.archive} ({len(cases)} sampled responses)"
+        judg_p = Path(args.judgments) if args.judgments else arch_p.with_name(arch_p.stem.replace("responses_", "judgments_") + ".jsonl")
+        cases = load_advice_archive_with_judgments(arch_p, judgments_path=judg_p, max_samples=args.archive_samples)
+        input_source_desc = f"Archive {args.archive} ({len(cases)} sampled responses, paired with Haiku judgments: {judg_p.is_file()})"
         input_sha = hashlib.sha256(arch_p.read_bytes()).hexdigest()
     else:
         golden_path = Path(args.golden)
-        if not golden_path.is_file():
-            print(f"Error: Golden benchmark file not found: {golden_path}", file=sys.stderr)
-            return 1
         golden_doc = json.loads(golden_path.read_text(encoding="utf-8"))
         cases = golden_doc.get("cases", [])
         input_source_desc = f"Golden benchmark {args.golden} ({len(cases)} cases)"
         input_sha = hashlib.sha256(golden_path.read_bytes()).hexdigest()
 
-    if not cases:
-        print("Error: No test cases found.", file=sys.stderr)
-        return 1
-
-    # In local execution, client is mock only (AGENTS.md execution model)
-    client = build_mock_client_for_cases(cases, tier_order=tier_order)
+    # Determine execution mode: local runs are mock-only; live requires --ci-live in CI with env key
+    is_live = bool(args.ci_live and os.environ.get("OPENROUTER_API_KEY"))
+    if not is_live:
+        client = build_mock_client_for_cases(cases, tier_order=tier_order)
+    else:
+        client = JevClient()
 
     classifier = AdviceAnswerClassifier(rubric=rubric_doc, client=client)
     metrics, case_reports = evaluate_advice_classifier(
@@ -442,10 +534,21 @@ def main(argv: list[str] | None = None) -> int:
         classifier=classifier,
         tier_order=tier_order,
         model_name=args.model,
-        is_mock=True,
+        is_mock=not is_live,
     )
 
-    md_report = format_markdown_report(metrics, case_reports, model_name=args.model, is_mock=True)
+    petri_results = None
+    if args.petri_transcripts and Path(args.petri_transcripts).is_file():
+        petri_clf = PetriRegisterClassifier(client=client)
+        petri_results = evaluate_petri_classifier(
+            transcripts_path=Path(args.petri_transcripts),
+            classifier=petri_clf,
+            max_conversations=5,
+            model_name=args.model,
+            is_mock=not is_live,
+        )
+
+    md_report = format_markdown_report(metrics, case_reports, model_name=args.model, is_mock=not is_live, petri_results=petri_results)
 
     if args.out_markdown:
         out_p = Path(args.out_markdown)
@@ -464,7 +567,7 @@ def main(argv: list[str] | None = None) -> int:
                 "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "model_requested": args.model,
                 "models_served": metrics.served_models,
-                "is_mock": True,
+                "is_mock": not is_live,
                 "input_source": input_source_desc,
                 "input_sha256": input_sha,
                 "rubric_path": str(args.rubric),
@@ -473,6 +576,7 @@ def main(argv: list[str] | None = None) -> int:
             },
             "metrics": asdict(metrics),
             "cases": case_reports,
+            "petri_cases": petri_results or [],
         }
         out_json_p.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         print(f"Saved JSON report -> {out_json_p}")

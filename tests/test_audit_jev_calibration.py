@@ -33,7 +33,6 @@ def test_audit_calibration_main_mock(tmp_path):
     out_json = tmp_path / "report.json"
 
     ret = main([
-        "--mock",
         "--out-markdown", str(out_md),
         "--out-json", str(out_json),
     ])

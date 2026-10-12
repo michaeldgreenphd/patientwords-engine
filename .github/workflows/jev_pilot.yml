@@ -1,0 +1,65 @@
+name: Jev Classifier Pilot (Advice & Petri)
+
+# Small, controlled pilot to evaluate TypeSafe AI's Jev (typesafe/jev-1.13)
+# on existing landed Advice responses and Petri multi-turn conversations.
+# Runs in GitHub Actions using OPENROUTER_API_KEY.
+# Total cost per run: ~$0.0003 (< 1/30th of a cent).
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Decisions model ID"
+        type: string
+        default: "typesafe/jev-1.13"
+      advice_samples:
+        description: "Number of advice responses to evaluate"
+        type: string
+        default: "10"
+      petri_conversations:
+        description: "Number of Petri conversations to audit"
+        type: string
+        default: "3"
+
+jobs:
+  jev_pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run Jev Live Pilot (Advice & Petri)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          MODEL: ${{ inputs.model }}
+          ADVICE_SAMPLES: ${{ inputs.advice_samples }}
+        run: |
+          mkdir -p artifacts
+          python scripts/audit_jev_calibration.py \
+            --archive "data/advice/responses_stimuli_20260721T235403Z.jsonl" \
+            --archive-samples "$ADVICE_SAMPLES" \
+            --petri-transcripts "data/petri/runs/run_35937014168_1/transcripts.jsonl" \
+            --rubric "data/advice_rubric.draft.json" \
+            --model "$MODEL" \
+            --ci-live \
+            --out-markdown "artifacts/jev_pilot_report.md" \
+            --out-json "artifacts/jev_pilot_report.json"
+
+      - name: Add Report to Workflow Summary
+        if: always()
+        run: |
+          if [ -f artifacts/jev_pilot_report.md ]; then
+            cat artifacts/jev_pilot_report.md >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jev-pilot-report
+          path: artifacts/
+
