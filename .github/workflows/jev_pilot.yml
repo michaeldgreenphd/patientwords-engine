@@ -144,7 +144,7 @@ jobs:
 
       - name: Restore checkpoint cache
         if: ${{ (inputs.resume || github.run_attempt > 1) && inputs.resume_run_id == '' }}
-        uses: actions/cache/restore@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: artifacts/jev_pilot_checkpoint.json
           key: jev-checkpoint-${{ github.ref_name }}-${{ steps.params.outputs.advice_samples }}-${{ steps.params.outputs.petri_conversations }}-${{ inputs.model }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -186,7 +186,7 @@ jobs:
 
       - name: Save checkpoint cache (on interruption, failure, or cancellation)
         if: (failure() || cancelled()) && hashFiles('artifacts/jev_pilot_checkpoint.json') != ''
-        uses: actions/cache/save@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: artifacts/jev_pilot_checkpoint.json
           key: jev-checkpoint-${{ github.ref_name }}-${{ steps.params.outputs.advice_samples }}-${{ steps.params.outputs.petri_conversations }}-${{ inputs.model }}-${{ github.run_id }}-${{ github.run_attempt }}
