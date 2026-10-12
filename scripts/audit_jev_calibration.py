@@ -980,7 +980,13 @@ def main(argv: list[str] | None = None) -> int:
         petri_sha = hashlib.sha256(petri_p.read_bytes()).hexdigest()
 
     clf_file = Path(__file__).parent / "jev_classifier.py"
-    classifier_sha = hashlib.sha256(clf_file.read_bytes()).hexdigest() if clf_file.is_file() else None
+    client_file = Path(__file__).parent.parent / "medlang_circuits" / "jev_client.py"
+    clf_hasher = hashlib.sha256()
+    if clf_file.is_file():
+        clf_hasher.update(clf_file.read_bytes())
+    if client_file.is_file():
+        clf_hasher.update(client_file.read_bytes())
+    classifier_sha = clf_hasher.hexdigest()
 
     judgments_sha = hashlib.sha256(judg_p.read_bytes()).hexdigest() if (arch_p and judg_p and judg_p.is_file()) else None
     judge_model_meta = args.judge_model if (arch_p and judg_p) else None
@@ -1052,7 +1058,7 @@ def main(argv: list[str] | None = None) -> int:
                     file=sys.stderr,
                 )
                 return 1
-            if cp_meta.get("classifier_sha256") and classifier_sha and cp_meta["classifier_sha256"] != classifier_sha:
+            if cp_meta.get("classifier_sha256") != classifier_sha:
                 print(
                     f"Refused: Checkpoint classifier implementation mismatch: {cp_meta.get('classifier_sha256')} != {classifier_sha}",
                     file=sys.stderr,

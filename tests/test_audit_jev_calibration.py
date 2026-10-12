@@ -799,5 +799,33 @@ def test_checkpoint_judgments_mismatch_refused_on_resume(tmp_path):
     assert ret_mismatch == 1
 
 
+def test_checkpoint_missing_classifier_sha_refused_on_resume(tmp_path):
+    checkpoint_file = tmp_path / "checkpoint_legacy.json"
+    out_md = tmp_path / "report_legacy.md"
+    out_json = tmp_path / "report_legacy.json"
+
+    ret = main([
+        "--golden", "data/classifier_benchmark_golden.json",
+        "--checkpoint", str(checkpoint_file),
+        "--out-markdown", str(out_md),
+        "--out-json", str(out_json),
+    ])
+    assert ret == 0
+
+    cp_doc = json.loads(checkpoint_file.read_text(encoding="utf-8"))
+    # Remove classifier_sha256 to simulate legacy checkpoint
+    del cp_doc["metadata"]["classifier_sha256"]
+    checkpoint_file.write_text(json.dumps(cp_doc), encoding="utf-8")
+
+    ret_mismatch = main([
+        "--golden", "data/classifier_benchmark_golden.json",
+        "--checkpoint", str(checkpoint_file),
+        "--out-markdown", str(tmp_path / "bad.md"),
+        "--out-json", str(tmp_path / "bad.json"),
+    ])
+    assert ret_mismatch == 1
+
+
+
 
 
