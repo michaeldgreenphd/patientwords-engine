@@ -512,3 +512,101 @@ def test_interrupted_provenance_samples_evaluated_accuracy(tmp_path):
     assert doc["metadata"]["golden_benchmark"]["cases_evaluated"] == 1
     assert doc["metadata"]["golden_benchmark"]["cases_requested"] == 6
 
+
+def test_empty_selected_judge_set_refused(tmp_path):
+    from scripts.advice_eval import canonical_json, sha256_text
+
+    rec = {
+        "record_type": "advice",
+        "stimulus_id": "stim_01",
+        "arm": "patient",
+        "sample_k": 1,
+        "model_requested": "vendor/model-a",
+        "response_text": "Response text A from model A",
+        "response_sha256": "aaaa1111222233334444555566667777888899990000aaaabbbbccccddddeeee",
+        "prev_sha256": None,
+    }
+    rec["record_sha256"] = sha256_text(canonical_json(rec))
+
+    resp_file = tmp_path / "responses.jsonl"
+    resp_file.write_text(json.dumps(rec) + "\n", encoding="utf-8")
+
+    # Judgments file containing only non-matching judge
+    j_other = {
+        "response_sha256": rec["response_sha256"],
+        "judge_model": "some-other-judge",
+        "tier": "routine",
+        "flags": {},
+    }
+    judg_file = tmp_path / "judgments.jsonl"
+    judg_file.write_text(json.dumps(j_other) + "\n", encoding="utf-8")
+
+    # Calling with default judge_model (claude-haiku-4-5) must refuse
+    with pytest.raises(ValueError, match="refusing empty judge set"):
+        load_advice_archive_with_judgments(resp_file, judgments_path=judg_file, max_samples=0, judge_model="claude-haiku-4-5")
+
+    # In main(), it should return exit code 1
+    ret = main([
+        "--archive", str(resp_file),
+        "--judgments", str(judg_file),
+        "--judge-model", "claude-haiku-4-5",
+        "--archive-samples", "1",
+    ])
+    assert ret == 1
+
+
+def test_petri_transcript_mismatch_refused_on_resume(tmp_path):
+    transcripts_file1 = tmp_path / "transcripts1.jsonl"
+    conv1 = {
+        "conversation_id": "conv-1",
+        "turns": [
+            {
+                "role": "assistant",
+                "content": "You should check with a doctor.",
+            }
+        ],
+    }
+    transcripts_file1.write_text(json.dumps(conv1) + "\n", encoding="utf-8")
+
+    checkpoint_file = tmp_path / "checkpoint_petri.json"
+    out_md = tmp_path / "petri.md"
+    out_json = tmp_path / "petri.json"
+
+    ret = main([
+        "--golden", "data/classifier_benchmark_golden.json",
+        "--petri-transcripts", str(transcripts_file1),
+        "--petri-conversations", "1",
+        "--checkpoint", str(checkpoint_file),
+        "--out-markdown", str(out_md),
+        "--out-json", str(out_json),
+    ])
+    assert ret == 0
+
+    cp_doc = json.loads(checkpoint_file.read_text(encoding="utf-8"))
+    assert "petri_transcripts_sha256" in cp_doc["metadata"]
+    assert len(cp_doc["petri_cases"]) > 0
+
+    # Resume with modified transcripts content must refuse
+    transcripts_file2 = tmp_path / "transcripts2.jsonl"
+    conv2 = {
+        "conversation_id": "conv-1",
+        "turns": [
+            {
+                "role": "assistant",
+                "content": "Different response content entirely.",
+            }
+        ],
+    }
+    transcripts_file2.write_text(json.dumps(conv2) + "\n", encoding="utf-8")
+
+    ret_mismatch = main([
+        "--golden", "data/classifier_benchmark_golden.json",
+        "--petri-transcripts", str(transcripts_file2),
+        "--petri-conversations", "1",
+        "--checkpoint", str(checkpoint_file),
+        "--out-markdown", str(tmp_path / "petri2.md"),
+        "--out-json", str(tmp_path / "petri2.json"),
+    ])
+    assert ret_mismatch == 1
+
+

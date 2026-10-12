@@ -38,10 +38,18 @@ on:
         description: "Decisions model ID"
         type: string
         default: "typesafe/jev-1.13"
+      resume:
+        description: "Resume evaluation from checkpoint (set to true to reuse intermediate checkpoint; false starts fresh)"
+        type: boolean
+        default: false
       resume_run_id:
         description: "Prior GitHub run ID to restore checkpoint artifact from (for resuming an interrupted run)"
         type: string
         default: ""
+
+permissions:
+  contents: read
+  actions: read # required for cross-run artifact recovery via actions/download-artifact
 
 concurrency:
   group: jev-pilot-${{ github.ref }}
@@ -120,10 +128,21 @@ jobs:
           name: jev-pilot-report
           run-id: ${{ inputs.resume_run_id }}
           github-token: ${{ github.token }}
-          path: artifacts
+          path: /tmp/jev-restore
+
+      - name: Stage restored checkpoint file
+        if: ${{ inputs.resume_run_id != '' }}
+        run: |
+          mkdir -p artifacts
+          if [ -f /tmp/jev-restore/jev_pilot_checkpoint.json ]; then
+            cp /tmp/jev-restore/jev_pilot_checkpoint.json artifacts/
+            echo "Staged restored checkpoint file from prior run ${{ inputs.resume_run_id }}"
+          else
+            echo "Warning: Prior run artifact did not contain jev_pilot_checkpoint.json"
+          fi
 
       - name: Restore checkpoint cache
-        if: ${{ inputs.resume_run_id == '' }}
+        if: ${{ (inputs.resume || github.run_attempt > 1) && inputs.resume_run_id == '' }}
         uses: actions/cache/restore@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
         with:
           path: artifacts/jev_pilot_checkpoint.json
@@ -155,8 +174,8 @@ jobs:
             --out-markdown "artifacts/jev_pilot_report.md" \
             --out-json "artifacts/jev_pilot_report.json"
 
-      - name: Save checkpoint cache
-        if: always() && hashFiles('artifacts/jev_pilot_checkpoint.json') != ''
+      - name: Save checkpoint cache (on interruption or failure)
+        if: failure() && hashFiles('artifacts/jev_pilot_checkpoint.json') != ''
         uses: actions/cache/save@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
         with:
           path: artifacts/jev_pilot_checkpoint.json

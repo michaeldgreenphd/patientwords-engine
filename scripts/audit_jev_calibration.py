@@ -638,12 +638,14 @@ def load_advice_archive_with_judgments(
         raise ValueError(f"max_samples must be non-negative (got {max_samples}; use 0 for all)")
 
     haiku_judgments: dict[str, dict[str, Any]] = {}
+    total_raw_judgments = 0
     if judgments_path and judgments_path.is_file():
         with open(judgments_path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
                     continue
+                total_raw_judgments += 1
                 rec = json.loads(line)
                 jm = rec.get("judge_model")
                 if judge_model and jm is not None and jm != judge_model:
@@ -657,6 +659,12 @@ def load_advice_archive_with_judgments(
                             "model": rec.get("model"),
                             "judge_model": jm,
                         }
+
+        if total_raw_judgments > 0 and not haiku_judgments:
+            raise ValueError(
+                f"No usable judgments found in {judgments_path} matching judge model {judge_model!r} "
+                f"({total_raw_judgments} rows examined; refusing empty judge set)."
+            )
 
     with open(archive_path, encoding="utf-8") as f:
         rows = [json.loads(line) for line in f if line.strip()]
@@ -948,11 +956,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Refused: No test cases found in input {input_source_desc}.", file=sys.stderr)
         return 1
 
+    petri_sha: str | None = None
     if args.petri_transcripts:
         petri_p = Path(args.petri_transcripts)
         if not petri_p.is_file():
             print(f"Refused: Petri transcripts file not found: {petri_p}", file=sys.stderr)
             return 1
+        petri_sha = hashlib.sha256(petri_p.read_bytes()).hexdigest()
 
     checkpoint_metadata = {
         "model": args.model,
@@ -960,6 +970,7 @@ def main(argv: list[str] | None = None) -> int:
         "register_rubric_sha256": reg_rubric_sha,
         "input_sha256": input_sha,
         "input_type": "archive" if arch_p else "golden",
+        "petri_transcripts_sha256": petri_sha,
     }
 
     # Checkpoint configuration
@@ -1005,6 +1016,19 @@ def main(argv: list[str] | None = None) -> int:
                     file=sys.stderr,
                 )
                 return 1
+            if cached_petri:
+                if not petri_p:
+                    print(
+                        "Refused: Checkpoint contains cached Petri rows but --petri-transcripts was not provided.",
+                        file=sys.stderr,
+                    )
+                    return 1
+                if cp_meta.get("petri_transcripts_sha256") != petri_sha:
+                    print(
+                        f"Refused: Checkpoint Petri transcripts mismatch: {cp_meta.get('petri_transcripts_sha256')} != {petri_sha}",
+                        file=sys.stderr,
+                    )
+                    return 1
 
         print(
             f"Resuming from checkpoint {checkpoint_path}: "
