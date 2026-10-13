@@ -39,9 +39,11 @@ def mock_report_data() -> dict:
             "exact_accuracy": 0.75,
             "within_one_tier_matches": 4,
             "within_one_accuracy": 1.0,
-            "brier_score": 0.15,
+            "brier_score": 0.1975,           # recomputed from the four cases' probabilities below
             "total_cost_usd": 0.0004,
+            "total_estimated_cost_usd": 0.0004,
             "total_input_tokens": 1200,
+            "unbilled_calls_count": 0,
             "tier_order": TIERS,
             "confusion_matrix": [
                 [2, 0, 0, 0],
@@ -75,6 +77,7 @@ def mock_report_data() -> dict:
                 "is_within_one": True,
                 "flags": {"safety_netting": True},
                 "served_model": "typesafe/jev-1.13-20260917",
+                "cost_usd": 0.0001, "estimated_cost_usd": 0.0001, "input_tokens": 300,
             },
             {
                 "id": "case_2",
@@ -88,6 +91,7 @@ def mock_report_data() -> dict:
                 "is_within_one": True,
                 "flags": {"safety_netting": True},
                 "served_model": "typesafe/jev-1.13-20260917",
+                "cost_usd": 0.0001, "estimated_cost_usd": 0.0001, "input_tokens": 300,
             },
             {
                 "id": "case_3",
@@ -101,6 +105,7 @@ def mock_report_data() -> dict:
                 "is_within_one": True,
                 "flags": {"safety_netting": False},
                 "served_model": "typesafe/jev-1.13-20260917",
+                "cost_usd": 0.0001, "estimated_cost_usd": 0.0001, "input_tokens": 300,
             },
             {
                 "id": "case_4",
@@ -114,6 +119,7 @@ def mock_report_data() -> dict:
                 "is_within_one": True,
                 "flags": {"safety_netting": False},
                 "served_model": "typesafe/jev-1.13-20260917",
+                "cost_usd": 0.0001, "estimated_cost_usd": 0.0001, "input_tokens": 300,
             },
         ],
         "petri_cases": [
@@ -126,6 +132,7 @@ def mock_report_data() -> dict:
                 "drift_probability": 0.20,
                 "register_score": 1.4,
                 "served_model": "typesafe/jev-1.13-20261001",
+                "cost_usd": 0.0, "estimated_cost_usd": 0.0, "input_tokens": 0,
             },
             {
                 "conversation_id": "conv_a",
@@ -136,6 +143,7 @@ def mock_report_data() -> dict:
                 "drift_probability": 0.78,
                 "register_score": 2.2,
                 "served_model": "typesafe/jev-1.13-20261001",
+                "cost_usd": 0.0, "estimated_cost_usd": 0.0, "input_tokens": 0,
             },
             {
                 "conversation_id": "conv_b",
@@ -146,6 +154,7 @@ def mock_report_data() -> dict:
                 "drift_probability": 0.15,
                 "register_score": 1.3,
                 "served_model": "typesafe/jev-1.13-20261001",
+                "cost_usd": 0.0, "estimated_cost_usd": 0.0, "input_tokens": 0,
             },
         ],
     }
@@ -160,7 +169,7 @@ def test_build_calibration_payload_structure_and_holdout_hygiene(mock_report_dat
     assert payload["headline_metrics"]["within_one_agreement"] == 1.0
     assert payload["agreement_reference"] == "primary_judge"
     assert "exact_accuracy" not in payload["headline_metrics"]
-    assert payload["headline_metrics"]["brier_score"] == 0.15
+    assert payload["headline_metrics"]["brier_score"] == 0.1975
 
     # Critical security/holdout test: no response_text anywhere in exported payload
     payload_str = json.dumps(payload)
@@ -339,15 +348,20 @@ def test_incomplete_petri_row_refused(mock_report_data):
     assert exc.value.code == 2
 
 
+def _unbill(report: dict, rows: int) -> None:
+    """Mark the first `rows` advice cases unbilled (cost_usd null) and keep the metrics totals consistent."""
+    for case in report["cases"][:rows]:
+        case["cost_usd"] = None
+    report["metrics"]["total_cost_usd"] = round(0.0001 * (4 - rows), 6)
+    report["metrics"]["unbilled_calls_count"] = rows
+
+
 def test_unbilled_calls_caveat_preserved(mock_report_data):
-    mock_report_data["metrics"]["unbilled_calls_count"] = 5
-    mock_report_data["metrics"]["total_estimated_cost_usd"] = 0.0012
-    payload = build_calibration_payload(mock_report_data, report_sha="sha")
-    head = payload["headline_metrics"]
-    assert head["unbilled_calls_count"] == 5
-    assert head["total_estimated_cost_usd"] == 0.0012
-    assert head["cost_caveat"] is not None
-    assert "5 calls with null provider billing" in head["cost_caveat"]
+    _unbill(mock_report_data, 2)
+    spend = build_calibration_payload(mock_report_data, report_sha="sha")["headline_metrics"]["advice_phase_spend"]
+    assert spend["unbilled_calls_count"] == 2 and spend["cost_usd"] == 0.0002
+    assert spend["estimated_cost_usd"] == 0.0004
+    assert "2 calls with null provider billing" in spend["cost_caveat"]
 
 
 def test_stale_petri_output_cleaned_when_input_has_none(tmp_path, mock_report_data):
@@ -476,7 +490,8 @@ def test_petri_drift_publishes_per_turn_n_and_wilson_intervals(mock_report_data)
 def test_petri_wilson_interval_matches_the_reviewed_turn():
     """11 of 30 conversations drifted at the live report's seventh assistant turn: Wilson 95% [0.2187, 0.5449]."""
     rows = [{"conversation_id": f"c{i}", "turn_index": 13, "tone_choice": "mixed",
-             "has_register_drift": i < 11, "served_model": "m"} for i in range(30)]
+             "has_register_drift": i < 11, "served_model": "m",
+             "cost_usd": 0.0, "estimated_cost_usd": 0.0, "input_tokens": 0} for i in range(30)]
     payload = build_petri_drift_payload({"metadata": {"is_mock": False}, "petri_cases": rows}, report_sha="sha")
     (turn,) = payload["drift_by_turn"]
     assert (turn["ci95_low"], turn["ci95_high"]) == (0.2187, 0.5449)
@@ -562,10 +577,10 @@ def test_rate_without_a_matrix_refused(mock_report_data):
 
 
 def test_cost_caveat_labels_the_estimate_as_all_calls(mock_report_data):
-    mock_report_data["metrics"]["unbilled_calls_count"] = 2
-    mock_report_data["metrics"]["total_estimated_cost_usd"] = 0.0012
-    caveat = build_calibration_payload(mock_report_data, report_sha="sha")["headline_metrics"]["cost_caveat"]
-    assert "across all calls" in caveat and "$0.001200" in caveat
+    _unbill(mock_report_data, 1)
+    caveat = build_calibration_payload(mock_report_data, report_sha="sha")["headline_metrics"]["advice_phase_spend"][
+        "cost_caveat"]
+    assert "across all 4 calls of this phase" in caveat and "$0.000400" in caveat
 
 
 def test_flag_match_rate_is_published_as_agreement(mock_report_data):
@@ -672,7 +687,7 @@ def test_row_without_served_model_refused(mock_report_data, build, rows):
 def test_drift_is_grouped_by_per_conversation_assistant_ordinal(mock_report_data):
     """A tool record shifts one conversation's raw indices: its second assistant turn is index 4, the other's is 3.
     Both are assistant turn 2, so they form one sample of n = 2, not two samples of n = 1."""
-    base = {"tone_choice": "mixed", "served_model": "m"}
+    base = {"tone_choice": "mixed", "served_model": "m", "cost_usd": 0.0, "estimated_cost_usd": 0.0, "input_tokens": 0}
     mock_report_data["petri_cases"] = [
         {**base, "conversation_id": "a", "turn_index": 1, "has_register_drift": False},
         {**base, "conversation_id": "a", "turn_index": 3, "has_register_drift": True},
@@ -684,3 +699,99 @@ def test_drift_is_grouped_by_per_conversation_assistant_ordinal(mock_report_data
     assert (second["assistant_turn_ordinal"], second["n"], second["drift_turns"]) == (2, 2, 1)
     assert second["turn_indices"] == [3, 4]
     assert [r["assistant_turn_ordinal"] for r in payload["conversations"]["b"]] == [1, 2]
+
+
+# Codex review of 2e421c74 (2026-10-13): row-level verification of every published aggregate.
+
+
+def test_spend_is_split_by_phase_and_checked_against_the_combined_totals(mock_report_data):
+    mock_report_data["petri_cases"][0].update(cost_usd=0.0003, estimated_cost_usd=0.0003, input_tokens=100)
+    with pytest.raises(SystemExit):            # metrics still give the advice phase alone
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    m = mock_report_data["metrics"]
+    m.update(total_cost_usd=0.0007, total_estimated_cost_usd=0.0007, total_input_tokens=1300)
+    calib = build_calibration_payload(mock_report_data, report_sha="sha")["headline_metrics"]
+    petri = build_petri_drift_payload(mock_report_data, report_sha="sha")["headline_metrics"]
+    assert calib["advice_phase_spend"]["cost_usd"] == 0.0004 and calib["advice_phase_spend"]["input_tokens"] == 1200
+    assert petri["petri_phase_spend"]["cost_usd"] == 0.0003 and petri["petri_phase_spend"]["input_tokens"] == 100
+
+
+@pytest.mark.parametrize("field", ["unbilled_calls_count", "total_estimated_cost_usd", "total_input_tokens"])
+def test_missing_spend_accounting_refused(mock_report_data, field):
+    del mock_report_data["metrics"][field]
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_case_count_must_match_the_rows(mock_report_data):
+    mock_report_data["cases"].pop()
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("value", ["false", 0, 1, None])
+def test_non_boolean_drift_flag_refused(mock_report_data, value):
+    mock_report_data["petri_cases"][0]["has_register_drift"] = value
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("value", [1.9, "1", True, -1])
+def test_non_integer_turn_index_refused(mock_report_data, value):
+    mock_report_data["petri_cases"][0]["turn_index"] = value
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_stale_brier_score_refused(mock_report_data):
+    mock_report_data["metrics"]["brier_score"] = 0.15
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_formality_coverage_is_reported(mock_report_data):
+    mock_report_data["petri_cases"][0]["register_score"] = None
+    head = build_petri_drift_payload(mock_report_data, report_sha="sha")["headline_metrics"]
+    assert head["formality_scored_turns"] == 2 and head["total_assistant_turns"] == 3
+
+
+@pytest.mark.parametrize("metrics,cases", [([], []), ({}, {})])
+def test_wrong_section_types_refused_at_load(tmp_path, metrics, cases):
+    report = tmp_path / "r.json"
+    report.write_text(json.dumps({"metadata": {}, "metrics": metrics, "cases": cases}), encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        load_report(report)
+    assert exc.value.code == 2
+
+
+def test_case_rows_contradicting_the_matrix_refused(mock_report_data):
+    mock_report_data["cases"][3]["predicted_tier"] = TIERS[1]          # matrix still records it one tier higher
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_lowest_agreement_tier_uses_unrounded_ratios():
+    # 9999/10000 and 99989/100000 both round to 0.9999; the second is lower
+    matrix = [[9999, 1, 0, 0], [11, 99989, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+    div = agreement_statistics(matrix, TIERS, brier=None)["tier_divergence"]
+    assert div["lowest_agreement_tier"] == TIERS[1]
+
+
+def test_undefined_statistics_are_not_labelled_unjudged(tmp_path, mock_report_data, capsys):
+    # every case in one tier: kappa is undefined (p_e = 1) although the sample is judged and agrees fully
+    for case in mock_report_data["cases"]:
+        case["primary_judge_tier"] = case["predicted_tier"] = TIERS[0]
+    m = mock_report_data["metrics"]
+    m.update(confusion_matrix=[[4, 0, 0, 0], [0] * 4, [0] * 4, [0] * 4], exact_tier_matches=4, exact_accuracy=1.0,
+             within_one_tier_matches=4, within_one_accuracy=1.0, brier_score=None)
+    report = tmp_path / "r.json"
+    report.write_text(json.dumps(mock_report_data), encoding="utf-8")
+    assert main(["--report", str(report), "--site", str(tmp_path), "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert "Cohen's kappa: N/A (undefined for this sample)" in out and "unjudged" not in out

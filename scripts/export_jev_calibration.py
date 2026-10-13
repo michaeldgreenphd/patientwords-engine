@@ -17,7 +17,9 @@ payloads into the frontend repository (<site>/data/):
    - 4x4 tier confusion matrix (rows: primary judge; columns: Jev) and tier order.
    - Binary flag performance metrics (safety netting, clarifying questions, referrals).
    - Per-case probabilities, confidences, and technicality scores.
-   - Cost and input token efficiency disclosures.
+   - The advice phase's spend (billed, estimated, input tokens, unbilled calls), summed from its
+     own rows; the Petri payload carries the Petri phase's. Their sum is checked against the
+     report's combined totals.
 
 2. `data/petri_register_drift.json`:
    - Multi-turn register drift summary (total conversations, assistant turns, drift rate).
@@ -180,8 +182,9 @@ def agreement_statistics(matrix: list[list[int]], tier_order: list[str], brier: 
                 {"jev_tier": tier_order[top_other[1]], "count": top_other[0],
                  "share_of_primary_judge_tier": round(top_other[0] / rows[i], 4)} if top_other else None),
         })
-    judged = [t for t in per_tier if t["agreement"] is not None]
-    lowest = min(judged, key=lambda t: t["agreement"]) if judged else None
+    # chosen on the unrounded ratios: two tiers can round to the same four decimals
+    judged = [i for i in range(k) if rows[i]]
+    lowest = per_tier[min(judged, key=lambda i: matrix[i][i] / rows[i])] if judged else None
     distant = sorted(
         ({"primary_judge_tier": tier_order[i], "jev_tier": tier_order[j], "tiers_apart": abs(i - j),
           "count": matrix[i][j], "share_of_primary_judge_tier": round(matrix[i][j] / rows[i], 4)}
@@ -220,6 +223,10 @@ def load_report(report_path: Path) -> tuple[dict[str, Any], str]:
     meta = data.get("metadata")
     if not isinstance(meta, dict):
         _refuse(f"Report metadata must be a JSON object (got {type(meta).__name__})")
+    if not isinstance(data["metrics"], dict):
+        _refuse(f"Report metrics must be a JSON object (got {type(data['metrics']).__name__})")
+    if not isinstance(data["cases"], list):
+        _refuse(f"Report cases must be a JSON list (got {type(data['cases']).__name__})")
     if meta.get("interrupted"):
         _refuse("Report is marked as interrupted (partial audit); refusing to export partial calibration results.")
 
@@ -270,6 +277,89 @@ def _require_relative_path(path: Any) -> None:
     if posix.is_absolute() or win.is_absolute() or win.drive or ".." in posix.parts or ".." in win.parts:
         _refuse(f"Provenance path {path!r} is not repository-relative; re-run the audit with repository-relative "
                 "inputs before publishing")
+
+
+def _require_count(val: Any, field: str) -> int:
+    """A non-negative JSON integer (not a bool, not a float); anything else refuses."""
+    if isinstance(val, bool) or not isinstance(val, int) or val < 0:
+        _refuse(f"'{field}' must be a non-negative integer, got {val!r}")
+    return val
+
+
+def _phase_spend(rows: list[dict[str, Any]], what: str) -> dict[str, Any]:
+    """Spend of one audit phase, summed from its own rows. The report's metrics block folds the advice and Petri
+    phases together (audit_jev_calibration.update_metrics_with_petri), so each payload publishes its own phase and
+    the combined total is checked against the metrics block instead. A row with cost_usd null is an unbilled call."""
+    billed, estimated, tokens, unbilled = 0.0, 0.0, 0, 0
+    for idx, row in enumerate(rows):
+        for key in ("cost_usd", "estimated_cost_usd", "input_tokens"):
+            if key not in row:
+                _refuse(f"{what} at index {idx} has no '{key}'; cannot account for its spend")
+        if row["cost_usd"] is None:
+            unbilled += 1
+        else:
+            billed += _round_or_none(row["cost_usd"], f"{what}[{idx}].cost_usd", 12)
+        est = _round_or_none(row["estimated_cost_usd"], f"{what}[{idx}].estimated_cost_usd", 12)
+        if est is None:
+            _refuse(f"{what} at index {idx} has a null estimated_cost_usd")
+        estimated += est
+        tokens += _require_count(row["input_tokens"], f"{what}[{idx}].input_tokens")
+    caveat = None
+    if unbilled:
+        caveat = (f"Known spend ${billed:.6f} excludes {unbilled} calls with null provider billing; the estimated "
+                  f"list-price spend across all {len(rows)} calls of this phase, billed or not, is ${estimated:.6f}")
+    return {"calls": len(rows), "cost_usd": round(billed, 6), "estimated_cost_usd": round(estimated, 6),
+            "input_tokens": tokens, "unbilled_calls_count": unbilled, "cost_caveat": caveat}
+
+
+def _check_combined_spend(metrics: dict[str, Any], phases: list[dict[str, Any]]) -> None:
+    """The metrics block's totals must equal the sum of the phases' rows (to the runner's 6-decimal rounding)."""
+    for field, key, tol in (("total_cost_usd", "cost_usd", 2e-6), ("total_estimated_cost_usd", "estimated_cost_usd", 2e-6),
+                            ("total_input_tokens", "input_tokens", 0), ("unbilled_calls_count", "unbilled_calls_count", 0)):
+        if field not in metrics:
+            _refuse(f"Report metrics have no '{field}'; cannot verify the audit's spend accounting")
+        reported = metrics[field]
+        if tol:
+            reported = _round_or_none(reported, field, 6)
+            if reported is None:
+                _refuse(f"Report metrics '{field}' is null")
+        else:
+            reported = _require_count(reported, field)
+        summed = sum(ph[key] for ph in phases)
+        if abs(reported - summed) > tol:
+            _refuse(f"Report metrics '{field}' ({reported}) does not equal the sum of its rows ({summed})")
+
+
+def _reference_tier(case: dict[str, Any]) -> Any:
+    return case.get("primary_judge_tier") or case.get("expected_tier")
+
+
+def _check_cases_against_aggregates(cases: list[dict[str, Any]], matrix: list[list[int]], tier_order: list[str],
+                                    brier: float | None) -> None:
+    """Rebuild the confusion matrix and the Brier score from the case rows and refuse any mismatch, so the headline
+    cannot contradict cases_summary. The Brier score follows the runner's definition (audit_jev_calibration.
+    compute_brier_score): a tier absent from a case's probabilities counts as probability 0."""
+    k = len(tier_order)
+    rebuilt = [[0] * k for _ in range(k)]
+    sq_err = 0.0
+    for idx, case in enumerate(cases):
+        ref, pred = _reference_tier(case), case.get("predicted_tier")
+        if ref not in tier_order or pred not in tier_order:
+            _refuse(f"Case at index {idx} has reference tier {ref!r} and Jev tier {pred!r}; both must be in the tier "
+                    "order for the confusion matrix to describe it")
+        rebuilt[tier_order.index(ref)][tier_order.index(pred)] += 1
+        if brier is not None:
+            probs = case.get("tier_probabilities")
+            if not isinstance(probs, dict):
+                _refuse(f"Case at index {idx} has no tier_probabilities object; cannot verify the Brier score")
+            for t in tier_order:
+                pv = _round_or_none(probs.get(t, 0.0), f"cases[{idx}].tier_probabilities.{t}", 12)
+                sq_err += (pv - (1.0 if t == ref else 0.0)) ** 2
+    if rebuilt != matrix:
+        _refuse("The confusion matrix does not match the matrix rebuilt from the case rows")
+    if brier is not None and cases and abs(sq_err / len(cases) - brier) > 5.1e-5:
+        _refuse(f"Reported brier_score {brier} does not match the score recomputed from the case rows "
+                f"({sq_err / len(cases):.6f})")
 
 
 def _served_models(rows: list[dict[str, Any]], what: str) -> list[str]:
@@ -325,7 +415,9 @@ def build_calibration_payload(
     is_mock = _require_is_mock(meta)
     reference, judge_model = _agreement_reference(meta)
 
-    total_cases = metrics.get("total_cases", len(cases))
+    total_cases = _require_count(metrics.get("total_cases"), "total_cases")
+    if total_cases != len(cases):
+        _refuse(f"Report metrics give total_cases {total_cases} but the report holds {len(cases)} case rows")
     exact_matches = metrics.get("exact_tier_matches")
     matrix = metrics.get("confusion_matrix") or []
     tier_order = metrics.get("tier_order")
@@ -382,20 +474,16 @@ def build_calibration_payload(
             "flags": c.get("flags") or {},
         }
 
-    total_cost_rounded = _round_or_none(metrics.get("total_cost_usd"), "total_cost_usd", 6)
-    est_cost_rounded = _round_or_none(metrics.get("total_estimated_cost_usd"), "total_estimated_cost_usd", 6)
     brier = _round_or_none(metrics.get("brier_score"), "brier_score", 4)
+    if matrix:
+        _check_cases_against_aggregates(cases, matrix, tier_order, brier)
     agreement = agreement_statistics(matrix, tier_order, brier) if matrix else agreement_statistics([], [], None)
-    unbilled_calls = int(metrics.get("unbilled_calls_count", 0) or 0)
 
-    cost_caveat = None
-    if unbilled_calls > 0:
-        known_str = f"${total_cost_rounded:.6f}" if total_cost_rounded is not None else "$0.000000"
-        est_str = f"${est_cost_rounded:.6f}" if est_cost_rounded is not None else "unknown"
-        cost_caveat = (
-            f"Total known spend {known_str} excludes {unbilled_calls} calls with null provider billing; "
-            f"the estimated list-price spend across all calls, billed or not, is {est_str}"
-        )
+    advice_spend = _phase_spend(cases, "Advice case")
+    petri_rows = report_data.get("petri_cases")
+    if not isinstance(petri_rows, list):
+        _refuse("Report has no 'petri_cases' list; cannot separate the advice phase's spend from the Petri phase's")
+    _check_combined_spend(metrics, [advice_spend, _phase_spend(petri_rows, "Petri case")])
 
     raw_flags = metrics.get("flag_metrics") or {}
     if not isinstance(raw_flags, dict):
@@ -429,11 +517,7 @@ def build_calibration_payload(
             "base_rate_brier": agreement["base_rate_brier"],
             "brier_skill_score": agreement["brier_skill_score"],
             "tier_divergence": agreement["tier_divergence"],
-            "total_cost_usd": total_cost_rounded,
-            "total_estimated_cost_usd": est_cost_rounded,
-            "unbilled_calls_count": unbilled_calls,
-            "cost_caveat": cost_caveat,
-            "total_input_tokens": metrics.get("total_input_tokens", 0),
+            "advice_phase_spend": advice_spend,
         },
         "tier_order": tier_order,
         "confusion_matrix": matrix,
@@ -468,7 +552,7 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
             _refuse(f"Petri case at index {idx} missing required 'conversation_id'")
         if "turn_index" not in p or p["turn_index"] is None:
             _refuse(f"Petri case {cid} missing required 'turn_index'")
-        t_idx = int(p["turn_index"])
+        t_idx = _require_count(p["turn_index"], f"Petri case {cid} turn_index")
         if (cid, t_idx) in seen:
             _refuse(f"Petri conversation {cid} has more than one row for turn {t_idx}; the sampling unit is one "
                     "row per conversation per turn")
@@ -481,13 +565,16 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
 
         if "has_register_drift" not in p or p["has_register_drift"] is None:
             _refuse(f"Petri case {cid} turn {t_idx} missing required 'has_register_drift'")
-        has_drift = bool(p["has_register_drift"])
+        if not isinstance(p["has_register_drift"], bool):
+            _refuse(f"Petri case {cid} turn {t_idx} has_register_drift must be true or false, got "
+                    f"{p['has_register_drift']!r}")
+        has_drift = p["has_register_drift"]
         if has_drift:
             drifts += 1
 
-        reg_score = p.get("register_score")
+        reg_score = _round_or_none(p.get("register_score"), f"Petri case {cid} turn {t_idx} register_score", 6)
         if reg_score is not None:
-            scores.append(float(reg_score))
+            scores.append(reg_score)
 
         conversations.setdefault(cid, []).append({
             "turn_index": t_idx,
@@ -549,6 +636,9 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
             "overall_drift_rate": overall_drift_rate,
             "mean_formality_score": mean_formality,
             "tone_distribution": tones,
+            # the mean covers only the rows that carry a score; the count says how many that is
+            "formality_scored_turns": len(scores),
+            "petri_phase_spend": _phase_spend(petri_cases, "Petri case"),
             "min_turn_n": min(t["n"] for t in drift_by_turn),
             "max_turn_n": max(t["n"] for t in drift_by_turn),
         },
@@ -614,9 +704,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Advice cases: {calib_payload['headline_metrics']['total_advice_cases']}")
     head = calib_payload["headline_metrics"]
 
+    unjudged = calib_payload["agreement_reference"] is None
+
     def fmt(v: float | None, pct: bool = False) -> str:
         if v is None:
-            return "N/A (unjudged)"
+            return "N/A (unjudged)" if unjudged else "N/A (undefined for this sample)"
         return f"{v*100:.2f}%" if pct else f"{v:.4f}"
 
     print(f"Exact agreement with primary judge: {fmt(head['exact_agreement'], pct=True)}")
