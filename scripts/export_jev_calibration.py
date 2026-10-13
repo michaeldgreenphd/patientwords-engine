@@ -832,11 +832,18 @@ def conversation_arms(meta: dict[str, Any], repo_root: Path = REPO_ROOT) -> dict
     chain_path = run_dir.parent / CHAIN_FILE
     chain = [ln for ln in chain_path.read_text(encoding="utf-8").splitlines() if ln.strip()] \
         if chain_path.is_file() else []
+    for n, ln in enumerate(chain, 1):
+        parts = ln.rsplit(" ", 1)
+        if len(parts) != 2 or not parts[0] or len(parts[1]) != 64:
+            _refuse(f"{CHAIN_FILE} line {n} is not '<manifest path> <sha256>': {ln[:80]!r}")
     rel = f"{run_dir.name}/manifest.json"
     line_no = next((i for i, ln in enumerate(chain, 1) if ln.rsplit(" ", 1)[0] == rel), None)
     if line_no is None or chain[line_no - 1].rsplit(" ", 1)[1] != (manifest.get("chain") or {}).get("manifest_sha256"):
         _refuse(f"{rel} is not named at its digest by {run_dir.parent.relative_to(repo_root)}/{CHAIN_FILE}")
-    intact, why = verify_chain(run_dir.parent, lines=line_no)
+    try:
+        intact, why = verify_chain(run_dir.parent, lines=line_no)
+    except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
+        intact, why = False, f"{type(exc).__name__}: {exc}"
     if not intact:
         _refuse(f"the manifest chain does not verify through {rel}: {why}")
     if (manifest.get("artifacts") or {}).get("transcripts_sha256") != recorded:

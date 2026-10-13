@@ -940,6 +940,101 @@ def _jev_reconcile(rep: Report, name: str, data: dict) -> None:
             rep.err(name, where, f"{key} sums to {got} but the headline gives {expected}")
 
 
+# the exporter rounds mean formality to 3 decimals and rates, shares and bounds to 4
+FIELD_TOLERANCE = {"mean_formality_score": 5.1e-4}
+
+
+def _close(a: object, b: object, field: str = "") -> bool:
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)) and not isinstance(a, bool):
+        return abs(a - b) <= FIELD_TOLERANCE.get(field, RATE_TOLERANCE)
+    return a == b
+
+
+def _rebuild_summary(turns_by_conv: list[list[dict]]) -> dict:
+    """The drift summary recomputed from turn records, independently of the exporter's code
+    (export_jev_calibration._drift_summary): counts, the descriptive turn rate, conversations with any drift and their
+    Wilson interval, mean formality over scored turns, and the tone distribution."""
+    rows = [t for turns in turns_by_conv for t in turns]
+    n, k, convs = len(rows), sum(t["has_register_drift"] for t in rows), len(turns_by_conv)
+    with_drift = sum(any(t["has_register_drift"] for t in turns) for turns in turns_by_conv)
+    lo, hi = _wilson(with_drift, convs)
+    scores = [t["formality_score"] for t in rows if t["formality_score"] is not None]
+    tones: dict[str, int] = {}
+    for t in rows:
+        tones[t["tone_choice"]] = tones.get(t["tone_choice"], 0) + 1
+    return {"conversations": convs, "assistant_turns": n, "drift_turns": k,
+            "turn_drift_rate": k / n if n else None, "conversations_with_drift": with_drift,
+            "conversation_drift_share": with_drift / convs if convs else None,
+            "conversation_ci95_low": lo, "conversation_ci95_high": hi,
+            "mean_formality_score": sum(scores) / len(scores) if scores else None,
+            "formality_scored_turns": len(scores), "tone_distribution": tones}
+
+
+def _jev_rebuild(rep: Report, name: str, data: dict) -> None:
+    """Rebuild every summary of the drift payload from its conversation turn records, the payload's own source data,
+    and require each published arm, the headline's `applicable` summary and the per-turn series to equal the rebuild
+    (Codex review of PR #107: views checked only against one another can still all disagree with the turns). Runs only
+    when every conversation and turn record is well formed; the field checks name anything that is not."""
+    convs = data.get("conversations")
+    if not isinstance(convs, dict) or not convs:
+        return
+    good = all(isinstance(c, dict) and isinstance(c.get("turns"), list) and c["turns"]
+               and isinstance(c.get("drift_instrument_applies"), bool)
+               and all(isinstance(t, dict) and isinstance(t.get("has_register_drift"), bool)
+                       and isinstance(t.get("assistant_turn_ordinal"), int) and isinstance(t.get("turn_index"), int)
+                       and isinstance(t.get("tone_choice"), str)
+                       and (t.get("formality_score") is None or isinstance(t.get("formality_score"), (int, float)))
+                       for t in c["turns"]) for c in convs.values())
+    if not good:
+        return
+    groups: dict[tuple, list[list[dict]]] = {}
+    for c in convs.values():
+        groups.setdefault((c.get("user_is"), c.get("register"), c["drift_instrument_applies"]), []).append(c["turns"])
+    published = {(a.get("user_is"), a.get("register"), a.get("drift_instrument_applies")): a
+                 for a in data.get("by_arm") or [] if isinstance(a, dict)} if isinstance(data.get("by_arm"), list) else {}
+    if set(published) != set(groups):
+        rep.err(name, "$.by_arm", f"arms {sorted(map(str, published))} differ from the conversations' arms "
+                                  f"{sorted(map(str, groups))}")
+    for key, turns in groups.items():
+        arm = published.get(key)
+        if arm is None:
+            continue
+        for field, value in _rebuild_summary(turns).items():
+            if not _close(arm.get(field), value, field):
+                rep.err(name, f"$.by_arm[{key[0]}/{key[1]}].{field}",
+                        f"{arm.get(field)!r} but the conversations' turns give {value!r}")
+    applicable = [c["turns"] for c in convs.values() if c["drift_instrument_applies"]]
+    head = data.get("headline_metrics") if isinstance(data.get("headline_metrics"), dict) else {}
+    app = head.get("applicable")
+    if isinstance(app, dict):
+        for field, value in _rebuild_summary(applicable).items():
+            if not _close(app.get(field), value, field):
+                rep.err(name, f"$.headline_metrics.applicable.{field}",
+                        f"{app.get(field)!r} but the conversations' turns give {value!r}")
+    by_ordinal: dict[int, list[dict]] = {}
+    for turns in applicable:
+        for t in turns:
+            by_ordinal.setdefault(t["assistant_turn_ordinal"], []).append(t)
+    series = data.get("drift_by_turn")
+    if isinstance(series, list):
+        published_series = {t.get("assistant_turn_ordinal"): t for t in series if isinstance(t, dict)}
+        if set(published_series) != set(by_ordinal):
+            rep.err(name, "$.drift_by_turn", f"ordinals {sorted(map(str, published_series))} differ from the "
+                                             f"applicable conversations' {sorted(by_ordinal)}")
+        for ordinal, rows in by_ordinal.items():
+            entry = published_series.get(ordinal)
+            if entry is None:
+                continue
+            k, n = sum(t["has_register_drift"] for t in rows), len(rows)
+            lo, hi = _wilson(k, n)
+            expected = {"n": n, "assistant_turns": n, "drift_turns": k, "drift_rate": k / n, "ci95_low": lo,
+                        "ci95_high": hi, "turn_indices": sorted({t["turn_index"] for t in rows})}
+            for field, value in expected.items():
+                if not _close(entry.get(field), value, field):
+                    rep.err(name, f"$.drift_by_turn[{ordinal}].{field}",
+                            f"{entry.get(field)!r} but the conversations' turns give {value!r}")
+
+
 def check_jev_payloads(rep: Report, site: Path) -> None:
     reports: dict[str, str] = {}
     for name, spec in JEV_SPECS.items():
@@ -1019,7 +1114,20 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
                         for j, turn in enumerate(conv_turns):
                             for key, kinds, nullable in JEV_TURN_RECORD_FIELDS:
                                 _jev_need(rep, name, turn, key, kinds, f"{where}.turns[{j}]", nullable=nullable)
+                            if not isinstance(turn, dict):
+                                continue
+                            for key in ("tone_confidence", "drift_probability"):
+                                val = turn.get(key)
+                                if isinstance(val, (int, float)) and not isinstance(val, bool) and \
+                                        _finite(val) and not 0 <= val <= 1:
+                                    rep.err(name, f"{where}.turns[{j}].{key}", f"{val} is not a probability in [0, 1]")
+                            prob, flag = turn.get("drift_probability"), turn.get("has_register_drift")
+                            if isinstance(prob, (int, float)) and isinstance(flag, bool) and flag != (prob >= 0.5):
+                                rep.err(name, f"{where}.turns[{j}].has_register_drift",
+                                        f"{flag} with drift_probability {prob}; the classifier sets it as "
+                                        "probability >= 0.5")
             _jev_reconcile(rep, name, data)
+            _jev_rebuild(rep, name, data)
     if len(set(reports.values())) > 1:
         rep.err(" and ".join(reports), "$.source_report_sha256", "the two Jev payloads come from different reports")
 

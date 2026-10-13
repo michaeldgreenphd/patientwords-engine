@@ -1348,3 +1348,23 @@ def test_jev_drift_views_must_agree(site, change, needle):
         obj["headline_metrics"]["applicable"].update(conversation_ci95_low=0.2, conversation_ci95_high=0.3)
     path.write_text(json.dumps(obj), encoding="utf-8")
     assert any(needle in e for e in run(site).errors)
+
+
+@pytest.mark.parametrize("change,needle", [
+    ("flip_turn_drift", "conversations' turns give"), ("tone_confidence_over_one", "not a probability"),
+    ("negative_drift_probability", "not a probability"), ("flag_contradicts_probability", "probability >= 0.5")])
+def test_jev_summaries_are_rebuilt_from_the_turns(site, change, needle):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    turn = next(iter(obj["conversations"].values()))["turns"][0]
+    if change == "flip_turn_drift":
+        turn.update(has_register_drift=True, drift_probability=0.9)      # every summary still says zero drift
+    elif change == "tone_confidence_over_one":
+        turn["tone_confidence"] = 2
+    elif change == "negative_drift_probability":
+        turn["drift_probability"] = -1
+    else:
+        turn["drift_probability"] = 0.9                                   # flag stays False
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    assert any(needle in e for e in run(site).errors)

@@ -1498,3 +1498,20 @@ def test_run_not_named_by_the_manifest_chain_refused(tmp_path, mock_report_data)
     with pytest.raises(SystemExit) as exc:
         build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
     assert exc.value.code == 2
+
+
+def test_malformed_manifest_chain_line_refused_cleanly(tmp_path, mock_report_data):
+    import shutil
+    src = ROOT / "data" / "petri" / "runs"
+    shutil.copytree(src, tmp_path / "data" / "petri" / "runs", copy_function=_link_or_copy)
+    (tmp_path / "data" / "advice_rubric.draft.json").write_bytes((ROOT / ADVICE_RUBRIC).read_bytes())
+    (tmp_path / "data" / "register_rubric.json").write_bytes((ROOT / REGISTER_RUBRIC).read_bytes())
+    shutil.copytree(ROOT / "docs" / "framework", tmp_path / "docs" / "framework")
+    chain = tmp_path / "data" / "petri" / "runs" / "manifests.chain"
+    lines = chain.read_text(encoding="utf-8").splitlines()
+    lines[0] = lines[0].rsplit(" ", 1)[0]                                 # a line without its digest
+    chain.unlink()
+    chain.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
+    assert exc.value.code == 2
