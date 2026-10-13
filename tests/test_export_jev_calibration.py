@@ -1059,3 +1059,75 @@ def test_incomplete_input_provenance_refused(mock_report_data, change):
     with pytest.raises(SystemExit) as exc:
         build_calibration_payload(mock_report_data, report_sha="sha")
     assert exc.value.code == 2
+
+
+# Codex review of 033169f1 (2026-10-13).
+
+
+def _make_unjudged(report: dict) -> None:
+    m = report["metrics"]
+    for key in ("exact_accuracy", "within_one_accuracy", "brier_score", "exact_tier_matches",
+                "within_one_tier_matches", "confusion_matrix"):
+        m[key] = None
+    m["flag_metrics"] = {}
+    del report["metadata"]["advice_judgments"]
+    for case in report["cases"]:
+        case["is_exact"] = case["is_within_one"] = case["primary_judge_tier"] = None
+        case["flags"] = {}
+
+
+def test_unjudged_report_with_reference_labels_refused(mock_report_data):
+    _make_unjudged(mock_report_data)
+    build_calibration_payload(mock_report_data, report_sha="sha")
+    mock_report_data["cases"][0]["expected_tier"] = TIERS[0]
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("field,value", [("tier_confidence", "high"), ("tier_confidence", 2),
+                                         ("tier_confidence", None), ("technicality_score", {}),
+                                         ("technicality_score", "1.2")])
+def test_advice_confidence_and_technicality_validated(mock_report_data, field, value):
+    mock_report_data["cases"][0][field] = value
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("field", ["cost_usd", "estimated_cost_usd"])
+def test_negative_spend_refused(mock_report_data, field):
+    mock_report_data["cases"][0][field] = -0.0001
+    total = "total_cost_usd" if field == "cost_usd" else "total_estimated_cost_usd"
+    mock_report_data["metrics"][total] = 0.0002                       # totals adjusted to match the rows
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("marker", [False, {}, None, 0])
+def test_any_interruption_marker_refused(tmp_path, mock_report_data, marker):
+    mock_report_data["metadata"]["interrupted"] = marker
+    report = tmp_path / "r.json"
+    report.write_text(json.dumps(mock_report_data), encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        load_report(report)
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("value", ["false", {}, 1])
+def test_prediction_without_reference_still_validated(mock_report_data, value):
+    mock_report_data["cases"][0]["flags"]["refusal"] = {"expected": None, "predicted": value, "probability": 0.1}
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("row", [1, "row", ["a"], None])
+def test_non_object_petri_row_refused(mock_report_data, row):
+    mock_report_data["petri_cases"].append(row)
+    mock_report_data["metadata"]["petri_transcripts"]["turns_evaluated"] = 4
+    for build in (build_calibration_payload, build_petri_drift_payload):
+        with pytest.raises(SystemExit) as exc:
+            build(mock_report_data, report_sha="sha")
+        assert exc.value.code == 2

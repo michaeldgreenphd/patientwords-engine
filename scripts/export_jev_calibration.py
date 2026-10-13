@@ -241,7 +241,9 @@ def load_report(report_path: Path) -> tuple[dict[str, Any], str]:
         _refuse(f"Report metrics must be a JSON object (got {type(data['metrics']).__name__})")
     if not isinstance(data["cases"], list):
         _refuse(f"Report cases must be a JSON list (got {type(data['cases']).__name__})")
-    if meta.get("interrupted"):
+    # the runner adds this key only to reports it wrote after an interruption, so its presence refuses, whatever
+    # its value
+    if "interrupted" in meta:
         _refuse("Report is marked as interrupted (partial audit); refusing to export partial calibration results.")
 
     return data, report_sha
@@ -306,16 +308,22 @@ def _phase_spend(rows: list[dict[str, Any]], what: str) -> dict[str, Any]:
     the combined total is checked against the metrics block instead. A row with cost_usd null is an unbilled call."""
     billed, estimated, tokens, unbilled = 0.0, 0.0, 0, 0
     for idx, row in enumerate(rows):
+        if not isinstance(row, dict):
+            _refuse(f"{what} at index {idx} is not an object")
         for key in ("cost_usd", "estimated_cost_usd", "input_tokens"):
             if key not in row:
                 _refuse(f"{what} at index {idx} has no '{key}'; cannot account for its spend")
         if row["cost_usd"] is None:
             unbilled += 1
         else:
-            billed += _round_or_none(row["cost_usd"], f"{what}[{idx}].cost_usd", 12)
+            cost = _round_or_none(row["cost_usd"], f"{what}[{idx}].cost_usd", 12)
+            if cost < 0:
+                _refuse(f"{what} at index {idx} has negative cost_usd {cost}; a provider cost cannot be negative")
+            billed += cost
         est = _round_or_none(row["estimated_cost_usd"], f"{what}[{idx}].estimated_cost_usd", 12)
-        if est is None:
-            _refuse(f"{what} at index {idx} has a null estimated_cost_usd")
+        if est is None or est < 0:
+            _refuse(f"{what} at index {idx} has estimated_cost_usd {row['estimated_cost_usd']!r}; it must be a "
+                    "non-negative number")
         estimated += est
         tokens += _require_count(row["input_tokens"], f"{what}[{idx}].input_tokens")
     caveat = None
@@ -335,8 +343,8 @@ def _check_combined_spend(metrics: dict[str, Any], phases: list[dict[str, Any]])
         reported = metrics[field]
         if tol:
             reported = _round_or_none(reported, field, 6)
-            if reported is None:
-                _refuse(f"Report metrics '{field}' is null")
+            if reported is None or reported < 0:
+                _refuse(f"Report metrics '{field}' must be a non-negative number, got {metrics[field]!r}")
         else:
             reported = _require_count(reported, field)
         summed = sum(ph[key] for ph in phases)
@@ -419,9 +427,12 @@ def _flag_metrics_from_cases(cases: list[dict[str, Any]], reported: Any) -> dict
             if not isinstance(entry, dict):
                 _refuse(f"Case at index {idx} flag {fid!r} must be an object with 'expected' and 'predicted'")
             expected, predicted = entry.get("expected"), entry.get("predicted")
+            # Jev's prediction is published whether or not the judge gave this flag a reference value
+            if not (predicted is None or isinstance(predicted, bool)):
+                _refuse(f"Case at index {idx} flag {fid!r} has non-boolean predicted {predicted!r}")
             if expected is None:
                 continue
-            if not isinstance(expected, bool) or not (predicted is None or isinstance(predicted, bool)):
+            if not isinstance(expected, bool):
                 _refuse(f"Case at index {idx} flag {fid!r} has non-boolean expected {expected!r} or predicted "
                         f"{predicted!r}")
             c = counts.setdefault(fid, {"tp": 0, "tn": 0, "fp": 0, "fn": 0})
@@ -594,6 +605,9 @@ def build_calibration_payload(
         if cid in cases_summary:
             _refuse(f"Case identifier {cid!r} appears more than once")
         primary_judge_tier = c.get("primary_judge_tier") or c.get("expected_tier")
+        if reference is None and primary_judge_tier is not None:
+            _refuse(f"Case {cid!r} carries a reference tier {primary_judge_tier!r} but the report names no judge; "
+                    "unverified reference labels are not published")
         # Jev's own outputs are required on every case, judged or not: an unjudged report has no matrix to catch a
         # missing prediction, and an incomplete evaluation must not look complete
         if c.get("predicted_tier") not in tier_order:
@@ -613,9 +627,9 @@ def build_calibration_payload(
         cases_summary[cid] = {
             "primary_judge_tier": primary_judge_tier,
             "pred_tier": c.get("predicted_tier"),
-            "tier_confidence": c.get("tier_confidence"),
+            "tier_confidence": _unit_interval(c.get("tier_confidence"), f"case {cid} tier_confidence"),
             "tier_probabilities": probs,
-            "technicality_score": c.get("technicality_score"),
+            "technicality_score": _round_or_none(c.get("technicality_score"), f"case {cid} technicality_score", 6),
             **_case_match_flags(c, idx, tier_order, judged=bool(matrix)),
             "flags": _published_flags(c, cid),
         }
@@ -687,6 +701,8 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
     conversations: dict[str, list[dict[str, Any]]] = {}
 
     for idx, p in enumerate(petri_cases):
+        if not isinstance(p, dict):
+            _refuse(f"Petri case at index {idx} is not an object")
         cid = p.get("conversation_id")
         if not isinstance(cid, str) or not cid:
             _refuse(f"Petri case at index {idx} missing required 'conversation_id'")
