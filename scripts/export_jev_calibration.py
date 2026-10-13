@@ -422,6 +422,21 @@ def _rubric_flag_ids(rubric: dict[str, Any]) -> list[str]:
     return ids
 
 
+def _rubric_tier_ids(rubric: dict[str, Any]) -> list[str]:
+    tiers = rubric.get("tiers")
+    ids = [t.get("id") for t in tiers] if isinstance(tiers, list) and all(isinstance(t, dict) for t in tiers) else []
+    return _validate_tier_order(ids, "the recorded advice rubric")
+
+
+def _technicality_top(rubric: dict[str, Any]) -> float:
+    """Top of the advice technicality scale in the recorded register rubric; the scale runs 0..len(criteria)-1."""
+    block = rubric.get("technicality_score")
+    criteria = block.get("criteria") if isinstance(block, dict) else None
+    if not isinstance(criteria, list) or len(criteria) < 2:
+        _refuse("The recorded register rubric has no technicality_score scale")
+    return float(len(criteria) - 1)
+
+
 def _register_vocabulary(rubric: dict[str, Any]) -> tuple[set[str], float]:
     """(tone choices, top of the severity scale) from the recorded register rubric; the scale runs 0..len-1."""
     register = rubric.get("petri_register")
@@ -432,6 +447,14 @@ def _register_vocabulary(rubric: dict[str, Any]) -> tuple[set[str], float]:
     if not isinstance(tones, dict) or not tones or not isinstance(scale, list) or len(scale) < 2:
         _refuse("The recorded register rubric has no petri_register tone choices or severity scale")
     return set(tones), float(len(scale) - 1)
+
+
+def _scaled(val: Any, top: float, field: str) -> float | None:
+    """A finite number on the rubric's 0..top scale, or null."""
+    out = _round_or_none(val, field, 6)
+    if out is not None and not 0.0 <= out <= top:
+        _refuse(f"'{field}' is {out}, outside the recorded rubric's 0-{top:g} scale")
+    return out
 
 
 def _unit_interval(val: Any, field: str) -> float:
@@ -585,7 +608,7 @@ def _publishable_provenance(meta: dict[str, Any], *, has_advice: bool, has_petri
     return {
         "audit_timestamp_utc": meta.get("timestamp_utc"),
         "rubric": pick("rubric", ("path", "sha256"), True),
-        "register_rubric": pick("register_rubric", ("path", "sha256"), has_petri),
+        "register_rubric": pick("register_rubric", ("path", "sha256"), has_advice or has_petri),
         "classifier_sha256": _require_sha256(classifier.get("sha256"), "classifier.sha256"),
         "parameters": meta.get("parameters") if isinstance(meta.get("parameters"), dict) else None,
         "advice_archive": pick("advice_archive", ("path", "sha256", "samples_requested", "samples_evaluated",
@@ -610,9 +633,15 @@ def build_calibration_payload(
 
     is_mock = _require_is_mock(meta)
     reference, judge_model = _agreement_reference(meta)
-    flag_ids = _rubric_flag_ids(_recorded_rubric(meta, "rubric", repo_root))
+    advice_rubric = _recorded_rubric(meta, "rubric", repo_root)
+    flag_ids = _rubric_flag_ids(advice_rubric)
+    # every advice case's technicality_score was scored on the register rubric's scale, so it is required here too
+    technicality_top = _technicality_top(_recorded_rubric(meta, "register_rubric", repo_root))
 
     total_cases = _require_count(metrics.get("total_cases"), "total_cases")
+    if total_cases == 0 or not cases:
+        _refuse("Report has no advice cases; the audit runner refuses an empty input, and an empty export would "
+                "replace the published payload")
     if total_cases != len(cases):
         _refuse(f"Report metrics give total_cases {total_cases} but the report holds {len(cases)} case rows")
     matrix = metrics.get("confusion_matrix")
@@ -626,6 +655,10 @@ def build_calibration_payload(
         _refuse("Report metrics have no tier_order; refusing to substitute the repository's current rubric, which "
                 "may differ from the one the audit used")
     tier_order = _validate_tier_order(tier_order, "the report's metrics.tier_order")
+    rubric_tiers = _rubric_tier_ids(advice_rubric)
+    if tier_order != rubric_tiers:
+        _refuse(f"The report's tier_order {tier_order} differs from the recorded advice rubric's {rubric_tiers}; the "
+                "audit runner takes its order from that rubric")
     if matrix:
         _validate_matrix(matrix, tier_order)
 
@@ -692,7 +725,7 @@ def build_calibration_payload(
             "pred_tier": c.get("predicted_tier"),
             "tier_confidence": _unit_interval(c.get("tier_confidence"), f"case {cid} tier_confidence"),
             "tier_probabilities": probs,
-            "technicality_score": _round_or_none(c.get("technicality_score"), f"case {cid} technicality_score", 6),
+            "technicality_score": _scaled(c.get("technicality_score"), technicality_top, f"case {cid} technicality_score"),
             **_case_match_flags(c, idx, tier_order, judged=bool(matrix)),
             "flags": _published_flags(c, cid, flag_ids, judged=reference is not None),
         }

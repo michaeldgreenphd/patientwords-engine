@@ -1217,3 +1217,55 @@ def test_judged_report_with_null_brier_publishes_the_recomputed_score(mock_repor
     head = build_calibration_payload(mock_report_data, report_sha="sha")["headline_metrics"]
     assert head["brier_score"] == 0.1975
     assert head["brier_skill_score"] is not None
+
+
+# Codex review of 7254992a (2026-10-13).
+
+
+def test_tier_order_must_match_the_recorded_rubric(mock_report_data):
+    """A consistent relabelling (reversed order everywhere) still contradicts the rubric the audit recorded."""
+    reversed_order = list(reversed(TIERS))
+    mock_report_data["metrics"]["tier_order"] = reversed_order
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_advice_only_report_still_names_its_register_rubric(mock_report_data):
+    mock_report_data["petri_cases"] = []
+    del mock_report_data["metadata"]["petri_transcripts"]
+    prov = build_calibration_payload(mock_report_data, report_sha="sha")["provenance"]
+    assert prov["register_rubric"] == {"path": REGISTER_RUBRIC, "sha256": REGISTER_SHA}
+    del mock_report_data["metadata"]["register_rubric"]
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("score", [999, -0.5, 3.5])
+def test_technicality_score_outside_the_rubric_scale_refused(mock_report_data, score):
+    mock_report_data["cases"][0]["technicality_score"] = score
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_empty_report_refused_and_published_files_kept(tmp_path, mock_report_data):
+    m = mock_report_data["metrics"]
+    mock_report_data["cases"], mock_report_data["petri_cases"] = [], []
+    del mock_report_data["metadata"]["petri_transcripts"]
+    mock_report_data["metadata"]["advice_archive"]["samples_evaluated"] = 0
+    m.update(total_cases=0, confusion_matrix=[[0] * 4 for _ in range(4)], exact_tier_matches=0,
+             within_one_tier_matches=0, exact_accuracy=None, within_one_accuracy=None, brier_score=None,
+             total_cost_usd=0.0, total_estimated_cost_usd=0.0, total_input_tokens=0, flag_metrics={})
+    report = tmp_path / "r.json"
+    report.write_text(json.dumps(mock_report_data), encoding="utf-8")
+    site_data = tmp_path / "site" / "data"
+    site_data.mkdir(parents=True)
+    for name in ("jev_calibration.json", "petri_register_drift.json"):
+        (site_data / name).write_text('{"published": true}', encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        main(["--report", str(report), "--site", str(tmp_path / "site")])
+    assert exc.value.code == 2
+    assert all((site_data / n).read_text(encoding="utf-8") == '{"published": true}'
+               for n in ("jev_calibration.json", "petri_register_drift.json"))
