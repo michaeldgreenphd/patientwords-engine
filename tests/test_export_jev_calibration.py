@@ -393,11 +393,11 @@ def test_agreement_statistics_reproduce_the_reviewed_live_numbers():
 def test_tier_divergence_surfaces_the_lowest_agreement_tier_and_distant_shifts():
     div = agreement_statistics(LIVE_MATRIX, LIVE_TIERS, brier=0.2701)["tier_divergence"]
     assert div["lowest_agreement_tier"] == TIERS[2]
-    urgent = next(t for t in div["per_primary_judge_tier"] if t["primary_judge_tier"] == TIERS[2])
-    assert (urgent["n"], urgent["agreed"], urgent["agreement"]) == (119, 39, pytest.approx(0.3277, abs=1e-4))
-    assert urgent["ci95_low"] < urgent["agreement"] < urgent["ci95_high"]
-    assert urgent["most_common_jev_tier_otherwise"]["jev_tier"] == TIERS[3]
-    assert urgent["most_common_jev_tier_otherwise"]["count"] == 67
+    third = next(t for t in div["per_primary_judge_tier"] if t["primary_judge_tier"] == TIERS[2])
+    assert (third["n"], third["agreed"], third["agreement"]) == (119, 39, pytest.approx(0.3277, abs=1e-4))
+    assert third["ci95_low"] < third["agreement"] < third["ci95_high"]
+    assert third["most_common_jev_tier_otherwise"]["jev_tier"] == TIERS[3]
+    assert third["most_common_jev_tier_otherwise"]["count"] == 67
     top = div["shifts_two_or_more_tiers"][0]
     assert (top["primary_judge_tier"], top["jev_tier"], top["tiers_apart"], top["count"]) == (
         TIERS[0], TIERS[3], 3, 27)
@@ -411,7 +411,7 @@ def test_calibration_payload_carries_divergence_in_its_headline(mock_report_data
     head = build_calibration_payload(mock_report_data, report_sha="sha")["headline_metrics"]
     for key in ("cohen_kappa", "cohen_kappa_quadratic", "base_rate_brier", "brier_skill_score", "tier_divergence"):
         assert key in head
-    # the fixture has no urgent or emergency rows: their agreement is null, never 0
+    # the fixture has no rows in the two highest tiers: their agreement is null, never 0
     empty = [t for t in head["tier_divergence"]["per_primary_judge_tier"] if t["n"] == 0]
     assert empty and all(t["agreement"] is None and t["ci95_low"] is None for t in empty)
 
