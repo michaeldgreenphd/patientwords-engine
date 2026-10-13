@@ -1409,3 +1409,30 @@ def test_arm_mapping_comes_from_the_manifest_not_analysis_rows(tmp_path, mock_re
     with pytest.raises(SystemExit) as exc:
         build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
     assert exc.value.code == 2
+
+
+
+def test_resealed_manifest_with_altered_trees_refused(tmp_path, mock_report_data):
+    """Altering a tree's arm and resealing the manifest keeps verify_run happy and the transcripts digest unchanged,
+    but the scored transcripts still name the old manifest identity, so the trees are refused (Codex review of
+    PR #107)."""
+    import shutil
+    from scripts.petri_audit.manifest import seal_manifest
+    src = ROOT / "data" / "petri" / "runs" / "run_35937014168_1"
+    run = tmp_path / "data" / "petri" / "runs" / src.name
+    shutil.copytree(src, run)
+    (tmp_path / "data" / "advice_rubric.draft.json").write_bytes((ROOT / ADVICE_RUBRIC).read_bytes())
+    (tmp_path / "data" / "register_rubric.json").write_bytes((ROOT / REGISTER_RUBRIC).read_bytes())
+    shutil.copytree(ROOT / "docs" / "framework", tmp_path / "docs" / "framework")
+    build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)      # the untouched copy passes
+    manifest = json.loads((run / "manifest.json").read_text(encoding="utf-8"))
+    for tree in manifest["trees"]:
+        if any(b["conversation_id"] == CONV_B for b in tree["branches"]):
+            tree["arm"] = "colloquial"
+    resealed = seal_manifest({k: v for k, v in manifest.items() if k != "chain"}, manifest["chain"]["prev_sha256"])
+    (run / "manifest.json").write_text(json.dumps(resealed), encoding="utf-8")
+    from scripts.petri_audit.manifest import verify_run
+    assert verify_run(run) == []                                                            # the reseal verifies
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
+    assert exc.value.code == 2

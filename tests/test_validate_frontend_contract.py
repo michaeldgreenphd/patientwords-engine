@@ -1159,7 +1159,9 @@ def _jev_pair(site, report="r" * 64, mock=False, pooled=False):
              "aggregate_interval": "w",
              "drift_instrument": {}, "headline_metrics": head,
              "by_arm": [{"user_is": "u", "register": "r", "drift_instrument_applies": True, **summary}],
-             "drift_by_turn": [], "conversations": {}}
+             "drift_by_turn": [{"assistant_turn_ordinal": 1, "turn_indices": [1], "n": 1, "assistant_turns": 1,
+                                "drift_turns": 0, "drift_rate": 0.0, "ci95_low": 0.0, "ci95_high": 0.8}],
+             "conversations": {}}
     (data / "jev_calibration.json").write_text(json.dumps(calib), encoding="utf-8")
     (data / "petri_register_drift.json").write_text(json.dumps(drift), encoding="utf-8")
 
@@ -1213,4 +1215,21 @@ def test_jev_drift_summary_fields_are_all_checked(site, where, key):
     target = obj["by_arm"][0] if where == "arm" else obj["headline_metrics"]["applicable"]
     del target[key]
     path.write_text(json.dumps(obj), encoding="utf-8")
+    assert any(key in e for e in run(site).errors)
+
+
+
+@pytest.mark.parametrize("change", ["empty_arms", "empty_series", "bare_turn"])
+def test_jev_drift_lists_must_carry_results(site, change):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    if change == "empty_arms":
+        obj["by_arm"] = []
+    elif change == "empty_series":
+        obj["drift_by_turn"] = []
+    else:
+        obj["drift_by_turn"] = [{}]
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    key = {"empty_arms": "by_arm", "empty_series": "drift_by_turn", "bare_turn": "assistant_turn_ordinal"}[change]
     assert any(key in e for e in run(site).errors)

@@ -828,6 +828,10 @@ JEV_SUMMARY_FIELDS = (("conversations", int, False), ("assistant_turns", int, Fa
                       ("conversation_drift_share", NUM, True), ("conversation_ci95_low", NUM, True),
                       ("conversation_ci95_high", NUM, True), ("mean_formality_score", NUM, True),
                       ("formality_scored_turns", int, False), ("tone_distribution", dict, False))
+# one entry of drift_by_turn as export_jev_calibration writes it (Codex review of PR #107)
+JEV_TURN_FIELDS = (("assistant_turn_ordinal", int, False), ("turn_indices", list, False), ("n", int, False),
+                   ("assistant_turns", int, False), ("drift_turns", int, False), ("drift_rate", NUM, False),
+                   ("ci95_low", NUM, False), ("ci95_high", NUM, False))
 JEV_ARM_FIELDS = (("user_is", str, False), ("register", str, True), ("drift_instrument_applies", bool, False)) \
     + JEV_SUMMARY_FIELDS
 
@@ -858,6 +862,16 @@ def check_jev_payloads(rep: Report, site: Path):
         if isinstance(data.get("source_report_sha256"), str):
             reports[name] = data["source_report_sha256"]
         if name == "petri_register_drift.json":
+            if isinstance(data.get("by_arm"), list) and not data["by_arm"]:
+                rep.err(name, "$.by_arm", "empty: the payload publishes no per-arm result")
+            app_convs = ((head or {}).get("applicable") or {}).get("conversations") if isinstance(head, dict) else None
+            turns = data.get("drift_by_turn")
+            if isinstance(turns, list):
+                if not turns and isinstance(app_convs, int) and app_convs > 0:
+                    rep.err(name, "$.drift_by_turn", "empty although the applicable summary has conversations")
+                for i, t in enumerate(turns):
+                    for key, kinds, nullable in JEV_TURN_FIELDS:
+                        need(rep, name, t, key, kinds, f"$.drift_by_turn[{i}]", nullable=nullable)
             for i, arm in enumerate(data.get("by_arm") or []):
                 for key, kinds, nullable in JEV_ARM_FIELDS:
                     need(rep, name, arm, key, kinds, f"$.by_arm[{i}]", nullable=nullable)

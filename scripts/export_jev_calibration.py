@@ -790,7 +790,8 @@ DRIFT_REGISTERS = ("colloquial", "lay_careful")
 def conversation_arms(meta: dict[str, Any], repo_root: Path = REPO_ROOT) -> dict[str, dict[str, Any]]:
     """Each Petri conversation's seed, arm, speaker and register, read from the run the report scored, through bound
     artifacts only: the transcripts file the report recorded (sha256 verified), the run's manifest, which must pass
-    `manifest.verify_run` and bind those same transcripts, its trees (conversation -> seed and arm; the manifest binds
+    `manifest.verify_run`, bind those same transcripts, and carry the identity every transcript record names, its
+    trees (conversation -> seed and arm; the manifest binds
     them, unlike analysis_rows.jsonl, which repro_pack.py notes is not manifest-bound), and the seed itself, digest
     verified (the arm's `user_is`, and the register its texts declare). Refuses when any link is missing or disagrees,
     so no conversation is placed in an arm by guesswork."""
@@ -819,6 +820,17 @@ def conversation_arms(meta: dict[str, Any], repo_root: Path = REPO_ROOT) -> dict
     manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
     if (manifest.get("artifacts") or {}).get("transcripts_sha256") != recorded:
         _refuse(f"{run_dir.relative_to(repo_root)}/manifest.json binds other transcripts than the ones the audit scored")
+    # the scored transcripts name the manifest identity they were written under (provenance.run_manifest.sha256), and
+    # verify_run has checked that identity against the manifest body, trees included: a manifest whose trees were
+    # altered and resealed carries a new identity the scored transcripts do not name (Codex review of PR #107)
+    identity = (manifest.get("chain") or {}).get("identity_sha256")
+    for line_no, line in enumerate(transcripts.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        named = ((json.loads(line).get("provenance") or {}).get("run_manifest") or {}).get("sha256")
+        if named != identity:
+            _refuse(f"{entry['path']} record {line_no} names manifest identity {str(named)[:12]}..., not the run "
+                    f"manifest's {str(identity)[:12]}...; the manifest's trees are not the ones the transcripts carry")
 
     placed: dict[str, tuple[str, str]] = {}
     for tree in manifest.get("trees", []):
