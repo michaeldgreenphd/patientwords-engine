@@ -1233,3 +1233,29 @@ def test_jev_drift_lists_must_carry_results(site, change):
     path.write_text(json.dumps(obj), encoding="utf-8")
     key = {"empty_arms": "by_arm", "empty_series": "drift_by_turn", "bare_turn": "assistant_turn_ordinal"}[change]
     assert any(key in e for e in run(site).errors)
+
+
+
+def test_jev_malformed_applicable_is_an_error_not_a_crash(site):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    obj["headline_metrics"]["applicable"] = ["bad"]
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    assert any("applicable" in e for e in run(site).errors)
+
+
+@pytest.mark.parametrize("where", ["arm", "turn", "headline"])
+def test_jev_non_finite_numbers_are_errors(site, where):
+    _jev_pair(site)
+    name = "jev_calibration.json" if where == "headline" else "petri_register_drift.json"
+    path = site / "data" / name
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    if where == "arm":
+        obj["by_arm"][0]["mean_formality_score"] = float("nan")
+    elif where == "turn":
+        obj["drift_by_turn"][0]["ci95_high"] = float("inf")
+    else:
+        obj["headline_metrics"]["brier_score"] = float("nan")
+    path.write_text(json.dumps(obj), encoding="utf-8")         # json.dumps writes NaN/Infinity, as a hand edit could
+    assert any("non-finite" in e for e in run(site).errors)

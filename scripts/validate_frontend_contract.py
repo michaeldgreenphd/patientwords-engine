@@ -836,6 +836,15 @@ JEV_ARM_FIELDS = (("user_is", str, False), ("register", str, True), ("drift_inst
     + JEV_SUMMARY_FIELDS
 
 
+def _jev_need(rep: Report, artifact: str, obj, key: str, kinds, path: str, nullable: bool = False):
+    """`need`, plus: a number must be finite. Python's json.loads accepts NaN and Infinity, which are not JSON, and the
+    site's JSON.parse would reject the whole payload (Codex review of PR #107)."""
+    value = need(rep, artifact, obj, key, kinds, path, nullable=nullable)
+    if isinstance(value, float) and not _finite(value):
+        rep.err(artifact, f"{path}.{key}", f"non-finite number {value!r} (not JSON; the page cannot parse it)")
+    return value
+
+
 def check_jev_payloads(rep: Report, site: Path):
     reports: dict[str, str] = {}
     for name, spec in JEV_SPECS.items():
@@ -848,12 +857,12 @@ def check_jev_payloads(rep: Report, site: Path):
                 rep.err(name, "$", f"expected object, got {type(data).__name__}")
             continue
         for key, kinds in spec["top"].items():
-            need(rep, name, data, key, kinds, "$", nullable=key in spec["nullable"])
+            _jev_need(rep, name, data, key, kinds, "$", nullable=key in spec["nullable"])
         known_keys(rep, name, data, set(spec["top"]))
         head = data.get("headline_metrics")
         if isinstance(head, dict):
             for key, kinds in spec["headline"].items():
-                need(rep, name, head, key, kinds, "$.headline_metrics", nullable=key in spec["headline_nullable"])
+                _jev_need(rep, name, head, key, kinds, "$.headline_metrics", nullable=key in spec["headline_nullable"])
             if "overall_drift_rate" in head:
                 rep.err(name, "$.headline_metrics.overall_drift_rate",
                         "the pooled drift rate is not published: regenerate with the per-arm exporter")
@@ -864,21 +873,21 @@ def check_jev_payloads(rep: Report, site: Path):
         if name == "petri_register_drift.json":
             if isinstance(data.get("by_arm"), list) and not data["by_arm"]:
                 rep.err(name, "$.by_arm", "empty: the payload publishes no per-arm result")
-            app_convs = ((head or {}).get("applicable") or {}).get("conversations") if isinstance(head, dict) else None
+            app = head.get("applicable") if isinstance(head, dict) else None
+            app_convs = app.get("conversations") if isinstance(app, dict) else None
             turns = data.get("drift_by_turn")
             if isinstance(turns, list):
                 if not turns and isinstance(app_convs, int) and app_convs > 0:
                     rep.err(name, "$.drift_by_turn", "empty although the applicable summary has conversations")
                 for i, t in enumerate(turns):
                     for key, kinds, nullable in JEV_TURN_FIELDS:
-                        need(rep, name, t, key, kinds, f"$.drift_by_turn[{i}]", nullable=nullable)
+                        _jev_need(rep, name, t, key, kinds, f"$.drift_by_turn[{i}]", nullable=nullable)
             for i, arm in enumerate(data.get("by_arm") or []):
                 for key, kinds, nullable in JEV_ARM_FIELDS:
-                    need(rep, name, arm, key, kinds, f"$.by_arm[{i}]", nullable=nullable)
-            app = head.get("applicable") if isinstance(head, dict) else None
+                    _jev_need(rep, name, arm, key, kinds, f"$.by_arm[{i}]", nullable=nullable)
             if isinstance(app, dict):
                 for key, kinds, nullable in JEV_SUMMARY_FIELDS:
-                    need(rep, name, app, key, kinds, "$.headline_metrics.applicable", nullable=nullable)
+                    _jev_need(rep, name, app, key, kinds, "$.headline_metrics.applicable", nullable=nullable)
     if len(set(reports.values())) > 1:
         rep.err(" and ".join(reports), "$.source_report_sha256", "the two Jev payloads come from different reports")
 

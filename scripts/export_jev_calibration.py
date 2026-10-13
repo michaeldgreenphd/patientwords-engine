@@ -858,9 +858,11 @@ def conversation_arms(meta: dict[str, Any], repo_root: Path = REPO_ROOT) -> dict
         if arm is None:
             _refuse(f"Conversation {cid}: seed {seed_id} has no arm {arm_id!r}")
         texts = {t["key"]: t for t in seed["texts"]}
-        arm_registers = {texts[t["text_ref"]].get("register") for t in arm["turns"]}
-        register = arm_registers.pop() if len(arm_registers) == 1 else None
-        if register is not None and register not in registers:
+        # the arm's register is its first turn's, as the seed validator defines it (seeds.py, register exposure): an
+        # initial_only seed's later turns may be `not_applicable`, which is not a register of the arm
+        first = arm["turns"][0] if arm.get("turns") else None
+        register = texts[first["text_ref"]].get("register") if first else None
+        if register not in registers:
             _refuse(f"Conversation {cid}: register {register!r} is not a framing-registry register value")
         out[cid] = {"seed_id": seed_id, "arm": arm_id, "user_is": arm.get("user_is"), "register": register,
                     "drift_instrument_applies": arm.get("user_is") == DRIFT_SPEAKER and register in DRIFT_REGISTERS}

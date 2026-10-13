@@ -1436,3 +1436,18 @@ def test_resealed_manifest_with_altered_trees_refused(tmp_path, mock_report_data
     with pytest.raises(SystemExit) as exc:
         build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
     assert exc.value.code == 2
+
+
+
+def test_initial_only_arm_register_is_its_first_turns():
+    """An initial_only seed's later turns may carry `not_applicable`; the arm's register is its first turn's, as the
+    seed validator defines it, so its two arms stay distinct (Codex review of PR #107). The committed wave-1 run holds
+    such a seed (pw-petri-example-h3-tools)."""
+    import hashlib as _h
+    from scripts.export_jev_calibration import conversation_arms
+    path = "data/petri/runs/run_35351739969_1/transcripts.jsonl"
+    meta = {"petri_transcripts": {"path": path, "sha256": _h.sha256((ROOT / path).read_bytes()).hexdigest()}}
+    arms = conversation_arms(meta)
+    h3 = {a["arm"]: a["register"] for a in arms.values() if a["seed_id"] == "pw-petri-example-h3-tools"}
+    assert h3 and all(r is not None for r in h3.values())
+    assert len(set(h3.values())) == len(h3)                 # one register per arm, none collapsed
