@@ -1386,13 +1386,24 @@ def test_aggregate_interval_is_over_conversations_not_turns(mock_report_data):
     assert app["conversation_ci95_low"] < 0.5 < app["conversation_ci95_high"]
 
 
+def _link_or_copy(src: str, dst: str) -> None:
+    """Hard-link where the filesystem allows (the runs directory is ~40 MB); a file the test rewrites is replaced by a
+    fresh write (write_text truncates the shared inode, so the tests below unlink before writing)."""
+    import os
+    import shutil
+    try:
+        os.link(src, dst)
+    except OSError:
+        shutil.copy2(src, dst)
+
+
 def test_arm_mapping_comes_from_the_manifest_not_analysis_rows(tmp_path, mock_report_data):
     """A copy of the run whose analysis_rows.jsonl moves a conversation to another arm places it where the manifest
     does; a copy whose manifest no longer verifies is refused."""
     import shutil
     src = ROOT / "data" / "petri" / "runs" / "run_35937014168_1"
+    shutil.copytree(src.parent, tmp_path / "data" / "petri" / "runs", copy_function=_link_or_copy)
     run = tmp_path / "data" / "petri" / "runs" / src.name
-    shutil.copytree(src, run)
     (tmp_path / "data" / "advice_rubric.draft.json").write_bytes((ROOT / ADVICE_RUBRIC).read_bytes())
     (tmp_path / "data" / "register_rubric.json").write_bytes((ROOT / REGISTER_RUBRIC).read_bytes())
     shutil.copytree(ROOT / "docs" / "framework", tmp_path / "docs" / "framework")
@@ -1400,11 +1411,13 @@ def test_arm_mapping_comes_from_the_manifest_not_analysis_rows(tmp_path, mock_re
     for r in rows:
         if r["conversation_id"] == CONV_A:
             r["arm"] = "clinical"
+    (run / "analysis_rows.jsonl").unlink()
     (run / "analysis_rows.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
     payload = build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
     assert payload["conversations"][CONV_A]["register"] == "colloquial"
     manifest = json.loads((run / "manifest.json").read_text(encoding="utf-8"))
     manifest["trees"][0]["arm"] = "tampered"
+    (run / "manifest.json").unlink()
     (run / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(SystemExit) as exc:
         build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
@@ -1419,8 +1432,8 @@ def test_resealed_manifest_with_altered_trees_refused(tmp_path, mock_report_data
     import shutil
     from scripts.petri_audit.manifest import seal_manifest
     src = ROOT / "data" / "petri" / "runs" / "run_35937014168_1"
+    shutil.copytree(src.parent, tmp_path / "data" / "petri" / "runs", copy_function=_link_or_copy)
     run = tmp_path / "data" / "petri" / "runs" / src.name
-    shutil.copytree(src, run)
     (tmp_path / "data" / "advice_rubric.draft.json").write_bytes((ROOT / ADVICE_RUBRIC).read_bytes())
     (tmp_path / "data" / "register_rubric.json").write_bytes((ROOT / REGISTER_RUBRIC).read_bytes())
     shutil.copytree(ROOT / "docs" / "framework", tmp_path / "docs" / "framework")
@@ -1430,6 +1443,7 @@ def test_resealed_manifest_with_altered_trees_refused(tmp_path, mock_report_data
         if any(b["conversation_id"] == CONV_B for b in tree["branches"]):
             tree["arm"] = "colloquial"
     resealed = seal_manifest({k: v for k, v in manifest.items() if k != "chain"}, manifest["chain"]["prev_sha256"])
+    (run / "manifest.json").unlink()
     (run / "manifest.json").write_text(json.dumps(resealed), encoding="utf-8")
     from scripts.petri_audit.manifest import verify_run
     assert verify_run(run) == []                                                            # the reseal verifies
@@ -1465,3 +1479,22 @@ def test_report_without_a_requested_model_refused_before_writing(tmp_path, mock_
         main(["--report", str(report), "--site", str(tmp_path / "site")])
     assert exc.value.code == 2
     assert list(site_data.iterdir()) == []
+
+
+def test_run_not_named_by_the_manifest_chain_refused(tmp_path, mock_report_data):
+    """The exporter trusts a run's trees only when the repository's manifest chain names that manifest at its digest
+    and verifies through it (Codex review of PR #107)."""
+    import shutil
+    src = ROOT / "data" / "petri" / "runs"
+    shutil.copytree(src, tmp_path / "data" / "petri" / "runs", copy_function=_link_or_copy)
+    (tmp_path / "data" / "advice_rubric.draft.json").write_bytes((ROOT / ADVICE_RUBRIC).read_bytes())
+    (tmp_path / "data" / "register_rubric.json").write_bytes((ROOT / REGISTER_RUBRIC).read_bytes())
+    shutil.copytree(ROOT / "docs" / "framework", tmp_path / "docs" / "framework")
+    build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)      # named and intact: passes
+    chain = tmp_path / "data" / "petri" / "runs" / "manifests.chain"
+    kept = [ln for ln in chain.read_text(encoding="utf-8").splitlines() if "run_35937014168_1" not in ln]
+    chain.unlink()
+    chain.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
+    assert exc.value.code == 2

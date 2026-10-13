@@ -851,6 +851,23 @@ def _jev_need(rep: Report, artifact: str, obj: object, key: str, kinds: object, 
 JEV_CONVERSATION_FIELDS = (("seed_id", str, False), ("arm", str, False), ("user_is", str, False),
                            ("register", str, True), ("drift_instrument_applies", bool, False), ("turns", list, False))
 RATE_TOLERANCE = 5.1e-5          # the exporter rounds rates and shares to 4 decimals
+# one entry of a conversation's `turns` as export_jev_calibration writes it (Codex review of PR #107)
+JEV_TURN_RECORD_FIELDS = (("turn_index", int, False), ("assistant_turn_ordinal", int, False),
+                          ("tone_choice", str, False), ("tone_confidence", NUM, False),
+                          ("has_register_drift", bool, False), ("drift_probability", NUM, False),
+                          ("formality_score", NUM, True))
+WILSON_Z = 1.959963984540054     # export_jev_calibration.Z95
+
+
+def _wilson(k: int, n: int) -> tuple[float, float] | tuple[None, None]:
+    """The Wilson score interval the exporter publishes (export_jev_calibration._wilson), recomputed to check it."""
+    if n <= 0:
+        return None, None
+    ph, z = k / n, WILSON_Z
+    den = 1 + z * z / n
+    centre = (ph + z * z / (2 * n)) / den
+    half = z * math.sqrt(ph * (1 - ph) / n + z * z / (4 * n * n)) / den
+    return max(0.0, centre - half), min(1.0, centre + half)
 
 
 def _jev_counts(rep: Report, artifact: str, obj: dict, path: str, pairs: tuple) -> None:
@@ -866,16 +883,61 @@ def _jev_counts(rep: Report, artifact: str, obj: dict, path: str, pairs: tuple) 
         elif rate_key and isinstance(rate, (int, float)) and not isinstance(rate, bool) and whole and \
                 abs(rate - part / whole) > RATE_TOLERANCE:
             rep.err(artifact, f"{path}.{rate_key}", f"{rate} does not equal {part_key}/{whole_key} = {part}/{whole}")
-    for lo_key, hi_key in (("conversation_ci95_low", "conversation_ci95_high"), ("ci95_low", "ci95_high")):
+    for lo_key, hi_key, part_key, whole_key in (("conversation_ci95_low", "conversation_ci95_high",
+                                                  "conversations_with_drift", "conversations"),
+                                                 ("ci95_low", "ci95_high", "drift_turns", "n")):
         lo, hi = obj.get(lo_key), obj.get(hi_key)
-        if isinstance(lo, (int, float)) and isinstance(hi, (int, float)) and not 0 <= lo <= hi <= 1:
+        if not (isinstance(lo, (int, float)) and isinstance(hi, (int, float))):
+            continue
+        if not 0 <= lo <= hi <= 1:
             rep.err(artifact, f"{path}.{lo_key}", f"interval [{lo}, {hi}] is not within [0, 1] in order")
+            continue
+        part, whole = obj.get(part_key), obj.get(whole_key)
+        if isinstance(part, int) and isinstance(whole, int) and 0 <= part <= whole and whole > 0:
+            w_lo, w_hi = _wilson(part, whole)
+            if abs(lo - w_lo) > RATE_TOLERANCE or abs(hi - w_hi) > RATE_TOLERANCE:
+                rep.err(artifact, f"{path}.{lo_key}", f"interval [{lo}, {hi}] is not the Wilson interval of "
+                                                      f"{part}/{whole} ([{w_lo:.4f}, {w_hi:.4f}])")
 
 
 JEV_SUMMARY_COUNTS = (("drift_turns", "assistant_turns", "turn_drift_rate"),
                       ("conversations_with_drift", "conversations", "conversation_drift_share"),
                       ("formality_scored_turns", "assistant_turns", None))
 JEV_TURN_COUNTS = (("drift_turns", "n", "drift_rate"),)
+
+
+def _jev_reconcile(rep: Report, name: str, data: dict) -> None:
+    """The drift payload's views of one set of turns must agree with one another (Codex review of PR #107): the
+    applicable arms sum to the headline's `applicable` summary, every arm sums to the headline totals, the per-turn
+    series sums to the applicable turns and drift turns, and the conversations listed match those totals."""
+    def ints(objs: list, key: str) -> int | None:
+        vals = [o.get(key) for o in objs]
+        return sum(vals) if all(isinstance(v, int) and not isinstance(v, bool) for v in vals) else None
+
+    head = data.get("headline_metrics") if isinstance(data.get("headline_metrics"), dict) else {}
+    app = head.get("applicable") if isinstance(head.get("applicable"), dict) else None
+    arms = [a for a in data.get("by_arm") if isinstance(a, dict)] if isinstance(data.get("by_arm"), list) else []
+    series = [t for t in data.get("drift_by_turn") if isinstance(t, dict)] \
+        if isinstance(data.get("drift_by_turn"), list) else []
+    convs = data.get("conversations") if isinstance(data.get("conversations"), dict) else {}
+    checks = [("$.by_arm", "conversations", ints(arms, "conversations"), head.get("total_conversations")),
+              ("$.by_arm", "assistant_turns", ints(arms, "assistant_turns"), head.get("total_assistant_turns"))]
+    if app is not None:
+        applicable = [a for a in arms if a.get("drift_instrument_applies") is True]
+        for key in ("conversations", "assistant_turns", "drift_turns", "conversations_with_drift",
+                    "formality_scored_turns"):
+            checks.append(("$.by_arm (applicable arms)", key, ints(applicable, key), app.get(key)))
+        checks.append(("$.drift_by_turn", "n", ints(series, "n"), app.get("assistant_turns")))
+        checks.append(("$.drift_by_turn", "drift_turns", ints(series, "drift_turns"), app.get("drift_turns")))
+        listed = [c for c in convs.values() if isinstance(c, dict)]
+        checks.append(("$.conversations", "drift_instrument_applies",
+                       sum(c.get("drift_instrument_applies") is True for c in listed), app.get("conversations")))
+    turns_listed = [len(c["turns"]) for c in convs.values() if isinstance(c, dict) and isinstance(c.get("turns"), list)]
+    if turns_listed and len(turns_listed) == len(convs):
+        checks.append(("$.conversations", "turns", sum(turns_listed), head.get("total_assistant_turns")))
+    for where, key, got, expected in checks:
+        if isinstance(got, int) and isinstance(expected, int) and got != expected:
+            rep.err(name, where, f"{key} sums to {got} but the headline gives {expected}")
 
 
 def check_jev_payloads(rep: Report, site: Path) -> None:
@@ -947,8 +1009,17 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
                     rep.err(name, "$.conversations", f"{len(convs)} conversation(s) but headline total_conversations "
                                                      f"is {total}")
                 for cid, conv in convs.items():
+                    where = f"$.conversations[{cid[:12]}]"
                     for key, kinds, nullable in JEV_CONVERSATION_FIELDS:
-                        _jev_need(rep, name, conv, key, kinds, f"$.conversations[{cid[:12]}]", nullable=nullable)
+                        _jev_need(rep, name, conv, key, kinds, where, nullable=nullable)
+                    conv_turns = conv.get("turns") if isinstance(conv, dict) else None
+                    if isinstance(conv_turns, list):
+                        if not conv_turns:
+                            rep.err(name, f"{where}.turns", "empty: a published conversation carries its turns")
+                        for j, turn in enumerate(conv_turns):
+                            for key, kinds, nullable in JEV_TURN_RECORD_FIELDS:
+                                _jev_need(rep, name, turn, key, kinds, f"{where}.turns[{j}]", nullable=nullable)
+            _jev_reconcile(rep, name, data)
     if len(set(reports.values())) > 1:
         rep.err(" and ".join(reports), "$.source_report_sha256", "the two Jev payloads come from different reports")
 

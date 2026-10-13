@@ -1149,11 +1149,12 @@ def _jev_pair(site, report="r" * 64, mock=False, pooled=False):
              "flag_metrics": {}, "cases_summary": {}}
     summary = {"conversations": 1, "assistant_turns": 1, "drift_turns": 0, "turn_drift_rate": 0.0,
                "conversations_with_drift": 0, "conversation_drift_share": 0.0, "conversation_ci95_low": 0.0,
-               "conversation_ci95_high": 0.8, "mean_formality_score": 1.0, "formality_scored_turns": 1,
+               "conversation_ci95_high": 0.7935, "mean_formality_score": 1.0, "formality_scored_turns": 1,
                "tone_distribution": {"t": 1}}
     head = {"total_conversations": 1, "total_assistant_turns": 1, "applicable": dict(summary), "petri_phase_spend": {}}
     conversation = {"seed_id": "s", "arm": "a", "user_is": "u", "register": "r", "drift_instrument_applies": True,
-                    "turns": []}
+                    "turns": [{"turn_index": 1, "assistant_turn_ordinal": 1, "tone_choice": "t", "tone_confidence": 0.5,
+                               "has_register_drift": False, "drift_probability": 0.1, "formality_score": 1.0}]}
     if pooled:
         head["overall_drift_rate"] = 0.5
     drift = {"generated_utc": "t", "source_report_sha256": report, "model_requested": "m", "models_served": ["m"],
@@ -1163,7 +1164,7 @@ def _jev_pair(site, report="r" * 64, mock=False, pooled=False):
              "headline_metrics": head,
              "by_arm": [{"user_is": "u", "register": "r", "drift_instrument_applies": True, **summary}],
              "drift_by_turn": [{"assistant_turn_ordinal": 1, "turn_indices": [1], "n": 1, "assistant_turns": 1,
-                                "drift_turns": 0, "drift_rate": 0.0, "ci95_low": 0.0, "ci95_high": 0.8}],
+                                "drift_turns": 0, "drift_rate": 0.0, "ci95_low": 0.0, "ci95_high": 0.7935}],
              "conversations": {"c" * 64: conversation}}
     (data / "jev_calibration.json").write_text(json.dumps(calib), encoding="utf-8")
     (data / "petri_register_drift.json").write_text(json.dumps(drift), encoding="utf-8")
@@ -1321,3 +1322,29 @@ def test_jev_drift_without_its_calibration_payload_is_an_error(site):
     _jev_pair(site)
     (site / "data" / "jev_calibration.json").unlink()
     assert any("partial publication" in e for e in run(site).errors)
+
+
+
+@pytest.mark.parametrize("change,needle", [
+    ("empty_turns", "turns"), ("bare_turn_record", "tone_choice"),
+    ("arm_disagrees_with_headline", "drift_turns sums"), ("series_disagrees", "n sums"),
+    ("wrong_wilson", "Wilson interval"), ("wrong_conversation_wilson", "Wilson interval")])
+def test_jev_drift_views_must_agree(site, change, needle):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    conv = next(iter(obj["conversations"].values()))
+    if change == "empty_turns":
+        conv["turns"] = []
+    elif change == "bare_turn_record":
+        conv["turns"] = [{}]
+    elif change == "arm_disagrees_with_headline":
+        obj["by_arm"][0].update(drift_turns=1, turn_drift_rate=1.0)
+    elif change == "series_disagrees":
+        obj["drift_by_turn"][0]["n"] = 2
+    elif change == "wrong_wilson":
+        obj["drift_by_turn"][0].update(ci95_low=0.2, ci95_high=0.3)
+    else:
+        obj["headline_metrics"]["applicable"].update(conversation_ci95_low=0.2, conversation_ci95_high=0.3)
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    assert any(needle in e for e in run(site).errors)
