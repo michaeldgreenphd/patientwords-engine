@@ -364,6 +364,9 @@ EXAMPLE_IDS = re.compile("|".join((
     r"[^\W_]_+[^\W_]",
     r"\bpw-petri-",                                            # Petri seed ids (docs/framework/petri_seeds*.json)
     r"\b(?:synthetic-h|w)\d+[a-z]?(?:-[a-z0-9]+)*-\d{4}\b",   # Petri scenario ids (w3-<slug>-0001, synthetic-h1-0001)
+    # the equity scenario ids (petri_seeds_equity.draft.json: equity-scd-acute-chest) carry no wave prefix or
+    # number; at least two segments after the prefix, so ordinary "equity-focused" or "equity-minded" is not refused
+    r"\bequity(?:-[a-z0-9]+){2,}\b",
     r"\br\d{3}\b",                                            # pilot review ids (review_map.json: r001)
 )), re.I)
 # The study's method vocabulary, which an example may not show (the blinding section of docs/verification_protocol.md

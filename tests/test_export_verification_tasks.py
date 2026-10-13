@@ -3239,3 +3239,13 @@ def test_committed_bundles_follow_the_contract(path):
              int(p["source_id"].split("#")[1])) for _, p in main]
     assert [r for r, _ in main] == list(range(1, len(main) + 1)) and keys == sorted(keys)
     assert all(re.fullmatch(r"vt_[0-9a-f]{12}", i) for i in bundle["seal"]["holdout_bucket_unsealed"]["item_ids"])
+
+
+def test_equity_scenario_ids_are_refused_but_ordinary_equity_phrases_are_not():
+    # Regression (2026-10-13): PR #104's equity seeds use scenario ids with no wave prefix or number
+    # (equity-scd-acute-chest), which no id shape matched, so this file's source check failed on main.
+    doc = json.loads((ROOT / "docs" / "framework" / "petri_seeds_equity.draft.json").read_text(encoding="utf-8"))
+    ids = [seed["scenario"]["id"] for seed in doc["seeds"]]
+    assert ids and all(evt.EXAMPLE_IDS.search(i) for i in ids)
+    for text in ("an equity-focused clinic", "equity-minded care", "health equity matters"):
+        assert not evt.EXAMPLE_IDS.search(text), text
