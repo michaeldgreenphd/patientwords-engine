@@ -3243,7 +3243,8 @@ def test_committed_bundles_follow_the_contract(path):
 
 def test_equity_scenario_ids_are_refused_but_ordinary_equity_phrases_are_not():
     # Regression (2026-10-13): PR #104's equity seeds use scenario ids with no wave prefix or number
-    # (equity-scd-acute-chest), which no id shape matched, so this file's source check failed on main.
+    # (equity-<slug>-<slug>..., read from the seed file below), which no id shape matched, so this file's source
+    # check failed on main.
     doc = json.loads((ROOT / "docs" / "framework" / "petri_seeds_equity.draft.json").read_text(encoding="utf-8"))
     ids = [seed["scenario"]["id"] for seed in doc["seeds"]]
     assert ids and all(evt.EXAMPLE_IDS.search(i) for i in ids)
