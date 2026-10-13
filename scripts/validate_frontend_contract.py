@@ -788,6 +788,75 @@ def check_owner_run(rep: Report, site: Path, send_waivers: dict | None = None):
                 check(rep, name, data, sample)
 
 
+# ------------------------------------------------------------------ Jev payloads
+
+# Written by scripts/export_jev_calibration.py from a Jev audit report, run by hand (not the daily Routine), so absent is
+# the expected state until a report is exported: a note, never a warning. Present, each is shape-checked on the keys
+# its consuming pages read; a mock run's payload is an error (it is not a measurement), and the two files must come from
+# one report. The drift payload must carry the per-arm shape: the pooled drift rate it replaced mixed conversations the
+# drift question does not apply to (export_jev_calibration.DRIFT_SPEAKER / DRIFT_REGISTERS; review of 2026-10-13).
+JEV_WRITER = "scripts/export_jev_calibration.py"
+JEV_SPECS = {
+    "jev_calibration.json": {
+        "top": {"generated_utc": str, "source_report_sha256": str, "model_requested": str, "models_served": list,
+                "judge_model": str, "agreement_reference": str, "is_mock": bool, "provenance": dict,
+                "headline_metrics": dict, "tier_order": list, "confusion_matrix": list,
+                "flag_metrics_reference": str, "flag_metrics": dict, "cases_summary": dict},
+        "nullable": {"judge_model", "agreement_reference", "flag_metrics_reference"},
+        "headline": {"total_advice_cases": int, "exact_agreement": NUM, "within_one_agreement": NUM,
+                     "cohen_kappa": NUM, "cohen_kappa_quadratic": NUM, "brier_score": NUM, "base_rate_brier": NUM,
+                     "brier_skill_score": NUM, "tier_divergence": dict, "advice_phase_spend": dict},
+        "headline_nullable": {"exact_agreement", "within_one_agreement", "cohen_kappa", "cohen_kappa_quadratic",
+                              "brier_score", "base_rate_brier", "brier_skill_score", "tier_divergence"},
+    },
+    "petri_register_drift.json": {
+        "top": {"generated_utc": str, "source_report_sha256": str, "model_requested": str, "models_served": list,
+                "is_mock": bool, "provenance": dict, "status": str, "per_turn_interval": str,
+                "drift_instrument": dict, "headline_metrics": dict,
+                "by_arm": list, "drift_by_turn": list, "conversations": dict},
+        "nullable": set(),
+        "headline": {"total_conversations": int, "total_assistant_turns": int, "applicable": dict,
+                     "petri_phase_spend": dict},
+        "headline_nullable": set(),
+    },
+}
+JEV_ARM_FIELDS = (("user_is", str), ("conversations", int), ("drift_instrument_applies", bool),
+                  ("assistant_turns", int), ("drift_turns", int))
+
+
+def check_jev_payloads(rep: Report, site: Path):
+    reports: dict[str, str] = {}
+    for name, spec in JEV_SPECS.items():
+        if not (site / "data" / name).is_file():
+            rep.notes.append(f"{name} not published (written by hand with {JEV_WRITER})")
+            continue
+        data = load(site, name, rep)
+        if not isinstance(data, dict):
+            if data is not None:
+                rep.err(name, "$", f"expected object, got {type(data).__name__}")
+            continue
+        for key, kinds in spec["top"].items():
+            need(rep, name, data, key, kinds, "$", nullable=key in spec["nullable"])
+        known_keys(rep, name, data, set(spec["top"]))
+        head = data.get("headline_metrics")
+        if isinstance(head, dict):
+            for key, kinds in spec["headline"].items():
+                need(rep, name, head, key, kinds, "$.headline_metrics", nullable=key in spec["headline_nullable"])
+            if "overall_drift_rate" in head:
+                rep.err(name, "$.headline_metrics.overall_drift_rate",
+                        "the pooled drift rate is not published: regenerate with the per-arm exporter")
+        if data.get("is_mock") is True:
+            rep.err(name, "$.is_mock", "a mock run's payload is not a measurement and is not published")
+        if isinstance(data.get("source_report_sha256"), str):
+            reports[name] = data["source_report_sha256"]
+        if name == "petri_register_drift.json":
+            for i, arm in enumerate(data.get("by_arm") or []):
+                for key, kinds in JEV_ARM_FIELDS:
+                    need(rep, name, arm, key, kinds, f"$.by_arm[{i}]")
+    if len(set(reports.values())) > 1:
+        rep.err(" and ".join(reports), "$.source_report_sha256", "the two Jev payloads come from different reports")
+
+
 # ------------------------------------------------------------------ cross-repo checks
 
 def check_engine_copies(rep: Report, site: Path, engine: Path):
@@ -842,6 +911,7 @@ def validate(site: Path, engine: Path | None, strict: bool = False, send_waivers
         check_urgency(rep, urg, joins)
     check_shapes(rep, site, joins)
     check_owner_run(rep, site, send_waivers)
+    check_jev_payloads(rep, site)
     if engine is not None and engine.is_dir():
         check_engine_copies(rep, site, engine)
     if strict:

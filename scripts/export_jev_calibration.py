@@ -776,9 +776,101 @@ def build_calibration_payload(
     }
 
 
-def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str,
-                              repo_root: Path = REPO_ROOT) -> dict[str, Any] | None:
-    """Build the petri_register_drift.json payload from multi-turn Petri records."""
+# Jev's drift question (data/register_rubric.json, petri_register.drift.instructions) asks whether the reply "drift[ed]
+# into formal clinical jargon ... that substantially departs from the patient's colloquial framing". It presupposes a
+# patient writing in a lay register, so it is reported for those conversations and not pooled with the others: on the
+# first live report 70 of the 72 drift flags came from conversations with a clinical-register user or a clinician
+# speaker, where clinical wording in the reply matches the user rather than departing from them (review 2026-10-13).
+# The speaker and register values are the seed schema's (`user_is`) and the framing registry's register values; both
+# are checked against the data when used.
+DRIFT_SPEAKER = "patient"
+DRIFT_REGISTERS = ("colloquial", "lay_careful")
+
+
+def conversation_arms(meta: dict[str, Any], repo_root: Path = REPO_ROOT) -> dict[str, dict[str, Any]]:
+    """Each Petri conversation's seed, arm, speaker and register, read from the run the report scored: the transcripts
+    file the report recorded (sha256 verified), the analysis rows beside it (conversation -> seed and arm), the run's
+    manifest (seed file and per-seed digest) and the seed itself (the arm's `user_is`, and the register its texts
+    declare). Refuses when any link is missing or disagrees, so no conversation is placed in an arm by guesswork."""
+    from scripts.petri_audit.framework import FRAMING_REGISTRY
+    from scripts.petri_audit.seeds import seed_digest
+
+    registers = set()
+    for dim in json.loads(Path(FRAMING_REGISTRY).read_text(encoding="utf-8")).get("dimensions", []):
+        registers |= set((dim.get("value_definitions") or {}).keys())
+    if not set(DRIFT_REGISTERS) <= registers:
+        _refuse(f"Drift registers {DRIFT_REGISTERS} are not all register values of the framing registry")
+
+    entry = meta.get("petri_transcripts")
+    if not isinstance(entry, dict):
+        _refuse("Report metadata has no 'petri_transcripts' block; cannot place its conversations in arms")
+    _require_relative_path(entry.get("path"))
+    recorded = _require_sha256(entry.get("sha256"), "petri_transcripts.sha256")
+    transcripts = repo_root / entry["path"]
+    if not transcripts.is_file() or hashlib.sha256(transcripts.read_bytes()).hexdigest() != recorded:
+        _refuse(f"{entry['path']} is missing or differs from the transcripts the audit scored")
+    run_dir = transcripts.parent
+    rows_path, manifest_path = run_dir / "analysis_rows.jsonl", run_dir / "manifest.json"
+    if not rows_path.is_file() or not manifest_path.is_file():
+        _refuse(f"{run_dir.relative_to(repo_root)} has no analysis_rows.jsonl or manifest.json beside its transcripts")
+
+    placed: dict[str, tuple[str, str]] = {}
+    for line_no, line in enumerate(rows_path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        cid, seed_id, arm = row.get("conversation_id"), row.get("seed_id"), row.get("arm")
+        if not all(isinstance(v, str) and v for v in (cid, seed_id, arm)):
+            _refuse(f"{rows_path.name} line {line_no} lacks conversation_id, seed_id or arm")
+        if placed.setdefault(cid, (seed_id, arm)) != (seed_id, arm):
+            _refuse(f"Conversation {cid} is placed in two arms in {rows_path.name}")
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    seeds: dict[str, dict[str, Any]] = {}
+    for rec in manifest.get("seeds", []):
+        doc = json.loads((repo_root / rec["file"]).read_text(encoding="utf-8"))
+        seed = next((sd for sd in doc.get("seeds", []) if sd.get("seed_id") == rec["seed_id"]), None)
+        if seed is None or seed_digest(seed) != rec.get("seed_sha256"):
+            _refuse(f"Seed {rec.get('seed_id')} in {rec.get('file')} is missing or differs from the run's recorded "
+                    "digest")
+        seeds[rec["seed_id"]] = seed
+
+    out: dict[str, dict[str, Any]] = {}
+    for cid, (seed_id, arm_id) in placed.items():
+        seed = seeds.get(seed_id)
+        arm = next((a for a in (seed or {}).get("protocol", {}).get("arms", []) if a.get("id") == arm_id), None)
+        if arm is None:
+            _refuse(f"Conversation {cid}: seed {seed_id} has no arm {arm_id!r}")
+        texts = {t["key"]: t for t in seed["texts"]}
+        arm_registers = {texts[t["text_ref"]].get("register") for t in arm["turns"]}
+        register = arm_registers.pop() if len(arm_registers) == 1 else None
+        if register is not None and register not in registers:
+            _refuse(f"Conversation {cid}: register {register!r} is not a framing-registry register value")
+        out[cid] = {"seed_id": seed_id, "arm": arm_id, "user_is": arm.get("user_is"), "register": register,
+                    "drift_instrument_applies": arm.get("user_is") == DRIFT_SPEAKER and register in DRIFT_REGISTERS}
+    return out
+
+
+def _drift_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    n = len(rows)
+    k = sum(r["has_register_drift"] for r in rows)
+    lo, hi = _wilson(k, n)
+    scores = [r["formality_score"] for r in rows if r["formality_score"] is not None]
+    tones: dict[str, int] = {}
+    for r in rows:
+        tones[r["tone_choice"]] = tones.get(r["tone_choice"], 0) + 1
+    return {"assistant_turns": n, "drift_turns": k, "drift_rate": round(k / n, 4) if n else None,
+            "ci95_low": lo, "ci95_high": hi,
+            "mean_formality_score": round(sum(scores) / len(scores), 3) if scores else None,
+            "formality_scored_turns": len(scores), "tone_distribution": tones}
+
+
+def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str, repo_root: Path = REPO_ROOT,
+                              arms: dict[str, dict[str, Any]] | None = None) -> dict[str, Any] | None:
+    """Build the petri_register_drift.json payload from multi-turn Petri records. Drift is reported per arm (speaker
+    and register) and, as the headline and the per-turn series, only for the conversations the drift question applies
+    to (DRIFT_SPEAKER, DRIFT_REGISTERS). `arms` maps conversation ids to their arm; by default it is read from the run
+    the report scored (conversation_arms)."""
     # the audit runner always writes petri_cases (an empty list when it ran no Petri conversations), so a missing
     # or non-list field is a malformed report, not an empty dataset: refused, so it cannot delete a published file
     if "petri_cases" not in report_data or not isinstance(report_data["petri_cases"], list):
@@ -793,9 +885,6 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str,
     cases = report_data.get("cases")
     _check_provenance_counts(meta, cases if isinstance(cases, list) else [], petri_cases)
     seen: set[tuple[str, int]] = set()
-    tones: dict[str, int] = {}
-    drifts = 0
-    scores: list[float] = []
     conversations: dict[str, list[dict[str, Any]]] = {}
 
     for idx, p in enumerate(petri_cases):
@@ -818,7 +907,6 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str,
         if t_choice not in tone_choices:
             _refuse(f"Petri case {cid} turn {t_idx} has tone_choice {t_choice!r}; the recorded register rubric "
                     f"allows {sorted(tone_choices)}")
-        tones[t_choice] = tones.get(t_choice, 0) + 1
 
         if "has_register_drift" not in p or p["has_register_drift"] is None:
             _refuse(f"Petri case {cid} turn {t_idx} missing required 'has_register_drift'")
@@ -830,15 +918,11 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str,
         if has_drift != (drift_prob >= 0.5):
             _refuse(f"Petri case {cid} turn {t_idx} has has_register_drift {has_drift} with drift_probability "
                     f"{drift_prob}; the classifier sets the flag as probability >= 0.5")
-        if has_drift:
-            drifts += 1
 
         reg_score = _round_or_none(p.get("register_score"), f"Petri case {cid} turn {t_idx} register_score", 6)
         if reg_score is not None and not 0.0 <= reg_score <= score_top:
             _refuse(f"Petri case {cid} turn {t_idx} has register_score {reg_score}, outside the recorded rubric's "
                     f"0-{score_top:g} scale")
-        if reg_score is not None:
-            scores.append(reg_score)
 
         conversations.setdefault(cid, []).append({
             "turn_index": t_idx,
@@ -849,19 +933,41 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str,
             "formality_score": reg_score,
         })
 
+    if arms is None:
+        arms = conversation_arms(meta, repo_root)
+    unplaced = sorted(set(conversations) - set(arms))
+    if unplaced:
+        _refuse(f"{len(unplaced)} Petri conversation(s) are not in the scored run's analysis rows "
+                f"(first: {unplaced[0]}); cannot place them in an arm")
+
     # turn_index is the row's raw position in its own transcript (tool and other records included), so the same
     # assistant position can carry different indices in different conversations. Rows are therefore ranked within
-    # each conversation, and the per-turn series is aggregated by that per-conversation assistant ordinal.
+    # each conversation, and the per-turn series is aggregated by that per-conversation assistant ordinal. The series
+    # covers only the conversations the drift question applies to.
     by_ordinal: dict[int, list[int]] = {}
     indices_at: dict[int, set[int]] = {}
     for cid in conversations:
         conversations[cid].sort(key=lambda t: t["turn_index"])
         for ordinal, row in enumerate(conversations[cid], 1):
             row["assistant_turn_ordinal"] = ordinal
+            if not arms[cid]["drift_instrument_applies"]:
+                continue
             counts = by_ordinal.setdefault(ordinal, [0, 0])
             counts[1] += 1
             counts[0] += int(row["has_register_drift"])
             indices_at.setdefault(ordinal, set()).add(row["turn_index"])
+    if not by_ordinal:
+        _refuse(f"No Petri conversation has a {DRIFT_SPEAKER} speaker in a {' or '.join(DRIFT_REGISTERS)} register; "
+                "the drift question applies to none of them")
+
+    groups: dict[tuple[Any, Any], list[str]] = {}
+    for cid in conversations:
+        groups.setdefault((arms[cid]["user_is"], arms[cid]["register"]), []).append(cid)
+    by_arm = [{"user_is": user_is, "register": register, "conversations": len(cids),
+               "drift_instrument_applies": arms[cids[0]]["drift_instrument_applies"],
+               **_drift_summary([r for c in cids for r in conversations[c]])}
+              for (user_is, register), cids in sorted(groups.items(), key=lambda kv: (str(kv[0][0]), str(kv[0][1])))]
+    applicable = [c for c in conversations if arms[c]["drift_instrument_applies"]]
 
     drift_by_turn: list[dict[str, Any]] = []
     for ordinal in sorted(by_ordinal):
@@ -878,9 +984,6 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str,
             "ci95_high": hi,
         })
 
-    total_turns = len(petri_cases)
-    overall_drift_rate = round(drifts / total_turns, 4) if total_turns > 0 else 0.0
-    mean_formality = round(sum(scores) / len(scores), 2) if scores else None
 
     return {
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -893,21 +996,24 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str,
                                 "petri_transcripts", "checkpoint")},
         "status": "exploratory",
         "per_turn_interval": "wilson_95; per-turn marginal, not a test of trend (the same conversations recur)",
+        "drift_instrument": {"applies_to": {"user_is": DRIFT_SPEAKER, "registers": list(DRIFT_REGISTERS)},
+                             "question_source": "register_rubric petri_register.drift.instructions"},
         "headline_metrics": {
             "total_conversations": len(conversations),
-            "total_assistant_turns": total_turns,
-            "overall_drift_count": drifts,
-            "overall_drift_rate": overall_drift_rate,
-            "mean_formality_score": mean_formality,
-            "tone_distribution": tones,
-            # the mean covers only the rows that carry a score; the count says how many that is
-            "formality_scored_turns": len(scores),
+            "total_assistant_turns": len(petri_cases),
+            # drift where the question applies; the per-arm table carries every arm, the others included
+            "applicable": {"conversations": len(applicable),
+                           **_drift_summary([r for c in applicable for r in conversations[c]])},
             "petri_phase_spend": _phase_spend(petri_cases, "Petri case"),
             "min_turn_n": min(t["n"] for t in drift_by_turn),
             "max_turn_n": max(t["n"] for t in drift_by_turn),
         },
+        "by_arm": by_arm,
         "drift_by_turn": drift_by_turn,
-        "conversations": conversations,
+        "conversations": {cid: {"seed_id": arms[cid]["seed_id"], "arm": arms[cid]["arm"],
+                                "user_is": arms[cid]["user_is"], "register": arms[cid]["register"],
+                                "drift_instrument_applies": arms[cid]["drift_instrument_applies"],
+                                "turns": turns} for cid, turns in conversations.items()},
     }
 
 
@@ -926,6 +1032,8 @@ def _stage(target_path: Path, text: str) -> Path:
     an existing file such as the source report or a link to it. Returns the staging path; nothing is replaced."""
     fd, tmp_name = tempfile.mkstemp(prefix=f".{target_path.name}.", suffix=".tmp", dir=target_path.parent)
     try:
+        # mkstemp creates the file owner-only (0600) and os.replace keeps that mode; a published file is world-readable
+        os.fchmod(fd, 0o644)
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(text)
     except BaseException:
@@ -1031,9 +1139,15 @@ def main(argv: list[str] | None = None) -> int:
 
     if petri_payload:
         p_head = petri_payload["headline_metrics"]
+        app = p_head["applicable"]
         print(f"Petri conversations: {p_head['total_conversations']} ({p_head['total_assistant_turns']} turns)")
-        print(f"Overall drift rate: {p_head['overall_drift_rate']*100:.1f}%")
-        print(f"Mean formality score: {p_head['mean_formality_score']}")
+        print(f"Drift where the question applies ({app['conversations']} conversations): {app['drift_turns']}/"
+              f"{app['assistant_turns']} turns ({app['drift_rate']*100:.1f}%, Wilson 95% {app['ci95_low']}-"
+              f"{app['ci95_high']})")
+        for arm in petri_payload["by_arm"]:
+            print(f"  {arm['user_is']} / {arm['register']}: drift {arm['drift_turns']}/{arm['assistant_turns']}, "
+                  f"mean formality {arm['mean_formality_score']}"
+                  + ("" if arm["drift_instrument_applies"] else "  (question does not apply)"))
 
     # both payloads are serialized before anything is written, so a refusal leaves both site files untouched
     calib_text = serialize_payload(calib_payload, "The calibration payload")

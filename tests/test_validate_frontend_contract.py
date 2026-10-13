@@ -605,7 +605,8 @@ def test_owner_run_multiturn_pair_published_valid(site):
     _write_pair(site, _multiturn_pair())
     _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
     rep = run(site, strict=True)
-    assert not any("petri_multiturn" in e for e in rep.errors + rep.warnings) and rep.notes == []
+    assert not any("petri_multiturn" in e for e in rep.errors + rep.warnings)
+    assert not any("petri_multiturn" in n for n in rep.notes)
 
 
 def test_owner_run_multiturn_file_without_its_pair_is_an_error(site):
@@ -1131,3 +1132,67 @@ def test_main_fails_when_the_multiturn_data_is_public_without_a_sent_pack(site, 
     out = capsys.readouterr().out
     assert f"FAIL: {vfc.PETRI_PUBLICATION_UNMET_MSG}" in out and "contract check: 2 error(s)" in out
     assert f"FAIL: {vfc.PETRI_NO_LOG_MSG.format(root=engine)}" in out          # the checkout gap, named
+
+
+# Jev payloads (scripts/export_jev_calibration.py; hand-run, so absent is a note). The keys are checked against the
+# writer's own output in tests/test_export_jev_calibration.py; these tests cover the gate's verdicts.
+
+def _jev_pair(site, report="r" * 64, mock=False, pooled=False):
+    data = site / "data"
+    calib = {"generated_utc": "t", "source_report_sha256": report, "model_requested": "m", "models_served": ["m"],
+             "judge_model": "j", "agreement_reference": "primary_judge", "is_mock": mock, "provenance": {},
+             "headline_metrics": {"total_advice_cases": 1, "exact_agreement": 1.0, "within_one_agreement": 1.0,
+                                  "cohen_kappa": None, "cohen_kappa_quadratic": None, "brier_score": 0.1,
+                                  "base_rate_brier": None, "brier_skill_score": None, "tier_divergence": {},
+                                  "advice_phase_spend": {}},
+             "tier_order": ["a", "b"], "confusion_matrix": [[1, 0], [0, 0]], "flag_metrics_reference": "primary_judge",
+             "flag_metrics": {}, "cases_summary": {}}
+    head = {"total_conversations": 1, "total_assistant_turns": 1, "applicable": {}, "petri_phase_spend": {}}
+    if pooled:
+        head["overall_drift_rate"] = 0.5
+    drift = {"generated_utc": "t", "source_report_sha256": report, "model_requested": "m", "models_served": ["m"],
+             "is_mock": False, "provenance": {}, "status": "exploratory", "per_turn_interval": "w",
+             "drift_instrument": {}, "headline_metrics": head,
+             "by_arm": [{"user_is": "u", "conversations": 1, "drift_instrument_applies": True, "assistant_turns": 1,
+                         "drift_turns": 0}], "drift_by_turn": [], "conversations": {}}
+    (data / "jev_calibration.json").write_text(json.dumps(calib), encoding="utf-8")
+    (data / "petri_register_drift.json").write_text(json.dumps(drift), encoding="utf-8")
+
+
+def test_jev_payloads_absent_are_a_note(site):
+    rep = run(site)
+    assert rep.errors == [] and any("jev_calibration.json not published" in n for n in rep.notes)
+
+
+def test_jev_payloads_valid_pass(site):
+    _jev_pair(site)
+    assert run(site).errors == []
+
+
+def test_jev_pooled_drift_shape_is_an_error(site):
+    _jev_pair(site, pooled=True)
+    assert any("overall_drift_rate" in e for e in run(site).errors)
+
+
+def test_jev_mock_payload_is_an_error(site):
+    _jev_pair(site, mock=True)
+    assert any("is_mock" in e for e in run(site).errors)
+
+
+def test_jev_payloads_from_different_reports_are_an_error(site):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    obj["source_report_sha256"] = "s" * 64
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    assert any("different reports" in e for e in run(site).errors)
+
+
+def test_jev_drift_without_per_arm_shape_is_an_error(site):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    del obj["by_arm"], obj["drift_instrument"]
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    errors = run(site).errors
+    assert any("by_arm" in e for e in errors) and any("drift_instrument" in e for e in errors)
