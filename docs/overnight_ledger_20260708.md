@@ -779,3 +779,5 @@ patching smoke run 1 = failure; diagnosis below after log pull.
 - run_35937014168_1.report.json · $0.9298 · alias · accepted — · —
 - run_36076994201_1.judge.report.json · $1.6108 · alias · accepted — · —
 - run_36076994201_1.report.json · $0.9294 · alias · accepted — · —
+- run_38311055562_1.judge.report.json · $0.0000 · alias · accepted — · —
+- run_38311055562_1.report.json · $0.2145 · alias · accepted — · —
