@@ -249,6 +249,15 @@ def load_report(report_path: Path) -> tuple[dict[str, Any], str]:
     return data, report_sha
 
 
+def _require_model_requested(meta: dict[str, Any]) -> str:
+    """Both payloads publish the requested Jev model, and the site contract requires it as a string; a report without
+    one is refused here rather than written and then rejected by site CI."""
+    model = meta.get("model_requested")
+    if not isinstance(model, str) or not model:
+        _refuse(f"Report metadata 'model_requested' must be a non-empty string, got {model!r}")
+    return model
+
+
 def _require_is_mock(meta: dict[str, Any]) -> bool:
     """Execution provenance must be a JSON boolean; a number or string would be coerced into an invented answer."""
     if "is_mock" not in meta or not isinstance(meta["is_mock"], bool):
@@ -747,7 +756,7 @@ def build_calibration_payload(
     return {
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source_report_sha256": report_sha,
-        "model_requested": meta.get("model_requested"),
+        "model_requested": _require_model_requested(meta),
         "models_served": _served_models(cases, "Advice case"),
         "judge_model": judge_model,
         "agreement_reference": reference,
@@ -1015,7 +1024,7 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str, repo
     return {
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source_report_sha256": report_sha,
-        "model_requested": meta.get("model_requested"),
+        "model_requested": _require_model_requested(meta),
         "models_served": _served_models(petri_cases, "Petri case"),
         "is_mock": is_mock,
         "provenance": {k: v for k, v in _publishable_provenance(meta, has_advice=bool(cases), has_petri=True).items()

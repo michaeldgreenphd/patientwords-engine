@@ -537,7 +537,7 @@ def test_petri_wilson_interval_matches_the_reviewed_turn():
              "has_register_drift": i < 11, "served_model": "m", "tone_confidence": 0.8,
              "drift_probability": 0.9 if i < 11 else 0.1,
              "cost_usd": 0.0, "estimated_cost_usd": 0.0, "input_tokens": 0} for i in range(30)]
-    meta = {"is_mock": False, "classifier": {"sha256": "c" * 64},
+    meta = {"is_mock": False, "model_requested": "typesafe/jev-1.13", "classifier": {"sha256": "c" * 64},
             "rubric": {"path": ADVICE_RUBRIC, "sha256": ADVICE_SHA},
             "register_rubric": {"path": REGISTER_RUBRIC, "sha256": REGISTER_SHA},
             "petri_transcripts": {"path": "x/transcripts.jsonl", "sha256": "e" * 64, "turns_evaluated": 30}}
@@ -1451,3 +1451,17 @@ def test_initial_only_arm_register_is_its_first_turns():
     h3 = {a["arm"]: a["register"] for a in arms.values() if a["seed_id"] == "pw-petri-example-h3-tools"}
     assert h3 and all(r is not None for r in h3.values())
     assert len(set(h3.values())) == len(h3)                 # one register per arm, none collapsed
+
+
+
+@pytest.mark.parametrize("value", [None, "", 3])
+def test_report_without_a_requested_model_refused_before_writing(tmp_path, mock_report_data, value):
+    mock_report_data["metadata"]["model_requested"] = value
+    report = tmp_path / "r.json"
+    report.write_text(json.dumps(mock_report_data), encoding="utf-8")
+    site_data = tmp_path / "site" / "data"
+    site_data.mkdir(parents=True)
+    with pytest.raises(SystemExit) as exc:
+        main(["--report", str(report), "--site", str(tmp_path / "site")])
+    assert exc.value.code == 2
+    assert list(site_data.iterdir()) == []

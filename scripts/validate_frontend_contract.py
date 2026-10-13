@@ -836,16 +836,18 @@ JEV_ARM_FIELDS = (("user_is", str, False), ("register", str, True), ("drift_inst
     + JEV_SUMMARY_FIELDS
 
 
-def _jev_need(rep: Report, artifact: str, obj, key: str, kinds, path: str, nullable: bool = False):
+def _jev_need(rep: Report, artifact: str, obj: object, key: str, kinds: object, path: str,
+              nullable: bool = False) -> object:
     """`need`, plus: a number must be finite. Python's json.loads accepts NaN and Infinity, which are not JSON, and the
     site's JSON.parse would reject the whole payload (Codex review of PR #107)."""
     value = need(rep, artifact, obj, key, kinds, path, nullable=nullable)
-    if isinstance(value, float) and not _finite(value):
+    # an integer too large for a float parses as Infinity in the page's JSON.parse; _finite covers both kinds
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and not _finite(value):
         rep.err(artifact, f"{path}.{key}", f"non-finite number {value!r} (not JSON; the page cannot parse it)")
     return value
 
 
-def check_jev_payloads(rep: Report, site: Path):
+def check_jev_payloads(rep: Report, site: Path) -> None:
     reports: dict[str, str] = {}
     for name, spec in JEV_SPECS.items():
         if not (site / "data" / name).is_file():
@@ -882,7 +884,8 @@ def check_jev_payloads(rep: Report, site: Path):
                 for i, t in enumerate(turns):
                     for key, kinds, nullable in JEV_TURN_FIELDS:
                         _jev_need(rep, name, t, key, kinds, f"$.drift_by_turn[{i}]", nullable=nullable)
-            for i, arm in enumerate(data.get("by_arm") or []):
+            arms = data.get("by_arm")
+            for i, arm in enumerate(arms if isinstance(arms, list) else []):
                 for key, kinds, nullable in JEV_ARM_FIELDS:
                     _jev_need(rep, name, arm, key, kinds, f"$.by_arm[{i}]", nullable=nullable)
             if isinstance(app, dict):

@@ -1259,3 +1259,22 @@ def test_jev_non_finite_numbers_are_errors(site, where):
         obj["headline_metrics"]["brier_score"] = float("nan")
     path.write_text(json.dumps(obj), encoding="utf-8")         # json.dumps writes NaN/Infinity, as a hand edit could
     assert any("non-finite" in e for e in run(site).errors)
+
+
+
+def test_jev_oversized_integer_is_an_error(site):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    obj["by_arm"][0]["assistant_turns"] = 10 ** 400              # valid JSON, Infinity in the page's JSON.parse
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    assert any("non-finite" in e for e in run(site).errors)
+
+
+def test_jev_non_list_by_arm_is_an_error_not_a_crash(site):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    obj["by_arm"] = 1
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    assert any("by_arm" in e for e in run(site).errors)
