@@ -225,6 +225,57 @@ def load_report(report_path: Path) -> tuple[dict[str, Any], str]:
     return data, report_sha
 
 
+def _require_is_mock(meta: dict[str, Any]) -> bool:
+    """Execution provenance must be a JSON boolean; a number or string would be coerced into an invented answer."""
+    if "is_mock" not in meta or not isinstance(meta["is_mock"], bool):
+        _refuse(f"Report metadata 'is_mock' must be true or false, got {meta.get('is_mock')!r}; "
+                "refusing to infer execution provenance")
+    return meta["is_mock"]
+
+
+def _agreement_reference(meta: dict[str, Any]) -> tuple[str | None, str | None]:
+    """(reference, judge_model). An advice-archive report graded by the advice lane's judge of record is
+    agreement with that primary judge; an advice-archive report without judgments has no reference (its
+    agreement metrics must all be null). Any other report (the runner's golden-benchmark default, or one
+    whose provenance is unrecognised) is refused: its labels are not a primary judge's, and this payload
+    describes only that comparison."""
+    judgments = meta.get("advice_judgments")
+    if isinstance(judgments, dict):
+        judge_model = judgments.get("judge_model")
+        if not isinstance(judge_model, str) or not judge_model:
+            _refuse("Report metadata advice_judgments has no judge_model; cannot name the primary judge")
+        return "primary_judge", judge_model
+    if isinstance(meta.get("advice_archive"), dict):
+        return None, None
+    kind = "a golden-benchmark" if "golden_benchmark" in meta else "an unrecognised"
+    _refuse(f"Report is {kind} report (no advice_archive or advice_judgments provenance); this exporter "
+            "publishes Jev's agreement with the advice lane's primary judge only")
+    return None, None
+
+
+def _publishable_provenance(meta: dict[str, Any]) -> dict[str, Any]:
+    """The report's input and classifier provenance, so the public payload alone names what produced it.
+    Hashes, repository-relative paths and parameters only; absent fields are carried as null, never dropped.
+    The classifier's local file paths are runner paths and are not carried; its digest is."""
+    def pick(block: Any, keys: tuple[str, ...]) -> dict[str, Any] | None:
+        return {k: block.get(k) for k in keys} if isinstance(block, dict) else None
+
+    return {
+        "audit_timestamp_utc": meta.get("timestamp_utc"),
+        "rubric": pick(meta.get("rubric"), ("path", "sha256")),
+        "register_rubric": pick(meta.get("register_rubric"), ("path", "sha256")),
+        "classifier_sha256": (meta.get("classifier") or {}).get("sha256") if isinstance(meta.get("classifier"), dict)
+        else None,
+        "parameters": meta.get("parameters") if isinstance(meta.get("parameters"), dict) else None,
+        "advice_archive": pick(meta.get("advice_archive"), ("path", "sha256", "samples_requested",
+                                                             "samples_evaluated", "unmatched_responses_omitted")),
+        "advice_judgments": pick(meta.get("advice_judgments"), ("path", "sha256", "judge_model")),
+        "petri_transcripts": pick(meta.get("petri_transcripts"), ("path", "sha256", "max_conversations",
+                                                                   "turns_evaluated")),
+        "checkpoint": pick(meta.get("checkpoint"), ("resumed_advice_count", "resumed_petri_count")),
+    }
+
+
 def build_calibration_payload(
     report_data: dict[str, Any],
     report_sha: str,
@@ -235,9 +286,8 @@ def build_calibration_payload(
     metrics = report_data.get("metrics", {})
     cases = report_data.get("cases", [])
 
-    if "is_mock" not in meta or meta["is_mock"] is None:
-        _refuse("Report metadata is missing 'is_mock' execution provenance; refusing to infer provenance.")
-    is_mock = bool(meta["is_mock"])
+    is_mock = _require_is_mock(meta)
+    reference, judge_model = _agreement_reference(meta)
 
     total_cases = metrics.get("total_cases", len(cases))
     exact_matches = metrics.get("exact_tier_matches")
@@ -257,12 +307,33 @@ def build_calibration_payload(
             diag_sum = sum(matrix[i][i] for i in range(min(len(matrix), len(tier_order))))
             if diag_sum != exact_matches:
                 _refuse(f"Confusion matrix diagonal sum ({diag_sum}) does not match exact matches ({exact_matches})")
+        # the matrix determines both published rates; a stale or corrupted rate is refused, not copied
+        k = len(tier_order)
+        n = matrix_sum
+        band = sum(matrix[i][j] for i in range(k) for j in range(k) if abs(i - j) <= 1)
+        within_matches = metrics.get("within_one_tier_matches")
+        if within_matches is not None and within_matches != band:
+            _refuse(f"Confusion matrix within-one band ({band}) does not match within_one_tier_matches "
+                    f"({within_matches})")
+        for field, count in (("exact_accuracy", sum(matrix[i][i] for i in range(k))), ("within_one_accuracy", band)):
+            reported = metrics.get(field)
+            if reported is not None and n and abs(_round_or_none(reported, field, 6) - count / n) > 5.1e-5:
+                _refuse(f"Reported {field} {reported} does not match the confusion matrix ({count}/{n})")
+    else:
+        for field in ("exact_accuracy", "within_one_accuracy", "brier_score", "exact_tier_matches",
+                      "within_one_tier_matches"):
+            if metrics.get(field) is not None:
+                _refuse(f"Report gives {field} but no confusion matrix to check it against")
+    if reference is None and matrix:
+        _refuse("Report has agreement metrics but no advice_judgments provenance naming the reference")
 
     cases_summary: dict[str, Any] = {}
-    for c in cases:
-        cid = c.get("id")
-        if not cid:
-            continue
+    for idx, c in enumerate(cases):
+        cid = c.get("id") if isinstance(c, dict) else None
+        if not isinstance(cid, str) or not cid:
+            _refuse(f"Case at index {idx} has no identifier; every case must appear in cases_summary")
+        if cid in cases_summary:
+            _refuse(f"Case identifier {cid!r} appears more than once")
         primary_judge_tier = c.get("primary_judge_tier") or c.get("expected_tier")
         cases_summary[cid] = {
             "primary_judge_tier": primary_judge_tier,
@@ -275,9 +346,6 @@ def build_calibration_payload(
             "flags": c.get("flags") or {},
         }
 
-    advice_judgments = meta.get("advice_judgments") or {}
-    judge_model = advice_judgments.get("judge_model")
-
     total_cost_rounded = _round_or_none(metrics.get("total_cost_usd"), "total_cost_usd", 6)
     est_cost_rounded = _round_or_none(metrics.get("total_estimated_cost_usd"), "total_estimated_cost_usd", 6)
     brier = _round_or_none(metrics.get("brier_score"), "brier_score", 4)
@@ -289,9 +357,20 @@ def build_calibration_payload(
         known_str = f"${total_cost_rounded:.6f}" if total_cost_rounded is not None else "$0.000000"
         est_str = f"${est_cost_rounded:.6f}" if est_cost_rounded is not None else "unknown"
         cost_caveat = (
-            f"Total known spend {known_str} excludes {unbilled_calls} calls with null provider billing "
-            f"(estimated at {est_str})"
+            f"Total known spend {known_str} excludes {unbilled_calls} calls with null provider billing; "
+            f"the estimated list-price spend across all calls, billed or not, is {est_str}"
         )
+
+    raw_flags = metrics.get("flag_metrics") or {}
+    if not isinstance(raw_flags, dict):
+        _refuse(f"flag_metrics must be an object, got {type(raw_flags).__name__}")
+    flag_metrics: dict[str, Any] = {}
+    for flag, stats in raw_flags.items():
+        if not isinstance(stats, dict):
+            _refuse(f"flag_metrics[{flag!r}] must be an object")
+        # the flag reference values are the same primary judge's, so the match rate is agreement too; precision,
+        # sensitivity and specificity keep their names and are read against flag_metrics_reference
+        flag_metrics[flag] = {("agreement" if key == "accuracy" else key): val for key, val in stats.items()}
 
     return {
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -299,7 +378,7 @@ def build_calibration_payload(
         "model_requested": meta.get("model_requested"),
         "models_served": meta.get("models_served") or [],
         "judge_model": judge_model,
-        "agreement_reference": "primary_judge",
+        "agreement_reference": reference,
         "is_mock": is_mock,
         "headline_metrics": {
             "total_advice_cases": total_cases,
@@ -322,18 +401,26 @@ def build_calibration_payload(
         },
         "tier_order": tier_order,
         "confusion_matrix": matrix,
-        "flag_metrics": metrics.get("flag_metrics") or {},
+        "flag_metrics_reference": reference,
+        "flag_metrics": flag_metrics,
+        "provenance": _publishable_provenance(meta),
         "cases_summary": cases_summary,
     }
 
 
 def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> dict[str, Any] | None:
     """Build the petri_register_drift.json payload from multi-turn Petri records."""
-    petri_cases = report_data.get("petri_cases")
+    # the audit runner always writes petri_cases (an empty list when it ran no Petri conversations), so a missing
+    # or non-list field is a malformed report, not an empty dataset: refused, so it cannot delete a published file
+    if "petri_cases" not in report_data or not isinstance(report_data["petri_cases"], list):
+        _refuse("Report has no 'petri_cases' list; refusing rather than treating a malformed report as empty")
+    petri_cases = report_data["petri_cases"]
     if not petri_cases:
         return None
 
     meta = report_data.get("metadata", {})
+    is_mock = _require_is_mock(meta)
+    seen: set[tuple[str, int]] = set()
     tones: dict[str, int] = {}
     drifts = 0
     scores: list[float] = []
@@ -347,6 +434,10 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
         if "turn_index" not in p or p["turn_index"] is None:
             _refuse(f"Petri case {cid} missing required 'turn_index'")
         t_idx = int(p["turn_index"])
+        if (cid, t_idx) in seen:
+            _refuse(f"Petri conversation {cid} has more than one row for turn {t_idx}; the sampling unit is one "
+                    "row per conversation per turn")
+        seen.add((cid, t_idx))
 
         t_choice = p.get("tone_choice")
         if not t_choice:
@@ -405,6 +496,8 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
         "source_report_sha256": report_sha,
         "model_requested": meta.get("model_requested"),
         "models_served": meta.get("models_served") or [],
+        "is_mock": is_mock,
+        "petri_transcripts": _publishable_provenance(meta)["petri_transcripts"],
         "status": "exploratory",
         "per_turn_interval": "wilson_95; per-turn marginal, not a test of trend (the same conversations recur)",
         "headline_metrics": {
@@ -460,13 +553,15 @@ def main(argv: list[str] | None = None) -> int:
     report_path = Path(args.report)
     site_path = Path(args.site)
 
+    out_calib = Path(args.out_calibration) if args.out_calibration else site_path / "data" / "jev_calibration.json"
+    out_petri = Path(args.out_petri_drift) if args.out_petri_drift else site_path / "data" / "petri_register_drift.json"
+    if out_calib.resolve() == out_petri.resolve():
+        _refuse(f"--out-calibration and --out-petri-drift resolve to the same file ({out_calib.resolve()})")
+
     report_data, report_sha = load_report(report_path)
 
     calib_payload = build_calibration_payload(report_data, report_sha)
     petri_payload = build_petri_drift_payload(report_data, report_sha)
-
-    out_calib = Path(args.out_calibration) if args.out_calibration else site_path / "data" / "jev_calibration.json"
-    out_petri = Path(args.out_petri_drift) if args.out_petri_drift else site_path / "data" / "petri_register_drift.json"
 
     print("=== Jev Site Export Summary ===")
     print(f"Source report: {report_path} (sha256: {report_sha[:12]}...)")
