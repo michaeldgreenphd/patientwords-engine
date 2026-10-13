@@ -5,16 +5,39 @@ mathematical consistency of calibration metrics, and emits two sanitized JSON
 payloads into the frontend repository (<site>/data/):
 
 1. `data/jev_calibration.json`:
-   - Dual-judge tier concordance (exact accuracy, within-1 accuracy, Brier score).
-   - 4x4 tier confusion matrix and tier order.
+   - Tier AGREEMENT between Jev and the primary judge (the advice lane's judge of
+     record). The primary judge's tier is a reference label, not ground truth, so
+     every rate here is inter-rater agreement, never accuracy (2026-10-13 review).
+   - Exact and within-1 agreement, Cohen's kappa (unweighted and quadratic-weighted),
+     the Brier score against the primary judge's tier, the base-rate Brier and the
+     Brier skill score.
+   - `headline_metrics.tier_divergence`: agreement per primary-judge tier with Wilson
+     95% intervals, the tier with the lowest agreement, the direction of
+     disagreements, and every shift of two or more tiers.
+   - 4x4 tier confusion matrix (rows: primary judge; columns: Jev) and tier order.
    - Binary flag performance metrics (safety netting, clarifying questions, referrals).
    - Per-case probabilities, confidences, and technicality scores.
    - Cost and input token efficiency disclosures.
 
 2. `data/petri_register_drift.json`:
    - Multi-turn register drift summary (total conversations, assistant turns, drift rate).
-   - Turn-by-turn longitudinal drift progression trajectory.
+   - Drift rate by turn, with each turn's n and a Wilson 95% interval; exploratory.
    - Per-conversation tone choices, drift flags, probabilities, and formality scores.
+
+Methods (all deterministic; no sampling, so no seed):
+- Tiers are ordinal in the order the report (or data/advice_rubric*.json) lists them;
+  the quadratic weights and "tiers apart" use that order.
+- Cohen's kappa: (p_o - p_e) / (1 - p_e), p_e from the row and column marginals.
+  Quadratic-weighted kappa: 1 - sum(w*O) / sum(w*E), w_ij = (i - j)^2 / (k - 1)^2,
+  E_ij = row_i * col_j / n. Null when its denominator is zero.
+- The Brier score is the report's: per case, the sum over tiers of the squared gap
+  between Jev's probability and the one-hot primary-judge tier (range 0-2), averaged
+  over cases. The base-rate Brier scores a forecaster that always states the primary
+  judge's tier frequencies, computed from the confusion matrix's row totals (so it is
+  in-sample, which flatters the reference slightly). Skill = 1 - brier / base-rate.
+- Wilson score intervals at z = 1.96. Per-turn Petri intervals treat each turn's
+  conversations as a binomial sample; the same conversations contribute to every turn,
+  so the intervals are per-turn marginals, not a test of trend across turns.
 
 Safety properties (matching other site exporters):
 - Refuses (exit 2, site files untouched) when report is missing, invalid, or inconsistent.
@@ -35,6 +58,7 @@ import argparse
 from datetime import datetime, timezone
 import hashlib
 import json
+import math
 from pathlib import Path
 import sys
 from typing import Any
@@ -47,29 +71,129 @@ def _refuse(reason: str) -> None:
     sys.exit(2)
 
 
+Z95 = 1.959963984540054
+
+
 def _load_tier_order_from_data(repo_root: Path = REPO_ROOT) -> list[str]:
-    """Load canonical tier order from JSON data file, never hardcoded in source."""
+    """Load canonical tier order from JSON data file, never hardcoded in source.
+
+    The first rubric file that exists is the one used: one that cannot be read, or
+    that lists no tier ids, refuses the export rather than falling through to the
+    next file, which could carry a different vocabulary."""
     for rubric_name in ("advice_rubric.json", "advice_rubric.draft.json"):
         p = repo_root / "data" / rubric_name
-        if p.is_file():
-            try:
-                doc = json.loads(p.read_text(encoding="utf-8"))
-                tiers = [str(t["id"]) for t in doc.get("tiers", []) if isinstance(t, dict) and "id" in t]
-                if tiers:
-                    return tiers
-            except Exception:
-                pass
+        if not p.is_file():
+            continue
+        try:
+            doc = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            _refuse(f"Tier vocabulary file {p} could not be read as JSON ({exc})")
+        tiers_raw = doc.get("tiers") if isinstance(doc, dict) else None
+        if not isinstance(tiers_raw, list):
+            _refuse(f"Tier vocabulary file {p} has no 'tiers' list")
+        tiers = [str(t["id"]) for t in tiers_raw if isinstance(t, dict) and "id" in t]
+        if not tiers or len(tiers) != len(tiers_raw):
+            _refuse(f"Tier vocabulary file {p} lists {len(tiers_raw)} tier(s) but {len(tiers)} carry an 'id'")
+        return tiers
     _refuse("Could not load tier order vocabulary from data/advice_rubric.json or draft")
     return []
 
 
-def _round_or_none(val: Any, digits: int = 4) -> float | None:
+def _round_or_none(val: Any, field: str, digits: int = 4) -> float | None:
+    """Round a report metric. None stays None: the audit writes null for a metric it
+    could not compute (an unjudged archive). Anything else that is not a finite
+    number (a string, a bool, NaN, an infinity) is malformed input and refuses the
+    export, naming the field, rather than being published as null."""
     if val is None:
         return None
-    try:
-        return round(float(val), digits)
-    except (TypeError, ValueError):
-        return None
+    if isinstance(val, bool) or not isinstance(val, (int, float)):
+        _refuse(f"Metric '{field}' must be a number or null, got {type(val).__name__} {val!r}")
+    if not math.isfinite(val):
+        _refuse(f"Metric '{field}' must be finite, got {val!r}")
+    return round(float(val), digits)
+
+
+def _wilson(successes: int, n: int, z: float = Z95) -> tuple[float | None, float | None]:
+    """Wilson score interval for a binomial proportion; (None, None) when n is 0."""
+    if n <= 0:
+        return None, None
+    ph = successes / n
+    denom = 1 + z * z / n
+    centre = (ph + z * z / (2 * n)) / denom
+    half = z * math.sqrt(ph * (1 - ph) / n + z * z / (4 * n * n)) / denom
+    return round(max(0.0, centre - half), 4), round(min(1.0, centre + half), 4)
+
+
+def _validate_matrix(matrix: Any, tier_order: list[str]) -> list[list[int]]:
+    """A k x k matrix of non-negative integers, k = len(tier_order); refuses anything else."""
+    k = len(tier_order)
+    if not isinstance(matrix, list) or len(matrix) != k:
+        _refuse(f"Confusion matrix must have {k} rows (one per tier), got {matrix!r:.80}")
+    for i, row in enumerate(matrix):
+        if not isinstance(row, list) or len(row) != k:
+            _refuse(f"Confusion matrix row {i} must have {k} cells")
+        for j, cell in enumerate(row):
+            if isinstance(cell, bool) or not isinstance(cell, int) or cell < 0:
+                _refuse(f"Confusion matrix cell [{i}][{j}] must be a non-negative integer, got {cell!r}")
+    return matrix
+
+
+def agreement_statistics(matrix: list[list[int]], tier_order: list[str], brier: float | None) -> dict[str, Any]:
+    """Chance-corrected agreement, the base-rate Brier and the tier divergence, from the confusion matrix
+    (rows: primary judge; columns: Jev). Definitions are in the module docstring."""
+    k = len(tier_order)
+    n = sum(sum(row) for row in matrix)
+    rows = [sum(matrix[i]) for i in range(k)]
+    cols = [sum(matrix[i][j] for i in range(k)) for j in range(k)]
+    out: dict[str, Any] = {"cohen_kappa": None, "cohen_kappa_quadratic": None, "base_rate_brier": None,
+                           "brier_skill_score": None, "majority_tier": None, "tier_divergence": None}
+    if n == 0:
+        return out
+    p_o = sum(matrix[i][i] for i in range(k)) / n
+    p_e = sum(rows[i] * cols[i] for i in range(k)) / (n * n)
+    out["cohen_kappa"] = round((p_o - p_e) / (1 - p_e), 4) if p_e < 1 else None
+    if k > 1:
+        w = [[(i - j) ** 2 / (k - 1) ** 2 for j in range(k)] for i in range(k)]
+        observed = sum(w[i][j] * matrix[i][j] for i in range(k) for j in range(k)) / n
+        expected = sum(w[i][j] * rows[i] * cols[j] for i in range(k) for j in range(k)) / (n * n)
+        out["cohen_kappa_quadratic"] = round(1 - observed / expected, 4) if expected > 0 else None
+    base = [r / n for r in rows]
+    sum_sq = sum(b * b for b in base)
+    base_rate_brier = sum(rows[t] * (sum_sq - 2 * base[t] + 1) for t in range(k)) / n
+    out["base_rate_brier"] = round(base_rate_brier, 4)
+    if brier is not None and base_rate_brier > 0:
+        out["brier_skill_score"] = round(1 - brier / base_rate_brier, 4)
+    top = max(range(k), key=lambda i: rows[i])
+    out["majority_tier"] = {"tier": tier_order[top], "share": round(rows[top] / n, 4)}
+
+    per_tier = []
+    for i, tier in enumerate(tier_order):
+        lo, hi = _wilson(matrix[i][i], rows[i])
+        others = [(matrix[i][j], j) for j in range(k) if j != i and matrix[i][j] > 0]
+        top_other = max(others, key=lambda c: (c[0], -c[1])) if others else None
+        per_tier.append({
+            "primary_judge_tier": tier, "n": rows[i], "agreed": matrix[i][i],
+            "agreement": round(matrix[i][i] / rows[i], 4) if rows[i] else None,
+            "ci95_low": lo, "ci95_high": hi,
+            "most_common_jev_tier_otherwise": (
+                {"jev_tier": tier_order[top_other[1]], "count": top_other[0],
+                 "share_of_primary_judge_tier": round(top_other[0] / rows[i], 4)} if top_other else None),
+        })
+    judged = [t for t in per_tier if t["agreement"] is not None]
+    lowest = min(judged, key=lambda t: t["agreement"]) if judged else None
+    distant = sorted(
+        ({"primary_judge_tier": tier_order[i], "jev_tier": tier_order[j], "tiers_apart": abs(i - j),
+          "count": matrix[i][j], "share_of_primary_judge_tier": round(matrix[i][j] / rows[i], 4)}
+         for i in range(k) for j in range(k) if abs(i - j) >= 2 and matrix[i][j] > 0),
+        key=lambda c: (-c["count"], tier_order.index(c["primary_judge_tier"]), tier_order.index(c["jev_tier"])))
+    out["tier_divergence"] = {
+        "per_primary_judge_tier": per_tier,
+        "lowest_agreement_tier": lowest["primary_judge_tier"] if lowest else None,
+        "jev_higher_tier_count": sum(matrix[i][j] for i in range(k) for j in range(k) if j > i),
+        "jev_lower_tier_count": sum(matrix[i][j] for i in range(k) for j in range(k) if j < i),
+        "shifts_two_or_more_tiers": distant,
+    }
+    return out
 
 
 def load_report(report_path: Path) -> tuple[dict[str, Any], str]:
@@ -121,6 +245,8 @@ def build_calibration_payload(
     tier_order = metrics.get("tier_order")
     if not tier_order or not isinstance(tier_order, list):
         tier_order = _load_tier_order_from_data(repo_root)
+    if matrix:
+        _validate_matrix(matrix, tier_order)
 
     # Mathematical consistency checks
     if matrix:
@@ -137,9 +263,9 @@ def build_calibration_payload(
         cid = c.get("id")
         if not cid:
             continue
-        gold_tier = c.get("primary_judge_tier") or c.get("expected_tier")
+        primary_judge_tier = c.get("primary_judge_tier") or c.get("expected_tier")
         cases_summary[cid] = {
-            "gold_tier": gold_tier,
+            "primary_judge_tier": primary_judge_tier,
             "pred_tier": c.get("predicted_tier"),
             "tier_confidence": c.get("tier_confidence"),
             "tier_probabilities": c.get("tier_probabilities") or {},
@@ -152,8 +278,10 @@ def build_calibration_payload(
     advice_judgments = meta.get("advice_judgments") or {}
     judge_model = advice_judgments.get("judge_model")
 
-    total_cost_rounded = _round_or_none(metrics.get("total_cost_usd"), 6)
-    est_cost_rounded = _round_or_none(metrics.get("total_estimated_cost_usd"), 6)
+    total_cost_rounded = _round_or_none(metrics.get("total_cost_usd"), "total_cost_usd", 6)
+    est_cost_rounded = _round_or_none(metrics.get("total_estimated_cost_usd"), "total_estimated_cost_usd", 6)
+    brier = _round_or_none(metrics.get("brier_score"), "brier_score", 4)
+    agreement = agreement_statistics(matrix, tier_order, brier) if matrix else agreement_statistics([], [], None)
     unbilled_calls = int(metrics.get("unbilled_calls_count", 0) or 0)
 
     cost_caveat = None
@@ -171,14 +299,21 @@ def build_calibration_payload(
         "model_requested": meta.get("model_requested"),
         "models_served": meta.get("models_served") or [],
         "judge_model": judge_model,
+        "agreement_reference": "primary_judge",
         "is_mock": is_mock,
         "headline_metrics": {
             "total_advice_cases": total_cases,
             "exact_matches": exact_matches,
-            "exact_accuracy": _round_or_none(metrics.get("exact_accuracy"), 4),
+            "exact_agreement": _round_or_none(metrics.get("exact_accuracy"), "exact_accuracy", 4),
             "within_one_matches": metrics.get("within_one_tier_matches"),
-            "within_one_accuracy": _round_or_none(metrics.get("within_one_accuracy"), 4),
-            "brier_score": _round_or_none(metrics.get("brier_score"), 4),
+            "within_one_agreement": _round_or_none(metrics.get("within_one_accuracy"), "within_one_accuracy", 4),
+            "cohen_kappa": agreement["cohen_kappa"],
+            "cohen_kappa_quadratic": agreement["cohen_kappa_quadratic"],
+            "majority_tier": agreement["majority_tier"],
+            "brier_score": brier,
+            "base_rate_brier": agreement["base_rate_brier"],
+            "brier_skill_score": agreement["brier_skill_score"],
+            "tier_divergence": agreement["tier_divergence"],
             "total_cost_usd": total_cost_rounded,
             "total_estimated_cost_usd": est_cost_rounded,
             "unbilled_calls_count": unbilled_calls,
@@ -247,13 +382,18 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
         conversations[cid].sort(key=lambda t: t["turn_index"])
 
     drift_by_turn: list[dict[str, Any]] = []
-    for t_idx in sorted(turn_drifts.keys()):
+    for ordinal, t_idx in enumerate(sorted(turn_drifts.keys()), 1):
         d_cnt, tot_cnt = turn_drifts[t_idx]
+        lo, hi = _wilson(d_cnt, tot_cnt)
         drift_by_turn.append({
             "turn_index": t_idx,
+            "assistant_turn_ordinal": ordinal,
+            "n": tot_cnt,
             "assistant_turns": tot_cnt,
             "drift_turns": d_cnt,
-            "drift_rate": round(d_cnt / tot_cnt, 4) if tot_cnt > 0 else 0.0,
+            "drift_rate": round(d_cnt / tot_cnt, 4),
+            "ci95_low": lo,
+            "ci95_high": hi,
         })
 
     total_turns = len(petri_cases)
@@ -265,6 +405,8 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
         "source_report_sha256": report_sha,
         "model_requested": meta.get("model_requested"),
         "models_served": meta.get("models_served") or [],
+        "status": "exploratory",
+        "per_turn_interval": "wilson_95; per-turn marginal, not a test of trend (the same conversations recur)",
         "headline_metrics": {
             "total_conversations": len(conversations),
             "total_assistant_turns": total_turns,
@@ -272,6 +414,8 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
             "overall_drift_rate": overall_drift_rate,
             "mean_formality_score": mean_formality,
             "tone_distribution": tones,
+            "min_turn_n": min(t["n"] for t in drift_by_turn),
+            "max_turn_n": max(t["n"] for t in drift_by_turn),
         },
         "drift_by_turn": drift_by_turn,
         "conversations": conversations,
@@ -327,12 +471,26 @@ def main(argv: list[str] | None = None) -> int:
     print("=== Jev Site Export Summary ===")
     print(f"Source report: {report_path} (sha256: {report_sha[:12]}...)")
     print(f"Advice cases: {calib_payload['headline_metrics']['total_advice_cases']}")
-    exact_acc = calib_payload["headline_metrics"]["exact_accuracy"]
-    within_one_acc = calib_payload["headline_metrics"]["within_one_accuracy"]
-    brier = calib_payload["headline_metrics"]["brier_score"]
-    print(f"Exact accuracy: {f'{exact_acc*100:.2f}%' if exact_acc is not None else 'N/A (unjudged)'}")
-    print(f"Within-1 accuracy: {f'{within_one_acc*100:.2f}%' if within_one_acc is not None else 'N/A (unjudged)'}")
-    print(f"Brier score: {f'{brier:.4f}' if brier is not None else 'N/A (unjudged)'}")
+    head = calib_payload["headline_metrics"]
+
+    def fmt(v: float | None, pct: bool = False) -> str:
+        if v is None:
+            return "N/A (unjudged)"
+        return f"{v*100:.2f}%" if pct else f"{v:.4f}"
+
+    print(f"Exact agreement with primary judge: {fmt(head['exact_agreement'], pct=True)}")
+    print(f"Within-1 agreement: {fmt(head['within_one_agreement'], pct=True)}")
+    print(f"Cohen's kappa: {fmt(head['cohen_kappa'])} (quadratic-weighted {fmt(head['cohen_kappa_quadratic'])})")
+    print(f"Brier score: {fmt(head['brier_score'])} vs base rate {fmt(head['base_rate_brier'])} "
+          f"(skill {fmt(head['brier_skill_score'])})")
+    div = head["tier_divergence"]
+    if div:
+        for t in div["per_primary_judge_tier"]:
+            other = t["most_common_jev_tier_otherwise"]
+            print(f"  primary judge {t['primary_judge_tier']}: n={t['n']} agreement {fmt(t['agreement'], pct=True)}"
+                  + (f"; most often otherwise Jev {other['jev_tier']} ({other['count']})" if other else ""))
+        for c in div["shifts_two_or_more_tiers"]:
+            print(f"  shift {c['primary_judge_tier']} -> {c['jev_tier']} ({c['tiers_apart']} tiers): {c['count']}")
 
     if petri_payload:
         p_head = petri_payload["headline_metrics"]

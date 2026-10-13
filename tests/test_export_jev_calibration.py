@@ -6,6 +6,9 @@ import json
 import pytest
 
 from scripts.export_jev_calibration import (
+    _load_tier_order_from_data,
+    _round_or_none,
+    agreement_statistics,
     build_calibration_payload,
     build_petri_drift_payload,
     load_report,
@@ -141,8 +144,10 @@ def test_build_calibration_payload_structure_and_holdout_hygiene(mock_report_dat
 
     assert payload["source_report_sha256"] == "mocksha123"
     assert payload["headline_metrics"]["total_advice_cases"] == 4
-    assert payload["headline_metrics"]["exact_accuracy"] == 0.75
-    assert payload["headline_metrics"]["within_one_accuracy"] == 1.0
+    assert payload["headline_metrics"]["exact_agreement"] == 0.75
+    assert payload["headline_metrics"]["within_one_agreement"] == 1.0
+    assert payload["agreement_reference"] == "primary_judge"
+    assert "exact_accuracy" not in payload["headline_metrics"]
     assert payload["headline_metrics"]["brier_score"] == 0.15
 
     # Critical security/holdout test: no response_text anywhere in exported payload
@@ -153,7 +158,8 @@ def test_build_calibration_payload_structure_and_holdout_hygiene(mock_report_dat
     # Cases summary check
     assert len(payload["cases_summary"]) == 4
     c1 = payload["cases_summary"]["case_1"]
-    assert c1["gold_tier"] == "self_care"
+    assert c1["primary_judge_tier"] == "self_care"
+    assert "gold_tier" not in c1
     assert c1["pred_tier"] == "self_care"
     assert c1["tier_confidence"] == 0.95
     assert c1["flags"]["safety_netting"] is True
@@ -304,8 +310,9 @@ def test_unjudged_report_handles_null_metrics_cleanly(mock_report_data):
 
     payload = build_calibration_payload(mock_report_data, report_sha="sha")
     head = payload["headline_metrics"]
-    assert head["exact_accuracy"] is None
-    assert head["within_one_accuracy"] is None
+    assert head["exact_agreement"] is None
+    assert head["within_one_agreement"] is None
+    assert head["cohen_kappa"] is None and head["base_rate_brier"] is None and head["tier_divergence"] is None
     assert head["brier_score"] is None
     assert head["exact_matches"] is None
 
@@ -353,3 +360,111 @@ def test_stale_petri_output_cleaned_when_input_has_none(tmp_path, mock_report_da
     # Stale file should be removed
     assert not stale_petri.is_file()
 
+
+
+# 2026-10-13 review of PR #103: agreement framing, chance correction, base-rate Brier, tier divergence.
+# The matrix and Brier below are the first live report's (artifacts/jev_pilot_report.json, 1810 cases;
+# rows: primary judge, columns: Jev); the expected values were computed independently in that review.
+LIVE_TIERS = ["self_care", "routine", "urgent", "emergency"]
+LIVE_MATRIX = [[1009, 52, 4, 27], [103, 317, 30, 24], [9, 4, 39, 67], [1, 0, 8, 116]]
+
+
+def test_agreement_statistics_reproduce_the_reviewed_live_numbers():
+    stats = agreement_statistics(LIVE_MATRIX, LIVE_TIERS, brier=0.2701)
+    assert stats["cohen_kappa"] == pytest.approx(0.6755, abs=1e-4)
+    assert stats["cohen_kappa_quadratic"] == pytest.approx(0.8043, abs=1e-4)
+    assert stats["base_rate_brier"] == pytest.approx(0.5583, abs=1e-4)
+    assert stats["brier_skill_score"] == pytest.approx(1 - 0.2701 / 0.5583, abs=1e-4)
+    assert stats["majority_tier"] == {"tier": "self_care", "share": pytest.approx(0.6033, abs=1e-4)}
+
+
+def test_tier_divergence_surfaces_the_lowest_agreement_tier_and_distant_shifts():
+    div = agreement_statistics(LIVE_MATRIX, LIVE_TIERS, brier=0.2701)["tier_divergence"]
+    assert div["lowest_agreement_tier"] == "urgent"
+    urgent = next(t for t in div["per_primary_judge_tier"] if t["primary_judge_tier"] == "urgent")
+    assert (urgent["n"], urgent["agreed"], urgent["agreement"]) == (119, 39, pytest.approx(0.3277, abs=1e-4))
+    assert urgent["ci95_low"] < urgent["agreement"] < urgent["ci95_high"]
+    assert urgent["most_common_jev_tier_otherwise"]["jev_tier"] == "emergency"
+    assert urgent["most_common_jev_tier_otherwise"]["count"] == 67
+    top = div["shifts_two_or_more_tiers"][0]
+    assert (top["primary_judge_tier"], top["jev_tier"], top["tiers_apart"], top["count"]) == (
+        "self_care", "emergency", 3, 27)
+    assert all(c["tiers_apart"] >= 2 and c["count"] > 0 for c in div["shifts_two_or_more_tiers"])
+    upper = sum(LIVE_MATRIX[i][j] for i in range(4) for j in range(4) if j > i)
+    lower = sum(LIVE_MATRIX[i][j] for i in range(4) for j in range(4) if j < i)
+    assert (div["jev_higher_tier_count"], div["jev_lower_tier_count"]) == (upper, lower)
+
+
+def test_calibration_payload_carries_divergence_in_its_headline(mock_report_data):
+    head = build_calibration_payload(mock_report_data, report_sha="sha")["headline_metrics"]
+    for key in ("cohen_kappa", "cohen_kappa_quadratic", "base_rate_brier", "brier_skill_score", "tier_divergence"):
+        assert key in head
+    # the fixture has no urgent or emergency rows: their agreement is null, never 0
+    empty = [t for t in head["tier_divergence"]["per_primary_judge_tier"] if t["n"] == 0]
+    assert empty and all(t["agreement"] is None and t["ci95_low"] is None for t in empty)
+
+
+@pytest.mark.parametrize("bad", ["0.5", True, float("nan"), float("inf"), [0.5]])
+def test_round_or_none_refuses_malformed_metrics(bad):
+    with pytest.raises(SystemExit) as exc:
+        _round_or_none(bad, "brier_score")
+    assert exc.value.code == 2
+
+
+def test_round_or_none_keeps_null_and_rounds_numbers():
+    assert _round_or_none(None, "brier_score") is None
+    assert _round_or_none(0.123456, "brier_score") == 0.1235
+    assert _round_or_none(1, "brier_score") == 1.0
+
+
+def test_malformed_metric_in_report_refuses_the_export(mock_report_data):
+    mock_report_data["metrics"]["brier_score"] = "not-a-number"
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("content", ["{not json", '{"tiers": []}', '{"tiers": [{"id": "a"}, {"label": "b"}]}',
+                                     '["tiers"]'])
+def test_unreadable_tier_vocabulary_refuses_rather_than_falling_through(tmp_path, content):
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "advice_rubric.json").write_text(content, encoding="utf-8")
+    (tmp_path / "data" / "advice_rubric.draft.json").write_text('{"tiers": [{"id": "x"}]}', encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        _load_tier_order_from_data(tmp_path)
+    assert exc.value.code == 2
+
+
+def test_missing_tier_vocabulary_refuses(tmp_path):
+    with pytest.raises(SystemExit) as exc:
+        _load_tier_order_from_data(tmp_path)
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("matrix", [[[1, 0], [0, 1]], [[1, 0, 0, 0]] * 3 + [[0, 0, 0]],
+                                    [[1, 0, 0, -1], [0] * 4, [0] * 4, [0] * 4], [[1.5, 0, 0, 0]] + [[0] * 4] * 3])
+def test_malformed_confusion_matrix_refused(mock_report_data, matrix):
+    mock_report_data["metrics"]["confusion_matrix"] = matrix
+    mock_report_data["metrics"]["exact_tier_matches"] = None
+    mock_report_data["metrics"]["total_cases"] = sum(sum(r) for r in matrix)
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_petri_drift_publishes_per_turn_n_and_wilson_intervals(mock_report_data):
+    payload = build_petri_drift_payload(mock_report_data, report_sha="sha")
+    assert payload["status"] == "exploratory"
+    turn1, turn3 = payload["drift_by_turn"]
+    assert (turn1["n"], turn1["assistant_turn_ordinal"], turn3["assistant_turn_ordinal"]) == (2, 1, 2)
+    assert turn1["ci95_low"] == 0.0 and 0 < turn1["ci95_high"] < 1
+    assert payload["headline_metrics"]["min_turn_n"] == 1 and payload["headline_metrics"]["max_turn_n"] == 2
+
+
+def test_petri_wilson_interval_matches_the_reviewed_turn():
+    """11 of 30 conversations drifted at the live report's seventh assistant turn: Wilson 95% [0.2187, 0.5449]."""
+    rows = [{"conversation_id": f"c{i}", "turn_index": 13, "tone_choice": "mixed",
+             "has_register_drift": i < 11} for i in range(30)]
+    payload = build_petri_drift_payload({"metadata": {}, "petri_cases": rows}, report_sha="sha")
+    (turn,) = payload["drift_by_turn"]
+    assert (turn["ci95_low"], turn["ci95_high"]) == (0.2187, 0.5449)
