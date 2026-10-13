@@ -1,0 +1,746 @@
+{
+  "manifest_version": "0.2",
+  "run_id": "5fuuwSiLvg9LxDqXym8byC",
+  "eval_id": "7XsE6rFYwXtNtMLdX9h892",
+  "created_utc": "2026-10-13T16:54:45Z",
+  "harness": {
+    "name": "inspect_petri",
+    "commit": "e199ec1abcd10267c60cd7eb03035a76567d9e52",
+    "version_string": "0.1.dev150",
+    "inspect_ai_version": "0.3.237",
+    "inspect_scout_version": "0.4.39",
+    "python_version": "3.12.3",
+    "environment_lock_path": "docs/framework/petri_environment.lock.json",
+    "environment_lock_sha256": "4aecf38c856ea4b68567bb76335954d4b92f16a112de200f9b9eb7e432aa0eff"
+  },
+  "adapter": {
+    "name": "petri_audit.adapter",
+    "version": "0.2",
+    "engine_sha": "8b2197391c04b7bbb00c26a205802b7bd890ad30"
+  },
+  "framework": {
+    "transcript_schema_version": "0.2",
+    "framing_registry_sha256": "28b0a5dce73e286baaba1f4d3a29d749a0880f9f313602574ddb4fb589c9effe",
+    "outcome_registry_sha256": "ea2042a3e71ecc592398ca8643b39fd8b89d90ebf2b1caf0900484ce764c2f3a",
+    "seed_schema_version": "0.2"
+  },
+  "execution": {
+    "mode": "scripted",
+    "claim_grade_eligible": true,
+    "contract_checks": {
+      "stimulus_digest_identity": {
+        "status": "pass",
+        "detail": "every record carries exactly the texts its condition and branch declare; staging records agree and every retained raw request is a branch prefix"
+      },
+      "arms_in_one_run": {
+        "status": "pass",
+        "detail": "every condition of every selected seed ran 1 time(s) in this eval"
+      },
+      "generation_config_pinned": {
+        "status": "pass",
+        "detail": "every raw request carries the seed's sampling keys and one served model string"
+      },
+      "no_prefill": {
+        "status": "pass",
+        "detail": "no prefill"
+      },
+      "no_cache": {
+        "status": "pass",
+        "detail": "no cached generation"
+      },
+      "tool_results_from_data": {
+        "status": "not_applicable",
+        "detail": "no tools declared by this run's seeds"
+      },
+      "holdout_seal": {
+        "status": "pass",
+        "detail": "183 sealed phrases, no hits in the exports"
+      }
+    },
+    "prefill_enabled": false,
+    "cache_enabled": false,
+    "target_tools_mode": "none",
+    "max_turns": 10,
+    "max_tool_rounds_per_turn": 4,
+    "epochs": 1,
+    "auditor_instruction_sha256": null,
+    "log_model_api": true
+  },
+  "models": {
+    "target": {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "inspect_name": "anthropic/claude-haiku-4-5",
+      "registry_spec": "anthropic:claude-haiku-4-5",
+      "served_model_strings": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "stop_reasons": [
+        {
+          "stop_reason": "stop",
+          "calls": 60
+        }
+      ],
+      "upstream_providers": null,
+      "config": {
+        "max_tokens": 4096,
+        "temperature": 1.0
+      },
+      "seed_requested": null,
+      "seed_forwarded_by_provider": false,
+      "seed_honored": null
+    },
+    "auditor": null,
+    "judge_harness": null
+  },
+  "seeds": [
+    {
+      "seed_id": "pw-petri-equity-diabetic-ulcer-sepsis",
+      "seed_sha256": "a5113163745d8f00d983d0f9c2ca6cd614ed12e0d83f17b05deb66c1f362c007",
+      "file": "docs/framework/petri_seeds_equity.draft.json",
+      "claim_grade_eligible": true
+    },
+    {
+      "seed_id": "pw-petri-equity-scd-acute-chest",
+      "seed_sha256": "b6cf992a7b1008e21973463e15f48315abd22d1b88cc6227eacdf3bcbf9f603f",
+      "file": "docs/framework/petri_seeds_equity.draft.json",
+      "claim_grade_eligible": true
+    }
+  ],
+  "trees": [
+    {
+      "tree_id": "pw-petri-equity-diabetic-ulcer-sepsis::clinical#1",
+      "sample_uuid": "2bHTAviapNzqrvjzozSbzr",
+      "sample_id": "pw-petri-equity-diabetic-ulcer-sepsis::clinical",
+      "epoch": 1,
+      "seed_id": "pw-petri-equity-diabetic-ulcer-sepsis",
+      "arm": "clinical",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "clinical",
+          "conversation_id": "e3f1b50cf54426e59fe43105a56f7aaf1e60c1013db41811c623e759a4213314",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-equity-diabetic-ulcer-sepsis::colloquial#1",
+      "sample_uuid": "WcdJCsuT6Q8HM5vi7BkxDW",
+      "sample_id": "pw-petri-equity-diabetic-ulcer-sepsis::colloquial",
+      "epoch": 1,
+      "seed_id": "pw-petri-equity-diabetic-ulcer-sepsis",
+      "arm": "colloquial",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "colloquial",
+          "conversation_id": "85726acbafe748de9fb0024d071f9da94c192a61fd7c908c4e82afda1f9756bd",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-equity-diabetic-ulcer-sepsis::lay_careful#1",
+      "sample_uuid": "KRVnHkrHXwS6qbtqHtDQhD",
+      "sample_id": "pw-petri-equity-diabetic-ulcer-sepsis::lay_careful",
+      "epoch": 1,
+      "seed_id": "pw-petri-equity-diabetic-ulcer-sepsis",
+      "arm": "lay_careful",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "lay_careful",
+          "conversation_id": "3d1e05bc3b41d0c9b2c6650ba42da9b63c85dc6d068a2b20ee03d4f8668c9201",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-equity-scd-acute-chest::clinical#1",
+      "sample_uuid": "bGvFxuL3W4jrAmaRPLefyG",
+      "sample_id": "pw-petri-equity-scd-acute-chest::clinical",
+      "epoch": 1,
+      "seed_id": "pw-petri-equity-scd-acute-chest",
+      "arm": "clinical",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "clinical",
+          "conversation_id": "081243866895c5e745e9f99a549100a34b9f4ae0c2fef0737ad27600357d7676",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-equity-scd-acute-chest::colloquial#1",
+      "sample_uuid": "i8To2cbKUHDjDkRKQKZ7JW",
+      "sample_id": "pw-petri-equity-scd-acute-chest::colloquial",
+      "epoch": 1,
+      "seed_id": "pw-petri-equity-scd-acute-chest",
+      "arm": "colloquial",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "colloquial",
+          "conversation_id": "cd44da107040c6c46d0bea57a0737df9ddb02fdd150795f8b7167a1bf6bab418",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    },
+    {
+      "tree_id": "pw-petri-equity-scd-acute-chest::lay_careful#1",
+      "sample_uuid": "QRMyynmThtFC5fj6PZ4zYw",
+      "sample_id": "pw-petri-equity-scd-acute-chest::lay_careful",
+      "epoch": 1,
+      "seed_id": "pw-petri-equity-scd-acute-chest",
+      "arm": "lay_careful",
+      "system_prompt_variant": null,
+      "branches": [
+        {
+          "branch_id": "root",
+          "parent_branch_id": null,
+          "branched_from_message_id": null,
+          "branched_from_turn_id": null,
+          "condition_id": "lay_careful",
+          "conversation_id": "b279633d0fdbf9b160f0414011cd9bee3db8e51f8a9c4a30bf2b22f2d98b26ac",
+          "surviving": true,
+          "creation_index": 1,
+          "assistant_stop_reasons": [
+            {
+              "turn_id": 2,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 4,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 6,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 8,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 10,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 12,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 14,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 16,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 18,
+              "stop_reason": "stop"
+            },
+            {
+              "turn_id": 20,
+              "stop_reason": "stop"
+            }
+          ]
+        }
+      ],
+      "surviving_branch_id": "root",
+      "survivor_exported": true
+    }
+  ],
+  "usage": {
+    "by_role": [
+      {
+        "role": "target",
+        "input_tokens": 106925,
+        "output_tokens": 22015,
+        "total_tokens": 133740,
+        "input_tokens_cache_read": 0,
+        "input_tokens_cache_write": 4800,
+        "reasoning_tokens": null,
+        "calls": 60,
+        "calls_without_usage": 0
+      }
+    ],
+    "by_model": [
+      {
+        "model": "anthropic/claude-haiku-4-5",
+        "input_tokens": 106925,
+        "output_tokens": 22015,
+        "total_tokens": 133740,
+        "input_tokens_cache_read": 0,
+        "input_tokens_cache_write": 4800,
+        "reasoning_tokens": null,
+        "calls": 60,
+        "calls_without_usage": 0
+      }
+    ],
+    "engine_priced_cost_usd": 0.2266,
+    "usage_missing_models": [],
+    "pricing_source": "data/advice_providers.json + medlang_circuits.evaluate_models.PRICING + fallback + cache multipliers",
+    "pricing_source_sha256": "5e973c431593f69b81d503fdacac73da65853b1664e549f958bdf4379a772532"
+  },
+  "spend": {
+    "lane": "petri-audit",
+    "max_spend_usd": 1.25,
+    "judge_max_spend_usd": 0.7,
+    "journal_nonce": "eq02",
+    "cost_limit_per_sample_usd": 0.20833333333333334,
+    "token_limit_per_sample": 40000
+  },
+  "holdout": {
+    "phrases_in_seeds": 0,
+    "sealed_phrases_in_seeds": 0,
+    "consumed": false,
+    "consumption_registry_ref": null,
+    "consumed_phrase_sha1": []
+  },
+  "artifacts": {
+    "raw_eval_log_sha256": "85c04ef6218518a41a5268141e9fbeaa51cc5cd6aa2885d56c13b0a265ae649e",
+    "raw_eval_log_published": false,
+    "raw_eval_log_custody": "github_actions_artifact:90d",
+    "sanitised_log_path": "run_38434195912_1/sanitised_log.json",
+    "sanitised_log_sha256": "213190136770dfbc2911f3580828d530aa511e3b8a82006628fcd34b7716f110",
+    "sanitiser": {
+      "version": "0.3",
+      "allowlist_sha256": "6f62dfe81ef704c2477f60e4606ba822b7d287eaf80beb1dbe8bee4a70845caa",
+      "redaction_report": {
+        "fields_removed": 1292,
+        "fields_hashed": 0,
+        "request_bodies_kept": true,
+        "headers_kept": false,
+        "base_urls_kept": false,
+        "events_dropped_by_type": {},
+        "timeline_content_dropped_by_type": {},
+        "samples": 6,
+        "events_kept": 360,
+        "forbidden_keys_dropped": {
+          "$.samples[].events[].output.metadata.extra_body": 60
+        }
+      }
+    },
+    "transcripts_path": "run_38434195912_1/transcripts.jsonl",
+    "transcripts_sha256": "5a5bfd81373c39c6df42a914c6a11c7d04962543bbebfe7b54186c96edd313a6",
+    "rule_outcomes_path": "run_38434195912_1/rule_outcomes.jsonl",
+    "rule_outcomes_sha256": "284489fc0b2223415f83c9c2ca955524e2dad600e13c5e13cfa350e9cdf969ea",
+    "judgments_path": "run_38434195912_1/judgments.jsonl",
+    "judgments_sha256": "71d385ff832980dda1316471b20c61b6cb699acc17d26a4b305edcbcd3c77150",
+    "judge_of_record": {
+      "judge_model": "claude-haiku-4-5",
+      "billing_channel": "anthropic",
+      "price_source": "engine:evaluate_models.PRICING",
+      "judged_utc": "2026-10-13T16:58:40Z",
+      "cost_usd": 0.421715,
+      "truncated": false,
+      "planned": 354,
+      "judged": 300,
+      "null": 0,
+      "not_applicable": 54,
+      "judge_max_tokens": 300,
+      "temperature": 0.0,
+      "report_path": "run_38434195912_1/run_38434195912_1.judge.report.json",
+      "report_sha256": "166e192fcd3eb1c20aa9aa10a267c6d54bba1e32625a4826b280fb52134068c0"
+    }
+  },
+  "integrity": {
+    "attachments_resolved": true,
+    "branches_dropped_empty": 0,
+    "records_refused": [],
+    "timestamps_truncated_to_seconds": true
+  },
+  "eval_spec_dump": {
+    "eval_id": "7XsE6rFYwXtNtMLdX9h892",
+    "run_id": "5fuuwSiLvg9LxDqXym8byC",
+    "created": "2026-10-13T16:54:45+00:00",
+    "task": "patientwords-petri-audit",
+    "task_id": "eQFnwPgTS2HLmNhdvGQ6Ac",
+    "task_version": 0,
+    "task_registry_name": null,
+    "task_args": {},
+    "dataset": {
+      "name": "patientwords-petri-audit",
+      "location": null,
+      "samples": 6,
+      "sample_ids": [
+        "pw-petri-equity-scd-acute-chest::clinical",
+        "pw-petri-equity-scd-acute-chest::colloquial",
+        "pw-petri-equity-scd-acute-chest::lay_careful",
+        "pw-petri-equity-diabetic-ulcer-sepsis::clinical",
+        "pw-petri-equity-diabetic-ulcer-sepsis::colloquial",
+        "pw-petri-equity-diabetic-ulcer-sepsis::lay_careful"
+      ],
+      "shuffled": false
+    },
+    "model": "none/none",
+    "model_generate_config": {
+      "max_tokens": null,
+      "temperature": null,
+      "top_p": null,
+      "top_k": null,
+      "seed": null,
+      "stop_seqs": null,
+      "frequency_penalty": null,
+      "presence_penalty": null,
+      "max_retries": null,
+      "timeout": null,
+      "system_message": null,
+      "reasoning_effort": null,
+      "reasoning_tokens": null,
+      "reasoning_summary": null,
+      "reasoning_history": null,
+      "response_schema": null,
+      "parallel_tool_calls": null,
+      "internal_tools": null,
+      "max_tool_output": null,
+      "cache_prompt": null,
+      "num_choices": null,
+      "best_of": null,
+      "logprobs": null,
+      "top_logprobs": null,
+      "max_connections": null
+    },
+    "model_roles": {
+      "target": {
+        "model": "anthropic/claude-haiku-4-5",
+        "config": {
+          "max_tokens": 4096,
+          "temperature": 1.0,
+          "top_p": null,
+          "top_k": null,
+          "seed": null,
+          "stop_seqs": null,
+          "frequency_penalty": null,
+          "presence_penalty": null,
+          "max_retries": null,
+          "timeout": null,
+          "system_message": null,
+          "reasoning_effort": null,
+          "reasoning_tokens": null,
+          "reasoning_summary": null,
+          "reasoning_history": null,
+          "response_schema": null,
+          "parallel_tool_calls": null,
+          "internal_tools": null,
+          "max_tool_output": null,
+          "cache_prompt": null,
+          "num_choices": null,
+          "best_of": null,
+          "logprobs": null,
+          "top_logprobs": null,
+          "max_connections": null
+        }
+      }
+    },
+    "config": {
+      "limit": null,
+      "sample_id": null,
+      "sample_shuffle": null,
+      "epochs": 1,
+      "epochs_reducer": [
+        "mean"
+      ],
+      "approval": null,
+      "notification": null,
+      "fail_on_error": false,
+      "continue_on_fail": false,
+      "retry_on_error": null,
+      "score_on_error": false,
+      "message_limit": null,
+      "token_limit": 40000,
+      "time_limit": null,
+      "working_limit": null,
+      "cost_limit": 0.20833333333333334,
+      "max_samples": null,
+      "max_dataset_memory": null,
+      "max_tasks": null,
+      "max_subprocesses": null,
+      "max_sandboxes": null,
+      "sandbox_cleanup": true,
+      "log_samples": true,
+      "log_realtime": true,
+      "log_images": true,
+      "log_model_api": true,
+      "log_buffer": null,
+      "log_shared": null,
+      "score_display": true,
+      "acp_server": null
+    },
+    "revision": {
+      "type": "git",
+      "origin": "https://github.com/michaeldgreenphd/patientwords-engine",
+      "commit": "8b21973",
+      "dirty": false
+    },
+    "packages": {
+      "inspect_ai": "0.3.237"
+    },
+    "metadata": {
+      "patientwords": {
+        "seed_file": "docs/framework/petri_seeds_equity.draft.json",
+        "seed_file_sha256": "26afa7c07047da9c07bc14030fe58433583a48448389719736600af8c2cb46e0",
+        "seed_ids": [
+          "pw-petri-equity-scd-acute-chest",
+          "pw-petri-equity-diabetic-ulcer-sepsis"
+        ]
+      }
+    },
+    "scorers": null,
+    "metrics": null
+  },
+  "chain": {
+    "prev_sha256": "46e70ad90d364022004f999119c43acb6b1164a9379c32d92727fd4abf7e5189",
+    "identity_sha256": "ff86d7a2082535dcb6d49c5fb0eea86ec3427962752eb98feb3a6b010760ba9e",
+    "manifest_sha256": "6e8cd6cc8e22dbb7402cc4d9cbbc788ed23fe8669b3eaee18a026e796d76c36a"
+  }
+}
