@@ -28,11 +28,15 @@ def mock_report_data() -> dict:
             "model_requested": "typesafe/jev-1.13",
             "models_served": ["typesafe/jev-1.13-20260917"],
             "is_mock": False,
+            "rubric": {"path": "data/advice_rubric.draft.json", "sha256": "d" * 64},
+            "register_rubric": {"path": "data/register_rubric.json", "sha256": "b" * 64},
+            "classifier": {"path": "/home/runner/work/scripts/jev_classifier.py", "sha256": "c" * 64},
             "advice_archive": {"path": "data/advice/responses_fixture.jsonl", "sha256": "a" * 64,
                                "samples_evaluated": 4},
-            "petri_transcripts": {"path": "data/petri/runs/run_fixture_1/transcripts.jsonl", "sha256": "t" * 64,
+            "petri_transcripts": {"path": "data/petri/runs/run_fixture_1/transcripts.jsonl", "sha256": "e" * 64,
                                   "turns_evaluated": 3},
             "advice_judgments": {
+                "path": "data/advice/judgments_fixture.jsonl", "sha256": "f" * 64,
                 "judge_model": "claude-haiku-4-5",
             },
         },
@@ -317,11 +321,12 @@ def test_missing_is_mock_provenance_refused(mock_report_data):
     assert exc.value.code == 2
 
 
-def test_tier_order_loaded_from_data_when_missing_in_report(mock_report_data):
+def test_report_without_its_own_tier_order_refused(mock_report_data):
+    # Codex review of 3f8d4fe4: the repository's rubric may have changed since the audit, so it is never substituted
     del mock_report_data["metrics"]["tier_order"]
-    payload = build_calibration_payload(mock_report_data, report_sha="sha")
-    assert isinstance(payload["tier_order"], list)
-    assert len(payload["tier_order"]) >= 4
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
 
 
 def test_unjudged_report_handles_null_metrics_cleanly(mock_report_data):
@@ -333,6 +338,10 @@ def test_unjudged_report_handles_null_metrics_cleanly(mock_report_data):
     mock_report_data["metrics"]["confusion_matrix"] = None
     for case in mock_report_data["cases"]:          # the runner writes no match flags without a reference
         case["is_exact"] = case["is_within_one"] = None
+        case["primary_judge_tier"] = None
+        case["flags"] = {}
+    del mock_report_data["metadata"]["advice_judgments"]   # an unjudged report names no judge
+    mock_report_data["metrics"]["flag_metrics"] = {}
 
     payload = build_calibration_payload(mock_report_data, report_sha="sha")
     head = payload["headline_metrics"]
@@ -496,9 +505,12 @@ def test_petri_drift_publishes_per_turn_n_and_wilson_intervals(mock_report_data)
 def test_petri_wilson_interval_matches_the_reviewed_turn():
     """11 of 30 conversations drifted at the live report's seventh assistant turn: Wilson 95% [0.2187, 0.5449]."""
     rows = [{"conversation_id": f"c{i}", "turn_index": 13, "tone_choice": "mixed",
-             "has_register_drift": i < 11, "served_model": "m",
+             "has_register_drift": i < 11, "served_model": "m", "tone_confidence": 0.8, "drift_probability": 0.5,
              "cost_usd": 0.0, "estimated_cost_usd": 0.0, "input_tokens": 0} for i in range(30)]
-    meta = {"is_mock": False, "petri_transcripts": {"path": "x/transcripts.jsonl", "turns_evaluated": 30}}
+    meta = {"is_mock": False, "classifier": {"sha256": "c" * 64},
+            "rubric": {"path": "data/advice_rubric.draft.json", "sha256": "d" * 64},
+            "register_rubric": {"path": "data/register_rubric.json", "sha256": "b" * 64},
+            "petri_transcripts": {"path": "x/transcripts.jsonl", "sha256": "e" * 64, "turns_evaluated": 30}}
     payload = build_petri_drift_payload({"metadata": meta, "petri_cases": rows}, report_sha="sha")
     (turn,) = payload["drift_by_turn"]
     assert (turn["ci95_low"], turn["ci95_high"]) == (0.2187, 0.5449)
@@ -598,16 +610,16 @@ def test_flag_match_rate_is_published_as_agreement(mock_report_data):
 
 def test_payload_carries_input_provenance(mock_report_data):
     meta = mock_report_data["metadata"]
-    meta["rubric"] = {"path": "data/advice_rubric.draft.json", "sha256": "r" * 64}
+    meta["rubric"] = {"path": "data/advice_rubric.draft.json", "sha256": "d" * 64}
     meta["classifier"] = {"path": "/home/runner/x.py", "sha256": "c" * 64}
     meta["advice_archive"] = {"path": "data/advice/a.jsonl", "sha256": "a" * 64, "samples_evaluated": 4}
-    meta["advice_judgments"]["sha256"] = "j" * 64
+    meta["advice_judgments"]["sha256"] = "f" * 64
     prov = build_calibration_payload(mock_report_data, report_sha="sha")["provenance"]
-    assert prov["rubric"]["sha256"] == "r" * 64
+    assert prov["rubric"]["sha256"] == "d" * 64
     assert prov["classifier_sha256"] == "c" * 64 and "/home/runner" not in json.dumps(prov)
     assert prov["advice_archive"]["samples_evaluated"] == 4
-    assert prov["advice_judgments"]["sha256"] == "j" * 64
-    assert prov["register_rubric"] is None            # absent upstream: carried as null, not dropped
+    assert prov["advice_judgments"]["sha256"] == "f" * 64
+    assert prov["checkpoint"] is None                 # optional context absent upstream: carried as null
 
 
 def test_duplicate_conversation_turn_refused(mock_report_data):
@@ -656,13 +668,13 @@ def test_non_relative_provenance_paths_refused(mock_report_data, path):
 def test_petri_payload_carries_classifier_provenance(mock_report_data):
     meta = mock_report_data["metadata"]
     meta["classifier"] = {"sha256": "c" * 64}
-    meta["register_rubric"] = {"path": "data/register_rubric.json", "sha256": "g" * 64}
-    meta["petri_transcripts"] = {"path": "data/petri/runs/run_1_1/transcripts.jsonl", "sha256": "t" * 64,
+    meta["register_rubric"] = {"path": "data/register_rubric.json", "sha256": "b" * 64}
+    meta["petri_transcripts"] = {"path": "data/petri/runs/run_1_1/transcripts.jsonl", "sha256": "e" * 64,
                                  "turns_evaluated": 3}
     prov = build_petri_drift_payload(mock_report_data, report_sha="sha")["provenance"]
     assert prov["classifier_sha256"] == "c" * 64
-    assert prov["register_rubric"]["sha256"] == "g" * 64
-    assert prov["petri_transcripts"]["sha256"] == "t" * 64
+    assert prov["register_rubric"]["sha256"] == "b" * 64
+    assert prov["petri_transcripts"]["sha256"] == "e" * 64
     assert "advice_archive" not in prov
 
 
@@ -695,7 +707,7 @@ def test_row_without_served_model_refused(mock_report_data, build, rows):
 def test_drift_is_grouped_by_per_conversation_assistant_ordinal(mock_report_data):
     """A tool record shifts one conversation's raw indices: its second assistant turn is index 4, the other's is 3.
     Both are assistant turn 2, so they form one sample of n = 2, not two samples of n = 1."""
-    base = {"tone_choice": "mixed", "served_model": "m", "cost_usd": 0.0, "estimated_cost_usd": 0.0, "input_tokens": 0}
+    base = {"tone_choice": "mixed", "served_model": "m", "tone_confidence": 0.8, "drift_probability": 0.5, "cost_usd": 0.0, "estimated_cost_usd": 0.0, "input_tokens": 0}
     mock_report_data["petri_cases"] = [
         {**base, "conversation_id": "a", "turn_index": 1, "has_register_drift": False},
         {**base, "conversation_id": "a", "turn_index": 3, "has_register_drift": True},
@@ -965,4 +977,85 @@ def test_non_string_tone_choice_refused(mock_report_data, tone):
     mock_report_data["petri_cases"][0]["tone_choice"] = tone
     with pytest.raises(SystemExit) as exc:
         build_petri_drift_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+# Codex review of 3f8d4fe4 (2026-10-13).
+
+
+@pytest.mark.parametrize("matrix", [None, [], {}])
+def test_judged_report_without_a_matrix_refused(mock_report_data, matrix):
+    m = mock_report_data["metrics"]
+    m.update(confusion_matrix=matrix, exact_accuracy=None, within_one_accuracy=None, brier_score=None,
+             exact_tier_matches=None, within_one_tier_matches=None)
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_flag_entries_are_published_from_an_allowlist(mock_report_data):
+    mock_report_data["cases"][0]["flags"]["safety_netting"]["explanation"] = "Holdout phrase that must NEVER leak"
+    payload = build_calibration_payload(mock_report_data, report_sha="sha")
+    assert payload["cases_summary"]["case_1"]["flags"]["safety_netting"] == {
+        "expected": True, "predicted": True, "probability": 0.9}
+    assert "NEVER leak" not in json.dumps(payload)
+
+
+@pytest.mark.parametrize("field,value", [("tone_confidence", "high"), ("drift_probability", {}),
+                                         ("drift_probability", 1.5), ("tone_confidence", None)])
+def test_petri_confidence_and_probability_must_be_probabilities(mock_report_data, field, value):
+    mock_report_data["petri_cases"][0][field] = value
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("probs", [lambda t: {t[0]: 1.2, t[1]: -0.2}, lambda t: {t[0]: 0.9, t[1]: 0.4},
+                                   lambda t: {t[0]: 0.5}])
+def test_invalid_tier_probability_distribution_refused(mock_report_data, probs):
+    mock_report_data["cases"][0]["tier_probabilities"] = probs(TIERS)
+    mock_report_data["metrics"]["brier_score"] = None       # isolate the distribution check from the Brier check
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_probability_sums_within_two_decimal_rounding_accepted(mock_report_data):
+    mock_report_data["cases"][0]["tier_probabilities"] = {TIERS[0]: 0.94, TIERS[1]: 0.04}   # sums to 0.98
+    mock_report_data["metrics"]["brier_score"] = None
+    build_calibration_payload(mock_report_data, report_sha="sha")
+
+
+def test_bad_second_target_leaves_the_first_untouched(tmp_path, mock_report_data):
+    report = tmp_path / "r.json"
+    report.write_text(json.dumps(mock_report_data), encoding="utf-8")
+    calib = tmp_path / "calib.json"
+    calib.write_text('{"previous": true}', encoding="utf-8")
+    petri_dir = tmp_path / "petri.json"
+    petri_dir.mkdir()                                       # the Petri target is a directory
+    with pytest.raises(SystemExit) as exc:
+        main(["--report", str(report), "--out-calibration", str(calib), "--out-petri-drift", str(petri_dir)])
+    assert exc.value.code == 2
+    assert calib.read_text(encoding="utf-8") == '{"previous": true}'
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["calib.json", "petri.json", "r.json"]
+
+
+@pytest.mark.parametrize("change", ["archive_no_path", "judgments_no_sha", "no_classifier", "no_rubric",
+                                    "bad_sha", "petri_no_register_rubric"])
+def test_incomplete_input_provenance_refused(mock_report_data, change):
+    meta = mock_report_data["metadata"]
+    if change == "archive_no_path":
+        del meta["advice_archive"]["path"]
+    elif change == "judgments_no_sha":
+        del meta["advice_judgments"]["sha256"]
+    elif change == "no_classifier":
+        del meta["classifier"]
+    elif change == "no_rubric":
+        del meta["rubric"]
+    elif change == "bad_sha":
+        meta["rubric"]["sha256"] = "not-a-digest"
+    else:
+        del meta["register_rubric"]
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
     assert exc.value.code == 2

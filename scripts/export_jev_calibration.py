@@ -28,7 +28,7 @@ payloads into the frontend repository (<site>/data/):
    - Per-conversation tone choices, drift flags, probabilities, and formality scores.
 
 Methods (all deterministic; no sampling, so no seed):
-- Tiers are ordinal in the order the report (or data/advice_rubric*.json) lists them;
+- Tiers are ordinal in the order the report itself records (metrics.tier_order, required);
   the quadratic weights and "tiers apart" use that order.
 - Cohen's kappa: (p_o - p_e) / (1 - p_e), p_e from the row and column marginals.
   Quadratic-weighted kappa: 1 - sum(w*O) / sum(w*E), w_ij = (i - j)^2 / (k - 1)^2,
@@ -77,10 +77,13 @@ def _refuse(reason: str) -> None:
 
 
 Z95 = 1.959963984540054
+PROBABILITY_SUM_TOLERANCE = 0.02 + 1e-9     # four tiers each rounded to 2 dp: at most 4 x 0.005 off
 
 
 def _load_tier_order_from_data(repo_root: Path = REPO_ROOT) -> list[str]:
-    """Load canonical tier order from JSON data file, never hardcoded in source.
+    """Load the repository's current tier vocabulary from its JSON data file, never hardcoded in source. The exporter
+    does not use it in place of a report's own tier order (which may predate a rubric change); the tests read the
+    vocabulary through it.
 
     The first rubric file that exists is the one used: one that cannot be read, or
     that lists no tier ids, refuses the export rather than falling through to the
@@ -373,6 +376,28 @@ def _check_cases_against_aggregates(cases: list[dict[str, Any]], matrix: list[li
                 f"({sq_err / len(cases):.6f})")
 
 
+def _unit_interval(val: Any, field: str) -> float:
+    """A finite number in [0, 1]; anything else refuses."""
+    out = _round_or_none(val, field, 12)
+    if out is None or not 0.0 <= out <= 1.0:
+        _refuse(f"'{field}' must be a number in [0, 1], got {val!r}")
+    return out
+
+
+def _published_flags(case: dict[str, Any], cid: str) -> dict[str, Any]:
+    """Each flag rebuilt from an allowlist (expected, predicted, probability), never copied: an extra field such as
+    an explanation could carry raw response text into the public payload."""
+    flags = case.get("flags") or {}
+    out: dict[str, Any] = {}
+    for fid, entry in flags.items():
+        if not isinstance(entry, dict):
+            _refuse(f"Case {cid!r} flag {fid!r} must be an object")
+        prob = entry.get("probability")
+        out[fid] = {"expected": entry.get("expected"), "predicted": entry.get("predicted"),
+                    "probability": None if prob is None else _unit_interval(prob, f"case {cid} flag {fid} probability")}
+    return out
+
+
 def _flag_metrics_from_cases(cases: list[dict[str, Any]], reported: Any) -> dict[str, Any]:
     """Rebuild each flag's TP/TN/FP/FN and derived rates from the case rows, as audit_jev_calibration.py computes
     them (a flag counts on a case when its reference value `expected` is present; a missing `predicted` counts as
@@ -457,31 +482,46 @@ def _served_models(rows: list[dict[str, Any]], what: str) -> list[str]:
     return sorted(served)
 
 
-def _publishable_provenance(meta: dict[str, Any]) -> dict[str, Any]:
-    """The report's input and classifier provenance, so the public payload alone names what produced it.
-    Hashes, repository-relative paths and parameters only; absent fields are carried as null, never dropped.
-    The classifier's local file paths are runner paths and are not carried; its digest is."""
-    def pick(block: Any, keys: tuple[str, ...]) -> dict[str, Any] | None:
+def _require_sha256(val: Any, field: str) -> str:
+    if not isinstance(val, str) or len(val) != 64 or any(ch not in "0123456789abcdef" for ch in val):
+        _refuse(f"Provenance '{field}' must be a lowercase hex sha256, got {val!r}")
+    return val
+
+
+def _publishable_provenance(meta: dict[str, Any], *, has_advice: bool, has_petri: bool) -> dict[str, Any]:
+    """The report's input and classifier provenance, so the public payload alone names what produced it after the
+    source report expires. The inputs that produced published numbers must be identified by repository-relative path
+    and sha256: the tier rubric, the classifier, the advice archive (and its judgments when judged), and, when Petri
+    rows exist, the transcripts and the register rubric; a block or field missing there refuses. Optional context
+    (timestamp, parameters, checkpoint resumes, sample counts) is carried as null when absent. The classifier's
+    local file paths are runner paths and are not carried; its digest is."""
+    def pick(name: str, keys: tuple[str, ...], required: bool) -> dict[str, Any] | None:
+        block = meta.get(name)
         if not isinstance(block, dict):
+            if required:
+                _refuse(f"Report metadata has no '{name}' block; the payload could not name that input")
             return None
         out = {k: block.get(k) for k in keys}
-        if out.get("path") is not None:
-            _require_relative_path(out["path"])
+        _require_relative_path(out["path"])
+        _require_sha256(out["sha256"], f"{name}.sha256")
         return out
 
+    classifier = meta.get("classifier")
+    if not isinstance(classifier, dict):
+        _refuse("Report metadata has no 'classifier' block; the payload could not name the classifier")
     return {
         "audit_timestamp_utc": meta.get("timestamp_utc"),
-        "rubric": pick(meta.get("rubric"), ("path", "sha256")),
-        "register_rubric": pick(meta.get("register_rubric"), ("path", "sha256")),
-        "classifier_sha256": (meta.get("classifier") or {}).get("sha256") if isinstance(meta.get("classifier"), dict)
-        else None,
+        "rubric": pick("rubric", ("path", "sha256"), True),
+        "register_rubric": pick("register_rubric", ("path", "sha256"), has_petri),
+        "classifier_sha256": _require_sha256(classifier.get("sha256"), "classifier.sha256"),
         "parameters": meta.get("parameters") if isinstance(meta.get("parameters"), dict) else None,
-        "advice_archive": pick(meta.get("advice_archive"), ("path", "sha256", "samples_requested",
-                                                             "samples_evaluated", "unmatched_responses_omitted")),
-        "advice_judgments": pick(meta.get("advice_judgments"), ("path", "sha256", "judge_model")),
-        "petri_transcripts": pick(meta.get("petri_transcripts"), ("path", "sha256", "max_conversations",
-                                                                   "turns_evaluated")),
-        "checkpoint": pick(meta.get("checkpoint"), ("resumed_advice_count", "resumed_petri_count")),
+        "advice_archive": pick("advice_archive", ("path", "sha256", "samples_requested", "samples_evaluated",
+                                                  "unmatched_responses_omitted"), has_advice),
+        "advice_judgments": pick("advice_judgments", ("path", "sha256", "judge_model"), False),
+        "petri_transcripts": pick("petri_transcripts", ("path", "sha256", "max_conversations", "turns_evaluated"),
+                                  has_petri),
+        "checkpoint": ({k: meta["checkpoint"].get(k) for k in ("resumed_advice_count", "resumed_petri_count")}
+                       if isinstance(meta.get("checkpoint"), dict) else None),
     }
 
 
@@ -501,12 +541,17 @@ def build_calibration_payload(
     total_cases = _require_count(metrics.get("total_cases"), "total_cases")
     if total_cases != len(cases):
         _refuse(f"Report metrics give total_cases {total_cases} but the report holds {len(cases)} case rows")
-    matrix = metrics.get("confusion_matrix") or []
+    matrix = metrics.get("confusion_matrix")
+    if reference is not None and cases and not matrix:
+        _refuse("Report names a primary judge but has no confusion matrix; refusing to publish its reference labels "
+                "with every agreement statistic null")
+    matrix = matrix or []
     tier_order = metrics.get("tier_order")
+    # the report must name the order that produced it: the repository's rubric may have changed since the audit
     if tier_order is None:
-        tier_order = _load_tier_order_from_data(repo_root)
-    else:
-        tier_order = _validate_tier_order(tier_order, "the report's metrics.tier_order")
+        _refuse("Report metrics have no tier_order; refusing to substitute the repository's current rubric, which "
+                "may differ from the one the audit used")
+    tier_order = _validate_tier_order(tier_order, "the report's metrics.tier_order")
     if matrix:
         _validate_matrix(matrix, tier_order)
 
@@ -557,9 +602,14 @@ def build_calibration_payload(
         if not isinstance(probs, dict) or not probs:
             _refuse(f"Case {cid!r} has no tier_probabilities object")
         for t, v in probs.items():
-            if t not in tier_order or _round_or_none(v, f"case {cid} tier_probabilities.{t}", 12) is None:
+            pv = _round_or_none(v, f"case {cid} tier_probabilities.{t}", 12)
+            if t not in tier_order or pv is None or not 0.0 <= pv <= 1.0:
                 _refuse(f"Case {cid!r} has tier probability {t!r}: {v!r}; tiers must be in the tier order and "
-                        "values numbers")
+                        "values probabilities in [0, 1]")
+        # the classifier reports each tier to two decimals, so the four can sum to 1 +/- 0.02 by rounding alone
+        if abs(sum(probs.values()) - 1.0) > PROBABILITY_SUM_TOLERANCE:
+            _refuse(f"Case {cid!r} tier probabilities sum to {sum(probs.values())}, not 1 within "
+                    f"{PROBABILITY_SUM_TOLERANCE}")
         cases_summary[cid] = {
             "primary_judge_tier": primary_judge_tier,
             "pred_tier": c.get("predicted_tier"),
@@ -567,7 +617,7 @@ def build_calibration_payload(
             "tier_probabilities": probs,
             "technicality_score": c.get("technicality_score"),
             **_case_match_flags(c, idx, tier_order, judged=bool(matrix)),
-            "flags": c.get("flags") or {},
+            "flags": _published_flags(c, cid),
         }
 
     brier = _round_or_none(metrics.get("brier_score"), "brier_score", 4)
@@ -611,7 +661,7 @@ def build_calibration_payload(
         "confusion_matrix": matrix,
         "flag_metrics_reference": reference,
         "flag_metrics": flag_metrics,
-        "provenance": _publishable_provenance(meta),
+        "provenance": _publishable_provenance(meta, has_advice=True, has_petri=bool(petri_rows)),
         "cases_summary": cases_summary,
     }
 
@@ -669,9 +719,10 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
         conversations.setdefault(cid, []).append({
             "turn_index": t_idx,
             "tone_choice": t_choice,
-            "tone_confidence": p.get("tone_confidence"),
+            "tone_confidence": _unit_interval(p.get("tone_confidence"), f"Petri case {cid} turn {t_idx} tone_confidence"),
             "has_register_drift": has_drift,
-            "drift_probability": p.get("drift_probability"),
+            "drift_probability": _unit_interval(p.get("drift_probability"),
+                                                f"Petri case {cid} turn {t_idx} drift_probability"),
             "formality_score": reg_score,
         })
 
@@ -714,7 +765,7 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
         "model_requested": meta.get("model_requested"),
         "models_served": _served_models(petri_cases, "Petri case"),
         "is_mock": is_mock,
-        "provenance": {k: v for k, v in _publishable_provenance(meta).items()
+        "provenance": {k: v for k, v in _publishable_provenance(meta, has_advice=bool(cases), has_petri=True).items()
                        if k in ("audit_timestamp_utc", "register_rubric", "classifier_sha256", "parameters",
                                 "petri_transcripts", "checkpoint")},
         "status": "exploratory",
@@ -747,18 +798,42 @@ def serialize_payload(doc: dict[str, Any], name: str) -> str:
         return ""
 
 
-def write_json_atomic(target_path: Path, text: str) -> None:
-    """Write serialized JSON atomically. The staging file is created fresh and exclusively (mkstemp) beside the
-    target, so it can never be an existing file such as the source report or a link to it."""
-    target_path.parent.mkdir(parents=True, exist_ok=True)
+def _stage(target_path: Path, text: str) -> Path:
+    """Write `text` to a staging file created fresh and exclusively (mkstemp) beside the target, so it can never be
+    an existing file such as the source report or a link to it. Returns the staging path; nothing is replaced."""
     fd, tmp_name = tempfile.mkstemp(prefix=f".{target_path.name}.", suffix=".tmp", dir=target_path.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(text)
-        os.replace(tmp_name, target_path)
     except BaseException:
         Path(tmp_name).unlink(missing_ok=True)
         raise
+    return Path(tmp_name)
+
+
+def write_payloads(writes: list[tuple[Path, str]], remove: Path | None) -> None:
+    """Publish the pair together: every target is checked (its directory exists; it is absent or a regular file)
+    and every payload staged before any target is replaced, so a bad second target cannot leave the site holding
+    a calibration file and a Petri file from different reports. `remove` is a stale Petri file deleted last."""
+    for target, _ in writes:
+        if not target.parent.is_dir():
+            _refuse(f"Output directory does not exist: {target.parent}")
+        if target.exists() and not target.is_file():
+            _refuse(f"Output {target} exists and is not a regular file")
+    if remove is not None and remove.exists() and not remove.is_file():
+        _refuse(f"Stale Petri output {remove} exists and is not a regular file")
+    staged: list[tuple[Path, Path]] = []
+    try:
+        for target, text in writes:
+            staged.append((_stage(target, text), target))
+    except BaseException:
+        for tmp, _ in staged:
+            tmp.unlink(missing_ok=True)
+        raise
+    for tmp, target in staged:
+        os.replace(tmp, target)
+    if remove is not None and remove.is_file():
+        remove.unlink()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -848,19 +923,14 @@ def main(argv: list[str] | None = None) -> int:
             print("\n[Dry Run] Validated payloads successfully; disk writes skipped.")
         return 0
 
-    if not out_calib.parent.is_dir():
-        _refuse(f"Site data directory does not exist: {out_calib.parent}")
-
-    write_json_atomic(out_calib, calib_text)
+    writes = [(out_calib, calib_text)] + ([(out_petri, petri_text)] if petri_text is not None else [])
+    stale = out_petri if petri_text is None and out_petri.is_file() else None
+    write_payloads(writes, remove=stale)
     print(f"\nWrote calibration payload -> {out_calib}")
-
-    if petri_payload:
-        write_json_atomic(out_petri, petri_text)
+    if petri_text is not None:
         print(f"Wrote Petri drift payload -> {out_petri}")
-    else:
-        if out_petri.is_file():
-            out_petri.unlink()
-            print(f"Removed stale Petri drift payload -> {out_petri}")
+    elif stale is not None:
+        print(f"Removed stale Petri drift payload -> {out_petri}")
 
     return 0
 
