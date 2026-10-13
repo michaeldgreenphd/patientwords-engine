@@ -362,6 +362,51 @@ def _check_cases_against_aggregates(cases: list[dict[str, Any]], matrix: list[li
                 f"({sq_err / len(cases):.6f})")
 
 
+def _flag_metrics_from_cases(cases: list[dict[str, Any]], reported: Any) -> dict[str, Any]:
+    """Rebuild each flag's TP/TN/FP/FN and derived rates from the case rows, as audit_jev_calibration.py computes
+    them (a flag counts on a case when its reference value `expected` is present; a missing `predicted` counts as
+    false), and refuse a report whose flag_metrics differ, so the payload cannot contradict cases_summary. The
+    published values are the rebuilt ones. The reference values are the same primary judge's, so the match rate is
+    published as agreement; precision, sensitivity and specificity are read against flag_metrics_reference."""
+    if reported is None:
+        reported = {}
+    if not isinstance(reported, dict):
+        _refuse(f"flag_metrics must be an object, got {type(reported).__name__}")
+    counts: dict[str, dict[str, int]] = {}
+    for idx, case in enumerate(cases):
+        flags = case.get("flags")
+        if flags is None:
+            continue
+        if not isinstance(flags, dict):
+            _refuse(f"Case at index {idx} has flags that are not an object")
+        for fid, entry in flags.items():
+            if not isinstance(entry, dict):
+                _refuse(f"Case at index {idx} flag {fid!r} must be an object with 'expected' and 'predicted'")
+            expected, predicted = entry.get("expected"), entry.get("predicted")
+            if expected is None:
+                continue
+            if not isinstance(expected, bool) or not (predicted is None or isinstance(predicted, bool)):
+                _refuse(f"Case at index {idx} flag {fid!r} has non-boolean expected {expected!r} or predicted "
+                        f"{predicted!r}")
+            c = counts.setdefault(fid, {"tp": 0, "tn": 0, "fp": 0, "fn": 0})
+            c["tp" if expected and predicted else "tn" if not expected and not predicted
+              else "fp" if predicted else "fn"] += 1
+    rebuilt: dict[str, Any] = {}
+    for fid, c in counts.items():
+        tp, tn, fp, fn = c["tp"], c["tn"], c["fp"], c["fn"]
+        rebuilt[fid] = {
+            "accuracy": round((tp + tn) / max(1, tp + tn + fp + fn), 4),
+            "precision": round(tp / (tp + fp), 4) if tp + fp else None,
+            "sensitivity": round(tp / (tp + fn), 4) if tp + fn else None,
+            "specificity": round(tn / (tn + fp), 4) if tn + fp else None,
+            **c,
+        }
+    if rebuilt != reported:
+        differing = sorted(f for f in set(rebuilt) | set(reported) if rebuilt.get(f) != reported.get(f))
+        _refuse(f"flag_metrics do not match the counts rebuilt from the case rows (flags: {', '.join(differing)})")
+    return {fid: {("agreement" if k == "accuracy" else k): v for k, v in stats.items()} for fid, stats in rebuilt.items()}
+
+
 def _served_models(rows: list[dict[str, Any]], what: str) -> list[str]:
     """The models that produced these rows, from the rows themselves: the report's metadata list folds the advice
     and Petri phases together, so it would attribute one phase's routed models to the other's results."""
@@ -485,16 +530,7 @@ def build_calibration_payload(
         _refuse("Report has no 'petri_cases' list; cannot separate the advice phase's spend from the Petri phase's")
     _check_combined_spend(metrics, [advice_spend, _phase_spend(petri_rows, "Petri case")])
 
-    raw_flags = metrics.get("flag_metrics") or {}
-    if not isinstance(raw_flags, dict):
-        _refuse(f"flag_metrics must be an object, got {type(raw_flags).__name__}")
-    flag_metrics: dict[str, Any] = {}
-    for flag, stats in raw_flags.items():
-        if not isinstance(stats, dict):
-            _refuse(f"flag_metrics[{flag!r}] must be an object")
-        # the flag reference values are the same primary judge's, so the match rate is agreement too; precision,
-        # sensitivity and specificity keep their names and are read against flag_metrics_reference
-        flag_metrics[flag] = {("agreement" if key == "accuracy" else key): val for key, val in stats.items()}
+    flag_metrics = _flag_metrics_from_cases(cases, metrics.get("flag_metrics"))
 
     return {
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),

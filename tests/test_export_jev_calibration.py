@@ -75,7 +75,7 @@ def mock_report_data() -> dict:
                 "technicality_score": 1.2,
                 "is_exact": True,
                 "is_within_one": True,
-                "flags": {"safety_netting": True},
+                "flags": {"safety_netting": {"expected": True, "predicted": True, "probability": 0.9}},
                 "served_model": "typesafe/jev-1.13-20260917",
                 "cost_usd": 0.0001, "estimated_cost_usd": 0.0001, "input_tokens": 300,
             },
@@ -89,7 +89,7 @@ def mock_report_data() -> dict:
                 "technicality_score": 1.0,
                 "is_exact": True,
                 "is_within_one": True,
-                "flags": {"safety_netting": True},
+                "flags": {"safety_netting": {"expected": True, "predicted": True, "probability": 0.9}},
                 "served_model": "typesafe/jev-1.13-20260917",
                 "cost_usd": 0.0001, "estimated_cost_usd": 0.0001, "input_tokens": 300,
             },
@@ -103,7 +103,7 @@ def mock_report_data() -> dict:
                 "technicality_score": 1.5,
                 "is_exact": True,
                 "is_within_one": True,
-                "flags": {"safety_netting": False},
+                "flags": {"safety_netting": {"expected": False, "predicted": False, "probability": 0.1}},
                 "served_model": "typesafe/jev-1.13-20260917",
                 "cost_usd": 0.0001, "estimated_cost_usd": 0.0001, "input_tokens": 300,
             },
@@ -117,7 +117,7 @@ def mock_report_data() -> dict:
                 "technicality_score": 2.1,
                 "is_exact": False,
                 "is_within_one": True,
-                "flags": {"safety_netting": False},
+                "flags": {"safety_netting": {"expected": False, "predicted": False, "probability": 0.1}},
                 "served_model": "typesafe/jev-1.13-20260917",
                 "cost_usd": 0.0001, "estimated_cost_usd": 0.0001, "input_tokens": 300,
             },
@@ -183,7 +183,7 @@ def test_build_calibration_payload_structure_and_holdout_hygiene(mock_report_dat
     assert "gold_tier" not in c1
     assert c1["pred_tier"] == TIERS[0]
     assert c1["tier_confidence"] == 0.95
-    assert c1["flags"]["safety_netting"] is True
+    assert c1["flags"]["safety_netting"]["predicted"] is True
 
 
 def test_build_petri_drift_payload(mock_report_data):
@@ -795,3 +795,35 @@ def test_undefined_statistics_are_not_labelled_unjudged(tmp_path, mock_report_da
     assert main(["--report", str(report), "--site", str(tmp_path), "--dry-run"]) == 0
     out = capsys.readouterr().out
     assert "Cohen's kappa: N/A (undefined for this sample)" in out and "unjudged" not in out
+
+
+
+# Codex review of d295b4c3 (2026-10-13): flag metrics rebuilt from the case rows.
+
+
+def test_flag_metrics_are_rebuilt_from_the_case_rows(mock_report_data):
+    flags = build_calibration_payload(mock_report_data, report_sha="sha")["flag_metrics"]
+    assert flags["safety_netting"] == {"agreement": 1.0, "precision": 1.0, "sensitivity": 1.0, "specificity": 1.0,
+                                       "tp": 2, "tn": 2, "fp": 0, "fn": 0}
+
+
+@pytest.mark.parametrize("change", ["stale_count", "flipped_row", "extra_flag"])
+def test_flag_metrics_contradicting_the_rows_refused(mock_report_data, change):
+    if change == "stale_count":
+        mock_report_data["metrics"]["flag_metrics"]["safety_netting"]["tp"] = 3
+    elif change == "flipped_row":
+        mock_report_data["cases"][0]["flags"]["safety_netting"]["predicted"] = False
+    else:
+        mock_report_data["metrics"]["flag_metrics"]["refusal"] = dict(
+            mock_report_data["metrics"]["flag_metrics"]["safety_netting"])
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("value", ["true", 1, [True]])
+def test_non_boolean_flag_values_refused(mock_report_data, value):
+    mock_report_data["cases"][0]["flags"]["safety_netting"]["predicted"] = value
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
