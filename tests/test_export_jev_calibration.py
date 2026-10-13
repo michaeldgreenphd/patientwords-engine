@@ -28,7 +28,8 @@ def mock_report_data() -> dict:
             "model_requested": "typesafe/jev-1.13",
             "models_served": ["typesafe/jev-1.13-20260917"],
             "is_mock": False,
-            "advice_archive": {"path": "data/advice/responses_fixture.jsonl", "sha256": "a" * 64},
+            "advice_archive": {"path": "data/advice/responses_fixture.jsonl", "sha256": "a" * 64,
+                               "samples_evaluated": 4},
             "advice_judgments": {
                 "judge_model": "claude-haiku-4-5",
             },
@@ -328,6 +329,8 @@ def test_unjudged_report_handles_null_metrics_cleanly(mock_report_data):
     mock_report_data["metrics"]["exact_tier_matches"] = None
     mock_report_data["metrics"]["within_one_tier_matches"] = None
     mock_report_data["metrics"]["confusion_matrix"] = None
+    for case in mock_report_data["cases"]:          # the runner writes no match flags without a reference
+        case["is_exact"] = case["is_within_one"] = None
 
     payload = build_calibration_payload(mock_report_data, report_sha="sha")
     head = payload["headline_metrics"]
@@ -650,7 +653,8 @@ def test_petri_payload_carries_classifier_provenance(mock_report_data):
     meta = mock_report_data["metadata"]
     meta["classifier"] = {"sha256": "c" * 64}
     meta["register_rubric"] = {"path": "data/register_rubric.json", "sha256": "g" * 64}
-    meta["petri_transcripts"] = {"path": "data/petri/runs/run_1_1/transcripts.jsonl", "sha256": "t" * 64}
+    meta["petri_transcripts"] = {"path": "data/petri/runs/run_1_1/transcripts.jsonl", "sha256": "t" * 64,
+                                 "turns_evaluated": 3}
     prov = build_petri_drift_payload(mock_report_data, report_sha="sha")["provenance"]
     assert prov["classifier_sha256"] == "c" * 64
     assert prov["register_rubric"]["sha256"] == "g" * 64
@@ -787,6 +791,7 @@ def test_undefined_statistics_are_not_labelled_unjudged(tmp_path, mock_report_da
     # every case in one tier: kappa is undefined (p_e = 1) although the sample is judged and agrees fully
     for case in mock_report_data["cases"]:
         case["primary_judge_tier"] = case["predicted_tier"] = TIERS[0]
+        case["is_exact"] = case["is_within_one"] = True
     m = mock_report_data["metrics"]
     m.update(confusion_matrix=[[4, 0, 0, 0], [0] * 4, [0] * 4, [0] * 4], exact_tier_matches=4, exact_accuracy=1.0,
              within_one_tier_matches=4, within_one_accuracy=1.0, brier_score=None)
@@ -827,3 +832,71 @@ def test_non_boolean_flag_values_refused(mock_report_data, value):
     with pytest.raises(SystemExit) as exc:
         build_calibration_payload(mock_report_data, report_sha="sha")
     assert exc.value.code == 2
+
+
+
+# Codex review of 23ccac95 (2026-10-13): counts, labels and serialization derived or refused, never copied.
+
+
+@pytest.mark.parametrize("block,key,value", [("advice_archive", "samples_evaluated", 5),
+                                             ("petri_transcripts", "turns_evaluated", 2)])
+def test_stale_provenance_counts_refused(mock_report_data, block, key, value):
+    mock_report_data["metadata"][block] = {**mock_report_data["metadata"].get(block, {}), key: value}
+    for build in (build_calibration_payload, build_petri_drift_payload):
+        with pytest.raises(SystemExit) as exc:
+            build(mock_report_data, report_sha="sha")
+        assert exc.value.code == 2
+
+
+def test_match_counts_are_derived_from_the_matrix(mock_report_data):
+    mock_report_data["metrics"]["exact_tier_matches"] = None
+    head = build_calibration_payload(mock_report_data, report_sha="sha")["headline_metrics"]
+    assert (head["exact_matches"], head["within_one_matches"]) == (3, 4)
+    assert (head["exact_agreement"], head["within_one_agreement"]) == (0.75, 1.0)
+
+
+@pytest.mark.parametrize("field,value", [("exact_tier_matches", True), ("within_one_tier_matches", 4.0),
+                                         ("exact_tier_matches", "3")])
+def test_malformed_match_counts_refused(mock_report_data, field, value):
+    mock_report_data["metrics"][field] = value
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("order", [lambda t: [t[0], t[0], t[2], t[3]], lambda t: [t[0], "", t[2], t[3]],
+                                   lambda t: [t[0], 1, t[2], t[3]], lambda t: [], lambda t: "tiers"])
+def test_malformed_tier_order_refused(mock_report_data, order):
+    mock_report_data["metrics"]["tier_order"] = order(TIERS)
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_case_match_flags_are_derived_and_stale_ones_refused(mock_report_data):
+    summary = build_calibration_payload(mock_report_data, report_sha="sha")["cases_summary"]
+    assert (summary["case_4"]["is_exact"], summary["case_4"]["is_within_one"]) == (False, True)
+    mock_report_data["cases"][3]["is_exact"] = True
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("cid", [1, True, ["a"]])
+def test_non_string_conversation_id_refused(mock_report_data, cid):
+    mock_report_data["petri_cases"][0]["conversation_id"] = cid
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_non_finite_value_refused_before_any_write(tmp_path, mock_report_data):
+    mock_report_data["cases"][0]["tier_confidence"] = float("nan")
+    report = tmp_path / "r.json"
+    report.write_text(json.dumps(mock_report_data), encoding="utf-8")       # Python writes NaN; JSON.parse would not
+    site_data = tmp_path / "site" / "data"
+    site_data.mkdir(parents=True)
+    with pytest.raises(SystemExit) as exc:
+        main(["--report", str(report), "--site", str(tmp_path / "site")])
+    assert exc.value.code == 2
+    assert list(site_data.iterdir()) == []

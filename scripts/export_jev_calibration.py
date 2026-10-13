@@ -94,12 +94,21 @@ def _load_tier_order_from_data(repo_root: Path = REPO_ROOT) -> list[str]:
         tiers_raw = doc.get("tiers") if isinstance(doc, dict) else None
         if not isinstance(tiers_raw, list):
             _refuse(f"Tier vocabulary file {p} has no 'tiers' list")
-        tiers = [str(t["id"]) for t in tiers_raw if isinstance(t, dict) and "id" in t]
+        tiers = [t["id"] for t in tiers_raw if isinstance(t, dict) and "id" in t]
         if not tiers or len(tiers) != len(tiers_raw):
             _refuse(f"Tier vocabulary file {p} lists {len(tiers_raw)} tier(s) but {len(tiers)} carry an 'id'")
-        return tiers
+        return _validate_tier_order(tiers, str(p))
     _refuse("Could not load tier order vocabulary from data/advice_rubric.json or draft")
     return []
+
+
+def _validate_tier_order(tiers: Any, source: str) -> list[str]:
+    """At least two unique, non-empty string tier ids: duplicates would route every occurrence through the first
+    index and make the ordinal distances and per-tier rows ambiguous."""
+    if (not isinstance(tiers, list) or len(tiers) < 2 or any(not isinstance(t, str) or not t for t in tiers)
+            or len(set(tiers)) != len(tiers)):
+        _refuse(f"Tier order from {source} must be at least two unique non-empty strings, got {tiers!r}")
+    return tiers
 
 
 def _round_or_none(val: Any, field: str, digits: int = 4) -> float | None:
@@ -407,6 +416,30 @@ def _flag_metrics_from_cases(cases: list[dict[str, Any]], reported: Any) -> dict
     return {fid: {("agreement" if k == "accuracy" else k): v for k, v in stats.items()} for fid, stats in rebuilt.items()}
 
 
+def _case_match_flags(case: dict[str, Any], idx: int, tier_order: list[str], judged: bool) -> dict[str, bool | None]:
+    """is_exact and is_within_one, derived from the case's two tiers (already verified against the matrix) when the
+    report is judged; a reported value that disagrees is refused. An unjudged report has neither, so both are null
+    and a reported value is refused."""
+    derived: dict[str, bool | None] = {"is_exact": None, "is_within_one": None}
+    if judged:
+        i, j = tier_order.index(_reference_tier(case)), tier_order.index(case["predicted_tier"])
+        derived = {"is_exact": i == j, "is_within_one": abs(i - j) <= 1}
+    for key, value in derived.items():
+        reported = case.get(key)
+        if reported is not None and reported is not value:
+            _refuse(f"Case at index {idx} reports {key} {reported!r} but its tiers give {value!r}")
+    return derived
+
+
+def _check_provenance_counts(meta: dict[str, Any], cases: list[Any], petri_cases: list[Any]) -> None:
+    """The runner sets advice_archive.samples_evaluated to the number of case rows and petri_transcripts.
+    turns_evaluated to the number of Petri rows; a stale count would contradict the payload's own totals."""
+    for block, key, rows in (("advice_archive", "samples_evaluated", cases),
+                             ("petri_transcripts", "turns_evaluated", petri_cases)):
+        if isinstance(meta.get(block), dict) and len(rows) != _require_count(meta[block].get(key), f"{block}.{key}"):
+            _refuse(f"Report metadata {block}.{key} is {meta[block].get(key)!r} but the report holds {len(rows)} rows")
+
+
 def _served_models(rows: list[dict[str, Any]], what: str) -> list[str]:
     """The models that produced these rows, from the rows themselves: the report's metadata list folds the advice
     and Petri phases together, so it would attribute one phase's routed models to the other's results."""
@@ -463,11 +496,12 @@ def build_calibration_payload(
     total_cases = _require_count(metrics.get("total_cases"), "total_cases")
     if total_cases != len(cases):
         _refuse(f"Report metrics give total_cases {total_cases} but the report holds {len(cases)} case rows")
-    exact_matches = metrics.get("exact_tier_matches")
     matrix = metrics.get("confusion_matrix") or []
     tier_order = metrics.get("tier_order")
-    if not tier_order or not isinstance(tier_order, list):
+    if tier_order is None:
         tier_order = _load_tier_order_from_data(repo_root)
+    else:
+        tier_order = _validate_tier_order(tier_order, "the report's metrics.tier_order")
     if matrix:
         _validate_matrix(matrix, tier_order)
 
@@ -476,27 +510,29 @@ def build_calibration_payload(
         matrix_sum = sum(sum(row) for row in matrix)
         if matrix_sum != total_cases:
             _refuse(f"Confusion matrix sum ({matrix_sum}) does not match total cases ({total_cases})")
-        if exact_matches is not None:
-            diag_sum = sum(matrix[i][i] for i in range(min(len(matrix), len(tier_order))))
-            if diag_sum != exact_matches:
-                _refuse(f"Confusion matrix diagonal sum ({diag_sum}) does not match exact matches ({exact_matches})")
-        # the matrix determines both published rates; a stale or corrupted rate is refused, not copied
+        # the matrix (verified against the case rows below) determines both counts and both rates: they are derived
+        # from it and published, and a reported value that is present must be a count or rate that agrees
         k = len(tier_order)
         n = matrix_sum
+        diag = sum(matrix[i][i] for i in range(k))
         band = sum(matrix[i][j] for i in range(k) for j in range(k) if abs(i - j) <= 1)
-        within_matches = metrics.get("within_one_tier_matches")
-        if within_matches is not None and within_matches != band:
-            _refuse(f"Confusion matrix within-one band ({band}) does not match within_one_tier_matches "
-                    f"({within_matches})")
-        for field, count in (("exact_accuracy", sum(matrix[i][i] for i in range(k))), ("within_one_accuracy", band)):
+        for field, count in (("exact_tier_matches", diag), ("within_one_tier_matches", band)):
+            reported = metrics.get(field)
+            if reported is not None and _require_count(reported, field) != count:
+                _refuse(f"Report gives {field} {reported} but the confusion matrix gives {count}")
+        for field, count in (("exact_accuracy", diag), ("within_one_accuracy", band)):
             reported = metrics.get(field)
             if reported is not None and n and abs(_round_or_none(reported, field, 6) - count / n) > 5.1e-5:
                 _refuse(f"Reported {field} {reported} does not match the confusion matrix ({count}/{n})")
+        exact_matches, within_matches = diag, band
+        exact_rate = round(diag / n, 4) if n else None
+        within_rate = round(band / n, 4) if n else None
     else:
         for field in ("exact_accuracy", "within_one_accuracy", "brier_score", "exact_tier_matches",
                       "within_one_tier_matches"):
             if metrics.get(field) is not None:
                 _refuse(f"Report gives {field} but no confusion matrix to check it against")
+        exact_matches = within_matches = exact_rate = within_rate = None
     if reference is None and matrix:
         _refuse("Report has agreement metrics but no advice_judgments provenance naming the reference")
 
@@ -514,8 +550,7 @@ def build_calibration_payload(
             "tier_confidence": c.get("tier_confidence"),
             "tier_probabilities": c.get("tier_probabilities") or {},
             "technicality_score": c.get("technicality_score"),
-            "is_exact": c.get("is_exact"),
-            "is_within_one": c.get("is_within_one"),
+            **_case_match_flags(c, idx, tier_order, judged=bool(matrix)),
             "flags": c.get("flags") or {},
         }
 
@@ -529,6 +564,7 @@ def build_calibration_payload(
     if not isinstance(petri_rows, list):
         _refuse("Report has no 'petri_cases' list; cannot separate the advice phase's spend from the Petri phase's")
     _check_combined_spend(metrics, [advice_spend, _phase_spend(petri_rows, "Petri case")])
+    _check_provenance_counts(meta, cases, petri_rows)
 
     flag_metrics = _flag_metrics_from_cases(cases, metrics.get("flag_metrics"))
 
@@ -543,9 +579,9 @@ def build_calibration_payload(
         "headline_metrics": {
             "total_advice_cases": total_cases,
             "exact_matches": exact_matches,
-            "exact_agreement": _round_or_none(metrics.get("exact_accuracy"), "exact_accuracy", 4),
-            "within_one_matches": metrics.get("within_one_tier_matches"),
-            "within_one_agreement": _round_or_none(metrics.get("within_one_accuracy"), "within_one_accuracy", 4),
+            "exact_agreement": exact_rate,
+            "within_one_matches": within_matches,
+            "within_one_agreement": within_rate,
             "cohen_kappa": agreement["cohen_kappa"],
             "cohen_kappa_quadratic": agreement["cohen_kappa_quadratic"],
             "majority_tier": agreement["majority_tier"],
@@ -576,6 +612,8 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
 
     meta = report_data.get("metadata", {})
     is_mock = _require_is_mock(meta)
+    cases = report_data.get("cases")
+    _check_provenance_counts(meta, cases if isinstance(cases, list) else [], petri_cases)
     seen: set[tuple[str, int]] = set()
     tones: dict[str, int] = {}
     drifts = 0
@@ -584,7 +622,7 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
 
     for idx, p in enumerate(petri_cases):
         cid = p.get("conversation_id")
-        if not cid:
+        if not isinstance(cid, str) or not cid:
             _refuse(f"Petri case at index {idx} missing required 'conversation_id'")
         if "turn_index" not in p or p["turn_index"] is None:
             _refuse(f"Petri case {cid} missing required 'turn_index'")
@@ -683,11 +721,21 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
     }
 
 
-def write_json_atomic(target_path: Path, doc: dict[str, Any]) -> None:
-    """Write JSON document atomically via a temporary file."""
+def serialize_payload(doc: dict[str, Any], name: str) -> str:
+    """Strict JSON: NaN and infinities (which Python's parser accepts and its encoder would emit) are not JSON, and
+    the site's JSON.parse would reject the whole file, so they refuse the export before anything is written."""
+    try:
+        return json.dumps(doc, indent=2, allow_nan=False)
+    except ValueError as exc:
+        _refuse(f"{name} holds a non-finite number ({exc}); refusing to write invalid JSON")
+        return ""
+
+
+def write_json_atomic(target_path: Path, text: str) -> None:
+    """Write serialized JSON atomically via a temporary file."""
     target_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = target_path.with_name(f"{target_path.name}.tmp")
-    tmp_path.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+    tmp_path.write_text(text, encoding="utf-8")
     tmp_path.replace(target_path)
 
 
@@ -767,6 +815,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Overall drift rate: {p_head['overall_drift_rate']*100:.1f}%")
         print(f"Mean formality score: {p_head['mean_formality_score']}")
 
+    # both payloads are serialized before anything is written, so a refusal leaves both site files untouched
+    calib_text = serialize_payload(calib_payload, "The calibration payload")
+    petri_text = serialize_payload(petri_payload, "The Petri drift payload") if petri_payload else None
+
     if args.dry_run:
         if not petri_payload and out_petri.is_file():
             print(f"\n[Dry Run] Validated payloads successfully; stale Petri file {out_petri} would be removed.")
@@ -777,11 +829,11 @@ def main(argv: list[str] | None = None) -> int:
     if not out_calib.parent.is_dir():
         _refuse(f"Site data directory does not exist: {out_calib.parent}")
 
-    write_json_atomic(out_calib, calib_payload)
+    write_json_atomic(out_calib, calib_text)
     print(f"\nWrote calibration payload -> {out_calib}")
 
     if petri_payload:
-        write_json_atomic(out_petri, petri_payload)
+        write_json_atomic(out_petri, petri_text)
         print(f"Wrote Petri drift payload -> {out_petri}")
     else:
         if out_petri.is_file():
