@@ -847,11 +847,46 @@ def _jev_need(rep: Report, artifact: str, obj: object, key: str, kinds: object, 
     return value
 
 
+# one entry of `conversations` as export_jev_calibration writes it (Codex review of PR #107)
+JEV_CONVERSATION_FIELDS = (("seed_id", str, False), ("arm", str, False), ("user_is", str, False),
+                           ("register", str, True), ("drift_instrument_applies", bool, False), ("turns", list, False))
+RATE_TOLERANCE = 5.1e-5          # the exporter rounds rates and shares to 4 decimals
+
+
+def _jev_counts(rep: Report, artifact: str, obj: dict, path: str, pairs: tuple) -> None:
+    """Counts the exporter derives from one another must agree: each (part, whole, rate) holds a non-negative part
+    no larger than its whole and, when the rate is present, a rate equal to part / whole (to the exporter's rounding).
+    Interval bounds, when present, must lie in [0, 1] in order (Codex review of PR #107)."""
+    for part_key, whole_key, rate_key in pairs:
+        part, whole, rate = obj.get(part_key), obj.get(whole_key), obj.get(rate_key) if rate_key else None
+        if not all(isinstance(x, int) and not isinstance(x, bool) for x in (part, whole)):
+            continue
+        if part < 0 or whole < 0 or part > whole:
+            rep.err(artifact, f"{path}.{part_key}", f"{part} is not a count within its total {whole_key}={whole}")
+        elif rate_key and isinstance(rate, (int, float)) and not isinstance(rate, bool) and whole and \
+                abs(rate - part / whole) > RATE_TOLERANCE:
+            rep.err(artifact, f"{path}.{rate_key}", f"{rate} does not equal {part_key}/{whole_key} = {part}/{whole}")
+    for lo_key, hi_key in (("conversation_ci95_low", "conversation_ci95_high"), ("ci95_low", "ci95_high")):
+        lo, hi = obj.get(lo_key), obj.get(hi_key)
+        if isinstance(lo, (int, float)) and isinstance(hi, (int, float)) and not 0 <= lo <= hi <= 1:
+            rep.err(artifact, f"{path}.{lo_key}", f"interval [{lo}, {hi}] is not within [0, 1] in order")
+
+
+JEV_SUMMARY_COUNTS = (("drift_turns", "assistant_turns", "turn_drift_rate"),
+                      ("conversations_with_drift", "conversations", "conversation_drift_share"),
+                      ("formality_scored_turns", "assistant_turns", None))
+JEV_TURN_COUNTS = (("drift_turns", "n", "drift_rate"),)
+
+
 def check_jev_payloads(rep: Report, site: Path) -> None:
     reports: dict[str, str] = {}
     for name, spec in JEV_SPECS.items():
         if not (site / "data" / name).is_file():
-            rep.notes.append(f"{name} not published (written by hand with {JEV_WRITER})")
+            if name == "jev_calibration.json" and (site / "data" / "petri_register_drift.json").is_file():
+                rep.err(name, "-", "missing while petri_register_drift.json is published: the exporter writes the "
+                                   "calibration payload with every drift payload, so this is a partial publication")
+            else:
+                rep.notes.append(f"{name} not published (written by hand with {JEV_WRITER})")
             continue
         data = load(site, name, rep)
         if not isinstance(data, dict):
@@ -884,13 +919,36 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
                 for i, t in enumerate(turns):
                     for key, kinds, nullable in JEV_TURN_FIELDS:
                         _jev_need(rep, name, t, key, kinds, f"$.drift_by_turn[{i}]", nullable=nullable)
+                    if isinstance(t, dict):
+                        _jev_counts(rep, name, t, f"$.drift_by_turn[{i}]", JEV_TURN_COUNTS)
             arms = data.get("by_arm")
             for i, arm in enumerate(arms if isinstance(arms, list) else []):
                 for key, kinds, nullable in JEV_ARM_FIELDS:
                     _jev_need(rep, name, arm, key, kinds, f"$.by_arm[{i}]", nullable=nullable)
+                if isinstance(arm, dict):
+                    _jev_counts(rep, name, arm, f"$.by_arm[{i}]", JEV_SUMMARY_COUNTS)
             if isinstance(app, dict):
                 for key, kinds, nullable in JEV_SUMMARY_FIELDS:
                     _jev_need(rep, name, app, key, kinds, "$.headline_metrics.applicable", nullable=nullable)
+                _jev_counts(rep, name, app, "$.headline_metrics.applicable", JEV_SUMMARY_COUNTS)
+            inst = data.get("drift_instrument")
+            if isinstance(inst, dict):
+                applies = _jev_need(rep, name, inst, "applies_to", dict, "$.drift_instrument")
+                _jev_need(rep, name, inst, "question_source", str, "$.drift_instrument")
+                if isinstance(applies, dict):
+                    _jev_need(rep, name, applies, "user_is", str, "$.drift_instrument.applies_to")
+                    regs = _jev_need(rep, name, applies, "registers", list, "$.drift_instrument.applies_to")
+                    if isinstance(regs, list) and (not regs or not all(isinstance(r, str) and r for r in regs)):
+                        rep.err(name, "$.drift_instrument.applies_to.registers", "must be non-empty register names")
+            convs = data.get("conversations")
+            if isinstance(convs, dict):
+                total = head.get("total_conversations") if isinstance(head, dict) else None
+                if isinstance(total, int) and len(convs) != total:
+                    rep.err(name, "$.conversations", f"{len(convs)} conversation(s) but headline total_conversations "
+                                                     f"is {total}")
+                for cid, conv in convs.items():
+                    for key, kinds, nullable in JEV_CONVERSATION_FIELDS:
+                        _jev_need(rep, name, conv, key, kinds, f"$.conversations[{cid[:12]}]", nullable=nullable)
     if len(set(reports.values())) > 1:
         rep.err(" and ".join(reports), "$.source_report_sha256", "the two Jev payloads come from different reports")
 
