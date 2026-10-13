@@ -21,7 +21,8 @@ payloads into the frontend repository (<site>/data/):
 
 2. `data/petri_register_drift.json`:
    - Multi-turn register drift summary (total conversations, assistant turns, drift rate).
-   - Drift rate by turn, with each turn's n and a Wilson 95% interval; exploratory.
+   - Drift rate by assistant turn (ranked within each conversation), with each turn's n and
+     a Wilson 95% interval; exploratory.
    - Per-conversation tone choices, drift flags, probabilities, and formality scores.
 
 Methods (all deterministic; no sampling, so no seed):
@@ -59,7 +60,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import math
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import sys
 from typing import Any
 
@@ -239,7 +240,14 @@ def _agreement_reference(meta: dict[str, Any]) -> tuple[str | None, str | None]:
     agreement metrics must all be null). Any other report (the runner's golden-benchmark default, or one
     whose provenance is unrecognised) is refused: its labels are not a primary judge's, and this payload
     describes only that comparison."""
+    has_archive = isinstance(meta.get("advice_archive"), dict)
+    if "golden_benchmark" in meta and (has_archive or "advice_judgments" in meta):
+        _refuse("Report metadata names both a golden benchmark and an advice archive or judgments; the audit runner "
+                "writes one or the other, so the reference is ambiguous")
     judgments = meta.get("advice_judgments")
+    if judgments is not None and not (isinstance(judgments, dict) and has_archive):
+        _refuse("Report metadata has advice_judgments without an advice_archive (or judgments that are not an "
+                "object); the runner writes judgments only beside the archive they grade")
     if isinstance(judgments, dict):
         judge_model = judgments.get("judge_model")
         if not isinstance(judge_model, str) or not judge_model:
@@ -253,12 +261,40 @@ def _agreement_reference(meta: dict[str, Any]) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _require_relative_path(path: Any) -> None:
+    """The audit runner stores its input paths verbatim; an absolute or parent-escaping path would publish the
+    machine's directory layout (a username, a runner workspace), so it is refused rather than rewritten."""
+    if not isinstance(path, str) or not path:
+        _refuse(f"Provenance path must be a non-empty string, got {path!r}")
+    posix, win = PurePosixPath(path), PureWindowsPath(path)
+    if posix.is_absolute() or win.is_absolute() or win.drive or ".." in posix.parts or ".." in win.parts:
+        _refuse(f"Provenance path {path!r} is not repository-relative; re-run the audit with repository-relative "
+                "inputs before publishing")
+
+
+def _served_models(rows: list[dict[str, Any]], what: str) -> list[str]:
+    """The models that produced these rows, from the rows themselves: the report's metadata list folds the advice
+    and Petri phases together, so it would attribute one phase's routed models to the other's results."""
+    served: set[str] = set()
+    for idx, row in enumerate(rows):
+        model = row.get("served_model") if isinstance(row, dict) else None
+        if not isinstance(model, str) or not model:
+            _refuse(f"{what} at index {idx} has no served_model; cannot name the model that produced it")
+        served.add(model)
+    return sorted(served)
+
+
 def _publishable_provenance(meta: dict[str, Any]) -> dict[str, Any]:
     """The report's input and classifier provenance, so the public payload alone names what produced it.
     Hashes, repository-relative paths and parameters only; absent fields are carried as null, never dropped.
     The classifier's local file paths are runner paths and are not carried; its digest is."""
     def pick(block: Any, keys: tuple[str, ...]) -> dict[str, Any] | None:
-        return {k: block.get(k) for k in keys} if isinstance(block, dict) else None
+        if not isinstance(block, dict):
+            return None
+        out = {k: block.get(k) for k in keys}
+        if out.get("path") is not None:
+            _require_relative_path(out["path"])
+        return out
 
     return {
         "audit_timestamp_utc": meta.get("timestamp_utc"),
@@ -376,7 +412,7 @@ def build_calibration_payload(
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source_report_sha256": report_sha,
         "model_requested": meta.get("model_requested"),
-        "models_served": meta.get("models_served") or [],
+        "models_served": _served_models(cases, "Advice case"),
         "judge_model": judge_model,
         "agreement_reference": reference,
         "is_mock": is_mock,
@@ -425,7 +461,6 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
     drifts = 0
     scores: list[float] = []
     conversations: dict[str, list[dict[str, Any]]] = {}
-    turn_drifts: dict[int, list[int]] = {}
 
     for idx, p in enumerate(petri_cases):
         cid = p.get("conversation_id")
@@ -454,11 +489,6 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
         if reg_score is not None:
             scores.append(float(reg_score))
 
-        turn_drifts.setdefault(t_idx, [0, 0])
-        turn_drifts[t_idx][1] += 1
-        if has_drift:
-            turn_drifts[t_idx][0] += 1
-
         conversations.setdefault(cid, []).append({
             "turn_index": t_idx,
             "tone_choice": t_choice,
@@ -468,17 +498,27 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
             "formality_score": reg_score,
         })
 
-    # Sort turns within each conversation by turn_index
+    # turn_index is the row's raw position in its own transcript (tool and other records included), so the same
+    # assistant position can carry different indices in different conversations. Rows are therefore ranked within
+    # each conversation, and the per-turn series is aggregated by that per-conversation assistant ordinal.
+    by_ordinal: dict[int, list[int]] = {}
+    indices_at: dict[int, set[int]] = {}
     for cid in conversations:
         conversations[cid].sort(key=lambda t: t["turn_index"])
+        for ordinal, row in enumerate(conversations[cid], 1):
+            row["assistant_turn_ordinal"] = ordinal
+            counts = by_ordinal.setdefault(ordinal, [0, 0])
+            counts[1] += 1
+            counts[0] += int(row["has_register_drift"])
+            indices_at.setdefault(ordinal, set()).add(row["turn_index"])
 
     drift_by_turn: list[dict[str, Any]] = []
-    for ordinal, t_idx in enumerate(sorted(turn_drifts.keys()), 1):
-        d_cnt, tot_cnt = turn_drifts[t_idx]
+    for ordinal in sorted(by_ordinal):
+        d_cnt, tot_cnt = by_ordinal[ordinal]
         lo, hi = _wilson(d_cnt, tot_cnt)
         drift_by_turn.append({
-            "turn_index": t_idx,
             "assistant_turn_ordinal": ordinal,
+            "turn_indices": sorted(indices_at[ordinal]),
             "n": tot_cnt,
             "assistant_turns": tot_cnt,
             "drift_turns": d_cnt,
@@ -495,9 +535,11 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source_report_sha256": report_sha,
         "model_requested": meta.get("model_requested"),
-        "models_served": meta.get("models_served") or [],
+        "models_served": _served_models(petri_cases, "Petri case"),
         "is_mock": is_mock,
-        "petri_transcripts": _publishable_provenance(meta)["petri_transcripts"],
+        "provenance": {k: v for k, v in _publishable_provenance(meta).items()
+                       if k in ("audit_timestamp_utc", "register_rubric", "classifier_sha256", "parameters",
+                                "petri_transcripts", "checkpoint")},
         "status": "exploratory",
         "per_turn_interval": "wilson_95; per-turn marginal, not a test of trend (the same conversations recur)",
         "headline_metrics": {
@@ -557,6 +599,10 @@ def main(argv: list[str] | None = None) -> int:
     out_petri = Path(args.out_petri_drift) if args.out_petri_drift else site_path / "data" / "petri_register_drift.json"
     if out_calib.resolve() == out_petri.resolve():
         _refuse(f"--out-calibration and --out-petri-drift resolve to the same file ({out_calib.resolve()})")
+    for name, out in (("--out-calibration", out_calib), ("--out-petri-drift", out_petri)):
+        if out.resolve() == report_path.resolve():
+            _refuse(f"{name} resolves to the source report ({report_path.resolve()}); it would be overwritten "
+                    "or deleted")
 
     report_data, report_sha = load_report(report_path)
 

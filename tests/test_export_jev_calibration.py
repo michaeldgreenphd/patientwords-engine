@@ -28,6 +28,7 @@ def mock_report_data() -> dict:
             "model_requested": "typesafe/jev-1.13",
             "models_served": ["typesafe/jev-1.13-20260917"],
             "is_mock": False,
+            "advice_archive": {"path": "data/advice/responses_fixture.jsonl", "sha256": "a" * 64},
             "advice_judgments": {
                 "judge_model": "claude-haiku-4-5",
             },
@@ -73,6 +74,7 @@ def mock_report_data() -> dict:
                 "is_exact": True,
                 "is_within_one": True,
                 "flags": {"safety_netting": True},
+                "served_model": "typesafe/jev-1.13-20260917",
             },
             {
                 "id": "case_2",
@@ -85,6 +87,7 @@ def mock_report_data() -> dict:
                 "is_exact": True,
                 "is_within_one": True,
                 "flags": {"safety_netting": True},
+                "served_model": "typesafe/jev-1.13-20260917",
             },
             {
                 "id": "case_3",
@@ -97,6 +100,7 @@ def mock_report_data() -> dict:
                 "is_exact": True,
                 "is_within_one": True,
                 "flags": {"safety_netting": False},
+                "served_model": "typesafe/jev-1.13-20260917",
             },
             {
                 "id": "case_4",
@@ -109,6 +113,7 @@ def mock_report_data() -> dict:
                 "is_exact": False,
                 "is_within_one": True,
                 "flags": {"safety_netting": False},
+                "served_model": "typesafe/jev-1.13-20260917",
             },
         ],
         "petri_cases": [
@@ -120,6 +125,7 @@ def mock_report_data() -> dict:
                 "has_register_drift": False,
                 "drift_probability": 0.20,
                 "register_score": 1.4,
+                "served_model": "typesafe/jev-1.13-20261001",
             },
             {
                 "conversation_id": "conv_a",
@@ -129,6 +135,7 @@ def mock_report_data() -> dict:
                 "has_register_drift": True,
                 "drift_probability": 0.78,
                 "register_score": 2.2,
+                "served_model": "typesafe/jev-1.13-20261001",
             },
             {
                 "conversation_id": "conv_b",
@@ -138,6 +145,7 @@ def mock_report_data() -> dict:
                 "has_register_drift": False,
                 "drift_probability": 0.15,
                 "register_score": 1.3,
+                "served_model": "typesafe/jev-1.13-20261001",
             },
         ],
     }
@@ -183,10 +191,10 @@ def test_build_petri_drift_payload(mock_report_data):
     # Drift by turn progression
     by_turn = payload["drift_by_turn"]
     assert len(by_turn) == 2
-    assert by_turn[0]["turn_index"] == 1
+    assert by_turn[0]["turn_indices"] == [1] and by_turn[0]["assistant_turn_ordinal"] == 1
     assert by_turn[0]["assistant_turns"] == 2
     assert by_turn[0]["drift_turns"] == 0
-    assert by_turn[1]["turn_index"] == 3
+    assert by_turn[1]["turn_indices"] == [3] and by_turn[1]["assistant_turn_ordinal"] == 2
     assert by_turn[1]["assistant_turns"] == 1
     assert by_turn[1]["drift_turns"] == 1
 
@@ -468,7 +476,7 @@ def test_petri_drift_publishes_per_turn_n_and_wilson_intervals(mock_report_data)
 def test_petri_wilson_interval_matches_the_reviewed_turn():
     """11 of 30 conversations drifted at the live report's seventh assistant turn: Wilson 95% [0.2187, 0.5449]."""
     rows = [{"conversation_id": f"c{i}", "turn_index": 13, "tone_choice": "mixed",
-             "has_register_drift": i < 11} for i in range(30)]
+             "has_register_drift": i < 11, "served_model": "m"} for i in range(30)]
     payload = build_petri_drift_payload({"metadata": {"is_mock": False}, "petri_cases": rows}, report_sha="sha")
     (turn,) = payload["drift_by_turn"]
     assert (turn["ci95_low"], turn["ci95_high"]) == (0.2187, 0.5449)
@@ -597,3 +605,82 @@ def test_colliding_output_paths_refused_before_any_write(tmp_path, mock_report_d
               "--out-petri-drift", str(tmp_path / "." / "out.json")])
     assert exc.value.code == 2
     assert target.read_text(encoding="utf-8") == '{"keep": true}'
+
+
+# Codex review of d63f511c (2026-10-13).
+
+
+@pytest.mark.parametrize("change", ["no_archive", "golden_too"])
+def test_conflicting_or_partial_reference_provenance_refused(mock_report_data, change):
+    meta = mock_report_data["metadata"]
+    if change == "golden_too":
+        meta["advice_archive"] = {"path": "data/advice/a.jsonl"}
+        meta["golden_benchmark"] = {"path": "data/classifier_benchmark_golden.json"}
+    else:
+        meta.pop("advice_archive", None)
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("path", ["/Users/someone/advice/a.jsonl", "../outside/a.jsonl", "C:\\runner\\a.jsonl"])
+def test_non_relative_provenance_paths_refused(mock_report_data, path):
+    mock_report_data["metadata"]["advice_archive"]["path"] = path
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_petri_payload_carries_classifier_provenance(mock_report_data):
+    meta = mock_report_data["metadata"]
+    meta["classifier"] = {"sha256": "c" * 64}
+    meta["register_rubric"] = {"path": "data/register_rubric.json", "sha256": "g" * 64}
+    meta["petri_transcripts"] = {"path": "data/petri/runs/run_1_1/transcripts.jsonl", "sha256": "t" * 64}
+    prov = build_petri_drift_payload(mock_report_data, report_sha="sha")["provenance"]
+    assert prov["classifier_sha256"] == "c" * 64
+    assert prov["register_rubric"]["sha256"] == "g" * 64
+    assert prov["petri_transcripts"]["sha256"] == "t" * 64
+    assert "advice_archive" not in prov
+
+
+@pytest.mark.parametrize("flag", ["--out-calibration", "--out-petri-drift"])
+def test_output_resolving_to_the_report_refused(tmp_path, mock_report_data, flag):
+    report_file = tmp_path / "report.json"
+    original = json.dumps(mock_report_data)
+    report_file.write_text(original, encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        main(["--report", str(report_file), "--site", str(tmp_path), flag, str(tmp_path / "." / "report.json")])
+    assert exc.value.code == 2
+    assert report_file.read_text(encoding="utf-8") == original
+
+
+def test_served_models_are_scoped_to_each_payload(mock_report_data):
+    assert build_calibration_payload(mock_report_data, report_sha="sha")["models_served"] == [
+        "typesafe/jev-1.13-20260917"]
+    assert build_petri_drift_payload(mock_report_data, report_sha="sha")["models_served"] == [
+        "typesafe/jev-1.13-20261001"]
+
+
+@pytest.mark.parametrize("build,rows", [(build_calibration_payload, "cases"), (build_petri_drift_payload, "petri_cases")])
+def test_row_without_served_model_refused(mock_report_data, build, rows):
+    del mock_report_data[rows][0]["served_model"]
+    with pytest.raises(SystemExit) as exc:
+        build(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_drift_is_grouped_by_per_conversation_assistant_ordinal(mock_report_data):
+    """A tool record shifts one conversation's raw indices: its second assistant turn is index 4, the other's is 3.
+    Both are assistant turn 2, so they form one sample of n = 2, not two samples of n = 1."""
+    base = {"tone_choice": "mixed", "served_model": "m"}
+    mock_report_data["petri_cases"] = [
+        {**base, "conversation_id": "a", "turn_index": 1, "has_register_drift": False},
+        {**base, "conversation_id": "a", "turn_index": 3, "has_register_drift": True},
+        {**base, "conversation_id": "b", "turn_index": 1, "has_register_drift": False},
+        {**base, "conversation_id": "b", "turn_index": 4, "has_register_drift": False},
+    ]
+    payload = build_petri_drift_payload(mock_report_data, report_sha="sha")
+    second = payload["drift_by_turn"][1]
+    assert (second["assistant_turn_ordinal"], second["n"], second["drift_turns"]) == (2, 2, 1)
+    assert second["turn_indices"] == [3, 4]
+    assert [r["assistant_turn_ordinal"] for r in payload["conversations"]["b"]] == [1, 2]
