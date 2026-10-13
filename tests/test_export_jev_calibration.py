@@ -30,6 +30,8 @@ def mock_report_data() -> dict:
             "is_mock": False,
             "advice_archive": {"path": "data/advice/responses_fixture.jsonl", "sha256": "a" * 64,
                                "samples_evaluated": 4},
+            "petri_transcripts": {"path": "data/petri/runs/run_fixture_1/transcripts.jsonl", "sha256": "t" * 64,
+                                  "turns_evaluated": 3},
             "advice_judgments": {
                 "judge_model": "claude-haiku-4-5",
             },
@@ -369,6 +371,7 @@ def test_unbilled_calls_caveat_preserved(mock_report_data):
 
 def test_stale_petri_output_cleaned_when_input_has_none(tmp_path, mock_report_data):
     mock_report_data["petri_cases"] = []
+    del mock_report_data["metadata"]["petri_transcripts"]      # a report with no Petri phase names no transcripts
     report_file = tmp_path / "report.json"
     report_file.write_text(json.dumps(mock_report_data), encoding="utf-8")
 
@@ -495,7 +498,8 @@ def test_petri_wilson_interval_matches_the_reviewed_turn():
     rows = [{"conversation_id": f"c{i}", "turn_index": 13, "tone_choice": "mixed",
              "has_register_drift": i < 11, "served_model": "m",
              "cost_usd": 0.0, "estimated_cost_usd": 0.0, "input_tokens": 0} for i in range(30)]
-    payload = build_petri_drift_payload({"metadata": {"is_mock": False}, "petri_cases": rows}, report_sha="sha")
+    meta = {"is_mock": False, "petri_transcripts": {"path": "x/transcripts.jsonl", "turns_evaluated": 30}}
+    payload = build_petri_drift_payload({"metadata": meta, "petri_cases": rows}, report_sha="sha")
     (turn,) = payload["drift_by_turn"]
     assert (turn["ci95_low"], turn["ci95_high"]) == (0.2187, 0.5449)
 
@@ -698,6 +702,7 @@ def test_drift_is_grouped_by_per_conversation_assistant_ordinal(mock_report_data
         {**base, "conversation_id": "b", "turn_index": 1, "has_register_drift": False},
         {**base, "conversation_id": "b", "turn_index": 4, "has_register_drift": False},
     ]
+    mock_report_data["metadata"]["petri_transcripts"]["turns_evaluated"] = 4
     payload = build_petri_drift_payload(mock_report_data, report_sha="sha")
     second = payload["drift_by_turn"][1]
     assert (second["assistant_turn_ordinal"], second["n"], second["drift_turns"]) == (2, 2, 1)
@@ -900,3 +905,64 @@ def test_non_finite_value_refused_before_any_write(tmp_path, mock_report_data):
         main(["--report", str(report), "--site", str(tmp_path / "site")])
     assert exc.value.code == 2
     assert list(site_data.iterdir()) == []
+
+
+
+# Codex review of fdbc4886 (2026-10-13).
+
+
+def test_staging_file_never_overwrites_an_existing_file(tmp_path, mock_report_data):
+    """The old fixed staging name <output>.tmp could be the source report itself; the staging file is now created
+    fresh, so a report sitting at that name survives and no staging file is left behind."""
+    site_data = tmp_path / "site" / "data"
+    site_data.mkdir(parents=True)
+    report = site_data / "jev_calibration.json.tmp"
+    report.write_text(json.dumps(mock_report_data), encoding="utf-8")
+    original = report.read_text(encoding="utf-8")
+    assert main(["--report", str(report), "--site", str(tmp_path / "site")]) == 0
+    assert report.read_text(encoding="utf-8") == original
+    assert sorted(p.name for p in site_data.iterdir()) == [
+        "jev_calibration.json", "jev_calibration.json.tmp", "petri_register_drift.json"]
+
+
+def test_petri_rows_without_transcript_provenance_refused(mock_report_data):
+    del mock_report_data["metadata"]["petri_transcripts"]
+    for build in (build_calibration_payload, build_petri_drift_payload):
+        with pytest.raises(SystemExit) as exc:
+            build(mock_report_data, report_sha="sha")
+        assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("change", ["no_prediction", "unknown_tier", "no_probabilities", "bad_probability"])
+def test_unjudged_cases_still_need_jev_outputs(mock_report_data, change):
+    m = mock_report_data["metrics"]
+    for key in ("exact_accuracy", "within_one_accuracy", "brier_score", "exact_tier_matches",
+                "within_one_tier_matches", "confusion_matrix"):
+        m[key] = None
+    del mock_report_data["metadata"]["advice_judgments"]
+    m["flag_metrics"] = {}
+    for case in mock_report_data["cases"]:
+        case["is_exact"] = case["is_within_one"] = None
+        case["primary_judge_tier"] = None
+        case["flags"] = {}
+    assert build_calibration_payload(mock_report_data, report_sha="sha")["agreement_reference"] is None
+    case = mock_report_data["cases"][0]
+    if change == "no_prediction":
+        case["predicted_tier"] = None
+    elif change == "unknown_tier":
+        case["predicted_tier"] = "not-a-tier"
+    elif change == "no_probabilities":
+        del case["tier_probabilities"]
+    else:
+        case["tier_probabilities"] = {TIERS[0]: "high"}
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("tone", [1, ["mixed"], {"t": 1}, ""])
+def test_non_string_tone_choice_refused(mock_report_data, tone):
+    mock_report_data["petri_cases"][0]["tone_choice"] = tone
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2

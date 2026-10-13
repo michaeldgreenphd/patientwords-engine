@@ -62,8 +62,10 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import math
+import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import sys
+import tempfile
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -434,6 +436,9 @@ def _case_match_flags(case: dict[str, Any], idx: int, tier_order: list[str], jud
 def _check_provenance_counts(meta: dict[str, Any], cases: list[Any], petri_cases: list[Any]) -> None:
     """The runner sets advice_archive.samples_evaluated to the number of case rows and petri_transcripts.
     turns_evaluated to the number of Petri rows; a stale count would contradict the payload's own totals."""
+    if petri_cases and not isinstance(meta.get("petri_transcripts"), dict):
+        _refuse("Report has Petri rows but no metadata.petri_transcripts block; the published drift statistics could "
+                "not name their transcript input")
     for block, key, rows in (("advice_archive", "samples_evaluated", cases),
                              ("petri_transcripts", "turns_evaluated", petri_cases)):
         if isinstance(meta.get(block), dict) and len(rows) != _require_count(meta[block].get(key), f"{block}.{key}"):
@@ -544,11 +549,22 @@ def build_calibration_payload(
         if cid in cases_summary:
             _refuse(f"Case identifier {cid!r} appears more than once")
         primary_judge_tier = c.get("primary_judge_tier") or c.get("expected_tier")
+        # Jev's own outputs are required on every case, judged or not: an unjudged report has no matrix to catch a
+        # missing prediction, and an incomplete evaluation must not look complete
+        if c.get("predicted_tier") not in tier_order:
+            _refuse(f"Case {cid!r} has Jev tier {c.get('predicted_tier')!r}, which is not in the tier order")
+        probs = c.get("tier_probabilities")
+        if not isinstance(probs, dict) or not probs:
+            _refuse(f"Case {cid!r} has no tier_probabilities object")
+        for t, v in probs.items():
+            if t not in tier_order or _round_or_none(v, f"case {cid} tier_probabilities.{t}", 12) is None:
+                _refuse(f"Case {cid!r} has tier probability {t!r}: {v!r}; tiers must be in the tier order and "
+                        "values numbers")
         cases_summary[cid] = {
             "primary_judge_tier": primary_judge_tier,
             "pred_tier": c.get("predicted_tier"),
             "tier_confidence": c.get("tier_confidence"),
-            "tier_probabilities": c.get("tier_probabilities") or {},
+            "tier_probabilities": probs,
             "technicality_score": c.get("technicality_score"),
             **_case_match_flags(c, idx, tier_order, judged=bool(matrix)),
             "flags": c.get("flags") or {},
@@ -633,7 +649,7 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
         seen.add((cid, t_idx))
 
         t_choice = p.get("tone_choice")
-        if not t_choice:
+        if not isinstance(t_choice, str) or not t_choice:
             _refuse(f"Petri case {cid} turn {t_idx} missing required 'tone_choice'")
         tones[t_choice] = tones.get(t_choice, 0) + 1
 
@@ -732,11 +748,17 @@ def serialize_payload(doc: dict[str, Any], name: str) -> str:
 
 
 def write_json_atomic(target_path: Path, text: str) -> None:
-    """Write serialized JSON atomically via a temporary file."""
+    """Write serialized JSON atomically. The staging file is created fresh and exclusively (mkstemp) beside the
+    target, so it can never be an existing file such as the source report or a link to it."""
     target_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = target_path.with_name(f"{target_path.name}.tmp")
-    tmp_path.write_text(text, encoding="utf-8")
-    tmp_path.replace(target_path)
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{target_path.name}.", suffix=".tmp", dir=target_path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        os.replace(tmp_name, target_path)
+    except BaseException:
+        Path(tmp_name).unlink(missing_ok=True)
+        raise
 
 
 def main(argv: list[str] | None = None) -> int:
