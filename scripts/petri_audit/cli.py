@@ -1,12 +1,13 @@
 """Command line for the Petri lane (design memo section 13). Every subcommand
 that could spend money refuses to run outside the conditions the lane sets:
 `run` needs a target model spec, prices, a lock that matches, seeds that
-validate, and a pre-flight bound under `max_spend`; `preflight` performs the
+validate, a projected per-sample token total under `token_limit`
+(token_budget.py), and a pre-flight bound under `max_spend`; `preflight` performs the
 same checks and calls nothing.
 
     python -m scripts.petri_audit.cli validate-seeds [--seeds FILE] [--seed-id ID ...] [--wave N]
     python -m scripts.petri_audit.cli verify-lock [--lock FILE]
-    python -m scripts.petri_audit.cli preflight --target SPEC --max-spend USD [--epochs N] [--token-limit N]
+    python -m scripts.petri_audit.cli preflight --target SPEC --max-spend USD [--epochs N] [--token-limit N] [--assumed-reply-tokens N]
     python -m scripts.petri_audit.cli run --target SPEC --max-spend USD --out-dir DIR [--started-marker FILE] [...]
     python -m scripts.petri_audit.cli adapt --eval FILE --out-dir DIR --custody STR --max-spend USD [--run-params FILE] [...]
     python -m scripts.petri_audit.cli readapt-plan --params-file FILE --listing FILE --readapt-run-id ID [...] --out FILE
@@ -45,7 +46,9 @@ from .framework import ENV_LOCK, OUTCOME_REGISTRY, ROOT, SEED_FILE, load_json, s
 from .manifest import bind_judgments, reseal_problems, verify_chain, verify_run
 from .seal import sealed_registry, seed_texts_against_registry
 from .seeds import conditions, load_seed_file, seed_digest, select_seeds, target_visible_strings, validate_seed
+from .token_budget import DEFAULT_ASSUMED_REPLY_TOKENS, token_limit_report
 from .spend import (
+    ZERO_PRICE_MODELS,
     billing_channel,
     cache_booking_problems,
     dearest_price,
@@ -163,6 +166,23 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
             for p in ps:
                 print(f"seed {sid}: {p}", file=sys.stderr)
         return 4, {}
+    # a sample that cannot finish under Inspect's per-sample token limit is halted mid-conversation and refused by
+    # the adapter after the target was paid (eq01, 2026-10-12: six 10-turn samples at 20000, zero transcripts), so
+    # the projection is checked before any model call (token_budget.py has the method). A mock target's replies are a
+    # few fixed tokens, so the projection, which assumes a real model's replies, is not applied to one; it says so
+    if args.target in ZERO_PRICE_MODELS:
+        print(f"token projection: not applied to mock target {args.target} (its replies are a few fixed tokens)")
+    else:
+        token_problems, token_notes = token_limit_report(seeds, token_limit=args.token_limit,
+                                                         assumed_reply_tokens=args.assumed_reply_tokens)
+        for note in token_notes:
+            print(f"token projection: {note}")
+        if token_problems:
+            for p in token_problems:
+                print(f"pre-flight: REFUSED - {p}", file=sys.stderr)
+            print("pre-flight: raise token_limit (the lane's landed 10-turn runs used 40000) or pass a smaller "
+                  "--assumed-reply-tokens only with evidence the target writes shorter replies", file=sys.stderr)
+            return 5, {}
     # the holdout seal is checked here, before any model call, not only at adaptation (Codex round 6): a seed that
     # copied a sealed phrase would otherwise expose the holdout to the target before the adapter refused publication
     registry_sealed = sealed_registry()
@@ -1019,6 +1039,8 @@ def build_parser() -> argparse.ArgumentParser:
                        help="registry judge spec, resolved and priced before any target call when judging")
         p.add_argument("--epochs", type=int, default=1)
         p.add_argument("--token-limit", type=int, default=20000)
+        p.add_argument("--assumed-reply-tokens", type=int, default=DEFAULT_ASSUMED_REPLY_TOKENS,
+                       help="target reply length the per-sample token projection assumes (token_budget.py)")
         p.add_argument("--auditor-model", default=None,
                        help="Inspect model string of the adaptive auditor; required for autonomous seeds and refused "
                             "for scripted ones (docs/petri_adaptive_design.md)")
