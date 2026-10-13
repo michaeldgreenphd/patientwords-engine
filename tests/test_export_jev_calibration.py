@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+from pathlib import Path
+
 import pytest
 
 from scripts.export_jev_calibration import (
@@ -19,6 +22,26 @@ from scripts.export_jev_calibration import (
 TIERS = _load_tier_order_from_data()
 assert len(TIERS) == 4, "these fixtures index four ordinal tiers"
 
+# The fixture names the repository's own rubrics by path and real sha256, as an audit run in this checkout would;
+# the exporter reads them to check flag ids, tone choices and the register score scale.
+ROOT = Path(__file__).resolve().parents[1]
+ADVICE_RUBRIC, REGISTER_RUBRIC = "data/advice_rubric.draft.json", "data/register_rubric.json"
+ADVICE_SHA = hashlib.sha256((ROOT / ADVICE_RUBRIC).read_bytes()).hexdigest()
+REGISTER_SHA = hashlib.sha256((ROOT / REGISTER_RUBRIC).read_bytes()).hexdigest()
+FLAG_IDS = [f["id"] for f in json.loads((ROOT / ADVICE_RUBRIC).read_text(encoding="utf-8"))["flags"]]
+PERFECT_FLAG = {"accuracy": 1.0, "precision": 1.0, "sensitivity": 1.0, "specificity": 1.0, "tp": 2, "tn": 2, "fp": 0,
+                "fn": 0}
+
+
+def _unjudged_flags() -> dict:
+    """Every rubric flag with Jev's prediction and no reference value, as an unjudged archive report carries them."""
+    return {fid: {"expected": None, "predicted": False, "probability": 0.1} for fid in FLAG_IDS}
+
+
+def _flags(value: bool) -> dict:
+    """Every rubric flag with the judge and Jev agreeing on `value`, probability on the matching side of 0.5."""
+    return {fid: {"expected": value, "predicted": value, "probability": 0.9 if value else 0.1} for fid in FLAG_IDS}
+
 
 @pytest.fixture
 def mock_report_data() -> dict:
@@ -28,8 +51,8 @@ def mock_report_data() -> dict:
             "model_requested": "typesafe/jev-1.13",
             "models_served": ["typesafe/jev-1.13-20260917"],
             "is_mock": False,
-            "rubric": {"path": "data/advice_rubric.draft.json", "sha256": "d" * 64},
-            "register_rubric": {"path": "data/register_rubric.json", "sha256": "b" * 64},
+            "rubric": {"path": ADVICE_RUBRIC, "sha256": ADVICE_SHA},
+            "register_rubric": {"path": REGISTER_RUBRIC, "sha256": REGISTER_SHA},
             "classifier": {"path": "/home/runner/work/scripts/jev_classifier.py", "sha256": "c" * 64},
             "advice_archive": {"path": "data/advice/responses_fixture.jsonl", "sha256": "a" * 64,
                                "samples_evaluated": 4},
@@ -58,18 +81,7 @@ def mock_report_data() -> dict:
                 [0, 0, 0, 0],
                 [0, 0, 0, 0],
             ],
-            "flag_metrics": {
-                "safety_netting": {
-                    "accuracy": 1.0,
-                    "precision": 1.0,
-                    "sensitivity": 1.0,
-                    "specificity": 1.0,
-                    "tp": 2,
-                    "tn": 2,
-                    "fp": 0,
-                    "fn": 0,
-                }
-            },
+            "flag_metrics": {fid: dict(PERFECT_FLAG) for fid in FLAG_IDS},
         },
         "cases": [
             {
@@ -82,7 +94,7 @@ def mock_report_data() -> dict:
                 "technicality_score": 1.2,
                 "is_exact": True,
                 "is_within_one": True,
-                "flags": {"safety_netting": {"expected": True, "predicted": True, "probability": 0.9}},
+                "flags": _flags(True),
                 "served_model": "typesafe/jev-1.13-20260917",
                 "cost_usd": 0.0001, "estimated_cost_usd": 0.0001, "input_tokens": 300,
             },
@@ -96,7 +108,7 @@ def mock_report_data() -> dict:
                 "technicality_score": 1.0,
                 "is_exact": True,
                 "is_within_one": True,
-                "flags": {"safety_netting": {"expected": True, "predicted": True, "probability": 0.9}},
+                "flags": _flags(True),
                 "served_model": "typesafe/jev-1.13-20260917",
                 "cost_usd": 0.0001, "estimated_cost_usd": 0.0001, "input_tokens": 300,
             },
@@ -110,7 +122,7 @@ def mock_report_data() -> dict:
                 "technicality_score": 1.5,
                 "is_exact": True,
                 "is_within_one": True,
-                "flags": {"safety_netting": {"expected": False, "predicted": False, "probability": 0.1}},
+                "flags": _flags(False),
                 "served_model": "typesafe/jev-1.13-20260917",
                 "cost_usd": 0.0001, "estimated_cost_usd": 0.0001, "input_tokens": 300,
             },
@@ -124,7 +136,7 @@ def mock_report_data() -> dict:
                 "technicality_score": 2.1,
                 "is_exact": False,
                 "is_within_one": True,
-                "flags": {"safety_netting": {"expected": False, "predicted": False, "probability": 0.1}},
+                "flags": _flags(False),
                 "served_model": "typesafe/jev-1.13-20260917",
                 "cost_usd": 0.0001, "estimated_cost_usd": 0.0001, "input_tokens": 300,
             },
@@ -339,7 +351,7 @@ def test_unjudged_report_handles_null_metrics_cleanly(mock_report_data):
     for case in mock_report_data["cases"]:          # the runner writes no match flags without a reference
         case["is_exact"] = case["is_within_one"] = None
         case["primary_judge_tier"] = None
-        case["flags"] = {}
+        case["flags"] = _unjudged_flags()
     del mock_report_data["metadata"]["advice_judgments"]   # an unjudged report names no judge
     mock_report_data["metrics"]["flag_metrics"] = {}
 
@@ -505,11 +517,12 @@ def test_petri_drift_publishes_per_turn_n_and_wilson_intervals(mock_report_data)
 def test_petri_wilson_interval_matches_the_reviewed_turn():
     """11 of 30 conversations drifted at the live report's seventh assistant turn: Wilson 95% [0.2187, 0.5449]."""
     rows = [{"conversation_id": f"c{i}", "turn_index": 13, "tone_choice": "mixed",
-             "has_register_drift": i < 11, "served_model": "m", "tone_confidence": 0.8, "drift_probability": 0.5,
+             "has_register_drift": i < 11, "served_model": "m", "tone_confidence": 0.8,
+             "drift_probability": 0.9 if i < 11 else 0.1,
              "cost_usd": 0.0, "estimated_cost_usd": 0.0, "input_tokens": 0} for i in range(30)]
     meta = {"is_mock": False, "classifier": {"sha256": "c" * 64},
-            "rubric": {"path": "data/advice_rubric.draft.json", "sha256": "d" * 64},
-            "register_rubric": {"path": "data/register_rubric.json", "sha256": "b" * 64},
+            "rubric": {"path": ADVICE_RUBRIC, "sha256": ADVICE_SHA},
+            "register_rubric": {"path": REGISTER_RUBRIC, "sha256": REGISTER_SHA},
             "petri_transcripts": {"path": "x/transcripts.jsonl", "sha256": "e" * 64, "turns_evaluated": 30}}
     payload = build_petri_drift_payload({"metadata": meta, "petri_cases": rows}, report_sha="sha")
     (turn,) = payload["drift_by_turn"]
@@ -610,12 +623,12 @@ def test_flag_match_rate_is_published_as_agreement(mock_report_data):
 
 def test_payload_carries_input_provenance(mock_report_data):
     meta = mock_report_data["metadata"]
-    meta["rubric"] = {"path": "data/advice_rubric.draft.json", "sha256": "d" * 64}
+    meta["rubric"] = {"path": ADVICE_RUBRIC, "sha256": ADVICE_SHA}
     meta["classifier"] = {"path": "/home/runner/x.py", "sha256": "c" * 64}
     meta["advice_archive"] = {"path": "data/advice/a.jsonl", "sha256": "a" * 64, "samples_evaluated": 4}
     meta["advice_judgments"]["sha256"] = "f" * 64
     prov = build_calibration_payload(mock_report_data, report_sha="sha")["provenance"]
-    assert prov["rubric"]["sha256"] == "d" * 64
+    assert prov["rubric"]["sha256"] == ADVICE_SHA
     assert prov["classifier_sha256"] == "c" * 64 and "/home/runner" not in json.dumps(prov)
     assert prov["advice_archive"]["samples_evaluated"] == 4
     assert prov["advice_judgments"]["sha256"] == "f" * 64
@@ -668,12 +681,12 @@ def test_non_relative_provenance_paths_refused(mock_report_data, path):
 def test_petri_payload_carries_classifier_provenance(mock_report_data):
     meta = mock_report_data["metadata"]
     meta["classifier"] = {"sha256": "c" * 64}
-    meta["register_rubric"] = {"path": "data/register_rubric.json", "sha256": "b" * 64}
+    meta["register_rubric"] = {"path": REGISTER_RUBRIC, "sha256": REGISTER_SHA}
     meta["petri_transcripts"] = {"path": "data/petri/runs/run_1_1/transcripts.jsonl", "sha256": "e" * 64,
                                  "turns_evaluated": 3}
     prov = build_petri_drift_payload(mock_report_data, report_sha="sha")["provenance"]
     assert prov["classifier_sha256"] == "c" * 64
-    assert prov["register_rubric"]["sha256"] == "b" * 64
+    assert prov["register_rubric"]["sha256"] == REGISTER_SHA
     assert prov["petri_transcripts"]["sha256"] == "e" * 64
     assert "advice_archive" not in prov
 
@@ -707,12 +720,16 @@ def test_row_without_served_model_refused(mock_report_data, build, rows):
 def test_drift_is_grouped_by_per_conversation_assistant_ordinal(mock_report_data):
     """A tool record shifts one conversation's raw indices: its second assistant turn is index 4, the other's is 3.
     Both are assistant turn 2, so they form one sample of n = 2, not two samples of n = 1."""
-    base = {"tone_choice": "mixed", "served_model": "m", "tone_confidence": 0.8, "drift_probability": 0.5, "cost_usd": 0.0, "estimated_cost_usd": 0.0, "input_tokens": 0}
+    base = {"tone_choice": "mixed", "served_model": "m", "tone_confidence": 0.8, "cost_usd": 0.0, "estimated_cost_usd": 0.0, "input_tokens": 0}
     mock_report_data["petri_cases"] = [
-        {**base, "conversation_id": "a", "turn_index": 1, "has_register_drift": False},
-        {**base, "conversation_id": "a", "turn_index": 3, "has_register_drift": True},
-        {**base, "conversation_id": "b", "turn_index": 1, "has_register_drift": False},
-        {**base, "conversation_id": "b", "turn_index": 4, "has_register_drift": False},
+        {**base, "conversation_id": "a", "turn_index": 1, "has_register_drift": False,
+         "drift_probability": 0.1},
+        {**base, "conversation_id": "a", "turn_index": 3, "has_register_drift": True,
+         "drift_probability": 0.9},
+        {**base, "conversation_id": "b", "turn_index": 1, "has_register_drift": False,
+         "drift_probability": 0.1},
+        {**base, "conversation_id": "b", "turn_index": 4, "has_register_drift": False,
+         "drift_probability": 0.1},
     ]
     mock_report_data["metadata"]["petri_transcripts"]["turns_evaluated"] = 4
     payload = build_petri_drift_payload(mock_report_data, report_sha="sha")
@@ -836,8 +853,7 @@ def test_flag_metrics_contradicting_the_rows_refused(mock_report_data, change):
     elif change == "flipped_row":
         mock_report_data["cases"][0]["flags"]["safety_netting"]["predicted"] = False
     else:
-        mock_report_data["metrics"]["flag_metrics"]["refusal"] = dict(
-            mock_report_data["metrics"]["flag_metrics"]["safety_netting"])
+        mock_report_data["metrics"]["flag_metrics"]["not_a_rubric_flag"] = dict(PERFECT_FLAG)
     with pytest.raises(SystemExit) as exc:
         build_calibration_payload(mock_report_data, report_sha="sha")
     assert exc.value.code == 2
@@ -956,7 +972,7 @@ def test_unjudged_cases_still_need_jev_outputs(mock_report_data, change):
     for case in mock_report_data["cases"]:
         case["is_exact"] = case["is_within_one"] = None
         case["primary_judge_tier"] = None
-        case["flags"] = {}
+        case["flags"] = _unjudged_flags()
     assert build_calibration_payload(mock_report_data, report_sha="sha")["agreement_reference"] is None
     case = mock_report_data["cases"][0]
     if change == "no_prediction":
@@ -1073,7 +1089,7 @@ def _make_unjudged(report: dict) -> None:
     del report["metadata"]["advice_judgments"]
     for case in report["cases"]:
         case["is_exact"] = case["is_within_one"] = case["primary_judge_tier"] = None
-        case["flags"] = {}
+        case["flags"] = _unjudged_flags()
 
 
 def test_unjudged_report_with_reference_labels_refused(mock_report_data):
@@ -1131,3 +1147,73 @@ def test_non_object_petri_row_refused(mock_report_data, row):
         with pytest.raises(SystemExit) as exc:
             build(mock_report_data, report_sha="sha")
         assert exc.value.code == 2
+
+
+# Codex review of 6f3d5abe (2026-10-13): validation against the rubrics the audit recorded.
+
+
+@pytest.mark.parametrize("change", ["no_flags", "missing_flag", "extra_flag"])
+def test_every_case_carries_exactly_the_rubric_flags(mock_report_data, change):
+    flags = mock_report_data["cases"][0]["flags"]
+    if change == "no_flags":
+        del mock_report_data["cases"][0]["flags"]
+    elif change == "missing_flag":
+        del flags[FLAG_IDS[0]]
+    else:
+        flags["not_a_rubric_flag"] = {"expected": None, "predicted": False, "probability": 0.1}
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_flag_prediction_must_match_its_probability(mock_report_data):
+    mock_report_data["cases"][0]["flags"][FLAG_IDS[0]]["probability"] = 0.2      # predicted stays true
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_rubric_changed_since_the_audit_refused(mock_report_data):
+    mock_report_data["metadata"]["rubric"]["sha256"] = "0" * 64
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_tone_choice_outside_the_rubric_refused(mock_report_data):
+    mock_report_data["petri_cases"][0]["tone_choice"] = "unknown"
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("score", [999, -0.1, 3.01])
+def test_register_score_outside_the_rubric_scale_refused(mock_report_data, score):
+    mock_report_data["petri_cases"][0]["register_score"] = score
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("drift,prob", [(False, 0.99), (True, 0.2), (False, 0.5)])
+def test_drift_flag_contradicting_its_probability_refused(mock_report_data, drift, prob):
+    mock_report_data["petri_cases"][0].update(has_register_drift=drift, drift_probability=prob)
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_unjudged_report_with_flag_references_refused(mock_report_data):
+    _make_unjudged(mock_report_data)
+    build_calibration_payload(mock_report_data, report_sha="sha")
+    mock_report_data["cases"][0]["flags"][FLAG_IDS[0]]["expected"] = False
+    with pytest.raises(SystemExit) as exc:
+        build_calibration_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_judged_report_with_null_brier_publishes_the_recomputed_score(mock_report_data):
+    mock_report_data["metrics"]["brier_score"] = None
+    head = build_calibration_payload(mock_report_data, report_sha="sha")["headline_metrics"]
+    assert head["brier_score"] == 0.1975
+    assert head["brier_skill_score"] is not None

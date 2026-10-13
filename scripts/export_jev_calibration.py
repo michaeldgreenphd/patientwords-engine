@@ -357,10 +357,12 @@ def _reference_tier(case: dict[str, Any]) -> Any:
 
 
 def _check_cases_against_aggregates(cases: list[dict[str, Any]], matrix: list[list[int]], tier_order: list[str],
-                                    brier: float | None) -> None:
+                                    brier: float | None) -> float | None:
     """Rebuild the confusion matrix and the Brier score from the case rows and refuse any mismatch, so the headline
     cannot contradict cases_summary. The Brier score follows the runner's definition (audit_jev_calibration.
-    compute_brier_score): a tier absent from a case's probabilities counts as probability 0."""
+    compute_brier_score): a tier absent from a case's probabilities counts as probability 0. Returns the Brier score
+    to publish: the reported one when it agrees, the recomputed one when the report left it null (a judged sample
+    determines it)."""
     k = len(tier_order)
     rebuilt = [[0] * k for _ in range(k)]
     sq_err = 0.0
@@ -370,18 +372,66 @@ def _check_cases_against_aggregates(cases: list[dict[str, Any]], matrix: list[li
             _refuse(f"Case at index {idx} has reference tier {ref!r} and Jev tier {pred!r}; both must be in the tier "
                     "order for the confusion matrix to describe it")
         rebuilt[tier_order.index(ref)][tier_order.index(pred)] += 1
-        if brier is not None:
-            probs = case.get("tier_probabilities")
-            if not isinstance(probs, dict):
-                _refuse(f"Case at index {idx} has no tier_probabilities object; cannot verify the Brier score")
-            for t in tier_order:
-                pv = _round_or_none(probs.get(t, 0.0), f"cases[{idx}].tier_probabilities.{t}", 12)
-                sq_err += (pv - (1.0 if t == ref else 0.0)) ** 2
+        probs = case.get("tier_probabilities")
+        if not isinstance(probs, dict):
+            _refuse(f"Case at index {idx} has no tier_probabilities object; cannot verify the Brier score")
+        for t in tier_order:
+            pv = _round_or_none(probs.get(t, 0.0), f"cases[{idx}].tier_probabilities.{t}", 12)
+            sq_err += (pv - (1.0 if t == ref else 0.0)) ** 2
     if rebuilt != matrix:
         _refuse("The confusion matrix does not match the matrix rebuilt from the case rows")
-    if brier is not None and cases and abs(sq_err / len(cases) - brier) > 5.1e-5:
+    if not cases:
+        return brier
+    recomputed = sq_err / len(cases)
+    if brier is not None and abs(recomputed - brier) > 5.1e-5:
         _refuse(f"Reported brier_score {brier} does not match the score recomputed from the case rows "
-                f"({sq_err / len(cases):.6f})")
+                f"({recomputed:.6f})")
+    return brier if brier is not None else round(recomputed, 4)
+
+
+def _recorded_rubric(meta: dict[str, Any], block: str, repo_root: Path) -> dict[str, Any]:
+    """The rubric the report says the audit used, read from the repository and accepted only if its sha256 still
+    equals the recorded one: the vocabularies below (flag ids, tone choices, score scale) are the audit's, and a
+    rubric edited since then would validate the report against the wrong ones."""
+    entry = meta.get(block)
+    if not isinstance(entry, dict):
+        _refuse(f"Report metadata has no '{block}' block; cannot read the rubric the audit used")
+    _require_relative_path(entry.get("path"))
+    recorded = _require_sha256(entry.get("sha256"), f"{block}.sha256")
+    path = repo_root / entry["path"]
+    if not path.is_file():
+        _refuse(f"The {block} the audit used ({entry['path']}) is not in this checkout")
+    data = path.read_bytes()
+    if hashlib.sha256(data).hexdigest() != recorded:
+        _refuse(f"{entry['path']} has changed since the audit (sha256 differs from the recorded {recorded[:12]}...); "
+                "refusing to validate the report against a different rubric")
+    try:
+        doc = json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        _refuse(f"{entry['path']} could not be read as JSON ({exc})")
+    if not isinstance(doc, dict):
+        _refuse(f"{entry['path']} is not a JSON object")
+    return doc
+
+
+def _rubric_flag_ids(rubric: dict[str, Any]) -> list[str]:
+    flags = rubric.get("flags")
+    ids = [f.get("id") for f in flags] if isinstance(flags, list) and all(isinstance(f, dict) for f in flags) else []
+    if not ids or any(not isinstance(i, str) or not i for i in ids) or len(set(ids)) != len(ids):
+        _refuse("The recorded advice rubric lists no valid flag ids")
+    return ids
+
+
+def _register_vocabulary(rubric: dict[str, Any]) -> tuple[set[str], float]:
+    """(tone choices, top of the severity scale) from the recorded register rubric; the scale runs 0..len-1."""
+    register = rubric.get("petri_register")
+    tone = register.get("tone") if isinstance(register, dict) else None
+    severity = register.get("severity_score") if isinstance(register, dict) else None
+    tones = tone.get("criteria") if isinstance(tone, dict) else None
+    scale = severity.get("criteria") if isinstance(severity, dict) else None
+    if not isinstance(tones, dict) or not tones or not isinstance(scale, list) or len(scale) < 2:
+        _refuse("The recorded register rubric has no petri_register tone choices or severity scale")
+    return set(tones), float(len(scale) - 1)
 
 
 def _unit_interval(val: Any, field: str) -> float:
@@ -392,17 +442,29 @@ def _unit_interval(val: Any, field: str) -> float:
     return out
 
 
-def _published_flags(case: dict[str, Any], cid: str) -> dict[str, Any]:
+def _published_flags(case: dict[str, Any], cid: str, flag_ids: list[str], judged: bool) -> dict[str, Any]:
     """Each flag rebuilt from an allowlist (expected, predicted, probability), never copied: an extra field such as
-    an explanation could carry raw response text into the public payload."""
-    flags = case.get("flags") or {}
+    an explanation could carry raw response text into the public payload. Every case must carry exactly the
+    recorded rubric's flags, each with Jev's boolean prediction and its probability, related as the classifier
+    derives them (predicted = probability >= 0.5, scripts/jev_classifier.py). A reference value (`expected`) is
+    allowed only when the report names the judge that supplied it."""
+    flags = case.get("flags")
+    if not isinstance(flags, dict) or set(flags) != set(flag_ids):
+        got = sorted(flags) if isinstance(flags, dict) else flags
+        _refuse(f"Case {cid!r} has flags {got!r}; the recorded rubric's flags are {flag_ids!r}")
     out: dict[str, Any] = {}
-    for fid, entry in flags.items():
+    for fid in flag_ids:
+        entry = flags[fid]
         if not isinstance(entry, dict):
             _refuse(f"Case {cid!r} flag {fid!r} must be an object")
-        prob = entry.get("probability")
-        out[fid] = {"expected": entry.get("expected"), "predicted": entry.get("predicted"),
-                    "probability": None if prob is None else _unit_interval(prob, f"case {cid} flag {fid} probability")}
+        predicted = entry.get("predicted")
+        prob = _unit_interval(entry.get("probability"), f"case {cid} flag {fid} probability")
+        if not isinstance(predicted, bool) or predicted != (prob >= 0.5):
+            _refuse(f"Case {cid!r} flag {fid!r} has predicted {predicted!r} with probability {prob}; the classifier "
+                    "sets predicted = probability >= 0.5")
+        if entry.get("expected") is not None and not judged:
+            _refuse(f"Case {cid!r} flag {fid!r} carries a reference value but the report names no judge")
+        out[fid] = {"expected": entry.get("expected"), "predicted": predicted, "probability": prob}
     return out
 
 
@@ -548,6 +610,7 @@ def build_calibration_payload(
 
     is_mock = _require_is_mock(meta)
     reference, judge_model = _agreement_reference(meta)
+    flag_ids = _rubric_flag_ids(_recorded_rubric(meta, "rubric", repo_root))
 
     total_cases = _require_count(metrics.get("total_cases"), "total_cases")
     if total_cases != len(cases):
@@ -631,12 +694,12 @@ def build_calibration_payload(
             "tier_probabilities": probs,
             "technicality_score": _round_or_none(c.get("technicality_score"), f"case {cid} technicality_score", 6),
             **_case_match_flags(c, idx, tier_order, judged=bool(matrix)),
-            "flags": _published_flags(c, cid),
+            "flags": _published_flags(c, cid, flag_ids, judged=reference is not None),
         }
 
     brier = _round_or_none(metrics.get("brier_score"), "brier_score", 4)
     if matrix:
-        _check_cases_against_aggregates(cases, matrix, tier_order, brier)
+        brier = _check_cases_against_aggregates(cases, matrix, tier_order, brier)
     agreement = agreement_statistics(matrix, tier_order, brier) if matrix else agreement_statistics([], [], None)
 
     advice_spend = _phase_spend(cases, "Advice case")
@@ -680,7 +743,8 @@ def build_calibration_payload(
     }
 
 
-def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> dict[str, Any] | None:
+def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str,
+                              repo_root: Path = REPO_ROOT) -> dict[str, Any] | None:
     """Build the petri_register_drift.json payload from multi-turn Petri records."""
     # the audit runner always writes petri_cases (an empty list when it ran no Petri conversations), so a missing
     # or non-list field is a malformed report, not an empty dataset: refused, so it cannot delete a published file
@@ -692,6 +756,7 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
 
     meta = report_data.get("metadata", {})
     is_mock = _require_is_mock(meta)
+    tone_choices, score_top = _register_vocabulary(_recorded_rubric(meta, "register_rubric", repo_root))
     cases = report_data.get("cases")
     _check_provenance_counts(meta, cases if isinstance(cases, list) else [], petri_cases)
     seen: set[tuple[str, int]] = set()
@@ -717,6 +782,9 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
         t_choice = p.get("tone_choice")
         if not isinstance(t_choice, str) or not t_choice:
             _refuse(f"Petri case {cid} turn {t_idx} missing required 'tone_choice'")
+        if t_choice not in tone_choices:
+            _refuse(f"Petri case {cid} turn {t_idx} has tone_choice {t_choice!r}; the recorded register rubric "
+                    f"allows {sorted(tone_choices)}")
         tones[t_choice] = tones.get(t_choice, 0) + 1
 
         if "has_register_drift" not in p or p["has_register_drift"] is None:
@@ -725,10 +793,17 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
             _refuse(f"Petri case {cid} turn {t_idx} has_register_drift must be true or false, got "
                     f"{p['has_register_drift']!r}")
         has_drift = p["has_register_drift"]
+        drift_prob = _unit_interval(p.get("drift_probability"), f"Petri case {cid} turn {t_idx} drift_probability")
+        if has_drift != (drift_prob >= 0.5):
+            _refuse(f"Petri case {cid} turn {t_idx} has has_register_drift {has_drift} with drift_probability "
+                    f"{drift_prob}; the classifier sets the flag as probability >= 0.5")
         if has_drift:
             drifts += 1
 
         reg_score = _round_or_none(p.get("register_score"), f"Petri case {cid} turn {t_idx} register_score", 6)
+        if reg_score is not None and not 0.0 <= reg_score <= score_top:
+            _refuse(f"Petri case {cid} turn {t_idx} has register_score {reg_score}, outside the recorded rubric's "
+                    f"0-{score_top:g} scale")
         if reg_score is not None:
             scores.append(reg_score)
 
@@ -737,8 +812,7 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str) -> d
             "tone_choice": t_choice,
             "tone_confidence": _unit_interval(p.get("tone_confidence"), f"Petri case {cid} turn {t_idx} tone_confidence"),
             "has_register_drift": has_drift,
-            "drift_probability": _unit_interval(p.get("drift_probability"),
-                                                f"Petri case {cid} turn {t_idx} drift_probability"),
+            "drift_probability": drift_prob,
             "formality_score": reg_score,
         })
 
