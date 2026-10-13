@@ -1147,14 +1147,19 @@ def _jev_pair(site, report="r" * 64, mock=False, pooled=False):
                                   "advice_phase_spend": {}},
              "tier_order": ["a", "b"], "confusion_matrix": [[1, 0], [0, 0]], "flag_metrics_reference": "primary_judge",
              "flag_metrics": {}, "cases_summary": {}}
-    head = {"total_conversations": 1, "total_assistant_turns": 1, "applicable": {}, "petri_phase_spend": {}}
+    summary = {"conversations": 1, "assistant_turns": 1, "drift_turns": 0, "turn_drift_rate": 0.0,
+               "conversations_with_drift": 0, "conversation_drift_share": 0.0, "conversation_ci95_low": 0.0,
+               "conversation_ci95_high": 0.8, "mean_formality_score": 1.0, "formality_scored_turns": 1,
+               "tone_distribution": {"t": 1}}
+    head = {"total_conversations": 1, "total_assistant_turns": 1, "applicable": dict(summary), "petri_phase_spend": {}}
     if pooled:
         head["overall_drift_rate"] = 0.5
     drift = {"generated_utc": "t", "source_report_sha256": report, "model_requested": "m", "models_served": ["m"],
              "is_mock": False, "provenance": {}, "status": "exploratory", "per_turn_interval": "w",
+             "aggregate_interval": "w",
              "drift_instrument": {}, "headline_metrics": head,
-             "by_arm": [{"user_is": "u", "conversations": 1, "drift_instrument_applies": True, "assistant_turns": 1,
-                         "drift_turns": 0}], "drift_by_turn": [], "conversations": {}}
+             "by_arm": [{"user_is": "u", "register": "r", "drift_instrument_applies": True, **summary}],
+             "drift_by_turn": [], "conversations": {}}
     (data / "jev_calibration.json").write_text(json.dumps(calib), encoding="utf-8")
     (data / "petri_register_drift.json").write_text(json.dumps(drift), encoding="utf-8")
 
@@ -1196,3 +1201,16 @@ def test_jev_drift_without_per_arm_shape_is_an_error(site):
     path.write_text(json.dumps(obj), encoding="utf-8")
     errors = run(site).errors
     assert any("by_arm" in e for e in errors) and any("drift_instrument" in e for e in errors)
+
+
+
+@pytest.mark.parametrize("where,key", [("arm", "register"), ("arm", "conversation_ci95_high"),
+                                       ("arm", "tone_distribution"), ("applicable", "conversations_with_drift")])
+def test_jev_drift_summary_fields_are_all_checked(site, where, key):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    target = obj["by_arm"][0] if where == "arm" else obj["headline_metrics"]["applicable"]
+    del target[key]
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    assert any(key in e for e in run(site).errors)

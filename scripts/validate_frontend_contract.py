@@ -812,6 +812,7 @@ JEV_SPECS = {
     "petri_register_drift.json": {
         "top": {"generated_utc": str, "source_report_sha256": str, "model_requested": str, "models_served": list,
                 "is_mock": bool, "provenance": dict, "status": str, "per_turn_interval": str,
+                "aggregate_interval": str,
                 "drift_instrument": dict, "headline_metrics": dict,
                 "by_arm": list, "drift_by_turn": list, "conversations": dict},
         "nullable": set(),
@@ -820,8 +821,15 @@ JEV_SPECS = {
         "headline_nullable": set(),
     },
 }
-JEV_ARM_FIELDS = (("user_is", str), ("conversations", int), ("drift_instrument_applies", bool),
-                  ("assistant_turns", int), ("drift_turns", int))
+# the drift summary export_jev_calibration._drift_summary writes for each arm and for the headline's `applicable`:
+# field, type, nullable (Codex review of PR #107: every field a consumer labels or renders, not only the counts)
+JEV_SUMMARY_FIELDS = (("conversations", int, False), ("assistant_turns", int, False), ("drift_turns", int, False),
+                      ("turn_drift_rate", NUM, True), ("conversations_with_drift", int, False),
+                      ("conversation_drift_share", NUM, True), ("conversation_ci95_low", NUM, True),
+                      ("conversation_ci95_high", NUM, True), ("mean_formality_score", NUM, True),
+                      ("formality_scored_turns", int, False), ("tone_distribution", dict, False))
+JEV_ARM_FIELDS = (("user_is", str, False), ("register", str, True), ("drift_instrument_applies", bool, False)) \
+    + JEV_SUMMARY_FIELDS
 
 
 def check_jev_payloads(rep: Report, site: Path):
@@ -851,8 +859,12 @@ def check_jev_payloads(rep: Report, site: Path):
             reports[name] = data["source_report_sha256"]
         if name == "petri_register_drift.json":
             for i, arm in enumerate(data.get("by_arm") or []):
-                for key, kinds in JEV_ARM_FIELDS:
-                    need(rep, name, arm, key, kinds, f"$.by_arm[{i}]")
+                for key, kinds, nullable in JEV_ARM_FIELDS:
+                    need(rep, name, arm, key, kinds, f"$.by_arm[{i}]", nullable=nullable)
+            app = head.get("applicable") if isinstance(head, dict) else None
+            if isinstance(app, dict):
+                for key, kinds, nullable in JEV_SUMMARY_FIELDS:
+                    need(rep, name, app, key, kinds, "$.headline_metrics.applicable", nullable=nullable)
     if len(set(reports.values())) > 1:
         rep.err(" and ".join(reports), "$.source_report_sha256", "the two Jev payloads come from different reports")
 

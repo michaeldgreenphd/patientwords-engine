@@ -788,11 +788,14 @@ DRIFT_REGISTERS = ("colloquial", "lay_careful")
 
 
 def conversation_arms(meta: dict[str, Any], repo_root: Path = REPO_ROOT) -> dict[str, dict[str, Any]]:
-    """Each Petri conversation's seed, arm, speaker and register, read from the run the report scored: the transcripts
-    file the report recorded (sha256 verified), the analysis rows beside it (conversation -> seed and arm), the run's
-    manifest (seed file and per-seed digest) and the seed itself (the arm's `user_is`, and the register its texts
-    declare). Refuses when any link is missing or disagrees, so no conversation is placed in an arm by guesswork."""
+    """Each Petri conversation's seed, arm, speaker and register, read from the run the report scored, through bound
+    artifacts only: the transcripts file the report recorded (sha256 verified), the run's manifest, which must pass
+    `manifest.verify_run` and bind those same transcripts, its trees (conversation -> seed and arm; the manifest binds
+    them, unlike analysis_rows.jsonl, which repro_pack.py notes is not manifest-bound), and the seed itself, digest
+    verified (the arm's `user_is`, and the register its texts declare). Refuses when any link is missing or disagrees,
+    so no conversation is placed in an arm by guesswork."""
     from scripts.petri_audit.framework import FRAMING_REGISTRY
+    from scripts.petri_audit.manifest import verify_run
     from scripts.petri_audit.seeds import seed_digest
 
     registers = set()
@@ -810,22 +813,23 @@ def conversation_arms(meta: dict[str, Any], repo_root: Path = REPO_ROOT) -> dict
     if not transcripts.is_file() or hashlib.sha256(transcripts.read_bytes()).hexdigest() != recorded:
         _refuse(f"{entry['path']} is missing or differs from the transcripts the audit scored")
     run_dir = transcripts.parent
-    rows_path, manifest_path = run_dir / "analysis_rows.jsonl", run_dir / "manifest.json"
-    if not rows_path.is_file() or not manifest_path.is_file():
-        _refuse(f"{run_dir.relative_to(repo_root)} has no analysis_rows.jsonl or manifest.json beside its transcripts")
+    problems = verify_run(run_dir)
+    if problems:
+        _refuse(f"{run_dir.relative_to(repo_root)} does not verify: {'; '.join(problems[:3])}")
+    manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+    if (manifest.get("artifacts") or {}).get("transcripts_sha256") != recorded:
+        _refuse(f"{run_dir.relative_to(repo_root)}/manifest.json binds other transcripts than the ones the audit scored")
 
     placed: dict[str, tuple[str, str]] = {}
-    for line_no, line in enumerate(rows_path.read_text(encoding="utf-8").splitlines(), 1):
-        if not line.strip():
-            continue
-        row = json.loads(line)
-        cid, seed_id, arm = row.get("conversation_id"), row.get("seed_id"), row.get("arm")
-        if not all(isinstance(v, str) and v for v in (cid, seed_id, arm)):
-            _refuse(f"{rows_path.name} line {line_no} lacks conversation_id, seed_id or arm")
-        if placed.setdefault(cid, (seed_id, arm)) != (seed_id, arm):
-            _refuse(f"Conversation {cid} is placed in two arms in {rows_path.name}")
+    for tree in manifest.get("trees", []):
+        seed_id, arm = tree.get("seed_id"), tree.get("arm")
+        for branch in tree.get("branches", []):
+            cid = branch.get("conversation_id")
+            if not all(isinstance(v, str) and v for v in (cid, seed_id, arm)):
+                _refuse(f"Manifest tree {tree.get('tree_id')!r} lacks a conversation_id, seed_id or arm")
+            if placed.setdefault(cid, (seed_id, arm)) != (seed_id, arm):
+                _refuse(f"Conversation {cid} is placed in two arms by the manifest")
 
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     seeds: dict[str, dict[str, Any]] = {}
     for rec in manifest.get("seeds", []):
         doc = json.loads((repo_root / rec["file"]).read_text(encoding="utf-8"))
@@ -851,16 +855,25 @@ def conversation_arms(meta: dict[str, Any], repo_root: Path = REPO_ROOT) -> dict
     return out
 
 
-def _drift_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+def _drift_summary(by_conversation: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
+    """Drift and register for a set of conversations. A conversation's turns are not independent observations, so the
+    turn rate is descriptive and carries no interval; the inferential unit is the conversation: how many had any drift
+    turn, with a Wilson interval over conversations (Codex review of PR #107)."""
+    rows = [r for turns in by_conversation.values() for r in turns]
     n = len(rows)
     k = sum(r["has_register_drift"] for r in rows)
-    lo, hi = _wilson(k, n)
+    convs = len(by_conversation)
+    with_drift = sum(any(r["has_register_drift"] for r in turns) for turns in by_conversation.values())
+    lo, hi = _wilson(with_drift, convs)
     scores = [r["formality_score"] for r in rows if r["formality_score"] is not None]
     tones: dict[str, int] = {}
     for r in rows:
         tones[r["tone_choice"]] = tones.get(r["tone_choice"], 0) + 1
-    return {"assistant_turns": n, "drift_turns": k, "drift_rate": round(k / n, 4) if n else None,
-            "ci95_low": lo, "ci95_high": hi,
+    return {"conversations": convs, "assistant_turns": n, "drift_turns": k,
+            "turn_drift_rate": round(k / n, 4) if n else None,
+            "conversations_with_drift": with_drift,
+            "conversation_drift_share": round(with_drift / convs, 4) if convs else None,
+            "conversation_ci95_low": lo, "conversation_ci95_high": hi,
             "mean_formality_score": round(sum(scores) / len(scores), 3) if scores else None,
             "formality_scored_turns": len(scores), "tone_distribution": tones}
 
@@ -963,9 +976,9 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str, repo
     groups: dict[tuple[Any, Any], list[str]] = {}
     for cid in conversations:
         groups.setdefault((arms[cid]["user_is"], arms[cid]["register"]), []).append(cid)
-    by_arm = [{"user_is": user_is, "register": register, "conversations": len(cids),
+    by_arm = [{"user_is": user_is, "register": register,
                "drift_instrument_applies": arms[cids[0]]["drift_instrument_applies"],
-               **_drift_summary([r for c in cids for r in conversations[c]])}
+               **_drift_summary({c: conversations[c] for c in cids})}
               for (user_is, register), cids in sorted(groups.items(), key=lambda kv: (str(kv[0][0]), str(kv[0][1])))]
     applicable = [c for c in conversations if arms[c]["drift_instrument_applies"]]
 
@@ -996,14 +1009,14 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str, repo
                                 "petri_transcripts", "checkpoint")},
         "status": "exploratory",
         "per_turn_interval": "wilson_95; per-turn marginal, not a test of trend (the same conversations recur)",
+        "aggregate_interval": "wilson_95 over conversations (conversations_with_drift); turn_drift_rate is descriptive",
         "drift_instrument": {"applies_to": {"user_is": DRIFT_SPEAKER, "registers": list(DRIFT_REGISTERS)},
                              "question_source": "register_rubric petri_register.drift.instructions"},
         "headline_metrics": {
             "total_conversations": len(conversations),
             "total_assistant_turns": len(petri_cases),
             # drift where the question applies; the per-arm table carries every arm, the others included
-            "applicable": {"conversations": len(applicable),
-                           **_drift_summary([r for c in applicable for r in conversations[c]])},
+            "applicable": _drift_summary({c: conversations[c] for c in applicable}),
             "petri_phase_spend": _phase_spend(petri_cases, "Petri case"),
             "min_turn_n": min(t["n"] for t in drift_by_turn),
             "max_turn_n": max(t["n"] for t in drift_by_turn),
@@ -1141,9 +1154,10 @@ def main(argv: list[str] | None = None) -> int:
         p_head = petri_payload["headline_metrics"]
         app = p_head["applicable"]
         print(f"Petri conversations: {p_head['total_conversations']} ({p_head['total_assistant_turns']} turns)")
-        print(f"Drift where the question applies ({app['conversations']} conversations): {app['drift_turns']}/"
-              f"{app['assistant_turns']} turns ({app['drift_rate']*100:.1f}%, Wilson 95% {app['ci95_low']}-"
-              f"{app['ci95_high']})")
+        print(f"Drift where the question applies: {app['drift_turns']}/{app['assistant_turns']} turns "
+              f"({app['turn_drift_rate']*100:.1f}%, descriptive); {app['conversations_with_drift']}/"
+              f"{app['conversations']} conversations with any drift (Wilson 95% {app['conversation_ci95_low']}-"
+              f"{app['conversation_ci95_high']})")
         for arm in petri_payload["by_arm"]:
             print(f"  {arm['user_is']} / {arm['register']}: drift {arm['drift_turns']}/{arm['assistant_turns']}, "
                   f"mean formality {arm['mean_formality_score']}"

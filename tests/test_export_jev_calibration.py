@@ -226,7 +226,8 @@ def test_build_petri_drift_payload(mock_report_data):
     assert head["total_assistant_turns"] == 3
     app = head["applicable"]
     assert (app["conversations"], app["assistant_turns"], app["drift_turns"]) == (2, 3, 1)
-    assert app["drift_rate"] == pytest.approx(0.3333, rel=1e-3)
+    assert app["turn_drift_rate"] == pytest.approx(0.3333, rel=1e-3)
+    assert "ci95_low" not in app                    # turns within a conversation are not independent: no turn interval
     assert app["tone_distribution"] == {"mixed": 2, "clinical": 1}
     assert {(a["user_is"], a["register"]) for a in payload["by_arm"]} == {("patient", "colloquial"),
                                                                           ("patient", "lay_careful")}
@@ -1370,3 +1371,41 @@ def test_exported_payloads_pass_the_site_contract_gate(tmp_path, mock_report_dat
     rep = vfc.Report()
     vfc.check_jev_payloads(rep, tmp_path / "site")
     assert rep.errors == [] and rep.warnings == []
+
+
+
+# Codex review of PR #107: arms come from the manifest (bound), and inference is per conversation, not per turn.
+
+
+def test_aggregate_interval_is_over_conversations_not_turns(mock_report_data):
+    """Two conversations, one with a drift turn among two turns: the turn rate is 1/3 (descriptive), the interval is
+    Wilson over 1 of 2 conversations."""
+    app = build_petri_drift_payload(mock_report_data, report_sha="sha")["headline_metrics"]["applicable"]
+    assert (app["conversations_with_drift"], app["conversations"]) == (1, 2)
+    assert app["conversation_drift_share"] == 0.5
+    assert app["conversation_ci95_low"] < 0.5 < app["conversation_ci95_high"]
+
+
+def test_arm_mapping_comes_from_the_manifest_not_analysis_rows(tmp_path, mock_report_data):
+    """A copy of the run whose analysis_rows.jsonl moves a conversation to another arm places it where the manifest
+    does; a copy whose manifest no longer verifies is refused."""
+    import shutil
+    src = ROOT / "data" / "petri" / "runs" / "run_35937014168_1"
+    run = tmp_path / "data" / "petri" / "runs" / src.name
+    shutil.copytree(src, run)
+    (tmp_path / "data" / "advice_rubric.draft.json").write_bytes((ROOT / ADVICE_RUBRIC).read_bytes())
+    (tmp_path / "data" / "register_rubric.json").write_bytes((ROOT / REGISTER_RUBRIC).read_bytes())
+    shutil.copytree(ROOT / "docs" / "framework", tmp_path / "docs" / "framework")
+    rows = [json.loads(line) for line in (run / "analysis_rows.jsonl").read_text(encoding="utf-8").splitlines()]
+    for r in rows:
+        if r["conversation_id"] == CONV_A:
+            r["arm"] = "clinical"
+    (run / "analysis_rows.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    payload = build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
+    assert payload["conversations"][CONV_A]["register"] == "colloquial"
+    manifest = json.loads((run / "manifest.json").read_text(encoding="utf-8"))
+    manifest["trees"][0]["arm"] = "tampered"
+    (run / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
+    assert exc.value.code == 2
