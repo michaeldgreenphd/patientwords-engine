@@ -30,14 +30,23 @@ def _load(name: str):
 sidecar = _load("jev_audit_sidecar")
 ft = _load("fire_trigger")
 
-LIVE = {**ft.JEV_DEFAULTS, "live": "true", "max_spend": "0.20"}
+LIVE = {**ft.JEV_DEFAULTS, "live": "true", "max_spend": "0.20", "_nonce": "jev-1"}
 
 
-def _report(billed=0.11, estimated=0.09, unbilled=0, **meta):
+def _row(cost, estimate):
+    return {"cost_usd": cost, "estimated_cost_usd": estimate}
+
+
+def _report(rows=None, **meta):
+    """A report whose metrics agree with its rows: two advice calls and one Petri call, all billed by default."""
+    advice = rows[:2] if rows else [_row(0.05, 0.04), _row(0.05, 0.04)]
+    petri = rows[2:] if rows else [_row(0.01, 0.01)]
+    every = advice + petri
     return {"metadata": {"timestamp_utc": "2026-10-12T05:00:00Z", **meta},
-            "metrics": {"total_cost_usd": billed, "total_estimated_cost_usd": estimated,
-                        "unbilled_calls_count": unbilled},
-            "cases": [{"id": "a"}, {"id": "b"}], "petri_cases": [{"turn_index": 1}]}
+            "metrics": {"total_cost_usd": sum(r["cost_usd"] or 0 for r in every),
+                        "total_estimated_cost_usd": sum(r["estimated_cost_usd"] for r in every),
+                        "unbilled_calls_count": sum(r["cost_usd"] is None for r in every)},
+            "cases": advice, "petri_cases": petri}
 
 
 def _build(report, started=True):
@@ -49,16 +58,33 @@ def _build(report, started=True):
 
 def test_a_fully_billed_report_books_its_billed_cost_to_openrouter():
     sc = _build(_report())
+    assert sc["cost_usd"] == pytest.approx(0.11)
     assert sc["cost_usd"] == pytest.approx(0.11) and sc["cost_basis"] == "provider_billed"
     assert sc["billing_channel"] == "openrouter" and sc["task"] == "jev-audit"
     assert sc["run_utc"] == "2026-10-12T05:00:00Z" and sc["calls"] == 3 and sc["journal_nonce"] == "n1"
     assert sc["interrupted"] is False
 
 
-def test_unbilled_calls_book_the_estimate_when_it_is_larger():
-    sc = _build(_report(billed=0.02, estimated=0.09, unbilled=4))
-    assert sc["cost_usd"] == pytest.approx(0.09)
-    assert sc["cost_basis"] == "billed_plus_estimate_for_unbilled_calls"
+def test_an_unbilled_call_adds_its_own_estimate_to_the_billed_spend():
+    # Codex review of PR #110: a billed call of $0.10 estimated at $0.01 and an unbilled call estimated at $0.02 give
+    # a $0.03 estimate over all calls; max(billed, estimate) booked $0.10 and lost the unbilled call
+    sc = _build(_report([_row(0.10, 0.01), _row(None, 0.02), _row(0.0, 0.0)]))
+    assert sc["cost_usd"] == pytest.approx(0.12)
+    assert sc["cost_basis"] == "billed_plus_estimate_for_unbilled_calls" and sc["unbilled_calls_count"] == 1
+
+
+def test_rows_that_disagree_with_the_unbilled_count_are_refused():
+    report = _report([_row(0.10, 0.01), _row(None, 0.02), _row(0.0, 0.0)])
+    report["metrics"]["unbilled_calls_count"] = 0
+    with pytest.raises(ValueError, match="unbilled_calls_count"):
+        _build(report)
+
+
+def test_an_interrupted_report_books_at_least_the_ceiling():
+    # Codex review of PR #110: the call that raised may have been billed and is in no row
+    sc = _build(_report(interrupted={"reason": "classifier error"}))
+    assert sc["cost_usd"] == pytest.approx(0.2) and sc["cost_basis"] == "ceiling_imputed:interrupted"
+    assert sc["interrupted"] is True
 
 
 def test_a_started_run_without_a_report_books_the_whole_ceiling():
@@ -68,10 +94,6 @@ def test_a_started_run_without_a_report_books_the_whole_ceiling():
 
 def test_a_run_that_never_started_writes_no_sidecar():
     assert _build(None, started=False) is None
-
-
-def test_an_interrupted_report_is_labelled():
-    assert _build(_report(interrupted={"reason": "ceiling"}))["interrupted"] is True
 
 
 @pytest.mark.parametrize("metrics", [
@@ -140,6 +162,8 @@ def test_only_a_live_run_is_paid_and_it_bills_openrouter():
     ({"archive": "../outside.jsonl"}, "repo-relative"),
     ({"petri_transcripts": "data\\petri\\x.jsonl"}, "repo-relative"),
     ({"archive": "data/advice/no_such_archive.jsonl"}, "does not exist"),
+    ({"live": "true", "_nonce": ""}, "_nonce"),
+    ({"live": "true", "_nonce": " padded "}, "_nonce"),
 ])
 def test_bad_params_are_refused(change, fragment):
     problems = ft.jev_params_problems({**ft.JEV_DEFAULTS, **change})
@@ -185,7 +209,7 @@ def test_the_heredoc_reads_the_trigger_file_and_its_defaults_match_the_fire_guar
 
 
 def test_a_live_fire_resolves_with_its_nonce(tmp_path):
-    rc, out, err = _run(tmp_path, {**LIVE, "_nonce": "jev-1"})
+    rc, out, err = _run(tmp_path, LIVE)
     assert rc == 0, err
     assert "live=true\n" in out and "max_spend=0.20\n" in out and "_nonce=jev-1\n" in out
 
@@ -209,6 +233,7 @@ def test_a_dispatch_never_reads_the_trigger_file_and_runs_mock(tmp_path):
     ({**LIVE, "_nonce": "x\nmax_spend=99"}, "1", "control character"),
     ({**LIVE, "archive": "../x.jsonl"}, "1", "repo-relative"),
     ({**LIVE, "model": "jev"}, "1", "vendor/model"),
+    ({k: v for k, v in LIVE.items() if k != "_nonce"}, "1", "_nonce"),
 ])
 def test_the_heredoc_refuses_before_any_output(tmp_path, cfg, attempt, fragment):
     rc, out, err = _run(tmp_path, cfg, attempt=attempt)
@@ -224,3 +249,34 @@ def test_every_job_skips_ref_creation_and_the_key_reaches_live_runs_only():
     assert "needs.params.outputs.live == 'true'" in run_step["env"]["OPENROUTER_API_KEY"]
     assert wf["concurrency"]["cancel-in-progress"] is False
     assert wf[True]["push"]["paths"] == [TRIGGER_LITERAL.strip('"')]   # yaml reads `on:` as True
+
+
+# --- the server-side reservation (Codex review of PR #110) ------------------------------------------------------
+
+def test_a_live_fire_with_no_journal_entry_is_refused_by_the_gate():
+    """A live trigger that reached the branch without fire_trigger.py (a merge, a hand push) has no reservation, and
+    budget-gate refuses it; a mock run needs none."""
+    assert "jev-audit" in ft.NONCE_LANES
+    problems = ft.journal_reservation_problems("jev-audit", LIVE, entries=[])
+    assert problems and "no jev-audit journal entry carries _nonce" in problems[0]
+    assert ft.reservation_entries("jev-audit", {**LIVE, "live": "false"}, []) is None
+
+
+def test_the_reservation_must_be_on_the_ref_ci_runs():
+    entry = {"trigger": "jev-audit", "nonce": "jev-1", "ref": "main", "max_spend": "0.20"}
+    assert ft.ref_reservation_problems("jev-audit", LIVE, [entry], "main", True) == []
+    assert ft.ref_reservation_problems("jev-audit", LIVE, [entry], "other", True)
+
+
+def test_input_paths_are_checked_in_the_checkout_the_fire_targets(tmp_path):
+    """fire --repo <checkout>: the paths must exist in that checkout, not in the one holding the script."""
+    for key in ("archive", "petri_transcripts"):
+        target = tmp_path / ft.JEV_DEFAULTS[key]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("{}\n", encoding="utf-8")
+    elsewhere = {**ft.JEV_DEFAULTS, "archive": "data/only_in_target.jsonl"}
+    (tmp_path / "data" / "only_in_target.jsonl").write_text("{}\n", encoding="utf-8")
+    assert ft.lane_params_problems("jev-audit", elsewhere, repo=tmp_path) == []
+    assert any("does not exist" in p for p in ft.lane_params_problems("jev-audit", elsewhere))
+    with pytest.raises(ValueError, match="does not exist"):
+        ft.validate_params("jev-audit", {**ft.PARK_DEFAULTS["jev-audit"]}, repo=tmp_path / "empty")

@@ -76,6 +76,14 @@ def repo(tmp_path):
     return tmp_path
 
 
+def stub_jev_inputs(repo):
+    """jev-audit checks its input files in the checkout the fire targets (--repo), so parking it there needs them."""
+    for key in ("archive", "petri_transcripts"):
+        stub = repo / ft.PARK_DEFAULTS["jev-audit"][key]
+        stub.parent.mkdir(parents=True, exist_ok=True)
+        stub.write_text("", encoding="utf-8")
+
+
 def test_third_fire_refused_with_exit_2(repo, capsys):
     assert fire(repo, params={"mode": "2panel", "_nonce": "1"}, note="first") == 0
     assert fire(repo, params={"mode": "2panel", "_nonce": "2"}, note="second",
@@ -1339,6 +1347,7 @@ def test_park_all_stops_at_first_refusal(repo, capsys):
 
 def test_park_all_succeeds_with_budget(repo):
     write_dashboard(repo, 0.0)
+    stub_jev_inputs(repo)
     rc = ft.main(["park", "--repo", str(repo), "--all", "--no-git"])
     assert rc == 0
     for t in ft.PARK_DEFAULTS:

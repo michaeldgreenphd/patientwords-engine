@@ -134,6 +134,10 @@ jobs:
           # reservation the daily ceiling counts, and neither a workflow_dispatch nor an Actions-tab re-run has one
           if p["live"] == "true" and os.environ["EVENT_NAME"] != "push":
               raise SystemExit("a live run is fired through scripts/fire_trigger.py only; a workflow_dispatch runs mock")
+          # the nonce binds the journal entry that reserved a live run's spend to its cost sidecar; budget-gate below
+          # requires that reservation (fire_trigger.NONCE_LANES), and fire_trigger.py refuses a live fire without one
+          if p["live"] == "true" and (not nonce or nonce != nonce.strip()):
+              raise SystemExit("a live run must carry a non-empty _nonce; fire through scripts/fire_trigger.py")
           if p["live"] == "true" and os.environ.get("RUN_ATTEMPT", "1") != "1":
               raise SystemExit(f"a live run cannot be re-run from the Actions tab (attempt "
                                f"{os.environ.get('RUN_ATTEMPT')} has no reservation of its own); re-fire through "

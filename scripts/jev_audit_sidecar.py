@@ -5,9 +5,12 @@ spend (the 2026-10-12 run's $0.11 never reached the ledger). The jev-audit workf
 failure or not, and commits the sidecar on its own, the way the Petri lane commits its sidecars.
 
 What is booked, failing closed:
-- the report exists: its billed spend (`metrics.total_cost_usd`). When some calls came back without provider billing
-  (`metrics.unbilled_calls_count` > 0), the report's estimate over every call (`metrics.total_estimated_cost_usd`) is
-  booked when larger, so an unbilled call is never booked at zero.
+- the report exists: its billed spend (`metrics.total_cost_usd`) plus, for each call that came back without provider
+  billing (a row with `cost_usd` null), that call's own list-price estimate (`estimated_cost_usd`), so an unbilled call
+  is never booked at zero. The rows must account for `metrics.unbilled_calls_count` exactly (Codex review of PR #110:
+  the earlier max(billed, estimate over all calls) could fall below billed plus the unbilled calls' estimates).
+- the report is marked interrupted (the runner writes a partial report when a call raised or the ceiling stopped it):
+  the whole `max_spend` at least, because the call that failed may have been billed and is in no row.
 - no report, but the run started (the workflow writes a start marker just before the paid step): the fire's whole
   `max_spend`, labelled `ceiling_imputed:report_missing`, because the calls made before the failure are unknown.
 - no report and no start marker: nothing was called and nothing is written.
@@ -54,19 +57,30 @@ def build_sidecar(report: dict | None, *, report_sha256: str | None, model: str,
     if not isinstance(metrics, dict):
         raise ValueError("report has no metrics object")
     billed = _cost(metrics.get("total_cost_usd"), "total_cost_usd")
-    estimated = _cost(metrics.get("total_estimated_cost_usd"), "total_estimated_cost_usd")
     unbilled = metrics.get("unbilled_calls_count")
     if isinstance(unbilled, bool) or not isinstance(unbilled, int) or unbilled < 0:
         raise ValueError(f"report metrics.unbilled_calls_count must be a non-negative integer, got {unbilled!r}")
-    if unbilled:
-        cost, basis = max(billed, estimated), "billed_plus_estimate_for_unbilled_calls"
-    else:
-        cost, basis = billed, "provider_billed"
-    calls = len(report.get("cases") or []) + len(report.get("petri_cases") or [])
-    stamp = (report.get("metadata") or {}).get("timestamp_utc") or run_utc
+    rows = []
+    for field in ("cases", "petri_cases"):
+        part = report.get(field, [])
+        if not isinstance(part, list) or not all(isinstance(r, dict) for r in part):
+            raise ValueError(f"report {field} must be a list of objects")
+        rows.extend(part)
+    unbilled_rows = [r for r in rows if r.get("cost_usd") is None]
+    if len(unbilled_rows) != unbilled:
+        raise ValueError(f"report metrics.unbilled_calls_count is {unbilled} but {len(unbilled_rows)} rows have no "
+                         "billed cost")
+    unbilled_estimate = sum(_cost(r.get("estimated_cost_usd"), "rows' estimated_cost_usd") for r in unbilled_rows)
+    cost = billed + unbilled_estimate
+    basis = "billed_plus_estimate_for_unbilled_calls" if unbilled else "provider_billed"
+    meta = report.get("metadata") or {}
+    interrupted = "interrupted" in meta
+    if interrupted and cost < max_spend:
+        cost, basis = max_spend, "ceiling_imputed:interrupted"
+    stamp = meta.get("timestamp_utc") or run_utc
     return {**base, "run_utc": stamp, "cost_usd": round(cost, 6), "cost_basis": basis,
-            "source_report_sha256": report_sha256, "unbilled_calls_count": unbilled, "calls": calls,
-            "interrupted": bool((report.get("metadata") or {}).get("interrupted"))}
+            "source_report_sha256": report_sha256, "unbilled_calls_count": unbilled, "calls": len(rows),
+            "interrupted": interrupted}
 
 
 def main(argv: list[str] | None = None) -> int:

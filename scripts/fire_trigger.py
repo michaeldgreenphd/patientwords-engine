@@ -86,6 +86,11 @@ TRIGGERS = (
 # a mock run (live false, the park) calls nothing and costs $0, so it is exempt like petri-audit's free modes.
 PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval", "petri-audit", "pab-probe",
                            "jev-audit"})
+# The lanes whose paid fires carry a `_nonce` that binds the journal entry reserving the spend to the run and its cost
+# sidecar, so budget-gate can REQUIRE that reservation server-side (journal_reservation_problems,
+# push_reservation_problems, ref_reservation_problems). jev-audit joined petri-audit on 2026-10-14 (Codex review of
+# PR #110): without it a live trigger reaching a branch by merge or hand push ran whenever the lane had headroom.
+NONCE_LANES = frozenset({"petri-audit", "jev-audit"})
 # Two circuit-trace paths make Anthropic translation calls, the only paid paths
 # outside PAID_TRIGGERS: show_mitigation=true (2panel's LLM-translated third
 # panel) and mode translation (every pair's patient prompt is LLM-translated,
@@ -1515,7 +1520,7 @@ def _jev_job_value(params: dict, key: str) -> str:
 
 def jev_params_problems(params: dict, repo: Path | None = None) -> list[str]:
     """jev-audit's rules, as its params job applies them: `live` and `commit_outputs` exactly "true" or "false";
-    commit_outputs only with live (a mock report is never committed); sample counts non-negative integers (0 means
+    a live fire carries a `_nonce`; commit_outputs only with live (a mock report is never committed); sample counts non-negative integers (0 means
     all); max_spend a positive finite number; the model an OpenRouter
     `vendor/model` id; and both inputs repo-relative files that exist in this checkout, with no backslash and no
     `..`, since the job reads them from the checkout."""
@@ -1526,6 +1531,15 @@ def jev_params_problems(params: dict, repo: Path | None = None) -> list[str]:
     for key in ("archive_samples", "petri_conversations"):
         if not _jev_job_value(params, key).isdigit():
             problems.append(f"jev-audit {key} {params.get(key)!r}: a non-negative integer (0 means all)")
+    if _jev_job_value(params, "live") == "true":
+        nonce = params.get("_nonce")
+        # the rule petri-audit's paid modes apply, for the same reason: the nonce is the only join key between the
+        # journal entry that reserves the spend and the cost sidecar the run lands, and budget-gate requires that
+        # reservation (NONCE_LANES); a falsy, boolean or padded value could never be joined
+        if (isinstance(nonce, bool) or not isinstance(nonce, (str, int)) or not nonce
+                or not str(nonce).strip() or str(nonce) != str(nonce).strip()):
+            problems.append(f"jev-audit live true must carry a non-empty _nonce (the join key between the journal "
+                            f"entry that reserves the spend and the cost sidecar), got {nonce!r}")
     if _jev_job_value(params, "commit_outputs") == "true" and _jev_job_value(params, "live") != "true":
         problems.append("jev-audit commit_outputs true needs live true: a mock report is not a measurement")
     if parse_max_spend(_jev_job_value(params, "max_spend")) is None:
@@ -1542,7 +1556,8 @@ def jev_params_problems(params: dict, repo: Path | None = None) -> list[str]:
     return problems
 
 
-def lane_params_problems(trigger: str, params: dict, registry: dict | None = None) -> list:
+def lane_params_problems(trigger: str, params: dict, registry: dict | None = None,
+                         repo: Path | None = None) -> list:
     """Lane-specific invariants beyond the key set; empty for lanes that have none."""
     if trigger == "petri-audit":
         return petri_params_problems(params, registry)
@@ -1553,7 +1568,8 @@ def lane_params_problems(trigger: str, params: dict, registry: dict | None = Non
     if trigger == "logits-eval":
         return logits_eval_params_problems(params)
     if trigger == "jev-audit":
-        return jev_params_problems(params)
+        # the checkout the fire writes to (fire --repo), so input paths are checked in the tree CI will run
+        return jev_params_problems(params, repo)
     return []
 
 
@@ -1816,7 +1832,7 @@ def recently_resolved(entries, trigger, now, settle_minutes):
     return sorted(hits, key=lambda e: parse_utc(e["resolved_utc"]), reverse=True)
 
 
-def validate_params(trigger, params):
+def validate_params(trigger, params, repo=None):
     """ValueError on non-dict params or on any unknown non-underscore key.
 
     Every trigger's key set in KNOWN_KEYS is verified against its workflow's
@@ -1851,7 +1867,7 @@ def validate_params(trigger, params):
             "read later wins - a value could silently rewrite mode, target or a spend ceiling after the "
             "job's own checks passed. No legitimate value carries one"
         )
-    problems = lane_params_problems(trigger, params)
+    problems = lane_params_problems(trigger, params, repo=repo)
     if problems:
         raise ValueError("; ".join(problems))
 
@@ -2483,7 +2499,7 @@ def cmd_fire(args):
         print(f"refused: params are not valid JSON ({exc})", file=sys.stderr)
         return 3
     try:
-        validate_params(args.trigger, params)
+        validate_params(args.trigger, params, repo)
     except ValueError as exc:
         print(f"refused: {exc}", file=sys.stderr)
         return 3
@@ -2857,7 +2873,7 @@ def ref_reservation_problems(trigger, params, entries, ref, required):
     sidecars carrying one nonce (Codex round 11 on PR #28). `cmd_fire` records the branch it fired on, and this
     requires CI's ref to be that one.
     """
-    if trigger != "petri-audit" or not is_paid_fire(trigger, params):
+    if trigger not in NONCE_LANES or not is_paid_fire(trigger, params):
         return []
     mine = reservation_entries(trigger, params, entries) or []
     if len(mine) != 1:
@@ -2900,7 +2916,7 @@ def push_reservation_problems(repo, trigger, params, before, required):
     always running a push (a paid run is push-only, attempt 1 only, enforced in the params job), so a missing
     `--push-before` there is a workflow that stopped passing it, not a caller who had nothing to pass.
     """
-    if trigger != "petri-audit" or not is_paid_fire(trigger, params):
+    if trigger not in NONCE_LANES or not is_paid_fire(trigger, params):
         return []
     nonce = params.get("_nonce")
     if isinstance(nonce, bool) or nonce in (None, "") or not str(nonce).strip():
@@ -3224,7 +3240,7 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
         if text is None:
             raise ValueError(f"no {rel} at {head[:12]}")
         params = json.loads(text)
-        validate_params(trigger, params)
+        validate_params(trigger, params, repo)
     except (json.JSONDecodeError, ValueError) as exc:
         print(f"refused: {rel} at {head[:12]} does not hold a valid fire: {exc}", file=sys.stderr)
         return 3, head
@@ -3529,11 +3545,11 @@ def reservation_entries(trigger, params, entries):
     """The journal entries that claim to reserve THIS fire, or None when the
     lane has no join key to look one up by.
 
-    Only petri-audit's params must carry a `_nonce`, and that nonce is what
-    binds a fire to its landed cost; the other paid lanes have nothing to match
-    on, so they get None and every caller leaves them alone.
+    Only the NONCE_LANES' paid params must carry a `_nonce`, and that nonce is
+    what binds a fire to its landed cost; the other paid lanes have nothing to
+    match on, so they get None and every caller leaves them alone.
     """
-    if trigger != "petri-audit" or not is_paid_fire(trigger, params):
+    if trigger not in NONCE_LANES or not is_paid_fire(trigger, params):
         return None
     nonce = params.get("_nonce")
     if isinstance(nonce, bool) or nonce in (None, "") or not str(nonce).strip():
@@ -3998,7 +4014,7 @@ def cmd_budget_gate(args):
         return 6
     # lane invariants the fire path enforces in validate_params run here too, because a workflow_dispatch never
     # passes through fire_trigger (Codex round 3)
-    problems = lane_params_problems(args.trigger, params, providers_registry(repo))
+    problems = lane_params_problems(args.trigger, params, providers_registry(repo), repo=repo)
     # a readapt must be the recovery of the run it names, with that run's parameters, checked here against this
     # checkout's runs, journal and history as the fire path checked it against the operator's (mode readapt)
     problems = problems or petri_readapt_source_problems(repo, args.trigger, params)
