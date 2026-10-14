@@ -19,7 +19,8 @@ the four decisions of the October Owner Queue page in a Claude Code session on 2
 
 ## For the daily Routine
 
-**Close `PETRI-EQ01-EMPTY-OUTPUTS-20261013` in `ops/dashboard.json:decisions_pending` as resolved.** The equity run
+**Close `PETRI-EQ01-EMPTY-OUTPUTS-20261013`:** remove it from `ops/dashboard.json:decisions_pending` and add its
+resolution, citing this file, to the top of `decisions_log` (`docs/routine_standing_prompt.md` §6). The equity run
 eq01 (`run_38311055562_1`, 2026-10-12) committed no transcripts because every sample hit Inspect's 20,000-token limit.
 It was re-fired as eq02 (`run_38434195912_1`, 2026-10-13) at `token_limit` 40,000 with judge `claude-haiku-4-5`:
 6 of 6 samples adapted, 300 judgments plus 54 not applicable, $0.65. The guard that refuses a token limit a scripted
@@ -80,7 +81,17 @@ Claude Haiku 5.5 is not a drop-in replacement for Haiku 4.5 as a judge:
 - it rejects an assistant prefill.
 
 The judge clients therefore need a change first. It is a pull request; its run settings are recorded in the
-judgments, so the two judges' rows can be told apart. Then come the re-judge fires: Petri `mode: rejudge` over each
-landed run, and the advice lane's judge-only re-run. Those are paid fires, and they wait for the owner's approval of
-their cost. Haiku 5.5 costs $0.10 / $0.50 per million tokens against Haiku 4.5's $1 / $5. The Opus move changes the
+judgments, so the two judges' rows can be told apart. Then come the re-judge fires: Petri `mode: rejudge` and the
+advice lane's judge-only re-run. Those are paid fires, and they wait for the owner's approval of their cost.
+
+Not every landed Petri run can be re-graded as it stands. `rejudge.make_plan` refuses a run before any call when its
+prompts or digests differ from the current ones. Wave 2's epoch-1 run is refused that way
+(`tests/test_petri_audit_rejudge.py`): its baseline-persistence prompt predates the revision. A fire naming a
+refused run alongside others is refused as a whole. So before any paid re-judge fire:
+1. Rehearse every candidate run at $0 (`cli rejudge-rehearse` with `mockllm/judge`).
+2. Report each refused run and why.
+3. The owner chooses, per refused run, between a reconstruction path for the historical instrument and an
+   exclusion recorded here.
+
+The paid fires name only runs whose rehearsal was clean. Haiku 5.5 costs $0.10 / $0.50 per million tokens against Haiku 4.5's $1 / $5. The Opus move changes the
 generator or target of future runs only; landed batches are not regenerated.
