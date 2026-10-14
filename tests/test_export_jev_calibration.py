@@ -29,8 +29,20 @@ ADVICE_RUBRIC, REGISTER_RUBRIC = "data/advice_rubric.draft.json", "data/register
 ADVICE_SHA = hashlib.sha256((ROOT / ADVICE_RUBRIC).read_bytes()).hexdigest()
 REGISTER_SHA = hashlib.sha256((ROOT / REGISTER_RUBRIC).read_bytes()).hexdigest()
 FLAG_IDS = [f["id"] for f in json.loads((ROOT / ADVICE_RUBRIC).read_text(encoding="utf-8"))["flags"]]
+# The Petri rows join to the committed wave-2 run the live report scored, so the exporter's arm placement (transcripts
+# digest -> analysis rows -> manifest -> seed) runs end to end: two patient conversations the drift question applies to
+# (colloquial, careful lay) and, for the exclusion test, one with a clinical-register user.
+PETRI_RUN_TRANSCRIPTS = "data/petri/runs/run_35937014168_1/transcripts.jsonl"
+PETRI_RUN_SHA = hashlib.sha256((ROOT / PETRI_RUN_TRANSCRIPTS).read_bytes()).hexdigest()
+CONV_A = "1f6b4611d035eef1bc490a8fe92923d35814bc9dcee5e0f3230e6d31e8986276"
+CONV_B = "019996364b92267890377e17048e5137140b4306d60ce6c927fd1c2ee173b8c3"
+CONV_CLINICAL = "0f658825ad3c219e57baf30d464af3d5ab583667a97b98bc1d4f2ecaa8dfd32d"
 PERFECT_FLAG = {"accuracy": 1.0, "precision": 1.0, "sensitivity": 1.0, "specificity": 1.0, "tp": 2, "tn": 2, "fp": 0,
                 "fn": 0}
+
+
+SYNTHETIC_ARM = {"seed_id": "synthetic", "arm": "colloquial", "user_is": "patient", "register": "colloquial",
+                 "drift_instrument_applies": True}
 
 
 def _unjudged_flags() -> dict:
@@ -56,7 +68,7 @@ def mock_report_data() -> dict:
             "classifier": {"path": "/home/runner/work/scripts/jev_classifier.py", "sha256": "c" * 64},
             "advice_archive": {"path": "data/advice/responses_fixture.jsonl", "sha256": "a" * 64,
                                "samples_evaluated": 4},
-            "petri_transcripts": {"path": "data/petri/runs/run_fixture_1/transcripts.jsonl", "sha256": "e" * 64,
+            "petri_transcripts": {"path": PETRI_RUN_TRANSCRIPTS, "sha256": PETRI_RUN_SHA,
                                   "turns_evaluated": 3},
             "advice_judgments": {
                 "path": "data/advice/judgments_fixture.jsonl", "sha256": "f" * 64,
@@ -143,7 +155,7 @@ def mock_report_data() -> dict:
         ],
         "petri_cases": [
             {
-                "conversation_id": "conv_a",
+                "conversation_id": CONV_A,
                 "turn_index": 1,
                 "tone_choice": "mixed",
                 "tone_confidence": 0.80,
@@ -154,7 +166,7 @@ def mock_report_data() -> dict:
                 "cost_usd": 0.0, "estimated_cost_usd": 0.0, "input_tokens": 0,
             },
             {
-                "conversation_id": "conv_a",
+                "conversation_id": CONV_A,
                 "turn_index": 3,
                 "tone_choice": "clinical",
                 "tone_confidence": 0.75,
@@ -165,7 +177,7 @@ def mock_report_data() -> dict:
                 "cost_usd": 0.0, "estimated_cost_usd": 0.0, "input_tokens": 0,
             },
             {
-                "conversation_id": "conv_b",
+                "conversation_id": CONV_B,
                 "turn_index": 1,
                 "tone_choice": "mixed",
                 "tone_confidence": 0.90,
@@ -212,9 +224,13 @@ def test_build_petri_drift_payload(mock_report_data):
     head = payload["headline_metrics"]
     assert head["total_conversations"] == 2
     assert head["total_assistant_turns"] == 3
-    assert head["overall_drift_count"] == 1
-    assert head["overall_drift_rate"] == pytest.approx(0.3333, rel=1e-3)
-    assert head["tone_distribution"] == {"mixed": 2, "clinical": 1}
+    app = head["applicable"]
+    assert (app["conversations"], app["assistant_turns"], app["drift_turns"]) == (2, 3, 1)
+    assert app["turn_drift_rate"] == pytest.approx(0.3333, rel=1e-3)
+    assert "ci95_low" not in app                    # turns within a conversation are not independent: no turn interval
+    assert app["tone_distribution"] == {"mixed": 2, "clinical": 1}
+    assert {(a["user_is"], a["register"]) for a in payload["by_arm"]} == {("patient", "colloquial"),
+                                                                          ("patient", "lay_careful")}
 
     # Drift by turn progression
     by_turn = payload["drift_by_turn"]
@@ -228,10 +244,11 @@ def test_build_petri_drift_payload(mock_report_data):
 
     # Per-conversation timeline
     convs = payload["conversations"]
-    assert len(convs["conv_a"]) == 2
-    assert convs["conv_a"][0]["turn_index"] == 1
-    assert convs["conv_a"][1]["turn_index"] == 3
-    assert convs["conv_a"][1]["has_register_drift"] is True
+    assert (convs[CONV_A]["user_is"], convs[CONV_A]["register"], convs[CONV_A]["drift_instrument_applies"]) == (
+        "patient", "colloquial", True)
+    turns = convs[CONV_A]["turns"]
+    assert [t["turn_index"] for t in turns] == [1, 3]
+    assert turns[1]["has_register_drift"] is True
 
 
 def test_empty_petri_cases_returns_none(mock_report_data):
@@ -520,11 +537,12 @@ def test_petri_wilson_interval_matches_the_reviewed_turn():
              "has_register_drift": i < 11, "served_model": "m", "tone_confidence": 0.8,
              "drift_probability": 0.9 if i < 11 else 0.1,
              "cost_usd": 0.0, "estimated_cost_usd": 0.0, "input_tokens": 0} for i in range(30)]
-    meta = {"is_mock": False, "classifier": {"sha256": "c" * 64},
+    meta = {"is_mock": False, "model_requested": "typesafe/jev-1.13", "classifier": {"sha256": "c" * 64},
             "rubric": {"path": ADVICE_RUBRIC, "sha256": ADVICE_SHA},
             "register_rubric": {"path": REGISTER_RUBRIC, "sha256": REGISTER_SHA},
             "petri_transcripts": {"path": "x/transcripts.jsonl", "sha256": "e" * 64, "turns_evaluated": 30}}
-    payload = build_petri_drift_payload({"metadata": meta, "petri_cases": rows}, report_sha="sha")
+    arms = {f"c{i}": dict(SYNTHETIC_ARM) for i in range(30)}
+    payload = build_petri_drift_payload({"metadata": meta, "petri_cases": rows}, report_sha="sha", arms=arms)
     (turn,) = payload["drift_by_turn"]
     assert (turn["ci95_low"], turn["ci95_high"]) == (0.2187, 0.5449)
 
@@ -682,12 +700,11 @@ def test_petri_payload_carries_classifier_provenance(mock_report_data):
     meta = mock_report_data["metadata"]
     meta["classifier"] = {"sha256": "c" * 64}
     meta["register_rubric"] = {"path": REGISTER_RUBRIC, "sha256": REGISTER_SHA}
-    meta["petri_transcripts"] = {"path": "data/petri/runs/run_1_1/transcripts.jsonl", "sha256": "e" * 64,
-                                 "turns_evaluated": 3}
+    meta["petri_transcripts"] = {"path": PETRI_RUN_TRANSCRIPTS, "sha256": PETRI_RUN_SHA, "turns_evaluated": 3}
     prov = build_petri_drift_payload(mock_report_data, report_sha="sha")["provenance"]
     assert prov["classifier_sha256"] == "c" * 64
     assert prov["register_rubric"]["sha256"] == REGISTER_SHA
-    assert prov["petri_transcripts"]["sha256"] == "e" * 64
+    assert prov["petri_transcripts"]["sha256"] == PETRI_RUN_SHA
     assert "advice_archive" not in prov
 
 
@@ -732,11 +749,12 @@ def test_drift_is_grouped_by_per_conversation_assistant_ordinal(mock_report_data
          "drift_probability": 0.1},
     ]
     mock_report_data["metadata"]["petri_transcripts"]["turns_evaluated"] = 4
-    payload = build_petri_drift_payload(mock_report_data, report_sha="sha")
+    payload = build_petri_drift_payload(mock_report_data, report_sha="sha",
+                                        arms={c: dict(SYNTHETIC_ARM) for c in ("a", "b")})
     second = payload["drift_by_turn"][1]
     assert (second["assistant_turn_ordinal"], second["n"], second["drift_turns"]) == (2, 2, 1)
     assert second["turn_indices"] == [3, 4]
-    assert [r["assistant_turn_ordinal"] for r in payload["conversations"]["b"]] == [1, 2]
+    assert [r["assistant_turn_ordinal"] for r in payload["conversations"]["b"]["turns"]] == [1, 2]
 
 
 # Codex review of 2e421c74 (2026-10-13): row-level verification of every published aggregate.
@@ -795,7 +813,7 @@ def test_stale_brier_score_refused(mock_report_data):
 def test_formality_coverage_is_reported(mock_report_data):
     mock_report_data["petri_cases"][0]["register_score"] = None
     head = build_petri_drift_payload(mock_report_data, report_sha="sha")["headline_metrics"]
-    assert head["formality_scored_turns"] == 2 and head["total_assistant_turns"] == 3
+    assert head["applicable"]["formality_scored_turns"] == 2 and head["total_assistant_turns"] == 3
 
 
 @pytest.mark.parametrize("metrics,cases", [([], []), ({}, {})])
@@ -1269,3 +1287,231 @@ def test_empty_report_refused_and_published_files_kept(tmp_path, mock_report_dat
     assert exc.value.code == 2
     assert all((site_data / n).read_text(encoding="utf-8") == '{"published": true}'
                for n in ("jev_calibration.json", "petri_register_drift.json"))
+
+
+
+# Drift reported where Jev's question applies (review of 2026-10-13: 70 of the live report's 72 drift flags came from
+# conversations with a clinical-register user or a clinician speaker).
+
+CONV_PATIENT_COLLOQUIAL_IDENTITY = "bc0d9b666d3ce565a9fdb93c076af590f6ee638d6453ffd80cda3a104a931d18"
+CONV_CLINICIAN_COLLOQUIAL_IDENTITY = "49ea7cebb00a49178a0998d3b75d26358e8ba48a6079441cc4befb6b69e328db"
+
+
+def _petri_row(cid: str, turn: int, drift: bool) -> dict:
+    return {"conversation_id": cid, "turn_index": turn, "tone_choice": "mixed", "tone_confidence": 0.8,
+            "has_register_drift": drift, "drift_probability": 0.9 if drift else 0.1, "register_score": 1.5,
+            "served_model": "typesafe/jev-1.13-20261001", "cost_usd": 0.0, "estimated_cost_usd": 0.0,
+            "input_tokens": 0}
+
+
+def test_inapplicable_arm_is_reported_but_kept_out_of_the_headline(mock_report_data):
+    mock_report_data["petri_cases"].append(_petri_row(CONV_CLINICAL, 1, True))
+    mock_report_data["metadata"]["petri_transcripts"]["turns_evaluated"] = 4
+    payload = build_petri_drift_payload(mock_report_data, report_sha="sha")
+    app = payload["headline_metrics"]["applicable"]
+    assert (app["conversations"], app["assistant_turns"], app["drift_turns"]) == (2, 3, 1)
+    clinical = next(a for a in payload["by_arm"] if a["register"] == "clinical")
+    assert (clinical["user_is"], clinical["drift_instrument_applies"], clinical["drift_turns"]) == ("patient", False, 1)
+    assert sum(t["n"] for t in payload["drift_by_turn"]) == 3          # the clinical conversation is not in the series
+    assert payload["conversations"][CONV_CLINICAL]["drift_instrument_applies"] is False
+
+
+def test_identity_seed_speaker_comes_from_the_seed(mock_report_data):
+    mock_report_data["petri_cases"] += [_petri_row(CONV_PATIENT_COLLOQUIAL_IDENTITY, 1, False),
+                                        _petri_row(CONV_CLINICIAN_COLLOQUIAL_IDENTITY, 1, True)]
+    mock_report_data["metadata"]["petri_transcripts"]["turns_evaluated"] = 5
+    convs = build_petri_drift_payload(mock_report_data, report_sha="sha")["conversations"]
+    assert (convs[CONV_PATIENT_COLLOQUIAL_IDENTITY]["user_is"], convs[CONV_PATIENT_COLLOQUIAL_IDENTITY]["register"],
+            convs[CONV_PATIENT_COLLOQUIAL_IDENTITY]["drift_instrument_applies"]) == ("patient", "colloquial", True)
+    assert (convs[CONV_CLINICIAN_COLLOQUIAL_IDENTITY]["user_is"],
+            convs[CONV_CLINICIAN_COLLOQUIAL_IDENTITY]["drift_instrument_applies"]) == ("clinician", False)
+
+
+def test_transcripts_differing_from_the_scored_ones_refused(mock_report_data):
+    mock_report_data["metadata"]["petri_transcripts"]["sha256"] = "0" * 64
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_conversation_missing_from_the_run_refused(mock_report_data):
+    mock_report_data["petri_cases"][2]["conversation_id"] = "not-a-conversation-of-this-run"
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_no_applicable_conversation_refused(mock_report_data):
+    mock_report_data["petri_cases"] = [_petri_row(CONV_CLINICAL, 1, True)]
+    mock_report_data["metadata"]["petri_transcripts"]["turns_evaluated"] = 1
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha")
+    assert exc.value.code == 2
+
+
+def test_published_files_are_world_readable(tmp_path, mock_report_data):
+    report = tmp_path / "r.json"
+    report.write_text(json.dumps(mock_report_data), encoding="utf-8")
+    (tmp_path / "site" / "data").mkdir(parents=True)
+    assert main(["--report", str(report), "--site", str(tmp_path / "site")]) == 0
+    for name in ("jev_calibration.json", "petri_register_drift.json"):
+        assert (tmp_path / "site" / "data" / name).stat().st_mode & 0o777 == 0o644
+
+
+def test_exported_payloads_pass_the_site_contract_gate(tmp_path, mock_report_data):
+    """The writer and the gate site CI runs (scripts/validate_frontend_contract.py) agree on the shape."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("vfc", ROOT / "scripts" / "validate_frontend_contract.py")
+    vfc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(vfc)
+    report = tmp_path / "r.json"
+    report.write_text(json.dumps(mock_report_data), encoding="utf-8")
+    (tmp_path / "site" / "data").mkdir(parents=True)
+    assert main(["--report", str(report), "--site", str(tmp_path / "site")]) == 0
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert rep.errors == [] and rep.warnings == []
+
+
+
+# Codex review of PR #107: arms come from the manifest (bound), and inference is per conversation, not per turn.
+
+
+def test_aggregate_interval_is_over_conversations_not_turns(mock_report_data):
+    """Two conversations, one with a drift turn among two turns: the turn rate is 1/3 (descriptive), the interval is
+    Wilson over 1 of 2 conversations."""
+    app = build_petri_drift_payload(mock_report_data, report_sha="sha")["headline_metrics"]["applicable"]
+    assert (app["conversations_with_drift"], app["conversations"]) == (1, 2)
+    assert app["conversation_drift_share"] == 0.5
+    assert app["conversation_ci95_low"] < 0.5 < app["conversation_ci95_high"]
+
+
+def _link_or_copy(src: str, dst: str) -> None:
+    """Hard-link where the filesystem allows (the runs directory is ~40 MB); a file the test rewrites is replaced by a
+    fresh write (write_text truncates the shared inode, so the tests below unlink before writing)."""
+    import os
+    import shutil
+    try:
+        os.link(src, dst)
+    except OSError:
+        shutil.copy2(src, dst)
+
+
+def test_arm_mapping_comes_from_the_manifest_not_analysis_rows(tmp_path, mock_report_data):
+    """A copy of the run whose analysis_rows.jsonl moves a conversation to another arm places it where the manifest
+    does; a copy whose manifest no longer verifies is refused."""
+    import shutil
+    src = ROOT / "data" / "petri" / "runs" / "run_35937014168_1"
+    shutil.copytree(src.parent, tmp_path / "data" / "petri" / "runs", copy_function=_link_or_copy)
+    run = tmp_path / "data" / "petri" / "runs" / src.name
+    (tmp_path / "data" / "advice_rubric.draft.json").write_bytes((ROOT / ADVICE_RUBRIC).read_bytes())
+    (tmp_path / "data" / "register_rubric.json").write_bytes((ROOT / REGISTER_RUBRIC).read_bytes())
+    shutil.copytree(ROOT / "docs" / "framework", tmp_path / "docs" / "framework")
+    rows = [json.loads(line) for line in (run / "analysis_rows.jsonl").read_text(encoding="utf-8").splitlines()]
+    for r in rows:
+        if r["conversation_id"] == CONV_A:
+            r["arm"] = "clinical"
+    (run / "analysis_rows.jsonl").unlink()
+    (run / "analysis_rows.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    payload = build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
+    assert payload["conversations"][CONV_A]["register"] == "colloquial"
+    manifest = json.loads((run / "manifest.json").read_text(encoding="utf-8"))
+    manifest["trees"][0]["arm"] = "tampered"
+    (run / "manifest.json").unlink()
+    (run / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
+    assert exc.value.code == 2
+
+
+
+def test_resealed_manifest_with_altered_trees_refused(tmp_path, mock_report_data):
+    """Altering a tree's arm and resealing the manifest keeps verify_run happy and the transcripts digest unchanged,
+    but the scored transcripts still name the old manifest identity, so the trees are refused (Codex review of
+    PR #107)."""
+    import shutil
+    from scripts.petri_audit.manifest import seal_manifest
+    src = ROOT / "data" / "petri" / "runs" / "run_35937014168_1"
+    shutil.copytree(src.parent, tmp_path / "data" / "petri" / "runs", copy_function=_link_or_copy)
+    run = tmp_path / "data" / "petri" / "runs" / src.name
+    (tmp_path / "data" / "advice_rubric.draft.json").write_bytes((ROOT / ADVICE_RUBRIC).read_bytes())
+    (tmp_path / "data" / "register_rubric.json").write_bytes((ROOT / REGISTER_RUBRIC).read_bytes())
+    shutil.copytree(ROOT / "docs" / "framework", tmp_path / "docs" / "framework")
+    build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)      # the untouched copy passes
+    manifest = json.loads((run / "manifest.json").read_text(encoding="utf-8"))
+    for tree in manifest["trees"]:
+        if any(b["conversation_id"] == CONV_B for b in tree["branches"]):
+            tree["arm"] = "colloquial"
+    resealed = seal_manifest({k: v for k, v in manifest.items() if k != "chain"}, manifest["chain"]["prev_sha256"])
+    (run / "manifest.json").unlink()
+    (run / "manifest.json").write_text(json.dumps(resealed), encoding="utf-8")
+    from scripts.petri_audit.manifest import verify_run
+    assert verify_run(run) == []                                                            # the reseal verifies
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
+    assert exc.value.code == 2
+
+
+
+def test_initial_only_arm_register_is_its_first_turns():
+    """An initial_only seed's later turns may carry `not_applicable`; the arm's register is its first turn's, as the
+    seed validator defines it, so its two arms stay distinct (Codex review of PR #107). The committed wave-1 run holds
+    such a seed (pw-petri-example-h3-tools)."""
+    import hashlib as _h
+    from scripts.export_jev_calibration import conversation_arms
+    path = "data/petri/runs/run_35351739969_1/transcripts.jsonl"
+    meta = {"petri_transcripts": {"path": path, "sha256": _h.sha256((ROOT / path).read_bytes()).hexdigest()}}
+    arms = conversation_arms(meta)
+    h3 = {a["arm"]: a["register"] for a in arms.values() if a["seed_id"] == "pw-petri-example-h3-tools"}
+    assert h3 and all(r is not None for r in h3.values())
+    assert len(set(h3.values())) == len(h3)                 # one register per arm, none collapsed
+
+
+
+@pytest.mark.parametrize("value", [None, "", 3])
+def test_report_without_a_requested_model_refused_before_writing(tmp_path, mock_report_data, value):
+    mock_report_data["metadata"]["model_requested"] = value
+    report = tmp_path / "r.json"
+    report.write_text(json.dumps(mock_report_data), encoding="utf-8")
+    site_data = tmp_path / "site" / "data"
+    site_data.mkdir(parents=True)
+    with pytest.raises(SystemExit) as exc:
+        main(["--report", str(report), "--site", str(tmp_path / "site")])
+    assert exc.value.code == 2
+    assert list(site_data.iterdir()) == []
+
+
+def test_run_not_named_by_the_manifest_chain_refused(tmp_path, mock_report_data):
+    """The exporter trusts a run's trees only when the repository's manifest chain names that manifest at its digest
+    and verifies through it (Codex review of PR #107)."""
+    import shutil
+    src = ROOT / "data" / "petri" / "runs"
+    shutil.copytree(src, tmp_path / "data" / "petri" / "runs", copy_function=_link_or_copy)
+    (tmp_path / "data" / "advice_rubric.draft.json").write_bytes((ROOT / ADVICE_RUBRIC).read_bytes())
+    (tmp_path / "data" / "register_rubric.json").write_bytes((ROOT / REGISTER_RUBRIC).read_bytes())
+    shutil.copytree(ROOT / "docs" / "framework", tmp_path / "docs" / "framework")
+    build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)      # named and intact: passes
+    chain = tmp_path / "data" / "petri" / "runs" / "manifests.chain"
+    kept = [ln for ln in chain.read_text(encoding="utf-8").splitlines() if "run_35937014168_1" not in ln]
+    chain.unlink()
+    chain.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
+    assert exc.value.code == 2
+
+
+def test_malformed_manifest_chain_line_refused_cleanly(tmp_path, mock_report_data):
+    import shutil
+    src = ROOT / "data" / "petri" / "runs"
+    shutil.copytree(src, tmp_path / "data" / "petri" / "runs", copy_function=_link_or_copy)
+    (tmp_path / "data" / "advice_rubric.draft.json").write_bytes((ROOT / ADVICE_RUBRIC).read_bytes())
+    (tmp_path / "data" / "register_rubric.json").write_bytes((ROOT / REGISTER_RUBRIC).read_bytes())
+    shutil.copytree(ROOT / "docs" / "framework", tmp_path / "docs" / "framework")
+    chain = tmp_path / "data" / "petri" / "runs" / "manifests.chain"
+    lines = chain.read_text(encoding="utf-8").splitlines()
+    lines[0] = lines[0].rsplit(" ", 1)[0]                                 # a line without its digest
+    chain.unlink()
+    chain.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
+    assert exc.value.code == 2

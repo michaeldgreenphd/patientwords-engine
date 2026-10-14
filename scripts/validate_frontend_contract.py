@@ -788,6 +788,350 @@ def check_owner_run(rep: Report, site: Path, send_waivers: dict | None = None):
                 check(rep, name, data, sample)
 
 
+# ------------------------------------------------------------------ Jev payloads
+
+# Written by scripts/export_jev_calibration.py from a Jev audit report, run by hand (not the daily Routine), so absent is
+# the expected state until a report is exported: a note, never a warning. Present, each is shape-checked on the keys
+# its consuming pages read; a mock run's payload is an error (it is not a measurement), and the two files must come from
+# one report. The drift payload must carry the per-arm shape: the pooled drift rate it replaced mixed conversations the
+# drift question does not apply to (export_jev_calibration.DRIFT_SPEAKER / DRIFT_REGISTERS; review of 2026-10-13).
+JEV_WRITER = "scripts/export_jev_calibration.py"
+JEV_SPECS = {
+    "jev_calibration.json": {
+        "top": {"generated_utc": str, "source_report_sha256": str, "model_requested": str, "models_served": list,
+                "judge_model": str, "agreement_reference": str, "is_mock": bool, "provenance": dict,
+                "headline_metrics": dict, "tier_order": list, "confusion_matrix": list,
+                "flag_metrics_reference": str, "flag_metrics": dict, "cases_summary": dict},
+        "nullable": {"judge_model", "agreement_reference", "flag_metrics_reference"},
+        "headline": {"total_advice_cases": int, "exact_agreement": NUM, "within_one_agreement": NUM,
+                     "cohen_kappa": NUM, "cohen_kappa_quadratic": NUM, "brier_score": NUM, "base_rate_brier": NUM,
+                     "brier_skill_score": NUM, "tier_divergence": dict, "advice_phase_spend": dict},
+        "headline_nullable": {"exact_agreement", "within_one_agreement", "cohen_kappa", "cohen_kappa_quadratic",
+                              "brier_score", "base_rate_brier", "brier_skill_score", "tier_divergence"},
+    },
+    "petri_register_drift.json": {
+        "top": {"generated_utc": str, "source_report_sha256": str, "model_requested": str, "models_served": list,
+                "is_mock": bool, "provenance": dict, "status": str, "per_turn_interval": str,
+                "aggregate_interval": str,
+                "drift_instrument": dict, "headline_metrics": dict,
+                "by_arm": list, "drift_by_turn": list, "conversations": dict},
+        "nullable": set(),
+        "headline": {"total_conversations": int, "total_assistant_turns": int, "applicable": dict,
+                     "petri_phase_spend": dict},
+        "headline_nullable": set(),
+    },
+}
+# the drift summary export_jev_calibration._drift_summary writes for each arm and for the headline's `applicable`:
+# field, type, nullable (Codex review of PR #107: every field a consumer labels or renders, not only the counts)
+JEV_SUMMARY_FIELDS = (("conversations", int, False), ("assistant_turns", int, False), ("drift_turns", int, False),
+                      ("turn_drift_rate", NUM, True), ("conversations_with_drift", int, False),
+                      ("conversation_drift_share", NUM, True), ("conversation_ci95_low", NUM, True),
+                      ("conversation_ci95_high", NUM, True), ("mean_formality_score", NUM, True),
+                      ("formality_scored_turns", int, False), ("tone_distribution", dict, False))
+# one entry of drift_by_turn as export_jev_calibration writes it (Codex review of PR #107)
+JEV_TURN_FIELDS = (("assistant_turn_ordinal", int, False), ("turn_indices", list, False), ("n", int, False),
+                   ("assistant_turns", int, False), ("drift_turns", int, False), ("drift_rate", NUM, False),
+                   ("ci95_low", NUM, False), ("ci95_high", NUM, False))
+JEV_ARM_FIELDS = (("user_is", str, False), ("register", str, True), ("drift_instrument_applies", bool, False)) \
+    + JEV_SUMMARY_FIELDS
+
+
+def _jev_need(rep: Report, artifact: str, obj: object, key: str, kinds: object, path: str,
+              nullable: bool = False) -> object:
+    """`need`, plus: a number must be finite. Python's json.loads accepts NaN and Infinity, which are not JSON, and the
+    site's JSON.parse would reject the whole payload (Codex review of PR #107)."""
+    value = need(rep, artifact, obj, key, kinds, path, nullable=nullable)
+    # an integer too large for a float parses as Infinity in the page's JSON.parse; _finite covers both kinds
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and not _finite(value):
+        rep.err(artifact, f"{path}.{key}", f"non-finite number {value!r} (not JSON; the page cannot parse it)")
+    return value
+
+
+# one entry of `conversations` as export_jev_calibration writes it (Codex review of PR #107)
+JEV_CONVERSATION_FIELDS = (("seed_id", str, False), ("arm", str, False), ("user_is", str, False),
+                           ("register", str, True), ("drift_instrument_applies", bool, False), ("turns", list, False))
+RATE_TOLERANCE = 5.1e-5          # the exporter rounds rates and shares to 4 decimals
+# one entry of a conversation's `turns` as export_jev_calibration writes it (Codex review of PR #107)
+JEV_TURN_RECORD_FIELDS = (("turn_index", int, False), ("assistant_turn_ordinal", int, False),
+                          ("tone_choice", str, False), ("tone_confidence", NUM, False),
+                          ("has_register_drift", bool, False), ("drift_probability", NUM, False),
+                          ("formality_score", NUM, True))
+WILSON_Z = 1.959963984540054     # export_jev_calibration.Z95
+
+
+def _wilson(k: int, n: int) -> tuple[float, float] | tuple[None, None]:
+    """The Wilson score interval the exporter publishes (export_jev_calibration._wilson), recomputed to check it."""
+    if n <= 0:
+        return None, None
+    ph, z = k / n, WILSON_Z
+    den = 1 + z * z / n
+    centre = (ph + z * z / (2 * n)) / den
+    half = z * math.sqrt(ph * (1 - ph) / n + z * z / (4 * n * n)) / den
+    return max(0.0, centre - half), min(1.0, centre + half)
+
+
+def _jev_counts(rep: Report, artifact: str, obj: dict, path: str, pairs: tuple) -> None:
+    """Counts the exporter derives from one another must agree: each (part, whole, rate) holds a non-negative part
+    no larger than its whole and, when the rate is present, a rate equal to part / whole (to the exporter's rounding).
+    Interval bounds, when present, must lie in [0, 1] in order (Codex review of PR #107)."""
+    for part_key, whole_key, rate_key in pairs:
+        part, whole, rate = obj.get(part_key), obj.get(whole_key), obj.get(rate_key) if rate_key else None
+        if not all(isinstance(x, int) and not isinstance(x, bool) for x in (part, whole)):
+            continue
+        if part < 0 or whole < 0 or part > whole:
+            rep.err(artifact, f"{path}.{part_key}", f"{part} is not a count within its total {whole_key}={whole}")
+        elif rate_key and isinstance(rate, (int, float)) and not isinstance(rate, bool) and whole and \
+                abs(rate - part / whole) > RATE_TOLERANCE:
+            rep.err(artifact, f"{path}.{rate_key}", f"{rate} does not equal {part_key}/{whole_key} = {part}/{whole}")
+    for lo_key, hi_key, part_key, whole_key in (("conversation_ci95_low", "conversation_ci95_high",
+                                                  "conversations_with_drift", "conversations"),
+                                                 ("ci95_low", "ci95_high", "drift_turns", "n")):
+        lo, hi = obj.get(lo_key), obj.get(hi_key)
+        if not (isinstance(lo, (int, float)) and isinstance(hi, (int, float))):
+            continue
+        if not 0 <= lo <= hi <= 1:
+            rep.err(artifact, f"{path}.{lo_key}", f"interval [{lo}, {hi}] is not within [0, 1] in order")
+            continue
+        part, whole = obj.get(part_key), obj.get(whole_key)
+        if isinstance(part, int) and isinstance(whole, int) and 0 <= part <= whole and whole > 0:
+            w_lo, w_hi = _wilson(part, whole)
+            if abs(lo - w_lo) > RATE_TOLERANCE or abs(hi - w_hi) > RATE_TOLERANCE:
+                rep.err(artifact, f"{path}.{lo_key}", f"interval [{lo}, {hi}] is not the Wilson interval of "
+                                                      f"{part}/{whole} ([{w_lo:.4f}, {w_hi:.4f}])")
+
+
+JEV_SUMMARY_COUNTS = (("drift_turns", "assistant_turns", "turn_drift_rate"),
+                      ("conversations_with_drift", "conversations", "conversation_drift_share"),
+                      ("formality_scored_turns", "assistant_turns", None))
+JEV_TURN_COUNTS = (("drift_turns", "n", "drift_rate"),)
+
+
+def _jev_reconcile(rep: Report, name: str, data: dict) -> None:
+    """The drift payload's views of one set of turns must agree with one another (Codex review of PR #107): the
+    applicable arms sum to the headline's `applicable` summary, every arm sums to the headline totals, the per-turn
+    series sums to the applicable turns and drift turns, and the conversations listed match those totals."""
+    def ints(objs: list, key: str) -> int | None:
+        vals = [o.get(key) for o in objs]
+        return sum(vals) if all(isinstance(v, int) and not isinstance(v, bool) for v in vals) else None
+
+    head = data.get("headline_metrics") if isinstance(data.get("headline_metrics"), dict) else {}
+    app = head.get("applicable") if isinstance(head.get("applicable"), dict) else None
+    arms = [a for a in data.get("by_arm") if isinstance(a, dict)] if isinstance(data.get("by_arm"), list) else []
+    series = [t for t in data.get("drift_by_turn") if isinstance(t, dict)] \
+        if isinstance(data.get("drift_by_turn"), list) else []
+    convs = data.get("conversations") if isinstance(data.get("conversations"), dict) else {}
+    checks = [("$.by_arm", "conversations", ints(arms, "conversations"), head.get("total_conversations")),
+              ("$.by_arm", "assistant_turns", ints(arms, "assistant_turns"), head.get("total_assistant_turns"))]
+    if app is not None:
+        applicable = [a for a in arms if a.get("drift_instrument_applies") is True]
+        for key in ("conversations", "assistant_turns", "drift_turns", "conversations_with_drift",
+                    "formality_scored_turns"):
+            checks.append(("$.by_arm (applicable arms)", key, ints(applicable, key), app.get(key)))
+        checks.append(("$.drift_by_turn", "n", ints(series, "n"), app.get("assistant_turns")))
+        checks.append(("$.drift_by_turn", "drift_turns", ints(series, "drift_turns"), app.get("drift_turns")))
+        listed = [c for c in convs.values() if isinstance(c, dict)]
+        checks.append(("$.conversations", "drift_instrument_applies",
+                       sum(c.get("drift_instrument_applies") is True for c in listed), app.get("conversations")))
+    turns_listed = [len(c["turns"]) for c in convs.values() if isinstance(c, dict) and isinstance(c.get("turns"), list)]
+    if turns_listed and len(turns_listed) == len(convs):
+        checks.append(("$.conversations", "turns", sum(turns_listed), head.get("total_assistant_turns")))
+    for where, key, got, expected in checks:
+        if isinstance(got, int) and isinstance(expected, int) and got != expected:
+            rep.err(name, where, f"{key} sums to {got} but the headline gives {expected}")
+
+
+# the exporter rounds mean formality to 3 decimals and rates, shares and bounds to 4
+FIELD_TOLERANCE = {"mean_formality_score": 5.1e-4}
+
+
+def _close(a: object, b: object, field: str = "") -> bool:
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)) and not isinstance(a, bool):
+        return abs(a - b) <= FIELD_TOLERANCE.get(field, RATE_TOLERANCE)
+    return a == b
+
+
+def _rebuild_summary(turns_by_conv: list[list[dict]]) -> dict:
+    """The drift summary recomputed from turn records, independently of the exporter's code
+    (export_jev_calibration._drift_summary): counts, the descriptive turn rate, conversations with any drift and their
+    Wilson interval, mean formality over scored turns, and the tone distribution."""
+    rows = [t for turns in turns_by_conv for t in turns]
+    n, k, convs = len(rows), sum(t["has_register_drift"] for t in rows), len(turns_by_conv)
+    with_drift = sum(any(t["has_register_drift"] for t in turns) for turns in turns_by_conv)
+    lo, hi = _wilson(with_drift, convs)
+    scores = [t["formality_score"] for t in rows if t["formality_score"] is not None]
+    tones: dict[str, int] = {}
+    for t in rows:
+        tones[t["tone_choice"]] = tones.get(t["tone_choice"], 0) + 1
+    return {"conversations": convs, "assistant_turns": n, "drift_turns": k,
+            "turn_drift_rate": k / n if n else None, "conversations_with_drift": with_drift,
+            "conversation_drift_share": with_drift / convs if convs else None,
+            "conversation_ci95_low": lo, "conversation_ci95_high": hi,
+            "mean_formality_score": sum(scores) / len(scores) if scores else None,
+            "formality_scored_turns": len(scores), "tone_distribution": tones}
+
+
+def _jev_rebuild(rep: Report, name: str, data: dict) -> None:
+    """Rebuild every summary of the drift payload from its conversation turn records, the payload's own source data,
+    and require each published arm, the headline's `applicable` summary and the per-turn series to equal the rebuild
+    (Codex review of PR #107: views checked only against one another can still all disagree with the turns). Runs only
+    when every conversation and turn record is well formed; the field checks name anything that is not."""
+    convs = data.get("conversations")
+    if not isinstance(convs, dict) or not convs:
+        return
+    good = all(isinstance(c, dict) and isinstance(c.get("turns"), list) and c["turns"]
+               and isinstance(c.get("drift_instrument_applies"), bool)
+               and all(isinstance(t, dict) and isinstance(t.get("has_register_drift"), bool)
+                       and isinstance(t.get("assistant_turn_ordinal"), int) and isinstance(t.get("turn_index"), int)
+                       and isinstance(t.get("tone_choice"), str)
+                       and (t.get("formality_score") is None or isinstance(t.get("formality_score"), (int, float)))
+                       for t in c["turns"]) for c in convs.values())
+    if not good:
+        return
+    groups: dict[tuple, list[list[dict]]] = {}
+    for c in convs.values():
+        groups.setdefault((c.get("user_is"), c.get("register"), c["drift_instrument_applies"]), []).append(c["turns"])
+    published = {(a.get("user_is"), a.get("register"), a.get("drift_instrument_applies")): a
+                 for a in data.get("by_arm") or [] if isinstance(a, dict)} if isinstance(data.get("by_arm"), list) else {}
+    if set(published) != set(groups):
+        rep.err(name, "$.by_arm", f"arms {sorted(map(str, published))} differ from the conversations' arms "
+                                  f"{sorted(map(str, groups))}")
+    for key, turns in groups.items():
+        arm = published.get(key)
+        if arm is None:
+            continue
+        for field, value in _rebuild_summary(turns).items():
+            if not _close(arm.get(field), value, field):
+                rep.err(name, f"$.by_arm[{key[0]}/{key[1]}].{field}",
+                        f"{arm.get(field)!r} but the conversations' turns give {value!r}")
+    applicable = [c["turns"] for c in convs.values() if c["drift_instrument_applies"]]
+    head = data.get("headline_metrics") if isinstance(data.get("headline_metrics"), dict) else {}
+    app = head.get("applicable")
+    if isinstance(app, dict):
+        for field, value in _rebuild_summary(applicable).items():
+            if not _close(app.get(field), value, field):
+                rep.err(name, f"$.headline_metrics.applicable.{field}",
+                        f"{app.get(field)!r} but the conversations' turns give {value!r}")
+    by_ordinal: dict[int, list[dict]] = {}
+    for turns in applicable:
+        for t in turns:
+            by_ordinal.setdefault(t["assistant_turn_ordinal"], []).append(t)
+    series = data.get("drift_by_turn")
+    if isinstance(series, list):
+        published_series = {t.get("assistant_turn_ordinal"): t for t in series if isinstance(t, dict)}
+        if set(published_series) != set(by_ordinal):
+            rep.err(name, "$.drift_by_turn", f"ordinals {sorted(map(str, published_series))} differ from the "
+                                             f"applicable conversations' {sorted(by_ordinal)}")
+        for ordinal, rows in by_ordinal.items():
+            entry = published_series.get(ordinal)
+            if entry is None:
+                continue
+            k, n = sum(t["has_register_drift"] for t in rows), len(rows)
+            lo, hi = _wilson(k, n)
+            expected = {"n": n, "assistant_turns": n, "drift_turns": k, "drift_rate": k / n, "ci95_low": lo,
+                        "ci95_high": hi, "turn_indices": sorted({t["turn_index"] for t in rows})}
+            for field, value in expected.items():
+                if not _close(entry.get(field), value, field):
+                    rep.err(name, f"$.drift_by_turn[{ordinal}].{field}",
+                            f"{entry.get(field)!r} but the conversations' turns give {value!r}")
+
+
+def check_jev_payloads(rep: Report, site: Path) -> None:
+    reports: dict[str, str] = {}
+    for name, spec in JEV_SPECS.items():
+        if not (site / "data" / name).is_file():
+            if name == "jev_calibration.json" and (site / "data" / "petri_register_drift.json").is_file():
+                rep.err(name, "-", "missing while petri_register_drift.json is published: the exporter writes the "
+                                   "calibration payload with every drift payload, so this is a partial publication")
+            else:
+                rep.notes.append(f"{name} not published (written by hand with {JEV_WRITER})")
+            continue
+        data = load(site, name, rep)
+        if not isinstance(data, dict):
+            if data is not None:
+                rep.err(name, "$", f"expected object, got {type(data).__name__}")
+            continue
+        for key, kinds in spec["top"].items():
+            _jev_need(rep, name, data, key, kinds, "$", nullable=key in spec["nullable"])
+        known_keys(rep, name, data, set(spec["top"]))
+        head = data.get("headline_metrics")
+        if isinstance(head, dict):
+            for key, kinds in spec["headline"].items():
+                _jev_need(rep, name, head, key, kinds, "$.headline_metrics", nullable=key in spec["headline_nullable"])
+            if "overall_drift_rate" in head:
+                rep.err(name, "$.headline_metrics.overall_drift_rate",
+                        "the pooled drift rate is not published: regenerate with the per-arm exporter")
+        if data.get("is_mock") is True:
+            rep.err(name, "$.is_mock", "a mock run's payload is not a measurement and is not published")
+        if isinstance(data.get("source_report_sha256"), str):
+            reports[name] = data["source_report_sha256"]
+        if name == "petri_register_drift.json":
+            if isinstance(data.get("by_arm"), list) and not data["by_arm"]:
+                rep.err(name, "$.by_arm", "empty: the payload publishes no per-arm result")
+            app = head.get("applicable") if isinstance(head, dict) else None
+            app_convs = app.get("conversations") if isinstance(app, dict) else None
+            turns = data.get("drift_by_turn")
+            if isinstance(turns, list):
+                if not turns and isinstance(app_convs, int) and app_convs > 0:
+                    rep.err(name, "$.drift_by_turn", "empty although the applicable summary has conversations")
+                for i, t in enumerate(turns):
+                    for key, kinds, nullable in JEV_TURN_FIELDS:
+                        _jev_need(rep, name, t, key, kinds, f"$.drift_by_turn[{i}]", nullable=nullable)
+                    if isinstance(t, dict):
+                        _jev_counts(rep, name, t, f"$.drift_by_turn[{i}]", JEV_TURN_COUNTS)
+            arms = data.get("by_arm")
+            for i, arm in enumerate(arms if isinstance(arms, list) else []):
+                for key, kinds, nullable in JEV_ARM_FIELDS:
+                    _jev_need(rep, name, arm, key, kinds, f"$.by_arm[{i}]", nullable=nullable)
+                if isinstance(arm, dict):
+                    _jev_counts(rep, name, arm, f"$.by_arm[{i}]", JEV_SUMMARY_COUNTS)
+            if isinstance(app, dict):
+                for key, kinds, nullable in JEV_SUMMARY_FIELDS:
+                    _jev_need(rep, name, app, key, kinds, "$.headline_metrics.applicable", nullable=nullable)
+                _jev_counts(rep, name, app, "$.headline_metrics.applicable", JEV_SUMMARY_COUNTS)
+            inst = data.get("drift_instrument")
+            if isinstance(inst, dict):
+                applies = _jev_need(rep, name, inst, "applies_to", dict, "$.drift_instrument")
+                _jev_need(rep, name, inst, "question_source", str, "$.drift_instrument")
+                if isinstance(applies, dict):
+                    _jev_need(rep, name, applies, "user_is", str, "$.drift_instrument.applies_to")
+                    regs = _jev_need(rep, name, applies, "registers", list, "$.drift_instrument.applies_to")
+                    if isinstance(regs, list) and (not regs or not all(isinstance(r, str) and r for r in regs)):
+                        rep.err(name, "$.drift_instrument.applies_to.registers", "must be non-empty register names")
+            convs = data.get("conversations")
+            if isinstance(convs, dict):
+                total = head.get("total_conversations") if isinstance(head, dict) else None
+                if isinstance(total, int) and len(convs) != total:
+                    rep.err(name, "$.conversations", f"{len(convs)} conversation(s) but headline total_conversations "
+                                                     f"is {total}")
+                for cid, conv in convs.items():
+                    where = f"$.conversations[{cid[:12]}]"
+                    for key, kinds, nullable in JEV_CONVERSATION_FIELDS:
+                        _jev_need(rep, name, conv, key, kinds, where, nullable=nullable)
+                    conv_turns = conv.get("turns") if isinstance(conv, dict) else None
+                    if isinstance(conv_turns, list):
+                        if not conv_turns:
+                            rep.err(name, f"{where}.turns", "empty: a published conversation carries its turns")
+                        for j, turn in enumerate(conv_turns):
+                            for key, kinds, nullable in JEV_TURN_RECORD_FIELDS:
+                                _jev_need(rep, name, turn, key, kinds, f"{where}.turns[{j}]", nullable=nullable)
+                            if not isinstance(turn, dict):
+                                continue
+                            for key in ("tone_confidence", "drift_probability"):
+                                val = turn.get(key)
+                                if isinstance(val, (int, float)) and not isinstance(val, bool) and \
+                                        _finite(val) and not 0 <= val <= 1:
+                                    rep.err(name, f"{where}.turns[{j}].{key}", f"{val} is not a probability in [0, 1]")
+                            prob, flag = turn.get("drift_probability"), turn.get("has_register_drift")
+                            if isinstance(prob, (int, float)) and isinstance(flag, bool) and flag != (prob >= 0.5):
+                                rep.err(name, f"{where}.turns[{j}].has_register_drift",
+                                        f"{flag} with drift_probability {prob}; the classifier sets it as "
+                                        "probability >= 0.5")
+            _jev_reconcile(rep, name, data)
+            _jev_rebuild(rep, name, data)
+    if len(set(reports.values())) > 1:
+        rep.err(" and ".join(reports), "$.source_report_sha256", "the two Jev payloads come from different reports")
+
+
 # ------------------------------------------------------------------ cross-repo checks
 
 def check_engine_copies(rep: Report, site: Path, engine: Path):
@@ -842,6 +1186,7 @@ def validate(site: Path, engine: Path | None, strict: bool = False, send_waivers
         check_urgency(rep, urg, joins)
     check_shapes(rep, site, joins)
     check_owner_run(rep, site, send_waivers)
+    check_jev_payloads(rep, site)
     if engine is not None and engine.is_dir():
         check_engine_copies(rep, site, engine)
     if strict:

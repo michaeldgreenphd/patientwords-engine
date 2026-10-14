@@ -605,7 +605,8 @@ def test_owner_run_multiturn_pair_published_valid(site):
     _write_pair(site, _multiturn_pair())
     _write_pair(site, _multiturn_pair(sample=True), ".sample.json")
     rep = run(site, strict=True)
-    assert not any("petri_multiturn" in e for e in rep.errors + rep.warnings) and rep.notes == []
+    assert not any("petri_multiturn" in e for e in rep.errors + rep.warnings)
+    assert not any("petri_multiturn" in n for n in rep.notes)
 
 
 def test_owner_run_multiturn_file_without_its_pair_is_an_error(site):
@@ -1131,3 +1132,239 @@ def test_main_fails_when_the_multiturn_data_is_public_without_a_sent_pack(site, 
     out = capsys.readouterr().out
     assert f"FAIL: {vfc.PETRI_PUBLICATION_UNMET_MSG}" in out and "contract check: 2 error(s)" in out
     assert f"FAIL: {vfc.PETRI_NO_LOG_MSG.format(root=engine)}" in out          # the checkout gap, named
+
+
+# Jev payloads (scripts/export_jev_calibration.py; hand-run, so absent is a note). The keys are checked against the
+# writer's own output in tests/test_export_jev_calibration.py; these tests cover the gate's verdicts.
+
+def _jev_pair(site, report="r" * 64, mock=False, pooled=False):
+    data = site / "data"
+    calib = {"generated_utc": "t", "source_report_sha256": report, "model_requested": "m", "models_served": ["m"],
+             "judge_model": "j", "agreement_reference": "primary_judge", "is_mock": mock, "provenance": {},
+             "headline_metrics": {"total_advice_cases": 1, "exact_agreement": 1.0, "within_one_agreement": 1.0,
+                                  "cohen_kappa": None, "cohen_kappa_quadratic": None, "brier_score": 0.1,
+                                  "base_rate_brier": None, "brier_skill_score": None, "tier_divergence": {},
+                                  "advice_phase_spend": {}},
+             "tier_order": ["a", "b"], "confusion_matrix": [[1, 0], [0, 0]], "flag_metrics_reference": "primary_judge",
+             "flag_metrics": {}, "cases_summary": {}}
+    summary = {"conversations": 1, "assistant_turns": 1, "drift_turns": 0, "turn_drift_rate": 0.0,
+               "conversations_with_drift": 0, "conversation_drift_share": 0.0, "conversation_ci95_low": 0.0,
+               "conversation_ci95_high": 0.7935, "mean_formality_score": 1.0, "formality_scored_turns": 1,
+               "tone_distribution": {"t": 1}}
+    head = {"total_conversations": 1, "total_assistant_turns": 1, "applicable": dict(summary), "petri_phase_spend": {}}
+    conversation = {"seed_id": "s", "arm": "a", "user_is": "u", "register": "r", "drift_instrument_applies": True,
+                    "turns": [{"turn_index": 1, "assistant_turn_ordinal": 1, "tone_choice": "t", "tone_confidence": 0.5,
+                               "has_register_drift": False, "drift_probability": 0.1, "formality_score": 1.0}]}
+    if pooled:
+        head["overall_drift_rate"] = 0.5
+    drift = {"generated_utc": "t", "source_report_sha256": report, "model_requested": "m", "models_served": ["m"],
+             "is_mock": False, "provenance": {}, "status": "exploratory", "per_turn_interval": "w",
+             "aggregate_interval": "w",
+             "drift_instrument": {"applies_to": {"user_is": "u", "registers": ["r"]}, "question_source": "q"},
+             "headline_metrics": head,
+             "by_arm": [{"user_is": "u", "register": "r", "drift_instrument_applies": True, **summary}],
+             "drift_by_turn": [{"assistant_turn_ordinal": 1, "turn_indices": [1], "n": 1, "assistant_turns": 1,
+                                "drift_turns": 0, "drift_rate": 0.0, "ci95_low": 0.0, "ci95_high": 0.7935}],
+             "conversations": {"c" * 64: conversation}}
+    (data / "jev_calibration.json").write_text(json.dumps(calib), encoding="utf-8")
+    (data / "petri_register_drift.json").write_text(json.dumps(drift), encoding="utf-8")
+
+
+def test_jev_payloads_absent_are_a_note(site):
+    rep = run(site)
+    assert rep.errors == [] and any("jev_calibration.json not published" in n for n in rep.notes)
+
+
+def test_jev_payloads_valid_pass(site):
+    _jev_pair(site)
+    assert run(site).errors == []
+
+
+def test_jev_pooled_drift_shape_is_an_error(site):
+    _jev_pair(site, pooled=True)
+    assert any("overall_drift_rate" in e for e in run(site).errors)
+
+
+def test_jev_mock_payload_is_an_error(site):
+    _jev_pair(site, mock=True)
+    assert any("is_mock" in e for e in run(site).errors)
+
+
+def test_jev_payloads_from_different_reports_are_an_error(site):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    obj["source_report_sha256"] = "s" * 64
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    assert any("different reports" in e for e in run(site).errors)
+
+
+def test_jev_drift_without_per_arm_shape_is_an_error(site):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    del obj["by_arm"], obj["drift_instrument"]
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    errors = run(site).errors
+    assert any("by_arm" in e for e in errors) and any("drift_instrument" in e for e in errors)
+
+
+
+@pytest.mark.parametrize("where,key", [("arm", "register"), ("arm", "conversation_ci95_high"),
+                                       ("arm", "tone_distribution"), ("applicable", "conversations_with_drift")])
+def test_jev_drift_summary_fields_are_all_checked(site, where, key):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    target = obj["by_arm"][0] if where == "arm" else obj["headline_metrics"]["applicable"]
+    del target[key]
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    assert any(key in e for e in run(site).errors)
+
+
+
+@pytest.mark.parametrize("change", ["empty_arms", "empty_series", "bare_turn"])
+def test_jev_drift_lists_must_carry_results(site, change):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    if change == "empty_arms":
+        obj["by_arm"] = []
+    elif change == "empty_series":
+        obj["drift_by_turn"] = []
+    else:
+        obj["drift_by_turn"] = [{}]
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    key = {"empty_arms": "by_arm", "empty_series": "drift_by_turn", "bare_turn": "assistant_turn_ordinal"}[change]
+    assert any(key in e for e in run(site).errors)
+
+
+
+def test_jev_malformed_applicable_is_an_error_not_a_crash(site):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    obj["headline_metrics"]["applicable"] = ["bad"]
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    assert any("applicable" in e for e in run(site).errors)
+
+
+@pytest.mark.parametrize("where", ["arm", "turn", "headline"])
+def test_jev_non_finite_numbers_are_errors(site, where):
+    _jev_pair(site)
+    name = "jev_calibration.json" if where == "headline" else "petri_register_drift.json"
+    path = site / "data" / name
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    if where == "arm":
+        obj["by_arm"][0]["mean_formality_score"] = float("nan")
+    elif where == "turn":
+        obj["drift_by_turn"][0]["ci95_high"] = float("inf")
+    else:
+        obj["headline_metrics"]["brier_score"] = float("nan")
+    path.write_text(json.dumps(obj), encoding="utf-8")         # json.dumps writes NaN/Infinity, as a hand edit could
+    assert any("non-finite" in e for e in run(site).errors)
+
+
+
+def test_jev_oversized_integer_is_an_error(site):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    obj["by_arm"][0]["assistant_turns"] = 10 ** 400              # valid JSON, Infinity in the page's JSON.parse
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    assert any("non-finite" in e for e in run(site).errors)
+
+
+def test_jev_non_list_by_arm_is_an_error_not_a_crash(site):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    obj["by_arm"] = 1
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    assert any("by_arm" in e for e in run(site).errors)
+
+
+
+@pytest.mark.parametrize("change,needle", [
+    ("old_list_shape", "seed_id"), ("empty_conversations", "total_conversations"),
+    ("empty_instrument", "applies_to"), ("no_registers", "registers"),
+    ("arm_drift_over_turns", "drift_turns"), ("arm_rate_mismatch", "turn_drift_rate"),
+    ("share_mismatch", "conversation_drift_share"), ("turn_rate_mismatch", "drift_rate"),
+    ("interval_out_of_order", "ci95_low")])
+def test_jev_drift_values_are_reconciled(site, change, needle):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    arm, app, turn = obj["by_arm"][0], obj["headline_metrics"]["applicable"], obj["drift_by_turn"][0]
+    if change == "old_list_shape":
+        obj["conversations"] = {"c" * 64: []}
+    elif change == "empty_conversations":
+        obj["conversations"] = {}
+    elif change == "empty_instrument":
+        obj["drift_instrument"] = {}
+    elif change == "no_registers":
+        obj["drift_instrument"]["applies_to"]["registers"] = []
+    elif change == "arm_drift_over_turns":
+        arm["drift_turns"] = 2
+    elif change == "arm_rate_mismatch":
+        arm.update(drift_turns=1, turn_drift_rate=0.0)
+    elif change == "share_mismatch":
+        app.update(conversations_with_drift=1, conversation_drift_share=0.0)
+    elif change == "turn_rate_mismatch":
+        turn.update(drift_turns=1, drift_rate=0.0)
+    else:
+        turn.update(ci95_low=0.9, ci95_high=0.1)
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    assert any(needle in e for e in run(site).errors)
+
+
+def test_jev_drift_without_its_calibration_payload_is_an_error(site):
+    _jev_pair(site)
+    (site / "data" / "jev_calibration.json").unlink()
+    assert any("partial publication" in e for e in run(site).errors)
+
+
+
+@pytest.mark.parametrize("change,needle", [
+    ("empty_turns", "turns"), ("bare_turn_record", "tone_choice"),
+    ("arm_disagrees_with_headline", "drift_turns sums"), ("series_disagrees", "n sums"),
+    ("wrong_wilson", "Wilson interval"), ("wrong_conversation_wilson", "Wilson interval")])
+def test_jev_drift_views_must_agree(site, change, needle):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    conv = next(iter(obj["conversations"].values()))
+    if change == "empty_turns":
+        conv["turns"] = []
+    elif change == "bare_turn_record":
+        conv["turns"] = [{}]
+    elif change == "arm_disagrees_with_headline":
+        obj["by_arm"][0].update(drift_turns=1, turn_drift_rate=1.0)
+    elif change == "series_disagrees":
+        obj["drift_by_turn"][0]["n"] = 2
+    elif change == "wrong_wilson":
+        obj["drift_by_turn"][0].update(ci95_low=0.2, ci95_high=0.3)
+    else:
+        obj["headline_metrics"]["applicable"].update(conversation_ci95_low=0.2, conversation_ci95_high=0.3)
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    assert any(needle in e for e in run(site).errors)
+
+
+@pytest.mark.parametrize("change,needle", [
+    ("flip_turn_drift", "conversations' turns give"), ("tone_confidence_over_one", "not a probability"),
+    ("negative_drift_probability", "not a probability"), ("flag_contradicts_probability", "probability >= 0.5")])
+def test_jev_summaries_are_rebuilt_from_the_turns(site, change, needle):
+    _jev_pair(site)
+    path = site / "data" / "petri_register_drift.json"
+    obj = json.loads(path.read_text(encoding="utf-8"))
+    turn = next(iter(obj["conversations"].values()))["turns"][0]
+    if change == "flip_turn_drift":
+        turn.update(has_register_drift=True, drift_probability=0.9)      # every summary still says zero drift
+    elif change == "tone_confidence_over_one":
+        turn["tone_confidence"] = 2
+    elif change == "negative_drift_probability":
+        turn["drift_probability"] = -1
+    else:
+        turn["drift_probability"] = 0.9                                   # flag stays False
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    assert any(needle in e for e in run(site).errors)
