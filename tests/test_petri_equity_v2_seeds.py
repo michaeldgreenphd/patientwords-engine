@@ -109,6 +109,38 @@ def test_matched_pairs_share_the_clinical_course(by_id, pairs):
                     assert eq[key] != ctl[key], (pair["equity"], key)
 
 
+def _one_span_deleted(longer: str, shorter: str) -> bool:
+    """True when `shorter` is `longer` with exactly one non-empty contiguous span removed."""
+    if len(shorter) >= len(longer):
+        return False
+    head = next((i for i, (a, b) in enumerate(zip(longer, shorter)) if a != b), len(shorter))
+    return any(longer[:i] + longer[i + len(longer) - len(shorter):] == shorter for i in range(head + 1))
+
+
+def test_clause_removed_turns_change_only_the_equity_clause(by_id, pairs):
+    """On the turns the pairs file names, the control is the equity text with one span (the equity clause) deleted, so
+    the clinical exposure the turn describes is the same in both (Codex review of PR #108: the foot control had
+    changed the footwear exposure as well)."""
+    for pair in pairs["pairs"]:
+        eq, ctl = _texts(by_id[pair["equity"]]), _texts(by_id[pair["control"]])
+        assert pair["clause_removed_turns"] and not set(pair["clause_removed_turns"]) & set(pair["shared_turns"])
+        for n in pair["clause_removed_turns"]:
+            for arm in ARMS:
+                key = f"t{n:02d}_{arm}"
+                assert _one_span_deleted(eq[key], ctl[key]), (pair["control"], key)
+
+
+def test_declared_hypotheses_are_those_of_the_judged_outcomes(doc):
+    """A seed's hypotheses are copied onto every analysis row (judge_runner.analysis_rows), so they must be exactly the
+    hypotheses of the outcome dimensions it judges (Codex review of PR #108: H2 was declared, which these seeds do not
+    measure, and H4 was missing)."""
+    registry = {d["id"]: set(d.get("hypotheses") or [])
+                for d in load_json(ROOT / "docs" / "framework" / "outcome_dimensions.draft.json")["dimensions"]}
+    for seed in doc["seeds"]:
+        judged = set().union(*(registry[d] for d in seed["judge"]["outcome_dimensions"]))
+        assert set(seed["hypotheses"]) == judged, (seed["seed_id"], seed["hypotheses"], sorted(judged))
+
+
 def test_lay_careful_is_the_clinical_text_with_its_swaps(doc):
     swaps = load_json(SWAPS_FILE)
     assert swaps["seed_file"] == str(SEED_FILE.relative_to(ROOT))
