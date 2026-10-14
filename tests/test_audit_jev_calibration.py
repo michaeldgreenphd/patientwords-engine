@@ -957,3 +957,24 @@ def test_checkpoint_is_mock_metadata_validation(tmp_path):
 
 
 
+
+
+def test_skip_advice_writes_a_petri_only_report(tmp_path):
+    """--skip-advice (2026-10-14) scores the Petri transcripts alone: no advice rows and no advice or golden
+    provenance, which is what export_jev_calibration.check_combinable requires of the reports it pools."""
+    out = tmp_path / "petri_only.json"
+    assert main(["--skip-advice", "--petri-transcripts", "data/petri/runs/run_38434195912_1/transcripts.jsonl",
+                 "--petri-conversations", "2", "--out-json", str(out),
+                 "--out-markdown", str(tmp_path / "petri_only.md")]) == 0
+    report = json.loads(out.read_text(encoding="utf-8"))
+    assert report["cases"] == [] and report["metrics"]["total_cases"] == 0 and report["petri_cases"]
+    for block in ("advice_archive", "advice_judgments", "golden_benchmark"):
+        assert block not in report["metadata"]
+    assert report["metadata"]["petri_transcripts"]["turns_evaluated"] == len(report["petri_cases"])
+
+
+@pytest.mark.parametrize("extra", [[], ["--archive", "data/advice/responses_stimuli_20260721T235403Z.jsonl",
+                                         "--petri-transcripts", "data/petri/runs/run_38434195912_1/transcripts.jsonl"]])
+def test_skip_advice_needs_petri_and_refuses_an_archive(tmp_path, extra):
+    assert main(["--skip-advice", *extra, "--out-json", str(tmp_path / "r.json")]) == 1
+    assert not (tmp_path / "r.json").exists()

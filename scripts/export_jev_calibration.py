@@ -42,6 +42,16 @@ Methods (all deterministic; no sampling, so no seed):
   conversations as a binomial sample; the same conversations contribute to every turn,
   so the intervals are per-turn marginals, not a test of trend across turns.
 
+Several runs in one export (2026-10-14, owner decision D3): `--report` may be repeated. Exactly one report carries
+advice cases and the calibration payload is that report's; the others are Petri-only reports
+(`audit_jev_calibration.py --skip-advice`) over other Petri runs. All must be one instrument (requested model,
+execution mode, classifier digest, both rubrics), no report or Petri run may appear twice, and a conversation in two
+reports is refused (check_combinable, build_combined_petri_drift_payload). The Petri payload pools the conversations,
+names each run in `provenance.petri_runs` and each conversation's `run`, and with several Petri runs carries
+`provenance.petri_transcripts` as null. Both payloads list every report in `source_reports` and carry one
+`source_report_sha256`: the report's digest for one report, and for several the sha256 of the sorted digests, one per
+line (combined_report_sha256), which the site contract recomputes.
+
 Safety properties (matching other site exporters):
 - Refuses (exit 2, site files untouched) when report is missing, invalid, or inconsistent.
 - Strips all raw patient and response text to prevent any holdout phrase leakage.
@@ -50,7 +60,7 @@ Safety properties (matching other site exporters):
 
 Usage:
   python scripts/export_jev_calibration.py \\
-      [--report artifacts/jev_pilot_report.json] \\
+      [--report artifacts/jev_pilot_report.json [--report petri_only_report.json ...]] \\
       [--site ../patientwords] \\
       [--dry-run]
 """
@@ -920,22 +930,20 @@ def _drift_summary(by_conversation: dict[str, list[dict[str, Any]]]) -> dict[str
             "formality_scored_turns": len(scores), "tone_distribution": tones}
 
 
-def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str, repo_root: Path = REPO_ROOT,
-                              arms: dict[str, dict[str, Any]] | None = None) -> dict[str, Any] | None:
-    """Build the petri_register_drift.json payload from multi-turn Petri records. Drift is reported per arm (speaker
-    and register) and, as the headline and the per-turn series, only for the conversations the drift question applies
-    to (DRIFT_SPEAKER, DRIFT_REGISTERS). `arms` maps conversation ids to their arm; by default it is read from the run
-    the report scored (conversation_arms)."""
+def _petri_report_rows(report_data: dict[str, Any], repo_root: Path) -> tuple[dict[str, list[dict[str, Any]]],
+                                                                            list[dict[str, Any]]]:
+    """One report's Petri rows, validated and grouped by conversation: ({conversation id: turn rows}, the raw rows).
+    Both are empty when the report scored no Petri conversation."""
     # the audit runner always writes petri_cases (an empty list when it ran no Petri conversations), so a missing
     # or non-list field is a malformed report, not an empty dataset: refused, so it cannot delete a published file
     if "petri_cases" not in report_data or not isinstance(report_data["petri_cases"], list):
         _refuse("Report has no 'petri_cases' list; refusing rather than treating a malformed report as empty")
     petri_cases = report_data["petri_cases"]
     if not petri_cases:
-        return None
+        return {}, []
 
     meta = report_data.get("metadata", {})
-    is_mock = _require_is_mock(meta)
+    _require_is_mock(meta)
     tone_choices, score_top = _register_vocabulary(_recorded_rubric(meta, "register_rubric", repo_root))
     cases = report_data.get("cases")
     _check_provenance_counts(meta, cases if isinstance(cases, list) else [], petri_cases)
@@ -988,12 +996,70 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str, repo
             "formality_score": reg_score,
         })
 
-    if arms is None:
-        arms = conversation_arms(meta, repo_root)
-    unplaced = sorted(set(conversations) - set(arms))
-    if unplaced:
-        _refuse(f"{len(unplaced)} Petri conversation(s) are not in the scored run's analysis rows "
-                f"(first: {unplaced[0]}); cannot place them in an arm")
+    return conversations, petri_cases
+
+
+def _petri_run_entry(meta: dict[str, Any], report_sha: str, n_conversations: int) -> dict[str, Any]:
+    """One scored Petri run as the payload names it: its transcripts (path and sha256, as the report recorded them),
+    the report that scored it, when, and how much of it was scored."""
+    entry = meta["petri_transcripts"]
+    return {"path": entry["path"], "sha256": entry["sha256"], "run": PurePosixPath(entry["path"]).parent.name,
+            "max_conversations": entry.get("max_conversations"), "turns_evaluated": entry.get("turns_evaluated"),
+            "conversations": n_conversations, "audit_timestamp_utc": meta.get("timestamp_utc"),
+            "source_report_sha256": report_sha}
+
+
+def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str, repo_root: Path = REPO_ROOT,
+                              arms: dict[str, dict[str, Any]] | None = None) -> dict[str, Any] | None:
+    """Build the petri_register_drift.json payload from one report's multi-turn Petri records
+    (build_combined_petri_drift_payload with a single report). `arms` maps conversation ids to their arm; by default
+    it is read from the run the report scored (conversation_arms)."""
+    return build_combined_petri_drift_payload([(report_data, report_sha)], repo_root,
+                                              arms=None if arms is None else [arms])
+
+
+def build_combined_petri_drift_payload(reports: list[tuple[dict[str, Any], str]], repo_root: Path = REPO_ROOT,
+                                       arms: list[dict[str, dict[str, Any]]] | None = None,
+                                       source_report_sha256: str | None = None) -> dict[str, Any] | None:
+    """Build the petri_register_drift.json payload from the Petri records of one or more reports, each of which may
+    have scored a different Petri run. Drift is reported per arm (speaker and register) and, as the headline and the
+    per-turn series, only for the conversations the drift question applies to (DRIFT_SPEAKER, DRIFT_REGISTERS).
+
+    Each report's rows are validated on their own, and each report's conversations are placed in arms from the run
+    that report scored (conversation_arms; `arms`, one map per report, replaces that in tests). The reports are then
+    pooled as conversations: a conversation id found in two reports is refused, because a conversation scored twice
+    would be counted twice. Reports with no Petri rows contribute nothing; None when no report has any. The caller
+    checks that the reports share one classifier, register rubric, requested model and execution mode
+    (check_combinable). `source_report_sha256` defaults to the single report's digest."""
+    conversations: dict[str, list[dict[str, Any]]] = {}
+    placed: dict[str, dict[str, Any]] = {}
+    run_of: dict[str, str] = {}
+    all_rows: list[dict[str, Any]] = []
+    petri_reports: list[tuple[dict[str, Any], str]] = []
+    runs: list[dict[str, Any]] = []
+    for i, (report_data, report_sha) in enumerate(reports):
+        convs, rows = _petri_report_rows(report_data, repo_root)
+        if not rows:
+            continue
+        meta = report_data.get("metadata", {})
+        report_arms = arms[i] if arms is not None else conversation_arms(meta, repo_root)
+        unplaced = sorted(set(convs) - set(report_arms))
+        if unplaced:
+            _refuse(f"{len(unplaced)} Petri conversation(s) are not in the scored run's analysis rows "
+                    f"(first: {unplaced[0]}); cannot place them in an arm")
+        twice = sorted(set(convs) & set(conversations))
+        if twice:
+            _refuse(f"{len(twice)} Petri conversation(s) appear in more than one report (first: {twice[0]}); a "
+                    "conversation scored twice would be counted twice")
+        conversations.update(convs)
+        placed.update({cid: report_arms[cid] for cid in convs})
+        all_rows.extend(rows)
+        petri_reports.append((report_data, report_sha))
+        runs.append(_petri_run_entry(meta, report_sha, len(convs)))
+        run_of.update({cid: runs[-1]["run"] for cid in convs})
+    if not petri_reports:
+        return None
+    arms_by_cid = placed
 
     # turn_index is the row's raw position in its own transcript (tool and other records included), so the same
     # assistant position can carry different indices in different conversations. Rows are therefore ranked within
@@ -1005,7 +1071,7 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str, repo
         conversations[cid].sort(key=lambda t: t["turn_index"])
         for ordinal, row in enumerate(conversations[cid], 1):
             row["assistant_turn_ordinal"] = ordinal
-            if not arms[cid]["drift_instrument_applies"]:
+            if not arms_by_cid[cid]["drift_instrument_applies"]:
                 continue
             counts = by_ordinal.setdefault(ordinal, [0, 0])
             counts[1] += 1
@@ -1017,12 +1083,12 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str, repo
 
     groups: dict[tuple[Any, Any], list[str]] = {}
     for cid in conversations:
-        groups.setdefault((arms[cid]["user_is"], arms[cid]["register"]), []).append(cid)
+        groups.setdefault((arms_by_cid[cid]["user_is"], arms_by_cid[cid]["register"]), []).append(cid)
     by_arm = [{"user_is": user_is, "register": register,
-               "drift_instrument_applies": arms[cids[0]]["drift_instrument_applies"],
+               "drift_instrument_applies": arms_by_cid[cids[0]]["drift_instrument_applies"],
                **_drift_summary({c: conversations[c] for c in cids})}
               for (user_is, register), cids in sorted(groups.items(), key=lambda kv: (str(kv[0][0]), str(kv[0][1])))]
-    applicable = [c for c in conversations if arms[c]["drift_instrument_applies"]]
+    applicable = [c for c in conversations if arms_by_cid[c]["drift_instrument_applies"]]
 
     drift_by_turn: list[dict[str, Any]] = []
     for ordinal in sorted(by_ordinal):
@@ -1040,15 +1106,29 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str, repo
         })
 
 
+    meta = petri_reports[0][0].get("metadata", {})
+    if len(petri_reports) == 1:
+        provenance = {k: v for k, v in _publishable_provenance(
+            meta, has_advice=bool(petri_reports[0][0].get("cases")), has_petri=True).items()
+            if k in ("audit_timestamp_utc", "register_rubric", "classifier_sha256", "parameters",
+                     "petri_transcripts", "checkpoint")}
+    else:
+        # several runs: what they share is published once; what differs per run is in petri_runs
+        shared = _publishable_provenance(meta, has_advice=False, has_petri=True)
+        provenance = {"audit_timestamp_utc": None, "register_rubric": shared["register_rubric"],
+                      "classifier_sha256": shared["classifier_sha256"], "parameters": None,
+                      "petri_transcripts": None, "checkpoint": None}
+        for report_data, _ in petri_reports[1:]:
+            _publishable_provenance(report_data.get("metadata", {}), has_advice=False, has_petri=True)
+    provenance["petri_runs"] = runs
+
     return {
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "source_report_sha256": report_sha,
+        "source_report_sha256": source_report_sha256 or petri_reports[0][1],
         "model_requested": _require_model_requested(meta),
-        "models_served": _served_models(petri_cases, "Petri case"),
-        "is_mock": is_mock,
-        "provenance": {k: v for k, v in _publishable_provenance(meta, has_advice=bool(cases), has_petri=True).items()
-                       if k in ("audit_timestamp_utc", "register_rubric", "classifier_sha256", "parameters",
-                                "petri_transcripts", "checkpoint")},
+        "models_served": _served_models(all_rows, "Petri case"),
+        "is_mock": _require_is_mock(meta),
+        "provenance": provenance,
         "status": "exploratory",
         "per_turn_interval": "wilson_95; per-turn marginal, not a test of trend (the same conversations recur)",
         "aggregate_interval": "wilson_95 over conversations (conversations_with_drift); turn_drift_rate is descriptive",
@@ -1056,20 +1136,94 @@ def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str, repo
                              "question_source": "register_rubric petri_register.drift.instructions"},
         "headline_metrics": {
             "total_conversations": len(conversations),
-            "total_assistant_turns": len(petri_cases),
+            "total_assistant_turns": len(all_rows),
             # drift where the question applies; the per-arm table carries every arm, the others included
             "applicable": _drift_summary({c: conversations[c] for c in applicable}),
-            "petri_phase_spend": _phase_spend(petri_cases, "Petri case"),
+            "petri_phase_spend": _phase_spend(all_rows, "Petri case"),
             "min_turn_n": min(t["n"] for t in drift_by_turn),
             "max_turn_n": max(t["n"] for t in drift_by_turn),
         },
         "by_arm": by_arm,
         "drift_by_turn": drift_by_turn,
-        "conversations": {cid: {"seed_id": arms[cid]["seed_id"], "arm": arms[cid]["arm"],
-                                "user_is": arms[cid]["user_is"], "register": arms[cid]["register"],
-                                "drift_instrument_applies": arms[cid]["drift_instrument_applies"],
-                                "turns": turns} for cid, turns in conversations.items()},
+        "conversations": {cid: {"seed_id": arms_by_cid[cid]["seed_id"], "arm": arms_by_cid[cid]["arm"],
+                                "user_is": arms_by_cid[cid]["user_is"], "register": arms_by_cid[cid]["register"],
+                                "drift_instrument_applies": arms_by_cid[cid]["drift_instrument_applies"],
+                                "run": run_of[cid], "turns": turns} for cid, turns in conversations.items()},
     }
+
+
+def combined_report_sha256(shas: list[str]) -> str:
+    """The identifier both payloads carry as source_report_sha256: the report's own digest when there is one report;
+    for several, the sha256 of their digests sorted and joined, each followed by a newline, so the same set of
+    reports gives the same identifier whatever order they were passed in."""
+    if len(shas) == 1:
+        return shas[0]
+    return hashlib.sha256("".join(f"{sha}\n" for sha in sorted(shas)).encode("ascii")).hexdigest()
+
+
+def source_report_entries(reports: list[tuple[dict[str, Any], str]]) -> list[dict[str, Any]]:
+    """Every report the export read, in the order given: its digest, how many advice and Petri rows it holds, and the
+    Petri transcripts it scored (null when it scored none)."""
+    out = []
+    for data, sha in reports:
+        petri = (data.get("metadata") or {}).get("petri_transcripts")
+        out.append({"sha256": sha, "advice_cases": len(data.get("cases") or []),
+                    "petri_turns": len(data.get("petri_cases") or []),
+                    "petri_transcripts": petri.get("path") if isinstance(petri, dict) else None})
+    return out
+
+
+def check_combinable(reports: list[tuple[dict[str, Any], str]]) -> int:
+    """Refuse a set of reports that cannot be pooled into one export; return the index of the one advice report.
+
+    Pooled reports must be one instrument: the same requested model, execution mode (all live or all mock),
+    classifier digest, advice rubric and register rubric. No report may appear twice, and no Petri run may be
+    scored by two reports (its conversations would be counted twice). Exactly one report carries advice cases: the
+    calibration payload is that report's, unchanged. Advice runs are not pooled, because two runs over one archive
+    score overlapping responses; the others are Petri-only (audit_jev_calibration.py --skip-advice), with no advice
+    rows, no advice or golden-benchmark provenance, and spend totals that equal their Petri rows."""
+    shas = [sha for _, sha in reports]
+    if len(set(shas)) != len(shas):
+        _refuse("The same report was passed more than once")
+
+    def ident(data: dict[str, Any]) -> tuple[Any, ...]:
+        meta = data.get("metadata") or {}
+        return (_require_model_requested(meta), _require_is_mock(meta),
+                (meta.get("classifier") or {}).get("sha256"), (meta.get("rubric") or {}).get("sha256"),
+                (meta.get("register_rubric") or {}).get("sha256"))
+    first = ident(reports[0][0])
+    for data, sha in reports[1:]:
+        if ident(data) != first:
+            _refuse(f"Report {sha[:12]}... differs from {shas[0][:12]}... in requested model, execution mode, "
+                    "classifier or rubric; reports pooled into one export must be one instrument")
+    seen_runs: dict[str, str] = {}
+    for data, sha in reports:
+        petri = (data.get("metadata") or {}).get("petri_transcripts")
+        if isinstance(petri, dict) and data.get("petri_cases"):
+            run = _require_sha256(petri.get("sha256"), "petri_transcripts.sha256")
+            if run in seen_runs:
+                _refuse(f"Reports {seen_runs[run][:12]}... and {sha[:12]}... scored the same Petri transcripts "
+                        f"({petri.get('path')}); its conversations would be counted twice")
+            seen_runs[run] = sha
+    advice = [i for i, (data, _) in enumerate(reports) if data.get("cases")]
+    if len(advice) != 1:
+        _refuse(f"{len(advice)} of the reports carry advice cases; exactly one must (the calibration payload is that "
+                "report's). Score further Petri runs with audit_jev_calibration.py --skip-advice")
+    for i, (data, sha) in enumerate(reports):
+        if i == advice[0]:
+            continue
+        meta, metrics = data.get("metadata") or {}, data.get("metrics") or {}
+        for block in ("advice_archive", "advice_judgments", "golden_benchmark"):
+            if block in meta:
+                _refuse(f"Report {sha[:12]}... has no advice cases but records {block} provenance; a Petri-only "
+                        "report records neither")
+        if _require_count(metrics.get("total_cases"), "total_cases") != 0:
+            _refuse(f"Report {sha[:12]}... gives total_cases {metrics.get('total_cases')} with no case rows")
+        rows = data.get("petri_cases")
+        if not isinstance(rows, list) or not rows:
+            _refuse(f"Report {sha[:12]}... has neither advice cases nor Petri rows")
+        _check_combined_spend(metrics, [_phase_spend(rows, "Petri case")])
+    return advice[0]
 
 
 def serialize_payload(doc: dict[str, Any], name: str) -> str:
@@ -1126,8 +1280,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
         "--report",
-        default="artifacts/jev_pilot_report.json",
-        help="Path to Jev audit report JSON (default: artifacts/jev_pilot_report.json)",
+        action="append",
+        help="Path to a Jev audit report JSON (default: artifacts/jev_pilot_report.json). Repeat to combine several "
+             "runs: exactly one report carries the advice cases, the others are Petri-only (--skip-advice), and the "
+             "Petri payload pools every report's conversations (check_combinable has the rules)",
     )
     parser.add_argument(
         "--site",
@@ -1149,7 +1305,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    report_path = Path(args.report)
+    report_paths = [Path(r) for r in (args.report or ["artifacts/jev_pilot_report.json"])]
     site_path = Path(args.site)
 
     out_calib = Path(args.out_calibration) if args.out_calibration else site_path / "data" / "jev_calibration.json"
@@ -1157,17 +1313,27 @@ def main(argv: list[str] | None = None) -> int:
     if out_calib.resolve() == out_petri.resolve():
         _refuse(f"--out-calibration and --out-petri-drift resolve to the same file ({out_calib.resolve()})")
     for name, out in (("--out-calibration", out_calib), ("--out-petri-drift", out_petri)):
-        if out.resolve() == report_path.resolve():
-            _refuse(f"{name} resolves to the source report ({report_path.resolve()}); it would be overwritten "
-                    "or deleted")
+        for report_path in report_paths:
+            if out.resolve() == report_path.resolve():
+                _refuse(f"{name} resolves to a source report ({report_path.resolve()}); it would be overwritten "
+                        "or deleted")
 
-    report_data, report_sha = load_report(report_path)
+    reports = [load_report(path) for path in report_paths]
+    advice_index = check_combinable(reports) if len(reports) > 1 else 0
+    source_sha = combined_report_sha256([sha for _, sha in reports])
+    sources = source_report_entries(reports)
 
-    calib_payload = build_calibration_payload(report_data, report_sha)
-    petri_payload = build_petri_drift_payload(report_data, report_sha)
+    calib_payload = build_calibration_payload(reports[advice_index][0], source_sha)
+    petri_payload = build_combined_petri_drift_payload(reports, source_report_sha256=source_sha)
+    calib_payload["source_reports"] = sources
+    if petri_payload:
+        petri_payload["source_reports"] = sources
 
     print("=== Jev Site Export Summary ===")
-    print(f"Source report: {report_path} (sha256: {report_sha[:12]}...)")
+    for path, (_, sha) in zip(report_paths, reports):
+        print(f"Source report: {path} (sha256: {sha[:12]}...)")
+    if len(reports) > 1:
+        print(f"Combined export identifier: {source_sha[:12]}... ({len(reports)} reports)")
     print(f"Advice cases: {calib_payload['headline_metrics']['total_advice_cases']}")
     head = calib_payload["headline_metrics"]
 

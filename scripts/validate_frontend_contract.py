@@ -21,6 +21,7 @@ No medical vocabulary lives in this file; all terms stay in the data.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import re
@@ -796,6 +797,10 @@ def check_owner_run(rep: Report, site: Path, send_waivers: dict | None = None):
 # one report. The drift payload must carry the per-arm shape: the pooled drift rate it replaced mixed conversations the
 # drift question does not apply to (export_jev_calibration.DRIFT_SPEAKER / DRIFT_REGISTERS; review of 2026-10-13).
 JEV_WRITER = "scripts/export_jev_calibration.py"
+# `source_reports` (2026-10-14) lists every report one export read; optional, because payloads exported before then
+# carry only source_report_sha256. With one report that digest is the report's; with several it is the sha256 of the
+# sorted digests, one per line (export_jev_calibration.combined_report_sha256), which is checked here.
+JEV_OPTIONAL_TOP = {"source_reports"}
 JEV_SPECS = {
     "jev_calibration.json": {
         "top": {"generated_utc": str, "source_report_sha256": str, "model_requested": str, "models_served": list,
@@ -1035,8 +1040,24 @@ def _jev_rebuild(rep: Report, name: str, data: dict) -> None:
                             f"{entry.get(field)!r} but the conversations' turns give {value!r}")
 
 
+def _jev_source_reports(rep: Report, name: str, data: dict) -> None:
+    """source_reports must be a non-empty list of distinct report digests whose combined identifier
+    (export_jev_calibration.combined_report_sha256) is the payload's source_report_sha256."""
+    lst = data.get("source_reports")
+    shas = [e.get("sha256") for e in lst if isinstance(e, dict)] if isinstance(lst, list) else []
+    if not isinstance(lst, list) or not lst or len(shas) != len(lst) or not all(
+            isinstance(x, str) and re.fullmatch(r"[0-9a-f]{64}", x) for x in shas) or len(set(shas)) != len(shas):
+        rep.err(name, "$.source_reports", "must be a non-empty list of objects with distinct sha256 digests")
+        return
+    expected = shas[0] if len(shas) == 1 else hashlib.sha256(
+        "".join(f"{x}\n" for x in sorted(shas)).encode("ascii")).hexdigest()
+    if data.get("source_report_sha256") != expected:
+        rep.err(name, "$.source_report_sha256", f"is not the identifier of the {len(shas)} listed source report(s)")
+
+
 def check_jev_payloads(rep: Report, site: Path) -> None:
     reports: dict[str, str] = {}
+    sources: dict[str, list] = {}
     for name, spec in JEV_SPECS.items():
         if not (site / "data" / name).is_file():
             if name == "jev_calibration.json" and (site / "data" / "petri_register_drift.json").is_file():
@@ -1052,7 +1073,9 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
             continue
         for key, kinds in spec["top"].items():
             _jev_need(rep, name, data, key, kinds, "$", nullable=key in spec["nullable"])
-        known_keys(rep, name, data, set(spec["top"]))
+        known_keys(rep, name, data, set(spec["top"]) | JEV_OPTIONAL_TOP)
+        if "source_reports" in data:
+            _jev_source_reports(rep, name, data)
         head = data.get("headline_metrics")
         if isinstance(head, dict):
             for key, kinds in spec["headline"].items():
@@ -1064,6 +1087,8 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
             rep.err(name, "$.is_mock", "a mock run's payload is not a measurement and is not published")
         if isinstance(data.get("source_report_sha256"), str):
             reports[name] = data["source_report_sha256"]
+        if isinstance(data.get("source_reports"), list):
+            sources[name] = data["source_reports"]
         if name == "petri_register_drift.json":
             if isinstance(data.get("by_arm"), list) and not data["by_arm"]:
                 rep.err(name, "$.by_arm", "empty: the payload publishes no per-arm result")
@@ -1130,6 +1155,9 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
             _jev_rebuild(rep, name, data)
     if len(set(reports.values())) > 1:
         rep.err(" and ".join(reports), "$.source_report_sha256", "the two Jev payloads come from different reports")
+    listed = {name: json.dumps(lst, sort_keys=True) for name, lst in sources.items()}
+    if len(listed) > 1 and len(set(listed.values())) > 1:
+        rep.err(" and ".join(listed), "$.source_reports", "the two Jev payloads list different source reports")
 
 
 # ------------------------------------------------------------------ cross-repo checks

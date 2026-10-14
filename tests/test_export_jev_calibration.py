@@ -1515,3 +1515,155 @@ def test_malformed_manifest_chain_line_refused_cleanly(tmp_path, mock_report_dat
     with pytest.raises(SystemExit) as exc:
         build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
     assert exc.value.code == 2
+
+
+# Several runs in one export (owner decision D3, 2026-10-14): one advice report plus Petri-only reports
+# (audit_jev_calibration.py --skip-advice), pooled as conversations. The second run is the committed equity run eq02,
+# so its arm placement also runs end to end; its two conversations here are a colloquial and a careful-lay patient.
+EQ02_TRANSCRIPTS = "data/petri/runs/run_38434195912_1/transcripts.jsonl"
+EQ02_SHA = hashlib.sha256((ROOT / EQ02_TRANSCRIPTS).read_bytes()).hexdigest()
+EQ02_A = "85726acbafe748de9fb0024d071f9da94c192a61fd7c908c4e82afda1f9756bd"
+EQ02_B = "3d1e05bc3b41d0c9b2c6650ba42da9b63c85dc6d068a2b20ee03d4f8668c9201"
+
+
+def _petri_only(base: dict) -> dict:
+    """A Petri-only report over eq02 with the same instrument as `base`, as --skip-advice writes it."""
+    meta = {k: v for k, v in json.loads(json.dumps(base["metadata"])).items()
+            if k not in ("advice_archive", "advice_judgments")}
+    meta["timestamp_utc"] = "2026-10-14T01:00:00Z"
+    meta["petri_transcripts"] = {"path": EQ02_TRANSCRIPTS, "sha256": EQ02_SHA, "turns_evaluated": 3}
+    row = dict(base["petri_cases"][0], cost_usd=0.0002, estimated_cost_usd=0.0002, input_tokens=100)
+    rows = [dict(row, conversation_id=EQ02_A, turn_index=1),
+            dict(row, conversation_id=EQ02_A, turn_index=3, has_register_drift=True, drift_probability=0.7),
+            dict(row, conversation_id=EQ02_B, turn_index=1)]
+    metrics = {"total_cases": 0, "total_cost_usd": 0.0006, "total_estimated_cost_usd": 0.0006,
+               "total_input_tokens": 300, "unbilled_calls_count": 0, "tier_order": TIERS}
+    return {"metadata": meta, "metrics": metrics, "cases": [], "petri_cases": rows}
+
+
+def _write_reports(tmp_path: Path, *docs: dict) -> list[str]:
+    paths = []
+    for i, doc in enumerate(docs):
+        path = tmp_path / f"r{i}.json"
+        path.write_text(json.dumps(doc), encoding="utf-8")
+        paths.append(str(path))
+    return paths
+
+
+def _export(tmp_path: Path, paths: list[str], *extra: str) -> int:
+    (tmp_path / "site" / "data").mkdir(parents=True, exist_ok=True)
+    return main([arg for p in paths for arg in ("--report", p)] + ["--site", str(tmp_path / "site"), *extra])
+
+
+def _site(tmp_path: Path, name: str) -> dict:
+    return json.loads((tmp_path / "site" / "data" / name).read_text(encoding="utf-8"))
+
+
+def test_a_combined_export_pools_the_petri_runs_and_keeps_the_advice_report(tmp_path, mock_report_data):
+    paths = _write_reports(tmp_path, mock_report_data, _petri_only(mock_report_data))
+    shas = [hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in paths]
+    assert _export(tmp_path, paths) == 0
+    calib, petri = _site(tmp_path, "jev_calibration.json"), _site(tmp_path, "petri_register_drift.json")
+    combined = hashlib.sha256("".join(f"{s}\n" for s in sorted(shas)).encode("ascii")).hexdigest()
+    assert calib["source_report_sha256"] == petri["source_report_sha256"] == combined
+    assert [e["sha256"] for e in calib["source_reports"]] == shas and calib["source_reports"] == petri["source_reports"]
+    assert calib["headline_metrics"]["total_advice_cases"] == 4        # the advice report's, unchanged
+    head = petri["headline_metrics"]
+    assert (head["total_conversations"], head["total_assistant_turns"]) == (4, 6)
+    assert head["petri_phase_spend"]["cost_usd"] == pytest.approx(0.0006)
+    assert [(r["run"], r["conversations"]) for r in petri["provenance"]["petri_runs"]] == [
+        ("run_35937014168_1", 2), ("run_38434195912_1", 2)]
+    assert petri["provenance"]["petri_transcripts"] is None             # several runs: named in petri_runs
+    assert petri["conversations"][EQ02_A]["run"] == "run_38434195912_1"
+    assert petri["conversations"][CONV_A]["run"] == "run_35937014168_1"
+    app = head["applicable"]
+    assert (app["conversations"], app["conversations_with_drift"]) == (4, 2)
+
+
+def test_the_combined_identifier_does_not_depend_on_report_order(tmp_path, mock_report_data):
+    paths = _write_reports(tmp_path, mock_report_data, _petri_only(mock_report_data))
+    assert _export(tmp_path, paths) == 0
+    first = _site(tmp_path, "petri_register_drift.json")["source_report_sha256"]
+    assert _export(tmp_path, paths[::-1]) == 0
+    assert _site(tmp_path, "petri_register_drift.json")["source_report_sha256"] == first
+
+
+def test_a_single_report_export_names_its_report_and_run(tmp_path, mock_report_data):
+    (path,) = _write_reports(tmp_path, mock_report_data)
+    assert _export(tmp_path, [path]) == 0
+    petri = _site(tmp_path, "petri_register_drift.json")
+    sha = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    assert petri["source_report_sha256"] == sha and [e["sha256"] for e in petri["source_reports"]] == [sha]
+    assert petri["provenance"]["petri_transcripts"]["path"] == PETRI_RUN_TRANSCRIPTS     # unchanged for one report
+    assert [r["run"] for r in petri["provenance"]["petri_runs"]] == ["run_35937014168_1"]
+
+
+def test_combined_payloads_pass_the_site_contract_gate(tmp_path, mock_report_data):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("vfc", ROOT / "scripts" / "validate_frontend_contract.py")
+    vfc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(vfc)
+    assert _export(tmp_path, _write_reports(tmp_path, mock_report_data, _petri_only(mock_report_data))) == 0
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert rep.errors == [] and rep.warnings == []
+    # the gate recomputes the identifier from the listed reports, and holds the two payloads' lists equal
+    petri_path = tmp_path / "site" / "data" / "petri_register_drift.json"
+    petri = json.loads(petri_path.read_text(encoding="utf-8"))
+    petri["source_reports"] = petri["source_reports"][:1]
+    petri_path.write_text(json.dumps(petri), encoding="utf-8")
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert any("source_report_sha256" in str(e) for e in rep.errors)
+    assert any("different source reports" in str(e) for e in rep.errors)
+
+
+def _refused(tmp_path: Path, docs: list[dict], fragment: str, capsys) -> None:
+    with pytest.raises(SystemExit) as exc:
+        _export(tmp_path, _write_reports(tmp_path, *docs), "--dry-run")
+    assert exc.value.code == 2
+    assert fragment in capsys.readouterr().err
+
+
+def test_combining_refuses_two_advice_reports(tmp_path, mock_report_data, capsys):
+    other = json.loads(json.dumps(mock_report_data))
+    other["metadata"]["timestamp_utc"] = "2026-10-13T00:00:00Z"
+    del other["metadata"]["petri_transcripts"]          # advice only, so only the advice rule applies
+    other["petri_cases"] = []
+    _refused(tmp_path, [mock_report_data, other], "2 of the reports carry advice cases", capsys)
+
+
+def test_combining_refuses_the_same_report_twice_and_no_advice_report(tmp_path, mock_report_data, capsys):
+    only = _petri_only(mock_report_data)
+    _refused(tmp_path, [only, only], "same report", capsys)
+    other = json.loads(json.dumps(only))
+    path = "data/petri/runs/run_36076994201_1/transcripts.jsonl"
+    other["metadata"]["petri_transcripts"] = {"path": path, "sha256": hashlib.sha256((ROOT / path).read_bytes()).hexdigest(),
+                                              "turns_evaluated": 3}
+    _refused(tmp_path, [only, other], "0 of the reports carry advice cases", capsys)
+
+
+@pytest.mark.parametrize("change, fragment", [
+    (lambda m: m["metadata"].update(model_requested="typesafe/jev-2"), "one instrument"),
+    (lambda m: m["metadata"].update(is_mock=True), "one instrument"),
+    (lambda m: m["metadata"]["classifier"].update(sha256="d" * 64), "one instrument"),
+    (lambda m: m["metadata"]["register_rubric"].update(sha256="e" * 64), "one instrument"),
+    (lambda m: m["metadata"].update(golden_benchmark={"path": "x", "sha256": "a" * 64}), "golden_benchmark"),
+    (lambda m: m["metrics"].update(total_cost_usd=0.5), "does not equal the sum of its rows"),
+    (lambda m: m["metadata"].update(petri_transcripts={"path": PETRI_RUN_TRANSCRIPTS, "sha256": PETRI_RUN_SHA,
+                                                       "turns_evaluated": 3}), "same Petri transcripts"),
+])
+def test_combining_refuses_reports_that_are_not_one_instrument_or_overlap(tmp_path, mock_report_data, capsys,
+                                                                         change, fragment):
+    other = _petri_only(mock_report_data)
+    change(other)
+    _refused(tmp_path, [mock_report_data, other], fragment, capsys)
+
+
+def test_a_conversation_in_two_reports_is_refused(mock_report_data):
+    from scripts.export_jev_calibration import build_combined_petri_drift_payload
+    other = _petri_only(mock_report_data)
+    other["petri_cases"][0]["conversation_id"] = CONV_A
+    arms = [{c: SYNTHETIC_ARM for c in (CONV_A, CONV_B)}, {c: SYNTHETIC_ARM for c in (CONV_A, EQ02_A, EQ02_B)}]
+    with pytest.raises(SystemExit):
+        build_combined_petri_drift_payload([(mock_report_data, "a" * 64), (other, "b" * 64)], arms=arms)

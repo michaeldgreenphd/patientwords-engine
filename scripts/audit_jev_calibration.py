@@ -913,10 +913,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--judge-model", default="claude-haiku-4-5", help="Primary judge model to filter judgments by")
     parser.add_argument("--max-spend", type=float, default=0.25, help="Hard spend ceiling in USD")
     parser.add_argument("--ci-live", action="store_true", help="Gated CI run mode using live OPENROUTER_API_KEY in GitHub Actions")
+    parser.add_argument("--skip-advice", action="store_true",
+                        help="Score the Petri transcripts only: no advice archive and no golden benchmark, so the "
+                             "report's advice cases are empty. For runs whose advice phase another report already "
+                             "covers (scripts/export_jev_calibration.py combines several reports). Needs "
+                             "--petri-transcripts; refuses --archive and --judgments.")
     parser.add_argument("--checkpoint", help="Path to checkpoint JSON file to resume from and save intermediate state to")
     parser.add_argument("--out-markdown", help="Path to save markdown report")
     parser.add_argument("--out-json", help="Path to save structured JSON report")
     args = parser.parse_args(argv)
+
+    if args.skip_advice and (args.archive or args.judgments):
+        print("Refused: --skip-advice scores no advice responses; drop --archive and --judgments.", file=sys.stderr)
+        return 1
+    if args.skip_advice and not args.petri_transcripts:
+        print("Refused: --skip-advice needs --petri-transcripts; a report with neither phase has nothing in it.",
+              file=sys.stderr)
+        return 1
 
     if args.archive_samples < 0:
         print(f"Refused: --archive-samples must be non-negative (got {args.archive_samples}; use 0 for all).", file=sys.stderr)
@@ -982,6 +995,10 @@ def main(argv: list[str] | None = None) -> int:
 
         input_source_desc = f"Archive {args.archive} ({len(cases)} sampled responses, paired with {args.judge_model} judgments: {judg_p is not None})"
         input_sha = hashlib.sha256(arch_p.read_bytes()).hexdigest()
+    elif args.skip_advice:
+        cases = []
+        input_source_desc = "no advice phase (--skip-advice)"
+        input_sha = None
     else:
         golden_path = Path(args.golden)
         if not golden_path.is_file():
@@ -992,7 +1009,7 @@ def main(argv: list[str] | None = None) -> int:
         input_source_desc = f"Golden benchmark {args.golden} ({len(cases)} cases)"
         input_sha = hashlib.sha256(golden_path.read_bytes()).hexdigest()
 
-    if not cases:
+    if not cases and not args.skip_advice:
         print(f"Refused: No test cases found in input {input_source_desc}.", file=sys.stderr)
         return 1
 
@@ -1256,7 +1273,8 @@ def main(argv: list[str] | None = None) -> int:
             petri_results=petri_results,
         )
 
-    if metrics and case_reports:
+    # a --skip-advice run has no advice rows, so its report is written when it has Petri rows
+    if metrics and (case_reports or petri_results):
         write_reports(
             out_markdown=args.out_markdown,
             out_json=args.out_json,
