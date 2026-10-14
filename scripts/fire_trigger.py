@@ -71,6 +71,7 @@ TRIGGERS = (
     "advice-eval",
     "petri-audit",
     "pab-probe",
+    "jev-audit",
 )
 # advice-eval: elicit AND judge spend Anthropic/provider tokens (2026-07-21)
 # pab-probe: patient/assistant/sandbox legs bill the prepaid OpenRouter key and
@@ -81,7 +82,10 @@ TRIGGERS = (
 # real judge (2026-09-24; its `mockllm/judge` rehearsal is free); preflight and
 # dry_run cost nothing but the lane is counted paid so every fire goes through
 # the ceiling.
-PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval", "petri-audit", "pab-probe"})
+# jev-audit (2026-10-14, owner decision D3): a live run calls the Jev decisions classifier through the OpenRouter key;
+# a mock run (live false, the park) calls nothing and costs $0, so it is exempt like petri-audit's free modes.
+PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval", "petri-audit", "pab-probe",
+                           "jev-audit"})
 # Two circuit-trace paths make Anthropic translation calls, the only paid paths
 # outside PAID_TRIGGERS: show_mitigation=true (2panel's LLM-translated third
 # panel) and mode translation (every pair's patient prompt is LLM-translated,
@@ -226,6 +230,12 @@ PARK_DEFAULTS = {
                     "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01",
                     "judge_max_tokens": "300", "log_model_api": "true", "commit_outputs": "false"},
     # pab-probe: not parked - its workflow lives on the PAB branch only.
+    # jev-audit: a mock run (live false: MockJevClient, no call) over one advice case and one Petri conversation;
+    # a true $0 no-op when re-fired, and nothing is committed.
+    "jev-audit": {"archive": "data/advice/responses_stimuli_20260721T235403Z.jsonl", "archive_samples": "1",
+                  "petri_transcripts": "data/petri/runs/run_35937014168_1/transcripts.jsonl",
+                  "petri_conversations": "1", "model": "typesafe/jev-1.13", "live": "false", "max_spend": "0.01",
+                  "commit_outputs": "false"},
 }
 # petri-audit mode readapt (2026-09-24, owner decision after the w2e3 failure): re-adapt a paid run whose target
 # calls completed but whose adaptation failed, from its 90-day raw-eval artifact, into the run's own directory, then
@@ -308,6 +318,10 @@ def is_paid_fire(trigger, params):
         return not petri_rejudge_is_rehearsal(params)
     if trigger == "petri-audit" and petri_mode(params) not in PETRI_PAID_MODES:
         return False
+    if trigger == "jev-audit" and _jev_job_value(params, "live") != "true":
+        # a mock run calls nothing; the params job runs live only on exactly "true" (jev_params_problems refuses
+        # every other spelling, so none reaches the journal)
+        return False
     return True
 
 
@@ -386,6 +400,9 @@ def fire_lane(trigger: str, params: dict, registry: dict | None = None) -> str:
     an Inspect model string, not a registry spec."""
     if trigger == "petri-audit":
         return _petri_lane(params)
+    if trigger == "jev-audit":
+        # the Jev decisions endpoint (medlang_circuits/jev_client.py) bills the OpenRouter key alone
+        return "openrouter"
     if trigger != "advice-eval":
         return "anthropic"
     channels = {channel for _, _, channel in advice_billing_parts(params, registry)}
@@ -1478,6 +1495,53 @@ def logits_eval_params_problems(params: dict) -> list[str]:
     return problems
 
 
+# jev-audit (2026-10-14): the params job's defaults (jev_pilot.yml), mirrored so the fire path reads a trigger file as
+# the job does
+JEV_DEFAULTS = {"archive": "data/advice/responses_stimuli_20260721T235403Z.jsonl", "archive_samples": "10",
+                "petri_transcripts": "data/petri/runs/run_35937014168_1/transcripts.jsonl",
+                "petri_conversations": "3", "model": "typesafe/jev-1.13", "live": "false", "max_spend": "0.10",
+                "commit_outputs": "false"}
+JEV_MODEL_RE = re.compile(r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$")
+
+
+def _jev_job_value(params: dict, key: str) -> str:
+    """A key's value as jev_pilot.yml's params job resolves it: str()-ed, a JSON boolean lower-cased, else the
+    job's default."""
+    if key not in params:
+        return JEV_DEFAULTS[key]
+    value = params[key]
+    return str(value).lower() if isinstance(value, bool) else str(value)
+
+
+def jev_params_problems(params: dict, repo: Path | None = None) -> list[str]:
+    """jev-audit's rules, as its params job applies them: `live` and `commit_outputs` exactly "true" or "false";
+    commit_outputs only with live (a mock report is never committed); sample counts non-negative integers (0 means
+    all); max_spend a positive finite number; the model an OpenRouter
+    `vendor/model` id; and both inputs repo-relative files that exist in this checkout, with no backslash and no
+    `..`, since the job reads them from the checkout."""
+    problems: list[str] = []
+    for key in ("live", "commit_outputs"):
+        if _jev_job_value(params, key) not in ("true", "false"):
+            problems.append(f"jev-audit {key} {params.get(key)!r}: only \"true\" or \"false\"")
+    for key in ("archive_samples", "petri_conversations"):
+        if not _jev_job_value(params, key).isdigit():
+            problems.append(f"jev-audit {key} {params.get(key)!r}: a non-negative integer (0 means all)")
+    if _jev_job_value(params, "commit_outputs") == "true" and _jev_job_value(params, "live") != "true":
+        problems.append("jev-audit commit_outputs true needs live true: a mock report is not a measurement")
+    if parse_max_spend(_jev_job_value(params, "max_spend")) is None:
+        problems.append(f"jev-audit max_spend {params.get('max_spend')!r}: a positive finite number")
+    if not JEV_MODEL_RE.match(_jev_job_value(params, "model")):
+        problems.append(f"jev-audit model {params.get('model')!r}: an OpenRouter vendor/model id")
+    root = (repo or Path(__file__).resolve().parents[1]).resolve()
+    for key in ("archive", "petri_transcripts"):
+        path = _jev_job_value(params, key)
+        if not path or "\\" in path or circuit_trace_pairs_outside_checkout(path):
+            problems.append(f"jev-audit {key} {path!r}: a repo-relative path with / separators and no ..")
+        elif not (root / path).is_file():
+            problems.append(f"jev-audit {key} {path!r} does not exist in this checkout")
+    return problems
+
+
 def lane_params_problems(trigger: str, params: dict, registry: dict | None = None) -> list:
     """Lane-specific invariants beyond the key set; empty for lanes that have none."""
     if trigger == "petri-audit":
@@ -1488,6 +1552,8 @@ def lane_params_problems(trigger: str, params: dict, registry: dict | None = Non
         return circuit_trace_params_problems(params)
     if trigger == "logits-eval":
         return logits_eval_params_problems(params)
+    if trigger == "jev-audit":
+        return jev_params_problems(params)
     return []
 
 
@@ -1604,6 +1670,9 @@ KNOWN_KEYS = {
         "catalog_require", "artifact_run_id", "generate_timeout_minutes",
         "artifact_run_id_2",
     }),
+    # jev_pilot.yml `defaults` dict (verified 2026-10-14; JEV_DEFAULTS mirrors it): archive, archive_samples,
+    # petri_transcripts, petri_conversations, model, live, max_spend, commit_outputs.
+    "jev-audit": frozenset(JEV_DEFAULTS),
 }
 
 
