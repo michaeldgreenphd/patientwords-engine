@@ -189,6 +189,37 @@ def _openrouter_price(name: str, registry: dict, engine_pricing: dict) -> Price 
 
 
 UNREVIEWED_OPENROUTER_PRICE = "unreviewed_openrouter_price"
+FALLBACK_PRICE_SOURCE = "fallback:advice_eval._FALLBACK_PRICING"     # resolve_price's source for the fallback rate
+FALLBACK_PRICED_JUDGE = "fallback_priced_judge"
+
+
+def judge_fallback_price_problems(spec: str, registry: dict | None = None,
+                                  engine_pricing: dict | None = None) -> list[str]:
+    """Why a judge spec may not judge: `resolve_registry_price` prices it at the fallback rate (its source is
+    FALLBACK_PRICE_SOURCE), because no price table names the model it resolves to. Owner decision Q6, 2026-10-14:
+    the ceiling, the per-call charge and the sidecar would all book such a judge at 10/50, which is ten times Claude
+    Haiku 4.5's list rate and a hundred times Claude Haiku 5.5's. The motivating case is eq01, whose judge spec
+    `anthropic/claude-haiku-4-5` (a slash, where the judge's registry spelling takes a colon or the bare id) expands
+    to `anthropic/anthropic/claude-haiku-4-5` and so priced at the fallback. The zero-price sentinels keep their own
+    handling (`judge_runner.judge_spec_problems`); a spec that cannot be expanded is named, not raised.
+    scripts/fire_trigger.py `petri_judge_price` mirrors this lookup without importing it, so the fire path refuses
+    the same specs before it journals (tests/test_judge_price_guard.py holds the two to agree)."""
+    spec = spec.strip()
+    if spec in ZERO_PRICE_MODELS:
+        return []
+    registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
+    try:
+        name = registry_spec_to_inspect(spec, registry)
+    except ValueError as exc:
+        return [str(exc)]
+    price = resolve_price(name, registry, engine_pricing)
+    if not price.source.startswith("fallback:"):
+        return []
+    return [f"{FALLBACK_PRICED_JUDGE}: judge spec {spec!r} resolves to {name!r}, which no price table names "
+            "(data/advice_providers.json, medlang_circuits/evaluate_models.py PRICING), so it would be booked at the "
+            f"{price.input_per_mtok}/{price.output_per_mtok} fallback rate; name a priced model (a direct Anthropic "
+            "judge is the bare id or anthropic:<id>, for example claude-haiku-4-5, never anthropic/<id>) or add a "
+            "dated, sourced price first"]
 
 
 def openrouter_price_problems(model: str, registry: dict | None = None) -> list[str]:
@@ -241,7 +272,7 @@ def resolve_price(model: str, registry: dict | None = None, engine_pricing: dict
             return priced
         if name in engine_pricing:
             return Price(*engine_pricing[name], "engine:evaluate_models.PRICING")
-    return Price(*FALLBACK_PRICING, "fallback:advice_eval._FALLBACK_PRICING")
+    return Price(*FALLBACK_PRICING, FALLBACK_PRICE_SOURCE)
 
 
 def pricing_source_digest(registry: dict | None = None) -> str:

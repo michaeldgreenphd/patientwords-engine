@@ -247,6 +247,22 @@ say in any record which evidence was used.
 - `data/simulated/` is append-only; intentional misspellings are stimuli;
   medical vocabulary lives in JSON data files only.
 
+- **Two judges (owner decision Q8, 2026-10-14).** Claude Haiku 4.5
+  (`claude-haiku-4-5`) stays the judge of record in both lanes. Claude Haiku
+  5.5 (`claude-haiku-5-5`, $0.10/$0.50 per million tokens) judges again
+  everything Haiku 4.5 judged, and judges beside it from now on, as a second
+  judge: on the advice lane by judge-only fires with
+  `judge_model: anthropic:claude-haiku-5-5` (the colon keeps it secondary; a
+  bare `claude-haiku-5-5` is refused because it would pool with the judge of
+  record), on the Petri lane by `mode: rejudge` with
+  `judge_model: claude-haiku-5-5` and the judge of record's
+  `judge_max_tokens`. Its calls are sent no temperature (it rejects a
+  non-default one) and thinking `{"type": "disabled"}` (registry
+  `anthropic.disable_thinking`), so the two judges differ only by model; the
+  records say both. Each re-judge fire needs the owner's words like any paid
+  fire. A judge spec that would be booked at the 10/50 fallback rate is
+  refused before the fire journals and again before any call (Q6).
+
 ## 7 · Where things live
 
 | Thing | Path |

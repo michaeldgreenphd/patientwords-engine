@@ -61,6 +61,11 @@ logger = logging.getLogger(__name__)
 # shared/model-migration.md): claude-opus-5-5, claude-sonnet-5-5 and claude-fable-5-1 added at their list prices, and
 # claude-sonnet-5 corrected from (3.0, 15.0), the Sonnet 4.6 price, to (2.0, 10.0) ("per-token pricing is also lower
 # than Sonnet 4.6: $2/$10 vs $3/$15 per MTok"; Sonnet 5.5 is "at the same prices ($2 / $10 per MTok)").
+# 2026-10-14 (owner decision Q8, Haiku 5.5 as second judge): claude-haiku-5-5 added at $0.10 input / $0.50 output, the
+# claude-api skill's card for prompts of 100K tokens or fewer (shared/model-migration.md, "Migrating to Claude Haiku
+# 5.5"). The card's >100K rate ($0.50 / $2.50) does not apply to its judge prompts in either lane: a Petri judge prompt
+# renders part of one conversation, and Petri samples are capped at 40,000-65,000 tokens per conversation; an advice
+# judge prompt is one response plus the rubric. A prompt above 100K would be under-priced 5x by this entry.
 PRICING: dict[str, tuple[float, float]] = {
     "claude-fable-5-1": (10.0, 50.0),
     "claude-opus-5-5": (4.0, 20.0),
@@ -70,6 +75,7 @@ PRICING: dict[str, tuple[float, float]] = {
     "claude-sonnet-5": (2.0, 10.0),
     "claude-sonnet-4-6": (3.0, 15.0),
     "claude-haiku-4-5": (1.0, 5.0),
+    "claude-haiku-5-5": (0.10, 0.50),
     "claude-fable-5": (10.0, 50.0),
 }
 # Conservative fallback for models missing from PRICING (priced like the most expensive tier).
