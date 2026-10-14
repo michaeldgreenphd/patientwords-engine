@@ -1055,6 +1055,46 @@ def _jev_source_reports(rep: Report, name: str, data: dict) -> None:
         rep.err(name, "$.source_report_sha256", f"is not the identifier of the {len(shas)} listed source report(s)")
 
 
+def _jev_petri_runs(rep: Report, name: str, data: dict) -> None:
+    """The drift payload's run attribution (Codex review of PR #111, round 3). A combined export sets
+    provenance.petri_transcripts to null, so provenance.petri_runs and each conversation's `run` are the only mapping
+    from a published conversation to its run: when more than one listed report scored Petri rows they are required,
+    and when present every conversation names a listed run and each run's conversation count matches. Payloads from
+    before these fields (no petri_runs, one report) pass."""
+    prov = data.get("provenance") if isinstance(data.get("provenance"), dict) else {}
+    runs = prov.get("petri_runs")
+    sources = data.get("source_reports") if isinstance(data.get("source_reports"), list) else []
+    petri_sources = [e for e in sources if isinstance(e, dict) and isinstance(e.get("petri_turns"), int)
+                     and e["petri_turns"] > 0]
+    if runs is None:
+        if len(petri_sources) > 1:
+            rep.err(name, "$.provenance.petri_runs", f"missing although {len(petri_sources)} listed reports scored "
+                                                     "Petri rows; it is the only run attribution of a combined export")
+        return
+    if not isinstance(runs, list) or not runs or not all(
+            isinstance(r, dict) and isinstance(r.get("run"), str) and r["run"]
+            and isinstance(r.get("conversations"), int) and not isinstance(r.get("conversations"), bool) for r in runs):
+        rep.err(name, "$.provenance.petri_runs", "must be a non-empty list of {run, conversations, ...} objects")
+        return
+    names = [r["run"] for r in runs]
+    if len(set(names)) != len(names):
+        rep.err(name, "$.provenance.petri_runs", "names a run more than once")
+    convs = data.get("conversations") if isinstance(data.get("conversations"), dict) else {}
+    counts: dict[str, int] = {}
+    for cid, conv in convs.items():
+        run = conv.get("run") if isinstance(conv, dict) else None
+        if run not in names:
+            rep.err(name, f"$.conversations[{cid[:12]}].run", f"{run!r} is not a run listed in provenance.petri_runs")
+            continue
+        counts[run] = counts.get(run, 0) + 1
+    for r in runs:
+        if counts.get(r["run"], 0) != r["conversations"]:
+            rep.err(name, "$.provenance.petri_runs", f"run {r['run']!r} lists {r['conversations']} conversation(s) but "
+                                                     f"{counts.get(r['run'], 0)} name it")
+    if len(runs) > 1 and prov.get("petri_transcripts") is not None:
+        rep.err(name, "$.provenance.petri_transcripts", "names one transcripts file although several runs are pooled")
+
+
 def check_jev_payloads(rep: Report, site: Path) -> None:
     reports: dict[str, str] = {}
     sources: dict[str, list] = {}
@@ -1153,6 +1193,7 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
                                         "probability >= 0.5")
             _jev_reconcile(rep, name, data)
             _jev_rebuild(rep, name, data)
+            _jev_petri_runs(rep, name, data)
     if len(set(reports.values())) > 1:
         rep.err(" and ".join(reports), "$.source_report_sha256", "the two Jev payloads come from different reports")
     listed = {name: json.dumps(lst, sort_keys=True) for name, lst in sources.items()}

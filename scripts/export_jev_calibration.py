@@ -48,8 +48,10 @@ advice cases and the calibration payload is that report's; the others are Petri-
 execution mode, scoring implementation, both rubrics), no report or Petri run may appear twice, and a conversation in
 two reports is refused (check_combinable, build_combined_petri_drift_payload). The scoring implementation is
 scripts/jev_classifier.py and medlang_circuits/jev_client.py, found by resolving each report's classifier digest
-through git history (resolve_classifier), so combining needs a clone holding the commits the reports ran at; the
-runner may differ between reports and each one's is recorded in source_reports. The Petri payload pools the conversations,
+through git history (resolve_classifier), so combining needs a clone holding the commits the reports ran at. The
+audit runner must be the same version too, unless data/jev/evaluator_equivalence.json links the two versions after a
+review found the change orchestration-only; each report's runner is recorded in source_reports. The Petri payload pools
+the conversations,
 names each run in `provenance.petri_runs` and each conversation's `run`, and with several Petri runs carries
 `provenance.petri_transcripts` as null. Both payloads list every report in `source_reports` and carry one
 `source_report_sha256`: the report's digest for one report, and for several the sha256 of the sorted digests, one per
@@ -1003,7 +1005,8 @@ def _petri_report_rows(report_data: dict[str, Any], repo_root: Path) -> tuple[di
     return conversations, petri_cases
 
 
-def _petri_run_entry(meta: dict[str, Any], report_sha: str, n_conversations: int) -> dict[str, Any]:
+def _petri_run_entry(meta: dict[str, Any], report_sha: str, n_conversations: int,
+                     rows: list[dict[str, Any]]) -> dict[str, Any]:
     """One scored Petri run as the payload names it: its transcripts (path and sha256, as the report recorded them),
     the report that scored it, when, and how much of it was scored."""
     entry = meta["petri_transcripts"]
@@ -1011,7 +1014,10 @@ def _petri_run_entry(meta: dict[str, Any], report_sha: str, n_conversations: int
             "max_conversations": entry.get("max_conversations"), "turns_evaluated": entry.get("turns_evaluated"),
             "conversations": n_conversations, "audit_timestamp_utc": meta.get("timestamp_utc"),
             "source_report_sha256": report_sha,
-            "classifier_sha256": _require_sha256((meta.get("classifier") or {}).get("sha256"), "classifier.sha256")}
+            "classifier_sha256": _require_sha256((meta.get("classifier") or {}).get("sha256"), "classifier.sha256"),
+            # the dated models that scored this run's rows; the payload's models_served is their union over every run
+            # (Codex review of PR #111, round 3)
+            "models_served": _served_models(rows, "Petri case")}
 
 
 def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str, repo_root: Path = REPO_ROOT,
@@ -1060,7 +1066,7 @@ def build_combined_petri_drift_payload(reports: list[tuple[dict[str, Any], str]]
         placed.update({cid: report_arms[cid] for cid in convs})
         all_rows.extend(rows)
         petri_reports.append((report_data, report_sha))
-        runs.append(_petri_run_entry(meta, report_sha, len(convs)))
+        runs.append(_petri_run_entry(meta, report_sha, len(convs), rows))
         run_of.update({cid: runs[-1]["run"] for cid in convs})
     if not petri_reports:
         return None
@@ -1246,14 +1252,48 @@ def resolve_classifier(digest: str, repo_root: Path = REPO_ROOT, hint: str | Non
     return None
 
 
+EVALUATOR_EQUIVALENCE = "data/jev/evaluator_equivalence.json"
+
+
+def evaluator_classes(repo_root: Path = REPO_ROOT) -> dict[str, str]:
+    """Each runner digest named in the reviewed equivalence file mapped to one representative digest of its class
+    (union of the listed pairs). A digest the file does not name is its own class. A malformed file is refused."""
+    path = repo_root / EVALUATOR_EQUIVALENCE
+    if not path.is_file():
+        return {}
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    entries = doc.get("equivalences") if isinstance(doc, dict) else None
+    if not isinstance(entries, list):
+        _refuse(f"{EVALUATOR_EQUIVALENCE} has no 'equivalences' list")
+    parent: dict[str, str] = {}
+
+    def find(x: str) -> str:
+        while parent.setdefault(x, x) != x:
+            x = parent[x]
+        return x
+    for i, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            _refuse(f"{EVALUATOR_EQUIVALENCE} entry {i} is not an object")
+        a = _require_sha256(entry.get("evaluator_sha256"), f"equivalences[{i}].evaluator_sha256")
+        b = _require_sha256(entry.get("equivalent_to"), f"equivalences[{i}].equivalent_to")
+        for field in ("reason", "reviewed_utc"):
+            if not isinstance(entry.get(field), str) or not entry[field].strip():
+                _refuse(f"{EVALUATOR_EQUIVALENCE} entry {i} has no {field}; an equivalence is a reviewed claim")
+        parent[find(a)] = find(b)
+    return {x: find(x) for x in list(parent)}
+
+
 def check_combinable(reports: list[tuple[dict[str, Any], str]], repo_root: Path = REPO_ROOT) -> int:
     """Refuse a set of reports that cannot be pooled into one export; return the index of the one advice report.
 
     Pooled reports must be one instrument: the same requested model, execution mode (all live or all mock), scoring
-    implementation, advice rubric and register rubric. The scoring implementation is compared through
+    implementation, audit runner version (or two versions a reviewed entry in EVALUATOR_EQUIVALENCE links), advice
+    rubric and register rubric. The scoring implementation is compared through
     resolve_classifier, not the recorded classifier digest: that digest also covers the runner, which every change to
-    its command line alters (Codex review of PR #111), so reports from one scoring implementation and two runner
-    versions combine, each runner recorded in source_reports; a digest no commit in this clone gives is refused. No report may appear twice, and no Petri run may be
+    its command line alters (Codex review of PR #111). The runner also selects the scored turns and builds their
+    context, so two runner versions combine only when a reviewed entry in EVALUATOR_EQUIVALENCE links them (round 3);
+    each report's runner is recorded in source_reports, and a digest no commit in this clone gives is refused. No
+    report may appear twice, and no Petri run may be
     scored by two reports (its conversations would be counted twice). Exactly one report carries advice cases: the
     calibration payload is that report's, unchanged. Advice runs are not pooled, because two runs over one archive
     score overlapping responses; the others are Petri-only (audit_jev_calibration.py --skip-advice), with no advice
@@ -1270,13 +1310,19 @@ def check_combinable(reports: list[tuple[dict[str, Any], str]], repo_root: Path 
             _refuse(f"Report {sha[:12]}...'s classifier digest {digest[:12]}... matches no commit of "
                     f"{', '.join(JEV_SCORING_FILES)} and {JEV_EVALUATOR_FILE} in this clone (a run on uncommitted "
                     "files, or a shallow clone); its scoring implementation cannot be shown to be the others'")
-        return (_require_model_requested(meta), _require_is_mock(meta), resolved["scoring_sha256"],
+        # the runner selects the scored turns and builds their context, so it is part of the instrument: two
+        # versions combine only when equal or linked by a reviewed entry in EVALUATOR_EQUIVALENCE (Codex review of
+        # PR #111, round 3)
+        evaluator = classes.get(resolved["evaluator_sha256"], resolved["evaluator_sha256"])
+        return (_require_model_requested(meta), _require_is_mock(meta), resolved["scoring_sha256"], evaluator,
                 (meta.get("rubric") or {}).get("sha256"), (meta.get("register_rubric") or {}).get("sha256"))
+    classes = evaluator_classes(repo_root)
     first = ident(*reports[0])
     for data, sha in reports[1:]:
         if ident(data, sha) != first:
             _refuse(f"Report {sha[:12]}... differs from {shas[0][:12]}... in requested model, execution mode, "
-                    "scoring implementation (scripts/jev_classifier.py, medlang_circuits/jev_client.py) or rubric; "
+                    "scoring implementation (scripts/jev_classifier.py, medlang_circuits/jev_client.py), audit "
+                    f"runner version (unless linked in {EVALUATOR_EQUIVALENCE}) or rubric; "
                     "reports pooled into one export must be one instrument")
     seen_runs: dict[str, str] = {}
     for data, sha in reports:
