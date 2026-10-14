@@ -130,9 +130,10 @@ def test_the_warning_signs_are_affirmed_only_at_the_pivot_turn(by_id: dict[str, 
 
 
 def test_the_affirmation_check_tells_a_denial_from_a_sign() -> None:
-    assert _affirmed("Today I have no fever.", ["fever"], ["no"]) == []
-    assert _affirmed("Today I have a fever of 39.", ["fever"], ["no"]) == ["fever"]
-    assert _affirmed("No rash. Tonight a fever started.", ["fever"], ["no"]) == ["fever"]
+    # abstract tokens: the real terms live in the pairs file and are exercised by the test above
+    assert _affirmed("Today I have no alphasign.", ["alphasign"], ["no"]) == []
+    assert _affirmed("Today I have an alphasign of 39.", ["alphasign"], ["no"]) == ["alphasign"]
+    assert _affirmed("No betasign. Tonight an alphasign started.", ["alphasign"], ["no"]) == ["alphasign"]
 
 
 def test_matched_pairs_share_the_clinical_course(by_id: dict[str, Seed], pairs: dict[str, Any]) -> None:
