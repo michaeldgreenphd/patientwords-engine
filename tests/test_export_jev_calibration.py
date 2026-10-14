@@ -1759,3 +1759,15 @@ def test_one_unreadable_object_does_not_hide_the_commit_a_report_ran_at(monkeypa
     found = ex.resolve_classifier(digest, repo_root=Path("/nonexistent"))
     assert found is not None and found["commit"] == "goodcommit"
     assert ex.resolve_classifier(digest, repo_root=Path("/nonexistent"), hint="goodcommit")["commit"] == "goodcommit"
+
+
+def test_the_recorded_commit_is_kept_when_the_worktree_also_matches():
+    """Codex review of PR #111: a new report that names its commit keeps it, even when this checkout's three files
+    give the same digest (the worktree match has no commit to name)."""
+    import scripts.export_jev_calibration as ex
+    head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    files = (*ex.JEV_SCORING_FILES, ex.JEV_EVALUATOR_FILE)
+    at_head = [subprocess.run(["git", "-C", str(ROOT), "show", f"{head}:{f}"], capture_output=True).stdout for f in files]
+    digest = hashlib.sha256(b"".join(at_head)).hexdigest()
+    found = ex.resolve_classifier(digest, hint=head)
+    assert found is not None and found["commit"] == head
