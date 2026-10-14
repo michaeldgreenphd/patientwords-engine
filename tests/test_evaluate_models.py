@@ -217,3 +217,51 @@ def test_load_pairs_generated_batch_all_unusable_raises(tmp_path):
     path.write_text(json.dumps([{"top_prompt": "x"}]), encoding="utf-8")
     with pytest.raises(ValueError):
         em.load_pairs(path)
+
+
+# Opus 5.5 defaults (owner decision Q8, 2026-10-14)
+
+def test_the_opus_defaults_are_claude_opus_5_5():
+    from medlang_circuits import llm_client
+    assert "claude-opus-5-5" in em.DEFAULT_MODELS and "claude-opus-4-8" not in em.DEFAULT_MODELS
+    assert em.LEGACY_ALIASES["claude-3-opus"] == "claude-opus-5-5"
+    assert "claude-opus-5-5" in em.PRICING
+    if "MEDLANG_ANTHROPIC_MODEL" not in __import__("os").environ:
+        assert llm_client.DEFAULT_MODEL == "claude-opus-5-5"
+
+
+def test_models_that_think_by_default_get_room_for_the_answer():
+    """Their thinking counts against max_tokens (Claude Opus 5.5 cannot turn it off), so a 16- or 200-token call is
+    sent the 4096-token floor; every other model is sent what was asked."""
+    from medlang_circuits.llm_client import output_budget
+    assert output_budget("claude-opus-5-5", 16) == 4096
+    assert output_budget("claude-haiku-5-5", 256) == 4096
+    assert output_budget("claude-opus-5-5", 8000) == 8000
+    assert output_budget("claude-haiku-4-5", 16) == 16
+    assert output_budget("claude-sonnet-5", 200) == 200
+
+
+class _Recorder:
+    def __init__(self):
+        self.kwargs = None
+        self.messages = self
+
+    def create(self, **kwargs):
+        self.kwargs = kwargs
+        block = type("B", (), {"type": "text", "text": "ok"})()
+        usage = type("U", (), {"input_tokens": 1, "output_tokens": 1})()
+        return type("R", (), {"content": [block], "usage": usage})()
+
+
+def test_every_call_site_applies_the_floor(monkeypatch):
+    from medlang_circuits import llm_client
+    rec = _Recorder()
+    em._call(rec, "claude-opus-5-5", "system", "prompt", max_tokens=200)
+    assert rec.kwargs["max_tokens"] == 4096 and "temperature" not in rec.kwargs
+    monkeypatch.setattr(llm_client, "_get_client", lambda: rec)
+    llm_client.translate_with_llm("text", model="claude-opus-5-5")
+    assert rec.kwargs["max_tokens"] == 4096
+    llm_client.classify_feature_with_llm("a description", model="claude-opus-5-5")
+    assert rec.kwargs["max_tokens"] == 4096
+    llm_client.classify_feature_with_llm("a description", model="claude-haiku-4-5")
+    assert rec.kwargs["max_tokens"] == 16

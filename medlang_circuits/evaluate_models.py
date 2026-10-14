@@ -52,7 +52,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from medlang_circuits.llm_client import _CLASSIFY_SYSTEM, _TRANSLATE_SYSTEM, _get_client
+from medlang_circuits.llm_client import _CLASSIFY_SYSTEM, _TRANSLATE_SYSTEM, _get_client, output_budget
 
 logger = logging.getLogger(__name__)
 
@@ -82,10 +82,11 @@ LEGACY_ALIASES: dict[str, str] = {
     "claude-3-5-haiku": "claude-haiku-4-5",
     "claude-3-haiku": "claude-haiku-4-5",
     "claude-3-haiku-20240307": "claude-haiku-4-5",
-    "claude-3-opus": "claude-opus-4-8",
+    "claude-3-opus": "claude-opus-5-5",
 }
 
-DEFAULT_MODELS = ["claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5"]
+# The Opus entry is claude-opus-5-5 since 2026-10-14 (owner decision Q8); claude-opus-4-8 before.
+DEFAULT_MODELS = ["claude-opus-5-5", "claude-sonnet-5", "claude-haiku-4-5"]
 SCENARIOS = ("translation", "classification", "two_step")
 # keys that must exist in the eval pairs file (two_step reuses the translation items)
 DATA_KEYS = ("translation", "classification")
@@ -155,7 +156,7 @@ def _call(client: Any, model: str, system: str, prompt: str, max_tokens: int = M
         raise RuntimeError("Anthropic client unavailable - set ANTHROPIC_API_KEY and install the anthropic package")
     response = client.messages.create(
         model=model,
-        max_tokens=max_tokens,
+        max_tokens=output_budget(model, max_tokens),
         system=system,
         messages=[{"role": "user", "content": prompt}],
     )

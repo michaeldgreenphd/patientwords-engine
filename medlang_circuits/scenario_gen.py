@@ -1387,7 +1387,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     shared = argparse.ArgumentParser(add_help=False)
     shared.add_argument("--model", default=None,
-                        help="Anthropic model (default: MEDLANG_ANTHROPIC_MODEL or claude-opus-4-8)")
+                        help="Anthropic model (default: MEDLANG_ANTHROPIC_MODEL or claude-opus-5-5)")
     shared.add_argument("--max-spend", type=float, default=2.0, help="Hard USD ceiling for the run")
     shared.add_argument("--out", default=None, help="Output JSON path (batch-ready pairs)")
     shared.add_argument("--seed-pairs", default=None,

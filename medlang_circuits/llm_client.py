@@ -15,7 +15,28 @@ from medlang_circuits.keywords import CATEGORIES
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = os.environ.get("MEDLANG_ANTHROPIC_MODEL", "claude-opus-4-8")
+# Claude Opus 5.5 since 2026-10-14 (owner decision Q8, docs/decisions_20261014_owner.md: configured defaults that named
+# an older Opus move to claude-opus-5-5); claude-opus-4-8 before. Outputs record the model they used.
+DEFAULT_MODEL = os.environ.get("MEDLANG_ANTHROPIC_MODEL", "claude-opus-5-5")
+
+# Models that think by default, and the smallest max_tokens a call to one is sent. Their thinking counts against
+# max_tokens, and Claude Opus 5.5 cannot turn it off (claude-api skill, shared/model-migration.md), so a call sized for
+# a one-word or one-sentence answer (16 or 256 tokens) could end in a thinking block with no text. The floor is the
+# advice lane's registry value for the same models (data/advice_providers.json anthropic.min_output_tokens). A call
+# below it is sent the floor; the model still writes only the answer the prompt asks for.
+THINKING_MIN_OUTPUT_TOKENS: dict[str, int] = {
+    "claude-fable-5-1": 4096,
+    "claude-fable-5": 4096,
+    "claude-opus-5-5": 4096,
+    "claude-sonnet-5-5": 4096,
+    "claude-haiku-5-5": 4096,
+}
+
+
+def output_budget(model: str, requested: int) -> int:
+    """The max_tokens to send `model` for a call that asked for `requested`: the larger of the two for a model in
+    THINKING_MIN_OUTPUT_TOKENS, `requested` otherwise."""
+    return max(int(requested), THINKING_MIN_OUTPUT_TOKENS.get(model, 0))
 
 _CLASSIFY_SYSTEM = (
     "You label neural-network feature descriptions for a mechanistic interpretability study. "
@@ -74,7 +95,7 @@ def classify_feature_with_llm(description: str, top_tokens: list[str] | None = N
     try:
         response = client.messages.create(
             model=model or DEFAULT_MODEL,
-            max_tokens=16,
+            max_tokens=output_budget(model or DEFAULT_MODEL, 16),
             system=_CLASSIFY_SYSTEM,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -129,7 +150,7 @@ def translate_with_llm(patient_text: str, model: str | None = None) -> str | Non
     try:
         response = client.messages.create(
             model=resolved,
-            max_tokens=256,
+            max_tokens=output_budget(resolved, 256),
             system=_translate_system(),
             messages=[{"role": "user", "content": patient_text}],
         )

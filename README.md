@@ -611,7 +611,7 @@ tracking under a hard spend ceiling:
 
 ```bash
 export ANTHROPIC_API_KEY=...
-medlang-evaluate --models claude-opus-4-8 claude-sonnet-5 claude-haiku-4-5 \
+medlang-evaluate --models claude-opus-5-5 claude-sonnet-5 claude-haiku-4-5 \
   --scenario both --sample-size 8 --max-spend 5 --out eval_out
 ```
 
