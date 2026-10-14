@@ -265,3 +265,33 @@ def test_every_call_site_applies_the_floor(monkeypatch):
     assert rec.kwargs["max_tokens"] == 4096
     llm_client.classify_feature_with_llm("a description", model="claude-haiku-4-5")
     assert rec.kwargs["max_tokens"] == 16
+
+
+def test_admission_prices_the_allowance_actually_sent():
+    """Codex review of PR #112: CostTracker priced every call at MAX_OUTPUT_TOKENS while a model that thinks by
+    default is sent 4096; at max_spend 0.01 an Opus 5.5 call's allowance alone costs about $0.08."""
+    assert em.CostTracker(max_spend=0.01).can_afford("claude-opus-5-5") is False
+    assert em.CostTracker(max_spend=0.01).can_afford("claude-haiku-4-5") is True
+
+
+def test_the_sent_allowance_is_recorded(monkeypatch):
+    from medlang_circuits import llm_client
+    rec = _Recorder()
+    monkeypatch.setattr(llm_client, "_get_client", lambda: rec)
+    llm_client.reset_translate_usage()
+    llm_client.translate_with_llm("text", model="claude-opus-5-5")
+    assert llm_client.translate_usage_snapshot()["models"]["claude-opus-5-5"]["max_tokens_sent"] == 4096
+
+
+def test_circuit_trace_refuses_a_translator_the_flat_reservation_cannot_bound():
+    import importlib.util
+    from pathlib import Path
+    from medlang_circuits.llm_client import THINKING_MIN_OUTPUT_TOKENS
+    spec = importlib.util.spec_from_file_location(
+        "ft", Path(__file__).resolve().parents[1] / "scripts" / "fire_trigger.py")
+    ft = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ft)
+    assert ft.CIRCUIT_TRACE_THINKING_TRANSLATORS == frozenset(THINKING_MIN_OUTPUT_TOKENS)
+    assert ft.circuit_trace_translation_model_problems({"translation_model": "claude-opus-5-5"})
+    assert ft.circuit_trace_translation_model_problems({"translation_model": ""}) == []
+    assert ft.circuit_trace_translation_model_problems({"translation_model": "claude-opus-4-8"}) == []

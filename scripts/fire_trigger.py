@@ -1283,10 +1283,31 @@ def circuit_trace_pairs_outside_checkout(path: str) -> bool:
     return norm.startswith("/") or norm == ".." or norm.startswith("../")
 
 
+# medlang_circuits/llm_client.py THINKING_MIN_OUTPUT_TOKENS (a test holds the two equal): models sent a 4096-token
+# output floor per translation call, whose worst case the flat MITIGATION_IMPUTED_USD per fire does not bound
+CIRCUIT_TRACE_THINKING_TRANSLATORS = frozenset({"claude-fable-5-1", "claude-fable-5", "claude-opus-5-5",
+                                                 "claude-sonnet-5-5", "claude-haiku-5-5"})
+
+
+def circuit_trace_translation_model_problems(params: dict) -> list[str]:
+    """A translation_model that thinks by default is refused (Codex review of PR #112): each translation call to one is
+    sent at least 4096 output tokens (llm_client.output_budget), and the fire reserves a flat MITIGATION_IMPUTED_USD
+    however many pairs it translates, across every matrix cell, so the reservation would not bound its spend. An empty
+    value runs the workflow's pinned translator, claude-opus-4-8."""
+    model = str(params.get("translation_model") or "").strip()
+    if model in CIRCUIT_TRACE_THINKING_TRANSLATORS:
+        return [f"circuit-trace translation_model {model!r} thinks by default and is sent a 4096-token floor per "
+                f"call, which the flat ${MITIGATION_IMPUTED_USD} reservation per fire does not bound; use "
+                "claude-opus-4-8 (the default) until the reservation scales with the number of translation calls"]
+    return []
+
+
 def circuit_trace_params_problems(params: dict) -> list[str]:
     """Every circuit-trace refusal the workflow's params job applies before tracing: the `source_set` rules
-    (circuit_trace_source_set_problems), then the `output_root` rules (circuit_trace_output_root_problems)."""
-    return circuit_trace_source_set_problems(params) + circuit_trace_output_root_problems(params)
+    (circuit_trace_source_set_problems), the `output_root` rules (circuit_trace_output_root_problems), and the
+    translator rule (circuit_trace_translation_model_problems)."""
+    return (circuit_trace_source_set_problems(params) + circuit_trace_output_root_problems(params)
+            + circuit_trace_translation_model_problems(params))
 
 
 def circuit_trace_output_root_problems(params: dict) -> list[str]:

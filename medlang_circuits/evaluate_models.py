@@ -127,9 +127,12 @@ class CostTracker:
     truncated: bool = False
     per_model: dict[str, dict[str, float]] = field(default_factory=dict)
 
-    def can_afford(self, model: str) -> bool:
+    def can_afford(self, model: str, max_tokens: int = MAX_OUTPUT_TOKENS) -> bool:
+        """Whether one more call fits: its worst case prices the output allowance the call is actually sent
+        (output_budget: a model that thinks by default gets at least 4096), not the requested one (Codex review of
+        PR #112). Callers pass the max_tokens they request."""
         in_price, out_price = _price(model)
-        worst_case = EST_INPUT_TOKENS * in_price / 1e6 + MAX_OUTPUT_TOKENS * out_price / 1e6
+        worst_case = EST_INPUT_TOKENS * in_price / 1e6 + output_budget(model, max_tokens) * out_price / 1e6
         if self.spent + worst_case > self.max_spend:
             self.truncated = True
             return False
@@ -391,6 +394,7 @@ def append_registry(out_dir: Path, results: dict[str, Any]) -> Path:
         "scenarios": results["scenarios"],
         "sample_size": results["sample_size"],
         "max_spend_usd": results["max_spend_usd"],
+        "max_tokens_sent": results["max_tokens_sent"],
         "warnings": results["warnings"],
         "usage": results["usage"],
         "two_step": {
@@ -447,6 +451,9 @@ def run_evaluation(
         "scenarios": scenarios,
         "sample_size": sample_size,
         "max_spend_usd": max_spend,
+        # the output allowance each model's calls are sent (llm_client.output_budget): MAX_OUTPUT_TOKENS, or the
+        # 4096-token floor for a model that thinks by default (Codex review of PR #112)
+        "max_tokens_sent": {model: output_budget(model, MAX_OUTPUT_TOKENS) for model in models},
         "warnings": warnings,
         "by_model": {},
     }

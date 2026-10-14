@@ -512,8 +512,11 @@ jobs:
           [ -z "$NEURONPEDIA_STEER_STRENGTH" ] && unset NEURONPEDIA_STEER_STRENGTH
           [ -z "$NEURONPEDIA_STEER_BOOST_STRENGTH" ] && unset NEURONPEDIA_STEER_BOOST_STRENGTH
           [ -z "$NEURONPEDIA_STEER_RANK_OFFSET" ] && unset NEURONPEDIA_STEER_RANK_OFFSET
-          # empty translation_model falls back to llm_client.DEFAULT_MODEL
-          [ -z "$MEDLANG_ANTHROPIC_MODEL" ] && unset MEDLANG_ANTHROPIC_MODEL
+          # an empty translation_model pins claude-opus-4-8, the model every published translation used. The
+          # library default (llm_client.DEFAULT_MODEL) moved to claude-opus-5-5 on 2026-10-14, but a model that thinks
+          # by default is sent a 4096-token floor per call, which the fire's flat imputed reservation does not bound
+          # (Codex review of PR #112); fire_trigger.py refuses such a translation_model until it does
+          [ -z "$MEDLANG_ANTHROPIC_MODEL" ] && export MEDLANG_ANTHROPIC_MODEL=claude-opus-4-8
           # "0" keeps the real translation prompt; "1" swaps in the placebo rewrite
           [ "$MEDLANG_TRANSLATION_PLACEBO" = "0" ] && unset MEDLANG_TRANSLATION_PLACEBO
           medlang-batch-eval "${ARGS[@]}"

@@ -128,8 +128,9 @@ def reset_translate_usage() -> None:
     _TRANSLATE_USAGE.update(calls=0, input_tokens=0, output_tokens=0, models={})
 
 
-def _record_translate_usage(model: str, usage) -> None:
-    """Fold one response's usage in; tolerates SDKs that omit the field."""
+def _record_translate_usage(model: str, usage, max_tokens_sent: int | None = None) -> None:
+    """Fold one response's usage in; tolerates SDKs that omit the field. `max_tokens_sent` is the output allowance the
+    call was sent (output_budget), kept per model so the mitigation sidecar records it (Codex review of PR #112)."""
     inp = int(getattr(usage, "input_tokens", 0) or 0)
     out = int(getattr(usage, "output_tokens", 0) or 0)
     _TRANSLATE_USAGE["calls"] = int(_TRANSLATE_USAGE["calls"]) + 1
@@ -137,6 +138,8 @@ def _record_translate_usage(model: str, usage) -> None:
     _TRANSLATE_USAGE["output_tokens"] = int(_TRANSLATE_USAGE["output_tokens"]) + out
     per = _TRANSLATE_USAGE["models"].setdefault(model, {"calls": 0, "input_tokens": 0, "output_tokens": 0})
     per["calls"] += 1
+    if max_tokens_sent is not None:
+        per["max_tokens_sent"] = int(max_tokens_sent)
     per["input_tokens"] += inp
     per["output_tokens"] += out
 
@@ -157,6 +160,6 @@ def translate_with_llm(patient_text: str, model: str | None = None) -> str | Non
     except Exception as e:
         logger.warning("LLM translation failed: %s", e)
         return None
-    _record_translate_usage(resolved, getattr(response, "usage", None))
+    _record_translate_usage(resolved, getattr(response, "usage", None), output_budget(resolved, 256))
     text = next((b.text for b in response.content if b.type == "text"), "").strip()
     return text or None
