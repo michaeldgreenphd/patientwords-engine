@@ -978,3 +978,12 @@ def test_skip_advice_writes_a_petri_only_report(tmp_path):
 def test_skip_advice_needs_petri_and_refuses_an_archive(tmp_path, extra):
     assert main(["--skip-advice", *extra, "--out-json", str(tmp_path / "r.json")]) == 1
     assert not (tmp_path / "r.json").exists()
+
+
+def test_the_report_records_the_commit_ci_checked_out(tmp_path, monkeypatch):
+    """classifier.commit lets the exporter find the files behind the classifier digest without searching history."""
+    monkeypatch.setenv("GITHUB_SHA", "a" * 40)
+    out = tmp_path / "r.json"
+    assert main(["--skip-advice", "--petri-transcripts", "data/petri/runs/run_38434195912_1/transcripts.jsonl",
+                 "--petri-conversations", "1", "--out-json", str(out), "--out-markdown", str(tmp_path / "r.md")]) == 0
+    assert json.loads(out.read_text(encoding="utf-8"))["metadata"]["classifier"]["commit"] == "a" * 40

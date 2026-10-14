@@ -1174,6 +1174,9 @@ def main(argv: list[str] | None = None) -> int:
             "jev_client_path": str(client_file),
             "evaluator_path": str(eval_file),
             "sha256": classifier_sha,
+            # the commit CI checked out (null outside CI), so the exporter can show which files gave `sha256` without
+            # searching history (export_jev_calibration.resolve_classifier)
+            "commit": os.environ.get("GITHUB_SHA") or None,
         },
         "parameters": {
             "archive_samples": (args.archive_samples if args.archive_samples > 0 else "all") if arch_p else None,

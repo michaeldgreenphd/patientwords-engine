@@ -1698,13 +1698,17 @@ def test_a_runner_change_alone_does_not_stop_reports_combining(tmp_path, advice_
     other["metadata"]["classifier"]["sha256"] = "9" * 64
     real = ex.resolve_classifier
     same_scoring = real(WORKTREE_CLASSIFIER)
-    monkeypatch.setattr(ex, "resolve_classifier", lambda digest, repo_root=ex.REPO_ROOT: (
+    monkeypatch.setattr(ex, "resolve_classifier", lambda digest, repo_root=ex.REPO_ROOT, hint=None: (
         {**same_scoring, "commit": "f" * 40, "evaluator_sha256": "e" * 64} if digest == "9" * 64
-        else real(digest, repo_root)))
+        else real(digest, repo_root, hint)))
     assert _export(tmp_path, _write_reports(tmp_path, advice_report, other)) == 0
     entries = _site(tmp_path, "petri_register_drift.json")["source_reports"]
     assert [e["evaluator_sha256"] == "e" * 64 for e in entries] == [False, True]
     assert entries[0]["scoring_sha256"] == entries[1]["scoring_sha256"]
+    # the pooled payload names each run's classifier digest, not the first run's for all (Codex review of PR #111)
+    prov = _site(tmp_path, "petri_register_drift.json")["provenance"]
+    assert prov["classifier_sha256"] is None
+    assert [r["classifier_sha256"] for r in prov["petri_runs"]] == [WORKTREE_CLASSIFIER, "9" * 64]
 
 
 def test_another_scoring_implementation_is_refused(tmp_path, advice_report, monkeypatch, capsys):
@@ -1712,9 +1716,9 @@ def test_another_scoring_implementation_is_refused(tmp_path, advice_report, monk
     other = _petri_only(advice_report)
     other["metadata"]["classifier"]["sha256"] = "9" * 64
     real = ex.resolve_classifier
-    monkeypatch.setattr(ex, "resolve_classifier", lambda digest, repo_root=ex.REPO_ROOT: (
+    monkeypatch.setattr(ex, "resolve_classifier", lambda digest, repo_root=ex.REPO_ROOT, hint=None: (
         {"commit": "f" * 40, "scoring_sha256": "5" * 64, "evaluator_sha256": "e" * 64} if digest == "9" * 64
-        else real(digest, repo_root)))
+        else real(digest, repo_root, hint)))
     _refused(tmp_path, [advice_report, other], "scoring implementation", capsys)
 
 
@@ -1727,3 +1731,31 @@ def test_the_first_live_reports_digest_resolves_to_its_commit():
     from scripts.export_jev_calibration import resolve_classifier
     found = resolve_classifier(LIVE_REPORT_CLASSIFIER)
     assert found is not None and found["commit"].startswith(LIVE_REPORT_COMMIT)
+
+
+def test_one_unreadable_object_does_not_hide_the_commit_a_report_ran_at(monkeypatch):
+    """Codex review of PR #111: `git log --all` stops at the first unreadable object, which discarded every candidate.
+    The search keeps the partial output and walks each ref on its own, skipping one that cannot be read."""
+    import scripts.export_jev_calibration as ex
+    files = (*ex.JEV_SCORING_FILES, ex.JEV_EVALUATOR_FILE)
+    body = {f: f"content of {f}".encode() for f in files}
+    digest = hashlib.sha256(b"".join(body[f] for f in files)).hexdigest()
+
+    def fake_git(repo_root, *args):
+        ok = lambda out: subprocess.CompletedProcess(args, 0, out.encode(), b"")   # noqa: E731
+        bad = subprocess.CompletedProcess(args, 128, b"", b"fatal: missing tree")
+        if args[:2] == ("log", "--all"):
+            return bad
+        if args[0] == "for-each-ref":
+            return ok("refs/heads/broken\nrefs/heads/main\n")
+        if args[:2] == ("log", "refs/heads/broken"):
+            return bad
+        if args[:2] == ("log", "refs/heads/main"):
+            return ok("goodcommit\n")
+        if args[0] == "show" and args[1].startswith("goodcommit:"):
+            return subprocess.CompletedProcess(args, 0, body[args[1].split(":", 1)[1]], b"")
+        return bad
+    monkeypatch.setattr(ex, "_git", fake_git)
+    found = ex.resolve_classifier(digest, repo_root=Path("/nonexistent"))
+    assert found is not None and found["commit"] == "goodcommit"
+    assert ex.resolve_classifier(digest, repo_root=Path("/nonexistent"), hint="goodcommit")["commit"] == "goodcommit"

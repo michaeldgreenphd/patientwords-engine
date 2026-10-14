@@ -1010,7 +1010,8 @@ def _petri_run_entry(meta: dict[str, Any], report_sha: str, n_conversations: int
     return {"path": entry["path"], "sha256": entry["sha256"], "run": PurePosixPath(entry["path"]).parent.name,
             "max_conversations": entry.get("max_conversations"), "turns_evaluated": entry.get("turns_evaluated"),
             "conversations": n_conversations, "audit_timestamp_utc": meta.get("timestamp_utc"),
-            "source_report_sha256": report_sha}
+            "source_report_sha256": report_sha,
+            "classifier_sha256": _require_sha256((meta.get("classifier") or {}).get("sha256"), "classifier.sha256")}
 
 
 def build_petri_drift_payload(report_data: dict[str, Any], report_sha: str, repo_root: Path = REPO_ROOT,
@@ -1117,10 +1118,12 @@ def build_combined_petri_drift_payload(reports: list[tuple[dict[str, Any], str]]
             if k in ("audit_timestamp_utc", "register_rubric", "classifier_sha256", "parameters",
                      "petri_transcripts", "checkpoint")}
     else:
-        # several runs: what they share is published once; what differs per run is in petri_runs
+        # several runs: what they share is published once; what differs per run is in petri_runs. The classifier
+        # digest also covers the runner, which may differ between runs (check_combinable compares the scoring files
+        # only), so it is null here and each run's is in petri_runs and source_reports (Codex review of PR #111)
         shared = _publishable_provenance(meta, has_advice=False, has_petri=True)
         provenance = {"audit_timestamp_utc": None, "register_rubric": shared["register_rubric"],
-                      "classifier_sha256": shared["classifier_sha256"], "parameters": None,
+                      "classifier_sha256": None, "parameters": None,
                       "petri_transcripts": None, "checkpoint": None}
         for report_data, _ in petri_reports[1:]:
             _publishable_provenance(report_data.get("metadata", {}), has_advice=False, has_petri=True)
@@ -1176,7 +1179,8 @@ def source_report_entries(reports: list[tuple[dict[str, Any], str]], repo_root: 
         meta = data.get("metadata") or {}
         petri = meta.get("petri_transcripts")
         digest = (meta.get("classifier") or {}).get("sha256")
-        resolved = resolve_classifier(digest, repo_root) if resolve else None
+        resolved = (resolve_classifier(digest, repo_root, (meta.get("classifier") or {}).get("commit"))
+                    if resolve else None)
         out.append({"sha256": sha, "advice_cases": len(data.get("cases") or []),
                     "petri_turns": len(data.get("petri_cases") or []),
                     "petri_transcripts": petri.get("path") if isinstance(petri, dict) else None,
@@ -1198,11 +1202,16 @@ def _git(repo_root: Path, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", "-C", str(repo_root), *args], capture_output=True)
 
 
-def resolve_classifier(digest: str, repo_root: Path = REPO_ROOT) -> dict[str, Any] | None:
+def resolve_classifier(digest: str, repo_root: Path = REPO_ROOT, hint: str | None = None) -> dict[str, Any] | None:
     """The files behind a report's classifier digest: {commit, scoring_sha256, evaluator_sha256}, found by hashing the
     three files at each commit that touched them (and in the working tree, as `commit` null) until one gives the
     digest. A match is exact (sha256 over the files' bytes), so the scoring implementation a report used is proven
-    rather than assumed. None when no commit in this clone gives it (a run on uncommitted files, or a shallow clone)."""
+    rather than assumed. None when no commit in this clone gives it (a run on uncommitted files, or a shallow clone).
+
+    `hint` is the commit the report recorded (classifier.commit, written by runs from 2026-10-14), tried first. The
+    history search tolerates an incomplete clone: `git log --all` stops at the first unreadable object, so when it
+    fails its partial output is kept and every ref is searched on its own, a ref that cannot be read is skipped, and a
+    commit whose files cannot be read is passed over (Codex review of PR #111)."""
     files = (*JEV_SCORING_FILES, JEV_EVALUATOR_FILE)
 
     def check(parts: list[bytes | None], commit: str | None) -> dict[str, Any] | None:
@@ -1214,8 +1223,14 @@ def resolve_classifier(digest: str, repo_root: Path = REPO_ROOT) -> dict[str, An
     found = check([(repo_root / f).read_bytes() if (repo_root / f).is_file() else None for f in files], None)
     if found:
         return found
+    candidates: list[str] = [hint] if isinstance(hint, str) and hint else []
     log = _git(repo_root, "log", "--all", "--format=%H", "--", *files)
-    for commit in (log.stdout.decode().split() if log.returncode == 0 else []):
+    candidates += log.stdout.decode(errors="replace").split()
+    if log.returncode != 0:
+        refs = _git(repo_root, "for-each-ref", "--format=%(refname)")
+        for ref in refs.stdout.decode(errors="replace").split() if refs.returncode == 0 else []:
+            candidates += _git(repo_root, "log", ref, "--format=%H", "--", *files).stdout.decode(errors="replace").split()
+    for commit in dict.fromkeys(candidates):
         shown = [_git(repo_root, "show", f"{commit}:{f}") for f in files]
         found = check([r.stdout if r.returncode == 0 else None for r in shown], commit)
         if found:
@@ -1242,7 +1257,7 @@ def check_combinable(reports: list[tuple[dict[str, Any], str]], repo_root: Path 
     def ident(data: dict[str, Any], sha: str) -> tuple[Any, ...]:
         meta = data.get("metadata") or {}
         digest = _require_sha256((meta.get("classifier") or {}).get("sha256"), "classifier.sha256")
-        resolved = resolve_classifier(digest, repo_root)
+        resolved = resolve_classifier(digest, repo_root, (meta.get("classifier") or {}).get("commit"))
         if resolved is None:
             _refuse(f"Report {sha[:12]}...'s classifier digest {digest[:12]}... matches no commit of "
                     f"{', '.join(JEV_SCORING_FILES)} and {JEV_EVALUATOR_FILE} in this clone (a run on uncommitted "
