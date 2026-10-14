@@ -1505,7 +1505,7 @@ def logits_eval_params_problems(params: dict) -> list[str]:
 JEV_DEFAULTS = {"archive": "data/advice/responses_stimuli_20260721T235403Z.jsonl", "archive_samples": "10",
                 "petri_transcripts": "data/petri/runs/run_35937014168_1/transcripts.jsonl",
                 "petri_conversations": "3", "model": "typesafe/jev-1.13", "live": "false", "max_spend": "0.10",
-                "commit_outputs": "false"}
+                "commit_outputs": "false", "resume_run_id": ""}
 JEV_MODEL_RE = re.compile(r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$")
 
 
@@ -1520,16 +1520,20 @@ def _jev_job_value(params: dict, key: str) -> str:
 
 def jev_params_problems(params: dict, repo: Path | None = None) -> list[str]:
     """jev-audit's rules, as its params job applies them: `live` and `commit_outputs` exactly "true" or "false";
-    a live fire carries a `_nonce`; commit_outputs only with live (a mock report is never committed); sample counts non-negative integers (0 means
-    all); max_spend a positive finite number; the model an OpenRouter
-    `vendor/model` id; and both inputs repo-relative files that exist in this checkout, with no backslash and no
-    `..`, since the job reads them from the checkout."""
+    a live fire carries a `_nonce`; commit_outputs only with live (a mock report is never committed); sample counts
+    non-negative ASCII integers (0 means all); resume_run_id empty or an ASCII run id; max_spend a positive finite
+    number; the model an OpenRouter `vendor/model` id; and both inputs repo-relative files that exist in the checkout
+    the fire targets, with no backslash, no leading `/` and no `..` segment, since the job reads them from the
+    checkout and refuses those spellings."""
     problems: list[str] = []
     for key in ("live", "commit_outputs"):
         if _jev_job_value(params, key) not in ("true", "false"):
             problems.append(f"jev-audit {key} {params.get(key)!r}: only \"true\" or \"false\"")
     for key in ("archive_samples", "petri_conversations"):
-        if not _jev_job_value(params, key).isdigit():
+        # ASCII digits only, as the params job checks: str.isdigit() also accepts other scripts' digits and
+        # superscripts, which the job refuses after the fire has journaled (Codex review of PR #110)
+        value = _jev_job_value(params, key)
+        if not (value.isascii() and value.isdigit()):
             problems.append(f"jev-audit {key} {params.get(key)!r}: a non-negative integer (0 means all)")
     if _jev_job_value(params, "live") == "true":
         nonce = params.get("_nonce")
@@ -1546,10 +1550,17 @@ def jev_params_problems(params: dict, repo: Path | None = None) -> list[str]:
         problems.append(f"jev-audit max_spend {params.get('max_spend')!r}: a positive finite number")
     if not JEV_MODEL_RE.match(_jev_job_value(params, "model")):
         problems.append(f"jev-audit model {params.get('model')!r}: an OpenRouter vendor/model id")
+    resume = _jev_job_value(params, "resume_run_id")
+    if resume and not (resume.isascii() and resume.isdigit()):
+        problems.append(f"jev-audit resume_run_id {resume!r}: empty, or the numeric workflow run id whose "
+                        "checkpoint the run resumes")
     root = (repo or Path(__file__).resolve().parents[1]).resolve()
     for key in ("archive", "petri_transcripts"):
         path = _jev_job_value(params, key)
-        if not path or "\\" in path or circuit_trace_pairs_outside_checkout(path):
+        # the raw segments as well as the normalised path: the params job refuses any `..` segment, so a path that
+        # normalises back inside the checkout would still be refused after the fire journaled (Codex review of PR #110)
+        if (not path or "\\" in path or path.startswith("/") or ".." in path.split("/")
+                or circuit_trace_pairs_outside_checkout(path)):
             problems.append(f"jev-audit {key} {path!r}: a repo-relative path with / separators and no ..")
         elif not (root / path).is_file():
             problems.append(f"jev-audit {key} {path!r} does not exist in this checkout")
@@ -1687,7 +1698,7 @@ KNOWN_KEYS = {
         "artifact_run_id_2",
     }),
     # jev_pilot.yml `defaults` dict (verified 2026-10-14; JEV_DEFAULTS mirrors it): archive, archive_samples,
-    # petri_transcripts, petri_conversations, model, live, max_spend, commit_outputs.
+    # petri_transcripts, petri_conversations, model, live, max_spend, commit_outputs, resume_run_id.
     "jev-audit": frozenset(JEV_DEFAULTS),
 }
 

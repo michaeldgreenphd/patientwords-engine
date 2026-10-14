@@ -96,6 +96,44 @@ def test_a_run_that_never_started_writes_no_sidecar():
     assert _build(None, started=False) is None
 
 
+def test_an_unbilled_call_with_no_estimate_is_refused():
+    # Codex review of PR #110, round 2: the client defaults the estimate to zero when the response has no token counts
+    with pytest.raises(ValueError, match="no positive estimate"):
+        _build(_report([_row(0.10, 0.01), _row(None, 0.0), _row(0.0, 0.0)]))
+
+
+def test_rows_that_disagree_with_the_billed_total_are_refused():
+    report = _report()
+    report["metrics"]["total_cost_usd"] = 0.5
+    with pytest.raises(ValueError, match="total_cost_usd"):
+        _build(report)
+
+
+def _resumable_report() -> dict:
+    report = _report([_row(0.05, 0.04), _row(None, 0.03), _row(0.01, 0.01)])
+    report["cases"][0]["id"], report["cases"][1]["id"] = "a", "b"
+    report["petri_cases"][0].update(conversation_id="c", turn_index=1)
+    return report
+
+
+def test_a_resumed_run_books_only_the_rows_it_scored():
+    """The restored checkpoint's rows were booked by the earlier run's sidecar; the runner folds them, and their
+    cost, into this report, so they are left out here."""
+    checkpoint = {"advice_cases": [{"id": "a"}], "petri_cases": [{"conversation_id": "c", "turn_index": 1}]}
+    sc = sidecar.build_sidecar(_resumable_report(), report_sha256="ab", model="typesafe/jev-1.13", max_spend=0.2,
+                               nonce="n2", started=True, run_utc="2026-10-14T00:00:00Z", resumed=checkpoint,
+                               resumed_run_id="123")
+    assert sc["cost_usd"] == pytest.approx(0.03) and sc["calls"] == 1 and sc["resumed_rows"] == 2
+    assert sc["resumed_from_run_id"] == "123" and sc["unbilled_calls_count"] == 1
+
+
+def test_a_checkpoint_row_missing_from_the_report_is_refused():
+    with pytest.raises(ValueError, match="checkpoint rows"):
+        sidecar.build_sidecar(_resumable_report(), report_sha256="ab", model="typesafe/jev-1.13", max_spend=0.2,
+                              nonce="n2", started=True, run_utc="2026-10-14T00:00:00Z",
+                              resumed={"advice_cases": [{"id": "zzz"}], "petri_cases": []})
+
+
 @pytest.mark.parametrize("metrics", [
     {},
     {"total_cost_usd": -1, "total_estimated_cost_usd": 0, "unbilled_calls_count": 0},
@@ -164,6 +202,12 @@ def test_only_a_live_run_is_paid_and_it_bills_openrouter():
     ({"archive": "data/advice/no_such_archive.jsonl"}, "does not exist"),
     ({"live": "true", "_nonce": ""}, "_nonce"),
     ({"live": "true", "_nonce": " padded "}, "_nonce"),
+    # Codex review of PR #110, round 2: what the params job refuses, the fire path refuses before journaling
+    ({"archive_samples": "\u0661"}, "archive_samples"),                 # an Arabic-Indic one: isdigit() is True
+    ({"petri_conversations": "\u00b2"}, "petri_conversations"),          # a superscript two
+    ({"archive": "data/advice/../advice/responses_stimuli_20260721T235403Z.jsonl"}, "repo-relative"),
+    ({"archive": "/" + ft.JEV_DEFAULTS["archive"]}, "repo-relative"),
+    ({"resume_run_id": "abc"}, "resume_run_id"),
 ])
 def test_bad_params_are_refused(change, fragment):
     problems = ft.jev_params_problems({**ft.JEV_DEFAULTS, **change})
@@ -234,6 +278,8 @@ def test_a_dispatch_never_reads_the_trigger_file_and_runs_mock(tmp_path):
     ({**LIVE, "archive": "../x.jsonl"}, "1", "repo-relative"),
     ({**LIVE, "model": "jev"}, "1", "vendor/model"),
     ({k: v for k, v in LIVE.items() if k != "_nonce"}, "1", "_nonce"),
+    ({**LIVE, "resume_run_id": "12a"}, "1", "resume_run_id"),
+    ({**LIVE, "archive_samples": "\u0661"}, "1", "archive_samples"),
 ])
 def test_the_heredoc_refuses_before_any_output(tmp_path, cfg, attempt, fragment):
     rc, out, err = _run(tmp_path, cfg, attempt=attempt)
@@ -280,3 +326,16 @@ def test_input_paths_are_checked_in_the_checkout_the_fire_targets(tmp_path):
     assert any("does not exist" in p for p in ft.lane_params_problems("jev-audit", elsewhere))
     with pytest.raises(ValueError, match="does not exist"):
         ft.validate_params("jev-audit", {**ft.PARK_DEFAULTS["jev-audit"]}, repo=tmp_path / "empty")
+
+
+def test_every_run_keeps_a_checkpoint_and_a_resume_restores_it():
+    """Codex review of PR #110, round 2: the checkpoint is written into the artifact on every run, and resume_run_id
+    restores an earlier run's into a new fire (whose sidecar is told which rows were restored)."""
+    steps = _workflow()["jobs"]["audit"]["steps"]
+    run_step = next(s for s in steps if s.get("name", "").startswith("Run Jev audit"))
+    assert '--checkpoint "artifacts/jev_pilot_checkpoint.json"' in run_step["run"]
+    restore = next(s for s in steps if s.get("name") == "Restore the checkpoint of the run being resumed")
+    assert restore["with"]["run-id"] == "${{ needs.params.outputs.resume_run_id }}"
+    sidecar_step = next(s for s in steps if s.get("name", "").startswith("Write the cost sidecar"))
+    assert "--resumed-checkpoint" in sidecar_step["run"]
+    assert _workflow()["permissions"]["actions"] == "read"

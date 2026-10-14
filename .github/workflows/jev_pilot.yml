@@ -3,7 +3,7 @@ name: Jev Classifier Audit (Advice & Petri)
 # Evaluation of TypeSafe AI's Jev (typesafe/jev-1.13) decisions classifier on landed Advice responses and Petri
 # multi-turn conversations (scripts/audit_jev_calibration.py).
 #
-# A push-to-run lane since 2026-10-14 (owner decision D3, docs/decisions_20261014_owner.md): it fires when
+# A push-to-run lane since 2026-10-14 (owner decision D3, docs/decisions_20261014_owner.md, landing with PR #109): it fires when
 # .github/trigger/jev-audit.json changes, and only through scripts/fire_trigger.py, which journals the fire and
 # holds its max_spend against the OpenRouter daily ceiling. A live run (live true) calls the decisions endpoint on
 # OPENROUTER_API_KEY and is admitted only from a push on its first attempt; the daily-ceiling gate below re-checks
@@ -11,7 +11,12 @@ name: Jev Classifier Audit (Advice & Petri)
 # workflow_dispatch. Every live run commits a cost sidecar (scripts/jev_audit_sidecar.py) under data/jev/runs/,
 # whether or not a later step failed, so scripts/ledger_update.py books its spend.
 #
-# Observed cost: the 2026-10-12 run of 10 advice responses and 3 Petri conversations cost $0.11.
+# Recovery: a live run that stops part-way (its ceiling, or a call that raised) leaves its checkpoint in the run's
+# artifact. A new fire with `resume_run_id` set to that run's id restores it, so the completed calls are not made
+# again; the new run's sidecar books only the rows it scored, since the earlier sidecar booked the rest. The runner
+# refuses a checkpoint from another mode, model, rubric or input.
+#
+# Observed cost: the 2026-10-12 run scored 1,810 advice responses and 301 Petri turns for $0.11 (billed).
 #
 # The trigger file is created by `fire_trigger.py park --trigger jev-audit` on main after this workflow merges,
 # never by hand.
@@ -45,6 +50,7 @@ on:
 
 permissions:
   contents: write
+  actions: read   # resume_run_id: download an earlier run's checkpoint artifact
 
 concurrency:
   group: jev-audit-${{ github.ref }}
@@ -65,6 +71,7 @@ jobs:
       live: ${{ steps.params.outputs.live }}
       max_spend: ${{ steps.params.outputs.max_spend }}
       commit_outputs: ${{ steps.params.outputs.commit_outputs }}
+      resume_run_id: ${{ steps.params.outputs.resume_run_id }}
       # the fire's `_nonce` (pass-through metadata, never a trigger key), recorded in the cost sidecar
       _nonce: ${{ steps.params.outputs._nonce }}
     steps:
@@ -96,7 +103,8 @@ jobs:
                       "model": "typesafe/jev-1.13",
                       "live": "false",
                       "max_spend": "0.10",
-                      "commit_outputs": "false"}
+                      "commit_outputs": "false",
+                      "resume_run_id": ""}
           p = dict(defaults)
           nonce = ""                        # the fire's _nonce, metadata beside the trigger keys (empty on dispatch)
           if os.environ["EVENT_NAME"] == "push":
@@ -121,6 +129,8 @@ jobs:
           for k in ("archive_samples", "petri_conversations"):
               if not (p[k].isascii() and p[k].isdigit()):
                   raise SystemExit(f"{k} must be a non-negative integer (0 means all), got {p[k]!r}")
+          if p["resume_run_id"] and not (p["resume_run_id"].isascii() and p["resume_run_id"].isdigit()):
+              raise SystemExit(f"resume_run_id must be empty or a numeric workflow run id, got {p['resume_run_id']!r}")
           spend = float(p["max_spend"])
           if not (spend > 0 and spend != float("inf")):
               raise SystemExit(f"max_spend must be a positive finite number, got {p['max_spend']!r}")
@@ -186,6 +196,28 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .
 
+      # resume_run_id: the earlier run's checkpoint, from its artifact (a live run is attempt 1 only, so the artifact is
+      # its `-1`). A pristine copy is kept outside artifacts/ for the sidecar, which books only the rows not in it.
+      - name: Restore the checkpoint of the run being resumed
+        if: ${{ needs.params.outputs.resume_run_id != '' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: jev-audit-report-${{ needs.params.outputs.resume_run_id }}-1
+          run-id: ${{ needs.params.outputs.resume_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/jev-restore
+      - name: Stage the restored checkpoint
+        if: ${{ needs.params.outputs.resume_run_id != '' }}
+        run: |
+          set -euo pipefail
+          if [ ! -f "$RUNNER_TEMP/jev-restore/jev_pilot_checkpoint.json" ]; then
+            echo "Refused: run ${{ needs.params.outputs.resume_run_id }}'s artifact holds no jev_pilot_checkpoint.json" >&2
+            exit 1
+          fi
+          mkdir -p artifacts
+          cp "$RUNNER_TEMP/jev-restore/jev_pilot_checkpoint.json" artifacts/jev_pilot_checkpoint.json
+          cp "$RUNNER_TEMP/jev-restore/jev_pilot_checkpoint.json" "$RUNNER_TEMP/resumed_checkpoint.json"
+
       # The start marker is written just before the step that can spend: a live run that dies without a report is
       # booked at its whole max_spend (scripts/jev_audit_sidecar.py), one that never reached this step at nothing.
       - name: Run Jev audit (live calls the decisions endpoint; mock calls nothing)
@@ -224,6 +256,7 @@ jobs:
             --register-rubric "data/register_rubric.json" \
             --model "$MODEL" \
             "${LIVE_FLAG[@]}" \
+            --checkpoint "artifacts/jev_pilot_checkpoint.json" \
             --out-markdown "artifacts/jev_pilot_report.md" \
             --out-json "artifacts/jev_pilot_report.json"
 
@@ -233,11 +266,18 @@ jobs:
           MODEL: ${{ needs.params.outputs.model }}
           MAX_SPEND: ${{ needs.params.outputs.max_spend }}
           NONCE: ${{ needs.params.outputs._nonce }}
+          RESUME_RUN_ID: ${{ needs.params.outputs.resume_run_id }}
         run: |
+          RESUMED=()
+          # only when the restore staged it; a failed restore stops the job before the start marker, so the run made
+          # no call and the sidecar writes nothing
+          if [ -n "$RESUME_RUN_ID" ] && [ -f "$RUNNER_TEMP/resumed_checkpoint.json" ]; then
+            RESUMED=(--resumed-checkpoint "$RUNNER_TEMP/resumed_checkpoint.json" --resumed-run-id "$RESUME_RUN_ID")
+          fi
           python scripts/jev_audit_sidecar.py --report artifacts/jev_pilot_report.json \
             --out "data/jev/runs/$RUN_STEM.report.json" --model "$MODEL" --max-spend "$MAX_SPEND" \
             --nonce "$NONCE" --started-marker "$RUNNER_TEMP/jev_started" \
-            --run-utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            --run-utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${RESUMED[@]}"
 
       # Deliberately NOT always(): the report is committed only when every step before it succeeded. The advice
       # response text is dropped (it is already in the committed archive the report names); the scores, tiers,
