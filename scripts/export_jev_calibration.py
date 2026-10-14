@@ -45,8 +45,11 @@ Methods (all deterministic; no sampling, so no seed):
 Several runs in one export (2026-10-14, owner decision D3): `--report` may be repeated. Exactly one report carries
 advice cases and the calibration payload is that report's; the others are Petri-only reports
 (`audit_jev_calibration.py --skip-advice`) over other Petri runs. All must be one instrument (requested model,
-execution mode, classifier digest, both rubrics), no report or Petri run may appear twice, and a conversation in two
-reports is refused (check_combinable, build_combined_petri_drift_payload). The Petri payload pools the conversations,
+execution mode, scoring implementation, both rubrics), no report or Petri run may appear twice, and a conversation in
+two reports is refused (check_combinable, build_combined_petri_drift_payload). The scoring implementation is
+scripts/jev_classifier.py and medlang_circuits/jev_client.py, found by resolving each report's classifier digest
+through git history (resolve_classifier), so combining needs a clone holding the commits the reports ran at; the
+runner may differ between reports and each one's is recorded in source_reports. The Petri payload pools the conversations,
 names each run in `provenance.petri_runs` and each conversation's `run`, and with several Petri runs carries
 `provenance.petri_transcripts` as null. Both payloads list every report in `source_reports` and carry one
 `source_report_sha256`: the report's digest for one report, and for several the sha256 of the sorted digests, one per
@@ -73,6 +76,7 @@ import hashlib
 import json
 import math
 import os
+import subprocess
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import sys
 import tempfile
@@ -1161,23 +1165,72 @@ def combined_report_sha256(shas: list[str]) -> str:
     return hashlib.sha256("".join(f"{sha}\n" for sha in sorted(shas)).encode("ascii")).hexdigest()
 
 
-def source_report_entries(reports: list[tuple[dict[str, Any], str]]) -> list[dict[str, Any]]:
-    """Every report the export read, in the order given: its digest, how many advice and Petri rows it holds, and the
-    Petri transcripts it scored (null when it scored none)."""
+def source_report_entries(reports: list[tuple[dict[str, Any], str]], repo_root: Path = REPO_ROOT,
+                          resolve: bool = False) -> list[dict[str, Any]]:
+    """Every report the export read, in the order given: its digest, how many advice and Petri rows it holds, the
+    Petri transcripts it scored (null when it scored none), and its classifier digest. With `resolve` (several
+    reports, whose runners may differ) also the commit and the scoring and runner digests resolve_classifier finds;
+    null otherwise."""
     out = []
     for data, sha in reports:
-        petri = (data.get("metadata") or {}).get("petri_transcripts")
+        meta = data.get("metadata") or {}
+        petri = meta.get("petri_transcripts")
+        digest = (meta.get("classifier") or {}).get("sha256")
+        resolved = resolve_classifier(digest, repo_root) if resolve else None
         out.append({"sha256": sha, "advice_cases": len(data.get("cases") or []),
                     "petri_turns": len(data.get("petri_cases") or []),
-                    "petri_transcripts": petri.get("path") if isinstance(petri, dict) else None})
+                    "petri_transcripts": petri.get("path") if isinstance(petri, dict) else None,
+                    "classifier_sha256": digest,
+                    "classifier_commit": resolved["commit"] if resolved else None,
+                    "scoring_sha256": resolved["scoring_sha256"] if resolved else None,
+                    "evaluator_sha256": resolved["evaluator_sha256"] if resolved else None})
     return out
 
 
-def check_combinable(reports: list[tuple[dict[str, Any], str]]) -> int:
+# The audit runner's classifier digest is sha256 over the bytes of these three files, concatenated in this order
+# (audit_jev_calibration.py main). The first two score a response (the Jev questions, the call, the parsing); the third
+# is the runner, which selects inputs and aggregates, and changes whenever its command line does.
+JEV_SCORING_FILES = ("scripts/jev_classifier.py", "medlang_circuits/jev_client.py")
+JEV_EVALUATOR_FILE = "scripts/audit_jev_calibration.py"
+
+
+def _git(repo_root: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", "-C", str(repo_root), *args], capture_output=True)
+
+
+def resolve_classifier(digest: str, repo_root: Path = REPO_ROOT) -> dict[str, Any] | None:
+    """The files behind a report's classifier digest: {commit, scoring_sha256, evaluator_sha256}, found by hashing the
+    three files at each commit that touched them (and in the working tree, as `commit` null) until one gives the
+    digest. A match is exact (sha256 over the files' bytes), so the scoring implementation a report used is proven
+    rather than assumed. None when no commit in this clone gives it (a run on uncommitted files, or a shallow clone)."""
+    files = (*JEV_SCORING_FILES, JEV_EVALUATOR_FILE)
+
+    def check(parts: list[bytes | None], commit: str | None) -> dict[str, Any] | None:
+        if any(part is None for part in parts) or hashlib.sha256(b"".join(parts)).hexdigest() != digest:
+            return None
+        return {"commit": commit, "scoring_sha256": hashlib.sha256(b"".join(parts[:2])).hexdigest(),
+                "evaluator_sha256": hashlib.sha256(parts[2]).hexdigest()}
+
+    found = check([(repo_root / f).read_bytes() if (repo_root / f).is_file() else None for f in files], None)
+    if found:
+        return found
+    log = _git(repo_root, "log", "--all", "--format=%H", "--", *files)
+    for commit in (log.stdout.decode().split() if log.returncode == 0 else []):
+        shown = [_git(repo_root, "show", f"{commit}:{f}") for f in files]
+        found = check([r.stdout if r.returncode == 0 else None for r in shown], commit)
+        if found:
+            return found
+    return None
+
+
+def check_combinable(reports: list[tuple[dict[str, Any], str]], repo_root: Path = REPO_ROOT) -> int:
     """Refuse a set of reports that cannot be pooled into one export; return the index of the one advice report.
 
-    Pooled reports must be one instrument: the same requested model, execution mode (all live or all mock),
-    classifier digest, advice rubric and register rubric. No report may appear twice, and no Petri run may be
+    Pooled reports must be one instrument: the same requested model, execution mode (all live or all mock), scoring
+    implementation, advice rubric and register rubric. The scoring implementation is compared through
+    resolve_classifier, not the recorded classifier digest: that digest also covers the runner, which every change to
+    its command line alters (Codex review of PR #111), so reports from one scoring implementation and two runner
+    versions combine, each runner recorded in source_reports; a digest no commit in this clone gives is refused. No report may appear twice, and no Petri run may be
     scored by two reports (its conversations would be counted twice). Exactly one report carries advice cases: the
     calibration payload is that report's, unchanged. Advice runs are not pooled, because two runs over one archive
     score overlapping responses; the others are Petri-only (audit_jev_calibration.py --skip-advice), with no advice
@@ -1186,16 +1239,22 @@ def check_combinable(reports: list[tuple[dict[str, Any], str]]) -> int:
     if len(set(shas)) != len(shas):
         _refuse("The same report was passed more than once")
 
-    def ident(data: dict[str, Any]) -> tuple[Any, ...]:
+    def ident(data: dict[str, Any], sha: str) -> tuple[Any, ...]:
         meta = data.get("metadata") or {}
-        return (_require_model_requested(meta), _require_is_mock(meta),
-                (meta.get("classifier") or {}).get("sha256"), (meta.get("rubric") or {}).get("sha256"),
-                (meta.get("register_rubric") or {}).get("sha256"))
-    first = ident(reports[0][0])
+        digest = _require_sha256((meta.get("classifier") or {}).get("sha256"), "classifier.sha256")
+        resolved = resolve_classifier(digest, repo_root)
+        if resolved is None:
+            _refuse(f"Report {sha[:12]}...'s classifier digest {digest[:12]}... matches no commit of "
+                    f"{', '.join(JEV_SCORING_FILES)} and {JEV_EVALUATOR_FILE} in this clone (a run on uncommitted "
+                    "files, or a shallow clone); its scoring implementation cannot be shown to be the others'")
+        return (_require_model_requested(meta), _require_is_mock(meta), resolved["scoring_sha256"],
+                (meta.get("rubric") or {}).get("sha256"), (meta.get("register_rubric") or {}).get("sha256"))
+    first = ident(*reports[0])
     for data, sha in reports[1:]:
-        if ident(data) != first:
+        if ident(data, sha) != first:
             _refuse(f"Report {sha[:12]}... differs from {shas[0][:12]}... in requested model, execution mode, "
-                    "classifier or rubric; reports pooled into one export must be one instrument")
+                    "scoring implementation (scripts/jev_classifier.py, medlang_circuits/jev_client.py) or rubric; "
+                    "reports pooled into one export must be one instrument")
     seen_runs: dict[str, str] = {}
     for data, sha in reports:
         petri = (data.get("metadata") or {}).get("petri_transcripts")
@@ -1321,7 +1380,7 @@ def main(argv: list[str] | None = None) -> int:
     reports = [load_report(path) for path in report_paths]
     advice_index = check_combinable(reports) if len(reports) > 1 else 0
     source_sha = combined_report_sha256([sha for _, sha in reports])
-    sources = source_report_entries(reports)
+    sources = source_report_entries(reports, resolve=len(reports) > 1)
 
     calib_payload = build_calibration_payload(reports[advice_index][0], source_sha)
     petri_payload = build_combined_petri_drift_payload(reports, source_report_sha256=source_sha)

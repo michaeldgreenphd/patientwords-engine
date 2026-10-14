@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -1524,6 +1525,19 @@ EQ02_TRANSCRIPTS = "data/petri/runs/run_38434195912_1/transcripts.jsonl"
 EQ02_SHA = hashlib.sha256((ROOT / EQ02_TRANSCRIPTS).read_bytes()).hexdigest()
 EQ02_A = "85726acbafe748de9fb0024d071f9da94c192a61fd7c908c4e82afda1f9756bd"
 EQ02_B = "3d1e05bc3b41d0c9b2c6650ba42da9b63c85dc6d068a2b20ee03d4f8668c9201"
+# Combining resolves each report's classifier digest to the files behind it (resolve_classifier), so these reports
+# carry the digest of this checkout's three files, as an audit run here would record it.
+CLASSIFIER_FILES = ("scripts/jev_classifier.py", "medlang_circuits/jev_client.py", "scripts/audit_jev_calibration.py")
+WORKTREE_CLASSIFIER = hashlib.sha256(b"".join((ROOT / f).read_bytes() for f in CLASSIFIER_FILES)).hexdigest()
+# The first live report (2026-10-12) ran at this commit; its digest is the one it recorded
+LIVE_REPORT_COMMIT, LIVE_REPORT_CLASSIFIER = ("8a29a30f82", "a38069f85f0dbd4f0a084f404bb52914cb0e4590386b11b2d91f427bc9b6f145")
+
+
+@pytest.fixture
+def advice_report(mock_report_data) -> dict:
+    report = json.loads(json.dumps(mock_report_data))
+    report["metadata"]["classifier"]["sha256"] = WORKTREE_CLASSIFIER
+    return report
 
 
 def _petri_only(base: dict) -> dict:
@@ -1559,8 +1573,8 @@ def _site(tmp_path: Path, name: str) -> dict:
     return json.loads((tmp_path / "site" / "data" / name).read_text(encoding="utf-8"))
 
 
-def test_a_combined_export_pools_the_petri_runs_and_keeps_the_advice_report(tmp_path, mock_report_data):
-    paths = _write_reports(tmp_path, mock_report_data, _petri_only(mock_report_data))
+def test_a_combined_export_pools_the_petri_runs_and_keeps_the_advice_report(tmp_path, advice_report):
+    paths = _write_reports(tmp_path, advice_report, _petri_only(advice_report))
     shas = [hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in paths]
     assert _export(tmp_path, paths) == 0
     calib, petri = _site(tmp_path, "jev_calibration.json"), _site(tmp_path, "petri_register_drift.json")
@@ -1580,16 +1594,16 @@ def test_a_combined_export_pools_the_petri_runs_and_keeps_the_advice_report(tmp_
     assert (app["conversations"], app["conversations_with_drift"]) == (4, 2)
 
 
-def test_the_combined_identifier_does_not_depend_on_report_order(tmp_path, mock_report_data):
-    paths = _write_reports(tmp_path, mock_report_data, _petri_only(mock_report_data))
+def test_the_combined_identifier_does_not_depend_on_report_order(tmp_path, advice_report):
+    paths = _write_reports(tmp_path, advice_report, _petri_only(advice_report))
     assert _export(tmp_path, paths) == 0
     first = _site(tmp_path, "petri_register_drift.json")["source_report_sha256"]
     assert _export(tmp_path, paths[::-1]) == 0
     assert _site(tmp_path, "petri_register_drift.json")["source_report_sha256"] == first
 
 
-def test_a_single_report_export_names_its_report_and_run(tmp_path, mock_report_data):
-    (path,) = _write_reports(tmp_path, mock_report_data)
+def test_a_single_report_export_names_its_report_and_run(tmp_path, advice_report):
+    (path,) = _write_reports(tmp_path, advice_report)
     assert _export(tmp_path, [path]) == 0
     petri = _site(tmp_path, "petri_register_drift.json")
     sha = hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -1598,12 +1612,12 @@ def test_a_single_report_export_names_its_report_and_run(tmp_path, mock_report_d
     assert [r["run"] for r in petri["provenance"]["petri_runs"]] == ["run_35937014168_1"]
 
 
-def test_combined_payloads_pass_the_site_contract_gate(tmp_path, mock_report_data):
+def test_combined_payloads_pass_the_site_contract_gate(tmp_path, advice_report):
     import importlib.util
     spec = importlib.util.spec_from_file_location("vfc", ROOT / "scripts" / "validate_frontend_contract.py")
     vfc = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(vfc)
-    assert _export(tmp_path, _write_reports(tmp_path, mock_report_data, _petri_only(mock_report_data))) == 0
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
     rep = vfc.Report()
     vfc.check_jev_payloads(rep, tmp_path / "site")
     assert rep.errors == [] and rep.warnings == []
@@ -1616,6 +1630,12 @@ def test_combined_payloads_pass_the_site_contract_gate(tmp_path, mock_report_dat
     vfc.check_jev_payloads(rep, tmp_path / "site")
     assert any("source_report_sha256" in str(e) for e in rep.errors)
     assert any("different source reports" in str(e) for e in rep.errors)
+    # one payload listing its reports and the other not is a partial pair (Codex review of PR #111)
+    del petri["source_reports"]
+    petri_path.write_text(json.dumps(petri), encoding="utf-8")
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert any("only one of the two Jev payloads" in str(e) for e in rep.errors)
 
 
 def _refused(tmp_path: Path, docs: list[dict], fragment: str, capsys) -> None:
@@ -1625,16 +1645,16 @@ def _refused(tmp_path: Path, docs: list[dict], fragment: str, capsys) -> None:
     assert fragment in capsys.readouterr().err
 
 
-def test_combining_refuses_two_advice_reports(tmp_path, mock_report_data, capsys):
-    other = json.loads(json.dumps(mock_report_data))
+def test_combining_refuses_two_advice_reports(tmp_path, advice_report, capsys):
+    other = json.loads(json.dumps(advice_report))
     other["metadata"]["timestamp_utc"] = "2026-10-13T00:00:00Z"
     del other["metadata"]["petri_transcripts"]          # advice only, so only the advice rule applies
     other["petri_cases"] = []
-    _refused(tmp_path, [mock_report_data, other], "2 of the reports carry advice cases", capsys)
+    _refused(tmp_path, [advice_report, other], "2 of the reports carry advice cases", capsys)
 
 
-def test_combining_refuses_the_same_report_twice_and_no_advice_report(tmp_path, mock_report_data, capsys):
-    only = _petri_only(mock_report_data)
+def test_combining_refuses_the_same_report_twice_and_no_advice_report(tmp_path, advice_report, capsys):
+    only = _petri_only(advice_report)
     _refused(tmp_path, [only, only], "same report", capsys)
     other = json.loads(json.dumps(only))
     path = "data/petri/runs/run_36076994201_1/transcripts.jsonl"
@@ -1646,24 +1666,64 @@ def test_combining_refuses_the_same_report_twice_and_no_advice_report(tmp_path, 
 @pytest.mark.parametrize("change, fragment", [
     (lambda m: m["metadata"].update(model_requested="typesafe/jev-2"), "one instrument"),
     (lambda m: m["metadata"].update(is_mock=True), "one instrument"),
-    (lambda m: m["metadata"]["classifier"].update(sha256="d" * 64), "one instrument"),
+    (lambda m: m["metadata"]["classifier"].update(sha256="d" * 64), "matches no commit"),
     (lambda m: m["metadata"]["register_rubric"].update(sha256="e" * 64), "one instrument"),
     (lambda m: m["metadata"].update(golden_benchmark={"path": "x", "sha256": "a" * 64}), "golden_benchmark"),
     (lambda m: m["metrics"].update(total_cost_usd=0.5), "does not equal the sum of its rows"),
     (lambda m: m["metadata"].update(petri_transcripts={"path": PETRI_RUN_TRANSCRIPTS, "sha256": PETRI_RUN_SHA,
                                                        "turns_evaluated": 3}), "same Petri transcripts"),
 ])
-def test_combining_refuses_reports_that_are_not_one_instrument_or_overlap(tmp_path, mock_report_data, capsys,
+def test_combining_refuses_reports_that_are_not_one_instrument_or_overlap(tmp_path, advice_report, capsys,
                                                                          change, fragment):
-    other = _petri_only(mock_report_data)
+    other = _petri_only(advice_report)
     change(other)
-    _refused(tmp_path, [mock_report_data, other], fragment, capsys)
+    _refused(tmp_path, [advice_report, other], fragment, capsys)
 
 
-def test_a_conversation_in_two_reports_is_refused(mock_report_data):
+def test_a_conversation_in_two_reports_is_refused(advice_report):
     from scripts.export_jev_calibration import build_combined_petri_drift_payload
-    other = _petri_only(mock_report_data)
+    other = _petri_only(advice_report)
     other["petri_cases"][0]["conversation_id"] = CONV_A
     arms = [{c: SYNTHETIC_ARM for c in (CONV_A, CONV_B)}, {c: SYNTHETIC_ARM for c in (CONV_A, EQ02_A, EQ02_B)}]
     with pytest.raises(SystemExit):
-        build_combined_petri_drift_payload([(mock_report_data, "a" * 64), (other, "b" * 64)], arms=arms)
+        build_combined_petri_drift_payload([(advice_report, "a" * 64), (other, "b" * 64)], arms=arms)
+
+
+def test_a_runner_change_alone_does_not_stop_reports_combining(tmp_path, advice_report, monkeypatch):
+    """Codex review of PR #111: the recorded digest covers the runner too, so a new runner (this PR's --skip-advice)
+    gave every new report another digest. Reports combine when the scoring files are the same, and each report's
+    runner is recorded."""
+    import scripts.export_jev_calibration as ex
+    other = _petri_only(advice_report)
+    other["metadata"]["classifier"]["sha256"] = "9" * 64
+    real = ex.resolve_classifier
+    same_scoring = real(WORKTREE_CLASSIFIER)
+    monkeypatch.setattr(ex, "resolve_classifier", lambda digest, repo_root=ex.REPO_ROOT: (
+        {**same_scoring, "commit": "f" * 40, "evaluator_sha256": "e" * 64} if digest == "9" * 64
+        else real(digest, repo_root)))
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, other)) == 0
+    entries = _site(tmp_path, "petri_register_drift.json")["source_reports"]
+    assert [e["evaluator_sha256"] == "e" * 64 for e in entries] == [False, True]
+    assert entries[0]["scoring_sha256"] == entries[1]["scoring_sha256"]
+
+
+def test_another_scoring_implementation_is_refused(tmp_path, advice_report, monkeypatch, capsys):
+    import scripts.export_jev_calibration as ex
+    other = _petri_only(advice_report)
+    other["metadata"]["classifier"]["sha256"] = "9" * 64
+    real = ex.resolve_classifier
+    monkeypatch.setattr(ex, "resolve_classifier", lambda digest, repo_root=ex.REPO_ROOT: (
+        {"commit": "f" * 40, "scoring_sha256": "5" * 64, "evaluator_sha256": "e" * 64} if digest == "9" * 64
+        else real(digest, repo_root)))
+    _refused(tmp_path, [advice_report, other], "scoring implementation", capsys)
+
+
+@pytest.mark.skipif(subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", f"{LIVE_REPORT_COMMIT}^{{commit}}"],
+                                   capture_output=True).returncode != 0,
+                    reason="this clone lacks the commit the first live report ran at (a shallow clone)")
+def test_the_first_live_reports_digest_resolves_to_its_commit():
+    """The first live report's recorded digest is found in history, at the commit it ran, with the scoring files that
+    this checkout's main carried at the time."""
+    from scripts.export_jev_calibration import resolve_classifier
+    found = resolve_classifier(LIVE_REPORT_CLASSIFIER)
+    assert found is not None and found["commit"].startswith(LIVE_REPORT_COMMIT)

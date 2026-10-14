@@ -1158,6 +1158,10 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
     listed = {name: json.dumps(lst, sort_keys=True) for name, lst in sources.items()}
     if len(listed) > 1 and len(set(listed.values())) > 1:
         rep.err(" and ".join(listed), "$.source_reports", "the two Jev payloads list different source reports")
+    # one exporter run writes both files, so either both list their reports or neither does (payloads exported before
+    # source_reports existed); one without the other is a partial or hand-edited pair (Codex review of PR #111)
+    if len(reports) > 1 and len(sources) == 1:
+        rep.err(" and ".join(reports), "$.source_reports", "only one of the two Jev payloads lists its source reports")
 
 
 # ------------------------------------------------------------------ cross-repo checks
