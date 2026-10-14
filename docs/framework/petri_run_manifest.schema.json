@@ -828,6 +828,18 @@
               "minLength": 1,
               "description": "2026-10-01: why the judge calls went out without the instrument's temperature: the provider registry's reason (data/advice_providers.json anthropic.omit_temperature) or the installed anthropic SDK's refusal of the keyword, copied from the judge sidecar. Absent when the calls carried it, which is every manifest written before this field existed."
             },
+            "thinking_sent": {
+              "type": "string",
+              "enum": [
+                "disabled"
+              ],
+              "description": "2026-10-14: present, and \"disabled\", only beside thinking_disabled: every judge call carried thinking {\"type\": \"disabled\"}."
+            },
+            "thinking_disabled": {
+              "type": "string",
+              "minLength": 1,
+              "description": "2026-10-14: why the judge calls were sent thinking disabled: the provider registry's reason (data/advice_providers.json anthropic.disable_thinking), copied from the judge sidecar. Absent when the calls carried no thinking parameter, which is every manifest written before this field existed."
+            },
             "billing_channel": {
               "type": "string",
               "enum": [

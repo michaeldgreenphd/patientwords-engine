@@ -96,6 +96,7 @@ from .manifest import CHAIN_FILE, verify_chain, verify_run
 from .spend import (
     ZERO_PRICE_MODELS,
     judge_billing_channel,
+    judge_fallback_price_problems,
     judge_key_routing_problems,
     openrouter_price_problems,
     registry_spec_to_inspect,
@@ -218,7 +219,8 @@ JUDGE_OF_RECORD_KEYS = ("judge_model", "judge_max_tokens", "temperature", "plann
                         "not_applicable", "truncated", "cost_usd")
 # copied from the source's judge of record only when it carries them (a judge whose calls went out without the
 # instrument's temperature; judge_runner.omission_fields, 2026-10-01), so every earlier source keeps its shape
-JUDGE_OF_RECORD_OPTIONAL_KEYS = ("temperature_sent", "temperature_omitted")
+# and likewise thinking_sent and thinking_disabled (a judge sent thinking disabled; judge_runner.thinking_fields, 2026-10-14)
+JUDGE_OF_RECORD_OPTIONAL_KEYS = ("temperature_sent", "temperature_omitted", "thinking_sent", "thinking_disabled")
 
 
 def source_record(runs_dir: Path | str, stem: str) -> dict:
@@ -442,7 +444,8 @@ def judge_spec_refusals(spec: str) -> list[str]:
     """Why a (non-rehearsal) judge spec cannot run on this lane, before any call: the registry must resolve it
     (`judge_runner.judge_spec_problems`, which also refuses the zero-price sentinels), its key must bill an
     account the lane books (`spend.judge_key_routing_problems`), and an `openrouter:` spec needs a reviewed
-    per-model price (`spend.openrouter_price_problems`), as `cli judge` requires."""
+    per-model price (`spend.openrouter_price_problems`), as `cli judge` requires, and no spec may be priced at the
+    fallback rate (`spend.judge_fallback_price_problems`, 2026-10-14)."""
     from .judge_runner import judge_spec_problems
 
     case_problem = sentinel_case_problem(spec)
@@ -456,7 +459,9 @@ def judge_spec_refusals(spec: str) -> list[str]:
         problems += openrouter_price_problems(registry_spec_to_inspect(spec))
     except ValueError as exc:
         problems.append(str(exc))
-    return problems
+        return problems
+    # a judge no price table names would be booked at the fallback rate (2026-10-14, owner decision Q6)
+    return problems + judge_fallback_price_problems(spec)
 
 
 def sentinel_case_problem(spec: str) -> str | None:
@@ -721,7 +726,7 @@ def _counts(sidecar: dict, rows: list[dict]) -> dict:
 
 def build_manifest(*, plan: dict, source: dict, position: int, instrument: dict, sidecar: dict, rows: list[dict],
                    out_dir: Path, report_name: str, analysis_count: int, now_fn: Callable[[], str]) -> dict:
-    from .judge_runner import omission_fields
+    from .judge_runner import omission_fields, thinking_fields
 
     price = resolve_registry_price(plan["judge_model"])
     manifest = {
@@ -737,7 +742,9 @@ def build_manifest(*, plan: dict, source: dict, position: int, instrument: dict,
                   "fire_spent_before_usd": sidecar["fire_spent_before_usd"],
                   # `temperature` is the instrument's setting; calls that went out without it are recorded as the
                   # judge sidecar records them (2026-10-01), and only then, so other manifests keep their shape
-                  **omission_fields(sidecar.get("temperature_omitted"))},
+                  **omission_fields(sidecar.get("temperature_omitted")),
+                  # likewise calls sent thinking disabled (2026-10-14)
+                  **thinking_fields(sidecar.get("thinking_disabled"))},
         "instrument": instrument,
         "fire": {**plan["fire"], "source_runs": list(plan["source_runs"]), "position": position},
         "counts": {**_counts(sidecar, rows),
@@ -1012,13 +1019,22 @@ def impute_missing_reports(plan: dict, started_dir: Path | str, now_fn: Callable
     died, or the client raised before `run_judgments` could write), a sidecar booking that run's allotment: every
     call was admitted under the ceiling, so the allotment bounds what was spent, and the rows that survived are
     summed beside it (`judge-spend-report`'s rule). A zero-price judge books zero. Returns the sidecars written."""
-    from .judge_runner import TIER_TEMPERATURE, cumulative_counts, judge_sampling_omissions, omission_fields, read_jsonl
+    from .judge_runner import (
+        TIER_TEMPERATURE,
+        cumulative_counts,
+        judge_sampling_omissions,
+        judge_thinking_disabled,
+        omission_fields,
+        read_jsonl,
+        thinking_fields,
+    )
 
     started_dir = Path(started_dir)
     judge_model = plan["judge_model"]
     # a judge model the registry withholds temperature from was sent none, for the spec as RegistryJudge resolves it
     # (this process cannot see an installed SDK's refusal; the surviving rows record their own)
     omitted = omission_fields(judge_sampling_omissions(judge_model).get("temperature"))
+    omitted.update(thinking_fields(judge_thinking_disabled(judge_model)))
     price = resolve_registry_price(judge_model)
     zero_priced = price.input_per_mtok == 0 and price.output_per_mtok == 0
     fire = plan["fire"]

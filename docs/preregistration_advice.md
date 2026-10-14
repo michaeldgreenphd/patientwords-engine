@@ -334,6 +334,24 @@ listing Sonnet 5 changes what is sent, and corrected what a later run or
 re-grade with `openai/gpt-6-luna` is sent (no entry changed):
 `51ab32928b404970000fa9ddfcf892541ee378f2ee3899ca587563520260be96`
 
+**Registry revision of 2026-10-14: a second judge (owner decision Q8),
+ahead of any fire.** Claude Haiku 4.5 (`claude-haiku-4-5`) stays the
+judge of record. Claude Haiku 5.5 judges again every result Haiku 4.5
+judged, and judges beside it from now on, as a second judge spelled
+`anthropic:claude-haiku-5-5`, which analyze and both exporters keep out
+of the primary tiers. The revision adds `claude-haiku-5-5` to
+`anthropic.omit_temperature` (it rejects a non-default temperature, so
+the judge's 0.0 cannot be sent) and adds `anthropic.disable_thinking`,
+which lists it: its adaptive thinking is on by default and would spend
+the judge's output allowance, so its calls carry thinking
+`{"type": "disabled"}` and keep the shape of Haiku 4.5's. Its price,
+$0.10/$0.50 per million tokens, enters
+`medlang_circuits.evaluate_models.PRICING`. No consumer default, arm or
+archived record changes. Source: the claude-api skill,
+`shared/model-migration.md`, "Migrating to Claude Haiku 5.5", read
+2026-10-14. Registry sha256 at this revision:
+`81e07297c0d8a2f3336262fea17bc3a4aa0a8ac4b5a154a2ace7c2d581fac2ae`
+
 ## The consumer-proxy caveat (repeat in every writeup)
 
 API models are proxies for consumer products: no product system prompt, no

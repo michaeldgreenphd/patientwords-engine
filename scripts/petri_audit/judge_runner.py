@@ -87,6 +87,9 @@ class JudgeReply:
     # why the call went out without the instrument's temperature (the registry's omit_temperature models, or an
     # installed SDK that rejects the keyword); None when it carried TIER_TEMPERATURE (2026-10-01)
     temperature_omitted: str | None = None
+    # why the call carried thinking {"type": "disabled"} (the registry's disable_thinking models); None when it
+    # carried no thinking parameter, as every call before 2026-10-14 did
+    thinking_disabled: str | None = None
 
 
 def _usage_missing(raw: Any) -> bool:
@@ -159,6 +162,16 @@ class RegistryJudge:
         # temperature_omitted the reason). judge_sampling_omissions repeats this resolution and match for the
         # pre-flight and the fallback sidecars; change both together (tests/test_petri_sampling_omission.py)
         self.registry_temperature_omitted: str | None = ae.temperature_omission(self.spec["spec"], registry)
+        # a judge model the registry says must run with thinking disabled (anthropic.disable_thinking; 2026-10-14:
+        # Claude Haiku 5.5, whose default adaptive thinking would spend the 300-token allowance) is sent thinking
+        # {"type": "disabled"}, and every row, the sidecar and the manifest's judge of record say so (thinking_sent
+        # "disabled", thinking_disabled the reason). Only the direct Anthropic path can send it, so a listed model on
+        # another route is refused here, before any call. judge_thinking_disabled repeats this resolution and match.
+        self.thinking_disabled: str | None = ae.thinking_disable_reason(self.spec["spec"], registry)
+        if self.thinking_disabled and not self.is_anthropic:
+            raise ValueError(f"judge {model_spec!r}: the registry's anthropic.disable_thinking lists it, and only the "
+                             "direct Anthropic API path can send thinking disabled; judge it as anthropic:<id> or the "
+                             "bare id")
         self.client = ae._client() if self.is_anthropic else None
 
     @property
@@ -183,8 +196,10 @@ class RegistryJudge:
         sent_temperature = None if self.registry_temperature_omitted else temperature
         omitted = self.registry_temperature_omitted
         if self.is_anthropic:
+            # thinking is passed only when the registry lists the model, so every other judge's call is unchanged
+            thinking = {"thinking": dict(ae.THINKING_DISABLED)} if self.thinking_disabled else {}
             res = ae._send_anthropic_retrying(self.client, self.spec["model"], None, prompt, max_tokens,
-                                              sent_temperature, before_retry=before_retry)
+                                              sent_temperature, before_retry=before_retry, **thinking)
             if sent_temperature is not None and ae._ANTHROPIC_NO_TEMPERATURE:
                 omitted = ae.SDK_DROPPED_TEMPERATURE
         else:
@@ -199,7 +214,7 @@ class RegistryJudge:
         # reply says so and the ceiling charges the call's worst case instead (Codex round 2)
         return JudgeReply(text=text, input_tokens=int(in_tok or 0), output_tokens=int(out_tok or 0),
                           served_model=served, request_id=info.get("request_id"), usage_missing=_usage_missing(raw),
-                          temperature_omitted=omitted)
+                          temperature_omitted=omitted, thinking_disabled=self.thinking_disabled)
 
 
 # --------------------------------------------------------------- planning
@@ -761,6 +776,7 @@ def _sidecar(out_path: Path, client: JudgeClient, ceiling: SpendCeiling, counts:
             # `temperature` above is the instrument's setting; a judge model the registry says rejects it was sent
             # none, recorded here and on every row (present only then, so other sidecars keep their shape)
             **omission_fields(getattr(client, "temperature_omitted", None)),
+            **thinking_fields(getattr(client, "thinking_disabled", None)),
             "judgments_sha256": sha256_file(out_path) if out_path.is_file() else None,
             # cumulative over every row in the file (cost_basis the ledger knows: it books run_cost_usd to the day
             # on first sight and each later growth as a delta), never this invocation alone
@@ -785,6 +801,14 @@ def omission_fields(reason: str | None) -> dict[str, Any]:
     TIER_TEMPERATURE keeps the shape every earlier row has; `temperature` itself stays the instrument's setting, which
     judge_settings_problems and the rejudge compare (2026-10-01)."""
     return {"temperature_sent": None, "temperature_omitted": reason} if reason else {}
+
+
+def thinking_fields(reason: str | None) -> dict[str, Any]:
+    """The fields a judgment row, the sidecar, the run manifest's judge of record and a rejudge manifest's judge block
+    carry when the call was sent thinking {"type": "disabled"} (the registry's anthropic.disable_thinking; 2026-10-14):
+    `thinking_sent` "disabled" and `thinking_disabled` the reason. Empty otherwise, so a row whose call carried no
+    thinking parameter, as every row before them did, keeps its shape."""
+    return {"thinking_sent": "disabled", "thinking_disabled": reason} if reason else {}
 
 
 def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeiling, judge_max_tokens: int,
@@ -840,6 +864,7 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                        "cost_basis": "imputed_worst_case:call_failed", "cost_usd": round(cost, 8),
                        "max_tokens": judge_max_tokens, "temperature": TIER_TEMPERATURE,
                        **omission_fields(getattr(client, "temperature_omitted", None)),
+                       **thinking_fields(getattr(client, "thinking_disabled", None)),
                        "retry_attempts_charged": len(retry_charges),
                        # the requests the provider received for this row: each charged retry followed one, and a refused
                        # retry was never sent, so the summary reads the count here instead of deriving `retries + 1`
@@ -867,6 +892,7 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                    "cost_basis": "imputed_worst_case" if reply.usage_missing else "actual_usage",
                    "cost_usd": round(cost, 8), "max_tokens": judge_max_tokens, "temperature": TIER_TEMPERATURE,
                    **omission_fields(reply.temperature_omitted),
+                   **thinking_fields(reply.thinking_disabled),
                    "retry_attempts_charged": len(retry_charges), "provider_attempts": len(retry_charges) + 1,
                    "answer_form": answer_form(reply.text, p.allowed_values, p.kind, value),
                    "judge_error": error}
@@ -1045,6 +1071,24 @@ def judge_sampling_omissions(model_spec: str, providers_path: str | Path | None 
         return {}
     reason = ae.temperature_omission(spec["spec"], registry)
     return {"temperature": reason} if reason else {}
+
+
+def judge_thinking_disabled(model_spec: str, providers_path: str | Path | None = None) -> str | None:
+    """Why RegistryJudge sends `model_spec` thinking {"type": "disabled"} on every call (the registry's
+    anthropic.disable_thinking reason), or None, resolved and matched as RegistryJudge resolves and matches it
+    (`_resolve_spec`, then `thinking_disable_reason` on the resolved `provider:model`). The pre-flight's judge line and
+    the two fallback judge sidecars record this, so they say what the judge's own rows say. None for the zero-price
+    sentinels and for a spec the registry cannot resolve (no call goes out under either). A malformed map raises
+    ValueError."""
+    if model_spec.strip() in ZERO_PRICE_MODELS:
+        return None
+    ae = _advice_eval_module()
+    registry = ae._load_providers(providers_path or ae.DEFAULT_PROVIDERS)
+    try:
+        spec = ae._resolve_spec(model_spec, registry)
+    except SystemExit:
+        return None
+    return ae.thinking_disable_reason(spec["spec"], registry)
 
 
 def judge_budget_problems(model_spec: str, judge_max_tokens: int, providers_path: str | Path | None = None) -> list[str]:

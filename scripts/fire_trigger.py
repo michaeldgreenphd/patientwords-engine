@@ -46,6 +46,7 @@ No medical vocabulary lives in this file.
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import math
@@ -554,6 +555,9 @@ def advice_params_problems(params: dict, registry: dict | None = None) -> list[s
             problems.append(
                 f"advice-eval {role} {spec!r} is a bare provider name that bills {key_env} through the registry's "
                 f"consumer default; name the model explicitly ({spec}:<model>) so the fire states what it bills")
+    for role, spec, _channel in parts:
+        if role == "judge":
+            problems.extend(advice_judge_problems(spec, registry))
     lanes = {}
     for role, spec, channel in parts:
         lanes.setdefault(channel, []).append(f"{role} {spec}")
@@ -564,6 +568,175 @@ def advice_params_problems(params: dict, registry: dict | None = None) -> list[s
             "lane, so a mixed-channel fire is refused; split it into separate fires, one per account (for example "
             "elicit with judge false and without the translated arm, then judge in a fire of its own whose models "
             "bill the judge's account; docs/triggers.md, advice-eval)")
+    return problems
+
+
+ENGINE_PRICING_RELPATH = Path("medlang_circuits") / "evaluate_models.py"
+# scripts/petri_audit/spend.py FALLBACK_PRICING and FALLBACK_PRICE_SOURCE, and scripts/advice_eval.py
+# _FALLBACK_PRICING: the rate a model no price table names is booked at (USD per million tokens)
+FALLBACK_PRICING = (10.0, 50.0)
+FALLBACK_PRICE_SOURCE = "fallback:advice_eval._FALLBACK_PRICING"
+ENGINE_PRICE_SOURCE = "engine:evaluate_models.PRICING"
+ZERO_PRICE_SOURCE = "zero:mock_or_placeholder"
+
+
+def engine_pricing(repo: str | Path | None = None) -> dict[str, tuple[float, float]]:
+    """medlang_circuits/evaluate_models.py PRICING (model -> (input, output) USD per million tokens), read from the
+    source with `ast` rather than imported: it is a literal dict, and importing the package would pull its client
+    dependencies into the fire path. Values are normalised as scripts/petri_audit/spend.py `_engine_pricing`
+    normalises them. {} when the file is missing or PRICING is not a literal, so every Anthropic judge spec then
+    reads as fallback-priced and is refused (fail closed)."""
+    root = Path(repo) if repo else Path(__file__).resolve().parents[1]
+    try:
+        tree = ast.parse((root / ENGINE_PRICING_RELPATH).read_text(encoding="utf-8"))
+    except (OSError, SyntaxError, ValueError):
+        return {}
+    value = None
+    for node in tree.body:
+        targets = (node.targets if isinstance(node, ast.Assign)
+                   else [node.target] if isinstance(node, ast.AnnAssign) else [])
+        if any(isinstance(t, ast.Name) and t.id == "PRICING" for t in targets) and node.value is not None:
+            try:
+                value = ast.literal_eval(node.value)
+            except ValueError:
+                return {}
+    out: dict[str, tuple[float, float]] = {}
+    for key, rate in (value.items() if isinstance(value, dict) else ()):
+        try:
+            if isinstance(rate, dict):
+                out[str(key)] = (float(rate["input"]), float(rate["output"]))
+            else:
+                out[str(key)] = (float(rate[0]), float(rate[1]))
+        except (KeyError, TypeError, ValueError, IndexError):
+            continue
+    return out
+
+
+def _registry_rate(cfg: object, name: str, label: str) -> tuple[float, float, str] | None:
+    """scripts/petri_audit/spend.py `_registry_price`: a registry block's `pricing` entry for `name`, else its
+    `default_pricing`, with the same source labels; None when it names neither."""
+    if not isinstance(cfg, dict):
+        return None
+    table = cfg.get("pricing") or {}
+    if isinstance(table, dict) and name in table:
+        return float(table[name][0]), float(table[name][1]), f"registry:{label}:pricing"
+    if cfg.get("default_pricing"):
+        dp = cfg["default_pricing"]
+        return float(dp[0]), float(dp[1]), f"registry:{label}:default_pricing"
+    return None
+
+
+def petri_judge_price(spec: str, registry: dict | None = None,
+                      pricing: dict | None = None) -> tuple[float, float, str] | None:
+    """(input, output, source) for a Petri judge spec, as scripts/petri_audit/spend.py `resolve_registry_price`
+    prices it, without importing it: the spec is expanded to its Inspect name (`petri_judge_inspect_name`, mirroring
+    `registry_spec_to_inspect`), then looked up in resolve_price's order (a zero-price sentinel; for `openrouter/`,
+    the OpenRouter per-model entry, else the higher, rate by rate, of the vendor's own price and the OpenRouter
+    catch-all; otherwise the provider block's pricing or default_pricing, then the engine's PRICING), with the
+    fallback rate last. None for a spec that cannot be expanded (a bare provider with no consumer_default).
+    tests/test_judge_price_guard.py holds this to agree with resolve_registry_price."""
+    registry = providers_registry() if registry is None else registry
+    registry = registry if isinstance(registry, dict) else {}
+    pricing = engine_pricing() if pricing is None else pricing
+    name = petri_judge_inspect_name(spec, registry)
+    if name is None:
+        return None
+    if name in PETRI_SENTINEL_SPECS:
+        return 0.0, 0.0, ZERO_PRICE_SOURCE
+    provider, rest = name.split("/", 1) if "/" in name else ("anthropic", name)
+    if provider == "openrouter":
+        ocfg = registry.get("openrouter")
+        if isinstance(ocfg, dict) and rest in (ocfg.get("pricing") or {}):
+            entry = ocfg["pricing"][rest]
+            return float(entry[0]), float(entry[1]), "registry:openrouter:pricing"
+        floor = ((float(ocfg["default_pricing"][0]), float(ocfg["default_pricing"][1]),
+                  "registry:openrouter:default_pricing")
+                 if isinstance(ocfg, dict) and ocfg.get("default_pricing") else None)
+        vendor_price = None
+        if "/" in rest:
+            vendor, model = rest.split("/", 1)
+            vendor_price = _registry_rate(registry.get(vendor), rest, vendor)
+            if vendor_price is None and vendor == "anthropic" and model in pricing:
+                vendor_price = (*pricing[model], ENGINE_PRICE_SOURCE)
+        if vendor_price and floor:
+            return (max(vendor_price[0], floor[0]), max(vendor_price[1], floor[1]),
+                    f"max({vendor_price[2]}, {floor[2]})")
+        priced = vendor_price or floor
+    else:
+        priced = _registry_rate(registry.get(provider), rest, provider)
+        if priced is None and rest in pricing:
+            priced = (*pricing[rest], ENGINE_PRICE_SOURCE)
+    return priced if priced is not None else (*FALLBACK_PRICING, FALLBACK_PRICE_SOURCE)
+
+
+def petri_judge_price_problems(spec: str, registry: dict | None = None, pricing: dict | None = None) -> list[str]:
+    """The petri-audit judge refusal of owner decision Q6 (2026-10-14), mirrored from scripts/petri_audit/spend.py
+    `judge_fallback_price_problems` so the fire path refuses before it journals: a judge spec priced at the
+    fallback rate, because no price table names the model it resolves to. eq01's `anthropic/claude-haiku-4-5`
+    (slash spelling) expands to `anthropic/anthropic/claude-haiku-4-5` and was booked at 10/50, ten times list.
+    Zero-price sentinels are not refused here (they keep their own rules)."""
+    price = petri_judge_price(spec, registry, pricing)
+    if price is None or price[2] != FALLBACK_PRICE_SOURCE:
+        return []
+    return [f"petri-audit judge spec {str(spec).strip()!r} resolves to {petri_judge_inspect_name(spec, registry)!r}, "
+            "which no price table names, so it would be booked at the fallback rate "
+            f"{FALLBACK_PRICING[0]}/{FALLBACK_PRICING[1]} per million tokens (fallback_priced_judge); a direct "
+            "Anthropic judge is the bare id or anthropic:<id> (for example claude-haiku-4-5, never anthropic/<id>), "
+            "or add a dated, sourced price first"]
+
+
+def advice_judge_price(spec: str, registry: dict | None = None,
+                       pricing: dict | None = None) -> tuple[float, float, str] | None:
+    """(input, output, source) at which scripts/advice_eval.py `judge` books a judge spec, without importing it:
+    the spec resolves as `_resolve_spec` resolves it (provider:model, a bare provider the registry knows, or a bare
+    Anthropic id), the block's `pricing` entry for the model prices it (keyed by the spec, "registry:<provider>:
+    pricing"), else the engine's PRICING under the spec or the part after its provider prefix (CostTracker._price),
+    else the fallback rate. The advice judge reads no `default_pricing`. None for a provider the registry does not
+    list, or a bare provider with no consumer_default (the run refuses both before its first call)."""
+    registry = providers_registry() if registry is None else registry
+    registry = {"anthropic": {"api": "anthropic"}, **(registry if isinstance(registry, dict) else {})}
+    pricing = engine_pricing() if pricing is None else pricing
+    if ":" in spec:
+        provider, model = spec.split(":", 1)
+    elif isinstance(registry.get(spec), dict) and not spec.startswith("_"):
+        provider, model = spec, ""
+    else:
+        provider, model = "anthropic", spec
+    cfg = registry.get(provider) if not provider.startswith("_") else None
+    if not isinstance(cfg, dict):
+        return None
+    model = model or str(cfg.get("consumer_default") or "")
+    if not model:
+        return None
+    entry = (cfg.get("pricing") or {}).get(model) if isinstance(cfg.get("pricing"), dict) else None
+    if entry:
+        return float(entry[0]), float(entry[1]), f"registry:{provider}:pricing"
+    for candidate in (spec, spec.split(":", 1)[-1]):
+        if candidate in pricing:
+            return (*pricing[candidate], ENGINE_PRICE_SOURCE)
+    return (*FALLBACK_PRICING, FALLBACK_PRICE_SOURCE)
+
+
+def advice_judge_problems(spec: str, registry: dict | None = None, pricing: dict | None = None) -> list[str]:
+    """The advice-eval judge refusals added 2026-10-14, before a fire journals:
+
+    - a bare spec naming a Claude model the engine prices, other than the judge of record (scripts/advice_eval.py
+      `pooled_judge_problem`, which the run repeats before any call): every consumer reads a bare-named judge as
+      primary, so it would pool with the judge of record's tiers; a second judge is spelled anthropic:<id>;
+    - a spec booked at the fallback rate (owner decision Q6; `advice_judge_price`), which no price table names."""
+    pricing = engine_pricing() if pricing is None else pricing
+    problems = []
+    name = str(spec).strip()
+    if ":" not in name and name != ADVICE_DEFAULT_SPEC and name in pricing:
+        problems.append(f"advice-eval judge {spec!r} is a bare Claude model id other than the judge of record "
+                        f"({ADVICE_DEFAULT_SPEC}): analyze and both exporters read a bare-named judge as primary, so its "
+                        f"tiers would pool with the judge of record's; spell a second judge anthropic:{name}")
+    price = advice_judge_price(spec, registry, pricing)
+    if price is not None and price[2] == FALLBACK_PRICE_SOURCE:
+        problems.append(f"advice-eval judge {spec!r} is named by no price table (data/advice_providers.json pricing, "
+                        "medlang_circuits/evaluate_models.py PRICING), so the judge would be booked at the fallback rate "
+                        f"{FALLBACK_PRICING[0]}/{FALLBACK_PRICING[1]} per million tokens (fallback_priced_judge); name a "
+                        "priced model or add a dated, sourced price first")
     return problems
 
 
@@ -940,6 +1113,12 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
     # its vendor bills its own account, so the ceiling would bound the wrong money. The workflow's pre-flight refuses it
     # at $0 (scripts/petri_audit/spend.py judge_key_routing_problems), but by then the fire's journal entry holds its
     # commitment for the rest of the UTC day, so it is refused here, before the push (review of 2026-09-23, F-TH1).
+    # the judge of a run or a readapt is checked by the workflow's pre-flight and `cli judge` (spend.py
+    # judge_fallback_price_problems); a fallback-priced judge is refused here too, before the fire's journal entry
+    # holds its commitment (owner decision Q6, 2026-10-14). A rejudge's judge is checked in petri_judge_spec_problems
+    if mode in PETRI_PAID_MODES and judge_is_on(params):
+        problems.extend(petri_judge_price_problems(_petri_job_value(params, "judge_model", PETRI_JUDGE_DEFAULT),
+                                                   registry))
     judge_key = petri_judge_key_env(params, registry)
     if judge_key is not None and judge_key not in ("ANTHROPIC_API_KEY", "OPENROUTER_API_KEY"):
         problems.append(
@@ -1006,7 +1185,8 @@ def petri_judge_spec_problems(spec: str, registry: dict | None = None) -> list[s
     path refuses before it journals a reservation (PR #41 review): scripts/petri_audit/judge_runner.py
     judge_spec_problems (a zero-price test sentinel; a provider the registry does not know, one with no public API,
     or no model and no consumer_default, as scripts/advice_eval.py _resolve_spec refuses them) and
-    scripts/petri_audit/spend.py openrouter_price_problems (an `openrouter:` spec with no reviewed per-model price).
+    scripts/petri_audit/spend.py openrouter_price_problems (an `openrouter:` spec with no reviewed per-model price)
+    and judge_fallback_price_problems (a spec priced at the fallback rate; `petri_judge_price_problems`, 2026-10-14).
     The key routing rule is petri_params_problems' own."""
     spec = spec.strip()
     if spec in PETRI_SENTINEL_SPECS:
@@ -1030,7 +1210,8 @@ def petri_judge_spec_problems(spec: str, registry: dict | None = None) -> list[s
     if provider == "openrouter" and model not in ((cfg.get("pricing") or {}) if isinstance(cfg.get("pricing"), dict) else {}):
         return [f"petri-audit mode rejudge judge spec {spec!r} has no reviewed per-model price in "
                 "data/advice_providers.json openrouter.pricing (unreviewed_openrouter_price)"]
-    return []
+    # scripts/petri_audit/spend.py judge_fallback_price_problems, which the rejudge plan applies (2026-10-14)
+    return petri_judge_price_problems(spec, registry)
 
 
 def petri_rejudge_slug(spec: str) -> str:

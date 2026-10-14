@@ -2098,3 +2098,202 @@ def test_a_pack_scope_keeps_only_its_own_models_output_budgets():
     assert scoped["min_output_tokens"] == {"a/x": 4096} and scoped["pricing"] == {"a/x": [1, 2]}
     assert "min_output_tokens" not in ae._scope_block("openrouter", block, "c", {"c/z"})
     assert ae._scope_block("openrouter", {**block, "min_output_tokens": [1]}, "c", {"c/z"})["min_output_tokens"] == [1]
+
+
+# ------------------------------------------- the second judge, Claude Haiku 5.5 (owner decision Q8, 2026-10-14)
+
+LIVE_PROVIDERS_PATH = Path(__file__).resolve().parents[1] / "data" / "advice_providers.json"
+
+
+@pytest.mark.parametrize("spelling", ["claude-haiku-5-5", "anthropic:claude-haiku-5-5", "anthropic/claude-haiku-5-5"])
+def test_the_live_registry_withholds_temperature_from_haiku_5_5_and_sends_it_thinking_disabled(spelling):
+    assert "Haiku 5.5" in ae.temperature_omission(spelling, LIVE_REGISTRY)
+    reason = ae.thinking_disable_reason(spelling, LIVE_REGISTRY)
+    assert reason and "Haiku 5.5" in reason and "claude-api skill" in reason
+
+
+@pytest.mark.parametrize("spelling", ["claude-haiku-4-5", "anthropic:claude-haiku-4-5", "claude-opus-5-5",
+                                      "claude-sonnet-5-5", "claude-haiku-5-5-20261001", "claude-haiku-5.5", ""])
+def test_no_other_model_is_sent_thinking_disabled(spelling):
+    assert ae.thinking_disable_reason(spelling, LIVE_REGISTRY) is None
+
+
+def test_a_malformed_disable_thinking_map_is_refused():
+    with pytest.raises(ValueError, match="disable_thinking"):
+        ae.thinking_disable_reason("m", {"anthropic": {"disable_thinking": ["m"]}})
+    with pytest.raises(ValueError, match="disable_thinking"):
+        ae.thinking_disable_reason("m", {"anthropic": {"disable_thinking": {"m": " "}}})
+
+
+def test_haiku_5_5_is_priced_at_list_and_gets_no_output_minimum():
+    from medlang_circuits.evaluate_models import PRICING
+
+    assert PRICING["claude-haiku-5-5"] == (0.10, 0.50)
+    assert ae.min_output_tokens(LIVE_REGISTRY["anthropic"], "claude-haiku-5-5") is None
+
+
+def test_call_settings_sends_haiku_5_5_no_temperature_thinking_disabled_and_the_fires_budget():
+    sent_max, temperature, adjustments = ae.call_settings(LIVE_REGISTRY, LIVE_REGISTRY["anthropic"],
+                                                          "claude-haiku-5-5", 300, 0.0)
+    assert (sent_max, temperature) == (300, None)
+    assert [(a["field"], a["requested"], a["sent"]) for a in adjustments] == [
+        ("temperature", 0.0, None), ("thinking", None, "disabled")]
+    assert adjustments[1]["reason"].startswith("registry anthropic.disable_thinking: Claude Haiku 5.5")
+    assert ae.thinking_to_send(adjustments) == {"type": "disabled"}
+    # the judge of record is unchanged: its settings carry no adjustment and no thinking parameter
+    assert ae.call_settings(LIVE_REGISTRY, LIVE_REGISTRY["anthropic"], "claude-haiku-4-5", 300, 0.0) == (300, 0.0, [])
+    assert ae.thinking_to_send([]) is None
+
+
+def test_call_settings_refuses_a_thinking_disabled_model_on_a_route_that_cannot_send_it():
+    registry = {"anthropic": {"api": "anthropic", "disable_thinking": {"m": "why"}},
+                "fakeai": {"api": "openai_compat", "base_url": "https://fake.example/v1"}}
+    with pytest.raises(SystemExit, match="only the direct Anthropic API path"):
+        ae.call_settings(registry, registry["fakeai"], "m", 300, 0.0)
+    assert ae.call_settings(registry, registry["anthropic"], "m", 300, None)[2] == [
+        {"field": "thinking", "requested": None, "sent": "disabled", "reason": "registry anthropic.disable_thinking: why"}]
+
+
+class _Block:
+    def __init__(self, kind, text=""):
+        self.type, self.text = kind, text
+
+
+class _Response:
+    def __init__(self):
+        # a thinking block before the answer: the text is joined from text blocks only
+        self.content = [_Block("thinking", "reasoning that must not enter the text"), _Block("text", "answer")]
+        self.usage = type("U", (), {"input_tokens": 3, "output_tokens": 4})()
+
+    def model_dump(self):
+        return {"model": "m", "stop_reason": "end_turn"}
+
+
+class _Messages:
+    def __init__(self):
+        self.calls = []
+
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        return _Response()
+
+
+def _fake_client():
+    client = type("C", (), {})()
+    client.messages = _Messages()
+    return client
+
+
+def test_send_carries_thinking_in_extra_body_only_when_given(monkeypatch):
+    monkeypatch.setattr(ae, "_ANTHROPIC_NO_TEMPERATURE", False)
+    client = _fake_client()
+    text, *_ = ae._send(client, "claude-haiku-5-5", None, "q", 300, None, thinking={"type": "disabled"})
+    assert text == "answer"
+    assert client.messages.calls[-1] == {"model": "claude-haiku-5-5", "max_tokens": 300,
+                                         "messages": [{"role": "user", "content": "q"}],
+                                         "extra_body": {"thinking": {"type": "disabled"}}}
+    ae._send(client, "claude-haiku-4-5", None, "q", 300, 0.0)
+    assert client.messages.calls[-1] == {"model": "claude-haiku-4-5", "max_tokens": 300, "temperature": 0.0,
+                                         "messages": [{"role": "user", "content": "q"}]}
+
+
+def test_the_retrying_send_passes_thinking_only_when_given(monkeypatch):
+    seen = []
+
+    def six_arg_send(client, model, system, user_text, max_tokens, temperature):   # every stub in the suite
+        seen.append(model)
+        return "t", 1, 1, {}
+
+    monkeypatch.setattr(ae, "_send", six_arg_send)
+    ae._send_anthropic_retrying(object(), "claude-haiku-4-5", None, "q", 300, 0.0)
+    assert seen == ["claude-haiku-4-5"]
+
+    def thinking_send(client, model, system, user_text, max_tokens, temperature, thinking=None):
+        seen.append(thinking)
+        return "t", 1, 1, {}
+
+    monkeypatch.setattr(ae, "_send", thinking_send)
+    ae._send_anthropic_retrying(object(), "claude-haiku-5-5", None, "q", 300, None, thinking={"type": "disabled"})
+    assert seen[-1] == {"type": "disabled"}
+
+
+def _judge_send_recorder(seen):
+    def send(client, model, system, user_text, max_tokens, temperature, thinking=None):
+        seen.append((model, max_tokens, temperature, None if thinking is None else tuple(thinking.items())))
+        return _stub_send(client, model, system, user_text, max_tokens, temperature)
+    return send
+
+
+def test_the_second_judge_haiku_5_5_is_sent_and_records_its_settings(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    monkeypatch.setattr(ae, "_ANTHROPIC_NO_TEMPERATURE", False)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path, samples="1")
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(json.dumps(RUBRIC), encoding="utf-8")
+    seen = []
+    monkeypatch.setattr(ae, "_send", _judge_send_recorder(seen))
+    ae.main(["judge", "--responses", str(resp), "--rubric", str(rubric_path), "--judge-model",
+             "anthropic:claude-haiku-5-5", "--providers", str(LIVE_PROVIDERS_PATH), "--max-spend", "1.0"])
+    # the 300-token judge budget, no temperature, thinking disabled
+    assert seen and set(seen) == {("claude-haiku-5-5", 300, None, (("type", "disabled"),))}
+    jpath = resp.with_name(resp.stem.replace("responses_", "judgments_") + ".jsonl")
+    rows = [json.loads(x) for x in jpath.read_text(encoding="utf-8").splitlines()]
+    assert rows and all(r["judge_model"] == "anthropic:claude-haiku-5-5" for r in rows)
+    assert all([(a["field"], a["requested"], a["sent"]) for a in r["request_adjustments"]]
+               == [("temperature", 0.0, None), ("thinking", None, "disabled")] for r in rows)
+    # booked at list (0.10/0.50), not the 10/50 fallback: each call is 10 tokens in and 20 out
+    side = json.loads(jpath.with_suffix(".report.json").read_text(encoding="utf-8"))
+    assert side["cost_usd"] == pytest.approx(len(rows) * (10 * 0.10 + 20 * 0.50) / 1e6)
+    # a secondary judge: analyze leaves it out of the primary tiers unless asked
+    assert ae.is_secondary_judge("anthropic:claude-haiku-5-5") and not ae.is_secondary_judge("claude-haiku-5-5")
+    # the judge of record's call is unchanged: temperature 0.0 and no thinking parameter
+    seen.clear()
+    ae.main(["judge", "--responses", str(resp), "--rubric", str(rubric_path), "--judge-model", "claude-haiku-4-5",
+             "--providers", str(LIVE_PROVIDERS_PATH), "--max-spend", "1.0"])
+    assert seen and set(seen) == {("claude-haiku-4-5", 300, 0.0, None)}
+
+
+@pytest.mark.parametrize("bare", ["claude-haiku-5-5", "claude-sonnet-5", " claude-haiku-5-5"])
+def test_a_bare_claude_judge_other_than_the_judge_of_record_is_refused_before_any_call(tmp_path, monkeypatch, bare):
+    """A bare-named judge is read as primary by analyze and both exporters, so a bare second Claude judge would pool
+    with the judge of record's tiers. It is refused before any call; spelled anthropic:<id> it runs."""
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path, samples="1")
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(json.dumps(RUBRIC), encoding="utf-8")
+
+    def no_client():
+        raise AssertionError("no client may be built for a refused judge")
+
+    monkeypatch.setattr(ae, "_client", no_client)
+    with pytest.raises(SystemExit, match="refused before any call.*anthropic:claude-"):
+        ae.main(["judge", "--responses", str(resp), "--rubric", str(rubric_path), "--judge-model", bare,
+                 "--providers", str(LIVE_PROVIDERS_PATH), "--max-spend", "1.0"])
+    assert not resp.with_name(resp.stem.replace("responses_", "judgments_") + ".jsonl").exists()
+    for allowed in ("claude-haiku-4-5", "anthropic:claude-haiku-5-5", "judge-x", "regrade-q"):
+        assert ae.pooled_judge_problem(allowed) is None, allowed
+
+
+def test_an_elicitation_of_haiku_5_5_records_thinking_disabled_in_its_request(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    seen = []
+
+    def send(client, model, system, user_text, max_tokens, temperature, thinking=None):
+        seen.append((model, temperature, None if thinking is None else tuple(thinking.items())))
+        return _stub_send(client, model, system, user_text, max_tokens, temperature)
+
+    monkeypatch.setattr(ae, "_client", lambda: object())
+    monkeypatch.setattr(ae, "_send", send)
+    monkeypatch.setattr(ae, "_ANTHROPIC_NO_TEMPERATURE", False)
+    ae.main(["elicit", "--stimuli", str(stim_path), "--models", "anthropic:claude-haiku-5-5,anthropic:claude-haiku-4-5",
+             "--arms", "clinical", "--samples", "1", "--providers", str(LIVE_PROVIDERS_PATH),
+             "--max-spend", "1.0", "--out-dir", str(stim_path.parent)])
+    assert set(seen) == {("claude-haiku-5-5", None, (("type", "disabled"),)), ("claude-haiku-4-5", 1.0, None)}
+    rows = [json.loads(x) for x in (stim_path.parent / f"responses_{stim_path.stem}.jsonl")
+            .read_text(encoding="utf-8").splitlines()]
+    by_model = {r["model_requested"]: r["request"] for r in rows if r["record_type"] == "advice"}
+    assert by_model["anthropic:claude-haiku-5-5"]["thinking"] == {"type": "disabled"}
+    assert [a["field"] for a in by_model["anthropic:claude-haiku-5-5"]["request_adjustments"]] == [
+        "temperature", "thinking"]
+    assert "thinking" not in by_model["anthropic:claude-haiku-4-5"]
+    assert "request_adjustments" not in by_model["anthropic:claude-haiku-4-5"]
