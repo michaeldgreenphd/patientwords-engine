@@ -220,7 +220,9 @@ a separate site branch to merge.)
 Rewrite the relevant sections of `ops/dashboard.json` (single writer):
 `updated_utc`, `updated_by: "routine"`, `queue` from the journal,
 `runs_recent`, `blockers`, `notes`, `decisions_pending` (add an entry ONLY
-when something genuinely needs the owner), and `spend`, whose only writer
+when something genuinely needs the owner, and close an entry that a dated
+`docs/decisions_<YYYYMMDD>_owner.md` names as resolved, citing that file),
+and `spend`, whose only writer
 is `scripts/ledger_update.py` (§2a): carry the block through exactly as
 that run left it, and never recompute, retype or rebuild a figure in it —
 a rewrite from an earlier copy of the file undoes the fold.
