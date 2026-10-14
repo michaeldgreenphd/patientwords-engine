@@ -93,5 +93,15 @@ refused run alongside others is refused as a whole. So before any paid re-judge 
 3. The owner chooses, per refused run, between a reconstruction path for the historical instrument and an
    exclusion recorded here.
 
-The paid fires name only runs whose rehearsal was clean. Haiku 5.5 costs $0.10 / $0.50 per million tokens against Haiku 4.5's $1 / $5. The Opus move changes the
+The paid fires name only runs whose rehearsal was clean.
+
+The advice lane's judge-only re-runs have two more prerequisites, both code changes made in a PR before any such fire:
+- **The judge's spelling.** The second judge is spelled `anthropic:claude-haiku-5-5`. Analysis treats a spec
+  containing `:` as a secondary judge and keeps it out of the judge-of-record cells. A bare `claude-haiku-5-5` would
+  pool with Haiku 4.5 as if the two were replicate samples, so a bare second-judge spelling must be refused or kept
+  separate in code, not just avoided by convention.
+- **A spend record per fire.** `advice_eval.judge()` rewrites the stable `judgments_<stem>.report.json` with the
+  latest pass's cost, and `scripts/ledger_update.py` books a seen sidecar's growth only. A cheaper Haiku 5.5 pass
+  would therefore book nothing, and a dearer one only the difference. The judge must write a sidecar per fire, or one
+  that is truly cumulative, before these fires. Haiku 5.5 costs $0.10 / $0.50 per million tokens against Haiku 4.5's $1 / $5. The Opus move changes the
 generator or target of future runs only; landed batches are not regenerated.
