@@ -218,8 +218,8 @@ jobs:
           cp "$RUNNER_TEMP/jev-restore/jev_pilot_checkpoint.json" artifacts/jev_pilot_checkpoint.json
           cp "$RUNNER_TEMP/jev-restore/jev_pilot_checkpoint.json" "$RUNNER_TEMP/resumed_checkpoint.json"
 
-      # The start marker is written just before the step that can spend: a live run that dies without a report is
-      # booked at its whole max_spend (scripts/jev_audit_sidecar.py), one that never reached this step at nothing.
+      # The runner writes the start marker just before its first live request: a live run that dies after it without
+      # a report is booked at its whole max_spend (scripts/jev_audit_sidecar.py), one refused before it at nothing.
       - name: Run Jev audit (live calls the decisions endpoint; mock calls nothing)
         env:
           LIVE: ${{ needs.params.outputs.live }}
@@ -243,8 +243,9 @@ jobs:
           mkdir -p artifacts
           LIVE_FLAG=()
           if [ "$LIVE" = "true" ]; then
-            LIVE_FLAG=(--ci-live)
-            touch "$RUNNER_TEMP/jev_started"
+            # the runner writes the start marker itself, after its pre-call checks and just before its first request,
+            # so a run refused before any call (a checkpoint from another mode or input, say) books nothing
+            LIVE_FLAG=(--ci-live --started-marker "$RUNNER_TEMP/jev_started")
           fi
           python scripts/audit_jev_calibration.py \
             --archive "$ARCHIVE" \
@@ -272,7 +273,8 @@ jobs:
           # only when the restore staged it; a failed restore stops the job before the start marker, so the run made
           # no call and the sidecar writes nothing
           if [ -n "$RESUME_RUN_ID" ] && [ -f "$RUNNER_TEMP/resumed_checkpoint.json" ]; then
-            RESUMED=(--resumed-checkpoint "$RUNNER_TEMP/resumed_checkpoint.json" --resumed-run-id "$RESUME_RUN_ID")
+            RESUMED=(--resumed-checkpoint "$RUNNER_TEMP/resumed_checkpoint.json" --resumed-run-id "$RESUME_RUN_ID"
+                     --resumed-source-sidecar "data/jev/runs/jev_audit_${RESUME_RUN_ID}_1.report.json")
           fi
           python scripts/jev_audit_sidecar.py --report artifacts/jev_pilot_report.json \
             --out "data/jev/runs/$RUN_STEM.report.json" --model "$MODEL" --max-spend "$MAX_SPEND" \

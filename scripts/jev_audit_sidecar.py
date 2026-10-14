@@ -11,8 +11,11 @@ What is booked, failing closed. The booking is made from the report's rows, whic
   the earlier max(billed, estimate over all calls) could fall below billed plus the unbilled calls' estimates).
 - an unbilled call whose estimate is zero or absent (the client defaults the estimate to zero when the response
   carries no token counts) cannot be priced, so the whole `max_spend` is booked.
-- a resumed run (the workflow restored an earlier run's checkpoint): only the rows this run scored. The runner folds
-  the restored rows, and their cost, into the report, and the earlier run's own sidecar already booked them.
+- a resumed run (the workflow restored an earlier run's checkpoint): only the rows this run scored, when the earlier
+  run's own cost sidecar is on the branch (`--resumed-source-sidecar`, a jev-audit sidecar), since that sidecar booked
+  the restored rows and the runner folds them, and their cost, into this report. When it is absent (its commit
+  failed, or the run was on another ref), the restored rows are booked here too, so their spend is not lost (Codex
+  review of PR #110).
 - the report is marked interrupted (the runner writes a partial report when a call raised or the ceiling stopped it):
   at least the whole `max_spend`, because the call that failed may have been billed and is in no row.
 - no report, but the run started (the workflow writes a start marker just before the paid step): the fire's whole
@@ -133,6 +136,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--run-utc", required=True)
     ap.add_argument("--resumed-checkpoint", help="the checkpoint the workflow restored before the run, if any")
     ap.add_argument("--resumed-run-id", help="the workflow run that checkpoint came from")
+    ap.add_argument("--resumed-source-sidecar",
+                    help="the earlier run's cost sidecar, data/jev/runs/jev_audit_<run id>_1.report.json; the restored "
+                         "rows are left out of this booking only when it is present and is a jev-audit sidecar")
     args = ap.parse_args(argv)
     if not math.isfinite(args.max_spend) or args.max_spend <= 0:
         print(f"Refused: --max-spend must be a positive finite number, got {args.max_spend}", file=sys.stderr)
@@ -157,6 +163,16 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError(f"resumed checkpoint {args.resumed_checkpoint} is unreadable ({exc})") from exc
             if not isinstance(resumed, dict):
                 raise ValueError("resumed checkpoint is not a JSON object")
+            source = Path(args.resumed_source_sidecar) if args.resumed_source_sidecar else None
+            try:
+                booked = (source is not None and source.is_file()
+                          and json.loads(source.read_text(encoding="utf-8")).get("task") == TASK)
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                booked = False
+            if not booked:
+                print(f"the resumed run's cost sidecar ({source}) is not on this branch; booking the restored rows "
+                      "here as well", file=sys.stderr)
+                resumed = None
         sidecar = build_sidecar(report, report_sha256=sha, model=args.model, max_spend=args.max_spend,
                                 nonce=args.nonce, started=Path(args.started_marker).is_file(), run_utc=args.run_utc,
                                 resumed=resumed, resumed_run_id=args.resumed_run_id)

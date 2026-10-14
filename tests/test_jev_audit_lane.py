@@ -339,3 +339,34 @@ def test_every_run_keeps_a_checkpoint_and_a_resume_restores_it():
     sidecar_step = next(s for s in steps if s.get("name", "").startswith("Write the cost sidecar"))
     assert "--resumed-checkpoint" in sidecar_step["run"]
     assert _workflow()["permissions"]["actions"] == "read"
+
+
+def _cli_resume(tmp_path, source_sidecar):
+    report = tmp_path / "report.json"
+    report.write_text(json.dumps(_resumable_report()), encoding="utf-8")
+    checkpoint = tmp_path / "cp.json"
+    checkpoint.write_text(json.dumps({"advice_cases": [{"id": "a"}],
+                                      "petri_cases": [{"conversation_id": "c", "turn_index": 1}]}), encoding="utf-8")
+    marker = tmp_path / "started"
+    marker.write_text("")
+    out = tmp_path / "out.report.json"
+    args = ["--report", str(report), "--out", str(out), "--model", "typesafe/jev-1.13", "--max-spend", "0.2",
+            "--started-marker", str(marker), "--run-utc", "2026-10-14T00:00:00Z",
+            "--resumed-checkpoint", str(checkpoint), "--resumed-run-id", "123"]
+    if source_sidecar is not None:
+        args += ["--resumed-source-sidecar", str(source_sidecar)]
+    assert sidecar.main(args) == 0
+    return json.loads(out.read_text(encoding="utf-8"))
+
+
+def test_restored_rows_are_left_out_only_when_the_source_sidecar_is_on_the_branch(tmp_path):
+    """Codex review of PR #110, round 3: the restored rows were booked by the earlier run's sidecar only if that
+    sidecar landed; when it is absent (its commit failed, or it is on another ref) they are booked here."""
+    source = tmp_path / "jev_audit_123_1.report.json"
+    source.write_text(json.dumps({"task": "jev-audit", "cost_usd": 0.06}), encoding="utf-8")
+    left_out = _cli_resume(tmp_path, source)
+    assert left_out["cost_usd"] == pytest.approx(0.03) and left_out["resumed_rows"] == 2
+    booked_here = _cli_resume(tmp_path, tmp_path / "missing.report.json")
+    assert booked_here["cost_usd"] == pytest.approx(0.09) and booked_here["resumed_rows"] == 0
+    source.write_text(json.dumps({"task": "petri-audit"}), encoding="utf-8")
+    assert _cli_resume(tmp_path, source)["resumed_rows"] == 0

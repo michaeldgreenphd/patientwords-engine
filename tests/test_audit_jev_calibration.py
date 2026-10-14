@@ -957,3 +957,50 @@ def test_checkpoint_is_mock_metadata_validation(tmp_path):
 
 
 
+
+
+def test_unbilled_calls_count_toward_the_ceiling_at_their_estimate():
+    """Codex review of PR #110: with every call unbilled (cost_usd null) the spend checked against max_spend stayed at
+    zero and a live run could call past its reservation. Each unbilled call now counts at its own estimate."""
+    from unittest.mock import MagicMock, Mock
+    from scripts.audit_jev_calibration import EvaluationInterruptedError, live_spend
+    from scripts.jev_classifier import AdviceClassificationResult
+
+    assert live_spend([{"cost_usd": 0.01, "estimated_cost_usd": 0.5}, {"cost_usd": None, "estimated_cost_usd": 0.02}]) \
+        == pytest.approx(0.03)
+    classifier = Mock()
+    classifier.classify.return_value = AdviceClassificationResult(
+        tier="routine", tier_probabilities={"routine": 0.9}, tier_confidence=0.9, flags={}, flag_probabilities={},
+        register_score=None, cost_usd=None, estimated_cost_usd=0.03, input_tokens=50,
+        raw_response=MagicMock(model="test-model"))
+    cases = [{"id": f"case_{i}", "response_text": f"Response {i}", "expected_tier": "routine"} for i in range(5)]
+    with pytest.raises(EvaluationInterruptedError) as exc_info:
+        evaluate_advice_classifier(cases=cases, classifier=classifier,
+                                   tier_order=["emergency", "urgent", "routine", "self_care"],
+                                   model_name="test-model", is_mock=False, max_spend=0.05)
+    assert exc_info.value.exit_code == 6
+    assert classifier.classify.call_count == 2          # $0.03, then $0.06 > $0.05 stops the third call
+
+
+def test_a_mock_run_never_writes_the_start_marker(tmp_path):
+    """The marker means a live request may have been made; a mock run makes none."""
+    marker = tmp_path / "started"
+    assert main(["--archive", "data/advice/responses_stimuli_20260721T235403Z.jsonl", "--archive-samples", "1",
+                 "--started-marker", str(marker), "--out-json", str(tmp_path / "r.json"),
+                 "--out-markdown", str(tmp_path / "r.md")]) == 0
+    assert not marker.exists()
+
+
+def test_a_live_run_refused_before_any_call_leaves_no_marker(tmp_path, monkeypatch):
+    """Codex review of PR #110: a run refused by a pre-call check (here a checkpoint from a mock run) must not leave
+    the marker, or its sidecar books the whole ceiling for a run that made no call."""
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key-not-used")
+    checkpoint = tmp_path / "cp.json"
+    checkpoint.write_text(json.dumps({"metadata": {"is_mock": True, "model": "typesafe/jev-1.13"},
+                                      "advice_cases": [{"id": "x"}], "petri_cases": []}), encoding="utf-8")
+    marker = tmp_path / "started"
+    rc = main(["--archive", "data/advice/responses_stimuli_20260721T235403Z.jsonl", "--archive-samples", "1",
+               "--ci-live", "--checkpoint", str(checkpoint), "--started-marker", str(marker),
+               "--out-json", str(tmp_path / "r.json"), "--out-markdown", str(tmp_path / "r.md")])
+    assert rc == 1 and not marker.exists()

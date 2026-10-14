@@ -198,6 +198,18 @@ def update_metrics_with_petri(metrics: EvaluationMetrics, petri_results: list[di
             metrics.served_models.sort()
 
 
+def live_spend(rows: list[dict[str, Any]] | None) -> float:
+    """What a set of scored rows has cost so far, for the max_spend ceiling: each row's billed cost, or, for a call that
+    came back without provider billing (cost_usd null), its own list-price estimate. Counting unbilled calls at zero
+    let an all-unbilled live run keep calling past its reservation (Codex review of PR #110); the run's cost sidecar
+    books them the same way (scripts/jev_audit_sidecar.py)."""
+    total = 0.0
+    for row in rows or []:
+        cost = row.get("cost_usd")
+        total += float(cost) if cost is not None else float(row.get("estimated_cost_usd") or 0.0)
+    return total
+
+
 def evaluate_advice_classifier(
     cases: list[dict[str, Any]],
     classifier: AdviceAnswerClassifier,
@@ -293,8 +305,8 @@ def evaluate_advice_classifier(
                 pred_confidence = cached_rep.get("tier_confidence") or 0.0
                 res_reg_score = cached_rep.get("technicality_score") or 0.0
             else:
-                cached_petri_cost = sum(r.get("cost_usd", 0.0) or 0.0 for r in scoped_cached_petri)
-                active_cost = total_actual_cost + cached_petri_cost
+                # billed and unbilled-at-estimate, for every row so far (live_spend)
+                active_cost = live_spend(case_reports) + live_spend(scoped_cached_petri)
                 if not is_mock and max_spend is not None and active_cost > max_spend:
                     if checkpoint_path:
                         save_checkpoint(checkpoint_path, case_reports, cached_petri, metadata=checkpoint_metadata)
@@ -455,7 +467,9 @@ def evaluate_petri_classifier(
     results: list[dict[str, Any]] = []
     conversations_count = 0
     cached_turn_map = {(p["conversation_id"], p["turn_index"]): p for p in (cached_petri or [])}
-    current_cost = prior_metrics.total_cost_usd if prior_metrics else 0.0
+    # the advice phase's spend, unbilled calls at their estimate (live_spend); the metrics total counts billed only
+    current_cost = (live_spend(prior_advice_cases) if prior_advice_cases is not None
+                    else (prior_metrics.total_cost_usd if prior_metrics else 0.0))
 
     try:
         with open(transcripts_path, encoding="utf-8") as f:
@@ -475,7 +489,7 @@ def evaluate_petri_classifier(
                             continue
 
                         if not is_mock and max_spend is not None:
-                            active_cost = current_cost + sum(r["cost_usd"] for r in results if r["cost_usd"] is not None)
+                            active_cost = current_cost + live_spend(results)
                             if active_cost > max_spend:
                                 if checkpoint_path:
                                     save_checkpoint(checkpoint_path, prior_advice_cases or [], results, metadata=checkpoint_metadata)
@@ -913,6 +927,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--judge-model", default="claude-haiku-4-5", help="Primary judge model to filter judgments by")
     parser.add_argument("--max-spend", type=float, default=0.25, help="Hard spend ceiling in USD")
     parser.add_argument("--ci-live", action="store_true", help="Gated CI run mode using live OPENROUTER_API_KEY in GitHub Actions")
+    parser.add_argument("--started-marker",
+                        help="A live run writes this file after every check that needs no call has passed, just "
+                             "before its first classifier request. The jev-audit workflow's cost sidecar books the "
+                             "whole max_spend for a run that left the marker and no report, and nothing for one that "
+                             "did not, so a run refused before any call books nothing (Codex review of PR #110)")
     parser.add_argument("--checkpoint", help="Path to checkpoint JSON file to resume from and save intermediate state to")
     parser.add_argument("--out-markdown", help="Path to save markdown report")
     parser.add_argument("--out-json", help="Path to save structured JSON report")
@@ -1200,6 +1219,10 @@ def main(argv: list[str] | None = None) -> int:
         }
 
     classifier = AdviceAnswerClassifier(rubric=rubric_doc, client=client)
+    if is_live and args.started_marker:
+        Path(args.started_marker).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.started_marker).write_text(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") + "\n",
+                                             encoding="utf-8")
     interrupted_exc: EvaluationInterruptedError | None = None
     metrics: EvaluationMetrics | None = None
     case_reports: list[dict[str, Any]] = []
@@ -1247,9 +1270,11 @@ def main(argv: list[str] | None = None) -> int:
         case_reports = exc.case_reports or []
         petri_results = exc.petri_results
 
-    if is_live and metrics and metrics.total_cost_usd > args.max_spend and not interrupted_exc:
+    spent = live_spend(case_reports) + live_spend(petri_results)
+    if is_live and metrics and spent > args.max_spend and not interrupted_exc:
         interrupted_exc = EvaluationInterruptedError(
-            f"Total spend ${metrics.total_cost_usd:.6f} exceeded max_spend ceiling ${args.max_spend:.6f}",
+            f"Total spend ${spent:.6f} (unbilled calls at their estimate) exceeded max_spend ceiling "
+            f"${args.max_spend:.6f}",
             exit_code=6,
             metrics=metrics,
             case_reports=case_reports,
