@@ -80,6 +80,17 @@ ASSISTANT_CALLS_PER_TURN = 1.6
 ASSISTANT_OUTPUT_PER_CALL = 200
 PATIENT_OUTPUT_PER_TURN = 100
 RUBRIC_OUTPUT = 150
+# A jury model that thinks by default (Claude Opus 5.5 cannot turn it off: claude-api skill, shared/model-migration.md)
+# writes its thinking into the same output allowance, so its rubric answer is priced at the output floor the reviewed
+# provider registry gives it (data/advice_providers.json min_output_tokens, under the direct id for a bare spec and
+# under the slug for an openrouter: spec; jury_output_floor), not at RUBRIC_OUTPUT. Read from the registry so every
+# spelling of a model gets the same bound (Codex review of PR #116, round 2). An upper bound for the ceiling, not a
+# measurement; the re-validation run measures it (owner decision R7, 2026-10-14).
+# The bound's input side: the one landed jury run (data/pab/pab_evaluate_30928336615.report.json, 2026-08-04) read
+# 312,100 input tokens over 39 rubric calls, about 8,003 per call, against the ~4,683 per call conversation_tokens()
+# models (docs/pab_handoff_20260804.md records the measured jury rate at 2.1x the estimate). A thinking jury's bound
+# takes the larger of the two (Codex review of PR #116).
+MEASURED_JURY_INPUT_PER_RUBRIC = 312_100 / 39
 SANDBOX_OUTPUT = 700         # JSON for the generated offices and doctors
 
 # ---------------------------------------------------------------------------
@@ -197,6 +208,19 @@ def resolve_price(model: str) -> tuple:
     return None, f"no verified price for {model!r}"
 
 
+def jury_output_floor(model: str) -> int | None:
+    """The registry's minimum output budget for a jury model, or None when the registry lists none: the openrouter
+    block's min_output_tokens under the slug for an `openrouter:` spec, the anthropic block's under the model id
+    (an `anthropic:` prefix removed) otherwise."""
+    registry = json.loads(PROVIDERS_PATH.read_text(encoding="utf-8")) if PROVIDERS_PATH.is_file() else {}
+    if model.startswith(OPENROUTER_PREFIX):
+        block, key = registry.get("openrouter") or {}, model[len(OPENROUTER_PREFIX):]
+    else:
+        block, key = registry.get("anthropic") or {}, model.split(":", 1)[-1]
+    value = (block.get("min_output_tokens") or {}).get(key)
+    return int(value) if isinstance(value, int) and not isinstance(value, bool) and value > 0 else None
+
+
 def _cost(model: str, tokens_in: float, tokens_out: float):
     """USD for a leg, or None when the model is unpriced."""
     price, _source = resolve_price(model)
@@ -243,7 +267,10 @@ PRESETS = {
         "sandbox_model": "openrouter:openai/gpt-5.4-mini",
         "patient_model": "openrouter:x-ai/grok-4.3",
         "assistant_models": ["openrouter:openai/gpt-5.4-mini"],
-        "jury_models": ["claude-opus-4-8"],
+        # claude-opus-5-5 since 2026-10-14 (owner decision R7, the third round of docs/decisions_20261014_owner.md,
+        # recorded by PR #115; it applies Q8's move of Opus defaults to the PAB jury); claude-opus-4-8, the
+        # benchmark's validated default, before. The jury is re-validated before any PAB fire uses it.
+        "jury_models": ["claude-opus-5-5"],
     },
     "bedrock": {
         "arms": 4,
@@ -288,11 +315,13 @@ def estimate(arms: int, cases: int, turns: int, patient_model: str,
         None if any(c is None for c in assistant_costs) else sum(assistant_costs)
     )
 
-    jury_costs = [
-        _cost(model, per_conv["jury_in_per_model"] * total_convs,
-              per_conv["jury_out_per_model"] * total_convs)
-        for model in jury_models
-    ]
+    jury_costs = []
+    for model in jury_models:
+        floor = jury_output_floor(model)
+        jury_in = (max(per_conv["jury_in_per_model"], MEASURED_JURY_INPUT_PER_RUBRIC * N_RUBRICS) if floor
+                   else per_conv["jury_in_per_model"])
+        jury_out = max(floor, RUBRIC_OUTPUT) * N_RUBRICS if floor else per_conv["jury_out_per_model"]
+        jury_costs.append(_cost(model, jury_in * total_convs, jury_out * total_convs))
     legs["jury"] = (
         0.0 if not jury_models
         else None if any(c is None for c in jury_costs) else sum(jury_costs)
