@@ -235,7 +235,7 @@ def test_models_that_think_by_default_get_room_for_the_answer():
     sent the 4096-token floor; every other model is sent what was asked."""
     from medlang_circuits.llm_client import output_budget
     assert output_budget("claude-opus-5-5", 16) == 4096
-    assert output_budget("claude-haiku-5-5", 256) == 4096
+    assert output_budget("claude-sonnet-5-5", 256) == 4096
     assert output_budget("claude-opus-5-5", 8000) == 8000
     assert output_budget("claude-haiku-4-5", 16) == 16
     assert output_budget("claude-sonnet-5", 200) == 200
@@ -314,3 +314,15 @@ def test_generation_is_admitted_at_the_allowance_it_is_sent():
     assert not em.CostTracker(max_spend=0.01).can_afford(model, scenario_gen.GEN_MAX_TOKENS)
     src = Path(scenario_gen.__file__).read_text(encoding="utf-8")
     assert "tracker.can_afford(model)" not in src
+
+
+
+def test_the_thinking_floor_is_the_reviewed_registrys():
+    """Codex review of PR #112: the models given the floor, and the floor, are exactly the advice registry's reviewed
+    anthropic.min_output_tokens, so the two cannot drift."""
+    import json
+    from pathlib import Path
+    from medlang_circuits.llm_client import THINKING_MIN_OUTPUT_TOKENS
+    registry = json.loads((Path(__file__).resolve().parents[1] / "data" / "advice_providers.json").read_text(
+        encoding="utf-8"))
+    assert THINKING_MIN_OUTPUT_TOKENS == registry["anthropic"]["min_output_tokens"]

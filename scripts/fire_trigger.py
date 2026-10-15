@@ -1287,8 +1287,7 @@ def circuit_trace_pairs_outside_checkout(path: str) -> bool:
 
 # medlang_circuits/llm_client.py THINKING_MIN_OUTPUT_TOKENS (a test holds the two equal): models sent a 4096-token
 # output floor per translation call, whose worst case the flat MITIGATION_IMPUTED_USD per fire does not bound
-CIRCUIT_TRACE_THINKING_TRANSLATORS = frozenset({"claude-fable-5-1", "claude-fable-5", "claude-opus-5-5",
-                                                 "claude-sonnet-5-5", "claude-haiku-5-5"})
+CIRCUIT_TRACE_THINKING_TRANSLATORS = frozenset({"claude-fable-5-1", "claude-opus-5-5", "claude-sonnet-5-5"})
 
 
 def circuit_trace_translation_model_problems(params: dict) -> list[str]:

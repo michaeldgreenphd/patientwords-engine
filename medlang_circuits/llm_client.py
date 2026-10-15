@@ -21,15 +21,14 @@ DEFAULT_MODEL = os.environ.get("MEDLANG_ANTHROPIC_MODEL", "claude-opus-5-5")
 
 # Models that think by default, and the smallest max_tokens a call to one is sent. Their thinking counts against
 # max_tokens, and Claude Opus 5.5 cannot turn it off (claude-api skill, shared/model-migration.md), so a call sized for
-# a one-word or one-sentence answer (16 or 256 tokens) could end in a thinking block with no text. The floor is the
-# advice lane's registry value for the same models (data/advice_providers.json anthropic.min_output_tokens). A call
-# below it is sent the floor; the model still writes only the answer the prompt asks for.
+# a one-word or one-sentence answer (16 or 256 tokens) could end in a thinking block with no text. The models and the
+# floor are exactly the advice lane's reviewed registry (data/advice_providers.json anthropic.min_output_tokens; a test
+# holds the two equal, Codex review of PR #112): a model is added there, with its evidence, before it is added here. A
+# call below the floor is sent the floor; the model still writes only the answer the prompt asks for.
 THINKING_MIN_OUTPUT_TOKENS: dict[str, int] = {
     "claude-fable-5-1": 4096,
-    "claude-fable-5": 4096,
     "claude-opus-5-5": 4096,
     "claude-sonnet-5-5": 4096,
-    "claude-haiku-5-5": 4096,
 }
 
 
