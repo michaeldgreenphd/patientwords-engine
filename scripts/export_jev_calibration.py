@@ -50,7 +50,10 @@ two reports is refused (check_combinable, build_combined_petri_drift_payload). T
 scripts/jev_classifier.py and medlang_circuits/jev_client.py, found by resolving each report's classifier digest
 through git history (resolve_classifier), so combining needs a clone holding the commits the reports ran at. The
 audit runner must be the same version too, unless data/jev/evaluator_equivalence.json links the two versions after a
-review found the change orchestration-only; each report's runner is recorded in source_reports. The Petri payload pools
+review found the change orchestration-only; each report's runner is recorded in source_reports. Both combined payloads
+record the exact equivalence-file sha256, the runner-to-class mapping, and all reviewed edges in the applied class
+(including transitive links) in provenance.evaluator_equivalence. No equivalence is applied when runner digests match.
+This additive provenance field does not change legacy single-report exports. The Petri payload pools
 the conversations,
 names each run in `provenance.petri_runs` and each conversation's `run`, and with several Petri runs carries
 `provenance.petri_transcripts` as null. Both payloads list every report in `source_reports` and carry one
@@ -73,6 +76,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -1255,13 +1259,37 @@ def resolve_classifier(digest: str, repo_root: Path = REPO_ROOT, hint: str | Non
 EVALUATOR_EQUIVALENCE = "data/jev/evaluator_equivalence.json"
 
 
-def evaluator_classes(repo_root: Path = REPO_ROOT) -> dict[str, str]:
-    """Each runner digest named in the reviewed equivalence file mapped to one representative digest of its class
-    (union of the listed pairs). A digest the file does not name is its own class. A malformed file is refused."""
+@dataclass(frozen=True)
+class EvaluatorEquivalence:
+    """One read of the reviewed file, shared by the compatibility check and its emitted provenance."""
+
+    classes: dict[str, str]
+    sha256: str | None
+    entries: list[dict[str, Any]]
+
+    def provenance(self, sources: list[dict[str, Any]]) -> dict[str, Any]:
+        """Record all reviewed edges in the class that justified pooling different runners, including transitive
+        links. Equal runner digests need no equivalence, so their applied list is empty. A missing file has a null
+        digest and can never justify pooling different runners."""
+        evaluators = sorted({_require_sha256(source.get("evaluator_sha256"), "source_report.evaluator_sha256")
+                             for source in sources})
+        classes = {digest: self.classes.get(digest, digest) for digest in evaluators}
+        applied_classes = set(classes.values()) if len(evaluators) > 1 else set()
+        return {"path": EVALUATOR_EQUIVALENCE, "sha256": self.sha256, "evaluator_classes": classes,
+                "applied_equivalences": [entry for entry in self.entries
+                                         if self.classes[entry["evaluator_sha256"]] in applied_classes]}
+
+
+def load_evaluator_equivalence(repo_root: Path = REPO_ROOT) -> EvaluatorEquivalence:
+    """Load and validate the reviewed union and retain the exact bytes' digest for the exported provenance."""
     path = repo_root / EVALUATOR_EQUIVALENCE
     if not path.is_file():
-        return {}
-    doc = json.loads(path.read_text(encoding="utf-8"))
+        return EvaluatorEquivalence({}, None, [])
+    try:
+        raw = path.read_bytes()
+        doc = json.loads(raw)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        _refuse(f"{EVALUATOR_EQUIVALENCE} could not be read as JSON ({exc})")
     entries = doc.get("equivalences") if isinstance(doc, dict) else None
     if not isinstance(entries, list):
         _refuse(f"{EVALUATOR_EQUIVALENCE} has no 'equivalences' list")
@@ -1280,10 +1308,16 @@ def evaluator_classes(repo_root: Path = REPO_ROOT) -> dict[str, str]:
             if not isinstance(entry.get(field), str) or not entry[field].strip():
                 _refuse(f"{EVALUATOR_EQUIVALENCE} entry {i} has no {field}; an equivalence is a reviewed claim")
         parent[find(a)] = find(b)
-    return {x: find(x) for x in list(parent)}
+    return EvaluatorEquivalence({x: find(x) for x in list(parent)}, hashlib.sha256(raw).hexdigest(), entries)
 
 
-def check_combinable(reports: list[tuple[dict[str, Any], str]], repo_root: Path = REPO_ROOT) -> int:
+def evaluator_classes(repo_root: Path = REPO_ROOT) -> dict[str, str]:
+    """Each reviewed runner digest mapped to its equivalence class; an unnamed digest is its own class."""
+    return load_evaluator_equivalence(repo_root).classes
+
+
+def check_combinable(reports: list[tuple[dict[str, Any], str]], repo_root: Path = REPO_ROOT,
+                     *, equivalence: EvaluatorEquivalence | None = None) -> int:
     """Refuse a set of reports that cannot be pooled into one export; return the index of the one advice report.
 
     Pooled reports must be one instrument: the same requested model, execution mode (all live or all mock), scoring
@@ -1316,7 +1350,7 @@ def check_combinable(reports: list[tuple[dict[str, Any], str]], repo_root: Path 
         evaluator = classes.get(resolved["evaluator_sha256"], resolved["evaluator_sha256"])
         return (_require_model_requested(meta), _require_is_mock(meta), resolved["scoring_sha256"], evaluator,
                 (meta.get("rubric") or {}).get("sha256"), (meta.get("register_rubric") or {}).get("sha256"))
-    classes = evaluator_classes(repo_root)
+    classes = (equivalence if equivalence is not None else load_evaluator_equivalence(repo_root)).classes
     first = ident(*reports[0])
     for data, sha in reports[1:]:
         if ident(data, sha) != first:
@@ -1447,7 +1481,8 @@ def main(argv: list[str] | None = None) -> int:
                         "or deleted")
 
     reports = [load_report(path) for path in report_paths]
-    advice_index = check_combinable(reports) if len(reports) > 1 else 0
+    equivalence = load_evaluator_equivalence() if len(reports) > 1 else None
+    advice_index = check_combinable(reports, equivalence=equivalence) if len(reports) > 1 else 0
     source_sha = combined_report_sha256([sha for _, sha in reports])
     sources = source_report_entries(reports, resolve=len(reports) > 1)
 
@@ -1456,6 +1491,11 @@ def main(argv: list[str] | None = None) -> int:
     calib_payload["source_reports"] = sources
     if petri_payload:
         petri_payload["source_reports"] = sources
+    if equivalence is not None:
+        equivalence_provenance = equivalence.provenance(sources)
+        calib_payload["provenance"]["evaluator_equivalence"] = equivalence_provenance
+        if petri_payload:
+            petri_payload["provenance"]["evaluator_equivalence"] = equivalence_provenance
 
     print("=== Jev Site Export Summary ===")
     for path, (_, sha) in zip(report_paths, reports):

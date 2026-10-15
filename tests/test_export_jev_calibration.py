@@ -1702,8 +1702,16 @@ def test_a_runner_change_combines_only_with_a_reviewed_equivalence(tmp_path, adv
         {**same_scoring, "commit": "f" * 40, "evaluator_sha256": "e" * 64} if digest == "9" * 64
         else real(digest, repo_root, hint)))
     _refused(tmp_path, [advice_report, other], "audit runner version", capsys)
-    monkeypatch.setattr(ex, "evaluator_classes", lambda repo_root=ex.REPO_ROOT: {
-        "e" * 64: same_scoring["evaluator_sha256"], same_scoring["evaluator_sha256"]: same_scoring["evaluator_sha256"]})
+    equivalence_path = tmp_path / ex.EVALUATOR_EQUIVALENCE
+    equivalence_path.parent.mkdir(parents=True)
+    entry = {"reason": "report writing only", "reviewed_utc": "2026-10-15T00:00:00Z"}
+    edges = [{"evaluator_sha256": "e" * 64, "equivalent_to": "b" * 64, **entry},
+             {"evaluator_sha256": "b" * 64, "equivalent_to": same_scoring["evaluator_sha256"], **entry}]
+    unrelated = {"evaluator_sha256": "a" * 64, "equivalent_to": "c" * 64, **entry}
+    equivalence_path.write_text(json.dumps({"equivalences": [*edges, unrelated]}), encoding="utf-8")
+    equivalence_sha = hashlib.sha256(equivalence_path.read_bytes()).hexdigest()
+    load_equivalence = ex.load_evaluator_equivalence
+    monkeypatch.setattr(ex, "load_evaluator_equivalence", lambda repo_root=ex.REPO_ROOT: load_equivalence(tmp_path))
     assert _export(tmp_path, _write_reports(tmp_path, advice_report, other)) == 0
     entries = _site(tmp_path, "petri_register_drift.json")["source_reports"]
     assert [e["evaluator_sha256"] == "e" * 64 for e in entries] == [False, True]
@@ -1714,6 +1722,16 @@ def test_a_runner_change_combines_only_with_a_reviewed_equivalence(tmp_path, adv
     assert [r["classifier_sha256"] for r in prov["petri_runs"]] == [WORKTREE_CLASSIFIER, "9" * 64]
     # and the dated models that scored each run (round 3)
     assert all(r["models_served"] == ["typesafe/jev-1.13-20261001"] for r in prov["petri_runs"])
+    # Codex 4278534625: retain the exact reviewed mapping and all transitive links that allowed these runners to pool.
+    applied = prov["evaluator_equivalence"]
+    assert applied == _site(tmp_path, "jev_calibration.json")["provenance"]["evaluator_equivalence"]
+    assert applied["path"] == ex.EVALUATOR_EQUIVALENCE and applied["sha256"] == equivalence_sha
+    assert applied["applied_equivalences"] == edges
+    assert applied["evaluator_classes"] == {same_scoring["evaluator_sha256"]: same_scoring["evaluator_sha256"],
+                                            "e" * 64: same_scoring["evaluator_sha256"]}
+    # Later edits to the source file cannot erase the decision from the emitted artifact.
+    equivalence_path.write_text(json.dumps({"equivalences": []}), encoding="utf-8")
+    assert _site(tmp_path, "petri_register_drift.json")["provenance"]["evaluator_equivalence"] == applied
 
 
 def test_the_equivalence_file_is_a_reviewed_union(tmp_path):

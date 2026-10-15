@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -971,6 +972,20 @@ def test_skip_advice_writes_a_petri_only_report(tmp_path):
     for block in ("advice_archive", "advice_judgments", "golden_benchmark"):
         assert block not in report["metadata"]
     assert report["metadata"]["petri_transcripts"]["turns_evaluated"] == len(report["petri_cases"])
+
+
+def test_skip_advice_markdown_reports_only_the_petri_phase(tmp_path: Path) -> None:
+    out = tmp_path / "petri_only.md"
+    assert main(["--skip-advice", "--petri-transcripts", "data/petri/runs/run_38434195912_1/transcripts.jsonl",
+                 "--petri-conversations", "1", "--out-json", str(tmp_path / "petri_only.json"),
+                 "--out-markdown", str(out)]) == 0
+    report = out.read_text(encoding="utf-8")
+    assert "**Advice Phase**: Skipped (`--skip-advice`); this is a Petri-only report." in report
+    assert "Total Petri Cases" in report and "Multi-Turn Petri Register Predictions" in report
+    assert "Total Spend" in report
+    for absent in ("Total Advice Cases", "Ground Truth", "Predictions Generated", "0/0", "100% label coverage",
+                   "Advice Evaluation Predictions", "Tier Confusion Matrix", "Binary Flag Performance"):
+        assert absent not in report
 
 
 @pytest.mark.parametrize("extra", [[], ["--archive", "data/advice/responses_stimuli_20260721T235403Z.jsonl",
