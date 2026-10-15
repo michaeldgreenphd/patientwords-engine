@@ -72,7 +72,9 @@ secondary, with the agreement the plan's `judge.regrade_reported` names. The two
 estimate. The secondary block is computed on exactly the exchanges the judge of record made comparable, so the two
 blocks differ only in the judge; if the secondary's rows do not make every one of those exchanges comparable, the
 analysis is refused, writing nothing, with the counts per contrast and their reasons (coverage reports the same counts).
-SPEC may not be the judge of record under any spelling.
+SPEC may not be the judge of record under any spelling. Under --final it must exactly match the spec at the start
+of judge.second_family_regrade (before " through "). The approved analysis_script must name this file with status
+"written"; the owner makes that plan amendment before the first paid fire. Coverage also refuses an existing --out.
 
 No peeking (rules[0]). Register contrasts are computed ONLY under --final. Without it the script validates every input
 and prints coverage alone: runs, triples found per target, exclusions with reasons, digests; no D, sign, tie count,
@@ -98,7 +100,7 @@ refused by name or counted with the reason.
 
 Run: python scripts/petri_w3_register_contrast.py                       # coverage only, every run under data/petri/runs
      python scripts/petri_w3_register_contrast.py --final --out X.json  # the once-only final analysis
-     ... --secondary-judge claude-haiku-5-5                             # beside it, the same tables from a second judge
+     ... --secondary-judge openrouter:openai/gpt-5.4-mini               # the current plan's designated second judge
 """
 from __future__ import annotations
 
@@ -211,6 +213,9 @@ class Plan:
     path: Path
     sha256: str
     approved: bool
+    analysis_script_path: Any
+    analysis_script_status: Any
+    secondary_spec: str
     sets: dict[str, tuple[str, ...]]
     decomposition_set: str
     mechanisms: dict[str, tuple[str, ...]]
@@ -375,7 +380,7 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
                 "exploratory_outcomes.family", "exploratory_outcomes.restricted_to_seeds",
                 "exploratory_outcomes.coverage_only", "effect_size.bootstrap_seed",
                 "effect_size.bootstrap_resamples", "judge.judge_model", "judge.routes", "statements.primary",
-                "statements.decomposition", "statements.every_statement_carries", "seed_file")
+                "statements.decomposition", "statements.every_statement_carries", "seed_file", "judge.second_family_regrade")
     problems = []
     for key in required:
         try:
@@ -393,7 +398,7 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
     if len(every) != len(set(every)):
         problems.append("a seed is listed in more than one scenario set, or twice")
     decomposition_set = doc["decomposition_set"]
-    if decomposition_set not in sets:
+    if not isinstance(decomposition_set, str) or decomposition_set not in sets:
         problems.append(f"decomposition_set {decomposition_set!r} is not a scenario set")
     elif set(sets[decomposition_set]) != set(every):
         problems.append(f"decomposition_set {decomposition_set!r} does not hold every plan seed; in wave 3 the "
@@ -477,7 +482,7 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
 
     def window_ref(key: str) -> str:
         name = _get(doc, key)
-        if name not in windows:
+        if not isinstance(name, str) or name not in windows:
             problems.append(f"{key} {name!r} is not one of the plan's windows")
         return name
 
@@ -503,7 +508,7 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
     for i, s in enumerate(raw_sens, 1):
         name = s.get("name") if isinstance(s, dict) else None
         measure = _measure(s.get("measure")) if isinstance(s, dict) else None
-        if not isinstance(name, str) or measure is None or measure.kind != "tier" or s.get("window") not in windows:
+        if not isinstance(name, str) or measure is None or measure.kind != "tier" or not isinstance(s.get("window"), str) or s["window"] not in windows:
             problems.append(f"sensitivity entry {i} ({name!r}): needs a name, a window of the plan and a measure "
                             f"'tier <key>'")
             continue
@@ -542,6 +547,9 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
     if not _seed_list(coverage_only):
         problems.append("exploratory_outcomes.coverage_only must be a list of outcome dimension ids")
         coverage_only = []
+    for name in coverage_only:
+        if _measure_of(name).kind != "outcome":
+            problems.append(f"exploratory_outcomes.coverage_only entry {name!r} is not an outcome dimension")
     for name in [*family, *restricted, *coverage_only]:
         m = next((m for m in w2.SECONDARY_MEASURES if m.name == name), None)
         key = m.key if m is not None else name
@@ -557,8 +565,17 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
     if not isinstance(routes, dict) or not routes:
         problems.append("judge.routes must name the judge routes")
         routes = {}
-    if judge_model is not None and judge_model not in routes:
+    if judge_model is not None and (not isinstance(judge_model, str) or judge_model not in routes):
         problems.append(f"judge.judge_model {judge_model!r} is not one of judge.routes {sorted(routes)}")
+
+    secondary = _get(doc, "judge.second_family_regrade")
+    secondary_spec = secondary.split(" through ", 1)[0] if isinstance(secondary, str) else ""
+    try:
+        rejudge.judge_slug(secondary_spec)
+    except rejudge.RejudgeError:
+        problems.append("judge.second_family_regrade must begin with the designated judge spec before ' through '")
+    script = doc.get("analysis_script")
+    script = script if isinstance(script, dict) else {}
 
     statements: dict[str, dict[str, dict]] = {}
     for table, ids in (("primary", PRIMARY_STATEMENT_IDS), ("decomposition", DECOMPOSITION_STATEMENT_IDS)):
@@ -581,6 +598,8 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
         raise AnalysisRefusal(f"plan file {path}: " + "; ".join(problems))
     return Plan(
         path=path, sha256=sha256_file(path), approved=doc["approval"]["approved"], sets=sets,
+        analysis_script_path=script.get("path"), analysis_script_status=script.get("status"),
+        secondary_spec=secondary_spec,
         decomposition_set=decomposition_set, mechanisms=mechanisms, targets=tuple(targets.values()), epochs=epochs,
         triples_per_epoch=doc["triples_per_epoch_per_target"],
         final_triples_per_target=doc["final_triples_per_target"], fires=fires, regrade_fires=regrades,
@@ -1962,13 +1981,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 def invocation_problems(args: argparse.Namespace) -> list[str]:
     """What the command line alone rules out, before any input is read."""
-    if not args.final:
-        return ["--declare-truncated applies only under --final"] if args.declare_truncated else []
     problems = []
+    if args.out is not None and args.out.exists():
+        problems.append(f"--out {args.out} exists; this script never overwrites an artifact")
+    if not args.final:
+        if args.declare_truncated:
+            problems.append("--declare-truncated applies only under --final")
+        return problems
     if args.out is None:
         problems.append("--final writes its result to the artifact named by --out")
-    elif args.out.exists():
-        problems.append(f"--out {args.out} exists; the final analysis runs once and never overwrites an artifact")
     if args.seed != DEFAULT_SEED:
         problems.append(f"--seed {args.seed}: the plan fixes the bootstrap seed at {DEFAULT_SEED}")
     plan_problem = plan_commit_problem(args.plan)
@@ -2013,6 +2034,12 @@ def final_problems(args: argparse.Namespace, prep: Prepared) -> tuple[list[str],
     if not plan.approved:
         problems.append("the plan is not approved (approval.approved is false): it binds nothing until the owner "
                         "approves it as a dated decision")
+    if plan.analysis_script_path != "scripts/petri_w3_register_contrast.py" or plan.analysis_script_status != "written":
+        problems.append("analysis_script must name scripts/petri_w3_register_contrast.py with status 'written' "
+                        "in the approved plan before the first paid fire")
+    if prep.secondary_judge is not None and prep.secondary_judge != plan.secondary_spec:
+        problems.append(f"--secondary-judge {prep.secondary_judge!r} is not the plan's designated "
+                        f"judge.second_family_regrade {plan.secondary_spec!r}")
     if plan.judge_model is None:
         problems.append("judge.judge_model is null: the dated approval sets the judge of record before any fire")
     if plan.bootstrap_seed != DEFAULT_SEED or args.seed != plan.bootstrap_seed:
@@ -2084,7 +2111,11 @@ def main(argv: list[str] | None = None) -> int:
                "coverage": cov}
         print(json.dumps(doc, indent=1, ensure_ascii=False))
         if args.out is not None:
-            args.out.write_text(json.dumps(doc, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+            try:
+                with args.out.open("x", encoding="utf-8") as fh:
+                    fh.write(json.dumps(doc, indent=1, ensure_ascii=False) + "\n")
+            except FileExistsError:
+                return _refuse([f"--out {args.out} appeared while coverage ran; nothing was written"])
         return 0
     problems, truncated = final_problems(args, prep)
     problems.extend(uncommitted_input_problems(header["identity"]))

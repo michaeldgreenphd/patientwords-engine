@@ -108,6 +108,8 @@ def synthetic_plan(seeds_path: Path, **over: Any) -> dict:
             s["name"] = "mech_two" + w3.MECHANISM_WINDOW_SUFFIX
     plan["judge"]["judge_model"] = JUDGE
     plan["approval"]["approved"] = True
+    plan["analysis_script"].update(path="scripts/petri_w3_register_contrast.py", status="written")
+    plan["judge"]["second_family_regrade"] = SECOND + " through the synthetic regrade path"
     plan["seed_file"] = str(seeds_path)
     plan.update(over)
     return plan
@@ -1179,3 +1181,85 @@ def test_non_list_contrasts_are_named_cli_refusals(
     error = capsys.readouterr().err
     assert error.startswith("refused: plan file ") and f"{field} must be the list" in error
     assert "Traceback" not in error and not out.exists()
+
+
+@pytest.mark.parametrize("field", ["decomposition_set", "primary.window", "secondary_exchanges_6_10.window",
+                                  "judge.judge_model"])
+@pytest.mark.parametrize("value", [[], {}, True, 4])
+def test_scalar_plan_references_refuse_before_membership(
+        tmp_path: Path, field: str, value: Any) -> None:
+    c = write_campaign(tmp_path, fires=())
+    doc = load_json(c["plan"])
+    node = doc
+    parts = field.split(".")
+    for key in parts[:-1]:
+        node = node[key]
+    node[parts[-1]] = value
+    c["plan"].write_text(json.dumps(doc), encoding="utf-8")
+    with pytest.raises(w3.AnalysisRefusal, match=field):
+        w3.load_plan(c["plan"])
+
+
+def test_coverage_only_refuses_a_tier_measure(tmp_path: Path) -> None:
+    c = write_campaign(tmp_path, fires=())
+    doc = load_json(c["plan"])
+    doc["exploratory_outcomes"]["coverage_only"] = [next(m.name for m in w2.SECONDARY_MEASURES if m.kind == "tier")]
+    c["plan"].write_text(json.dumps(doc), encoding="utf-8")
+    with pytest.raises(w3.AnalysisRefusal, match="coverage_only.*not an outcome dimension"):
+        w3.load_plan(c["plan"])
+
+
+@pytest.mark.parametrize("path,status", [(None, "not written"), ("scripts/another.py", "written"),
+                                        ("scripts/petri_w3_register_contrast.py", "not written")])
+def test_final_requires_the_approved_script_binding(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+        path: Any, status: str) -> None:
+    c = write_campaign(tmp_path)
+    doc = load_json(c["plan"])
+    doc["analysis_script"].update(path=path, status=status)
+    c["plan"].write_text(json.dumps(doc), encoding="utf-8")
+    final_ready(monkeypatch, c)
+    out = tmp_path / "final.json"
+    assert w3.main(cli_args(c, "--final", "--out", str(out))) == 2
+    assert "analysis_script must name" in capsys.readouterr().err
+    assert not out.exists()
+
+
+def test_final_binds_the_secondary_to_the_plan_designation(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    c = write_campaign(tmp_path, secondary=True)
+    doc = load_json(c["plan"])
+    doc["judge"]["second_family_regrade"] = REAL_PLAN["judge"]["second_family_regrade"]
+    c["plan"].write_text(json.dumps(doc), encoding="utf-8")
+    final_ready(monkeypatch, c)
+    out = tmp_path / "final.json"
+    assert w3.main(cli_args(c, "--final", "--out", str(out), "--secondary-judge", SECOND)) == 2
+    assert "not the plan's designated" in capsys.readouterr().err
+    assert not out.exists()
+
+
+def test_coverage_cannot_overwrite_an_existing_final_artifact(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    out = tmp_path / "final.json"
+    original = b'{"final":true,"preserve":"exact bytes"}\n'
+    out.write_bytes(original)
+    assert w3.main(["--out", str(out)]) == 2
+    assert "overwrites an artifact" in capsys.readouterr().err
+    assert out.read_bytes() == original
+
+
+def test_coverage_uses_exclusive_creation_even_if_destination_appears_during_read(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    c = write_campaign(tmp_path, fires=())
+    out = tmp_path / "coverage.json"
+    original_prepare = w3.prepare
+
+    def prepare_and_create(*args: Any, **kwargs: Any) -> w3.Prepared:
+        result = original_prepare(*args, **kwargs)
+        out.write_text("preserve", encoding="utf-8")
+        return result
+
+    monkeypatch.setattr(w3, "prepare", prepare_and_create)
+    assert w3.main(cli_args(c, "--out", str(out))) == 2
+    assert "appeared while coverage ran" in capsys.readouterr().err
+    assert out.read_text(encoding="utf-8") == "preserve"
