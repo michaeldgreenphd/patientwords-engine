@@ -110,6 +110,10 @@ on:
         description: "Mode rejudge only: space-separated landed run stems under data/petri/runs to re-grade (empty otherwise)"
         type: string
         default: ""
+      instrument:
+        description: "Mode rejudge only: current or historical; empty keeps the current instrument"
+        type: string
+        default: ""
   push:
     paths:
       - ".github/trigger/petri-audit.json"
@@ -147,6 +151,7 @@ jobs:
       commit_outputs: ${{ steps.params.outputs.commit_outputs }}
       source_run_id: ${{ steps.params.outputs.source_run_id }}
       source_runs: ${{ steps.params.outputs.source_runs }}
+      instrument: ${{ steps.params.outputs.instrument }}
       # mode rejudge's rehearsal, decided by an exact comparison in the heredoc: the rejudge job's steps gate on this
       # "true"/"false" rather than on judge_model, which GitHub's expression != compares ignoring case (PR #41 review)
       rehearsal: ${{ steps.params.outputs.rehearsal }}
@@ -190,6 +195,7 @@ jobs:
           IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
           IN_SOURCE_RUN_ID: ${{ inputs.source_run_id }}
           IN_SOURCE_RUNS: ${{ inputs.source_runs }}
+          IN_INSTRUMENT: ${{ inputs.instrument }}
         run: |
           python - <<'EOF'
           import json, os, re
@@ -212,7 +218,8 @@ jobs:
                       "log_model_api": "true",
                       "commit_outputs": "false",
                       "source_run_id": "",
-                      "source_runs": ""}
+                      "source_runs": "",
+                      "instrument": ""}
           p = dict(defaults)
           nonce = ""                        # the fire's _nonce, metadata beside the trigger keys (empty on dispatch)
           if os.environ["EVENT_NAME"] == "push":
@@ -314,6 +321,10 @@ jobs:
           elif p["source_run_id"]:
               raise SystemExit(f"source_run_id is read by mode readapt only, got {p['source_run_id']!r} with mode "
                                f"{p['mode']!r}")
+          if p["instrument"] not in ("", "current", "historical"):
+              raise SystemExit(f"instrument must be empty, current or historical, got {p['instrument']!r}")
+          if p["instrument"] and p["mode"] != "rejudge":
+              raise SystemExit(f"instrument is read by mode rejudge only, got {p['instrument']!r} with mode {p['mode']!r}")
           # mode rejudge re-grades landed runs with another judge (scripts/petri_audit/rejudge.py): no target call,
           # so the target and max_spend are not read. It names one or more run stems, none twice, runs the judge, and
           # carries the judge spec exactly: `mockllm/judge` is the free rehearsal, recognised by exact match, which is
@@ -859,10 +870,12 @@ jobs:
         id: plan
         env:
           RESOLVED_PARAMS: ${{ toJSON(needs.params.outputs) }}
+          INSTRUMENT: ${{ needs.params.outputs.instrument }}
         run: |
           mkdir -p "$RUNNER_TEMP/petri-rejudge/started"
           printf '%s' "$RESOLVED_PARAMS" > "$RUNNER_TEMP/petri-rejudge/params.json"
           python -m scripts.petri_audit.cli rejudge-plan --params-file "$RUNNER_TEMP/petri-rejudge/params.json" \
+            --instrument "${INSTRUMENT:-current}" \
             --runs-dir data/petri/runs --rejudge-root data/petri/rejudge \
             --rejudge-run-id "$GITHUB_RUN_ID" --rejudge-run-attempt "$GITHUB_RUN_ATTEMPT" --rejudge-commit "$GITHUB_SHA" \
             --out "$RUNNER_TEMP/petri-rejudge/plan.json"

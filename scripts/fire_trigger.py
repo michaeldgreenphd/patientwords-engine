@@ -1096,6 +1096,11 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
         problems.append(f"petri-audit source_run_id is read by mode readapt only, got {source_run_id!r} with mode "
                         f"{mode!r}: a value the workflow would ignore is refused rather than carried")
     # mode rejudge (2026-09-24): the params job's rules for it, in the same order (scripts/petri_audit/rejudge.py)
+    instrument = _petri_job_value(params, "instrument", "")
+    if instrument not in ("", "current", "historical"):
+        problems.append(f"petri-audit instrument must be empty, current or historical, got {instrument!r}")
+    elif instrument and mode != PETRI_REJUDGE_MODE:
+        problems.append(f"petri-audit instrument is read by mode rejudge only, got {instrument!r} with mode {mode!r}")
     source_runs = params.get("source_runs", "")
     rejudge_paid = False
     if mode == PETRI_REJUDGE_MODE:
@@ -1892,7 +1897,7 @@ KNOWN_KEYS = {
     "petri-audit": frozenset({
         "seeds_file", "seed_ids", "wave", "target", "mode", "epochs", "token_limit",
         "max_spend", "judge", "judge_model", "judge_max_spend", "judge_max_tokens",
-        "log_model_api", "commit_outputs", "source_run_id", "source_runs", "auditor_model",
+        "log_model_api", "commit_outputs", "source_run_id", "source_runs", "auditor_model", "instrument",
     }),
     # pab_probe.yml `defaults` dict (verified 2026-08-04 against the params
     # heredoc by tests/test_pab_ci_staged.py): stage, fork_ref, cases_file,
@@ -3961,6 +3966,8 @@ def _petri_resolved(params):
     resolved.setdefault("auditor_model", "")
     # read by mode rejudge only and not a key of the park either; a list is joined as the params job joins it
     resolved.setdefault("source_runs", "")
+    # The rejudge-only selector is empty at rest; the plan step maps empty to the current instrument.
+    resolved.setdefault("instrument", "")
     for key, value in params.items():
         if key not in resolved:
             continue
