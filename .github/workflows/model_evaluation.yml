@@ -15,7 +15,7 @@ on:
         default: claude-haiku-4-5
         options:
           - all
-          - claude-opus-4-8
+          - claude-opus-5-5
           - claude-sonnet-5
           - claude-haiku-4-5
           - claude-3-5-sonnet
@@ -101,7 +101,7 @@ jobs:
                   if value:
                       params[key] = value
           if params["model_selection"] == "all":
-              params["list"] = "claude-opus-4-8 claude-sonnet-5 claude-haiku-4-5"
+              params["list"] = "claude-opus-5-5 claude-sonnet-5 claude-haiku-4-5"
           else:
               params["list"] = params["model_selection"]
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:

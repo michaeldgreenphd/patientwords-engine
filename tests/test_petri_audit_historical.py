@@ -152,6 +152,34 @@ def test_with_nothing_changed_the_replay_is_todays_plan(tmp_path, seed_set):
     assert rejudge.plan_digest(replayed) == rejudge.plan_digest(planned)
 
 
+def test_secondary_keeps_historical_instrument_and_source_bytes(
+        changed_prompt_run: tuple[Path, Path, str, dict, Path], tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts.petri_audit import secondary
+
+    runs, root, ref, old, index = changed_prompt_run
+    monkeypatch.setattr(historical, "ARCHIVE_INDEX", index)
+    before = H._tree_digest(runs)
+    with pytest.raises(rejudge.RejudgeError, match="never made"):
+        _rehearsal_plan(runs, root, "current")
+    params = H._params(instrument="historical", judge_model="anthropic:claude-opus-5-5")
+    status = secondary.execute(
+        params, source_runs=[STEM], root=runs.parent / "secondary", runs_dir=runs,
+        scratch=tmp_path / "secondary-scratch", workflow_id="777", primary_status="success",
+        journal=H._secondary_context(monkeypatch, params), client_factory=H._mock_factory)
+
+    assert status["status"] == "complete"
+    assert H._tree_digest(runs) == before
+    output = rejudge.output_dir(runs.parent / "rejudge", "anthropic:claude-haiku-5-5", STEM)
+    assert rejudge.verify_output(output, runs) == []
+    manifest = framework.load_json(output / rejudge.MANIFEST_NAME)
+    assert manifest["judge_role"] == "secondary"
+    assert manifest["instrument"]["historical"]["instrument"] == "historical"
+    archived = manifest["instrument"]["prompt_files"][ref]
+    assert archived["source"] == "archive" and archived["digest"] == historical.canonical_digest(old)
+    assert 0 < status["outcome"]["spent_usd"] <= status["reservation"]["max_spend_usd"]
+
+
 def test_a_changed_prompt_file_is_refused_today_and_replayed_from_its_archived_version(changed_prompt_run,
                                                                                        monkeypatch):
     runs, root, ref, old, index = changed_prompt_run

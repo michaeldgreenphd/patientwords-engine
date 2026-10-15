@@ -216,8 +216,10 @@ PARK_DEFAULTS = {
     "jlens-readout": {"models": "gemma-2-2b", "pairs_file": PARK_TINY_PAIRS, "limit": "1",
                       "offset": "0", "topn": "1", "lens_type": "JACOBIAN_LENS",
                       "save_raw": "false", "commit_outputs": "false"},
+    # max_spend 0.03 since 2026-10-14 (owner decision R8): generation calls are now admitted at the 4096-token
+    # allowance they are sent (scenario_gen), and a haiku call's worst case there is about $0.021, above the old $0.01
     "scenario-generation": {"task": "pairs", "num": "1", "topics": "general wellness",
-                            "anthropic_model": "claude-haiku-4-5", "max_spend": "0.01"},
+                            "anthropic_model": "claude-haiku-4-5", "max_spend": "0.03"},
     "model-evaluation": {"model_selection": "claude-haiku-4-5", "scenario": "two_step",
                          "sample_size": "1", "pairs_file": PARK_TINY_PAIRS,
                          "max_spend": "0.01"},
@@ -1095,6 +1097,11 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
         problems.append(f"petri-audit source_run_id is read by mode readapt only, got {source_run_id!r} with mode "
                         f"{mode!r}: a value the workflow would ignore is refused rather than carried")
     # mode rejudge (2026-09-24): the params job's rules for it, in the same order (scripts/petri_audit/rejudge.py)
+    instrument = _petri_job_value(params, "instrument", "")
+    if instrument not in ("", "current", "historical"):
+        problems.append(f"petri-audit instrument must be empty, current or historical, got {instrument!r}")
+    elif instrument and mode != PETRI_REJUDGE_MODE:
+        problems.append(f"petri-audit instrument is read by mode rejudge only, got {instrument!r} with mode {mode!r}")
     source_runs = params.get("source_runs", "")
     rejudge_paid = False
     if mode == PETRI_REJUDGE_MODE:
@@ -1487,10 +1494,30 @@ def circuit_trace_pairs_outside_checkout(path: str) -> bool:
     return norm.startswith("/") or norm == ".." or norm.startswith("../")
 
 
+# medlang_circuits/llm_client.py THINKING_MIN_OUTPUT_TOKENS (a test holds the two equal): models sent a 4096-token
+# output floor per translation call, whose worst case the flat MITIGATION_IMPUTED_USD per fire does not bound
+CIRCUIT_TRACE_THINKING_TRANSLATORS = frozenset({"claude-fable-5-1", "claude-opus-5-5", "claude-sonnet-5-5"})
+
+
+def circuit_trace_translation_model_problems(params: dict) -> list[str]:
+    """A translation_model that thinks by default is refused (Codex review of PR #112): each translation call to one is
+    sent at least 4096 output tokens (llm_client.output_budget), and the fire reserves a flat MITIGATION_IMPUTED_USD
+    however many pairs it translates, across every matrix cell, so the reservation would not bound its spend. An empty
+    value runs the workflow's pinned translator, claude-opus-4-8."""
+    model = str(params.get("translation_model") or "").strip()
+    if model in CIRCUIT_TRACE_THINKING_TRANSLATORS:
+        return [f"circuit-trace translation_model {model!r} thinks by default and is sent a 4096-token floor per "
+                f"call, which the flat ${MITIGATION_IMPUTED_USD} reservation per fire does not bound; use "
+                "claude-opus-4-8 (the default) until the reservation scales with the number of translation calls"]
+    return []
+
+
 def circuit_trace_params_problems(params: dict) -> list[str]:
     """Every circuit-trace refusal the workflow's params job applies before tracing: the `source_set` rules
-    (circuit_trace_source_set_problems), then the `output_root` rules (circuit_trace_output_root_problems)."""
-    return circuit_trace_source_set_problems(params) + circuit_trace_output_root_problems(params)
+    (circuit_trace_source_set_problems), the `output_root` rules (circuit_trace_output_root_problems), and the
+    translator rule (circuit_trace_translation_model_problems)."""
+    return (circuit_trace_source_set_problems(params) + circuit_trace_output_root_problems(params)
+            + circuit_trace_translation_model_problems(params))
 
 
 def circuit_trace_output_root_problems(params: dict) -> list[str]:
@@ -1871,7 +1898,7 @@ KNOWN_KEYS = {
     "petri-audit": frozenset({
         "seeds_file", "seed_ids", "wave", "target", "mode", "epochs", "token_limit",
         "max_spend", "judge", "judge_model", "judge_max_spend", "judge_max_tokens",
-        "log_model_api", "commit_outputs", "source_run_id", "source_runs", "auditor_model",
+        "log_model_api", "commit_outputs", "source_run_id", "source_runs", "auditor_model", "instrument",
     }),
     # pab_probe.yml `defaults` dict (verified 2026-08-04 against the params
     # heredoc by tests/test_pab_ci_staged.py): stage, fork_ref, cases_file,
@@ -3974,6 +4001,8 @@ def _petri_resolved(params):
     resolved.setdefault("auditor_model", "")
     # read by mode rejudge only and not a key of the park either; a list is joined as the params job joins it
     resolved.setdefault("source_runs", "")
+    # The rejudge-only selector is empty at rest; the plan step maps empty to the current instrument.
+    resolved.setdefault("instrument", "")
     for key, value in params.items():
         if key not in resolved:
             continue

@@ -271,6 +271,72 @@ def test_the_params_job_resolves_a_rejudge_and_joins_a_list_of_source_runs(tmp_p
     assert rc == 0 and "source_runs=\n" in out, err
 
 
+@pytest.mark.parametrize("instrument", ["", "current", "historical"])
+@pytest.mark.parametrize("event", ["push", "workflow_dispatch"])
+def test_instrument_reaches_the_params_output(
+    tmp_path: Path, instrument: str, event: str,
+) -> None:
+    cfg = dict(REJUDGE, instrument=instrument, judge_model=MOCK, commit_outputs="false")
+    ft.validate_params(TRIGGER, cfg)
+    rc, out, err = _run_params_job(tmp_path, cfg, event=event)
+    assert rc == 0, err
+    assert f"instrument={instrument}\n" in out
+    assert ft._petri_resolved(cfg)["instrument"] == instrument
+
+
+@pytest.mark.parametrize("instrument", [None, True, False, [], {}, "Historical", " historical", "historical ", "bogus"])
+def test_invalid_instrument_is_refused_before_reservation_and_job_output(
+    tmp_path: Path, instrument: object,
+) -> None:
+    cfg = dict(REJUDGE, instrument=instrument)
+    with pytest.raises(ValueError, match="instrument must be empty, current or historical"):
+        ft.validate_params(TRIGGER, cfg)
+    rc, out, err = _run_params_job(tmp_path, cfg)
+    assert rc != 0 and out == "" and "instrument must be empty, current or historical" in err
+
+
+@pytest.mark.parametrize("mode", ["preflight", "dry_run", "run", "readapt"])
+@pytest.mark.parametrize("instrument", ["current", "historical"])
+def test_instrument_is_refused_in_modes_that_do_not_read_it(
+    tmp_path: Path, mode: str, instrument: str,
+) -> None:
+    cfg = dict(ft.PARK_DEFAULTS[TRIGGER], mode=mode, instrument=instrument, _nonce="test-nonce")
+    if mode in ("run", "readapt"):
+        cfg.update(target="anthropic/claude-haiku-4-5")
+    if mode == "readapt":
+        cfg.update(source_run_id="4242", judge="true")
+    with pytest.raises(ValueError, match="instrument is read by mode rejudge only"):
+        ft.validate_params(TRIGGER, cfg)
+    rc, out, err = _run_params_job(tmp_path, cfg)
+    assert rc != 0 and out == "" and "instrument is read by mode rejudge only" in err
+
+
+@pytest.mark.parametrize("instrument,expected", [("", "current"), ("current", "current"), ("historical", "historical")])
+def test_rejudge_plan_step_passes_the_selected_instrument(
+    tmp_path: Path, workflow: dict, instrument: str, expected: str,
+) -> None:
+    """Run the actual plan shell with a capturing CLI, without planning or making a model call."""
+    step = _step(workflow, "rejudge", "Plan the rejudge")
+    assert step["env"]["INSTRUMENT"] == "${{ needs.params.outputs.instrument }}"
+    assert workflow["jobs"]["params"]["outputs"]["instrument"] == "${{ steps.params.outputs.instrument }}"
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_python = fake_bin / "python"
+    fake_python.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$CAPTURE"\n', encoding="utf-8")
+    fake_python.chmod(0o755)
+    captured = tmp_path / "args"
+    env = {**os.environ, "PATH": str(fake_bin) + os.pathsep + os.environ["PATH"], "CAPTURE": str(captured),
+           "RUNNER_TEMP": str(tmp_path), "RESOLVED_PARAMS": json.dumps(dict(REJUDGE, instrument=instrument)),
+           "INSTRUMENT": instrument, "GITHUB_RUN_ID": "777", "GITHUB_RUN_ATTEMPT": "1", "GITHUB_SHA": "a" * 40}
+    proc = subprocess.run(["bash", "-e", "-c", step["run"]], env=env, cwd=tmp_path, capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stderr
+    args = captured.read_text(encoding="utf-8").splitlines()
+    assert args[:3] == ["-m", "scripts.petri_audit.cli", "rejudge-plan"]
+    assert args[args.index("--instrument") + 1] == expected
+    params = json.loads((tmp_path / "petri-rejudge" / "params.json").read_text(encoding="utf-8"))
+    assert params["instrument"] == instrument
+
+
 @pytest.mark.parametrize("cfg, needle", [
     (dict(REJUDGE, source_runs=""), "mode rejudge needs source_runs"),
     (dict(REJUDGE, source_runs="run_1_1 run_1_1"), "mode rejudge needs source_runs"),
