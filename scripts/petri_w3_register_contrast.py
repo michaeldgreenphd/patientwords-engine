@@ -102,7 +102,7 @@ import subprocess
 import sys
 from collections import Counter
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from fractions import Fraction
 from pathlib import Path
@@ -1662,7 +1662,14 @@ def final_analysis(prep: Prepared, *, seed: int = DEFAULT_SEED,
         if not prep.secondary_complete:
             raise AnalysisRefusal(f"the secondary judge {prep.secondary_judge}'s rows do not cover the exchanges the "
                                   f"judge of record made comparable: " + json.dumps(prep.secondary_coverage))
-        sec = analysis_sections(prep, prep.secondary, prep.secondary_standings, seed=seed, resamples=resamples)
+        # a contrast the judge of record's reading refused has no secondary standings (align_secondary skips it), so
+        # the secondary's reading refuses it too, by name, rather than failing on the missing standings (stand-in
+        # review of PR #113)
+        secondary = replace(prep.secondary, refused_specs={
+            **prep.secondary.refused_specs,
+            **{name: f"refused for the judge of record: {why}" for name, why in prep.record.refused_specs.items()
+               if name not in prep.secondary.refused_specs}})
+        sec = analysis_sections(prep, secondary, prep.secondary_standings, seed=seed, resamples=resamples)
         for block in sec["targets"].values():
             block["statement"]["selectable_as_registered"] = False
             block["statement"]["not_selectable_reasons"].append("a secondary judge's rows; only the judge of record's "

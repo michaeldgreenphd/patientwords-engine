@@ -799,3 +799,18 @@ def test_the_secondary_judge_cannot_be_the_judge_of_record_under_another_spellin
     c = write_campaign(tmp_path)
     with pytest.raises(w3.AnalysisRefusal, match="is the judge of record"):
         prepared(c, secondary_judge="anthropic:" + JUDGE)
+
+
+def test_a_contrast_refused_for_the_record_is_refused_by_name_for_the_secondary(tmp_path):
+    """Stand-in review of PR #113: align_secondary skips a contrast the judge of record's reading refused, so the
+    secondary had no standings for it and the secondary's tables failed with a bare KeyError. It is now reported as
+    refused for the judge of record."""
+    c = write_campaign(tmp_path, value_fn=patterned)
+    for nonce in FIRES:
+        write_regrade(c, nonce, SECOND, f"q8-{nonce}", value_fn=second_values)
+    prep = prepared(c, secondary_judge=SECOND)
+    name = next(s.name for s in prep.specs if s.name not in ("primary", "decomposition"))
+    prep.record.refused_specs[name] = "no row under the pinned prompt digest"
+    prep.secondary_standings.pop(name, None)
+    doc = w3.final_analysis(prep, resamples=50)
+    assert json.dumps(doc["secondary_judge"]).count("refused for the judge of record: no row under the pinned") >= 1
