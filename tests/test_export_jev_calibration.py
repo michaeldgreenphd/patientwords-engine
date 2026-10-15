@@ -1826,3 +1826,8 @@ def test_the_gate_reconciles_run_attribution(tmp_path, advice_report):
     for entry in stripped["source_reports"]:
         del entry["petri_turns"]
     assert any("petri_turns" in e and "non-negative integer" in e for e in errors(stripped))
+    # round 5: a count set to zero, with petri_runs removed, no longer passes as a single-run payload
+    zeroed = json.loads(json.dumps(good))
+    del zeroed["provenance"]["petri_runs"]
+    zeroed["source_reports"][1]["petri_turns"] = 0
+    assert any("sum to" in e and "total_assistant_turns" in e for e in errors(zeroed))

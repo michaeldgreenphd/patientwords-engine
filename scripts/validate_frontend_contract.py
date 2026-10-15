@@ -1061,6 +1061,19 @@ def _jev_source_reports(rep: Report, name: str, data: dict) -> None:
             value = entry.get(key)
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 rep.err(name, f"$.source_reports[{i}].{key}", f"must be a non-negative integer, got {value!r}")
+    # ...and they must add up to the payload's own totals, so a count set to 0 cannot hide a run (round 5): the drift
+    # payload pools every report's Petri rows, and the calibration payload is the one advice report's
+    counts_ok = all(isinstance(e.get(k), int) and not isinstance(e.get(k), bool)
+                    for e in lst for k in ("advice_cases", "petri_turns"))
+    head = data.get("headline_metrics") if isinstance(data.get("headline_metrics"), dict) else {}
+    totals = {"petri_register_drift.json": ("petri_turns", "total_assistant_turns"),
+              "jev_calibration.json": ("advice_cases", "total_advice_cases")}
+    if counts_ok and name in totals:
+        key, total_key = totals[name]
+        total = head.get(total_key)
+        if isinstance(total, int) and sum(e[key] for e in lst) != total:
+            rep.err(name, "$.source_reports", f"{key} sum to {sum(e[key] for e in lst)} but headline_metrics."
+                                              f"{total_key} is {total}")
 
 
 def _jev_petri_runs(rep: Report, name: str, data: dict) -> None:
