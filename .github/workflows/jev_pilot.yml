@@ -221,6 +221,10 @@ jobs:
       # The runner writes the start marker just before its first live request: a live run that dies after it without
       # a report is booked at its whole max_spend (scripts/jev_audit_sidecar.py), one refused before it at nothing.
       - name: Run Jev audit (live calls the decisions endpoint; mock calls nothing)
+        # shorter than the job's 60 minutes, so a run that reaches it still leaves time for the always() steps that
+        # write and commit its cost sidecar and upload its checkpoint (Codex review of PR #110, round 4); GitHub runs
+        # later always() steps after a step timeout, but not after the job's own timeout
+        timeout-minutes: 45
         env:
           LIVE: ${{ needs.params.outputs.live }}
           ARCHIVE: ${{ needs.params.outputs.archive }}

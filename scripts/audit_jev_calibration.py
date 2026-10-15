@@ -210,6 +210,17 @@ def live_spend(rows: list[dict[str, Any]] | None) -> float:
     return total
 
 
+def unpriceable_rows(rows: list[dict[str, Any]] | None) -> int:
+    """Rows whose call came back with neither a billed cost nor a positive estimate (the client defaults the estimate
+    to zero when the response carries no token counts): their spend is unknown, so a live run stops at the first one
+    rather than count it as free (Codex review of PR #110, round 4)."""
+    return sum(1 for r in rows or [] if r.get("cost_usd") is None and not (r.get("estimated_cost_usd") or 0.0) > 0)
+
+
+UNPRICEABLE_REASON = ("a live call came back with neither a billed cost nor token counts, so its spend is unknown; "
+                      "stopping rather than count it as free")
+
+
 def evaluate_advice_classifier(
     cases: list[dict[str, Any]],
     classifier: AdviceAnswerClassifier,
@@ -305,9 +316,12 @@ def evaluate_advice_classifier(
                 pred_confidence = cached_rep.get("tier_confidence") or 0.0
                 res_reg_score = cached_rep.get("technicality_score") or 0.0
             else:
-                # billed and unbilled-at-estimate, for every row so far (live_spend)
-                active_cost = live_spend(case_reports) + live_spend(scoped_cached_petri)
-                if not is_mock and max_spend is not None and active_cost > max_spend:
+                # billed and unbilled-at-estimate (live_spend), for the rows THIS invocation scored: a resumed run's
+                # restored rows were reserved and booked by the run that made them (Codex review of PR #110, round 4)
+                own_rows = [r for r in case_reports if r.get("id") not in cached_map]
+                active_cost = live_spend(own_rows)
+                unknown = not is_mock and unpriceable_rows(own_rows) > 0
+                if unknown or (not is_mock and max_spend is not None and active_cost > max_spend):
                     if checkpoint_path:
                         save_checkpoint(checkpoint_path, case_reports, cached_petri, metadata=checkpoint_metadata)
                     part_m = build_advice_metrics(
@@ -318,6 +332,7 @@ def evaluate_advice_classifier(
                     if scoped_cached_petri:
                         update_metrics_with_petri(part_m, scoped_cached_petri)
                     raise EvaluationInterruptedError(
+                        UNPRICEABLE_REASON if unknown else
                         f"Live spend ${active_cost:.6f} exceeded max_spend ceiling ${max_spend:.6f}",
                         exit_code=6,
                         metrics=part_m,
@@ -460,15 +475,19 @@ def evaluate_petri_classifier(
     checkpoint_metadata: dict[str, Any] | None = None,
     max_spend: float | None = None,
     checkpoint_interval: int = 25,
+    restored_advice_ids: frozenset[str] = frozenset(),
 ) -> list[dict[str, Any]]:
-    """Evaluate PetriRegisterClassifier on multi-turn conversation transcripts."""
+    """Evaluate PetriRegisterClassifier on multi-turn conversation transcripts. `restored_advice_ids` are the advice
+    rows a resumed run restored from its checkpoint; with the restored Petri rows they are left out of this
+    invocation's spend, since the run that made them reserved and booked them."""
     if max_conversations < 0:
         raise ValueError(f"max_conversations must be non-negative (got {max_conversations}; use 0 for all)")
     results: list[dict[str, Any]] = []
     conversations_count = 0
     cached_turn_map = {(p["conversation_id"], p["turn_index"]): p for p in (cached_petri or [])}
-    # the advice phase's spend, unbilled calls at their estimate (live_spend); the metrics total counts billed only
-    current_cost = (live_spend(prior_advice_cases) if prior_advice_cases is not None
+    # this invocation's advice spend, unbilled calls at their estimate (live_spend); restored rows are left out
+    own_advice = [r for r in (prior_advice_cases or []) if r.get("id") not in restored_advice_ids]
+    current_cost = (live_spend(own_advice) if prior_advice_cases is not None
                     else (prior_metrics.total_cost_usd if prior_metrics else 0.0))
 
     try:
@@ -488,20 +507,24 @@ def evaluate_petri_classifier(
                             results.append(cached_turn_map[(conv_id, i)])
                             continue
 
-                        if not is_mock and max_spend is not None:
-                            active_cost = current_cost + live_spend(results)
-                            if active_cost > max_spend:
-                                if checkpoint_path:
-                                    save_checkpoint(checkpoint_path, prior_advice_cases or [], results, metadata=checkpoint_metadata)
-                                if prior_metrics:
-                                    update_metrics_with_petri(prior_metrics, results)
-                                raise EvaluationInterruptedError(
-                                    f"Live spend ${active_cost:.6f} exceeded max_spend ceiling ${max_spend:.6f}",
-                                    exit_code=6,
-                                    metrics=prior_metrics,
-                                    case_reports=prior_advice_cases,
-                                    petri_results=results,
-                                )
+                        if not is_mock:
+                            own_results = [r for r in results
+                                           if (r.get("conversation_id"), r.get("turn_index")) not in cached_turn_map]
+                            active_cost = current_cost + live_spend(own_results)
+                            unknown = unpriceable_rows(own_advice) + unpriceable_rows(own_results) > 0
+                        if not is_mock and (unknown or (max_spend is not None and active_cost > max_spend)):
+                            if checkpoint_path:
+                                save_checkpoint(checkpoint_path, prior_advice_cases or [], results, metadata=checkpoint_metadata)
+                            if prior_metrics:
+                                update_metrics_with_petri(prior_metrics, results)
+                            raise EvaluationInterruptedError(
+                                UNPRICEABLE_REASON if unknown else
+                                f"Live spend ${active_cost:.6f} exceeded max_spend ceiling ${max_spend:.6f}",
+                                exit_code=6,
+                                metrics=prior_metrics,
+                                case_reports=prior_advice_cases,
+                                petri_results=results,
+                            )
 
                         asst_text = t.get("text", "")
                         user_turn = turns[i - 1].get("text", "") if i > 0 else None
@@ -1258,6 +1281,7 @@ def main(argv: list[str] | None = None) -> int:
                 prior_metrics=metrics,
                 checkpoint_metadata=checkpoint_metadata,
                 max_spend=args.max_spend if is_live else None,
+                restored_advice_ids=frozenset(c.get("id") for c in cached_advice if c.get("id")),
             )
             if not petri_results:
                 print(f"Refused: No evaluable assistant turns found in Petri transcripts {petri_p}.", file=sys.stderr)
@@ -1270,7 +1294,12 @@ def main(argv: list[str] | None = None) -> int:
         case_reports = exc.case_reports or []
         petri_results = exc.petri_results
 
-    spent = live_spend(case_reports) + live_spend(petri_results)
+    # this invocation's rows only: a resumed run's restored rows were booked by the run that made them
+    restored_ids = {c.get("id") for c in cached_advice}
+    restored_turns = {(p.get("conversation_id"), p.get("turn_index")) for p in cached_petri}
+    spent = (live_spend([r for r in case_reports if r.get("id") not in restored_ids])
+             + live_spend([r for r in (petri_results or [])
+                           if (r.get("conversation_id"), r.get("turn_index")) not in restored_turns]))
     if is_live and metrics and spent > args.max_spend and not interrupted_exc:
         interrupted_exc = EvaluationInterruptedError(
             f"Total spend ${spent:.6f} (unbilled calls at their estimate) exceeded max_spend ceiling "

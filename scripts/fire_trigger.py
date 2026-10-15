@@ -1564,6 +1564,11 @@ def jev_params_problems(params: dict, repo: Path | None = None) -> list[str]:
             problems.append(f"jev-audit {key} {path!r}: a repo-relative path with / separators and no ..")
         elif not (root / path).is_file():
             problems.append(f"jev-audit {key} {path!r} does not exist in this checkout")
+        elif _git(root, "rev-parse", "--is-inside-work-tree").returncode == 0 and \
+                _git(root, "cat-file", "-e", f"HEAD:{path}").returncode != 0:
+            # the workflow's checkout holds only committed files: an untracked or uncommitted input passes on disk
+            # and fails in CI after the fire has reserved its spend (Codex review of PR #110, round 4)
+            problems.append(f"jev-audit {key} {path!r} is not committed at HEAD; commit it before firing")
     return problems
 
 

@@ -826,38 +826,49 @@ def test_checkpoint_missing_classifier_sha_refused_on_resume(tmp_path):
     assert ret_mismatch == 1
 
 
-def test_advice_classifier_spend_guard_includes_cached_petri():
-    from unittest.mock import Mock
-    from scripts.audit_jev_calibration import EvaluationInterruptedError
+def test_restored_rows_do_not_count_against_a_new_fires_ceiling():
+    """Codex review of PR #110, round 4 (replacing the earlier rule that restored Petri spend counted): a resumed run's
+    restored rows were reserved and booked by the run that made them, so a newly reserved recovery fire counts only
+    its own calls. Restored Petri rows of $0.08 no longer stop a run whose own ceiling is $0.07."""
+    from unittest.mock import MagicMock, Mock
+    from scripts.jev_classifier import AdviceClassificationResult
 
     classifier = Mock()
-    cases = [
-        {"id": "case_1", "response_text": "Response 1", "expected_tier": "routine"},
-    ]
-    # Cached Petri rows totaling $0.08
+    classifier.classify.return_value = AdviceClassificationResult(
+        tier="routine", tier_probabilities={"routine": 0.9}, tier_confidence=0.9, flags={}, flag_probabilities={},
+        register_score=None, cost_usd=0.01, estimated_cost_usd=0.01, input_tokens=50,
+        raw_response=MagicMock(model="test-model"))
+    cases = [{"id": "case_1", "response_text": "Response 1", "expected_tier": "routine"}]
     cached_petri = [
         {"conversation_id": "c1", "turn_index": 1, "cost_usd": 0.05},
         {"conversation_id": "c1", "turn_index": 2, "cost_usd": 0.03},
     ]
+    metrics, reports = evaluate_advice_classifier(
+        cases=cases, classifier=classifier, tier_order=["emergency", "urgent", "routine", "self_care"],
+        model_name="test-model", is_mock=False, cached_petri=cached_petri, max_spend=0.07)
+    classifier.classify.assert_called_once()
+    assert len(reports) == 1
 
-    tier_order = ["emergency", "urgent", "routine", "self_care"]
-    # With max_spend=0.07, the $0.08 cached Petri spend alone breaches the ceiling
-    with pytest.raises(EvaluationInterruptedError) as exc_info:
-        evaluate_advice_classifier(
-            cases=cases,
-            classifier=classifier,
-            tier_order=tier_order,
-            model_name="test-model",
-            is_mock=False,
-            cached_petri=cached_petri,
-            max_spend=0.07,
-        )
-    assert exc_info.value.exit_code == 6
-    assert "Live spend $0.080000 exceeded max_spend ceiling $0.070000" in str(exc_info.value)
-    assert exc_info.value.petri_results == cached_petri
-    assert exc_info.value.metrics is not None
-    assert exc_info.value.metrics.total_cost_usd == pytest.approx(0.08)
-    classifier.classify.assert_not_called()
+
+def test_a_live_call_with_no_cost_and_no_estimate_stops_the_run():
+    """Codex review of PR #110, round 4: a response with neither usage.cost nor token counts is recorded with cost
+    null and estimate 0.0; counting it as free let repeated such calls run past the reservation."""
+    from unittest.mock import MagicMock, Mock
+    from scripts.audit_jev_calibration import EvaluationInterruptedError, unpriceable_rows
+    from scripts.jev_classifier import AdviceClassificationResult
+
+    assert unpriceable_rows([{"cost_usd": None, "estimated_cost_usd": 0.0}, {"cost_usd": 0.0}]) == 1
+    classifier = Mock()
+    classifier.classify.return_value = AdviceClassificationResult(
+        tier="routine", tier_probabilities={"routine": 0.9}, tier_confidence=0.9, flags={}, flag_probabilities={},
+        register_score=None, cost_usd=None, estimated_cost_usd=0.0, input_tokens=0,
+        raw_response=MagicMock(model="test-model"))
+    cases = [{"id": f"case_{i}", "response_text": f"Response {i}", "expected_tier": "routine"} for i in range(4)]
+    with pytest.raises(EvaluationInterruptedError, match="neither a billed cost nor token counts"):
+        evaluate_advice_classifier(cases=cases, classifier=classifier,
+                                   tier_order=["emergency", "urgent", "routine", "self_care"],
+                                   model_name="test-model", is_mock=False, max_spend=1.0)
+    assert classifier.classify.call_count == 1
 
 
 def test_advice_classifier_spend_guard_scopes_cached_petri():

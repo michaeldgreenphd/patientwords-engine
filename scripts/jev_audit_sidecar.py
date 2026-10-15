@@ -143,6 +143,14 @@ def main(argv: list[str] | None = None) -> int:
     if not math.isfinite(args.max_spend) or args.max_spend <= 0:
         print(f"Refused: --max-spend must be a positive finite number, got {args.max_spend}", file=sys.stderr)
         return 2
+    # a run that left no report is dated by its start marker, which the runner writes (an ISO timestamp) just before
+    # its first live request, so spend that began before midnight UTC is booked to that day (Codex review of PR #110)
+    run_utc = args.run_utc
+    marker = Path(args.started_marker)
+    if marker.is_file():
+        stamp = marker.read_text(encoding="utf-8").strip()
+        if len(stamp) == 20 and stamp.endswith("Z") and stamp[4] == "-" and stamp[10] == "T":
+            run_utc = stamp
     report_path = Path(args.report)
     report = sha = None
     if report_path.is_file():
@@ -174,12 +182,12 @@ def main(argv: list[str] | None = None) -> int:
                       "here as well", file=sys.stderr)
                 resumed = None
         sidecar = build_sidecar(report, report_sha256=sha, model=args.model, max_spend=args.max_spend,
-                                nonce=args.nonce, started=Path(args.started_marker).is_file(), run_utc=args.run_utc,
+                                nonce=args.nonce, started=Path(args.started_marker).is_file(), run_utc=run_utc,
                                 resumed=resumed, resumed_run_id=args.resumed_run_id)
     except ValueError as exc:
         print(f"report {report_path}: {exc}; booking the ceiling", file=sys.stderr)
         sidecar = build_sidecar(None, report_sha256=None, model=args.model, max_spend=args.max_spend,
-                                nonce=args.nonce, started=True, run_utc=args.run_utc,
+                                nonce=args.nonce, started=True, run_utc=run_utc,
                                 resumed_run_id=args.resumed_run_id)
     if sidecar is None:
         print("no report and no start marker: the run made no call; no sidecar written")

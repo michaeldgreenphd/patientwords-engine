@@ -370,3 +370,39 @@ def test_restored_rows_are_left_out_only_when_the_source_sidecar_is_on_the_branc
     assert booked_here["cost_usd"] == pytest.approx(0.09) and booked_here["resumed_rows"] == 0
     source.write_text(json.dumps({"task": "petri-audit"}), encoding="utf-8")
     assert _cli_resume(tmp_path, source)["resumed_rows"] == 0
+
+
+def test_a_run_without_a_report_is_dated_by_its_start_marker(tmp_path):
+    """Codex review of PR #110, round 4: a run that began before midnight UTC and left no report is booked to the day
+    its marker records, not to the day the sidecar step ran."""
+    marker = tmp_path / "started"
+    marker.write_text("2026-10-14T23:58:00Z\n", encoding="utf-8")
+    out = tmp_path / "x.report.json"
+    assert sidecar.main(["--report", str(tmp_path / "missing.json"), "--out", str(out), "--model", "typesafe/jev-1.13",
+                         "--max-spend", "0.2", "--started-marker", str(marker),
+                         "--run-utc", "2026-10-15T00:20:00Z"]) == 0
+    written = json.loads(out.read_text(encoding="utf-8"))
+    assert written["run_utc"] == "2026-10-14T23:58:00Z" and written["cost_basis"] == "ceiling_imputed:report_missing"
+
+
+def test_inputs_must_be_committed_in_a_git_checkout(tmp_path):
+    """Codex review of PR #110, round 4: CI checks out committed files only, so an untracked input is refused before
+    the fire journals a reservation."""
+    import subprocess
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    for key in ("archive", "petri_transcripts"):
+        target = tmp_path / ft.JEV_DEFAULTS[key]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("{}\n", encoding="utf-8")
+    problems = ft.jev_params_problems(dict(ft.JEV_DEFAULTS), repo=tmp_path)
+    assert any("not committed at HEAD" in p for p in problems)
+    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "x"],
+                   check=True)
+    assert ft.jev_params_problems(dict(ft.JEV_DEFAULTS), repo=tmp_path) == []
+
+
+def test_the_audit_step_leaves_time_for_the_sidecar_steps():
+    audit = _workflow()["jobs"]["audit"]
+    run_step = next(s for s in audit["steps"] if s.get("name", "").startswith("Run Jev audit"))
+    assert run_step["timeout-minutes"] < audit["timeout-minutes"]
