@@ -1408,6 +1408,23 @@ def statement_row(primary: Mapping[str, Any], gate: Mapping[str, Any], means: Ma
             "planned_scenarios": planned_scenarios, "scenarios_with_mean_in_primary_direction": carrying}
 
 
+def comparison_statement(block: Mapping[str, Any], holm_entry: Mapping[str, Any], *, target: Target,
+                         plan: Plan) -> dict[str, Any]:
+    """A comparison target's 9.8 row, selected on its Holm-adjusted primary verdict: the plan's comparison_targets
+    correction is "Holm across the comparison targets' primary tests", so the raw p decides nothing for them. The
+    gate is reported beside the test, uncorrected, as the plan says."""
+    primary = block["primary_sign_test"]
+    gate = block["scenario_gate"]
+    row = statement_row({**primary, "significant": bool(holm_entry["significant_after_holm"])}, gate,
+                        gate["scenario_means"], planned_scenarios=len(plan.scenarios), target=target,
+                        statements=plan.statements["primary"])
+    row.update({"primary_significance": "Holm-adjusted across the comparison targets' primary tests "
+                                        "(comparison_targets.correction)",
+                "primary_p": primary["p"], "primary_p_holm": holm_entry["p_holm"],
+                "primary_significant_unadjusted": primary["significant"]})
+    return row
+
+
 def decomposition_block(ds: Mapping[str, Sequence[w2.TripleD]], plan: Plan, label: str) -> dict[str, Any]:
     """9.4's three exact sign tests, Holm-corrected together, and the statement they permit (wave 2's rule, which is
     9.8's), with 9.8's text."""
@@ -1483,8 +1500,14 @@ def target_block(prep: Prepared, reading: Reading, standings: Mapping[str, Seque
     gate["missing_scenarios"] = w2.missing_scenarios(
         plan, means, [t for t in prep.triples if t.target == target.id],
         [s for s in standings["primary"] if s.triple.target == target.id])
-    loso = {}
+    loso: dict[str, Any] = {}
     for scenario in plan.scenarios:
+        if scenario not in means:
+            # leaving out a scenario none of whose triples entered would rerun the full test unchanged
+            loso[scenario] = {"status": "not computable",
+                              "reason": "no triple of this scenario entered the primary contrast (scenario_gate."
+                                        "missing_scenarios names why), so leaving it out would rerun the full test"}
+            continue
         rerun = w2.sign_test([d for d in primary if d.scenario != scenario], plan.alpha)
         loso[scenario] = {k: rerun[k] for k in ("triples", "negative", "positive", "tied", "p", "direction",
                                                 "significant")}
@@ -1610,9 +1633,14 @@ def analysis_sections(prep: Prepared, reading: Reading, standings: Mapping[str, 
     section_9_2 = {"target": anchor.id, "primary_sign_test": blocks[anchor.id]["primary_sign_test"],
                    "scenario_gate": blocks[anchor.id]["scenario_gate"], "statement": blocks[anchor.id]["statement"],
                    "see": f"targets.{anchor.id}"}
+    holm_primary = w2.holm({t.id: p_of(blocks[t.id]["primary_sign_test"]) for t in comparison}, plan.alpha)
+    blocks[anchor.id]["statement"]["primary_significance"] = ("unadjusted: the anchor's primary is the one registered "
+                                                              "primary test (9.2)")
+    for t in comparison:
+        blocks[t.id]["statement"] = comparison_statement(blocks[t.id], holm_primary[t.id], target=t, plan=plan)
     section_9_3 = {
         "targets": [t.id for t in comparison],
-        "holm_primary": w2.holm({t.id: p_of(blocks[t.id]["primary_sign_test"]) for t in comparison}, plan.alpha),
+        "holm_primary": holm_primary,
         "gates": {t.id: {k: blocks[t.id]["scenario_gate"][k] for k in ("p", "direction", "significant", "scenarios")}
                   for t in comparison},
         "between_targets": {"test": "none: descriptive only, side by side",
@@ -1744,6 +1772,31 @@ def directions_hold(record: Mapping[str, Any], secondary: Mapping[str, Any]) -> 
     return rows
 
 
+SECONDARY_REASON = "a secondary judge's rows; only the judge of record's select a statement"
+
+
+def mark_secondary_statements(sections: Any) -> int:
+    """Mark every statement in a secondary judge's tables (any object carrying a 9.8 `row_id` or `statement_id`: the
+    per-target rows, the decomposition statements, and the copies of them in section_9_2 and section_9_8) as not
+    selectable as registered, with the reason. Objects shared between places are marked once. Returns the number
+    marked."""
+    seen: set[int] = set()
+
+    def walk(node: Any) -> None:
+        if isinstance(node, dict):
+            if ("row_id" in node or "statement_id" in node) and id(node) not in seen:
+                seen.add(id(node))
+                node["selectable_as_registered"] = False
+                node.setdefault("not_selectable_reasons", []).append(SECONDARY_REASON)
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+    walk(sections)
+    return len(seen)
+
+
 SECONDARY_LABEL = ("secondary: the same tables from a second judge's rows (owner decision Q8, 2026-10-14), on exactly "
                    "the exchanges the judge of record made comparable. Exploratory and disclosure only: it selects no "
                    "statement as registered, and no estimate mixes its rows with the judge of record's")
@@ -1769,10 +1822,7 @@ def final_analysis(prep: Prepared, *, seed: int = DEFAULT_SEED,
             **{name: f"refused for the judge of record: {why}" for name, why in prep.record.refused_specs.items()
                if name not in prep.secondary.refused_specs}})
         sec = analysis_sections(prep, secondary, prep.secondary_standings, seed=seed, resamples=resamples)
-        for block in sec["targets"].values():
-            block["statement"]["selectable_as_registered"] = False
-            block["statement"]["not_selectable_reasons"].append("a secondary judge's rows; only the judge of record's "
-                                                                "select a statement")
+        mark_secondary_statements(sec)
         out["secondary_judge"] = {"label": SECONDARY_LABEL, "judge_model": prep.secondary_judge,
                                   "runs": [s.provenance for s in prep.secondary_runs],
                                   "coverage": prep.secondary_coverage, "agreement": agreement(prep),
@@ -1796,6 +1846,40 @@ def plan_commit_problem(path: Path) -> str | None:
     return None
 
 
+def code_files() -> dict[str, Path]:
+    """The code --final runs: this script, the wave-2 module it reuses, and the petri_audit modules it calls."""
+    return {"script": Path(__file__), "wave2_module": Path(w2.__file__), "judge_runner": Path(judge_runner.__file__),
+            "rejudge": Path(rejudge.__file__), "manifest": Path(sys.modules[verify_run.__module__].__file__),
+            "seeds": Path(sys.modules[load_seed_file.__module__].__file__),
+            "framework": Path(sys.modules[load_json.__module__].__file__)}
+
+
+def file_status(path: Path) -> list[str] | str:
+    """`git status --porcelain` for one file in the repository that holds it: [] when tracked and committed unchanged,
+    the status lines when changed, or a string naming why git cannot say (wave 2's git_status, run from the file's own
+    repository, so a data file in another checkout is judged there)."""
+    try:
+        top = subprocess.run(["git", "-C", str(Path(path).resolve().parent), "rev-parse", "--show-toplevel"],
+                             capture_output=True, text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError) as exc:
+        detail = exc.stderr.strip() if isinstance(exc, subprocess.CalledProcessError) else str(exc)
+        return f"{path} is in no git repository git can read ({detail})"
+    return w2.git_status(Path(path), Path(top))
+
+
+def uncommitted_problems(files: Mapping[str, Path]) -> list[str]:
+    """Under --final, every code or data input must be committed unchanged, so the artifact's identity names bytes a
+    reader can check out: one problem per file that has uncommitted changes, or that cannot be shown committed."""
+    problems = []
+    for name, path in files.items():
+        status = file_status(path)
+        if isinstance(status, str):
+            problems.append(f"{name} {w2._display(path)} cannot be shown to be committed: {status}")
+        elif status:
+            problems.append(f"{name} {w2._display(path)} has uncommitted changes ({status}); commit it or restore it")
+    return problems
+
+
 def analysis_identity(inputs: Mapping[str, Path], repo_root: Path | None = None) -> dict[str, Any]:
     """The commit and files the analysis ran from: this script, the wave-2 module it reuses, judge_runner.py,
     rejudge.py and the inputs, each with its sha256 and any uncommitted change git reports for it."""
@@ -1803,12 +1887,11 @@ def analysis_identity(inputs: Mapping[str, Path], repo_root: Path | None = None)
     ident: dict[str, Any] = {"script": w2._display(me), "script_version": SCRIPT_VERSION,
                              "script_sha256": sha256_file(me), "python": platform.python_version(),
                              "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
-    files = {"script": me, "wave2_module": Path(w2.__file__), "judge_runner": Path(judge_runner.__file__),
-             "rejudge": Path(rejudge.__file__), **inputs}
+    files = {**code_files(), **inputs}
     ident["inputs"] = {name: {"path": w2._display(p), "sha256": sha256_file(p) if Path(p).is_file() else None}
                        for name, p in files.items()}
     root = REPO_ROOT if repo_root is None else repo_root
-    ident["uncommitted_changes"] = {name: w2.git_status(p, root) for name, p in files.items()}
+    ident["uncommitted_changes"] = {name: file_status(p) for name, p in files.items()}
     try:
         ident["commit"] = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True,
                                          text=True, check=True).stdout.strip()
@@ -1880,7 +1963,11 @@ def omitted_landed_runs(runs_dir: Path, plan: Plan, analysed: Sequence[RunInput]
             problems.append(f"{w2._display(d)}: its manifest cannot be read ({exc}), so whether it is a landed plan "
                             f"fire left out of the run list is unknown")
             continue
-        fire = plan.fires.get(nonce) if isinstance(nonce, str) else None
+        if not isinstance(nonce, str) or not nonce:
+            problems.append(f"{w2._display(d)}: its manifest records no spend.journal_nonce, so whether it is a landed "
+                            f"plan fire left out of the run list is unknown")
+            continue
+        fire = plan.fires.get(nonce)
         if fire is not None and fire.voided is None:
             problems.append(f"{w2._display(d)} carries plan fire {nonce} (target {fire.target}, epoch "
                             f"{fire.campaign_epoch}) but is not among the runs given; --final analyses every landed "
@@ -1905,6 +1992,10 @@ def final_problems(args: argparse.Namespace, prep: Prepared) -> tuple[list[str],
                         f"{plan.rubric_digest} the plan pins")
     if prep.seeds_path.resolve() != plan.seed_file.resolve():
         problems.append(f"--seeds {prep.seeds_path} is not the plan's seed_file {w2._display(plan.seed_file)}")
+    problems.extend(uncommitted_problems({
+        **code_files(), "seed_file": prep.seeds_path, "rubric": prep.rubric_path,
+        "outcome_registry": prep.loaded_registry,
+        **{f"registry_version[{i}]": Path(v) for i, v in enumerate(args.registry_version)}}))
     if args.runs:
         problems.extend(omitted_landed_runs(args.runs_dir, plan, prep.runs))
     for r in prep.runs:
