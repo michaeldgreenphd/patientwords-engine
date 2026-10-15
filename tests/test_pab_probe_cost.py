@@ -336,8 +336,22 @@ class TestOpus55Jury:
                               args["assistant_models"], args["jury_models"], args["sandbox_model"])
         convs = result["conversations_total"]
         jury = convs * (ppc.MEASURED_JURY_INPUT_PER_RUBRIC * 6 * 4.0 + 4096 * 6 * 20.0) / 1e6
-        assert convs == 52 and ppc.N_RUBRICS == 6 and ppc.THINKING_RUBRIC_OUTPUT == 4096
+        assert convs == 52 and ppc.N_RUBRICS == 6 and ppc.jury_output_floor("claude-opus-5-5") == 4096
         assert result["usd"]["by_channel"]["anthropic"] == pytest.approx(jury, abs=1e-3)
         assert result["usd"]["by_channel"]["anthropic"] == pytest.approx(35.5462, abs=1e-3)
         assert result["usd"]["total"] == pytest.approx(37.4755, abs=1e-3)
         assert result["days_at_ceiling"] == 19
+
+
+    def test_every_spelling_of_a_thinking_jury_gets_the_same_bound(self):
+        """Codex review of PR #116, round 2: the routed spelling openrouter:anthropic/claude-opus-5.5 was priced at
+        150 output tokens per rubric. The floor now comes from the registry for either spelling."""
+        assert ppc.jury_output_floor("claude-opus-5-5") == 4096
+        assert ppc.jury_output_floor("openrouter:anthropic/claude-opus-5.5") == 4096
+        assert ppc.jury_output_floor("claude-opus-4-8") is None
+        args = ppc.DEFAULT_PLAN
+        routed = ppc.estimate(args["arms"], args["cases"], args["turns"], args["patient_model"],
+                              args["assistant_models"], ["openrouter:anthropic/claude-opus-5.5"], args["sandbox_model"])
+        # the OpenRouter route prices the same tokens at its own registry rate, so the jury figure is close to the
+        # direct route's bound and nowhere near the 150-token figure (about $7)
+        assert routed["usd"]["total"] > 30
