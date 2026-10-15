@@ -47,8 +47,32 @@ def _refuse(reason: str) -> "SystemExit":
     return SystemExit(3)
 
 
-def build_payload(judgment_paths, ae, tier_order: list[str]) -> dict:
+def secondary_specs_present(judgment_paths, ae, tier_order: list[str]) -> dict[str, int]:
+    """Every secondary judge spec with a tiered row in the archives, and its row count."""
     rank = {t: i for i, t in enumerate(tier_order)}
+    specs: dict[str, int] = {}
+    for path in judgment_paths:
+        for j in ae._read_jsonl(path):
+            if j.get("tier") in rank and ae.is_secondary_judge(j.get("judge_model")):
+                specs[j["judge_model"]] = specs.get(j["judge_model"], 0) + 1
+    return specs
+
+
+def build_payload(judgment_paths, ae, tier_order: list[str], secondary_judge: str | None = None) -> dict:
+    """The agreement payload between the primary judge and ONE secondary judge. Pairing every secondary spec into one
+    slot let a later judge's rows overwrite an earlier one's per response, so a second secondary judge (Claude Haiku
+    5.5 beside ox-alpha, 2026-10-14) would have published a mixture of the two (review of PR #114). With one
+    secondary spec present it is used, as before; with several, `secondary_judge` must name one, else this refuses.
+    Rows of the other secondary specs are counted per archive in `coverage` and never paired."""
+    rank = {t: i for i, t in enumerate(tier_order)}
+    present = secondary_specs_present(judgment_paths, ae, tier_order)
+    if secondary_judge is None:
+        if len(present) > 1:
+            raise _refuse(f"{len(present)} secondary judges are present ({', '.join(sorted(present))}); name the one to "
+                          "pair with --secondary-judge, since pooling them would mix two judges in one agreement")
+        secondary_judge = next(iter(present), None)
+    elif secondary_judge not in present:
+        raise _refuse(f"secondary judge {secondary_judge!r} has no tiered rows (present: {sorted(present)})")
     # response_sha256 -> {"primary": row, "secondary": row}; later passes
     # overwrite earlier ones, the same overwrite rule the scenario exporter
     # applies to primary tiers.
@@ -59,11 +83,15 @@ def build_payload(judgment_paths, ae, tier_order: list[str]) -> dict:
     window: list[str] = []
     for path in judgment_paths:
         n_primary = n_secondary = 0
+        by_judge: dict[str, int] = {}
         for j in ae._read_jsonl(path):
             if j.get("tier") not in rank:
                 continue
             slot = "secondary" if ae.is_secondary_judge(j.get("judge_model")) else "primary"
             if slot == "secondary":
+                by_judge[j["judge_model"]] = by_judge.get(j["judge_model"], 0) + 1
+                if j["judge_model"] != secondary_judge:
+                    continue                    # another secondary judge: counted, never paired
                 n_secondary += 1
                 secondary_specs[j["judge_model"]] = secondary_specs.get(j["judge_model"], 0) + 1
                 if j.get("judged_utc"):
@@ -76,6 +104,7 @@ def build_payload(judgment_paths, ae, tier_order: list[str]) -> dict:
             "judgments_file": str(path).replace(str(REPO_ROOT) + "/", ""),
             "n_primary": n_primary,
             "n_secondary": n_secondary,
+            "n_secondary_by_judge": by_judge,
         })
 
     both = [(v["primary"], v["secondary"]) for v in paired.values()
@@ -126,6 +155,9 @@ def main(argv=None) -> None:
     parser.add_argument("--rubric", default="data/advice_rubric.draft.json",
                         help="rubric path; its tier list fixes the matrix axis order")
     parser.add_argument("--out", default="data/judge_agreement.json")
+    parser.add_argument("--secondary-judge", default=None,
+                        help="the secondary judge spec to pair with the primary; required when the archives hold "
+                             "more than one (e.g. openrouter:stealth/ox-alpha and anthropic:claude-haiku-5-5)")
     parser.add_argument("--site", default=None, help="frontend checkout; copies the payload into <site>/data/")
     args = parser.parse_args(argv)
 
@@ -135,7 +167,7 @@ def main(argv=None) -> None:
     paths = sorted(Path(p) for p in glob.glob(args.judgments_glob))
     if not paths:
         raise _refuse(f"no judgments files match {args.judgments_glob}")
-    payload = build_payload(paths, ae, tier_order)
+    payload = build_payload(paths, ae, tier_order, args.secondary_judge)
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
