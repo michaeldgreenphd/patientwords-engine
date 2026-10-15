@@ -67,6 +67,9 @@ def archive(tmp_path, monkeypatch):
 
     monkeypatch.setattr(ae, "_client", lambda: object())
     monkeypatch.setattr(ae, "_send", _stub_send)
+    # judge-x is a fictional judge no price table names; the judge's fallback-price guard (judge_price_problem,
+    # Codex review of PR #114) is waived for it here and tested directly in tests/test_advice_eval.py
+    monkeypatch.setattr(ae, "judge_price_problem", lambda judge_model, registry: None)
     monkeypatch.setattr(ae, "_send_compat", stub_compat)
     ae.main(["elicit", "--stimuli", str(stim), "--models", "prov-x:model-1,prov-y:model-2",
              "--providers", str(registry),
