@@ -499,6 +499,7 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
         problems.append("sensitivity must be a list")
         raw_sens = []
     by_window_name = {k.replace("-", "_") + MECHANISM_WINDOW_SUFFIX: k for k in mechanisms}
+    sensitivity_names: set[str] = set()
     for i, s in enumerate(raw_sens, 1):
         name = s.get("name") if isinstance(s, dict) else None
         measure = _measure(s.get("measure")) if isinstance(s, dict) else None
@@ -506,6 +507,10 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
             problems.append(f"sensitivity entry {i} ({name!r}): needs a name, a window of the plan and a measure "
                             f"'tier <key>'")
             continue
+        if name in sensitivity_names:
+            problems.append(f"sensitivity entry {i} ({name!r}): repeated name; sensitivity names must be distinct")
+            continue
+        sensitivity_names.add(name)
         rule = s.get("rule")
         mechanism = by_window_name.get(name)
         if rule is not None and name not in SENSITIVITY_RULES and mechanism is None:
@@ -2031,7 +2036,9 @@ def final_problems(args: argparse.Namespace, prep: Prepared) -> tuple[list[str],
         nonces = []
         for target, eps in missing.items():
             for epoch, info in eps.items():
-                fired = ([info["live_fire"]] if info["live_fire"] else []) + info["voided_fires"]
+                # A live replacement supersedes its voided predecessors. Keep their history in coverage, but
+                # require completion of the replacement only; without one, the voided fires remain the evidence.
+                fired = [info["live_fire"]] if info["live_fire"] else info["voided_fires"]
                 if not fired:
                     problems.append(f"target {target} epoch {epoch}: no fire is recorded, so no operational failure "
                                     f"can be shown; record its fire, or the plan's amendment, first")

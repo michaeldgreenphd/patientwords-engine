@@ -1083,3 +1083,48 @@ def test_every_secondary_statement_is_marked_non_registered(tmp_path: Path) -> N
         assert statement["not_selectable_reasons"].count(w3.SECONDARY_REASON) == 1
     assert result["targets"]["tgt-a"]["statement"]["selectable_as_registered"] is True
     assert w3.SECONDARY_REASON not in json.dumps(result["section_9_4"])
+
+
+@pytest.mark.parametrize("change_window", [False, True])
+def test_duplicate_sensitivity_names_are_refused(tmp_path: Path, change_window: bool) -> None:
+    plan = synthetic_plan(tmp_path / "seeds.json")
+    original = next(s for s in plan["sensitivity"] if s["name"] not in w3.SENSITIVITY_RULES)
+    duplicate = deepcopy(original)
+    if change_window:
+        duplicate["window"] = next(name for name in plan["windows"] if name != original["window"])
+    plan["sensitivity"].append(duplicate)
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(plan), encoding="utf-8")
+    with pytest.raises(w3.AnalysisRefusal, match=re.escape(f"({original['name']!r}): repeated name")):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("live_state", ["resolved", "pending", "evicted", "missing", "no_live_fire"])
+def test_truncation_validates_the_live_replacement_before_voided_history(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, live_state: str) -> None:
+    c = write_campaign(tmp_path, fires=tuple(n for n in FIRES if n != "c2"))
+    plan = load_json(c["plan"])
+    plan["fires"].append({"journal_nonce": "superseded", "target": "tgt-c", "campaign_epoch": 2,
+                          "voided": "evicted before completion"})
+    if live_state == "no_live_fire":
+        plan["fires"] = [f for f in plan["fires"] if f["journal_nonce"] != "c2"]
+    c["plan"].write_text(json.dumps(plan), encoding="utf-8")
+    prior = {"trigger": "petri-audit", "nonce": "superseded", "fired_utc": "2026-10-20T00:00:00Z",
+             "resolved": True, "evicted": True}
+    journal = [prior]
+    if live_state not in ("missing", "no_live_fire"):
+        journal.append({**prior, "nonce": "c2", "resolved": live_state != "pending",
+                        "evicted": live_state == "evicted"})
+    final_ready(monkeypatch, c, tuple(journal))
+    out = tmp_path / "final.json"
+    code = w3.main(cli_args(c, "--final", "--out", str(out), "--declare-truncated", "replacement failed to land"))
+    if live_state == "resolved":
+        assert code == 0
+        doc = load_json(out)
+        assert doc["administratively_truncated_targets"] == {"tgt-c": [2]}
+        history = doc["coverage"]["epochs_not_landed"]["tgt-c"]["2"]
+        assert history["live_fire"] == "c2" and history["voided_fires"] == ["superseded"]
+    else:
+        assert code == 2 and not out.exists()
+        nonce = "superseded" if live_state == "no_live_fire" else "c2"
+        assert f"fire {nonce}:" in capsys.readouterr().err
