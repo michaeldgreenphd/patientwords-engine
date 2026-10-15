@@ -826,6 +826,30 @@ def test_wrong_section_types_refused_at_load(tmp_path, metrics, cases):
     assert exc.value.code == 2
 
 
+@pytest.mark.parametrize("petri_cases", [1, 0, 1.5, True, False, None, "rows", {"row": 1}])
+@pytest.mark.parametrize("published", [False, True])
+def test_malformed_petri_cases_refused_before_provenance_or_writes(
+        tmp_path: Path, mock_report_data: dict, capsys: pytest.CaptureFixture[str],
+        petri_cases: object, published: bool) -> None:
+    mock_report_data["petri_cases"] = petri_cases
+    report = tmp_path / "report.json"
+    report.write_text(json.dumps(mock_report_data), encoding="utf-8")
+    site = tmp_path / "site"
+    data_dir = site / "data"
+    data_dir.mkdir(parents=True)
+    if published:
+        for name in ("jev_calibration.json", "petri_register_drift.json"):
+            (data_dir / name).write_text('{"existing": true}\n', encoding="utf-8")
+    before = {path.name: path.read_bytes() for path in data_dir.iterdir()}
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--report", str(report), "--site", str(site)])
+
+    assert exc.value.code == 2
+    assert "Report petri_cases must be a JSON list" in capsys.readouterr().err
+    assert {path.name: path.read_bytes() for path in data_dir.iterdir()} == before
+
+
 def test_case_rows_contradicting_the_matrix_refused(mock_report_data):
     mock_report_data["cases"][3]["predicted_tier"] = TIERS[1]          # matrix still records it one tier higher
     with pytest.raises(SystemExit) as exc:

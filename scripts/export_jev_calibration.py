@@ -264,6 +264,8 @@ def load_report(report_path: Path) -> tuple[dict[str, Any], str]:
         _refuse(f"Report metrics must be a JSON object (got {type(data['metrics']).__name__})")
     if not isinstance(data["cases"], list):
         _refuse(f"Report cases must be a JSON list (got {type(data['cases']).__name__})")
+    if "petri_cases" in data and not isinstance(data["petri_cases"], list):
+        _refuse(f"Report petri_cases must be a JSON list (got {type(data['petri_cases']).__name__})")
     # the runner adds this key only to reports it wrote after an interruption, so its presence refuses, whatever
     # its value
     if "interrupted" in meta:
