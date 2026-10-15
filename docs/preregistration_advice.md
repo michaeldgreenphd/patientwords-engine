@@ -344,13 +344,21 @@ of the primary tiers. The revision adds `claude-haiku-5-5` to
 the judge's 0.0 cannot be sent) and adds `anthropic.disable_thinking`,
 which lists it: its adaptive thinking is on by default and would spend
 the judge's output allowance, so its calls carry thinking
-`{"type": "disabled"}` and keep the shape of Haiku 4.5's. Its price,
+`{"type": "disabled"}`, so neither judge thinks. Its price,
 $0.10/$0.50 per million tokens, enters
 `medlang_circuits.evaluate_models.PRICING`. No consumer default, arm or
 archived record changes. Source: the claude-api skill,
 `shared/model-migration.md`, "Migrating to Claude Haiku 5.5", read
 2026-10-14. Registry sha256 at this revision:
 `81e07297c0d8a2f3336262fea17bc3a4aa0a8ac4b5a154a2ace7c2d581fac2ae`
+
+The same day the `disable_thinking` reason was corrected (wording only; no
+model, value or behaviour changes). It had said the two judges then differ
+only by model. On the Petri lane they also differ in temperature: Haiku 4.5
+was sent 0.0, and Haiku 5.5 samples at the API default because it rejects any
+other value. Only on the advice lane, which has sent no temperature in CI
+since 2026-08-23, do they differ by model alone. Registry sha256 at this
+revision: `fcfa017a2f382e999f8b775503c2c278b04c68216036934d320c655043dee681`
 
 ## The consumer-proxy caveat (repeat in every writeup)
 
