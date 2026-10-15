@@ -1052,7 +1052,7 @@ def test_advice_billing_parts_name_each_paid_part():
     {"models": "anthropic:claude-haiku-4-5", "judge": "true", "judge_model": "claude-haiku-4-5",
      "arms": "clinical,patient,translated", "translator_model": "claude-haiku-4-5"},
     {"models": "anthropic:claude-haiku-4-5,anthropic:claude-sonnet-5", "judge": "false"},
-    {"models": "openrouter:stealth/ox-alpha", "judge": "true", "judge_model": "openrouter:stealth/ox-alpha"},
+    {"models": "openrouter:stealth/ox-alpha", "judge": "false"},
     {"models": "openai:openai/gpt-5.5,openai:openai/gpt-5.4-mini,openrouter:google/gemini-3.5-flash",
      "judge": "false", "arms": "clinical,patient"},
     {"models": "openrouter:thinkingmachines/inkling-small", "judge": "false", "judge_model": "claude-haiku-4-5",
@@ -1066,6 +1066,15 @@ def test_valid_advice_fires_keep_the_lane_they_had(params):
     the trigger file has held on main that bill one account, the park default, and the edge spellings."""
     assert ft.advice_params_problems(params) == []
     assert ft.fire_lane("advice-eval", params) == _old_advice_lane(params)
+
+
+def test_a_judge_the_registry_no_longer_prices_is_refused_where_it_was_admitted():
+    """ox-alpha judged under the registry's 0/0 entry for its free window (2026-08-21); the entry was removed on
+    2026-08-24, so the advice judge would now book it at the 10/50 fallback rate, and the fire path refuses it
+    (owner decision Q6, 2026-10-14). The same fire with the judge off is still admitted (the parametrized case
+    above)."""
+    params = {"models": "openrouter:stealth/ox-alpha", "judge": "true", "judge_model": "openrouter:stealth/ox-alpha"}
+    assert any("fallback_priced_judge" in p for p in ft.advice_params_problems(params))
 
 
 @pytest.mark.parametrize("over, needle", [
@@ -1206,7 +1215,7 @@ def test_bare_non_anthropic_provider_name_refused(repo, capsys):
 def test_openrouter_only_fire_with_openrouter_judge_is_booked_on_openrouter(repo):
     write_dashboard(repo, spent=0.0)
     params = _advice_params(_nonce="o1", models=_ORL, arms="clinical,patient", judge="true",
-                            judge_model="openrouter:stealth/z", judge_max_spend="0.5")
+                            judge_model="openrouter:openai/gpt-5.4-mini", judge_max_spend="0.5")
     assert fire(repo, "advice-eval", params) == 0
     entry = json.loads(journal_path(repo).read_text().splitlines()[-1])
     assert entry["lane"] == "openrouter" and entry["max_spend"] == pytest.approx(2.0)

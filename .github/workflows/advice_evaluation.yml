@@ -392,9 +392,11 @@ jobs:
           {
             echo "## Advice evaluation ($STEM)"
             echo '```'
-            for f in "data/advice/responses_${STEM}.report.json" \
-                     "data/advice/judgments_${STEM}.report.json"; do
-              if [ -f "$f" ]; then cat "$f"; fi
+            # each judge pass writes its own judgments_<stem>.judge_<UTC stamp>.report.json (scripts/advice_eval.py
+            # judge_sidecar_path); the newest is this fire's
+            JUDGE_SIDECAR=$(ls -1 data/advice/judgments_${STEM}.judge_*.report.json 2>/dev/null | sort | tail -n 1 || true)
+            for f in "data/advice/responses_${STEM}.report.json" "$JUDGE_SIDECAR"; do
+              if [ -n "$f" ] && [ -f "$f" ]; then cat "$f"; fi
             done
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

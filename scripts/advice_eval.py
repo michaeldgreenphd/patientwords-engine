@@ -163,6 +163,10 @@ def _registry_rate(cfg: dict, model: str) -> tuple[object, str]:
 OMIT_TEMPERATURE_FIELD = "omit_temperature"
 # The registry field (any block) giving a per-model minimum output budget for reasoning models (registry note).
 MIN_OUTPUT_TOKENS_FIELD = "min_output_tokens"
+# The registry field (anthropic block) naming the models whose direct-API requests carry thinking disabled, and the
+# reason recorded (2026-10-14: Claude Haiku 5.5 as the second judge; registry disable_thinking_note).
+DISABLE_THINKING_FIELD = "disable_thinking"
+THINKING_DISABLED = {"type": "disabled"}
 SDK_DROPPED_TEMPERATURE = ("the installed anthropic SDK rejects the temperature keyword, so the request was sent "
                            "without it (_send)")
 
@@ -180,13 +184,20 @@ def temperature_omission_entry(model: str, registry: dict) -> tuple[str, str] | 
     name's registry spec instead (petri_audit.spend.sampling_omissions), and the Petri judge passes the spec
     `_resolve_spec` gives it (RegistryJudge, petri_audit.judge_runner.judge_sampling_omissions). A malformed map is
     refused, not ignored: ignoring it would send the parameter the map exists to withhold."""
+    return _model_rule_entry(OMIT_TEMPERATURE_FIELD, model, registry)
+
+
+def _model_rule_entry(field: str, model: str, registry: dict) -> tuple[str, str] | None:
+    """The entry of the anthropic block's `field` map (model spelling -> reason) that matches `model`, as (key,
+    reason), or None, by the matching rule `temperature_omission_entry` documents, shared by every such map
+    (`omit_temperature`, `disable_thinking`). A malformed map raises ValueError."""
     block = registry.get("anthropic") if isinstance(registry, dict) else None
-    rules = block.get(OMIT_TEMPERATURE_FIELD) if isinstance(block, dict) else None
+    rules = block.get(field) if isinstance(block, dict) else None
     if rules is None:
         return None
     if not isinstance(rules, dict) or not all(isinstance(k, str) and isinstance(v, str) and v.strip()
                                               for k, v in rules.items()):
-        raise ValueError(f"registry anthropic.{OMIT_TEMPERATURE_FIELD} must map model names to non-empty reason "
+        raise ValueError(f"registry anthropic.{field} must map model names to non-empty reason "
                          f"strings; got {rules!r}")
     name = str(model or "").strip()
     candidates = [name]
@@ -204,6 +215,35 @@ def temperature_omission(model: str, registry: dict) -> str | None:
     """The reason `model`'s requests must not carry `temperature`, or None (`temperature_omission_entry`)."""
     entry = temperature_omission_entry(model, registry)
     return entry[1] if entry else None
+
+
+def thinking_disable_entry(model: str, registry: dict) -> tuple[str, str] | None:
+    """The `disable_thinking` entry that matches `model`, as (the key it is listed under, the reason), or None.
+
+    Reads the anthropic block's `disable_thinking` map (model name -> reason; added 2026-10-14 for Claude Haiku 5.5,
+    whose adaptive thinking is on by default and spends the output allowance). Matched exactly as
+    `temperature_omission_entry` matches: any spelling a lane sends, exact after one provider prefix, never fuzzy. A
+    malformed map is refused, not ignored: ignoring it would let the model think on a budget sized for an answer."""
+    return _model_rule_entry(DISABLE_THINKING_FIELD, model, registry)
+
+
+def thinking_disable_reason(model: str, registry: dict) -> str | None:
+    """The reason `model`'s requests carry thinking disabled, or None (`thinking_disable_entry`)."""
+    entry = thinking_disable_entry(model, registry)
+    return entry[1] if entry else None
+
+
+def thinking_disabled_adjustment(reason: str) -> dict:
+    """The request_adjustments entry of a call sent with thinking disabled: the fire requested nothing about
+    thinking, and the registry made the call send it disabled."""
+    return {"field": "thinking", "requested": None, "sent": "disabled",
+            "reason": f"registry anthropic.{DISABLE_THINKING_FIELD}: {reason}"}
+
+
+def thinking_to_send(adjustments: list[dict]) -> dict | None:
+    """The `thinking` parameter a call under `adjustments` (call_settings) sends: THINKING_DISABLED when they hold a
+    thinking entry, else None (the parameter is left out, as before the field existed)."""
+    return dict(THINKING_DISABLED) if any(a.get("field") == "thinking" for a in adjustments) else None
 
 
 def min_output_tokens(cfg: dict, model: str) -> int | None:
@@ -228,7 +268,10 @@ def call_settings(registry: dict, cfg: dict, model: str, max_tokens: int,
     """What one call sends, from the fire's settings and the registry: (max_tokens to send, temperature to send or
     None to leave it out, the adjustments made). `model` is the part of the spec after the provider prefix (the key
     of `cfg`'s per-model tables). Each adjustment is {field, requested, sent, reason}; the caller records the list
-    in the record, so a departure from the fire's settings is never silent."""
+    in the record, so a departure from the fire's settings is never silent. A model the registry's
+    `disable_thinking` lists gets a `thinking` adjustment (requested None, sent "disabled"), which the caller turns
+    into the request parameter with `thinking_to_send`; such a model routed through a non-Anthropic block is
+    refused (SystemExit), because no other path sends the setting."""
     adjustments: list[dict] = []
     floor = min_output_tokens(cfg, model)
     sent_max = max(int(max_tokens), floor) if floor else int(max_tokens)
@@ -241,6 +284,17 @@ def call_settings(registry: dict, cfg: dict, model: str, max_tokens: int,
         sent_temperature = None
         adjustments.append({"field": "temperature", "requested": temperature, "sent": None,
                             "reason": f"registry anthropic.{OMIT_TEMPERATURE_FIELD}: {reason}"})
+    thinking_reason = thinking_disable_reason(model, registry)
+    if thinking_reason is not None:
+        # only the direct Anthropic path can send the setting (_send's extra_body); a listed model routed through an
+        # OpenAI-compatible block would think at its default while nothing could say otherwise, so it is refused here,
+        # which every caller reaches before its first call (elicit's budgets, the judge's settings)
+        api = cfg.get("api", "anthropic") if isinstance(cfg, dict) else "anthropic"
+        if api != "anthropic":
+            raise SystemExit(f"{model}: the registry's anthropic.{DISABLE_THINKING_FIELD} lists it, and only the direct "
+                             f"Anthropic API path can send thinking disabled; this route ({api}) cannot, so it is "
+                             "refused before any call (call it as anthropic:<id>)")
+        adjustments.append(thinking_disabled_adjustment(thinking_reason))
     return sent_max, sent_temperature, adjustments
 
 
@@ -384,11 +438,19 @@ def _client():
 _ANTHROPIC_NO_TEMPERATURE = False
 
 
-def _send(client, model: str, system: str | None, user_text: str, max_tokens: int, temperature: float | None):
+def _send(client, model: str, system: str | None, user_text: str, max_tokens: int, temperature: float | None,
+          thinking: dict | None = None):
     """One Messages call. Returns (text, input_tokens, output_tokens, raw_dict, headers).
 
     `temperature` None leaves the parameter out of the request (the registry's omit_temperature models, via
     call_settings, which records the omission).
+
+    `thinking` (2026-10-14), when given, is sent as `extra_body={"thinking": thinking}`: the registry's
+    disable_thinking models get {"type": "disabled"} (call_settings, thinking_to_send). extra_body rather than the
+    `thinking` keyword because the SDK is installed unpinned here (below: a release dropped a keyword this module
+    sent), and the SDK merges extra_body into the request body on every release, the Petri lane's locked 0.105.0
+    included. None, the default, adds nothing, so every other call's request is exactly what it was. The returned
+    text joins `text` blocks only, so a thinking block in a response never enters it.
 
     Module-level seam: tests monkeypatch this; nothing else in the module touches the
     network. Headers ride along for build forensics (request id, api version) - the
@@ -411,6 +473,8 @@ def _send(client, model: str, system: str | None, user_text: str, max_tokens: in
         kwargs["temperature"] = temperature
     if system:
         kwargs["system"] = system
+    if thinking is not None:
+        kwargs["extra_body"] = {"thinking": thinking}
     headers: dict = {}
     raw_api = getattr(client.messages, "with_raw_response", None)
     create = raw_api.create if raw_api is not None else client.messages.create
@@ -459,7 +523,8 @@ COMPAT_RETRIES = 5
 COMPAT_BACKOFF_SECONDS = (2, 4, 8, 16, 32)
 
 
-def _send_anthropic_retrying(client, model, system, user_text, max_tokens, temperature, before_retry=None):
+def _send_anthropic_retrying(client, model, system, user_text, max_tokens, temperature, before_retry=None,
+                             thinking: dict | None = None):
     """_send plus transient-status retries, mirroring _send_compat's policy.
 
     The Anthropic path originally had none: pilot 2b died mid-run on a single
@@ -468,10 +533,13 @@ def _send_anthropic_retrying(client, model, system, user_text, max_tokens, tempe
     error body's retry_after when present (1-120 s cap). `before_retry(attempt,
     status)`, when given, is consulted before each retry and may refuse it by
     returning False (the Petri judge charges the failed attempt to its spend
-    ceiling there and stops when the ceiling is spent, 2026-09-17)."""
+    ceiling there and stops when the ceiling is spent, 2026-09-17).
+    `thinking` reaches _send only when given, so a call without it reaches
+    _send exactly as before (2026-10-14)."""
+    extra = {"thinking": thinking} if thinking is not None else {}
     for attempt in range(COMPAT_RETRIES + 1):
         try:
-            return _send(client, model, system, user_text, max_tokens, temperature)
+            return _send(client, model, system, user_text, max_tokens, temperature, **extra)
         except Exception as exc:
             status = getattr(exc, "status_code", None)
             if status not in RETRYABLE_STATUSES or attempt >= COMPAT_RETRIES:
@@ -1396,8 +1464,10 @@ def elicit(args) -> Path:
         t0 = time.monotonic()
         if r is None or r["cfg"].get("api", "anthropic") == "anthropic":
             endpoint = "anthropic"
+            thinking = thinking_to_send(adjustments)
             res = _send_anthropic_retrying(
-                anthropic_client(), model, system, text, sent_max, sent_temperature)
+                anthropic_client(), model, system, text, sent_max, sent_temperature,
+                **({"thinking": thinking} if thinking is not None else {}))
             sent_temperature = note_sdk_temperature_drop(sent_temperature, temperature, adjustments)
         else:
             endpoint = r["cfg"].get("base_url", "")
@@ -1408,6 +1478,10 @@ def elicit(args) -> Path:
         latency_ms = int((time.monotonic() - t0) * 1000)
         cost = tracker.record(spec_key, in_tok, out_tok)
         settings = {"temperature": sent_temperature, "max_tokens": sent_max}
+        if thinking_to_send(adjustments) is not None:
+            # present only when sent (call_settings refuses a listed model on any other route), so every other
+            # record keeps its request shape
+            settings["thinking"] = thinking_to_send(adjustments)
         if adjustments:
             settings["request_adjustments"] = adjustments
         return out_text, raw, {
@@ -1626,7 +1700,59 @@ def is_secondary_judge(judge_model: str | None) -> bool:
     return ":" in (judge_model or "")
 
 
+# The advice lane's judge of record: the --judge-model default and the preregistered judge, a bare Anthropic id.
+# Owner decision Q8 (2026-10-14): Claude Haiku 5.5 judges beside it as a second judge, spelled
+# `anthropic:claude-haiku-5-5` so that `is_secondary_judge` keeps its rows out of the primary pool.
+JUDGE_OF_RECORD = "claude-haiku-4-5"
+
+
+def pooled_judge_problem(judge_model: str) -> str | None:
+    """Why `judge_model` may not judge, or None: it is a bare spec (no ':') naming a Claude model the engine prices
+    (medlang_circuits.evaluate_models.PRICING) other than the judge of record. Every consumer reads a bare-named
+    judge as primary (`is_secondary_judge`): `analyze` pools its tiers into the same modal cell as the judge of
+    record's, the scenario exporter keeps the last such row per response, and the judge-agreement exporter files it
+    as primary. A second Claude judge spelled bare would therefore be mixed silently into the published tiers; spelled
+    `anthropic:<id>` it calls the same model and is kept apart. Labels no price table names (clinician re-grades,
+    the tests' stand-ins) are not Claude model ids and are left to the existing path. scripts/fire_trigger.py
+    `advice_params_problems` refuses the same specs before a fire journals (2026-10-14)."""
+    name = str(judge_model or "").strip()
+    if ":" in name or name == JUDGE_OF_RECORD or name not in _PRICING:
+        return None
+    return (f"judge {judge_model!r} is a bare Claude model id other than the judge of record ({JUDGE_OF_RECORD}): "
+            "analyze, the scenario exporter and the judge-agreement exporter read every bare-named judge as the "
+            "primary judge, so its tiers would pool with the judge of record's; spell a second judge "
+            f"anthropic:{name}, which calls the same model and is kept apart as a secondary judge")
+
+
+def judge_sidecar_path(judgments_path: Path, fire_stamp: str) -> Path:
+    """The cost sidecar of one judge pass: judgments_<stem>.judge_<UTC stamp>.report.json beside the judgments file,
+    a new name for every pass so the ledger books each pass once and in full."""
+    return judgments_path.with_name(f"{judgments_path.stem}.judge_{fire_stamp}.report.json")
+
+
+def judge_price_problem(judge_model: str, registry: dict) -> str | None:
+    """Why `judge_model` cannot be judged with on this lane: no price table names it, so CostTracker would book its
+    calls at the fallback rate (owner decision Q6). Resolved as CostTracker._price resolves a judge: the registry
+    block's per-model pricing for the resolved model, then the engine table under the spec and its model name. The
+    fire path (fire_trigger.advice_judge_problems) refuses the same specs before journaling; this repeats it for a
+    direct `advice_eval.py judge` (Codex review of PR #114)."""
+    spec = _resolve_spec(judge_model, registry)
+    if (spec["cfg"].get("pricing") or {}).get(spec["model"]):
+        return None
+    if any(candidate in _PRICING for candidate in (judge_model, judge_model.split(":", 1)[-1])):
+        return None
+    return (f"judge {judge_model!r} is named by no price table (the registry's pricing, the engine's PRICING), so "
+            f"its calls would be booked at the fallback rate {_FALLBACK_PRICING[0]}/{_FALLBACK_PRICING[1]} per million "
+            "tokens (fallback_priced_judge)")
+
+
 def judge(args) -> Path:
+    pooled = pooled_judge_problem(args.judge_model)
+    if pooled:
+        raise SystemExit(f"refused before any call: {pooled}")
+    unpriced = judge_price_problem(args.judge_model, _load_providers(getattr(args, "providers", DEFAULT_PROVIDERS)))
+    if unpriced:
+        raise SystemExit(f"refused before any call: {unpriced}")
     rubric = _load_json(args.rubric)
     rubric_sha = sha256_text(canonical_json(rubric))
     tier_ids = [t["id"] for t in rubric["tiers"]]
@@ -1638,6 +1764,13 @@ def judge(args) -> Path:
 
     out_path = Path(args.out) if args.out else Path(args.responses).with_name(
         Path(args.responses).stem.replace("responses_", "judgments_") + ".jsonl")
+    # Each judge pass writes its own cost sidecar (2026-10-14, Codex review of PR #109): the stable
+    # judgments_<stem>.report.json was rewritten with the latest pass's cost, and scripts/ledger_update.py books a
+    # sidecar it has seen only by its growth, so a cheaper re-judge (Claude Haiku 5.5 after Haiku 4.5) booked nothing
+    # and a dearer one only the difference. A per-pass name is first seen once and booked in full; landed stable
+    # sidecars stay as they are, already booked.
+    fire_stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    sidecar_path = judge_sidecar_path(out_path, fire_stamp)
     existing = _read_jsonl(out_path)
     # A failed judgment (tier null - empty/truncated/unknown-tier response) is
     # not a judgment: it stays in the append-only file as history but does NOT
@@ -1694,6 +1827,7 @@ def judge(args) -> Path:
     # the ceiling's worst case uses the budget sent, and each judgment records any departure from the fire's values
     judge_sent_max, judge_temperature, judge_adjustments = call_settings(
         registry, spec["cfg"], spec["model"], judge_max_tokens, 0.0)
+    judge_thinking = thinking_to_send(judge_adjustments)
     custom_pricing = {}
     pricing = (spec["cfg"].get("pricing") or {}).get(spec["model"])
     if pricing:
@@ -1713,7 +1847,8 @@ def judge(args) -> Path:
                 if is_anthropic:
                     res = _send_anthropic_retrying(
                         client, spec["model"], None,
-                        _judge_prompt(rubric, r["response_text"]), judge_sent_max, judge_temperature)
+                        _judge_prompt(rubric, r["response_text"]), judge_sent_max, judge_temperature,
+                        **({"thinking": judge_thinking} if judge_thinking is not None else {}))
                     note_sdk_temperature_drop(judge_temperature, 0.0, adjustments)
                 else:
                     _pace(spec["provider"], spec["cfg"])
@@ -1745,11 +1880,11 @@ def judge(args) -> Path:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
                 n += 1
     finally:
-        sidecar = out_path.with_suffix(".report.json")
-        _write_json(sidecar, {
+        _write_json(sidecar_path, {
             "run_utc": utc_now_iso(), "responses_file": str(args.responses), "rubric_sha256": rubric_sha,
             "judge_model": args.judge_model, "judged": n, "cost_usd": round(tracker.spent, 6),
             "max_spend_usd": args.max_spend, "truncated": tracker.truncated,
+            "cost_basis": "this_judge_pass", "judgments_file": str(out_path),
         })
     print(f"judged {n} -> {out_path} (cost ${tracker.spent:.4f})")
     return out_path

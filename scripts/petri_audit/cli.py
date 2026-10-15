@@ -53,6 +53,7 @@ from .spend import (
     cache_booking_problems,
     dearest_price,
     judge_billing_channel,
+    judge_fallback_price_problems,
     judge_key_routing_problems,
     openrouter_price_problems,
     preflight_bound,
@@ -115,13 +116,16 @@ def cmd_verify_lock(args: argparse.Namespace) -> int:
 
 
 def _judge_price_problems(spec: str) -> list[str]:
-    """`spend.openrouter_price_problems` for a registry-form judge spec. A
+    """`spend.openrouter_price_problems` for a registry-form judge spec, and
+    `spend.judge_fallback_price_problems` (2026-10-14, owner decision Q6: a
+    judge no price table names would be booked at the 10/50 fallback rate). A
     spec that cannot be expanded to an Inspect name (a bare provider with no
     consumer_default) cannot be priced either, so it is a problem, not a crash."""
     try:
-        return openrouter_price_problems(registry_spec_to_inspect(spec))
+        problems = openrouter_price_problems(registry_spec_to_inspect(spec))
     except ValueError as exc:
         return [str(exc)]
+    return problems + judge_fallback_price_problems(spec)
 
 
 def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
@@ -206,7 +210,7 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
         return 3, {}
     if args.judge_model:
         # a judge spec the registry cannot resolve must fail here, before the target spends (Codex round 2)
-        from .judge_runner import judge_sampling_omissions, judge_spec_problems
+        from .judge_runner import judge_sampling_omissions, judge_spec_problems, judge_thinking_disabled
 
         judge_problems = judge_spec_problems(args.judge_model)
         if judge_problems:
@@ -227,6 +231,9 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
         # Inspect-name reading (spend.sampling_omissions) differs for colon-free specs containing "/" (2026-10-02)
         for param, reason in judge_sampling_omissions(args.judge_model).items():
             print(f"judge {args.judge_model}: {param} omitted from every call ({reason})")
+        thinking_reason = judge_thinking_disabled(args.judge_model)
+        if thinking_reason:
+            print(f"judge {args.judge_model}: thinking disabled on every call ({thinking_reason})")
         # the pre-flight is not given the judge's allowance, so it names the registry minimum the judge step will
         # hold the allowance to (judge_runner.judge_budget_problems refuses a smaller one before any judge call)
         from .judge_runner import judge_min_output_tokens
@@ -538,7 +545,15 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
     under `can_afford`, so the judge ceiling bounds the total: a priced judge
     is booked at its ceiling with the surviving rows' sum recorded beside it,
     a zero-price judge at zero (Codex rounds 4 and 5)."""
-    from .judge_runner import TIER_TEMPERATURE, cumulative_counts, judge_sampling_omissions, omission_fields, read_jsonl
+    from .judge_runner import (
+        TIER_TEMPERATURE,
+        cumulative_counts,
+        judge_sampling_omissions,
+        judge_thinking_disabled,
+        omission_fields,
+        read_jsonl,
+        thinking_fields,
+    )
 
     run_dir = Path(args.run_dir)
     # a readapt's judge was reserved by the readapt fire, not the source fire its directory names; the sidecar carries
@@ -582,6 +597,7 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
                # a judge model the registry withholds temperature from was sent none, for the spec as RegistryJudge
                # resolves it (this process cannot see an installed SDK's refusal; the surviving rows record their own)
                **omission_fields(judge_sampling_omissions(args.judge_model).get("temperature")),
+               **thinking_fields(judge_thinking_disabled(args.judge_model)),
                "task": "petri-audit-judge", "run_id": run_dir.name, "billing_channel": channel,
                "price_source": price.source, "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok}
     sidecar.update(identity)
@@ -596,14 +612,16 @@ def judge_of_record_block(judge_model: str, channel: str, price_source: str, sid
     path and digest). `temperature` is the instrument's setting (TIER_TEMPERATURE), which judge_settings_problems and
     a rejudge compare; when the calls went out without it the block also carries temperature_sent null and
     temperature_omitted, copied from the sidecar (judge_runner.omission_fields; review of 2026-10-01), and is
-    otherwise the shape every earlier manifest has."""
-    from .judge_runner import TIER_TEMPERATURE, omission_fields
+    otherwise the shape every earlier manifest has. Likewise thinking_sent "disabled" and thinking_disabled when the
+    calls were sent thinking disabled (judge_runner.thinking_fields; 2026-10-14)."""
+    from .judge_runner import TIER_TEMPERATURE, omission_fields, thinking_fields
 
     return {"judge_model": judge_model, "billing_channel": channel, "price_source": price_source,
             "judged_utc": sidecar["run_utc"], "cost_usd": sidecar["cost_usd"], "truncated": sidecar["truncated"],
             "planned": sidecar["planned"], "judged": totals["judged"], "null": totals["null"],
             "not_applicable": totals["not_applicable"], "judge_max_tokens": judge_max_tokens,
-            "temperature": TIER_TEMPERATURE, **omission_fields(sidecar.get("temperature_omitted"))}
+            "temperature": TIER_TEMPERATURE, **omission_fields(sidecar.get("temperature_omitted")),
+            **thinking_fields(sidecar.get("thinking_disabled"))}
 
 
 def cmd_judge(args: argparse.Namespace) -> int:

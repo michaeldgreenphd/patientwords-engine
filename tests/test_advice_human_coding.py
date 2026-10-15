@@ -54,6 +54,9 @@ def archive(tmp_path, monkeypatch):
     stim = next(out_dir.glob("stimuli_*.json"))
     monkeypatch.setattr(ae, "_client", lambda: object())
     monkeypatch.setattr(ae, "_send", _stub_send)
+    # judge-x is a fictional judge no price table names; the judge's fallback-price guard (judge_price_problem,
+    # Codex review of PR #114) is waived for it here and tested directly in tests/test_advice_eval.py
+    monkeypatch.setattr(ae, "judge_price_problem", lambda judge_model, registry: None)
     ae.main(["elicit", "--stimuli", str(stim), "--models", "model-x",
              "--arms", "clinical,patient,translated", "--samples", "1",
              "--translator-model", "model-t", "--max-spend", "5.0", "--out-dir", str(out_dir)])
