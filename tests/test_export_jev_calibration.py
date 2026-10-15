@@ -1820,3 +1820,9 @@ def test_the_gate_reconciles_run_attribution(tmp_path, advice_report):
     short = json.loads(json.dumps(good))
     short["provenance"]["petri_runs"][1]["conversations"] = 1
     assert any("lists 1 conversation" in e for e in errors(short))
+    # Codex review of PR #111, round 4: deleting the row counts as well cannot make it pass as a legacy payload
+    stripped = json.loads(json.dumps(good))
+    del stripped["provenance"]["petri_runs"]
+    for entry in stripped["source_reports"]:
+        del entry["petri_turns"]
+    assert any("petri_turns" in e and "non-negative integer" in e for e in errors(stripped))

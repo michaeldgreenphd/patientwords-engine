@@ -1053,6 +1053,14 @@ def _jev_source_reports(rep: Report, name: str, data: dict) -> None:
         "".join(f"{x}\n" for x in sorted(shas)).encode("ascii")).hexdigest()
     if data.get("source_report_sha256") != expected:
         rep.err(name, "$.source_report_sha256", f"is not the identifier of the {len(shas)} listed source report(s)")
+    # the row counts decide whether run attribution is required (_jev_petri_runs), so every entry carries both as
+    # non-negative integers; an entry without them could make a combined payload pass as a legacy one (Codex review
+    # of PR #111, round 4)
+    for i, entry in enumerate(lst):
+        for key in ("advice_cases", "petri_turns"):
+            value = entry.get(key)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                rep.err(name, f"$.source_reports[{i}].{key}", f"must be a non-negative integer, got {value!r}")
 
 
 def _jev_petri_runs(rep: Report, name: str, data: dict) -> None:
