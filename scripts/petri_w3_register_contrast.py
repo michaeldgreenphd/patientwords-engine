@@ -79,9 +79,17 @@ value count by wording or test is computed, printed or written, and the exclusio
 are given without their register label. Under --final the script refuses, writing nothing: a plan other than the
 committed default or with uncommitted changes, a plan not approved, a null judge.judge_model, a bootstrap seed other
 than 20261001, an --out file that exists, a rubric whose digest is not the plan's, a seed file other than the plan's, a
-run whose rows are not registered, a target epoch with no landed fire unless --declare-truncated is given and the
-trigger journal (read, never written) shows every such fire fired and resolved, and a secondary judge whose rows do not
-cover the comparable exchanges. A target epoch with no recorded fire at all cannot be declared truncated.
+run whose rows are not registered, a run list (positional run paths) that leaves out a landed run of a live plan fire
+under --runs-dir, a target epoch with no landed fire unless --declare-truncated is given and the trigger journal (read,
+never written) shows every such fire fired and resolved, and a secondary judge whose rows do not cover the comparable
+exchanges. A target epoch with no recorded fire at all cannot be declared truncated.
+
+A run has no registered rows, named in coverage, when: it fails the claim-grade contract (execution.claim_grade_eligible
+is not true; every wave-3 seed is declared claim-grade, so this is an operational defect fires_rule voids); its judge of
+record is another route and no recorded, verified re-grade replaces it; or the pass its registered rows would come from
+is incomplete (truncated, or judged + null + not applicable short of planned: verify_run checks integrity, not
+completeness). A coverage-only table is computed only for a dimension its check pooled; a refused one is reported
+refused with the reasons.
 
 Nothing is dropped silently (AGENTS.md): a missing input, a malformed row, an absent conversation, an exchange that is
 not comparable, a triple below its floor, a mechanism with no seed and an outcome that cannot be computed are each
@@ -649,6 +657,49 @@ def rebuild_rows(judgments_path: Path, manifest: dict, seeds: Mapping[str, dict]
     return rows, {"judgment_rows": len(judgments), "superseded_by_retry": superseded, "rows_rebuilt": len(rows)}
 
 
+JUDGE_COUNT_FIELDS = ("planned", "judged", "null", "not_applicable")
+
+
+def incomplete_pass(record: Any, what: str) -> str | None:
+    """Why a judging pass cannot vouch that every planned judgment has a row, or None when it can (the check
+    scripts/petri_three_arm.py's `_incomplete_judging` makes). `record` is a run's artifacts.judge_of_record or a
+    re-grade manifest's `counts`: `truncated` must be false, and judged + null + not_applicable must reach `planned`.
+    manifest.verify_run and rejudge.verify_output check integrity, not completeness: a pass the spend ceiling stopped
+    binds its partial file, and the judgments after the stop would vanish from the comparable exchanges unnamed."""
+    if not isinstance(record, Mapping):
+        return f"{what} is not an object, so it records neither truncation nor the plan count"
+    if record.get("truncated") is not False:
+        return (f"{what}.truncated is {record.get('truncated')!r} (the judge stopped before every plan was judged; "
+                f"planned {record.get('planned')!r})")
+    counts = {k: record.get(k) for k in JUDGE_COUNT_FIELDS}
+    if any(isinstance(v, bool) or not isinstance(v, int) for v in counts.values()):
+        return f"{what} lacks an integer count among {counts}"
+    recorded = counts["judged"] + counts["null"] + counts["not_applicable"]
+    if recorded < counts["planned"]:
+        return (f"{what} records {recorded} judgments (judged {counts['judged']}, null {counts['null']}, "
+                f"not_applicable {counts['not_applicable']}) for {counts['planned']} planned")
+    return None
+
+
+def claim_grade_problem(manifest: Mapping[str, Any]) -> str | None:
+    """Why a run fails the claim-grade contract, or None. Every wave-3 seed is declared claim_grade_eligible (design
+    note section 2), so a run whose manifest's execution.claim_grade_eligible is not true failed a contract check, had
+    records refused by the adapter, or ran a seed that is not claim-grade: an operational defect, for which fires_rule
+    voids the fire and re-fires its epoch. Its rows are never registered (judge_runner.analysis_rows marks every one of
+    them estimator_eligible false)."""
+    execution = manifest.get("execution") or {}
+    if execution.get("claim_grade_eligible") is True:
+        return None
+    failing = sorted(k for k, v in (execution.get("contract_checks") or {}).items()
+                     if not (isinstance(v, Mapping) and v.get("status") in ("pass", "not_applicable")))
+    refused = len((manifest.get("integrity") or {}).get("records_refused") or [])
+    seeds = sorted(str(s.get("seed_id")) for s in manifest.get("seeds") or []
+                   if s.get("claim_grade_eligible") is not True)
+    return (f"the run fails the claim-grade contract (execution.claim_grade_eligible is "
+            f"{execution.get('claim_grade_eligible')!r}; contract checks not passed: {failing}; records refused by the "
+            f"adapter: {refused}; seeds not claim-grade: {seeds}); fires_rule voids such a fire and re-fires its epoch")
+
+
 def read_regrade(out_dir: Path, runs_dir: Path, judge_model: str, manifest: dict, seeds: Mapping[str, dict],
                  ) -> tuple[list[dict], dict[str, Any]] | None:
     """A re-grade's rows for one source run, or None when the directory holds no re-grade. Refused, by name, unless
@@ -670,7 +721,8 @@ def read_regrade(out_dir: Path, runs_dir: Path, judge_model: str, manifest: dict
     info = {"path": where, "judge_model": judge_model, "journal_nonce": rm["fire"]["journal_nonce"],
             "manifest_sha256": sha256_file(out_dir / rejudge.MANIFEST_NAME),
             "judgments_sha256": rm["artifacts"]["judgments"]["sha256"], "truncated": rm["counts"]["truncated"],
-            "null_share": rm["counts"]["null_share"], **counts}
+            "null_share": rm["counts"]["null_share"],
+            "incomplete": incomplete_pass(rm["counts"], f"the re-grade {where}'s counts"), **counts}
     return rows, info
 
 
@@ -680,7 +732,10 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: w2.Reg
     directory without manifest.json or judgments.jsonl; a fire outside the plan (NotAPlanFire) or voided (VoidedFire);
     a run that fails `manifest.verify_run`; one that binds no judgments or records more than one epoch; a target spec
     that is not one of its fire's target's `target_specs`; judgments carrying two judge specs; a re-grade recorded for
-    a run already judged under judge.judge_model; and a re-grade that does not verify or names another judge."""
+    a run already judged under judge.judge_model; and a re-grade that does not verify or names another judge. A run
+    that fails the claim-grade contract (`claim_grade_problem`), and one whose registered rows would come from an
+    incomplete judging pass (`incomplete_pass`: its own, or the re-grade's), is loaded with no registered rows and the
+    reason: coverage names it, and --final refuses while it remains (void the fire and re-fire, or re-grade)."""
     path = Path(path)
     where = w2._display(path)
     if path.is_file():
@@ -718,7 +773,11 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: w2.Reg
     rows: list[dict] = []
     reason: str | None = None
     rows_from: dict[str, Any]
-    if plan.judge_model is None:
+    claim = claim_grade_problem(manifest)
+    if claim is not None:
+        reason = claim
+        rows_from = {"source": None}
+    elif plan.judge_model is None:
         reason = "judge.judge_model is null: no row is registered until the dated approval sets the judge route"
         rows_from = {"source": None}
     elif own_judge == plan.judge_model:
@@ -726,8 +785,13 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: w2.Reg
             raise AnalysisRefusal(f"{where}: re-grade fire {regrade_fire.journal_nonce} is recorded for a run already "
                                   f"judged under judge.judge_model {plan.judge_model!r}; which rows are registered is "
                                   f"ambiguous")
-        rows, counts = rebuild_rows(path / "judgments.jsonl", manifest, seeds, plan.judge_model, where)
-        rows_from = {"source": "the run's own judgments", **counts}
+        incomplete = incomplete_pass(artifacts.get("judge_of_record"), "artifacts.judge_of_record")
+        if incomplete is not None:
+            reason = f"its judge of record's pass is incomplete: {incomplete}"
+            rows_from = {"source": None}
+        else:
+            rows, counts = rebuild_rows(path / "judgments.jsonl", manifest, seeds, plan.judge_model, where)
+            rows_from = {"source": "the run's own judgments", **counts}
     else:
         rows_from = {"source": None, "own_judge": own_judge}
         out_dir = Path(rejudge_root) / rejudge.judge_slug(plan.judge_model) / path.name
@@ -753,6 +817,9 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: w2.Reg
                                           f"{regrade_fire.campaign_epoch}, but {path.name} is epoch "
                                           f"{fire.campaign_epoch}")
                 rows_from = {"source": "re-grade", "own_judge": own_judge, **info}
+                if info["incomplete"] is not None:
+                    reason = f"its re-grade under judge.judge_model is incomplete: {info['incomplete']}"
+                    rows = []
     recorded = (manifest.get("framework") or {}).get("outcome_registry_sha256")
     registry: w2.RegistryVersion | None = None
     registry_problem: str | None = None
@@ -1036,6 +1103,10 @@ def secondary_runs(runs: Sequence[RunInput], spec: str, rejudge_root: Path,
             out.append(SecondaryRun(run.stem, [], run.registry, run.registry_problem,
                                     {"run_stem": run.stem, "rows_from": None,
                                      "reason": f"no re-grade by {spec} at {w2._display(out_dir)}"}))
+        elif got[1]["incomplete"] is not None:
+            out.append(SecondaryRun(run.stem, [], run.registry, run.registry_problem,
+                                    {"run_stem": run.stem, "rows_from": got[1],
+                                     "reason": f"the re-grade by {spec} is incomplete: {got[1]['incomplete']}"}))
         else:
             rows, info = got
             out.append(SecondaryRun(run.stem, rows, run.registry, run.registry_problem,
@@ -1482,9 +1553,17 @@ def target_block(prep: Prepared, reading: Reading, standings: Mapping[str, Seque
         else:
             restricted[name] = {"seeds": list(plan.restricted[name]), **describe(mine[spec_name])}
     block["restricted_outcomes_descriptive"] = restricted
-    block["coverage_only"] = {name: {"status": "coverage only: no order, so no D",
-                                     **value_counts_by_wording(prep, reading, target.id, name)}
-                              for name in plan.coverage_only}
+    # each table only over rows its dimension check pooled: a dimension refused (registry definitions that differ
+    # across the runs, an unresolved registry version, no row under the pinned digest) is reported refused, by name,
+    # never counted over rows that are not one measurement
+    coverage_only: dict[str, Any] = {}
+    for name in plan.coverage_only:
+        check = reading.dimensions[("outcome", name)]
+        coverage_only[name] = ({"status": "refused", "reason": f"dimension outcome:{name} refused: "
+                                + "; ".join(check.reasons)} if not check.pooled else
+                               {"status": "coverage only: no order, so no D",
+                                **value_counts_by_wording(prep, reading, target.id, name)})
+    block["coverage_only"] = coverage_only
     return block
 
 
@@ -1627,20 +1706,40 @@ def agreement(prep: Prepared) -> dict[str, Any]:
     return out
 
 
-def directions_hold(record: Mapping[str, Any], secondary: Mapping[str, Any], plan: Plan) -> list[dict[str, Any]]:
-    """Whether each registered test's direction holds under the secondary judge (judge.regrade_reported)."""
+# where analysis_sections emits its tests; every other place a test appears is a copy of one of these (section_9_2,
+# section_9_3.gates, section_9_5 and section_9_6.per_target copy entries of `targets`)
+TEST_ROOTS = ("targets", "section_9_4", "section_9_6.restricted_outcomes_across_targets")
+
+
+def emitted_tests(sections: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
+    """Every test analysis_sections emits, by its path: each object under TEST_ROOTS carrying both a `p` and a
+    `direction` (a sign test, a scenario gate, a leave-one-scenario-out rerun, a sensitivity, exploratory or pooled
+    test). Descriptive blocks carry no p and are not tests."""
+    found: dict[str, Mapping[str, Any]] = {}
+
+    def walk(node: Any, path: str) -> None:
+        if isinstance(node, Mapping):
+            if "p" in node and "direction" in node:
+                found[path] = node
+            for k, v in node.items():
+                walk(v, f"{path}.{k}")
+    for root in TEST_ROOTS:
+        node: Any = sections
+        for part in root.split("."):
+            node = node.get(part, {}) if isinstance(node, Mapping) else {}
+        walk(node, root)
+    return found
+
+
+def directions_hold(record: Mapping[str, Any], secondary: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Whether each registered test's direction holds under the secondary judge (judge.regrade_reported): every test
+    the judge of record's tables emit (emitted_tests), beside the same test from the secondary's tables, or null when
+    the secondary's tables have none there (a contrast refused for it)."""
+    sec = emitted_tests(secondary)
     rows = []
-    for t in plan.targets:
-        for test in ("primary_sign_test", "scenario_gate", "exchanges_6_10"):
-            a, b = record["targets"][t.id].get(test, {}), secondary["targets"][t.id].get(test, {})
-            rows.append({"test": f"{t.id}.{test}", "record_direction": a.get("direction"),
-                         "secondary_direction": b.get("direction"),
-                         "holds": a.get("direction") is not None and a.get("direction") == b.get("direction")})
-    for part in ("style", "vocabulary", "paired_difference"):
-        a = record["section_9_4"].get("registered", {}).get("tests", {}).get(part, {})
-        b = secondary["section_9_4"].get("registered", {}).get("tests", {}).get(part, {})
-        rows.append({"test": f"decomposition.registered.{part}", "record_direction": a.get("direction"),
-                     "secondary_direction": b.get("direction"),
+    for path, a in emitted_tests(record).items():
+        b = sec.get(path, {})
+        rows.append({"test": path, "record_direction": a.get("direction"), "secondary_direction": b.get("direction"),
                      "holds": a.get("direction") is not None and a.get("direction") == b.get("direction")})
     return rows
 
@@ -1677,7 +1776,7 @@ def final_analysis(prep: Prepared, *, seed: int = DEFAULT_SEED,
         out["secondary_judge"] = {"label": SECONDARY_LABEL, "judge_model": prep.secondary_judge,
                                   "runs": [s.provenance for s in prep.secondary_runs],
                                   "coverage": prep.secondary_coverage, "agreement": agreement(prep),
-                                  "registered_test_directions": directions_hold(out, sec, prep.plan), **sec}
+                                  "registered_test_directions": directions_hold(out, sec), **sec}
     return out
 
 
@@ -1762,6 +1861,33 @@ def invocation_problems(args: argparse.Namespace) -> list[str]:
     return problems
 
 
+def omitted_landed_runs(runs_dir: Path, plan: Plan, analysed: Sequence[RunInput]) -> list[str]:
+    """Under --final with run paths given: every run directory under `runs_dir` that carries a live plan fire's journal
+    nonce and is not among the runs analysed, or that cannot be read to say which fire it carries. A selective subset
+    would otherwise make the once-only artifact, with the fires left out classed as not landed (and declarable as
+    truncated, since a landed fire's journal entry is resolved too)."""
+    if not Path(runs_dir).is_dir():
+        return [f"--runs-dir {runs_dir} is not a directory, so the runs given cannot be shown to be every landed plan "
+                f"fire"]
+    given = {Path(r.run_dir).resolve() for r in analysed}
+    problems = []
+    for d in sorted(p for p in Path(runs_dir).iterdir() if p.is_dir() and (p / "manifest.json").is_file()):
+        if d.resolve() in given:
+            continue
+        try:
+            nonce = ((load_json(d / "manifest.json") or {}).get("spend") or {}).get("journal_nonce")
+        except (ValueError, AttributeError) as exc:
+            problems.append(f"{w2._display(d)}: its manifest cannot be read ({exc}), so whether it is a landed plan "
+                            f"fire left out of the run list is unknown")
+            continue
+        fire = plan.fires.get(nonce) if isinstance(nonce, str) else None
+        if fire is not None and fire.voided is None:
+            problems.append(f"{w2._display(d)} carries plan fire {nonce} (target {fire.target}, epoch "
+                            f"{fire.campaign_epoch}) but is not among the runs given; --final analyses every landed "
+                            f"plan fire")
+    return problems
+
+
 def final_problems(args: argparse.Namespace, prep: Prepared) -> tuple[list[str], dict[str, list[int]]]:
     """What the inputs rule out under --final, and the target epochs a declared truncation covers."""
     plan = prep.plan
@@ -1779,6 +1905,8 @@ def final_problems(args: argparse.Namespace, prep: Prepared) -> tuple[list[str],
                         f"{plan.rubric_digest} the plan pins")
     if prep.seeds_path.resolve() != plan.seed_file.resolve():
         problems.append(f"--seeds {prep.seeds_path} is not the plan's seed_file {w2._display(plan.seed_file)}")
+    if args.runs:
+        problems.extend(omitted_landed_runs(args.runs_dir, plan, prep.runs))
     for r in prep.runs:
         if not r.registered:
             problems.append(f"run {r.stem} has no registered rows: {r.unregistered_reason}")

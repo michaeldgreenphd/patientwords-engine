@@ -153,7 +153,8 @@ def judgment_rows(cell: Cell, conversation_id: str, value_fn: Callable, judge: s
 def write_campaign(tmp_path: Path, *, fires: tuple[str, ...] = tuple(FIRES), value_fn: Callable = default_value,
                    judge_of: Callable[[str], str] = lambda nonce: JUDGE,
                    spec_of: Callable[[str], str] | None = None,
-                   mutate: Callable[[Cell, dict], dict | None] | None = None, **plan_over: Any) -> dict[str, Any]:
+                   mutate: Callable[[Cell, dict], dict | None] | None = None,
+                   manifest_update: Callable[[str, dict], None] | None = None, **plan_over: Any) -> dict[str, Any]:
     """A plan, a seed file and one run directory per fire. `judge_of(nonce)` is the run's own judge, `spec_of(nonce)`
     its target spec (default: its target's first), and `mutate(cell, row)` may change or drop a judgment row."""
     (tmp_path / "seeds.json").write_text(json.dumps({"seed_schema": {}, "seeds": list(SEEDS.values())}),
@@ -208,13 +209,15 @@ def write_campaign(tmp_path: Path, *, fires: tuple[str, ...] = tuple(FIRES), val
         spec = spec_of(nonce) if spec_of else next(t for t in TARGETS if t["id"] == target)["target_specs"][0]
         m["models"]["target"]["model"] = spec
         m["models"]["target"]["inspect_name"] = spec
+        if manifest_update:
+            manifest_update(nonce, m)
         (run_dir / "manifest.json").write_text(json.dumps(seal_manifest(m, None)), encoding="utf-8")
         out["runs"][nonce] = run_dir
     return out
 
 
 def write_regrade(c: dict[str, Any], nonce: str, spec: str, regrade_nonce: str, *,
-                  value_fn: Callable | None = None, run_id: str = "900") -> Path:
+                  value_fn: Callable | None = None, run_id: str = "900", truncated: bool = False) -> Path:
     """A re-grade of one run in the layout mode rejudge writes (data/petri/rejudge/<slug>/<stem>/): the run's
     judgments again under `spec` (with `value_fn`'s values when given), the analysis rows, the judge sidecar and a
     sealed, schema-valid manifest binding the source run, which the chain file names. Checked with verify_output."""
@@ -267,7 +270,7 @@ def write_regrade(c: dict[str, Any], nonce: str, spec: str, regrade_nonce: str, 
                    "journal_nonce": regrade_nonce, "source_runs": [stem], "position": 1},
           "counts": {"planned": len(rows), **totals, "null_share": rejudge.null_share(totals["judged"], totals["null"]),
                      "judge_of_record_null_share": rejudge.null_share(jor["judged"], jor["null"]),
-                     "truncated": False, "stopped_early": False, "call_failures": 0},
+                     "truncated": truncated, "stopped_early": False, "call_failures": 0},
           "estimate": {"calls": len(rows), "recorded_input_tokens": 0, "recorded_output_tokens": 0,
                        "calls_without_recorded_usage": 0, "price_source": "synthetic", "input_per_mtok": 1.0,
                        "output_per_mtok": 5.0, "expected_usd": 0.5, "worst_case_usd": 1.0,
@@ -773,7 +776,7 @@ def test_the_secondary_judge_gets_its_own_labelled_tables_never_mixed_with_the_r
     assert agree["within_one"] == total
     assert (agree["secondary_ranked_lower"], agree["secondary_ranked_higher"]) == (n * 5, len(SEEDS_IDS))
     holds = {r["test"]: r["holds"] for r in sec["registered_test_directions"]}
-    assert holds["tgt-a.primary_sign_test"] is False
+    assert holds["targets.tgt-a.primary_sign_test"] is False
     assert {r["judge_model"] for run in sec["runs"] for r in [run["rows_from"]]} == {SECOND}
 
 
@@ -814,3 +817,123 @@ def test_a_contrast_refused_for_the_record_is_refused_by_name_for_the_secondary(
     prep.secondary_standings.pop(name, None)
     doc = w3.final_analysis(prep, resamples=50)
     assert json.dumps(doc["secondary_judge"]).count("refused for the judge of record: no row under the pinned") >= 1
+
+
+# ------------------------------------------------------------------ review of PR #113 (Codex)
+
+
+def test_final_refuses_a_run_list_that_leaves_out_a_landed_plan_fire(tmp_path, monkeypatch, capsys):
+    """Codex, PR #113: with run paths given, the fires left out were classed as not landed, and a declared truncation
+    accepted them because a landed fire's journal entry is resolved too. Every landed plan fire must be analysed."""
+    c = write_campaign(tmp_path)
+    final_ready(monkeypatch, c, ({"trigger": "petri-audit", "nonce": "c2", "fired_utc": "2026-10-20T00:00:00Z",
+                                  "resolved": True, "evicted": False},))
+    out = tmp_path / "final.json"
+    subset = [str(c["runs"][n]) for n in FIRES if n != "c2"]
+    assert w3.main(cli_args(c, "--final", "--out", str(out), "--declare-truncated", "outage", *subset)) == 2
+    err = capsys.readouterr().err
+    assert "carries plan fire c2 (target tgt-c, epoch 2) but is not among the runs given" in err
+    assert not out.exists()
+    # every landed fire given: no refusal of that kind
+    every = [str(c["runs"][n]) for n in FIRES]
+    assert w3.main(cli_args(c, "--final", "--out", str(out), *every)) == 0
+
+
+def test_registered_test_directions_cover_every_test_the_tables_emit(tmp_path, monkeypatch, capsys):
+    """Codex, PR #113: the secondary's direction check covered only each target's primary test, gate and exchanges
+    6-10 test. It now covers every test analysis_sections emits."""
+    c = write_campaign(tmp_path, value_fn=patterned)
+    for nonce in FIRES:
+        write_regrade(c, nonce, SECOND, f"q8-{nonce}", value_fn=second_values)
+    doc = run_final(monkeypatch, c, tmp_path, "--secondary-judge", SECOND)
+    capsys.readouterr()
+    tests = {r["test"] for r in doc["secondary_judge"]["registered_test_directions"]}
+    assert tests == set(w3.emitted_tests(doc))
+    for path in ("targets.tgt-a.primary_sign_test", "targets.tgt-a.scenario_gate", "targets.tgt-a.exchanges_6_10",
+                 "targets.tgt-a.leave_one_scenario_out.syn-a", "targets.tgt-b.sensitivity.exchange_1",
+                 f"targets.tgt-c.exploratory.tests.{FAMILY[0]}", "section_9_4.registered.tests.paired_difference",
+                 "section_9_4.prespecified_secondary.tests.style",
+                 f"section_9_6.restricted_outcomes_across_targets.{REFERRAL}"):
+        assert path in tests, path
+    # descriptive blocks carry no test
+    assert not any("each_mechanism_alone" in t or "restricted_outcomes_descriptive" in t for t in tests)
+
+
+def _truncated(nonce: str, m: dict) -> None:
+    if nonce == "a1":
+        m["artifacts"]["judge_of_record"]["truncated"] = True
+
+
+def _short(nonce: str, m: dict) -> None:
+    if nonce == "a1":
+        m["artifacts"]["judge_of_record"]["planned"] = m["artifacts"]["judge_of_record"]["planned"] + 5
+
+
+@pytest.mark.parametrize("update, named", [(_truncated, "truncated is True"), (_short, "judgments (judged")])
+def test_an_incomplete_judge_pass_registers_no_rows_and_refuses_final(tmp_path, monkeypatch, capsys, update, named):
+    """Codex, PR #113: verify_run checks integrity, not completeness, so a truncated or short judging pass registered
+    its partial rows. Such a run now has no registered rows, named, and --final refuses."""
+    c = write_campaign(tmp_path, manifest_update=update)
+    run = next(r for r in prepared(c).runs if r.stem == STEMS["a1"])
+    assert not run.registered and run.rows == [] and "incomplete" in run.unregistered_reason
+    assert named in run.unregistered_reason
+    final_ready(monkeypatch, c)
+    assert w3.main(cli_args(c, "--final", "--out", str(tmp_path / "final.json"))) == 2
+    assert f"run {STEMS['a1']} has no registered rows" in capsys.readouterr().err
+
+
+def test_a_truncated_regrade_registers_no_rows_and_leaves_the_secondary_short(tmp_path):
+    c = write_campaign(tmp_path, judge_of=lambda nonce: OTHER_ROUTE if nonce == "b1" else JUDGE)
+    write_regrade(c, "b1", JUDGE, "rg-b", truncated=True)
+    add_regrade_fire(c, "rg-b", [STEMS["b1"]])
+    run = next(r for r in prepared(c).runs if r.stem == STEMS["b1"])
+    assert not run.registered and "re-grade under judge.judge_model is incomplete" in run.unregistered_reason
+    (tmp_path / "second").mkdir()
+    c2 = write_campaign(tmp_path / "second")
+    for nonce in FIRES:
+        write_regrade(c2, nonce, SECOND, f"q8-{nonce}", truncated=nonce == "a2")
+    prep = prepared(c2, secondary_judge=SECOND)
+    assert prep.secondary_complete is False
+    reasons = [r["reason"] for r in w3.coverage(prep)["secondary_judge"]["runs"] if r["reason"]]
+    assert len(reasons) == 1 and "is incomplete" in reasons[0]
+
+
+def test_a_run_failing_the_claim_grade_contract_registers_no_rows(tmp_path, monkeypatch, capsys):
+    """Codex, PR #113: execution.claim_grade_eligible was only copied into provenance. Every wave-3 seed is declared
+    claim-grade (design note section 2), so a run that fails the contract is an operational defect fires_rule voids;
+    it registers no rows, named, and --final refuses."""
+    def failed(nonce: str, m: dict) -> None:
+        if nonce == "b2":
+            m["execution"]["claim_grade_eligible"] = False
+            m["execution"]["contract_checks"]["no_prefill"] = {"status": "fail", "detail": "synthetic"}
+    c = write_campaign(tmp_path, manifest_update=failed)
+    prep = prepared(c)
+    run = next(r for r in prep.runs if r.stem == STEMS["b2"])
+    assert not run.registered and run.rows == []
+    assert "fails the claim-grade contract" in run.unregistered_reason and "no_prefill" in run.unregistered_reason
+    assert all(not t.conversations[COL] for t in prep.triples if t.run_stem == STEMS["b2"])
+    final_ready(monkeypatch, c)
+    assert w3.main(cli_args(c, "--final", "--out", str(tmp_path / "final.json"))) == 2
+    assert "fails the claim-grade contract" in capsys.readouterr().err
+
+
+def test_a_coverage_only_table_is_refused_when_its_dimension_is(tmp_path):
+    """Codex, PR #113: the coverage-only value counts were built even when the dimension check refused the outcome
+    (registry definitions that differ across runs), merging rows that are not one measurement."""
+    key = COVERAGE_ONLY[0]
+    changed = deepcopy(REGISTRY)
+    entry = next(d for d in changed["dimensions"] if d["id"] == key)
+    entry["values"] = list(reversed(entry["values"]))
+    registry = tmp_path / "registry_changed.json"
+    registry.write_text(json.dumps(changed), encoding="utf-8")
+
+    def recorded(nonce: str, m: dict) -> None:
+        if nonce == "a1":
+            m["framework"]["outcome_registry_sha256"] = sha256_file(registry)
+    c = write_campaign(tmp_path, manifest_update=recorded)
+    prep = prepared(c, registry_versions=[registry])
+    assert prep.record.dimensions[("outcome", key)].pooled is False
+    result = w3.final_analysis(prep, resamples=50)
+    table = result["targets"]["tgt-a"]["coverage_only"][key]
+    assert table["status"] == "refused" and "differs across the pooled runs" in table["reason"]
+    assert "by_wording" not in table
