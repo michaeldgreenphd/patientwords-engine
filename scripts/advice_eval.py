@@ -1724,6 +1724,12 @@ def pooled_judge_problem(judge_model: str) -> str | None:
             f"anthropic:{name}, which calls the same model and is kept apart as a secondary judge")
 
 
+def judge_sidecar_path(judgments_path: Path, fire_stamp: str) -> Path:
+    """The cost sidecar of one judge pass: judgments_<stem>.judge_<UTC stamp>.report.json beside the judgments file,
+    a new name for every pass so the ledger books each pass once and in full."""
+    return judgments_path.with_name(f"{judgments_path.stem}.judge_{fire_stamp}.report.json")
+
+
 def judge(args) -> Path:
     pooled = pooled_judge_problem(args.judge_model)
     if pooled:
@@ -1739,6 +1745,13 @@ def judge(args) -> Path:
 
     out_path = Path(args.out) if args.out else Path(args.responses).with_name(
         Path(args.responses).stem.replace("responses_", "judgments_") + ".jsonl")
+    # Each judge pass writes its own cost sidecar (2026-10-14, Codex review of PR #109): the stable
+    # judgments_<stem>.report.json was rewritten with the latest pass's cost, and scripts/ledger_update.py books a
+    # sidecar it has seen only by its growth, so a cheaper re-judge (Claude Haiku 5.5 after Haiku 4.5) booked nothing
+    # and a dearer one only the difference. A per-pass name is first seen once and booked in full; landed stable
+    # sidecars stay as they are, already booked.
+    fire_stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    sidecar_path = judge_sidecar_path(out_path, fire_stamp)
     existing = _read_jsonl(out_path)
     # A failed judgment (tier null - empty/truncated/unknown-tier response) is
     # not a judgment: it stays in the append-only file as history but does NOT
@@ -1848,11 +1861,11 @@ def judge(args) -> Path:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
                 n += 1
     finally:
-        sidecar = out_path.with_suffix(".report.json")
-        _write_json(sidecar, {
+        _write_json(sidecar_path, {
             "run_utc": utc_now_iso(), "responses_file": str(args.responses), "rubric_sha256": rubric_sha,
             "judge_model": args.judge_model, "judged": n, "cost_usd": round(tracker.spent, 6),
             "max_spend_usd": args.max_spend, "truncated": tracker.truncated,
+            "cost_basis": "this_judge_pass", "judgments_file": str(out_path),
         })
     print(f"judged {n} -> {out_path} (cost ${tracker.spent:.4f})")
     return out_path
