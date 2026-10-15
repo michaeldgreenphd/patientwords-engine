@@ -10,6 +10,13 @@ rendered prompts and contexts, checked digest for digest against the judge of
 record's rows), and sends each to the new judge under the same output
 allowance and temperature.
 
+That is today's instrument (`current`). A run whose judge of record ran under prompt files or a planner that have
+since changed fails that parity check, and the `historical` instrument (scripts/petri_audit/historical.py, owner
+decision R2 of 2026-10-14) re-grades it instead: it replays the judge of record's own judgments, each prompt rebuilt
+from the prompt-file version its row records and held to the same digest-for-digest parity check. Only the plan
+(`instrument`) and the manifest (`instrument.historical`) of a historical re-grade differ in shape; a current one is
+written exactly as before.
+
 Nothing under `data/petri/runs/` is written. Each source run's re-grade goes to
 its own directory, `data/petri/rejudge/<judge slug>/<source run stem>/`,
 holding `judgments.jsonl`, `analysis_rows.jsonl` (judge_runner.analysis_rows),
@@ -548,13 +555,19 @@ def null_share(judged: Any, null: Any) -> float | None:
 
 
 def make_plan(*, params: dict, runs_dir: Path | str, rejudge_root: Path | str, journal_entries: list[dict],
-              workflow_run_id: Any, workflow_run_attempt: Any, commit: str) -> dict:
+              workflow_run_id: Any, workflow_run_attempt: Any, commit: str, instrument: str = "current") -> dict:
     """Everything the rejudge step needs, established before any call: the judge and its ceiling, and for each
     source run the landed run it binds (digests, judge of record), the output directory and what earlier fires
     left in it, and the plan digest after the parity check against the judge of record. `params` are the params
-    job's resolved outputs (strings) with `_nonce`. Raises RejudgeError naming every problem found."""
+    job's resolved outputs (strings) with `_nonce`. `instrument` is `current` (today's planner and prompt files) or
+    `historical` (the judge of record's own judgments replayed, scripts/petri_audit/historical.py); the plan records
+    it only when it is historical, so today's plans keep their shape. Raises RejudgeError naming every problem found."""
+    from .historical import CURRENT, instrument_problem, plans_for
     from .judge_runner import TIER_TEMPERATURE, read_jsonl
 
+    instrument_refusal = instrument_problem(instrument)
+    if instrument_refusal:
+        raise RejudgeError(instrument_refusal)
     if str(params.get("mode", "")) != MODE:
         raise RejudgeError(f"rejudge planning needs mode {MODE}, got {params.get('mode')!r}")
     stems = parse_source_runs(params.get("source_runs"))
@@ -639,7 +652,7 @@ def make_plan(*, params: dict, runs_dir: Path | str, rejudge_root: Path | str, j
             except RejudgeError as exc:
                 problems.append(str(exc))
         try:
-            plans, _manifest, _seeds = build_plans(runs_dir, stem, seeds_file)
+            plans, _manifest, _seeds = plans_for(instrument, runs_dir, stem, seeds_file)
         except RejudgeError as exc:
             problems.append(str(exc))
             continue
@@ -671,7 +684,7 @@ def make_plan(*, params: dict, runs_dir: Path | str, rejudge_root: Path | str, j
             "rejudge_root": str(rejudge_root), "source_runs": stems,
             "fire": {"workflow_run_id": run_id, "workflow_run_attempt": attempt, "commit": str(commit),
                      "journal_nonce": nonce},
-            "estimate": estimate, "sources": sources}
+            "estimate": estimate, "sources": sources, **({} if instrument == CURRENT else {"instrument": instrument})}
 
 
 # ------------------------------------------------------------ execution
@@ -775,6 +788,7 @@ def execute(plan: dict, *, started_dir: Path | str, client_factory: Callable[[st
     the fire (later runs are `not_started` and write nothing); a judge client that raises ends it too, with its
     sidecar written (`aborted`). Before the first call for a run, a marker naming its sidecar and allotment is
     written under `started_dir` (outside the checkout), which `impute_missing_reports` reads if the process dies."""
+    from .historical import CURRENT, instrument_for, plans_for
     from .judge_runner import (
         TIER_TEMPERATURE,
         JudgeAborted,
@@ -788,6 +802,7 @@ def execute(plan: dict, *, started_dir: Path | str, client_factory: Callable[[st
     judge_model, slug = plan["judge_model"], plan["judge_slug"]
     runs_dir, root = Path(plan["runs_dir"]), Path(plan["rejudge_root"])
     fire = plan["fire"]
+    instrument = plan.get("instrument", CURRENT)
     # before any marker is written: a judge whose key is absent fails at its first call with SystemExit, which leaves
     # no sidecar, and the marker would have the fallback book the whole allotment for a call that was never made
     key_problem = None if plan["rehearsal"] else judge_key_problem(judge_model, environ)
@@ -812,7 +827,7 @@ def execute(plan: dict, *, started_dir: Path | str, client_factory: Callable[[st
         problems = output_dir_problems(out_dir, stem) + kept_prior_problems(out_dir, stem, source["prior_judge_reports"])
         if sha256_file(runs_dir / stem / "manifest.json") != source["source"]["manifest_sha256"]:
             problems.append(f"{stem}: the source manifest changed after the rejudge bound it")
-        plans, manifest, seeds = build_plans(runs_dir, stem, plan["seeds_file"])
+        plans, manifest, seeds = plans_for(instrument, runs_dir, stem, plan["seeds_file"])
         if plan_digest(plans) != source["plan_sha256"]:
             problems.append(f"{stem}: the plan built now differs from the plan the rejudge bound")
         if problems:
@@ -855,7 +870,8 @@ def execute(plan: dict, *, started_dir: Path | str, client_factory: Callable[[st
         arows = analysis_rows(rows, manifest, seeds)
         (out_dir / ANALYSIS_NAME).write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in arows),
                                              encoding="utf-8")
-        record = build_manifest(plan=plan, source=source, position=position, instrument=instrument_block(plans),
+        record = build_manifest(plan=plan, source=source, position=position,
+                                instrument=instrument_for(instrument, plans, commit=fire["commit"]),
                                 sidecar={**sidecar, "temperature": TIER_TEMPERATURE}, rows=rows, out_dir=out_dir,
                                 report_name=report_name, analysis_count=len(arows), now_fn=now_fn)
         problems = validate_with_refs(record, load_json(MANIFEST_SCHEMA))

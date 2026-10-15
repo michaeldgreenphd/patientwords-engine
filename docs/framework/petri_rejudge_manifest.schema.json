@@ -105,10 +105,31 @@
           "properties": {"ref": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/sha256"},
                          "digest": {"type": "string", "minLength": 1}}
         },
-        "prompt_files": {"type": "object", "description": "Prompt file ref -> {digest (the canonical digest the rows carry), sha256 (the file)}: every outcome prompt the plans use, and the register prompt an autonomous (adaptive-auditor) run's plans carry."},
+        "prompt_files": {"type": "object", "description": "Prompt file ref -> {digest (the canonical digest the rows carry), sha256 (the file)}: every outcome prompt the plans use, and the register prompt an autonomous (adaptive-auditor) run's plans carry. Under the historical instrument each entry also carries git_blob (the git blob id of the bytes used), source (checkout or archive), commit (the archive entry's commit, or the fire's own checkout) and, from the archive, archive_file."},
         "plan_sha256": {"$ref": "#/$defs/sha256"},
         "planned": {"$ref": "#/$defs/count"},
-        "parity_with_judge_of_record": {"type": "string", "enum": ["exact"], "description": "Every planned judgment is one the judge of record made, shown the same rendered prompt and context (by digest), and none is missing."}
+        "parity_with_judge_of_record": {"type": "string", "enum": ["exact"], "description": "Every planned judgment is one the judge of record made, shown the same rendered prompt and context (by digest), and none is missing."},
+        "historical": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Present only when the re-grade used the historical instrument (scripts/petri_audit/historical.py, owner decision R2 of 2026-10-14): the judge of record's own judgments replayed, each prompt rebuilt from the prompt-file version its row records and checked digest for digest. Absent under today's instrument.",
+          "required": ["instrument", "basis", "judgments_replayed", "calls", "not_applicable", "contexts_recovered_by_digest", "archived_prompt_files", "archive_index"],
+          "properties": {
+            "instrument": {"type": "string", "enum": ["historical"]},
+            "basis": {"type": "string", "minLength": 1},
+            "judgments_replayed": {"$ref": "#/$defs/count"},
+            "calls": {"$ref": "#/$defs/count"},
+            "not_applicable": {"$ref": "#/$defs/count"},
+            "contexts_recovered_by_digest": {"$ref": "#/$defs/count"},
+            "archived_prompt_files": {"type": "array", "items": {"type": "string", "minLength": 1}},
+            "archive_index": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["ref", "sha256"],
+              "properties": {"ref": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/sha256"}}
+            }
+          }
+        }
       }
     },
     "fire": {

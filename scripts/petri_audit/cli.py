@@ -21,12 +21,12 @@ same checks and calls nothing.
     python -m scripts.petri_audit.cli run-summary --run-dir DIR --mode MODE [--raw-eval-dir DIR] [--seeds FILE] [...]
     python -m scripts.petri_audit.cli repro-pack --vendor V --publication-state S --run-dir DIR [...]
     python -m scripts.petri_audit.cli repro-pack --check | --record-sent VERSION --sent-to ROLE   (repro_pack.py)
-    python -m scripts.petri_audit.cli rejudge-plan --params-file FILE --rejudge-run-id ID [...] --out PLAN   (mode rejudge)
+    python -m scripts.petri_audit.cli rejudge-plan --params-file FILE --rejudge-run-id ID [...] --out PLAN [--instrument historical]
     python -m scripts.petri_audit.cli rejudge --plan PLAN --started-dir DIR
     python -m scripts.petri_audit.cli rejudge-spend-report --plan PLAN --started-dir DIR
     python -m scripts.petri_audit.cli verify-rejudge (--plan PLAN | --dir DIR ... | --root DIR) [--runs-dir DIR]
     python -m scripts.petri_audit.cli rejudge-summary --plan PLAN [--seal-scan]
-    python -m scripts.petri_audit.cli rejudge-rehearse --source-run STEM --out-root DIR   ($0, mock judge, local)
+    python -m scripts.petri_audit.cli rejudge-rehearse --source-run STEM --out-root DIR [--instrument historical]   ($0, local)
 
 Python 3.11 can run everything except `run` and `adapt`, which import the
 harness and are 3.12 only.
@@ -41,6 +41,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import readapt, rejudge, repro_pack
+from .historical import CURRENT, INSTRUMENTS
 from .envlock import load_lock, report_lines, verify_lock
 from .framework import ENV_LOCK, OUTCOME_REGISTRY, ROOT, SEED_FILE, load_json, sha256_file, write_json
 from .manifest import bind_judgments, reseal_problems, verify_chain, verify_run
@@ -67,6 +68,11 @@ from .spend import (
 )
 
 DEFAULT_RUNS_DIR = ROOT / "data" / "petri" / "runs"
+
+
+INSTRUMENT_HELP = ("current (default): plan with today's planner and prompt files, checked against the judge of "
+                   "record; historical: replay the judge of record's own judgments, each prompt rebuilt from the "
+                   "prompt-file version its row records (scripts/petri_audit/historical.py)")
 
 
 def engine_sha() -> str | None:
@@ -828,14 +834,15 @@ def cmd_rejudge_plan(args: argparse.Namespace) -> int:
         journal = read_journal(args.journal) if Path(args.journal).is_file() else []
         plan = rejudge.make_plan(params=params, runs_dir=Path(args.runs_dir), rejudge_root=Path(args.rejudge_root),
                                  journal_entries=journal, workflow_run_id=args.rejudge_run_id,
-                                 workflow_run_attempt=args.rejudge_run_attempt, commit=args.rejudge_commit)
+                                 workflow_run_attempt=args.rejudge_run_attempt, commit=args.rejudge_commit,
+                                 instrument=args.instrument)
     except (rejudge.RejudgeError, ValueError, KeyError, OSError) as exc:
         print(f"rejudge refused before any call: {exc}", file=sys.stderr)
         return 12
     write_json(Path(args.out), plan)
     print(f"rejudge plan: judge {plan['judge_model']} ({'rehearsal, $0' if plan['rehearsal'] else 'paid'}), fire "
           f"ceiling ${plan['judge_max_spend_usd']:.4f}, judge_max_tokens {plan['judge_max_tokens']}, nonce "
-          f"{plan['fire']['journal_nonce']!r}")
+          f"{plan['fire']['journal_nonce']!r}, instrument {plan.get('instrument', 'current')}")
     for source in plan["sources"]:
         est = source["estimate"]
         print(f"  {source['run_stem']}: {source['planned']} planned judgment(s), parity with the judge of record "
@@ -998,7 +1005,8 @@ def cmd_rejudge_rehearse(args: argparse.Namespace) -> int:
                   "judge_model": rejudge.MOCK_JUDGE, "judge_max_spend": "0.01", "judge_max_tokens": str(tokens),
                   "commit_outputs": "false", "seeds_file": seeds_file, "_nonce": ""}
         plan = rejudge.make_plan(params=params, runs_dir=runs_dir, rejudge_root=out_root, journal_entries=[],
-                                 workflow_run_id="0", workflow_run_attempt="1", commit="0" * 40)
+                                 workflow_run_id="0", workflow_run_attempt="1", commit="0" * 40,
+                                 instrument=args.instrument)
         out_root.mkdir(parents=True, exist_ok=True)
         write_json(out_root / "plan.json", plan)
         outcome = rejudge.execute(plan, started_dir=out_root / "_started")
@@ -1017,6 +1025,14 @@ def cmd_rejudge_rehearse(args: argparse.Namespace) -> int:
         c = m["counts"]
         print(f"  parity with judge of record {m['source']['judge_of_record']['judge_model']!r}: "
               f"{m['instrument']['parity_with_judge_of_record']}; plan {m['instrument']['plan_sha256'][:12]}")
+        hist = m["instrument"].get("historical")
+        if hist:
+            print(f"  historical instrument: {hist['judgments_replayed']} judgment(s) replayed ({hist['calls']} call(s), "
+                  f"{hist['not_applicable']} not applicable), {hist['contexts_recovered_by_digest']} context(s) "
+                  f"recovered by digest")
+            for ref, entry in m["instrument"]["prompt_files"].items():
+                print(f"    {ref} @ {entry['digest']}: {entry['source']}, commit {entry['commit'][:12]}, "
+                      f"blob {entry['git_blob'][:12]}")
         print(f"  planned {c['planned']}, judged {c['judged']}, null {c['null']}, not applicable "
               f"{c['not_applicable']} (judge of record: planned {m['source']['judge_of_record']['planned']}, "
               f"not applicable {m['source']['judge_of_record']['not_applicable']}); cost ${m['cost_usd']:.4f}")
@@ -1205,6 +1221,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--rejudge-run-attempt", required=True, help="this workflow run's attempt (GITHUB_RUN_ATTEMPT)")
     p.add_argument("--rejudge-commit", required=True, help="the commit this workflow run checked out (GITHUB_SHA)")
     p.add_argument("--out", required=True)
+    p.add_argument("--instrument", choices=list(INSTRUMENTS), default=CURRENT, help=INSTRUMENT_HELP)
     p.set_defaults(func=cmd_rejudge_plan)
 
     p = sub.add_parser("rejudge")
@@ -1244,6 +1261,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help="the seed file to plan from (default: the one the source run recorded in its manifest)")
     p.add_argument("--judge-max-tokens", type=int, default=None,
                    help="default: the source run's judge of record's allowance (any other is refused by the plan)")
+    p.add_argument("--instrument", choices=list(INSTRUMENTS), default=CURRENT, help=INSTRUMENT_HELP)
     p.set_defaults(func=cmd_rejudge_rehearse)
 
     p = sub.add_parser("digest")
