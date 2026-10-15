@@ -153,6 +153,7 @@ def judgment_rows(cell: Cell, conversation_id: str, value_fn: Callable, judge: s
 def write_campaign(tmp_path: Path, *, fires: tuple[str, ...] = tuple(FIRES), value_fn: Callable = default_value,
                    judge_of: Callable[[str], str] = lambda nonce: JUDGE,
                    spec_of: Callable[[str], str] | None = None,
+                   seed_ids_of: Callable[[str], list[str]] | None = None,
                    mutate: Callable[[Cell, dict], dict | None] | None = None,
                    manifest_update: Callable[[str, dict], None] | None = None, **plan_over: Any) -> dict[str, Any]:
     """A plan, a seed file and one run directory per fire. `judge_of(nonce)` is the run's own judge, `spec_of(nonce)`
@@ -171,8 +172,9 @@ def write_campaign(tmp_path: Path, *, fires: tuple[str, ...] = tuple(FIRES), val
         run_dir = runs_dir / stem
         run_dir.mkdir()
         judge = judge_of(nonce)
+        seed_ids = seed_ids_of(nonce) if seed_ids_of else SEEDS_IDS
         judgments, trees = [], []
-        for sid in SEEDS_IDS:
+        for sid in seed_ids:
             for register in w3.REGISTERS:
                 cell = Cell(target, sid, epoch, register)
                 cid = _hex(f"{stem}:{sid}:{register}")
@@ -198,7 +200,7 @@ def write_campaign(tmp_path: Path, *, fires: tuple[str, ...] = tuple(FIRES), val
         m["spend"]["journal_nonce"] = nonce
         m["framework"]["outcome_registry_sha256"] = sha256_file(OUTCOME_REGISTRY)
         m["seeds"] = [{"seed_id": s, "seed_sha256": seed_digest(SEEDS[s]), "file": "seeds.json",
-                       "claim_grade_eligible": True} for s in SEEDS_IDS]
+                       "claim_grade_eligible": True} for s in seed_ids]
         m["trees"] = trees
         for family, filename in ARTIFACT_FILENAMES.items():
             m["artifacts"][f"{family}_path"] = f"{stem}/{filename}"
@@ -1128,3 +1130,52 @@ def test_truncation_validates_the_live_replacement_before_voided_history(
         assert code == 2 and not out.exists()
         nonce = "superseded" if live_state == "no_live_fire" else "c2"
         assert f"fire {nonce}:" in capsys.readouterr().err
+
+
+def test_final_refuses_a_claim_grade_fire_that_omits_a_planned_seed(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    c = write_campaign(tmp_path, seed_ids_of=lambda nonce: SEEDS_IDS[:-1] if nonce == "a1" else SEEDS_IDS)
+    partial = c["runs"]["a1"]
+    manifest = load_json(partial / "manifest.json")
+    assert w3.verify_run(partial) == []
+    assert w3.claim_grade_problem(manifest) is None
+    assert w3.incomplete_pass(manifest["artifacts"]["judge_of_record"], "judge") is None
+    # The next epoch covers the missing seed, so a pooled scenario gate alone cannot detect this partial fire.
+    assert {s["seed_id"] for s in load_json(c["runs"]["a2"] / "manifest.json")["seeds"]} == set(SEEDS_IDS)
+    final_ready(monkeypatch, c)
+    out = tmp_path / "final.json"
+
+    def unexpected_analysis(*args: Any, **kwargs: Any) -> dict:
+        pytest.fail("final statistics ran before the partial-fire refusal")
+
+    monkeypatch.setattr(w3, "final_analysis", unexpected_analysis)
+    assert w3.main(cli_args(c, "--final", "--out", str(out))) == 2
+    error = capsys.readouterr().err
+    assert "fire a1 seed set differs from the plan's scenarios" in error
+    assert f"missing {[SEEDS_IDS[-1]]}" in error and "unplanned []" in error
+    assert not out.exists()
+
+
+@pytest.mark.parametrize("field", ["primary.contrast", "decomposition.contrasts.style",
+                                  "decomposition.contrasts.vocabulary"])
+@pytest.mark.parametrize("form", ["null", "number", "boolean", "text", "mapping"])
+def test_non_list_contrasts_are_named_cli_refusals(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+        field: str, form: str) -> None:
+    c = write_campaign(tmp_path, fires=())
+    plan = load_json(c["plan"])
+    parts = field.split(".")
+    node = plan
+    for key in parts[:-1]:
+        node = node[key]
+    key = parts[-1]
+    malformed = {"null": None, "number": 3, "boolean": True, "text": "unexpected",
+                 "mapping": dict.fromkeys(node[key])}
+    node[key] = malformed[form]
+    c["plan"].write_text(json.dumps(plan), encoding="utf-8")
+    final_ready(monkeypatch, c)
+    out = tmp_path / "final.json"
+    assert w3.main(cli_args(c, "--final", "--out", str(out))) == 2
+    error = capsys.readouterr().err
+    assert error.startswith("refused: plan file ") and f"{field} must be the list" in error
+    assert "Traceback" not in error and not out.exists()

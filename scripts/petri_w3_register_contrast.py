@@ -483,12 +483,12 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
 
     primary_window = window_ref("primary.window")
     late_window = window_ref("secondary_exchanges_6_10.window")
-    if list(_get(doc, "primary.contrast")) != [COLLOQUIAL, CLINICAL]:
-        problems.append(f"primary.contrast must be [{COLLOQUIAL}, {CLINICAL}], the contrast this script computes")
-    if list(_get(doc, "decomposition.contrasts.style")) != [COLLOQUIAL, CAREFUL_LAY] \
-            or list(_get(doc, "decomposition.contrasts.vocabulary")) != [CAREFUL_LAY, CLINICAL]:
-        problems.append("decomposition.contrasts must be style = [colloquial, lay_careful] and vocabulary = "
-                        "[lay_careful, clinical], the contrasts this script computes")
+    for key, expected in (("primary.contrast", [COLLOQUIAL, CLINICAL]),
+                          ("decomposition.contrasts.style", [COLLOQUIAL, CAREFUL_LAY]),
+                          ("decomposition.contrasts.vocabulary", [CAREFUL_LAY, CLINICAL])):
+        contrast = _get(doc, key)
+        if not isinstance(contrast, list) or contrast != expected:
+            problems.append(f"{key} must be the list {expected!r}, the contrast this script computes")
     alpha = doc["alpha"]
     if not isinstance(alpha, (int, float)) or isinstance(alpha, bool) or not 0 < alpha < 1:
         problems.append(f"alpha {alpha!r} is not a number between 0 and 1")
@@ -736,7 +736,8 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: w2.Reg
              rejudge_root: Path) -> RunInput:
     """One run directory, verified, with its registered rows. Refuses, by name: a file in place of a directory; a
     directory without manifest.json or judgments.jsonl; a fire outside the plan (NotAPlanFire) or voided (VoidedFire);
-    a run that fails `manifest.verify_run`; one that binds no judgments or records more than one epoch; a target spec
+    a run that fails `manifest.verify_run` or differs from the plan's complete seed set; one that binds no judgments
+    or records more than one epoch; a target spec
     that is not one of its fire's target's `target_specs`; judgments carrying two judge specs; a re-grade recorded for
     a run already judged under judge.judge_model; and a re-grade that does not verify or names another judge. A run
     that fails the claim-grade contract (`claim_grade_problem`), and one whose registered rows would come from an
@@ -761,6 +762,13 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: w2.Reg
     problems = verify_run(path)
     if problems:
         raise AnalysisRefusal(f"{where}: the run does not verify: " + "; ".join(problems))
+    run_seed_ids = {seed["seed_id"] for seed in manifest["seeds"]}
+    planned_seed_ids = set(plan.scenarios)
+    if run_seed_ids != planned_seed_ids:
+        raise AnalysisRefusal(f"{where}: fire {nonce} seed set differs from the plan's scenarios "
+                              f"(missing {sorted(planned_seed_ids - run_seed_ids)}; "
+                              f"unplanned {sorted(run_seed_ids - planned_seed_ids)}); "
+                              f"every landed fire must run the complete planned seed set")
     artifacts = manifest.get("artifacts") or {}
     if not artifacts.get("judgments_sha256"):
         raise AnalysisRefusal(f"{where}: the manifest binds no judgments (no judge of record)")
