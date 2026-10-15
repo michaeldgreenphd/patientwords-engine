@@ -2242,8 +2242,11 @@ def test_the_second_judge_haiku_5_5_is_sent_and_records_its_settings(tmp_path, m
     assert all([(a["field"], a["requested"], a["sent"]) for a in r["request_adjustments"]]
                == [("temperature", 0.0, None), ("thinking", None, "disabled")] for r in rows)
     # booked at list (0.10/0.50), not the 10/50 fallback: each call is 10 tokens in and 20 out
-    side = json.loads(jpath.with_suffix(".report.json").read_text(encoding="utf-8"))
+    sidecars = sorted(jpath.parent.glob(f"{jpath.stem}.judge_*.report.json"))
+    assert len(sidecars) == 1 and not jpath.with_suffix(".report.json").exists()
+    side = json.loads(sidecars[0].read_text(encoding="utf-8"))
     assert side["cost_usd"] == pytest.approx(len(rows) * (10 * 0.10 + 20 * 0.50) / 1e6)
+    assert side["cost_basis"] == "this_judge_pass"
     # a secondary judge: analyze leaves it out of the primary tiers unless asked
     assert ae.is_secondary_judge("anthropic:claude-haiku-5-5") and not ae.is_secondary_judge("claude-haiku-5-5")
     # the judge of record's call is unchanged: temperature 0.0 and no thinking parameter
@@ -2297,3 +2300,30 @@ def test_an_elicitation_of_haiku_5_5_records_thinking_disabled_in_its_request(tm
         "temperature", "thinking"]
     assert "thinking" not in by_model["anthropic:claude-haiku-4-5"]
     assert "request_adjustments" not in by_model["anthropic:claude-haiku-4-5"]
+
+
+
+def test_each_judge_pass_writes_its_own_cost_sidecar(tmp_path, monkeypatch):
+    """Codex review of PR #109: the stable judgments_<stem>.report.json was rewritten with the latest pass's cost, and
+    the ledger books a seen sidecar only by its growth, so a second judge's pass was booked at nothing or at the
+    difference. Two passes now leave two sidecars, each with its own pass's cost, and the ledger books both."""
+    import importlib.util
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path, samples="1")
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(json.dumps(RUBRIC), encoding="utf-8")
+    monkeypatch.setattr(ae, "_send", _judge_send_recorder([]))
+    for judge_model in ("claude-haiku-4-5", "anthropic:claude-haiku-5-5"):
+        ae.main(["judge", "--responses", str(resp), "--rubric", str(rubric_path), "--judge-model", judge_model,
+                 "--providers", str(LIVE_PROVIDERS_PATH), "--max-spend", "1.0"])
+    jpath = resp.with_name(resp.stem.replace("responses_", "judgments_") + ".jsonl")
+    sidecars = sorted(jpath.parent.glob(f"{jpath.stem}.judge_*.report.json"))
+    assert [json.loads(p.read_text(encoding="utf-8"))["judge_model"] for p in sidecars] == \
+        ["claude-haiku-4-5", "anthropic:claude-haiku-5-5"]
+    costs = [json.loads(p.read_text(encoding="utf-8"))["cost_usd"] for p in sidecars]
+    assert costs[0] > costs[1] > 0                       # Haiku 5.5 is cheaper, and is still booked
+    spec = importlib.util.spec_from_file_location("ledger_update", _MODULE_PATH.parent / "ledger_update.py")
+    lu = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(lu)
+    keys = {lu.sidecar_key(p) for p in sidecars}
+    assert len(keys) == 2                                # two first-seen sidecars, each booked in full
