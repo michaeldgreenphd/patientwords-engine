@@ -1,0 +1,207 @@
+{
+  "type": "object",
+  "required": [
+    "schema_version",
+    "synthetic",
+    "publication",
+    "output_namespace",
+    "seed",
+    "model",
+    "input_settings",
+    "capture_site",
+    "layer_index_base",
+    "final_norm",
+    "methods",
+    "fixed_layers",
+    "top_k",
+    "gap_threshold",
+    "vocabulary_filter",
+    "cases",
+    "intervention_plan"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "patientwords.exploratory/1"
+    },
+    "synthetic": {
+      "type": "boolean"
+    },
+    "publication": {
+      "const": "exploratory_only"
+    },
+    "output_namespace": {
+      "const": "exploratory_methods"
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "model": {
+      "type": "object",
+      "required": [
+        "id",
+        "study_id",
+        "revision",
+        "tokenizer_id",
+        "tokenizer_revision",
+        "precision",
+        "backend",
+        "hidden_size",
+        "intermediate_size",
+        "n_layers"
+      ],
+      "properties": {
+        "revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "tokenizer_revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        }
+      }
+    },
+    "capture_site": {
+      "const": "block_output"
+    },
+    "layer_index_base": {
+      "const": 0
+    },
+    "final_norm": {
+      "const": "model_final_norm_once_then_lm_head"
+    },
+    "methods": {
+      "type": "object",
+      "required": [
+        "logit_lens",
+        "j_lens",
+        "jpp"
+      ],
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "method",
+          "source_layers",
+          "capture_site",
+          "final_norm"
+        ],
+        "properties": {
+          "source_layers": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "fixed_layers": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "top_k": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "gap_threshold": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "family_id",
+          "template_family",
+          "split",
+          "holdout_status",
+          "join",
+          "variants",
+          "targets"
+        ],
+        "properties": {
+          "split": {
+            "enum": [
+              "discovery",
+              "validation",
+              "fresh_test"
+            ]
+          },
+          "holdout_status": {
+            "const": "unsealed_reviewed"
+          },
+          "targets": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "role",
+                "text",
+                "token_ids"
+              ],
+              "properties": {
+                "role": {
+                  "enum": [
+                    "intermediate",
+                    "answer"
+                  ]
+                },
+                "token_ids": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "intervention_plan": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "case_id",
+          "donor",
+          "recipient",
+          "kind",
+          "component",
+          "layer",
+          "positions",
+          "channels",
+          "control",
+          "seed"
+        ],
+        "properties": {}
+      }
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PatientWords exploratory specification v1",
+  "$comment": "The semantic validator in scripts/exploratory_methods.py also checks cross-field identities, unknown fit provenance, family splits and blocked execution. Structural schema validation alone never authorizes execution."
+}

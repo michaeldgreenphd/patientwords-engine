@@ -86,6 +86,9 @@ repositories for its path and its name.
 
 ## Audits and reviews
 
+- `docs/exploratory/methods_integration.md`: audited Causalab/J++ compatibility,
+  isolated synthetic adapters, blocked one-case protocol and staged follow-on plan.
+
 - `docs/audits/`: doc-accuracy sweeps, the seal incident, timing forensics,
   evidence power, and `docs/audits/claude_config_audit_20260906.md` (moved from
   `.claude/` on 2026-09-30).

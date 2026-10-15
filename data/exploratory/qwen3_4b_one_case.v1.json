@@ -1,0 +1,415 @@
+{
+  "schema_version": "patientwords.exploratory/1",
+  "synthetic": false,
+  "publication": "exploratory_only",
+  "output_namespace": "exploratory_methods",
+  "seed": 7,
+  "model": {
+    "id": "Qwen/Qwen3-4B",
+    "study_id": "qwen3-4b",
+    "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+    "tokenizer_id": "Qwen/Qwen3-4B",
+    "tokenizer_revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+    "precision": "bfloat16",
+    "backend": "pending_ci",
+    "hidden_size": 2560,
+    "intermediate_size": 9728,
+    "n_layers": 36
+  },
+  "capture_site": "block_output",
+  "layer_index_base": 0,
+  "final_norm": "model_final_norm_once_then_lm_head",
+  "input_settings": {
+    "chat_template": null,
+    "thinking": "not_applied_raw_prompt",
+    "add_special_tokens": true,
+    "truncation": false
+  },
+  "methods": {
+    "logit_lens": {
+      "method": "logit_lens",
+      "source_layers": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34
+      ],
+      "capture_site": "block_output",
+      "final_norm": "model_final_norm_once_then_lm_head"
+    },
+    "j_lens": {
+      "method": "j_lens",
+      "source_layers": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34
+      ],
+      "capture_site": "block_output",
+      "final_norm": "model_final_norm_once_then_lm_head",
+      "artifact_sha256": "9c94a43ac2db2debbab36acb74480f49a3ac411fb3d7fa8e5461377028e74606",
+      "repository_revision": "e166deb5ad540932100ef803c8c9bcc2a5453694",
+      "transport_target": 35,
+      "model_id": "Qwen/Qwen3-4B",
+      "model_revision": null,
+      "tokenizer_revision": null,
+      "artifact_hash_status": "advertised_lfs_hash_not_locally_verified",
+      "fit_tokenizer_id": null
+    },
+    "jpp": {
+      "method": "jpp",
+      "source_layers": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34
+      ],
+      "capture_site": "block_output",
+      "final_norm": "model_final_norm_once_then_lm_head",
+      "artifact_sha256": "893f7da243ab60d0628548a8c2b3afebaa45afdb1877d1c11521fde53209722d",
+      "repository_revision": "e166deb5ad540932100ef803c8c9bcc2a5453694",
+      "transport_target": 35,
+      "model_id": "Qwen/Qwen3-4B",
+      "model_revision": null,
+      "tokenizer_revision": null,
+      "artifact_hash_status": "advertised_lfs_hash_not_locally_verified",
+      "fit_tokenizer_id": null
+    }
+  },
+  "fixed_layers": [
+    0,
+    8,
+    17,
+    26,
+    34
+  ],
+  "top_k": [
+    1,
+    4,
+    8,
+    16,
+    32
+  ],
+  "gap_threshold": 1e-06,
+  "vocabulary_filter": {
+    "id": "pending_discovery_only_filter_review",
+    "excluded": []
+  },
+  "implementations": {
+    "engine": "31ee9268c70a2c56d51aef9bd5412fb53f2e769c",
+    "causalab": "8e8d5d1f8f9ca8f42bfce7c6b5eef194f012660e",
+    "jpp": "93f02cd6c27db765abb127f20eff656bb5d27340"
+  },
+  "cases": [
+    {
+      "id": "pw_exploratory_candidate_r001",
+      "family_id": "A__cardiology__medication__L14",
+      "template_family": "9b5de74f5308d16d8b4061bcbe53d25fde13fff0c75ff97a4ccf4cf98dcd060f",
+      "split": "discovery",
+      "holdout_status": "unsealed_reviewed",
+      "join": {
+        "batch": "trace_pairs",
+        "index": 1,
+        "model": "qwen3-4b",
+        "source_path": "pilot/runs/pilot_v2_20261002/trace/trace_pairs.json",
+        "run": "pilot_v2_20261002",
+        "source_kind": "pilot",
+        "source_item_id": "A__cardiology__medication__L14"
+      },
+      "source_refs": {
+        "bundle": {
+          "path": "data/verification/tasks_20261004T042945Z.json",
+          "sha256": "29817d70e3414834b35c0f316ab3e1953a59ddab229e9ceb9de2760b9265650a",
+          "schema_version": "patientwords-verification-tasks/1",
+          "bundle_id": "vtasks_20261004T042945Z",
+          "item_id": "vt_216a7dd64eee",
+          "display_sha256": "b60d47640cf91fd2a7abdbf629f8c6390409e0140cdce7283eafe59b8a0980af"
+        },
+        "review_export": {
+          "path": "pilot/codebook/review_export_pilot_v2_20261002.json",
+          "sha256": "8038bb0bd71c38c6913fed6ca5782e75ccd359b0283201e6c129477cdc80acfe",
+          "sample_id": "r001"
+        },
+        "review_map": {
+          "path": "pilot/runs/pilot_v2_20261002/review_map.json",
+          "sha256": "209feab9a2611e1c2867be34372344a9f965a3307e37a0664e055dbd4169d22c",
+          "review_id": "r001"
+        },
+        "original_pairs": {
+          "path": "pilot/runs/pilot_v2_20261002/trace/trace_pairs.json",
+          "sha256": "4a6ebb2215d79a41efb92643ebd9fa27cb1e882b2ffc26a98ed384407687c82a",
+          "index": 1
+        }
+      },
+      "review": {
+        "answers": {
+          "clinical_right": "yes",
+          "keep": "keep",
+          "patient_real": "real",
+          "precision": "vaguer",
+          "same": "yes",
+          "sentence": "both"
+        },
+        "checker_verdict": "yes",
+        "owner_review_recorded_utc": "2026-10-04T03:02:06Z",
+        "scope": "Owner-reviewed brand/generic substitution; not a slang contrast. Pilot source remains pilot, not a main-study measurement.",
+        "source_note": "This is a generic drug for non-generic swap, which is okay but also not quite the same as using slang instead of the drug name"
+      },
+      "seal": {
+        "attestation": "stored_bundle_attestation_only_not_a_new_seal_run",
+        "recorded_utc": "2026-10-04T04:29:45Z",
+        "result": "clean",
+        "whole_bundle_scanned": true,
+        "registry_labels_sha256": "01585660932dfb50c7bbe94be822c761acb593491173b823740ad44bcf303010",
+        "holdout_bucket_unsealed": false,
+        "scope": "Only the selected allowlisted item was surfaced; sealed source batches were not scanned for discovery."
+      },
+      "variants": {
+        "source": {
+          "register": "clinical",
+          "prompt": "We leave for vacation Friday, and I'm almost out of my amlodipine, so I need to refill my",
+          "prompt_sha256": "d56a6d92b2937b5cb9b3d9a33a8f7008363b26bf65574c66ee6b258fc4d6ae34",
+          "token_ids": null,
+          "token_sha256": null,
+          "positions": null,
+          "source_field": "items[item_id=vt_216a7dd64eee].display.clinical.text",
+          "source_bundle_sha256": "29817d70e3414834b35c0f316ab3e1953a59ddab229e9ceb9de2760b9265650a",
+          "phrase_character_span": [
+            55,
+            65
+          ]
+        },
+        "recipient": {
+          "register": "patient",
+          "prompt": "We leave for vacation Friday, and I'm almost out of my Norvasc, so I need to refill my",
+          "prompt_sha256": "9d156d56a62cb27cc71f6e122a9edac89ad59dad56ad7b296072ff52f911558d",
+          "token_ids": null,
+          "token_sha256": null,
+          "positions": null,
+          "source_field": "items[item_id=vt_216a7dd64eee].display.patient.text",
+          "source_bundle_sha256": "29817d70e3414834b35c0f316ab3e1953a59ddab229e9ceb9de2760b9265650a",
+          "phrase_character_span": [
+            55,
+            62
+          ]
+        }
+      },
+      "targets": [
+        {
+          "id": "source_lexical_concept",
+          "role": "intermediate",
+          "text": "amlodipine",
+          "token_ids": null,
+          "annotation_kind": "explicit_owner_reviewed_lexical_term",
+          "source_path": "pilot/codebook/review_export_pilot_v2_20261002.json",
+          "source_sha256": "8038bb0bd71c38c6913fed6ca5782e75ccd359b0283201e6c129477cdc80acfe",
+          "source_field": "rows[sample_id=r001].clinical_term"
+        },
+        {
+          "id": "legacy_next_token_target",
+          "role": "answer",
+          "text": "prescription",
+          "token_ids": null,
+          "annotation_kind": "existing_expected_next_word",
+          "source_path": "data/verification/tasks_20261004T042945Z.json",
+          "source_sha256": "29817d70e3414834b35c0f316ab3e1953a59ddab229e9ceb9de2760b9265650a",
+          "source_field": "items[item_id=vt_216a7dd64eee].display.next_word"
+        }
+      ],
+      "normalized_variant": {
+        "status": "unavailable",
+        "reason": "No already-approved normalized wording is present in the selected source bundle."
+      }
+    }
+  ],
+  "intervention_plan": [],
+  "planned_experiment": {
+    "status": "blocked_before_model_execution",
+    "unit": "case_family",
+    "primary_endpoint": "legacy_first_target_token_probability",
+    "secondary_endpoints": [
+      "raw_lens_rank",
+      "filtered_lens_rank_without_renormalization",
+      "raw_patch_probability_delta",
+      "collateral_answer_probability_delta"
+    ],
+    "unpatched_strata": [
+      "top1",
+      "not_top1",
+      "first_wordpiece_proxy_not_sequence_correctness"
+    ],
+    "positions": "all input positions; phrase spans resolved from tokenizer character offsets; patches restricted to token-ID common suffix",
+    "baseline_parity": {
+      "status": "unrun",
+      "required_backends": [
+        "engine_pinned_HF",
+        "engine_unprocessed_TransformerLens",
+        "causalab_PytorchHooksEngine"
+      ],
+      "required_comparisons": [
+        "token_ids",
+        "full_vocab_logits",
+        "final_norm_once",
+        "unpatched_target_probability"
+      ],
+      "tolerances": "owner-reviewed same-precision numeric thresholds required before executing; no Gemma tolerance imported"
+    },
+    "controls": [
+      "self/no-op",
+      "approved_same_register_paraphrase_pending",
+      "multiple_seeded_layer_size_matched_random_groups",
+      "unrelated_concept_pending_discovery",
+      "full_component",
+      "reverse_direction",
+      "separate_zero_ablation",
+      "successful_and_failed_unpatched",
+      "unrelated_prompt_collateral_pending_review"
+    ],
+    "random_seeds": [
+      7,
+      11,
+      13,
+      17,
+      19
+    ],
+    "native_channel_nomination": "none; discovery evidence required, layer lens ranks do not nominate neurons",
+    "normalization": "unavailable; no generation permitted",
+    "near_zero_gap_threshold": 1e-06,
+    "preflight": {
+      "max_input_tokens": 128,
+      "forward_passes_before_go_no_go": 2,
+      "wall_timeout_seconds": 120,
+      "memory_budget_bytes": null,
+      "memory_status": "owner-authorized runner capacity required; no fitting or DBM"
+    },
+    "cohort_follow_on": {
+      "families": {
+        "minimum": 12,
+        "maximum": 20
+      },
+      "purpose": "feasibility_not_power",
+      "split_unit": "case_and_template_family",
+      "uncertainty_unit": "case_family",
+      "stimulus_design": "existing_4quadrant_syntax_by_terminology",
+      "no_correctness_filter": true
+    },
+    "pending": [
+      "fit_revision_provenance",
+      "full_artifact_hash_verification",
+      "current_seal_recheck_before_execution",
+      "tokenization",
+      "baseline_parity",
+      "control_wording_review",
+      "filter_and_candidate_review",
+      "ci_adapter_wiring"
+    ]
+  },
+  "adapter_source_sha256": {
+    "engine": {
+      "scripts/exploratory_methods.py": "858a333b0550dc0be9c51a972eff4ed69cf4b0d8add36f6615c7d20a11490c95"
+    },
+    "jpp": {
+      "src/lens_interop/artifact.py": "7543328cd22312804357070aee6ec44b9054d7b1fccd8bdc44d7fac9fbaf93d6",
+      "src/lens_interop/__main__.py": "7bbdec3530b14d3c8649400b6a4d09ce690063ed1aa6e1a76589e08c90097fa3"
+    },
+    "causalab": {
+      "causalab/analysis/paired_intervention.py": "d7de86b7c84fe4098dc821b254ee4dd73a474e19e4c0d2a46f613b25814e4499",
+      "causalab/neural/shared/pair_probe.py": "dfafd3614c828b660531db9d5243ae22911bc1cc786b32034341a13e81dd7e76",
+      "causalab/protocol/registry/models.py": "ed22fca824f43539e8faad8e7ba03083a01f0af27c4864a952fa92fcb091021a"
+    }
+  },
+  "implementation_state": "local_adapter_changes_on_recorded_base_commits"
+}
