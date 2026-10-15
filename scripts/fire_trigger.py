@@ -46,6 +46,7 @@ No medical vocabulary lives in this file.
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import math
@@ -71,6 +72,7 @@ TRIGGERS = (
     "advice-eval",
     "petri-audit",
     "pab-probe",
+    "jev-audit",
 )
 # advice-eval: elicit AND judge spend Anthropic/provider tokens (2026-07-21)
 # pab-probe: patient/assistant/sandbox legs bill the prepaid OpenRouter key and
@@ -81,7 +83,15 @@ TRIGGERS = (
 # real judge (2026-09-24; its `mockllm/judge` rehearsal is free); preflight and
 # dry_run cost nothing but the lane is counted paid so every fire goes through
 # the ceiling.
-PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval", "petri-audit", "pab-probe"})
+# jev-audit (2026-10-14, owner decision D3): a live run calls the Jev decisions classifier through the OpenRouter key;
+# a mock run (live false, the park) calls nothing and costs $0, so it is exempt like petri-audit's free modes.
+PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval", "petri-audit", "pab-probe",
+                           "jev-audit"})
+# The lanes whose paid fires carry a `_nonce` that binds the journal entry reserving the spend to the run and its cost
+# sidecar, so budget-gate can REQUIRE that reservation server-side (journal_reservation_problems,
+# push_reservation_problems, ref_reservation_problems). jev-audit joined petri-audit on 2026-10-14 (Codex review of
+# PR #110): without it a live trigger reaching a branch by merge or hand push ran whenever the lane had headroom.
+NONCE_LANES = frozenset({"petri-audit", "jev-audit"})
 # Two circuit-trace paths make Anthropic translation calls, the only paid paths
 # outside PAID_TRIGGERS: show_mitigation=true (2panel's LLM-translated third
 # panel) and mode translation (every pair's patient prompt is LLM-translated,
@@ -226,6 +236,12 @@ PARK_DEFAULTS = {
                     "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01",
                     "judge_max_tokens": "300", "log_model_api": "true", "commit_outputs": "false"},
     # pab-probe: not parked - its workflow lives on the PAB branch only.
+    # jev-audit: a mock run (live false: MockJevClient, no call) over one advice case and one Petri conversation;
+    # a true $0 no-op when re-fired, and nothing is committed.
+    "jev-audit": {"archive": "data/advice/responses_stimuli_20260721T235403Z.jsonl", "archive_samples": "1",
+                  "petri_transcripts": "data/petri/runs/run_35937014168_1/transcripts.jsonl",
+                  "petri_conversations": "1", "model": "typesafe/jev-1.13", "live": "false", "max_spend": "0.01",
+                  "commit_outputs": "false"},
 }
 # petri-audit mode readapt (2026-09-24, owner decision after the w2e3 failure): re-adapt a paid run whose target
 # calls completed but whose adaptation failed, from its 90-day raw-eval artifact, into the run's own directory, then
@@ -308,6 +324,10 @@ def is_paid_fire(trigger, params):
         return not petri_rejudge_is_rehearsal(params)
     if trigger == "petri-audit" and petri_mode(params) not in PETRI_PAID_MODES:
         return False
+    if trigger == "jev-audit" and _jev_job_value(params, "live") != "true":
+        # a mock run calls nothing; the params job runs live only on exactly "true" (jev_params_problems refuses
+        # every other spelling, so none reaches the journal)
+        return False
     return True
 
 
@@ -386,6 +406,9 @@ def fire_lane(trigger: str, params: dict, registry: dict | None = None) -> str:
     an Inspect model string, not a registry spec."""
     if trigger == "petri-audit":
         return _petri_lane(params)
+    if trigger == "jev-audit":
+        # the Jev decisions endpoint (medlang_circuits/jev_client.py) bills the OpenRouter key alone
+        return "openrouter"
     if trigger != "advice-eval":
         return "anthropic"
     channels = {channel for _, _, channel in advice_billing_parts(params, registry)}
@@ -552,6 +575,9 @@ def advice_params_problems(params: dict, registry: dict | None = None) -> list[s
             problems.append(
                 f"advice-eval {role} {spec!r} is a bare provider name that bills {key_env} through the registry's "
                 f"consumer default; name the model explicitly ({spec}:<model>) so the fire states what it bills")
+    for role, spec, _channel in parts:
+        if role == "judge":
+            problems.extend(advice_judge_problems(spec, registry))
     lanes = {}
     for role, spec, channel in parts:
         lanes.setdefault(channel, []).append(f"{role} {spec}")
@@ -562,6 +588,175 @@ def advice_params_problems(params: dict, registry: dict | None = None) -> list[s
             "lane, so a mixed-channel fire is refused; split it into separate fires, one per account (for example "
             "elicit with judge false and without the translated arm, then judge in a fire of its own whose models "
             "bill the judge's account; docs/triggers.md, advice-eval)")
+    return problems
+
+
+ENGINE_PRICING_RELPATH = Path("medlang_circuits") / "evaluate_models.py"
+# scripts/petri_audit/spend.py FALLBACK_PRICING and FALLBACK_PRICE_SOURCE, and scripts/advice_eval.py
+# _FALLBACK_PRICING: the rate a model no price table names is booked at (USD per million tokens)
+FALLBACK_PRICING = (10.0, 50.0)
+FALLBACK_PRICE_SOURCE = "fallback:advice_eval._FALLBACK_PRICING"
+ENGINE_PRICE_SOURCE = "engine:evaluate_models.PRICING"
+ZERO_PRICE_SOURCE = "zero:mock_or_placeholder"
+
+
+def engine_pricing(repo: str | Path | None = None) -> dict[str, tuple[float, float]]:
+    """medlang_circuits/evaluate_models.py PRICING (model -> (input, output) USD per million tokens), read from the
+    source with `ast` rather than imported: it is a literal dict, and importing the package would pull its client
+    dependencies into the fire path. Values are normalised as scripts/petri_audit/spend.py `_engine_pricing`
+    normalises them. {} when the file is missing or PRICING is not a literal, so every Anthropic judge spec then
+    reads as fallback-priced and is refused (fail closed)."""
+    root = Path(repo) if repo else Path(__file__).resolve().parents[1]
+    try:
+        tree = ast.parse((root / ENGINE_PRICING_RELPATH).read_text(encoding="utf-8"))
+    except (OSError, SyntaxError, ValueError):
+        return {}
+    value = None
+    for node in tree.body:
+        targets = (node.targets if isinstance(node, ast.Assign)
+                   else [node.target] if isinstance(node, ast.AnnAssign) else [])
+        if any(isinstance(t, ast.Name) and t.id == "PRICING" for t in targets) and node.value is not None:
+            try:
+                value = ast.literal_eval(node.value)
+            except ValueError:
+                return {}
+    out: dict[str, tuple[float, float]] = {}
+    for key, rate in (value.items() if isinstance(value, dict) else ()):
+        try:
+            if isinstance(rate, dict):
+                out[str(key)] = (float(rate["input"]), float(rate["output"]))
+            else:
+                out[str(key)] = (float(rate[0]), float(rate[1]))
+        except (KeyError, TypeError, ValueError, IndexError):
+            continue
+    return out
+
+
+def _registry_rate(cfg: object, name: str, label: str) -> tuple[float, float, str] | None:
+    """scripts/petri_audit/spend.py `_registry_price`: a registry block's `pricing` entry for `name`, else its
+    `default_pricing`, with the same source labels; None when it names neither."""
+    if not isinstance(cfg, dict):
+        return None
+    table = cfg.get("pricing") or {}
+    if isinstance(table, dict) and name in table:
+        return float(table[name][0]), float(table[name][1]), f"registry:{label}:pricing"
+    if cfg.get("default_pricing"):
+        dp = cfg["default_pricing"]
+        return float(dp[0]), float(dp[1]), f"registry:{label}:default_pricing"
+    return None
+
+
+def petri_judge_price(spec: str, registry: dict | None = None,
+                      pricing: dict | None = None) -> tuple[float, float, str] | None:
+    """(input, output, source) for a Petri judge spec, as scripts/petri_audit/spend.py `resolve_registry_price`
+    prices it, without importing it: the spec is expanded to its Inspect name (`petri_judge_inspect_name`, mirroring
+    `registry_spec_to_inspect`), then looked up in resolve_price's order (a zero-price sentinel; for `openrouter/`,
+    the OpenRouter per-model entry, else the higher, rate by rate, of the vendor's own price and the OpenRouter
+    catch-all; otherwise the provider block's pricing or default_pricing, then the engine's PRICING), with the
+    fallback rate last. None for a spec that cannot be expanded (a bare provider with no consumer_default).
+    tests/test_judge_price_guard.py holds this to agree with resolve_registry_price."""
+    registry = providers_registry() if registry is None else registry
+    registry = registry if isinstance(registry, dict) else {}
+    pricing = engine_pricing() if pricing is None else pricing
+    name = petri_judge_inspect_name(spec, registry)
+    if name is None:
+        return None
+    if name in PETRI_SENTINEL_SPECS:
+        return 0.0, 0.0, ZERO_PRICE_SOURCE
+    provider, rest = name.split("/", 1) if "/" in name else ("anthropic", name)
+    if provider == "openrouter":
+        ocfg = registry.get("openrouter")
+        if isinstance(ocfg, dict) and rest in (ocfg.get("pricing") or {}):
+            entry = ocfg["pricing"][rest]
+            return float(entry[0]), float(entry[1]), "registry:openrouter:pricing"
+        floor = ((float(ocfg["default_pricing"][0]), float(ocfg["default_pricing"][1]),
+                  "registry:openrouter:default_pricing")
+                 if isinstance(ocfg, dict) and ocfg.get("default_pricing") else None)
+        vendor_price = None
+        if "/" in rest:
+            vendor, model = rest.split("/", 1)
+            vendor_price = _registry_rate(registry.get(vendor), rest, vendor)
+            if vendor_price is None and vendor == "anthropic" and model in pricing:
+                vendor_price = (*pricing[model], ENGINE_PRICE_SOURCE)
+        if vendor_price and floor:
+            return (max(vendor_price[0], floor[0]), max(vendor_price[1], floor[1]),
+                    f"max({vendor_price[2]}, {floor[2]})")
+        priced = vendor_price or floor
+    else:
+        priced = _registry_rate(registry.get(provider), rest, provider)
+        if priced is None and rest in pricing:
+            priced = (*pricing[rest], ENGINE_PRICE_SOURCE)
+    return priced if priced is not None else (*FALLBACK_PRICING, FALLBACK_PRICE_SOURCE)
+
+
+def petri_judge_price_problems(spec: str, registry: dict | None = None, pricing: dict | None = None) -> list[str]:
+    """The petri-audit judge refusal of owner decision Q6 (2026-10-14), mirrored from scripts/petri_audit/spend.py
+    `judge_fallback_price_problems` so the fire path refuses before it journals: a judge spec priced at the
+    fallback rate, because no price table names the model it resolves to. eq01's `anthropic/claude-haiku-4-5`
+    (slash spelling) expands to `anthropic/anthropic/claude-haiku-4-5` and was booked at 10/50, ten times list.
+    Zero-price sentinels are not refused here (they keep their own rules)."""
+    price = petri_judge_price(spec, registry, pricing)
+    if price is None or price[2] != FALLBACK_PRICE_SOURCE:
+        return []
+    return [f"petri-audit judge spec {str(spec).strip()!r} resolves to {petri_judge_inspect_name(spec, registry)!r}, "
+            "which no price table names, so it would be booked at the fallback rate "
+            f"{FALLBACK_PRICING[0]}/{FALLBACK_PRICING[1]} per million tokens (fallback_priced_judge); a direct "
+            "Anthropic judge is the bare id or anthropic:<id> (for example claude-haiku-4-5, never anthropic/<id>), "
+            "or add a dated, sourced price first"]
+
+
+def advice_judge_price(spec: str, registry: dict | None = None,
+                       pricing: dict | None = None) -> tuple[float, float, str] | None:
+    """(input, output, source) at which scripts/advice_eval.py `judge` books a judge spec, without importing it:
+    the spec resolves as `_resolve_spec` resolves it (provider:model, a bare provider the registry knows, or a bare
+    Anthropic id), the block's `pricing` entry for the model prices it (keyed by the spec, "registry:<provider>:
+    pricing"), else the engine's PRICING under the spec or the part after its provider prefix (CostTracker._price),
+    else the fallback rate. The advice judge reads no `default_pricing`. None for a provider the registry does not
+    list, or a bare provider with no consumer_default (the run refuses both before its first call)."""
+    registry = providers_registry() if registry is None else registry
+    registry = {"anthropic": {"api": "anthropic"}, **(registry if isinstance(registry, dict) else {})}
+    pricing = engine_pricing() if pricing is None else pricing
+    if ":" in spec:
+        provider, model = spec.split(":", 1)
+    elif isinstance(registry.get(spec), dict) and not spec.startswith("_"):
+        provider, model = spec, ""
+    else:
+        provider, model = "anthropic", spec
+    cfg = registry.get(provider) if not provider.startswith("_") else None
+    if not isinstance(cfg, dict):
+        return None
+    model = model or str(cfg.get("consumer_default") or "")
+    if not model:
+        return None
+    entry = (cfg.get("pricing") or {}).get(model) if isinstance(cfg.get("pricing"), dict) else None
+    if entry:
+        return float(entry[0]), float(entry[1]), f"registry:{provider}:pricing"
+    for candidate in (spec, spec.split(":", 1)[-1]):
+        if candidate in pricing:
+            return (*pricing[candidate], ENGINE_PRICE_SOURCE)
+    return (*FALLBACK_PRICING, FALLBACK_PRICE_SOURCE)
+
+
+def advice_judge_problems(spec: str, registry: dict | None = None, pricing: dict | None = None) -> list[str]:
+    """The advice-eval judge refusals added 2026-10-14, before a fire journals:
+
+    - a bare spec naming a Claude model the engine prices, other than the judge of record (scripts/advice_eval.py
+      `pooled_judge_problem`, which the run repeats before any call): every consumer reads a bare-named judge as
+      primary, so it would pool with the judge of record's tiers; a second judge is spelled anthropic:<id>;
+    - a spec booked at the fallback rate (owner decision Q6; `advice_judge_price`), which no price table names."""
+    pricing = engine_pricing() if pricing is None else pricing
+    problems = []
+    name = str(spec).strip()
+    if ":" not in name and name != ADVICE_DEFAULT_SPEC and name in pricing:
+        problems.append(f"advice-eval judge {spec!r} is a bare Claude model id other than the judge of record "
+                        f"({ADVICE_DEFAULT_SPEC}): analyze and both exporters read a bare-named judge as primary, so its "
+                        f"tiers would pool with the judge of record's; spell a second judge anthropic:{name}")
+    price = advice_judge_price(spec, registry, pricing)
+    if price is not None and price[2] == FALLBACK_PRICE_SOURCE:
+        problems.append(f"advice-eval judge {spec!r} is named by no price table (data/advice_providers.json pricing, "
+                        "medlang_circuits/evaluate_models.py PRICING), so the judge would be booked at the fallback rate "
+                        f"{FALLBACK_PRICING[0]}/{FALLBACK_PRICING[1]} per million tokens (fallback_priced_judge); name a "
+                        "priced model or add a dated, sourced price first")
     return problems
 
 
@@ -938,6 +1133,12 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
     # its vendor bills its own account, so the ceiling would bound the wrong money. The workflow's pre-flight refuses it
     # at $0 (scripts/petri_audit/spend.py judge_key_routing_problems), but by then the fire's journal entry holds its
     # commitment for the rest of the UTC day, so it is refused here, before the push (review of 2026-09-23, F-TH1).
+    # the judge of a run or a readapt is checked by the workflow's pre-flight and `cli judge` (spend.py
+    # judge_fallback_price_problems); a fallback-priced judge is refused here too, before the fire's journal entry
+    # holds its commitment (owner decision Q6, 2026-10-14). A rejudge's judge is checked in petri_judge_spec_problems
+    if mode in PETRI_PAID_MODES and judge_is_on(params):
+        problems.extend(petri_judge_price_problems(_petri_job_value(params, "judge_model", PETRI_JUDGE_DEFAULT),
+                                                   registry))
     judge_key = petri_judge_key_env(params, registry)
     if judge_key is not None and judge_key not in ("ANTHROPIC_API_KEY", "OPENROUTER_API_KEY"):
         problems.append(
@@ -1004,7 +1205,8 @@ def petri_judge_spec_problems(spec: str, registry: dict | None = None) -> list[s
     path refuses before it journals a reservation (PR #41 review): scripts/petri_audit/judge_runner.py
     judge_spec_problems (a zero-price test sentinel; a provider the registry does not know, one with no public API,
     or no model and no consumer_default, as scripts/advice_eval.py _resolve_spec refuses them) and
-    scripts/petri_audit/spend.py openrouter_price_problems (an `openrouter:` spec with no reviewed per-model price).
+    scripts/petri_audit/spend.py openrouter_price_problems (an `openrouter:` spec with no reviewed per-model price)
+    and judge_fallback_price_problems (a spec priced at the fallback rate; `petri_judge_price_problems`, 2026-10-14).
     The key routing rule is petri_params_problems' own."""
     spec = spec.strip()
     if spec in PETRI_SENTINEL_SPECS:
@@ -1028,7 +1230,8 @@ def petri_judge_spec_problems(spec: str, registry: dict | None = None) -> list[s
     if provider == "openrouter" and model not in ((cfg.get("pricing") or {}) if isinstance(cfg.get("pricing"), dict) else {}):
         return [f"petri-audit mode rejudge judge spec {spec!r} has no reviewed per-model price in "
                 "data/advice_providers.json openrouter.pricing (unreviewed_openrouter_price)"]
-    return []
+    # scripts/petri_audit/spend.py judge_fallback_price_problems, which the rejudge plan applies (2026-10-14)
+    return petri_judge_price_problems(spec, registry)
 
 
 def petri_rejudge_slug(spec: str) -> str:
@@ -1478,7 +1681,80 @@ def logits_eval_params_problems(params: dict) -> list[str]:
     return problems
 
 
-def lane_params_problems(trigger: str, params: dict, registry: dict | None = None) -> list:
+# jev-audit (2026-10-14): the params job's defaults (jev_pilot.yml), mirrored so the fire path reads a trigger file as
+# the job does
+JEV_DEFAULTS = {"archive": "data/advice/responses_stimuli_20260721T235403Z.jsonl", "archive_samples": "10",
+                "petri_transcripts": "data/petri/runs/run_35937014168_1/transcripts.jsonl",
+                "petri_conversations": "3", "model": "typesafe/jev-1.13", "live": "false", "max_spend": "0.10",
+                "commit_outputs": "false", "resume_run_id": ""}
+JEV_MODEL_RE = re.compile(r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$")
+
+
+def _jev_job_value(params: dict, key: str) -> str:
+    """A key's value as jev_pilot.yml's params job resolves it: str()-ed, a JSON boolean lower-cased, else the
+    job's default."""
+    if key not in params:
+        return JEV_DEFAULTS[key]
+    value = params[key]
+    return str(value).lower() if isinstance(value, bool) else str(value)
+
+
+def jev_params_problems(params: dict, repo: Path | None = None) -> list[str]:
+    """jev-audit's rules, as its params job applies them: `live` and `commit_outputs` exactly "true" or "false";
+    a live fire carries a `_nonce`; commit_outputs only with live (a mock report is never committed); sample counts
+    non-negative ASCII integers (0 means all); resume_run_id empty or an ASCII run id; max_spend a positive finite
+    number; the model an OpenRouter `vendor/model` id; and both inputs repo-relative files that exist in the checkout
+    the fire targets, with no backslash, no leading `/` and no `..` segment, since the job reads them from the
+    checkout and refuses those spellings."""
+    problems: list[str] = []
+    for key in ("live", "commit_outputs"):
+        if _jev_job_value(params, key) not in ("true", "false"):
+            problems.append(f"jev-audit {key} {params.get(key)!r}: only \"true\" or \"false\"")
+    for key in ("archive_samples", "petri_conversations"):
+        # ASCII digits only, as the params job checks: str.isdigit() also accepts other scripts' digits and
+        # superscripts, which the job refuses after the fire has journaled (Codex review of PR #110)
+        value = _jev_job_value(params, key)
+        if not (value.isascii() and value.isdigit()):
+            problems.append(f"jev-audit {key} {params.get(key)!r}: a non-negative integer (0 means all)")
+    if _jev_job_value(params, "live") == "true":
+        nonce = params.get("_nonce")
+        # the rule petri-audit's paid modes apply, for the same reason: the nonce is the only join key between the
+        # journal entry that reserves the spend and the cost sidecar the run lands, and budget-gate requires that
+        # reservation (NONCE_LANES); a falsy, boolean or padded value could never be joined
+        if (isinstance(nonce, bool) or not isinstance(nonce, (str, int)) or not nonce
+                or not str(nonce).strip() or str(nonce) != str(nonce).strip()):
+            problems.append(f"jev-audit live true must carry a non-empty _nonce (the join key between the journal "
+                            f"entry that reserves the spend and the cost sidecar), got {nonce!r}")
+    if _jev_job_value(params, "commit_outputs") == "true" and _jev_job_value(params, "live") != "true":
+        problems.append("jev-audit commit_outputs true needs live true: a mock report is not a measurement")
+    if parse_max_spend(_jev_job_value(params, "max_spend")) is None:
+        problems.append(f"jev-audit max_spend {params.get('max_spend')!r}: a positive finite number")
+    if not JEV_MODEL_RE.match(_jev_job_value(params, "model")):
+        problems.append(f"jev-audit model {params.get('model')!r}: an OpenRouter vendor/model id")
+    resume = _jev_job_value(params, "resume_run_id")
+    if resume and not (resume.isascii() and resume.isdigit()):
+        problems.append(f"jev-audit resume_run_id {resume!r}: empty, or the numeric workflow run id whose "
+                        "checkpoint the run resumes")
+    root = (repo or Path(__file__).resolve().parents[1]).resolve()
+    for key in ("archive", "petri_transcripts"):
+        path = _jev_job_value(params, key)
+        # the raw segments as well as the normalised path: the params job refuses any `..` segment, so a path that
+        # normalises back inside the checkout would still be refused after the fire journaled (Codex review of PR #110)
+        if (not path or "\\" in path or path.startswith("/") or ".." in path.split("/")
+                or circuit_trace_pairs_outside_checkout(path)):
+            problems.append(f"jev-audit {key} {path!r}: a repo-relative path with / separators and no ..")
+        elif not (root / path).is_file():
+            problems.append(f"jev-audit {key} {path!r} does not exist in this checkout")
+        elif _git(root, "rev-parse", "--is-inside-work-tree").returncode == 0 and \
+                _git(root, "cat-file", "-e", f"HEAD:{path}").returncode != 0:
+            # the workflow's checkout holds only committed files: an untracked or uncommitted input passes on disk
+            # and fails in CI after the fire has reserved its spend (Codex review of PR #110, round 4)
+            problems.append(f"jev-audit {key} {path!r} is not committed at HEAD; commit it before firing")
+    return problems
+
+
+def lane_params_problems(trigger: str, params: dict, registry: dict | None = None,
+                         repo: Path | None = None) -> list:
     """Lane-specific invariants beyond the key set; empty for lanes that have none."""
     if trigger == "petri-audit":
         return petri_params_problems(params, registry)
@@ -1488,6 +1764,9 @@ def lane_params_problems(trigger: str, params: dict, registry: dict | None = Non
         return circuit_trace_params_problems(params)
     if trigger == "logits-eval":
         return logits_eval_params_problems(params)
+    if trigger == "jev-audit":
+        # the checkout the fire writes to (fire --repo), so input paths are checked in the tree CI will run
+        return jev_params_problems(params, repo)
     return []
 
 
@@ -1604,6 +1883,9 @@ KNOWN_KEYS = {
         "catalog_require", "artifact_run_id", "generate_timeout_minutes",
         "artifact_run_id_2",
     }),
+    # jev_pilot.yml `defaults` dict (verified 2026-10-14; JEV_DEFAULTS mirrors it): archive, archive_samples,
+    # petri_transcripts, petri_conversations, model, live, max_spend, commit_outputs, resume_run_id.
+    "jev-audit": frozenset(JEV_DEFAULTS),
 }
 
 
@@ -1747,7 +2029,7 @@ def recently_resolved(entries, trigger, now, settle_minutes):
     return sorted(hits, key=lambda e: parse_utc(e["resolved_utc"]), reverse=True)
 
 
-def validate_params(trigger, params):
+def validate_params(trigger, params, repo=None):
     """ValueError on non-dict params or on any unknown non-underscore key.
 
     Every trigger's key set in KNOWN_KEYS is verified against its workflow's
@@ -1782,7 +2064,7 @@ def validate_params(trigger, params):
             "read later wins - a value could silently rewrite mode, target or a spend ceiling after the "
             "job's own checks passed. No legitimate value carries one"
         )
-    problems = lane_params_problems(trigger, params)
+    problems = lane_params_problems(trigger, params, repo=repo)
     if problems:
         raise ValueError("; ".join(problems))
 
@@ -2414,7 +2696,7 @@ def cmd_fire(args):
         print(f"refused: params are not valid JSON ({exc})", file=sys.stderr)
         return 3
     try:
-        validate_params(args.trigger, params)
+        validate_params(args.trigger, params, repo)
     except ValueError as exc:
         print(f"refused: {exc}", file=sys.stderr)
         return 3
@@ -2788,7 +3070,7 @@ def ref_reservation_problems(trigger, params, entries, ref, required):
     sidecars carrying one nonce (Codex round 11 on PR #28). `cmd_fire` records the branch it fired on, and this
     requires CI's ref to be that one.
     """
-    if trigger != "petri-audit" or not is_paid_fire(trigger, params):
+    if trigger not in NONCE_LANES or not is_paid_fire(trigger, params):
         return []
     mine = reservation_entries(trigger, params, entries) or []
     if len(mine) != 1:
@@ -2831,7 +3113,7 @@ def push_reservation_problems(repo, trigger, params, before, required):
     always running a push (a paid run is push-only, attempt 1 only, enforced in the params job), so a missing
     `--push-before` there is a workflow that stopped passing it, not a caller who had nothing to pass.
     """
-    if trigger != "petri-audit" or not is_paid_fire(trigger, params):
+    if trigger not in NONCE_LANES or not is_paid_fire(trigger, params):
         return []
     nonce = params.get("_nonce")
     if isinstance(nonce, bool) or nonce in (None, "") or not str(nonce).strip():
@@ -3155,7 +3437,7 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
         if text is None:
             raise ValueError(f"no {rel} at {head[:12]}")
         params = json.loads(text)
-        validate_params(trigger, params)
+        validate_params(trigger, params, repo)
     except (json.JSONDecodeError, ValueError) as exc:
         print(f"refused: {rel} at {head[:12]} does not hold a valid fire: {exc}", file=sys.stderr)
         return 3, head
@@ -3460,11 +3742,11 @@ def reservation_entries(trigger, params, entries):
     """The journal entries that claim to reserve THIS fire, or None when the
     lane has no join key to look one up by.
 
-    Only petri-audit's params must carry a `_nonce`, and that nonce is what
-    binds a fire to its landed cost; the other paid lanes have nothing to match
-    on, so they get None and every caller leaves them alone.
+    Only the NONCE_LANES' paid params must carry a `_nonce`, and that nonce is
+    what binds a fire to its landed cost; the other paid lanes have nothing to
+    match on, so they get None and every caller leaves them alone.
     """
-    if trigger != "petri-audit" or not is_paid_fire(trigger, params):
+    if trigger not in NONCE_LANES or not is_paid_fire(trigger, params):
         return None
     nonce = params.get("_nonce")
     if isinstance(nonce, bool) or nonce in (None, "") or not str(nonce).strip():
@@ -3929,7 +4211,7 @@ def cmd_budget_gate(args):
         return 6
     # lane invariants the fire path enforces in validate_params run here too, because a workflow_dispatch never
     # passes through fire_trigger (Codex round 3)
-    problems = lane_params_problems(args.trigger, params, providers_registry(repo))
+    problems = lane_params_problems(args.trigger, params, providers_registry(repo), repo=repo)
     # a readapt must be the recovery of the run it names, with that run's parameters, checked here against this
     # checkout's runs, journal and history as the fire path checked it against the operator's (mode readapt)
     problems = problems or petri_readapt_source_problems(repo, args.trigger, params)

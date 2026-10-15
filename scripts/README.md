@@ -153,6 +153,7 @@ out.
 | `find_grammar_2x2.py` | Searched committed data for a grammar-only 2x2 case for the Wording Differences page | one-off and done | nothing (prints) | session, 2026-07-19 |
 | `readability_report.py` | Reading-grade worklist of the site's pages | one-off and done | `docs/readability_report.md` (2026-07-13) | session |
 | `extract_site_text.py` | Extracts the site's page text into one Rmd for the owner's editing | operator tool | `ops/site_text_outline.Rmd` (default) | owner or session, on request |
+| `jev_audit_sidecar.py` | Writes the cost sidecar of a live jev-audit run (billed cost, the estimate for unbilled calls, or the whole `max_spend` when no report was left) | live | `data/jev/runs/<run>.report.json` | `.github/workflows/jev_pilot.yml` in CI, after every live run |
 | `audit_jev_calibration.py` | Audits and benchmarks classifier calibration against golden sets, advice responses and Petri transcripts | live | `--out-markdown`, `--out-json` reports | owner or session, and `.github/workflows/jev_pilot.yml` in CI |
 
 ## Builders

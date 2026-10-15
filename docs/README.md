@@ -60,7 +60,7 @@ repositories for its path and its name.
 | Preregistrations | `docs/preregistration_tierB.md`, `docs/preregistration_advice.md` (signed), `docs/repeatability_sample.md` (pre-declared 2026-07-13) |
 | Amendments | `docs/preregistration_amendments.md` (the registry), `docs/prereg_amendment2_depth.md`, `docs/prereg_amendment3_holdout.md`, `docs/prereg_amendment4_steering.md`, `docs/prereg_amendment5_near_twins.md` |
 | Divergence log | `docs/prereg_divergence_log.md` |
-| Owner decisions | `docs/decisions_20260804_pab.md`, `docs/decisions_20260808_owner.md`, `docs/decisions_20260815_owner.md`, `docs/decisions_20260816_owner.md`, `docs/decisions_20260819_owner.md`, `docs/decisions_20260821_owner.md` |
+| Owner decisions | `docs/decisions_20260804_pab.md`, `docs/decisions_20260808_owner.md`, `docs/decisions_20260815_owner.md`, `docs/decisions_20260816_owner.md`, `docs/decisions_20260819_owner.md`, `docs/decisions_20260821_owner.md`, `docs/decisions_20261014_owner.md` |
 | Spend ledger | `docs/overnight_ledger_20260708.md` |
 | Checklists | `docs/tier_review_checklist.md`, `docs/tierb_freeze_checklist.md` |
 

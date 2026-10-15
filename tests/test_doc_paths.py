@@ -105,6 +105,13 @@ PILOT_OTHER_NAMES: dict[tuple[str, str], str] = {
     ("docs/triggers.md", "pilot/traces/pilot_v2_20261002/"): _RUN2_NEW_TRACE_OUT,
 }
 
+_JEV = "a live jev-audit run's cost sidecar or report, which its CI commit writes (no live run has fired yet)"
+JEV_RUN_NAMES: dict[tuple[str, str], str] = {
+    ("AGENTS.md", "data/jev/runs/"): _JEV,
+    ("docs/triggers.md", "data/jev/runs/jev_audit_*_1.report.json"): _JEV,
+    ("docs/triggers.md", "data/jev/runs/jev_audit_*_1.json"): _JEV,
+}
+
 # (document, path as the document writes it, after placeholders become `*`) -> why it does not exist.
 ALLOWED_MISSING: dict[tuple[str, str], str] = {
     ("AGENTS.md", "data/petri/rejudge/"): _REJUDGE,
@@ -124,6 +131,7 @@ ALLOWED_MISSING: dict[tuple[str, str], str] = {
         "the traces site build, in michaeldgreenphd/patientwords-traces, which the index points to",
     **{name: _PILOT_LOGITS for name in PILOT_LOGITS_NAMES},
     **PILOT_OTHER_NAMES,
+    **JEV_RUN_NAMES,
 }
 
 # ALLOWED_MISSING keys whose path is a runtime output that may legitimately appear in the tree: the stale check
@@ -135,6 +143,7 @@ MAY_APPEAR: frozenset[tuple[str, str]] = frozenset({
     ("docs/archiving.md", "trace_out/pairs_20260707T215921Z/index_07.png"),
     *PILOT_LOGITS_NAMES,      # a pilot logits fire's CI commit creates them
     *PILOT_OTHER_NAMES,       # a merge of main, a documented copy, or a pilot trace's CI commit creates them
+    *JEV_RUN_NAMES,           # a live jev-audit run's CI commit creates them
 })
 
 _FENCE = re.compile(r"^\s*(```|~~~)")
