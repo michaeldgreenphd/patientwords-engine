@@ -1944,3 +1944,61 @@ def test_the_gate_reconciles_run_attribution(tmp_path, advice_report):
     del zeroed["provenance"]["petri_runs"]
     zeroed["source_reports"][1]["petri_turns"] = 0
     assert any("sum to" in e and "total_assistant_turns" in e for e in errors(zeroed))
+
+
+@pytest.mark.parametrize("mutation", ["missing", "hash", "classes", "edges", "source"])
+def test_pooled_equivalence_provenance_is_required_and_validated(
+        tmp_path: Path, advice_report: dict, mutation: str) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    for name in ("jev_calibration.json", "petri_register_drift.json"):
+        path = tmp_path / "site" / "data" / name
+        data = json.loads(path.read_text(encoding="utf-8"))
+        block = data["provenance"]["evaluator_equivalence"]
+        if mutation == "missing":
+            del data["provenance"]["evaluator_equivalence"]
+        elif mutation == "hash":
+            block["sha256"] = "broken"
+        elif mutation == "classes":
+            block["evaluator_classes"] = {}
+        elif mutation == "edges":
+            block["applied_equivalences"] = [{"evaluator_sha256": "a" * 64}]
+        else:
+            del data["source_reports"][0]["evaluator_sha256"]
+        path.write_text(json.dumps(data), encoding="utf-8")
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert rep.errors and any("evaluator" in str(e) for e in rep.errors)
+
+
+def test_pooled_equivalence_graph_must_reconstruct_its_claimed_class() -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    a, b, c = (letter * 64 for letter in "abc")
+    def edge(x: str, y: str) -> dict:
+        return {"evaluator_sha256": x, "equivalent_to": y, "reason": "reviewed", "reviewed_utc": "2026-10-15"}
+
+    block = {"path": "data/jev/evaluator_equivalence.json", "sha256": "d" * 64,
+             "evaluator_classes": {a: c, c: c}, "applied_equivalences": [edge(a, b), edge(b, c)]}
+    payload = {"source_reports": [{"evaluator_sha256": a}, {"evaluator_sha256": c}],
+               "provenance": {"evaluator_equivalence": block}}
+    rep = vfc.Report()
+    vfc._jev_equivalence(rep, "synthetic", payload)
+    assert not rep.errors
+    block["applied_equivalences"].pop()
+    vfc._jev_equivalence(rep, "synthetic", payload)
+    assert any("reconstruct" in str(e) for e in rep.errors)
+
+
+def test_pooled_pair_keeps_the_same_equivalence_snapshot(tmp_path: Path, advice_report: dict) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    path = tmp_path / "site" / "data" / "petri_register_drift.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["provenance"]["evaluator_equivalence"]["sha256"] = "f" * 64
+    path.write_text(json.dumps(data), encoding="utf-8")
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert any("different evaluator-equivalence" in str(e) for e in rep.errors)

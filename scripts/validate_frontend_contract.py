@@ -1104,6 +1104,61 @@ def _jev_source_reports(rep: Report, name: str, data: dict) -> None:
                                               f"{total_key} is {total}")
 
 
+def _jev_equivalence(rep: Report, name: str, data: dict) -> None:
+    """Validate the self-contained reviewed graph that justifies pooling runner versions."""
+    sources = data.get("source_reports")
+    if not isinstance(sources, list) or len(sources) < 2:
+        return
+    path = "$.provenance.evaluator_equivalence"
+    prov = data.get("provenance")
+    block = prov.get("evaluator_equivalence") if isinstance(prov, dict) else None
+
+    def digest(value: object) -> bool:
+        return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+    if not isinstance(block, dict):
+        rep.err(name, path, "required for a pooled export")
+        return
+    if block.get("path") != "data/jev/evaluator_equivalence.json":
+        rep.err(name, path + ".path", "must name the reviewed equivalence registry")
+    evaluators = [s.get("evaluator_sha256") if isinstance(s, dict) else None for s in sources]
+    if not all(digest(e) for e in evaluators):
+        rep.err(name, "$.source_reports", "each pooled report must name its evaluator_sha256")
+        return
+    distinct = set(evaluators)
+    if not digest(block.get("sha256")) and not (block.get("sha256") is None and len(distinct) == 1):
+        rep.err(name, path + ".sha256", "must record the registry digest when different evaluators are pooled")
+    classes = block.get("evaluator_classes")
+    if (not isinstance(classes, dict) or set(classes) != distinct or not all(digest(v) for v in classes.values())
+            or len(set(classes.values())) != 1):
+        rep.err(name, path + ".evaluator_classes", "must map exactly the source evaluators to one digest class")
+        return
+    edges = block.get("applied_equivalences")
+    if not isinstance(edges, list):
+        rep.err(name, path + ".applied_equivalences", "must be a list of reviewed edges")
+        return
+    parent: dict[str, str] = {}
+
+    def root(value: str) -> str:
+        while parent.setdefault(value, value) != value:
+            value = parent[value]
+        return value
+
+    for i, edge in enumerate(edges):
+        if (not isinstance(edge, dict) or not digest(edge.get("evaluator_sha256"))
+                or not digest(edge.get("equivalent_to")) or any(
+                    not isinstance(edge.get(k), str) or not edge[k].strip() for k in ("reason", "reviewed_utc"))):
+            rep.err(name, f"{path}.applied_equivalences[{i}]", "needs two digests, a review date and a reason")
+            return
+        parent[root(edge["evaluator_sha256"])] = root(edge["equivalent_to"])
+    if len(distinct) == 1:
+        if edges:
+            rep.err(name, path + ".applied_equivalences", "equal evaluators apply no equivalence")
+    elif ({e: root(e) for e in distinct} != classes
+          or any(root(e) not in set(classes.values()) for e in parent)):
+        rep.err(name, path, "reviewed edges do not reconstruct the source evaluator class")
+
+
 def _jev_petri_runs(rep: Report, name: str, data: dict) -> None:
     """The drift payload's run attribution (Codex review of PR #111, round 3). A combined export sets
     provenance.petri_transcripts to null, so provenance.petri_runs and each conversation's `run` are the only mapping
@@ -1148,6 +1203,7 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
     reports: dict[str, str] = {}
     sources: dict[str, list] = {}
     versions: dict[str, object] = {}
+    equivalences: dict[str, str] = {}
     legacy_reports = _jev_legacy_source_reports(rep)
     for name, spec in JEV_SPECS.items():
         if not (site / "data" / name).is_file():
@@ -1175,6 +1231,10 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
                     "use the unversioned legacy shape; regenerate with the current exporter")
         if "source_reports" in data or _jev_uses_multi_report_format(data):
             _jev_source_reports(rep, name, data)
+            _jev_equivalence(rep, name, data)
+            prov = data.get("provenance")
+            if isinstance(prov, dict) and "evaluator_equivalence" in prov:
+                equivalences[name] = json.dumps(prov["evaluator_equivalence"], sort_keys=True)
         head = data.get("headline_metrics")
         if isinstance(head, dict):
             for key, kinds in spec["headline"].items():
@@ -1257,6 +1317,9 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
         rep.err(" and ".join(reports), "$.source_report_sha256", "the two Jev payloads come from different reports")
     if len(versions) > 1 and any(version != next(iter(versions.values())) for version in versions.values()):
         rep.err(" and ".join(versions), "$.schema_version", "the two Jev payloads use different schema versions")
+    if len(set(equivalences.values())) > 1:
+        rep.err(" and ".join(equivalences), "$.provenance.evaluator_equivalence",
+                "the two Jev payloads record different evaluator-equivalence provenance")
     listed = {name: json.dumps(lst, sort_keys=True) for name, lst in sources.items()}
     if len(listed) > 1 and len(set(listed.values())) > 1:
         rep.err(" and ".join(listed), "$.source_reports", "the two Jev payloads list different source reports")
