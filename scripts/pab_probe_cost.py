@@ -80,6 +80,12 @@ ASSISTANT_CALLS_PER_TURN = 1.6
 ASSISTANT_OUTPUT_PER_CALL = 200
 PATIENT_OUTPUT_PER_TURN = 100
 RUBRIC_OUTPUT = 150
+# A jury model that thinks by default and cannot turn it off (Claude Opus 5.5: claude-api skill,
+# shared/model-migration.md) writes its thinking into the same output allowance, so its rubric answer is priced at the
+# 4096-token allowance such a model is sent (medlang_circuits llm_client's floor), not at RUBRIC_OUTPUT. An upper
+# bound for the ceiling, not a measurement; the re-validation run measures it (owner decision R7, 2026-10-14).
+THINKING_JURY_MODELS = frozenset({"claude-opus-5-5", "claude-fable-5-1", "claude-sonnet-5-5"})
+THINKING_RUBRIC_OUTPUT = 4096
 SANDBOX_OUTPUT = 700         # JSON for the generated offices and doctors
 
 # ---------------------------------------------------------------------------
@@ -243,7 +249,9 @@ PRESETS = {
         "sandbox_model": "openrouter:openai/gpt-5.4-mini",
         "patient_model": "openrouter:x-ai/grok-4.3",
         "assistant_models": ["openrouter:openai/gpt-5.4-mini"],
-        "jury_models": ["claude-opus-4-8"],
+        # claude-opus-5-5 since 2026-10-14 (owner decision R7, docs/decisions_20261014_owner.md); claude-opus-4-8, the
+        # benchmark's validated default, before. The jury is re-validated before any PAB fire uses it.
+        "jury_models": ["claude-opus-5-5"],
     },
     "bedrock": {
         "arms": 4,
@@ -290,7 +298,8 @@ def estimate(arms: int, cases: int, turns: int, patient_model: str,
 
     jury_costs = [
         _cost(model, per_conv["jury_in_per_model"] * total_convs,
-              per_conv["jury_out_per_model"] * total_convs)
+              (THINKING_RUBRIC_OUTPUT * N_RUBRICS if model in THINKING_JURY_MODELS
+               else per_conv["jury_out_per_model"]) * total_convs)
         for model in jury_models
     ]
     legs["jury"] = (

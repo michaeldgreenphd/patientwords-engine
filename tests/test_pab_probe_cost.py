@@ -31,8 +31,13 @@ SANDBOX = "openrouter:openai/gpt-5.4-mini"
 UNPRICED = "openrouter:nobody/not-in-the-registry"
 
 
+# The figures docs/pab_first_probe_costing.md quotes were computed for the Opus 4.8 jury; the preset's jury moved to
+# Claude Opus 5.5 on 2026-10-14 (owner decision R7), so the documented-plan tests pin that plan explicitly.
+DOCUMENTED_PLAN = {**ppc.DEFAULT_PLAN, "jury_models": JURY}
+
+
 def plan(**overrides):
-    args = {**ppc.DEFAULT_PLAN, **overrides}
+    args = {**DOCUMENTED_PLAN, **overrides}
     return ppc.estimate(
         args["arms"], args["cases"], args["turns"], args["patient_model"],
         args["assistant_models"], args["jury_models"], args["sandbox_model"],
@@ -300,3 +305,23 @@ class TestCli:
         assert payload["usd"]["jury"] == 0.0
         assert payload["jury_models"] == []
         assert payload["price_sources"][PATIENT]
+
+
+
+class TestOpus55Jury:
+    """Owner decision R7 (2026-10-14): the preset's jury is Claude Opus 5.5, which cannot turn thinking off, so its
+    rubric answers are priced at the 4096-token allowance (an upper bound until the re-validation run measures it)."""
+
+    def test_the_preset_jury_is_opus_5_5(self):
+        assert ppc.DEFAULT_PLAN["jury_models"] == ["claude-opus-5-5"]
+        assert ppc.billing_channel("claude-opus-5-5") == "anthropic"
+        assert ppc.resolve_price("claude-opus-5-5")[0] == (4.0, 20.0)
+
+    def test_a_thinking_jury_is_priced_at_its_allowance(self):
+        args = ppc.DEFAULT_PLAN
+        result = ppc.estimate(args["arms"], args["cases"], args["turns"], args["patient_model"],
+                              args["assistant_models"], args["jury_models"], args["sandbox_model"])
+        # the jury bound rises from the documented 8.476 (Opus 4.8 at 150 output tokens per rubric)
+        assert result["usd"]["by_channel"]["anthropic"] > plan()["usd"]["by_channel"]["anthropic"]
+        assert result["usd"]["by_channel"]["openrouter"] == pytest.approx(
+            plan()["usd"]["by_channel"]["openrouter"], abs=1e-6)

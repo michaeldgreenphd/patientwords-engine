@@ -14,6 +14,9 @@ python scripts/pab_probe_cost.py --preset bedrock      # rev 1, for the diff
 python scripts/pab_probe_cost.py --balance <prepaid>   # check the key's balance
 ```
 
+
+> **2026-10-14, owner decision R7.** The jury moves from `claude-opus-4-8` to `claude-opus-5-5` ($4/$20 per million tokens, against $5/$25). The figures below were computed for the Opus 4.8 jury. `scripts/pab_probe_cost.py` now prices the Opus 5.5 jury's rubric answers at the 4,096-token allowance, an upper bound because its thinking cannot be turned off; run it for current numbers. The jury is re-validated before any PAB fire.
+
 ## Answering the budget question first
 
 The prepaid OpenRouter balance is **$9**. It is not the binding constraint, and
@@ -140,7 +143,7 @@ construction. **Turns: 3.**
 | patient | `openrouter:x-ai/grok-4.3` | Non-Claude, so patient language is not Claude-written and Claude-graded. Frontier-class, which matters more than its price: a small model that ignores personas is indistinguishable from an incoherent persona, and telling those apart *is* Stage 1. |
 | assistant | `openrouter:openai/gpt-5.4-mini` | Mid-tier, in the band where the paper reports triage pass rates spreading (32%–88%) rather than flooring or ceiling. Mature tool-calling, which is the risk the smoke test exists to retire. |
 | sandbox | `openrouter:openai/gpt-5.4-mini` | Emits JSON only; shares the assistant's model for simplicity. Invalid JSON is retried up to 3×, so a reliable generator is worth more than the ~2% it costs. |
-| jury | `claude-opus-4-8` (direct Anthropic API) | The validated instrument, benchmark default. **Do not substitute** — see above. |
+| jury | `claude-opus-5-5` (direct Anthropic API) since 2026-10-14; `claude-opus-4-8` before | Owner decision R7 (`docs/decisions_20261014_owner.md`): the jury moves to Claude Opus 5.5. Opus 4.8 was the validated instrument and the benchmark default, and that validation does not carry over, so **the Opus 5.5 jury is re-validated before any PAB fire uses it**. Opus 5.5 cannot turn thinking off and rejects `temperature`, so the fork's jury call settings are part of that check. |
 
 ## The money
 
