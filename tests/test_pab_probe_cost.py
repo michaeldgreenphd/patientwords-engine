@@ -309,8 +309,9 @@ class TestCli:
 
 
 class TestOpus55Jury:
-    """Owner decision R7 (2026-10-14): the preset's jury is Claude Opus 5.5, which cannot turn thinking off, so its
-    rubric answers are priced at the 4096-token allowance (an upper bound until the re-validation run measures it)."""
+    """Owner decision R7 (2026-10-14; the third round of docs/decisions_20261014_owner.md, recorded by PR #115): the
+    preset's jury is Claude Opus 5.5, which cannot turn thinking off, so its rubric answers are priced at the 4096-token
+    allowance and its prompts at the measured input (an upper bound until the re-validation run measures it)."""
 
     def test_the_preset_jury_is_opus_5_5(self):
         assert ppc.DEFAULT_PLAN["jury_models"] == ["claude-opus-5-5"]
@@ -325,3 +326,18 @@ class TestOpus55Jury:
         assert result["usd"]["by_channel"]["anthropic"] > plan()["usd"]["by_channel"]["anthropic"]
         assert result["usd"]["by_channel"]["openrouter"] == pytest.approx(
             plan()["usd"]["by_channel"]["openrouter"], abs=1e-6)
+
+    def test_the_bound_is_pinned(self):
+        """Codex review of PR #116: pin the bound itself, not only that it exceeds the Opus 4.8 figure. 52
+        conversations, each six rubric calls at 4096 output tokens and the measured ~8,003 input tokens per call, at
+        $4/$20 per million tokens."""
+        args = ppc.DEFAULT_PLAN
+        result = ppc.estimate(args["arms"], args["cases"], args["turns"], args["patient_model"],
+                              args["assistant_models"], args["jury_models"], args["sandbox_model"])
+        convs = result["conversations_total"]
+        jury = convs * (ppc.MEASURED_JURY_INPUT_PER_RUBRIC * 6 * 4.0 + 4096 * 6 * 20.0) / 1e6
+        assert convs == 52 and ppc.N_RUBRICS == 6 and ppc.THINKING_RUBRIC_OUTPUT == 4096
+        assert result["usd"]["by_channel"]["anthropic"] == pytest.approx(jury, abs=1e-3)
+        assert result["usd"]["by_channel"]["anthropic"] == pytest.approx(35.5462, abs=1e-3)
+        assert result["usd"]["total"] == pytest.approx(37.4755, abs=1e-3)
+        assert result["days_at_ceiling"] == 19

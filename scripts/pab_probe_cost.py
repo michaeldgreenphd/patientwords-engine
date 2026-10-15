@@ -86,6 +86,11 @@ RUBRIC_OUTPUT = 150
 # bound for the ceiling, not a measurement; the re-validation run measures it (owner decision R7, 2026-10-14).
 THINKING_JURY_MODELS = frozenset({"claude-opus-5-5", "claude-fable-5-1", "claude-sonnet-5-5"})
 THINKING_RUBRIC_OUTPUT = 4096
+# The bound's input side: the one landed jury run (data/pab/pab_evaluate_30928336615.report.json, 2026-08-04) read
+# 312,100 input tokens over 39 rubric calls, about 8,003 per call, against the ~4,683 per call conversation_tokens()
+# models (docs/pab_handoff_20260804.md records the measured jury rate at 2.1x the estimate). A thinking jury's bound
+# takes the larger of the two (Codex review of PR #116).
+MEASURED_JURY_INPUT_PER_RUBRIC = 312_100 / 39
 SANDBOX_OUTPUT = 700         # JSON for the generated offices and doctors
 
 # ---------------------------------------------------------------------------
@@ -249,7 +254,8 @@ PRESETS = {
         "sandbox_model": "openrouter:openai/gpt-5.4-mini",
         "patient_model": "openrouter:x-ai/grok-4.3",
         "assistant_models": ["openrouter:openai/gpt-5.4-mini"],
-        # claude-opus-5-5 since 2026-10-14 (owner decision R7, docs/decisions_20261014_owner.md); claude-opus-4-8, the
+        # claude-opus-5-5 since 2026-10-14 (owner decision R7, the third round of docs/decisions_20261014_owner.md,
+        # recorded by PR #115; it applies Q8's move of Opus defaults to the PAB jury); claude-opus-4-8, the
         # benchmark's validated default, before. The jury is re-validated before any PAB fire uses it.
         "jury_models": ["claude-opus-5-5"],
     },
@@ -297,7 +303,9 @@ def estimate(arms: int, cases: int, turns: int, patient_model: str,
     )
 
     jury_costs = [
-        _cost(model, per_conv["jury_in_per_model"] * total_convs,
+        _cost(model,
+              (max(per_conv["jury_in_per_model"], MEASURED_JURY_INPUT_PER_RUBRIC * N_RUBRICS)
+               if model in THINKING_JURY_MODELS else per_conv["jury_in_per_model"]) * total_convs,
               (THINKING_RUBRIC_OUTPUT * N_RUBRICS if model in THINKING_JURY_MODELS
                else per_conv["jury_out_per_model"]) * total_convs)
         for model in jury_models

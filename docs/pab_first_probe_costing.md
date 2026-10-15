@@ -15,7 +15,8 @@ python scripts/pab_probe_cost.py --balance <prepaid>   # check the key's balance
 ```
 
 
-> **2026-10-14, owner decision R7.** The jury moves from `claude-opus-4-8` to `claude-opus-5-5` ($4/$20 per million tokens, against $5/$25). The figures below were computed for the Opus 4.8 jury. `scripts/pab_probe_cost.py` now prices the Opus 5.5 jury's rubric answers at the 4,096-token allowance, an upper bound because its thinking cannot be turned off; run it for current numbers. The jury is re-validated before any PAB fire.
+> **2026-10-14, owner decision R7** (the third round of `docs/decisions_20261014_owner.md`, recorded by PR #115; it
+> applies the second round's Q8, which moved configured Opus defaults to Opus 5.5). The jury moves from `claude-opus-4-8` to `claude-opus-5-5` ($4/$20 per million tokens, against $5/$25). The figures below were computed for the Opus 4.8 jury. `scripts/pab_probe_cost.py` now prices the Opus 5.5 jury at an upper bound: each rubric answer at the 4,096-token allowance, because its thinking cannot be turned off, and each rubric prompt at the larger of the modelled input and the ~8,003 tokens per rubric call the one landed jury run measured; run it for current numbers. The jury is re-validated before any PAB fire.
 
 ## Answering the budget question first
 
