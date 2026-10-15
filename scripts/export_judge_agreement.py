@@ -20,7 +20,11 @@ Usage:
   python scripts/export_judge_agreement.py \
       [--judgments-glob "data/advice/judgments_*.jsonl"] \
       [--rubric data/advice_rubric.draft.json] \
+      [--secondary-judge openrouter:stealth/ox-alpha] \
       --out data/judge_agreement.json --site ../patientwords
+
+With more than one secondary judge in the archives (Claude Haiku 5.5 beside ox-alpha, from 2026-10-14),
+--secondary-judge is required: the payload pairs the primary judge with that one judge only.
 """
 
 from __future__ import annotations
