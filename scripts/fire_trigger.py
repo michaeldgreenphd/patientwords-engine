@@ -206,8 +206,10 @@ PARK_DEFAULTS = {
     "jlens-readout": {"models": "gemma-2-2b", "pairs_file": PARK_TINY_PAIRS, "limit": "1",
                       "offset": "0", "topn": "1", "lens_type": "JACOBIAN_LENS",
                       "save_raw": "false", "commit_outputs": "false"},
+    # max_spend 0.03 since 2026-10-14 (owner decision R8): generation calls are now admitted at the 4096-token
+    # allowance they are sent (scenario_gen), and a haiku call's worst case there is about $0.021, above the old $0.01
     "scenario-generation": {"task": "pairs", "num": "1", "topics": "general wellness",
-                            "anthropic_model": "claude-haiku-4-5", "max_spend": "0.01"},
+                            "anthropic_model": "claude-haiku-4-5", "max_spend": "0.03"},
     "model-evaluation": {"model_selection": "claude-haiku-4-5", "scenario": "two_step",
                          "sample_size": "1", "pairs_file": PARK_TINY_PAIRS,
                          "max_spend": "0.01"},

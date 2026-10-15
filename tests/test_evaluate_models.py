@@ -295,3 +295,22 @@ def test_circuit_trace_refuses_a_translator_the_flat_reservation_cannot_bound():
     assert ft.circuit_trace_translation_model_problems({"translation_model": "claude-opus-5-5"})
     assert ft.circuit_trace_translation_model_problems({"translation_model": ""}) == []
     assert ft.circuit_trace_translation_model_problems({"translation_model": "claude-opus-4-8"}) == []
+
+
+def test_generation_is_admitted_at_the_allowance_it_is_sent():
+    """Owner decision R8 (2026-10-14): scenario_gen sends GEN_MAX_TOKENS (4096) but was admitted as if a call wrote
+    MAX_OUTPUT_TOKENS (200); it now passes its budget. The scenario-generation park's $0.03 still admits a haiku call
+    (worst case about $0.021) and the old $0.01 would not."""
+    import importlib.util
+    from pathlib import Path
+    from medlang_circuits import scenario_gen
+    spec = importlib.util.spec_from_file_location(
+        "ft", Path(__file__).resolve().parents[1] / "scripts" / "fire_trigger.py")
+    ft = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ft)
+    park = float(ft.PARK_DEFAULTS["scenario-generation"]["max_spend"])
+    model = ft.PARK_DEFAULTS["scenario-generation"]["anthropic_model"]
+    assert em.CostTracker(max_spend=park).can_afford(model, scenario_gen.GEN_MAX_TOKENS)
+    assert not em.CostTracker(max_spend=0.01).can_afford(model, scenario_gen.GEN_MAX_TOKENS)
+    src = Path(scenario_gen.__file__).read_text(encoding="utf-8")
+    assert "tracker.can_afford(model)" not in src

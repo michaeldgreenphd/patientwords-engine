@@ -411,7 +411,7 @@ def generate_advice_nat_pairs(
     style_counts: dict[str, int] = {s: 0 for s in ADVICE_NAT_STYLES}
     rounds = 0
     max_rounds = max(4, 2 * math.ceil(n / GEN_BATCH_SIZE) + 2)
-    while len(accepted) < n and rounds < max_rounds and tracker.can_afford(model):
+    while len(accepted) < n and rounds < max_rounds and tracker.can_afford(model, GEN_MAX_TOKENS):
         rounds += 1
         want = min(n - len(accepted), GEN_BATCH_SIZE)
         parts = [f"Generate {want} new items.",
@@ -559,7 +559,7 @@ def generate_advice_mc_pairs(
     cue_counts: dict[str, int] = {c: 0 for c in ADVICE_MC_CUES}
     rounds = 0
     max_rounds = max(4, 2 * math.ceil(n / GEN_BATCH_SIZE) + 2)
-    while len(accepted) < n and rounds < max_rounds and tracker.can_afford(model):
+    while len(accepted) < n and rounds < max_rounds and tracker.can_afford(model, GEN_MAX_TOKENS):
         rounds += 1
         want = min(n - len(accepted), GEN_BATCH_SIZE)
         parts = [f"Generate {want} new items.",
@@ -814,7 +814,7 @@ def generate_stress_pairs(
     rejected: list[dict[str, Any]] = []
     rounds = 0
     max_rounds = max(4, 2 * math.ceil(n / GEN_BATCH_SIZE) + 2)
-    while len(accepted) < n and rounds < max_rounds and tracker.can_afford(model):
+    while len(accepted) < n and rounds < max_rounds and tracker.can_afford(model, GEN_MAX_TOKENS):
         if phrase_pool and not unused_phrases:
             break  # every provided phrase is used; more items would be unsourced
         rounds += 1
@@ -955,7 +955,7 @@ def generate_quadrant_scenarios(
     rejected: list[dict[str, Any]] = []
     rounds = 0
     max_rounds = max(4, 2 * math.ceil(n / GEN_BATCH_SIZE) + 2)
-    while len(accepted) < n and rounds < max_rounds and tracker.can_afford(model):
+    while len(accepted) < n and rounds < max_rounds and tracker.can_afford(model, GEN_MAX_TOKENS):
         rounds += 1
         want = min(n - len(accepted), GEN_BATCH_SIZE)
         parts = [f"Generate {want} new items."]
@@ -1038,7 +1038,7 @@ def generate_dialect_variants(
     accepted: list[dict[str, str]] = []
     rejected: list[dict[str, Any]] = []
     rounds = 0
-    while len(accepted) < n_variants and rounds < 3 and tracker.can_afford(model):
+    while len(accepted) < n_variants and rounds < 3 and tracker.can_afford(model, DIALECT_MAX_TOKENS):
         rounds += 1
         want = n_variants - len(accepted)
         prompt = (
