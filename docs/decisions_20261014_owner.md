@@ -124,14 +124,14 @@ run against today's prompts.
 
 | # | Decision | Chosen |
 |---|---|---|
-| R1 | Petri re-judge with Claude Haiku 5.5 | One `mode: rejudge` fire over the four clean runs, `judge_model: claude-haiku-5-5`, `judge_max_spend` $1.00 (about $0.53 expected), after #114 merges. |
+| R1 | Petri re-judge with Claude Haiku 5.5 | The four clean runs, `judge_model: claude-haiku-5-5`, after #114 merges, about $0.53 in all. Two fires, because a rejudge fire takes one `seeds_file` and plans every source run from it: one over the three wave-2 runs (`docs/framework/petri_seeds.draft.json`, `judge_max_spend` $0.80), then one over eq02 (`docs/framework/petri_seeds_equity.draft.json`, $0.20). The $1.00 total is unchanged. |
 | R2 | The two refused Petri runs | Rebuild their original judge instrument (the prompts and the planner as they ran), so each can be re-judged exactly. A pull request. |
 | R3 | Advice re-judge | One judge-only advice-eval fire per archive (six), `judge_model: anthropic:claude-haiku-5-5`, $0.30 ceiling each, chained, after #114 merges. About $0.70 in all. |
 | R4 | Both judges from now on | Automate it: each judged fire runs Claude Haiku 5.5 after the judge of record, inside the same reservation. A pull request after #114 merges. |
-| R5 | The equity v2 fire's raise (Q1 of the second round) | The owner authorizes a $4.00 dated raise in `ops/budget_overrides.json` for the fire's UTC day, citing this record. The agent writes it in the fire's own commit and fires once #108 merges. |
+| R5 | The equity v2 fire's raise (Q1 of the second round) | The owner authorizes a $4.00 dated raise in `ops/budget_overrides.json` for the fire's UTC day, citing this record. The raise is its own commit, landed on `main` before the fire: `fire_trigger.py` publishes only the trigger and journal paths, and CI's `budget-gate` reads the override from the pushed tree. The fire follows once #108 has merged. |
 | R6 | Circuit-trace translation | Stays on `claude-opus-4-8` (engine #112 pins it). |
 | R7 | The PAB jury | Moves to `claude-opus-5-5`. The jury is re-validated before any PAB fire uses it (`docs/pab_first_probe_costing.md` calls the Opus 4.8 jury the validated instrument). |
-| R8 | The scenario-generation spend check | Fixed: each call is admitted at the allowance it is sent. The park's `max_spend` rises from $0.01 to $0.03 so the park still produces its one-pair batch. |
+| R8 | The scenario-generation spend check | To be fixed by engine #112 (pending merge): each call admitted at the allowance it is sent, and the park's `max_spend` raised from $0.01 to $0.03 so the park still produces its one-pair batch. After #112 merges, the lane is re-parked so its trigger file carries the new park. |
 | R9 | Petri-only Jev runs | A follow-up PR after #110 and #111 merge. |
 | R10 | Wave-3 script readings and worktrees | The six readings in engine #113 are accepted. The eight clean worktrees of merged PRs were removed on 2026-10-14. The row-3 sentence below is the draft for approval with the plan. |
 
