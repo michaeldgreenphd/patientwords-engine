@@ -267,6 +267,11 @@ def test_paid_steps_are_gated_on_mode_and_the_raw_log_stays_outside_the_checkout
                              "Spend report for an attempted run that produced no adapted report",
                              "Upload the raw .eval as a workflow artifact (90-day custody; never committed)",
                              "Commit cost sidecars of a paid run (mode run or readapt; independent of commit_outputs)",
+                             "Haiku 5.5 second judge (isolated exploratory outputs)",
+                             "Account for an interrupted second judge and verify completed outputs",
+                             "Upload the verified secondary outputs",
+                             "Commit the secondary pass and its cost (cost independent of commit_outputs)",
+                             "Report a failed second judge after preserving completed outputs and cost",
                              "Job summary"]
     # the cost sidecars of a paid run are booked whatever happened to the outputs (Codex round 2); nothing else
     # is staged by that step, and it runs after the gated outputs commit
@@ -289,7 +294,10 @@ def test_paid_steps_are_gated_on_mode_and_the_raw_log_stays_outside_the_checkout
     assert "always()" in spend_report["if"] and "mode != 'preflight'" in spend_report["if"]
     assert "spend-report" in spend_report["run"] and names.index(spend_report["name"]) < names.index(sidecars["name"])
     assert names.index(adapt["name"]) < names.index(spend_report["name"])
-    assert 'git fetch origin "$BRANCH"' in sidecars["run"] and 'git reset --soft "origin/$BRANCH"' in sidecars["run"]
+    assert 'bash scripts/ci_publish_judge_files.sh' in sidecars["run"]
+    publisher = (ROOT / "scripts/ci_publish_judge_files.sh").read_text()
+    assert 'git fetch origin "$BRANCH"' in publisher and 'git worktree add --detach' in publisher
+    assert 'git reset --soft' not in publisher
     # round 4: a judge that started and left no sidecar is booked from its rows or at its ceiling; one that never
     # started books nothing (the marker distinguishes them)
     assert 'touch "$RUNNER_TEMP/petri-run/judge_started"' in judge["run"]
@@ -449,7 +457,7 @@ def test_park_default_validates_and_is_a_true_no_op():
     assert ft.fire_lane(TRIGGER, ft.PARK_DEFAULTS[TRIGGER]) == "anthropic"
     judged = dict(ft.PARK_DEFAULTS[TRIGGER], judge="true", judge_max_spend="0.50", max_spend="1.00")
     commitment, err = ft.fire_commitment(judged)
-    assert err is None and commitment == pytest.approx(1.50), "the judge ceiling is counted, as for advice-eval"
+    assert err is None and commitment == pytest.approx(1.55), "both judge ceilings are counted, as for advice-eval"
 
 
 def test_the_fire_nonce_reaches_the_run_the_manifest_and_the_fallback_sidecar(workflow, raw):

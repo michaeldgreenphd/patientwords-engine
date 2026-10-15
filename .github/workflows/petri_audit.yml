@@ -586,6 +586,7 @@ jobs:
       # step below still commits that sidecar and nothing else, and a re-fired readapt is admitted beside it, writes
       # its own, and leaves the earlier one (whose spend is booked) byte-identical.
       - name: Judge of record + analysis rows (paid; mode run or readapt)
+        id: primary_judge
         if: ${{ (needs.params.outputs.mode == 'run' || needs.params.outputs.mode == 'readapt') && needs.params.outputs.judge == 'true' }}
         env:
           # the same key set as the run step: the registry resolves a judge spec to whichever provider's key_env it
@@ -638,6 +639,7 @@ jobs:
       # measured the artifact at 40 KB zipped for 8 samples, so size is no objection. The same gating applies: no
       # always(), after the seal check, verify-chain, verify-run and the raw-log refusal.
       - name: Upload the seal-cleared sanitised exports (dry run or paid run; never a raw log)
+        id: primary_upload
         if: ${{ needs.params.outputs.mode != 'preflight' }}
         # Non-blocking ONLY where a committed copy follows it. For a paid run that commits, this upload is the
         # recovery copy and its own failure must not skip the commit step below (default success gating), which
@@ -721,6 +723,7 @@ jobs:
       # holdout seal check or verify-chain rejected, or a half-written export after an adapt or judge failure,
       # can never be committed. Only the raw-log refusal, the artifact upload and the summary are unconditional.
       - name: Commit sanitised outputs to the branch (mode run or readapt; requires every prior step green)
+        id: primary_commit
         if: ${{ (needs.params.outputs.mode == 'run' || needs.params.outputs.mode == 'readapt') && needs.params.outputs.commit_outputs == 'true' }}
         env:
           BRANCH: ${{ github.ref_name }}
@@ -757,29 +760,72 @@ jobs:
         run: |
           set -euo pipefail
           if find data/petri -name '*.eval' | grep -q .; then echo "raw log present; refusing" >&2; exit 1; fi
-          # index cleanliness is no proof the sidecars landed: the outputs step may have committed them locally and
-          # then failed every push. Measure against the remote and, if local commits never reached it, fall back to
-          # the remote head (the files stay in the working tree) and commit the sidecars alone (Codex round 3).
-          git fetch origin "$BRANCH"
-          if [ -n "$(git log --oneline "origin/$BRANCH..HEAD")" ]; then
-            echo "local commit(s) never reached origin/$BRANCH; re-committing the cost sidecars alone"
-            git reset --soft "origin/$BRANCH"
-            git reset -q
-          fi
+          LIST="$RUNNER_TEMP/primary-cost-files.txt"
+          : > "$LIST"
           for f in data/petri/runs/$RUN_STEM/*.report.json; do
-            if [ -f "$f" ]; then git add -f "$f"; fi
+            if [ -f "$f" ]; then printf '%s\n' "$f" >> "$LIST"; fi
           done
-          if git diff --cached --quiet; then echo "No cost sidecars to commit (already on the remote, or none written)"; exit 0; fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Petri audit: $RUN_STEM cost sidecars"
-          for i in 1 2 3 4 5; do
-            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
-              exit 0
-            fi
-            git rebase --abort 2>/dev/null || true
-            sleep $((i * 2))
+          bash scripts/ci_publish_judge_files.sh "Petri audit: $RUN_STEM cost sidecars" "$LIST"
+
+      # R4: a second pass has its own ceiling inside the same journal reservation. The first pass's
+      # verified outputs have already been preserved; a second-pass failure cannot discard them.
+      - name: Haiku 5.5 second judge (isolated exploratory outputs)
+        id: secondary
+        if: ${{ always() && (needs.params.outputs.mode == 'run' || needs.params.outputs.mode == 'readapt') && needs.params.outputs.judge == 'true' }}
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SOURCE_PRESERVED: ${{ (needs.params.outputs.commit_outputs == 'true' && steps.primary_commit.outcome == 'success') || (needs.params.outputs.commit_outputs != 'true' && steps.primary_upload.outcome == 'success') }}
+          RESOLVED_PARAMS: ${{ toJSON(needs.params.outputs) }}
+          PRIMARY_STATUS: ${{ steps.primary_judge.outcome }}
+        run: |
+          printf '%s' "$RESOLVED_PARAMS" > "$RUNNER_TEMP/secondary-params.json"
+          if [ "$SOURCE_PRESERVED" != "true" ]; then PRIMARY_STATUS="failure"; fi
+          python -m scripts.petri_audit.secondary run --params-file "$RUNNER_TEMP/secondary-params.json" \
+            --scratch "$RUNNER_TEMP/secondary-rows" --primary-status "$PRIMARY_STATUS" --source-runs "$RUN_STEM"
+
+      - name: Account for an interrupted second judge and verify completed outputs
+        id: secondary_verify
+        if: ${{ always() && (needs.params.outputs.mode == 'run' || needs.params.outputs.mode == 'readapt') && needs.params.outputs.judge == 'true' }}
+        run: |
+          python -m scripts.petri_audit.secondary finalize --scratch "$RUNNER_TEMP/secondary-rows"
+          python -m scripts.petri_audit.secondary verify --scratch "$RUNNER_TEMP/secondary-rows"
+          python scripts/seal_check.py --site "$RUNNER_TEMP/no-site" --extra data/petri/secondary,data/petri/rejudge
+
+      - name: Upload the verified secondary outputs
+        if: ${{ always() && steps.secondary_verify.outcome == 'success' }}
+        continue-on-error: ${{ needs.params.outputs.commit_outputs == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: petri-secondary-${{ github.run_id }}
+          path: ${{ runner.temp }}/secondary-rows/exports/
+          if-no-files-found: warn
+
+      - name: Commit the secondary pass and its cost (cost independent of commit_outputs)
+        if: ${{ always() && steps.secondary.outcome != 'skipped' }}
+        env:
+          BRANCH: ${{ github.ref_name }}
+          COMMIT_OUTPUTS: ${{ needs.params.outputs.commit_outputs }}
+          VERIFIED: ${{ steps.secondary_verify.outcome }}
+        run: |
+          set -euo pipefail
+          LIST="$RUNNER_TEMP/secondary-files.txt"
+          : > "$LIST"
+          STATUS="data/petri/secondary/fire_${GITHUB_RUN_ID}.json"
+          if [ -f "$STATUS" ]; then printf '%s\n' "$STATUS" >> "$LIST"; fi
+          for f in data/petri/rejudge/*/*/*.rejudge_${GITHUB_RUN_ID}_secondary.judge.report.json; do
+            if [ -f "$f" ]; then printf '%s\n' "$f" >> "$LIST"; fi
           done
+          if [ "$COMMIT_OUTPUTS" = "true" ] && [ "$VERIFIED" = "success" ]; then
+            cat "$RUNNER_TEMP/secondary-rows/stage.txt" >> "$LIST"
+          fi
+          bash scripts/ci_publish_judge_files.sh "Petri secondary judge: workflow $GITHUB_RUN_ID" "$LIST"
+
+      - name: Report a failed second judge after preserving completed outputs and cost
+        if: ${{ always() && steps.secondary.outcome == 'failure' }}
+        run: |
+          echo "secondary_judge_failed: first-pass outputs retained; see the secondary sidecar" >&2
           exit 1
 
       # The summary reports what the run wrote (scripts/petri_audit/summary.py): the parameters CI resolved, the
@@ -917,6 +963,7 @@ jobs:
       # commit). Only when the verification and seal check passed, at least one re-grade verified, and the raw-log
       # refusal passed; a later run's abort no longer skips it.
       - name: Upload the seal-cleared re-grades (rehearsal or paid; never a raw log)
+        id: primary_upload
         if: ${{ always() && steps.verify.outcome == 'success' && steps.verify.outputs.verified != '0' && steps.rawlog.outcome == 'success' }}
         continue-on-error: ${{ needs.params.outputs.rehearsal != 'true' && needs.params.outputs.commit_outputs == 'true' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -939,6 +986,7 @@ jobs:
       # refusal passed: it stages the list verify-rejudge wrote (the verified directories and this fire's sidecars) and
       # nothing else, never the rejudge root wholesale, so an aborted run's partial rows stay out. Never the rehearsal.
       - name: Commit the re-grades to the branch (paid rejudge with commit_outputs; the verified re-grades only)
+        id: primary_commit
         if: ${{ always() && steps.verify.outcome == 'success' && steps.verify.outputs.verified != '0' && steps.rawlog.outcome == 'success' && needs.params.outputs.rehearsal != 'true' && needs.params.outputs.commit_outputs == 'true' }}
         env:
           BRANCH: ${{ github.ref_name }}
@@ -971,26 +1019,72 @@ jobs:
         run: |
           set -euo pipefail
           if find data/petri -name '*.eval' | grep -q .; then echo "raw log present; refusing" >&2; exit 1; fi
-          git fetch origin "$BRANCH"
-          if [ -n "$(git log --oneline "origin/$BRANCH..HEAD")" ]; then
-            echo "local commit(s) never reached origin/$BRANCH; re-committing the cost sidecars alone"
-            git reset --soft "origin/$BRANCH"
-            git reset -q
+          LIST="$RUNNER_TEMP/primary-cost-files.txt"
+          : > "$LIST"
+          for f in data/petri/rejudge/*/*/*.rejudge_${GITHUB_RUN_ID}.judge.report.json; do
+            if [ -f "$f" ]; then printf '%s\n' "$f" >> "$LIST"; fi
+          done
+          bash scripts/ci_publish_judge_files.sh "Petri rejudge: costs (workflow $GITHUB_RUN_ID)" "$LIST"
+
+      # R4: a second pass has its own ceiling inside the same journal reservation. The first pass's
+      # verified outputs have already been preserved; a second-pass failure cannot discard them.
+      - name: Haiku 5.5 second judge (isolated exploratory outputs)
+        id: secondary
+        if: ${{ always() && needs.params.outputs.rehearsal != 'true' }}
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SOURCE_PRESERVED: ${{ (needs.params.outputs.commit_outputs == 'true' && steps.primary_commit.outcome == 'success') || (needs.params.outputs.commit_outputs != 'true' && steps.primary_upload.outcome == 'success') }}
+          RESOLVED_PARAMS: ${{ toJSON(needs.params.outputs) }}
+          PRIMARY_STATUS: ${{ steps.rejudge.outcome }}
+        run: |
+          printf '%s' "$RESOLVED_PARAMS" > "$RUNNER_TEMP/secondary-params.json"
+          if [ "$SOURCE_PRESERVED" != "true" ]; then PRIMARY_STATUS="failure"; fi
+          python -m scripts.petri_audit.secondary run --params-file "$RUNNER_TEMP/secondary-params.json" \
+            --scratch "$RUNNER_TEMP/secondary-rows" --primary-status "$PRIMARY_STATUS"
+
+      - name: Account for an interrupted second judge and verify completed outputs
+        id: secondary_verify
+        if: ${{ always() && needs.params.outputs.rehearsal != 'true' }}
+        run: |
+          python -m scripts.petri_audit.secondary finalize --scratch "$RUNNER_TEMP/secondary-rows"
+          python -m scripts.petri_audit.secondary verify --scratch "$RUNNER_TEMP/secondary-rows"
+          python scripts/seal_check.py --site "$RUNNER_TEMP/no-site" --extra data/petri/secondary,data/petri/rejudge
+
+      - name: Upload the verified secondary outputs
+        if: ${{ always() && steps.secondary_verify.outcome == 'success' }}
+        continue-on-error: ${{ needs.params.outputs.commit_outputs == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: petri-secondary-${{ github.run_id }}
+          path: ${{ runner.temp }}/secondary-rows/exports/
+          if-no-files-found: warn
+
+      - name: Commit the secondary pass and its cost (cost independent of commit_outputs)
+        if: ${{ always() && steps.secondary.outcome != 'skipped' }}
+        env:
+          BRANCH: ${{ github.ref_name }}
+          COMMIT_OUTPUTS: ${{ needs.params.outputs.commit_outputs }}
+          VERIFIED: ${{ steps.secondary_verify.outcome }}
+        run: |
+          set -euo pipefail
+          LIST="$RUNNER_TEMP/secondary-files.txt"
+          : > "$LIST"
+          STATUS="data/petri/secondary/fire_${GITHUB_RUN_ID}.json"
+          if [ -f "$STATUS" ]; then printf '%s\n' "$STATUS" >> "$LIST"; fi
+          for f in data/petri/rejudge/*/*/*.rejudge_${GITHUB_RUN_ID}_secondary.judge.report.json; do
+            if [ -f "$f" ]; then printf '%s\n' "$f" >> "$LIST"; fi
+          done
+          if [ "$COMMIT_OUTPUTS" = "true" ] && [ "$VERIFIED" = "success" ]; then
+            cat "$RUNNER_TEMP/secondary-rows/stage.txt" >> "$LIST"
           fi
-          for f in data/petri/rejudge/*/*/*.report.json; do
-            if [ -f "$f" ]; then git add -f "$f"; fi
-          done
-          if git diff --cached --quiet; then echo "No rejudge cost sidecars to commit (already on the remote, or none written)"; exit 0; fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Petri rejudge: cost sidecars (workflow run $GITHUB_RUN_ID)"
-          for i in 1 2 3 4 5; do
-            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
-              exit 0
-            fi
-            git rebase --abort 2>/dev/null || true
-            sleep $((i * 2))
-          done
+          bash scripts/ci_publish_judge_files.sh "Petri secondary judge: workflow $GITHUB_RUN_ID" "$LIST"
+
+      - name: Report a failed second judge after preserving completed outputs and cost
+        if: ${{ always() && steps.secondary.outcome == 'failure' }}
+        run: |
+          echo "secondary_judge_failed: first-pass outputs retained; see the secondary sidecar" >&2
           exit 1
 
       # Counts and cost per source run, never text; passed through the holdout seal before it is published.

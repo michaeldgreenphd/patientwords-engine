@@ -9,6 +9,9 @@ the script.
 The package `scripts/petri_audit/` is not indexed here. The `petri-audit` lane
 runs it (`python -m scripts.petri_audit.cli`, plus its `readapt.py`,
 `rejudge.py` and `summary.py`), and each module's docstring describes it.
+`ci_publish_judge_files.sh` is the advice/Petri CI publishing helper: it commits
+an explicit artifact list from a clean temporary worktree, preserving the
+original working tree for artifact recovery even when an output push failed.
 
 Facts are as of 2026-09-30, taken from each script's docstring and from
 `.github/workflows/`, `.claude/skills/`, `docs/routine_standing_prompt.md`,
@@ -64,6 +67,7 @@ publish-site-data skill, which the Routine runs in §5 when new results land.
 | `jlens_steer.py` | Lens steering-swap check over a spec | live | `trace_out/<spec stem>__jsteer_<model>/` summary parts and raw responses | CI lane `jlens-readout` with a steering spec; imported by `jsteer_rebuild.py` |
 | `translate_corpus.py` | Translates every unique patient sentence, holdout excluded, for the at-scale recovery test (paid) | live | `data/simulated/txcorpus_<stamp>.json` and its `.report.json` | CI lane `scenario-generation`, task `translate_corpus` |
 | `advice_eval.py` | The advice arm: stimuli, elicitation, judging, analysis, archive audit and vendor reproducibility packs | live | under `data/advice/` (stimuli, hash-chained responses, judgments, analyses); `repro-pack` writes a pack under `dist/` and appends `ops/disclosure_log.jsonl` | CI lane `advice-eval` (`generate`, `elicit`, `judge`, `analyze`, `verify-chain`, `recover-archive`); owner or session for `build-stimuli`, `import-manual-responses` and `repro-pack` |
+| `judge_pair.py` | Computes the recorded price-ratio second-judge allocation and binds paid advice judging to its CI journal reservation | live | none; pure allocation plus read-only reservation validation | imported by the trigger guard and advice/Petri judge paths |
 | `archive_run.py` | Zips run renders with a manifest | live | `dist/<tag>.zip` and its manifest; the lane commits `render_archives/<tag>.manifest.json` and uploads the zip to a Release | CI lane `archive-renders` |
 
 ## Publish chain

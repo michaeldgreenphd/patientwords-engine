@@ -272,7 +272,7 @@ PETRI_REJUDGE_MOCK_JUDGE = "mockllm/judge"
 PETRI_REJUDGE_RELPATH = Path("data") / "petri" / "rejudge"
 PETRI_REJUDGE_STEM_RE = re.compile(r"run_[0-9]+_[0-9]+")
 PETRI_REJUDGE_OUTPUT_FILES = ("judgments.jsonl", "analysis_rows.jsonl", "rejudge_manifest.json")
-PETRI_REJUDGE_JUDGE_SUFFIX = r"\.rejudge_[0-9]+\.judge\.report\.json"
+PETRI_REJUDGE_JUDGE_SUFFIX = r"\.rejudge_[0-9]+(?:_secondary)?\.judge\.report\.json"
 PETRI_JUDGE_DEFAULT = "claude-haiku-4-5"        # the params job's judge_model default
 # scripts/petri_audit/spend.py ZERO_PRICE_MODELS: the test sentinels, of which only the rehearsal judge is a rejudge's
 PETRI_SENTINEL_SPECS = ("mockllm/model", "mockllm/judge", "none/none")
@@ -504,6 +504,7 @@ def advice_billing_parts(params: dict, registry: dict | None = None) -> list[tup
     if judge_is_on(params):
         judge = _advice_job_value(params, "judge_model", ADVICE_DEFAULT_SPEC).strip() or ADVICE_DEFAULT_SPEC
         judge_part.append(("judge", judge, _advice_spec_channel(judge, registry)))
+        judge_part.append(("secondary_judge", "anthropic:claude-haiku-5-5", "anthropic"))
     gen_config = _advice_job_value(params, "gen_config", "").strip()
     if gen_config:
         generator, _ = advice_gen_config_model(gen_config)
@@ -2127,9 +2128,33 @@ def judge_is_on(params):
     return str(params.get("judge", "")).lower() in ("true", "1")
 
 
+def secondary_judge_reservation(params: dict) -> dict:
+    """The derived Haiku 5.5 pass inside the fire's single reservation (R4)."""
+    try:
+        from scripts.judge_pair import OPENROUTER_SECONDARY, SECONDARY, allocation
+    except ModuleNotFoundError:
+        from judge_pair import OPENROUTER_SECONDARY, SECONDARY, allocation
+
+    if not judge_is_on(params):
+        return {"judge_model": SECONDARY, "max_spend_usd": 0.0, "reason": "judge_off"}
+    spec = str(params.get("judge_model") or ADVICE_DEFAULT_SPEC)
+    registry = providers_registry()
+    resolved = petri_judge_inspect_name(spec, registry)
+    price_fn = petri_judge_price if "mode" in params else advice_judge_price
+    secondary = (OPENROUTER_SECONDARY if "mode" in params
+                 and petri_judge_key_env(params, registry) == "OPENROUTER_API_KEY" else SECONDARY)
+    first, second = price_fn(spec, registry), price_fn(secondary, registry)
+    if first is None or second is None or FALLBACK_PRICE_SOURCE in (first[2], second[2]):
+        raise ValueError("dual_judge_unpriced: both judges need reviewed prices before reservation")
+    ceiling = parse_max_spend(params.get("judge_max_spend"))
+    if ceiling is None:
+        raise ValueError("dual_judge_invalid_ceiling: judge_max_spend must be positive and finite")
+    return allocation(spec, ceiling, first[:2], second[:2], str(resolved), secondary)
+
+
 def fire_commitment(params):
     """(commitment, error) — the fire's full worst-case spend the daily
-    ceiling must absorb: max_spend, plus judge_max_spend when the fire judges
+    ceiling must absorb: max_spend, plus both reserved judge ceilings when the fire judges
     (advice-eval's judge pass has its own ceiling CI enforces separately; the
     guard would otherwise never see it — handoff rev 2 accounting gap). A
     judged fire without a usable judge_max_spend is invalid: CI would fall
@@ -2137,20 +2162,24 @@ def fire_commitment(params):
 
     A petri-audit `mode: readapt` fire makes no target call: its max_spend is
     the SOURCE run's ceiling, recorded in the manifest and already reserved
-    by the source fire, so its commitment is judge_max_spend alone. A
+    by the source fire, so its commitment is both judge ceilings. A
     `mode: rejudge` fire makes no target call either and re-grades landed
-    runs with a judge alone, so its commitment is judge_max_spend too, and
+    runs without another target call, so its commitment is both judge ceilings too, and
     max_spend is not read. No other lane has a mode of either name."""
     mode = str(params.get("mode", "")).strip().lower()
     if mode in (PETRI_READAPT_MODE, PETRI_REJUDGE_MODE):
         judge = parse_max_spend(params.get("judge_max_spend")) if judge_is_on(params) else None
         if judge is None:
             return None, (
-                f"mode {mode} commits the judge's ceiling alone, so it needs judge=true and a usable "
+                f"mode {mode} commits the judge ceilings alone, so it needs judge=true and a usable "
                 f"judge_max_spend (finite number > 0), got judge={params.get('judge')!r}, "
                 f"judge_max_spend={params.get('judge_max_spend')!r}"
             )
-        return judge, None
+        try:
+            extra = secondary_judge_reservation(params)["max_spend_usd"]
+        except ValueError as exc:
+            return None, str(exc)
+        return judge + extra, None
     max_spend = parse_max_spend(params.get("max_spend"))
     if max_spend is None:
         return None, (
@@ -2163,7 +2192,11 @@ def fire_commitment(params):
                 "judge=true requires a usable judge_max_spend (finite number > 0): the judge "
                 f"pass is a second ceiling the daily guard must count, got {params.get('judge_max_spend')!r}"
             )
-        max_spend += judge
+        try:
+            extra = secondary_judge_reservation(params)["max_spend_usd"]
+        except ValueError as exc:
+            return None, str(exc)
+        max_spend += judge + extra
     return max_spend, None
 
 
@@ -2871,6 +2904,8 @@ def cmd_fire(args):
     if max_spend is not None:
         entry["max_spend"] = max_spend  # the commitment budget_check counts for the whole UTC day of this fire
         entry["lane"] = fire_lane(args.trigger, params)  # which prepaid key the commitment holds
+        if args.trigger in ("advice-eval", "petri-audit") and judge_is_on(params):
+            entry["secondary_judge"] = secondary_judge_reservation(params)
     if args.dry_run:
         print(f"[dry-run] would write {trigger_path}: {content.strip()}")
         if to_evict is not None:

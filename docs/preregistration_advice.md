@@ -1795,3 +1795,21 @@ their own before it.
   replaces "the earliest round that rated it at its current digest" in the
   "Later rounds" clarification above. Advice items are unaffected: Wave A
   and Wave R are selected from round 1 alone.
+
+
+### 2026-10-15: automatic second judge routing (R4)
+
+The provider registry revision `1bda0ffd7559ef98631f6729f08682e668b267e8c6abdf66c034344bb2e0bc3a` adds the reviewed OpenRouter slug
+`anthropic/claude-haiku-5.5` for the Petri second judge when its first judge
+bills that account. The [OpenRouter listing](https://openrouter.ai/anthropic/claude-haiku-5.5/api)
+was read on 2026-10-15 at $0.10/$0.50 per million input/output tokens;
+`data/pab/openrouter_catalogue_20261015_haiku55.json` records that selected
+web evidence, and the meter uses $0.106/$0.53 with the existing 6% margin.
+The request omits temperature and disables reasoning through
+`reasoning.effort: none` with `provider.require_parameters: true`. The
+manifest's adjustment reason records this routing distinction. No stored
+measurement is changed. Automatic advice second judging remains the exact
+direct spec `anthropic:claude-haiku-5-5`; its primary rows and default
+analysis exclusion of secondary rows are unchanged. The additional cap
+is reserved together with the first judge, using the larger reviewed
+input/output price ratio (rounded up to a microdollar).

@@ -2356,3 +2356,107 @@ def test_a_direct_judge_run_refuses_a_fallback_priced_judge(tmp_path, monkeypatc
         ae.main(["judge", "--responses", str(tmp_path / "never_read.jsonl"), "--rubric", str(tmp_path / "r.json"),
                  "--judge-model", "anthropic:judge-x", "--providers", str(LIVE_PROVIDERS_PATH), "--max-spend", "1"])
     assert calls == []
+
+
+@pytest.mark.parametrize("failed_model,failure", [(None, "none"), (None, "zero"), (None, "long_prompt"),
+                                                ("claude-haiku-4-5", "ordinary"),
+                                                ("claude-haiku-5-5", "ordinary"), ("claude-haiku-5-5", "transient"),
+                                                ("claude-haiku-5-5", "usage_missing"),
+                                                ("claude-haiku-5-5", "usage_partial"),
+                                                ("claude-haiku-5-5", "usage_invalid")])
+def test_automatic_dual_judging_keeps_primary_and_books_both_passes(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failed_model: str | None, failure: str) -> None:
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path, samples="1")
+    rubric_path = tmp_path / "rubric.json"
+    rubric_data = json.loads(json.dumps(RUBRIC))
+    if failure == "long_prompt":
+        rubric_data["tiers"][0]["definition"] = "placeholder " * 10000
+    rubric_path.write_text(json.dumps(rubric_data), encoding="utf-8")
+    reports = tmp_path / "reports.txt"
+    send = _judge_send_recorder([])
+    called: list[str] = []
+
+    def client(*, max_retries: int) -> object:
+        assert max_retries == 0
+        return object()
+
+    monkeypatch.setattr(ae, "_client", client)
+
+    def send_or_abort(client: object, model: str, *args: object, **kwargs: object) -> object:
+        called.append(model)
+        response = list(send(client, model, *args, **kwargs))
+        if failure == "zero":
+            response[1:3] = [0, 0]
+        response[3] = {**response[3], "usage": {"input_tokens": response[1], "output_tokens": response[2]}}
+        if model == failed_model:
+            checkpoint = json.loads(Path(reports.read_text().splitlines()[-1]).read_text())
+            assert checkpoint["cost_usd"] == checkpoint["max_spend_usd"]
+            assert checkpoint["usage_unavailable"] is True
+            if failure.startswith("usage_"):
+                raw = {**response[3]}
+                if failure == "usage_missing":
+                    raw.pop("usage")
+                else:
+                    raw["usage"] = ({"input_tokens": 7} if failure == "usage_partial"
+                                    else {"input_tokens": -1, "output_tokens": 2})
+                response[3] = raw
+                return tuple(response)
+            error = RuntimeError("test_response_unavailable")
+            if failure == "transient":
+                error.status_code = 503
+            raise error
+        return tuple(response)
+
+    monkeypatch.setattr(ae, "_send", send_or_abort)
+    monkeypatch.setenv("ADVICE_JUDGE_REPORTS", str(reports))
+    from scripts import fire_trigger as ft
+    cap = 0.002 if failure == "long_prompt" else 1.0
+    params = {"judge": True, "judge_model": "claude-haiku-4-5", "judge_max_spend": cap, "max_spend": 0.1}
+    trigger = tmp_path / ".github/trigger/advice-eval.json"
+    trigger.parent.mkdir(parents=True)
+    content = json.dumps(params)
+    trigger.write_text(content)
+    journal = tmp_path / "ops/trigger_journal.jsonl"
+    journal.parent.mkdir()
+    journal.write_text(json.dumps({"trigger": "advice-eval", "params_sha256": ft.params_digest(content),
+                                   "ref": "test", "max_spend": ft.fire_commitment(params)[0], "lane": "anthropic",
+                                   "secondary_judge": ft.secondary_judge_reservation(params)}) + "\n")
+    monkeypatch.setattr(ae, "REPO_ROOT", tmp_path)
+    for key, value in {"GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "push", "GITHUB_RUN_ATTEMPT": "1",
+                       "GITHUB_REF_NAME": "test"}.items():
+        monkeypatch.setenv(key, value)
+    argv = ["judge", "--responses", str(resp), "--rubric", str(rubric_path), "--with-secondary",
+            "--providers", str(LIVE_PROVIDERS_PATH), "--max-spend", str(cap)]
+    if failure == "long_prompt":
+        with pytest.raises(ValueError, match="dual_judge_call_unaffordable"):
+            ae.main(argv)
+    elif failed_model:
+        named = ("dual_judge_usage_unavailable" if failure.startswith("usage_") else
+                 "dual_judge_retry_unreserved" if failure == "transient" else "test_response_unavailable")
+        with pytest.raises(RuntimeError if failure == "ordinary" else ValueError, match=named):
+            ae.main(argv)
+    else:
+        ae.main(argv)
+    sidecars = [json.loads(Path(path).read_text()) for path in reports.read_text().splitlines()]
+    if failure == "long_prompt":
+        assert called == [] and len(sidecars) == 1
+        assert sidecars[0]["cost_usd"] == 0 and sidecars[0]["truncated"] is True
+        assert sidecars[0]["input_token_estimator"]
+        return
+    if failed_model:
+        assert sidecars[-1]["cost_usd"] == sidecars[-1]["max_spend_usd"]
+        assert sidecars[-1]["cost_basis"] == "ceiling_imputed:judge_usage_unavailable"
+        assert called.count(failed_model) == 1
+        assert len(sidecars) == (1 if failed_model == "claude-haiku-4-5" else 2)
+        judgments = ae._read_jsonl(Path(sidecars[0]["judgments_file"]))
+        assert all(r["judge_model"] == "claude-haiku-4-5" for r in judgments)
+        assert bool(judgments) == (failed_model == "claude-haiku-5-5")
+        return
+    assert [r["judge_model"] for r in sidecars] == ["claude-haiku-4-5", "anthropic:claude-haiku-5-5"]
+    assert [r["max_spend_usd"] for r in sidecars] == [1.0, 0.1]
+    assert all(r["cost_usd"] == 0 if failure == "zero" else r["cost_usd"] > 0 for r in sidecars)
+    assert sidecars[0]["dual_judge_reservation"] == sidecars[1]["dual_judge_reservation"]
+    judgments = ae._read_jsonl(Path(sidecars[0]["judgments_file"]))
+    primary = [r for r in judgments if not ae.is_secondary_judge(r["judge_model"])]
+    assert primary and len(primary) * 2 == len(judgments)

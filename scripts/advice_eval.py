@@ -398,9 +398,9 @@ class CostTracker:
     def max_output_for(self, model: str) -> int:
         return max(self.max_output_tokens, self.output_budget.get(model, 0))
 
-    def can_afford(self, model: str) -> bool:
+    def can_afford(self, model: str, input_tokens: int = EST_INPUT_TOKENS) -> bool:
         in_p, out_p = self._price(model)
-        worst = EST_INPUT_TOKENS * in_p / 1e6 + self.max_output_for(model) * out_p / 1e6
+        worst = input_tokens * in_p / 1e6 + self.max_output_for(model) * out_p / 1e6
         if self.spent + worst > self.max_spend:
             self.truncated = True
             return False
@@ -423,7 +423,7 @@ class CostTracker:
 # ------------------------------------------------------------------ API call seam
 
 
-def _client():
+def _client(*, max_retries: int | None = None):
     """Lazy Anthropic client; module-level seam so tests monkeypatch _send instead."""
     try:
         import anthropic
@@ -432,7 +432,7 @@ def _client():
     key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
         raise SystemExit("ANTHROPIC_API_KEY unset - paid stages run only in CI with the Actions secret")
-    return anthropic.Anthropic(api_key=key)
+    return anthropic.Anthropic(api_key=key, **({"max_retries": max_retries} if max_retries is not None else {}))
 
 
 _ANTHROPIC_NO_TEMPERATURE = False
@@ -572,7 +572,7 @@ def _finish_reason(raw) -> str | None:
 
 
 def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
-                 max_tokens: int, temperature: float | None, before_retry=None):
+                 max_tokens: int, temperature: float | None, before_retry=None, disable_reasoning: bool = False):
     """One OpenAI-compatible chat call (OpenAI, Gemini, xAI, DeepSeek, Moonshot,
     OpenRouter, ... all expose this shape). Same return tuple as _send; same
     monkeypatch seam for tests. The provider's key comes from the env var named
@@ -602,6 +602,10 @@ def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
         {"role": "user", "content": user_text}
     ]
     body = {"model": model, "messages": messages, "max_tokens": max_tokens}
+    if disable_reasoning:
+        if cfg.get("key_env") != "OPENROUTER_API_KEY" or base_url != "https://openrouter.ai/api/v1":
+            raise ValueError("reasoning_disable_unsupported_route: OpenRouter required")
+        body.update(reasoning={"effort": "none"}, provider={"require_parameters": True})
     if temperature is not None:
         body["temperature"] = temperature
     for attempt in range(COMPAT_RETRIES + 1):
@@ -1746,7 +1750,35 @@ def judge_price_problem(judge_model: str, registry: dict) -> str | None:
             "tokens (fallback_priced_judge)")
 
 
+def judge_both(args: argparse.Namespace) -> Path:
+    """Run the selected judge and Haiku 5.5 under separately reserved pass ceilings."""
+    import copy
+
+    try:
+        from scripts.fire_trigger import secondary_judge_reservation
+        from scripts.judge_pair import require_advice_reservation
+    except ModuleNotFoundError:
+        from fire_trigger import secondary_judge_reservation
+        from judge_pair import require_advice_reservation
+    reservation = secondary_judge_reservation({"judge": True, "judge_model": args.judge_model,
+                                              "judge_max_spend": args.max_spend})
+    if not args.dry_run:
+        require_advice_reservation(REPO_ROOT, args.judge_model, args.max_spend, reservation)
+    first = copy.copy(args)
+    first.with_secondary = False
+    first.dual_judge_reservation = reservation
+    out = judge(first)
+    if reservation["max_spend_usd"]:
+        second = copy.copy(first)
+        second.judge_model = reservation["judge_model"]
+        second.max_spend = reservation["max_spend_usd"]
+        judge(second)
+    return out
+
+
 def judge(args) -> Path:
+    if getattr(args, "with_secondary", False):
+        return judge_both(args)
     pooled = pooled_judge_problem(args.judge_model)
     if pooled:
         raise SystemExit(f"refused before any call: {pooled}")
@@ -1834,30 +1866,83 @@ def judge(args) -> Path:
         custom_pricing[args.judge_model] = (float(pricing[0]), float(pricing[1]))
     tracker = CostTracker(args.max_spend, judge_max_tokens, custom_pricing,
                           output_budget={args.judge_model: judge_sent_max})
-    client = _client() if is_anthropic else None
+    paired = hasattr(args, "dual_judge_reservation")
+    if paired:
+        try:
+            from scripts.petri_audit.judge_runner import INPUT_TOKEN_ESTIMATOR, estimate_input_tokens
+        except ModuleNotFoundError:
+            from petri_audit.judge_runner import INPUT_TOKEN_ESTIMATOR, estimate_input_tokens
+    client = _client(**({"max_retries": 0} if paired else {})) if is_anthropic else None
     n = 0
+    report_list = os.environ.get("ADVICE_JUDGE_REPORTS")
+    if report_list:
+        with open(report_list, "a", encoding="utf-8") as listing:
+            listing.write(str(sidecar_path) + "\n")
+    in_flight = False
+
+    def refuse_unknown_retry(attempt: int, status: int) -> bool:
+        raise ValueError(f"dual_judge_retry_unreserved: attempt {attempt + 1} returned {status} without usage; "
+                         "retain the pass-cap imputation and refuse another paid attempt")
+
+    def write_pass_report() -> None:
+        # A paired pass checkpoints its full reserved cap before a call. If the process dies or a response is
+        # lost, that ONE sidecar conservatively books the pass; normal completion replaces it with measured cost.
+        imputed = paired and in_flight
+        report = {
+            "run_utc": utc_now_iso(), "responses_file": str(args.responses), "rubric_sha256": rubric_sha,
+            "judge_model": args.judge_model, "judged": n,
+            "cost_usd": round(args.max_spend if imputed else tracker.spent, 6),
+            "max_spend_usd": args.max_spend, "truncated": tracker.truncated,
+            "cost_basis": "ceiling_imputed:judge_usage_unavailable" if imputed else "this_judge_pass",
+            "judgments_file": str(out_path),
+            **({"dual_judge_reservation": args.dual_judge_reservation, "sdk_max_retries": 0,
+                "input_token_estimator": INPUT_TOKEN_ESTIMATOR} if paired else {}),
+            **({"usage_unavailable": True, "reported_cost_usd": round(tracker.spent, 6)} if imputed else {}),
+        }
+        temporary = sidecar_path.with_suffix(sidecar_path.suffix + ".tmp")
+        _write_json(temporary, report)
+        temporary.replace(sidecar_path)
+
     try:
         with open(out_path, "a", encoding="utf-8") as f:
             for r in todo:
-                if not tracker.can_afford(args.judge_model):
+                prompt = _judge_prompt(rubric, r["response_text"])
+                input_bound = estimate_input_tokens(prompt) if paired else EST_INPUT_TOKENS
+                if not tracker.can_afford(args.judge_model, input_bound):
+                    if paired:
+                        raise ValueError("dual_judge_call_unaffordable: rendered input bound plus sent output "
+                                         "allowance exceeds the remaining pass cap")
                     print(f"STOPPED EARLY: judge max_spend ceiling (${args.max_spend})")
                     break
                 # Blinding: the judge sees the response text only - never the prompt or arm.
                 adjustments = [dict(a) for a in judge_adjustments]
+                in_flight = True
+                if paired:
+                    write_pass_report()
                 if is_anthropic:
                     res = _send_anthropic_retrying(
                         client, spec["model"], None,
-                        _judge_prompt(rubric, r["response_text"]), judge_sent_max, judge_temperature,
+                        prompt, judge_sent_max, judge_temperature,
+                        **({"before_retry": refuse_unknown_retry} if paired else {}),
                         **({"thinking": judge_thinking} if judge_thinking is not None else {}))
                     note_sdk_temperature_drop(judge_temperature, 0.0, adjustments)
                 else:
                     _pace(spec["provider"], spec["cfg"])
                     res = _send_compat(
                         spec["cfg"], spec["model"], None,
-                        _judge_prompt(rubric, r["response_text"]), judge_sent_max, judge_temperature)
+                        prompt, judge_sent_max, judge_temperature)
                 raw_text, in_tok, out_tok, raw = res[:4]
                 judge_headers = res[4] if len(res) > 4 else {}
+                if paired:
+                    usage = raw.get("usage") if isinstance(raw, dict) else None
+                    keys = ("input_tokens", "output_tokens") if is_anthropic else ("prompt_tokens", "completion_tokens")
+                    if not isinstance(usage, dict) or any(
+                            isinstance(usage.get(key), bool) or not isinstance(usage.get(key), int)
+                            or usage[key] < 0 for key in keys):
+                        raise ValueError("dual_judge_usage_unavailable: complete nonnegative token counts required; "
+                                         "retain the pass-cap imputation")
                 tracker.record(args.judge_model, in_tok, out_tok)
+                in_flight = False
                 parsed = _extract_json_object(raw_text)
                 entry = {
                     "response_sha256": r["response_sha256"], "stimulus_id": r["stimulus_id"],
@@ -1880,12 +1965,7 @@ def judge(args) -> Path:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
                 n += 1
     finally:
-        _write_json(sidecar_path, {
-            "run_utc": utc_now_iso(), "responses_file": str(args.responses), "rubric_sha256": rubric_sha,
-            "judge_model": args.judge_model, "judged": n, "cost_usd": round(tracker.spent, 6),
-            "max_spend_usd": args.max_spend, "truncated": tracker.truncated,
-            "cost_basis": "this_judge_pass", "judgments_file": str(out_path),
-        })
+        write_pass_report()
     print(f"judged {n} -> {out_path} (cost ${tracker.spent:.4f})")
     return out_path
 
@@ -2964,6 +3044,7 @@ def build_parser() -> argparse.ArgumentParser:
     j = sub.add_parser("judge", help="paid: map archived responses to rubric tiers (re-runnable)")
     j.add_argument("--responses", required=True)
     j.add_argument("--rubric", default=DEFAULT_RUBRIC)
+    j.add_argument("--with-secondary", action="store_true", help="also run the reserved Haiku 5.5 pass (R4)")
     j.add_argument("--judge-model", default="claude-haiku-4-5",
                    help="bare Anthropic id or 'provider:model' spec via the registry")
     j.add_argument("--judge-max-tokens", type=int, default=300,

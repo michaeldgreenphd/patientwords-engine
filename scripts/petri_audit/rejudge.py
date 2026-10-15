@@ -124,7 +124,7 @@ TASK = "petri-audit-rejudge"
 STEM_PATTERN = r"run_[0-9]+_[0-9]+"
 # what follows `<stem>` in the name of a rejudge's judge sidecar (`judge_report_name`); scripts/fire_trigger.py holds a
 # copy (PETRI_REJUDGE_JUDGE_SUFFIX), which tests/test_petri_audit_rejudge.py keeps equal to this one
-JUDGE_REPORT_SUFFIX_PATTERN = r"\.rejudge_[0-9]+\.judge\.report\.json"
+JUDGE_REPORT_SUFFIX_PATTERN = r"\.rejudge_[0-9]+(?:_secondary)?\.judge\.report\.json"
 SLUG_PATTERN = r"[A-Za-z0-9][A-Za-z0-9._-]*"
 _RUN_ID = re.compile(r"[0-9]+")
 _COMMIT = re.compile(r"[0-9a-f]{40}")
@@ -172,14 +172,15 @@ def judge_slug(spec: str) -> str:
     return slug
 
 
-def judge_report_name(stem: str, workflow_run_id: Any) -> str:
+def judge_report_name(stem: str, workflow_run_id: Any, secondary: bool = False) -> str:
     """The judge cost sidecar a rejudge writes for one source run: named for the rejudging workflow run, so a
     retry after a fire whose judge failed never rewrites the sidecar that failure committed (the ledger keys
     sidecars by bare filename, and that one's spend is already booked to its own fire)."""
     run_id = str(workflow_run_id)
     if not _RUN_ID.fullmatch(run_id):
         raise RejudgeError(f"the rejudge workflow run id must be ASCII digits, got {workflow_run_id!r}")
-    return f"{stem}.rejudge_{run_id}.judge.report.json"
+    suffix = "_secondary" if secondary else ""
+    return f"{stem}.rejudge_{run_id}{suffix}.judge.report.json"
 
 
 def is_judge_report(name: str, stem: str) -> bool:
@@ -394,7 +395,7 @@ def prior_reports(out_dir: Path | str, stem: str, *, judge_model: str, nonce: st
     found: list[dict] = []
     for path in sorted(p for p in out_dir.iterdir() if is_judge_report(p.name, stem)):
         label = f"{stem}: the earlier rejudge sidecar {path.name}"
-        if path.name == own:
+        if path.name in (own, judge_report_name(stem, workflow_run_id, secondary=True)):
             raise RejudgeError(f"{label} is this fire's own and exists before it ran; a workflow run writes it once")
         try:
             report = load_json(path)
@@ -745,6 +746,7 @@ def build_manifest(*, plan: dict, source: dict, position: int, instrument: dict,
     manifest = {
         "rejudge_manifest_version": MANIFEST_VERSION, "mode": MODE, "exploratory": True,
         "rehearsal": bool(plan["rehearsal"]), "created_utc": now_fn(),
+        **({"judge_role": "secondary"} if plan.get("judge_role") == "secondary" else {}),
         "source": source["source"],
         "judge": {"judge_model": plan["judge_model"], "judge_slug": plan["judge_slug"],
                   "inspect_name": registry_spec_to_inspect(plan["judge_model"]),
@@ -842,7 +844,7 @@ def execute(plan: dict, *, started_dir: Path | str, client_factory: Callable[[st
         ceiling = SpendCeiling(remaining, price.input_per_mtok, price.output_per_mtok, plan["judge_max_tokens"])
         client = client_factory(judge_model, plans)
         out_dir.mkdir(parents=True, exist_ok=True)
-        report_name = judge_report_name(stem, fire["workflow_run_id"])
+        report_name = judge_report_name(stem, fire["workflow_run_id"], plan.get("judge_role") == "secondary")
         write_json(started_marker(started_dir, stem), {"run_stem": stem, "out_dir": str(out_dir),
                                                         "report_path": str(out_dir / report_name),
                                                         "max_spend_usd": remaining, "fire_spent_before_usd": spent})
@@ -854,7 +856,8 @@ def execute(plan: dict, *, started_dir: Path | str, client_factory: Callable[[st
                  "rejudge_workflow_run_attempt": fire["workflow_run_attempt"], "rejudge_commit": fire["commit"],
                  "fire_judge_max_spend_usd": fire_ceiling, "fire_spent_before_usd": spent,
                  "fire_source_runs": list(plan["source_runs"]), "rehearsal": bool(plan["rehearsal"]),
-                 "exploratory": True}
+                 "exploratory": True,
+                 **({"judge_role": "secondary"} if plan.get("judge_role") == "secondary" else {})}
         try:
             sidecar = run_judgments(plans, client, out_path=out_dir / JUDGMENTS_NAME, ceiling=ceiling,
                                     judge_max_tokens=plan["judge_max_tokens"], labels=labels_from_manifest(manifest),
@@ -937,7 +940,7 @@ def verify_output(out_dir: Path | str, runs_dir: Path | str | None = None) -> li
                         "their consumers open")
     fire = manifest["fire"]
     try:
-        expected_report = judge_report_name(stem, fire["workflow_run_id"])
+        expected_report = judge_report_name(stem, fire["workflow_run_id"], manifest.get("judge_role") == "secondary")
     except RejudgeError as exc:
         problems.append(str(exc))
         expected_report = None
@@ -970,7 +973,8 @@ def verify_output(out_dir: Path | str, runs_dir: Path | str | None = None) -> li
     expected = {"judgments_sha256": arts["judgments"]["sha256"], "journal_nonce": fire["journal_nonce"],
                 "rejudge_workflow_run_id": fire["workflow_run_id"], "source_run_stem": stem,
                 "judge_model": judge["judge_model"], "cost_usd": manifest["cost_usd"],
-                "max_spend_usd": judge["max_spend_usd"], "task": TASK}
+                "max_spend_usd": judge["max_spend_usd"], "task": TASK,
+                **({"judge_role": "secondary"} if manifest.get("judge_role") == "secondary" else {})}
     for key, value in expected.items():
         if report.get(key) != value:
             problems.append(f"judge_report: {key} is {report.get(key)!r}, the manifest records {value!r}")
@@ -1013,7 +1017,7 @@ def fire_outputs(plan: dict) -> tuple[list[Path], list[Path]]:
         d = root / source["run_stem"]
         if (d / MANIFEST_NAME).is_file():
             dirs.append(d)
-        report = d / judge_report_name(source["run_stem"], plan["fire"]["workflow_run_id"])
+        report = d / judge_report_name(source["run_stem"], plan["fire"]["workflow_run_id"], plan.get("judge_role") == "secondary")
         if report.is_file():
             sidecars.append(report)
     return dirs, sidecars
@@ -1062,7 +1066,7 @@ def impute_missing_reports(plan: dict, started_dir: Path | str, now_fn: Callable
             continue
         info = load_json(marker)
         out_dir = Path(plan["rejudge_root"]) / plan["judge_slug"] / stem
-        report_path = out_dir / judge_report_name(stem, fire["workflow_run_id"])
+        report_path = out_dir / judge_report_name(stem, fire["workflow_run_id"], plan.get("judge_role") == "secondary")
         if report_path.is_file():
             continue
         judgments = out_dir / JUDGMENTS_NAME
@@ -1095,7 +1099,8 @@ def impute_missing_reports(plan: dict, started_dir: Path | str, now_fn: Callable
             "fire_judge_max_spend_usd": float(plan["judge_max_spend_usd"]),
             "fire_spent_before_usd": float(info["fire_spent_before_usd"]),
             "fire_source_runs": list(plan["source_runs"]), "rehearsal": bool(plan["rehearsal"]),
-            "exploratory": True})
+            "exploratory": True,
+            **({"judge_role": "secondary"} if plan.get("judge_role") == "secondary" else {})})
         written.append(report_path)
     return written
 
@@ -1125,7 +1130,7 @@ def render_summary(plan: dict | None, *, plan_error: str | None = None) -> str:
         stem = source["run_stem"]
         out_dir = root / plan["judge_slug"] / stem
         manifest_path = out_dir / MANIFEST_NAME
-        report_path = out_dir / judge_report_name(stem, plan["fire"]["workflow_run_id"])
+        report_path = out_dir / judge_report_name(stem, plan["fire"]["workflow_run_id"], plan.get("judge_role") == "secondary")
         if manifest_path.is_file():
             try:
                 m = load_json(manifest_path)

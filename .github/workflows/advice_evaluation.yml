@@ -331,10 +331,12 @@ jobs:
           JUDGE_MODEL: ${{ needs.params.outputs.judge_model }}
           JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
           JUDGE_MAX_TOKENS: ${{ needs.params.outputs.judge_max_tokens }}
+          ADVICE_JUDGE_REPORTS: ${{ runner.temp }}/advice-judge-reports.txt
           RUBRIC: ${{ needs.params.outputs.rubric }}
         run: |
+          : > "$ADVICE_JUDGE_REPORTS"
           STEM=$(basename "$STIMULI" .json)
-          python scripts/advice_eval.py judge \
+          python scripts/advice_eval.py judge --with-secondary \
             --responses "data/advice/responses_${STEM}.jsonl" \
             --rubric "$RUBRIC" --judge-model "$JUDGE_MODEL" --max-spend "$JUDGE_MAX_SPEND" \
             --judge-max-tokens "$JUDGE_MAX_TOKENS"
@@ -375,6 +377,21 @@ jobs:
           done
           exit 1
 
+      - name: Commit each judge pass cost even when outputs are not committed
+        if: ${{ always() && needs.params.outputs.judge == 'true' }}
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ ! -f "$RUNNER_TEMP/advice-judge-reports.txt" ]; then exit 0; fi
+          # A report is listed before its first call; a process stopped before checkpointing made no call.
+          LIST="$RUNNER_TEMP/advice-cost-files.txt"
+          : > "$LIST"
+          while IFS= read -r path; do
+            if [ -f "$path" ]; then printf '%s\n' "$path" >> "$LIST"; fi
+          done < "$RUNNER_TEMP/advice-judge-reports.txt"
+          bash scripts/ci_publish_judge_files.sh "Advice judge pass costs (workflow $GITHUB_RUN_ID)" "$LIST"
+
       - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -393,9 +410,9 @@ jobs:
             echo "## Advice evaluation ($STEM)"
             echo '```'
             # each judge pass writes its own judgments_<stem>.judge_<UTC stamp>.report.json (scripts/advice_eval.py
-            # judge_sidecar_path); the newest is this fire's
-            JUDGE_SIDECAR=$(ls -1 data/advice/judgments_${STEM}.judge_*.report.json 2>/dev/null | sort | tail -n 1 || true)
-            for f in "data/advice/responses_${STEM}.report.json" "$JUDGE_SIDECAR"; do
+            # judge_sidecar_path); both passes are individually visible and booked
+            JUDGE_SIDECARS=$(cat "$RUNNER_TEMP/advice-judge-reports.txt" 2>/dev/null || true)
+            for f in "data/advice/responses_${STEM}.report.json" $JUDGE_SIDECARS; do
               if [ -n "$f" ] && [ -f "$f" ]; then cat "$f"; fi
             done
             echo '```'

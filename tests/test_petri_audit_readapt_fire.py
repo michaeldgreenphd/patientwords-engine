@@ -58,6 +58,7 @@ def _runs(expr, **outputs) -> bool:
     assert body.startswith("${{") and body.endswith("}}"), body
     body = body[3:-2].replace("always()", "True")
     body = re.sub(r"needs\.params\.outputs\.(\w+)", lambda m: repr(outputs[m.group(1)]), body)
+    body = re.sub(r"steps\.\w+\.outcome", repr("success" if outputs.get("mode") in ("run", "readapt") else "skipped"), body)
     body = body.replace("!=", " __NE__ ").replace("&&", " and ").replace("||", " or ").replace("!", " not ")
     return bool(eval(body.replace("__NE__", "!="), {"__builtins__": {}}, {}))  # noqa: S307 - a literal expression
 
@@ -139,8 +140,8 @@ def test_mode_readapt_is_a_paid_fire_whose_commitment_is_the_judge_ceiling_alone
     assert "source_run_id" in ft.KNOWN_KEYS[TRIGGER] and "source_run_id" not in ft.PARK_DEFAULTS[TRIGGER]
     assert ft.PARK_DEFAULTS[TRIGGER]["mode"] == "preflight", "the park is unchanged"
     assert ft.is_paid_fire(TRIGGER, base) is True
-    assert ft.fire_commitment(base) == (2.5, None), "the target ceiling is the source fire's, already reserved"
-    assert ft.fire_commitment(dict(base, mode="run")) == (pytest.approx(8.6), None), "mode run is unchanged"
+    assert ft.fire_commitment(base) == (2.75, None), "the target ceiling is the source fire's, already reserved"
+    assert ft.fire_commitment(dict(base, mode="run")) == (pytest.approx(8.85), None), "mode run adds the target ceiling"
     assert ft.fire_lane(TRIGGER, base) == "anthropic"
     ft.validate_params(TRIGGER, base)
     commitment, error = ft.fire_commitment(dict(base, judge="false"))
@@ -158,7 +159,7 @@ def test_mode_readapt_is_a_paid_fire_whose_commitment_is_the_judge_ceiling_alone
     ft.validate_params(TRIGGER, dict(base, mode="run", source_run_id=""))
     # the in-flight reservation a CI gate checks is the same judge-only figure
     entry = {"trigger": TRIGGER, "fired_utc": ft.iso_utc(ft.utc_now()), "resolved": False, "evicted": False,
-             "nonce": "w2e3r", "max_spend": 2.5, "lane": "anthropic", "params_sha256": "d" * 64}
+             "nonce": "w2e3r", "max_spend": 2.75, "lane": "anthropic", "params_sha256": "d" * 64}
     assert ft.journal_reservation_problems(TRIGGER, base, [entry], digest="d" * 64) == []
 
 
@@ -359,7 +360,7 @@ def test_the_budget_gate_and_the_fire_path_refuse_a_readapt_that_is_not_its_sour
     # the matching readapt reaches the dry run with the judge ceiling as its whole commitment
     assert ft.main(fire + ["--params", json.dumps(readapt)]) == 0
     out = capsys.readouterr().out
-    assert '"nonce": "w2e3r"' in out and '"max_spend": 1.5' in out and '"lane": "anthropic"' in out, out
+    assert '"nonce": "w2e3r"' in out and '"max_spend": 1.65' in out and '"lane": "anthropic"' in out, out
     # ...and only into an idle lane: a queued readapt would adapt against outputs older than the running fire's
     journal = repo / "ops" / "trigger_journal.jsonl"
     active = {"trigger": TRIGGER, "fired_utc": ft.iso_utc(ft.utc_now()), "commit": "", "note": "running",
@@ -498,7 +499,7 @@ def test_a_readapt_on_its_source_fires_day_counts_the_resolved_source_commitment
     """Where the readapt path (PR #29) meets the whole-day hold (PR #35). Since 2026-09-23 a paid fire's commitment
     counts against the ceiling for the whole UTC day it was fired, resolved or not (fire_trigger.entry_holds_spend).
     A readapt is fired after its source run landed and was resolved, usually the same UTC day, so the source's 7.60
-    (6.10 + judge 1.50) still holds and the readapt's judge ceiling of 1.50 is counted on top of it: at the fire
+    (6.10 + judge 1.50) still holds and the readapt's two judge ceilings (1.50 + 0.15) are counted on top of it: at the fire
     and again in the CI gate. The gate leaves the readapt's own entry out by nonce once, as it does for a mode-run
     fire, so it is not counted twice. Under the old rule the resolve released the source's 7.60 and the readapt
     was checked against 1.50 alone."""
@@ -517,14 +518,14 @@ def test_a_readapt_on_its_source_fires_day_counts_the_resolved_source_commitment
     def ceiling(usd: float) -> None:
         overrides.write_text(json.dumps({today: {"ceiling_usd": usd, "reason": "test"}}), encoding="utf-8")
 
-    # the fire path: 7.60 held + 1.50 is 9.10. --ignore-settle only because the source's resolve may sit inside the
+    # the fire path: 7.60 held + 1.50 + 0.15 is 9.25. --ignore-settle only because the source's resolve may sit inside the
     # settle window when this runs just after 00:00 UTC; the settle guard is not what is under test
     fire = ["fire", "--repo", str(repo), "--trigger", TRIGGER, "--note", "readapt", "--dry-run", "--no-git",
             "--ignore-settle", "--params", json.dumps(readapt)]
     ceiling(9.0)
     assert ft.main(fire) == 4
     assert "held today 7.60" in capsys.readouterr().err
-    ceiling(9.2)
+    ceiling(9.3)
     assert ft.main(fire) == 0
     assert "held today 7.60" in capsys.readouterr().out
     # the CI gate, once the readapt is journaled and its trigger file is the one CI runs
@@ -533,7 +534,7 @@ def test_a_readapt_on_its_source_fires_day_counts_the_resolved_source_commitment
     trigger.write_text(content, encoding="utf-8")
     mine = {"trigger": TRIGGER, "fired_utc": ft.iso_utc(now), "commit": "", "note": "readapt", "resolved": False,
             "evicted": False, "nonce": "w2e3r", "params_sha256": ft.params_digest(content), "ref": "main",
-            "max_spend": 1.5, "lane": "anthropic"}
+            "max_spend": 1.65, "lane": "anthropic"}
     journal.write_text(json.dumps(source) + "\n" + json.dumps(mine) + "\n", encoding="utf-8")
     params_file = tmp_path / "gate_params.json"
     params_file.write_text(json.dumps(readapt), encoding="utf-8")
@@ -541,6 +542,6 @@ def test_a_readapt_on_its_source_fires_day_counts_the_resolved_source_commitment
     ceiling(9.0)
     assert ft.cmd_budget_gate(gate) == 6
     assert "held today 7.60" in capsys.readouterr().err, "the source holds; the readapt's own entry is not doubled"
-    ceiling(9.2)
+    ceiling(9.3)
     assert ft.cmd_budget_gate(gate) == 0
     assert "held today 7.60" in capsys.readouterr().out

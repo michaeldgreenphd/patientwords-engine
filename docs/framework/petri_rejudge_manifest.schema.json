@@ -25,6 +25,7 @@
     }
   },
   "properties": {
+    "judge_role": {"const": "secondary"},
     "rejudge_manifest_version": {"type": "string", "enum": ["0.1"]},
     "mode": {"type": "string", "const": "rejudge"},
     "exploratory": {"type": "boolean", "const": true},
@@ -84,7 +85,7 @@
         "temperature": {"type": "number", "description": "The judge instrument's sampling temperature (TIER_TEMPERATURE); see temperature_omitted."},
         "temperature_sent": {"type": "null", "description": "2026-10-01: present, and null, only beside temperature_omitted: this rejudge's calls carried no temperature."},
         "temperature_omitted": {"type": "string", "minLength": 1, "description": "2026-10-01: why this rejudge's calls went out without the instrument's temperature (the provider registry's anthropic.omit_temperature reason, or the installed anthropic SDK's refusal of the keyword), copied from its judge sidecar. Absent when they carried it."},
-        "thinking_sent": {"type": "string", "enum": ["disabled"], "description": "2026-10-14: present, and \"disabled\", only beside thinking_disabled: this rejudge's calls carried thinking {\"type\": \"disabled\"}."},
+        "thinking_sent": {"type": "string", "enum": ["disabled"], "description": "Present, and disabled, only beside thinking_disabled: this rejudge sent direct Anthropic thinking.type disabled or OpenRouter reasoning.effort none with require_parameters true; thinking_disabled identifies the route-specific setting."},
         "thinking_disabled": {"type": "string", "minLength": 1, "description": "2026-10-14: why this rejudge's calls were sent thinking disabled (the provider registry's anthropic.disable_thinking reason), copied from its judge sidecar. Absent when they carried no thinking parameter."},
         "max_spend_usd": {"$ref": "#/$defs/usd", "description": "The ceiling this run's judge ran under: what the fire's ceiling had left when it started."},
         "fire_judge_max_spend_usd": {"$ref": "#/$defs/usd"},
