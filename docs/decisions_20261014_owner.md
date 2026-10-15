@@ -103,5 +103,46 @@ The advice lane's judge-only re-runs have two more prerequisites, both code chan
 - **A spend record per fire.** `advice_eval.judge()` rewrites the stable `judgments_<stem>.report.json` with the
   latest pass's cost, and `scripts/ledger_update.py` books a seen sidecar's growth only. A cheaper Haiku 5.5 pass
   would therefore book nothing, and a dearer one only the difference. The judge must write a sidecar per fire, or one
-  that is truly cumulative, before these fires. Haiku 5.5 costs $0.10 / $0.50 per million tokens against Haiku 4.5's $1 / $5. The Opus move changes the
-generator or target of future runs only; landed batches are not regenerated.
+  that is truly cumulative, before these fires.
+
+Haiku 5.5 costs $0.10 / $0.50 per million tokens against Haiku 4.5's $1 / $5. The Opus move changes the generator or
+target of future runs only; landed batches are not regenerated.
+
+## Third round (October Owner Queue 3)
+
+The owner's reply, verbatim:
+
+> October Owner Queue 3: 1. A, 2. B, 3. A, 4. A, 5. A, 6. A, 7. B, 8. A, 9. A, 10. A
+
+A $0 rehearsal (`cli rejudge-rehearse` with the mock judge, run locally on 2026-10-14) re-planned every landed Petri
+run against today's prompts.
+- **Clean (4):** `run_35812312136_1`, `run_35937014168_1`, `run_36076994201_1` and eq02 `run_38434195912_1`.
+- **Refused (2):**
+  - `run_35351739969_1`, the wave-1 pilot: 4 judgments whose rendered prompt differs;
+  - `run_35801345137_1`, wave 2's epoch 1: 30 judgments, because the planner changed.
+- **Nothing to re-judge:** eq01, `run_38311055562_1`.
+
+| # | Decision | Chosen |
+|---|---|---|
+| R1 | Petri re-judge with Claude Haiku 5.5 | One `mode: rejudge` fire over the four clean runs, `judge_model: claude-haiku-5-5`, `judge_max_spend` $1.00 (about $0.53 expected), after #114 merges. |
+| R2 | The two refused Petri runs | Rebuild their original judge instrument (the prompts and the planner as they ran), so each can be re-judged exactly. A pull request. |
+| R3 | Advice re-judge | One judge-only advice-eval fire per archive (six), `judge_model: anthropic:claude-haiku-5-5`, $0.30 ceiling each, chained, after #114 merges. About $0.70 in all. |
+| R4 | Both judges from now on | Automate it: each judged fire runs Claude Haiku 5.5 after the judge of record, inside the same reservation. A pull request after #114 merges. |
+| R5 | The equity v2 fire's raise (Q1 of the second round) | The owner authorizes a $4.00 dated raise in `ops/budget_overrides.json` for the fire's UTC day, citing this record. The agent writes it in the fire's own commit and fires once #108 merges. |
+| R6 | Circuit-trace translation | Stays on `claude-opus-4-8` (engine #112 pins it). |
+| R7 | The PAB jury | Moves to `claude-opus-5-5`. The jury is re-validated before any PAB fire uses it (`docs/pab_first_probe_costing.md` calls the Opus 4.8 jury the validated instrument). |
+| R8 | The scenario-generation spend check | Fixed: each call is admitted at the allowance it is sent. The park's `max_spend` rises from $0.01 to $0.03 so the park still produces its one-pair batch. |
+| R9 | Petri-only Jev runs | A follow-up PR after #110 and #111 merge. |
+| R10 | Wave-3 script readings and worktrees | The six readings in engine #113 are accepted. The eight clean worktrees of merged PRs were removed on 2026-10-14. The row-3 sentence below is the draft for approval with the plan. |
+
+### Draft: the wave-3 statement for row 3 (R10)
+
+The plan's §9.8 row 3 ("the reverse direction, under the rules of rows 1 and 2") has no sentence. This draft is for
+the owner to approve with the plan, as a dated amendment; the plan file is not edited here.
+
+- **Row 3, gate p < 0.05, same direction:** "In this pilot of eight new scripted scenarios, {target}'s replies to
+  clinical wording were graded as less urgent than its replies to casual wording, and the difference held across the
+  scenarios."
+- **Row 3, gate p >= 0.05:** "In these eight scenarios, {target}'s replies to clinical wording were graded as less
+  urgent than its replies to casual wording, but the difference was not consistent across scenarios." It also names
+  the scenarios that carry it.
