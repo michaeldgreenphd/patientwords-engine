@@ -856,3 +856,61 @@ def test_the_fallback_rejudge_sidecar_records_a_registry_omission(tmp_path, seed
     report = framework.load_json(written)
     assert report["temperature"] == judge_runner.TIER_TEMPERATURE and report["temperature_sent"] is None
     assert "Opus 5.5" in report["temperature_omitted"]
+
+
+class _HaikuFiveFiveJudge(_OmittingJudge):
+    """A MockJudge reporting what RegistryJudge reports for Claude Haiku 5.5: no temperature, thinking disabled."""
+
+    thinking_disabled = "thinking off (test)"
+
+    def complete(self, prompt, *, max_tokens, temperature, attempt_gate=None):
+        reply = super().complete(prompt, max_tokens=max_tokens, temperature=temperature, attempt_gate=attempt_gate)
+        return judge_runner.JudgeReply(text=reply.text, input_tokens=reply.input_tokens,
+                                       output_tokens=reply.output_tokens, served_model=reply.served_model,
+                                       temperature_omitted=reply.temperature_omitted,
+                                       thinking_disabled=self.thinking_disabled)
+
+
+def test_a_haiku_5_5_rejudge_of_a_haiku_4_5_run_plans_at_list_and_records_thinking_disabled(layout):
+    """Owner decision Q8 (2026-10-14): Claude Haiku 5.5 re-grades what Claude Haiku 4.5 judged, at the judge of
+    record's 300-token allowance (no registry minimum for it), priced at list, and the manifest's closed judge block
+    says its calls carried no temperature and thinking disabled."""
+    runs, root = layout
+    plan = _plan(runs, root, judge_model="claude-haiku-5-5")
+    assert plan["judge_slug"] == "claude-haiku-5-5" and plan["judge_max_tokens"] == 300
+    answers = {}
+
+    def factory(spec, plans):
+        answers.update(rejudge.mock_answers(plans))
+        return _HaikuFiveFiveJudge(lambda p: answers[p], model_spec=spec)
+
+    rejudge.execute(plan, started_dir=root.parent / "started", client_factory=factory,
+                    environ={"ANTHROPIC_API_KEY": "test-key-never-sent"})
+    out_dir = root / "claude-haiku-5-5" / "run_4242_1"
+    m = framework.load_json(out_dir / rejudge.MANIFEST_NAME)
+    assert m["judge"]["price_source"] == "engine:evaluate_models.PRICING"
+    assert (m["judge"]["input_per_mtok"], m["judge"]["output_per_mtok"]) == (0.10, 0.50)
+    assert m["judge"]["thinking_sent"] == "disabled" and m["judge"]["thinking_disabled"] == "thinking off (test)"
+    assert m["judge"]["temperature_sent"] is None
+    assert framework.validate_with_refs(m, framework.load_json(rejudge.MANIFEST_SCHEMA)) == []
+    assert rejudge.verify_output(out_dir, runs) == []
+
+
+def test_a_source_judge_of_record_sent_thinking_disabled_is_carried_into_the_rejudge(tmp_path, seed_set):
+    runs, root = tmp_path / "runs", tmp_path / "rejudge"
+    _land(runs, "run_4242_1", seed_set,
+          judge_of_record_extra={"thinking_sent": "disabled", "thinking_disabled": "thinking off (test)"})
+    rejudge.execute(_plan(runs, root), started_dir=tmp_path / "started", client_factory=_mock_factory, environ=KEYS)
+    m = framework.load_json(root / PAID_SLUG / "run_4242_1" / rejudge.MANIFEST_NAME)
+    assert m["source"]["judge_of_record"]["thinking_sent"] == "disabled"
+    assert m["source"]["judge_of_record"]["thinking_disabled"] == "thinking off (test)"
+    assert "thinking_sent" not in m["judge"]
+    assert framework.validate_with_refs(m, framework.load_json(rejudge.MANIFEST_SCHEMA)) == []
+
+
+def test_a_rejudge_by_the_slash_spelling_of_a_judge_is_refused_at_planning(layout):
+    """eq01's spelling, anthropic/claude-haiku-4-5, is priced at the 10/50 fallback; the plan refuses it before any
+    call or marker (owner decision Q6)."""
+    runs, root = layout
+    with pytest.raises(rejudge.RejudgeError, match="fallback_priced_judge"):
+        _plan(runs, root, judge_model="anthropic/claude-haiku-5-5")

@@ -1,64 +1,189 @@
-name: Jev Classifier Pilot (Advice & Petri)
+name: Jev Classifier Audit (Advice & Petri)
 
-# Evaluation of TypeSafe AI's Jev (typesafe/jev-1.13) decisions classifier
-# on existing landed Advice responses and Petri multi-turn conversations.
-# Runs in GitHub Actions using OPENROUTER_API_KEY.
-# Estimated cost per preset:
-#   - pilot:           ~$0.003  (ceiling: $0.05)
-#   - slightly_bigger: ~$0.015  (ceiling: $0.25)
-#   - much_bigger:     ~$0.050  (ceiling: $0.75)
-#   - everything:      ~$0.180  (ceiling: $1.50)
+# Evaluation of TypeSafe AI's Jev (typesafe/jev-1.13) decisions classifier on landed Advice responses and Petri
+# multi-turn conversations (scripts/audit_jev_calibration.py).
+#
+# A push-to-run lane since 2026-10-14 (owner decision D3, docs/decisions_20261014_owner.md, landing with PR #109): it fires when
+# .github/trigger/jev-audit.json changes, and only through scripts/fire_trigger.py, which journals the fire and
+# holds its max_spend against the OpenRouter daily ceiling. A live run (live true) calls the decisions endpoint on
+# OPENROUTER_API_KEY and is admitted only from a push on its first attempt; the daily-ceiling gate below re-checks
+# the same budget server-side. A mock run (live false: MockJevClient, no call, $0) may also run from a
+# workflow_dispatch. Every live run commits a cost sidecar (scripts/jev_audit_sidecar.py) under data/jev/runs/,
+# whether or not a later step failed, so scripts/ledger_update.py books its spend.
+#
+# Recovery: a live run that stops part-way (its ceiling, or a call that raised) leaves its checkpoint in the run's
+# artifact. A new fire with `resume_run_id` set to that run's id restores it, so the completed calls are not made
+# again; the new run's sidecar books only the rows it scored, since the earlier sidecar booked the rest. The runner
+# refuses a checkpoint from another mode, model, rubric or input.
+#
+# Observed cost: the 2026-10-12 run scored 1,810 advice responses and 301 Petri turns for $0.11 (billed).
+#
+# The trigger file is created by `fire_trigger.py park --trigger jev-audit` on main after this workflow merges,
+# never by hand.
 
 on:
+  push:
+    paths:
+      - ".github/trigger/jev-audit.json"
   workflow_dispatch:
     inputs:
-      scale:
-        description: "Evaluation Scale preset"
-        type: choice
-        default: "pilot (10 advice, 3 petri)"
-        options:
-          - "pilot (10 advice, 3 petri)"
-          - "slightly_bigger (50 advice, 10 petri)"
-          - "much_bigger (200 advice, 25 petri)"
-          - "everything (all available archive & petri)"
-          - "custom (use manual inputs below)"
-      advice_samples:
-        description: "Advice count (used if scale is custom or custom counts provided; 0 = all)"
+      archive:
+        description: "Advice archive JSONL (repo-relative)"
         type: string
-        default: "10"
+        default: ""
+      archive_samples:
+        description: "Advice responses to sample (0 = all)"
+        type: string
+        default: ""
+      petri_transcripts:
+        description: "Petri transcripts.jsonl (repo-relative)"
+        type: string
+        default: ""
       petri_conversations:
-        description: "Petri count (used if scale is custom or custom counts provided; 0 = all)"
+        description: "Petri conversations to audit (0 = all)"
         type: string
-        default: "3"
-      max_spend:
-        description: "Spend ceiling USD (used if scale is custom or custom ceiling provided)"
-        type: string
-        default: "0.10"
+        default: ""
       model:
-        description: "Decisions model ID"
-        type: string
-        default: "typesafe/jev-1.13"
-      resume:
-        description: "Resume evaluation from checkpoint (set to true to reuse intermediate checkpoint; false starts fresh)"
-        type: boolean
-        default: false
-      resume_run_id:
-        description: "Prior GitHub run ID to restore checkpoint artifact from (for resuming an interrupted run)"
+        description: "Decisions model id"
         type: string
         default: ""
 
 permissions:
-  contents: read
-  actions: read # required for cross-run artifact recovery via actions/download-artifact
+  contents: write
+  actions: read   # resume_run_id: download an earlier run's checkpoint artifact
 
 concurrency:
-  group: jev-pilot-${{ github.ref }}
+  group: jev-audit-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  jev_pilot:
+  params:
+    # A push that creates a ref carries created:true, and on a new ref every trigger file counts as changed. Skip
+    # on creation; fires are pushes to existing branches.
+    if: ${{ !github.event.created }}
+    runs-on: ubuntu-latest
+    outputs:
+      archive: ${{ steps.params.outputs.archive }}
+      archive_samples: ${{ steps.params.outputs.archive_samples }}
+      petri_transcripts: ${{ steps.params.outputs.petri_transcripts }}
+      petri_conversations: ${{ steps.params.outputs.petri_conversations }}
+      model: ${{ steps.params.outputs.model }}
+      live: ${{ steps.params.outputs.live }}
+      max_spend: ${{ steps.params.outputs.max_spend }}
+      commit_outputs: ${{ steps.params.outputs.commit_outputs }}
+      resume_run_id: ${{ steps.params.outputs.resume_run_id }}
+      # the fire's `_nonce` (pass-through metadata, never a trigger key), recorded in the cost sidecar
+      _nonce: ${{ steps.params.outputs._nonce }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          filter: blob:none
+          # the daily-ceiling gate reads the journal at github.event.before to find the entry this push added for
+          # this fire, and a depth-1 clone has no commit to read it at; blobless keeps full history cheap
+          fetch-depth: 0
+      - name: Resolve parameters
+        id: params
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          IN_ARCHIVE: ${{ inputs.archive }}
+          IN_ARCHIVE_SAMPLES: ${{ inputs.archive_samples }}
+          IN_PETRI_TRANSCRIPTS: ${{ inputs.petri_transcripts }}
+          IN_PETRI_CONVERSATIONS: ${{ inputs.petri_conversations }}
+          IN_MODEL: ${{ inputs.model }}
+        run: |
+          python - <<'EOF'
+          import json, os, re
+          # The push-path defaults dict MUST contain every trigger key (unknown keys in the trigger file are
+          # silently ignored by design; the fire guard's KNOWN_KEYS and JEV_DEFAULTS mirror this dict).
+          defaults = {"archive": "data/advice/responses_stimuli_20260721T235403Z.jsonl",
+                      "archive_samples": "10",
+                      "petri_transcripts": "data/petri/runs/run_35937014168_1/transcripts.jsonl",
+                      "petri_conversations": "3",
+                      "model": "typesafe/jev-1.13",
+                      "live": "false",
+                      "max_spend": "0.10",
+                      "commit_outputs": "false",
+                      "resume_run_id": ""}
+          p = dict(defaults)
+          nonce = ""                        # the fire's _nonce, metadata beside the trigger keys (empty on dispatch)
+          if os.environ["EVENT_NAME"] == "push":
+              with open(".github/trigger/jev-audit.json", encoding="utf-8") as f:
+                  cfg = json.load(f)
+              nonce = str(cfg.get("_nonce") or "")
+              p.update({k: (str(v).lower() if isinstance(v, bool) else str(v))
+                        for k, v in cfg.items() if k in defaults})
+          else:
+              # a dispatch sets the inputs above only: live, max_spend and commit_outputs keep their defaults, so a
+              # dispatch is always a mock run that commits nothing
+              for k in ("archive", "archive_samples", "petri_transcripts", "petri_conversations", "model"):
+                  v = os.environ.get("IN_" + k.upper(), "")
+                  if v:
+                      p[k] = v
+          # boolean keys are compared against "true" exactly downstream, so every other spelling is refused here
+          for k in ("live", "commit_outputs"):
+              if p[k] not in ("true", "false"):
+                  raise SystemExit(f"{k} must be true or false, got {p[k]!r}")
+          if p["commit_outputs"] == "true" and p["live"] != "true":
+              raise SystemExit("commit_outputs true needs live true: a mock report is not a measurement")
+          for k in ("archive_samples", "petri_conversations"):
+              if not (p[k].isascii() and p[k].isdigit()):
+                  raise SystemExit(f"{k} must be a non-negative integer (0 means all), got {p[k]!r}")
+          if p["resume_run_id"] and not (p["resume_run_id"].isascii() and p["resume_run_id"].isdigit()):
+              raise SystemExit(f"resume_run_id must be empty or a numeric workflow run id, got {p['resume_run_id']!r}")
+          spend = float(p["max_spend"])
+          if not (spend > 0 and spend != float("inf")):
+              raise SystemExit(f"max_spend must be a positive finite number, got {p['max_spend']!r}")
+          if not re.fullmatch(r"[A-Za-z0-9._-]+/[A-Za-z0-9._-]+", p["model"]):
+              raise SystemExit(f"model must be an OpenRouter vendor/model id, got {p['model']!r}")
+          for k in ("archive", "petri_transcripts"):
+              v = p[k]
+              if not v or v.startswith("/") or "\\" in v or ".." in v.split("/") or not os.path.isfile(v):
+                  raise SystemExit(f"{k} must be a repo-relative file in this checkout, got {v!r}")
+          # a live run is admitted only from a push-to-run fire on its first attempt: the fire path journals the
+          # reservation the daily ceiling counts, and neither a workflow_dispatch nor an Actions-tab re-run has one
+          if p["live"] == "true" and os.environ["EVENT_NAME"] != "push":
+              raise SystemExit("a live run is fired through scripts/fire_trigger.py only; a workflow_dispatch runs mock")
+          # the nonce binds the journal entry that reserved a live run's spend to its cost sidecar; budget-gate below
+          # requires that reservation (fire_trigger.NONCE_LANES), and fire_trigger.py refuses a live fire without one
+          if p["live"] == "true" and (not nonce or nonce != nonce.strip()):
+              raise SystemExit("a live run must carry a non-empty _nonce; fire through scripts/fire_trigger.py")
+          if p["live"] == "true" and os.environ.get("RUN_ATTEMPT", "1") != "1":
+              raise SystemExit(f"a live run cannot be re-run from the Actions tab (attempt "
+                               f"{os.environ.get('RUN_ATTEMPT')} has no reservation of its own); re-fire through "
+                               "scripts/fire_trigger.py")
+          # every value below is written as one `key=value` line and a later duplicate key wins, so a value carrying
+          # a newline could rewrite live or max_spend after the checks above; refuse any control character
+          for k, v in list(p.items()) + [("_nonce", nonce)]:
+              if any(ord(c) < 32 or ord(c) == 127 for c in v):
+                  raise SystemExit(f"{k} must not carry a control character (newline, carriage return, tab), got {v!r}")
+          out = os.environ["GITHUB_OUTPUT"]
+          with open(out, "a", encoding="utf-8") as f:
+              for k in defaults:
+                  f.write(k + "=" + p[k] + "\n")
+              f.write("_nonce=" + nonce + "\n")
+          print(" | ".join(f"{k}={p[k]}" for k in sorted(defaults)))
+          EOF
+
+      - name: Daily-ceiling gate (server-side; same budget_check as the fire guard)
+        env:
+          GATE_PARAMS: ${{ toJSON(steps.params.outputs) }}
+          # the ref's tip BEFORE this push, and the ref: the gate leaves out of the day's held sum the one journal
+          # entry this push added for this fire on this branch, so its commitment is counted once, not twice
+          PUSH_BEFORE: ${{ github.event.before }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          printf '%s' "$GATE_PARAMS" > "$RUNNER_TEMP/gate_params.json"
+          python3 scripts/fire_trigger.py budget-gate --trigger jev-audit --params-file "$RUNNER_TEMP/gate_params.json" --push-before "$PUSH_BEFORE" --ref "$REF_NAME" --run-attempt "$RUN_ATTEMPT"
+
+  audit:
+    if: ${{ !github.event.created }}
+    needs: params
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      RUN_STEM: jev_audit_${{ github.run_id }}_${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Set up Python
@@ -71,137 +196,174 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .
 
-      - name: Resolve evaluation scale parameters
-        id: params
-        shell: bash
-        run: |
-          SCALE="${{ inputs.scale }}"
-          ADVICE_IN="${{ inputs.advice_samples }}"
-          PETRI_IN="${{ inputs.petri_conversations }}"
-          SPEND_IN="${{ inputs.max_spend }}"
-          echo "Selected scale preset: $SCALE"
-
-          # If caller supplied non-default advice_samples, petri_conversations, or max_spend
-          # without selecting an explicit expansion preset (e.g., via legacy CLI: gh workflow run -f advice_samples=...),
-          # honor the legacy/custom inputs rather than silently clamping to the pilot preset.
-          if [[ "$SCALE" =~ ^pilot ]] && { [ "$ADVICE_IN" != "10" ] || [ "$PETRI_IN" != "3" ] || [ "$SPEND_IN" != "0.10" ]; }; then
-            echo "Notice: Non-default dispatch inputs detected with default scale ($ADVICE_IN advice, $PETRI_IN petri, \$$SPEND_IN ceiling); honoring custom parameters."
-            SCALE="custom"
-          fi
-
-          case "$SCALE" in
-            pilot*)
-              echo "advice_samples=10" >> $GITHUB_OUTPUT
-              echo "petri_conversations=3" >> $GITHUB_OUTPUT
-              echo "max_spend=0.05" >> $GITHUB_OUTPUT
-              ;;
-            *slightly*|medium*)
-              echo "advice_samples=50" >> $GITHUB_OUTPUT
-              echo "petri_conversations=10" >> $GITHUB_OUTPUT
-              echo "max_spend=0.25" >> $GITHUB_OUTPUT
-              ;;
-            *much*|large*)
-              echo "advice_samples=200" >> $GITHUB_OUTPUT
-              echo "petri_conversations=25" >> $GITHUB_OUTPUT
-              echo "max_spend=0.75" >> $GITHUB_OUTPUT
-              ;;
-            *everything*|full*)
-              echo "advice_samples=0" >> $GITHUB_OUTPUT
-              echo "petri_conversations=0" >> $GITHUB_OUTPUT
-              echo "max_spend=1.50" >> $GITHUB_OUTPUT
-              ;;
-            custom*)
-              echo "advice_samples=$ADVICE_IN" >> $GITHUB_OUTPUT
-              echo "petri_conversations=$PETRI_IN" >> $GITHUB_OUTPUT
-              echo "max_spend=$SPEND_IN" >> $GITHUB_OUTPUT
-              ;;
-            *)
-              echo "Refused: Unknown scale preset '$SCALE'" >&2
-              exit 1
-              ;;
-          esac
-
-      - name: Restore checkpoint from prior run artifact
-        if: ${{ inputs.resume_run_id != '' }}
+      # resume_run_id: the earlier run's checkpoint, from its artifact (a live run is attempt 1 only, so the artifact is
+      # its `-1`). A pristine copy is kept outside artifacts/ for the sidecar, which books only the rows not in it.
+      - name: Restore the checkpoint of the run being resumed
+        if: ${{ needs.params.outputs.resume_run_id != '' }}
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: jev-pilot-report
-          run-id: ${{ inputs.resume_run_id }}
+          name: jev-audit-report-${{ needs.params.outputs.resume_run_id }}-1
+          run-id: ${{ needs.params.outputs.resume_run_id }}
           github-token: ${{ github.token }}
-          path: /tmp/jev-restore
-
-      - name: Stage restored checkpoint file
-        if: ${{ inputs.resume_run_id != '' }}
+          path: ${{ runner.temp }}/jev-restore
+      - name: Stage the restored checkpoint
+        if: ${{ needs.params.outputs.resume_run_id != '' }}
         run: |
+          set -euo pipefail
+          if [ ! -f "$RUNNER_TEMP/jev-restore/jev_pilot_checkpoint.json" ]; then
+            echo "Refused: run ${{ needs.params.outputs.resume_run_id }}'s artifact holds no jev_pilot_checkpoint.json" >&2
+            exit 1
+          fi
           mkdir -p artifacts
-          if [ -f /tmp/jev-restore/jev_pilot_checkpoint.json ]; then
-            cp /tmp/jev-restore/jev_pilot_checkpoint.json artifacts/
-            echo "Staged restored checkpoint file from prior run ${{ inputs.resume_run_id }}"
-          else
-            echo "Refused: Prior run ${{ inputs.resume_run_id }} artifact did not contain jev_pilot_checkpoint.json; refusing resume." >&2
-            exit 1
-          fi
+          cp "$RUNNER_TEMP/jev-restore/jev_pilot_checkpoint.json" artifacts/jev_pilot_checkpoint.json
+          cp "$RUNNER_TEMP/jev-restore/jev_pilot_checkpoint.json" "$RUNNER_TEMP/resumed_checkpoint.json"
 
-      - name: Restore checkpoint cache
-        if: ${{ (inputs.resume || github.run_attempt > 1) && inputs.resume_run_id == '' }}
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: artifacts/jev_pilot_checkpoint.json
-          key: jev-checkpoint-${{ github.ref_name }}-${{ steps.params.outputs.advice_samples }}-${{ steps.params.outputs.petri_conversations }}-${{ inputs.model }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: |
-            jev-checkpoint-${{ github.ref_name }}-${{ steps.params.outputs.advice_samples }}-${{ steps.params.outputs.petri_conversations }}-${{ inputs.model }}-
-
-      - name: Verify resumed checkpoint presence
-        if: ${{ inputs.resume || inputs.resume_run_id != '' || github.run_attempt > 1 }}
-        run: |
-          if [ ! -f artifacts/jev_pilot_checkpoint.json ]; then
-            echo "Refused: Resumption requested (resume=${{ inputs.resume }}, resume_run_id=${{ inputs.resume_run_id }}, attempt=${{ github.run_attempt }}) but artifacts/jev_pilot_checkpoint.json was not restored; failing closed." >&2
-            exit 1
-          fi
-          echo "Verified restored checkpoint: artifacts/jev_pilot_checkpoint.json exists."
-
-      - name: Run Jev Live Pilot (Advice & Petri)
+      # The runner writes the start marker just before its first live request: a live run that dies after it without
+      # a report is booked at its whole max_spend (scripts/jev_audit_sidecar.py), one refused before it at nothing.
+      - name: Run Jev audit (live calls the decisions endpoint; mock calls nothing)
+        # shorter than the job's 60 minutes, so a run that reaches it still leaves time for the always() steps that
+        # write and commit its cost sidecar and upload its checkpoint (Codex review of PR #110, round 4); GitHub runs
+        # later always() steps after a step timeout, but not after the job's own timeout
+        timeout-minutes: 45
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          MODEL: ${{ inputs.model }}
-          ADVICE_SAMPLES: ${{ steps.params.outputs.advice_samples }}
-          PETRI_CONVERSATIONS: ${{ steps.params.outputs.petri_conversations }}
-          MAX_SPEND: ${{ steps.params.outputs.max_spend }}
+          LIVE: ${{ needs.params.outputs.live }}
+          ARCHIVE: ${{ needs.params.outputs.archive }}
+          ARCHIVE_SAMPLES: ${{ needs.params.outputs.archive_samples }}
+          PETRI_TRANSCRIPTS: ${{ needs.params.outputs.petri_transcripts }}
+          PETRI_CONVERSATIONS: ${{ needs.params.outputs.petri_conversations }}
+          MODEL: ${{ needs.params.outputs.model }}
+          MAX_SPEND: ${{ needs.params.outputs.max_spend }}
+          # the key is exported to the live run alone
+          OPENROUTER_API_KEY: ${{ needs.params.outputs.live == 'true' && secrets.OPENROUTER_API_KEY || '' }}
           PYTHONPATH: .
         run: |
+          set -euo pipefail
+          # a live run re-checks its attempt here too: "Re-run this job" reruns this job alone and reuses the
+          # params job's outputs, which were resolved on attempt 1
+          if [ "$LIVE" = "true" ] && [ "$GITHUB_RUN_ATTEMPT" != "1" ]; then
+            echo "Refused: a live run cannot be re-run (attempt $GITHUB_RUN_ATTEMPT); re-fire through scripts/fire_trigger.py" >&2
+            exit 1
+          fi
           mkdir -p artifacts
+          LIVE_FLAG=()
+          if [ "$LIVE" = "true" ]; then
+            # the runner writes the start marker itself, after its pre-call checks and just before its first request,
+            # so a run refused before any call (a checkpoint from another mode or input, say) books nothing
+            LIVE_FLAG=(--ci-live --started-marker "$RUNNER_TEMP/jev_started")
+          fi
           python scripts/audit_jev_calibration.py \
-            --archive "data/advice/responses_stimuli_20260721T235403Z.jsonl" \
-            --archive-samples "$ADVICE_SAMPLES" \
-            --petri-transcripts "data/petri/runs/run_35937014168_1/transcripts.jsonl" \
+            --archive "$ARCHIVE" \
+            --archive-samples "$ARCHIVE_SAMPLES" \
+            --petri-transcripts "$PETRI_TRANSCRIPTS" \
             --petri-conversations "$PETRI_CONVERSATIONS" \
             --max-spend "$MAX_SPEND" \
             --rubric "data/advice_rubric.draft.json" \
             --register-rubric "data/register_rubric.json" \
             --model "$MODEL" \
-            --ci-live \
+            "${LIVE_FLAG[@]}" \
             --checkpoint "artifacts/jev_pilot_checkpoint.json" \
             --out-markdown "artifacts/jev_pilot_report.md" \
             --out-json "artifacts/jev_pilot_report.json"
 
-      - name: Save checkpoint cache (on interruption, failure, or cancellation)
-        if: (failure() || cancelled()) && hashFiles('artifacts/jev_pilot_checkpoint.json') != ''
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: artifacts/jev_pilot_checkpoint.json
-          key: jev-checkpoint-${{ github.ref_name }}-${{ steps.params.outputs.advice_samples }}-${{ steps.params.outputs.petri_conversations }}-${{ inputs.model }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Write the cost sidecar (live only; whether or not the audit succeeded)
+        if: ${{ always() && needs.params.outputs.live == 'true' }}
+        env:
+          MODEL: ${{ needs.params.outputs.model }}
+          MAX_SPEND: ${{ needs.params.outputs.max_spend }}
+          NONCE: ${{ needs.params.outputs._nonce }}
+          RESUME_RUN_ID: ${{ needs.params.outputs.resume_run_id }}
+        run: |
+          RESUMED=()
+          # only when the restore staged it; a failed restore stops the job before the start marker, so the run made
+          # no call and the sidecar writes nothing
+          if [ -n "$RESUME_RUN_ID" ] && [ -f "$RUNNER_TEMP/resumed_checkpoint.json" ]; then
+            RESUMED=(--resumed-checkpoint "$RUNNER_TEMP/resumed_checkpoint.json" --resumed-run-id "$RESUME_RUN_ID"
+                     --resumed-source-sidecar "data/jev/runs/jev_audit_${RESUME_RUN_ID}_1.report.json")
+          fi
+          python scripts/jev_audit_sidecar.py --report artifacts/jev_pilot_report.json \
+            --out "data/jev/runs/$RUN_STEM.report.json" --model "$MODEL" --max-spend "$MAX_SPEND" \
+            --nonce "$NONCE" --started-marker "$RUNNER_TEMP/jev_started" \
+            --run-utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${RESUMED[@]}"
 
-      - name: Add Report to Workflow Summary
+      # Deliberately NOT always(): the report is committed only when every step before it succeeded. The advice
+      # response text is dropped (it is already in the committed archive the report names); the scores, tiers,
+      # flags, costs and provenance stay.
+      - name: Commit the report (live and commit_outputs only; requires every prior step green)
+        if: ${{ needs.params.outputs.live == 'true' && needs.params.outputs.commit_outputs == 'true' }}
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          python - <<'EOF'
+          import json, os
+          report = json.load(open("artifacts/jev_pilot_report.json", encoding="utf-8"))
+          for case in report.get("cases") or []:
+              case.pop("response_text", None)
+          out = f"data/jev/runs/{os.environ['RUN_STEM']}.json"
+          with open(out, "w", encoding="utf-8") as f:
+              f.write(json.dumps(report, indent=2) + "\n")
+          print(f"wrote {out}")
+          EOF
+          git add -f "data/jev/runs/$RUN_STEM.json" "data/jev/runs/$RUN_STEM.report.json"
+          if git diff --cached --quiet; then echo "No outputs to commit"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Jev audit: $RUN_STEM (report and cost sidecar)"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 2))
+          done
+          exit 1
+
+      # The cost sidecar is a spend record (model id, ceiling, cost, digest; no text) and the ledger is the only
+      # consumer of landed spend, so a live run books it whether or not its report is committed and whether or not
+      # a later step failed (petri_audit.yml's pattern).
+      - name: Commit the cost sidecar of a live run (independent of commit_outputs)
+        if: ${{ always() && needs.params.outputs.live == 'true' }}
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # index cleanliness is no proof the sidecar landed: the report step may have committed it locally and
+          # then failed every push. Measure against the remote and, if local commits never reached it, fall back to
+          # the remote head (the files stay in the working tree) and commit the sidecar alone.
+          git fetch origin "$BRANCH"
+          if [ -n "$(git log --oneline "origin/$BRANCH..HEAD")" ]; then
+            echo "local commit(s) never reached origin/$BRANCH; re-committing the cost sidecar alone"
+            git reset --soft "origin/$BRANCH"
+            git reset -q
+          fi
+          f="data/jev/runs/$RUN_STEM.report.json"
+          if [ -f "$f" ]; then git add -f "$f"; fi
+          if git diff --cached --quiet; then echo "No cost sidecar to commit (already on the remote, or none written)"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Jev audit: $RUN_STEM cost sidecar"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 2))
+          done
+          exit 1
+
+      - name: Add report to workflow summary
         if: always()
         run: |
           if [ -f artifacts/jev_pilot_report.md ]; then
-            cat artifacts/jev_pilot_report.md >> $GITHUB_STEP_SUMMARY
+            cat artifacts/jev_pilot_report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f "data/jev/runs/$RUN_STEM.report.json" ]; then
+            { echo; echo '### Cost sidecar'; echo '```json'; cat "data/jev/runs/$RUN_STEM.report.json"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Upload Artifacts
+      - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: jev-pilot-report
+          name: jev-audit-report-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/
-

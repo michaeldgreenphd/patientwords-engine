@@ -73,3 +73,25 @@ def test_unknown_tiers_are_ignored_not_counted(tmp_path):
     ]
     payload = exporter.build_payload([_write(tmp_path, "judgments_t.jsonl", rows)], ae, TIERS)
     assert payload["n_paired"] == 1
+
+
+def test_two_secondary_judges_are_never_pooled(tmp_path):
+    """Review of PR #114: every secondary spec shared one slot, so a later judge's rows overwrote an earlier one's
+    per response and a second secondary judge would have published a mixture. With two present the export refuses
+    unless one is named, and the named one alone is paired; the other is counted per archive."""
+    ae = exporter._load_advice_eval()
+    rows = [_row("a", "claude-haiku-4-5", TIERS[0]), _row("a", "openrouter:stealth/ox-alpha", TIERS[1]),
+            _row("a", "anthropic:claude-haiku-5-5", TIERS[0]),
+            _row("b", "claude-haiku-4-5", TIERS[1]), _row("b", "openrouter:stealth/ox-alpha", TIERS[1])]
+    path = _write(tmp_path, "judgments_t.jsonl", rows)
+    with pytest.raises(SystemExit):
+        exporter.build_payload([path], ae, TIERS)
+    haiku = exporter.build_payload([path], ae, TIERS, "anthropic:claude-haiku-5-5")
+    assert haiku["n_paired"] == 1 and haiku["exact"]["n"] == 1
+    assert haiku["secondary_judges"] == {"anthropic:claude-haiku-5-5": 1}
+    assert haiku["coverage"][0]["n_secondary_by_judge"] == {"openrouter:stealth/ox-alpha": 2,
+                                                             "anthropic:claude-haiku-5-5": 1}
+    ox = exporter.build_payload([path], ae, TIERS, "openrouter:stealth/ox-alpha")
+    assert ox["n_paired"] == 2 and ox["exact"]["n"] == 1
+    with pytest.raises(SystemExit):
+        exporter.build_payload([path], ae, TIERS, "anthropic:claude-sonnet-5")

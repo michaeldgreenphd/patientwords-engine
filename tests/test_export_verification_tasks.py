@@ -1870,7 +1870,7 @@ def _registered_model_ids() -> dict[str, list[str]]:
     out["advice_providers.json"] = [
         *blocks, *[b["consumer_product"] for k, b in blocks.items() if "consumer_product" in b and k != "openrouter"],
         *[b["consumer_default"] for b in blocks.values() if "consumer_default" in b],
-        *[m for b in blocks.values() for field in ("pricing", "omit_temperature", "min_output_tokens")
+        *[m for b in blocks.values() for field in ("pricing", "omit_temperature", "min_output_tokens", "disable_thinking")
           for m in (b.get(field) or {})]]
     petri = []
     for path in sorted((ROOT / "data" / "petri").rglob("manifest.json")):

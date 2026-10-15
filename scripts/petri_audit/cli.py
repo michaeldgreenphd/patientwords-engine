@@ -21,12 +21,12 @@ same checks and calls nothing.
     python -m scripts.petri_audit.cli run-summary --run-dir DIR --mode MODE [--raw-eval-dir DIR] [--seeds FILE] [...]
     python -m scripts.petri_audit.cli repro-pack --vendor V --publication-state S --run-dir DIR [...]
     python -m scripts.petri_audit.cli repro-pack --check | --record-sent VERSION --sent-to ROLE   (repro_pack.py)
-    python -m scripts.petri_audit.cli rejudge-plan --params-file FILE --rejudge-run-id ID [...] --out PLAN   (mode rejudge)
+    python -m scripts.petri_audit.cli rejudge-plan --params-file FILE --rejudge-run-id ID [...] --out PLAN [--instrument historical]
     python -m scripts.petri_audit.cli rejudge --plan PLAN --started-dir DIR
     python -m scripts.petri_audit.cli rejudge-spend-report --plan PLAN --started-dir DIR
     python -m scripts.petri_audit.cli verify-rejudge (--plan PLAN | --dir DIR ... | --root DIR) [--runs-dir DIR]
     python -m scripts.petri_audit.cli rejudge-summary --plan PLAN [--seal-scan]
-    python -m scripts.petri_audit.cli rejudge-rehearse --source-run STEM --out-root DIR   ($0, mock judge, local)
+    python -m scripts.petri_audit.cli rejudge-rehearse --source-run STEM --out-root DIR [--instrument historical]   ($0, local)
 
 Python 3.11 can run everything except `run` and `adapt`, which import the
 harness and are 3.12 only.
@@ -41,6 +41,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import readapt, rejudge, repro_pack
+from .historical import CURRENT, INSTRUMENTS
 from .envlock import load_lock, report_lines, verify_lock
 from .framework import ENV_LOCK, OUTCOME_REGISTRY, ROOT, SEED_FILE, load_json, sha256_file, write_json
 from .manifest import bind_judgments, reseal_problems, verify_chain, verify_run
@@ -53,6 +54,7 @@ from .spend import (
     cache_booking_problems,
     dearest_price,
     judge_billing_channel,
+    judge_fallback_price_problems,
     judge_key_routing_problems,
     openrouter_price_problems,
     preflight_bound,
@@ -66,6 +68,11 @@ from .spend import (
 )
 
 DEFAULT_RUNS_DIR = ROOT / "data" / "petri" / "runs"
+
+
+INSTRUMENT_HELP = ("current (default): plan with today's planner and prompt files, checked against the judge of "
+                   "record; historical: replay the judge of record's own judgments, each prompt rebuilt from the "
+                   "prompt-file version its row records (scripts/petri_audit/historical.py)")
 
 
 def engine_sha() -> str | None:
@@ -115,13 +122,16 @@ def cmd_verify_lock(args: argparse.Namespace) -> int:
 
 
 def _judge_price_problems(spec: str) -> list[str]:
-    """`spend.openrouter_price_problems` for a registry-form judge spec. A
+    """`spend.openrouter_price_problems` for a registry-form judge spec, and
+    `spend.judge_fallback_price_problems` (2026-10-14, owner decision Q6: a
+    judge no price table names would be booked at the 10/50 fallback rate). A
     spec that cannot be expanded to an Inspect name (a bare provider with no
     consumer_default) cannot be priced either, so it is a problem, not a crash."""
     try:
-        return openrouter_price_problems(registry_spec_to_inspect(spec))
+        problems = openrouter_price_problems(registry_spec_to_inspect(spec))
     except ValueError as exc:
         return [str(exc)]
+    return problems + judge_fallback_price_problems(spec)
 
 
 def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
@@ -206,7 +216,7 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
         return 3, {}
     if args.judge_model:
         # a judge spec the registry cannot resolve must fail here, before the target spends (Codex round 2)
-        from .judge_runner import judge_sampling_omissions, judge_spec_problems
+        from .judge_runner import judge_sampling_omissions, judge_spec_problems, judge_thinking_disabled
 
         judge_problems = judge_spec_problems(args.judge_model)
         if judge_problems:
@@ -227,6 +237,9 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
         # Inspect-name reading (spend.sampling_omissions) differs for colon-free specs containing "/" (2026-10-02)
         for param, reason in judge_sampling_omissions(args.judge_model).items():
             print(f"judge {args.judge_model}: {param} omitted from every call ({reason})")
+        thinking_reason = judge_thinking_disabled(args.judge_model)
+        if thinking_reason:
+            print(f"judge {args.judge_model}: thinking disabled on every call ({thinking_reason})")
         # the pre-flight is not given the judge's allowance, so it names the registry minimum the judge step will
         # hold the allowance to (judge_runner.judge_budget_problems refuses a smaller one before any judge call)
         from .judge_runner import judge_min_output_tokens
@@ -538,7 +551,15 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
     under `can_afford`, so the judge ceiling bounds the total: a priced judge
     is booked at its ceiling with the surviving rows' sum recorded beside it,
     a zero-price judge at zero (Codex rounds 4 and 5)."""
-    from .judge_runner import TIER_TEMPERATURE, cumulative_counts, judge_sampling_omissions, omission_fields, read_jsonl
+    from .judge_runner import (
+        TIER_TEMPERATURE,
+        cumulative_counts,
+        judge_sampling_omissions,
+        judge_thinking_disabled,
+        omission_fields,
+        read_jsonl,
+        thinking_fields,
+    )
 
     run_dir = Path(args.run_dir)
     # a readapt's judge was reserved by the readapt fire, not the source fire its directory names; the sidecar carries
@@ -582,6 +603,7 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
                # a judge model the registry withholds temperature from was sent none, for the spec as RegistryJudge
                # resolves it (this process cannot see an installed SDK's refusal; the surviving rows record their own)
                **omission_fields(judge_sampling_omissions(args.judge_model).get("temperature")),
+               **thinking_fields(judge_thinking_disabled(args.judge_model)),
                "task": "petri-audit-judge", "run_id": run_dir.name, "billing_channel": channel,
                "price_source": price.source, "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok}
     sidecar.update(identity)
@@ -596,14 +618,16 @@ def judge_of_record_block(judge_model: str, channel: str, price_source: str, sid
     path and digest). `temperature` is the instrument's setting (TIER_TEMPERATURE), which judge_settings_problems and
     a rejudge compare; when the calls went out without it the block also carries temperature_sent null and
     temperature_omitted, copied from the sidecar (judge_runner.omission_fields; review of 2026-10-01), and is
-    otherwise the shape every earlier manifest has."""
-    from .judge_runner import TIER_TEMPERATURE, omission_fields
+    otherwise the shape every earlier manifest has. Likewise thinking_sent "disabled" and thinking_disabled when the
+    calls were sent thinking disabled (judge_runner.thinking_fields; 2026-10-14)."""
+    from .judge_runner import TIER_TEMPERATURE, omission_fields, thinking_fields
 
     return {"judge_model": judge_model, "billing_channel": channel, "price_source": price_source,
             "judged_utc": sidecar["run_utc"], "cost_usd": sidecar["cost_usd"], "truncated": sidecar["truncated"],
             "planned": sidecar["planned"], "judged": totals["judged"], "null": totals["null"],
             "not_applicable": totals["not_applicable"], "judge_max_tokens": judge_max_tokens,
-            "temperature": TIER_TEMPERATURE, **omission_fields(sidecar.get("temperature_omitted"))}
+            "temperature": TIER_TEMPERATURE, **omission_fields(sidecar.get("temperature_omitted")),
+            **thinking_fields(sidecar.get("thinking_disabled"))}
 
 
 def cmd_judge(args: argparse.Namespace) -> int:
@@ -810,14 +834,15 @@ def cmd_rejudge_plan(args: argparse.Namespace) -> int:
         journal = read_journal(args.journal) if Path(args.journal).is_file() else []
         plan = rejudge.make_plan(params=params, runs_dir=Path(args.runs_dir), rejudge_root=Path(args.rejudge_root),
                                  journal_entries=journal, workflow_run_id=args.rejudge_run_id,
-                                 workflow_run_attempt=args.rejudge_run_attempt, commit=args.rejudge_commit)
+                                 workflow_run_attempt=args.rejudge_run_attempt, commit=args.rejudge_commit,
+                                 instrument=args.instrument)
     except (rejudge.RejudgeError, ValueError, KeyError, OSError) as exc:
         print(f"rejudge refused before any call: {exc}", file=sys.stderr)
         return 12
     write_json(Path(args.out), plan)
     print(f"rejudge plan: judge {plan['judge_model']} ({'rehearsal, $0' if plan['rehearsal'] else 'paid'}), fire "
           f"ceiling ${plan['judge_max_spend_usd']:.4f}, judge_max_tokens {plan['judge_max_tokens']}, nonce "
-          f"{plan['fire']['journal_nonce']!r}")
+          f"{plan['fire']['journal_nonce']!r}, instrument {plan.get('instrument', 'current')}")
     for source in plan["sources"]:
         est = source["estimate"]
         print(f"  {source['run_stem']}: {source['planned']} planned judgment(s), parity with the judge of record "
@@ -980,7 +1005,8 @@ def cmd_rejudge_rehearse(args: argparse.Namespace) -> int:
                   "judge_model": rejudge.MOCK_JUDGE, "judge_max_spend": "0.01", "judge_max_tokens": str(tokens),
                   "commit_outputs": "false", "seeds_file": seeds_file, "_nonce": ""}
         plan = rejudge.make_plan(params=params, runs_dir=runs_dir, rejudge_root=out_root, journal_entries=[],
-                                 workflow_run_id="0", workflow_run_attempt="1", commit="0" * 40)
+                                 workflow_run_id="0", workflow_run_attempt="1", commit="0" * 40,
+                                 instrument=args.instrument)
         out_root.mkdir(parents=True, exist_ok=True)
         write_json(out_root / "plan.json", plan)
         outcome = rejudge.execute(plan, started_dir=out_root / "_started")
@@ -999,6 +1025,14 @@ def cmd_rejudge_rehearse(args: argparse.Namespace) -> int:
         c = m["counts"]
         print(f"  parity with judge of record {m['source']['judge_of_record']['judge_model']!r}: "
               f"{m['instrument']['parity_with_judge_of_record']}; plan {m['instrument']['plan_sha256'][:12]}")
+        hist = m["instrument"].get("historical")
+        if hist:
+            print(f"  historical instrument: {hist['judgments_replayed']} judgment(s) replayed ({hist['calls']} call(s), "
+                  f"{hist['not_applicable']} not applicable), {hist['contexts_recovered_by_digest']} context(s) "
+                  f"recovered by digest")
+            for ref, entry in m["instrument"]["prompt_files"].items():
+                print(f"    {ref} @ {entry['digest']}: {entry['source']}, commit {entry['commit'][:12]}, "
+                      f"blob {entry['git_blob'][:12]}")
         print(f"  planned {c['planned']}, judged {c['judged']}, null {c['null']}, not applicable "
               f"{c['not_applicable']} (judge of record: planned {m['source']['judge_of_record']['planned']}, "
               f"not applicable {m['source']['judge_of_record']['not_applicable']}); cost ${m['cost_usd']:.4f}")
@@ -1187,6 +1221,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--rejudge-run-attempt", required=True, help="this workflow run's attempt (GITHUB_RUN_ATTEMPT)")
     p.add_argument("--rejudge-commit", required=True, help="the commit this workflow run checked out (GITHUB_SHA)")
     p.add_argument("--out", required=True)
+    p.add_argument("--instrument", choices=list(INSTRUMENTS), default=CURRENT, help=INSTRUMENT_HELP)
     p.set_defaults(func=cmd_rejudge_plan)
 
     p = sub.add_parser("rejudge")
@@ -1226,6 +1261,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help="the seed file to plan from (default: the one the source run recorded in its manifest)")
     p.add_argument("--judge-max-tokens", type=int, default=None,
                    help="default: the source run's judge of record's allowance (any other is refused by the plan)")
+    p.add_argument("--instrument", choices=list(INSTRUMENTS), default=CURRENT, help=INSTRUMENT_HELP)
     p.set_defaults(func=cmd_rejudge_rehearse)
 
     p = sub.add_parser("digest")

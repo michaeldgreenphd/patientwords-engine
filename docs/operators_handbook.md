@@ -35,7 +35,9 @@ cycles per `docs/routine_standing_prompt.md` (MAINTENANCE MODE since
   (`scripts/backfill_chain.py`, `docs/model_matrix.md`); its results publish
   only at an owner release (`scripts/publication_release.py`).
 - **All nine trigger lanes are PARKED** (`fire_trigger.py park`; eight on
-  this date, and `petri-audit`, added 2026-09-16, since 2026-09-18).
+  this date, and `petri-audit`, added 2026-09-16, since 2026-09-18). The tenth,
+  `jev-audit` (added 2026-10-14), has no trigger file until its first park on
+  `main`, which waits on the owner's approval.
   The standing exception is `archive-renders`: it stays un-parked from the cycle
   that fires its PNG sweep until the next cycle re-parks it
   (`docs/routine_standing_prompt.md` §3d). Each
@@ -246,6 +248,27 @@ say in any record which evidence was used.
   new material anywhere; hits are reported as path + batch#index only.
 - `data/simulated/` is append-only; intentional misspellings are stimuli;
   medical vocabulary lives in JSON data files only.
+
+- **Two judges (owner decision Q8, 2026-10-14).** Claude Haiku 4.5
+  (`claude-haiku-4-5`) stays the judge of record in both lanes. Claude Haiku
+  5.5 (`claude-haiku-5-5`, $0.10/$0.50 per million tokens) judges again
+  everything Haiku 4.5 judged, and judges beside it from now on, as a second
+  judge: on the advice lane by judge-only fires with
+  `judge_model: anthropic:claude-haiku-5-5` (the colon keeps it secondary; a
+  bare `claude-haiku-5-5` is refused because it would pool with the judge of
+  record), on the Petri lane by `mode: rejudge` with
+  `judge_model: claude-haiku-5-5` and the judge of record's
+  `judge_max_tokens`. Its calls are sent no temperature (it rejects a
+  non-default one) and thinking `{"type": "disabled"}` (registry
+  `anthropic.disable_thinking`), so neither judge thinks. They do not differ by
+  model alone on the Petri lane: Haiku 4.5 was sent temperature 0.0 there, and
+  Haiku 5.5 samples at the API default (1.0), so a disagreement between them
+  reflects both model and temperature. On the advice lane both run at the API
+  default, since that lane's SDK has sent no temperature in CI since
+  2026-08-23 (registry `omit_temperature_note`). The records state the
+  temperature and thinking each call was sent. Each re-judge fire needs the owner's words like any paid
+  fire. A judge spec that would be booked at the 10/50 fallback rate is
+  refused before the fire journals and again before any call (Q6).
 
 ## 7 · Where things live
 

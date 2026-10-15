@@ -54,6 +54,8 @@
             "temperature": {"type": ["number", "null"]},
             "temperature_sent": {"type": "null", "description": "2026-10-01: copied from the source's judge of record when present (its calls carried no temperature)."},
             "temperature_omitted": {"type": "string", "minLength": 1, "description": "2026-10-01: copied from the source's judge of record when present: why its calls went out without the instrument's temperature."},
+            "thinking_sent": {"type": "string", "enum": ["disabled"], "description": "2026-10-14: copied from the source's judge of record when present (its calls carried thinking disabled)."},
+            "thinking_disabled": {"type": "string", "minLength": 1, "description": "2026-10-14: copied from the source's judge of record when present: why its calls were sent thinking disabled."},
             "planned": {"type": ["integer", "null"]},
             "judged": {"type": ["integer", "null"]},
             "null": {"type": ["integer", "null"]},
@@ -82,6 +84,8 @@
         "temperature": {"type": "number", "description": "The judge instrument's sampling temperature (TIER_TEMPERATURE); see temperature_omitted."},
         "temperature_sent": {"type": "null", "description": "2026-10-01: present, and null, only beside temperature_omitted: this rejudge's calls carried no temperature."},
         "temperature_omitted": {"type": "string", "minLength": 1, "description": "2026-10-01: why this rejudge's calls went out without the instrument's temperature (the provider registry's anthropic.omit_temperature reason, or the installed anthropic SDK's refusal of the keyword), copied from its judge sidecar. Absent when they carried it."},
+        "thinking_sent": {"type": "string", "enum": ["disabled"], "description": "2026-10-14: present, and \"disabled\", only beside thinking_disabled: this rejudge's calls carried thinking {\"type\": \"disabled\"}."},
+        "thinking_disabled": {"type": "string", "minLength": 1, "description": "2026-10-14: why this rejudge's calls were sent thinking disabled (the provider registry's anthropic.disable_thinking reason), copied from its judge sidecar. Absent when they carried no thinking parameter."},
         "max_spend_usd": {"$ref": "#/$defs/usd", "description": "The ceiling this run's judge ran under: what the fire's ceiling had left when it started."},
         "fire_judge_max_spend_usd": {"$ref": "#/$defs/usd"},
         "fire_spent_before_usd": {"$ref": "#/$defs/usd"}
@@ -101,10 +105,31 @@
           "properties": {"ref": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/sha256"},
                          "digest": {"type": "string", "minLength": 1}}
         },
-        "prompt_files": {"type": "object", "description": "Prompt file ref -> {digest (the canonical digest the rows carry), sha256 (the file)}: every outcome prompt the plans use, and the register prompt an autonomous (adaptive-auditor) run's plans carry."},
+        "prompt_files": {"type": "object", "description": "Prompt file ref -> {digest (the canonical digest the rows carry), sha256 (the file)}: every outcome prompt the plans use, and the register prompt an autonomous (adaptive-auditor) run's plans carry. Under the historical instrument each entry also carries git_blob (the git blob id of the bytes used), source (checkout or archive), commit (the archive entry's commit, or the fire's own checkout) and, from the archive, archive_file."},
         "plan_sha256": {"$ref": "#/$defs/sha256"},
         "planned": {"$ref": "#/$defs/count"},
-        "parity_with_judge_of_record": {"type": "string", "enum": ["exact"], "description": "Every planned judgment is one the judge of record made, shown the same rendered prompt and context (by digest), and none is missing."}
+        "parity_with_judge_of_record": {"type": "string", "enum": ["exact"], "description": "Every planned judgment is one the judge of record made, shown the same rendered prompt and context (by digest), and none is missing."},
+        "historical": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Present only when the re-grade used the historical instrument (scripts/petri_audit/historical.py, owner decision R2 of 2026-10-14): the judge of record's own judgments replayed, each prompt rebuilt from the prompt-file version its row records and checked digest for digest. Absent under today's instrument.",
+          "required": ["instrument", "basis", "judgments_replayed", "calls", "not_applicable", "contexts_recovered_by_digest", "archived_prompt_files", "archive_index"],
+          "properties": {
+            "instrument": {"type": "string", "enum": ["historical"]},
+            "basis": {"type": "string", "minLength": 1},
+            "judgments_replayed": {"$ref": "#/$defs/count"},
+            "calls": {"$ref": "#/$defs/count"},
+            "not_applicable": {"$ref": "#/$defs/count"},
+            "contexts_recovered_by_digest": {"$ref": "#/$defs/count"},
+            "archived_prompt_files": {"type": "array", "items": {"type": "string", "minLength": 1}},
+            "archive_index": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["ref", "sha256"],
+              "properties": {"ref": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/sha256"}}
+            }
+          }
+        }
       }
     },
     "fire": {

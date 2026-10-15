@@ -93,8 +93,9 @@ push-to-run lane, once one exists, needs no exception. Mechanics: `docs/pilot_ru
 | `jlens-readout.json` | `jlens_readout.yml` | hosted Jacobian-lens depth readouts ($0) |
 | `advice-eval.json` | `advice_evaluation.yml` | deployed-assistant advice elicitation + judging (paid) |
 | `petri-audit.json` | `petri_audit.yml` | Petri-hosted multi-turn register experiments (paid modes: *Cost discipline*; `rejudge` re-grades landed runs with another judge into `data/petri/rejudge/`) |
+| `jev-audit.json` | `jev_pilot.yml` | Jev decisions classifier scored against landed advice and Petri outputs (paid when `live: true`, on OpenRouter) |
 
-Nine lanes. `scripts/fire_trigger.py` also knows `pab-probe`, whose
+Ten lanes. `scripts/fire_trigger.py` also knows `pab-probe`, whose
 workflow exists only on the PAB branch. The lane reference, with every lane's exact
 key set, is `docs/triggers.md` (it says why `.github/trigger/README.md` is not);
 `tests/test_trigger_docs.py` checks it and this table against `TRIGGERS`,
@@ -120,7 +121,8 @@ branch still fire. And the **resting-state rule**: a trigger file at rest is a l
 default any branch operation can pull, so its committed content should be the cheapest
 stage that exists with `commit_outputs`/`commit_sidecar` false, never the last expensive
 thing that ran. `scripts/fire_trigger.py park --trigger <t>` (or `--all`) fires each
-lane's no-op default from `PARK_DEFAULTS`. All nine lanes rest parked except
+lane's no-op default from `PARK_DEFAULTS`. All ten lanes rest parked (`jev-audit` once
+first parked on `main`) except
 `archive-renders`, from the cycle that fires its $0 PNG sweep until the next re-parks it
 (`docs/routine_standing_prompt.md` §3d); after any real fire lands, re-park that lane
 (`docs/operators_handbook.md` §3).
@@ -129,10 +131,10 @@ lane's no-op default from `PARK_DEFAULTS`. All nine lanes rest parked except
 in `fire_trigger.py`'s `PAID_TRIGGERS` (the source of truth) spend provider credits — on
 `main`, `scenario-generation`, `model-evaluation`, `advice-eval`, and
 `petri-audit` when `mode: run` (or `mode: readapt` or `mode: rejudge`, whose judge alone
-spends) — and so does `circuit-trace` with `show_mitigation: true` or
+spends) and `jev-audit` when `live: true` — and so does `circuit-trace` with `show_mitigation: true` or
 `mode: translation`; `docs/triggers.md` has each lane's costs. Every paid
 generation run writes `<batch>.report.json`; mitigation runs write
-`mitigation.part_NN.report.json` under the trace dir. The spend ledger is
+`mitigation.part_NN.report.json` under the trace dir; jev-audit, `data/jev/runs/`. The spend ledger is
 `docs/overnight_ledger_20260708.md`; `scripts/ledger_update.py` appends to the newest
 `docs/*ledger*.md`, so never add another (`docs/README.md`, naming rule).
 
