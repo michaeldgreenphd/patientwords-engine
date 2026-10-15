@@ -101,7 +101,8 @@ lane, and advance by chaining — resolve the landed run, then fire the next.
   truth for the lanes, and `is_paid_fire` decides each fire; read the script, not a list
   copied here (copies have gone stale). Two rules sit outside the bare lane list:
   petri-audit counts as paid only in `mode: run`, `mode: readapt`, and `mode: rejudge`
-  with a real judge (its `mockllm/judge` rehearsal is free), and a `circuit-trace` fire
+  with a real judge (its `mockllm/judge` rehearsal is free), jev-audit only with
+  `live: true` (booked to the OpenRouter lane), and a `circuit-trace` fire
   with `show_mitigation: true` is paid although circuit-trace is not in
   `PAID_TRIGGERS`. `docs/triggers.md` states what each lane costs.
 - **A paid fire declares its own ceiling:** `max_spend` (a finite number > 0), plus
