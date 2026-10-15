@@ -139,6 +139,14 @@ model list, and every offset/chunk fired.
     nothing: landed = `success` and the artifact
     `petri-audit-rejudge-<run id>-<attempt>`.
 
+- **jev-audit** (`jev_pilot.yml`; paid only with `live: true`, on OpenRouter). A live
+  run commits its cost sidecar `data/jev/runs/jev_audit_<run id>_1.report.json` under
+  `always()`, and with `commit_outputs: true` also the report
+  `data/jev/runs/jev_audit_<run id>_1.json`; the Markdown and full JSON report are the
+  artifact `jev-audit-report-<run id>-<attempt>`. A mock run (the park) commits nothing.
+  A live run with no sidecar on the branch after the run concluded is a failed commit
+  step: read the run log before resolving, because the ledger has not booked its spend.
+
 ## Step 4 — Verify terminality before resolving
 
 Landed-locally is not terminal. Confirm the GitHub run itself concluded. The run
@@ -158,7 +166,7 @@ correction that `fire_trigger.py publish` pushed on top of it. Check it via:
   pilot-root fire, `'pilot/traces/<run_id>/<stem>*'` or
   `'pilot/logits/<run_id>/<stem>*'`) shows the CI commit containing the
   LAST expected part (the final offset). Not for
-  advice-eval, petri-audit or model-evaluation: their cost-sidecar commits (and
+  advice-eval, petri-audit, jev-audit or model-evaluation: their cost-sidecar commits (and
   advice-eval's and model-evaluation's output commits, and a petri rejudge's
   re-grade commit) run under `always()` and are made even when the run failed, so
   for those lanes only the run's conclusion shows that it succeeded.

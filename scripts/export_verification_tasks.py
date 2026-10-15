@@ -393,7 +393,7 @@ EXAMPLE_METHOD_TERMS = re.compile("|".join((
     r"\bpatching[\s_-]+grid", r"\bsteer(?:ing|ed)[\s_-]+(?:boost|vector|feature|result|experiment)s?\b",
     r"\b(?:causal|feature|activation)[\s_-]+steer", r"\bselection[\s_-]+(?:rule|heuristic|criteri|method)",
     r"\bselected[\s_-]+by\b", r"\bscenario[\s_-]+generation", r"\bmodel[\s_-]+evaluation", r"\barchive[\s_-]+renders?\b",
-    r"\badvice[\s_-]+eval", r"\bpetri\b(?![\s_-]+dish)", r"\bpab[\s_-]+probe",
+    r"\badvice[\s_-]+eval", r"\bpetri\b(?![\s_-]+dish)", r"\bpab[\s_-]+probe", r"\bjev\b",
 )), re.I)
 
 # A measured value as it is written: a decimal with or without its leading digit (0.43, .43, -.43; not an ellipsis

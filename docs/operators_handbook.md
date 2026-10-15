@@ -35,7 +35,9 @@ cycles per `docs/routine_standing_prompt.md` (MAINTENANCE MODE since
   (`scripts/backfill_chain.py`, `docs/model_matrix.md`); its results publish
   only at an owner release (`scripts/publication_release.py`).
 - **All nine trigger lanes are PARKED** (`fire_trigger.py park`; eight on
-  this date, and `petri-audit`, added 2026-09-16, since 2026-09-18).
+  this date, and `petri-audit`, added 2026-09-16, since 2026-09-18). The tenth,
+  `jev-audit` (added 2026-10-14), has no trigger file until its first park on
+  `main`, which waits on the owner's approval.
   The standing exception is `archive-renders`: it stays un-parked from the cycle
   that fires its PNG sweep until the next cycle re-parks it
   (`docs/routine_standing_prompt.md` §3d). Each
