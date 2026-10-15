@@ -61,6 +61,9 @@ def packed(tmp_path, monkeypatch):
 
     monkeypatch.setattr(ae, "_client", lambda: object())
     monkeypatch.setattr(ae, "_send", stub_send)
+    # judge-x is a fictional judge no price table names; the judge's fallback-price guard (judge_price_problem,
+    # Codex review of PR #114) is waived for it here and tested directly in tests/test_advice_eval.py
+    monkeypatch.setattr(ae, "judge_price_problem", lambda judge_model, registry: None)
     monkeypatch.setattr(ae, "_send_compat", stub_compat)
     # two vendors: acme direct, plus acme's slug via the openrouter aggregator
     ae.main(["elicit", "--stimuli", str(stim), "--models", "acme:model-1,openrouter:acme/model-1",

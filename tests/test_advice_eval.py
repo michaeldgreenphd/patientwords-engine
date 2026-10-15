@@ -39,6 +39,19 @@ RUBRIC = {
 }
 
 
+
+# The judge's fallback-price guard (judge_price_problem, Codex review of PR #114) refuses any judge no price table
+# names. The suite's fictional judges (judge-x, model-r, ...) stand in for real ones and are priced at the fallback
+# rate in tests that assert those costs, so the guard is waived for them here; it is tested directly, with the waiver
+# off, in test_a_direct_judge_run_refuses_a_fallback_priced_judge.
+_REAL_JUDGE_PRICE_PROBLEM = ae.judge_price_problem
+
+
+@pytest.fixture(autouse=True)
+def _waive_the_price_guard_for_fictional_judges(request, monkeypatch):
+    if request.node.name != "test_a_direct_judge_run_refuses_a_fallback_priced_judge":
+        monkeypatch.setattr(ae, "judge_price_problem", lambda judge_model, registry: None)
+
 def write_manual(tmp_path, items):
     p = tmp_path / "manual.json"
     p.write_text(json.dumps(items), encoding="utf-8")
@@ -2327,3 +2340,19 @@ def test_each_judge_pass_writes_its_own_cost_sidecar(tmp_path, monkeypatch):
     spec.loader.exec_module(lu)
     keys = {lu.sidecar_key(p) for p in sidecars}
     assert len(keys) == 2                                # two first-seen sidecars, each booked in full
+
+
+def test_a_direct_judge_run_refuses_a_fallback_priced_judge(tmp_path, monkeypatch):
+    """Codex review of PR #114: `advice_eval.py judge` run directly (not through fire_trigger) must refuse a judge no
+    price table names before reading the archive or making a call, as the fire path does."""
+    assert ae.judge_price_problem is _REAL_JUDGE_PRICE_PROBLEM
+    registry = ae._load_providers(LIVE_PROVIDERS_PATH)
+    assert ae.judge_price_problem("anthropic:judge-x", registry)
+    assert ae.judge_price_problem("claude-haiku-4-5", registry) is None
+    assert ae.judge_price_problem("anthropic:claude-haiku-5-5", registry) is None
+    calls = []
+    monkeypatch.setattr(ae, "_send", lambda *a, **k: calls.append(a))
+    with pytest.raises(SystemExit, match="fallback_priced_judge"):
+        ae.main(["judge", "--responses", str(tmp_path / "never_read.jsonl"), "--rubric", str(tmp_path / "r.json"),
+                 "--judge-model", "anthropic:judge-x", "--providers", str(LIVE_PROVIDERS_PATH), "--max-spend", "1"])
+    assert calls == []

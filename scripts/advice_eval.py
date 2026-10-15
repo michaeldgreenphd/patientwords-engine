@@ -1730,10 +1730,29 @@ def judge_sidecar_path(judgments_path: Path, fire_stamp: str) -> Path:
     return judgments_path.with_name(f"{judgments_path.stem}.judge_{fire_stamp}.report.json")
 
 
+def judge_price_problem(judge_model: str, registry: dict) -> str | None:
+    """Why `judge_model` cannot be judged with on this lane: no price table names it, so CostTracker would book its
+    calls at the fallback rate (owner decision Q6). Resolved as CostTracker._price resolves a judge: the registry
+    block's per-model pricing for the resolved model, then the engine table under the spec and its model name. The
+    fire path (fire_trigger.advice_judge_problems) refuses the same specs before journaling; this repeats it for a
+    direct `advice_eval.py judge` (Codex review of PR #114)."""
+    spec = _resolve_spec(judge_model, registry)
+    if (spec["cfg"].get("pricing") or {}).get(spec["model"]):
+        return None
+    if any(candidate in _PRICING for candidate in (judge_model, judge_model.split(":", 1)[-1])):
+        return None
+    return (f"judge {judge_model!r} is named by no price table (the registry's pricing, the engine's PRICING), so "
+            f"its calls would be booked at the fallback rate {_FALLBACK_PRICING[0]}/{_FALLBACK_PRICING[1]} per million "
+            "tokens (fallback_priced_judge)")
+
+
 def judge(args) -> Path:
     pooled = pooled_judge_problem(args.judge_model)
     if pooled:
         raise SystemExit(f"refused before any call: {pooled}")
+    unpriced = judge_price_problem(args.judge_model, _load_providers(getattr(args, "providers", DEFAULT_PROVIDERS)))
+    if unpriced:
+        raise SystemExit(f"refused before any call: {unpriced}")
     rubric = _load_json(args.rubric)
     rubric_sha = sha256_text(canonical_json(rubric))
     tier_ids = [t["id"] for t in rubric["tiers"]]
