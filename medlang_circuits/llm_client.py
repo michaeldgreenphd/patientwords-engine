@@ -15,7 +15,27 @@ from medlang_circuits.keywords import CATEGORIES
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = os.environ.get("MEDLANG_ANTHROPIC_MODEL", "claude-opus-4-8")
+# Claude Opus 5.5 since 2026-10-14 (owner decision Q8, docs/decisions_20261014_owner.md: configured defaults that named
+# an older Opus move to claude-opus-5-5); claude-opus-4-8 before. Outputs record the model they used.
+DEFAULT_MODEL = os.environ.get("MEDLANG_ANTHROPIC_MODEL", "claude-opus-5-5")
+
+# Models that think by default, and the smallest max_tokens a call to one is sent. Their thinking counts against
+# max_tokens, and Claude Opus 5.5 cannot turn it off (claude-api skill, shared/model-migration.md), so a call sized for
+# a one-word or one-sentence answer (16 or 256 tokens) could end in a thinking block with no text. The models and the
+# floor are exactly the advice lane's reviewed registry (data/advice_providers.json anthropic.min_output_tokens; a test
+# holds the two equal, Codex review of PR #112): a model is added there, with its evidence, before it is added here. A
+# call below the floor is sent the floor; the model still writes only the answer the prompt asks for.
+THINKING_MIN_OUTPUT_TOKENS: dict[str, int] = {
+    "claude-fable-5-1": 4096,
+    "claude-opus-5-5": 4096,
+    "claude-sonnet-5-5": 4096,
+}
+
+
+def output_budget(model: str, requested: int) -> int:
+    """The max_tokens to send `model` for a call that asked for `requested`: the larger of the two for a model in
+    THINKING_MIN_OUTPUT_TOKENS, `requested` otherwise."""
+    return max(int(requested), THINKING_MIN_OUTPUT_TOKENS.get(model, 0))
 
 _CLASSIFY_SYSTEM = (
     "You label neural-network feature descriptions for a mechanistic interpretability study. "
@@ -74,7 +94,7 @@ def classify_feature_with_llm(description: str, top_tokens: list[str] | None = N
     try:
         response = client.messages.create(
             model=model or DEFAULT_MODEL,
-            max_tokens=16,
+            max_tokens=output_budget(model or DEFAULT_MODEL, 16),
             system=_CLASSIFY_SYSTEM,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -107,8 +127,9 @@ def reset_translate_usage() -> None:
     _TRANSLATE_USAGE.update(calls=0, input_tokens=0, output_tokens=0, models={})
 
 
-def _record_translate_usage(model: str, usage) -> None:
-    """Fold one response's usage in; tolerates SDKs that omit the field."""
+def _record_translate_usage(model: str, usage, max_tokens_sent: int | None = None) -> None:
+    """Fold one response's usage in; tolerates SDKs that omit the field. `max_tokens_sent` is the output allowance the
+    call was sent (output_budget), kept per model so the mitigation sidecar records it (Codex review of PR #112)."""
     inp = int(getattr(usage, "input_tokens", 0) or 0)
     out = int(getattr(usage, "output_tokens", 0) or 0)
     _TRANSLATE_USAGE["calls"] = int(_TRANSLATE_USAGE["calls"]) + 1
@@ -116,6 +137,8 @@ def _record_translate_usage(model: str, usage) -> None:
     _TRANSLATE_USAGE["output_tokens"] = int(_TRANSLATE_USAGE["output_tokens"]) + out
     per = _TRANSLATE_USAGE["models"].setdefault(model, {"calls": 0, "input_tokens": 0, "output_tokens": 0})
     per["calls"] += 1
+    if max_tokens_sent is not None:
+        per["max_tokens_sent"] = int(max_tokens_sent)
     per["input_tokens"] += inp
     per["output_tokens"] += out
 
@@ -129,13 +152,13 @@ def translate_with_llm(patient_text: str, model: str | None = None) -> str | Non
     try:
         response = client.messages.create(
             model=resolved,
-            max_tokens=256,
+            max_tokens=output_budget(resolved, 256),
             system=_translate_system(),
             messages=[{"role": "user", "content": patient_text}],
         )
     except Exception as e:
         logger.warning("LLM translation failed: %s", e)
         return None
-    _record_translate_usage(resolved, getattr(response, "usage", None))
+    _record_translate_usage(resolved, getattr(response, "usage", None), output_budget(resolved, 256))
     text = next((b.text for b in response.content if b.type == "text"), "").strip()
     return text or None

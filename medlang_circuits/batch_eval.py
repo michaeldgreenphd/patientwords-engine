@@ -1356,7 +1356,7 @@ def main(argv: list[str] | None = None) -> int:
                         help="(2panel mode) append the legacy third translated panel")
     parser.add_argument("--no-llm-translation", action="store_true", help="Phrase-table translation only")
     parser.add_argument("--llm-model", default=None,
-                        help="Anthropic model for translation (default: MEDLANG_ANTHROPIC_MODEL or claude-opus-4-8)")
+                        help="Anthropic model for translation (default: MEDLANG_ANTHROPIC_MODEL or claude-opus-5-5)")
     parser.add_argument("--dpi", type=int, default=DEFAULT_PNG_DPI, help="PNG export resolution")
     parser.add_argument("--start-index", type=int, default=1,
                         help="First output number (chunked runs over slices of one batch keep global numbering)")

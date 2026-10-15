@@ -272,7 +272,7 @@ benchmarks the Anthropic *translation* models.
 `medlang-generate` (module `scenario_gen`) expands the hand-built dataset with
 Claude-authored items and imports the original spreadsheet. Model selection
 follows the usual rule (`--model`, else `MEDLANG_ANTHROPIC_MODEL`, else
-`claude-opus-4-8`); every generating command enforces a hard spend ceiling via
+`claude-opus-5-5`, `claude-opus-4-8` before 2026-10-14); every generating command enforces a hard spend ceiling via
 `--max-spend` (the `evaluate_models.CostTracker` seam). No vocabulary lives in
 Python source — generated and imported phrases are JSON data files.
 
@@ -611,7 +611,7 @@ tracking under a hard spend ceiling:
 
 ```bash
 export ANTHROPIC_API_KEY=...
-medlang-evaluate --models claude-opus-4-8 claude-sonnet-5 claude-haiku-4-5 \
+medlang-evaluate --models claude-opus-5-5 claude-sonnet-5 claude-haiku-4-5 \
   --scenario both --sample-size 8 --max-spend 5 --out eval_out
 ```
 

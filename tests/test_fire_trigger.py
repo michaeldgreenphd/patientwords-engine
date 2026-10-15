@@ -3297,7 +3297,8 @@ def test_budget_gate_does_not_leave_out_the_entry_of_a_replayed_fire(repo, tmp_p
     captured = capsys.readouterr()
     assert "no scenario-generation journal entry is shown to be this push's own fire" in captured.out
     # 1.50 from the params, on top of the fire's 1.50 and the park's 0.01 still held today
-    assert "max_spend 1.50 + today's committed 1.51 (landed 0.00 + held today 1.51)" in captured.err
+    held = 1.50 + float(ft.PARK_DEFAULTS["scenario-generation"]["max_spend"])      # the fire's 1.50 and the park's
+    assert f"max_spend 1.50 + today's committed {held:.2f} (landed 0.00 + held today {held:.2f})" in captured.err
 
 
 @pytest.mark.parametrize("trigger", sorted(G4_LANES))
@@ -3384,7 +3385,8 @@ def test_budget_gate_does_not_leave_out_a_replayed_fire_when_the_previous_tips_j
     assert gate("--push-before", parked, "--ref", "main", "--run-attempt", "1") == 6
     captured = capsys.readouterr()
     assert "no scenario-generation journal entry is shown to be this push's own fire" in captured.out
-    assert "max_spend 1.50 + today's committed 1.51 (landed 0.00 + held today 1.51)" in captured.err
+    held = 1.50 + float(ft.PARK_DEFAULTS["scenario-generation"]["max_spend"])      # the fire's 1.50 and the park's
+    assert f"max_spend 1.50 + today's committed {held:.2f} (landed 0.00 + held today {held:.2f})" in captured.err
 
 
 def test_the_push_bindings_read_an_unfetchable_journal_as_unreadable_not_empty(repo, monkeypatch):
@@ -3646,6 +3648,7 @@ def test_a_park_is_not_refused_by_a_ceiling_its_days_paid_fires_filled(repo, cap
     # max_spend, are refused as before
     small = {"task": "pairs", "num": "1", "max_spend": "0.01"}
     lookalike = {**ft.PARK_DEFAULTS["scenario-generation"], "max_spend": "0.02", "_parked": "true"}
+    assert ft.PARK_DEFAULTS["scenario-generation"]["max_spend"] != "0.02", "the lookalike must differ from the park"
     for params in (small, lookalike):
         assert fire(repo, "scenario-generation", params, extra=("--ignore-settle",)) == 4, params
         assert "held today 2.00" in capsys.readouterr().err
@@ -3660,7 +3663,8 @@ def test_a_park_is_not_refused_by_a_ceiling_its_days_paid_fires_filled(repo, cap
     at_rest = json.loads(trigger_path(repo, "scenario-generation").read_text(encoding="utf-8"))
     assert ft.is_park_params("scenario-generation", at_rest), "the paid config is off the trigger file"
     park = ft.load_journal(journal_path(repo))[-1]
-    assert park["max_spend"] == 0.01 and ft.entry_holds_spend(park, "2026-09-23"), "the park's 0.01 still holds"
+    park_spend = float(ft.PARK_DEFAULTS["scenario-generation"]["max_spend"])
+    assert park["max_spend"] == park_spend and ft.entry_holds_spend(park, "2026-09-23"), "the park's commitment holds"
 
     # the CI gate has no waiver: with the park's own entry left out (attempt 1), 0.01 on a full day is refused, so
     # the park's run spends nothing
@@ -3671,7 +3675,7 @@ def test_a_park_is_not_refused_by_a_ceiling_its_days_paid_fires_filled(repo, cap
                     "--ref", "main", "--run-attempt", "1"]) == 6
     captured = capsys.readouterr()
     assert "this push's own scenario-generation journal entry" in captured.out
-    assert "max_spend 0.01 + today's committed 2.00 (landed 0.00 + held today 2.00)" in captured.err
+    assert f"max_spend {park_spend:.2f} + today's committed 2.00 (landed 0.00 + held today 2.00)" in captured.err
 
 
 def test_publish_keeps_the_park_ceiling_waiver_when_the_park_push_was_rejected(tmp_path, capsys):
@@ -3680,7 +3684,7 @@ def test_publish_keeps_the_park_ceiling_waiver_when_the_park_push_was_rejected(t
     0.01 is still refused on that dashboard (test_publish_rechecks_the_budget_with_the_rebased_dashboard)."""
     origin, clone = _publish_fixture(tmp_path)
     park = {**ft.PARK_DEFAULTS["scenario-generation"], "_parked": "true", "_nonce": "2026-09-23T12:00:00Z"}
-    _fire_locally(clone, "scenario-generation", park, max_spend=0.01, lane="anthropic")
+    _fire_locally(clone, "scenario-generation", park, max_spend=float(park["max_spend"]), lane="anthropic")
     _advance_origin(origin, tmp_path, "routine", lambda r: write_dashboard(r, spent=2.0))
     assert ft.main(["publish", "--repo", str(clone)]) == 0
     out = capsys.readouterr().out
