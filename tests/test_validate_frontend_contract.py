@@ -1415,3 +1415,47 @@ def test_jev_summaries_are_rebuilt_from_the_turns(site, change, needle):
         turn["drift_probability"] = 0.9                                   # flag stays False
     path.write_text(json.dumps(obj), encoding="utf-8")
     assert any(needle in e for e in run(site).errors)
+
+
+@pytest.mark.parametrize("change", ["metric", "format", "missing_path"])
+def test_legacy_compatibility_requires_exact_published_bytes(
+        site: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, change: str) -> None:
+    _jev_pair(site)
+    files = []
+    for name in ("jev_calibration.json", "petri_register_drift.json"):
+        path = site / "data" / name
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        del doc["schema_version"], doc["source_reports"]
+        doc["provenance"].pop("petri_runs", None)
+        for conv in doc.get("conversations", {}).values():
+            conv.pop("run", None)
+        path.write_text(json.dumps(doc), encoding="utf-8")
+        files.append({"path": f"data/{name}", "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
+    registry = tmp_path / "legacy.json"
+    record = {"schema_version": "1.0", "reports": [{"source_report_sha256": "a" * 64, "published_files": files}]}
+    registry.write_text(json.dumps(record), encoding="utf-8")
+    monkeypatch.setattr(vfc, "JEV_LEGACY_REPORTS", registry)
+    assert run(site).errors == []
+    path = site / "data" / "jev_calibration.json"
+    if change == "metric":
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        doc["headline_metrics"]["exact_agreement"] = 0.5
+        path.write_text(json.dumps(doc), encoding="utf-8")
+    elif change == "format":
+        path.write_bytes(path.read_bytes() + b"\n")
+    else:
+        files.pop(0)
+        registry.write_text(json.dumps(record), encoding="utf-8")
+    assert any("legacy_payload_bytes_mismatch" in error for error in run(site).errors)
+
+
+@pytest.mark.parametrize("files", [None, [], [{}], [{"path": [], "sha256": "a" * 64}],
+                                   [{"path": "data/jev_calibration.json", "sha256": None}]])
+def test_legacy_registry_file_pins_are_validated(
+        site: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, files: object) -> None:
+    _jev_pair(site)
+    path = tmp_path / "legacy.json"
+    path.write_text(json.dumps({"schema_version": "1.0", "reports": [
+        {"source_report_sha256": "a" * 64, "published_files": files}]}), encoding="utf-8")
+    monkeypatch.setattr(vfc, "JEV_LEGACY_REPORTS", path)
+    assert any("legacy_report_registry_unreadable" in error for error in run(site).errors)

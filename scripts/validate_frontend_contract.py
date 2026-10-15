@@ -1050,8 +1050,8 @@ def _jev_uses_multi_report_format(data: dict) -> bool:
             or any(isinstance(conv, dict) and "run" in conv for conv in convs.values()))
 
 
-def _jev_legacy_source_reports(rep: Report) -> set[str]:
-    """Only reviewed, already-published report identities can use the unversioned compatibility path."""
+def _jev_legacy_source_reports(rep: Report) -> dict[str, dict[str, str]]:
+    """Pin each reviewed legacy report to the exact published path and file bytes."""
     try:
         doc = json.loads(JEV_LEGACY_REPORTS.read_text(encoding="utf-8"))
         if not isinstance(doc, dict) or doc.get("schema_version") != "1.0":
@@ -1062,10 +1062,26 @@ def _jev_legacy_source_reports(rep: Report) -> set[str]:
         if (not isinstance(entries, list) or not entries or len(shas) != len(entries)
                 or not all(isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{64}", sha) for sha in shas)):
             raise ValueError("reports must name non-empty 64-hex source_report_sha256 identities")
-        return set(shas)
+        if len(set(shas)) != len(shas):
+            raise ValueError("legacy report identities must be distinct")
+        pinned: dict[str, dict[str, str]] = {}
+        for entry in entries:
+            files = entry.get("published_files")
+            if not isinstance(files, list) or not files:
+                raise ValueError("each legacy report needs published_files with paths and digests")
+            paths: dict[str, str] = {}
+            for file in files:
+                if (not isinstance(file, dict) or not isinstance(file.get("path"), str)
+                        or file["path"] not in {f"data/{n}" for n in JEV_SPECS}
+                        or not isinstance(file.get("sha256"), str)
+                        or re.fullmatch(r"[0-9a-f]{64}", file["sha256"]) is None or file["path"] in paths):
+                    raise ValueError("published_files must name distinct Jev paths with 64-hex digests")
+                paths[file["path"]] = file["sha256"]
+            pinned[entry["source_report_sha256"]] = paths
+        return pinned
     except (OSError, UnicodeDecodeError, ValueError) as exc:
         rep.err(JEV_LEGACY_REPORTS.name, "$", f"legacy_report_registry_unreadable: {exc}")
-        return set()
+        return {}
 
 
 def _jev_source_reports(rep: Report, name: str, data: dict) -> None:
@@ -1229,6 +1245,15 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
               or data["source_report_sha256"] not in legacy_reports or _jev_uses_multi_report_format(data)):
             rep.err(name, "$.schema_version", "missing_jev_schema: only reviewed published report identities may "
                     "use the unversioned legacy shape; regenerate with the current exporter")
+        if "schema_version" not in data and isinstance(data.get("source_report_sha256"), str):
+            pin = legacy_reports.get(data["source_report_sha256"], {}).get(f"data/{name}")
+            try:
+                actual_digest = hashlib.sha256((site / "data" / name).read_bytes()).hexdigest()
+            except OSError:
+                actual_digest = None
+            if pin is None or pin != actual_digest:
+                rep.err(name, "$.schema_version", "legacy_payload_bytes_mismatch: unversioned compatibility "
+                        "requires the exact reviewed published file; regenerate changed content with the exporter")
         if "source_reports" in data or _jev_uses_multi_report_format(data):
             _jev_source_reports(rep, name, data)
             _jev_equivalence(rep, name, data)
