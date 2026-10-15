@@ -356,11 +356,18 @@ def test_the_preflight_and_both_fallback_sidecars_record_what_the_judge_sends(sp
     for s in ("pw-petri-example-h1-sustained", "pw-petri-example-h4-persistence", "pw-petri-example-h6-evidence"):
         argv += ["--seed-id", s]
     code = cli.main(argv)
-    out = capsys.readouterr().out
-    assert code == 0, out
-    prefix, middle = f"judge {spec}: ", " omitted from every call ("
-    lines = [line[len(prefix):] for line in out.splitlines() if line.startswith(prefix) and middle in line]
-    assert {param: rest[:-1] for param, rest in (line.split(middle, 1) for line in lines)} == judge, out
+    captured = capsys.readouterr()
+    out = captured.out
+    if spend.judge_fallback_price_problems(spec):
+        # a colon-free spec containing "/" names no priced model, so it is booked at the fallback rate and the
+        # pre-flight refuses it before any judge line (owner decision Q6, 2026-10-14); the two fallback sidecars,
+        # which book what a judge that did start spent, still record what it sends
+        assert code == 5 and "fallback_priced_judge" in captured.err, captured.err
+    else:
+        assert code == 0, out
+        prefix, middle = f"judge {spec}: ", " omitted from every call ("
+        lines = [line[len(prefix):] for line in out.splitlines() if line.startswith(prefix) and middle in line]
+        assert {param: rest[:-1] for param, rest in (line.split(middle, 1) for line in lines)} == judge, out
     # the judge step's fallback sidecar
     run_dir = tmp_path / "runs" / "run_9_1"
     run_dir.mkdir(parents=True)

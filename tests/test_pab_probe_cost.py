@@ -31,8 +31,13 @@ SANDBOX = "openrouter:openai/gpt-5.4-mini"
 UNPRICED = "openrouter:nobody/not-in-the-registry"
 
 
+# The figures docs/pab_first_probe_costing.md quotes were computed for the Opus 4.8 jury; the preset's jury moved to
+# Claude Opus 5.5 on 2026-10-14 (owner decision R7), so the documented-plan tests pin that plan explicitly.
+DOCUMENTED_PLAN = {**ppc.DEFAULT_PLAN, "jury_models": JURY}
+
+
 def plan(**overrides):
-    args = {**ppc.DEFAULT_PLAN, **overrides}
+    args = {**DOCUMENTED_PLAN, **overrides}
     return ppc.estimate(
         args["arms"], args["cases"], args["turns"], args["patient_model"],
         args["assistant_models"], args["jury_models"], args["sandbox_model"],
@@ -300,3 +305,53 @@ class TestCli:
         assert payload["usd"]["jury"] == 0.0
         assert payload["jury_models"] == []
         assert payload["price_sources"][PATIENT]
+
+
+
+class TestOpus55Jury:
+    """Owner decision R7 (2026-10-14; the third round of docs/decisions_20261014_owner.md, recorded by PR #115): the
+    preset's jury is Claude Opus 5.5, which cannot turn thinking off, so its rubric answers are priced at the 4096-token
+    allowance and its prompts at the measured input (an upper bound until the re-validation run measures it)."""
+
+    def test_the_preset_jury_is_opus_5_5(self):
+        assert ppc.DEFAULT_PLAN["jury_models"] == ["claude-opus-5-5"]
+        assert ppc.billing_channel("claude-opus-5-5") == "anthropic"
+        assert ppc.resolve_price("claude-opus-5-5")[0] == (4.0, 20.0)
+
+    def test_a_thinking_jury_is_priced_at_its_allowance(self):
+        args = ppc.DEFAULT_PLAN
+        result = ppc.estimate(args["arms"], args["cases"], args["turns"], args["patient_model"],
+                              args["assistant_models"], args["jury_models"], args["sandbox_model"])
+        # the jury bound rises from the documented 8.476 (Opus 4.8 at 150 output tokens per rubric)
+        assert result["usd"]["by_channel"]["anthropic"] > plan()["usd"]["by_channel"]["anthropic"]
+        assert result["usd"]["by_channel"]["openrouter"] == pytest.approx(
+            plan()["usd"]["by_channel"]["openrouter"], abs=1e-6)
+
+    def test_the_bound_is_pinned(self):
+        """Codex review of PR #116: pin the bound itself, not only that it exceeds the Opus 4.8 figure. 52
+        conversations, each six rubric calls at 4096 output tokens and the measured ~8,003 input tokens per call, at
+        $4/$20 per million tokens."""
+        args = ppc.DEFAULT_PLAN
+        result = ppc.estimate(args["arms"], args["cases"], args["turns"], args["patient_model"],
+                              args["assistant_models"], args["jury_models"], args["sandbox_model"])
+        convs = result["conversations_total"]
+        jury = convs * (ppc.MEASURED_JURY_INPUT_PER_RUBRIC * 6 * 4.0 + 4096 * 6 * 20.0) / 1e6
+        assert convs == 52 and ppc.N_RUBRICS == 6 and ppc.jury_output_floor("claude-opus-5-5") == 4096
+        assert result["usd"]["by_channel"]["anthropic"] == pytest.approx(jury, abs=1e-3)
+        assert result["usd"]["by_channel"]["anthropic"] == pytest.approx(35.5462, abs=1e-3)
+        assert result["usd"]["total"] == pytest.approx(37.4755, abs=1e-3)
+        assert result["days_at_ceiling"] == 19
+
+
+    def test_every_spelling_of_a_thinking_jury_gets_the_same_bound(self):
+        """Codex review of PR #116, round 2: the routed spelling openrouter:anthropic/claude-opus-5.5 was priced at
+        150 output tokens per rubric. The floor now comes from the registry for either spelling."""
+        assert ppc.jury_output_floor("claude-opus-5-5") == 4096
+        assert ppc.jury_output_floor("openrouter:anthropic/claude-opus-5.5") == 4096
+        assert ppc.jury_output_floor("claude-opus-4-8") is None
+        args = ppc.DEFAULT_PLAN
+        routed = ppc.estimate(args["arms"], args["cases"], args["turns"], args["patient_model"],
+                              args["assistant_models"], ["openrouter:anthropic/claude-opus-5.5"], args["sandbox_model"])
+        # the OpenRouter route prices the same tokens at its own registry rate, so the jury figure is close to the
+        # direct route's bound and nowhere near the 150-token figure (about $7)
+        assert routed["usd"]["total"] > 30

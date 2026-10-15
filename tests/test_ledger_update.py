@@ -39,13 +39,15 @@ def tree(tmp_path):
     petri.mkdir(parents=True)
     rejudge = tmp_path / "data" / "petri" / "rejudge"
     rejudge.mkdir()
+    jev = tmp_path / "data" / "jev" / "runs"
+    jev.mkdir(parents=True)
     docs = tmp_path / "docs"
     docs.mkdir()
     ledger = docs / "overnight_ledger_20260708.md"
     ledger.write_text("# Overnight session ledger\n\nProse the script must not touch.\n", encoding="utf-8")
     trace = tmp_path / "trace_out"
     trace.mkdir()
-    return {"sim": sim, "adv": adv, "pab": pab, "petri": petri, "rejudge": rejudge, "trace": trace,
+    return {"sim": sim, "adv": adv, "pab": pab, "petri": petri, "rejudge": rejudge, "jev": jev, "trace": trace,
             "dash": tmp_path / "ops" / "dashboard.json", "ledger": ledger}
 
 
@@ -56,7 +58,7 @@ def run(tree, *extra):
     # these tests started reading the real pilot's spend out of the repository.
     argv = ["--simulated-dir", str(tree["sim"]), "--advice-dir", str(tree["adv"]),
             "--pab-dir", str(tree["pab"]), "--petri-dir", str(tree["petri"]),
-            "--petri-rejudge-dir", str(tree["rejudge"]),
+            "--petri-rejudge-dir", str(tree["rejudge"]), "--jev-dir", str(tree["jev"]),
             "--trace-dir", str(tree["trace"]),
             "--dashboard", str(tree["dash"]),
             "--ledger", str(tree["ledger"]), "--date", TODAY, *extra]
@@ -430,6 +432,7 @@ def test_the_first_fold_on_the_repos_own_dashboard_leaves_the_closed_tierb_recor
         "--simulated-dir", str(root / "data" / "simulated"), "--advice-dir", str(root / "data" / "advice"),
         "--pab-dir", str(root / "data" / "pab"), "--petri-dir", str(root / "data" / "petri" / "runs"),
         "--petri-rejudge-dir", str(root / "data" / "petri" / "rejudge"),
+        "--jev-dir", str(root / "data" / "jev" / "runs"),
         "--trace-dir", str(root / "trace_out"), "--dashboard", str(dash_path), "--ledger", str(ledger),
         "--date", "2026-09-23"]) == 0
 
@@ -815,3 +818,17 @@ def test_petri_deltas_below_the_accumulators_precision_wait_instead_of_vanishing
     before = sha(tree["dash"])
     run(tree, "--petri-dir", str(petri))
     assert sha(tree["dash"]) == before
+
+
+def test_a_jev_audit_sidecar_books_to_the_openrouter_channel(tree):
+    """jev-audit (2026-10-14): the Jev decisions endpoint bills the OpenRouter key. Its sidecar names that channel,
+    because the model id carries no openrouter: prefix and would otherwise derive to Anthropic."""
+    write_sidecar(tree["jev"], "jev_audit_1_1.report.json", task="jev-audit", model="typesafe/jev-1.13",
+                  billing_channel="openrouter", run_utc=f"{TODAY}T06:00:00Z", cost_usd=0.11,
+                  cost_basis="provider_billed")
+    seed_dash(tree, {"schema_version": 1, "spend": {}})
+
+    assert run(tree) == 0
+    spend = load_dash(tree)["spend"]
+    assert spend["by_day_by_channel"]["openrouter"][TODAY] == pytest.approx(0.11)
+    assert TODAY not in spend["by_day_by_channel"].get("anthropic", {})

@@ -31,7 +31,7 @@ documents the routines themselves.
   Neuronpedia sentinel itself is 14–39 min of that, the rest is bootstrap,
   orientation, gates and the brief.
 - **Standing prompt of record:** `docs/routine_standing_prompt.md` on
-  `main`, sha256 `fd27e2bf9212f075a74f6a477b6b7c126086ed8706ecb7cca6e5913668c66456` (recompute with `sha256sum` after any edit and
+  `main`, sha256 `7e0ece8832aaf8a9bc304b765318140f439e7ec6ceeadae3ea2a8fd751471d29` (recompute with `sha256sum` after any edit and
   update this line in the same commit).
 - **Wrapper prompt:** lives in the claude.ai Routines UI (created there, so
   the API cannot edit it); it names `main` in both repos and points here.

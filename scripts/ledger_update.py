@@ -64,6 +64,9 @@ def parse_args(argv=None):
                         help="Petri rejudge outputs (petri-audit mode rejudge): every <judge>/<run>/*.report.json "
                              "judge sidecar, <run>.rejudge_<workflow run id>.judge.report.json (cumulative, explicit "
                              "billing_channel), folds into the same totals, once")
+    parser.add_argument("--jev-dir", default="data/jev/runs",
+                        help="jev-audit lane cost sidecars (scripts/jev_audit_sidecar.py, 2026-10-14): every "
+                             "*.report.json folds into the same totals; each carries billing_channel openrouter")
     parser.add_argument("--dashboard", default="ops/dashboard.json")
     parser.add_argument("--ledger", default=None,
                         help="ledger markdown file (default: lexicographically newest docs/*ledger*.md, "
@@ -414,6 +417,7 @@ def main(argv=None):
                   (Path(args.pab_dir), "*.report.json"),
                   (Path(args.petri_dir), "*/*.report.json"),
                   (Path(args.petri_rejudge_dir), "*/*/*.report.json"),
+                  (Path(args.jev_dir), "*.report.json"),
                   (Path(args.trace_dir), "*/mitigation*.report.json")]
     pab_dir = Path(args.pab_dir)
     by_day_ch = spend.setdefault("by_day_by_channel", {})
