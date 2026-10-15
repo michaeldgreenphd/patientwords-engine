@@ -29,7 +29,8 @@ How each item of the plan's `analysis_script.wave2_assumptions_to_change` is han
 4. Bootstrap seed: 20261001 (`effect_size.bootstrap_seed`). --final refuses any other --seed, and a plan whose seed is
    not that one; the seed is written into the artifact's header and into every bootstrap block.
 5. Wording table: section 9.8's `statements` are read from the plan. Each target's primary row is selected by the
-   table's rules (`statement_row`) and its text rendered with the target's name in place of {target}; the plan gives
+   table's rules (`statement_row`), using Holm-adjusted significance for comparison targets, and its text rendered
+   with the target's name in place of {target}; the plan gives
    row3 ("the reverse direction") no sentence, so row3 records which of rows 1 and 2 its rule follows and renders none.
    The decomposition statements are 9.8's, by id; `every_statement_carries` is recorded with the judge of record named.
 6. The 10.4 sensitivity analysis without clinician-speaker triples: deliberately not applicable. Every wave-3 seed has a
@@ -77,7 +78,7 @@ No peeking (rules[0]). Register contrasts are computed ONLY under --final. Witho
 and prints coverage alone: runs, triples found per target, exclusions with reasons, digests; no D, sign, tie count,
 value count by wording or test is computed, printed or written, and the exclusion reasons of the exploratory outcomes
 are given without their register label. Under --final the script refuses, writing nothing: a plan other than the
-committed default or with uncommitted changes, a plan not approved, a null judge.judge_model, a bootstrap seed other
+committed default, any uncommitted code or data input, a plan not approved, a null judge.judge_model, a bootstrap seed other
 than 20261001, an --out file that exists, a rubric whose digest is not the plan's, a seed file other than the plan's, a
 run whose rows are not registered, a run list (positional run paths) that leaves out a landed run of a live plan fire
 under --runs-dir, a target epoch with no landed fire unless --declare-truncated is given and the trigger journal (read,
@@ -118,14 +119,14 @@ from typing import Any
 
 try:
     from scripts import petri_w2_register_contrast as w2
-    from scripts.petri_audit import judge_runner, rejudge
+    from scripts.petri_audit import framework, judge_runner, manifest, rejudge, seeds, spend
     from scripts.petri_audit.framework import ADVICE_RUBRIC, OUTCOME_REGISTRY, ROOT, load_json, sha256_file
     from scripts.petri_audit.manifest import verify_run
     from scripts.petri_audit.seeds import load_seed_file
 except ModuleNotFoundError:  # run as a file path: the repository root is not on sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from scripts import petri_w2_register_contrast as w2
-    from scripts.petri_audit import judge_runner, rejudge
+    from scripts.petri_audit import framework, judge_runner, manifest, rejudge, seeds, spend
     from scripts.petri_audit.framework import ADVICE_RUBRIC, OUTCOME_REGISTRY, ROOT, load_json, sha256_file
     from scripts.petri_audit.manifest import verify_run
     from scripts.petri_audit.seeds import load_seed_file
@@ -1483,8 +1484,13 @@ def target_block(prep: Prepared, reading: Reading, standings: Mapping[str, Seque
     gate["missing_scenarios"] = w2.missing_scenarios(
         plan, means, [t for t in prep.triples if t.target == target.id],
         [s for s in standings["primary"] if s.triple.target == target.id])
-    loso = {}
+    loso: dict[str, Any] = {}
     for scenario in plan.scenarios:
+        if scenario not in means:
+            loso[scenario] = {"status": "not computable",
+                              "reason": "no triple of this scenario entered the primary contrast; leaving it out "
+                                        "would repeat the full test (see scenario_gate.missing_scenarios)"}
+            continue
         rerun = w2.sign_test([d for d in primary if d.scenario != scenario], plan.alpha)
         loso[scenario] = {k: rerun[k] for k in ("triples", "negative", "positive", "tied", "p", "direction",
                                                 "significant")}
@@ -1503,8 +1509,6 @@ def target_block(prep: Prepared, reading: Reading, standings: Mapping[str, Seque
         "target": target.id, "name": target.name, "role": target.role,
         "primary_sign_test": primary_test, "scenario_gate": gate, "leave_one_scenario_out": loso,
         "effect_size": effect,
-        "statement": statement_row(primary_test, gate, {s: float(m) for s, m in means.items()},
-                                   planned_scenarios=planned, target=target, statements=plan.statements["primary"]),
     }
     block["exchanges_6_10"] = _test_or_refusal(reading, "exchanges_6_10", mine, plan)
     sensitivity: dict[str, Any] = {}
@@ -1607,12 +1611,25 @@ def analysis_sections(prep: Prepared, reading: Reading, standings: Mapping[str, 
     def p_of(test: Mapping[str, Any]) -> float | None:
         return test["p"] if "p" in test and test.get("non_tied") else None
 
+    holm_primary = w2.holm({t.id: p_of(blocks[t.id]["primary_sign_test"]) for t in comparison}, plan.alpha)
+    for target in plan.targets:
+        block = blocks[target.id]
+        primary = block["primary_sign_test"]
+        adjusted = holm_primary.get(target.id)
+        verdict = primary if adjusted is None else {**primary, "significant": adjusted["significant_after_holm"]}
+        block["statement"] = statement_row(
+            verdict, block["scenario_gate"], block["scenario_gate"]["scenario_means"],
+            planned_scenarios=len(plan.scenarios), target=target, statements=plan.statements["primary"])
+        block["statement"].update({
+            "primary_significance": "unadjusted anchor test" if adjusted is None else "Holm across comparison targets",
+            "primary_p": primary["p"], "primary_p_holm": None if adjusted is None else adjusted["p_holm"],
+            "primary_significant_unadjusted": primary["significant"]})
     section_9_2 = {"target": anchor.id, "primary_sign_test": blocks[anchor.id]["primary_sign_test"],
                    "scenario_gate": blocks[anchor.id]["scenario_gate"], "statement": blocks[anchor.id]["statement"],
                    "see": f"targets.{anchor.id}"}
     section_9_3 = {
         "targets": [t.id for t in comparison],
-        "holm_primary": w2.holm({t.id: p_of(blocks[t.id]["primary_sign_test"]) for t in comparison}, plan.alpha),
+        "holm_primary": holm_primary,
         "gates": {t.id: {k: blocks[t.id]["scenario_gate"][k] for k in ("p", "direction", "significant", "scenarios")}
                   for t in comparison},
         "between_targets": {"test": "none: descriptive only, side by side",
@@ -1744,6 +1761,26 @@ def directions_hold(record: Mapping[str, Any], secondary: Mapping[str, Any]) -> 
     return rows
 
 
+SECONDARY_REASON = "a secondary judge's rows; only the judge of record's select a statement"
+
+
+def mark_secondary_statements(sections: Mapping[str, Any]) -> None:
+    """Mark each primary or decomposition statement, including shared section copies, as non-registered."""
+    seen: set[int] = set()
+
+    def walk(node: Any) -> None:
+        if not isinstance(node, dict) or id(node) in seen:
+            return
+        seen.add(id(node))
+        if "row_id" in node or "statement_id" in node:
+            node["selectable_as_registered"] = False
+            node.setdefault("not_selectable_reasons", []).append(SECONDARY_REASON)
+        for value in node.values():
+            walk(value)
+
+    walk(sections)
+
+
 SECONDARY_LABEL = ("secondary: the same tables from a second judge's rows (owner decision Q8, 2026-10-14), on exactly "
                    "the exchanges the judge of record made comparable. Exploratory and disclosure only: it selects no "
                    "statement as registered, and no estimate mixes its rows with the judge of record's")
@@ -1769,10 +1806,7 @@ def final_analysis(prep: Prepared, *, seed: int = DEFAULT_SEED,
             **{name: f"refused for the judge of record: {why}" for name, why in prep.record.refused_specs.items()
                if name not in prep.secondary.refused_specs}})
         sec = analysis_sections(prep, secondary, prep.secondary_standings, seed=seed, resamples=resamples)
-        for block in sec["targets"].values():
-            block["statement"]["selectable_as_registered"] = False
-            block["statement"]["not_selectable_reasons"].append("a secondary judge's rows; only the judge of record's "
-                                                                "select a statement")
+        mark_secondary_statements(sec)
         out["secondary_judge"] = {"label": SECONDARY_LABEL, "judge_model": prep.secondary_judge,
                                   "runs": [s.provenance for s in prep.secondary_runs],
                                   "coverage": prep.secondary_coverage, "agreement": agreement(prep),
@@ -1796,6 +1830,76 @@ def plan_commit_problem(path: Path) -> str | None:
     return None
 
 
+def code_files() -> dict[str, Path]:
+    """The analysis module and the local modules whose functions rebuild and validate its inputs."""
+    return {"script": Path(__file__), "wave2_module": Path(w2.__file__),
+            **{module.__name__.rsplit(".", 1)[-1]: Path(module.__file__)
+               for module in (framework, judge_runner, manifest, rejudge, seeds, spend)}}
+
+
+def analysis_input_files(args: argparse.Namespace, prep: Prepared) -> dict[str, Path]:
+    """The data read for analysis or its validation, including bound artifacts and any replacement judge pass."""
+    files = {"plan": args.plan, "seed_file": prep.seeds_path, "rubric": args.rubric,
+             "outcome_registry": args.outcomes, "seed_outcome_registry": framework.OUTCOME_REGISTRY,
+             "framing_registry": framework.FRAMING_REGISTRY, "manifest_schema": framework.MANIFEST_SCHEMA,
+             **{f"registry_version[{i}]": path for i, path in enumerate(args.registry_version)}}
+    for i, path in enumerate(sorted(Path(args.runs_dir).glob("*/manifest.json"))):
+        files[f"discovered_manifest[{i}]"] = path
+    if prep.secondary_judge is not None:
+        files["judge_providers"] = spend.PROVIDERS_PATH
+    regrade_dirs: set[Path] = set()
+    for run in prep.runs:
+        prefix = f"run[{run.stem}]"
+        files[f"{prefix}.manifest"] = run.run_dir / "manifest.json"
+        for key, value in run.manifest["artifacts"].items():
+            if key.endswith("_path") and value:
+                files[f"{prefix}.{key}"] = run.run_dir / Path(value).name
+        report = run.manifest["artifacts"]["judge_of_record"].get("report_path")
+        if report:
+            files[f"{prefix}.judge_report"] = run.run_dir / Path(report).name
+        info = run.provenance["registered_rows_from"]
+        has_regrade = info.get("source") == "re-grade"
+        if has_regrade:
+            regrade_dirs.add(prep.rejudge_root / rejudge.judge_slug(prep.plan.judge_model) / run.stem)
+        if prep.secondary_judge is not None:
+            path = prep.rejudge_root / rejudge.judge_slug(prep.secondary_judge) / run.stem
+            if (path / rejudge.MANIFEST_NAME).is_file():
+                regrade_dirs.add(path)
+                has_regrade = True
+        if has_regrade:
+            files[f"{prefix}.chain"] = run.run_dir.parent / rejudge.CHAIN_FILE
+    if regrade_dirs:
+        files["regrade_schema"] = rejudge.MANIFEST_SCHEMA
+    for i, path in enumerate(sorted(regrade_dirs)):
+        files[f"regrade[{i}].manifest"] = path / rejudge.MANIFEST_NAME
+        record = load_json(path / rejudge.MANIFEST_NAME)
+        for family, artifact in record["artifacts"].items():
+            files[f"regrade[{i}].{family}"] = path / artifact["path"]
+    # Rebuilding can recover an older rejected answer using its prompt's declared values. Those prompt bytes are
+    # analysis inputs too, even when they do not agree with the recorded digest and leave the answer unavailable.
+    prompt_refs = {row["prompt_ref"] for run in [*prep.runs, *prep.secondary_runs] for row in run.rows
+                   if isinstance(row.get("prompt_ref"), str) and row["prompt_ref"]}
+    for i, ref in enumerate(sorted(prompt_refs)):
+        files[f"prompt[{i}]"] = ROOT / ref
+    if args.declare_truncated:
+        files["trigger_journal"] = JOURNAL_FILE
+    return files
+
+
+def uncommitted_input_problems(identity: Mapping[str, Any]) -> list[str]:
+    """Refuse final statistics unless every recorded input belongs to the committed repository state."""
+    problems = []
+    if identity["commit"] is None:
+        problems.append(f"the analysis commit is unavailable: {identity['commit_unavailable']}")
+    for name, status in identity["uncommitted_changes"].items():
+        path = identity["inputs"][name]["path"]
+        if isinstance(status, str):
+            problems.append(f"input {name} ({path}) cannot be shown to be committed: {status}")
+        elif status:
+            problems.append(f"input {name} ({path}) has uncommitted changes ({status}); commit it or restore it")
+    return problems
+
+
 def analysis_identity(inputs: Mapping[str, Path], repo_root: Path | None = None) -> dict[str, Any]:
     """The commit and files the analysis ran from: this script, the wave-2 module it reuses, judge_runner.py,
     rejudge.py and the inputs, each with its sha256 and any uncommitted change git reports for it."""
@@ -1803,8 +1907,7 @@ def analysis_identity(inputs: Mapping[str, Path], repo_root: Path | None = None)
     ident: dict[str, Any] = {"script": w2._display(me), "script_version": SCRIPT_VERSION,
                              "script_sha256": sha256_file(me), "python": platform.python_version(),
                              "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
-    files = {"script": me, "wave2_module": Path(w2.__file__), "judge_runner": Path(judge_runner.__file__),
-             "rejudge": Path(rejudge.__file__), **inputs}
+    files = {**code_files(), **inputs}
     ident["inputs"] = {name: {"path": w2._display(p), "sha256": sha256_file(p) if Path(p).is_file() else None}
                        for name, p in files.items()}
     root = REPO_ROOT if repo_root is None else repo_root
@@ -1875,12 +1978,14 @@ def omitted_landed_runs(runs_dir: Path, plan: Plan, analysed: Sequence[RunInput]
         if d.resolve() in given:
             continue
         try:
-            nonce = ((load_json(d / "manifest.json") or {}).get("spend") or {}).get("journal_nonce")
-        except (ValueError, AttributeError) as exc:
+            nonce = w2.run_nonce(d, w2.read_manifest(d))
+            if not nonce.strip() or nonce != nonce.strip():
+                raise AnalysisRefusal(f"{d}: the manifest records no usable spend.journal_nonce ({nonce!r})")
+        except (AnalysisRefusal, OSError, ValueError, AttributeError) as exc:
             problems.append(f"{w2._display(d)}: its manifest cannot be read ({exc}), so whether it is a landed plan "
                             f"fire left out of the run list is unknown")
             continue
-        fire = plan.fires.get(nonce) if isinstance(nonce, str) else None
+        fire = plan.fires.get(nonce)
         if fire is not None and fire.voided is None:
             problems.append(f"{w2._display(d)} carries plan fire {nonce} (target {fire.target}, epoch "
                             f"{fire.campaign_epoch}) but is not among the runs given; --final analyses every landed "
@@ -1958,8 +2063,7 @@ def main(argv: list[str] | None = None) -> int:
               "run_list": [r.provenance["path"] for r in prep.runs], "bootstrap_seed": args.seed,
               "bootstrap_resamples": prep.plan.bootstrap_resamples, "judge_of_record": prep.plan.judge_model,
               "secondary_judge": args.secondary_judge,
-              "identity": analysis_identity({"plan": args.plan, "seed_file": prep.seeds_path, "rubric": args.rubric,
-                                             "outcome_registry": args.outcomes})}
+              "identity": analysis_identity(analysis_input_files(args, prep))}
     if not args.final:
         doc = {**header, "note": "coverage only (rules[0]): no register contrast is computed without --final",
                "coverage": cov}
@@ -1968,6 +2072,7 @@ def main(argv: list[str] | None = None) -> int:
             args.out.write_text(json.dumps(doc, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
         return 0
     problems, truncated = final_problems(args, prep)
+    problems.extend(uncommitted_input_problems(header["identity"]))
     if problems:
         return _refuse(problems)
     try:

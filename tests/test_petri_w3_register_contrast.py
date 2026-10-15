@@ -323,12 +323,37 @@ def final_ready(monkeypatch: pytest.MonkeyPatch, c: dict[str, Any], journal: tup
     root = c["plan"].parent
     if not (root / ".git").exists():
         plumbing(root, "init", "-q")
-    plumbing(root, "add", "--", c["plan"].name)
+    journal_path = root / "journal.jsonl"
+    journal_path.write_text("".join(json.dumps(e) + "\n" for e in journal), encoding="utf-8")
+    # Project the repository's code and fixed validation inputs into this synthetic git repository. The tested
+    # files and all campaign artifacts use real git status, while an in-progress edit to the test subject itself
+    # must not make every synthetic final invocation dirty.
+    if "code_files" not in c:
+        static = root / "static"
+        static.mkdir()
+        originals = {**w3.code_files(), "rubric": w3.ADVICE_RUBRIC, "outcomes": OUTCOME_REGISTRY,
+                     "framing": w3.framework.FRAMING_REGISTRY, "run_schema": w3.framework.MANIFEST_SCHEMA,
+                     "regrade_schema": rejudge.MANIFEST_SCHEMA, "judge_providers": w3.spend.PROVIDERS_PATH,
+                     **{f"prompt_{name}": ROOT / dimension["detection"]["judge_prompt_ref"]
+                        for name, dimension in DIMS.items()}}
+        projection = {}
+        for name, source in originals.items():
+            destination = static / f"{name}{source.suffix}"
+            shutil.copyfile(source, destination)
+            projection[source.resolve()] = destination
+        c["code_files"] = {name: projection[path.resolve()] for name, path in w3.code_files().items()}
+        c["static_files"] = projection
+        original_inputs = w3.analysis_input_files
+
+        def projected_inputs(args: Any, prep: w3.Prepared) -> dict[str, Path]:
+            return {name: projection.get(path.resolve(), path) for name, path in original_inputs(args, prep).items()}
+
+        monkeypatch.setattr(w3, "code_files", lambda: c["code_files"])
+        monkeypatch.setattr(w3, "analysis_input_files", projected_inputs)
+    plumbing(root, "add", "--all")
     tree = plumbing(root, "write-tree")
     commit = plumbing(root, "commit-tree", "--no-gpg-sign", "-m", "synthetic", tree)
     plumbing(root, "update-ref", "HEAD", commit)
-    journal_path = root / "journal.jsonl"
-    journal_path.write_text("".join(json.dumps(e) + "\n" for e in journal), encoding="utf-8")
     monkeypatch.setattr(w3, "PLAN_FILE", c["plan"])
     monkeypatch.setattr(w3, "REPO_ROOT", root)
     monkeypatch.setattr(w3, "JOURNAL_FILE", journal_path)
@@ -937,3 +962,124 @@ def test_a_coverage_only_table_is_refused_when_its_dimension_is(tmp_path):
     table = result["targets"]["tgt-a"]["coverage_only"][key]
     assert table["status"] == "refused" and "differs across the pooled runs" in table["reason"]
     assert "by_wording" not in table
+
+
+# ------------------------------------------------------------------ second review of PR #113
+
+
+def test_comparison_statements_use_holm_before_selecting_a_row(tmp_path: Path) -> None:
+    def six_negative(cell: Cell, exchange: int, measure: str) -> Any:
+        if measure == "response_only" and cell.register == CLIN:
+            if cell.target == "tgt-a" or (cell.target == "tgt-b" and cell.seed_id != SEEDS_IDS[-1]):
+                return TIERS[2]
+        return default_value(cell, exchange, measure)
+
+    result = w3.final_analysis(prepared(write_campaign(tmp_path, value_fn=six_negative)), resamples=20)
+    block = result["targets"]["tgt-b"]
+    adjusted = result["section_9_3"]["holm_primary"]["tgt-b"]
+    assert block["primary_sign_test"]["p"] == 2 / 64
+    assert block["primary_sign_test"]["significant"] is True
+    assert adjusted["p_holm"] == 4 / 64 and adjusted["significant_after_holm"] is False
+    statement = block["statement"]
+    assert statement["row_id"] == "row4" and statement["primary_significant"] is False
+    assert statement["primary_p_holm"] == adjusted["p_holm"]
+    assert result["section_9_8"]["primary"]["tgt-b"] == statement
+    assert result["targets"]["tgt-a"]["statement"]["row_id"] == "row2"
+
+
+@pytest.mark.parametrize(("dirty", "state"), [("script", "modified"), ("wave2_module", "staged"),
+                                            ("judge_runner", "modified"), ("rejudge", "modified"),
+                                            ("seed_file", "modified"), ("outcome_registry", "modified"),
+                                            ("registry_version", "modified"), ("prompt", "modified"), ("run_manifest", "untracked"),
+                                            ("regrade_judgments", "untracked"), ("judge_providers", "modified")])
+def test_final_refuses_uncommitted_code_and_data_inputs(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture,
+        dirty: str, state: str) -> None:
+    c = write_campaign(tmp_path)
+    extra: list[str] = []
+    version = tmp_path / "registry-version.json"
+    if dirty == "registry_version":
+        shutil.copyfile(OUTCOME_REGISTRY, version)
+        extra = ["--registry-version", str(version)]
+    if dirty in ("regrade_judgments", "judge_providers"):
+        for nonce in FIRES:
+            write_regrade(c, nonce, SECOND, f"second-{nonce}")
+        extra = ["--secondary-judge", SECOND]
+    final_ready(monkeypatch, c)
+    path = {"seed_file": c["seeds"], "outcome_registry": tmp_path / "static/outcomes.json",
+            "registry_version": version, "run_manifest": c["runs"]["a1"] / "manifest.json",
+            "prompt": c["static_files"][(ROOT / DIMS[RECOMMENDATION]["detection"]["judge_prompt_ref"]).resolve()],
+            "judge_providers": c["static_files"][w3.spend.PROVIDERS_PATH.resolve()],
+            "regrade_judgments": rejudge.output_dir(c["rejudge"], SECOND, STEMS["a1"]) / rejudge.JUDGMENTS_NAME,
+            **c["code_files"]}[dirty]
+    if state == "untracked":
+        # Preserve valid manifest bindings, proving that integrity is not proof of commit.
+        plumbing(tmp_path, "rm", "--cached", "--", str(path.relative_to(tmp_path)))
+    else:
+        path.write_text(path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        if state == "staged":
+            plumbing(tmp_path, "add", "--", str(path.relative_to(tmp_path)))
+    out = tmp_path / "final.json"
+
+    def unexpected_analysis(*args: Any, **kwargs: Any) -> dict:
+        pytest.fail("final statistics ran before the uncommitted-input refusal")
+
+    monkeypatch.setattr(w3, "final_analysis", unexpected_analysis)
+    assert w3.main(cli_args(c, "--final", "--out", str(out), *extra)) == 2
+    expected = "cannot be shown to be committed" if state == "untracked" else "has uncommitted changes"
+    assert expected in capsys.readouterr().err
+    assert not out.exists()
+
+
+@pytest.mark.parametrize("nonce", [None, "", " ", " c2 ", 5, [], {}])
+def test_final_refuses_an_omitted_manifest_without_a_usable_nonce(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, nonce: Any) -> None:
+    c = write_campaign(tmp_path)
+    path = c["runs"]["c2"] / "manifest.json"
+    record = load_json(path)
+    record["spend"]["journal_nonce"] = nonce
+    path.write_text(json.dumps(record), encoding="utf-8")
+    final_ready(monkeypatch, c, ({"trigger": "petri-audit", "nonce": "c2", "fired_utc": "2026-10-20T00:00:00Z",
+                                 "resolved": True, "evicted": False},))
+    out = tmp_path / "final.json"
+    subset = [str(c["runs"][n]) for n in FIRES if n != "c2"]
+    assert w3.main(cli_args(c, "--final", "--out", str(out), "--declare-truncated", "outage", *subset)) == 2
+    err = capsys.readouterr().err
+    assert "spend.journal_nonce" in err and "left out of the run list is unknown" in err
+    assert not out.exists()
+
+
+def test_leave_one_scenario_out_is_not_computable_for_an_absent_scenario(tmp_path: Path) -> None:
+    def unusable(cell: Cell, row: dict) -> dict:
+        if cell.target == "tgt-a" and cell.seed_id == SEEDS_IDS[-1] and row["key"] == "response_only":
+            row["value"] = None
+        return row
+
+    result = w3.final_analysis(prepared(write_campaign(tmp_path, value_fn=patterned, mutate=unusable)), resamples=20)
+    target = result["targets"]["tgt-a"]
+    assert target["scenario_gate"]["scenarios"] == len(SEEDS_IDS) - 1
+    omitted = target["leave_one_scenario_out"][SEEDS_IDS[-1]]
+    assert omitted["status"] == "not computable" and "no triple" in omitted["reason"]
+    assert "p" not in omitted and "significant" not in omitted and "direction" not in omitted
+    assert target["leave_one_scenario_out"][SEEDS_IDS[0]]["triples"] == 4
+    assert f"targets.tgt-a.leave_one_scenario_out.{SEEDS_IDS[-1]}" not in w3.emitted_tests(result)
+
+
+def test_every_secondary_statement_is_marked_non_registered(tmp_path: Path) -> None:
+    c = write_campaign(tmp_path, value_fn=patterned)
+    for nonce in FIRES:
+        write_regrade(c, nonce, SECOND, f"second-{nonce}", value_fn=second_values)
+    result = w3.final_analysis(prepared(c, secondary_judge=SECOND), resamples=20)
+    secondary = result["secondary_judge"]
+    statements = [block["statement"] for block in secondary["targets"].values()]
+    statements.extend([secondary["section_9_2"]["statement"],
+                       *secondary["section_9_8"]["primary"].values(),
+                       secondary["section_9_4"]["registered"]["statement"],
+                       secondary["section_9_4"]["prespecified_secondary"]["statement"],
+                       secondary["section_9_8"]["decomposition_registered"],
+                       secondary["section_9_8"]["decomposition_across_targets"]])
+    for statement in statements:
+        assert statement["selectable_as_registered"] is False
+        assert statement["not_selectable_reasons"].count(w3.SECONDARY_REASON) == 1
+    assert result["targets"]["tgt-a"]["statement"]["selectable_as_registered"] is True
+    assert w3.SECONDARY_REASON not in json.dumps(result["section_9_4"])
