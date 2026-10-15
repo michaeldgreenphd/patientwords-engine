@@ -797,9 +797,9 @@ def check_owner_run(rep: Report, site: Path, send_waivers: dict | None = None):
 # one report. The drift payload must carry the per-arm shape: the pooled drift rate it replaced mixed conversations the
 # drift question does not apply to (export_jev_calibration.DRIFT_SPEAKER / DRIFT_REGISTERS; review of 2026-10-13).
 JEV_WRITER = "scripts/export_jev_calibration.py"
-# `source_reports` (2026-10-14) lists every report one export read; optional, because payloads exported before then
-# carry only source_report_sha256. With one report that digest is the report's; with several it is the sha256 of the
-# sorted digests, one per line (export_jev_calibration.combined_report_sha256), which is checked here.
+# `source_reports` (2026-10-14) lists every report one export read; absent only for legacy payloads, which carry no
+# run attribution or evaluator equivalence. With one report the digest is the report's; with several it is the
+# sha256 of the sorted digests, one per line (export_jev_calibration.combined_report_sha256), checked here.
 JEV_OPTIONAL_TOP = {"source_reports"}
 JEV_SPECS = {
     "jev_calibration.json": {
@@ -1040,6 +1040,15 @@ def _jev_rebuild(rep: Report, name: str, data: dict) -> None:
                             f"{entry.get(field)!r} but the conversations' turns give {value!r}")
 
 
+def _jev_uses_multi_report_format(data: dict) -> bool:
+    """New exporter fields distinguish a damaged combined export from a genuine legacy payload. Check independent
+    fields so deleting both source lists and the run list cannot bypass provenance validation."""
+    prov = data.get("provenance") if isinstance(data.get("provenance"), dict) else {}
+    convs = data.get("conversations") if isinstance(data.get("conversations"), dict) else {}
+    return ("evaluator_equivalence" in prov or "petri_runs" in prov
+            or any(isinstance(conv, dict) and "run" in conv for conv in convs.values()))
+
+
 def _jev_source_reports(rep: Report, name: str, data: dict) -> None:
     """source_reports must be a non-empty list of distinct report digests whose combined identifier
     (export_jev_calibration.combined_report_sha256) is the payload's source_report_sha256."""
@@ -1081,16 +1090,16 @@ def _jev_petri_runs(rep: Report, name: str, data: dict) -> None:
     provenance.petri_transcripts to null, so provenance.petri_runs and each conversation's `run` are the only mapping
     from a published conversation to its run: when more than one listed report scored Petri rows they are required,
     and when present every conversation names a listed run and each run's conversation count matches. Payloads from
-    before these fields (no petri_runs, one report) pass."""
+    before these fields (no run attribution or evaluator equivalence) pass."""
     prov = data.get("provenance") if isinstance(data.get("provenance"), dict) else {}
     runs = prov.get("petri_runs")
     sources = data.get("source_reports") if isinstance(data.get("source_reports"), list) else []
     petri_sources = [e for e in sources if isinstance(e, dict) and isinstance(e.get("petri_turns"), int)
                      and e["petri_turns"] > 0]
     if runs is None:
-        if len(petri_sources) > 1:
-            rep.err(name, "$.provenance.petri_runs", f"missing although {len(petri_sources)} listed reports scored "
-                                                     "Petri rows; it is the only run attribution of a combined export")
+        if len(petri_sources) > 1 or _jev_uses_multi_report_format(data):
+            rep.err(name, "$.provenance.petri_runs", "missing from a payload using the multi-report format; "
+                    "it is required to reconstruct each conversation's source run")
         return
     if not isinstance(runs, list) or not runs or not all(
             isinstance(r, dict) and isinstance(r.get("run"), str) and r["run"]
@@ -1135,7 +1144,7 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
         for key, kinds in spec["top"].items():
             _jev_need(rep, name, data, key, kinds, "$", nullable=key in spec["nullable"])
         known_keys(rep, name, data, set(spec["top"]) | JEV_OPTIONAL_TOP)
-        if "source_reports" in data:
+        if "source_reports" in data or _jev_uses_multi_report_format(data):
             _jev_source_reports(rep, name, data)
         head = data.get("headline_metrics")
         if isinstance(head, dict):

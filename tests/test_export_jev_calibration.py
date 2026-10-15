@@ -1638,6 +1638,26 @@ def test_combined_payloads_pass_the_site_contract_gate(tmp_path, advice_report):
     assert any("only one of the two Jev payloads" in str(e) for e in rep.errors)
 
 
+@pytest.mark.parametrize("strip_equivalence", [False, True])
+def test_combined_payloads_cannot_drop_both_source_lists(
+    tmp_path: Path, advice_report: dict, strip_equivalence: bool,
+) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    for name in ("jev_calibration.json", "petri_register_drift.json"):
+        payload = _site(tmp_path, name)
+        del payload["source_reports"]
+        payload["provenance"].pop("petri_runs", None)
+        if strip_equivalence:
+            del payload["provenance"]["evaluator_equivalence"]
+        (tmp_path / "site" / "data" / name).write_text(json.dumps(payload), encoding="utf-8")
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert any("source_reports" in str(error) for error in rep.errors)
+    assert any("petri_runs" in str(error) and "missing" in str(error) for error in rep.errors)
+
+
 def _refused(tmp_path: Path, docs: list[dict], fragment: str, capsys) -> None:
     with pytest.raises(SystemExit) as exc:
         _export(tmp_path, _write_reports(tmp_path, *docs), "--dry-run")
@@ -1747,7 +1767,7 @@ def test_the_equivalence_file_is_a_reviewed_union(tmp_path):
     path.write_text(json.dumps({"equivalences": [{"evaluator_sha256": a, "equivalent_to": b}]}))
     with pytest.raises(SystemExit):
         ex.evaluator_classes(tmp_path)
-    assert ex.evaluator_classes(ROOT) == {}            # the committed file lists no equivalence yet
+    assert ex.evaluator_classes(tmp_path / "missing") == {}
 
 
 def test_another_scoring_implementation_is_refused(tmp_path, advice_report, monkeypatch, capsys):
@@ -1770,6 +1790,31 @@ def test_the_first_live_reports_digest_resolves_to_its_commit():
     from scripts.export_jev_calibration import resolve_classifier
     found = resolve_classifier(LIVE_REPORT_CLASSIFIER)
     assert found is not None and found["commit"].startswith(LIVE_REPORT_COMMIT)
+
+
+@pytest.mark.skipif(subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", f"{LIVE_REPORT_COMMIT}^{{commit}}"],
+                                   capture_output=True).returncode != 0,
+                    reason="this clone lacks the commit the first live report ran at (a shallow clone)")
+def test_reviewed_history_combines_with_the_current_runner(tmp_path: Path, advice_report: dict) -> None:
+    from scripts import export_jev_calibration as ex
+
+    current = _petri_only(advice_report)
+    advice_report["metadata"]["classifier"].update(sha256=LIVE_REPORT_CLASSIFIER, commit=LIVE_REPORT_COMMIT)
+    historical_runner = ex.resolve_classifier(LIVE_REPORT_CLASSIFIER, hint=LIVE_REPORT_COMMIT)
+    current_runner = ex.resolve_classifier(WORKTREE_CLASSIFIER)
+    assert historical_runner is not None and current_runner is not None
+    assert historical_runner["scoring_sha256"] == current_runner["scoring_sha256"]
+    assert historical_runner["evaluator_sha256"] != current_runner["evaluator_sha256"]
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, current)) == 0
+    for name in ("jev_calibration.json", "petri_register_drift.json"):
+        payload = _site(tmp_path, name)
+        provenance = payload["provenance"]["evaluator_equivalence"]
+        assert provenance["sha256"] == hashlib.sha256((ROOT / ex.EVALUATOR_EQUIVALENCE).read_bytes()).hexdigest()
+        assert len(provenance["applied_equivalences"]) == 1
+        edge = provenance["applied_equivalences"][0]
+        assert edge["evaluator_sha256"] == historical_runner["evaluator_sha256"]
+        assert edge["equivalent_to"] == current_runner["evaluator_sha256"]
+        assert len(set(provenance["evaluator_classes"].values())) == 1
 
 
 def test_one_unreadable_object_does_not_hide_the_commit_a_report_ran_at(monkeypatch):

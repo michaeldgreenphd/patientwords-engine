@@ -1,5 +1,14 @@
 {
   "schema_version": "0.1",
-  "_readme": "Reviewed equivalences between versions of scripts/audit_jev_calibration.py (the Jev audit runner), read by scripts/export_jev_calibration.py check_combinable. Reports from two runner versions are pooled into one export only when their scoring files (scripts/jev_classifier.py, medlang_circuits/jev_client.py) are identical AND their runner versions are equal or linked here. The runner selects the turns it scores and builds each one's user turn and prior context (evaluate_petri_classifier), so a change there changes the measurement and must never be listed. List a pair only after reading the diff between the two runner versions and finding it touches orchestration alone (command-line flags, spend accounting, checkpoints, report writing), with the reason and the date of the review. Each entry: evaluator_sha256 and equivalent_to (sha256 of the runner file at each version, as resolve_classifier reports them in source_reports), from_commit and to_commit (where each version is found), reason, reviewed_utc. Empty until such a review is made (Codex review of PR #111, 2026-10-14).",
-  "equivalences": []
+  "_readme": "Reviewed equivalences between versions of scripts/audit_jev_calibration.py (the Jev audit runner), read by scripts/export_jev_calibration.py check_combinable. Reports from two runner versions are pooled into one export only when their scoring files (scripts/jev_classifier.py, medlang_circuits/jev_client.py) are identical AND their runner versions are equal or linked here. The runner selects the turns it scores and builds each one's user turn and prior context (evaluate_petri_classifier), so a change there changes the measurement and must never be listed. List a pair only after reading the diff between the two runner versions and finding it touches orchestration alone (command-line flags, spend accounting, checkpoints, report writing), with the reason and the date of the review. Each entry: evaluator_sha256 and equivalent_to (sha256 of the runner file at each version, as resolve_classifier reports them in source_reports), from_commit and to_commit (where each version is found), reason, reviewed_utc.",
+  "equivalences": [
+    {
+      "evaluator_sha256": "aa8261421325d92ab1e0672d13b030fced0bae2310ee39a08e8b241d64650626",
+      "equivalent_to": "8ac165d64a4ba33ff9797cca6c4eff514bb8d7b975a238870c4273364cbdba70",
+      "from_commit": "8a29a30f829fe77b4c79ad5c47170ba0a153580b",
+      "to_commit": "e413f3466eb81c22dab49c0bdf57b2faf5a270f0",
+      "reason": "Reviewed the complete audit runner diff: changes add Petri-only phase selection and reporting, a CI started marker and classifier commit provenance, and spend accounting that uses estimates for unbilled calls, stops on unknown spend, and excludes already booked checkpoint rows. Advice scoring and Petri turn selection, user-turn/prior-context construction, classifier calls, per-row extraction, and metric aggregation are unchanged. Both scoring files are byte-identical (combined sha256 3624b1065fde0d4812a36e1c824a08f9468337d4f358602762d3b97216f0a053). Budget interruptions remain explicit and are refused by the exporter; complete reports use the same scoring instrument.",
+      "reviewed_utc": "2026-10-15T12:25:31Z"
+    }
+  ]
 }
