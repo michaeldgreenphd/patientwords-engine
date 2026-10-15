@@ -7,6 +7,7 @@ the validator names it. Abstract vocabulary only - no medical terms.
 """
 
 import importlib.util
+import hashlib
 import json
 import shutil
 import subprocess
@@ -1137,7 +1138,7 @@ def test_main_fails_when_the_multiturn_data_is_public_without_a_sent_pack(site, 
 # Jev payloads (scripts/export_jev_calibration.py; hand-run, so absent is a note). The keys are checked against the
 # writer's own output in tests/test_export_jev_calibration.py; these tests cover the gate's verdicts.
 
-def _jev_pair(site, report="r" * 64, mock=False, pooled=False):
+def _jev_pair(site, report="a" * 64, mock=False, pooled=False):
     data = site / "data"
     calib = {"generated_utc": "t", "source_report_sha256": report, "model_requested": "m", "models_served": ["m"],
              "judge_model": "j", "agreement_reference": "primary_judge", "is_mock": mock, "provenance": {},
@@ -1166,6 +1167,11 @@ def _jev_pair(site, report="r" * 64, mock=False, pooled=False):
              "drift_by_turn": [{"assistant_turn_ordinal": 1, "turn_indices": [1], "n": 1, "assistant_turns": 1,
                                 "drift_turns": 0, "drift_rate": 0.0, "ci95_low": 0.0, "ci95_high": 0.7935}],
              "conversations": {"c" * 64: conversation}}
+    for payload in (calib, drift):
+        payload["schema_version"] = "2.0"
+        payload["source_reports"] = [{"sha256": report, "advice_cases": 1, "petri_turns": 1}]
+    conversation["run"] = "run_fixture"
+    drift["provenance"]["petri_runs"] = [{"run": "run_fixture", "conversations": 1}]
     (data / "jev_calibration.json").write_text(json.dumps(calib), encoding="utf-8")
     (data / "petri_register_drift.json").write_text(json.dumps(drift), encoding="utf-8")
 
@@ -1178,6 +1184,47 @@ def test_jev_payloads_absent_are_a_note(site):
 def test_jev_payloads_valid_pass(site):
     _jev_pair(site)
     assert run(site).errors == []
+
+
+def test_reviewed_published_jev_legacy_payloads_still_pass(site: Path) -> None:
+    site_repo = _MODULE_PATH.parents[1].parent / "patientwords"
+    registry = json.loads(vfc.JEV_LEGACY_REPORTS.read_text(encoding="utf-8"))
+    for entry in registry["reports"]:
+        for record in entry["published_files"]:
+            blob = subprocess.run(["git", "-C", str(site_repo), "show", f"{record['commit']}:{record['path']}"],
+                                  capture_output=True)
+            if blob.returncode != 0:
+                pytest.skip("the sibling checkout lacks the reviewed published revision")
+            assert hashlib.sha256(blob.stdout).hexdigest() == record["sha256"]
+            payload = json.loads(blob.stdout)
+            assert "schema_version" not in payload and "source_reports" not in payload
+            assert payload["source_report_sha256"] == entry["source_report_sha256"]
+            (site / record["path"]).write_bytes(blob.stdout)
+        rep = vfc.Report()
+        vfc.check_jev_payloads(rep, site)
+        assert rep.errors == [] and rep.warnings == []
+
+
+@pytest.mark.parametrize("version", ["3.0", None, {}])
+def test_jev_unknown_schema_versions_refuse(site: Path, version: object) -> None:
+    _jev_pair(site)
+    path = site / "data/jev_calibration.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["schema_version"] = version
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    assert any("unsupported_jev_schema" in error for error in run(site).errors)
+
+
+@pytest.mark.parametrize("contents", [None, "{}", "not JSON"])
+def test_jev_unreadable_legacy_registry_refuses(
+    site: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, contents: str | None,
+) -> None:
+    _jev_pair(site)
+    path = tmp_path / "legacy_registry.json"
+    if contents is not None:
+        path.write_text(contents, encoding="utf-8")
+    monkeypatch.setattr(vfc, "JEV_LEGACY_REPORTS", path)
+    assert any("legacy_report_registry_unreadable" in error for error in run(site).errors)
 
 
 def test_jev_pooled_drift_shape_is_an_error(site):

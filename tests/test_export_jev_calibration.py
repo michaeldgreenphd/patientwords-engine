@@ -1658,6 +1658,32 @@ def test_combined_payloads_cannot_drop_both_source_lists(
     assert any("petri_runs" in str(error) and "missing" in str(error) for error in rep.errors)
 
 
+@pytest.mark.parametrize("strip_version", [False, True])
+def test_combined_payloads_cannot_be_stripped_to_the_legacy_shape(
+    tmp_path: Path, advice_report: dict, strip_version: bool,
+) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    for name in ("jev_calibration.json", "petri_register_drift.json"):
+        payload = _site(tmp_path, name)
+        assert payload["schema_version"] == "2.0"
+        del payload["source_reports"], payload["provenance"]["evaluator_equivalence"]
+        payload["provenance"].pop("petri_runs", None)
+        for conversation in payload.get("conversations", {}).values():
+            del conversation["run"]
+        if strip_version:
+            del payload["schema_version"]
+        (tmp_path / "site" / "data" / name).write_text(json.dumps(payload), encoding="utf-8")
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    if strip_version:
+        assert sum("missing_jev_schema" in error for error in rep.errors) == 2
+    else:
+        assert sum("source_reports" in error for error in rep.errors) == 2
+        assert any("petri_runs" in error and "missing" in error for error in rep.errors)
+
+
 def _refused(tmp_path: Path, docs: list[dict], fragment: str, capsys) -> None:
     with pytest.raises(SystemExit) as exc:
         _export(tmp_path, _write_reports(tmp_path, *docs), "--dry-run")

@@ -800,7 +800,8 @@ JEV_WRITER = "scripts/export_jev_calibration.py"
 # `source_reports` (2026-10-14) lists every report one export read; absent only for legacy payloads, which carry no
 # run attribution or evaluator equivalence. With one report the digest is the report's; with several it is the
 # sha256 of the sorted digests, one per line (export_jev_calibration.combined_report_sha256), checked here.
-JEV_OPTIONAL_TOP = {"source_reports"}
+JEV_OPTIONAL_TOP = {"source_reports", "schema_version"}
+JEV_LEGACY_REPORTS = Path(__file__).resolve().parents[1] / "data/jev/legacy_frontend_reports.json"
 JEV_SPECS = {
     "jev_calibration.json": {
         "top": {"generated_utc": str, "source_report_sha256": str, "model_requested": str, "models_served": list,
@@ -1045,8 +1046,26 @@ def _jev_uses_multi_report_format(data: dict) -> bool:
     fields so deleting both source lists and the run list cannot bypass provenance validation."""
     prov = data.get("provenance") if isinstance(data.get("provenance"), dict) else {}
     convs = data.get("conversations") if isinstance(data.get("conversations"), dict) else {}
-    return ("evaluator_equivalence" in prov or "petri_runs" in prov
+    return ("schema_version" in data or "evaluator_equivalence" in prov or "petri_runs" in prov
             or any(isinstance(conv, dict) and "run" in conv for conv in convs.values()))
+
+
+def _jev_legacy_source_reports(rep: Report) -> set[str]:
+    """Only reviewed, already-published report identities can use the unversioned compatibility path."""
+    try:
+        doc = json.loads(JEV_LEGACY_REPORTS.read_text(encoding="utf-8"))
+        if not isinstance(doc, dict) or doc.get("schema_version") != "1.0":
+            raise ValueError("expected legacy registry schema_version '1.0'")
+        entries = doc.get("reports")
+        shas = [entry.get("source_report_sha256") for entry in entries if isinstance(entry, dict)] \
+            if isinstance(entries, list) else []
+        if (not isinstance(entries, list) or not entries or len(shas) != len(entries)
+                or not all(isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{64}", sha) for sha in shas)):
+            raise ValueError("reports must name non-empty 64-hex source_report_sha256 identities")
+        return set(shas)
+    except (OSError, UnicodeDecodeError, ValueError) as exc:
+        rep.err(JEV_LEGACY_REPORTS.name, "$", f"legacy_report_registry_unreadable: {exc}")
+        return set()
 
 
 def _jev_source_reports(rep: Report, name: str, data: dict) -> None:
@@ -1128,6 +1147,8 @@ def _jev_petri_runs(rep: Report, name: str, data: dict) -> None:
 def check_jev_payloads(rep: Report, site: Path) -> None:
     reports: dict[str, str] = {}
     sources: dict[str, list] = {}
+    versions: dict[str, object] = {}
+    legacy_reports = _jev_legacy_source_reports(rep)
     for name, spec in JEV_SPECS.items():
         if not (site / "data" / name).is_file():
             if name == "jev_calibration.json" and (site / "data" / "petri_register_drift.json").is_file():
@@ -1144,6 +1165,14 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
         for key, kinds in spec["top"].items():
             _jev_need(rep, name, data, key, kinds, "$", nullable=key in spec["nullable"])
         known_keys(rep, name, data, set(spec["top"]) | JEV_OPTIONAL_TOP)
+        versions[name] = data.get("schema_version")
+        if "schema_version" in data:
+            if data["schema_version"] != "2.0":
+                rep.err(name, "$.schema_version", "unsupported_jev_schema: expected '2.0'")
+        elif (not isinstance(data.get("source_report_sha256"), str)
+              or data["source_report_sha256"] not in legacy_reports or _jev_uses_multi_report_format(data)):
+            rep.err(name, "$.schema_version", "missing_jev_schema: only reviewed published report identities may "
+                    "use the unversioned legacy shape; regenerate with the current exporter")
         if "source_reports" in data or _jev_uses_multi_report_format(data):
             _jev_source_reports(rep, name, data)
         head = data.get("headline_metrics")
@@ -1226,6 +1255,8 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
             _jev_petri_runs(rep, name, data)
     if len(set(reports.values())) > 1:
         rep.err(" and ".join(reports), "$.source_report_sha256", "the two Jev payloads come from different reports")
+    if len(versions) > 1 and any(version != next(iter(versions.values())) for version in versions.values()):
+        rep.err(" and ".join(versions), "$.schema_version", "the two Jev payloads use different schema versions")
     listed = {name: json.dumps(lst, sort_keys=True) for name, lst in sources.items()}
     if len(listed) > 1 and len(set(listed.values())) > 1:
         rep.err(" and ".join(listed), "$.source_reports", "the two Jev payloads list different source reports")

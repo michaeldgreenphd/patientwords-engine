@@ -58,7 +58,10 @@ the conversations,
 names each run in `provenance.petri_runs` and each conversation's `run`, and with several Petri runs carries
 `provenance.petri_transcripts` as null. Both payloads list every report in `source_reports` and carry one
 `source_report_sha256`: the report's digest for one report, and for several the sha256 of the sorted digests, one per
-line (combined_report_sha256), which the site contract recomputes.
+line (combined_report_sha256), which the site contract recomputes. New exports carry schema_version "2.0", requiring
+source_reports and Petri run attribution. The site contract accepts the earlier unversioned shape only for the
+published source-report identities reviewed in data/jev/legacy_frontend_reports.json; removing a new export's version
+and provenance cannot turn its combined identifier into a legacy report. Existing site files need no rewrite.
 
 Safety properties (matching other site exporters):
 - Refuses (exit 2, site files untouched) when report is missing, invalid, or inconsistent.
@@ -1488,8 +1491,10 @@ def main(argv: list[str] | None = None) -> int:
 
     calib_payload = build_calibration_payload(reports[advice_index][0], source_sha)
     petri_payload = build_combined_petri_drift_payload(reports, source_report_sha256=source_sha)
+    calib_payload["schema_version"] = "2.0"
     calib_payload["source_reports"] = sources
     if petri_payload:
+        petri_payload["schema_version"] = "2.0"
         petri_payload["source_reports"] = sources
     if equivalence is not None:
         equivalence_provenance = equivalence.provenance(sources)
