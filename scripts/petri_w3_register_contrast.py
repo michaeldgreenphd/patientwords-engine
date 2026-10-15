@@ -105,6 +105,7 @@ Run: python scripts/petri_w3_register_contrast.py                       # covera
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import platform
 import re
@@ -114,7 +115,7 @@ import sys
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from fractions import Fraction
 from pathlib import Path
 from typing import Any
@@ -213,6 +214,9 @@ class Plan:
     path: Path
     sha256: str
     approved: bool
+    approved_by: Any
+    approved_on: Any
+    realism_gate: dict[str, Any]
     analysis_script_path: Any
     analysis_script_status: Any
     secondary_spec: str
@@ -516,6 +520,11 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
             problems.append(f"sensitivity entry {i} ({name!r}): repeated name; sensitivity names must be distinct")
             continue
         sensitivity_names.add(name)
+        if name in SENSITIVITY_RULES and (
+                (measure.kind, measure.key) != (w2.PRIMARY.kind, w2.PRIMARY.key)
+                or s["window"] != primary_window or not isinstance(s.get("rule"), str) or not s["rule"].strip()):
+            problems.append(f"sensitivity {name!r} must retain the primary measure/window and a rule")
+            continue
         rule = s.get("rule")
         mechanism = by_window_name.get(name)
         if rule is not None and name not in SENSITIVITY_RULES and mechanism is None:
@@ -598,6 +607,8 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
         raise AnalysisRefusal(f"plan file {path}: " + "; ".join(problems))
     return Plan(
         path=path, sha256=sha256_file(path), approved=doc["approval"]["approved"], sets=sets,
+        approved_by=doc["approval"].get("approved_by"), approved_on=doc["approval"].get("approved_on"),
+        realism_gate=doc.get("physician_realism_gate") if isinstance(doc.get("physician_realism_gate"), dict) else {},
         analysis_script_path=script.get("path"), analysis_script_status=script.get("status"),
         secondary_spec=secondary_spec,
         decomposition_set=decomposition_set, mechanisms=mechanisms, targets=tuple(targets.values()), epochs=epochs,
@@ -610,7 +621,7 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
         judge_model=judge_model, judge_routes=tuple(routes), statements=statements,
         every_statement_carries=doc["statements"]["every_statement_carries"],
         seed_file=seed_file if seed_file.is_absolute() else ROOT / seed_file,
-        realism_gate_selection=(doc.get("physician_realism_gate") or {}).get("selection"))
+        realism_gate_selection=(doc.get("physician_realism_gate") if isinstance(doc.get("physician_realism_gate"), dict) else {}).get("selection"))
 
 
 def plan_layouts(plan: Plan, seeds: Mapping[str, dict]) -> dict[str, w2.SeedLayout]:
@@ -1245,7 +1256,10 @@ def prepare(run_paths: Sequence[Path] | None = None, *, runs_dir: Path = RUNS_DI
     """Everything both modes need, and nothing that ranks a value."""
     plan = load_plan(plan_path)
     seeds_path = Path(seeds_path) if seeds_path is not None else plan.seed_file
-    seed_set = load_seed_file(seeds_path)
+    try:
+        seed_set = load_seed_file(seeds_path)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise AnalysisRefusal(f"seed file {seeds_path} could not be loaded: {exc}") from exc
     layouts = plan_layouts(plan, seed_set.seeds)
     rubric = judge_runner.load_rubric(rubric_path)
     rdigest = judge_runner.rubric_digest(rubric)
@@ -1875,6 +1889,7 @@ def analysis_input_files(args: argparse.Namespace, prep: Prepared) -> dict[str, 
              "outcome_registry": args.outcomes, "seed_outcome_registry": framework.OUTCOME_REGISTRY,
              "framing_registry": framework.FRAMING_REGISTRY, "manifest_schema": framework.MANIFEST_SCHEMA,
              **{f"registry_version[{i}]": path for i, path in enumerate(args.registry_version)}}
+    files.update(selection_files(prep.plan))
     for i, path in enumerate(sorted(Path(args.runs_dir).glob("*/manifest.json"))):
         files[f"discovered_manifest[{i}]"] = path
     if prep.secondary_judge is not None:
@@ -2027,6 +2042,87 @@ def omitted_landed_runs(runs_dir: Path, plan: Plan, analysed: Sequence[RunInput]
     return problems
 
 
+def selection_files(plan: Plan) -> dict[str, Path]:
+    """Files explicitly bound by the gate selection; included in final input/commit provenance."""
+    selection = plan.realism_gate_selection
+    if not isinstance(selection, dict):
+        return {}
+    refs = {"gate_report": selection.get("gate_report")}
+    summaries = selection.get("summaries")
+    if isinstance(summaries, list):
+        refs.update({f"gate_summary[{i}]": row.get("summary") for i, row in enumerate(summaries)
+                     if isinstance(row, dict)})
+    return {key: Path(ref) if Path(ref).is_absolute() else ROOT / ref for key, ref in refs.items()
+            if isinstance(ref, str) and ref.strip()}
+
+
+def gate_selection_problems(plan: Plan) -> list[str]:
+    """Validate the recorded gate decision and its bound artifacts, without recalculating ratings."""
+    label = "physician_realism_gate.selection"
+    selection = plan.realism_gate_selection
+    if not isinstance(selection, dict):
+        return [f"{label} must record the applied gate before final analysis, even when every seed passes"]
+    problems = []
+    rounds = plan.realism_gate.get("rounds")
+    nrounds = len(rounds) if isinstance(rounds, list) else 0
+    summaries = selection.get("summaries")
+    if (not nrounds or not isinstance(summaries, list) or len(summaries) != nrounds
+            or any(not isinstance(row, dict) or type(row.get("round")) is not int or row["round"] != i
+                   for i, row in enumerate(summaries, 1))):
+        problems.append(f"{label}.summaries must name every gate round in order")
+        summaries = []
+    artifacts = [("gate_report", selection.get("gate_report"), selection.get("gate_report_sha256"))]
+    artifacts.extend((f"summary[{i}]", row.get("summary"), row.get("summary_sha256"))
+                     for i, row in enumerate(summaries, 1))
+    for name, ref, digest in artifacts:
+        if (not isinstance(ref, str) or not ref.strip() or not isinstance(digest, str)
+                or re.fullmatch(r"[0-9a-f]{64}", digest) is None):
+            problems.append(f"{label}.{name} needs a file path and 64-hex digest")
+            continue
+        path = Path(ref) if Path(ref).is_absolute() else ROOT / ref
+        try:
+            raw = path.read_bytes()
+            if not isinstance(json.loads(raw), dict) or hashlib.sha256(raw).hexdigest() != digest:
+                problems.append(f"{label}.{name} is not the pinned JSON object")
+        except (OSError, ValueError) as exc:
+            problems.append(f"{label}.{name} cannot be read: {exc}")
+    seen: set[str] = set()
+    passing: list[str] = []
+    for group in ("passing", "failing"):
+        rows = selection.get(group)
+        if not isinstance(rows, list):
+            problems.append(f"{label}.{group} must be a list")
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                problems.append(f"{label}.{group} has a non-object entry")
+                continue
+            sid, decided, short = row.get("seed_id"), row.get("round"), row.get("short_rounds")
+            if not isinstance(sid, str) or not sid.strip() or sid in seen:
+                problems.append(f"{label}.{group} has a missing or repeated seed id")
+                continue
+            seen.add(sid)
+            if group == "passing":
+                passing.append(sid)
+            valid_round = type(decided) is int and 1 <= decided <= nrounds
+            valid_short = (isinstance(short, list) and all(type(r) is int and 1 <= r <= nrounds for r in short)
+                           and short == sorted(set(short)))
+            if group == "passing" and not valid_round:
+                problems.append(f"{label}.passing entry {sid!r} needs its deciding round")
+            if not valid_short or (valid_round and any(r >= decided for r in short)):
+                problems.append(f"{label}.{group} entry {sid!r} has invalid short_rounds")
+            if group == "failing" and not (
+                    row.get("reason") == "rated unrealistic" and valid_round
+                    or row.get("reason") == "not enough ratings" and decided is None and valid_short and short):
+                problems.append(f"{label}.failing entry {sid!r} has an invalid reason/round")
+    if passing != plan.scenarios:
+        problems.append(f"{label}.passing must match the planned scenario set in order")
+    minimum = plan.realism_gate.get("min_scenarios")
+    if type(minimum) is not int or minimum < 1 or len(passing) < minimum:
+        problems.append(f"{label} does not meet its min_scenarios floor")
+    return problems
+
+
 def final_problems(args: argparse.Namespace, prep: Prepared) -> tuple[list[str], dict[str, list[int]]]:
     """What the inputs rule out under --final, and the target epochs a declared truncation covers."""
     plan = prep.plan
@@ -2034,6 +2130,15 @@ def final_problems(args: argparse.Namespace, prep: Prepared) -> tuple[list[str],
     if not plan.approved:
         problems.append("the plan is not approved (approval.approved is false): it binds nothing until the owner "
                         "approves it as a dated decision")
+    if not isinstance(plan.approved_by, str) or not plan.approved_by.strip():
+        problems.append("approval.approved_by must name the approving owner")
+    try:
+        if not isinstance(plan.approved_on, str) or re.fullmatch(r"\d{4}-\d{2}-\d{2}", plan.approved_on) is None:
+            raise ValueError("expected YYYY-MM-DD")
+        date.fromisoformat(plan.approved_on)
+    except ValueError:
+        problems.append("approval.approved_on must be a valid YYYY-MM-DD date")
+    problems.extend(gate_selection_problems(plan))
     if plan.analysis_script_path != "scripts/petri_w3_register_contrast.py" or plan.analysis_script_status != "written":
         problems.append("analysis_script must name scripts/petri_w3_register_contrast.py with status 'written' "
                         "in the approved plan before the first paid fire")

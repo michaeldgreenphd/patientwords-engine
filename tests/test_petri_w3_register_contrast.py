@@ -107,10 +107,19 @@ def synthetic_plan(seeds_path: Path, **over: Any) -> dict:
         if s.get("rule") and s["name"] not in w3.SENSITIVITY_RULES:
             s["name"] = "mech_two" + w3.MECHANISM_WINDOW_SUFFIX
     plan["judge"]["judge_model"] = JUDGE
-    plan["approval"]["approved"] = True
+    plan["approval"].update(approved=True, approved_by="the owner", approved_on="2026-10-01")
     plan["analysis_script"].update(path="scripts/petri_w3_register_contrast.py", status="written")
     plan["judge"]["second_family_regrade"] = SECOND + " through the synthetic regrade path"
     plan["seed_file"] = str(seeds_path)
+    summary = seeds_path.parent / "gate-summary.json"
+    summary.write_text("{}", encoding="utf-8")
+    report = seeds_path.parent / "gate-report.json"
+    report.write_text("{}", encoding="utf-8")
+    plan["physician_realism_gate"]["min_scenarios"] = len(SEEDS_IDS)
+    plan["physician_realism_gate"]["selection"] = {
+        "gate_report": str(report), "gate_report_sha256": sha256_file(report),
+        "summaries": [{"round": 1, "summary": str(summary), "summary_sha256": sha256_file(summary)}],
+        "passing": [{"seed_id": sid, "round": 1, "short_rounds": []} for sid in SEEDS_IDS], "failing": []}
     plan.update(over)
     return plan
 
@@ -1263,3 +1272,77 @@ def test_coverage_uses_exclusive_creation_even_if_destination_appears_during_rea
     assert w3.main(cli_args(c, "--out", str(out))) == 2
     assert "appeared while coverage ran" in capsys.readouterr().err
     assert out.read_text(encoding="utf-8") == "preserve"
+
+
+@pytest.mark.parametrize("name", w3.SENSITIVITY_RULES)
+@pytest.mark.parametrize("field", ["measure", "window", "rule"])
+def test_reserved_sensitivities_cannot_silently_change_definition(
+        tmp_path: Path, name: str, field: str) -> None:
+    c = write_campaign(tmp_path, fires=())
+    doc = load_json(c["plan"])
+    row = next(s for s in doc["sensitivity"] if s["name"] == name)
+    row[field] = {"measure": "tier contextual", "window": "exchange_1", "rule": None}[field]
+    c["plan"].write_text(json.dumps(doc), encoding="utf-8")
+    with pytest.raises(w3.AnalysisRefusal, match="must retain the primary"):
+        w3.load_plan(c["plan"])
+
+
+@pytest.mark.parametrize("kind", ["missing", "json", "duplicate", "shape"])
+def test_seed_loader_failures_are_named_cli_refusals(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str], kind: str) -> None:
+    c = write_campaign(tmp_path, fires=())
+    if kind == "missing":
+        c["seeds"].unlink()
+    elif kind == "json":
+        c["seeds"].write_text("{", encoding="utf-8")
+    elif kind == "duplicate":
+        doc = load_json(c["seeds"])
+        doc["seeds"].append(doc["seeds"][0])
+        c["seeds"].write_text(json.dumps(doc), encoding="utf-8")
+    else:
+        c["seeds"].write_text('{"seeds": [{}]}', encoding="utf-8")
+    out = tmp_path / "coverage.json"
+    assert w3.main(cli_args(c, "--out", str(out))) == 2
+    assert "refused: seed file" in capsys.readouterr().err and not out.exists()
+
+
+@pytest.mark.parametrize("field,value", [("approved_by", None), ("approved_by", " "),
+                                        ("approved_on", None), ("approved_on", "2026-02-30")])
+def test_final_needs_the_dated_owner_approval_record(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+        field: str, value: Any) -> None:
+    c = write_campaign(tmp_path)
+    doc = load_json(c["plan"])
+    doc["approval"][field] = value
+    c["plan"].write_text(json.dumps(doc), encoding="utf-8")
+    final_ready(monkeypatch, c)
+    out = tmp_path / "final.json"
+    assert w3.main(cli_args(c, "--final", "--out", str(out))) == 2
+    assert f"approval.{field}" in capsys.readouterr().err and not out.exists()
+
+
+@pytest.mark.parametrize("change", ["absent", "empty", "wrong_seeds", "duplicate", "bad_round", "digest", "missing_file"])
+def test_final_requires_a_bound_and_valid_gate_selection(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], change: str) -> None:
+    c = write_campaign(tmp_path)
+    doc = load_json(c["plan"])
+    selection = doc["physician_realism_gate"]["selection"]
+    if change == "absent":
+        doc["physician_realism_gate"]["selection"] = None
+    elif change == "empty":
+        doc["physician_realism_gate"]["selection"] = {}
+    elif change == "wrong_seeds":
+        selection["passing"].pop()
+    elif change == "duplicate":
+        selection["passing"].append(selection["passing"][0])
+    elif change == "bad_round":
+        selection["passing"][0]["round"] = None
+    elif change == "digest":
+        selection["gate_report_sha256"] = "0" * 64
+    else:
+        Path(selection["gate_report"]).unlink()
+    c["plan"].write_text(json.dumps(doc), encoding="utf-8")
+    final_ready(monkeypatch, c)
+    out = tmp_path / "final.json"
+    assert w3.main(cli_args(c, "--final", "--out", str(out))) == 2
+    assert "physician_realism_gate.selection" in capsys.readouterr().err and not out.exists()
