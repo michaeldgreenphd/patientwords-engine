@@ -638,7 +638,7 @@ def _rejudge_identity_problems(p: Path, r: dict[str, Any]) -> list[str]:
     except RejudgeError as exc:
         found.append(f"{label}: {exc}")
     try:
-        if isinstance(stem, str) and p.name != judge_report_name(stem, r.get("rejudge_workflow_run_id")):
+        if isinstance(stem, str) and p.name != judge_report_name(stem, r.get("rejudge_workflow_run_id"), r.get("judge_role") == "secondary"):
             found.append(f"{label}: it records workflow run {r.get('rejudge_workflow_run_id')!r}, whose sidecar is not "
                          "named this")
     except RejudgeError as exc:
@@ -834,6 +834,24 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
     # paid fire and neither on a free one, so either key present means the entry claims to be paid.
     paid = [e for e in entries if e.get("trigger") == LANE and ("max_spend" in e or "lane" in e)]
     problems: list[str] = []
+    # R4's journal reserves both passes once. Existing checks still audit the original component
+    # against its original ceiling; the isolated secondary report is checked and added below.
+    original_paid = paid
+    secondary_allocations: dict[str, float] = {}
+    paid = []
+    for entry in original_paid:
+        allocation = entry.get("secondary_judge")
+        if allocation is not None:
+            amount = _money(allocation.get("max_spend_usd")) if isinstance(allocation, dict) else None
+            total = _money(entry.get("max_spend"))
+            if (amount is None or total is None or amount >= total
+                    or allocation.get("judge_model") not in ("anthropic:claude-haiku-5-5",
+                                                              "openrouter:anthropic/claude-haiku-5.5")):
+                problems.append(f"nonce {entry.get('nonce')!r}: secondary_reservation_invalid")
+            else:
+                secondary_allocations[entry.get("nonce")] = amount
+                entry = {**entry, "max_spend": total - amount}
+        paid.append(entry)
     runs_absent = not Path(runs_dir).is_dir()
     if runs_absent and (paid or Path(runs_dir).resolve() != DEFAULT_RUNS_DIR.resolve()):
         # a mistyped --runs, or a checkout without the runs tree: read as an empty archive it reported "no
@@ -843,6 +861,8 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
         problems.append(f"{runs_dir}: no such directory, so no landed sidecar was scanned at all")
     targets, judges = _sidecars(Path(runs_dir))
     rejudges = _rejudge_sidecars(Path(runs_dir).parent / REJUDGE_DIRNAME if rejudge_dir is None else Path(rejudge_dir))
+    secondary_reports = [(p, r) for p, r in rejudges if r.get("judge_role") == "secondary"]
+    rejudges = [(p, r) for p, r in rejudges if r.get("judge_role") != "secondary"]
     ledger = _read_ledger(dashboard_path, problems)
 
     # `ledger_update.sidecar_key` keys a Petri sidecar on its BARE FILENAME, so two run directories holding the
@@ -853,7 +873,7 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
     by_basename: dict[str, set[str]] = {}
     for sp, _ in targets + judges:
         by_basename.setdefault(sp.name, set()).add(sp.parent.name)
-    for sp, _ in rejudges:
+    for sp, _ in rejudges + secondary_reports:
         by_basename.setdefault(sp.name, set()).add(_rejudge_label(sp).rsplit("/", 1)[0])
     duplicate_names = {name for name, dirs in by_basename.items() if len(dirs) > 1}
     for name in sorted(duplicate_names):
@@ -1266,6 +1286,67 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             if not booked:
                 unfolded.append(p.name)
                 problems.append(f"{_rejudge_label(p)}: {why}")
+    secondary_by_nonce: dict[str, list[tuple[Path, dict]]] = {}
+    for path, report in secondary_reports:
+        nonce = report.get("journal_nonce")
+        if nonce not in secondary_allocations:
+            problems.append(f"{path.name}: secondary_report_unreserved: {nonce!r}")
+        else:
+            secondary_by_nonce.setdefault(nonce, []).append((path, report))
+    states: dict[str, list[dict]] = {}
+    for path in sorted((Path(runs_dir).parent / "secondary").glob("fire_*.json")):
+        try:
+            state = load_json(path)
+            nonce = state["journal_nonce"]
+            states.setdefault(nonce, []).append(state)
+        except (ValueError, OSError, KeyError, TypeError) as exc:
+            problems.append(f"{path.name}: secondary_status_unreadable: {exc}")
+    for row in rows:
+        nonce = row["nonce"]
+        if nonce not in secondary_allocations:
+            continue
+        amount = secondary_allocations[nonce]
+        row["max_spend"] += amount
+        found = secondary_by_nonce.get(nonce, [])
+        recorded = states.get(nonce, [])
+        original = next(e for e in original_paid if e.get("nonce") == nonce)
+        valid_status = len(recorded) == 1 and recorded[0].get("reservation") == original["secondary_judge"]
+        if len(recorded) != 1:
+            if amount and not row["evicted"]:
+                problems.append(f"nonce {nonce!r}: secondary_status_missing_or_ambiguous")
+        elif not valid_status:
+            problems.append(f"nonce {nonce!r}: secondary_status_reservation_mismatch")
+        if not found:
+            known_zero = valid_status and recorded[0].get("status") == "not_started"
+            if amount and not row["evicted"] and not known_zero:
+                problems.append(f"nonce {nonce!r}: secondary_cost_missing")
+                row["total_usd"] = None
+                row["folded"] = row["judge_folded"] = False if ledger is not None else None
+            row["secondary_judge_cost_usd"] = 0.0 if known_zero else None
+            continue
+        for path, report in found:
+            if report.get("judge_model") != original["secondary_judge"]["judge_model"]:
+                problems.append(f"{path.name}: secondary_model_mismatch")
+        component = {**row, "max_spend": amount, "total_usd": None, "judge_cost_usd": None,
+                     "folded": None, "judge_folded": None}
+        _rejudge_row({**original, "max_spend": amount}, component, found, ledger, duplicate_names, now, problems)
+        row["secondary_judge_cost_usd"] = component["total_usd"]
+        row["secondary_judge_folded"] = component.get("judge_folded")
+        if ledger is not None:
+            second_folded = component["total_usd"] is not None and component.get("judge_folded")
+            row["secondary_judge_folded"] = bool(second_folded)
+            row["folded"] = bool(row.get("folded") and second_folded)
+            row["judge_folded"] = bool(row.get("judge_folded") and second_folded)
+        if component["total_usd"] is not None and row["total_usd"] is not None:
+            row["total_usd"] += component["total_usd"]
+        else:
+            row["total_usd"] = None
+        if ledger is not None:
+            for path, report in found:
+                booked, why = ledger.state(path.name, _money(report.get("cost_usd")))
+                if not booked:
+                    unfolded.append(path.name)
+                    problems.append(f"{path.name}: {why}")
     unfolded = sorted(unfolded)
     if runs_absent:
         # stated whether or not it is a problem, so "Sidecars found: 0" is never read as "the archive is empty"
@@ -1273,7 +1354,8 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
     else:
         problems_note = None
     return {"lane": LANE, "paid_fires": rows, "sidecars": {"target": len(targets), "judge": len(judges)},
-            "rejudge_sidecars": len(rejudges), "runs_dir": str(runs_dir), "runs_dir_note": problems_note,
+            "rejudge_sidecars": len(rejudges), "secondary_judge_sidecars": len(secondary_reports),
+            "runs_dir": str(runs_dir), "runs_dir_note": problems_note,
             "unfolded_sidecars": unfolded, "problems": problems}
 
 
@@ -1299,6 +1381,8 @@ def render_markdown(result: dict[str, Any]) -> str:
     rejudged = result.get("rejudge_sidecars") or 0
     lines += ["", f"Sidecars found: {s['target']} target, {s['judge']} judge"
               + (f", {rejudged} rejudge." if rejudged else ".")]
+    if result.get("secondary_judge_sidecars"):
+        lines.append(f"Secondary judge sidecars: {result['secondary_judge_sidecars']} (included in total cost).")
     if result.get("runs_dir_note"):
         lines.append(result["runs_dir_note"])
     if result["unfolded_sidecars"]:
@@ -1311,7 +1395,7 @@ def render_markdown(result: dict[str, Any]) -> str:
         # a universal claim over an empty set reads as an assurance it is not: say what was actually the case
         lines.append("Nothing to reconcile: no paid petri-audit fire is journaled and no cost sidecar has landed.")
     else:
-        lines.append("No problems: every paid fire has exactly one landed sidecar within its commitment and its own "
+        lines.append("No problems: every paid fire reconciles its landed sidecars within its commitment and component "
                      "ceilings, on an account the ledger honours, fully booked into it, and every sidecar has its "
                      "fire.")
     return "\n".join(lines) + "\n"

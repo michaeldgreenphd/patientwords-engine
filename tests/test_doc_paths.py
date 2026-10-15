@@ -117,6 +117,7 @@ ALLOWED_MISSING: dict[tuple[str, str], str] = {
     ("AGENTS.md", "data/petri/rejudge/"): _REJUDGE,
     ("AGENTS.md", "data/urgency_shift.json"): _SITE + " (`scripts/urgency_shift.py --publish` writes it)",
     ("docs/triggers.md", "data/petri/rejudge/*/*/"): _REJUDGE,
+    ("docs/triggers.md", "data/petri/secondary/fire_*.json"): "Automatic second-judge status records created only by CI.",
     ("docs/routine_standing_prompt.md", "data/petri/rejudge/*/*/"): _REJUDGE,
     ("docs/archiving.md", "data/simulated_scenarios.json"): _SITE,
     ("docs/archiving.md", "render_archives/renders-20260707.manifest.json"):
@@ -139,6 +140,7 @@ ALLOWED_MISSING: dict[tuple[str, str], str] = {
 MAY_APPEAR: frozenset[tuple[str, str]] = frozenset({
     ("AGENTS.md", "data/petri/rejudge/"),
     ("docs/triggers.md", "data/petri/rejudge/*/*/"),
+    ("docs/triggers.md", "data/petri/secondary/fire_*.json"),
     ("docs/routine_standing_prompt.md", "data/petri/rejudge/*/*/"),
     ("docs/archiving.md", "trace_out/pairs_20260707T215921Z/index_07.png"),
     *PILOT_LOGITS_NAMES,      # a pilot logits fire's CI commit creates them

@@ -622,7 +622,7 @@ def test_the_2026_09_23_fixture_is_refused_with_both_resolved_fires_counted():
     kind, reason = ft.budget_check(params, dashboard, "2026-09-23", entries=journal, now=now, expire_hours=8.0,
                                    overrides=overrides, trigger="petri-audit")
     assert kind == "ceiling", reason
-    assert "max_spend 8.60 + today's committed 12.70 (landed 0.00 + held today 12.70)" in reason
+    assert "max_spend 8.85 + today's committed 12.70 (landed 0.00 + held today 12.70)" in reason
     assert "daily ceiling 15.00 USD [anthropic lane]" in reason
 
 
@@ -884,7 +884,7 @@ def test_fire_commitment_sums_judge_ceiling_only_when_judging():
     assert ft.fire_commitment({"max_spend": "1.0"}) == (1.0, None)
     total, err = ft.fire_commitment(
         {"max_spend": "1.0", "judge": "true", "judge_max_spend": "0.5"})
-    assert (total, err) == (1.5, None)
+    assert (total, err) == (1.55, None)
     # judge off: judge_max_spend present but NOT committed
     total, err = ft.fire_commitment(
         {"max_spend": "1.0", "judge": "false", "judge_max_spend": "0.5"})
@@ -924,7 +924,7 @@ def test_judged_fire_journal_entry_records_summed_commitment(repo):
         max_spend="0.60", judge="true", judge_max_spend="0.40", _nonce="j5")) == 0
     entry = json.loads(journal_path(repo).read_text().splitlines()[-1])
     assert entry["trigger"] == "advice-eval"
-    assert entry["max_spend"] == pytest.approx(1.0)
+    assert entry["max_spend"] == pytest.approx(1.04)
     # a second paid fire the same day sees the full 1.0 held: 1.2 would
     # break the 2.0 ceiling (1.0 + 1.2), 0.9 fits
     assert fire(repo, "scenario-generation", {
@@ -1030,7 +1030,7 @@ def test_fire_lane_books_the_judge_and_the_translator():
                                         "translator_model": "claude-haiku-4-5"}) == "openrouter"
     # an OpenRouter judge, and a translator that is one of the models (elicit routes it through the registry)
     assert ft.fire_lane("advice-eval", {"models": _ORL, "judge": True,
-                                        "judge_model": "openrouter:stealth/z"}) == "openrouter"
+                                        "judge_model": "openrouter:stealth/z"}) == "anthropic"
     assert ft.fire_lane("advice-eval", {"models": _ORL, "arms": "clinical,translated",
                                         "translator_model": "openai:openai/x"}) == "openrouter"
     # a translator that is not one of the models goes to the Anthropic API under the name given
@@ -1044,7 +1044,8 @@ def test_fire_lane_books_the_judge_and_the_translator():
 def test_advice_billing_parts_name_each_paid_part():
     parts = ft.advice_billing_parts({"models": _ORL, "judge": "true", "arms": "clinical,patient,translated"})
     assert parts == [("model", "openai:openai/x", "openrouter"), ("model", "openrouter:google/y", "openrouter"),
-                     ("judge", "claude-haiku-4-5", "anthropic"), ("translator", "claude-haiku-4-5", "anthropic")]
+                     ("judge", "claude-haiku-4-5", "anthropic"),
+                     ("secondary_judge", "anthropic:claude-haiku-5-5", "anthropic"), ("translator", "claude-haiku-4-5", "anthropic")]
 
 
 @pytest.mark.parametrize("params", [
@@ -1212,13 +1213,12 @@ def test_bare_non_anthropic_provider_name_refused(repo, capsys):
     assert "bare provider name" in capsys.readouterr().err
 
 
-def test_openrouter_only_fire_with_openrouter_judge_is_booked_on_openrouter(repo):
+def test_openrouter_judged_fire_is_refused_because_the_second_judge_bills_anthropic(repo):
     write_dashboard(repo, spent=0.0)
     params = _advice_params(_nonce="o1", models=_ORL, arms="clinical,patient", judge="true",
                             judge_model="openrouter:openai/gpt-5.4-mini", judge_max_spend="0.5")
-    assert fire(repo, "advice-eval", params) == 0
-    entry = json.loads(journal_path(repo).read_text().splitlines()[-1])
-    assert entry["lane"] == "openrouter" and entry["max_spend"] == pytest.approx(2.0)
+    assert fire(repo, "advice-eval", params) == 3
+    assert not journal_path(repo).exists()
 
 
 def test_budget_gate_refuses_a_mixed_channel_advice_fire(repo, tmp_path, capsys):
@@ -2742,7 +2742,7 @@ def test_budget_gate_requires_a_journal_reservation_for_a_paid_petri_run(repo, t
 
     def entry(**over):
         base = {"trigger": "petri-audit", "fired_utc": ft.iso_utc(ft.utc_now()), "commit": "", "note": "pilot",
-                "resolved": False, "evicted": False, "nonce": "pilot-1", "max_spend": 1.5, "lane": "anthropic",
+                "resolved": False, "evicted": False, "nonce": "pilot-1", "max_spend": 1.55, "lane": "anthropic",
                 "params_sha256": ft.params_digest(content), "ref": "main"}
         return json.dumps({**base, **over}) + "\n"
 
@@ -2867,7 +2867,7 @@ def test_budget_gate_counts_a_petri_fire_resolved_earlier_today_and_its_own_entr
 
     def entry(**over):
         base = {"trigger": "petri-audit", "fired_utc": "2026-09-23T11:55:00Z", "commit": "", "note": "",
-                "resolved": False, "evicted": False, "nonce": "w2e3", "max_spend": 1.5, "lane": "anthropic",
+                "resolved": False, "evicted": False, "nonce": "w2e3", "max_spend": 1.55, "lane": "anthropic",
                 "params_sha256": ft.params_digest(content), "ref": "main"}
         return json.dumps({**base, **over}) + "\n"
 

@@ -145,7 +145,8 @@ class RegistryJudge:
     registry the advice lane uses. Paid; runs only in CI with the Actions
     secrets."""
 
-    def __init__(self, model_spec: str, providers_path: str | Path | None = None) -> None:
+    def __init__(self, model_spec: str, providers_path: str | Path | None = None,
+                 *, sdk_max_retries: int | None = None) -> None:
         if model_spec.strip() in ZERO_PRICE_MODELS:
             # the sentinel prices at zero; a client that would actually send it to a provider must never carry it
             # (Codex round 3 on PR #28). `judge_spec_problems` refuses it earlier, at pre-flight.
@@ -165,14 +166,17 @@ class RegistryJudge:
         # a judge model the registry says must run with thinking disabled (anthropic.disable_thinking; 2026-10-14:
         # Claude Haiku 5.5, whose default adaptive thinking would spend the 300-token allowance) is sent thinking
         # {"type": "disabled"}, and every row, the sidecar and the manifest's judge of record say so (thinking_sent
-        # "disabled", thinking_disabled the reason). Only the direct Anthropic path can send it, so a listed model on
-        # another route is refused here, before any call. judge_thinking_disabled repeats this resolution and match.
+        # "disabled", thinking_disabled the reason). OpenRouter instead sends reasoning.effort none and requires
+        # parameter support. Other routes refuse. judge_thinking_disabled repeats this resolution and match.
         self.thinking_disabled: str | None = ae.thinking_disable_reason(self.spec["spec"], registry)
-        if self.thinking_disabled and not self.is_anthropic:
+        if (self.thinking_disabled and not self.is_anthropic
+                and (self.spec["cfg"].get("key_env") != "OPENROUTER_API_KEY"
+                     or self.spec["cfg"].get("base_url", "").rstrip("/") != "https://openrouter.ai/api/v1")):
             raise ValueError(f"judge {model_spec!r}: the registry's anthropic.disable_thinking lists it, and only the "
-                             "direct Anthropic API path can send thinking disabled; judge it as anthropic:<id> or the "
+                             "direct Anthropic API path or OpenRouter can disable thinking; judge it as anthropic:<id> or the "
                              "bare id")
-        self.client = ae._client() if self.is_anthropic else None
+        retry_setting = {"max_retries": sdk_max_retries} if sdk_max_retries is not None else {}
+        self.client = ae._client(**retry_setting) if self.is_anthropic else None
 
     @property
     def temperature_omitted(self) -> str | None:
@@ -205,7 +209,8 @@ class RegistryJudge:
         else:
             ae._pace(self.spec["provider"], self.spec["cfg"])
             res = ae._send_compat(self.spec["cfg"], self.spec["model"], None, prompt, max_tokens, sent_temperature,
-                                  before_retry=before_retry)
+                                  before_retry=before_retry,
+                                  **({"disable_reasoning": True} if self.thinking_disabled else {}))
         text, in_tok, out_tok, raw = res[:4]
         headers = res[4] if len(res) > 4 else {}
         info = ae._build_info(raw, headers)

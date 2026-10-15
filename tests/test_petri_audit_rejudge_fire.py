@@ -82,17 +82,17 @@ def test_a_rejudge_is_paid_with_the_judge_ceiling_alone_on_the_judges_channel():
     assert "source_runs" in ft.KNOWN_KEYS[TRIGGER] and "source_runs" not in ft.PARK_DEFAULTS[TRIGGER]
     assert ft.PARK_DEFAULTS[TRIGGER]["mode"] == "preflight", "the park is unchanged"
     assert ft.is_paid_fire(TRIGGER, REJUDGE) is True
-    assert ft.fire_commitment(REJUDGE) == (1.6, None), "no target call: the judge's ceiling is the commitment"
-    assert ft.fire_commitment(dict(REJUDGE, max_spend="6.10")) == (1.6, None), "max_spend is not read"
+    assert ft.fire_commitment(REJUDGE) == (1.812, None), "no target call: both judge ceilings are committed"
+    assert ft.fire_commitment(dict(REJUDGE, max_spend="6.10")) == (1.812, None), "max_spend is not read"
     assert ft.fire_lane(TRIGGER, REJUDGE) == "openrouter"
     assert ft.fire_lane(TRIGGER, dict(REJUDGE, judge_model="x-ai/grok-4.3")) == "anthropic", \
         "a bare id is an Anthropic model to the registry, so it books the anthropic lane (fail closed)"
     assert ft.fire_lane(TRIGGER, dict(REJUDGE, judge_model="xai:x-ai/grok-4.3")) == "openrouter"
     commitment, error = ft.fire_commitment(dict(REJUDGE, judge="false"))
-    assert commitment is None and "mode rejudge commits the judge's ceiling alone" in error
+    assert commitment is None and "mode rejudge commits the judge ceilings alone" in error
     # budget_check needs no max_spend for a rejudge (it reads none) and prices the judge's ceiling on its lane
     kind, reason = ft.budget_check(REJUDGE, {"spend": {}}, "2026-09-25", trigger=TRIGGER)
-    assert kind == "ok" and "max_spend 1.60" in reason and "[openrouter lane]" in reason, reason
+    assert kind == "ok" and "max_spend 1.81" in reason and "[openrouter lane]" in reason, reason
     # ...while a run without max_spend is still refused as before
     assert ft.budget_check(dict(REJUDGE, mode="run"), {}, "2026-09-25", trigger=TRIGGER)[0] == "invalid"
     # the target is not called, so an Anthropic target default does not make the OpenRouter judge a mixed fire
@@ -201,8 +201,8 @@ def test_the_dry_run_prints_the_judge_ceiling_on_the_openrouter_lane_and_the_lan
     fire = ["fire", "--repo", str(repo), "--trigger", TRIGGER, "--note", "rejudge", "--dry-run", "--no-git"]
     assert ft.main(fire + ["--params", json.dumps(REJUDGE)]) == 0
     out = capsys.readouterr().out
-    assert "max_spend 1.60 + today's committed 0.00" in out and "[openrouter lane]" in out, out
-    assert '"max_spend": 1.6' in out and '"lane": "openrouter"' in out and '"nonce": "rj-1"' in out
+    assert "max_spend 1.81 + today's committed 0.00" in out and "[openrouter lane]" in out, out
+    assert '"max_spend": 1.812' in out and '"lane": "openrouter"' in out and '"nonce": "rj-1"' in out
     assert ft.main(fire + ["--params", json.dumps(dict(REJUDGE, judge_model="claude-haiku-4-5"))]) == 3
     assert "is its judge of record" in capsys.readouterr().err
     # only into an idle lane: a queued rejudge would find the output directory empty in its own checkout
@@ -447,7 +447,8 @@ def test_the_rejudge_steps_run_plan_judge_verify_and_commit_in_order(workflow):
     assert "continue-on-error" not in commit
     # the cost sidecars: every paid rejudge, whatever happened; never the rehearsal; only report files are staged
     assert _runs(sidecars["if"], rehearsal="false") and not _runs(sidecars["if"], rehearsal="true")
-    assert "for f in data/petri/rejudge/*/*/*.report.json" in sidecars["run"]
+    assert "for f in data/petri/rejudge/*/*/*.rejudge_${GITHUB_RUN_ID}.judge.report.json" in sidecars["run"]
+    assert "bash scripts/ci_publish_judge_files.sh" in sidecars["run"]
     assert "data/petri/runs" not in sidecars["run"] and "git add -f data/petri/rejudge/ " not in sidecars["run"]
     spend = _step(workflow, "rejudge", "Spend report for a rejudge judge")
     assert _runs(spend["if"], rehearsal="false") and not _runs(spend["if"], rehearsal="true")

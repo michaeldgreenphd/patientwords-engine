@@ -914,3 +914,217 @@ def test_a_rejudge_by_the_slash_spelling_of_a_judge_is_refused_at_planning(layou
     runs, root = layout
     with pytest.raises(rejudge.RejudgeError, match="fallback_priced_judge"):
         _plan(runs, root, judge_model="anthropic/claude-haiku-5-5")
+
+
+def _secondary_context(monkeypatch: pytest.MonkeyPatch, params: dict) -> list[dict]:
+    from scripts.fire_trigger import fire_commitment, secondary_judge_reservation
+
+    for key, value in {"GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "push", "GITHUB_RUN_ATTEMPT": "1",
+                       "GITHUB_RUN_ID": "777", "GITHUB_SHA": COMMIT,
+                       "ANTHROPIC_API_KEY": "test-key-never-sent"}.items():
+        monkeypatch.setenv(key, value)
+    return [{"trigger": "petri-audit", "nonce": params["_nonce"], "lane": "anthropic", "evicted": False,
+             "max_spend": fire_commitment(params)[0], "secondary_judge": secondary_judge_reservation(params)}]
+
+
+def test_automatic_secondary_preserves_source_and_uses_existing_rejudge_contract(
+        layout: tuple[Path, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts.petri_audit import secondary
+
+    runs, rejudge_root = layout
+    before = _tree_digest(runs)
+    params = _params(mode="run", max_spend="0.5", judge_model=JUDGE_OF_RECORD)
+    journal = _secondary_context(monkeypatch, params)
+    status = secondary.execute(params, source_runs=["run_4242_1"], root=runs.parent / "secondary", runs_dir=runs,
+                               scratch=tmp_path / "scratch", workflow_id="777", primary_status="success",
+                               journal=journal, client_factory=_mock_factory)
+    assert status["status"] == "complete"
+    assert _tree_digest(runs) == before
+    directory = rejudge.output_dir(rejudge_root, "anthropic:claude-haiku-5-5", "run_4242_1")
+    assert rejudge.verify_output(directory, runs) == []
+    manifest = framework.load_json(directory / rejudge.MANIFEST_NAME)
+    assert manifest["judge_role"] == "secondary" and manifest["exploratory"] is True
+    report = manifest["artifacts"]["judge_report"]["path"]
+    assert report.endswith(".rejudge_777_secondary.judge.report.json")
+    assert report != rejudge.judge_report_name("run_4242_1", "777")
+    assert 0 < status["outcome"]["spent_usd"] <= journal[0]["secondary_judge"]["max_spend_usd"]
+
+
+def test_secondary_refuses_local_execution_and_missing_reservation_before_calls(
+        layout: tuple[Path, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts.petri_audit import secondary
+
+    runs, _ = layout
+    params = _params(mode="run", max_spend="0.5", judge_model=JUDGE_OF_RECORD)
+    journal = _secondary_context(monkeypatch, params)
+    monkeypatch.setenv("GITHUB_ACTIONS", "false")
+    kwargs = dict(source_runs=["run_4242_1"], root=runs.parent / "secondary", runs_dir=runs,
+                  scratch=tmp_path / "scratch", workflow_id="777", primary_status="success", journal=journal)
+    with pytest.raises(ValueError, match="secondary_ci_only"):
+        secondary.execute(params, **kwargs)
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    kwargs["journal"] = []
+    with pytest.raises(ValueError, match="secondary_unreserved"):
+        secondary.execute(params, **kwargs)
+    assert not (runs.parent / "secondary").exists()
+
+
+def test_secondary_failed_primary_records_no_calls_or_spend(
+        layout: tuple[Path, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts.petri_audit import secondary
+
+    runs, root = layout
+    params = _params(mode="run", max_spend="0.5", judge_model=JUDGE_OF_RECORD)
+    state = secondary.execute(params, source_runs=["run_4242_1"], root=runs.parent / "secondary", runs_dir=runs,
+                              scratch=tmp_path / "scratch", workflow_id="777", primary_status="failure",
+                              journal=_secondary_context(monkeypatch, params), client_factory=_mock_factory)
+    assert state["status"] == "not_started" and state["reason"] == "primary_pass_failed"
+    assert not root.exists()
+
+
+def test_secondary_aborted_client_keeps_report_and_does_not_bind_partial_outputs(
+        layout: tuple[Path, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts.petri_audit import secondary
+
+    runs, root = layout
+    before = _tree_digest(runs)
+    params = _params(mode="run", max_spend="0.5", judge_model=JUDGE_OF_RECORD)
+
+    def factory(spec: str, plans: list) -> judge_runner.MockJudge:
+        def broken(prompt: str) -> str:
+            raise RuntimeError("test_provider_failure")
+        return judge_runner.MockJudge(broken, model_spec=spec)
+
+    with pytest.raises(ValueError, match="secondary_judge_incomplete"):
+        secondary.execute(params, source_runs=["run_4242_1"], root=runs.parent / "secondary", runs_dir=runs,
+                          scratch=tmp_path / "scratch", workflow_id="777", primary_status="success",
+                          journal=_secondary_context(monkeypatch, params), client_factory=factory)
+    assert _tree_digest(runs) == before
+    directory = rejudge.output_dir(root, "anthropic:claude-haiku-5-5", "run_4242_1")
+    assert not (directory / rejudge.MANIFEST_NAME).exists()
+    assert (directory / rejudge.judge_report_name("run_4242_1", "777", True)).is_file()
+    staged = secondary.verify(runs.parent / "secondary", "777", runs, tmp_path / "scratch")
+    assert all(path.is_file() for path in staged)
+
+
+def test_dual_rejudge_costs_reconcile_and_fold_once_without_filename_collision(
+        layout: tuple[Path, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import shutil
+    from scripts.fire_trigger import fire_commitment, secondary_judge_reservation
+    from scripts.petri_audit import secondary
+
+    runs, root = layout
+    params = _params(judge_model="claude-sonnet-4-6")
+    journal_entries = _secondary_context(monkeypatch, params)
+    first = _plan(runs, root, judge_model=params["judge_model"])
+    rejudge.execute(first, started_dir=tmp_path / "first", client_factory=_mock_factory,
+                    environ={"ANTHROPIC_API_KEY": "test-key-never-sent"})
+    secondary.execute(params, source_runs=["run_4242_1"], root=runs.parent / "secondary", runs_dir=runs,
+                      scratch=tmp_path / "scratch", workflow_id="777", primary_status="success",
+                      journal=journal_entries, client_factory=_mock_factory)
+    reports = sorted(root.glob("*/*/*.report.json"))
+    assert len(reports) == 2 and len({p.name for p in reports}) == 2
+    costs = [framework.load_json(p)["cost_usd"] for p in reports]
+    isolated = tmp_path / "isolated" / "runs"
+    isolated.mkdir(parents=True)
+    shutil.copytree(runs.parent / "secondary", isolated.parent / "secondary")
+    entry = _rejudge_entry(max_spend=fire_commitment(params)[0], lane="anthropic", resolved=True,
+                          secondary_judge=secondary_judge_reservation(params))
+    journal = tmp_path / "journal.jsonl"
+    _journal(journal, entry)
+    result = reconcile.reconcile(journal, isolated, rejudge_dir=root)
+    assert result["problems"] == [], result["problems"]
+    assert result["paid_fires"][0]["total_usd"] == pytest.approx(sum(costs))
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    dashboard, ledger = tmp_path / "dashboard.json", tmp_path / "ledger.md"
+    ledger.write_text("# test ledger\n", encoding="utf-8")
+    argv = ["--simulated-dir", str(empty), "--advice-dir", str(empty), "--pab-dir", str(empty),
+            "--petri-dir", str(empty), "--petri-rejudge-dir", str(root), "--trace-dir", str(empty),
+            "--jev-dir", str(empty), "--dashboard", str(dashboard), "--ledger", str(ledger)]
+    assert ledger_update.main(argv) == 0
+    folded = framework.load_json(dashboard)["spend"]["entries_folded"]
+    assert sum(folded[p.name] for p in reports) == pytest.approx(sum(costs))
+    before = dashboard.read_bytes()
+    assert ledger_update.main(argv) == 0
+    assert dashboard.read_bytes() == before
+    complete = reconcile.reconcile(journal, isolated, rejudge_dir=root, dashboard_path=dashboard)
+    assert complete["problems"] == []
+    assert complete["paid_fires"][0]["folded"] is True
+    second_report = next(path for path in reports if "_secondary." in path.name)
+    partial = framework.load_json(dashboard)
+    partial["spend"]["entries_folded"].pop(second_report.name)
+    framework.write_json(dashboard, partial)
+    result = reconcile.reconcile(journal, isolated, rejudge_dir=root, dashboard_path=dashboard)
+    assert result["paid_fires"][0]["folded"] is False
+    markdown = reconcile.render_markdown(result)
+    assert "Secondary judge sidecars: 1" in markdown and " | no | " in markdown
+    invalid_cost = framework.load_json(second_report)
+    invalid_cost["cost_usd"] = None
+    framework.write_json(second_report, invalid_cost)
+    result = reconcile.reconcile(journal, isolated, rejudge_dir=root, dashboard_path=dashboard)
+    assert result["paid_fires"][0]["total_usd"] is None
+    assert result["paid_fires"][0]["folded"] is False
+    # A missing second report must not leave the primary-only sum looking complete and fully booked.
+    second_report.unlink()
+    state_path = isolated.parent / "secondary/fire_777.json"
+    state = framework.load_json(state_path)
+    state["status"] = "running"
+    framework.write_json(state_path, state)
+    for missing_state in (False, True):
+        if missing_state:
+            state_path.unlink()
+        result = reconcile.reconcile(journal, isolated, rejudge_dir=root, dashboard_path=dashboard)
+        row = result["paid_fires"][0]
+        assert row["total_usd"] is None and row["secondary_judge_cost_usd"] is None
+        assert row["folded"] is False and row["judge_folded"] is False
+        assert any("secondary_cost_missing" in problem for problem in result["problems"])
+
+
+def test_secondary_interrupt_is_imputed_once_within_its_own_cap(
+        layout: tuple[Path, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts.petri_audit import secondary
+
+    runs, root = layout
+    params = _params(mode="run", max_spend="0.5", judge_model=JUDGE_OF_RECORD)
+
+    def factory(spec: str, plans: list) -> judge_runner.MockJudge:
+        def interrupted(prompt: str) -> str:
+            raise KeyboardInterrupt()
+        return judge_runner.MockJudge(interrupted, model_spec=spec)
+
+    scratch = tmp_path / "scratch"
+    with pytest.raises(KeyboardInterrupt):
+        secondary.execute(params, source_runs=["run_4242_1"], root=runs.parent / "secondary", runs_dir=runs,
+                          scratch=scratch, workflow_id="777", primary_status="success",
+                          journal=_secondary_context(monkeypatch, params), client_factory=factory)
+    secondary.finalize(runs.parent / "secondary", "777", scratch)
+    path = next(root.glob("*/*/*.report.json"))
+    report = framework.load_json(path)
+    assert report["cost_usd"] == report["max_spend_usd"] == 0.1
+    assert report["cost_basis"] == "ceiling_imputed:judge_aborted_without_sidecar"
+    before = path.read_bytes()
+    secondary.finalize(runs.parent / "secondary", "777", scratch)
+    assert path.read_bytes() == before
+
+
+def test_secondary_reuses_a_verified_existing_regrade_without_new_calls(
+        layout: tuple[Path, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts.petri_audit import secondary
+
+    runs, root = layout
+    params = _params(mode="run", max_spend="0.5", judge_model=JUDGE_OF_RECORD)
+    journal = _secondary_context(monkeypatch, params)
+    secondary.execute(params, source_runs=["run_4242_1"], root=runs.parent / "secondary", runs_dir=runs,
+                      scratch=tmp_path / "first", workflow_id="777", primary_status="success",
+                      journal=journal, client_factory=_mock_factory)
+    before = _tree_digest(root)
+    params = {**params, "_nonce": "new-fire"}
+    journal = _secondary_context(monkeypatch, params)
+    monkeypatch.setenv("GITHUB_RUN_ID", "778")
+    state = secondary.execute(params, source_runs=["run_4242_1"], root=runs.parent / "secondary", runs_dir=runs,
+                              scratch=tmp_path / "second", workflow_id="778", primary_status="success",
+                              journal=journal, client_factory=_mock_factory)
+    assert state["status"] == "not_started" and state["reason"] == "already_judged"
+    assert state["reused_sources"][0]["reason"] == "verified_existing_regrade"
+    assert _tree_digest(root) == before
