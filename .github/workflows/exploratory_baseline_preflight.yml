@@ -1,0 +1,197 @@
+name: Exploratory baseline preflight (manual only)
+
+# Preparation-only branch: the readiness record is blocked. No push/PR/schedule.
+# Owner merges reviewed wiring and readiness changes before a later authorized dispatch.
+on:
+  workflow_dispatch:
+    inputs:
+      execute:
+        description: 'Run the approved one-case check (requires reviewed readiness; default validates only)'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exploratory-baseline-preflight
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+  HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+  HF_HUB_DISABLE_TELEMETRY: '1'
+  HF_HUB_DISABLE_XET: '1'
+  DO_NOT_TRACK: '1'
+  TOKENIZERS_PARALLELISM: 'false'
+  PIP_CONFIG_FILE: /dev/null
+  PIP_INDEX_URL: https://pypi.org/simple
+  PIP_EXTRA_INDEX_URL: ''
+  PIP_DISABLE_PIP_VERSION_CHECK: '1'
+
+jobs:
+  readiness:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.repository == 'michaeldgreenphd/patientwords-engine' &&
+      github.actor == github.repository_owner && github.triggering_actor == github.repository_owner &&
+      github.ref == 'refs/heads/main' &&
+      github.workflow_ref == 'michaeldgreenphd/patientwords-engine/.github/workflows/exploratory_baseline_preflight.yml@refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ready: ${{ steps.gate.outputs.ready }}
+      runner_labels: ${{ steps.gate.outputs.runner_labels }}
+      causalab_commit: ${{ steps.gate.outputs.causalab_commit }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Evaluate reviewed readiness without runtime installation
+        id: gate
+        env:
+          PW_EXECUTE: ${{ inputs.execute }}
+        run: |
+          set -euo pipefail
+          args=()
+          if [[ "$PW_EXECUTE" == true ]]; then args+=(--execute); fi
+          python3 scripts/exploratory_ci_preflight.py "${args[@]}" \
+            --out "$RUNNER_TEMP/exploratory_methods/baseline_preflight/readiness.json" \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Preserve readiness or refusal (no model output)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: exploratory-baseline-readiness-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/exploratory_methods/baseline_preflight/
+          retention-days: 14
+          if-no-files-found: warn
+
+  model:
+    needs: readiness
+    if: >-
+      needs.readiness.outputs.ready == 'true' && inputs.execute &&
+      github.event_name == 'workflow_dispatch' &&
+      github.repository == 'michaeldgreenphd/patientwords-engine' &&
+      github.actor == github.repository_owner && github.triggering_actor == github.repository_owner &&
+      github.ref == 'refs/heads/main'
+    runs-on: ${{ fromJSON(needs.readiness.outputs.runner_labels || '["ubuntu-latest"]') }}
+    timeout-minutes: 60
+    env:
+      OMP_NUM_THREADS: '8'
+      MKL_NUM_THREADS: '8'
+      PW_RUN_DIR: ${{ runner.temp }}/exploratory_methods/baseline_preflight
+      PW_ENGINE_PYTHON: ${{ runner.temp }}/pw-engine-env/bin/python
+      PW_CAUSALAB_PYTHON: ${{ runner.temp }}/pw-causalab-env/bin/python
+      HF_HUB_CACHE: ${{ runner.temp }}/pw-baseline-model-cache
+      CARGO_TARGET_DIR: ${{ runner.temp }}/pw-causalab-target
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          path: engine
+          persist-credentials: false
+      - name: Refuse inadequate runner allocation before any dependency or weight download
+        working-directory: engine
+        run: |
+          set -euo pipefail
+          mkdir -p "$PW_RUN_DIR"
+          python3 scripts/exploratory_ci_preflight.py --execute --out "$PW_RUN_DIR/readiness.json"
+          python3 scripts/exploratory_ci_preflight.py --mode capacity --out "$PW_RUN_DIR/capacity.json"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: michaeldgreenphd/patient-words-causalab
+          ref: ${{ needs.readiness.outputs.causalab_commit }}
+          path: causalab
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+      - name: Prepare independent environments without changing either dependency policy
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/pw-engine-env"
+          python -m venv "$RUNNER_TEMP/pw-causalab-env"
+          "$PW_ENGINE_PYTHON" -m pip install -c engine/constraints.txt torch==2.13.0+cpu --index-url https://download.pytorch.org/whl/cpu
+          "$PW_ENGINE_PYTHON" -m pip install -c engine/constraints.txt transformers accelerate
+          "$PW_CAUSALAB_PYTHON" -m pip install --require-hashes -r causalab/requirements.lock.txt
+          cd causalab
+          toolchain=$(python -c 'import tomllib; print(tomllib.load(open("rust-toolchain.toml", "rb"))["toolchain"]["channel"])')
+          # Require a preexisting pinned toolchain; do not install system prerequisites.
+          rustup run "$toolchain" cargo --version
+          export RUSTUP_TOOLCHAIN="$toolchain"
+          "$PW_CAUSALAB_PYTHON" -m pip install --no-deps -e . --config-settings build-args=--locked
+          "$PW_CAUSALAB_PYTHON" -c 'import causalab.io.fastersafetensors._core'
+          "$PW_ENGINE_PYTHON" -m pip check
+          "$PW_CAUSALAB_PYTHON" -m pip check
+          "$PW_ENGINE_PYTHON" -m pip freeze > "$PW_RUN_DIR/engine.freeze.txt"
+          "$PW_CAUSALAB_PYTHON" -m pip freeze > "$PW_RUN_DIR/causalab.freeze.txt"
+          sha256sum uv.lock Cargo.lock requirements.lock.txt rust-toolchain.toml > "$PW_RUN_DIR/causalab-locks.sha256"
+          cd ../engine
+          sha256sum constraints.txt scripts/exploratory_baseline_preflight.py \
+            data/exploratory/baseline_preflight.v1.json data/exploratory/qwen3_4b_one_case.v1.json \
+            > "$PW_RUN_DIR/engine-inputs.sha256"
+      - name: Verify exact installed builds before model staging
+        working-directory: engine
+        run: |
+          set -euo pipefail
+          "$PW_ENGINE_PYTHON" scripts/exploratory_ci_preflight.py --mode environment --backend engine \
+            --out "$PW_RUN_DIR/engine.runtime.json"
+          "$PW_CAUSALAB_PYTHON" scripts/exploratory_ci_preflight.py --mode environment --backend causalab \
+            --out "$PW_RUN_DIR/causalab.runtime.json"
+      - name: Preview capped immutable file inventory and stage safe weights
+        working-directory: engine
+        timeout-minutes: 15
+        run: |
+          set -euo pipefail
+          "$PW_ENGINE_PYTHON" scripts/exploratory_ci_preflight.py --mode stage-model \
+            --cache "$HF_HUB_CACHE" --out "$PW_RUN_DIR/download_integrity.json"
+      - name: Capture original outputs sequentially and apply the predeclared gates
+        working-directory: engine
+        env:
+          HF_HUB_OFFLINE: '1'
+          TRANSFORMERS_OFFLINE: '1'
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 900s "$PW_ENGINE_PYTHON" \
+            scripts/exploratory_baseline_preflight.py --mode capture --backend engine \
+            --execution "$PW_RUN_DIR/execution.json" --out "$PW_RUN_DIR/engine.json" 2>&1 | tee "$PW_RUN_DIR/engine.log"
+          timeout --signal=TERM --kill-after=30s 900s "$PW_CAUSALAB_PYTHON" \
+            scripts/exploratory_baseline_preflight.py --mode capture --backend causalab \
+            --execution "$PW_RUN_DIR/execution.json" --engine "$PW_RUN_DIR/engine.json" \
+            --out "$PW_RUN_DIR/causalab.json" 2>&1 | tee "$PW_RUN_DIR/causalab.log"
+          "$PW_ENGINE_PYTHON" scripts/exploratory_baseline_preflight.py --mode compare \
+            --execution "$PW_RUN_DIR/execution.json" --engine "$PW_RUN_DIR/engine.json" \
+            --causalab "$PW_RUN_DIR/causalab.json" --out "$PW_RUN_DIR/comparison.json" 2>&1 | tee "$PW_RUN_DIR/comparison.log"
+      - name: Record execution status independently of numerical outcome
+        if: always()
+        env:
+          PW_JOB_STATUS: ${{ job.status }}
+        run: |
+          python3 - <<'PY_STATUS'
+          import json, os
+          from pathlib import Path
+          path = Path(os.environ["PW_RUN_DIR"])
+          path.mkdir(parents=True, exist_ok=True)
+          with (path / "job_status.json").open("x") as stream:
+              json.dump({"schema_version": "patientwords.baseline-ci-status/1",
+                         "job_status": os.environ["PW_JOB_STATUS"],
+                         "run_id": os.environ["GITHUB_RUN_ID"],
+                         "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+                         "numerical_status_source": "comparison.json if present; otherwise not established"}, stream)
+          PY_STATUS
+      - name: Preserve partial receipts on failure; never commit or publish results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: exploratory-baseline-preflight-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.PW_RUN_DIR }}/
+          retention-days: 14
+          if-no-files-found: warn

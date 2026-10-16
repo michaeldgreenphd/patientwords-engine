@@ -60,6 +60,8 @@ publish-site-data skill, which the Routine runs in §5 when new results land.
 | Script | What it does | Status | Writes | Who runs it |
 |---|---|---|---|---|
 | `exploratory_methods.py` | Validates isolated lens/patch specifications and scores synthetic evidence packets; real execution refuses pending compatibility | staged | exclusively creates `exploratory_methods/exploratory_report.<id>.json` outside protected data trees; validation prints JSON | owner or session for offline checks; no CI lane wired |
+| `exploratory_ci_preflight.py` | Validates manual CI readiness, reviewed code ancestry and runner capacity; future capped safe-weight staging | staged | external receipts only; no publication or committed outputs | owner-authorized manual workflow after review; local readiness is read-only |
+| `exploratory_baseline_preflight.py` | Prepares and compares one-case original-output parity; lens-independent, guarded future CI capture | staged | external `exploratory_methods/baseline_preflight/`; no existing collector payloads | owner or session for validation; blocked manual CI wiring prepared for review |
 
 ## CI lanes
 
