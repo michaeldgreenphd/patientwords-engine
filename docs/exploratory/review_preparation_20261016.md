@@ -18,7 +18,7 @@ commit and the approved Causalab commit as described in [baseline_ci.md](baselin
 
 | Repository | Review branch and commit | Review route |
 |---|---|---|
-| Engine | `codex/exploratory-methods-contracts`, continued from `e816cd123b926e2e35c27c31b0cd64da7250bf08`; executable source at `1d86a66fb5416f2f4831201a73283919f8ddfd3a`; final documentation head is in its draft PR | [Owner draft PR #121](https://github.com/michaeldgreenphd/patientwords-engine/pull/121) against `main`; communication `70ac359f`, preparation `73bb882f`, manual CI `faf315d0` |
+| Engine | `codex/exploratory-methods-contracts`, continued from `e816cd123b926e2e35c27c31b0cd64da7250bf08`; executable source at `4664014e5cf1e4de3af516615b5e1dc5215aea8e`; final documentation head is in its draft PR | [Owner draft PR #121](https://github.com/michaeldgreenphd/patientwords-engine/pull/121) against `main`; communication `70ac359f`, preparation `73bb882f`, manual CI `faf315d0` |
 | J++ | `codex/lens-interop-contracts` at `1b0c3ffcfa152d3b0697ad852838183ffeac56ba` | [Owner draft PR #1](https://github.com/michaeldgreenphd/patient-words-jpp_lens/pull/1) |
 | Causalab | `codex/paired-intervention-adapter` at `91291aa75aa19918e56f3d15ff87e9dbbe165afa` | [Owner branch](https://github.com/michaeldgreenphd/patient-words-causalab/tree/91291aa75aa19918e56f3d15ff87e9dbbe165afa); PR opening blocked as below |
 
@@ -120,85 +120,38 @@ owner review; it is not a general literacy comparison or an actual patient quote
 All unrun stages remain visibly not run. No dashboard, audience recruitment,
 formatter, new endpoint or patient-facing safety score was added.
 
-## Review corrections and verification
+## Verification of the review heads
 
-The final worker observes actual aligned input masks, positions and output
-indices instead of trusting copied settings. It verifies the tokenizer's offline
-snapshot identity rather than relying on an init argument consumed by
-Transformers. It uses Causalab's supported whole-sequence head read to preserve
-the original complete forward, then retains the final-token endpoint. Git
-identity failures and in-repository output paths receive named refusals.
+| Check | Result and scope |
+|---|---|
+| Engine complete offline suite | **5,204 passed, 10 skipped in 254.97 s** at executable-source `4664014e5cf1e4de3af516615b5e1dc5215aea8e`; the later receipt/handoff commit changes documentation only. |
+| Engine baseline worker | 71 targeted tests; original full-forward synthetic smoke and hook cleanup passed. |
+| Engine contracts | 102 targeted tests, including missing/mismatched/non-integer execution-seed refusals. |
+| Manual-CI helper and trigger docs | 68 targeted tests; invalid output paths return named JSON/exit 2 without a traceback or retry. |
+| J++ final adapter/HF-layout selection | 129 passed, zero skips, 1.84 s at `1b0c3ff`; Codex review clean and all nine fixed threads resolved. |
+| Causalab final edited-source selection | 62 passed, zero skips at `91291aa`; three unrelated offline-cache warnings. Earlier unchanged-runtime selection: 208 passed. |
+| Final synthetic cross-repository bridge | 36 readout rows, 3 outputs, 10 interventions, zero real-model executions. |
+| Ruff, actionlint, diff checks | Passed. Source receipt hashes match their declared commits. |
+| Live frontend contract | 0 errors, 1 existing warning: 1,728/13,652 urgency rows have no published-scenario join. Existing stale vendor-pack notices remain. No site data changed. |
 
-The revised synthetic runtime smoke compared both complete `[1,2,16]` output
-matrices exactly with direct aligned forwards and verified hook cleanup. Its
-external installation receipt is
-`/private/tmp/pw-review-installation-check/installation_checks/full_native_forward_v1/installation_check.json`.
-It records worker SHA-256
-`208d0e9de28e4deda7b0bb4e41daa8c5fab8ce666a46a10189ddeec1690a569b`;
-the subsequent path/Git-refusal-only changes are covered by unit regressions.
-The final baseline module passed 71 targeted tests. No installation was repeated.
+The ten full-suite skips are two unavailable `inspect_petri` checks, three
+unavailable Playwright checks, two unavailable `inspect_ai` checks, one
+not-yet-landed PAB workflow and two creation-guard tests inapplicable to workflows
+without push events. Unrun checks remain explicit: full upstream fork suites,
+CUDA, Linux runtime installation, released Qwen baseline, compatible real lens
+readouts, residual/native-channel experiments, and comprehension review.
+Software tests do not validate a clinical interpretation.
 
-The Causalab family restriction passed 62 final edited-source adapter/runtime
-tests, zero skips; the earlier unchanged-runtime selection passed 208 tests.
-Three warnings concerned unrelated offline fixture caches. The new Linux setup
-records the exact verified CPU wheel version `2.13.0+cpu`, including its local
-build suffix; both environments must pass exact-version checks before staging
-weights. Only wheel metadata was inspected, not a wheel download or install.
-
-Larger unrun checks remain explicit: full upstream fork suites, CUDA, Linux
-installation, released Qwen baseline, compatible real lens transport, residual
-and native-channel experiments, and independent comprehension review. Local
-software checks do not validate a clinical interpretation.
-
-J++ review fixes at `5a001cbfca8b69698a01908321a098aecce34876` reject ambiguous
-matrix families, equal-target source layers, conflicting legacy estimator
-metadata and tokenizer identities. All four findings received a fix-commit reply
-and were resolved after verification. Final selection: **72 passed**, zero skips;
-Ruff and diff checks passed. Re-review was requested once for the changed head.
-Unknown historical fit identity still refuses transport; the explicit J++
-method is not relabeled from its internal `rlens` recipe setting.
-
-Second-round J++ fixes at `28e75c5569a42ab9458c82b3d3f14f8d8567b7a4` resolve
-configured relative/duplicate/unsorted layer notation using the fitter's rules
-and hash/load one immutable byte snapshot. Both new threads have fix replies
-and are resolved; re-review was requested once for this head. **89 tests passed**,
-zero skips. Snapshot loading requires additional temporary memory for the input
-bytes; the earlier artifact-inspection timing and peak memory remain historical,
-not a benchmark of this newer loader.
-
-Engine contract hardening at `6265fc7cf029dc3144c4e1c611351ecc8fe8fd80` adds
-source/prompt split checks, actual vocabulary/target matching, and explicit
-`matched_to` random-control links with layer/size/scope agreement. Both schemas
-declare the reference. Supplied synthetic fixtures are updated; no real case or
-landed result changes. **91 targeted tests passed**. The external synthetic bridge
-passed with 36 readouts, 3 outputs and 10 interventions, zero model executions:
-`/private/tmp/pw-review-synthetic-contract-v2/exploratory_methods/`; report SHA-256
-`29412585a2b990a3957a1f3c69b7821fad31697db9576f505f4de410747c2954`.
-These counts describe software fixtures, not study sample sizes or findings.
-
-
-## Final check inventory
-
-At executable-source commit `6265fc7cf029dc3144c4e1c611351ecc8fe8fd80`, the complete
-engine suite passed **5,188 tests with 10 skips in 253.84 seconds**. The later
-handoff/index/source-receipt commit changes documentation only. Full-tree Ruff
-and `git diff --check` passed. The live frontend contract returned **0 errors,
-1 pre-existing warning**: 1,728 of 13,652 urgency rows have no published-scenario
-join; it also reported existing stale vendor packs. No site data was changed.
-
-The ten skips were two unavailable `inspect_petri` checks, three unavailable
-Playwright checks, two unavailable `inspect_ai` checks, one not-yet-landed PAB
-workflow and two creation-guard tests inapplicable to workflows without push
-triggers. Full upstream fork suites and real-model tests remain unrun as above.
-
-Commands run from the exploratory engine checkout (the interpreter and Ruff are
-from the unchanged engine environment):
+Commands actually run from the exploratory engine checkout, using the unchanged
+engine environment:
 
 ```bash
 PYTHONPYCACHEPREFIX=/private/tmp/patientwords-review-final/fresh-bytecode \
   /Users/michaelgreen/patientwords-engine/.venv/bin/python \
   -m pytest -q -rs -p no:cacheprovider
 /Users/michaelgreen/patientwords-engine/.venv/bin/ruff check --no-cache .
+/private/tmp/pw-actionlint-1.7.12/actionlint -shellcheck= -pyflakes= \
+  .github/workflows/exploratory_baseline_preflight.yml
 git diff --check
 PYTHONDONTWRITEBYTECODE=1 /Users/michaelgreen/patientwords-engine/.venv/bin/python \
   scripts/validate_frontend_contract.py --site ../patientwords
@@ -208,72 +161,68 @@ PYTHONDONTWRITEBYTECODE=1 /Users/michaelgreen/patientwords-engine/.venv/bin/pyth
   scripts/exploratory_ci_preflight.py
 ```
 
-The baseline validation returned `prepared_not_executed`, with plan digest
+The baseline validation returns `prepared_not_executed`, with plan digest
 `689062d03358a41fb665a87f91ff8b4e01001419a1f0daaa266314af565ac9cd`.
-Readiness returned `blocked` with all six expected prerequisites unresolved:
-execution approval, reviewed Causalab commit, suitable existing runner,
-verified zero-cost allocation, reviewed Linux setup and current seal attestation.
-These dry checks import no model runtime and perform no downloads or inference.
-The full-suite log is external at
-`/private/tmp/patientwords-review-complete-tests.log`.
+Readiness returns `blocked` with all six prerequisites unresolved: execution
+approval, reviewed Causalab commit, suitable existing runner, verified zero-cost
+allocation, reviewed Linux setup and current seal attestation. These dry checks
+import no model runtime and perform no downloads or inference. Final suite log:
+`/private/tmp/patientwords-review-approved-route-tests.log`.
 
+## Verified corrections and artifact receipts
 
-## Final review correction receipts
+The engine worker captures actual aligned masks, positions and output indices,
+verifies the offline tokenizer snapshot, and preserves the native whole-sequence
+forward before selecting the final-token endpoint. Its synthetic runtime smoke
+compared both complete `[1,2,16]` output matrices exactly with aligned direct
+forwards and checked hook cleanup. The historical external installation receipt
+is `/private/tmp/pw-review-installation-check/installation_checks/full_native_forward_v1/installation_check.json`;
+it records worker SHA-256
+`208d0e9de28e4deda7b0bb4e41daa8c5fab8ce666a46a10189ddeec1690a569b`.
+Later path/Git refusal changes are covered by unit regressions; installation was
+not repeated. The two Linux environments must verify exact package versions
+before staging weights, including engine Torch `2.13.0+cpu`; only CPU wheel
+metadata was inspected, not the wheel installed or downloaded.
 
-The first engine draft push created an unexpected workflow-validation failure:
-[run 38836042869](https://github.com/michaeldgreenphd/patientwords-engine/actions/runs/38836042869).
-The API reported **zero jobs**; no model job, dispatch or measurement ran. Five
-job-level `runner.temp` expressions were invalid in GitHub's expression context.
-Commit `7c7f3b9091522ed341d60143052d9a6483879732` moves path initialization to an allocated-runner step and
-adds two regressions. The temporary, checksum-verified actionlint 1.7.12 checker
-reproduced the five original errors and passes the corrected definition:
+The first engine push produced an unexpected workflow-validation failure:
+[run 38836042869](https://github.com/michaeldgreenphd/patientwords-engine/actions/runs/38836042869),
+with **zero jobs**. Five job-level `runner.temp` expressions were invalid in
+GitHub's context. Commit `7c7f3b9091522ed341d60143052d9a6483879732` moves path
+initialization to an allocated-runner step. Actionlint reproduced the original
+errors and passes the correction. No dispatch or model run was used to test it.
+The current manual workflow remains inactive on ordinary pushes/PRs; actual
+post-push states and review status are recorded on draft #121.
 
-```bash
-/private/tmp/pw-actionlint-1.7.12/actionlint -shellcheck= -pyflakes= \
-  .github/workflows/exploratory_baseline_preflight.yml
-```
+The three engine review findings are addressed separately:
 
-The complete engine suite was rerun with the pytest command in the inventory on that correction:
-**5,190 passed, 10 skipped in 257.63 seconds**. Full-tree Ruff and diff checks
-passed; skip reasons are unchanged. The final documentation/receipt commit does
-not alter executable files. Log:
-`/private/tmp/patientwords-review-workflow-fixed-tests.log`.
-The first engine Codex review of `c02c259802a0bd848435995b8c517c21a1a12fbc`
-completed without findings. The newer corrected workflow requires its own review;
-current review and observed post-push status are recorded on draft #121.
+- `76e2ede0053d440e8d2bc3ae7df88cd43da83ba4` records the owner's existing narrow
+  manual-route preparation authorization in canonical `AGENTS.md`. It grants no
+  execution authority and leaves production triggers/budgets unchanged. Follow-up
+  `4664014e5cf1e4de3af516615b5e1dc5215aea8e` keeps the rule within the unchanged
+  30 KiB instruction budget; only adjacent wording was condensed, preserving
+  every other rule. The full-suite size failure was corrected before pushing.
+- `7408b7f59fe58d6430aac02e783fc0facf481578` preserves JSON refusals/exit 2 when
+  receipt paths fail, without retrying an invalid primary output; an unavailable
+  secondary failure receipt is reported separately from the original error.
+- `cca937824b1ad1b208639b55f7cfe865b02ff73b` requires the packet's executed seed to
+  be a strict nonnegative integer equal to the spec seed. Schema and synthetic
+  fixture are explicit; missing data receives `execution_seed`, not a default.
 
-Third-round J++ corrections at `1b0c3ffcfa152d3b0697ad852838183ffeac56ba` enforce the released format's legacy
-final-block target, cross-check every present estimator recipe, and refuse
-transport outside the independently audited single-stream topology scope. The
-scope is the exact pinned Qwen3-4B model/revision/geometry tuple and the explicitly
-synthetic fixture; this is not evidence of the released lens's historical fit
-revision. Inspection remains available without authorizing transport. All three
-threads received fix-commit replies and were resolved. The final offline adapter
-and existing HF-layout selection passed **129 tests, zero skips in 1.84 seconds**;
-Ruff and diff checks passed. The single new-head Codex review completed without findings at `1b0c3ff`. This updates
-software capability only; no actual checkpoint inspection or model run was repeated.
+J++ corrections preserve method, target, recipe and tokenizer identity; resolve
+configured layer notation using the fitter's rules; and hash/deserialise the
+same immutable byte snapshot. Transport is deliberately limited to the exact
+independently audited Qwen model/revision/geometry tuple and the explicit
+synthetic fixture. That topology audit does not establish historical fit
+compatibility. Inspection remains available for unsupported artifacts. Snapshot
+loading adds temporary memory for the serialized bytes; initial artifact timing
+and peak-RSS receipts remain historical, not benchmarks of this newer loader.
 
-
-The final cross-repository bridge identified one compatibility update needed in
-its **synthetic-only** fixtures: the engine's generic toy name differed from the
-J++ boundary's explicitly audited toy identity, and the configured fixture had
-no `lrp_mode`. The pre-fix smoke refused `unsupported_residual_topology` as
-intended. Commit `1d86a66fb5416f2f4831201a73283919f8ddfd3a` aligns the fixture
-identity to `synthetic/toy`, recomputes its spec digest and explicitly declares
-its standard-gradient recipe. No real-case or released-artifact identity changed.
-The final cross-repository smoke passed against J++ `1b0c3ff`: 36 readout rows,
-3 outputs and 10 interventions; **zero real-model executions**. Receipt:
-`/private/tmp/pw-review-synthetic-final-recipe-after/exploratory_methods/exploratory_report.adapter_bridge.json`,
-SHA-256 `0600142cacb2172d340becf5e0823fe9c758fa91a8dcf0731e1467a8f9fd0c8d`.
-The minimal Torch environment still warns that NumPy is absent; this test uses
-Torch tensors directly and passes. No dependency was installed to suppress it.
-
-
-The final full engine suite on executable-source commit
-`1d86a66fb5416f2f4831201a73283919f8ddfd3a` passed **5,190 tests, 10 skips in
-261.43 seconds**. Skip reasons are unchanged; final log:
-`/private/tmp/patientwords-review-final-integrated-tests.log`. Full-tree Ruff,
-actionlint and diff checks passed. All 29 final source-receipt hashes match both
-their declared commits and current source files. The final handoff/receipt commit
-changes documentation only. No further software installation or real-model
-execution was needed for these corrections.
+The final bridge uses the same explicit `synthetic/toy` identity in both repos
+and declares its fixture recipe. Its pre-fix run correctly refused the old
+unaudited toy label; no real-case or released-artifact identity was changed.
+The final seed-aware report is external at
+`/private/tmp/pw-review-seed-contract/exploratory_methods/exploratory_report.adapter_bridge.json`,
+SHA-256 `e11724b77f91474334a6e08f1372b2624a48bd76068331ae03e2a4af7acca030`.
+The minimal Torch environment still warns that NumPy is absent; direct tensor
+checks pass, and no dependency was installed to suppress the warning. These
+counts describe software fixtures, not study samples or scientific findings.
