@@ -18,7 +18,7 @@ commit and the approved Causalab commit as described in [baseline_ci.md](baselin
 
 | Repository | Review branch and commit | Review route |
 |---|---|---|
-| Engine | `codex/exploratory-methods-contracts`, continued from `e816cd123b926e2e35c27c31b0cd64da7250bf08`; executable source at `4664014e5cf1e4de3af516615b5e1dc5215aea8e`; final documentation head is in its draft PR | [Owner draft PR #121](https://github.com/michaeldgreenphd/patientwords-engine/pull/121) against `main`; communication `70ac359f`, preparation `73bb882f`, manual CI `faf315d0` |
+| Engine | `codex/exploratory-methods-contracts`, continued from `e816cd123b926e2e35c27c31b0cd64da7250bf08`; executable source at `b6b7b10abe05ee9ab852e049f3357038b8adeed4`; final documentation head is in its draft PR | [Owner draft PR #121](https://github.com/michaeldgreenphd/patientwords-engine/pull/121) against `main`; communication `70ac359f`, preparation `73bb882f`, manual CI `faf315d0` |
 | J++ | `codex/lens-interop-contracts` at `1b0c3ffcfa152d3b0697ad852838183ffeac56ba` | [Owner draft PR #1](https://github.com/michaeldgreenphd/patient-words-jpp_lens/pull/1) |
 | Causalab | `codex/paired-intervention-adapter` at `91291aa75aa19918e56f3d15ff87e9dbbe165afa` | [Owner branch](https://github.com/michaeldgreenphd/patient-words-causalab/tree/91291aa75aa19918e56f3d15ff87e9dbbe165afa); PR opening blocked as below |
 
@@ -31,8 +31,10 @@ remains unsent. No lens compatibility gate was weakened.
 
 ## Push and pull-request safety audit
 
-At audit time all remotes pointed only to the owner's repositories, all defaults
-were `main`, and all three proposed remote branches were absent. Relevant local
+At the initial push audit all remotes pointed only to the owner's repositories,
+all defaults were `main`, and all three proposed remote branches were absent.
+The finalization audit rechecked the existing pushed branches and live workflows
+on 2026-10-16; its current recommendations are below. Relevant local
 workflow blobs matched remote main. No indirect `workflow_run`, reusable workflow
 or dispatch chain was found. Protected triggers, operational records, landed data,
 owner hooks, dependency pins and frontend files are unchanged.
@@ -49,6 +51,8 @@ owner hooks, dependency pins and frontend files are unchanged.
   runs the heavyweight non-golden suite and can auto-push lint changes with a write
   token. A head-only workflow edit cannot protect the opening event. No PR was
   opened, no unrelated workflow disabled, and no repository permission changed.
+  A future merge also starts the full suite through `push: branches: [main]`;
+  marking the PR ready additionally invokes the credential-backed Claude review.
   The owner must first approve a safe review route or land a narrowly reviewed
   base-workflow correction. That correction should retain test coverage while
   separating bounded read-only checks from explicitly authorized heavy tests.
@@ -57,6 +61,43 @@ Workflow states and exact final review heads are reported in the draft PR bodies
 and final handoff. Scheduled runs unrelated to these branches are not evidence
 that this work launched them. Review is requested once per changed head; a quota
 response stops further requests until the reset rather than causing retries.
+
+## Code-only merge recommendations and order
+
+- **Engine draft #121:** ready as inactive infrastructure after review of the
+  final dispatch-assertion update and the owner's normal draft/merge decision.
+  No production trigger, collector, measurement or frontend contract is changed.
+  A merge makes the manual workflow available on `main` but does not dispatch it.
+  Its readiness remains blocked; merging is not execution authorization.
+- **J++ draft #1:** ready for the owner's code-only merge decision at exact head
+  `1b0c3ffcfa152d3b0697ad852838183ffeac56ba`; the completed head-specific Codex
+  review has no findings and all nine fixed threads are resolved. Neither main
+  nor the branch defines an Actions workflow, so merging launches no repository
+  workflow. Unknown fit revisions block transport, not this inactive adapter.
+- **Causalab branch:** no draft exists because base
+  [test.yml](https://github.com/michaeldgreenphd/patient-words-causalab/blob/8e8d5d1f8f9ca8f42bfce7c6b5eef194f012660e/.github/workflows/test.yml)
+  starts heavy/privileged work on draft creation and full tests on main push.
+  This is a review/merge-route blocker under the current authorization, not a
+  failed adapter test. The owner must approve a safe base-workflow review route
+  or separately authorize those effects. A head-only edit cannot guard the
+  base's opening event. No protections or settings were changed to work around it.
+
+Engine and J++ have no merge-order dependency; either can merge first. Causalab
+need not merge before inactive engine infrastructure. Baseline execution later
+requires the engine route, a reviewed readiness update and the exact reviewed
+Causalab code on their owner default branches; J++ is not a baseline dependency.
+The [post-merge verification procedure](baseline_ci.md#verify-final-integration-commits)
+reconciles tested source bytes with new merge/squash SHAs before authorizing them.
+No future merge SHA is invented or substituted for a tested source commit.
+
+The live audit observed engine main at
+`974ec914eb430f8a2f47278714fe17398f903e14`: the advance from the original base
+changed only the scheduled backfill's operational journal. Existing workflow
+blobs still match, and no trigger path is in this PR. The owner must preserve
+main's current journal and trigger files during a merge. Its independent backfill
+schedule continues unchanged; a later scheduled run is not an integration fire.
+Both drafts reported clean/mergeable, with no current Actions check entries.
+Those facts are not a substitute for independent review or owner approval.
 
 ## Independent readiness states
 
@@ -226,3 +267,42 @@ SHA-256 `e11724b77f91474334a6e08f1372b2624a48bd76068331ae03e2a4af7acca030`.
 The minimal Torch environment still warns that NumPy is absent; direct tensor
 checks pass, and no dependency was installed to suppress the warning. These
 counts describe software fixtures, not study samples or scientific findings.
+
+## Finalization follow-up checks
+
+This continuation preserved all three actual branches and clean starting trees:
+engine `c62f9b0bd2aeb22c4e7927feafb0d87dba431380`, Causalab
+`91291aa75aa19918e56f3d15ff87e9dbbe165afa`, and J++
+`1b0c3ffcfa152d3b0697ad852838183ffeac56ba`. Neither method fork has an applicable
+AGENTS.md; current engine instructions and both preparation handoffs were read.
+No successful installation or download was repeated and no environment upgraded.
+The runner inventory was rechecked read-only and still returned zero registered
+self-hosted runners; no suitable capacity or budget was established.
+
+Newly repeated checks on the unchanged fork heads: J++ **129 passed**, zero skips
+(2.22 s), and Causalab **62 passed**, zero skips (3.66 s; three existing offline-cache
+warnings). Causalab explicitly imported the checkout's edited adapter, exposing
+only the prebuilt extension through a temporary package-path overlay; it did not
+test the stale installed source. Both selected Ruff checks passed. At entry, all 30 source
+receipt hashes matched the working trees and their declared commits. Both cached
+lens files were rehashed successfully and remain read-only outside Git.
+
+The baseline-plan dry run still reports `prepared_not_executed` with the unchanged
+plan digest above. The live-site contract again reports 0 errors and the same
+existing warning. Communication review found no missing requirements: 19 local
+links, original prompt hashes, artifact mappings and the independent status
+fields were checked; no formatter or extra endpoint was added.
+
+Commit `b6b7b10abe05ee9ab852e049f3357038b8adeed4` addresses immutable execution
+selection and attempt bounds: the manual input asserts the expected engine commit against `GITHUB_SHA`
+without selecting code, and reruns refuse. The helper/worker/workflow-guard selection passed **150 tests, 2 skipped**;
+Ruff and actionlint passed. Exact final commits and fresh full-suite verification
+are recorded in draft #121's finalization summary. The preceding test table is the earlier source check,
+not silently relabeled as a test of this update. Source hashes are refreshed to
+the new executable-source commit in the companion receipt.
+
+The first invalid-workflow run above remains historical and had zero jobs. No
+baseline dispatch, research-weight download, new real-model finding, merge,
+publication or recruitment occurred. Linux transport retry behavior, runtime
+installation, runner cost/capacity and the other readiness blockers remain
+explicit; they do not justify adding optional features to this preparation pass.
