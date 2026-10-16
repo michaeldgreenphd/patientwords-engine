@@ -18,7 +18,7 @@ commit and the approved Causalab commit as described in [baseline_ci.md](baselin
 
 | Repository | Review branch and commit | Review route |
 |---|---|---|
-| Engine | `codex/exploratory-methods-contracts`, continued from `e816cd123b926e2e35c27c31b0cd64da7250bf08`; executable source at `2d1e14b33937b2f5ac49747a85bf1000f9a9dbbf`; final documentation head is in its draft PR | [Owner draft PR #121](https://github.com/michaeldgreenphd/patientwords-engine/pull/121) against `main`; communication `70ac359f`, preparation `73bb882f`, manual CI `faf315d0` |
+| Engine | `codex/exploratory-methods-contracts`, continued from `e816cd123b926e2e35c27c31b0cd64da7250bf08`; executable source at `5a8a5d2293c1e78591b7ba349102ee7f5473ac10`; final documentation head is in its draft PR | [Owner draft PR #121](https://github.com/michaeldgreenphd/patientwords-engine/pull/121) against `main`; communication `70ac359f`, preparation `73bb882f`, manual CI `faf315d0` |
 | J++ | `codex/lens-interop-contracts` at `1b0c3ffcfa152d3b0697ad852838183ffeac56ba` | [Owner draft PR #1](https://github.com/michaeldgreenphd/patient-words-jpp_lens/pull/1) |
 | Causalab | `codex/paired-intervention-adapter` at `91291aa75aa19918e56f3d15ff87e9dbbe165afa` | [Owner branch](https://github.com/michaeldgreenphd/patient-words-causalab/tree/91291aa75aa19918e56f3d15ff87e9dbbe165afa); PR opening blocked as below |
 
@@ -65,7 +65,7 @@ response stops further requests until the reset rather than causing retries.
 ## Code-only merge recommendations and order
 
 - **Engine draft #121:** ready as inactive infrastructure after review of the
-  final dispatch-assertion update and the owner's normal draft/merge decision.
+  final dispatch-assertion and intervention-validation updates, followed by the owner's normal draft/merge decision.
   No production trigger, collector, measurement or frontend contract is changed.
   A merge makes the manual workflow available on `main` but does not dispatch it.
   Its readiness remains blocked; merging is not execution authorization.
@@ -325,3 +325,23 @@ controls. Historical real artifact receipts and fit provenance were not changed.
 The full suite is rerun before the fix is pushed, with final-head results and
 review disposition on the PR. This is a concrete reviewed defect, not an added
 experiment or optional feature.
+
+### Intervention semantics follow-up
+
+The review of `1d0bdc507aca663daa9d1186afa8a4e7ba7695ff` identified the
+remaining semantic part of standalone validation (thread 4291100571). Commit
+`5a8a5d2293c1e78591b7ba349102ee7f5473ac10` shares the existing intervention checks
+between standalone validation and packet reporting: case/variant references,
+kind/component/control, layer, aligned integer positions, component-specific
+channels, seeds, matched random controls, discovery nominations and self-patch
+identity. Plan entries also refuse reserved packet-only fields. Measured logits,
+edit magnitudes, packet completeness and actual self-patch output identity remain
+report-time checks. Packet metadata retains strict type checks even when Python's
+numeric equality would equate a boolean or float with an integer.
+
+The targeted suite passed **214 tests** (75 added cases), including direct CLI
+refusals and real pending-tokenization specifications remaining blocked. The
+reviewed real one-case file is unchanged. Synthetic fixture provenance alone was
+refreshed; no stimulus, numerical result or control was changed. Full-suite and
+synthetic-bridge results at the final documentation head are recorded in the PR
+handoff before pushing; earlier counts above are historical source checks.
