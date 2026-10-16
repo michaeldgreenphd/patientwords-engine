@@ -124,8 +124,32 @@
             "items": {
               "type": "number"
             }
+          },
+          "matched_to": {
+            "type": "string",
+            "minLength": 1,
+            "description": "For a random control, the ID of its nominated comparator; the semantic validator requires identical case, direction, component, kind, layer, positions and group size."
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "control"
+              ],
+              "properties": {
+                "control": {
+                  "const": "random"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "matched_to"
+              ]
+            }
+          }
+        ]
       }
     }
   },

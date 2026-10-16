@@ -361,3 +361,58 @@ def test_boolean_index_base_refuses(spec: dict) -> None:
 def test_fixture_retains_failed_and_already_top1_cases(spec: dict, packet: dict) -> None:
     report = methods.build_report(spec, packet)
     assert {x["unpatched_answer_stratum"] for x in report["model_outputs"]} == {"top1", "not_top1"}
+
+
+@pytest.mark.parametrize("same_source", [True, False])
+def test_relabelled_families_cannot_reuse_source_or_prompt_across_splits(spec: dict, same_source: bool) -> None:
+    other = copy.deepcopy(spec["cases"][0])
+    other.update(id="case-b", family_id="family-b", template_family="template-b", split="fresh_test")
+    if same_source:
+        for entry in other["variants"].values():
+            entry["prompt"] += " extra"
+            entry["prompt_sha256"] = methods.prompt_digest(entry["prompt"])
+    else:
+        other["join"]["index"] += 1
+    spec["cases"].append(other)
+    with pytest.raises(methods.Refusal) as error:
+        methods.validate_spec(spec)
+    assert error.value.code == "split_leakage"
+
+
+@pytest.mark.parametrize("target_index,text", [(0, "different"), (0, "alphabet"), (1, "different tail")])
+def test_target_matching_uses_actual_vocabulary_text(spec: dict, packet: dict, target_index: int, text: str) -> None:
+    spec["cases"][0]["targets"][target_index]["text"] = text
+    packet["spec_sha256"] = methods.digest(spec)
+    with pytest.raises(methods.Refusal) as error:
+        methods.build_report(spec, packet)
+    assert error.value.code == "target_text_token_mismatch"
+
+
+def test_unrelated_decoded_token_is_not_a_first_piece_proxy() -> None:
+    assert methods.token_match("alpha", "different tail", [0, 1], 0) is None
+
+
+@pytest.mark.parametrize("mutation", ["missing_reference", "wrong_reference", "size", "layer", "positions"])
+def test_seeded_controls_must_match_their_declared_comparator(spec: dict, packet: dict, mutation: str) -> None:
+    for collection in (spec["intervention_plan"], packet["interventions"]):
+        row = next(item for item in collection if item["control"] == "random")
+        if mutation == "missing_reference":
+            row.pop("matched_to")
+        elif mutation == "wrong_reference":
+            row["matched_to"] = "rescue"
+        elif mutation == "size":
+            row["channels"] = methods.seeded_groups(4, 2, [row["seed"]], row["layer"])[0]["channels"]
+        elif mutation == "layer":
+            row["layer"] = 0
+        else:
+            row["positions"] = [[1, 1], [1, 1]]
+    packet["spec_sha256"] = methods.digest(spec)
+    with pytest.raises(methods.Refusal) as error:
+        methods.build_report(spec, packet)
+    assert error.value.code == "random_control_match"
+
+
+def test_valid_random_control_link_survives_reporting(spec: dict, packet: dict) -> None:
+    report = methods.build_report(spec, packet)
+    random = [row for row in report["interventions"] if row["control"] == "random"]
+    assert len(random) == 3 and all(row["matched_to"] == "channels" for row in random)

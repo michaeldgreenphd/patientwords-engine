@@ -330,3 +330,20 @@ parity preflight, after separate owner authorization and reviewed execution wiri
 Historical lens-fit provenance can be resolved in parallel. Paired readouts follow
 only after both compatibility and parity gates pass; native-channel comparisons
 follow a working residual baseline with complete controls.
+
+### Contract hardening during review preparation
+
+Synthetic evidence validation also rejects reuse of a source join or exact prompt
+across discovery/validation/fresh-test splits, even when family IDs are relabeled.
+Target text must agree with its vocabulary token identity before a score is
+labeled exact or first-wordpiece proxy. Every random channel control now declares
+`matched_to`, the nominated intervention ID, and must match its case, direction,
+kind, component, layer, positions and group size as well as its own recorded seed.
+The two structural schemas declare that required random-control reference; the
+semantic validator enforces the cross-record comparison.
+
+This tightens the new, unpublished exploratory v1 synthetic contract only. Old
+synthetic packets without `matched_to` must be regenerated with explicit links;
+they refuse rather than silently acquire a comparator. The repository's supplied
+synthetic fixtures are updated. Existing measurement/frontend schemas and the
+reviewed real-case specification remain unchanged.

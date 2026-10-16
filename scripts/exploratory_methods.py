@@ -96,7 +96,8 @@ def token_match(token: str, target: str, encoded_target: list[int], token_id: in
     """Exact ID matching and prefix proxies are deliberately different outputs."""
     if len(encoded_target) == 1 and encoded_target[0] == token_id and token == target:
         return "exact"
-    if encoded_target and encoded_target[0] == token_id:
+    if (len(encoded_target) > 1 and encoded_target[0] == token_id and token
+            and target.startswith(token) and token != target):
         return "first_wordpiece_proxy"
     if token and target.startswith(token) and token != target:
         return "text_prefix_proxy"
@@ -164,6 +165,8 @@ def _validate_spec(spec: dict[str, Any]) -> dict[str, Any]:
             "top_k", "At least two distinct explicit k values required")
     families: dict[str, str] = {}
     templates: dict[str, str] = {}
+    source_joins: dict[tuple[str, int, str], str] = {}
+    prompts: dict[str, str] = {}
     cases = spec.get("cases")
     require(isinstance(cases, list) and bool(cases), "missing_cases", "At least one case is required")
     ids = set()
@@ -181,6 +184,10 @@ def _validate_spec(spec: dict[str, Any]) -> dict[str, Any]:
         require(case.get("join", {}).get("model") == model["study_id"]
                 and integer(case.get("join", {}).get("index"), 1)
                 and bool(case.get("join", {}).get("batch")), "missing_join", case["id"])
+        source_join = (case["join"]["batch"], case["join"]["index"], case["join"]["model"])
+        require(source_join not in source_joins or source_joins[source_join] == split,
+                "split_leakage", "The same source join occurs in different splits")
+        source_joins[source_join] = split
         targets = case.get("targets", [])
         require({x.get("role") for x in targets} == {"intermediate", "answer"},
                 "target_roles", "Intermediate and final answer annotations must be distinct")
@@ -199,6 +206,10 @@ def _validate_spec(spec: dict[str, Any]) -> dict[str, Any]:
         for variant, entry in variants.items():
             require(isinstance(entry.get("prompt"), str), "missing_prompt", variant)
             require(entry.get("prompt_sha256") == prompt_digest(entry["prompt"]), "prompt_hash", variant)
+            prompt_hash = entry["prompt_sha256"]
+            require(prompt_hash not in prompts or prompts[prompt_hash] == split,
+                    "split_leakage", "The same prompt occurs in different splits")
+            prompts[prompt_hash] = split
             token_ids = entry.get("token_ids")
             if token_ids is None and not spec["synthetic"]:
                 blockers.append(case["id"] + ":prompt_tokenization_pending")
@@ -285,6 +296,13 @@ def _build_report(spec: dict[str, Any], packet: dict[str, Any]) -> dict[str, Any
     vocab = packet.get("vocabulary")
     require(isinstance(vocab, list) and bool(vocab) and all(isinstance(x, str) for x in vocab),
             "missing_vocabulary", "Full vocabulary required")
+    for case in spec["cases"]:
+        for target in case["targets"]:
+            token_ids = target["token_ids"]
+            require(all(t < len(vocab) for t in token_ids), "target_outside_vocab", target["id"])
+            observed = token_match(vocab[token_ids[0]], target["text"], token_ids, token_ids[0])
+            expected_match = "exact" if len(token_ids) == 1 else "first_wordpiece_proxy"
+            require(observed == expected_match, "target_text_token_mismatch", target["id"])
     require(all(t < len(vocab) for c in spec["cases"] for v in c["variants"].values() for t in v["token_ids"]),
             "input_outside_vocab", "Input token ID is outside the full vocabulary")
     exclusions = spec.get("vocabulary_filter", {}).get("excluded", [])
@@ -365,6 +383,14 @@ def _build_report(spec: dict[str, Any], packet: dict[str, Any]) -> dict[str, Any
         if row["control"] == "random":
             require(channels is not None and channels == seeded_groups(width, len(channels), [row["seed"]],
                     row["layer"])[0]["channels"], "random_control", "Random channels do not match recorded seed")
+            comparator = planned.get(row.get("matched_to"))
+            require(isinstance(comparator, dict) and comparator.get("control") == "nominated",
+                    "random_control_match", "Random controls must name their nominated comparator")
+            require(all(row.get(key) == comparator.get(key) for key in
+                        ("case_id", "kind", "component", "layer", "positions", "donor", "recipient"))
+                    and isinstance(comparator.get("channels"), list)
+                    and len(channels) == len(comparator["channels"]),
+                    "random_control_match", "Random controls must match comparator scope, layer and size")
         if row["control"] == "nominated":
             require(row.get("nomination_split") == "discovery", "split_leakage", "Nominate from discovery only")
         values = finite_vector(row.get("logits"))
