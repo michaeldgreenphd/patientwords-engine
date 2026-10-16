@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
+import sys
 from copy import deepcopy
 from pathlib import Path
 
@@ -140,3 +142,30 @@ def test_shape_errors_preserve_usable_join_keys_without_accepting_malformed_keys
     assert rep.errors
     assert joins == {"scenario_keys": {("pairs_example", 1)},
                      "batch_stems": {"pairs_example"}, "meta_ids": {"model-x"}}
+
+
+def test_wrapper_and_cli_work_from_arbitrary_cwd_in_isolated_interpreter(tmp_path: Path) -> None:
+    code = """
+import importlib.util
+import sys
+from pathlib import Path
+script = Path(sys.argv[1])
+spec = importlib.util.spec_from_file_location("isolated_gate", script)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+assert str(script.parent) not in sys.path
+report = module.Report()
+module.check_schema_subset(report, "fixture.json", 1.0, {"type": "integer"})
+assert report.errors == ["fixture.json :: $ :: wrong type float; expected integer"]
+report = module.Report()
+module.check_schema_subset(report, "fixture.json", {},
+                           {"type": "object", "x-export-required": ["value"]}, export_gate=True)
+assert report.errors == ["fixture.json :: $.value :: missing required key"]
+assert module.SIMULATED_SCHEMA_PATH.is_file()
+"""
+    subprocess.run([sys.executable, "-I", "-c", code, str(SCRIPT)], cwd=tmp_path, check=True)
+    result = subprocess.run([sys.executable, "-I", str(SCRIPT), "--help"], cwd=tmp_path,
+                            check=True, capture_output=True, text=True)
+    assert "--site" in result.stdout
+    assert "--engine" in result.stdout
+    assert "--strict" in result.stdout

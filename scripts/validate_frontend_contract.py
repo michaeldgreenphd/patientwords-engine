@@ -21,6 +21,7 @@ No medical vocabulary lives in this file; all terms stay in the data.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import math
 import re
@@ -28,6 +29,15 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Callable, NamedTuple
+
+# File-relative loading also supports importlib callers and invocation from an
+# arbitrary working directory, without changing sys.path or importing Report
+# back into the adapter. Site CI checks out the complete scripts/ subtree.
+_SCHEMA_SPEC = importlib.util.spec_from_file_location(
+    "_patientwords_frontend_contract_schema", Path(__file__).resolve().with_name("frontend_contract_schema.py"))
+assert _SCHEMA_SPEC is not None and _SCHEMA_SPEC.loader is not None
+_SCHEMA_ADAPTER = importlib.util.module_from_spec(_SCHEMA_SPEC)
+_SCHEMA_SPEC.loader.exec_module(_SCHEMA_ADAPTER)
 
 # One structural authority for this artifact, also referenced by the HTTP contract.
 SIMULATED_SCHEMA_PATH = Path(__file__).resolve().parent / "contracts" / "simulated_scenarios.v1.schema.json"
@@ -117,78 +127,8 @@ def known_keys(rep: Report, artifact: str, obj: dict, allowed: set, path: str = 
 
 def check_schema_subset(rep: Report, artifact: str, value: object, schema: dict,
                         *, export_gate: bool = False) -> None:
-    """Validate the deliberately small schema dialect used by the export gate.
-
-    Supports local $ref, type, required, properties, items (single schema), and
-    additionalProperties (boolean or schema). x-export-required is an annotation
-    that tightens only the existing export gate, preserving legacy HTTP readers.
-    All other assertion keywords fail closed, including in unused definitions;
-    this is not a general JSON Schema implementation. The HTTP harness uses a
-    full draft-07 validator against the same authority and fetched JSON bytes.
-    As before, the export gate requires integer JSON tokens: Python float 1.0
-    is rejected for integer fields even though draft-07 treats it as an integer.
-    """
-    allowed = {"$schema", "$id", "title", "description", "definitions", "$ref", "type",
-               "required", "properties", "items", "additionalProperties", "x-export-required"}
-    types = {"object": dict, "array": list, "string": str, "integer": int,
-             "number": NUM, "boolean": bool, "null": type(None)}
-
-    def audit(node: dict) -> None:
-        unsupported = set(node) - allowed
-        if unsupported:
-            raise ValueError(f"unsupported schema keywords: {sorted(unsupported)}")
-        if "$ref" in node and set(node) != {"$ref"}:
-            raise ValueError("$ref siblings are not supported by the export-gate adapter")
-        kinds = node.get("type", [])
-        for kind in kinds if isinstance(kinds, list) else [kinds]:
-            if kind not in types:
-                raise ValueError(f"unsupported schema type: {kind}")
-        for group in ("definitions", "properties"):
-            for child in node.get(group, {}).values():
-                audit(child)
-        if isinstance(node.get("items"), bool):
-            raise ValueError("items must be a single object schema")
-        for key in ("items", "additionalProperties"):
-            if key in node and not isinstance(node[key], bool):
-                if not isinstance(node[key], dict):
-                    raise ValueError(f"{key} must be a single schema")
-                audit(node[key])
-        if "$ref" in node and not node["$ref"].startswith("#/"):
-            raise ValueError("only local JSON Pointer references are supported")
-
-    def visit(obj: object, node: dict, path: str) -> None:
-        if "$ref" in node:
-            target = schema
-            for part in node["$ref"][2:].split("/"):
-                target = target[part.replace("~1", "/").replace("~0", "~")]
-            visit(obj, target, path)
-            return
-        kinds = node.get("type", [])
-        kinds = kinds if isinstance(kinds, list) else [kinds]
-        if kinds and not any(_is(obj, types[kind]) for kind in kinds):
-            rep.err(artifact, path, f"wrong type {type(obj).__name__}; expected {' or '.join(kinds)}")
-            return
-        if isinstance(obj, dict):
-            required = node.get("required", []) + (node.get("x-export-required", []) if export_gate else [])
-            for key in required:
-                if key not in obj:
-                    rep.err(artifact, f"{path}.{key}", "missing required key")
-            props = node.get("properties", {})
-            extra = node.get("additionalProperties", True)
-            for key, child in obj.items():
-                if key in props:
-                    visit(child, props[key], f"{path}.{key}")
-                elif isinstance(extra, dict):
-                    visit(child, extra, f"{path}[{key}]")
-                elif extra is False:
-                    rep.err(artifact, f"{path}.{key}", "additional property is not allowed")
-        if isinstance(obj, list) and "items" in node:
-            for i, child in enumerate(obj):
-                visit(child, node["items"], f"{path}[{i}]")
-
-    audit(schema)
-    visit(value, schema, "$")
-
+    """Preserve the public export-gate entry point; the adapter owns schema traversal."""
+    _SCHEMA_ADAPTER.check_schema_subset(rep.err, artifact, value, schema, export_gate=export_gate)
 
 def check_simulated(rep: Report, site: Path, payload: dict) -> dict:
     """Returns join indexes used by cross-artifact checks."""

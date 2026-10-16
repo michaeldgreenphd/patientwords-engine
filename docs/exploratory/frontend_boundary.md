@@ -88,6 +88,36 @@ filters, zero versus missing, untraced second-model rows, and legacy base fallba
 Independent semantics assert the full-vocabulary probability meaning, patient minus
 clinical gap, two scored rows out of three, mean −0.0734, and absent CI. These are
 fixture expectations, not study findings; no empirical softmax computation occurs.
+The real exporter also receives a fourth accepted synthetic input without a trace;
+the browser must show “1 of 4 accepted scenarios are still tracing.”
+
+The final local run passed 14 checkpoints, including 287 affected offline cases
+inside the sparse sibling layout. The receipt includes each deliberate rejection
+and restored pass, zero browser errors and zero attempted external requests.
+Ruff and `git diff --check` passed for the changed handwritten Python and patch.
+Generated-model regeneration was byte-identical. Hosted tests remain unrun.
+
+## Small extraction after protection
+
+The coverage/contract commit is `ef22c7b9`; the frontend documentation-only commit
+is `6bfd860`. Only after its passing browser run, the schema interpreter was moved
+to `scripts/frontend_contract_schema.py`. It is a cohesive structural-validation
+responsibility; no test, exporter, research data or existing script path moved.
+
+| Before | After | Compatibility |
+|---|---|---|
+| `validate_frontend_contract.check_schema_subset(rep, ...)` body | `frontend_contract_schema.check_schema_subset(rep.err, ...)` | Original public function remains a forwarding wrapper with identical signature and diagnostics |
+| Validator's scalar type helper used by adapter | Adapter's private scalar type helper | Identical bool/integer handling; other validators retain their existing helper |
+| `tests/test_simulated_schema.py` and four affected test modules | Same modules, functions, parameter IDs and fixture scope | Every one of the 286 prior node IDs maps to itself; one arbitrary-CWD regression added |
+
+The receipt's grouped node inventory is the explicit old→new identity mapping,
+not merely a count. Inspection found no collection hooks in `tests/conftest.py`;
+selected tests use offline fixtures. Existing imports by filename, package imports,
+CLI calls, `__file__` schema resolution, cross-artifact join callers and the site's
+sparse `scripts` path were checked. No historical source receipt is rewritten.
+An isolated interpreter test verifies the public wrapper and CLI from an arbitrary
+working directory without relying on `PYTHONPATH`. Further validator splitting is
+deferred; it would extend beyond this one responsibility.
 
 The deliberate controls are executable in each run:
 
