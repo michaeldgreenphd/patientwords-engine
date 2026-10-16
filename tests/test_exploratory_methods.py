@@ -544,3 +544,166 @@ def test_valid_random_control_link_survives_reporting(spec: dict, packet: dict) 
     report = methods.build_report(spec, packet)
     random = [row for row in report["interventions"] if row["control"] == "random"]
     assert len(random) == 3 and all(row["matched_to"] == "channels" for row in random)
+
+
+def _assert_standalone_refusal(spec: dict, code: str, tmp_path: Path,
+                               capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(methods.Refusal) as error:
+        methods.validate_spec(spec)
+    assert error.value.code == code
+    path = tmp_path / "invalid_plan.json"
+    path.write_text(json.dumps(spec))
+    assert methods.main(["--spec", str(path)]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["status"] == "refused" and result["code"] == code
+
+
+@pytest.mark.parametrize("field,value,code", [
+    ("case_id", "absent", "intervention_identity"),
+    ("case_id", [], "intervention_identity"),
+    ("donor", "absent", "intervention_identity"),
+    ("donor", None, "intervention_identity"),
+    ("recipient", "absent", "intervention_identity"),
+    ("recipient", [], "intervention_identity"),
+    ("kind", "absent", "intervention_identity"),
+    ("kind", [], "intervention_identity"),
+    ("component", "absent", "intervention_identity"),
+    ("component", None, "intervention_identity"),
+    ("layer", None, "intervention_layer"),
+    ("layer", True, "intervention_layer"),
+    ("layer", 1.0, "intervention_layer"),
+    ("layer", -1, "intervention_layer"),
+    ("layer", 2, "intervention_layer"),
+    ("positions", None, "span_alignment"),
+    ("positions", {}, "span_alignment"),
+    ("positions", [], "span_alignment"),
+    ("positions", [1], "span_alignment"),
+    ("positions", [[1]], "span_alignment"),
+    ("positions", [[1, 1, 1]], "span_alignment"),
+    ("positions", [["1", 1]], "span_alignment"),
+    ("positions", [[1.0, 1]], "span_alignment"),
+    ("positions", [[1, 1.0]], "span_alignment"),
+    ("positions", [[True, 1]], "span_alignment"),
+    ("positions", [[1, True]], "span_alignment"),
+    ("positions", [[-1, 1]], "span_alignment"),
+    ("positions", [[1, -1]], "span_alignment"),
+    ("positions", [[2, 1]], "span_alignment"),
+    ("positions", [[1, 2]], "span_alignment"),
+    ("positions", [[0, 0]], "span_alignment"),
+    ("control", "absent", "control_identity"),
+    ("control", [], "control_identity"),
+    ("seed", None, "missing_seed"),
+    ("seed", True, "missing_seed"),
+    ("seed", 7.0, "missing_seed"),
+    ("seed", -1, "missing_seed"),
+    ("channels", {}, "channel_identity"),
+    ("channels", [], "channel_identity"),
+    ("channels", [0, 0], "channel_identity"),
+    ("channels", [[0]], "channel_identity"),
+    ("channels", [True], "channel_identity"),
+    ("channels", [1.0], "channel_identity"),
+    ("channels", [-1], "channel_identity"),
+    ("channels", [2], "channel_identity"),
+])
+def test_standalone_plan_semantics_refuse_before_a_packet_exists(
+        spec: dict, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+        field: str, value: object, code: str) -> None:
+    spec["intervention_plan"][0][field] = value
+    _assert_standalone_refusal(spec, code, tmp_path, capsys)
+
+
+@pytest.mark.parametrize("mutation", [
+    "unknown_reference", "wrong_reference", "case_id", "kind", "component",
+    "layer", "positions", "donor", "recipient", "size"])
+def test_standalone_random_comparator_requires_matching_scope_and_size(
+        spec: dict, tmp_path: Path, capsys: pytest.CaptureFixture[str], mutation: str) -> None:
+    row = next(item for item in spec["intervention_plan"] if item["control"] == "random")
+    if mutation in {"unknown_reference", "wrong_reference"}:
+        row["matched_to"] = "absent" if mutation == "unknown_reference" else "rescue"
+    elif mutation == "case_id":
+        other = copy.deepcopy(spec["cases"][0])
+        other["id"] = "case-b"
+        spec["cases"].append(other)
+        row["case_id"] = other["id"]
+    elif mutation == "size":
+        row["channels"] = methods.seeded_groups(4, 2, [row["seed"]], row["layer"])[0]["channels"]
+    elif mutation == "component":
+        row["component"] = "block_output"
+        row["channels"] = methods.seeded_groups(2, 1, [row["seed"]], row["layer"])[0]["channels"]
+    else:
+        row[mutation] = {"kind": "zero_ablation", "layer": 0, "positions": [[1, 1], [1, 1]],
+                         "donor": "paraphrase", "recipient": "paraphrase"}[mutation]
+    _assert_standalone_refusal(spec, "random_control_match", tmp_path, capsys)
+
+
+@pytest.mark.parametrize("channels", [None, [0]])
+def test_standalone_random_channels_must_match_the_seed(
+        spec: dict, tmp_path: Path, capsys: pytest.CaptureFixture[str], channels: object) -> None:
+    row = next(item for item in spec["intervention_plan"] if item["control"] == "random")
+    row["channels"] = channels
+    _assert_standalone_refusal(spec, "random_control", tmp_path, capsys)
+
+
+def test_standalone_channel_bounds_follow_the_selected_component(
+        spec: dict, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    row = next(item for item in spec["intervention_plan"] if item["control"] == "nominated")
+    row["channels"] = [spec["model"]["intermediate_size"]]
+    _assert_standalone_refusal(spec, "channel_identity", tmp_path, capsys)
+
+
+@pytest.mark.parametrize("split", [None, "validation", "fresh_test"])
+def test_standalone_nomination_cannot_use_another_split(
+        spec: dict, tmp_path: Path, capsys: pytest.CaptureFixture[str], split: object) -> None:
+    row = next(item for item in spec["intervention_plan"] if item["control"] == "nominated")
+    row["nomination_split"] = split
+    _assert_standalone_refusal(spec, "split_leakage", tmp_path, capsys)
+
+
+@pytest.mark.parametrize("field,value", [("donor", "source"), ("recipient", "source"), ("kind", "zero_ablation")])
+def test_standalone_self_patch_requires_the_same_input_and_replacement(
+        spec: dict, tmp_path: Path, capsys: pytest.CaptureFixture[str], field: str, value: str) -> None:
+    row = next(item for item in spec["intervention_plan"] if item["control"] == "self")
+    row[field] = value
+    _assert_standalone_refusal(spec, "self_patch_identity", tmp_path, capsys)
+
+
+def test_pending_tokenization_blocks_a_typed_plan_without_guessing_alignment(
+        spec: dict, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    spec["synthetic"] = False
+    for variant in spec["cases"][0]["variants"].values():
+        variant.update(token_ids=None, token_sha256=None, positions=None)
+    result = methods.validate_spec(spec)
+    assert result["status"] == "blocked"
+    assert "case-a:prompt_tokenization_pending" in result["blockers"]
+    path = tmp_path / "pending_plan.json"
+    path.write_text(json.dumps(spec))
+    assert methods.main(["--spec", str(path)]) == 2
+    assert json.loads(capsys.readouterr().out) == result
+    spec["intervention_plan"][0]["positions"] = [[True, 1]]
+    _assert_standalone_refusal(spec, "span_alignment", tmp_path, capsys)
+
+
+@pytest.mark.parametrize("field,code", [
+    ("layer", "intervention_layer"), ("positions", "span_alignment"),
+    ("channels", "channel_identity"), ("seed", "missing_seed")])
+@pytest.mark.parametrize("value", [True, 1.0])
+def test_packet_types_cannot_bypass_plan_validation_through_numeric_equality(
+        spec: dict, packet: dict, field: str, code: str, value: object) -> None:
+    plan = spec["intervention_plan"][0]
+    row = packet["interventions"][0]
+    valid = [[1, 1]] if field == "positions" else [1] if field == "channels" else 1
+    plan[field] = row[field] = valid
+    packet["spec_sha256"] = methods.digest(spec)
+    row[field] = [[value, 1]] if field == "positions" else [value] if field == "channels" else value
+    assert row[field] == plan[field]
+    assert methods.validate_spec(spec)["status"] == "validated"
+    with pytest.raises(methods.Refusal) as error:
+        methods.build_report(spec, packet)
+    assert error.value.code == code
+
+
+@pytest.mark.parametrize("field,value", [("logits", [1., 0.]), ("edit_l2", 0.)])
+def test_standalone_plan_rejects_packet_only_fields(
+        spec: dict, tmp_path: Path, capsys: pytest.CaptureFixture[str], field: str, value: object) -> None:
+    spec["intervention_plan"][0][field] = value
+    _assert_standalone_refusal(spec, "intervention_plan", tmp_path, capsys)

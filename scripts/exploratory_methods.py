@@ -104,6 +104,62 @@ def token_match(token: str, target: str, encoded_target: list[int], token_id: in
     return None
 
 
+def _validate_intervention(
+        row: dict[str, Any], spec: dict[str, Any], cases: dict[str, Any],
+        common_layers: list[int], planned: dict[str, dict[str, Any]]) -> None:
+    """Check plan semantics before execution, and strict types again for packets.
+
+    A real specification with pending tokenization remains blocked by the caller;
+    alignment can be checked only once both input token arrays are available.
+    """
+    cid, donor, recipient = row.get("case_id"), row.get("donor"), row.get("recipient")
+    require(all(isinstance(x, str) for x in (cid, donor, recipient)) and cid in cases
+            and donor in cases[cid]["variants"] and recipient in cases[cid]["variants"],
+            "intervention_identity", "Unknown input variant")
+    require(row.get("kind") in ("observed_replacement", "zero_ablation")
+            and row.get("component") in ("block_output", "mlp_neuron_output"),
+            "intervention_identity", "Explicit intervention and component required")
+    require(integer(row.get("layer")) and row["layer"] in common_layers,
+            "intervention_layer", "Layer outside prespecified comparison")
+    positions = row.get("positions")
+    require(isinstance(positions, list) and bool(positions)
+            and all(isinstance(pair, list) and len(pair) == 2 and all(integer(x) for x in pair)
+                    for pair in positions), "span_alignment", "Explicit integer position pairs required")
+    donor_ids = cases[cid]["variants"][donor].get("token_ids")
+    recipient_ids = cases[cid]["variants"][recipient].get("token_ids")
+    require(all((recipient_ids is None or pair[0] < len(recipient_ids))
+                and (donor_ids is None or pair[1] < len(donor_ids)) for pair in positions),
+            "span_alignment", "Position outside input")
+    if donor_ids is not None and recipient_ids is not None:
+        allowed = suffix_alignment(donor_ids, recipient_ids)
+        require(all(pair in allowed for pair in positions),
+                "span_alignment", "Only token-ID-aligned suffix positions are patchable")
+    require(row.get("control") in ("self", "same_register", "random", "unrelated", "full_component", "nominated"),
+            "control_identity", "Control class required")
+    require(integer(row.get("seed")), "missing_seed", "Intervention seed required")
+    channels = row.get("channels")
+    width = spec["model"]["intermediate_size" if row["component"] == "mlp_neuron_output" else "hidden_size"]
+    require(channels is None or (isinstance(channels, list) and bool(channels)
+            and all(integer(c) and c < width for c in channels) and len(set(channels)) == len(channels)),
+            "channel_identity", "Explicit unique in-range channels or null for full component required")
+    if row["control"] == "random":
+        require(channels is not None and channels == seeded_groups(width, len(channels), [row["seed"]],
+                row["layer"])[0]["channels"], "random_control", "Random channels do not match recorded seed")
+        comparator = planned.get(row.get("matched_to"))
+        require(isinstance(comparator, dict) and comparator.get("control") == "nominated",
+                "random_control_match", "Random controls must name their nominated comparator")
+        require(all(row.get(key) == comparator.get(key) for key in
+                    ("case_id", "kind", "component", "layer", "positions", "donor", "recipient"))
+                and isinstance(comparator.get("channels"), list)
+                and len(channels) == len(comparator["channels"]),
+                "random_control_match", "Random controls must match comparator scope, layer and size")
+    if row["control"] == "nominated":
+        require(row.get("nomination_split") == "discovery", "split_leakage", "Nominate from discovery only")
+    if row["control"] == "self":
+        require(donor == recipient and row["kind"] == "observed_replacement",
+                "self_patch_identity", "Self patch must replace an input with itself")
+
+
 def _validate_spec(spec: dict[str, Any]) -> dict[str, Any]:
     require(isinstance(spec, dict), "invalid_input", "Specification must be an object")
     require(spec.get("schema_version") == SCHEMA, "schema_version", "Unknown exploratory schema")
@@ -115,7 +171,7 @@ def _validate_spec(spec: dict[str, Any]) -> dict[str, Any]:
     plan_fields = {"id", "case_id", "donor", "recipient", "kind", "component", "layer", "positions",
                    "channels", "control", "seed"}
     require(isinstance(plans, list) and (bool(plans) or not spec["synthetic"])
-            and all(isinstance(p, dict) and plan_fields <= p.keys()
+            and all(isinstance(p, dict) and plan_fields <= p.keys() and not {"logits", "edit_l2"} & p.keys()
                     and isinstance(p["id"], str) and bool(p["id"])
                     and (p["control"] != "random"
                          or (isinstance(p.get("matched_to"), str) and bool(p["matched_to"]))) for p in plans)
@@ -236,6 +292,10 @@ def _validate_spec(spec: dict[str, Any]) -> dict[str, Any]:
             require(entry.get("token_sha256") == digest(token_ids), "token_hash", variant)
             require(entry.get("positions") == list(range(len(token_ids))), "position_coverage",
                     "This bounded slice requires all input positions, including early ones")
+    planned = {p["id"]: p for p in plans}
+    cases_by_id = {c["id"]: c for c in cases}
+    for plan in plans:
+        _validate_intervention(plan, spec, cases_by_id, sorted(intersection), planned)
     if not spec["synthetic"]:
         blockers.extend(["real_model_baseline_parity_unrun", "ci_execution_adapter_not_wired"])
         if not plans:
@@ -380,41 +440,10 @@ def _build_report(spec: dict[str, Any], packet: dict[str, Any]) -> dict[str, Any
         intervention_ids.add(row["id"])
         require(row["id"] in planned and {k: v for k, v in row.items() if k not in {"logits", "edit_l2"}}
                 == planned[row["id"]], "intervention_plan", "Intervention differs from the prespecified plan")
-        cid, donor, recipient = row.get("case_id"), row.get("donor"), row.get("recipient")
-        require(cid in cases and (cid, donor) in baselines and (cid, recipient) in baselines,
-                "intervention_identity", "Unknown input variant")
-        require(row.get("kind") in {"observed_replacement", "zero_ablation"}
-                and row.get("component") in {"block_output", "mlp_neuron_output"},
-                "intervention_identity", "Explicit intervention and component required")
-        require(integer(row.get("layer")) and row["layer"] in validation["common_layers"],
-                "intervention_layer", "Layer outside prespecified comparison")
-        allowed = suffix_alignment(cases[cid]["variants"][donor]["token_ids"],
-                                   cases[cid]["variants"][recipient]["token_ids"])
-        require(bool(row.get("positions")) and all(x in allowed for x in row["positions"]),
-                "span_alignment", "Only token-ID-aligned suffix positions are patchable")
+        _validate_intervention(row, spec, cases, validation["common_layers"], planned)
+        cid, donor, recipient = row["case_id"], row["donor"], row["recipient"]
         require(type(row.get("edit_l2")) in (float, int) and math.isfinite(row["edit_l2"]) and row["edit_l2"] >= 0,
                 "edit_magnitude", "Measured edit magnitude required")
-        require(row.get("control") in {"self", "same_register", "random", "unrelated", "full_component", "nominated"},
-                "control_identity", "Control class required")
-        require(integer(row.get("seed")), "missing_seed", "Intervention seed required")
-        channels = row.get("channels")
-        width = spec["model"]["intermediate_size" if row["component"] == "mlp_neuron_output" else "hidden_size"]
-        require(channels is None or (isinstance(channels, list) and bool(channels)
-                and len(set(channels)) == len(channels) and all(integer(c) and c < width for c in channels)),
-                "channel_identity", "Explicit unique in-range channels or null for full component required")
-        if row["control"] == "random":
-            require(channels is not None and channels == seeded_groups(width, len(channels), [row["seed"]],
-                    row["layer"])[0]["channels"], "random_control", "Random channels do not match recorded seed")
-            comparator = planned.get(row.get("matched_to"))
-            require(isinstance(comparator, dict) and comparator.get("control") == "nominated",
-                    "random_control_match", "Random controls must name their nominated comparator")
-            require(all(row.get(key) == comparator.get(key) for key in
-                        ("case_id", "kind", "component", "layer", "positions", "donor", "recipient"))
-                    and isinstance(comparator.get("channels"), list)
-                    and len(channels) == len(comparator["channels"]),
-                    "random_control_match", "Random controls must match comparator scope, layer and size")
-        if row["control"] == "nominated":
-            require(row.get("nomination_split") == "discovery", "split_leakage", "Nominate from discovery only")
         values = finite_vector(row.get("logits"))
         require(len(values) == len(vocab), "vocabulary_size", "Patched vocabulary mismatch")
         scores = [rank_target(values, t, excluded, spec["top_k"]) for t in cases[cid]["targets"]]
