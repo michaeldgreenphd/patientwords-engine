@@ -18,7 +18,7 @@ commit and the approved Causalab commit as described in [baseline_ci.md](baselin
 
 | Repository | Review branch and commit | Review route |
 |---|---|---|
-| Engine | `codex/exploratory-methods-contracts`, continued from `e816cd123b926e2e35c27c31b0cd64da7250bf08`; executable source at `b6b7b10abe05ee9ab852e049f3357038b8adeed4`; final documentation head is in its draft PR | [Owner draft PR #121](https://github.com/michaeldgreenphd/patientwords-engine/pull/121) against `main`; communication `70ac359f`, preparation `73bb882f`, manual CI `faf315d0` |
+| Engine | `codex/exploratory-methods-contracts`, continued from `e816cd123b926e2e35c27c31b0cd64da7250bf08`; executable source at `2d1e14b33937b2f5ac49747a85bf1000f9a9dbbf`; final documentation head is in its draft PR | [Owner draft PR #121](https://github.com/michaeldgreenphd/patientwords-engine/pull/121) against `main`; communication `70ac359f`, preparation `73bb882f`, manual CI `faf315d0` |
 | J++ | `codex/lens-interop-contracts` at `1b0c3ffcfa152d3b0697ad852838183ffeac56ba` | [Owner draft PR #1](https://github.com/michaeldgreenphd/patient-words-jpp_lens/pull/1) |
 | Causalab | `codex/paired-intervention-adapter` at `91291aa75aa19918e56f3d15ff87e9dbbe165afa` | [Owner branch](https://github.com/michaeldgreenphd/patient-words-causalab/tree/91291aa75aa19918e56f3d15ff87e9dbbe165afa); PR opening blocked as below |
 
@@ -306,3 +306,22 @@ baseline dispatch, research-weight download, new real-model finding, merge,
 publication or recruitment occurred. Linux transport retry behavior, runtime
 installation, runner cost/capacity and the other readiness blockers remain
 explicit; they do not justify adding optional features to this preparation pass.
+
+### Additional verified review finding
+
+The review of `4dd7aff82c0a29f80166f92e90644cad6ff23b30` identified one real
+standalone-validation defect (thread 4291023098): incomplete synthetic specs
+could say validated before report construction refused them. Commit
+`2d1e14b33937b2f5ac49747a85bf1000f9a9dbbf` validates the required filter and
+intervention declarations up front, including required plan-entry fields,
+unique IDs and random-control references. The unchanged real one-case plan
+remains blocked with an explicit `intervention_plan_pending` reason. Its SHA-256
+is still `0d8014ec7395160409bf5afd04d7ef1d4db9cef2ce468cc62173ed89963d9f0d`.
+
+The targeted specification tests passed **139 tests**; Ruff and diff checks passed.
+Synthetic fixture source hashes and its packet/spec binding were refreshed to
+verified current adapter bytes without changing prompts, numerical values or
+controls. Historical real artifact receipts and fit provenance were not changed.
+The full suite is rerun before the fix is pushed, with final-head results and
+review disposition on the PR. This is a concrete reviewed defect, not an added
+experiment or optional feature.
