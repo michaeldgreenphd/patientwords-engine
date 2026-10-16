@@ -80,6 +80,15 @@ def dispatch_context(env: dict[str, str]) -> str:
     commit = env.get("GITHUB_SHA", "")
     if not SHA.fullmatch(commit):
         raise Refusal("missing_engine_commit", "the dispatch must identify one exact commit")
+    expected = env.get("PW_EXPECTED_ENGINE_COMMIT", "")
+    if not expected:
+        raise Refusal("missing_expected_engine_commit", "assert the exact separately verified default-branch commit")
+    if not SHA.fullmatch(expected):
+        raise Refusal("invalid_expected_engine_commit", "the assertion must be a full lowercase commit SHA")
+    if expected != commit:
+        raise Refusal("engine_commit_assertion_mismatch", "default-branch dispatch differs from the approved assertion")
+    if env.get("GITHUB_RUN_ATTEMPT") != "1":
+        raise Refusal("workflow_rerun_refused", "one attempt only; a new dispatch needs separate owner authorization")
     return commit
 
 
@@ -316,7 +325,8 @@ def main() -> int:
             if missing:
                 raise Refusal("execution_prerequisites_missing", ", ".join(missing))
             sources = [trusted_commit(ENGINE_REPO, engine), trusted_commit(CAUSALAB_REPO, record["causalab_commit"])]
-            result.update({"sources": sources, "status": "ready_for_manual_execution"})
+            dispatch = {"expected_engine_commit": engine, "engine_commit": engine, "run_attempt": 1}
+            result.update({"sources": sources, "status": "ready_for_manual_execution", "dispatch": dispatch})
             if args.out is None:
                 raise Refusal("missing_receipt_path", "an external receipt is required")
             if args.mode != "readiness" and os.environ.get("RUNNER_NAME") != record["runner"]["name"]:
@@ -340,6 +350,7 @@ def main() -> int:
                 write_receipt(args.out.parent / "execution.json", {
                     "schema_version": "patientwords.baseline-execution/1",
                     "commits": {"engine": engine, "causalab": record["causalab_commit"]},
+                    "dispatch": dispatch,
                 })
         if args.out is not None:
             failure_receipt_allowed = False

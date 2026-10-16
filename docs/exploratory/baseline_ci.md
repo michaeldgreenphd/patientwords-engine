@@ -53,7 +53,13 @@ dispatch is available. A draft PR does not meet that prerequisite. After review,
 an owner-merged readiness update must identify an exact Causalab commit already
 on the owner fork's `main`. Public GitHub metadata must confirm that exact commit
 is an ancestor of that default branch; failure/rate-limit errors refuse. There
-are no dispatch inputs for arbitrary repositories, refs, commands or model IDs.
+are no dispatch inputs selecting repositories, checkout refs, commands or model
+IDs. Required `expected_engine_commit` is only an equality assertion against
+`GITHUB_SHA`: missing, malformed or different values refuse before runtime setup
+or model downloads. The workflow always checks out its default-branch dispatch
+SHA, never that input. A moving `main` therefore fails the assertion instead of
+silently selecting a newly advanced integration commit. The assertion and first
+run-attempt number are preserved in readiness and execution receipts.
 The engine uses the exact default-branch dispatch commit. Both worker captures
 verify clean checked-out commits against the generated execution record.
 
@@ -67,6 +73,47 @@ clean current seal-check artifact hash and review reference, with a UTC time no
 more than 24 hours old. No seal content is embedded in the record. Preparing this
 workflow does not read any sealed holdout. Refreshing that attestation belongs to
 the separately authorized execution preparation, not an automatic discovery task.
+
+## Verify final integration commits
+
+The current [source receipt](../../data/exploratory/review_preparation_sources.v1.json)
+identifies tested source commits and file hashes. Those identities are review
+artifacts; a future merge or squash SHA is a new identity and must not inherit
+an old test total by assumption. The baseline needs engine and Causalab only;
+J++ remains a separate adapter-review dependency for synthetic bridge checks.
+
+Before any separately authorized baseline dispatch:
+
+1. After owner merges, resolve full engine and Causalab default-branch commits
+   and preserve them in the execution-preparation record. Compare the relevant
+   source, constraints/locks, workflow, plan and unchanged case-spec bytes against
+   the final reviewed source receipt. Record any differences and resolve review
+   requirements before testing; a squash can preserve files without preserving
+   commit ancestry.
+2. Validate those exact detached commits with the engine's complete offline
+   suite, Ruff and actionlint; the selected Causalab protocol/adapter tests; and
+   the existing tiny synthetic baseline protocol smoke. Use fresh external
+   bytecode caches, clean working trees and separately pinned environments.
+   Verify `causalab.__file__` resolves to the selected checkout and the compiled
+   extension belongs to that installation. Do not repeat successful installs
+   merely because a documentation SHA changed. If J++ is included in a bridge
+   check, identify its exact merged/tested SHA separately; do not add it to the
+   baseline runtime.
+3. Preserve a validation receipt naming the exact tested commits, source hashes,
+   commands and results. Update the separately reviewed readiness record to the
+   exact validated Causalab SHA and current capacity/cost/seal evidence. Any
+   subsequent readiness merge creates a new engine commit: compare its relevant
+   executable/input hashes, carry forward only checks whose tested bytes are
+   unchanged, and run affected lightweight checks at that final commit. Never
+   label the old suite as having run on a new SHA.
+4. Select that final validated engine SHA as `expected_engine_commit`. Check
+   the owner's default branch still has that SHA immediately before dispatch;
+   the workflow equality assertion also closes movement between that check and
+   GitHub accepting the dispatch. If it changed, stop and revalidate the new
+   integration; do not replace the expected SHA automatically.
+
+No future merge/squash commit is filled in now, and none is authorized by this
+procedure. The null Causalab readiness pin stays null until this work is complete.
 
 ## Bounded runtime and artifacts
 
@@ -131,6 +178,27 @@ partial receipts; a vanished runner or hard timeout can prevent artifact upload
 and is itself a failed preflight, never an agreement result. Nothing commits,
 publishes or changes established measurements.
 
+## Retry limits
+
+One explicit owner authorization covers **one dispatch attempt**, with
+`GITHUB_RUN_ATTEMPT=1`. Job guards reject workflow reruns; the helper returns a
+named refusal if invoked with a later, absent or malformed attempt. There are no
+automatic worker, staging-stage or whole-job restarts. A failure or timeout keeps
+its artifacts and ends that attempt; a fresh dispatch requires separate owner
+authorization and a fresh run directory. Failed numerical checks are never
+retried to search for a passing outcome.
+
+Metadata calls made by the helper use one request attempt with a 30-second
+request timeout. Pip connection retries are capped at zero (`PIP_RETRIES=0`), and
+Cargo network retries at zero using its documented
+[`CARGO_NET_RETRY`](https://doc.rust-lang.org/cargo/reference/config.html#netretry)
+setting. These caps do not imply that every dependency transport is retry-free.
+Hub's internal retries/resume behavior and action-internal transfer retries have
+not been verified for the future Linux environment. They remain a specific
+part of the **blocked Linux runtime review**, inside the existing 15-minute
+staging, 20-minute setup and 60-minute model-job deadlines. No unsupported Hub
+retry option or substituted download implementation is introduced here.
+
 ## Later commands, not authorization
 
 Safe local readiness validation (no network or runtime imports):
@@ -140,12 +208,16 @@ python scripts/exploratory_ci_preflight.py
 python -m pytest -q tests/test_exploratory_ci_preflight.py
 ```
 
-After the workflow reaches the default branch, this manual call still only lists
-readiness blockers and must be separately authorized if CI billing is uncertain:
+After the workflow reaches the default branch, set `PW_EXPECTED_ENGINE_COMMIT`
+to the full engine SHA named in the final integration-validation receipt. Do not
+resolve a moving branch automatically into that assertion. The manual call below
+only lists readiness blockers and still requires separate authorization if CI
+billing is uncertain; it does not install runtimes or execute a model:
 
 ```bash
 gh workflow run exploratory_baseline_preflight.yml \
-  --repo michaeldgreenphd/patientwords-engine --ref main -f execute=false
+  --repo michaeldgreenphd/patientwords-engine --ref main -f execute=false \
+  -f expected_engine_commit="$PW_EXPECTED_ENGINE_COMMIT"
 ```
 
 Only after owner review/merge, all readiness prerequisites, and a new explicit
@@ -153,7 +225,8 @@ execution authorization would the one-case model job be dispatched with:
 
 ```bash
 gh workflow run exploratory_baseline_preflight.yml \
-  --repo michaeldgreenphd/patientwords-engine --ref main -f execute=true
+  --repo michaeldgreenphd/patientwords-engine --ref main -f execute=true \
+  -f expected_engine_commit="$PW_EXPECTED_ENGINE_COMMIT"
 ```
 
 Inspect the existing concurrency group first: at most one running and one pending;

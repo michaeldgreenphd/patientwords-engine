@@ -254,7 +254,9 @@ mask training and Jacobian fitting remain unmeasured and unauthorized.
    preserving existing payloads and pending states. Provenance and observational
    versus interventional evidence are visible. No patient-facing safety meter.
 
-No PR was opened, pushed or merged. These are local reviewable changes only.
+At the initial audit no PR was opened, pushed or merged. The later
+[review handoff](review_preparation_20261016.md) records the owner draft PRs and
+current merge recommendations; the original source commits above remain historical.
 
 ## Optional extensions, ranked
 

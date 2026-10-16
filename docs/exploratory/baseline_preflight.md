@@ -104,6 +104,9 @@ needs 64 GiB. Workers are sequential and release the process between loads.
 
 Bound each worker to 900 seconds, including model loading from an already staged
 cache; bound the whole job, including environment setup/download, to 60 minutes.
+The [manual CI retry policy](baseline_ci.md#retry-limits) allows one dispatch attempt
+and no automatic worker restart; its post-merge verification procedure distinguishes
+reviewed source bytes from future merge/squash identities.
 A timeout or OOM is a failed capacity preflight, not missing-at-random data.
 Capture reports runtime including loading and Linux process maximum RSS. Outputs
 are CI artifacts under `exploratory_methods/baseline_preflight/`, never committed
@@ -150,9 +153,10 @@ blocked: no suitable existing runner, established runner budget, reviewed Linux
 setup, current seal attestation or final default-branch Causalab pin is supplied.
 
 The workflow must first reach the engine's default branch through owner merge.
-The model job accepts no arbitrary source SHA input: the engine is the exact
-default-branch dispatch SHA, and Causalab is a full SHA from the reviewed readiness
-record that must already be an ancestor of its owner fork's `main`. GitHub checks
+The model job accepts no arbitrary checkout ref. Its required expected-engine-SHA
+input is an equality assertion against the default-branch dispatch SHA, not a
+source selector. A moved `main` refuses. Causalab is a full SHA from the reviewed
+readiness record that must already be an ancestor of its owner fork's `main`. GitHub checks
 that relationship before checking out the fork. Until the owner merges reviewed
 code and separately authorizes execution, the draft PR heads remain review
 artifacts, not runnable approvals. No merge or execution has occurred here.

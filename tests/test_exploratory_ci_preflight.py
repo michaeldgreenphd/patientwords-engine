@@ -44,7 +44,7 @@ def context() -> dict[str, str]:
     return {"GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "workflow_dispatch",
             "GITHUB_REPOSITORY": ci.ENGINE_REPO, "GITHUB_REF": "refs/heads/main", "GITHUB_ACTOR": ci.OWNER, "GITHUB_TRIGGERING_ACTOR": ci.OWNER,
             "GITHUB_WORKFLOW_REF": f"{ci.ENGINE_REPO}/.github/workflows/exploratory_baseline_preflight.yml@refs/heads/main",
-            "GITHUB_SHA": "b" * 40}
+            "GITHUB_SHA": "b" * 40, "PW_EXPECTED_ENGINE_COMMIT": "b" * 40, "GITHUB_RUN_ATTEMPT": "1"}
 
 
 def test_actual_record_blocks_all_execution_prerequisites(plan: dict[str, Any]) -> None:
@@ -198,6 +198,7 @@ def test_workflow_is_manual_read_only_and_gates_before_setup_and_download() -> N
         assert "github.actor == github.repository_owner" in job["if"]
         assert "github.triggering_actor == github.repository_owner" in job["if"]
         assert "github.ref == 'refs/heads/main'" in job["if"]
+        assert "github.run_attempt == 1" in job["if"]
     assert "needs.readiness.outputs.ready == 'true'" in model["if"]
     assert model["timeout-minutes"] == 60
     steps = model["steps"]
@@ -342,3 +343,75 @@ def test_error_receipt_failure_preserves_original_named_refusal(monkeypatch: pyt
     value = json.loads(capsys.readouterr().out)
     assert value["code"] == "synthetic_plan_refusal"
     assert value["receipt_error"]["code"] == "receipt_write_failed"
+
+
+
+@pytest.mark.parametrize("value,code", [(None, "missing_expected_engine_commit"),
+                                          ("", "missing_expected_engine_commit"),
+                                          ("main", "invalid_expected_engine_commit"),
+                                          ("b" * 39, "invalid_expected_engine_commit"),
+                                          ("B" * 40, "invalid_expected_engine_commit"),
+                                          ("a" * 40, "engine_commit_assertion_mismatch")])
+def test_engine_commit_assertion_refuses_missing_or_changed_code(value: str | None, code: str) -> None:
+    env = context()
+    if value is None:
+        del env["PW_EXPECTED_ENGINE_COMMIT"]
+    else:
+        env["PW_EXPECTED_ENGINE_COMMIT"] = value
+    with pytest.raises(ci.Refusal) as error:
+        ci.dispatch_context(env)
+    assert error.value.code == code
+
+
+def test_default_branch_movement_refuses_without_changing_checkout_selection() -> None:
+    env = context()
+    env["GITHUB_SHA"] = "c" * 40
+    with pytest.raises(ci.Refusal) as error:
+        ci.dispatch_context(env)
+    assert error.value.code == "engine_commit_assertion_mismatch"
+
+
+@pytest.mark.parametrize("attempt", [None, "", "0", "2", "01", "many"])
+def test_only_first_workflow_attempt_is_authorized(attempt: str | None) -> None:
+    env = context()
+    if attempt is None:
+        del env["GITHUB_RUN_ATTEMPT"]
+    else:
+        env["GITHUB_RUN_ATTEMPT"] = attempt
+    with pytest.raises(ci.Refusal) as error:
+        ci.dispatch_context(env)
+    assert error.value.code == "workflow_rerun_refused"
+
+
+def test_expected_commit_is_only_assertion_not_checkout_ref() -> None:
+    workflow = yaml.safe_load((ROOT / ".github/workflows/exploratory_baseline_preflight.yml").read_text())
+    events = workflow.get("on", workflow.get(True))
+    field = events["workflow_dispatch"]["inputs"]["expected_engine_commit"]
+    assert field["type"] == "string" and field["required"] is True
+    assert workflow["env"]["PW_EXPECTED_ENGINE_COMMIT"] == "${{ inputs.expected_engine_commit }}"
+    assert workflow["env"]["PIP_RETRIES"] == "0"
+    assert workflow["env"]["CARGO_NET_RETRY"] == "0"
+    for job in workflow["jobs"].values():
+        for step in job["steps"]:
+            if step.get("uses", "").startswith("actions/checkout"):
+                assert "expected_engine_commit" not in step["with"]["ref"]
+                if "repository" not in step["with"]:
+                    assert step["with"]["ref"] == "${{ github.sha }}"
+
+
+
+def test_execution_receipt_preserves_exact_assertion_and_first_attempt(monkeypatch: pytest.MonkeyPatch,
+                                                                     tmp_path: Path,
+                                                                     capsys: pytest.CaptureFixture[str]) -> None:
+    for key, value in context().items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setattr(ci, "readiness", lambda *_: [])
+    monkeypatch.setattr(ci, "read_json", lambda _: {"causalab_commit": "a" * 40})
+    monkeypatch.setattr(ci, "trusted_commit", lambda repository, commit: {"repository": repository, "commit": commit})
+    monkeypatch.setattr(sys, "argv", ["preflight", "--execute", "--out", str(tmp_path / "readiness.json")])
+    assert ci.main() == 0
+    output = json.loads(capsys.readouterr().out)
+    execution = json.loads((tmp_path / "execution.json").read_text())
+    expected = {"expected_engine_commit": "b" * 40, "engine_commit": "b" * 40, "run_attempt": 1}
+    assert execution["dispatch"] == output["dispatch"] == expected
+    assert execution["commits"] == {"engine": "b" * 40, "causalab": "a" * 40}

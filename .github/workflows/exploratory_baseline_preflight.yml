@@ -5,6 +5,10 @@ name: Exploratory baseline preflight (manual only)
 on:
   workflow_dispatch:
     inputs:
+      expected_engine_commit:
+        description: 'Exact verified main commit; equality assertion only, never a checkout ref'
+        type: string
+        required: true
       execute:
         description: 'Run the approved one-case check (requires reviewed readiness; default validates only)'
         type: boolean
@@ -33,11 +37,14 @@ env:
   PIP_INDEX_URL: https://pypi.org/simple
   PIP_EXTRA_INDEX_URL: ''
   PIP_DISABLE_PIP_VERSION_CHECK: '1'
+  PIP_RETRIES: '0'
+  CARGO_NET_RETRY: '0'
+  PW_EXPECTED_ENGINE_COMMIT: ${{ inputs.expected_engine_commit }}
 
 jobs:
   readiness:
     if: >-
-      github.event_name == 'workflow_dispatch' &&
+      github.event_name == 'workflow_dispatch' && github.run_attempt == 1 &&
       github.repository == 'michaeldgreenphd/patientwords-engine' &&
       github.actor == github.repository_owner && github.triggering_actor == github.repository_owner &&
       github.ref == 'refs/heads/main' &&
@@ -77,7 +84,7 @@ jobs:
     needs: readiness
     if: >-
       needs.readiness.outputs.ready == 'true' && inputs.execute &&
-      github.event_name == 'workflow_dispatch' &&
+      github.event_name == 'workflow_dispatch' && github.run_attempt == 1 &&
       github.repository == 'michaeldgreenphd/patientwords-engine' &&
       github.actor == github.repository_owner && github.triggering_actor == github.repository_owner &&
       github.ref == 'refs/heads/main'
