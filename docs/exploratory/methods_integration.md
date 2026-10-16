@@ -3,6 +3,13 @@
 Audit date: 2026-10-15. This work compares competing explanations; it does not
 validate existing mechanistic interpretations or change a published endpoint.
 
+The bounded local preparation continuation is recorded in
+[local_preparation_20261015.md](local_preparation_20261015.md). It supersedes the
+initial download/runtime status below, and separates baseline parity from lens-fit
+provenance. The original one-case stimulus specification remains unchanged. The later
+[review-preparation handoff](review_preparation_20261016.md) records final code
+review, draft PRs and the separately authorized manual-only CI preparation.
+
 ## Chosen slice
 
 Keep study selection, scoring and JSON reports in the engine. Add small, separate
@@ -22,14 +29,18 @@ unchanged. No fitting, mask training, production trigger wiring or display work.
 - Released lens repo: `e166deb5ad540932100ef803c8c9bcc2a5453694`.
   The advertised J++ artifact SHA256 is
   `893f7da243ab60d0628548a8c2b3afebaa45afdb1877d1c11521fde53209722d`.
-  Only metadata and a bounded archive-header range were inspected, not the full
-  tensor bytes; this is an advertised digest, not a locally verified checksum.
+  Initially only metadata and a bounded archive header were inspected. The local
+  preparation continuation downloaded the complete file, verified this digest and
+  safely inspected all tensors and authoritative embedded provenance; the JSON
+  inspection receipt is `data/exploratory/jpp_artifact_inspection.v1.json`.
 
 The PatientWords pin is `Qwen/Qwen3-4B` at
 `1cfa9a7208912126459214e8b04321603b3df60c` for model and tokenizer.
 The release describes width 2560, block outputs 0–34, transport target 35,
 FP16 maps, 96 fitting prompts and no stream reduction. Its authoritative pickle
-metadata agrees on those fields. Neither it nor the adjacent configuration names
+metadata agrees on those fields (absolute target 35 is explicit in the YAML;
+embedded `relative_end_transport_layer=-1` is consistent with it). Full safe
+inspection confirms that neither it nor the adjacent configuration names
 the model/tokenizer revision used for fitting. Compatibility remains **unknown**.
 A matching name and width cannot resolve that gap. No Gemma artifact is substituted.
 
@@ -197,22 +208,31 @@ measurement. A follow-up PR must first add reviewed CI wiring, keys, parked defa
 provenance and tests. Only after that merges and the owner authorizes execution may
 an actual command be prepared with `scripts/fire_trigger.py`, the current budget
 ceiling, one-running/one-pending queue discipline and subsequent parked state.
-No imaginary trigger key, direct workflow dispatch or local research-model run is
-provided as a shortcut.
+No imaginary trigger key or local research-model run is provided as a shortcut.
+The subsequent owner authorization permits a narrow, manual-only baseline route;
+[baseline_ci.md](baseline_ci.md) documents its review and default-branch gates.
+This exception does not change any production trigger or authorize execution.
 
-Before that first CI run: obtain authoritative fit model/tokenizer revisions (or
-select another genuinely compatible release); download pinned artifacts and verify
-full SHA256; recheck the current seal; tokenize only this allowed item; freeze
-filter/exclusion and control annotations; establish same-precision full-logit parity
-for the pinned HF baseline, unprocessed TransformerLens and Causalab; verify final
-norm and actual-output extraction; then permit a bounded two-forward preflight.
-The plan caps input length at 128 tokens and wall time at 120 seconds for that
-preflight, not for a whole study. Memory budget awaits the authorized runner.
+The first CI baseline check is **lens-independent**: unknown historical lens-fit
+revisions do not block its preparation or an otherwise authorized baseline run.
+The continuation in [baseline_preflight.md](baseline_preflight.md) replaces the
+initial two-forward/120-second sketch with explicit settings, capacity, timeouts
+and prospective failure gates. It compares the legacy HF call, an explicitly
+aligned HF call and Causalab on the same two approved prompts, with no lens or
+intervention. The current seal, exact code/weight/tokenizer revisions and reviewed
+execution wiring remain prerequisites. TransformerLens parity remains a later
+separate check before residual-patching comparisons.
+
+Lens readouts additionally require authoritative fit model/tokenizer revisions
+(or another genuinely compatible release), frozen filters and targets, final-norm
+parity and actual-output extraction. Artifact integrity alone does not satisfy
+those gates; the continuation does not weaken them.
 
 Local hardware audit: 16 GiB RAM, 10 CPUs, arm64, CUDA unavailable, MPS available.
 A CPU-only synthetic 8×2560 identity transport took 0.0141 s with process max RSS
 220,348,416 bytes. This is **not** a Qwen model-runtime or fitting-capacity estimate.
-Neither 4B weights nor a full lens file was downloaded. Full-model CPU/GPU memory,
+No 4B weights were downloaded. The continuation inspected the complete lens file.
+Full-model CPU/GPU memory,
 mask training and Jacobian fitting remain unmeasured and unauthorized.
 
 ## Staged pull-request plan
@@ -256,7 +276,7 @@ improvement.
 
 ## Acceptance and artifact inventory
 
-Verified locally on 2026-10-15:
+Initial implementation checks, before the local preparation continuation:
 
 | Check | Actual result |
 |---|---|
@@ -298,12 +318,15 @@ Actual audited artifacts are source commits/configuration metadata, the pinned
 release's advertised hashes, bounded pickle-opcode headers and the already-reviewed
 pilot item's source references. Synthetic artifacts are all fixture logits,
 matrices, toy activations, patch effects and bridge outputs. There are **no new
-real-model measurements**. Full checkpoint hashes have not been locally verified,
-and no model benchmark, native-neuron identity, fitting result or safety claim is
-reported. No trigger, workflow, landed data, dependency pin or frontend file was
-changed. No network inference, push, merge, publication or deployment occurred.
+real-model measurements**. The continuation verifies the full J++ checkpoint hash; the J-Lens file remains
+unverified locally. No model benchmark, native-neuron identity, fitting result or
+safety claim is reported. In the initial pass, no trigger, workflow, landed data, dependency pin or frontend
+file changed, and no network inference, push, merge, publication or deployment
+occurred. The review continuation adds inactive manual workflow wiring and pushes
+review branches only; its handoff records the exact scope.
 
-The next smallest experiment is provenance resolution followed by the one-case,
-two-forward CI preflight and baseline-logit parity check. Paired readouts follow
-only if those gates pass; native-channel comparisons follow a working residual
-baseline with complete controls.
+The next smallest experiment is the lens-independent one-case CI baseline-logit
+parity preflight, after separate owner authorization and reviewed execution wiring.
+Historical lens-fit provenance can be resolved in parallel. Paired readouts follow
+only after both compatibility and parity gates pass; native-channel comparisons
+follow a working residual baseline with complete controls.

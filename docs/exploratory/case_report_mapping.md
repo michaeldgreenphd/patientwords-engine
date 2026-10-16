@@ -26,7 +26,9 @@ replace pilot provenance with a main-study label. `S.model` and `P.model` name
 model/tokenizer revisions; `S.implementations` are historical base commits, not
 current executable pins. A future baseline execution record's `commits`, capture
 `code`, `execution_sha256`, `versions`, `environment` and `plan_sha256` identify
-actual execution. See [baseline_preflight.md](baseline_preflight.md).
+actual execution. Per-variant `aligned_inputs` binds the actual token IDs, mask,
+positions, cache flag and selected output index; `tokenizer_provenance` binds the
+offline snapshot and config checksum. See [baseline_preflight.md](baseline_preflight.md).
 
 Do not mix digest conventions: source file SHA-256 hashes bytes; `R.spec_sha256`
 and `R.packet_sha256` hash canonical JSON using the exploratory module's `digest`;

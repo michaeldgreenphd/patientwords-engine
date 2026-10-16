@@ -1,0 +1,116 @@
+{
+  "schema_version": "patientwords.baseline-preflight/1",
+  "status": "prepared_not_executed",
+  "source_spec": {
+    "path": "data/exploratory/qwen3_4b_one_case.v1.json",
+    "sha256": "0d8014ec7395160409bf5afd04d7ef1d4db9cef2ce468cc62173ed89963d9f0d"
+  },
+  "case_id": "pw_exploratory_candidate_r001",
+  "variants": [
+    "source",
+    "recipient"
+  ],
+  "model": {
+    "id": "Qwen/Qwen3-4B",
+    "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+    "tokenizer_id": "Qwen/Qwen3-4B",
+    "tokenizer_revision": "1cfa9a7208912126459214e8b04321603b3df60c"
+  },
+  "vocab_size": 151936,
+  "input_settings": {
+    "chat_template": null,
+    "thinking": "not_applied_raw_prompt",
+    "add_special_tokens": true,
+    "truncation": false
+  },
+  "numerical": {
+    "device": "cpu",
+    "dtype": "bfloat16",
+    "attention_implementation": "sdpa",
+    "seed": 7,
+    "threads": 8,
+    "batch_size": 1,
+    "max_input_tokens": 128,
+    "eval": true,
+    "gradients": false,
+    "aligned_use_cache": false,
+    "aligned_mask": "all_ones",
+    "aligned_positions": "zero_based_arange"
+  },
+  "comparisons": [
+    "engine_legacy_vs_engine_aligned",
+    "engine_aligned_vs_causalab"
+  ],
+  "tolerances": {
+    "max_abs_logit": 0.125,
+    "rms_logit": 0.02,
+    "max_abs_probability": 0.001,
+    "target_probability": 0.0001,
+    "top1_equal": true
+  },
+  "tolerance_basis": "Prospective engineering gates, not observed Qwen agreement or study effect thresholds; failure stops comparison, never relax automatically.",
+  "environments": {
+    "engine": {
+      "torch": "2.13.0+cpu",
+      "transformers": "5.14.1",
+      "accelerate": "1.14.0"
+    },
+    "causalab": {
+      "torch": "2.9.0",
+      "transformers": "5.16.1",
+      "accelerate": "1.14.0"
+    }
+  },
+  "resources": {
+    "runner": "owner-approved existing Linux x86_64 CPU runner; no rental",
+    "minimum_ram_bytes": 68719476736,
+    "minimum_free_disk_bytes": 42949672960,
+    "minimum_logical_cpus": 8,
+    "estimated_weight_download_bytes": 8044936192,
+    "weight_estimate_basis": "4022468096 tied-embedding parameters derived from pinned config times 2 bytes; excludes headers/tokenizer, not an observed download size",
+    "maximum_model_download_bytes": 10000000000,
+    "minimum_preflight_head_size_check": true,
+    "forward_count": 6,
+    "capture_timeout_seconds_each": 900,
+    "job_timeout_minutes": 60,
+    "provider_budget_usd": 0,
+    "runner_cost_status": "existing runner quota only; billable runner unavailable means refuse"
+  },
+  "code": {
+    "engine_reported_head": "e816cd123b926e2e35c27c31b0cd64da7250bf08",
+    "causalab_reported_head": "c153200275c9ceed070f396b3d3445d22bd5b2bd",
+    "jpp_reported_head": "6fd02c6f2787eeec4321d1356ddf2ce1d511b98e",
+    "remote_execution_status": "blocked_until_reviewed_code_and_manual_workflow_reach_owner_default_branches"
+  },
+  "non_dependencies": [
+    "lens_artifact",
+    "lens_fit_revision",
+    "jpp_runtime"
+  ],
+  "output_namespace": "exploratory_methods/baseline_preflight",
+  "prerequisites": [
+    "current_seal_check",
+    "source_spec_hash",
+    "two_independent_pinned_environments_with_recorded_build_versions",
+    "compiled_causalab_extension",
+    "exact_remote_code_commits",
+    "runner_capacity",
+    "model_file_size_preview",
+    "owner_execution_authorization",
+    "reviewed_manual_only_workflow_on_default_branch"
+  ],
+  "runtime_python_version": "3.12.14",
+  "runtime_build_provenance": {
+    "engine_torch": {
+      "distribution_version": "2.13.0+cpu",
+      "wheel": "torch-2.13.0+cpu-cp312-cp312-manylinux_2_28_x86_64.whl",
+      "index_url": "https://download.pytorch.org/whl/cpu/torch/",
+      "metadata_url": "https://download-r2.pytorch.org/whl/cpu/torch-2.13.0%2Bcpu-cp312-cp312-manylinux_2_28_x86_64.whl.metadata",
+      "metadata_sha256": "b3c7f4b3f77d06f86a42aab7d0facef7b661ca3c22967bfcc396917d935dd335",
+      "metadata_bytes": 37906,
+      "advertised_wheel_sha256": "4ca4a9394b0c771238a4f73590fdbbc4debad85ed0fa63d026ae1b085da7d6e2",
+      "status": "metadata_verified_wheel_not_downloaded",
+      "checked_utc_date": "2026-10-16"
+    }
+  }
+}
