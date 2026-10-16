@@ -1,15 +1,27 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-13T13:35:00Z",
+  "updated_utc": "2026-10-16T13:10:00Z",
   "updated_by": "routine",
   "queue": {
     "circuit-trace": {
-      "running": null,
+      "running": {
+        "fired_utc": "2026-10-16T12:51:12Z",
+        "commit": "",
+        "note": "PARK (resting-state rule): cheapest no-op default committed so branch operations that touch this trigger file re-run a $0/negligible stage instead of the last expensive fire; commit_outputs false where the workflow supports it. Owner-approved maintenance hardening, 2026-08-27."
+      },
       "pending": null
     },
     "logits-eval": {
-      "running": null,
-      "pending": null
+      "running": {
+        "fired_utc": "2026-10-16T12:20:41Z",
+        "commit": "",
+        "note": "backfill PREDICTIONS (exploratory, to parity): pairs_20260707T215921Z pairs 1-80/80 x gemma-4-e2b+qwen3.5-2b-base"
+      },
+      "pending": {
+        "fired_utc": "2026-10-16T12:21:02Z",
+        "commit": "",
+        "note": "PARK (resting-state rule): cheapest no-op default committed so branch operations that touch this trigger file re-run a $0/negligible stage instead of the last expensive fire; commit_outputs false where the workflow supports it. Owner-approved maintenance hardening, 2026-08-27."
+      }
     },
     "activation-patching": {
       "running": null,
@@ -29,9 +41,9 @@
     },
     "archive-renders": {
       "running": {
-        "fired_utc": "2026-10-13T12:45:46Z",
+        "fired_utc": "2026-10-16T12:21:27Z",
         "commit": "",
-        "note": "PNG sweep (maintenance item 3d, $0): archive+prune the one eligible unarchived run. drift_sentinel_20261013 excluded by 3d's own rule. Lane 0 active at fire time (its 12:37 park, run 38398696547, GitHub-confirmed terminal and resolved first). Harvest and re-park next cycle."
+        "note": "PNG sweep (maintenance item 3d, $0): archive+prune the one eligible unarchived run. drift_sentinel_20261016 excluded by 3d's own rule. Lane 0 active at fire time (its 12:20 park, run 38899780785, GitHub-confirmed terminal and resolved first). Harvest and re-park next cycle."
       },
       "pending": null
     },
@@ -49,6 +61,41 @@
     }
   },
   "runs_recent": [
+    {
+      "workflow": "circuit_trace_evaluation",
+      "run_id": 38899767320,
+      "fired_utc": "2026-10-16T12:19:56Z",
+      "status": "completed/success",
+      "note": "Drift sentinel 2026-10-16 (alias f062571f). GitHub-confirmed completed/success 12:20:00Z -> 12:50:32Z (~30m, inside the 45m bound). Outputs 9416a887: batch_summary.part_01.json, 3 rows, backend hosted, language_penalty 0.045, 0.369, -0.046. Verdict vs 20261013: max |dp| 0.0, top words unchanged; 48 measured days. Resolved in-cycle."
+    },
+    {
+      "workflow": "archive_renders",
+      "run_id": 38899942365,
+      "fired_utc": "2026-10-16T12:21:27Z",
+      "status": "completed/success",
+      "note": "Item 3d PNG sweep, tag renders-20261016, runs [trace_out/drift_sentinel_20261013], prune true. GitHub-confirmed completed/success 12:21:31Z -> 12:21:52Z. Journal entry left unresolved for the next cycle per 3d."
+    },
+    {
+      "workflow": "archive_renders",
+      "run_id": 38899780785,
+      "fired_utc": "2026-10-16T12:20:03Z",
+      "status": "completed/success",
+      "note": "Opening-backstop re-park of archive-renders (the 10-13 sweep, run 38399710233, GitHub-confirmed completed/success, manifest renders-20261013 with Release URL on main). Completed 12:20:25Z; outputs 0c58d111. Resolved in-cycle."
+    },
+    {
+      "workflow": "logits_evaluation",
+      "run_id": 38899880694,
+      "fired_utc": "2026-10-16T12:20:41Z",
+      "status": "in_progress",
+      "note": "Item 3e leg: pairs_20260707T215921Z 1-80/80 x gemma-4-e2b+qwen3.5-2b-base ($0). First push was rejected (main moved); recovered with fire_trigger.py publish as 5f9cdf59, no re-fire. Park queued behind it (run 38899896961, pending). Next cycle harvests both."
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "run_id": 38903466220,
+      "fired_utc": "2026-10-16T12:51:12Z",
+      "status": "in_progress",
+      "note": "Item 3c re-park of circuit-trace after the sentinel resolved, --ignore-settle (run 38899767320 GitHub-confirmed terminal first). $0. Still in_progress at cycle close; left for the next cycle's opening harvest."
+    },
     {
       "workflow": "circuit_trace_evaluation",
       "run_id": 38403587447,
@@ -188,50 +235,15 @@
       "fired_utc": "2026-10-02T12:38:18Z",
       "status": "completed/success",
       "note": "Opening-backstop re-park of archive-renders (the 09-29 sweep 36569526880 GitHub-confirmed completed/success, manifest renders-20260929 on main). Completed 12:38:23Z -> 12:38:36Z; resolved in-cycle before the sweep fire."
-    },
-    {
-      "workflow": "circuit_trace_evaluation",
-      "run_id": 36574396184,
-      "fired_utc": "2026-09-29T13:20:35Z",
-      "status": "completed/success",
-      "note": "Item 3c re-park of circuit-trace after the sentinel resolved, --ignore-settle (terminality of runs 36569414257 and 36569416060 GitHub-confirmed first). GitHub-confirmed completed/success 13:20:40Z -> 13:26:38Z. $0, commit_outputs false. Resolved in-cycle."
-    },
-    {
-      "workflow": "circuit_trace_evaluation",
-      "run_id": 36569416060,
-      "fired_utc": "2026-09-29T12:37:56Z",
-      "status": "completed/success",
-      "note": "DUPLICATE of the 09-29 sentinel: a second push-event run for the same commit a6f1c6fa, created the same second as 36569414257, with no second fire (one journal entry, one push). It waited in the concurrency group's pending slot and ran 12:54:48Z -> 13:14:19Z; its commit 5626d305 overwrote the sentinel outputs. Probabilities and language_penalty identical to the first run; feature masses differ by <=0.0003. $0 here, but the same doubling on a paid lane would double spend and would occupy the pending slot the journal thinks is free."
-    },
-    {
-      "workflow": "circuit_trace_evaluation",
-      "run_id": 36569414257,
-      "fired_utc": "2026-09-29T12:37:56Z",
-      "status": "completed/success",
-      "note": "Drift sentinel 2026-09-29, the only measurement fire this cycle. GitHub-confirmed completed/success 12:38:02Z -> 12:54:26Z (16m24s). Outputs verified: batch_summary.part_01.json, backend hosted, source_set gemmascope-transcoder-16k, 3 rows, language_penalty on all three (0.045, 0.369, -0.046). Verdict vs 20260925: max |dp| 0.0, top words unchanged; 43 measured days. Resolved in-cycle."
-    },
-    {
-      "workflow": "archive_renders",
-      "run_id": 36569526880,
-      "fired_utc": "2026-09-29T12:38:48Z",
-      "status": "completed/success",
-      "note": "Item 3d PNG sweep, $0. tag renders-20260929, runs ['trace_out/drift_sentinel_20260925'], prune true. First push rejected (CI outputs moved main); recovered with fire_trigger.py publish (a9e0ab4a), no re-fire. GitHub-confirmed completed/success 12:39:03Z -> 12:39:17Z. Journal entry left active by rule: harvest and re-park next cycle."
-    },
-    {
-      "workflow": "archive_renders",
-      "run_id": 36569430431,
-      "fired_utc": "2026-09-29T12:38:06Z",
-      "status": "completed/success",
-      "note": "Opening-backstop re-park of archive-renders (the 09-25 sweep 36136113865 GitHub-confirmed completed/success, manifest renders-20260925 with Release URL on main). Completed 12:38:10Z -> 12:38:29Z; resolved in-cycle before the sweep fire."
     }
   ],
   "spend": {
     "generation_ceiling_usd": 8.0,
     "generation_spent_usd": 2.7678,
-    "lifetime_generation_usd": 80.8185,
+    "lifetime_generation_usd": 81.4668,
     "daily_ceiling_usd": 2.0,
     "today": {
-      "date": "2026-10-13",
+      "date": "2026-10-16",
       "spent_usd": 0.0,
       "anthropic_usd": 0.0,
       "openrouter_usd": 0.0
@@ -279,7 +291,8 @@
       "2026-09-23": 3.8052,
       "2026-09-24": 2.5567,
       "2026-09-25": 2.5402,
-      "2026-10-12": 0.2145
+      "2026-10-12": 0.2145,
+      "2026-10-13": 0.6483
     },
     "entries_seen": [
       "boostgrid_lowrank.report.json",
@@ -464,9 +477,11 @@
       "run_36076994201_1.judge.report.json",
       "run_36076994201_1.report.json",
       "run_38311055562_1.judge.report.json",
-      "run_38311055562_1.report.json"
+      "run_38311055562_1.report.json",
+      "run_38434195912_1.judge.report.json",
+      "run_38434195912_1.report.json"
     ],
-    "last_scan_utc": "2026-10-13T12:33:11Z",
+    "last_scan_utc": "2026-10-16T12:17:55Z",
     "alerts": [
       "Daily spend on 2026-07-29 has exceeded the $2 daily ceiling.",
       "Daily spend on 2026-08-04 has exceeded the $2 daily ceiling.",
@@ -656,7 +671,9 @@
       "run_36076994201_1.judge.report.json": 1.610848,
       "run_36076994201_1.report.json": 0.929351,
       "run_38311055562_1.judge.report.json": 0.0,
-      "run_38311055562_1.report.json": 0.214491
+      "run_38311055562_1.report.json": 0.214491,
+      "run_38434195912_1.judge.report.json": 0.421715,
+      "run_38434195912_1.report.json": 0.2266
     },
     "by_day_by_channel": {
       "anthropic": {
@@ -678,7 +695,8 @@
         "2026-09-23": 3.8052,
         "2026-09-24": 2.5567,
         "2026-09-25": 2.5402,
-        "2026-10-12": 0.2145
+        "2026-10-12": 0.2145,
+        "2026-10-13": 0.6483
       },
       "openrouter": {
         "2026-08-04": 5.6981,
@@ -826,8 +844,8 @@
     "generation_status": "COMPLETE 2026-08-06: 1,600/1,600 accepted across the 20 cadence batches. The validator-yield stopping rule never tripped. Generation spend closed at $2.7678 of the $8 pre-registered ceiling (35%). No further scenario-generation fire is warranted - priority-1 of the standing prompt is retired for this campaign."
   },
   "verdicts": [
-    "INSTRUMENT HEALTHY, seventeenth consecutive measured sentinel since the 08-22..08-25 outage. The 2026-10-13 drift sentinel succeeded (circuit-trace run 38398675609, GitHub-confirmed completed/success, ~35m, one run for the push). 3 rows verified, language_penalty present on all three (0.045, 0.369, -0.046). data/drift_series.json now holds 47 measured days ending 20261013 (published to the live site as patientwords 1d780ec). Delta against 20261009: max |dp| 0.0, top words unchanged. The two historic DRIFT days (20260715 max |dp| 0.027, 20260814 max |dp| 0.023, both pair 2 patient, top words unchanged) are unchanged; threshold 0.01. 10-10..10-12 are Tue/Fri cadence gaps, not holes.",
-    "INSTRUMENT HEALTHY, sixteenth consecutive measured sentinel since the 08-22..08-25 outage. The 2026-10-09 drift sentinel succeeded (circuit-trace run 37931697758, GitHub-confirmed completed/success, ~16m, one run for the push). 3 rows verified, language_penalty present on all three (0.045, 0.369, -0.046). data/drift_series.json now holds 46 measured days ending 20261009 (published to the live site as patientwords 31dcbed). Delta against 20261006: max |dp| 0.0, top words unchanged. The two historic DRIFT days (20260715 max |dp| 0.027, 20260814 max |dp| 0.023, both pair 2 patient, top words unchanged) are unchanged; threshold 0.01. 10-07..10-08 are Tue/Fri cadence gaps, not holes."
+    "INSTRUMENT HEALTHY, eighteenth consecutive measured sentinel since the 08-22..08-25 outage. The 2026-10-16 drift sentinel succeeded (circuit-trace run 38899767320, GitHub-confirmed completed/success, ~30m, one run for the push). 3 rows verified, language_penalty present on all three (0.045, 0.369, -0.046). data/drift_series.json now holds 48 measured days ending 20261016 (published to the live site as patientwords 3f4fa7e). Delta against 20261013: max |dp| 0.0, top words unchanged. The two historic DRIFT days (20260715 max |dp| 0.027, 20260814 max |dp| 0.023, both pair 2 patient, top words unchanged) are unchanged; threshold 0.01. 10-14..10-15 are Tue/Fri cadence gaps, not holes.",
+    "INSTRUMENT HEALTHY, seventeenth consecutive measured sentinel since the 08-22..08-25 outage. The 2026-10-13 drift sentinel succeeded (circuit-trace run 38398675609, GitHub-confirmed completed/success, ~35m, one run for the push). 3 rows verified, language_penalty present on all three (0.045, 0.369, -0.046). data/drift_series.json now holds 47 measured days ending 20261013 (published to the live site as patientwords 1d780ec). Delta against 20261009: max |dp| 0.0, top words unchanged. The two historic DRIFT days (20260715 max |dp| 0.027, 20260814 max |dp| 0.023, both pair 2 patient, top words unchanged) are unchanged; threshold 0.01. 10-10..10-12 are Tue/Fri cadence gaps, not holes."
   ],
   "findings_delta": [
     {
@@ -941,6 +959,10 @@
     {
       "date": "2026-10-13",
       "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 38398675609, ~35m, GitHub-confirmed); series 46 -> 47 days, max |dp| 0.0 vs 10-09. OWNER: the 10-12 equity Petri run eq01 spent $0.21 but committed 0 transcripts and 0 judgments (PETRI-EQ01-EMPTY-OUTPUTS-20261013). Re-parked petri-audit, which was resting on that paid config. 3e leg 210703Z landed (held)."
+    },
+    {
+      "date": "2026-10-16",
+      "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 38899767320, ~30m, GitHub-confirmed); series 47 -> 48 days, max |dp| 0.0 vs 10-13; drift_series.json published (site 3f4fa7e). Closed PETRI-EQ01-EMPTY-OUTPUTS as resolved by eq02 per the owner's 10-14 decisions. 3e leg 215921Z fired (held on landing); 10-13 PNGs swept."
     }
   ],
   "decisions_pending": [
@@ -1086,12 +1108,12 @@
     {
       "id": "JLENS-TRANSPORT-LOGLENS-DOC-CONFLICT-20260809",
       "recorded_utc": "2026-08-09T14:13:07Z",
-      "what": "The three governing docs disagree on whether export_jlens_transport.py and export_jlens_loglens.py run in the daily cycle. docs/routine_standing_prompt.md §5 says they are WIRED (2026-07-23, owner option 1) and gives exact commands; .claude/skills/publish-site-data step 3 lists them; but that SAME skill's 'Never' list says 'Never run the transport/loglens exporters as part of the cycle (snapshot files)', and .claude/skills/daily-ops-cycle says 'Do NOT run the transport/loglens exporters (not wired - §5)'. This cycle SKIPPED both (the conservative reading). No content was lost: their census batch pairs_20260711T051145Z saw no new data this cycle, so a regen would have changed only generated_utc. Owner: please settle which doc is right so cycles stop diverging. || 2026-08-10: this cycle RAN both, following docs/routine_standing_prompt.md as the stated authority ('where a skill compresses, that file governs'). Unlike 08-09 it mattered: the census batch pairs_20260711T051145Z gained its 26-50 lens chunk, so transport moved 25 -> 44 census pairs and loglens re-derived (23 paired, agree 17/18). Skipping would have left both site payloads stale against their own inputs. Two consecutive cycles have now made opposite calls on the same day's rules - please settle it. || 2026-08-12 - THIRD CYCLE, THIRD TIME THE DOCS FORCED A JUDGEMENT CALL. Ran both again, agreeing with 08-10 and following docs/routine_standing_prompt.md as the stated authority. It did not matter to content this time: transport re-derived the same census (44 pairs, patient-never 16) and loglens the same agreement counts (23 paired, class 17, formation 18), so only generated_utc moved in the two published files. The contradiction is still live inside a single file - publish-site-data step 3 says run them, its own Never list says never - and it is now the longest-standing unforced ambiguity in the cycle docs. || 2026-08-13: this cycle took the OPPOSITE reading and RAN both, on the grounds that docs/routine_standing_prompt.md self-describes as 'the authority' and the daily-ops-cycle skill defers to it where they differ. Evidence for the owner's decision: both exporters reproduced their committed site files byte-identically except generated_utc (transport census 44 pairs / patient-never 16 / 2 exemplars; loglens 23 paired / class agree 17 / formation agree 18). So across two cycles, running them and skipping them produced the SAME published content - the conflict is real but currently zero-stakes, and it stays open only because the docs still contradict each other. Cheapest fix is to delete the two stale 'Never'/'Do NOT' bullets in the skills, since the standing prompt and the publish-site-data step 3 body already agree. || 2026-08-14 - FOURTH CYCLE, THIRD IDENTICAL JUDGEMENT CALL. Ran both again, following docs/routine_standing_prompt.md section 5 as the stated authority over the publish-site-data skill's own contradictory 'Never' line and daily-ops-cycle's 'not wired'. No content impact today (both reproduced byte-identically except generated_utc; census 44 pairs, loglens 23 paired / agree 17 / 18). Every cycle since 08-10 has decided it the same way, so the risk is no longer divergence between cycles - it is that two of the three governing documents remain positively wrong, and a session that follows either one would silently stop refreshing two published payloads with both gates green."
+      "what": "The three governing docs disagree on whether export_jlens_transport.py and export_jlens_loglens.py run in the daily cycle. docs/routine_standing_prompt.md \u00a75 says they are WIRED (2026-07-23, owner option 1) and gives exact commands; .claude/skills/publish-site-data step 3 lists them; but that SAME skill's 'Never' list says 'Never run the transport/loglens exporters as part of the cycle (snapshot files)', and .claude/skills/daily-ops-cycle says 'Do NOT run the transport/loglens exporters (not wired - \u00a75)'. This cycle SKIPPED both (the conservative reading). No content was lost: their census batch pairs_20260711T051145Z saw no new data this cycle, so a regen would have changed only generated_utc. Owner: please settle which doc is right so cycles stop diverging. || 2026-08-10: this cycle RAN both, following docs/routine_standing_prompt.md as the stated authority ('where a skill compresses, that file governs'). Unlike 08-09 it mattered: the census batch pairs_20260711T051145Z gained its 26-50 lens chunk, so transport moved 25 -> 44 census pairs and loglens re-derived (23 paired, agree 17/18). Skipping would have left both site payloads stale against their own inputs. Two consecutive cycles have now made opposite calls on the same day's rules - please settle it. || 2026-08-12 - THIRD CYCLE, THIRD TIME THE DOCS FORCED A JUDGEMENT CALL. Ran both again, agreeing with 08-10 and following docs/routine_standing_prompt.md as the stated authority. It did not matter to content this time: transport re-derived the same census (44 pairs, patient-never 16) and loglens the same agreement counts (23 paired, class 17, formation 18), so only generated_utc moved in the two published files. The contradiction is still live inside a single file - publish-site-data step 3 says run them, its own Never list says never - and it is now the longest-standing unforced ambiguity in the cycle docs. || 2026-08-13: this cycle took the OPPOSITE reading and RAN both, on the grounds that docs/routine_standing_prompt.md self-describes as 'the authority' and the daily-ops-cycle skill defers to it where they differ. Evidence for the owner's decision: both exporters reproduced their committed site files byte-identically except generated_utc (transport census 44 pairs / patient-never 16 / 2 exemplars; loglens 23 paired / class agree 17 / formation agree 18). So across two cycles, running them and skipping them produced the SAME published content - the conflict is real but currently zero-stakes, and it stays open only because the docs still contradict each other. Cheapest fix is to delete the two stale 'Never'/'Do NOT' bullets in the skills, since the standing prompt and the publish-site-data step 3 body already agree. || 2026-08-14 - FOURTH CYCLE, THIRD IDENTICAL JUDGEMENT CALL. Ran both again, following docs/routine_standing_prompt.md section 5 as the stated authority over the publish-site-data skill's own contradictory 'Never' line and daily-ops-cycle's 'not wired'. No content impact today (both reproduced byte-identically except generated_utc; census 44 pairs, loglens 23 paired / agree 17 / 18). Every cycle since 08-10 has decided it the same way, so the risk is no longer divergence between cycles - it is that two of the three governing documents remain positively wrong, and a session that follows either one would silently stop refreshing two published payloads with both gates green."
     },
     {
       "id": "MODEL-STATS-PUBLISH-POLICY-20260810",
       "recorded_utc": "2026-08-10T13:50:00Z",
-      "what": "data/model_stats.json is not in the standing prompt's §5 publish chain, so the daily cycle refreshes every payload EXCEPT the per-model statistics - while firing, every cycle, the backfill legs that move them. Result: the site's cross-model numbers are from 2026-08-08 and today's recomputation differs materially (see MEDICAL-FINETUNE-FRAMING). It is also the only major payload with no generated_utc, so no automated check can see the staleness. Owner: (a) add 'paired_stats_rigor.py --site ../patientwords' to §5 and accept that it can trip claim_check (which is the designed behaviour), or (b) keep it manual and say so explicitly in the standing prompt. Today it is manual by omission, not by choice. Cheap prerequisite either way: stamp generated_utc in the bundle, then have validate_frontend_contract warn when it lags urgency_shift.json. || 2026-08-12 - SCOPE IS WIDER THAN THIS ENTRY AND ONE PREMISE IS WRONG. (a) It is not just model_stats: convergence.json is also stamped 2026-08-08T13:53:09Z, and timeline.json is stamped 2026-07-14T13:42:38Z - 29 days. (b) The premise 'it is the only major payload with no generated_utc' is incorrect: model_stats.json and convergence.json both carry _provenance.generated_utc (that is how these dates were read), so the proposed staleness check needs no new stamping work and can be written today; timeline.json is the one with no engine_sha. (c) The site CLAUDE.md:56-64 does not merely omit these files - it positively asserts all three are 'regenerated by the engine's nightly cycle', so the doc is wrong, not silent, and a session reading it would reasonably assume freshness. (d) NEW AND SEPARATE: all three carry _provenance.engine_sha '7f3b6777d552+dirty' - the study's claim-grade statistics were computed from an uncommitted working tree and are not reproducible from any commit. Nothing rejects a +dirty provenance stamp. Proposed checks in docs/critic/critic_20260812.md (freshness budget, +dirty rejection, documented-writer-vs-cycle parity). This cycle again did NOT regenerate, for the reason already on file. || 2026-08-14 - SIXTH DAY, STILL UNRESOLVED, AND THE GAP IS WIDENING. model_stats.json _provenance.generated_utc 2026-08-08T13:50:04Z, convergence.json 2026-08-08T13:53:09Z - both six days old while this cycle republished eight other payloads and fired another backfill leg that moves them. The 08-10 probe result (meditron3-8b n 132 -> 333, CI [-0.0498,+0.0004] -> [-0.0493,-0.0211] excluding zero, sign test 5v1 q=0.26 -> 23v3 q=1.76e-04) is now four days old and still not on the site, which continues to carry the pre-move numbers and the 'medical fine-tunes are the null cases' framing. Today's on-disk coverage over the 25 published stamps, against published n_rows: meditron3-8b 258 vs 132, apertus 233 vs 104, gemma-2-2b 3023 vs 1772 (upper bounds - pre-dedupe and including withheld holdout rows - so direction and scale only). This is the fourth consecutive cycle to record the same ask: (a) add paired_stats_rigor.py to the standing prompt's section 5 and accept it can trip claim_check, or (b) keep it manual and say so explicitly. It is still manual by omission, not by choice."
+      "what": "data/model_stats.json is not in the standing prompt's \u00a75 publish chain, so the daily cycle refreshes every payload EXCEPT the per-model statistics - while firing, every cycle, the backfill legs that move them. Result: the site's cross-model numbers are from 2026-08-08 and today's recomputation differs materially (see MEDICAL-FINETUNE-FRAMING). It is also the only major payload with no generated_utc, so no automated check can see the staleness. Owner: (a) add 'paired_stats_rigor.py --site ../patientwords' to \u00a75 and accept that it can trip claim_check (which is the designed behaviour), or (b) keep it manual and say so explicitly in the standing prompt. Today it is manual by omission, not by choice. Cheap prerequisite either way: stamp generated_utc in the bundle, then have validate_frontend_contract warn when it lags urgency_shift.json. || 2026-08-12 - SCOPE IS WIDER THAN THIS ENTRY AND ONE PREMISE IS WRONG. (a) It is not just model_stats: convergence.json is also stamped 2026-08-08T13:53:09Z, and timeline.json is stamped 2026-07-14T13:42:38Z - 29 days. (b) The premise 'it is the only major payload with no generated_utc' is incorrect: model_stats.json and convergence.json both carry _provenance.generated_utc (that is how these dates were read), so the proposed staleness check needs no new stamping work and can be written today; timeline.json is the one with no engine_sha. (c) The site CLAUDE.md:56-64 does not merely omit these files - it positively asserts all three are 'regenerated by the engine's nightly cycle', so the doc is wrong, not silent, and a session reading it would reasonably assume freshness. (d) NEW AND SEPARATE: all three carry _provenance.engine_sha '7f3b6777d552+dirty' - the study's claim-grade statistics were computed from an uncommitted working tree and are not reproducible from any commit. Nothing rejects a +dirty provenance stamp. Proposed checks in docs/critic/critic_20260812.md (freshness budget, +dirty rejection, documented-writer-vs-cycle parity). This cycle again did NOT regenerate, for the reason already on file. || 2026-08-14 - SIXTH DAY, STILL UNRESOLVED, AND THE GAP IS WIDENING. model_stats.json _provenance.generated_utc 2026-08-08T13:50:04Z, convergence.json 2026-08-08T13:53:09Z - both six days old while this cycle republished eight other payloads and fired another backfill leg that moves them. The 08-10 probe result (meditron3-8b n 132 -> 333, CI [-0.0498,+0.0004] -> [-0.0493,-0.0211] excluding zero, sign test 5v1 q=0.26 -> 23v3 q=1.76e-04) is now four days old and still not on the site, which continues to carry the pre-move numbers and the 'medical fine-tunes are the null cases' framing. Today's on-disk coverage over the 25 published stamps, against published n_rows: meditron3-8b 258 vs 132, apertus 233 vs 104, gemma-2-2b 3023 vs 1772 (upper bounds - pre-dedupe and including withheld holdout rows - so direction and scale only). This is the fourth consecutive cycle to record the same ask: (a) add paired_stats_rigor.py to the standing prompt's section 5 and accept it can trip claim_check, or (b) keep it manual and say so explicitly. It is still manual by omission, not by choice."
     },
     {
       "id": "PAB-PROBE-NO-CI-TARGET-20260810",
@@ -1101,7 +1123,7 @@
     {
       "id": "DOC-SWEEP-DRIFT-20260810",
       "recorded_utc": "2026-08-10T13:50:00Z",
-      "what": "Two documentation drifts from the Monday sweep (docs/audits/doc_accuracy_20260810.md), both needing an owner/orchestrator edit rather than a cycle fix. (1) The standing prompt §2b tells the sweep to cross-check 'docs/preregistration_amendments.md' - that file does not exist on the ops branch (only on main; the branch split it into prereg_amendment2/3/4 + prereg_divergence_log). A session following §2b literally gets a FileNotFoundError and could misread it as 'no amendments declared'. (2) extract_site_text.py's PAGES list misses two substantive live pages - simulated-scenarios/scenario.html (29.3 KB) and llm/code.html (14.6 KB) - so ~44 KB of published prose is invisible to every consumer of the extractor, including text review. The other seven unlisted files are correctly out of scope (five redirect stubs, 404, share card)."
+      "what": "Two documentation drifts from the Monday sweep (docs/audits/doc_accuracy_20260810.md), both needing an owner/orchestrator edit rather than a cycle fix. (1) The standing prompt \u00a72b tells the sweep to cross-check 'docs/preregistration_amendments.md' - that file does not exist on the ops branch (only on main; the branch split it into prereg_amendment2/3/4 + prereg_divergence_log). A session following \u00a72b literally gets a FileNotFoundError and could misread it as 'no amendments declared'. (2) extract_site_text.py's PAGES list misses two substantive live pages - simulated-scenarios/scenario.html (29.3 KB) and llm/code.html (14.6 KB) - so ~44 KB of published prose is invisible to every consumer of the extractor, including text review. The other seven unlisted files are correctly out of scope (five redirect stubs, 404, share card)."
     },
     {
       "id": "STEERED-BATCH-PUBLICATION-20260811",
@@ -1128,19 +1150,14 @@
       "id": "BOOTSTRAP-VARIANT-D-20260922",
       "recorded_utc": "2026-09-22T12:49:04Z",
       "what": "LOW-MEDIUM, and purely a documentation gap - no work was lost, but the next fresh session could lose an hour to it or, worse, take the destructive path. The container arrived in a state docs/fresh_session_bootstrap.md does not describe, a hybrid of its Variant B and Variant C. Like Variant B: both repos clean, no staged deletions, sitting on session branches (engine claude/magical-volta-o0p72e, site claude/blissful-newton-o0p72e) with the local main and origin/main refs STALE - engine main at 272e651f, site main at 8386700 (2026-09-15). Like Variant C: the engine clone is SHALLOW (.git/shallow, 5 entries) and, critically, has NO partial-clone filter (remote.origin.partialclonefilter unset, .git 3.6G) - the full-blob shallow clone whose deepening exhausted the session disk on 2026-09-08. WHAT IS NEW, and what neither variant's repair handles: the working tree was ALREADY at the true remote main tip. HEAD on the session branch was af521fae in the engine and d8d2b0f in the site, and a git ls-remote confirmed those are exactly refs/heads/main on both remotes; the stale local main refs were proper ancestors (merge-base --is-ancestor passed both ways). So Variant B's repair would have been wrong here - its blobless fetch and sparse-checkout assume an intact blobless history this clone does not have - and Variant C's re-clone would have been ten minutes of needless work. THE SAFE REPAIR, which this cycle used and which cost nothing: confirm with git ls-remote plus merge-base that HEAD already equals the remote main tip, then fast-forward the local refs onto the commit already checked out (git checkout -B main <sha>). The follow-up git fetch transferred no objects because the tip was already in the object store, and free disk stayed at 19G throughout - no deepening, no re-clone. SUGGESTED for the doc: a Variant D whose detection is 'clean tree, session branch, stale local main' plus 'ls-remote tip == HEAD', and whose repair is the two-line fast-forward above, with the standing warning that a shallow clone with FULL blobs must still never be deepened. This is the fifth consecutive cycle to arrive on session branches, so the arrival state is the norm, not an accident."
-    },
-    {
-      "id": "PETRI-EQ01-EMPTY-OUTPUTS-20261013",
-      "recorded_utc": "2026-10-13T13:35:00Z",
-      "what": "The equity Petri audit fired from main on 2026-10-12T21:30:25Z (nonce eq01; seeds pw-petri-equity-scd-acute-chest and pw-petri-equity-diabetic-ulcer-sepsis from docs/framework/petri_seeds_equity.draft.json; target and judge anthropic/claude-haiku-4-5) completed/success in GitHub (run 38311055562) and spent $0.2145 on the target (59 calls, 127,559 tokens). But its committed outputs in data/petri/runs/run_38311055562_1/ hold ZERO rows: transcripts.jsonl, judgments.jsonl, rule_outcomes.jsonl and analysis_rows.jsonl are all empty. The judge report says planned 0, judged 0, cost $0. The sanitised log holds 6 samples, so the conversations happened and were dropped between the eval log and the transcript export. This Routine did not fire the run and did not investigate further (maintenance mode). Owner question: is the empty export expected for the equity seeds (for example, the exporter or judge only recognises wave seed ids), or a defect to fix before any re-run spends again? The petri-audit lane was re-parked this cycle, because its resting content was the paid mode:run config."
     }
   ],
   "blockers": [
     {
       "id": "JOURNAL-EXPIRED-PARKS-20260902",
       "recorded_utc": "2026-09-04T15:00:00Z",
-      "updated_utc": "2026-10-13T13:35:00Z",
-      "what": "Standing journal-expiry record, re-verified 2026-09-25 and grown by exactly one entry, as predicted. Recomputed this cycle: 148 of 929 journal lines are unresolved-and-expired (was 147 of 915 on 09-22); all 929 lines parse as JSON. The one new entry is the 09-22 cycle's own item-3d PNG sweep (archive-renders, fired 2026-09-22T12:41:26Z), whose run 35728710223 this cycle GitHub-confirmed completed/success. fire_trigger.py resolve declined it ('no active journal entries for archive-renders') because it is past the 8h expiry; it is recorded here, not hand-edited into the journal. Nothing was lost: its outputs landed and this cycle re-parked the lane. The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-09-25T12:38:38Z), deliberately left for the next cycle. See ITEM-3D-EXPIRY-COLLISION-20260918. || 2026-09-29: recomputed 149 of 935 journal lines unresolved-and-expired (was 148 of 929); all 935 parse. The one new entry is the 09-25 item-3d sweep (archive-renders, 2026-09-25T12:38:38Z), run 36136113865 GitHub-confirmed completed/success; resolve declined it as expired, lane re-parked this cycle (da032048). The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-09-29T12:38:48Z, run 36569526880 already completed/success), left for the next cycle. || 2026-10-02: recomputed 150 of 939 journal lines unresolved-and-expired (was 149 of 935); all 939 parse. The one new entry is the 09-29 item-3d sweep (archive-renders, 2026-09-29T12:38:48Z), run 36569526880 GitHub-confirmed completed/success; resolve declined it as expired, lane re-parked this cycle (0b284539). The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-10-02T12:39:17Z, run 37007989844 already completed/success), left for the next cycle. || 2026-10-06: recomputed 151 of 943 journal lines unresolved-and-expired (was 150 of 939); all 943 parse. The one new entry is the 10-02 item-3d sweep (archive-renders, 2026-10-02T12:39:17Z), run 37007989844 GitHub-confirmed completed/success with manifest renders-20261002 and its Release URL on main; resolve cannot reach it past the 8h expiry, lane re-parked this cycle (be1c7298). The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-10-06T12:46:51Z, run 37465792635 already completed/success), left for the next cycle. || 2026-10-09: recomputed 152 of 947 journal lines unresolved-and-expired (was 151 of 943); all 947 parse. The one new entry is the 10-06 item-3d sweep (archive-renders, 2026-10-06T12:46:51Z), run 37465792635 GitHub-confirmed completed/success with manifest renders-20261006 on main; resolve cannot reach it past the 8h expiry, lane re-parked this cycle (dbb484d0). The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-10-09T12:42:25Z, run 37931807332 already completed/success), left for the next cycle. || 2026-10-13: recomputed 154 of 964 journal lines unresolved-and-expired (was 152 of 947); all lines parse. The two new entries: the 10-09 item-3d sweep (archive-renders, 2026-10-09T12:42:25Z, run 37931807332 completed/success, manifest renders-20261009 on main; lane re-parked this cycle, a067de2a) and the 10-12 petri-audit eq01 fire (2026-10-12T21:30:25Z, run 38311055562 completed/success, outputs 39818fae; lane re-parked this cycle, 7d06ab2c). The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-10-13T12:45:46Z, run 38399710233 already completed/success), left for the next cycle."
+      "updated_utc": "2026-10-16T13:10:00Z",
+      "what": "Standing journal-expiry record, re-verified 2026-09-25 and grown by exactly one entry, as predicted. Recomputed this cycle: 148 of 929 journal lines are unresolved-and-expired (was 147 of 915 on 09-22); all 929 lines parse as JSON. The one new entry is the 09-22 cycle's own item-3d PNG sweep (archive-renders, fired 2026-09-22T12:41:26Z), whose run 35728710223 this cycle GitHub-confirmed completed/success. fire_trigger.py resolve declined it ('no active journal entries for archive-renders') because it is past the 8h expiry; it is recorded here, not hand-edited into the journal. Nothing was lost: its outputs landed and this cycle re-parked the lane. The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-09-25T12:38:38Z), deliberately left for the next cycle. See ITEM-3D-EXPIRY-COLLISION-20260918. || 2026-09-29: recomputed 149 of 935 journal lines unresolved-and-expired (was 148 of 929); all 935 parse. The one new entry is the 09-25 item-3d sweep (archive-renders, 2026-09-25T12:38:38Z), run 36136113865 GitHub-confirmed completed/success; resolve declined it as expired, lane re-parked this cycle (da032048). The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-09-29T12:38:48Z, run 36569526880 already completed/success), left for the next cycle. || 2026-10-02: recomputed 150 of 939 journal lines unresolved-and-expired (was 149 of 935); all 939 parse. The one new entry is the 09-29 item-3d sweep (archive-renders, 2026-09-29T12:38:48Z), run 36569526880 GitHub-confirmed completed/success; resolve declined it as expired, lane re-parked this cycle (0b284539). The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-10-02T12:39:17Z, run 37007989844 already completed/success), left for the next cycle. || 2026-10-06: recomputed 151 of 943 journal lines unresolved-and-expired (was 150 of 939); all 943 parse. The one new entry is the 10-02 item-3d sweep (archive-renders, 2026-10-02T12:39:17Z), run 37007989844 GitHub-confirmed completed/success with manifest renders-20261002 and its Release URL on main; resolve cannot reach it past the 8h expiry, lane re-parked this cycle (be1c7298). The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-10-06T12:46:51Z, run 37465792635 already completed/success), left for the next cycle. || 2026-10-09: recomputed 152 of 947 journal lines unresolved-and-expired (was 151 of 943); all 947 parse. The one new entry is the 10-06 item-3d sweep (archive-renders, 2026-10-06T12:46:51Z), run 37465792635 GitHub-confirmed completed/success with manifest renders-20261006 on main; resolve cannot reach it past the 8h expiry, lane re-parked this cycle (dbb484d0). The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-10-09T12:42:25Z, run 37931807332 already completed/success), left for the next cycle. || 2026-10-13: recomputed 154 of 964 journal lines unresolved-and-expired (was 152 of 947); all lines parse. The two new entries: the 10-09 item-3d sweep (archive-renders, 2026-10-09T12:42:25Z, run 37931807332 completed/success, manifest renders-20261009 on main; lane re-parked this cycle, a067de2a) and the 10-12 petri-audit eq01 fire (2026-10-12T21:30:25Z, run 38311055562 completed/success, outputs 39818fae; lane re-parked this cycle, 7d06ab2c). The one unresolved-but-unexpired entry at close is this cycle's own 3d sweep (2026-10-13T12:45:46Z, run 38399710233 already completed/success), left for the next cycle. || 2026-10-16: recomputed 155 of 978 journal lines unresolved-and-expired (was 154 of 964); all lines parse. The one new entry is the 10-13 item-3d sweep (archive-renders, 2026-10-13T12:45:46Z, run 38399710233 completed/success, manifest renders-20261013 on main); lane re-parked this cycle (c92eb468). The unresolved-but-unexpired entries at close are this cycle's own 3d sweep (2026-10-16T12:21:27Z, run 38899942365 already completed/success), the 3e leg and its park."
     },
     {
       "id": "sentinel-overran-window-20260829",
@@ -1179,6 +1196,7 @@
     }
   ],
   "notes": [
+    "2026-10-16 cycle: section 0 cadence gate did NOT trip - newest brief was brief_20261013.md at 3 days old. Engine checkout arrived as a shallow full-blob clone on a session branch whose HEAD equalled origin/main (ls-remote verified); main was pointed at it without any fetch or deepening (bootstrap Variant C avoided, not repaired). Seal check CLEAN at open and before publish. Run terminality GitHub-confirmed for every entry this cycle. A scheduled logits backfill workflow (scheduled_backfill.yml, cron 0 */12) now runs legs on its own and aborts when the lane is occupied; this cycle's 3e leg took the lane, so it substitutes for one scheduled leg rather than duplicating it.",
     "2026-10-13 cycle: section 0 cadence gate did NOT trip - newest brief was brief_20261009.md at 4 days old.",
     "2026-10-13 bootstrap: both repos arrived clean on session branches (claude/vigilant-lovelace-dkmz6b, claude/loving-tesla-dkmz6b) whose tips equalled remote main (engine 48efc171, site 31dcbed; git ls-remote). Engine clone shallow (10 shallow roots), at the live tip; checked out main without deepening. Site checkout not sparse. All four preflight gates passed: main in both, dashboard identical to origin/main, seal_check CLEAN (183 sealed phrases, 822 files), push --dry-run clean.",
     "2026-10-13 harvest: terminality GitHub-confirmed per entry. Petri eq01 (run 38311055562) and the 10-09 sweep (run 37931807332) both completed/success with outputs on main; both past 8h and not resolvable. Section 2a: ledger_update.py folded 2 new sidecars (run_38311055562_1 report $0.2145, judge report $0.0000); lifetime $80.8185, today $0/$2; committed as 2fc956a7.",
@@ -1207,6 +1225,11 @@
     "2026-09-25 cycle: section 0 cadence gate did NOT trip - newest brief was brief_20260922.md at 3 days old and no journal-active entry was under 8 hours old. 09-23 and 09-24 are scheduled Tue/Fri gaps."
   ],
   "decisions_log": [
+    {
+      "id": "PETRI-EQ01-EMPTY-OUTPUTS-20261013",
+      "closed_utc": "2026-10-16T13:10:00Z",
+      "outcome": "CLOSED as resolved by eq02, per docs/decisions_20261014_owner.md (\"For the daily Routine\"). eq01 (run_38311055562_1) committed no transcripts because every sample hit the 20,000-token limit. It was re-fired as eq02 (run 38434195912, run_38434195912_1, 2026-10-13) at token_limit 40,000 with judge claude-haiku-4-5: 6 of 6 samples adapted, 300 judgments plus 54 not applicable, $0.65. This cycle's ledger fold booked eq02's two sidecars ($0.4217 judge + $0.2266 run). The guard that refuses a token limit a scripted sample cannot finish under is engine #105."
+    },
     {
       "id": "ORPHAN-TOPLEVEL-PNGS-20260911",
       "closed_utc": "2026-09-15T13:11:04Z",
