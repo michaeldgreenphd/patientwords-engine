@@ -1,0 +1,31 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "http://json-schema.org/draft-07/schema#",
+  "info": {
+    "title": "PatientWords static artifact read interface",
+    "version": "1.0.0",
+    "description": "Describes an existing static resource. It creates no engine service and exposes no write operations."
+  },
+  "paths": {
+    "/data/simulated_scenarios.json": {
+      "get": {
+        "operationId": "getSimulatedScenarios",
+        "responses": {
+          "200": {
+            "description": "Simulated scenarios artifact; legacy read shapes supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./simulated_scenarios.v1.schema.json"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Artifact absent; the browser may show its existing unavailable state."
+          }
+        }
+      }
+    }
+  }
+}

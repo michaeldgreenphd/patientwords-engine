@@ -29,13 +29,13 @@ import sys
 from pathlib import Path
 from typing import Callable, NamedTuple
 
-# The four circuit-traced models the exporter can emit, and the mirror fields it
-# copies from the base model to each scenario's top level for older readers.
+# One structural authority for this artifact, also referenced by the HTTP contract.
+SIMULATED_SCHEMA_PATH = Path(__file__).resolve().parent / "contracts" / "simulated_scenarios.v1.schema.json"
+SIMULATED_SCHEMA = json.loads(SIMULATED_SCHEMA_PATH.read_text(encoding="utf-8"))
 BASE_MODEL = "gemma-2-2b"
-COMPAT = ["prob_clinical", "prob_patient", "language_penalty", "flipped",
-          "top_clinical", "top_patient", "spread_clinical", "spread_patient",
-          "target_token", "anchor_fallback", "screening", "circuit_diff",
-          "clinical_mass"]
+# The exporter mirrors exactly these fields for legacy readers. Equality itself
+# is a semantic check below, not an assertion made by the structural schema.
+COMPAT = SIMULATED_SCHEMA["definitions"]["model"]["required"]
 
 NUM = (int, float)
 
@@ -115,19 +115,108 @@ def known_keys(rep: Report, artifact: str, obj: dict, allowed: set, path: str = 
 
 # ---------------------------------------------------------------- simulated_scenarios
 
+def check_schema_subset(rep: Report, artifact: str, value: object, schema: dict,
+                        *, export_gate: bool = False) -> None:
+    """Validate the deliberately small schema dialect used by the export gate.
+
+    Supports local $ref, type, required, properties, items (single schema), and
+    additionalProperties (boolean or schema). x-export-required is an annotation
+    that tightens only the existing export gate, preserving legacy HTTP readers.
+    All other assertion keywords fail closed, including in unused definitions;
+    this is not a general JSON Schema implementation. The HTTP harness uses a
+    full draft-07 validator against the same authority and fetched JSON bytes.
+    As before, the export gate requires integer JSON tokens: Python float 1.0
+    is rejected for integer fields even though draft-07 treats it as an integer.
+    """
+    allowed = {"$schema", "$id", "title", "description", "definitions", "$ref", "type",
+               "required", "properties", "items", "additionalProperties", "x-export-required"}
+    types = {"object": dict, "array": list, "string": str, "integer": int,
+             "number": NUM, "boolean": bool, "null": type(None)}
+
+    def audit(node: dict) -> None:
+        unsupported = set(node) - allowed
+        if unsupported:
+            raise ValueError(f"unsupported schema keywords: {sorted(unsupported)}")
+        if "$ref" in node and set(node) != {"$ref"}:
+            raise ValueError("$ref siblings are not supported by the export-gate adapter")
+        kinds = node.get("type", [])
+        for kind in kinds if isinstance(kinds, list) else [kinds]:
+            if kind not in types:
+                raise ValueError(f"unsupported schema type: {kind}")
+        for group in ("definitions", "properties"):
+            for child in node.get(group, {}).values():
+                audit(child)
+        if isinstance(node.get("items"), bool):
+            raise ValueError("items must be a single object schema")
+        for key in ("items", "additionalProperties"):
+            if key in node and not isinstance(node[key], bool):
+                if not isinstance(node[key], dict):
+                    raise ValueError(f"{key} must be a single schema")
+                audit(node[key])
+        if "$ref" in node and not node["$ref"].startswith("#/"):
+            raise ValueError("only local JSON Pointer references are supported")
+
+    def visit(obj: object, node: dict, path: str) -> None:
+        if "$ref" in node:
+            target = schema
+            for part in node["$ref"][2:].split("/"):
+                target = target[part.replace("~1", "/").replace("~0", "~")]
+            visit(obj, target, path)
+            return
+        kinds = node.get("type", [])
+        kinds = kinds if isinstance(kinds, list) else [kinds]
+        if kinds and not any(_is(obj, types[kind]) for kind in kinds):
+            rep.err(artifact, path, f"wrong type {type(obj).__name__}; expected {' or '.join(kinds)}")
+            return
+        if isinstance(obj, dict):
+            required = node.get("required", []) + (node.get("x-export-required", []) if export_gate else [])
+            for key in required:
+                if key not in obj:
+                    rep.err(artifact, f"{path}.{key}", "missing required key")
+            props = node.get("properties", {})
+            extra = node.get("additionalProperties", True)
+            for key, child in obj.items():
+                if key in props:
+                    visit(child, props[key], f"{path}.{key}")
+                elif isinstance(extra, dict):
+                    visit(child, extra, f"{path}[{key}]")
+                elif extra is False:
+                    rep.err(artifact, f"{path}.{key}", "additional property is not allowed")
+        if isinstance(obj, list) and "items" in node:
+            for i, child in enumerate(obj):
+                visit(child, node["items"], f"{path}[{i}]")
+
+    audit(schema)
+    visit(value, schema, "$")
+
+
 def check_simulated(rep: Report, site: Path, payload: dict) -> dict:
     """Returns join indexes used by cross-artifact checks."""
     a = "simulated_scenarios.json"
-    known_keys(rep, a, payload,
-               {"batches", "scenarios", "models_meta", "traced", "traced_by_model",
-                "holdout_withheld", "archive", "traces_site", "summary",
-                "depth_model", "urgency_meta", "featured", "steering_disclosure"})
-    batches = need(rep, a, payload, "batches", list, "$") or []
-    scenarios = need(rep, a, payload, "scenarios", list, "$") or []
-    models_meta = need(rep, a, payload, "models_meta", list, "$") or []
-    need(rep, a, payload, "traced", dict, "$")
-    if "holdout_withheld" in payload and not _is(payload["holdout_withheld"], int):
-        rep.err(a, "$.holdout_withheld", "must be an integer count")
+    before = len(rep.errors)
+    check_schema_subset(rep, a, payload, SIMULATED_SCHEMA, export_gate=True)
+    if len(rep.errors) != before:
+        # Keep every usable join key even when an unrelated field is malformed:
+        # downstream cross-file checks must not falsely classify those rows as
+        # orphaned. Shape failures remain errors, and malformed containers never
+        # reach the semantic checks below.
+        def objects(key: str) -> list[dict]:
+            rows = payload.get(key) if isinstance(payload, dict) else None
+            return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+
+        return {
+            "scenario_keys": {(row["batch"], row["batch_index"]) for row in objects("scenarios")
+                              if isinstance(row.get("batch"), str) and row["batch"]
+                              and _is(row.get("batch_index"), int)},
+            "batch_stems": {row["batch"] for row in objects("batches")
+                            if isinstance(row.get("batch"), str) and row["batch"]},
+            "meta_ids": {row["id"] for row in objects("models_meta")
+                         if isinstance(row.get("id"), str) and row["id"]},
+        }
+    known_keys(rep, a, payload, set(SIMULATED_SCHEMA["properties"]))
+    batches = payload["batches"]
+    scenarios = payload["scenarios"]
+    models_meta = payload["models_meta"]
     # Steered batches publish under a disclosure block (owner decision
     # 2026-08-15). If any scenario is flagged steered, the block must name its
     # batch: an unlabelled steered scenario reads as an ordinary cadence draw.
@@ -149,35 +238,19 @@ def check_simulated(rep: Report, site: Path, payload: dict) -> dict:
         rep.err(a, "$.scenarios", "empty (simulated-scenarios/index.html throws 'empty')")
 
     batch_stems = set()
-    for i, b in enumerate(batches):
-        p = f"$.batches[{i}]"
-        stem = need(rep, a, b, "batch", str, p)
+    for b in batches:
+        stem = b["batch"]
         if stem:
             batch_stems.add(stem)
-        gen = need(rep, a, b, "generated", dict, p) or {}
-        for key, kinds in (("model", str), ("run_timestamp", str), ("cost_usd", NUM),
-                           ("accepted", int), ("rejected", int)):
-            if key in gen and gen[key] is not None and not _is(gen[key], kinds):
-                rep.err(a, f"{p}.generated.{key}", f"wrong type {type(gen[key]).__name__}")
-        if "screen_targets" in b and b["screen_targets"] is not None \
-                and not _is(b["screen_targets"], NUM):
-            rep.err(a, f"{p}.screen_targets", "must be a number or null")
 
     meta_ids = []
     defaults = 0
     featured = set()
     for i, m in enumerate(models_meta):
         p = f"$.models_meta[{i}]"
-        mid = need(rep, a, m, "id", str, p)
+        mid = m["id"]
         if mid:
             meta_ids.append(mid)
-        need(rep, a, m, "label", str, p)
-        need(rep, a, m, "source_set", str, p, nullable=True)
-        for key in ("features", "graphs", "available", "default"):
-            if need(rep, a, m, key, bool, p) is None:
-                continue
-        if _is(m.get("n_traced"), int) is False:
-            rep.err(a, f"{p}.n_traced", "must be an integer")
         if m.get("default"):
             defaults += 1
         if m.get("features"):
@@ -196,12 +269,12 @@ def check_simulated(rep: Report, site: Path, payload: dict) -> dict:
     scenario_keys = set()
     for i, s in enumerate(scenarios):
         p = f"$.scenarios[{i}]"
-        idx = need(rep, a, s, "index", int, p)
+        idx = s["index"]
         # scenario.html's ?sim= lookup and prev/next links assume 1..N contiguous.
         if idx is not None and idx != i + 1:
             rep.err(a, f"{p}.index", f"expected {i + 1} (contiguous 1..N), got {idx}")
-        stem = need(rep, a, s, "batch", str, p)
-        bidx = need(rep, a, s, "batch_index", int, p)
+        stem = s["batch"]
+        bidx = s["batch_index"]
         if stem and stem not in batch_stems:
             rep.err(a, f"{p}.batch", f"stem {stem!r} not in $.batches")
         if stem and bidx is not None:
@@ -209,9 +282,7 @@ def check_simulated(rep: Report, site: Path, payload: dict) -> dict:
                 rep.err(a, f"{p}", f"duplicate (batch, batch_index) = ({stem}, {bidx})")
             seen_pairs.add((stem, bidx))
             scenario_keys.add((stem, bidx))
-        for key in ("clinical_prompt", "patient_prompt", "intended_target"):
-            need(rep, a, s, key, str, p)
-        models = need(rep, a, s, "models", dict, p) or {}
+        models = s["models"]
         if not models:
             rep.err(a, f"{p}.models", "no per-model measurements")
         for mid, mobj in models.items():
@@ -220,21 +291,6 @@ def check_simulated(rep: Report, site: Path, payload: dict) -> dict:
                 rep.err(a, mp, "model id absent from models_meta (selector cannot offer it)")
             else:
                 traced_counts[mid] += 1
-            if not isinstance(mobj, dict):
-                rep.err(a, mp, "not an object")
-                continue
-            for key in COMPAT:
-                if key not in mobj:
-                    rep.err(a, f"{mp}.{key}", "missing model-object key")
-            for key in ("prob_clinical", "prob_patient", "language_penalty"):
-                if key in mobj and mobj[key] is not None and not _is(mobj[key], NUM):
-                    rep.err(a, f"{mp}.{key}", "must be number or null")
-            for key in ("flipped", "anchor_fallback"):
-                if key in mobj and not _is(mobj[key], bool):
-                    rep.err(a, f"{mp}.{key}", "must be boolean")
-            for key in ("spread_clinical", "spread_patient"):
-                if key in mobj and not _is(mobj[key], list):
-                    rep.err(a, f"{mp}.{key}", "must be a list")
             # The FEATURED rule: no source set means clinical_mass is untagged noise;
             # the exporter must null it, or the meter renders an artifact as a finding.
             if mid in meta_ids and mid not in featured and mobj.get("clinical_mass") is not None:
@@ -249,9 +305,7 @@ def check_simulated(rep: Report, site: Path, payload: dict) -> dict:
                             f"top-level mirror disagrees with models[{BASE_MODEL}]")
         for key in ("html", "png"):
             if key in s:
-                if not _is(s[key], str):
-                    rep.err(a, f"{p}.{key}", "must be a path string")
-                elif not (site / s[key]).is_file():
+                if not (site / s[key]).is_file():
                     rep.err(a, f"{p}.{key}", f"render path missing on disk: {s[key]}")
 
     for mid, count in traced_counts.items():

@@ -1,0 +1,502 @@
+{
+  "schema": "patientwords.frontend-boundary-fixture/1",
+  "disclosure": "Synthetic software fixture — not a research result. No model or hosted service was called.",
+  "fixture_rationale": "Expected values are specified here independently of the exporter. Three different targets bind identity, measured zero is distinct from missing, and the same first target reverses direction across models. Hosted is a synthetic input discriminator exercising the existing exporter, not a claim of hosted execution.",
+  "stamp": "20000101T000000Z",
+  "models": [
+    "gemma-2-2b",
+    "qwen3-4b"
+  ],
+  "engine_files": {
+    "data/simulated/pairs_20000101T000000Z.json": [
+      {
+        "top_prompt": "Synthetic formal alpha leads to",
+        "bottom_prompt": "Synthetic everyday alpha leads to",
+        "target_clinical_token": " alpha",
+        "generation": {
+          "rationale": "Synthetic software fixture — not a research result.",
+          "patient_term": "alpha everyday",
+          "clinical_term": "alpha formal",
+          "topic": "fixture negative",
+          "topics": [
+            "fixture negative"
+          ]
+        }
+      },
+      {
+        "top_prompt": "Synthetic formal gamma leads to",
+        "bottom_prompt": "Synthetic everyday gamma leads to",
+        "target_clinical_token": " gamma",
+        "generation": {
+          "rationale": "Synthetic software fixture — not a research result.",
+          "patient_term": "gamma everyday",
+          "clinical_term": "gamma formal",
+          "topic": "fixture zero",
+          "topics": [
+            "fixture zero"
+          ]
+        }
+      },
+      {
+        "top_prompt": "Synthetic formal epsilon leads to",
+        "bottom_prompt": "Synthetic everyday epsilon leads to",
+        "target_clinical_token": " epsilon",
+        "generation": {
+          "rationale": "Synthetic software fixture — not a research result.",
+          "patient_term": "epsilon everyday",
+          "clinical_term": "epsilon formal",
+          "topic": "fixture missing",
+          "topics": [
+            "fixture missing"
+          ]
+        }
+      }
+    ],
+    "data/simulated/pairs_20000101T000000Z.report.json": {
+      "model": "synthetic-software-fixture",
+      "run_timestamp": "2000-01-01T00:00:00Z",
+      "cost_usd": 0,
+      "max_spend_usd": 0,
+      "accepted": 3,
+      "rejected": 0,
+      "rejection_reasons": [],
+      "topics": [
+        "fixture negative",
+        "fixture zero",
+        "fixture missing"
+      ]
+    },
+    "ops/dashboard.json": {
+      "tierb": {
+        "start_utc": "2099-01-01T00:00:00Z"
+      }
+    },
+    "trace_out/pairs_20000101T000000Z/batch_summary.part_01.json": {
+      "backend": "hosted",
+      "graph_model": "gemma-2-2b",
+      "source_set": "gemmascope-transcoder-16k",
+      "mode": "2panel",
+      "results": [
+        {
+          "index": 1,
+          "prompts": {
+            "clinical": "Synthetic formal alpha leads to",
+            "patient": "Synthetic everyday alpha leads to"
+          },
+          "target_token": " alpha",
+          "probabilities": {
+            "clinical": 0.2517,
+            "patient": 0.1049
+          },
+          "language_penalty": -0.1468,
+          "predictive_spread": {
+            "clinical": [
+              [
+                " alpha",
+                0.2517
+              ],
+              [
+                " beta",
+                0.2
+              ]
+            ],
+            "patient": [
+              [
+                " beta",
+                0.4
+              ],
+              [
+                " alpha",
+                0.1049
+              ]
+            ]
+          },
+          "screening": null,
+          "clinical_mass": {
+            "clinical": 0.6,
+            "patient": 0.2
+          },
+          "inference": {
+            "environment": "synthetic-software-fixture"
+          }
+        },
+        {
+          "index": 2,
+          "prompts": {
+            "clinical": "Synthetic formal gamma leads to",
+            "patient": "Synthetic everyday gamma leads to"
+          },
+          "target_token": " gamma",
+          "probabilities": {
+            "clinical": 0,
+            "patient": 0
+          },
+          "language_penalty": 0,
+          "predictive_spread": {
+            "clinical": [
+              [
+                " delta",
+                0.7
+              ],
+              [
+                " gamma",
+                0
+              ]
+            ],
+            "patient": [
+              [
+                " delta",
+                0.8
+              ],
+              [
+                " gamma",
+                0
+              ]
+            ]
+          },
+          "screening": null,
+          "clinical_mass": {
+            "clinical": 0.6,
+            "patient": 0.2
+          },
+          "inference": {
+            "environment": "synthetic-software-fixture"
+          }
+        },
+        {
+          "index": 3,
+          "prompts": {
+            "clinical": "Synthetic formal epsilon leads to",
+            "patient": "Synthetic everyday epsilon leads to"
+          },
+          "target_token": null,
+          "probabilities": {
+            "clinical": null,
+            "patient": null
+          },
+          "language_penalty": null,
+          "predictive_spread": {
+            "clinical": [],
+            "patient": []
+          },
+          "screening": {
+            "status": "screened_out",
+            "reason": "synthetic missing measurement"
+          },
+          "clinical_mass": null,
+          "inference": {
+            "environment": "synthetic-software-fixture"
+          }
+        }
+      ]
+    },
+    "trace_out/pairs_20000101T000000Z__qwen3-4b/batch_summary.part_01.json": {
+      "backend": "hosted",
+      "graph_model": "qwen3-4b",
+      "source_set": "transcoder-hp",
+      "mode": "2panel",
+      "results": [
+        {
+          "index": 1,
+          "prompts": {
+            "clinical": "Synthetic formal alpha leads to",
+            "patient": "Synthetic everyday alpha leads to"
+          },
+          "target_token": " alpha",
+          "probabilities": {
+            "clinical": 0.6123,
+            "patient": 0.8123
+          },
+          "language_penalty": 0.2,
+          "predictive_spread": {
+            "clinical": [
+              [
+                " alpha",
+                0.6123
+              ]
+            ],
+            "patient": [
+              [
+                " alpha",
+                0.8123
+              ]
+            ]
+          },
+          "screening": null,
+          "clinical_mass": {
+            "clinical": 0.6,
+            "patient": 0.2
+          },
+          "inference": {
+            "environment": "synthetic-software-fixture"
+          }
+        },
+        {
+          "index": 2,
+          "prompts": {
+            "clinical": "Synthetic formal gamma leads to",
+            "patient": "Synthetic everyday gamma leads to"
+          },
+          "target_token": " gamma",
+          "probabilities": {
+            "clinical": 0.3142,
+            "patient": 0.1142
+          },
+          "language_penalty": -0.2,
+          "predictive_spread": {
+            "clinical": [
+              [
+                " gamma",
+                0.3142
+              ]
+            ],
+            "patient": [
+              [
+                " delta",
+                0.4
+              ],
+              [
+                " gamma",
+                0.1142
+              ]
+            ]
+          },
+          "screening": null,
+          "clinical_mass": {
+            "clinical": 0.6,
+            "patient": 0.2
+          },
+          "inference": {
+            "environment": "synthetic-software-fixture"
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "http_resource": "/data/simulated_scenarios.json",
+    "index_page": "/simulated-scenarios/",
+    "probability_units": "unitless target-token next-token probability; full output vocabulary denominator",
+    "gap_definition": "patient minus clinical; multiply by 100 for probability percentage points, never relative percent",
+    "rounding": {
+      "index_probabilities": "two digits after the decimal point; no percent conversion",
+      "gap_numeric_assertion": "unrounded patient minus clinical, checked separately from the two-decimal display"
+    },
+    "scenario_keys": [
+      [
+        "pairs_20000101T000000Z",
+        1
+      ],
+      [
+        "pairs_20000101T000000Z",
+        2
+      ],
+      [
+        "pairs_20000101T000000Z",
+        3
+      ]
+    ],
+    "summary": {
+      "accepted": 3,
+      "measured": 2,
+      "screened_out": 1,
+      "flipped_base": 1,
+      "n_scored_rows": 2,
+      "n_phrases": 2,
+      "mean_rows_raw": -0.0734,
+      "mean_phrase_deduped": -0.0734,
+      "ci95": null
+    },
+    "models": {
+      "gemma-2-2b": {
+        "label": "Gemma 2 2B",
+        "n_traced": 3,
+        "source_set": "gemmascope-transcoder-16k",
+        "features": true,
+        "provenance_text": "gemma-2-2b · gemmascope-transcoder-16k",
+        "default_visible_indices": [
+          1,
+          2
+        ],
+        "rows": {
+          "1": {
+            "target": "alpha",
+            "prob_clinical": 0.2517,
+            "prob_patient": 0.1049,
+            "language_penalty": -0.1468,
+            "shift_text": "0.25 → 0.10",
+            "top_text": "alpha → beta (redirected)",
+            "gap_percentage_points": -14.68,
+            "clinical_mass": {
+              "clinical": 0.6,
+              "patient": 0.2
+            },
+            "slope_title": "prob(alpha): clinical 0.25 → patient 0.10",
+            "mass_text": [
+              "60%",
+              "20%"
+            ]
+          },
+          "2": {
+            "target": "gamma",
+            "prob_clinical": 0,
+            "prob_patient": 0,
+            "language_penalty": 0,
+            "shift_text": "0.00 → 0.00",
+            "top_text": "delta (unchanged)",
+            "gap_percentage_points": 0,
+            "slope_title": "prob(gamma): clinical 0.00 → patient 0.00",
+            "mass_text": [
+              "60%",
+              "20%"
+            ]
+          },
+          "3": {
+            "target": null,
+            "prob_clinical": null,
+            "prob_patient": null,
+            "language_penalty": null,
+            "shift_text": "— → —",
+            "top_text": "screened out · unmeasurable",
+            "gap_percentage_points": null,
+            "clinical_mass": null
+          }
+        },
+        "selector_text": "Gemma 2 2B · 3"
+      },
+      "qwen3-4b": {
+        "label": "Qwen3 4B",
+        "n_traced": 2,
+        "source_set": "transcoder-hp",
+        "features": false,
+        "provenance_text": "qwen3-4b · transcoder-hp",
+        "default_visible_indices": [
+          1,
+          2,
+          3
+        ],
+        "rows": {
+          "1": {
+            "target": "alpha",
+            "prob_clinical": 0.6123,
+            "prob_patient": 0.8123,
+            "language_penalty": 0.2,
+            "shift_text": "0.61 → 0.81",
+            "top_text": "alpha (unchanged)",
+            "gap_percentage_points": 20,
+            "clinical_mass": null,
+            "slope_title": "prob(alpha): clinical 0.61 → patient 0.81"
+          },
+          "2": {
+            "target": "gamma",
+            "prob_clinical": 0.3142,
+            "prob_patient": 0.1142,
+            "language_penalty": -0.2,
+            "shift_text": "0.31 → 0.11",
+            "top_text": "gamma → delta (redirected)",
+            "gap_percentage_points": -20,
+            "clinical_mass": null,
+            "slope_title": "prob(gamma): clinical 0.31 → patient 0.11"
+          },
+          "3": {
+            "has_model": false,
+            "shift_text": "— → —",
+            "top_text": "not traced on qwen3-4b"
+          }
+        },
+        "selector_text": "Qwen3 4B · 2 (structure only)"
+      }
+    },
+    "filters": {
+      "gemma_clinical_stronger": [
+        1
+      ],
+      "gemma_patient_stronger": [],
+      "gemma_screened": [
+        3
+      ],
+      "qwen_clinical_stronger": [
+        2
+      ],
+      "qwen_patient_stronger": [
+        1
+      ],
+      "search_gamma": [
+        2
+      ]
+    },
+    "unsupported": "This slice has no native sample flag or sample query. Legacy fallback is supported by removing models_meta and per-scenario models from a disposable exported payload; top-level base values remain. Synthetic disclosure must remain explicit in the local test wrapper and receipt.",
+    "out_of_slice_source_findings": [
+      {
+        "path": "simulated-scenarios/scenario.html",
+        "finding": "Detail pct(0) emits a negative sign (−0%); detail wording-gap display labels an absolute probability difference with percent rather than percentage points. Not exercised or accepted as correct by this index-only slice."
+      }
+    ],
+    "scenarios": {
+      "1": {
+        "clinical_prompt": "Synthetic formal alpha leads to",
+        "patient_prompt": "Synthetic everyday alpha leads to",
+        "intended_target": "alpha",
+        "patient_term": "alpha everyday",
+        "clinical_term": "alpha formal",
+        "topic": "fixture negative"
+      },
+      "2": {
+        "clinical_prompt": "Synthetic formal gamma leads to",
+        "patient_prompt": "Synthetic everyday gamma leads to",
+        "intended_target": "gamma",
+        "patient_term": "gamma everyday",
+        "clinical_term": "gamma formal",
+        "topic": "fixture zero"
+      },
+      "3": {
+        "clinical_prompt": "Synthetic formal epsilon leads to",
+        "patient_prompt": "Synthetic everyday epsilon leads to",
+        "intended_target": "epsilon",
+        "patient_term": "epsilon everyday",
+        "clinical_term": "epsilon formal",
+        "topic": "fixture missing"
+      }
+    }
+  },
+  "site_files": {
+    "data/urgency_shift.json": null,
+    "data/provenance.json": {
+      "batches": []
+    },
+    "data/jlens_depth.json": {
+      "model": "synthetic-unrun",
+      "generated_utc": "2000-01-01T00:00:00Z",
+      "class_labels": {},
+      "blocks": [],
+      "translation": {}
+    },
+    "data/specialties.json": {
+      "status": "synthetic fixture taxonomy — not a study classification",
+      "specialties": {}
+    },
+    "data/retrace_consistency.json": {
+      "pairs_retraced": 0,
+      "prob_spread_max": 0,
+      "prob_spread_mean": 0,
+      "top_word_stable_pairs": 0,
+      "rows": []
+    }
+  },
+  "site_substitutes_note": "These local-only files replace every additional JSON fetch made by the selected page. Urgency is JSON null: unavailable rather than invented zero findings. Empty depth/taxonomy/provenance data and zero attempted retraces prevent unrelated study results entering the fixture view. No external services are stubbed within the exporter/HTTP/rendering boundary.",
+  "pending_case": {
+    "pair": {
+      "top_prompt": "Synthetic formal eta leads to",
+      "bottom_prompt": "Synthetic everyday eta leads to",
+      "target_clinical_token": " eta",
+      "generation": {
+        "rationale": "Synthetic software fixture — not a research result. No model or hosted service was called.",
+        "patient_term": "eta everyday",
+        "clinical_term": "eta formal",
+        "topic": "fixture pending"
+      }
+    },
+    "accepted": 4,
+    "display": "1 of 4 accepted scenarios are still tracing"
+  }
+}

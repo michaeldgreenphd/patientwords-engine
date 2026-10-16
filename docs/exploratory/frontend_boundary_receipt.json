@@ -1,0 +1,143 @@
+{
+  "schema": "patientwords.frontend-boundary-receipt/1",
+  "evidence": "local synthetic software test only",
+  "utc": "2026-10-16T21:40:08.324558+00:00",
+  "engine": {
+    "head": "15bb1aaed623abbaa3ec94e5b01328a87e11e5ba",
+    "tracked_diff_sha256": "5e9cedc5f953052439d91fb06245c7c53fb0ef50025d3e4567753892704427e4",
+    "untracked_sha256": {
+      "docs/exploratory/frontend_boundary.md": "79d1b567c1e5bb6ed2708e3e2296c24500af82d3520786a580007a7eca03cbd0",
+      "scripts/boundary_client/assertions.py": "152290e895356cfa039e48bd10c6d5f501255b082954ee80dec62ff62dca8d52",
+      "scripts/boundary_client/client.py": "42ef5e418acbde5d28a2f7fe9efd59063a07cb3950d11d02bcb64609dc1cd85f",
+      "scripts/boundary_client/generate.py": "e5520edb488fed80ef7f84c2f232e8a91599d692d9af187788886578b3b7f407",
+      "scripts/boundary_client/generated.py": "abece384e1b09220cbc44227a4c8bdad0c14934535da3fb0951d9e196d3a3d62",
+      "scripts/boundary_client/requirements.lock": "764c6553b392a172a25eb4e5f3e27c97662af2abcff0fbca996ee75bc84ab6ad",
+      "scripts/check_frontend_boundary.py": "9a450a76b37f192b9a0fc4a4d59ec7262db2305821ddfe84c2bf2659e8d5b277",
+      "scripts/contracts/simulated_scenarios.openapi.json": "615265a229dd9af8b4ad80d9eaf1decfdc8c229e190861c93ce4b92155ccbf4e",
+      "scripts/contracts/simulated_scenarios.v1.schema.json": "412272647d06c8a7491bb1d3548388f97bdbc0ab33988073279f32db5cce39fe",
+      "tests/fixtures/frontend_boundary.json": "685aedda64bdf268f36544fa48270daebe5ab472498fa452050dc8ce671da2b4",
+      "tests/test_simulated_schema.py": "a516e0d3ee167ae4cec333db519549bb3ff9b49e477a16c28f4a2824ddfe485c"
+    },
+    "dirty": true
+  },
+  "frontend": {
+    "head": "6bfd86052f1290e6b53415ead1e8e2d6068111f6",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "untracked_sha256": {},
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.13.4",
+    "playwright": "1.61.0",
+    "jsonschema": "4.26.0",
+    "datamodel-code-generator": "0.35.0",
+    "pydantic": "2.14.1",
+    "pytest": "8.4.2",
+    "chromium": "156.0.8078.4"
+  },
+  "fixture_sha256": "685aedda64bdf268f36544fa48270daebe5ab472498fa452050dc8ce671da2b4",
+  "contracts_sha256": {
+    "simulated_scenarios.openapi.json": "615265a229dd9af8b4ad80d9eaf1decfdc8c229e190861c93ce4b92155ccbf4e",
+    "simulated_scenarios.v1.schema.json": "412272647d06c8a7491bb1d3548388f97bdbc0ab33988073279f32db5cce39fe"
+  },
+  "toolchain_sha256": "764c6553b392a172a25eb4e5f3e27c97662af2abcff0fbca996ee75bc84ab6ad",
+  "command": "python scripts/check_frontend_boundary.py --site SITE --browser CHROMIUM --receipt RECEIPT",
+  "export_command": "python scripts/export_frontend_simulated.py --engine SYNTHETIC_INPUT --frontend TEMP_SITE --stamps 20000101T000000Z --models gemma-2-2b,qwen3-4b",
+  "checks": [
+    {
+      "name": "affected_offline_checks_in_sparse_layout",
+      "result": "passed",
+      "command": "python -m pytest tests/test_validate_frontend_contract.py tests/test_simulated_schema.py tests/test_check_pages.py tests/test_export_frontend_defaults.py tests/test_urgency_unjoinable.py -q",
+      "summary": "286 passed in 2.09s"
+    },
+    {
+      "name": "real_exporter_cli_in_sparse_layout",
+      "result": "passed"
+    },
+    {
+      "name": "existing_check_simulated",
+      "result": "passed",
+      "warnings": []
+    },
+    {
+      "name": "generator_regeneration",
+      "result": "byte-identical"
+    },
+    {
+      "name": "http_schema_generated_model_semantics",
+      "result": "passed"
+    },
+    {
+      "name": "browser_values_models_filters_zero_missing",
+      "result": "passed"
+    },
+    {
+      "name": "missing_required_field",
+      "result": "detected_then_restored_pass",
+      "detector": {
+        "exception": "ValidationError",
+        "message": "'prob_patient' is a required property"
+      }
+    },
+    {
+      "name": "shape_valid_wrong_model_association",
+      "schema": "passed",
+      "semantic_detector": {
+        "exception": "AssertionError",
+        "message": "pair 1 model qwen3-4b target association: expected 'alpha', got 'gamma'"
+      },
+      "browser_detector": {
+        "exception": "AssertionError",
+        "message": "Locator expected to have text '0.61 \u2192 0.81'"
+      },
+      "result": "detected_then_restored_pass"
+    },
+    {
+      "name": "legacy_base_mirror_without_models_meta_models_archive",
+      "result": "passed"
+    },
+    {
+      "name": "accepted_but_not_run_pending_denominator",
+      "result": "passed"
+    },
+    {
+      "name": "malformed_json",
+      "result": "detected_then_restored_pass",
+      "detector": {
+        "exception": "JSONDecodeError",
+        "message": "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)"
+      }
+    },
+    {
+      "name": "html_bytes_as_json",
+      "result": "detected_then_restored_pass",
+      "detector": {
+        "exception": "JSONDecodeError",
+        "message": "Expecting value: line 1 column 1 (char 0)"
+      }
+    },
+    {
+      "name": "http_404",
+      "result": "detected_then_restored_pass",
+      "detector": {
+        "exception": "ValueError",
+        "message": "HTTP status 404, expected 200"
+      }
+    },
+    {
+      "name": "http_200_html_content_type",
+      "result": "detected_then_restored_pass",
+      "detector": {
+        "exception": "ValueError",
+        "message": "HTTP response is not application/json"
+      }
+    }
+  ],
+  "hosted_checks": "unrun",
+  "native_sample_state": "unsupported by selected index",
+  "export_sha256": "590ad36a1ace5663377936ebadd928ccf686bcfe4df8ce2b3a279a3801b08fd3",
+  "browser_external_requests": [],
+  "browser_errors": [],
+  "cleanup": "temporary server stopped; synthetic exports and copied site removed",
+  "result": "passed"
+}
