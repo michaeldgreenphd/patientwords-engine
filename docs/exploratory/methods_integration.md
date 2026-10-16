@@ -310,6 +310,14 @@ PYTHONPATH=../patient-words-jpp_lens/src:. python tests/manual/exploratory_bridg
   --out /tmp/patientwords-new-demo/exploratory_methods
 ```
 
+This command uses source-checkout mode: both imported lens entry points must
+resolve to `src/lens_interop/artifact.py` under `--jpp-root`. A different imported
+checkout returns `jpp_source_mismatch` before creating the output directory;
+symlink aliases of the same checkout are accepted. With J++ installed editably
+in the selected interpreter, `python -m tests.manual.exploratory_bridge` from
+this engine checkout needs no `PYTHONPATH`. This check does not attest a wheel's
+build provenance or authorize real-model execution.
+
 The directory must be new. This writes two tiny synthetic lens tensors, their
 manifests, a matching spec/packet and `exploratory_report.adapter_bridge.json`.
 The arithmetic toy has three blocks and signed gated products. It is not Qwen,

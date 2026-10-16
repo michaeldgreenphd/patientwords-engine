@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import copy
 import hashlib
+import inspect
 import json
 import time
 from pathlib import Path
@@ -31,6 +32,23 @@ def write_json(directory: Path, name: str, value: Any) -> Path:
     return path
 
 
+def require_jpp_checkout(root: Path) -> None:
+    """Bind this checkout-mode bridge to its imported implementation.
+
+    Wheel/build provenance is a different mode, not inferred from a root path.
+    Resolve symlinks before comparing the two actual entry points to the file
+    whose bytes the bridge records in its source receipt.
+    """
+    expected = (root / "src" / "lens_interop" / "artifact.py").resolve()
+    for function in (load_verified_lens, paired_readouts):
+        try:
+            actual = Path(inspect.getfile(function)).resolve()
+        except TypeError as exc:
+            raise ValueError("jpp_source_mismatch: imported source unavailable") from exc
+        if actual != expected:
+            raise ValueError(f"jpp_source_mismatch: imported {actual}; declared {expected}")
+
+
 def main() -> None:
     """Generate every comparison row from deterministic toy input IDs."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -41,6 +59,10 @@ def main() -> None:
     forbidden = {"data", "trace_out", "pilot", "ops", ".github", ".claude", ".githooks", ".git", "modes"}
     if output.name != "exploratory_methods" or forbidden.intersection(output.parts):
         parser.error("Use a new exploratory_methods directory outside protected trees")
+    try:
+        require_jpp_checkout(jpp_root)
+    except ValueError as exc:
+        parser.error(str(exc))
     started = time.perf_counter()
     output.mkdir(parents=True, exist_ok=False)
     spec = json.loads((ENGINE / "tests/fixtures/exploratory/synthetic_spec.json").read_text())
