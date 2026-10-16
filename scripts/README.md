@@ -55,6 +55,14 @@ publish-site-data skill, which the Routine runs in §5 when new results land.
 | `select_priority_pairs.py` | Deterministic priority selection of the pairs medgemma-1.5-4b-it measures first (task-set pairs, then cross-model urgency-tier-flip consensus; holdout excluded; identifiers only) | live | `data/selections/medgemma15_priority_<date>.json` | the owner, before `backfill_planner.py --exploratory --medgemma15-selection` |
 | `backfill_mitigation_costs.py` | Imputed cost sidecars for mitigation runs from before cost capture existed | one-off and done | `trace_out/<run>/mitigation.part_NN.report.json`, each marked `imputed: true` | session, 2026-07-31 (commit dc108c4b) |
 
+## Exploratory method contracts
+
+| Script | What it does | Status | Writes | Who runs it |
+|---|---|---|---|---|
+| `exploratory_methods.py` | Validates isolated lens/patch specifications and scores synthetic evidence packets; real execution refuses pending compatibility | staged | exclusively creates `exploratory_methods/exploratory_report.<id>.json` outside protected data trees; validation prints JSON | owner or session for offline checks; no CI lane wired |
+| `exploratory_ci_preflight.py` | Validates manual CI readiness, reviewed code ancestry and runner capacity; future capped safe-weight staging | staged | external receipts only; no publication or committed outputs | owner-authorized manual workflow after review; local readiness is read-only |
+| `exploratory_baseline_preflight.py` | Prepares and compares one-case original-output parity; lens-independent, guarded future CI capture | staged | external `exploratory_methods/baseline_preflight/`; no existing collector payloads | owner or session for validation; blocked manual CI wiring prepared for review |
+
 ## CI lanes
 
 | Script | What it does | Status | Writes | Who runs it |

@@ -60,9 +60,10 @@ resolve to empty strings. A Petri target in `mode: run` or `mode: readapt` must 
 default, calls nothing and is refused in both (`docs/triggers.md` has the full rule).
 Dev containers have
 none of these keys, and the sandbox egress proxy blocks huggingface.co and most model
-hosts. All generation, tracing, and CPU inference therefore
-runs through **push-to-run CI**: each workflow fires when its file under `.github/trigger/`
-changes on any pushed branch. A machine that *can* run inference locally (yours, with a
+hosts. Generation, tracing and CPU inference use **push-to-run CI**: a push changing
+`.github/trigger/` fires its workflow. Owner exception (PR #121): prepare the
+one-case manual route in `docs/exploratory/baseline_ci.md`; execution needs
+separate owner approval. A machine that *can* run inference locally (yours, with a
 GPU) still commits no locally produced measurement: every committed summary records
 `inference.environment`, and only CI-produced summaries are measurements.
 

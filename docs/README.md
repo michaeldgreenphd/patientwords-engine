@@ -9,6 +9,14 @@ add a document.
 | File | What it is |
 |---|---|
 | `AGENTS.md` (repository root) | The rules every agent and reviewer works from. |
+| `docs/exploratory/review_preparation_20261016.md` | Final review heads, push/PR safety audit, tests and remaining execution blockers. |
+| `docs/exploratory/baseline_ci.md` | Manual-only baseline wiring, blocked readiness, owner/default-branch prerequisites and later dispatch inputs. |
+| `docs/exploratory/communication_plan.md` | Draft public question, endpoint-safe explanations, selection policy and later comprehension checklist. |
+| `docs/exploratory/case_report_mapping.md` | Communication sections mapped to existing manifests and exact metric fields. |
+| `docs/exploratory/one_case_storyboard.md` | Text-only walkthrough of the frozen reviewed case, with every real-model stage not run. |
+| `docs/exploratory/local_preparation_20261015.md` | Bounded local installation and complete lens-integrity receipt; separate provenance, compatibility and parity readiness. |
+| `docs/exploratory/baseline_preflight.md` | Prepared lens-independent one-case CI baseline check, prospective gates and future execution commands; not launched. |
+| `docs/exploratory/lens_fit_provenance_question.md` | Unsent question requesting historical released-lens fit records. |
 | `docs/operators_handbook.md` | Procedures and case law for running the ops system. |
 | `docs/triggers.md` | Every push-to-run lane, its trigger keys and what it spends. |
 | `docs/routine_standing_prompt.md` | The scheduled maintenance Routine's instructions, read at every firing. |
@@ -85,6 +93,9 @@ repositories for its path and its name.
 `docs/readability_report.md` (the site readability worklist, generated).
 
 ## Audits and reviews
+
+- `docs/exploratory/methods_integration.md`: audited Causalab/J++ compatibility,
+  isolated synthetic adapters, blocked one-case protocol and staged follow-on plan.
 
 - `docs/audits/`: doc-accuracy sweeps, the seal incident, timing forensics,
   evidence power, and `docs/audits/claude_config_audit_20260906.md` (moved from

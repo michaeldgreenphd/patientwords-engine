@@ -1,0 +1,180 @@
+{
+  "type": "object",
+  "required": [
+    "schema_version",
+    "execution_status",
+    "spec_sha256",
+    "model",
+    "environment",
+    "vocabulary",
+    "readouts",
+    "model_outputs",
+    "interventions"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "patientwords.exploratory/1"
+    },
+    "execution_status": {
+      "const": "synthetic"
+    },
+    "spec_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "environment": {
+      "type": "object",
+      "required": [
+        "kind",
+        "model_execution",
+        "seed"
+      ],
+      "properties": {
+        "kind": {
+          "const": "synthetic_fixture"
+        },
+        "model_execution": {
+          "const": false
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Executed seed; the semantic validator requires a strict integer equal to the specification seed."
+        }
+      }
+    },
+    "vocabulary": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "readouts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "case_id",
+          "variant",
+          "method",
+          "layer",
+          "position",
+          "logits"
+        ],
+        "properties": {
+          "method": {
+            "enum": [
+              "logit_lens",
+              "j_lens",
+              "jpp"
+            ]
+          },
+          "layer": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "logits": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "model_outputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "case_id",
+          "variant",
+          "extraction",
+          "logits"
+        ],
+        "properties": {
+          "extraction": {
+            "const": "model.logits[0,-1]"
+          },
+          "logits": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "interventions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "case_id",
+          "donor",
+          "recipient",
+          "kind",
+          "component",
+          "layer",
+          "positions",
+          "channels",
+          "control",
+          "seed",
+          "edit_l2",
+          "logits"
+        ],
+        "properties": {
+          "edit_l2": {
+            "type": "number",
+            "minimum": 0
+          },
+          "logits": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "number"
+            }
+          },
+          "matched_to": {
+            "type": "string",
+            "minLength": 1,
+            "description": "For a random control, the ID of its nominated comparator; the semantic validator requires identical case, direction, component, kind, layer, positions and group size."
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "control"
+              ],
+              "properties": {
+                "control": {
+                  "const": "random"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "matched_to"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PatientWords exploratory evidence packet v1",
+  "$comment": "Only synthetic ingestion is implemented. Semantic validation requires exact spec identity, complete grid, actual output extraction and exact intervention-plan agreement."
+}

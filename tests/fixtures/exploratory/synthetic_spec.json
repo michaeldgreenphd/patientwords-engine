@@ -1,0 +1,425 @@
+{
+  "schema_version": "patientwords.exploratory/1",
+  "synthetic": true,
+  "publication": "exploratory_only",
+  "output_namespace": "exploratory_methods",
+  "seed": 7,
+  "model": {
+    "id": "synthetic/toy",
+    "study_id": "synthetic/toy",
+    "revision": "1111111111111111111111111111111111111111",
+    "tokenizer_id": "synthetic/toy",
+    "tokenizer_revision": "1111111111111111111111111111111111111111",
+    "precision": "float64",
+    "backend": "synthetic",
+    "hidden_size": 2,
+    "intermediate_size": 4,
+    "n_layers": 3
+  },
+  "capture_site": "block_output",
+  "layer_index_base": 0,
+  "final_norm": "model_final_norm_once_then_lm_head",
+  "input_settings": {
+    "chat_template": null,
+    "thinking": "not_applied_raw_prompt",
+    "add_special_tokens": true,
+    "truncation": false
+  },
+  "methods": {
+    "logit_lens": {
+      "method": "logit_lens",
+      "source_layers": [
+        0,
+        1
+      ],
+      "capture_site": "block_output",
+      "final_norm": "model_final_norm_once_then_lm_head"
+    },
+    "j_lens": {
+      "method": "j_lens",
+      "source_layers": [
+        0,
+        1
+      ],
+      "capture_site": "block_output",
+      "final_norm": "model_final_norm_once_then_lm_head",
+      "artifact_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "repository_revision": "3333333333333333333333333333333333333333",
+      "transport_target": 2,
+      "model_id": "synthetic/toy",
+      "model_revision": "1111111111111111111111111111111111111111",
+      "tokenizer_revision": "1111111111111111111111111111111111111111"
+    },
+    "jpp": {
+      "method": "jpp",
+      "source_layers": [
+        0,
+        1
+      ],
+      "capture_site": "block_output",
+      "final_norm": "model_final_norm_once_then_lm_head",
+      "artifact_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "repository_revision": "3333333333333333333333333333333333333333",
+      "transport_target": 2,
+      "model_id": "synthetic/toy",
+      "model_revision": "1111111111111111111111111111111111111111",
+      "tokenizer_revision": "1111111111111111111111111111111111111111"
+    }
+  },
+  "fixed_layers": [
+    0,
+    1
+  ],
+  "top_k": [
+    1,
+    2,
+    4
+  ],
+  "gap_threshold": 1e-06,
+  "vocabulary_filter": {
+    "id": "synthetic-explicit-exclusions-v1",
+    "excluded": [
+      {
+        "token_id": 3,
+        "reason": "prespecified symbol audit"
+      },
+      {
+        "token_id": 5,
+        "reason": "prespecified punctuation audit"
+      }
+    ]
+  },
+  "implementations": {
+    "engine": "31ee9268c70a2c56d51aef9bd5412fb53f2e769c",
+    "causalab": "8e8d5d1f8f9ca8f42bfce7c6b5eef194f012660e",
+    "jpp": "93f02cd6c27db765abb127f20eff656bb5d27340"
+  },
+  "cases": [
+    {
+      "id": "case-a",
+      "family_id": "family-a",
+      "template_family": "template-a",
+      "split": "discovery",
+      "holdout_status": "unsealed_reviewed",
+      "review_provenance": "synthetic fixture only",
+      "join": {
+        "batch": "synthetic_only",
+        "index": 1,
+        "model": "synthetic/toy"
+      },
+      "variants": {
+        "source": {
+          "prompt": "alpha tail",
+          "prompt_sha256": "921316d4d6fb6b3d6900ff55d7455dcf24143272e5fb2014ffed1f61e9b752c7",
+          "token_ids": [
+            0,
+            4
+          ],
+          "token_sha256": "41957fe516dfbfe04583dbab24f8b4ebad4e6c306dccb5a65a96eae86956b25c",
+          "positions": [
+            0,
+            1
+          ],
+          "phrase_span": [
+            0,
+            5
+          ],
+          "offsets": [
+            [
+              0,
+              5
+            ],
+            [
+              6,
+              10
+            ]
+          ]
+        },
+        "recipient": {
+          "prompt": "beta tail",
+          "prompt_sha256": "72c47de9e3e5e1482682d8e4263f1868c183e9cd7f131ff9c5cd35fc0d0423ca",
+          "token_ids": [
+            1,
+            4
+          ],
+          "token_sha256": "aa5507f9e57ee8a21e59299df81766fe623be083b581b933bfc64bf00e64f4d1",
+          "positions": [
+            0,
+            1
+          ],
+          "phrase_span": [
+            0,
+            4
+          ],
+          "offsets": [
+            [
+              0,
+              4
+            ],
+            [
+              5,
+              9
+            ]
+          ]
+        },
+        "paraphrase": {
+          "prompt": "gamma tail",
+          "prompt_sha256": "1f528e28e9acae82dc445c7b60792b68ccdb5604870ad13d1ae59aaab1cb28c8",
+          "token_ids": [
+            2,
+            4
+          ],
+          "token_sha256": "f25ed8cd5464710aff6e5d655a575ac273cb9c19d696e53fa13de05db97454ca",
+          "positions": [
+            0,
+            1
+          ],
+          "phrase_span": [
+            0,
+            5
+          ],
+          "offsets": [
+            [
+              0,
+              5
+            ],
+            [
+              6,
+              10
+            ]
+          ]
+        }
+      },
+      "targets": [
+        {
+          "id": "concept",
+          "role": "intermediate",
+          "text": "alpha",
+          "token_ids": [
+            0
+          ]
+        },
+        {
+          "id": "answer",
+          "role": "answer",
+          "text": "beta tail",
+          "token_ids": [
+            1,
+            4
+          ]
+        }
+      ]
+    }
+  ],
+  "intervention_plan": [
+    {
+      "id": "rescue",
+      "case_id": "case-a",
+      "donor": "source",
+      "recipient": "recipient",
+      "kind": "observed_replacement",
+      "component": "block_output",
+      "layer": 1,
+      "positions": [
+        [
+          1,
+          1
+        ]
+      ],
+      "channels": null,
+      "control": "full_component",
+      "seed": 7
+    },
+    {
+      "id": "reverse",
+      "case_id": "case-a",
+      "donor": "recipient",
+      "recipient": "source",
+      "kind": "observed_replacement",
+      "component": "block_output",
+      "layer": 1,
+      "positions": [
+        [
+          1,
+          1
+        ]
+      ],
+      "channels": null,
+      "control": "full_component",
+      "seed": 7
+    },
+    {
+      "id": "self",
+      "case_id": "case-a",
+      "donor": "recipient",
+      "recipient": "recipient",
+      "kind": "observed_replacement",
+      "component": "block_output",
+      "layer": 1,
+      "positions": [
+        [
+          1,
+          1
+        ]
+      ],
+      "channels": null,
+      "control": "self",
+      "seed": 7
+    },
+    {
+      "id": "same",
+      "case_id": "case-a",
+      "donor": "paraphrase",
+      "recipient": "recipient",
+      "kind": "observed_replacement",
+      "component": "block_output",
+      "layer": 1,
+      "positions": [
+        [
+          1,
+          1
+        ]
+      ],
+      "channels": null,
+      "control": "same_register",
+      "seed": 7
+    },
+    {
+      "id": "unrelated",
+      "case_id": "case-a",
+      "donor": "source",
+      "recipient": "recipient",
+      "kind": "observed_replacement",
+      "component": "block_output",
+      "layer": 1,
+      "positions": [
+        [
+          1,
+          1
+        ]
+      ],
+      "channels": [
+        0
+      ],
+      "control": "unrelated",
+      "seed": 7
+    },
+    {
+      "id": "zero",
+      "case_id": "case-a",
+      "donor": "source",
+      "recipient": "recipient",
+      "kind": "zero_ablation",
+      "component": "block_output",
+      "layer": 1,
+      "positions": [
+        [
+          1,
+          1
+        ]
+      ],
+      "channels": null,
+      "control": "full_component",
+      "seed": 7
+    },
+    {
+      "id": "channels",
+      "case_id": "case-a",
+      "donor": "source",
+      "recipient": "recipient",
+      "kind": "observed_replacement",
+      "component": "mlp_neuron_output",
+      "layer": 1,
+      "positions": [
+        [
+          1,
+          1
+        ]
+      ],
+      "channels": [
+        0
+      ],
+      "control": "nominated",
+      "seed": 7,
+      "nomination_split": "discovery"
+    },
+    {
+      "id": "random-11",
+      "case_id": "case-a",
+      "donor": "source",
+      "recipient": "recipient",
+      "kind": "observed_replacement",
+      "component": "mlp_neuron_output",
+      "layer": 1,
+      "positions": [
+        [
+          1,
+          1
+        ]
+      ],
+      "channels": [
+        3
+      ],
+      "control": "random",
+      "seed": 11,
+      "matched_to": "channels"
+    },
+    {
+      "id": "random-12",
+      "case_id": "case-a",
+      "donor": "source",
+      "recipient": "recipient",
+      "kind": "observed_replacement",
+      "component": "mlp_neuron_output",
+      "layer": 1,
+      "positions": [
+        [
+          1,
+          1
+        ]
+      ],
+      "channels": [
+        3
+      ],
+      "control": "random",
+      "seed": 12,
+      "matched_to": "channels"
+    },
+    {
+      "id": "random-13",
+      "case_id": "case-a",
+      "donor": "source",
+      "recipient": "recipient",
+      "kind": "observed_replacement",
+      "component": "mlp_neuron_output",
+      "layer": 1,
+      "positions": [
+        [
+          1,
+          1
+        ]
+      ],
+      "channels": [
+        2
+      ],
+      "control": "random",
+      "seed": 13,
+      "matched_to": "channels"
+    }
+  ],
+  "adapter_source_sha256": {
+    "engine": {
+      "scripts/exploratory_methods.py": "5fb16e591dec8e2fd1b688499defae617efdb75a35274dad31b25b839ec9631d"
+    },
+    "jpp": {
+      "src/lens_interop/artifact.py": "124d860ffe1de2f7d7116c4bdf8b7e7aa9d5b7802f728e57be908153b5641c92",
+      "src/lens_interop/__main__.py": "675479b9199390385e02a73290a126c0260a02a6697621a5de5c369a85ce3b5a"
+    },
+    "causalab": {
+      "causalab/analysis/paired_intervention.py": "92ff4923c9bbff3647beafdbd302e3f3d501ba52bea1e4163c78a2c59c0663b6",
+      "causalab/neural/shared/pair_probe.py": "dfafd3614c828b660531db9d5243ae22911bc1cc786b32034341a13e81dd7e76",
+      "causalab/protocol/registry/models.py": "ed22fca824f43539e8faad8e7ba03083a01f0af27c4864a952fa92fcb091021a"
+    }
+  },
+  "implementation_state": "local_adapter_changes_on_recorded_base_commits"
+}
