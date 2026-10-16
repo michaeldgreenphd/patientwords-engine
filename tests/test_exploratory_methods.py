@@ -31,6 +31,41 @@ def test_complete_report_keeps_three_kinds_separate(spec: dict, packet: dict) ->
     assert result["filter_audit"][0]["decoded"] == "%"
 
 
+def test_packet_execution_seed_is_required(spec: dict, packet: dict) -> None:
+    del packet["environment"]["seed"]
+    with pytest.raises(methods.Refusal) as err:
+        methods.build_report(spec, packet)
+    assert err.value.code == "execution_seed"
+
+
+def test_packet_execution_seed_must_match_spec(spec: dict, packet: dict) -> None:
+    packet["environment"]["seed"] = spec["seed"] + 1
+    with pytest.raises(methods.Refusal) as err:
+        methods.build_report(spec, packet)
+    assert err.value.code == "execution_seed"
+
+
+@pytest.mark.parametrize("seed", [None, -1, 7.0, "7", True, False])
+def test_packet_execution_seed_requires_a_nonnegative_strict_integer(spec: dict, packet: dict, seed: object) -> None:
+    if type(seed) is bool:
+        spec["seed"] = int(seed)
+        packet["spec_sha256"] = methods.digest(spec)
+    packet["environment"]["seed"] = seed
+    with pytest.raises(methods.Refusal) as err:
+        methods.build_report(spec, packet)
+    assert err.value.code == "execution_seed"
+
+
+@pytest.mark.parametrize("seed", [0, 7, 19])
+def test_packet_execution_seed_is_preserved_when_it_matches(spec: dict, packet: dict, seed: int) -> None:
+    spec["seed"] = seed
+    packet["spec_sha256"] = methods.digest(spec)
+    packet["environment"]["seed"] = seed
+    result = methods.build_report(spec, packet)
+    assert result["environment"]["seed"] == result["provenance"]["seed"] == seed
+    assert type(result["environment"]["seed"]) is int
+
+
 @pytest.mark.parametrize("field", ["method", "source_layers", "transport_target"])
 def test_lens_metadata_is_required(spec: dict, field: str) -> None:
     del spec["methods"]["jpp"][field]

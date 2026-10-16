@@ -342,8 +342,15 @@ kind, component, layer, positions and group size as well as its own recorded see
 The two structural schemas declare that required random-control reference; the
 semantic validator enforces the cross-record comparison.
 
+Each packet also requires `environment.seed`, a nonnegative integer equal to the
+specification's seed. Missing, different, boolean or coerced values refuse with
+`execution_seed`; the report retains the verified recorded value. This is the
+execution seed, separate from each control group's explicitly declared seed.
+
 This tightens the new, unpublished exploratory v1 synthetic contract only. Old
 synthetic packets without `matched_to` must be regenerated with explicit links;
 they refuse rather than silently acquire a comparator. The repository's supplied
 synthetic fixtures are updated. Existing measurement/frontend schemas and the
 reviewed real-case specification remain unchanged.
+Packets missing their execution seed must be regenerated from an execution with
+an explicitly recorded seed; the validator does not infer it from the plan.

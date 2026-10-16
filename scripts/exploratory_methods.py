@@ -293,6 +293,9 @@ def _build_report(spec: dict[str, Any], packet: dict[str, Any]) -> dict[str, Any
     require(packet.get("environment", {}).get("kind") == "synthetic_fixture"
             and packet["environment"].get("model_execution") is False,
             "environment_metadata", "Synthetic execution identity must be explicit")
+    executed_seed = packet["environment"].get("seed")
+    require(integer(executed_seed) and executed_seed == spec["seed"], "execution_seed",
+            "Execution seed must be an explicit nonnegative integer equal to the specification seed")
     vocab = packet.get("vocabulary")
     require(isinstance(vocab, list) and bool(vocab) and all(isinstance(x, str) for x in vocab),
             "missing_vocabulary", "Full vocabulary required")
