@@ -68,7 +68,7 @@ def main() -> None:
             checkpoint = {
                 "parameters": {"jacobians": matrices}, "source_layers": [0, 1],
                 "config": {
-                    "lens_type": "jacobian", "hf_model_name": model_identity["id"],
+                    "lens_type": "jacobian", "lrp_mode": "none", "hf_model_name": model_identity["id"],
                     "d_model": 2, "source_layers": [0, 1], "relative_end_transport_layer": -1,
                 },
             }
