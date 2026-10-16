@@ -42,8 +42,9 @@ measured Qwen resource claim.
 `workflow_dispatch`; there is no push, PR, schedule, workflow-call or privileged
 PR event. Permissions are `contents: read`, checkouts do not persist credentials,
 no repository secret is referenced, and concurrency has cancellation disabled.
-Only the repository owner may dispatch or rerun this owner-repository workflow
-from `main`; both the original actor and triggering actor must be the owner.
+Only the repository owner may dispatch this owner-repository workflow from
+`main`; both the original actor and triggering actor must be the owner. Workflow
+reruns are refused, including those requested by the owner.
 The model job cannot start until the lightweight readiness job succeeds. The
 three reused action commits (checkout, setup-python and upload-artifact) were
 verified against their official repository commit APIs during this preparation.
