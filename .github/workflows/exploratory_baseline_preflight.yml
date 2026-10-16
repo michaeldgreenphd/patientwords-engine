@@ -86,12 +86,25 @@ jobs:
     env:
       OMP_NUM_THREADS: '8'
       MKL_NUM_THREADS: '8'
-      PW_RUN_DIR: ${{ runner.temp }}/exploratory_methods/baseline_preflight
-      PW_ENGINE_PYTHON: ${{ runner.temp }}/pw-engine-env/bin/python
-      PW_CAUSALAB_PYTHON: ${{ runner.temp }}/pw-causalab-env/bin/python
-      HF_HUB_CACHE: ${{ runner.temp }}/pw-baseline-model-cache
-      CARGO_TARGET_DIR: ${{ runner.temp }}/pw-causalab-target
     steps:
+      - name: Initialize paths after runner allocation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY_PATHS'
+          import os
+          from pathlib import Path
+          temporary = Path(os.environ["RUNNER_TEMP"])
+          paths = {
+              "PW_RUN_DIR": "exploratory_methods/baseline_preflight",
+              "PW_ENGINE_PYTHON": "pw-engine-env/bin/python",
+              "PW_CAUSALAB_PYTHON": "pw-causalab-env/bin/python",
+              "HF_HUB_CACHE": "pw-baseline-model-cache",
+              "CARGO_TARGET_DIR": "pw-causalab-target",
+          }
+          with Path(os.environ["GITHUB_ENV"]).open("a") as stream:
+              for name, relative in paths.items():
+                  stream.write(f"{name}={temporary / relative}\n")
+          PY_PATHS
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
@@ -174,6 +187,7 @@ jobs:
         if: always()
         env:
           PW_JOB_STATUS: ${{ job.status }}
+          PW_RUN_DIR: ${{ runner.temp }}/exploratory_methods/baseline_preflight
         run: |
           python3 - <<'PY_STATUS'
           import json, os
@@ -192,6 +206,6 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: exploratory-baseline-preflight-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ env.PW_RUN_DIR }}/
+          path: ${{ runner.temp }}/exploratory_methods/baseline_preflight/
           retention-days: 14
           if-no-files-found: warn

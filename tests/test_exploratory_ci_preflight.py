@@ -5,6 +5,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 import pytest
@@ -261,3 +262,33 @@ def test_missing_runtime_checks_prevent_model_metadata_access(monkeypatch: pytes
     with pytest.raises(ci.Refusal) as error:
         ci.stage_model(plan, tmp_path / "cache", tmp_path / "download.json")
     assert error.value.code == "runtime_check_missing"
+
+
+
+def unavailable_job_env_contexts(values: dict[str, Any]) -> set[str]:
+    """Check the documented pre-allocation context boundary, beyond YAML syntax."""
+    allowed = {"github", "needs", "strategy", "matrix", "vars", "secrets", "inputs"}
+    found = set()
+    for value in values.values():
+        for expression in re.findall(r"\$\{\{(.*?)\}\}", str(value), flags=re.DOTALL):
+            found.update(re.findall(r"(?<![\w.])([a-z_]+)\s*(?:\.|\[)", expression))
+    return found - allowed
+
+
+def test_job_env_rejects_unavailable_runner_context() -> None:
+    assert unavailable_job_env_contexts({"PATH_VALUE": "${{ runner.temp }}/example"}) == {"runner"}
+    assert unavailable_job_env_contexts({"PATH_VALUE": "${{ needs.gate.outputs.value }}"}) == set()
+    workflow = yaml.safe_load((ROOT / ".github/workflows/exploratory_baseline_preflight.yml").read_text())
+    for name, job in workflow["jobs"].items():
+        assert not unavailable_job_env_contexts(job.get("env", {})), name
+
+
+def test_runtime_paths_are_initialized_before_capacity_check() -> None:
+    workflow = yaml.safe_load((ROOT / ".github/workflows/exploratory_baseline_preflight.yml").read_text())
+    steps = workflow["jobs"]["model"]["steps"]
+    initialization = next(index for index, step in enumerate(steps) if 'os.environ["GITHUB_ENV"]' in step.get("run", ""))
+    capacity = next(index for index, step in enumerate(steps) if "--mode capacity" in step.get("run", ""))
+    assert initialization < capacity
+    assert 'os.environ["RUNNER_TEMP"]' in steps[initialization]["run"]
+    for key in ("PW_RUN_DIR", "PW_ENGINE_PYTHON", "PW_CAUSALAB_PYTHON", "HF_HUB_CACHE", "CARGO_TARGET_DIR"):
+        assert key in steps[initialization]["run"]

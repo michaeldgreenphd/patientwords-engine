@@ -160,3 +160,24 @@ do not enqueue another request that would evict a pending job. The command has
 not been run in this work. Its inputs cannot activate today's blocked readiness
 record. Next smallest step is identifying suitable **existing** capacity and its
 cost, not lowering the resource threshold or provisioning a runner.
+
+
+## Workflow validation correction
+
+The first draft-branch push produced a workflow-validation failure
+([run 38836042869](https://github.com/michaeldgreenphd/patientwords-engine/actions/runs/38836042869))
+with **zero jobs**. It did not launch the manual readiness or model job. The draft
+had used five `runner.temp` expressions in job-level `env`, where GitHub does not
+allow the `runner` context. YAML parsing alone had missed this platform rule.
+
+Those paths now initialize in the first allocated-runner step through
+`GITHUB_ENV`; failure-artifact paths use the context only at step scope. The
+regression checks the documented
+[context-availability boundary](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#context-availability).
+The official actionlint 1.7.12 structural checker reproduced all five errors on
+the pushed version and reports no errors on the correction. Its temporary
+2,164,202-byte arm64 archive was verified against the release SHA-256
+`aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f`;
+no environment package was installed. The workflow remains manual-only and the
+readiness record remains blocked. Neither a manual dispatch nor a model run was
+performed to validate this fix.
