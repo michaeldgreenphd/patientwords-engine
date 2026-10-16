@@ -2,8 +2,9 @@
 
 This draft wires only the lens-independent preflight in
 [baseline_preflight.md](baseline_preflight.md). The owner explicitly authorized
-preparing a manual-only route for review, superseding the earlier assumption that
-this check had to add a push-to-run lane. That exception does not change any
+preparing a manual-only route for review, as recorded in the canonical
+[AGENTS.md execution rules](../../AGENTS.md#execution-model-nothing-paid-or-networked-runs-locally).
+That preparation authorization does not authorize a dispatch or real-model run. That exception does not change any
 production trigger, parked default, budget gate or queue tool. No workflow has
 been dispatched, no Qwen weights downloaded, and no real-model output produced.
 

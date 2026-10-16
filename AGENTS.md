@@ -66,6 +66,23 @@ changes on any pushed branch. A machine that *can* run inference locally (yours,
 GPU) still commits no locally produced measurement: every committed summary records
 `inference.environment`, and only CI-produced summaries are measurements.
 
+**Narrow manual-CI preparation exception for the exploratory baseline preflight**
+(owner authorization for PR #121, 2026-10-16). The owner authorized preparing
+missing baseline-preflight CI wiring for review, with the model job "manual-only
+and inactive on ordinary push/PR events." This applies only to
+`.github/workflows/exploratory_baseline_preflight.yml` and the lens-independent,
+one-case comparison of unmodified model outputs described in
+`docs/exploratory/baseline_ci.md`. The route uses `workflow_dispatch` from the
+owner repository's reviewed default branch, exact approved code commits,
+read-only permissions and the explicit readiness gates; it adds no production
+trigger key or push-to-run lane. This authorization covers preparation and review
+only: **no dispatch or real-model execution is authorized by this exception**.
+Future execution requires separate explicit owner authorization, owner-merged
+reviewed workflow/code, satisfied runner/cost/provenance readiness checks, and
+queue discipline. No merge to make the workflow runnable, paid job, provisioning,
+publication or repository-permission change is authorized. Existing production
+lanes retain their trigger tooling, budget limits and parked defaults unchanged.
+
 **One exception, for pilots of the generation loop** (owner decision of 2026-09-30 on
 PR #52). A measurement-validity
 pilot of the stimulus-generation loop may run as Claude Code subagents inside the
