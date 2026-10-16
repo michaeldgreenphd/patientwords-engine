@@ -1261,13 +1261,16 @@ def prepare(run_paths: Sequence[Path] | None = None, *, runs_dir: Path = RUNS_DI
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise AnalysisRefusal(f"seed file {seeds_path} could not be loaded: {exc}") from exc
     layouts = plan_layouts(plan, seed_set.seeds)
-    rubric = judge_runner.load_rubric(rubric_path)
-    rdigest = judge_runner.rubric_digest(rubric)
-    tiers = tuple(t["id"] for t in rubric["tiers"])
+    try:
+        rubric = judge_runner.load_rubric(rubric_path)
+        rdigest = judge_runner.rubric_digest(rubric)
+        tiers = tuple(t["id"] for t in rubric["tiers"])
+        flag_ids = {f["id"] for f in rubric.get("flags", [])}
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise AnalysisRefusal(f"rubric file {rubric_path} could not be loaded: {exc}") from exc
     if list(tiers) != sorted(plan.tier_rank, key=plan.tier_rank.__getitem__):
         raise AnalysisRefusal(f"the rubric {rubric_path} orders its tiers {list(tiers)}, but the plan's "
                               f"outcome.tier_rank orders them {sorted(plan.tier_rank, key=plan.tier_rank.__getitem__)}")
-    flag_ids = {f["id"] for f in rubric.get("flags", [])}
     for name in plan.family:
         m = _measure_of(name)
         if m.flag is not None and m.flag not in flag_ids:

@@ -1306,6 +1306,33 @@ def test_seed_loader_failures_are_named_cli_refusals(
     assert "refused: seed file" in capsys.readouterr().err and not out.exists()
 
 
+@pytest.mark.parametrize("kind", ["missing", "json", "root", "tiers", "tier_id", "flags", "flag_id"])
+def test_rubric_loader_failures_are_named_cli_refusals(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str], kind: str) -> None:
+    c = write_campaign(tmp_path, fires=())
+    rubric_path = tmp_path / "rubric.json"
+    if kind == "json":
+        rubric_path.write_text("{", encoding="utf-8")
+    elif kind != "missing":
+        doc = deepcopy(RUBRIC)
+        if kind == "root":
+            doc = []
+        elif kind == "tiers":
+            doc["tiers"] = None
+        elif kind == "tier_id":
+            doc["tiers"] = [{}]
+        elif kind == "flags":
+            doc["flags"] = None
+        else:
+            doc["flags"] = [{"id": []}]
+        rubric_path.write_text(json.dumps(doc), encoding="utf-8")
+    out = tmp_path / "coverage.json"
+    assert w3.main(cli_args(c, "--rubric", str(rubric_path), "--out", str(out))) == 2
+    error = capsys.readouterr().err
+    assert f"refused: rubric file {rubric_path}" in error
+    assert not out.exists()
+
+
 @pytest.mark.parametrize("field,value", [("approved_by", None), ("approved_by", " "),
                                         ("approved_on", None), ("approved_on", "2026-02-30")])
 def test_final_needs_the_dated_owner_approval_record(
