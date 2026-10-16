@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 import re
+import subprocess
+import sys
 from typing import Any
 
 import pytest
@@ -292,3 +294,51 @@ def test_runtime_paths_are_initialized_before_capacity_check() -> None:
     assert 'os.environ["RUNNER_TEMP"]' in steps[initialization]["run"]
     for key in ("PW_RUN_DIR", "PW_ENGINE_PYTHON", "PW_CAUSALAB_PYTHON", "HF_HUB_CACHE", "CARGO_TARGET_DIR"):
         assert key in steps[initialization]["run"]
+
+
+
+def test_cli_repository_output_is_named_refusal_without_traceback(tmp_path: Path) -> None:
+    repo = tmp_path / "checkout"
+    repo.mkdir()
+    (repo / ".git").write_text("synthetic repository marker")
+    out = repo / "new" / "report.json"
+    result = subprocess.run([sys.executable, str(ROOT / "scripts/exploratory_ci_preflight.py"), "--out", str(out)],
+                            text=True, capture_output=True, check=False)
+    assert result.returncode == 2
+    assert json.loads(result.stdout)["code"] == "repository_output"
+    assert result.stderr == ""
+    assert not out.parent.exists()
+
+
+def test_failed_primary_receipt_is_not_retried(monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+                                               capsys: pytest.CaptureFixture[str]) -> None:
+    attempts = []
+
+    def refuse_write(path: Path, value: dict[str, Any]) -> None:
+        attempts.append(path)
+        raise PermissionError("synthetic unwritable receipt")
+
+    out = tmp_path / "report.json"
+    monkeypatch.setattr(sys, "argv", ["preflight", "--out", str(out)])
+    monkeypatch.setattr(ci, "write_receipt", refuse_write)
+    assert ci.main() == 2
+    value = json.loads(capsys.readouterr().out)
+    assert value["status"] == "refused" and value["code"] == "preparation_error"
+    assert attempts == [out]
+
+
+def test_error_receipt_failure_preserves_original_named_refusal(monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+                                                               capsys: pytest.CaptureFixture[str]) -> None:
+    def refuse_plan(*args: Any) -> tuple[dict[str, Any], dict[str, Any]]:
+        raise ci.Refusal("synthetic_plan_refusal", "synthetic input error")
+
+    def refuse_write(path: Path, value: dict[str, Any]) -> None:
+        raise PermissionError("synthetic unwritable receipt")
+
+    monkeypatch.setattr(sys, "argv", ["preflight", "--out", str(tmp_path / "report.json")])
+    monkeypatch.setattr(ci, "read_plan", refuse_plan)
+    monkeypatch.setattr(ci, "write_receipt", refuse_write)
+    assert ci.main() == 2
+    value = json.loads(capsys.readouterr().out)
+    assert value["code"] == "synthetic_plan_refusal"
+    assert value["receipt_error"]["code"] == "receipt_write_failed"

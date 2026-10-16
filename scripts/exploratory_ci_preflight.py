@@ -302,7 +302,11 @@ def main() -> int:
     parser.add_argument("--cache", type=Path)
     parser.add_argument("--github-output", type=Path)
     args = parser.parse_args()
+    failure_receipt_allowed = False
     try:
+        if args.out is not None:
+            external_directory(args.out.parent)
+            failure_receipt_allowed = True
         plan, _ = read_plan(args.plan)
         record = read_json(args.record)
         missing = readiness(record, plan, datetime.now(timezone.utc))
@@ -338,6 +342,7 @@ def main() -> int:
                     "commits": {"engine": engine, "causalab": record["causalab_commit"]},
                 })
         if args.out is not None:
+            failure_receipt_allowed = False
             write_receipt(args.out, result)
         if args.github_output is not None:
             with args.github_output.open("a") as stream:
@@ -349,8 +354,13 @@ def main() -> int:
         return 0
     except (Refusal, OSError, ValueError, KeyError, TypeError) as exc:
         value = {"status": "refused", "code": getattr(exc, "code", "preparation_error"), "message": str(exc)}
-        if args.out is not None and not args.out.exists():
-            write_receipt(args.out, value)
+        if args.out is not None and failure_receipt_allowed:
+            try:
+                if not args.out.exists():
+                    write_receipt(args.out, value)
+            except (Refusal, OSError, ValueError) as receipt_error:
+                value["receipt_error"] = {"code": getattr(receipt_error, "code", "receipt_write_failed"),
+                                          "message": str(receipt_error)}
         print(json.dumps(value, sort_keys=True))
         return 2
 
