@@ -356,3 +356,10 @@ synthetic fixtures are updated. Existing measurement/frontend schemas and the
 reviewed real-case specification remain unchanged.
 Packets missing their execution seed must be regenerated from an execution with
 an explicitly recorded seed; the validator does not infer it from the plan.
+
+Standalone specification validation also requires an explicit vocabulary-filter
+declaration and intervention-plan field before accepting a synthetic execution
+contract. Missing or malformed declarations and an empty synthetic plan refuse
+early, using the same named refusals as report construction. The frozen real
+one-case specification retains its empty, unexecuted intervention plan and
+blocked status; no discovery candidates or controls are invented to fill it.

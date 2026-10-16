@@ -31,6 +31,98 @@ def test_complete_report_keeps_three_kinds_separate(spec: dict, packet: dict) ->
     assert result["filter_audit"][0]["decoded"] == "%"
 
 
+@pytest.mark.parametrize("mutation,code", [
+    ("missing_plan", "intervention_plan"), ("empty_plan", "intervention_plan"),
+    ("missing_filter", "filter_metadata")])
+def test_standalone_validation_refuses_incomplete_contracts(
+        spec: dict, tmp_path: Path, capsys: pytest.CaptureFixture, mutation: str, code: str) -> None:
+    if mutation == "missing_plan":
+        del spec["intervention_plan"]
+    elif mutation == "empty_plan":
+        spec["intervention_plan"] = []
+    else:
+        del spec["vocabulary_filter"]
+    with pytest.raises(methods.Refusal) as err:
+        methods.validate_spec(spec)
+    assert err.value.code == code
+    path = tmp_path / "incomplete.json"
+    path.write_text(json.dumps(spec))
+    assert methods.main(["--spec", str(path)]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["status"] == "refused" and result["code"] == code
+
+
+def test_real_spec_with_pending_plan_remains_blocked(spec: dict) -> None:
+    spec["synthetic"] = False
+    spec["intervention_plan"] = []
+    spec["methods"]["jpp"]["model_revision"] = None
+    result = methods.validate_spec(spec)
+    assert result["status"] == "blocked"
+    assert result["blockers"] == ["ci_execution_adapter_not_wired", "intervention_plan_pending",
+                                   "jpp:unknown_model_revision",
+                                   "real_model_baseline_parity_unrun"]
+
+
+@pytest.mark.parametrize("field", [
+    "id", "case_id", "donor", "recipient", "kind", "component", "layer", "positions", "channels", "control", "seed"])
+def test_standalone_plan_requires_complete_entries(spec: dict, field: str) -> None:
+    del spec["intervention_plan"][0][field]
+    with pytest.raises(methods.Refusal) as err:
+        methods.validate_spec(spec)
+    assert err.value.code == "intervention_plan"
+
+
+@pytest.mark.parametrize("value", [None, "", 0, True, []])
+def test_standalone_plan_requires_nonempty_string_ids(spec: dict, value: object) -> None:
+    spec["intervention_plan"][0]["id"] = value
+    with pytest.raises(methods.Refusal) as err:
+        methods.validate_spec(spec)
+    assert err.value.code == "intervention_plan"
+
+
+def test_standalone_plan_refuses_duplicate_ids(spec: dict) -> None:
+    spec["intervention_plan"][1]["id"] = spec["intervention_plan"][0]["id"]
+    with pytest.raises(methods.Refusal) as err:
+        methods.validate_spec(spec)
+    assert err.value.code == "intervention_plan"
+
+
+@pytest.mark.parametrize("value", ["missing", None, "", 0])
+def test_standalone_random_plan_requires_a_comparator_reference(spec: dict, value: object) -> None:
+    row = next(p for p in spec["intervention_plan"] if p["control"] == "random")
+    if value == "missing":
+        del row["matched_to"]
+    else:
+        row["matched_to"] = value
+    with pytest.raises(methods.Refusal) as err:
+        methods.validate_spec(spec)
+    assert err.value.code == "intervention_plan"
+
+
+@pytest.mark.parametrize("value", [
+    None, {}, {"id": "fixture"}, {"id": False, "excluded": []},
+    {"id": "fixture", "excluded": {}}, {"id": "fixture", "excluded": [None]},
+    {"id": "fixture", "excluded": [{"token_id": False, "reason": "fixture"}]},
+    {"id": "fixture", "excluded": [{"token_id": -1, "reason": "fixture"}]},
+    {"id": "fixture", "excluded": [{"token_id": 1.0, "reason": "fixture"}]},
+    {"id": "fixture", "excluded": [{"token_id": 0, "reason": ""}]},
+    {"id": "fixture", "excluded": [{"token_id": 0, "reason": 7}]}])
+def test_standalone_filter_validation_requires_explicit_shapes(spec: dict, value: object) -> None:
+    spec["vocabulary_filter"] = value
+    with pytest.raises(methods.Refusal) as err:
+        methods.validate_spec(spec)
+    assert err.value.code == "filter_metadata"
+
+
+def test_filter_vocabulary_bounds_remain_packet_dependent(spec: dict, packet: dict) -> None:
+    spec["vocabulary_filter"]["excluded"][0]["token_id"] = len(packet["vocabulary"])
+    packet["spec_sha256"] = methods.digest(spec)
+    assert methods.validate_spec(spec)["status"] == "validated"
+    with pytest.raises(methods.Refusal) as err:
+        methods.build_report(spec, packet)
+    assert err.value.code == "filter_metadata"
+
+
 def test_packet_execution_seed_is_required(spec: dict, packet: dict) -> None:
     del packet["environment"]["seed"]
     with pytest.raises(methods.Refusal) as err:
@@ -444,7 +536,8 @@ def test_seeded_controls_must_match_their_declared_comparator(spec: dict, packet
     packet["spec_sha256"] = methods.digest(spec)
     with pytest.raises(methods.Refusal) as error:
         methods.build_report(spec, packet)
-    assert error.value.code == "random_control_match"
+    expected_code = "intervention_plan" if mutation == "missing_reference" else "random_control_match"
+    assert error.value.code == expected_code
 
 
 def test_valid_random_control_link_survives_reporting(spec: dict, packet: dict) -> None:

@@ -111,6 +111,23 @@ def _validate_spec(spec: dict[str, Any]) -> dict[str, Any]:
     require(spec.get("publication") == "exploratory_only", "publication_gate", "Publication is not enabled")
     require(spec.get("output_namespace") == "exploratory_methods", "output_namespace", "Wrong output namespace")
     require(integer(spec.get("seed")), "missing_seed", "Explicit seed is required")
+    plans = spec.get("intervention_plan")
+    plan_fields = {"id", "case_id", "donor", "recipient", "kind", "component", "layer", "positions",
+                   "channels", "control", "seed"}
+    require(isinstance(plans, list) and (bool(plans) or not spec["synthetic"])
+            and all(isinstance(p, dict) and plan_fields <= p.keys()
+                    and isinstance(p["id"], str) and bool(p["id"])
+                    and (p["control"] != "random"
+                         or (isinstance(p.get("matched_to"), str) and bool(p["matched_to"]))) for p in plans)
+            and len({p["id"] for p in plans}) == len(plans), "intervention_plan",
+            "An explicit plan is required; validated synthetic plans need unique prespecified interventions")
+    vocabulary_filter = spec.get("vocabulary_filter")
+    require(isinstance(vocabulary_filter, dict) and isinstance(vocabulary_filter.get("id"), str)
+            and bool(vocabulary_filter["id"]) and isinstance(vocabulary_filter.get("excluded"), list)
+            and all(isinstance(x, dict) and integer(x.get("token_id"))
+                    and isinstance(x.get("reason"), str) and bool(x["reason"])
+                    for x in vocabulary_filter["excluded"]), "filter_metadata",
+            "An explicit filter ID and exclusion list with token IDs and reasons are required")
     model = spec.get("model", {})
     require(isinstance(model, dict), "invalid_input", "Model must be an object")
     for key in ("id", "study_id", "tokenizer_id", "precision", "backend"):
@@ -221,6 +238,8 @@ def _validate_spec(spec: dict[str, Any]) -> dict[str, Any]:
                     "This bounded slice requires all input positions, including early ones")
     if not spec["synthetic"]:
         blockers.extend(["real_model_baseline_parity_unrun", "ci_execution_adapter_not_wired"])
+        if not plans:
+            blockers.append("intervention_plan_pending")
     return {"schema_version": SCHEMA, "status": "blocked" if blockers else "validated",
             "blockers": sorted(set(blockers)), "common_layers": sorted(intersection), "spec_sha256": digest(spec)}
 
