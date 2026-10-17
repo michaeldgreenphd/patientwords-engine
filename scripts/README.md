@@ -203,6 +203,12 @@ in `ops/pab_ci/`.
 | `petri_three_arm.py` | Exploratory three-arm and crossed-factorial comparisons over wave-2 runs | operator tool | an optional report file; none committed | owner or session |
 | `petri_w2_power_sim.py` | Design-only power simulation for the register contrast | one-off and done | nothing (prints JSON that records its seed) | session; `docs/petri_wave2_design.md` quotes its numbers |
 
+## Petri wave 3
+
+| Script | What it does | Status | Writes | Who runs it |
+|---|---|---|---|---|
+| `petri_w3_register_contrast.py` | The wave-3 register-contrast analysis the draft plan `data/petri/w3_register_contrast_plan.json` requires (design note section 9), reusing the wave-2 script by import; `--secondary-judge` adds the same tables from a second judge's re-grades, labelled secondary | staged | coverage JSON on stdout (or `--out`); with `--final`, `--out`, never overwritten; it refuses `--final` until the plan is approved and every target's fires have landed | owner, once per wave after the final data land; never run on data yet (no wave-3 run exists) |
+
 ## Physician verification
 
 The task bundle for the physician verification app, whose code is in the
