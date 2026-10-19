@@ -91,3 +91,25 @@ with the reason and withhold the numerical claim. A future rendering layer must
 reject unsupported real packets, missing method/layer metadata, wrong identities
 and incomplete grids rather than label them as findings. The existing semantic
 validators, not structural schemas alone, enforce these experimental boundaries.
+
+## Existing-site boundary test
+
+This separate [executable synthetic slice](frontend_boundary.md) protects the
+existing static scenario index; it does not implement or publish `R` above.
+Every row below is served from GET `/patientwords/data/simulated_scenarios.json`,
+written by `scripts/export_frontend_simulated.py`, and consumed by
+`simulated-scenarios/index.html`. The single structural authority is
+`scripts/contracts/simulated_scenarios.v1.schema.json`.
+
+| Displayed claim / association | Artifact field | Protecting independent assertion |
+|---|---|---|
+| Sim row and wording | `scenarios[].{index,batch,batch_index,clinical_prompt,patient_prompt,patient_term,clinical_term}` | `assert_semantics`: exact fixture identities; `assert_browser`: row links and swap labels |
+| Target probability, clinical → patient, unitless shared 0–1 axis | `scenarios[].models[model].{target_token,prob_clinical,prob_patient}` | Exact target joins and raw values; displayed `0.25 → 0.10` versus `0.61 → 0.81`, two decimals and SVG title |
+| Direction and filter membership | `.language_penalty = prob_patient − prob_clinical` | Independent sign/value assertion; outcome-filter row sets and displayed sign convention |
+| Zero / screened / not traced | `.prob_*`, `.screening`, absent selected `.models[model]` | `0.00 → 0.00` differs from `— → —`; screened and untraced labels checked |
+| Selected model and source | `models_meta[].{id,label,source_set,features}`, `traced_by_model` | Selector label, provenance text and values change together; uncalibrated mass stays absent |
+| Legacy base reading | Top-level mirrored probability fields; absent `models_meta/models/archive` | Fetched legacy schema passes; base display retains exact values |
+| Scoring denominator (semantic check, not a new displayed claim) | `summary.totals`, `summary.penalty` | Three accepted, two scored, one screened; mean −0.0734 and CI absent, from independent fixture literals |
+
+The fixture banner and receipt explicitly say synthetic software evidence. This
+page has no native sample flag; tests do not invent one or treat it as a study result.

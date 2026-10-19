@@ -1,0 +1,287 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "simulated_scenarios.v1.schema.json",
+  "title": "PatientWords simulated scenarios artifact, read contract v1",
+  "description": "Static artifact read contract. Legacy readers may omit models_meta and scenario.models. The export gate additionally requires x-export-required fields. Unknown fields remain allowed for additive compatibility. Join integrity, mirror equality, denominators, sign conventions, and provenance are independent semantic checks. Empty schemas preserve fields whose detailed structure was not previously constrained by the export gate.",
+  "type": "object",
+  "required": [
+    "batches",
+    "scenarios",
+    "traced"
+  ],
+  "x-export-required": [
+    "models_meta"
+  ],
+  "properties": {
+    "batches": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/batch"
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/scenario"
+      }
+    },
+    "models_meta": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/modelMeta"
+      }
+    },
+    "traced": {
+      "type": "object"
+    },
+    "holdout_withheld": {
+      "type": "integer"
+    },
+    "traced_by_model": {},
+    "archive": {},
+    "traces_site": {},
+    "summary": {},
+    "depth_model": {},
+    "urgency_meta": {},
+    "featured": {},
+    "steering_disclosure": {}
+  },
+  "definitions": {
+    "batch": {
+      "type": "object",
+      "required": [
+        "batch",
+        "generated"
+      ],
+      "properties": {
+        "batch": {
+          "type": "string"
+        },
+        "generated": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "run_timestamp": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cost_usd": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "accepted": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "rejected": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        },
+        "screen_targets": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "modelMeta": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "source_set",
+        "features",
+        "graphs",
+        "available",
+        "default",
+        "n_traced"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "source_set": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "features": {
+          "type": "boolean"
+        },
+        "graphs": {
+          "type": "boolean"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean"
+        },
+        "n_traced": {
+          "type": "integer"
+        }
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "required": [
+        "index",
+        "batch",
+        "batch_index",
+        "clinical_prompt",
+        "patient_prompt",
+        "intended_target"
+      ],
+      "x-export-required": [
+        "models"
+      ],
+      "properties": {
+        "index": {
+          "type": "integer"
+        },
+        "batch": {
+          "type": "string"
+        },
+        "batch_index": {
+          "type": "integer"
+        },
+        "clinical_prompt": {
+          "type": "string"
+        },
+        "patient_prompt": {
+          "type": "string"
+        },
+        "intended_target": {
+          "type": "string"
+        },
+        "models": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/model"
+          }
+        },
+        "html": {
+          "type": "string"
+        },
+        "png": {
+          "type": "string"
+        },
+        "prob_clinical": {
+          "$ref": "#/definitions/model/properties/prob_clinical"
+        },
+        "prob_patient": {
+          "$ref": "#/definitions/model/properties/prob_patient"
+        },
+        "language_penalty": {
+          "$ref": "#/definitions/model/properties/language_penalty"
+        },
+        "flipped": {
+          "$ref": "#/definitions/model/properties/flipped"
+        },
+        "top_clinical": {
+          "$ref": "#/definitions/model/properties/top_clinical"
+        },
+        "top_patient": {
+          "$ref": "#/definitions/model/properties/top_patient"
+        },
+        "spread_clinical": {
+          "$ref": "#/definitions/model/properties/spread_clinical"
+        },
+        "spread_patient": {
+          "$ref": "#/definitions/model/properties/spread_patient"
+        },
+        "target_token": {
+          "$ref": "#/definitions/model/properties/target_token"
+        },
+        "anchor_fallback": {
+          "$ref": "#/definitions/model/properties/anchor_fallback"
+        },
+        "screening": {
+          "$ref": "#/definitions/model/properties/screening"
+        },
+        "circuit_diff": {
+          "$ref": "#/definitions/model/properties/circuit_diff"
+        },
+        "clinical_mass": {
+          "$ref": "#/definitions/model/properties/clinical_mass"
+        }
+      }
+    },
+    "model": {
+      "type": "object",
+      "required": [
+        "prob_clinical",
+        "prob_patient",
+        "language_penalty",
+        "flipped",
+        "top_clinical",
+        "top_patient",
+        "spread_clinical",
+        "spread_patient",
+        "target_token",
+        "anchor_fallback",
+        "screening",
+        "circuit_diff",
+        "clinical_mass"
+      ],
+      "properties": {
+        "prob_clinical": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "prob_patient": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "language_penalty": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "flipped": {
+          "type": "boolean"
+        },
+        "top_clinical": {},
+        "top_patient": {},
+        "spread_clinical": {
+          "type": "array"
+        },
+        "spread_patient": {
+          "type": "array"
+        },
+        "target_token": {},
+        "anchor_fallback": {
+          "type": "boolean"
+        },
+        "screening": {},
+        "circuit_diff": {},
+        "clinical_mass": {}
+      }
+    }
+  }
+}
