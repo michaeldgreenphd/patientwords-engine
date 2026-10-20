@@ -1123,6 +1123,7 @@ def _jev_source_reports(rep: Report, name: str, data: dict) -> None:
 
 
 JEV_EQUIVALENCE_FILE = Path(__file__).resolve().parents[1] / "data/jev/evaluator_equivalence.json"
+JEV_EQUIVALENCE_HISTORY = JEV_EQUIVALENCE_FILE.parent / "evaluator_equivalence_snapshots"
 
 
 def _jev_equivalence(rep: Report, name: str, data: dict) -> None:
@@ -1162,10 +1163,17 @@ def _jev_equivalence(rep: Report, name: str, data: dict) -> None:
         rep.err(name, path + ".applied_equivalences", "must be a list of reviewed edges")
         return
     if block.get("sha256") is not None or len(distinct) > 1:
+        if not digest(block.get("sha256")):
+            return  # the invalid digest was reported above; never use it as a filename
         try:
             raw = JEV_EQUIVALENCE_FILE.read_bytes()
+            if sha256(raw).hexdigest() != block["sha256"]:
+                # Only snapshots checked into this reviewed directory can authorize older receipts.
+                raw = (JEV_EQUIVALENCE_HISTORY / f"{block['sha256']}.json").read_bytes()
+                if sha256(raw).hexdigest() != block["sha256"]:
+                    raise ValueError("historical snapshot bytes do not match their digest")
             registry = json.loads(raw)
-        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        except (OSError, ValueError) as exc:
             rep.err(name, path, f"cannot read reviewed registry: {exc}")
             return
         entries = registry.get("equivalences") if isinstance(registry, dict) else None

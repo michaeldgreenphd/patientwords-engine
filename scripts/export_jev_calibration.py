@@ -83,6 +83,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import json
+import re
 import math
 import os
 import subprocess
@@ -1236,7 +1237,7 @@ def resolve_classifier(digest: str, repo_root: Path = REPO_ROOT, hint: str | Non
     rather than assumed. None when no commit in this clone gives it (a run on uncommitted files, or a shallow clone).
 
     `hint` is the commit the report recorded (classifier.commit, written by runs from 2026-10-14), tried before the
-    working tree, so a matching report keeps its commit. The
+    working tree, so a matching report keeps its resolved full commit ID, never a moving ref or abbreviation. The
     history search tolerates an incomplete clone: `git log --all` stops at the first unreadable object, so when it
     fails its partial output is kept and every ref is searched on its own, a ref that cannot be read is skipped, and a
     commit whose files cannot be read is passed over (Codex review of PR #111)."""
@@ -1251,10 +1252,13 @@ def resolve_classifier(digest: str, repo_root: Path = REPO_ROOT, hint: str | Non
     # the recorded commit first, so a report that names its commit is attributed to it even when this checkout's
     # files are the same (Codex review of PR #111); then this checkout's files; then history
     if isinstance(hint, str) and hint:
-        shown = [_git(repo_root, "show", f"{hint}:{f}") for f in files]
-        found = check([r.stdout if r.returncode == 0 else None for r in shown], hint)
-        if found:
-            return found
+        resolved_hint = _git(repo_root, "rev-parse", "--verify", "--end-of-options", f"{hint}^{{commit}}")
+        commit = resolved_hint.stdout.decode(errors="replace").strip()
+        if resolved_hint.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}", commit):
+            shown = [_git(repo_root, "show", f"{commit}:{f}") for f in files]
+            found = check([r.stdout if r.returncode == 0 else None for r in shown], commit)
+            if found:
+                return found
     found = check([(repo_root / f).read_bytes() if (repo_root / f).is_file() else None for f in files], None)
     if found:
         return found

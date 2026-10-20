@@ -1885,14 +1885,16 @@ def test_one_unreadable_object_does_not_hide_the_commit_a_report_ran_at(monkeypa
         if args[:2] == ("log", "refs/heads/broken"):
             return bad
         if args[:2] == ("log", "refs/heads/main"):
-            return ok("goodcommit\n")
-        if args[0] == "show" and args[1].startswith("goodcommit:"):
+            return ok("c" * 40 + "\n")
+        if args[0] == "rev-parse" and args[-1] == "goodcommit^{commit}":
+            return ok("c" * 40 + "\n")
+        if args[0] == "show" and args[1].startswith("c" * 40 + ":"):
             return subprocess.CompletedProcess(args, 0, body[args[1].split(":", 1)[1]], b"")
         return bad
     monkeypatch.setattr(ex, "_git", fake_git)
     found = ex.resolve_classifier(digest, repo_root=Path("/nonexistent"))
-    assert found is not None and found["commit"] == "goodcommit"
-    assert ex.resolve_classifier(digest, repo_root=Path("/nonexistent"), hint="goodcommit")["commit"] == "goodcommit"
+    assert found is not None and found["commit"] == "c" * 40
+    assert ex.resolve_classifier(digest, repo_root=Path("/nonexistent"), hint="goodcommit")["commit"] == "c" * 40
 
 
 def test_the_recorded_commit_is_kept_when_the_worktree_also_matches():
@@ -2159,3 +2161,42 @@ def test_combined_export_refuses_nonobject_rubric(
     other = _petri_only(advice_report)
     other["metadata"][field] = value
     _refused(tmp_path, [advice_report, other], field, capsys)
+
+
+@pytest.mark.parametrize("snapshot", ["valid", "missing", "tampered"])
+def test_reviewed_equivalence_snapshot_survives_registry_extension(
+        tmp_path: Path, advice_report: dict, monkeypatch: pytest.MonkeyPatch, snapshot: str) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    original = vfc.JEV_EQUIVALENCE_FILE.read_bytes()
+    digest = hashlib.sha256(original).hexdigest()
+    history = tmp_path / "history"
+    history.mkdir()
+    if snapshot != "missing":
+        (history / f"{digest}.json").write_bytes(original if snapshot == "valid" else b"{}")
+    updated = json.loads(original)
+    updated["equivalences"].append({"evaluator_sha256": "a" * 64, "equivalent_to": "b" * 64,
+                                     "reason": "unrelated reviewed extension", "reviewed_utc": "2026-10-20"})
+    current = tmp_path / "current-registry.json"
+    current.write_text(json.dumps(updated))
+    monkeypatch.setattr(vfc, "JEV_EQUIVALENCE_FILE", current)
+    monkeypatch.setattr(vfc, "JEV_EQUIVALENCE_HISTORY", history, raising=False)
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    if snapshot == "valid":
+        assert rep.errors == []
+    else:
+        assert any("reviewed registry" in error for error in rep.errors)
+
+
+@pytest.mark.parametrize("symbolic", [True, False])
+def test_classifier_hint_records_the_resolved_full_commit(symbolic: bool) -> None:
+    import scripts.export_jev_calibration as ex
+
+    head = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True).strip()
+    files = (*ex.JEV_SCORING_FILES, ex.JEV_EVALUATOR_FILE)
+    digest = hashlib.sha256(b"".join(subprocess.check_output(
+        ["git", "-C", str(ROOT), "show", f"{head}:{file}"]) for file in files)).hexdigest()
+    hint = "HEAD" if symbolic else head[:8]
+    assert ex.resolve_classifier(digest, hint=hint)["commit"] == head
