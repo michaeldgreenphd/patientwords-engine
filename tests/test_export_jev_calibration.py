@@ -2024,7 +2024,8 @@ def test_pooled_equivalence_provenance_is_required_and_validated(
     assert rep.errors and any("evaluator" in str(e) for e in rep.errors)
 
 
-def test_pooled_equivalence_graph_must_reconstruct_its_claimed_class() -> None:
+def test_pooled_equivalence_graph_must_reconstruct_its_claimed_class(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from scripts import validate_frontend_contract as vfc
 
     a, b, c = (letter * 64 for letter in "abc")
@@ -2036,6 +2037,10 @@ def test_pooled_equivalence_graph_must_reconstruct_its_claimed_class() -> None:
     payload = {"source_reports": [{"evaluator_sha256": a, "scoring_sha256": a},
                                   {"evaluator_sha256": c, "scoring_sha256": a}],
                "provenance": {"evaluator_equivalence": block}}
+    registry = tmp_path / "equivalences.json"
+    registry.write_text(json.dumps({"equivalences": block["applied_equivalences"]}))
+    block["sha256"] = hashlib.sha256(registry.read_bytes()).hexdigest()
+    monkeypatch.setattr(vfc, "JEV_EQUIVALENCE_FILE", registry)
     rep = vfc.Report()
     vfc._jev_equivalence(rep, "synthetic", payload)
     assert not rep.errors
@@ -2111,3 +2116,36 @@ def test_explicit_arm_builder_refuses_invalid_transcript_identity(
     with pytest.raises(SystemExit) as exc:
         build_petri_drift_payload(report, "a" * 64, arms=arms)
     assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("mutation", ["digest", "fabricated_edges"])
+def test_pooled_equivalence_must_match_reviewed_registry(
+        tmp_path: Path, advice_report: dict, mutation: str) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    for name in ("jev_calibration.json", "petri_register_drift.json"):
+        path = tmp_path / "site/data" / name
+        payload = json.loads(path.read_text())
+        block = payload["provenance"]["evaluator_equivalence"]
+        if mutation == "digest":
+            block["sha256"] = "f" * 64
+        else:
+            a, b = "a" * 64, "b" * 64
+            for source, digest in zip(payload["source_reports"], (a, b), strict=True):
+                source["evaluator_sha256"] = digest
+            block["evaluator_classes"] = {a: b, b: b}
+            block["applied_equivalences"] = [{"evaluator_sha256": a, "equivalent_to": b,
+                                               "reason": "fabricated", "reviewed_utc": "2026-10-20"}]
+        path.write_text(json.dumps(payload))
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert any("reviewed registry" in error for error in rep.errors)
+
+
+@pytest.mark.parametrize("classifier", ["not-an-object", ["not-an-object"]])
+def test_combined_export_refuses_nonobject_classifier(
+        tmp_path: Path, advice_report: dict, classifier: object, capsys: pytest.CaptureFixture[str]) -> None:
+    other = _petri_only(advice_report)
+    other["metadata"]["classifier"] = classifier
+    _refused(tmp_path, [advice_report, other], "classifier", capsys)

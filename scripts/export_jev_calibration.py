@@ -274,6 +274,14 @@ def load_report(report_path: Path) -> tuple[dict[str, Any], str]:
     return data, report_sha
 
 
+def _classifier_block(meta: dict[str, Any]) -> dict[str, Any]:
+    """Refuse malformed provenance before any caller reads classifier fields."""
+    classifier = meta.get("classifier")
+    if not isinstance(classifier, dict):
+        _refuse("Report metadata has no object 'classifier' block; the payload could not name the classifier")
+    return classifier
+
+
 def _require_model_requested(meta: dict[str, Any]) -> str:
     """Both payloads publish the requested Jev model, and the site contract requires it as a string; a report without
     one is refused here rather than written and then rejected by site CI."""
@@ -636,9 +644,7 @@ def _publishable_provenance(meta: dict[str, Any], *, has_advice: bool, has_petri
         _require_sha256(out["sha256"], f"{name}.sha256")
         return out
 
-    classifier = meta.get("classifier")
-    if not isinstance(classifier, dict):
-        _refuse("Report metadata has no 'classifier' block; the payload could not name the classifier")
+    classifier = _classifier_block(meta)
     return {
         "audit_timestamp_utc": meta.get("timestamp_utc"),
         "rubric": pick("rubric", ("path", "sha256"), True),
@@ -1027,7 +1033,7 @@ def _petri_run_entry(meta: dict[str, Any], report_sha: str, n_conversations: int
             "max_conversations": entry.get("max_conversations"), "turns_evaluated": entry.get("turns_evaluated"),
             "conversations": n_conversations, "audit_timestamp_utc": meta.get("timestamp_utc"),
             "source_report_sha256": report_sha,
-            "classifier_sha256": _require_sha256((meta.get("classifier") or {}).get("sha256"), "classifier.sha256"),
+            "classifier_sha256": _require_sha256(_classifier_block(meta).get("sha256"), "classifier.sha256"),
             # the dated models that scored this run's rows; the payload's models_served is their union over every run
             # (Codex review of PR #111, round 3)
             "models_served": _served_models(rows, "Petri case")}
@@ -1197,8 +1203,8 @@ def source_report_entries(reports: list[tuple[dict[str, Any], str]], repo_root: 
     for data, sha in reports:
         meta = data.get("metadata") or {}
         petri = meta.get("petri_transcripts")
-        digest = (meta.get("classifier") or {}).get("sha256")
-        resolved = (resolve_classifier(digest, repo_root, (meta.get("classifier") or {}).get("commit"))
+        digest = _classifier_block(meta).get("sha256")
+        resolved = (resolve_classifier(digest, repo_root, _classifier_block(meta).get("commit"))
                     if resolve else None)
         out.append({"sha256": sha, "advice_cases": len(data.get("cases") or []),
                     "petri_turns": len(data.get("petri_cases") or []),
@@ -1349,8 +1355,8 @@ def check_combinable(reports: list[tuple[dict[str, Any], str]], repo_root: Path 
 
     def ident(data: dict[str, Any], sha: str) -> tuple[Any, ...]:
         meta = data.get("metadata") or {}
-        digest = _require_sha256((meta.get("classifier") or {}).get("sha256"), "classifier.sha256")
-        resolved = resolve_classifier(digest, repo_root, (meta.get("classifier") or {}).get("commit"))
+        digest = _require_sha256(_classifier_block(meta).get("sha256"), "classifier.sha256")
+        resolved = resolve_classifier(digest, repo_root, _classifier_block(meta).get("commit"))
         if resolved is None:
             _refuse(f"Report {sha[:12]}...'s classifier digest {digest[:12]}... matches no commit of "
                     f"{', '.join(JEV_SCORING_FILES)} and {JEV_EVALUATOR_FILE} in this clone (a run on uncommitted "

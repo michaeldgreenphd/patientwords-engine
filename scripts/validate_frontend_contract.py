@@ -1122,8 +1122,11 @@ def _jev_source_reports(rep: Report, name: str, data: dict) -> None:
                                               f"{total_key} is {total}")
 
 
+JEV_EQUIVALENCE_FILE = Path(__file__).resolve().parents[1] / "data/jev/evaluator_equivalence.json"
+
+
 def _jev_equivalence(rep: Report, name: str, data: dict) -> None:
-    """Validate the self-contained reviewed graph that justifies pooling runner versions."""
+    """Bind pooling provenance to the reviewed registry bytes as well as checking its graph."""
     sources = data.get("source_reports")
     if not isinstance(sources, list) or len(sources) < 2:
         return
@@ -1158,6 +1161,34 @@ def _jev_equivalence(rep: Report, name: str, data: dict) -> None:
     if not isinstance(edges, list):
         rep.err(name, path + ".applied_equivalences", "must be a list of reviewed edges")
         return
+    if block.get("sha256") is not None or len(distinct) > 1:
+        try:
+            raw = JEV_EQUIVALENCE_FILE.read_bytes()
+            registry = json.loads(raw)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            rep.err(name, path, f"cannot read reviewed registry: {exc}")
+            return
+        entries = registry.get("equivalences") if isinstance(registry, dict) else None
+        if not isinstance(entries, list) or not all(
+                isinstance(e, dict) and digest(e.get("evaluator_sha256")) and digest(e.get("equivalent_to"))
+                for e in entries):
+            rep.err(name, path, "reviewed registry has malformed equivalences")
+            return
+        reviewed: dict[str, str] = {}
+
+        def reviewed_root(value: str) -> str:
+            while reviewed.setdefault(value, value) != value:
+                value = reviewed[value]
+            return value
+
+        for edge in entries:
+            reviewed[reviewed_root(edge["evaluator_sha256"])] = reviewed_root(edge["equivalent_to"])
+        expected_classes = {e: reviewed_root(e) for e in distinct}
+        applied_classes = set(expected_classes.values()) if len(distinct) > 1 else set()
+        expected_edges = [e for e in entries if reviewed_root(e["evaluator_sha256"]) in applied_classes]
+        if (block.get("sha256") != sha256(raw).hexdigest() or classes != expected_classes
+                or edges != expected_edges):
+            rep.err(name, path, "digest, evaluator classes and applied edges must match the reviewed registry")
     parent: dict[str, str] = {}
 
     def root(value: str) -> str:
