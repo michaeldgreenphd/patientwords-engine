@@ -551,6 +551,9 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
         return name
 
     primary_window = window_ref("primary.window")
+    for selector in ("primary.target", "general_headline_gate.target"):
+        if _get(doc, selector) != "anchor":
+            problems.append(f"{selector} must remain anchor, the target this script computes")
     late_window = window_ref("secondary_exchanges_6_10.window")
     for key, expected in (("primary.contrast", [COLLOQUIAL, CLINICAL]),
                           ("decomposition.contrasts.style", [COLLOQUIAL, CAREFUL_LAY]),
@@ -2012,6 +2015,51 @@ def code_files() -> dict[str, Path]:
                for module in (framework, judge_runner, manifest, rejudge, seeds, spend)}}
 
 
+def verified_run_chain_inputs(args: argparse.Namespace, prep: Prepared) -> dict[str, Path]:
+    """Verify complete source chains and bind every manifest/artifact they actually inspect."""
+    roots = {Path(args.runs_dir).resolve(), *(r.run_dir.parent.resolve() for r in prep.runs)}
+    files: dict[str, Path] = {}
+    for i, root in enumerate(sorted(roots)):
+        chain = root / manifest.CHAIN_FILE
+        try:
+            lines = [line for line in chain.read_text(encoding="utf-8").splitlines() if line.strip()]
+            if not lines:
+                raise ValueError("empty chain")
+            entries: dict[str, str] = {}
+            for line in lines:
+                relative, digest = line.rsplit(" ", 1)
+                parts = Path(relative).parts
+                if (len(parts) != 2 or parts[0] in {".", ".."} or parts[1] != "manifest.json"
+                        or Path(relative).is_absolute() or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+                        or relative in entries):
+                    raise ValueError("malformed or duplicate chain entry")
+                entries[relative] = digest
+            for run in prep.runs:
+                if run.run_dir.parent.resolve() == root and f"{run.stem}/manifest.json" not in entries:
+                    raise ValueError(f"chain does not name selected run {run.stem}")
+            valid, reason = manifest.verify_chain(root)
+            if not valid:
+                raise ValueError(reason)
+            files[f"run_chain[{i}].chain"] = chain
+            for j, relative in enumerate(entries):
+                path = root / relative
+                record = load_json(path)
+                prefix = f"run_chain[{i}].entry[{j}]"
+                files[f"{prefix}.manifest"] = path
+                for key, value in record["artifacts"].items():
+                    if key.endswith("_path") and value:
+                        files[f"{prefix}.{key}"] = path.parent / Path(value).name
+                report = (record["artifacts"].get("judge_of_record") or {}).get("report_path")
+                if report:
+                    files[f"{prefix}.judge_report"] = path.parent / Path(report).name
+                if record.get("readapt") is not None:
+                    target_report = record["readapt"]["target_report"]["path"]
+                    files[f"{prefix}.target_report"] = path.parent / Path(target_report).name
+        except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
+            raise AnalysisRefusal(f"run chain {chain} does not verify: {exc}") from exc
+    return files
+
+
 def analysis_input_files(args: argparse.Namespace, prep: Prepared) -> dict[str, Path]:
     """The data read for analysis or its validation, including bound artifacts and any replacement judge pass."""
     files = {"plan": args.plan, "seed_file": prep.seeds_path, "rubric": args.rubric,
@@ -2057,7 +2105,8 @@ def analysis_input_files(args: argparse.Namespace, prep: Prepared) -> dict[str, 
                    if isinstance(row.get("prompt_ref"), str) and row["prompt_ref"]}
     for i, ref in enumerate(sorted(prompt_refs)):
         files[f"prompt[{i}]"] = ROOT / ref
-    if args.declare_truncated:
+    if args.final or args.primary_final is not None:
+        files.update(verified_run_chain_inputs(args, prep))
         files["trigger_journal"] = JOURNAL_FILE
     return files
 
@@ -2413,6 +2462,48 @@ def gate_selection_problems(plan: Plan) -> list[str]:
     return problems
 
 
+def approval_chronology_problems(prep: Prepared, approved: date) -> list[str]:
+    """Require day-level approval to precede the recorded fire and run dates, with no guessed intra-day order."""
+    problems: list[str] = []
+    if approved > datetime.now(timezone.utc).date():
+        problems.append("approval.approved_on is in the future")
+
+    def check(value: Any, label: str) -> bool:
+        try:
+            if not isinstance(value, str):
+                raise ValueError("missing timestamp")
+            timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if timestamp.tzinfo is None:
+                raise ValueError("timestamp has no UTC offset")
+            if approved >= timestamp.astimezone(timezone.utc).date():
+                problems.append(f"approval.approved_on must precede {label}'s UTC date; date-only approval "
+                                "cannot establish order within the same day")
+            return True
+        except ValueError as exc:
+            problems.append(f"approval chronology cannot be established for {label}: {exc}")
+            return False
+
+    for run in prep.runs:
+        check(run.manifest.get("created_utc"), f"run {run.stem}")
+    try:
+        entries = [json.loads(line) for line in JOURNAL_FILE.read_text(encoding="utf-8").splitlines() if line.strip()]
+        if not all(isinstance(entry, dict) for entry in entries):
+            raise ValueError("journal entries must be objects")
+    except (OSError, ValueError) as exc:
+        return problems + [f"approval chronology cannot read trigger journal: {exc}"]
+    recorded: set[str] = set()
+    for entry in entries:
+        nonce = entry.get("nonce")
+        if entry.get("trigger") != "petri-audit" or not isinstance(nonce, str) or nonce not in prep.plan.fires:
+            continue
+        if entry.get("fired_utc") is not None and check(entry["fired_utc"], f"fire {nonce}"):
+            recorded.add(nonce)
+    for run in prep.runs:
+        if run.fire.journal_nonce not in recorded:
+            problems.append(f"approval chronology: fire {run.fire.journal_nonce} has no usable fired_utc in the journal")
+    return problems
+
+
 def final_problems(args: argparse.Namespace, prep: Prepared) -> tuple[list[str], dict[str, list[int]]]:
     """What the inputs rule out under --final, and the target epochs a declared truncation covers."""
     plan = prep.plan
@@ -2425,9 +2516,11 @@ def final_problems(args: argparse.Namespace, prep: Prepared) -> tuple[list[str],
     try:
         if not isinstance(plan.approved_on, str) or re.fullmatch(r"\d{4}-\d{2}-\d{2}", plan.approved_on) is None:
             raise ValueError("expected YYYY-MM-DD")
-        date.fromisoformat(plan.approved_on)
+        approved = date.fromisoformat(plan.approved_on)
     except ValueError:
         problems.append("approval.approved_on must be a valid YYYY-MM-DD date")
+    else:
+        problems.extend(approval_chronology_problems(prep, approved))
     problems.extend(gate_selection_problems(plan))
     if plan.analysis_script_path != "scripts/petri_w3_register_contrast.py" or plan.analysis_script_status != "written":
         problems.append("analysis_script must name scripts/petri_w3_register_contrast.py with status 'written' "
@@ -2495,7 +2588,11 @@ def main(argv: list[str] | None = None) -> int:
     except AnalysisRefusal as exc:
         return _refuse([str(exc)])
     cov = coverage(prep)
-    inputs = analysis_input_files(args, prep)
+    try:
+        inputs = analysis_input_files(args, prep)
+    except AnalysisRefusal as exc:
+        problems, _ = final_problems(args, prep) if args.final or args.primary_final is not None else ([], {})
+        return _refuse([*problems, str(exc)])
     if args.primary_final is not None:
         inputs["primary_final"] = args.primary_final
     header = {"analysis": "docs/petri_wave3_design.md section 9 (wave-3 register contrast)",

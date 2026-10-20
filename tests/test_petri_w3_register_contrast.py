@@ -183,6 +183,7 @@ def write_campaign(tmp_path: Path, *, fires: tuple[str, ...] = tuple(FIRES), val
     runs_dir.mkdir(exist_ok=True)
     out = {"plan": tmp_path / "plan.json", "seeds": tmp_path / "seeds.json", "runs_dir": runs_dir,
            "rejudge": tmp_path / "rejudge", "runs": {}, "value_fn": value_fn}
+    previous = None
     for nonce in fires:
         target, epoch = FIRES[nonce]
         stem = STEMS[nonce]
@@ -214,6 +215,7 @@ def write_campaign(tmp_path: Path, *, fires: tuple[str, ...] = tuple(FIRES), val
         (run_dir / report).write_text("synthetic judge report\n", encoding="utf-8")
         m = deepcopy(TEMPLATE_MANIFEST)
         m["run_id"] = f"synthetic-{nonce}"
+        m["created_utc"] = "2026-10-03T00:00:00Z"
         m["spend"]["journal_nonce"] = nonce
         m["framework"]["outcome_registry_sha256"] = sha256_file(OUTCOME_REGISTRY)
         m["seeds"] = [{"seed_id": s, "seed_sha256": seed_digest(SEEDS[s]), "file": "seeds.json",
@@ -230,7 +232,11 @@ def write_campaign(tmp_path: Path, *, fires: tuple[str, ...] = tuple(FIRES), val
         m["models"]["target"]["inspect_name"] = spec
         if manifest_update:
             manifest_update(nonce, m)
-        (run_dir / "manifest.json").write_text(json.dumps(seal_manifest(m, None)), encoding="utf-8")
+        sealed = seal_manifest(m, previous)
+        previous = sealed["chain"]["manifest_sha256"]
+        (run_dir / "manifest.json").write_text(json.dumps(sealed), encoding="utf-8")
+        with (runs_dir / CHAIN_FILE).open("a", encoding="utf-8") as chain:
+            chain.write(f"{stem}/manifest.json {previous}\n")
         out["runs"][nonce] = run_dir
     return out
 
@@ -303,8 +309,6 @@ def write_regrade(c: dict[str, Any], nonce: str, spec: str, regrade_nonce: str, 
           "manifest_sha256": ""}
     rm["manifest_sha256"] = rejudge.manifest_digest(rm)
     (out_dir / rejudge.MANIFEST_NAME).write_text(json.dumps(rm), encoding="utf-8")
-    with open(c["runs_dir"] / CHAIN_FILE, "a", encoding="utf-8") as fh:
-        fh.write(f"{stem}/manifest.json {manifest['chain']['manifest_sha256']}\n")
     assert rejudge.verify_output(out_dir, c["runs_dir"]) == []
     return out_dir
 
@@ -343,6 +347,9 @@ def final_ready(monkeypatch: pytest.MonkeyPatch, c: dict[str, Any], journal: tup
     if not (root / ".git").exists():
         plumbing(root, "init", "-q")
     journal_path = root / "journal.jsonl"
+    supplied = {entry.get("nonce") for entry in journal}
+    journal = tuple({"trigger": "petri-audit", "nonce": nonce, "fired_utc": "2026-10-02T00:00:00Z",
+                     "resolved": True, "evicted": False} for nonce in c["runs"] if nonce not in supplied) + journal
     journal_path.write_text("".join(json.dumps(e) + "\n" for e in journal), encoding="utf-8")
     # Project the repository's code and fixed validation inputs into this synthetic git repository. The tested
     # files and all campaign artifacts use real git status, while an in-progress edit to the test subject itself
@@ -1705,3 +1712,65 @@ def test_post_final_requires_complete_saved_test_structure(
     assert w3.main(cli_args(c, "--primary-final", str(primary), "--secondary-judge", SECOND,
                             "--out", str(out))) == 2
     assert "primary" in capsys.readouterr().err and not out.exists() and primary.read_bytes() == before
+
+
+@pytest.mark.parametrize("key", ["primary", "general_headline_gate"])
+def test_plan_target_selectors_must_match_implemented_anchor(tmp_path: Path, key: str) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    doc[key]["target"] = "tgt-b"
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="target.*anchor"):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("damage", ["resealed", "missing", "empty", "omitted", "malformed"])
+def test_final_binds_complete_run_chain(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], damage: str) -> None:
+    c = write_campaign(tmp_path)
+    chain = c["runs_dir"] / CHAIN_FILE
+    if damage == "resealed":
+        run = c["runs"]["a1"]
+        artifact = run / ARTIFACT_FILENAMES["sanitised_log"]
+        artifact.write_text("synthetic rewrite\n")
+        doc = load_json(run / "manifest.json")
+        doc["artifacts"]["sanitised_log_sha256"] = sha256_file(artifact)
+        (run / "manifest.json").write_text(json.dumps(seal_manifest(doc, doc["chain"]["prev_sha256"])))
+        assert w3.verify_run(run) == []
+    elif damage == "missing":
+        chain.unlink()
+    elif damage == "empty":
+        chain.write_text("")
+    elif damage == "omitted":
+        chain.write_text("\n".join(chain.read_text().splitlines()[:-1]) + "\n")
+    else:
+        chain.write_text(chain.read_text() + "malformed\n")
+    final_ready(monkeypatch, c)
+    out = tmp_path / "final.json"
+    assert w3.main(cli_args(c, "--final", "--out", str(out))) == 2
+    assert "chain" in capsys.readouterr().err and not out.exists()
+
+
+@pytest.mark.parametrize("case", ["after_run", "future", "same_day", "early_fire", "missing_fire"])
+def test_final_requires_approval_before_recorded_execution(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], case: str) -> None:
+    c = write_campaign(tmp_path)
+    doc = load_json(c["plan"])
+    if case in {"after_run", "future", "same_day"}:
+        doc["approval"]["approved_on"] = {"after_run": "2026-10-04", "future": "2999-01-01",
+                                            "same_day": "2026-10-02"}[case]
+        c["plan"].write_text(json.dumps(doc))
+    journal = ({"trigger": "petri-audit", "nonce": "a1", "fired_utc": "2026-09-30T23:59:00Z",
+                "resolved": True, "evicted": False},) if case == "early_fire" else ()
+    final_ready(monkeypatch, c, journal)
+    if case == "missing_fire":
+        path = c["plan"].parent / "journal.jsonl"
+        path.write_text("".join(line + "\n" for line in path.read_text().splitlines()
+                                if json.loads(line)["nonce"] != "a1"))
+        plumbing(c["plan"].parent, "add", "--all")
+        tree = plumbing(c["plan"].parent, "write-tree")
+        commit = plumbing(c["plan"].parent, "commit-tree", "--no-gpg-sign", "-m", "synthetic", tree)
+        plumbing(c["plan"].parent, "update-ref", "HEAD", commit)
+    out = tmp_path / "final.json"
+    assert w3.main(cli_args(c, "--final", "--out", str(out))) == 2
+    assert "approval" in capsys.readouterr().err and not out.exists()

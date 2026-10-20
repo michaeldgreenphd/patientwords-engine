@@ -486,6 +486,20 @@ explicit refusals), rather than discovering only whichever tests happen to remai
 in a supplied file. This validates structure and bound input identity; it does not
 recompute or independently certify the saved primary numerical results.
 
+Final mode also verifies the complete `manifests.chain` for each source runs
+root, requires every selected run to be named there, and binds every checked
+manifest and artifact as a committed input. A separately downloaded run that
+verifies in isolation is insufficient for final analysis; coverage mode remains
+available without that archive-chain requirement.
+
+The primary and general-headline selectors must both remain `anchor`. The dated
+owner approval must precede the UTC dates of the runs and their recorded paid
+fires. Every landed fire needs a usable `fired_utc` in the committed trigger
+journal. Because `approved_on` has only day precision, approval on the same UTC
+day cannot establish the order and refuses; no time of approval is invented.
+A same-day approval would need separately reviewed, more precise approval
+evidence before this guard could accept it. Future approval dates also refuse.
+
 ---
 
 ## 9. Pre-specified analysis (DRAFT, not approved)
