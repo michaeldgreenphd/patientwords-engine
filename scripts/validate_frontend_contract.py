@@ -1387,6 +1387,12 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
             _jev_reconcile(rep, name, data)
             _jev_rebuild(rep, name, data)
             _jev_petri_runs(rep, name, data)
+    # Calibration can carry source rows even when its drift counterpart was omitted from publication.
+    if any(isinstance(entry, dict) and isinstance(entry.get("petri_turns"), int)
+           and not isinstance(entry["petri_turns"], bool) and entry["petri_turns"] > 0
+           for entry in sources.get("jev_calibration.json", [])) and not (
+               site / "data/petri_register_drift.json").is_file():
+        rep.err("petri_register_drift.json", "-", "missing while calibration source_reports list Petri turns")
     if len(set(reports.values())) > 1:
         rep.err(" and ".join(reports), "$.source_report_sha256", "the two Jev payloads come from different reports")
     if len(versions) > 1 and any(version != next(iter(versions.values())) for version in versions.values()):

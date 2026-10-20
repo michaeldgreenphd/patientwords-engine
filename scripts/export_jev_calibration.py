@@ -1018,7 +1018,11 @@ def _petri_run_entry(meta: dict[str, Any], report_sha: str, n_conversations: int
                      rows: list[dict[str, Any]]) -> dict[str, Any]:
     """One scored Petri run as the payload names it: its transcripts (path and sha256, as the report recorded them),
     the report that scored it, when, and how much of it was scored."""
-    entry = meta["petri_transcripts"]
+    entry = meta.get("petri_transcripts")
+    if not isinstance(entry, dict):
+        _refuse("Report metadata has no 'petri_transcripts' block")
+    _require_relative_path(entry.get("path"))
+    _require_sha256(entry.get("sha256"), "petri_transcripts.sha256")
     return {"path": entry["path"], "sha256": entry["sha256"], "run": PurePosixPath(entry["path"]).parent.name,
             "max_conversations": entry.get("max_conversations"), "turns_evaluated": entry.get("turns_evaluated"),
             "conversations": n_conversations, "audit_timestamp_utc": meta.get("timestamp_utc"),

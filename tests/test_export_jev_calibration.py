@@ -2079,3 +2079,35 @@ def test_pooled_source_instrument_and_single_advice_origin(tmp_path: Path, advic
     vfc.check_jev_payloads(rep, tmp_path / "site")
     expected = "one advice" if change == "split_advice" else "scoring_sha256"
     assert any(expected in e for e in rep.errors)
+
+
+def test_positive_source_turns_require_the_drift_counterpart(tmp_path: Path, advice_report: dict) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    path = tmp_path / "site/data/petri_register_drift.json"
+    original = path.read_bytes()
+    path.unlink()
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert any("missing" in e and "petri_register_drift.json" in e for e in rep.errors)
+    path.write_bytes(original)
+    restored = vfc.Report()
+    vfc.check_jev_payloads(restored, tmp_path / "site")
+    assert restored.errors == []
+
+
+@pytest.mark.parametrize("field,value", [("path", None), ("path", []), ("path", "../outside"),
+                                         ("sha256", None), ("sha256", []), ("sha256", "invalid")])
+def test_explicit_arm_builder_refuses_invalid_transcript_identity(
+        advice_report: dict, field: str, value: object) -> None:
+    report = json.loads(json.dumps(advice_report))
+    entry = report["metadata"]["petri_transcripts"]
+    if value is None:
+        del entry[field]
+    else:
+        entry[field] = value
+    arms = {row["conversation_id"]: SYNTHETIC_ARM for row in report["petri_cases"]}
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(report, "a" * 64, arms=arms)
+    assert exc.value.code == 2
