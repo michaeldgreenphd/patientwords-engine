@@ -1109,6 +1109,8 @@ def _jev_source_reports(rep: Report, name: str, data: dict) -> None:
     # payload pools every report's Petri rows, and the calibration payload is the one advice report's
     counts_ok = all(isinstance(e.get(k), int) and not isinstance(e.get(k), bool)
                     for e in lst for k in ("advice_cases", "petri_turns"))
+    if counts_ok and sum(e["advice_cases"] > 0 for e in lst) != 1:
+        rep.err(name, "$.source_reports", "must have exactly one advice source; remaining advice_cases must be zero")
     head = data.get("headline_metrics") if isinstance(data.get("headline_metrics"), dict) else {}
     totals = {"petri_register_drift.json": ("petri_turns", "total_assistant_turns"),
               "jev_calibration.json": ("advice_cases", "total_advice_cases")}
@@ -1141,6 +1143,9 @@ def _jev_equivalence(rep: Report, name: str, data: dict) -> None:
     if not all(digest(e) for e in evaluators):
         rep.err(name, "$.source_reports", "each pooled report must name its evaluator_sha256")
         return
+    scores = [s.get("scoring_sha256") for s in sources]
+    if not all(digest(value) for value in scores) or len(set(scores)) != 1:
+        rep.err(name, "$.source_reports", "pooled scoring_sha256 values must be valid 64-hex digests and identical")
     distinct = set(evaluators)
     if not digest(block.get("sha256")) and not (block.get("sha256") is None and len(distinct) == 1):
         rep.err(name, path + ".sha256", "must record the registry digest when different evaluators are pooled")

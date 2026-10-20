@@ -2033,7 +2033,8 @@ def test_pooled_equivalence_graph_must_reconstruct_its_claimed_class() -> None:
 
     block = {"path": "data/jev/evaluator_equivalence.json", "sha256": "d" * 64,
              "evaluator_classes": {a: c, c: c}, "applied_equivalences": [edge(a, b), edge(b, c)]}
-    payload = {"source_reports": [{"evaluator_sha256": a}, {"evaluator_sha256": c}],
+    payload = {"source_reports": [{"evaluator_sha256": a, "scoring_sha256": a},
+                                  {"evaluator_sha256": c, "scoring_sha256": a}],
                "provenance": {"evaluator_equivalence": block}}
     rep = vfc.Report()
     vfc._jev_equivalence(rep, "synthetic", payload)
@@ -2054,3 +2055,27 @@ def test_pooled_pair_keeps_the_same_equivalence_snapshot(tmp_path: Path, advice_
     rep = vfc.Report()
     vfc.check_jev_payloads(rep, tmp_path / "site")
     assert any("different evaluator-equivalence" in str(e) for e in rep.errors)
+
+
+@pytest.mark.parametrize("change", ["missing", "null", "malformed", "different", "split_advice"])
+def test_pooled_source_instrument_and_single_advice_origin(tmp_path: Path, advice_report: dict, change: str) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    for name in ("jev_calibration.json", "petri_register_drift.json"):
+        path = tmp_path / "site/data" / name
+        data = json.loads(path.read_text())
+        sources = data["source_reports"]
+        if change == "split_advice":
+            assert sources[0]["advice_cases"] > 1 and sources[1]["advice_cases"] == 0
+            sources[0]["advice_cases"] -= 1
+            sources[1]["advice_cases"] = 1
+        elif change == "missing":
+            del sources[1]["scoring_sha256"]
+        else:
+            sources[1]["scoring_sha256"] = {"null": None, "malformed": "bad", "different": "0" * 64}[change]
+        path.write_text(json.dumps(data))
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    expected = "one advice" if change == "split_advice" else "scoring_sha256"
+    assert any(expected in e for e in rep.errors)
