@@ -439,7 +439,7 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
     required = ("approval.approved", "scenario_sets", "decomposition_set", "mechanisms", "targets", "epochs_per_target",
                 "triples_per_epoch_per_target", "final_triples_per_target", "fires", "outcome.kind", "outcome.key",
                 "outcome.final_in_exchange", "outcome.tier_rank", "rubric_digest", "prompt_digests", "windows",
-                "alpha", "primary.contrast", "primary.window", "decomposition.contrasts.style",
+                "alpha", "primary.contrast", "primary.window", "primary.target", "general_headline_gate.target", "decomposition.contrasts.style",
                 "decomposition.contrasts.vocabulary", "secondary_exchanges_6_10.window", "sensitivity",
                 "exploratory_outcomes.family", "exploratory_outcomes.restricted_to_seeds",
                 "exploratory_outcomes.coverage_only", "effect_size.bootstrap_seed",
@@ -566,6 +566,38 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
         problems.append(f"alpha {alpha!r} is not a number between 0 and 1")
     elif alpha != 0.05:
         problems.append("alpha must remain 0.05 to match the implemented statement rules")
+
+    # Rule-bearing method text is an executable contract too. Counts may follow a gate amendment,
+    # but an unsupported test or correction must never silently select the hard-coded statistic.
+    method_rules = {
+        "primary.test": "exact two-sided sign test on the sign of D over the anchor's triples",
+        "general_headline_gate.test": (
+            f"exact two-sided sign-flip permutation test over all {2 ** len(every)} sign assignments of the "
+            f"{len(every)} scenario means; p is the share whose absolute sum is at least the observed one"),
+        "comparison_targets.test": "for each comparison target, the primary test and the general-headline gate "
+                                   "on its own triples",
+        "comparison_targets.correction": "Holm across the comparison targets' primary tests, family-wise alpha "
+                                         "0.05; each target's gate is reported beside its test",
+        "secondary_exchanges_6_10.test": f"exact two-sided sign test on D({COLLOQUIAL}, {CLINICAL}) over the window",
+        "secondary_exchanges_6_10.correction": "none for the anchor, which is one pre-specified secondary reported "
+                                              "beside the primary; Holm across the comparison targets, as in "
+                                              "comparison_targets",
+        "exploratory_outcomes.test": f"exact two-sided sign test on D({COLLOQUIAL}, {CLINICAL}) over "
+                                     "exchanges_1_10, per target",
+        "exploratory_outcomes.correction": "Holm, one family of three per target",
+    }
+    for rule_path, expected in method_rules.items():
+        try:
+            actual = _get(doc, rule_path)
+        except KeyError:
+            actual = None
+        if isinstance(actual, str):
+            for number, word in enumerate(("zero", "one", "two", "three", "four", "five", "six", "seven", "eight",
+                                            "nine", "ten")):
+                actual = re.sub(r"\b" + word + r"\b", str(number), actual)
+                expected = re.sub(r"\b" + word + r"\b", str(number), expected)
+        if actual != expected:
+            problems.append(f"{rule_path} must match the implemented registered method (including amended counts)")
 
     sensitivity: list[Sensitivity] = []
     raw_sens = doc["sensitivity"]
@@ -795,6 +827,30 @@ def incomplete_pass(record: Any, what: str) -> str | None:
     return None
 
 
+def judgment_plan_problem(path: Path, record: Mapping[str, Any], seeds: Mapping[str, dict]) -> str | None:
+    """Rebuild expected judgment slots independently of the pass's self-reported counts.
+
+    Slot parity covers conversation/turn/kind/key. Prompt-version admissibility remains the existing per-row
+    instrument gate: a mismatched digest is explicitly excluded there, never used as evidence of a missing slot.
+    No judgment call is made; the planner only renders the committed instrument against committed transcripts.
+    """
+    try:
+        plans = judge_runner.plan_run(judge_runner.read_jsonl(path / "transcripts.jsonl"), dict(record), dict(seeds),
+                                      outcomes=load_json(OUTCOME_REGISTRY), rubric=judge_runner.load_rubric())
+        expected = {(p.conversation_id, p.turn_id, p.kind, p.key) for p in plans}
+        rows = judge_runner.read_jsonl(path / "judgments.jsonl")
+        actual = {(r.get("conversation_id"), r.get("turn_id"), r.get("kind"), r.get("key")) for r in rows}
+        declared = record["artifacts"]["judge_of_record"]["planned"]
+        if len(expected) != len(plans):
+            return "rebuilt judgment plan contains duplicate slots"
+        if declared != len(expected) or actual != expected:
+            return (f"rebuilt judgment plan requires {len(expected)} slots, pass declares {declared}; "
+                    f"missing slots {len(expected - actual)}, unexpected slots {len(actual - expected)}")
+    except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
+        return f"judgment plan cannot be rebuilt: {exc}"
+    return None
+
+
 def claim_grade_problem(manifest: Mapping[str, Any]) -> str | None:
     """Why a run fails the claim-grade contract, or None. Every wave-3 seed is declared claim_grade_eligible (design
     note section 2), so a run whose manifest's execution.claim_grade_eligible is not true failed a contract check, had
@@ -907,7 +963,8 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: w2.Reg
             raise AnalysisRefusal(f"{where}: re-grade fire {regrade_fire.journal_nonce} is recorded for a run already "
                                   f"judged under judge.judge_model {plan.judge_model!r}; which rows are registered is "
                                   f"ambiguous")
-        incomplete = incomplete_pass(artifacts.get("judge_of_record"), "artifacts.judge_of_record")
+        incomplete = (incomplete_pass(artifacts.get("judge_of_record"), "artifacts.judge_of_record")
+                      or judgment_plan_problem(path, manifest, seeds))
         if incomplete is not None:
             reason = f"its judge of record's pass is incomplete: {incomplete}"
             rows_from = {"source": None}
@@ -2067,8 +2124,10 @@ def analysis_input_files(args: argparse.Namespace, prep: Prepared) -> dict[str, 
              "framing_registry": framework.FRAMING_REGISTRY, "manifest_schema": framework.MANIFEST_SCHEMA,
              **{f"registry_version[{i}]": path for i, path in enumerate(args.registry_version)}}
     files.update(selection_files(prep.plan))
-    for i, path in enumerate(sorted(Path(args.runs_dir).glob("*/manifest.json"))):
-        files[f"discovered_manifest[{i}]"] = path
+    roots = {Path(args.runs_dir).resolve(), *(r.run_dir.parent.resolve() for r in prep.runs)}
+    for root in sorted(roots):
+        for path in sorted(root.glob("*/manifest.json")):
+            files[f"discovered_manifest[{path}]"] = path
     if prep.secondary_judge is not None:
         files["judge_providers"] = spend.PROVIDERS_PATH
     regrade_dirs: set[Path] = set()
@@ -2262,11 +2321,19 @@ def bound_primary(args: argparse.Namespace, prep: Prepared, header: Mapping[str,
         raise AnalysisRefusal("primary artifact does not record committed input identity")
     original = identity.get("inputs")
     current = analysis_identity(analysis_input_files(args, replace(prep, secondary_judge=None, secondary_runs=[])))
-    if not isinstance(original, dict) or set(original) != set(current["inputs"]):
+    if not isinstance(original, dict) or not set(original) <= set(current["inputs"]):
         raise AnalysisRefusal("primary artifact input inventory differs")
     paths = {**code_files(), **analysis_input_files(args, replace(prep, secondary_judge=None, secondary_runs=[]))}
-    for name, now in current["inputs"].items():
-        old = original[name]
+    added = set(current["inputs"]) - set(original)
+    verified = verified_run_chain_inputs(args, prep)
+    appended = {name for name in added if name in verified and ".entry[" in name}
+    new_manifests = {verified[name].resolve() for name in appended if name.endswith(".manifest")}
+    allowed = appended | {name for name in added if name.startswith("discovered_manifest[")
+                          and paths[name].resolve() in new_manifests}
+    if added != allowed:
+        raise AnalysisRefusal("primary artifact input inventory differs beyond verified chain append")
+    for name, old in original.items():
+        now = current["inputs"][name]
         if old == now:
             continue
         # Secondary regrades append the verified chain and journal. Preserve the original byte prefix.
@@ -2539,7 +2606,9 @@ def final_problems(args: argparse.Namespace, prep: Prepared) -> tuple[list[str],
     if prep.seeds_path.resolve() != plan.seed_file.resolve():
         problems.append(f"--seeds {prep.seeds_path} is not the plan's seed_file {w2._display(plan.seed_file)}")
     if args.runs:
-        problems.extend(omitted_landed_runs(args.runs_dir, plan, prep.runs))
+        roots = {Path(args.runs_dir).resolve(), *(r.run_dir.parent.resolve() for r in prep.runs)}
+        for root in sorted(roots):
+            problems.extend(omitted_landed_runs(root, plan, prep.runs))
     for r in prep.runs:
         if not r.registered:
             problems.append(f"run {r.stem} has no registered rows: {r.unregistered_reason}")

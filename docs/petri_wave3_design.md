@@ -492,6 +492,24 @@ manifest and artifact as a committed input. A separately downloaded run that
 verifies in isolation is insufficient for final analysis; coverage mode remains
 available without that archive-chain requirement.
 
+A pass's self-reported planned count is not proof of completeness. Its expected
+judgment slots (conversation, turn, kind and key) are rebuilt from the bound
+transcripts, seeds, rubric and prompts, with exact slot parity required. Existing
+per-row prompt-version exclusions remain separate; no missing judgment silently
+becomes an admissible partial pass. Explicit run lists are checked for omitted
+landed fires in every selected archive root, as well as `--runs-dir`.
+
+For post-final disclosure, the original input inventory stays protected. A
+verified append to a shared source chain may add its new manifests and artifacts;
+other added inputs, changed original inputs and altered chain prefixes refuse.
+Discovery keys use manifest paths so an unrelated newly appended run sorting
+before an old run does not renumber the old evidence.
+
+The rule-bearing test and correction fields must match the implemented two-sided
+sign tests, sign-flip gate and Holm families. Gate wording follows the amended
+scenario count and its number of sign assignments. Unsupported methods or missing
+selectors produce named plan refusals, never substitute another test.
+
 The primary and general-headline selectors must both remain `anchor`. The dated
 owner approval must precede the UTC dates of the runs and their recorded paid
 fires. Every landed fire needs a usable `fired_utc` in the committed trigger

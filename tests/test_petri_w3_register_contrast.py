@@ -82,10 +82,11 @@ def synthetic_seed(seed_id: str) -> dict:
         arms.append({"id": register, "user_is": "patient", "turns": [{"text_ref": f"{register}_t"}] * w2.EXCHANGES})
     dims = [RECOMMENDATION, PRESENCE, COVERAGE_ONLY[0]] + ([REFERRAL] if seed_id in REFERRAL_SEEDS else [])
     return {"seed_id": seed_id, "pilot_wave": 3, "mode": "scripted", "hypotheses": ["H1"],
-            "scenario": {"id": f"{seed_id}-scenario"}, "speaker_identity": {"policy": "constant"},
+            "scenario": {"id": f"{seed_id}-scenario", "reference": {}}, "speaker_identity": {"policy": "constant"},
             "framing": {"dimension_id": "register", "contrast_id": "clinical_to_colloquial"},
             "protocol": {"register_exposure": "sustained", "arms": arms}, "texts": texts,
-            "judge": {"outcome_dimensions": dims}}
+            "judge": {"outcome_dimensions": dims, "supplied_contexts": [],
+                      "advice_tier": {"response_only": True, "contextual": True}}}
 
 
 SEEDS = {s: synthetic_seed(s) for s in SEEDS_IDS}
@@ -98,6 +99,9 @@ def synthetic_plan(seeds_path: Path, **over: Any) -> dict:
     plan["decomposition_set"] = "wave3"
     plan["mechanisms"] = deepcopy(MECHANISMS)
     plan["targets"] = deepcopy(TARGETS)
+    plan["general_headline_gate"]["test"] = (
+        "exact two-sided sign-flip permutation test over all 16 sign assignments of the four scenario means; "
+        "p is the share whose absolute sum is at least the observed one")
     plan["epochs_per_target"] = EPOCHS
     plan["triples_per_epoch_per_target"] = len(SEEDS_IDS)
     plan["final_triples_per_target"] = len(SEEDS_IDS) * EPOCHS
@@ -191,7 +195,7 @@ def write_campaign(tmp_path: Path, *, fires: tuple[str, ...] = tuple(FIRES), val
         run_dir.mkdir()
         judge = judge_of(nonce)
         seed_ids = seed_ids_of(nonce) if seed_ids_of else SEEDS_IDS
-        judgments, trees = [], []
+        judgments, trees, records = [], [], []
         for sid in seed_ids:
             for register in w3.REGISTERS:
                 cell = Cell(target, sid, epoch, register)
@@ -204,13 +208,21 @@ def write_campaign(tmp_path: Path, *, fires: tuple[str, ...] = tuple(FIRES), val
                                             "condition_id": register, "conversation_id": cid, "surviving": True,
                                             "creation_index": 1}],
                               "surviving_branch_id": "root", "survivor_exported": True})
-                for row in judgment_rows(cell, cid, value_fn, judge):
-                    row = mutate(cell, row) if mutate else row
-                    if row is not None:
-                        judgments.append(row)
+                turns = []
+                for exchange in range(1, w2.EXCHANGES + 1):
+                    turns.extend([{"turn_id": 2 * exchange - 1, "role": "user", "text": f"synthetic {register}"},
+                                  {"turn_id": 2 * exchange, "role": "assistant", "text": "synthetic response"}])
+                records.append({"conversation_id": cid, "turns": turns})
+                for original in judgment_rows(cell, cid, value_fn, judge):
+                    row = mutate(cell, deepcopy(original)) if mutate else original
+                    # An unavailable answer still has its planned row; deleting a job is tested separately.
+                    judgments.append(row if row is not None else {**original, "value": None, "flags": None,
+                                                                  "judge_error": "synthetic unavailable answer"})
         (run_dir / "judgments.jsonl").write_text("".join(json.dumps(j) + "\n" for j in judgments), encoding="utf-8")
         for family in ("sanitised_log", "transcripts", "rule_outcomes"):
             (run_dir / ARTIFACT_FILENAMES[family]).write_text(f"synthetic {family}\n", encoding="utf-8")
+        (run_dir / ARTIFACT_FILENAMES["transcripts"]).write_text(
+            "".join(json.dumps(record) + "\n" for record in records), encoding="utf-8")
         report = f"{stem}{JUDGE_REPORT_SUFFIX}"
         (run_dir / report).write_text("synthetic judge report\n", encoding="utf-8")
         m = deepcopy(TEMPLATE_MANIFEST)
@@ -226,7 +238,9 @@ def write_campaign(tmp_path: Path, *, fires: tuple[str, ...] = tuple(FIRES), val
             m["artifacts"][f"{family}_sha256"] = sha256_file(run_dir / filename)
         m["artifacts"]["judge_of_record"] = {**TEMPLATE_MANIFEST["artifacts"]["judge_of_record"], "judge_model": judge,
                                              "report_path": f"{stem}/{report}",
-                                             "report_sha256": sha256_file(run_dir / report)}
+                                             "report_sha256": sha256_file(run_dir / report),
+                                             "planned": len(judgments), **{k: v for k, v in judge_runner.cumulative_counts(judgments).items()
+                                                                        if k in {"judged", "null", "not_applicable"}}}
         spec = spec_of(nonce) if spec_of else next(t for t in TARGETS if t["id"] == target)["target_specs"][0]
         m["models"]["target"]["model"] = spec
         m["models"]["target"]["inspect_name"] = spec
@@ -1631,6 +1645,9 @@ def test_gate_adjusted_sensitivity_rules_follow_passing_counts(tmp_path: Path, c
     doc["mechanisms"] = {m: [s for s in ids if s in kept] for m, ids in doc["mechanisms"].items()}
     doc["triples_per_epoch_per_target"] = count
     doc["final_triples_per_target"] = count * doc["epochs_per_target"]
+    doc["general_headline_gate"]["test"] = (
+        f"exact two-sided sign-flip permutation test over all {2 ** count} sign assignments of the {count} "
+        "scenario means; p is the share whose absolute sum is at least the observed one")
     doc["exploratory_outcomes"]["restricted_to_seeds"] = {
         m: [s for s in ids if s in kept] for m, ids in doc["exploratory_outcomes"]["restricted_to_seeds"].items()}
     for entry in doc["sensitivity"]:
@@ -1774,3 +1791,109 @@ def test_final_requires_approval_before_recorded_execution(
     out = tmp_path / "final.json"
     assert w3.main(cli_args(c, "--final", "--out", str(out))) == 2
     assert "approval" in capsys.readouterr().err and not out.exists()
+
+
+@pytest.mark.parametrize("section", ["primary", "general_headline_gate"])
+def test_missing_target_selector_is_named(tmp_path: Path, section: str) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    del doc[section]["target"]
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match=section + ".target"):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("field", ["primary.test", "general_headline_gate.test", "comparison_targets.test",
+                                  "comparison_targets.correction", "secondary_exchanges_6_10.test",
+                                  "secondary_exchanges_6_10.correction", "exploratory_outcomes.test",
+                                  "exploratory_outcomes.correction"])
+def test_amended_statistical_method_is_refused(tmp_path: Path, field: str) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    section, key = field.split(".")
+    doc[section][key] = "unsupported one-sided alternative"
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match=re.escape(field)):
+        w3.load_plan(path)
+
+
+def reseal_synthetic_chain(root: Path) -> None:
+    previous = None
+    lines = []
+    for path in sorted(root.glob("*/manifest.json")):
+        doc = load_json(path)
+        for family, filename in ARTIFACT_FILENAMES.items():
+            doc["artifacts"][family + "_sha256"] = sha256_file(path.parent / filename)
+        doc = seal_manifest(doc, previous)
+        previous = doc["chain"]["manifest_sha256"]
+        path.write_text(json.dumps(doc))
+        lines.append(f"{path.parent.name}/manifest.json {previous}\n")
+    (root / CHAIN_FILE).write_text("".join(lines))
+
+
+def test_understated_pass_plan_does_not_hide_missing_judgments(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    c = write_campaign(tmp_path)
+    run = c["runs"]["a1"]
+    rows = judge_runner.read_jsonl(run / "judgments.jsonl")
+    rows = rows[1:]
+    (run / "judgments.jsonl").write_text("".join(json.dumps(row) + "\n" for row in rows))
+    doc = load_json(run / "manifest.json")
+    doc["artifacts"]["judge_of_record"].update(
+        planned=len(rows), **{k: v for k, v in judge_runner.cumulative_counts(rows).items()
+                              if k in {"judged", "null", "not_applicable"}})
+    (run / "manifest.json").write_text(json.dumps(doc))
+    reseal_synthetic_chain(c["runs_dir"])
+    assert w3.verify_run(run) == []
+    assert w3.incomplete_pass(doc["artifacts"]["judge_of_record"], "pass") is None
+    final_ready(monkeypatch, c)
+    out = tmp_path / "final.json"
+    assert w3.main(cli_args(c, "--final", "--out", str(out))) == 2
+    assert "judgment plan" in capsys.readouterr().err and not out.exists()
+
+
+def test_post_final_accepts_verified_unrelated_chain_append(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    c = write_campaign(tmp_path)
+    run_final(monkeypatch, c, tmp_path)
+    primary = tmp_path / "final.json"
+    before = primary.read_bytes()
+    extra = c["runs_dir"] / "run_000_1"
+    shutil.copytree(c["runs"]["a1"], extra)
+    doc = load_json(extra / "manifest.json")
+    doc["spend"]["journal_nonce"] = "unrelated-fire"
+    for family, filename in ARTIFACT_FILENAMES.items():
+        doc["artifacts"][family + "_path"] = f"{extra.name}/{filename}"
+    report = doc["artifacts"]["judge_of_record"]["report_path"]
+    doc["artifacts"]["judge_of_record"]["report_path"] = f"{extra.name}/{Path(report).name}"
+    previous = (c["runs_dir"] / CHAIN_FILE).read_text().splitlines()[-1].rsplit(" ", 1)[1]
+    doc = seal_manifest(doc, previous)
+    (extra / "manifest.json").write_text(json.dumps(doc))
+    with (c["runs_dir"] / CHAIN_FILE).open("a") as stream:
+        stream.write(f"{extra.name}/manifest.json {doc['chain']['manifest_sha256']}\n")
+    for nonce in FIRES:
+        write_regrade(c, nonce, SECOND, "secondary-" + nonce)
+    final_ready(monkeypatch, c)
+    out = tmp_path / "secondary.json"
+    assert w3.main(cli_args(c, "--primary-final", str(primary), "--secondary-judge", SECOND,
+                            "--out", str(out))) == 0
+    assert primary.read_bytes() == before and out.is_file()
+
+
+def test_explicit_second_root_cannot_hide_a_landed_plan_fire(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    c = write_campaign(tmp_path)
+    other = tmp_path / "other-runs"
+    other.mkdir()
+    for nonce in ["b1", "c2"]:
+        destination = other / c["runs"][nonce].name
+        shutil.move(str(c["runs"][nonce]), destination)
+        c["runs"][nonce] = destination
+    reseal_synthetic_chain(c["runs_dir"])
+    reseal_synthetic_chain(other)
+    final_ready(monkeypatch, c)
+    out = tmp_path / "final.json"
+    runs = [str(path) for nonce, path in c["runs"].items() if nonce != "c2"]
+    assert w3.main([*runs, *cli_args(c, "--final", "--out", str(out),
+                                    "--declare-truncated", "synthetic missing epoch")]) == 2
+    assert "not among the runs given" in capsys.readouterr().err and not out.exists()
