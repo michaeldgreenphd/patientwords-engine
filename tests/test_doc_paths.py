@@ -46,10 +46,17 @@ suite red on a data commit or a local fetch, not on a change to the docs.
 
 The root README.md is out of scope until it is rewritten: it names about
 thirty runtime and upstream paths (eval_out/, medlang_out/, apps/...).
+
+The new verify/reference guides in both repositories also check Markdown file
+links and explicitly named companion paths. Engine-local guide references always
+run; paired checks visibly skip only when the default companion checkout is absent.
+An existing companion must contain its guides. Anchor/prose validation stays out of scope.
 """
 from __future__ import annotations
 
 import fnmatch
+import os
+import posixpath
 import re
 import subprocess
 from pathlib import Path
@@ -71,6 +78,27 @@ DOCS: tuple[str, ...] = (
     "docs/pilot_runs.md",
     "docs/README.md",
 )
+
+# These paired guides additionally use ordinary Markdown links and explicit
+# ../patientwords[-engine]/ references. Keep the older operating-doc gate intact.
+GUIDES = ("verify.md", "docs/agent_reference.md")
+
+# Runtime outputs may appear after a documented run; unlike stored source paths,
+# their absence is expected. Each exception must still be named by its guide.
+GUIDE_OUTPUTS: dict[tuple[str, str, str], str] = {
+    ("patientwords-engine", "verify.md", "docs/framework/_blob_probe.tmp.json"):
+        "temporary file made and cleaned by the Git blob-path regression test",
+    ("patientwords-engine", "docs/agent_reference.md", "data/jev/runs/"):
+        "live jev-audit output, absent until a live run lands",
+    ("patientwords-engine", "docs/agent_reference.md", "pilot/logits/"):
+        "pilot logits workflow output, absent until a pilot logits run lands",
+}
+# This code literal is joined to the selected site Path inside the guide's
+# Python example; it must remain relative there. Validate its actual owner.
+GUIDE_COMPANION_PATHS = {
+    ("patientwords-engine", "verify.md", "data/simulated_scenarios.json"):
+        "../patientwords/data/simulated_scenarios.json",
+}
 
 _REJUDGE = ("runtime output of the petri-audit lane's `mode: rejudge`; no rejudge output has landed on main "
             "(2026-09-30), so the directory does not exist yet")
@@ -153,18 +181,22 @@ _INLINE = re.compile(r"`([^`]+)`")
 _SPLIT = re.compile(r"[\s\"',;()\[\]{}=|]+")
 _LINE_SUFFIX = re.compile(r":\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*$")
 _PLACEHOLDER = re.compile(r"<[^<>/\n]*>")
-_ROOT_FILE = re.compile(r"^[A-Z][A-Z0-9_]*\.(?:md|cff)$|^pyproject\.toml$")
+_ROOT_FILE = re.compile(r"^[A-Z][A-Z0-9_]*\.(?:md|cff)$|^(?:pyproject\.toml|verify\.md)$")
 _GLOB_CHARS = set("*?")
+_MARKDOWN_LINK = re.compile(r"\[[^\]\n]*\]\(([^\s)]+)(?:\s+[^)]*)?\)")
+_COMPANIONS = ("../patientwords/", "../patientwords-engine/")
 
 
-def _listed_paths() -> list[str]:
-    """Tracked files plus untracked, non-ignored ones, relative to ROOT."""
+def _listed_paths(root: Path = ROOT, *, required: bool = False) -> list[str]:
+    """Tracked files plus untracked, non-ignored ones, relative to root."""
     try:
         out = subprocess.run(
-            ["git", "-C", str(ROOT), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+            ["git", "-C", str(root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
             check=True, capture_output=True,
         ).stdout
     except (OSError, subprocess.CalledProcessError) as exc:  # not a git checkout
+        if required:
+            pytest.fail(f"Cannot list required companion checkout {root}: {exc}")
         pytest.skip(f"git ls-files unavailable, cannot resolve doc paths: {exc}")
     return sorted({p for p in out.decode("utf-8").split("\0") if p})
 
@@ -273,6 +305,44 @@ def missing_paths(text: str, repo: Repo) -> list[str]:
     return [p for p in named_paths(text, repo.top_level) if not resolves(p, repo)]
 
 
+def guide_paths(doc: str, text: str, repo: Repo) -> list[str]:
+    """Code paths are repo-relative; Markdown links are document-relative.
+
+    Only explicit sibling names cross repositories. Anchors are stripped as in
+    the operating-doc check; this is a file-path gate, not a full Markdown parser.
+    """
+    paths = dict.fromkeys(named_paths(text, repo.top_level))
+    for span in _code_spans(text):
+        span = _PLACEHOLDER.sub("*", span).replace("\u2026", "*").replace("...", "*")
+        for raw in _SPLIT.split(span):
+            path = _clean(raw)
+            if path.startswith(_COMPANIONS):
+                paths.setdefault(path, None)
+    for target in _MARKDOWN_LINK.findall(text):
+        if target.startswith(("#", "/")) or re.match(r"[A-Za-z][A-Za-z0-9+.-]*:", target):
+            continue
+        path = target.split("#", 1)[0]
+        if path:
+            paths.setdefault(posixpath.normpath(posixpath.join(posixpath.dirname(doc), path)), None)
+    return list(paths)
+
+
+def unresolved_guide_paths(doc: str, text: str, repo: Repo, companions: dict[str, Repo],
+                           aliases: dict[str, str] | None = None) -> list[str]:
+    """Resolve explicit sibling references against that checkout, never this one."""
+    missing = []
+    for path in guide_paths(doc, text, repo):
+        target = (aliases or {}).get(path, path)
+        sibling = next((prefix for prefix in _COMPANIONS if target.startswith(prefix)), None)
+        if sibling is None:
+            found = resolves(target, repo)
+        else:
+            found = sibling in companions and resolves(target[len(sibling):], companions[sibling])
+        if not found:
+            missing.append(path)
+    return missing
+
+
 def stale_allowlist_entries(doc: str, text: str, repo: Repo, allowed: dict[tuple[str, str], str],
                             may_appear: frozenset[tuple[str, str]]) -> list[str]:
     """The allowlisted paths for `doc` that its text no longer names, or that now resolve and are not in
@@ -308,6 +378,58 @@ def test_allowlist_entries_are_still_needed(doc: str, repo: Repo) -> None:
 def test_allowlist_names_only_scanned_documents() -> None:
     assert {d for d, _ in ALLOWED_MISSING} <= set(DOCS)
     assert MAY_APPEAR <= set(ALLOWED_MISSING)
+
+
+def guidance_site_root() -> Path:
+    """Use the explicit companion, or visibly skip when the default is absent."""
+    override = os.environ.get("PW_SITE_ROOT")
+    if override is not None:
+        site = Path(override).expanduser()
+        if not override or not site.is_dir():
+            pytest.fail(f"PW_SITE_ROOT={override!r} is not a directory")
+        return site
+    site = ROOT.parent / "patientwords"
+    if not site.is_dir():
+        pytest.skip(f"sibling checkout ../patientwords absent ({site}); set PW_SITE_ROOT to check paired guides")
+    return site
+
+
+@pytest.fixture(scope="module")
+def guidance_repos(repo: Repo) -> dict[str, tuple[Path, Repo]]:
+    site = guidance_site_root()
+    return {"patientwords-engine": (ROOT, repo), "patientwords": (site, make_repo(_listed_paths(site, required=True)))}
+
+
+@pytest.mark.parametrize("doc", GUIDES)
+def test_engine_guidance_local_references_without_companion(doc: str, repo: Repo) -> None:
+    """A missing sibling must not hide a broken local setup/reference link."""
+    text = (ROOT / doc).read_text(encoding="utf-8")
+    local = [p for p in guide_paths(doc, text, repo)
+             if not p.startswith(_COMPANIONS) and ("patientwords-engine", doc, p) not in GUIDE_COMPANION_PATHS]
+    missing = [p for p in local if not resolves(p, repo) and ("patientwords-engine", doc, p) not in GUIDE_OUTPUTS]
+    assert not missing, f"{doc} names missing engine paths: {missing}"
+    named = guide_paths(doc, text, repo)
+    stale = [p for (name, d, p) in (*GUIDE_OUTPUTS, *GUIDE_COMPANION_PATHS)
+             if (name, d) == ("patientwords-engine", doc) and p not in named]
+    assert not stale, f"Remove unused guide exceptions for {doc}: {stale}"
+
+
+@pytest.mark.parametrize("repository", ("patientwords-engine", "patientwords"))
+@pytest.mark.parametrize("doc", GUIDES)
+def test_guidance_references_resolve(repository: str, doc: str,
+                                    guidance_repos: dict[str, tuple[Path, Repo]]) -> None:
+    root, current = guidance_repos[repository]
+    text = (root / doc).read_text(encoding="utf-8")
+    companions = {f"../{name}/": r for name, (_, r) in guidance_repos.items() if name != repository}
+    aliases = {p: target for (name, d, p), target in GUIDE_COMPANION_PATHS.items()
+               if (name, d) == (repository, doc)}
+    missing = [p for p in unresolved_guide_paths(doc, text, current, companions, aliases)
+               if (repository, doc, p) not in GUIDE_OUTPUTS]
+    assert not missing, f"{repository}/{doc} names missing paths: {missing}; qualify companion paths explicitly"
+    named = guide_paths(doc, text, current)
+    stale = [p for (name, d, p) in (*GUIDE_OUTPUTS, *GUIDE_COMPANION_PATHS)
+             if (name, d) == (repository, doc) and p not in named]
+    assert not stale, f"Remove unused runtime-output exceptions for {repository}/{doc}: {stale}"
 
 
 # ---- the extractor itself, on synthetic text, so a failure above can be trusted
@@ -361,3 +483,50 @@ def test_a_runtime_output_that_lands_does_not_make_its_entry_stale() -> None:
     assert stale_allowlist_entries("d.md", text, landed, allowed, may_appear) == ["scripts/gone.py", "docs/unnamed.md"]
     assert stale_allowlist_entries("d.md", "nothing named", landed, allowed, may_appear) == [
         "data/petri/rejudge/*/*/", "scripts/gone.py", "docs/unnamed.md"]
+
+
+def test_guidance_links_and_explicit_companion_paths_use_the_correct_repository(tmp_path: Path) -> None:
+    """A real guide-shaped fixture accepts both sides, then names a broken target."""
+    engine = make_repo(["verify.md", "docs/agent_reference.md", "scripts/check.py"])
+    site = make_repo(["verify.md", "docs/agent_reference.md", "data/example.json"])
+    guide = tmp_path / "guide.md"
+    good = ("[Verification](../verify.md#setup) and [engine](../../patientwords-engine/verify.md). "
+            "Read `data/example.json` and `../patientwords-engine/scripts/check.py`. "
+            "[External](https://example.invalid/reference) and [this section](#here).")
+    guide.write_text(good, encoding="utf-8")
+    companions = {"../patientwords-engine/": engine}
+    assert unresolved_guide_paths("docs/agent_reference.md", guide.read_text(), site, companions) == []
+    # A same-named local target must not conceal a missing companion reference.
+    guide.write_text(good.replace("scripts/check.py", "data/example.json"), encoding="utf-8")
+    assert unresolved_guide_paths("docs/agent_reference.md", guide.read_text(), site, companions) == [
+        "../patientwords-engine/data/example.json"]
+    guide.write_text(good.replace("../verify.md#setup", "../missing-guide.md#setup"), encoding="utf-8")
+    assert unresolved_guide_paths("docs/agent_reference.md", guide.read_text(), site, companions) == [
+        "missing-guide.md"]
+
+
+def test_guidance_companion_override_is_explicit_and_must_exist(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("PW_SITE_ROOT", str(tmp_path))
+    assert guidance_site_root() == tmp_path
+    for bad in ("", str(tmp_path / "absent")):
+        monkeypatch.setenv("PW_SITE_ROOT", bad)
+        with pytest.raises(pytest.fail.Exception, match="PW_SITE_ROOT"):
+            guidance_site_root()
+
+
+def test_existing_non_git_companion_fails_instead_of_skipping(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("PW_SITE_ROOT", str(tmp_path))
+    with pytest.raises(pytest.fail.Exception, match="required companion checkout"):
+        _listed_paths(guidance_site_root(), required=True)
+
+
+@pytest.mark.parametrize("removed", ["docs/framework/_blob_probe.tmp.json", "data/simulated_scenarios.json"])
+def test_engine_only_gate_rejects_stale_guide_exceptions(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, repo: Repo, removed: str) -> None:
+    """A companion-free invocation must still detect unused local and alias exceptions."""
+    text = (ROOT / "verify.md").read_text(encoding="utf-8")
+    assert removed in text
+    (tmp_path / "verify.md").write_text(text.replace(removed, "<removed>"), encoding="utf-8")
+    monkeypatch.setattr(__import__(__name__, fromlist=["ROOT"]), "ROOT", tmp_path)
+    with pytest.raises(AssertionError, match="unused"):
+        test_engine_guidance_local_references_without_companion("verify.md", repo)

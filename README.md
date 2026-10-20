@@ -15,6 +15,15 @@ colloquial patient language) on gemma-2-2b with Gemma Scope transcoders by defau
 Neuronpedia's graph stack — either the hosted neuronpedia.org generation API or a
 local graph server run from a Neuronpedia checkout.
 
+For development, start with [AGENTS.md](AGENTS.md), the architecture and decisions in
+[docs/agent_reference.md](docs/agent_reference.md), and the canonical
+[verify.md](verify.md) setup and verification guide. The public frontend consumes
+exported artifacts; it does not call a live engine API. The CLI examples below
+describe capabilities; measurements follow the execution policy and its narrowly
+scoped exceptions in AGENTS.md. The existing
+[frontend-boundary guide](docs/exploratory/frontend_boundary.md) documents the
+synthetic exporter-to-HTTP-to-browser check separately from live model evidence.
+
 ## Provenance & acknowledgments
 
 Built on top of [Neuronpedia](https://github.com/hijohnnylin/neuronpedia)
@@ -97,11 +106,11 @@ vendored here; the coupling is the HTTP contract only.
 
 ## Setup
 
-```bash
-git clone https://github.com/michaeldgreenphd/patientwords-engine
-cd patientwords-engine
-poetry install            # or: pip install -e ".[llm]"
-```
+Use [verify.md — Setup and sources of truth](verify.md#setup-and-sources-of-truth)
+for the supported interpreter, editable install and development dependency ranges.
+There is no general engine dependency lockfile; `constraints.txt` serves the
+measurement environment. Specialized lanes and boundary tests have their own
+constraints/locks, listed in the verification guide.
 
 The CPU measurement scripts (`scripts/logits_eval.py`,
 `scripts/activation_patch.py`) additionally need the ML stack, which is
@@ -113,7 +122,8 @@ pip install -c constraints.txt torch --index-url https://download.pytorch.org/wh
 pip install -c constraints.txt transformers accelerate
 ```
 
-Everything else in `scripts/` runs on the base install.
+Other tools may need their documented optional dependencies; see the verification
+guide and each script's entry point. Ordinary offline tests need no model download.
 
 **Keyword config (optional override):** classification works out of the box —
 a packaged default vocabulary (`medlang_circuits/data/keyword_config_default.json`)
@@ -122,9 +132,10 @@ Term lists are data, not code: to override, copy `keyword_config.example.json`
 to `keyword_config.json` (or point `MEDLANG_KEYWORD_CONFIG` at your file) and
 populate the three category lists
 with your vocabulary. An optional `"translations"` key maps colloquial phrases
-to standard phrasing for the offline translation fallback. Without a config,
-keyword matching is a no-op and features fall through to the LLM fallback /
-default bucket.
+to standard phrasing for the offline translation fallback. Without a local override,
+`medlang_circuits/keywords.py` loads the packaged default. Only when no candidate
+config exists, including that default, does it return abstract placeholders and
+leave unmatched features to the optional LLM fallback or default bucket.
 
 **Environment variables:**
 
@@ -647,9 +658,8 @@ artifact.
 
 ## Tests
 
-```bash
-poetry run pytest tests/ -v
-```
-
-Tests use synthetic graphs, a stubbed feature fetcher, and abstract placeholder
-vocabulary — no network or API keys required.
+Follow [verify.md](verify.md) for the quick path, focused tests, full local gates,
+paired frontend checks and their evidence limits. Offline tests use synthetic
+fixtures and committed artifacts; no provider API keys are required. Browser
+regressions need Playwright/Chromium and can otherwise skip. Historical test
+reports do not establish that the current checkout passes.

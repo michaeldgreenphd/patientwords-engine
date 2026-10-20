@@ -101,6 +101,7 @@ default (`--site ../patientwords`), and `--site ''` skips it.
 | `validate_frontend_contract.py` | Checks every site payload's structure against what the pages read | live | nothing; exit 0 holds, 1 violations, 2 payload missing | publish chain step 7, the Routine (§5), and the site's CI on every push and pull request |
 | `claim_check.py` | Checks numbers written into site prose against their data expressions (`data/claims_manifest.json`) | live | nothing; exit 1 on drift | publish chain step 8 |
 | `check_pages.py` | Loads every published page in Chromium and fails on script errors, failed requests or a visible empty table | live | nothing (`--json` writes a report) | the site's CI on every push and pull request; owner or session by hand |
+| `check_frontend_boundary.py` | Runs the real exporter, validated HTTP client and index-page browser assertions against independent synthetic fixtures, including deliberate defects | operator tool | required `--receipt` JSON; copied site, generated artifacts and HTTP server are temporary and cleaned on exit | owner or session; `docs/exploratory/frontend_boundary.md`; no active CI lane |
 
 `seal_check.py` (step 8b) is listed under ops tooling.
 
@@ -114,6 +115,7 @@ default (`--site ../patientwords`), and `--site ''` skips it.
 | `sign_test_exact.py` | The exact two-sided sign test shared by the urgency analyses, unrounded, None when there are no directional pairs | live | nothing | imported by `urgency_shift.py`, `tier_sensitivity.py` and `paired_stats_rigor.py` (and through it `negative_control_stats.py`) |
 | `provenance_stamp.py` | Adds a `_provenance` block (script, engine commit with a `+dirty` marker, UTC time) to a payload | live | nothing itself | imported by 13 generators, among them `drift_sentinel.py`, `paired_stats_rigor.py` and `convergence_tracker.py` |
 | `payload_summary.py` | The one definition of the site payload's headline `summary` | live | nothing itself | imported by `export_frontend_simulated.py` |
+| `frontend_contract_schema.py` | Validates the declared JSON Schema subset for exported artifacts and refuses unsupported schema keywords; semantic checks remain in the existing validator | live | nothing; reports structural errors through the caller | imported by `validate_frontend_contract.py` in the publish chain and site CI |
 | `render_prune.py` | Chooses and deletes site renders that no export lists | live | deletes files under the site's `modes/simulated/` | imported by `export_frontend_simulated.py` |
 | `sparse_guard.py` | Lists tracked files a checkout keeps off disk, so tools refuse a sparse site checkout | live | nothing | imported by `render_prune.py` and `seal_check.py` |
 | `feature_models.py` | The (model, feature source set) pairs whose `clinical_mass` may be published (`CALIBRATED_FEATURE_SOURCES`, gemma-2-2b with `gemmascope-transcoder-16k` alone as of 2026-10-09), separate from which models have feature labels | live | nothing | imported by `export_frontend_simulated.py`, `export_archive.py`, `export_tag_mass.py`, `interp_analyses.py` and `retrace_consistency.py`; a model joins only by owner decision after `feature_label_calibration.py` |

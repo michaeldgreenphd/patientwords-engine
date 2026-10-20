@@ -9,6 +9,9 @@ add a document.
 | File | What it is |
 |---|---|
 | `AGENTS.md` (repository root) | The rules every agent and reviewer works from. |
+| `verify.md` (repository root) | Canonical developer setup, change-specific verification and evidence requirements. |
+| `docs/agent_reference.md` | Detailed architecture, operational rules, research limitations and review decisions linked from AGENTS.md. |
+| `docs/exploratory/frontend_boundary.md` | Existing synthetic exporter-to-HTTP-to-browser slice, schema/client authority and evidence limits. |
 | `docs/exploratory/review_preparation_20261016.md` | Final review heads, push/PR safety audit, tests and remaining execution blockers. |
 | `docs/exploratory/baseline_ci.md` | Manual-only baseline wiring, blocked readiness, owner/default-branch prerequisites and later dispatch inputs. |
 | `docs/exploratory/communication_plan.md` | Draft public question, endpoint-safe explanations, selection policy and later comprehension checklist. |
@@ -40,14 +43,14 @@ record, a message or a public link pointing at nothing. Verified 2026-09-30 by
 | `docs/petri_wave2_handoff.md` | Quoted in a refusal message of `scripts/petri_three_arm.py`, which `tests/test_petri_three_arm.py` checks. |
 | `docs/petri_integration_design.md` | `tests/test_petri_framework_data.py`; cited by `data/petri/README.md` and `data/petri/sanitizer_allowlist.json`. |
 | `docs/petri_adaptive_design.md` | `scripts/petri_audit/adaptive.py` writes the path into the adaptive seed file it builds (`docs/framework/petri_seeds_adaptive.draft.json`); named in `scripts/petri_audit/cli.py` help text and the petri-audit workflow's input descriptions. |
-| `docs/preregistration_advice.md` | `tests/test_petri_openrouter_prices.py`; cited by `data/advice_providers.json`, `data/petri/publication_deviations.json` and the site's `AGENTS.md`. Also a preregistration. |
+| `docs/preregistration_advice.md` | `tests/test_petri_openrouter_prices.py`; cited by `data/advice_providers.json`, `data/petri/publication_deviations.json` and the site's `docs/agent_reference.md`. Also a preregistration. |
 | `docs/preregistration_tierB.md` | `scripts/study_timeline.py` runs `git log --follow` on it; the site's `data/provenance.json` cites it. Also a preregistration. |
 | `docs/prereg_amendment5_near_twins.md` | `scripts/tierb_near_twins.py` writes the path into its output. Also a preregistration amendment. |
 | `docs/prereg_divergence_log.md` | The site's technical page; `data/seal_allowlist.json`. |
 | `docs/tier_review_checklist.md` | The site's clinical page; `data/tier_sensitivity_spec.draft.json`. |
 | `docs/lens_steering_design.md` | The site's `data/jlens_depth.json`; `data/steer_pilot_spec.json`; landed steering summaries under `trace_out/`. |
 | `docs/critic/critic_20260821.md` | The site's `data/jlens_depth.json` and `data/jlens_insights.json`. |
-| `docs/backend_agreement_20260903.md` | `AGENTS.md` in both repositories. |
+| `docs/backend_agreement_20260903.md` | `docs/agent_reference.md` in both repositories, linked from their AGENTS.md files. |
 | `docs/decisions_20260804_pab.md` | `scripts/pab_build_frames.py` and `scripts/pab_harvest_utterances.py` write the path into their outputs; landed records under `data/pab/` cite it. Also a decision record. |
 | `docs/pab_crosswalk_spec_20260804.md` | `scripts/pab_tier_crosswalk.py` writes the path into its output. |
 | `docs/interp_engine_assessment.md` | Named in a message of `scripts/verify_probs.py`. |
