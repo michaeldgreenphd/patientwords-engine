@@ -194,7 +194,7 @@ in `ops/pab_ci/`.
 
 | Script | What it does | Status | Writes | Who runs it |
 |---|---|---|---|---|
-| `petri_w3_register_contrast.py` | The wave-3 register-contrast analysis the draft plan `data/petri/w3_register_contrast_plan.json` requires (design note section 9), reusing the wave-2 script by import; `--secondary-judge` adds the same tables from a second judge's re-grades, labelled secondary | staged | coverage JSON on stdout (or `--out`); with `--final`, `--out`, never overwritten; it refuses `--final` until the plan is approved and every target's fires have landed | owner, once per wave after the final data land; never run on data yet (no wave-3 run exists) |
+| `petri_w3_register_contrast.py` | The wave-3 register-contrast analysis the draft plan `data/petri/w3_register_contrast_plan.json` requires (design note section 9), reusing the wave-2 script by import; `--primary-final` binds a committed primary artifact for a separate `--secondary-judge` disclosure without rerunning primary statistics | staged | coverage JSON on stdout (or `--out`); with `--final`, `--out`, never overwritten; it refuses `--final` until the plan is approved and every target's fires have landed | owner, once per wave after the final data land; never run on data yet (no wave-3 run exists) |
 
 ## Physician verification
 

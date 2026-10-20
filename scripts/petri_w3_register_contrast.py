@@ -76,7 +76,13 @@ SPEC may not be the judge of record under any spelling. Under --final it must ex
 of judge.second_family_regrade (before " through "). The approved analysis_script must name this file with status
 "written"; the owner makes that plan amendment before the first paid fire. Coverage also refuses an existing --out.
 
-No peeking (rules[0]). Register contrasts are computed ONLY under --final. Without it the script validates every input
+Post-final disclosure: after the once-only primary artifact is committed and the second-family re-grade lands,
+`--primary-final PATH --secondary-judge SPEC --out NEW_PATH` computes only the secondary tables and agreement.
+It binds the unchanged primary artifact and its code/data hashes, compares directions to its saved tests, and never
+recomputes primary statistics. Every input, including that artifact, must be committed; shared re-grade chains may
+only append to their original byte prefix. No plan, seed, prompt, run or primary code identity may change.
+
+No peeking (rules[0]). Register contrasts require --final or the bound post-final secondary mode. Without either the script validates every input
 and prints coverage alone: runs, triples found per target, exclusions with reasons, digests; no D, sign, tie count,
 value count by wording or test is computed, printed or written, and the exclusion reasons of the exploratory outcomes
 are given without their register label. Under --final the script refuses, writing nothing: a plan other than the
@@ -178,7 +184,10 @@ STATEMENT_RULES = {
 TARGET_PLACEHOLDER = "{target}"
 # a sensitivity entry whose name is `<mechanism, hyphens as underscores>` + this suffix runs on that mechanism's seeds
 MECHANISM_WINDOW_SUFFIX = "_window"
-SENSITIVITY_RULES = ("leave_one_scenario_out", "each_mechanism_alone")
+SENSITIVITY_RULES = {
+    "leave_one_scenario_out": "the primary test rerun eight times, dropping each scenario in turn",
+    "each_mechanism_alone": "descriptive: two scenarios and six triples per target, no test",
+}
 
 
 class NotAPlanFire(AnalysisRefusal):
@@ -543,6 +552,9 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
             problems.append(f"sensitivity {name!r} must retain the primary measure/window and a rule")
             continue
         rule = s.get("rule")
+        if name in SENSITIVITY_RULES and rule != SENSITIVITY_RULES[name]:
+            problems.append(f"sensitivity {name!r} does not retain its implemented rule")
+            continue
         mechanism = by_window_name.get(name)
         if rule is not None and name not in SENSITIVITY_RULES and mechanism is None:
             problems.append(f"sensitivity {name!r} has a rule this script does not implement (it implements "
@@ -620,6 +632,9 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
         text = statements.get("primary", {}).get(row, {}).get("text", TARGET_PLACEHOLDER)
         if TARGET_PLACEHOLDER not in text:
             problems.append(f"statements.primary {row} does not name {TARGET_PLACEHOLDER}; 9.8 renders it per target")
+    disclosure = doc["statements"]["every_statement_carries"]
+    if not isinstance(disclosure, str) or not disclosure.strip():
+        problems.append("statements.every_statement_carries must be nonempty text")
     seed_file = Path(doc["seed_file"]) if isinstance(doc["seed_file"], str) else None
     if seed_file is None:
         problems.append("seed_file must be a path")
@@ -891,6 +906,10 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: w2.Reg
     registry_problem: str | None = None
     try:
         registry = resolver.resolve(path.name, recorded)
+        if not isinstance(registry.registry, dict):
+            raise ValueError("registry must be a JSON object")
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise AnalysisRefusal(f"run {path.name}: outcome registry {recorded} could not be read: {exc}") from exc
     except AnalysisRefusal as exc:
         registry_problem = str(exc)
     provenance = {
@@ -1301,7 +1320,10 @@ def prepare(run_paths: Sequence[Path] | None = None, *, runs_dir: Path = RUNS_DI
         problem = secondary_spec_problem(secondary_judge, plan)
         if problem:
             raise AnalysisRefusal(problem)
-    resolver = w2.RegistryResolver(Path(registry_path), extra=registry_versions, repo_root=repo_root)
+    try:
+        resolver = w2.RegistryResolver(Path(registry_path), extra=registry_versions, repo_root=repo_root)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise AnalysisRefusal(f"outcome registry inputs could not be loaded: {exc}") from exc
     runs, skipped = load_runs(run_paths, runs_dir, plan, seed_set.seeds, resolver, rejudge_root)
     triples = build_triples(plan, layouts, runs)
     specs, not_computable = contrast_specs(plan)
@@ -1650,8 +1672,7 @@ def _test_or_refusal(reading: Reading, name: str, mine: Mapping[str, list[w2.Tri
 
 def analysis_sections(prep: Prepared, reading: Reading, standings: Mapping[str, Sequence[w2.Standing]], *,
                       seed: int, resamples: int) -> dict[str, Any]:
-    """Every test, interval and statement of sections 9.2 to 9.6 and 9.8 on one judge's reading. Called only under
-    --final."""
+    """Every test, interval and statement on one judge's reading, after final or bound-secondary guards."""
     plan = prep.plan
     ds: dict[str, dict[str, list[w2.TripleD]]] = {t.id: {} for t in plan.targets}
     per_triple: dict[str, dict[str, Any]] = {t.triple_id: {**t.label(), "contrasts": {}} for t in prep.triples}
@@ -1899,23 +1920,26 @@ def final_analysis(prep: Prepared, *, seed: int = DEFAULT_SEED,
     out = analysis_sections(prep, prep.record, prep.record.standings, seed=seed, resamples=resamples)
     out["secondary_judge"] = None
     if prep.secondary is not None:
-        if not prep.secondary_complete:
-            raise AnalysisRefusal(f"the secondary judge {prep.secondary_judge}'s rows do not cover the exchanges the "
-                                  f"judge of record made comparable: " + json.dumps(prep.secondary_coverage))
-        # a contrast the judge of record's reading refused has no secondary standings (align_secondary skips it), so
-        # the secondary's reading refuses it too, by name, rather than failing on the missing standings (stand-in
-        # review of PR #113)
-        secondary = replace(prep.secondary, refused_specs={
-            **prep.secondary.refused_specs,
-            **{name: f"refused for the judge of record: {why}" for name, why in prep.record.refused_specs.items()
-               if name not in prep.secondary.refused_specs}})
-        sec = analysis_sections(prep, secondary, prep.secondary_standings, seed=seed, resamples=resamples)
-        mark_secondary_statements(sec)
-        out["secondary_judge"] = {"label": SECONDARY_LABEL, "judge_model": prep.secondary_judge,
-                                  "runs": [s.provenance for s in prep.secondary_runs],
-                                  "coverage": prep.secondary_coverage, "agreement": agreement(prep),
-                                  "registered_test_directions": directions_hold(out, sec), **sec}
+        out["secondary_judge"] = secondary_report(prep, out, seed=seed, resamples=resamples)
     return out
+
+
+def secondary_report(prep: Prepared, primary: Mapping[str, Any], *, seed: int,
+                     resamples: int) -> dict[str, Any]:
+    """Compute only secondary statistics; use the supplied primary tests for direction comparisons."""
+    if prep.secondary is None or not prep.secondary_complete:
+        raise AnalysisRefusal(f"the secondary judge {prep.secondary_judge}'s rows do not cover the exchanges the "
+                              f"judge of record made comparable: " + json.dumps(prep.secondary_coverage))
+    secondary = replace(prep.secondary, refused_specs={
+        **prep.secondary.refused_specs,
+        **{name: f"refused for the judge of record: {why}" for name, why in prep.record.refused_specs.items()
+           if name not in prep.secondary.refused_specs}})
+    sec = analysis_sections(prep, secondary, prep.secondary_standings, seed=seed, resamples=resamples)
+    mark_secondary_statements(sec)
+    return {"label": SECONDARY_LABEL, "judge_model": prep.secondary_judge,
+            "runs": [s.provenance for s in prep.secondary_runs],
+            "coverage": prep.secondary_coverage, "agreement": agreement(prep),
+            "registered_test_directions": directions_hold(primary, sec), **sec}
 
 
 # ------------------------------------------------------------------ provenance and CLI
@@ -2025,6 +2049,60 @@ def analysis_identity(inputs: Mapping[str, Path], repo_root: Path | None = None)
     return ident
 
 
+
+def bound_primary(args: argparse.Namespace, prep: Prepared, header: Mapping[str, Any],
+                  truncated: Mapping[str, Any]) -> dict[str, Any]:
+    """Bind a committed once-only artifact to the unchanged primary inputs; never rerun its statistics."""
+    try:
+        primary = load_json(args.primary_final)
+    except (OSError, ValueError) as exc:
+        raise AnalysisRefusal(f"primary artifact cannot be read: {exc}") from exc
+    if not isinstance(primary, dict) or primary.get("final") is not True or primary.get("secondary_judge") is not None:
+        raise AnalysisRefusal("primary artifact must be a primary-only final analysis")
+    for key in ("analysis", "plan_approved", "run_list", "bootstrap_seed", "bootstrap_resamples", "judge_of_record"):
+        if primary.get(key) != header[key]:
+            raise AnalysisRefusal(f"primary artifact differs in {key}")
+    if (primary.get("administratively_truncated_targets") != truncated
+            or primary.get("truncation_reason") != (args.declare_truncated if truncated else None)):
+        raise AnalysisRefusal("primary artifact differs in the declared truncation")
+    targets = primary.get("targets")
+    if not isinstance(targets, dict) or set(targets) != {t.id for t in prep.plan.targets}:
+        raise AnalysisRefusal("primary artifact is missing its target tests")
+    for target in targets.values():
+        if not isinstance(target, dict) or not all(
+                isinstance(target.get(key), dict) and "p" in target[key] and "direction" in target[key]
+                for key in ("primary_sign_test", "scenario_gate")):
+            raise AnalysisRefusal("primary artifact has malformed target tests")
+    identity = primary.get("identity")
+    if (not isinstance(identity, dict) or not isinstance(identity.get("commit"), str)
+            or not isinstance(identity.get("inputs"), dict)
+            or not isinstance(identity.get("uncommitted_changes"), dict)
+            or any(identity["uncommitted_changes"].values())):
+        raise AnalysisRefusal("primary artifact does not record committed input identity")
+    original = identity.get("inputs")
+    current = analysis_identity(analysis_input_files(args, replace(prep, secondary_judge=None, secondary_runs=[])))
+    if not isinstance(original, dict) or set(original) != set(current["inputs"]):
+        raise AnalysisRefusal("primary artifact input inventory differs")
+    paths = {**code_files(), **analysis_input_files(args, replace(prep, secondary_judge=None, secondary_runs=[]))}
+    for name, now in current["inputs"].items():
+        old = original[name]
+        if old == now:
+            continue
+        # Secondary regrades append the shared verified chain. Preserve its original bytes as a prefix.
+        if (name.endswith(".chain") and isinstance(old, dict) and old.get("path") == now["path"]
+                and isinstance(old.get("sha256"), str)):
+            digest = hashlib.sha256()
+            for line in paths[name].read_bytes().splitlines(keepends=True):
+                digest.update(line)
+                if digest.hexdigest() == old["sha256"]:
+                    break
+            else:
+                raise AnalysisRefusal(f"primary artifact input {name} is not an unchanged chain prefix")
+            continue
+        raise AnalysisRefusal(f"primary artifact input {name} differs")
+    return primary
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("runs", nargs="*", type=Path,
@@ -2042,6 +2120,9 @@ def build_parser() -> argparse.ArgumentParser:
                     help=f"the bootstrap seed ({DEFAULT_SEED}, the only one --final accepts)")
     ap.add_argument("--secondary-judge", metavar="SPEC",
                     help="also compute the same tables from this judge's re-grade rows, labelled secondary")
+    ap.add_argument("--primary-final", type=Path,
+                    help="post-final secondary-only report bound to this committed primary artifact; needs "
+                         "--secondary-judge and --out, and cannot accompany --final")
     ap.add_argument("--final", action="store_true",
                     help="compute the register contrasts (once, on the final data); without it, coverage only")
     ap.add_argument("--declare-truncated", metavar="REASON",
@@ -2057,7 +2138,12 @@ def invocation_problems(args: argparse.Namespace) -> list[str]:
     problems = []
     if args.out is not None and args.out.exists():
         problems.append(f"--out {args.out} exists; this script never overwrites an artifact")
-    if not args.final:
+    if args.primary_final is not None:
+        if args.final or args.secondary_judge is None:
+            problems.append("--primary-final requires --secondary-judge and cannot accompany --final")
+        if args.out is None:
+            problems.append("--primary-final requires a separate --out")
+    if not args.final and args.primary_final is None:
         if args.declare_truncated:
             problems.append("--declare-truncated applies only under --final")
         return problems
@@ -2175,6 +2261,19 @@ def gate_selection_problems(plan: Plan) -> list[str]:
                 problems.append(f"{label}.failing entry {sid!r} has an invalid reason/round")
     if passing != plan.scenarios:
         problems.append(f"{label}.passing must match the planned scenario set in order")
+    try:
+        candidates = list(load_seed_file(plan.seed_file).seeds)
+        if seen != set(candidates):
+            problems.append(f"{label} must classify every candidate seed exactly once "
+                            f"(missing {sorted(set(candidates) - seen)}; extra {sorted(seen - set(candidates))})")
+        for group in ("passing", "failing"):
+            rows = selection.get(group)
+            if isinstance(rows, list) and all(isinstance(row, dict) for row in rows):
+                ids = [row.get("seed_id") for row in rows]
+                if ids != [sid for sid in candidates if sid in ids]:
+                    problems.append(f"{label}.{group} must follow candidate seed-file order")
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        problems.append(f"{label} candidate seed file cannot be read: {exc}")
     minimum = plan.realism_gate.get("min_scenarios")
     if type(minimum) is not int or minimum < 1 or len(passing) < minimum:
         problems.append(f"{label} does not meet its min_scenarios floor")
@@ -2263,13 +2362,16 @@ def main(argv: list[str] | None = None) -> int:
     except AnalysisRefusal as exc:
         return _refuse([str(exc)])
     cov = coverage(prep)
+    inputs = analysis_input_files(args, prep)
+    if args.primary_final is not None:
+        inputs["primary_final"] = args.primary_final
     header = {"analysis": "docs/petri_wave3_design.md section 9 (wave-3 register contrast)",
               "plan_approved": prep.plan.approved, "final": bool(args.final),
               "run_list": [r.provenance["path"] for r in prep.runs], "bootstrap_seed": args.seed,
               "bootstrap_resamples": prep.plan.bootstrap_resamples, "judge_of_record": prep.plan.judge_model,
               "secondary_judge": args.secondary_judge,
-              "identity": analysis_identity(analysis_input_files(args, prep))}
-    if not args.final:
+              "identity": analysis_identity(inputs)}
+    if not args.final and args.primary_final is None:
         doc = {**header, "note": "coverage only (rules[0]): no register contrast is computed without --final",
                "coverage": cov}
         print(json.dumps(doc, indent=1, ensure_ascii=False))
@@ -2285,7 +2387,14 @@ def main(argv: list[str] | None = None) -> int:
     if problems:
         return _refuse(problems)
     try:
-        result = final_analysis(prep, seed=args.seed, resamples=prep.plan.bootstrap_resamples)
+        if args.primary_final is not None:
+            primary = bound_primary(args, prep, header, truncated)
+            result = {"mode": "post_final_secondary",
+                      "primary_final": {"path": str(args.primary_final), "sha256": sha256_file(args.primary_final)},
+                      "secondary_judge": secondary_report(prep, primary, seed=args.seed,
+                                                          resamples=prep.plan.bootstrap_resamples)}
+        else:
+            result = final_analysis(prep, seed=args.seed, resamples=prep.plan.bootstrap_resamples)
     except AnalysisRefusal as exc:
         return _refuse([str(exc)])
     doc = {**header, "administratively_truncated_targets": truncated,
@@ -2295,8 +2404,8 @@ def main(argv: list[str] | None = None) -> int:
             fh.write(json.dumps(doc, indent=1, ensure_ascii=False) + "\n")
     except FileExistsError:
         return _refuse([f"--out {args.out} appeared while the analysis ran; nothing was written"])
-    print(json.dumps({"final": True, "out": str(args.out),
-                      "statements": {t: b["statement"]["row_id"] for t, b in result["targets"].items()},
+    print(json.dumps({"final": bool(args.final), "out": str(args.out),
+                      "statements": {t: b["statement"]["row_id"] for t, b in result.get("targets", {}).items()},
                       "administratively_truncated_targets": truncated,
                       "secondary_judge": args.secondary_judge}, indent=1))
     return 0

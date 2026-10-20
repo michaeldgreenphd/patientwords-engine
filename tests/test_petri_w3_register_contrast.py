@@ -1449,3 +1449,134 @@ def test_final_requires_a_bound_and_valid_gate_selection(
     out = tmp_path / "final.json"
     assert w3.main(cli_args(c, "--final", "--out", str(out))) == 2
     assert "physician_realism_gate.selection" in capsys.readouterr().err and not out.exists()
+
+
+@pytest.mark.parametrize("name", w3.SENSITIVITY_RULES)
+def test_reserved_sensitivity_refuses_unsupported_rule(tmp_path: Path, name: str) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    next(s for s in doc["sensitivity"] if s["name"] == name)["rule"] = "perform an unsupported test"
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="implemented rule"):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("value", [None, [], {}, "", "  "])
+def test_statement_disclosure_requires_text(tmp_path: Path, value: Any) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    doc["statements"]["every_statement_carries"] = value
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="every_statement_carries"):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("change", ["omitted", "unrelated", "reordered", "complete"])
+def test_gate_selection_accounts_for_candidate_seed_file(tmp_path: Path, change: str) -> None:
+    c = write_campaign(tmp_path)
+    doc = load_json(c["plan"])
+    selection = doc["physician_realism_gate"]["selection"]
+    candidates = load_json(c["seeds"])
+    for sid in ("syn-extra-a", "syn-extra-b"):
+        seed = deepcopy(candidates["seeds"][0])
+        seed["seed_id"] = sid
+        candidates["seeds"].append(seed)
+        selection["failing"].append({"seed_id": sid, "round": 1, "short_rounds": [],
+                                      "reason": "rated unrealistic"})
+    c["seeds"].write_text(json.dumps(candidates))
+    if change == "omitted":
+        selection["failing"].pop()
+    elif change == "unrelated":
+        selection["failing"][0]["seed_id"] = "not-a-candidate"
+    elif change == "reordered":
+        selection["failing"].reverse()
+    c["plan"].write_text(json.dumps(doc))
+    problems = w3.gate_selection_problems(w3.load_plan(c["plan"]))
+    if change == "complete":
+        assert problems == []
+    else:
+        assert any("candidate" in p for p in problems)
+
+
+@pytest.mark.parametrize("kind", ["missing", "malformed", "extra_malformed"])
+def test_registry_parse_errors_are_named_cli_refusals(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str], kind: str) -> None:
+    path = tmp_path / "bad-registry.json"
+    if kind != "missing":
+        path.write_text("{bad-json")
+    def recorded_registry(nonce: str, doc: dict) -> None:
+        if kind != "missing":
+            doc["framework"]["outcome_registry_sha256"] = sha256_file(path)
+    c = write_campaign(tmp_path, manifest_update=recorded_registry)
+    out = tmp_path / "coverage.json"
+    flag = "--registry-version" if kind == "extra_malformed" else "--outcomes"
+    assert w3.main(cli_args(c, flag, str(path), "--out", str(out))) == 2
+    assert "registry" in capsys.readouterr().err and not out.exists()
+
+
+
+@pytest.mark.parametrize("record_regrade", [False, True])
+def test_post_final_secondary_binds_saved_primary_without_recomputing_it(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, record_regrade: bool) -> None:
+    c = write_campaign(tmp_path, value_fn=patterned,
+                       judge_of=lambda nonce: OTHER_ROUTE if record_regrade and nonce == "b1" else JUDGE)
+    if record_regrade:
+        write_regrade(c, "b1", JUDGE, "record-b1")
+        add_regrade_fire(c, "record-b1", [STEMS["b1"]])
+    run_final(monkeypatch, c, tmp_path)
+    primary = tmp_path / "final.json"
+    original = primary.read_bytes()
+    for nonce in FIRES:
+        write_regrade(c, nonce, SECOND, "secondary-" + nonce)
+    final_ready(monkeypatch, c)
+    saved_sections = w3.analysis_sections
+
+    def secondary_only(prep: w3.Prepared, reading: w3.Reading, *args: Any, **kwargs: Any) -> dict:
+        assert reading.judge_model == SECOND, "post-final must not recompute the primary statistics"
+        return saved_sections(prep, reading, *args, **kwargs)
+
+    monkeypatch.setattr(w3, "analysis_sections", secondary_only)
+    out = tmp_path / "secondary.json"
+    assert w3.main(cli_args(c, "--primary-final", str(primary), "--secondary-judge", SECOND,
+                            "--out", str(out))) == 0
+    doc = load_json(out)
+    assert doc["final"] is False and doc["mode"] == "post_final_secondary"
+    assert doc["primary_final"]["sha256"] == hashlib.sha256(original).hexdigest()
+    assert "targets" not in doc and doc["secondary_judge"]["agreement"]
+    assert doc["secondary_judge"]["registered_test_directions"]
+    assert primary.read_bytes() == original
+
+
+@pytest.mark.parametrize("change", ["not_final", "input_hash", "missing_test", "dirty", "wrong_judge"])
+def test_post_final_secondary_refuses_unbound_primary(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], change: str) -> None:
+    c = write_campaign(tmp_path)
+    run_final(monkeypatch, c, tmp_path)
+    primary = tmp_path / "final.json"
+    doc = load_json(primary)
+    if change == "not_final":
+        doc["final"] = False
+    elif change == "input_hash":
+        doc["identity"]["inputs"]["plan"]["sha256"] = "0" * 64
+    elif change == "missing_test":
+        doc["targets"] = {}
+    elif change == "wrong_judge":
+        doc["judge_of_record"] = SECOND
+    primary.write_text(json.dumps(doc))
+    for nonce in FIRES:
+        write_regrade(c, nonce, SECOND, "secondary-" + nonce)
+    final_ready(monkeypatch, c)
+    if change == "dirty":
+        primary.write_text(primary.read_text() + " ")
+    before = primary.read_bytes()
+    out = tmp_path / "secondary.json"
+    assert w3.main(cli_args(c, "--primary-final", str(primary), "--secondary-judge", SECOND,
+                            "--out", str(out))) == 2
+    assert "primary" in capsys.readouterr().err and not out.exists() and primary.read_bytes() == before
+
+
+@pytest.mark.parametrize("flags", [[], ["--final"], ["--secondary-judge", SECOND]])
+def test_post_final_requires_separate_output_and_secondary_judge(tmp_path: Path, flags: list[str]) -> None:
+    args = w3.build_parser().parse_args(["--primary-final", str(tmp_path / "primary.json"), *flags])
+    problems = w3.invocation_problems(args)
+    assert any("primary-final" in p for p in problems)

@@ -452,7 +452,16 @@ session.
    each fire recorded in the plan by a dated amendment before it is made.
 8. The final analysis, once, after every registered target has landed or been
    declared administratively truncated.
-9. The second-family re-grade.
+9. The second-family re-grade. After the step-8 primary artifact has been committed,
+   generate its separate disclosure with
+   `python scripts/petri_w3_register_contrast.py --primary-final <primary.json> --secondary-judge <designated-spec> --out <secondary.json>`.
+   This binds the primary artifact and unchanged primary code/data inputs, computes
+   only secondary statistics, and compares directions with the saved primary tests.
+   It never overwrites or recomputes the primary artifact. If step 8 declared
+   truncation, repeat its exact `--declare-truncated` reason. The secondary inputs
+   must also be committed; a shared re-grade chain may append to its original byte
+   prefix. Coverage mode alone still computes no contrasts. These are future
+   owner-authorized analysis commands, not authorization to execute this plan.
 10. Nothing public until the final analysis has run and each named vendor's
     reproduction pack has been sent.
 
