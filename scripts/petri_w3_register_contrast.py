@@ -158,6 +158,23 @@ OPTIONAL_FIRE_KEYS = {"voided", "target", "campaign_epoch", "recorded_on", "note
 PRIMARY_STATEMENT_IDS = ("row1", "row2", "row3", "row4", "no_prespecified_row", "not_computable")
 RENDERED_ROWS = ("row1", "row2", "row4")          # the rows whose text is a sentence naming {target}
 DECOMPOSITION_STATEMENT_IDS = ("style_larger", "not_separated", "no_prespecified_statement", "not_computable")
+STATEMENT_RULES = {
+    "primary": {
+        "row1": {"primary": "p < 0.05, D mostly negative", "gate": "p < 0.05, same direction"},
+        "row2": {"primary": "p < 0.05, D mostly negative", "gate": "p >= 0.05"},
+        "row3": {"primary": "p < 0.05, D mostly positive", "gate": "either"},
+        "row4": {"primary": "p >= 0.05", "gate": "either"},
+        "no_prespecified_row": {"primary": "p < 0.05", "gate": "p < 0.05, opposite direction"},
+        "not_computable": {"primary": "no non-tied triple", "gate": "either"},
+    },
+    "decomposition": {
+        "style_larger": {"condition": "paired difference significant and negative after Holm, and style significant "
+                                     "and negative after Holm"},
+        "not_separated": {"condition": "paired difference not significant after Holm"},
+        "no_prespecified_statement": {"condition": "any other combination"},
+        "not_computable": {"condition": "no non-tied triple in the paired difference"},
+    },
+}
 TARGET_PLACEHOLDER = "{target}"
 # a sensitivity entry whose name is `<mechanism, hyphens as underscores>` + this suffix runs on that mechanism's seeds
 MECHANISM_WINDOW_SUFFIX = "_window"
@@ -458,8 +475,8 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
         problems.append(f"outcome must be the final reply's {w2.PRIMARY.kind}:{w2.PRIMARY.key} rows (the outcome this "
                         f"script ranks)")
     tier_rank = outcome.get("tier_rank")
-    if not isinstance(tier_rank, dict) or sorted(tier_rank.values()) != list(range(len(tier_rank))) \
-            or not all(_count(v) for v in tier_rank.values()):
+    if not isinstance(tier_rank, dict) or not all(_count(v) for v in tier_rank.values()) \
+            or sorted(tier_rank.values()) != list(range(len(tier_rank))):
         problems.append("outcome.tier_rank must rank its tiers 0..n-1")
         tier_rank = {}
     if not _hex12(doc["rubric_digest"]):
@@ -594,6 +611,11 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
             problems.append(f"statements.{table} must hold exactly the rows {list(ids)}, each with its text")
             continue
         statements[table] = {r["id"]: r for r in rows}
+        # Selection implements these rules, not an interpreter for arbitrary amended prose.
+        for row_id, rules in STATEMENT_RULES[table].items():
+            for key, expected in rules.items():
+                if statements[table][row_id].get(key) != expected:
+                    problems.append(f"statements.{table} {row_id}.{key} is not the implemented rule {expected!r}")
     for row in RENDERED_ROWS:
         text = statements.get("primary", {}).get(row, {}).get("text", TARGET_PLACEHOLDER)
         if TARGET_PLACEHOLDER not in text:
@@ -1735,15 +1757,44 @@ def analysis_sections(prep: Prepared, reading: Reading, standings: Mapping[str, 
             "section_9_6": section_9_6, "section_9_8": section_9_8}
 
 
+def nominal_agreement_values(prep: Prepared, name: str) -> tuple[tuple[Any, ...] | None, str | None]:
+    """Admissible categories from the contributing runs' checked definitions; these are never ordinal ranks."""
+    assert prep.secondary is not None
+    checks = [r.dimensions[("outcome", name)] for r in (prep.record, prep.secondary)]
+    for label, check in zip(("judge of record", "secondary judge"), checks):
+        if not check.pooled:
+            return None, f"{label} dimension outcome:{name} refused: " + "; ".join(check.reasons)
+    definitions = {d for check in checks for d in check.registry_definitions.values()}
+    if len(definitions) != 1 or None in definitions or checks[0].pooled_digest != checks[1].pooled_digest:
+        return None, f"dimension outcome:{name} has different instruments across judges"
+    contributing = set(checks[0].registry_definitions) | set(checks[1].registry_definitions)
+    for run in prep.runs:
+        if run.stem in contributing and run.registry is not None:
+            definition = w2.registry_definition(run.registry.registry, "outcome", name)
+            if definition is not None:
+                return tuple(definition["values"]), None
+    return None, f"dimension outcome:{name} has no resolved contributing registry"
+
+
 def agreement(prep: Prepared) -> dict[str, Any]:
-    """judge.regrade_reported for the secondary judge, per (kind, key) the analysis ranks: over every exchange of every
+    """judge.regrade_reported for the secondary judge, including coverage-only categories: over every exchange of every
     landed triple's conversations where both judges have exactly one admissible row under the pinned digest, the exact
     agreement, the within-one agreement (the ordinal tier only) and the directional lean (how often the secondary
-    ranked above and below the judge of record)."""
+    ranked above and below the judge of record). Nominal categories have exact agreement only, never invented ranks."""
     assert prep.secondary is not None
     out: dict[str, Any] = {}
-    for name, rec_scale in prep.record.scales.items():
-        sec_scale = prep.secondary.scales.get(name)
+    for name in dict.fromkeys([*prep.record.scales, *prep.plan.coverage_only]):
+        nominal = name in prep.plan.coverage_only
+        if nominal:
+            values, reason = nominal_agreement_values(prep, name)
+            if values is None:
+                out[name] = {"status": "refused", "reason": reason}
+                continue
+            # Reuse the digest/value admissibility checks only; Scale.rank is never called for categories.
+            rec_scale = sec_scale = w2.Scale(_measure_of(name), values, prep.plan.prompt_digests[name])
+        else:
+            rec_scale = prep.record.scales[name]
+            sec_scale = prep.secondary.scales.get(name)
         if sec_scale is None:
             out[name] = {"status": "refused", "reason": prep.secondary.refused_measures.get(name)}
             continue
@@ -1760,15 +1811,19 @@ def agreement(prep: Prepared) -> dict[str, Any]:
                         continue
                     [ra] = rec_scale.current(a[ex])
                     [rb] = sec_scale.current(b[ex])
-                    x, y = rec_scale.rank(ra), sec_scale.rank(rb)
                     n += 1
+                    if nominal:
+                        exact += ra["value"] == rb["value"]
+                        continue
+                    x, y = rec_scale.rank(ra), sec_scale.rank(rb)
                     exact += x == y
                     within += abs(x - y) <= 1
                     higher += y > x
                     lower += y < x
         out[name] = {"instrument": w2.instrument(m), "exchanges_both_admissible": n, "exact_agreement": exact,
                      "within_one": within if m.kind == "tier" and m.flag is None else None,
-                     "secondary_ranked_higher": higher, "secondary_ranked_lower": lower}
+                     "secondary_ranked_higher": None if nominal else higher,
+                     "secondary_ranked_lower": None if nominal else lower}
     return out
 
 

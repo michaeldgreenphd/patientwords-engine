@@ -455,6 +455,35 @@ def test_a_statement_table_without_the_target_placeholder_is_refused(tmp_path):
         w3.load_plan(tmp_path / "plan.json")
 
 
+@pytest.mark.parametrize("bad", [None, "1", [], True])
+def test_tier_rank_types_are_refused_before_sorting(tmp_path: Path, bad: Any) -> None:
+    plan = synthetic_plan(tmp_path / "seeds.json")
+    plan["outcome"]["tier_rank"][TIERS[0]] = bad
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(plan), encoding="utf-8")
+    with pytest.raises(w3.AnalysisRefusal, match=r"outcome.tier_rank must rank"):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("table, row_id, field", [
+    *[("primary", row["id"], field) for row in REAL_PLAN["statements"]["primary"] for field in ("primary", "gate")],
+    *[("decomposition", row["id"], "condition") for row in REAL_PLAN["statements"]["decomposition"]],
+])
+@pytest.mark.parametrize("replacement", ["unsupported amended rule", None])
+def test_amended_statement_rules_are_refused(tmp_path: Path, table: str, row_id: str, field: str,
+                                           replacement: str | None) -> None:
+    plan = synthetic_plan(tmp_path / "seeds.json")
+    row = next(r for r in plan["statements"][table] if r["id"] == row_id)
+    if replacement is None:
+        del row[field]
+    else:
+        row[field] = replacement
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(plan), encoding="utf-8")
+    with pytest.raises(w3.AnalysisRefusal, match=re.escape(f"statements.{table} {row_id}.{field}")):
+        w3.load_plan(path)
+
+
 # ------------------------------------------------------------------ triples, judges and targets
 
 
@@ -816,6 +845,53 @@ def test_the_secondary_judge_gets_its_own_labelled_tables_never_mixed_with_the_r
     holds = {r["test"]: r["holds"] for r in sec["registered_test_directions"]}
     assert holds["targets.tgt-a.primary_sign_test"] is False
     assert {r["judge_model"] for run in sec["runs"] for r in [run["rows_from"]]} == {SECOND}
+
+
+def test_coverage_only_agreement_counts_categories_without_inventing_ranks(tmp_path: Path,
+                                                                        monkeypatch: pytest.MonkeyPatch) -> None:
+    seeds = deepcopy(SEEDS)
+    for seed in seeds.values():
+        seed["judge"]["outcome_dimensions"] += COVERAGE_ONLY[1:]
+    monkeypatch.setitem(globals(), "SEEDS", seeds)
+
+    def second(cell: Cell, ex: int, measure: str) -> Any:
+        if measure in COVERAGE_ONLY and ex == 1:
+            return DIMS[measure]["values"][1]
+        return default_value(cell, ex, measure)
+
+    c = write_campaign(tmp_path)
+    for nonce in FIRES:
+        write_regrade(c, nonce, SECOND, f"q8-{nonce}", value_fn=second)
+    prep = prepared(c, secondary_judge=SECOND)
+    result = w3.agreement(prep)
+    conversations = len(TARGETS) * EPOCHS * len(SEEDS_IDS) * 3
+    for name in COVERAGE_ONLY:
+        row = result[name]
+        assert row["exchanges_both_admissible"] == conversations * w2.EXCHANGES
+        assert row["exact_agreement"] == conversations * (w2.EXCHANGES - 1)
+        assert row["within_one"] is None
+        assert row["secondary_ranked_higher"] is None and row["secondary_ranked_lower"] is None
+    # Missing, null, wrong-digest and duplicate rows remain exclusions, never agreements.
+    name = COVERAGE_ONLY[0]
+    cells = [cell for (_, kind, key), cell in prep.secondary.index.final.items()
+             if (kind, key) == ("outcome", name)]
+    del cells[0][2]
+    cells[1][2][0]["value"] = None
+    cells[2][2][0]["prompt_file_digest"] = "0" * 12
+    cells[3][2].append(deepcopy(cells[3][2][0]))
+    result = w3.agreement(prep)[name]
+    assert result["exchanges_both_admissible"] == conversations * w2.EXCHANGES - 4
+    assert result["exact_agreement"] == conversations * (w2.EXCHANGES - 1) - 4
+
+
+def test_unavailable_coverage_only_agreement_is_named(tmp_path: Path) -> None:
+    c = write_campaign(tmp_path)
+    for nonce in FIRES:
+        write_regrade(c, nonce, SECOND, f"q8-{nonce}")
+    result = w3.agreement(prepared(c, secondary_judge=SECOND))
+    for name in COVERAGE_ONLY[1:]:
+        assert result[name]["status"] == "refused"
+        assert "no final row" in result[name]["reason"]
 
 
 def test_a_secondary_that_does_not_cover_the_records_exchanges_is_refused_with_counts(tmp_path, monkeypatch, capsys):
