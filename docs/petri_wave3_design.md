@@ -465,6 +465,27 @@ session.
 10. Nothing public until the final analysis has run and each named vendor's
     reproduction pack has been sent.
 
+The analysis recognizes count-aware sensitivity wording without changing the registered
+operations. In a dated gate amendment, `leave_one_scenario_out.rule` may read
+"the primary test rerun S times, dropping each scenario in turn", with S replaced
+by the passing count. `each_mechanism_alone.rule` may read "descriptive: each
+mechanism's passing scenarios, E triples each per target; a mechanism with none
+is named absent; no test", with E replaced by the registered epoch count.
+The original uniform-count wording remains supported when its counts match the
+plan. Decimal counts and number words from zero through ten are equivalent.
+A mechanism-window rule retains its descriptive operation and actual mechanism
+name: "descriptive, on the passing M seeds only: whether the replies from the
+warning sign on differ by wording; with none, not computable", replacing M with
+the mechanism identifier. The existing unamended mechanism wording also remains
+supported. Other rule changes require a reviewed implementation; these templates
+are not an amendment or permission to select scenarios. Alpha remains 0.05,
+matching the registered statement conditions.
+
+Post-final disclosure validates the full planned saved-test inventory (including
+explicit refusals), rather than discovering only whichever tests happen to remain
+in a supplied file. This validates structure and bound input identity; it does not
+recompute or independently certify the saved primary numerical results.
+
 ---
 
 ## 9. Pre-specified analysis (DRAFT, not approved)

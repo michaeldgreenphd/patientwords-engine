@@ -106,6 +106,12 @@ def synthetic_plan(seeds_path: Path, **over: Any) -> dict:
     for s in plan["sensitivity"]:     # the plan's mechanism window, renamed for the synthetic mechanism
         if s.get("rule") and s["name"] not in w3.SENSITIVITY_RULES:
             s["name"] = "mech_two" + w3.MECHANISM_WINDOW_SUFFIX
+            s["rule"] = ("descriptive, on the mech-two seeds only: whether the replies from the warning sign on "
+                         "differ by wording")
+        elif s["name"] == "leave_one_scenario_out":
+            s["rule"] = "the primary test rerun four times, dropping each scenario in turn"
+        elif s["name"] == "each_mechanism_alone":
+            s["rule"] = "descriptive: two scenarios and four triples per target, no test"
     plan["judge"]["judge_model"] = JUDGE
     plan["approval"].update(approved=True, approved_by="the owner", approved_on="2026-10-01")
     plan["analysis_script"].update(path="scripts/petri_w3_register_contrast.py", status="written")
@@ -798,9 +804,14 @@ def test_not_computable_outcomes_are_named(tmp_path):
     c = write_campaign(tmp_path, mechanisms={"mech-one": SEEDS_IDS, "mech-two": []})
     plan = load_json(c["plan"])
     plan["exploratory_outcomes"]["restricted_to_seeds"] = {REFERRAL: []}
+    for entry in plan["sensitivity"]:
+        if entry["name"] == "each_mechanism_alone":
+            entry["rule"] = ("descriptive: each mechanism's passing scenarios, two triples each per target; "
+                             "a mechanism with none is named absent; no test")
     c["plan"].write_text(json.dumps(plan), encoding="utf-8")
     prep = prepared(c)
     result = w3.final_analysis(prep, resamples=100)
+    w3.validate_saved_tests(result, prep)
     a = result["targets"]["tgt-a"]
     late = "mech_two" + w3.MECHANISM_WINDOW_SUFFIX
     assert a["sensitivity"][late]["status"] == "not computable" and "has no seed" in a["sensitivity"][late]["reason"]
@@ -1603,3 +1614,94 @@ def test_post_final_truncated_primary_allows_appended_journal_only(
     final_ready(monkeypatch, c, ({**journal[0], "extra": "changed"},))
     args[-1] = str(tmp_path / "refused.json")
     assert w3.main(args) == 2 and not Path(args[-1]).exists()
+
+
+@pytest.mark.parametrize("count", [6, 7])
+def test_gate_adjusted_sensitivity_rules_follow_passing_counts(tmp_path: Path, count: int) -> None:
+    doc = deepcopy(REAL_PLAN)
+    kept = [s for v in doc["scenario_sets"].values() for s in v][:count]
+    doc["scenario_sets"] = {doc["decomposition_set"]: kept}
+    doc["mechanisms"] = {m: [s for s in ids if s in kept] for m, ids in doc["mechanisms"].items()}
+    doc["triples_per_epoch_per_target"] = count
+    doc["final_triples_per_target"] = count * doc["epochs_per_target"]
+    doc["exploratory_outcomes"]["restricted_to_seeds"] = {
+        m: [s for s in ids if s in kept] for m, ids in doc["exploratory_outcomes"]["restricted_to_seeds"].items()}
+    for entry in doc["sensitivity"]:
+        if entry["name"] == "leave_one_scenario_out":
+            entry["rule"] = f"the primary test rerun {count} times, dropping each scenario in turn"
+        elif entry["name"] == "each_mechanism_alone":
+            entry["rule"] = ("descriptive: each mechanism's passing scenarios, three triples each per target; "
+                             "a mechanism with none is named absent; no test")
+    path = tmp_path / "amended-plan.json"
+    path.write_text(json.dumps(doc))
+    plan = w3.load_plan(path)
+    assert len(plan.scenarios) == count
+    assert sum(len(ids) for ids in plan.mechanisms.values()) == count
+
+
+def test_mechanism_sensitivity_refuses_unimplemented_rule(tmp_path: Path) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    next(s for s in doc["sensitivity"] if s["name"].endswith(w3.MECHANISM_WINDOW_SUFFIX))["rule"] = "inferential test"
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="implemented rule"):
+        w3.load_plan(path)
+
+
+def test_alpha_must_match_registered_statement_threshold(tmp_path: Path) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json", alpha=0.1)
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="alpha.*0.05"):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("table,row", [("primary", "row3"), ("decomposition", "style_larger")])
+@pytest.mark.parametrize("text", ["", "  "])
+def test_every_selectable_statement_requires_nonempty_text(
+        tmp_path: Path, table: str, row: str, text: str) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    next(r for r in doc["statements"][table] if r["id"] == row)["text"] = text
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="nonempty text"):
+        w3.load_plan(path)
+
+
+def test_refused_registered_measure_remains_in_judge_agreement(tmp_path: Path) -> None:
+    c = write_campaign(tmp_path)
+    for nonce in FIRES:
+        write_regrade(c, nonce, SECOND, "secondary-" + nonce)
+    prep = prepared(c, secondary_judge=SECOND)
+    name = RECOMMENDATION
+    prep.record.scales.pop(name)
+    prep.record.refused_measures[name] = "synthetic incompatible definitions"
+    result = w3.agreement(prep)
+    assert result[name] == {"status": "refused", "reason": "judge of record: synthetic incompatible definitions"}
+    assert result["tier_response_only"]["exchanges_both_admissible"] > 0
+
+
+@pytest.mark.parametrize("section", ["section_9_4", "section_9_6", "nested_test", "test_p", "test_direction"])
+def test_post_final_requires_complete_saved_test_structure(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], section: str) -> None:
+    c = write_campaign(tmp_path)
+    run_final(monkeypatch, c, tmp_path)
+    primary = tmp_path / "final.json"
+    doc = load_json(primary)
+    if section in {"section_9_4", "section_9_6"}:
+        del doc[section]
+    elif section == "nested_test":
+        del doc["section_9_4"]["registered"]["tests"]["style"]
+    elif section == "test_p":
+        doc["section_9_4"]["registered"]["tests"]["style"]["p"] = "invalid"
+    else:
+        del doc["section_9_6"]["restricted_outcomes_across_targets"][REFERRAL]["direction"]
+    primary.write_text(json.dumps(doc))
+    for nonce in FIRES:
+        write_regrade(c, nonce, SECOND, "secondary-" + nonce)
+    final_ready(monkeypatch, c)
+    before = primary.read_bytes()
+    out = tmp_path / "secondary.json"
+    assert w3.main(cli_args(c, "--primary-final", str(primary), "--secondary-judge", SECOND,
+                            "--out", str(out))) == 2
+    assert "primary" in capsys.readouterr().err and not out.exists() and primary.read_bytes() == before

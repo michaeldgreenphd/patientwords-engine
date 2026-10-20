@@ -190,6 +190,40 @@ SENSITIVITY_RULES = {
 }
 
 
+def supported_sensitivity_rule(rule: Any, name: str, mechanism: str | None,
+                               scenarios: int, mechanisms: Mapping[str, Sequence[str]], epochs: int) -> bool:
+    """Recognize implemented prose with counts bound to this plan, including gate amendments.
+
+    Number words and decimal counts are equivalent. Other wording/analyses require an explicit implementation;
+    the accepted count-independent amendment templates are documented beside the CLI usage.
+    """
+    if not isinstance(rule, str) or not rule.strip():
+        return False
+    words = ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten")
+
+    def normalized(text: str) -> str:
+        for number, word in enumerate(words):
+            text = re.sub(r"\b" + word + r"\b", str(number), text)
+        return text
+
+    accepted: set[str] = set()
+    if name == "leave_one_scenario_out":
+        accepted.add(f"the primary test rerun {scenarios} times, dropping each scenario in turn")
+    elif name == "each_mechanism_alone":
+        sizes = {len(ids) for ids in mechanisms.values()}
+        if len(sizes) == 1 and next(iter(sizes)) > 0:
+            count = next(iter(sizes))
+            accepted.add(f"descriptive: {count} scenarios and {count * epochs} triples per target, no test")
+        accepted.add(f"descriptive: each mechanism's passing scenarios, {epochs} triples each per target; "
+                     "a mechanism with none is named absent; no test")
+    elif mechanism is not None:
+        accepted.add(f"descriptive, on the {mechanism} seeds only: whether the replies from the warning sign on "
+                     "differ by wording")
+        accepted.add(f"descriptive, on the passing {mechanism} seeds only: whether the replies from the warning "
+                     "sign on differ by wording; with none, not computable")
+    return normalized(rule) in {normalized(value) for value in accepted}
+
+
 class NotAPlanFire(AnalysisRefusal):
     """A run whose journal nonce is not one of the plan's run fires."""
 
@@ -527,6 +561,8 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
     alpha = doc["alpha"]
     if not isinstance(alpha, (int, float)) or isinstance(alpha, bool) or not 0 < alpha < 1:
         problems.append(f"alpha {alpha!r} is not a number between 0 and 1")
+    elif alpha != 0.05:
+        problems.append("alpha must remain 0.05 to match the implemented statement rules")
 
     sensitivity: list[Sensitivity] = []
     raw_sens = doc["sensitivity"]
@@ -552,10 +588,11 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
             problems.append(f"sensitivity {name!r} must retain the primary measure/window and a rule")
             continue
         rule = s.get("rule")
-        if name in SENSITIVITY_RULES and rule != SENSITIVITY_RULES[name]:
-            problems.append(f"sensitivity {name!r} does not retain its implemented rule")
-            continue
         mechanism = by_window_name.get(name)
+        if (name in SENSITIVITY_RULES or mechanism is not None) and not supported_sensitivity_rule(
+                rule, name, mechanism, len(every), mechanisms, epochs):
+            problems.append(f"sensitivity {name!r} does not retain its implemented rule for these passing counts")
+            continue
         if rule is not None and name not in SENSITIVITY_RULES and mechanism is None:
             problems.append(f"sensitivity {name!r} has a rule this script does not implement (it implements "
                             f"{list(SENSITIVITY_RULES)} and a mechanism's window, named <mechanism>"
@@ -619,8 +656,9 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
     for table, ids in (("primary", PRIMARY_STATEMENT_IDS), ("decomposition", DECOMPOSITION_STATEMENT_IDS)):
         rows = _get(doc, f"statements.{table}")
         got = [r.get("id") for r in rows] if isinstance(rows, list) and all(isinstance(r, dict) for r in rows) else []
-        if sorted(map(str, got)) != sorted(ids) or not all(isinstance(r.get("text"), str) for r in rows):
-            problems.append(f"statements.{table} must hold exactly the rows {list(ids)}, each with its text")
+        if sorted(map(str, got)) != sorted(ids) or not all(
+                isinstance(r.get("text"), str) and r["text"].strip() for r in rows):
+            problems.append(f"statements.{table} must hold exactly the rows {list(ids)}, each with nonempty text")
             continue
         statements[table] = {r["id"]: r for r in rows}
         # Selection implements these rules, not an interpreter for arbitrary amended prose.
@@ -1804,7 +1842,13 @@ def agreement(prep: Prepared) -> dict[str, Any]:
     ranked above and below the judge of record). Nominal categories have exact agreement only, never invented ranks."""
     assert prep.secondary is not None
     out: dict[str, Any] = {}
-    for name in dict.fromkeys([*prep.record.scales, *prep.plan.coverage_only]):
+    planned = [m.name for m in all_measures(prep.plan, prep.specs)]
+    planned.extend(prep.plan.family)
+    planned.extend(prep.plan.restricted)
+    for name in dict.fromkeys(planned):
+        if name in prep.record.refused_measures:
+            out[name] = {"status": "refused", "reason": "judge of record: " + prep.record.refused_measures[name]}
+            continue
         nominal = name in prep.plan.coverage_only
         if nominal:
             values, reason = nominal_agreement_values(prep, name)
@@ -1814,7 +1858,10 @@ def agreement(prep: Prepared) -> dict[str, Any]:
             # Reuse the digest/value admissibility checks only; Scale.rank is never called for categories.
             rec_scale = sec_scale = w2.Scale(_measure_of(name), values, prep.plan.prompt_digests[name])
         else:
-            rec_scale = prep.record.scales[name]
+            rec_scale = prep.record.scales.get(name)
+            if rec_scale is None:
+                out[name] = {"status": "refused", "reason": "no computable contrast for the planned measure"}
+                continue
             sec_scale = prep.secondary.scales.get(name)
         if sec_scale is None:
             out[name] = {"status": "refused", "reason": prep.secondary.refused_measures.get(name)}
@@ -2050,6 +2097,90 @@ def analysis_identity(inputs: Mapping[str, Path], repo_root: Path | None = None)
 
 
 
+def validate_saved_tests(primary: Mapping[str, Any], prep: Prepared) -> None:
+    """Require the complete planned test structure without recomputing primary statistics.
+
+    Expected tests/refusals come from the bound plan, dimension checks and entering standings. A missing test
+    cannot disappear merely because recursive discovery no longer sees its p/direction fields.
+    """
+    expected: set[str] = set()
+
+    def node(path: tuple[str, ...]) -> Mapping[str, Any]:
+        value: Any = primary
+        for key in path:
+            value = value.get(key) if isinstance(value, Mapping) else None
+        if not isinstance(value, Mapping):
+            raise AnalysisRefusal(f"primary artifact is missing test structure {'.'.join(path)}")
+        return value
+
+    def keys(path: tuple[str, ...], names: Sequence[str]) -> None:
+        if set(node(path)) != set(names):
+            raise AnalysisRefusal(f"primary artifact has incomplete test inventory {'.'.join(path)}")
+
+    def refusal(path: tuple[str, ...], reason: str) -> None:
+        value = node(path)
+        if (value.get("status") not in ("refused", "not computable", "not run")
+                or value.get("reason") != reason or "p" in value or "direction" in value):
+            raise AnalysisRefusal(f"primary artifact has malformed refusal {'.'.join(path)}")
+
+    def test(path: tuple[str, ...], spec: str | None = None) -> None:
+        reason = prep.not_computable.get(spec) or prep.record.refused_specs.get(spec)
+        if reason:
+            refusal(path, reason)
+            return
+        value = node(path)
+        p = value.get("p")
+        if (isinstance(p, bool) or not isinstance(p, (int, float)) or not 0 <= p <= 1
+                or value.get("direction") not in ("negative", "positive", "none")
+                or not isinstance(value.get("significant"), bool)):
+            raise AnalysisRefusal(f"primary artifact has malformed test {'.'.join(path)}")
+        expected.add(".".join(path))
+
+    plan = prep.plan
+    keys(("targets",), [t.id for t in plan.targets])
+    for target in plan.targets:
+        root = ("targets", target.id)
+        test((*root, "primary_sign_test"), "primary")
+        test((*root, "scenario_gate"))
+        test((*root, "exchanges_6_10"), "exchanges_6_10")
+        keys((*root, "leave_one_scenario_out"), plan.scenarios)
+        present = {st.triple.seed_id for st in prep.record.standings["primary"]
+                   if st.enters and st.triple.target == target.id}
+        for scenario in plan.scenarios:
+            path = (*root, "leave_one_scenario_out", scenario)
+            if scenario in present:
+                test(path)
+            else:
+                refusal(path, "no triple of this scenario entered the primary contrast; leaving it out "
+                              "would repeat the full test (see scenario_gate.missing_scenarios)")
+        keys((*root, "sensitivity"), [s.name for s in plan.sensitivity])
+        for sensitivity in plan.sensitivity:
+            path = (*root, "sensitivity", sensitivity.name)
+            if sensitivity.name in SENSITIVITY_RULES or sensitivity.mechanism is not None:
+                node(path)  # descriptive/reference entries are not inferential tests
+            else:
+                test(path, f"sensitivity:{sensitivity.name}")
+        keys((*root, "exploratory", "tests"), plan.family)
+        for name in plan.family:
+            test((*root, "exploratory", "tests", name), f"exploratory:{name}")
+        keys((*root, "restricted_outcomes_descriptive"), [n for n in plan.restricted if n not in plan.family])
+    if "decomposition" in prep.record.refused_specs:
+        refusal(("section_9_4",), prep.record.refused_specs["decomposition"])
+    else:
+        for group in ("registered", "prespecified_secondary"):
+            path = ("section_9_4", group, "tests")
+            keys(path, ("style", "vocabulary", "paired_difference"))
+            for part in ("style", "vocabulary", "paired_difference"):
+                test((*path, part))
+    path = ("section_9_6", "restricted_outcomes_across_targets")
+    restricted = [name for name in plan.restricted if name not in plan.family]
+    keys(path, restricted)
+    for name in restricted:
+        test((*path, name), f"restricted:{name}")
+    if set(emitted_tests(primary)) != expected:
+        raise AnalysisRefusal("primary artifact test inventory differs from the planned tests")
+
+
 def bound_primary(args: argparse.Namespace, prep: Prepared, header: Mapping[str, Any],
                   truncated: Mapping[str, Any]) -> dict[str, Any]:
     """Bind a committed once-only artifact to the unchanged primary inputs; never rerun its statistics."""
@@ -2073,6 +2204,7 @@ def bound_primary(args: argparse.Namespace, prep: Prepared, header: Mapping[str,
                 isinstance(target.get(key), dict) and "p" in target[key] and "direction" in target[key]
                 for key in ("primary_sign_test", "scenario_gate")):
             raise AnalysisRefusal("primary artifact has malformed target tests")
+    validate_saved_tests(primary, prep)
     identity = primary.get("identity")
     if (not isinstance(identity, dict) or not isinstance(identity.get("commit"), str)
             or not isinstance(identity.get("inputs"), dict)
