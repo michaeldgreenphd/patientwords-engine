@@ -2149,3 +2149,13 @@ def test_combined_export_refuses_nonobject_classifier(
     other = _petri_only(advice_report)
     other["metadata"]["classifier"] = classifier
     _refused(tmp_path, [advice_report, other], "classifier", capsys)
+
+
+@pytest.mark.parametrize("field", ["rubric", "register_rubric"])
+@pytest.mark.parametrize("value", ["not-an-object", ["not-an-object"]])
+def test_combined_export_refuses_nonobject_rubric(
+        tmp_path: Path, advice_report: dict, field: str, value: object,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    other = _petri_only(advice_report)
+    other["metadata"][field] = value
+    _refused(tmp_path, [advice_report, other], field, capsys)

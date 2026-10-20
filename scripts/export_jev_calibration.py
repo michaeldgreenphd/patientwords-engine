@@ -1365,8 +1365,14 @@ def check_combinable(reports: list[tuple[dict[str, Any], str]], repo_root: Path 
         # versions combine only when equal or linked by a reviewed entry in EVALUATOR_EQUIVALENCE (Codex review of
         # PR #111, round 3)
         evaluator = classes.get(resolved["evaluator_sha256"], resolved["evaluator_sha256"])
+        rubric_digests = []
+        for name in ("rubric", "register_rubric"):
+            block = meta.get(name)
+            if not isinstance(block, dict):
+                _refuse(f"Report metadata has no object '{name}' block; pooled inputs must name both rubrics")
+            rubric_digests.append(_require_sha256(block.get("sha256"), f"{name}.sha256"))
         return (_require_model_requested(meta), _require_is_mock(meta), resolved["scoring_sha256"], evaluator,
-                (meta.get("rubric") or {}).get("sha256"), (meta.get("register_rubric") or {}).get("sha256"))
+                *rubric_digests)
     classes = (equivalence if equivalence is not None else load_evaluator_equivalence(repo_root)).classes
     first = ident(*reports[0])
     for data, sha in reports[1:]:
