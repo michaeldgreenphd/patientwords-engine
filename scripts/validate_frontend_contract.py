@@ -21,12 +21,12 @@ No medical vocabulary lives in this file; all terms stay in the data.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import math
 import re
 import subprocess
 import sys
+from hashlib import sha256
 from pathlib import Path
 from typing import Callable, NamedTuple
 
@@ -1093,7 +1093,7 @@ def _jev_source_reports(rep: Report, name: str, data: dict) -> None:
             isinstance(x, str) and re.fullmatch(r"[0-9a-f]{64}", x) for x in shas) or len(set(shas)) != len(shas):
         rep.err(name, "$.source_reports", "must be a non-empty list of objects with distinct sha256 digests")
         return
-    expected = shas[0] if len(shas) == 1 else hashlib.sha256(
+    expected = shas[0] if len(shas) == 1 else sha256(
         "".join(f"{x}\n" for x in sorted(shas)).encode("ascii")).hexdigest()
     if data.get("source_report_sha256") != expected:
         rep.err(name, "$.source_report_sha256", f"is not the identifier of the {len(shas)} listed source report(s)")
@@ -1248,7 +1248,7 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
         if "schema_version" not in data and isinstance(data.get("source_report_sha256"), str):
             pin = legacy_reports.get(data["source_report_sha256"], {}).get(f"data/{name}")
             try:
-                actual_digest = hashlib.sha256((site / "data" / name).read_bytes()).hexdigest()
+                actual_digest = sha256((site / "data" / name).read_bytes()).hexdigest()
             except OSError:
                 actual_digest = None
             if pin is None or pin != actual_digest:
