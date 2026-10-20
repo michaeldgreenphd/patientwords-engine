@@ -459,7 +459,7 @@ session.
    only secondary statistics, and compares directions with the saved primary tests.
    It never overwrites or recomputes the primary artifact. If step 8 declared
    truncation, repeat its exact `--declare-truncated` reason. The secondary inputs
-   must also be committed; a shared re-grade chain may append to its original byte
+   must also be committed; shared re-grade chains and the truncation journal may append to their original byte
    prefix. Coverage mode alone still computes no contrasts. These are future
    owner-authorized analysis commands, not authorization to execute this plan.
 10. Nothing public until the final analysis has run and each named vendor's

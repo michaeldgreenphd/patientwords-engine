@@ -1580,3 +1580,26 @@ def test_post_final_requires_separate_output_and_secondary_judge(tmp_path: Path,
     args = w3.build_parser().parse_args(["--primary-final", str(tmp_path / "primary.json"), *flags])
     problems = w3.invocation_problems(args)
     assert any("primary-final" in p for p in problems)
+
+
+def test_post_final_truncated_primary_allows_appended_journal_only(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    c = write_campaign(tmp_path, fires=tuple(n for n in FIRES if n != "c2"))
+    journal = ({"trigger": "petri-audit", "nonce": "c2", "fired_utc": "2026-10-20T00:00:00Z",
+                "resolved": True, "evicted": False},)
+    final_ready(monkeypatch, c, journal)
+    primary = tmp_path / "final.json"
+    assert w3.main(cli_args(c, "--final", "--declare-truncated", "provider outage",
+                            "--out", str(primary))) == 0
+    original = primary.read_bytes()
+    for nonce in c["runs"]:
+        write_regrade(c, nonce, SECOND, "secondary-" + nonce)
+    final_ready(monkeypatch, c, journal + ({"nonce": "secondary-regrade", "resolved": True},))
+    out = tmp_path / "secondary.json"
+    args = cli_args(c, "--primary-final", str(primary), "--secondary-judge", SECOND,
+                    "--declare-truncated", "provider outage", "--out", str(out))
+    assert w3.main(args) == 0 and primary.read_bytes() == original
+    # A changed earlier entry is not an append and cannot substitute a new primary evidence record.
+    final_ready(monkeypatch, c, ({**journal[0], "extra": "changed"},))
+    args[-1] = str(tmp_path / "refused.json")
+    assert w3.main(args) == 2 and not Path(args[-1]).exists()

@@ -79,7 +79,7 @@ of judge.second_family_regrade (before " through "). The approved analysis_scrip
 Post-final disclosure: after the once-only primary artifact is committed and the second-family re-grade lands,
 `--primary-final PATH --secondary-judge SPEC --out NEW_PATH` computes only the secondary tables and agreement.
 It binds the unchanged primary artifact and its code/data hashes, compares directions to its saved tests, and never
-recomputes primary statistics. Every input, including that artifact, must be committed; shared re-grade chains may
+recomputes primary statistics. Every input, including that artifact, must be committed; shared re-grade chains and the truncation journal may
 only append to their original byte prefix. No plan, seed, prompt, run or primary code identity may change.
 
 No peeking (rules[0]). Register contrasts require --final or the bound post-final secondary mode. Without either the script validates every input
@@ -2088,8 +2088,9 @@ def bound_primary(args: argparse.Namespace, prep: Prepared, header: Mapping[str,
         old = original[name]
         if old == now:
             continue
-        # Secondary regrades append the shared verified chain. Preserve its original bytes as a prefix.
-        if (name.endswith(".chain") and isinstance(old, dict) and old.get("path") == now["path"]
+        # Secondary regrades append the verified chain and journal. Preserve the original byte prefix.
+        if ((name.endswith(".chain") or name == "trigger_journal")
+                and isinstance(old, dict) and old.get("path") == now["path"]
                 and isinstance(old.get("sha256"), str)):
             digest = hashlib.sha256()
             for line in paths[name].read_bytes().splitlines(keepends=True):
@@ -2097,7 +2098,7 @@ def bound_primary(args: argparse.Namespace, prep: Prepared, header: Mapping[str,
                 if digest.hexdigest() == old["sha256"]:
                     break
             else:
-                raise AnalysisRefusal(f"primary artifact input {name} is not an unchanged chain prefix")
+                raise AnalysisRefusal(f"primary artifact input {name} is not an unchanged evidence prefix")
             continue
         raise AnalysisRefusal(f"primary artifact input {name} differs")
     return primary
