@@ -408,6 +408,10 @@ def test_engine_guidance_local_references_without_companion(doc: str, repo: Repo
              if not p.startswith(_COMPANIONS) and ("patientwords-engine", doc, p) not in GUIDE_COMPANION_PATHS]
     missing = [p for p in local if not resolves(p, repo) and ("patientwords-engine", doc, p) not in GUIDE_OUTPUTS]
     assert not missing, f"{doc} names missing engine paths: {missing}"
+    named = guide_paths(doc, text, repo)
+    stale = [p for (name, d, p) in (*GUIDE_OUTPUTS, *GUIDE_COMPANION_PATHS)
+             if (name, d) == ("patientwords-engine", doc) and p not in named]
+    assert not stale, f"Remove unused guide exceptions for {doc}: {stale}"
 
 
 @pytest.mark.parametrize("repository", ("patientwords-engine", "patientwords"))
@@ -514,3 +518,15 @@ def test_existing_non_git_companion_fails_instead_of_skipping(monkeypatch, tmp_p
     monkeypatch.setenv("PW_SITE_ROOT", str(tmp_path))
     with pytest.raises(pytest.fail.Exception, match="required companion checkout"):
         _listed_paths(guidance_site_root(), required=True)
+
+
+@pytest.mark.parametrize("removed", ["docs/framework/_blob_probe.tmp.json", "data/simulated_scenarios.json"])
+def test_engine_only_gate_rejects_stale_guide_exceptions(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, repo: Repo, removed: str) -> None:
+    """A companion-free invocation must still detect unused local and alias exceptions."""
+    text = (ROOT / "verify.md").read_text(encoding="utf-8")
+    assert removed in text
+    (tmp_path / "verify.md").write_text(text.replace(removed, "<removed>"), encoding="utf-8")
+    monkeypatch.setattr(__import__(__name__, fromlist=["ROOT"]), "ROOT", tmp_path)
+    with pytest.raises(AssertionError, match="unused"):
+        test_engine_guidance_local_references_without_companion("verify.md", repo)

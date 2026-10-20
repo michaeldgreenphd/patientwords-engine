@@ -283,10 +283,10 @@ set -euo pipefail
 PW_BOUNDARY_PY=/tmp/pw-boundary-venv/bin/python
 PW_SITE_ROOT=$(cd ../patientwords && pwd)
 PW_BOUNDARY_RECEIPT=$(mktemp /tmp/patientwords-boundary-receipt.XXXXXX)
+printf 'Boundary receipt path (retained on failure too): %s\n' "$PW_BOUNDARY_RECEIPT"
 "$PW_BOUNDARY_PY" scripts/boundary_client/generate.py --check
 "$PW_BOUNDARY_PY" scripts/check_frontend_boundary.py --site "$PW_SITE_ROOT" \
   --receipt "$PW_BOUNDARY_RECEIPT"
-printf 'Retained boundary receipt: %s\n' "$PW_BOUNDARY_RECEIPT"
 )
 ```
 
