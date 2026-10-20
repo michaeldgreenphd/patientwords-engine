@@ -1199,6 +1199,8 @@ def source_report_entries(reports: list[tuple[dict[str, Any], str]], repo_root: 
         out.append({"sha256": sha, "advice_cases": len(data.get("cases") or []),
                     "petri_turns": len(data.get("petri_cases") or []),
                     "petri_transcripts": petri.get("path") if isinstance(petri, dict) else None,
+                    "petri_transcripts_sha256": petri.get("sha256") if isinstance(petri, dict) else None,
+                    "petri_models_served": _served_models(data.get("petri_cases") or [], "Petri case"),
                     "classifier_sha256": digest,
                     "classifier_commit": resolved["commit"] if resolved else None,
                     "scoring_sha256": resolved["scoring_sha256"] if resolved else None,

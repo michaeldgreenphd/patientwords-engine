@@ -1169,9 +1169,15 @@ def _jev_pair(site, report="a" * 64, mock=False, pooled=False):
              "conversations": {"c" * 64: conversation}}
     for payload in (calib, drift):
         payload["schema_version"] = "2.0"
-        payload["source_reports"] = [{"sha256": report, "advice_cases": 1, "petri_turns": 1}]
+        payload["source_reports"] = [{"sha256": report, "advice_cases": 1, "petri_turns": 1,
+                                      "petri_transcripts": "data/petri/runs/run_fixture/transcripts.jsonl",
+                                      "petri_transcripts_sha256": "b" * 64, "classifier_sha256": "c" * 64,
+                                      "petri_models_served": ["m"]}]
     conversation["run"] = "run_fixture"
-    drift["provenance"]["petri_runs"] = [{"run": "run_fixture", "conversations": 1}]
+    drift["provenance"]["petri_runs"] = [{"run": "run_fixture", "conversations": 1, "source_report_sha256": report,
+                                         "path": "data/petri/runs/run_fixture/transcripts.jsonl",
+                                         "sha256": "b" * 64, "classifier_sha256": "c" * 64,
+                                         "models_served": ["m"]}]
     (data / "jev_calibration.json").write_text(json.dumps(calib), encoding="utf-8")
     (data / "petri_register_drift.json").write_text(json.dumps(drift), encoding="utf-8")
 

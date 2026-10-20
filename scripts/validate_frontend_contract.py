@@ -27,7 +27,7 @@ import re
 import subprocess
 import sys
 from hashlib import sha256
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Callable, NamedTuple
 
 # The four circuit-traced models the exporter can emit, and the mirror fields it
@@ -1179,8 +1179,8 @@ def _jev_petri_runs(rep: Report, name: str, data: dict) -> None:
     """The drift payload's run attribution (Codex review of PR #111, round 3). A combined export sets
     provenance.petri_transcripts to null, so provenance.petri_runs and each conversation's `run` are the only mapping
     from a published conversation to its run: when more than one listed report scored Petri rows they are required,
-    and when present every conversation names a listed run and each run's conversation count matches. Payloads from
-    before these fields (no run attribution or evaluator equivalence) pass."""
+    and when present every conversation names a listed run and each run's counts and provenance match its source
+    report. The exact pinned legacy payloads predate these fields and remain accepted."""
     prov = data.get("provenance") if isinstance(data.get("provenance"), dict) else {}
     runs = prov.get("petri_runs")
     sources = data.get("source_reports") if isinstance(data.get("source_reports"), list) else []
@@ -1201,18 +1201,62 @@ def _jev_petri_runs(rep: Report, name: str, data: dict) -> None:
         rep.err(name, "$.provenance.petri_runs", "names a run more than once")
     convs = data.get("conversations") if isinstance(data.get("conversations"), dict) else {}
     counts: dict[str, int] = {}
+    turns: dict[str, int] = {}
     for cid, conv in convs.items():
         run = conv.get("run") if isinstance(conv, dict) else None
         if run not in names:
             rep.err(name, f"$.conversations[{cid[:12]}].run", f"{run!r} is not a run listed in provenance.petri_runs")
             continue
         counts[run] = counts.get(run, 0) + 1
+        rows = conv.get("turns")
+        if isinstance(rows, list):
+            turns[run] = turns.get(run, 0) + len(rows)
     for r in runs:
         if counts.get(r["run"], 0) != r["conversations"]:
             rep.err(name, "$.provenance.petri_runs", f"run {r['run']!r} lists {r['conversations']} conversation(s) but "
                                                      f"{counts.get(r['run'], 0)} name it")
     if len(runs) > 1 and prov.get("petri_transcripts") is not None:
         rep.err(name, "$.provenance.petri_transcripts", "names one transcripts file although several runs are pooled")
+
+    def digest(value: object) -> bool:
+        return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+    def models(value: object) -> bool:
+        return (isinstance(value, list) and bool(value)
+                and all(isinstance(v, str) and bool(v.strip()) for v in value)
+                and len(set(value)) == len(value))
+
+    by_report = {s["sha256"]: s for s in petri_sources if digest(s.get("sha256"))}
+    used: list[str] = []
+    served: set[str] = set()
+    for i, entry in enumerate(runs):
+        path = f"$.provenance.petri_runs[{i}]"
+        report = entry.get("source_report_sha256")
+        source = by_report.get(report) if isinstance(report, str) else None
+        if source is None:
+            rep.err(name, path + ".source_report_sha256", "must name a source_reports entry with Petri rows")
+            continue
+        used.append(report)
+        transcript = entry.get("path")
+        if (not isinstance(transcript, str) or not transcript.strip()
+                or transcript != source.get("petri_transcripts")
+                or PurePosixPath(transcript).parent.name != entry["run"]):
+            rep.err(name, path + ".path", "must match its source report's transcripts path and parent run")
+        for key, source_key in (("sha256", "petri_transcripts_sha256"),
+                                ("classifier_sha256", "classifier_sha256")):
+            if not digest(entry.get(key)) or entry[key] != source.get(source_key):
+                rep.err(name, path + "." + key, f"must be the 64-hex digest from source_reports.{source_key}")
+        if (not models(entry.get("models_served")) or not models(source.get("petri_models_served"))
+                or set(entry["models_served"]) != set(source["petri_models_served"])):
+            rep.err(name, path + ".models_served", "must match its source report's non-empty distinct Petri models")
+        else:
+            served.update(entry["models_served"])
+        if turns.get(entry["run"], 0) != source["petri_turns"]:
+            rep.err(name, path, "conversation turn count does not match source_reports.petri_turns")
+    if len(used) != len(set(used)) or set(used) != set(by_report):
+        rep.err(name, "$.provenance.petri_runs", "must represent each Petri source report exactly once")
+    if not models(data.get("models_served")) or served != set(data["models_served"]):
+        rep.err(name, "$.provenance.petri_runs", "models_served union does not match the payload")
 
 
 def check_jev_payloads(rep: Report, site: Path) -> None:

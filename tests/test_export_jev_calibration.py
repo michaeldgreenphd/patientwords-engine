@@ -1946,6 +1946,58 @@ def test_the_gate_reconciles_run_attribution(tmp_path, advice_report):
     assert any("sum to" in e and "total_assistant_turns" in e for e in errors(zeroed))
 
 
+@pytest.mark.parametrize("field, wrong", [
+    ("source_report_sha256", "0" * 64),
+    ("path", "data/petri/runs/run_other/transcripts.jsonl"),
+    ("sha256", "0" * 64),
+    ("classifier_sha256", "0" * 64),
+    ("models_served", ["other-model"]),
+])
+@pytest.mark.parametrize("change", ["missing", "null", "wrong"])
+def test_run_provenance_is_bound_to_its_source_report(
+        tmp_path: Path, advice_report: dict, field: str, wrong: object, change: str) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert rep.errors == []
+    path = tmp_path / "site/data/petri_register_drift.json"
+    payload = json.loads(path.read_text())
+    entry = payload["provenance"]["petri_runs"][0]
+    if change == "missing":
+        del entry[field]
+    else:
+        entry[field] = None if change == "null" else wrong
+    path.write_text(json.dumps(payload))
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert any("petri_runs" in e and field in e for e in rep.errors)
+
+
+def test_run_turn_counts_and_report_membership_are_reconciled(tmp_path: Path, advice_report: dict) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    path = tmp_path / "site/data/petri_register_drift.json"
+    original = json.loads(path.read_text())
+    for change in ("report_reuse", "turns"):
+        payload = json.loads(json.dumps(original))
+        runs = payload["provenance"]["petri_runs"]
+        if change == "report_reuse":
+            runs[1]["source_report_sha256"] = runs[0]["source_report_sha256"]
+        else:
+            # Move one turn between runs: the overall count remains unchanged.
+            conversations = list(payload["conversations"].values())
+            a = next(c for c in conversations if c["run"] == runs[0]["run"] and len(c["turns"]) > 1)
+            b = next(c for c in conversations if c["run"] == runs[1]["run"])
+            b["turns"].append(a["turns"].pop())
+        path.write_text(json.dumps(payload))
+        rep = vfc.Report()
+        vfc.check_jev_payloads(rep, tmp_path / "site")
+        assert any("petri_runs" in e for e in rep.errors)
+
+
 @pytest.mark.parametrize("mutation", ["missing", "hash", "classes", "edges", "source"])
 def test_pooled_equivalence_provenance_is_required_and_validated(
         tmp_path: Path, advice_report: dict, mutation: str) -> None:
