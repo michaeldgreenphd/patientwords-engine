@@ -89,6 +89,7 @@ python -m pytest -q -ra \
   tests/test_doc_paths.py tests/test_scripts_readme.py tests/test_shared_conventions.py
 python -m ruff check .
 git diff --check
+git diff --cached --check
 )
 ```
 
@@ -129,6 +130,7 @@ set -euo pipefail
 python -m pytest -q -ra
 python -m ruff check .
 git diff --check
+git diff --cached --check
 )
 ```
 
@@ -403,6 +405,7 @@ set -euo pipefail
 git status --short
 git diff --stat
 git diff --check
+git diff --cached --check
 )
 ```
 
