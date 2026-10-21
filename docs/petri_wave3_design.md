@@ -1094,6 +1094,19 @@ ones are in A6.9; the owner's words are quoted in its approval record as "Gate 6
    zero mean and would have sent wave 3 to decision 2 whenever two scenarios fail.
 
 
+### Fixed analysis rules and amended scenario counts
+
+The analysis refuses a missing or changed contrast definition, comparable-exchange
+rule, tie rule, between-target method, or response-only flag instrument. Their
+supported values live in `data/petri/w3_analysis_contract.json`, separately from
+the approved plan. The late-window prespecification flag must be the boolean
+`true`; numbers and strings are not substitutes. These checks also apply to
+amendments made before any fire: approval alone does not implement a new method.
+The headline gate's scenario count must be an integer equal to the selected
+scenario set's size, including after a gate amendment. The registered plan and
+wave-2 calculations are unchanged; implementing another method needs a separate
+reviewed change rather than silently analyzing it under the original rules.
+
 ### Analysis reader contract for the future gate report
 
 The gate application program remains to be implemented under A6.9. The wave-3

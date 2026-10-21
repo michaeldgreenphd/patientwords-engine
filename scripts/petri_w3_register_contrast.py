@@ -583,6 +583,18 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
     elif alpha != 0.05:
         problems.append("alpha must remain 0.05 to match the implemented statement rules")
 
+    # Fixed definitions are supported code contracts, never inferred from the proposed plan.
+    for rule_path, expected in ANALYSIS_CONTRACT["fixed_plan_fields"].items():
+        try:
+            actual = _get(doc, rule_path)
+        except KeyError:
+            actual = None
+        if type(actual) is not type(expected) or actual != expected:
+            problems.append(f"{rule_path} must match the implemented registered method")
+    gate_count = doc["general_headline_gate"].get("scenarios")
+    if type(gate_count) is not int or gate_count != len(every):
+        problems.append("general_headline_gate.scenarios must be an integer equal to the planned scenario count")
+
     # Rule-bearing method text is an executable contract too. Counts may follow a gate amendment,
     # but an unsupported test or correction must never silently select the hard-coded statistic.
     method_rules = {

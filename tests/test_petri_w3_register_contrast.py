@@ -101,6 +101,7 @@ def synthetic_plan(seeds_path: Path, **over: Any) -> dict:
     plan["decomposition_set"] = "wave3"
     plan["mechanisms"] = deepcopy(MECHANISMS)
     plan["targets"] = deepcopy(TARGETS)
+    plan["general_headline_gate"]["scenarios"] = len(SEEDS_IDS)
     plan["general_headline_gate"]["test"] = (
         "exact two-sided sign-flip permutation test over all 16 sign assignments of the four scenario means; "
         "p is the share whose absolute sum is at least the observed one")
@@ -1733,6 +1734,7 @@ def test_gate_adjusted_sensitivity_rules_follow_passing_counts(tmp_path: Path, c
     doc["effect_size"]["reported"][2] = (
         f"a 95% interval for the mean across scenarios: the mean of the {count} scenario means plus or minus "
         f"t(0.975, {count - 1}) times their standard error (t = {w2.student_t_quantile(0.975, count - 1):.3f})")
+    doc["general_headline_gate"]["scenarios"] = count
     doc["general_headline_gate"]["test"] = (
         f"exact two-sided sign-flip permutation test over all {2 ** count} sign assignments of the {count} "
         "scenario means; p is the share whose absolute sum is at least the observed one")
@@ -2564,3 +2566,61 @@ def test_plan_formatting_after_fire_preserves_registered_rules(
     prep = prepared(c)
     args = w3.build_parser().parse_args(cli_args(c, "--final", "--out", str(tmp_path / "final.json")))
     assert w3.final_problems(args, prep)[0] == []
+
+
+@pytest.mark.parametrize("path", [
+    "comparison_targets.between_targets", "secondary_exchanges_6_10.prespecified",
+    "exploratory_outcomes." + next(n for n in FAMILY if MEASURES[n].flag),
+    "contrast_definition", "comparable_exchange", "ties",
+])
+@pytest.mark.parametrize("missing", [False, True])
+def test_fixed_plan_rule_refuses_unsupported_or_missing_value(tmp_path: Path, path: str, missing: bool) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    parts = path.split(".")
+    parent = doc
+    for part in parts[:-1]:
+        parent = parent[part]
+    if missing:
+        del parent[parts[-1]]
+    else:
+        parent[parts[-1]] = False if path.endswith(".prespecified") else "unsupported alternative rule"
+    plan = tmp_path / "plan.json"
+    plan.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match=re.escape(path)):
+        w3.load_plan(plan)
+
+
+@pytest.mark.parametrize("value", [1, 0, "true", None, []])
+def test_late_window_prespecified_requires_boolean_true(tmp_path: Path, value: Any) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    doc["secondary_exchanges_6_10"]["prespecified"] = value
+    plan = tmp_path / "plan.json"
+    plan.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="secondary_exchanges_6_10.prespecified"):
+        w3.load_plan(plan)
+
+
+@pytest.mark.parametrize("value", [8, 0, 4.0, True, "4", None])
+def test_headline_scenario_count_refuses_stale_or_invalid_value(tmp_path: Path, value: Any) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    doc["general_headline_gate"]["scenarios"] = value
+    plan = tmp_path / "plan.json"
+    plan.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="general_headline_gate.scenarios"):
+        w3.load_plan(plan)
+
+
+def test_headline_scenario_count_is_required(tmp_path: Path) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    del doc["general_headline_gate"]["scenarios"]
+    plan = tmp_path / "plan.json"
+    plan.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="general_headline_gate.scenarios"):
+        w3.load_plan(plan)
+
+
+def test_fixed_plan_rules_accept_registered_values(tmp_path: Path) -> None:
+    assert len(w3.load_plan(ROOT / "data/petri/w3_register_contrast_plan.json").scenarios) == 8
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(synthetic_plan(tmp_path / "seeds.json")))
+    assert len(w3.load_plan(path).scenarios) == len(SEEDS_IDS)

@@ -21,5 +21,13 @@
   "late_targets": "the anchor, then each comparison target",
   "regrade_reported": "agreement per (kind, key): exact agreement, within-one for the ordinal tier only, the directional lean, and whether each registered test's direction holds under the re-grade",
   "per_target_rule": "descriptive only: the counts of triples with D(colloquial, clinical) < 0, > 0 and = 0 on the {seeds} referral {seed_unit}, and no test. A target has {triples} triples there ({seeds} {seed_unit}, {epochs} {epoch_unit}); the smallest exact two-sided sign-test p at n = {triples} is 2/{denominator} = {minimum:.5f}, which could never pass Holm's first threshold (0.0125) in a family of four, so a per-target test would report 'not significant' whatever the data showed",
-  "per_target_empty_rule": "descriptive only: the counts of triples with D(colloquial, clinical) < 0, > 0 and = 0 on the {seeds} referral {seed_unit}, and no test. With no triples this outcome is not computable"
+  "per_target_empty_rule": "descriptive only: the counts of triples with D(colloquial, clinical) < 0, > 0 and = 0 on the {seeds} referral {seed_unit}, and no test. With no triples this outcome is not computable",
+  "fixed_plan_fields": {
+    "comparison_targets.between_targets": "descriptive only: the proportion of negative triples and the scenario means per target are tabulated side by side; no test of a difference between targets is pre-specified",
+    "secondary_exchanges_6_10.prespecified": true,
+    "exploratory_outcomes.clarifying_question_flag": "read from the response-only tier rows (kind tier, key response_only), the instrument the outcome reads",
+    "contrast_definition": "D(A, B) for one triple is the mean, over the window's comparable exchanges, of rank(A) minus rank(B); negative means wording A got the less urgent advice. A two-tier drop counts twice a one-tier drop. The count of exchanges where A ranked lower, and higher, is reported beside D.",
+    "comparable_exchange": "both conversations (all three for the decomposition) have a row with a non-null value under rubric_digest, neither row is not applicable, and neither side has two rows under that digest at the exchange; a value read from the answer's first line (value_source leading_line or leading_line_at_analysis) counts",
+    "ties": "a triple with D = 0 is dropped from a sign test and counted by name"
+  }
 }
