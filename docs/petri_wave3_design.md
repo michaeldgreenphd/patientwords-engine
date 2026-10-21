@@ -522,6 +522,16 @@ passing scenario set. Unsupported method changes require a separately reviewed
 implementation rather than silently selecting a different test. None of these checks
 changes the registered plan, statistical definitions or wave-2 implementation.
 
+The decomposition's `set` must equal `decomposition_set`; its registered scope
+must describe the anchor's planned triple count and its secondary scope every
+registered target's pooled triples. The counts in both descriptions must follow
+the dated amendment. Missing, malformed or unsupported scopes refuse rather than
+silently retaining the hard-coded selection. A significant positive primary result
+selects row 3 with either gate direction, as its explicit plan rule requires;
+`rule_of` is row 1 only for a significant gate in the same direction, otherwise
+row 2. A malformed judge-of-record deduplication/rebuilding field produces a named
+row refusal in both coverage and final modes, before any output is written.
+
 
 For post-final disclosure, the original input inventory stays protected. A
 verified append to a shared source chain may add its new manifests and artifacts;

@@ -108,6 +108,11 @@ def synthetic_plan(seeds_path: Path, **over: Any) -> dict:
     plan["epochs_per_target"] = EPOCHS
     plan["triples_per_epoch_per_target"] = len(SEEDS_IDS)
     plan["final_triples_per_target"] = len(SEEDS_IDS) * EPOCHS
+    plan["decomposition"]["registered"] = (
+        "the anchor's 8 triples: three exact two-sided sign tests, Holm-corrected together, family-wise alpha 0.05")
+    plan["decomposition"]["prespecified_secondary"] = (
+        "every registered target's triples pooled (24 with three targets): the same three tests, "
+        "Holm-corrected together, labelled across targets")
     plan["fires"] = [{"journal_nonce": n, "target": t, "campaign_epoch": e, "recorded_on": "2026-10-01"} for n, (t, e) in FIRES.items()]
     plan["exploratory_outcomes"]["restricted_to_seeds"] = {REFERRAL: list(REFERRAL_SEEDS)}
     for s in plan["sensitivity"]:     # the plan's mechanism window, renamed for the synthetic mechanism
@@ -670,6 +675,7 @@ def _g(sig: bool, direction: str, scenarios: int = 8) -> dict:
     (_t(True, "negative"), _g(False, "negative"), "row2", None),
     (_t(True, "positive"), _g(True, "positive"), "row3", "row1"),
     (_t(True, "positive"), _g(False, "none"), "row3", "row2"),
+    (_t(True, "positive"), _g(True, "negative"), "row3", "row2"),
     (_t(False, "negative"), _g(True, "negative"), "row4", None),
     (_t(True, "negative"), _g(True, "positive"), "no_prespecified_row", None),
     (_t(False, "none", non_tied=0), _g(False, "none"), "not_computable", None),
@@ -1665,6 +1671,12 @@ def test_gate_adjusted_sensitivity_rules_follow_passing_counts(tmp_path: Path, c
     doc["mechanisms"] = {m: [s for s in ids if s in kept] for m, ids in doc["mechanisms"].items()}
     doc["triples_per_epoch_per_target"] = count
     doc["final_triples_per_target"] = count * doc["epochs_per_target"]
+    doc["decomposition"]["registered"] = (
+        f"the anchor's {count * 3} triples: three exact two-sided sign tests, "
+        "Holm-corrected together, family-wise alpha 0.05")
+    doc["decomposition"]["prespecified_secondary"] = (
+        f"every registered target's triples pooled ({count * 9} with three targets): the same three tests, "
+        "Holm-corrected together, labelled across targets")
     doc["effect_size"]["reported"][2] = (
         f"a 95% interval for the mean across scenarios: the mean of the {count} scenario means plus or minus "
         f"t(0.975, {count - 1}) times their standard error (t = {w2.student_t_quantile(0.975, count - 1):.3f})")
@@ -2122,3 +2134,39 @@ def test_final_binds_gate_report_decisions(
     out = tmp_path / "final.json"
     assert w3.main(cli_args(c, "--final", "--out", str(out))) == 2
     assert "gate_report" in capsys.readouterr().err and not out.exists()
+
+
+@pytest.mark.parametrize("field", ["set", "registered", "prespecified_secondary"])
+@pytest.mark.parametrize("change", ["missing", "scope", "type"])
+def test_decomposition_scope_must_match_implemented_selection(tmp_path: Path, field: str, change: str) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    scope = doc["decomposition"]
+    if change == "missing":
+        del scope[field]
+    elif change == "type":
+        scope[field] = []
+    else:
+        scope[field] = {"set": "other", "registered": "all targets",
+                        "prespecified_secondary": "the anchor alone"}[field]
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match=rf"decomposition\.{field}"):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("final", [False, True])
+def test_malformed_own_judge_dedup_field_refuses_without_traceback(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], final: bool) -> None:
+    c = write_campaign(tmp_path)
+    run = c["runs"]["a1"]
+    rows = judge_runner.read_jsonl(run / "judgments.jsonl")
+    rows[0]["prompt_file_digest"] = []
+    (run / "judgments.jsonl").write_text("".join(json.dumps(row) + "\n" for row in rows))
+    reseal_synthetic_chain(c["runs_dir"])
+    assert w3.verify_run(run) == []
+    final_ready(monkeypatch, c)
+    out = tmp_path / "result.json"
+    assert w3.main(cli_args(c, *(["--final"] if final else []), "--out", str(out))) == 2
+    err = capsys.readouterr().err
+    assert "judge_runner.analysis_rows refused the rows" in err and "Traceback" not in err
+    assert not out.exists()

@@ -450,7 +450,8 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
                 "triples_per_epoch_per_target", "final_triples_per_target", "fires", "outcome.kind", "outcome.key",
                 "outcome.final_in_exchange", "outcome.tier_rank", "rubric_digest", "prompt_digests", "windows",
                 "alpha", "primary.contrast", "primary.window", "primary.target", "general_headline_gate.target", "decomposition.contrasts.style",
-                "decomposition.contrasts.vocabulary", "secondary_exchanges_6_10.window", "sensitivity",
+                "decomposition.contrasts.vocabulary", "decomposition.set", "decomposition.registered",
+                "decomposition.prespecified_secondary", "secondary_exchanges_6_10.window", "sensitivity",
                 "exploratory_outcomes.family", "exploratory_outcomes.restricted_to_seeds",
                 "exploratory_outcomes.coverage_only", "effect_size.bootstrap_seed",
                 "effect_size.bootstrap_resamples", "judge.judge_model", "judge.routes", "statements.primary",
@@ -565,6 +566,8 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
         if _get(doc, selector) != "anchor":
             problems.append(f"{selector} must remain anchor, the target this script computes")
     late_window = window_ref("secondary_exchanges_6_10.window")
+    if _get(doc, "decomposition.set") != decomposition_set:
+        problems.append("decomposition.set must match decomposition_set, the scenario set this script computes")
     for key, expected in (("primary.contrast", [COLLOQUIAL, CLINICAL]),
                           ("decomposition.contrasts.style", [COLLOQUIAL, CAREFUL_LAY]),
                           ("decomposition.contrasts.vocabulary", [CAREFUL_LAY, CLINICAL])):
@@ -597,6 +600,14 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
         "exploratory_outcomes.correction": "Holm, one family of three per target",
     }
     method_rules["decomposition.contrasts.paired_difference"] = "the sign of D(style) - D(vocabulary) per triple"
+    if _count(doc["final_triples_per_target"]):
+        per_target = doc["final_triples_per_target"]
+        method_rules["decomposition.registered"] = (
+            f"the anchor's {per_target} triples: three exact two-sided sign tests, "
+            "Holm-corrected together, family-wise alpha 0.05")
+        method_rules["decomposition.prespecified_secondary"] = (
+            f"every registered target's triples pooled ({per_target * len(targets)} with {len(targets)} targets): "
+            "the same three tests, Holm-corrected together, labelled across targets")
     method_rules["effect_size.rule"] = "cite the direction, not the magnitude (AGENTS.md, Known measurement limitations)"
     if len(every) >= 2:
         interval = (f"a 95% interval for the mean across scenarios: the mean of the {len(every)} scenario means "
@@ -828,7 +839,7 @@ def rebuild_rows(judgments_path: Path, manifest: dict, seeds: Mapping[str, dict]
     try:
         collapsed, superseded = w2.collapse_retries(judgments)
         rows = judge_runner.analysis_rows(collapsed, manifest, dict(seeds))
-    except (ValueError, KeyError) as exc:
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
         raise AnalysisRefusal(f"{where}: judge_runner.analysis_rows refused the rows: {exc}") from exc
     return rows, {"judgment_rows": len(judgments), "superseded_by_retry": superseded, "rows_rebuilt": len(rows)}
 
@@ -1600,7 +1611,7 @@ def statement_row(primary: Mapping[str, Any], gate: Mapping[str, Any], means: Ma
 
     - no non-tied triple: "not_computable" (row 4 presumes a test that ran);
     - primary p >= alpha: row4;
-    - primary significant and the gate significant in the opposite direction: "no_prespecified_row";
+    - primary significant and negative, with a significant positive gate: "no_prespecified_row";
     - primary significant with D mostly negative: row1 when the gate is significant in the same direction, else row2;
     - primary significant with D mostly positive: row3, which follows the rule of row1 or row2 (`rule_of`) and has no
       sentence in the plan, so none is rendered.
@@ -1616,6 +1627,8 @@ def statement_row(primary: Mapping[str, Any], gate: Mapping[str, Any], means: Ma
         not_selectable.append("no non-tied triple entered the primary contrast, so no sign test ran")
     elif not primary["significant"]:
         row = "row4"
+    elif direction == "positive":
+        row, rule_of = "row3", "row1" if gate_same else "row2"
     elif gate_opposite:
         row = "no_prespecified_row"
         not_selectable.append(f"the scenario gate is significant in the {gate['direction']} direction, opposite to "
