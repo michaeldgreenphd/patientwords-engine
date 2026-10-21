@@ -102,10 +102,13 @@ def synthetic_plan(seeds_path: Path, **over: Any) -> dict:
     plan["general_headline_gate"]["test"] = (
         "exact two-sided sign-flip permutation test over all 16 sign assignments of the four scenario means; "
         "p is the share whose absolute sum is at least the observed one")
+    plan["effect_size"]["reported"][2] = (
+        "a 95% interval for the mean across scenarios: the mean of the four scenario means plus or minus "
+        "t(0.975, 3) times their standard error (t = 3.182)")
     plan["epochs_per_target"] = EPOCHS
     plan["triples_per_epoch_per_target"] = len(SEEDS_IDS)
     plan["final_triples_per_target"] = len(SEEDS_IDS) * EPOCHS
-    plan["fires"] = [{"journal_nonce": n, "target": t, "campaign_epoch": e} for n, (t, e) in FIRES.items()]
+    plan["fires"] = [{"journal_nonce": n, "target": t, "campaign_epoch": e, "recorded_on": "2026-10-01"} for n, (t, e) in FIRES.items()]
     plan["exploratory_outcomes"]["restricted_to_seeds"] = {REFERRAL: list(REFERRAL_SEEDS)}
     for s in plan["sensitivity"]:     # the plan's mechanism window, renamed for the synthetic mechanism
         if s.get("rule") and s["name"] not in w3.SENSITIVITY_RULES:
@@ -131,6 +134,9 @@ def synthetic_plan(seeds_path: Path, **over: Any) -> dict:
         "summaries": [{"round": 1, "summary": str(summary), "summary_sha256": sha256_file(summary)}],
         "passing": [{"seed_id": sid, "round": 1, "short_rounds": []} for sid in SEEDS_IDS], "failing": []}
     plan.update(over)
+    if "fires" in over:
+        for fire in plan["fires"]:
+            fire.setdefault("recorded_on", "2026-10-01")
     return plan
 
 
@@ -329,7 +335,7 @@ def write_regrade(c: dict[str, Any], nonce: str, spec: str, regrade_nonce: str, 
 
 def add_regrade_fire(c: dict[str, Any], regrade_nonce: str, stems: list[str], **extra: Any) -> None:
     plan = load_json(c["plan"])
-    plan["fires"].append({"journal_nonce": regrade_nonce, "source_runs": stems, **extra})
+    plan["fires"].append({"journal_nonce": regrade_nonce, "source_runs": stems, "recorded_on": "2026-10-01", **extra})
     c["plan"].write_text(json.dumps(plan), encoding="utf-8")
 
 
@@ -363,7 +369,8 @@ def final_ready(monkeypatch: pytest.MonkeyPatch, c: dict[str, Any], journal: tup
     journal_path = root / "journal.jsonl"
     supplied = {entry.get("nonce") for entry in journal}
     journal = tuple({"trigger": "petri-audit", "nonce": nonce, "fired_utc": "2026-10-02T00:00:00Z",
-                     "resolved": True, "evicted": False} for nonce in c["runs"] if nonce not in supplied) + journal
+                     "resolved": True, "evicted": False} for nonce in [*c["runs"], *[f["journal_nonce"] for f in load_json(c["plan"])["fires"]
+                                              if "source_runs" in f]] if nonce not in supplied) + journal
     journal_path.write_text("".join(json.dumps(e) + "\n" for e in journal), encoding="utf-8")
     # Project the repository's code and fixed validation inputs into this synthetic git repository. The tested
     # files and all campaign artifacts use real git status, while an in-progress edit to the test subject itself
@@ -1225,7 +1232,7 @@ def test_truncation_validates_the_live_replacement_before_voided_history(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, live_state: str) -> None:
     c = write_campaign(tmp_path, fires=tuple(n for n in FIRES if n != "c2"))
     plan = load_json(c["plan"])
-    plan["fires"].append({"journal_nonce": "superseded", "target": "tgt-c", "campaign_epoch": 2,
+    plan["fires"].append({"journal_nonce": "superseded", "target": "tgt-c", "campaign_epoch": 2, "recorded_on": "2026-10-01",
                           "voided": "evicted before completion"})
     if live_state == "no_live_fire":
         plan["fires"] = [f for f in plan["fires"] if f["journal_nonce"] != "c2"]
@@ -1645,6 +1652,9 @@ def test_gate_adjusted_sensitivity_rules_follow_passing_counts(tmp_path: Path, c
     doc["mechanisms"] = {m: [s for s in ids if s in kept] for m, ids in doc["mechanisms"].items()}
     doc["triples_per_epoch_per_target"] = count
     doc["final_triples_per_target"] = count * doc["epochs_per_target"]
+    doc["effect_size"]["reported"][2] = (
+        f"a 95% interval for the mean across scenarios: the mean of the {count} scenario means plus or minus "
+        f"t(0.975, {count - 1}) times their standard error (t = {w2.student_t_quantile(0.975, count - 1):.3f})")
     doc["general_headline_gate"]["test"] = (
         f"exact two-sided sign-flip permutation test over all {2 ** count} sign assignments of the {count} "
         "scenario means; p is the share whose absolute sum is at least the observed one")
@@ -1897,3 +1907,154 @@ def test_explicit_second_root_cannot_hide_a_landed_plan_fire(
     assert w3.main([*runs, *cli_args(c, "--final", "--out", str(out),
                                     "--declare-truncated", "synthetic missing epoch")]) == 2
     assert "not among the runs given" in capsys.readouterr().err and not out.exists()
+
+
+# Final-head review: rule parity, independently reconstructed re-grades and dated fire evidence.
+@pytest.mark.parametrize("case", ["empty", "removed", "substituted"])
+def test_registered_family_cannot_be_shortened_or_substituted(tmp_path: Path, case: str) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    family = doc["exploratory_outcomes"]["family"]
+    if case == "empty":
+        family.clear()
+    elif case == "removed":
+        family.pop()
+    else:
+        family[0] = REFERRAL
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="exploratory_outcomes.family"):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("case", ["missing", "reversed"])
+def test_registered_paired_difference_rule_is_enforced(tmp_path: Path, case: str) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    contrasts = doc["decomposition"]["contrasts"]
+    if case == "missing":
+        del contrasts["paired_difference"]
+    else:
+        contrasts["paired_difference"] = "the sign of D(vocabulary) - D(style) per triple"
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="paired_difference"):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("case", ["missing", "level", "rule", "malformed"])
+def test_registered_effect_size_methods_are_enforced(tmp_path: Path, case: str) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    effect = doc["effect_size"]
+    if case == "missing":
+        del effect["reported"]
+    elif case == "level":
+        effect["reported"][2] = effect["reported"][2].replace("95%", "90%")
+    elif case == "malformed":
+        effect["reported"] = 42
+    else:
+        effect["rule"] = "cite the magnitude"
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="effect_size"):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("value", [None, "", "2026-02-30"])
+@pytest.mark.parametrize("regrade", [False, True])
+def test_every_fire_requires_a_valid_amendment_date(tmp_path: Path, value: str | None, regrade: bool) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    fire = doc["fires"][0]
+    if regrade:
+        fire = {"journal_nonce": "regrade-one", "source_runs": [STEMS["a1"]]}
+        doc["fires"].append(fire)
+    fire["recorded_on"] = value
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="recorded_on"):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("case", ["same_day", "after", "regrade"])
+def test_final_refuses_retroactively_registered_fire(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], case: str) -> None:
+    c = write_campaign(tmp_path)
+    doc = load_json(c["plan"])
+    if case == "regrade":
+        doc["fires"].append({"journal_nonce": "prior-regrade", "source_runs": ["run_999_1"],
+                              "recorded_on": "2026-10-03", "voided": "synthetic defect"})
+    else:
+        doc["fires"][0]["recorded_on"] = "2026-10-02" if case == "same_day" else "2026-10-03"
+    c["plan"].write_text(json.dumps(doc))
+    final_ready(monkeypatch, c)
+    out = tmp_path / "final.json"
+    assert w3.main(cli_args(c, "--final", "--out", str(out))) == 2
+    assert "recorded_on" in capsys.readouterr().err and not out.exists()
+
+
+@pytest.mark.parametrize("value", ["", " ", "\t\n"])
+def test_truncation_needs_nonblank_reason_before_loading_inputs(value: str) -> None:
+    args = w3.build_parser().parse_args(["--declare-truncated", value])
+    assert any("nonblank" in reason for reason in w3.invocation_problems(args))
+
+
+def test_completeness_uses_each_runs_resolved_registry(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # The supplied historical registry contains a requested dimension absent from the loaded version.
+    current = deepcopy(REGISTRY)
+    current["dimensions"] = [d for d in current["dimensions"] if d["id"] != COVERAGE_ONLY[0]]
+    changed = tmp_path / "current.json"
+    changed.write_text(json.dumps(current))
+    c = write_campaign(tmp_path)
+    monkeypatch.setattr(w3, "OUTCOME_REGISTRY", changed)
+    prep = prepared(c, registry_path=changed, registry_versions=[OUTCOME_REGISTRY], repo_root=tmp_path / "no-history")
+    assert all(r.registered for r in prep.runs)
+    assert all(r.registry is not None and r.registry.sha256 == sha256_file(OUTCOME_REGISTRY) for r in prep.runs)
+
+
+def reseal_synthetic_regrade(out: Path, *, rows: list[dict] | None = None) -> None:
+    doc = load_json(out / rejudge.MANIFEST_NAME)
+    if rows is not None:
+        doc["counts"].update(planned=len(rows), **judge_runner.cumulative_counts(rows))
+        doc["counts"]["null_share"] = rejudge.null_share(doc["counts"]["judged"], doc["counts"]["null"])
+        doc["instrument"]["planned"] = len(rows)
+        doc["artifacts"]["judgments"]["rows"] = len(rows)
+        doc["artifacts"]["analysis_rows"]["rows"] = len(rows)
+        (out / rejudge.JUDGMENTS_NAME).write_text("".join(json.dumps(row) + "\n" for row in rows))
+        analysis = judge_runner.read_jsonl(out / rejudge.ANALYSIS_NAME)[-len(rows):]
+        (out / rejudge.ANALYSIS_NAME).write_text("".join(json.dumps(row) + "\n" for row in analysis))
+    report = out / doc["artifacts"]["judge_report"]["path"]
+    sidecar = load_json(report)
+    sidecar["judgments_sha256"] = sha256_file(out / rejudge.JUDGMENTS_NAME)
+    report.write_text(json.dumps(sidecar))
+    for artifact in doc["artifacts"].values():
+        artifact["sha256"] = sha256_file(out / artifact["path"])
+    doc["manifest_sha256"] = rejudge.manifest_digest(doc)
+    (out / rejudge.MANIFEST_NAME).write_text(json.dumps(doc))
+
+
+@pytest.mark.parametrize("replacement", [False, True])
+def test_regrade_understated_plan_cannot_hide_missing_slots(tmp_path: Path, replacement: bool) -> None:
+    c = write_campaign(tmp_path, judge_of=lambda nonce: OTHER_ROUTE if replacement and nonce == "a1" else JUDGE)
+    spec = JUDGE if replacement else SECOND
+    out = write_regrade(c, "a1", spec, "regrade-one")
+    if replacement:
+        add_regrade_fire(c, "regrade-one", [STEMS["a1"]])
+    rows = judge_runner.read_jsonl(out / rejudge.JUDGMENTS_NAME)[1:]
+    reseal_synthetic_regrade(out, rows=rows)
+    assert rejudge.verify_output(out, c["runs_dir"]) == []
+    prep = prepared(c, **({} if replacement else {"secondary_judge": SECOND}))
+    run = next(r for r in prep.runs if r.stem == STEMS["a1"])
+    if replacement:
+        assert not run.registered and "judgment plan" in run.unregistered_reason
+    else:
+        assert not prep.secondary_complete
+        assert "judgment plan" in str(w3.secondary_runs([run], SECOND, c["rejudge"], SEEDS)[0].provenance)
+
+
+@pytest.mark.parametrize("content", ["{malformed\n", "[]\n", "{}\n"])
+def test_malformed_regrade_rows_have_named_refusal(tmp_path: Path, content: str) -> None:
+    c = write_campaign(tmp_path)
+    out = write_regrade(c, "a1", SECOND, "regrade-one")
+    (out / rejudge.JUDGMENTS_NAME).write_text(content)
+    reseal_synthetic_regrade(out)
+    with pytest.raises(w3.AnalysisRefusal, match="re-grade.*(verified|verify)"):
+        prepared(c, secondary_judge=SECOND)

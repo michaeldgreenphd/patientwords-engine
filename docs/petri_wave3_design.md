@@ -499,6 +499,30 @@ per-row prompt-version exclusions remain separate; no missing judgment silently
 becomes an admissible partial pass. Explicit run lists are checked for omitted
 landed fires in every selected archive root, as well as `--runs-dir`.
 
+The same reconstruction applies to replacement and secondary re-grades, using the
+source run's resolved outcome-registry bytes (including an explicitly supplied
+historical version), not today's registry. A missing registry prevents completeness
+from being established. Malformed re-grade JSON or rows produce a named refusal.
+No model call is made by the reconstruction.
+
+Each run or registered re-grade fire must include `recorded_on: YYYY-MM-DD` in its
+plan entry, including voided fires. Final analysis requires a usable journal
+`fired_utc` for every such entry and requires the amendment date to precede its UTC
+calendar date. A date alone cannot prove which action came first on the same day;
+same-day evidence needs a separately reviewed timestamp contract. An administrative
+truncation also requires a nonblank reason before any inputs are read. The existing
+empty draft fire list is unchanged; future dated owner amendments supply these fields.
+
+The loader additionally binds the three-member exploratory Holm family, the
+`D(style) - D(vocabulary)` decomposition rule, and all four `effect_size.reported`
+methods plus the direction-only interpretation rule to the implementation. Number
+words and decimal counts are equivalent in method text; the scenario interval's
+scenario count, degrees of freedom and three-decimal t multiplier must follow the
+passing scenario set. Unsupported method changes require a separately reviewed
+implementation rather than silently selecting a different test. None of these checks
+changes the registered plan, statistical definitions or wave-2 implementation.
+
+
 For post-final disclosure, the original input inventory stays protected. A
 verified append to a shared source chain may add its new manifests and artifacts;
 other added inputs, changed original inputs and altered chain prefixes refuse.

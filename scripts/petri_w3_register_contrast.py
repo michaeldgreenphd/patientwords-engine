@@ -249,6 +249,7 @@ class RunFire:
     target: str
     campaign_epoch: int
     voided: str | None
+    recorded_on: str
 
 
 @dataclass(frozen=True)
@@ -258,6 +259,7 @@ class RegradeFire:
     target: str | None              # optional on a re-grade entry; when given, checked against the runs it re-grades
     campaign_epoch: int | None      # likewise
     voided: str | None
+    recorded_on: str
 
 
 @dataclass(frozen=True)
@@ -379,6 +381,14 @@ def _fires(raw: Any, targets: Mapping[str, Target], epochs: int,
         if not isinstance(nonce, str) or not nonce or nonce in run_fires or nonce in regrades:
             problems.append(f"fire entry {i}: journal_nonce {nonce!r} missing, not a string, or repeated")
             continue
+        recorded_on = f.get("recorded_on")
+        try:
+            if not isinstance(recorded_on, str) or re.fullmatch(r"\d{4}-\d{2}-\d{2}", recorded_on) is None:
+                raise ValueError("expected YYYY-MM-DD")
+            date.fromisoformat(recorded_on)
+        except ValueError:
+            problems.append(f"fire {nonce}: recorded_on must be the dated amendment's valid YYYY-MM-DD date")
+            continue
         voided = f.get("voided")
         if voided is not None and not (isinstance(voided, str) and voided.strip()):
             problems.append(f"fire {nonce}: voided must be the reason the fire was voided, as text")
@@ -404,9 +414,9 @@ def _fires(raw: Any, targets: Mapping[str, Target], epochs: int,
                 problems.append(f"fire {nonce}: source_runs must be a non-empty list of distinct run stems "
                                 f"(run_<id>_<attempt>)")
                 continue
-            regrades[nonce] = RegradeFire(nonce, tuple(stems), target, epoch, voided)
+            regrades[nonce] = RegradeFire(nonce, tuple(stems), target, epoch, voided, recorded_on)
             continue
-        run_fires[nonce] = RunFire(nonce, target, epoch, voided)
+        run_fires[nonce] = RunFire(nonce, target, epoch, voided, recorded_on)
     live = Counter((f.target, f.campaign_epoch) for f in run_fires.values() if f.voided is None)
     for (target, epoch), n in sorted(live.items()):
         if n > 1:
@@ -586,6 +596,25 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
                                      "exchanges_1_10, per target",
         "exploratory_outcomes.correction": "Holm, one family of three per target",
     }
+    method_rules["decomposition.contrasts.paired_difference"] = "the sign of D(style) - D(vocabulary) per triple"
+    method_rules["effect_size.rule"] = "cite the direction, not the magnitude (AGENTS.md, Known measurement limitations)"
+    if len(every) >= 2:
+        interval = (f"a 95% interval for the mean across scenarios: the mean of the {len(every)} scenario means "
+                    f"plus or minus t(0.975, {len(every) - 1}) times their standard error "
+                    f"(t = {w2.student_t_quantile(0.975, len(every) - 1):.3f})")
+        reported = ["the proportion of triples with D < 0", "the median and mean of D", interval,
+                    "a percentile bootstrap over triples, labelled unclustered and within these scenarios only"]
+        actual_reported = doc["effect_size"].get("reported")
+        # Validate each list member with the same number-word equivalence as method prose.
+        if not isinstance(actual_reported, list) or len(actual_reported) != len(reported):
+            problems.append("effect_size.reported must list the four implemented methods")
+        else:
+            for i, expected in enumerate(reported):
+                method_rules[f"effect_size.reported_{i}"] = expected
+        doc = {**doc, "effect_size": {**doc["effect_size"],
+               **{f"reported_{i}": value for i, value in enumerate(actual_reported if isinstance(actual_reported, list) else [])}}}
+    else:
+        problems.append("effect_size.reported needs at least two planned scenarios for its registered interval")
     for rule_path, expected in method_rules.items():
         try:
             actual = _get(doc, rule_path)
@@ -638,8 +667,9 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
     exploratory = doc["exploratory_outcomes"]
     secondary_names = {m.name for m in w2.SECONDARY_MEASURES}
     family = exploratory["family"]
-    if not _seed_list(family) or len(set(family)) != len(family) or not set(family) <= secondary_names:
-        problems.append(f"exploratory_outcomes.family must list distinct outcomes among {sorted(secondary_names)}")
+    if not _seed_list(family) or family != [m.name for m in w2.SECONDARY_MEASURES[1:]]:
+        problems.append("exploratory_outcomes.family must retain the registered three outcomes in order, "
+                        "with the restricted outcome separate")
         family = []
     restricted_raw = exploratory["restricted_to_seeds"]
     restricted: dict[str, tuple[str, ...]] = {}
@@ -827,20 +857,24 @@ def incomplete_pass(record: Any, what: str) -> str | None:
     return None
 
 
-def judgment_plan_problem(path: Path, record: Mapping[str, Any], seeds: Mapping[str, dict]) -> str | None:
+def judgment_plan_problem(path: Path, record: Mapping[str, Any], seeds: Mapping[str, dict],
+                          registry: w2.RegistryVersion | None, *, judgments_path: Path | None = None,
+                          planned_count: int | None = None) -> str | None:
     """Rebuild expected judgment slots independently of the pass's self-reported counts.
 
     Slot parity covers conversation/turn/kind/key. Prompt-version admissibility remains the existing per-row
     instrument gate: a mismatched digest is explicitly excluded there, never used as evidence of a missing slot.
     No judgment call is made; the planner only renders the committed instrument against committed transcripts.
     """
+    if registry is None:
+        return "judgment plan cannot be rebuilt: the run's recorded outcome registry is unresolved"
     try:
         plans = judge_runner.plan_run(judge_runner.read_jsonl(path / "transcripts.jsonl"), dict(record), dict(seeds),
-                                      outcomes=load_json(OUTCOME_REGISTRY), rubric=judge_runner.load_rubric())
+                                      outcomes=registry.registry, rubric=judge_runner.load_rubric())
         expected = {(p.conversation_id, p.turn_id, p.kind, p.key) for p in plans}
-        rows = judge_runner.read_jsonl(path / "judgments.jsonl")
+        rows = judge_runner.read_jsonl(judgments_path or path / "judgments.jsonl")
         actual = {(r.get("conversation_id"), r.get("turn_id"), r.get("kind"), r.get("key")) for r in rows}
-        declared = record["artifacts"]["judge_of_record"]["planned"]
+        declared = planned_count if planned_count is not None else record["artifacts"]["judge_of_record"]["planned"]
         if len(expected) != len(plans):
             return "rebuilt judgment plan contains duplicate slots"
         if declared != len(expected) or actual != expected:
@@ -871,14 +905,17 @@ def claim_grade_problem(manifest: Mapping[str, Any]) -> str | None:
 
 
 def read_regrade(out_dir: Path, runs_dir: Path, judge_model: str, manifest: dict, seeds: Mapping[str, dict],
-                 ) -> tuple[list[dict], dict[str, Any]] | None:
+                 registry: w2.RegistryVersion | None) -> tuple[list[dict], dict[str, Any]] | None:
     """A re-grade's rows for one source run, or None when the directory holds no re-grade. Refused, by name, unless
     `rejudge.verify_output` passes (the manifest, its artifacts, its rows' judge, and the source run it names still
     verifying as the bytes it read), the manifest's judge is exactly `judge_model`, and it is not a rehearsal."""
     if not (out_dir / rejudge.MANIFEST_NAME).is_file():
         return None
     where = w2._display(out_dir)
-    problems = rejudge.verify_output(out_dir, runs_dir)
+    try:
+        problems = rejudge.verify_output(out_dir, runs_dir)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise AnalysisRefusal(f"the re-grade {where} cannot be verified: {exc}") from exc
     if problems:
         raise AnalysisRefusal(f"the re-grade {where} does not verify: " + "; ".join(problems[:6]))
     rm = load_json(out_dir / rejudge.MANIFEST_NAME)
@@ -892,7 +929,10 @@ def read_regrade(out_dir: Path, runs_dir: Path, judge_model: str, manifest: dict
             "manifest_sha256": sha256_file(out_dir / rejudge.MANIFEST_NAME),
             "judgments_sha256": rm["artifacts"]["judgments"]["sha256"], "truncated": rm["counts"]["truncated"],
             "null_share": rm["counts"]["null_share"],
-            "incomplete": incomplete_pass(rm["counts"], f"the re-grade {where}'s counts"), **counts}
+            "incomplete": (incomplete_pass(rm["counts"], f"the re-grade {where}'s counts")
+                           or judgment_plan_problem(runs_dir / out_dir.name, manifest, seeds, registry,
+                                                    judgments_path=out_dir / rejudge.JUDGMENTS_NAME,
+                                                    planned_count=rm["counts"]["planned"])), **counts}
     return rows, info
 
 
@@ -946,6 +986,17 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: w2.Reg
     if target_model not in target.target_specs:
         raise AnalysisRefusal(f"{where}: fire {nonce} is recorded for target {target.id}, whose specs are "
                               f"{list(target.target_specs)}, but the run's target is {target_model!r}")
+    recorded = (manifest.get("framework") or {}).get("outcome_registry_sha256")
+    registry: w2.RegistryVersion | None = None
+    registry_problem: str | None = None
+    try:
+        registry = resolver.resolve(path.name, recorded)
+        if not isinstance(registry.registry, dict):
+            raise ValueError("registry must be a JSON object")
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise AnalysisRefusal(f"run {path.name}: outcome registry {recorded} could not be read: {exc}") from exc
+    except AnalysisRefusal as exc:
+        registry_problem = str(exc)
     own_judge = (artifacts.get("judge_of_record") or {}).get("judge_model")
     regrade_fire = plan.regrade_fire_of(path.name)
     rows: list[dict] = []
@@ -964,7 +1015,7 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: w2.Reg
                                   f"judged under judge.judge_model {plan.judge_model!r}; which rows are registered is "
                                   f"ambiguous")
         incomplete = (incomplete_pass(artifacts.get("judge_of_record"), "artifacts.judge_of_record")
-                      or judgment_plan_problem(path, manifest, seeds))
+                      or judgment_plan_problem(path, manifest, seeds, registry))
         if incomplete is not None:
             reason = f"its judge of record's pass is incomplete: {incomplete}"
             rows_from = {"source": None}
@@ -978,7 +1029,7 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: w2.Reg
             reason = (f"judged under {own_judge!r}, not judge.judge_model {plan.judge_model!r}, and no re-grade "
                       f"fire in the plan's fires re-grades it (judge.one_route: re-grade it or re-fire)")
         else:
-            got = read_regrade(out_dir, path.parent, plan.judge_model, manifest, seeds)
+            got = read_regrade(out_dir, path.parent, plan.judge_model, manifest, seeds, registry)
             if got is None:
                 reason = (f"judged under {own_judge!r}; re-grade fire {regrade_fire.journal_nonce} is recorded, but "
                           f"{w2._display(out_dir)} holds no re-grade")
@@ -999,17 +1050,6 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: w2.Reg
                 if info["incomplete"] is not None:
                     reason = f"its re-grade under judge.judge_model is incomplete: {info['incomplete']}"
                     rows = []
-    recorded = (manifest.get("framework") or {}).get("outcome_registry_sha256")
-    registry: w2.RegistryVersion | None = None
-    registry_problem: str | None = None
-    try:
-        registry = resolver.resolve(path.name, recorded)
-        if not isinstance(registry.registry, dict):
-            raise ValueError("registry must be a JSON object")
-    except (OSError, ValueError, KeyError, TypeError) as exc:
-        raise AnalysisRefusal(f"run {path.name}: outcome registry {recorded} could not be read: {exc}") from exc
-    except AnalysisRefusal as exc:
-        registry_problem = str(exc)
     provenance = {
         "run_stem": path.name, "path": where, "run_id": manifest.get("run_id"), "journal_nonce": nonce,
         "target": target.id, "campaign_epoch": fire.campaign_epoch, "target_model": target_model,
@@ -1281,7 +1321,7 @@ def secondary_runs(runs: Sequence[RunInput], spec: str, rejudge_root: Path,
         if not run.registered:
             continue
         out_dir = Path(rejudge_root) / rejudge.judge_slug(spec) / run.stem
-        got = read_regrade(out_dir, run.run_dir.parent, spec, run.manifest, seeds)
+        got = read_regrade(out_dir, run.run_dir.parent, spec, run.manifest, seeds, run.registry)
         if got is None:
             out.append(SecondaryRun(run.stem, [], run.registry, run.registry_problem,
                                     {"run_stem": run.stem, "rows_from": None,
@@ -2385,6 +2425,8 @@ def build_parser() -> argparse.ArgumentParser:
 def invocation_problems(args: argparse.Namespace) -> list[str]:
     """What the command line alone rules out, before any input is read."""
     problems = []
+    if args.declare_truncated is not None and not args.declare_truncated.strip():
+        problems.append("--declare-truncated needs a nonblank operational reason")
     if args.out is not None and args.out.exists():
         problems.append(f"--out {args.out} exists; this script never overwrites an artifact")
     if args.primary_final is not None:
@@ -2559,15 +2601,20 @@ def approval_chronology_problems(prep: Prepared, approved: date) -> list[str]:
     except (OSError, ValueError) as exc:
         return problems + [f"approval chronology cannot read trigger journal: {exc}"]
     recorded: set[str] = set()
+    fires = {**prep.plan.fires, **prep.plan.regrade_fires}
     for entry in entries:
         nonce = entry.get("nonce")
-        if entry.get("trigger") != "petri-audit" or not isinstance(nonce, str) or nonce not in prep.plan.fires:
+        if entry.get("trigger") != "petri-audit" or not isinstance(nonce, str) or nonce not in fires:
             continue
         if entry.get("fired_utc") is not None and check(entry["fired_utc"], f"fire {nonce}"):
             recorded.add(nonce)
-    for run in prep.runs:
-        if run.fire.journal_nonce not in recorded:
-            problems.append(f"approval chronology: fire {run.fire.journal_nonce} has no usable fired_utc in the journal")
+            fired = datetime.fromisoformat(entry["fired_utc"].replace("Z", "+00:00")).astimezone(timezone.utc)
+            if date.fromisoformat(fires[nonce].recorded_on) >= fired.date():
+                problems.append(f"fire {nonce}: recorded_on must precede fired_utc's UTC date; a date-only "
+                                "amendment cannot establish order within the same day")
+    for nonce in fires:
+        if nonce not in recorded:
+            problems.append(f"approval chronology: fire {nonce} has no usable fired_utc in the journal")
     return problems
 
 
