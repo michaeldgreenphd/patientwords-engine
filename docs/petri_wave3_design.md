@@ -546,6 +546,18 @@ and summary bytes in the first parent of each nonce's first journal appearance.
 Backdated additions and unavailable history refuse. This reads history only; it
 does not fetch, modify the journal, or fire anything.
 
+The late-window target scope and secondary agreement metrics must retain their
+registered contracts. The restricted outcome's per-target rule must remain
+strictly descriptive, with its seed/epoch/triple counts and minimum-p rationale
+following the passing set. An unsupported rationale refuses rather than being
+silently ignored; no applicable triples require an explicit not-computable rule.
+
+Post-final disclosure also checks every committed version at the primary artifact's
+repository path against its current bytes, including its introduction. A changed
+version, deletion followed by restoration, missing introduction, or shallow history
+refuses. This verifies preserved committed bytes; it does not attest what happened
+before the artifact was first committed, and it does not rerun primary statistics.
+
 Final secondary disclosure requires `--primary-final`; combining `--final` with
 `--secondary-judge` is refused. For each secondary re-grade, the recorded full
 `fire.commit` must be reachable from the current checkout. Its first parent must

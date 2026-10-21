@@ -121,6 +121,10 @@ def synthetic_plan(seeds_path: Path, **over: Any) -> dict:
         REAL_PLAN["exploratory_outcomes"][REFERRAL]["across_targets"]
         .replace("18 with three", "12 with three").replace("at 18", "at 12")
         .replace("14 of one sign (p = 0.031; 13 gives 0.096)", "10 of one sign (p = 0.039; 9 gives 0.146)"))
+    plan["exploratory_outcomes"][REFERRAL]["per_target"] = (
+        REAL_PLAN["exploratory_outcomes"][REFERRAL]["per_target"]
+        .replace("6 triples", "4 triples").replace("three epochs", "two epochs")
+        .replace("n = 6 is 2/64 = 0.03125", "n = 4 is 2/16 = 0.12500"))
     for s in plan["sensitivity"]:     # the plan's mechanism window, renamed for the synthetic mechanism
         if s.get("rule") and s["name"] not in w3.SENSITIVITY_RULES:
             s["name"] = WINDOW_SENSITIVITY
@@ -882,6 +886,9 @@ def test_not_computable_outcomes_are_named(tmp_path):
     c = write_campaign(tmp_path, mechanisms={"mech-one": SEEDS_IDS, WINDOW_MECHANISM: []})
     plan = load_json(c["plan"])
     plan["exploratory_outcomes"]["restricted_to_seeds"] = {REFERRAL: []}
+    plan["exploratory_outcomes"][REFERRAL]["per_target"] = (
+        REAL_PLAN["exploratory_outcomes"][REFERRAL]["per_target"].split(". A target")[0].replace("two", "zero")
+        + ". With no triples this outcome is not computable")
     plan["exploratory_outcomes"][REFERRAL]["across_targets"] = (
         REAL_PLAN["exploratory_outcomes"][REFERRAL]["across_targets"].split("; at ")[0]
         .replace("18 with three", "0 with three") + "; with no triples this outcome is not computable")
@@ -2336,3 +2343,88 @@ def test_secondary_chronology_requires_both_history_and_ordered_timestamps(
 def test_combined_final_cannot_bypass_secondary_order() -> None:
     args = w3.build_parser().parse_args(["--final", "--secondary-judge", SECOND])
     assert any("requires --primary-final" in p for p in w3.invocation_problems(args))
+
+
+@pytest.mark.parametrize("field", ["late_targets", "per_target", "agreement"])
+@pytest.mark.parametrize("change", ["missing", "different"])
+def test_remaining_registered_report_rules_refuse_changes(tmp_path: Path, field: str, change: str) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    parent, key = {"late_targets": (doc["secondary_exchanges_6_10"], "targets"),
+                   "per_target": (doc["exploratory_outcomes"][REFERRAL], "per_target"),
+                   "agreement": (doc["judge"], "regrade_reported")}[field]
+    if change == "missing":
+        del parent[key]
+    else:
+        parent[key] = "another registered scope or statistic"
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match=key):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("change", ["direction", "rewrite_restore", "delete_restore"])
+def test_post_final_refuses_rewritten_primary_history(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], change: str) -> None:
+    c = write_campaign(tmp_path)
+    run_final(monkeypatch, c, tmp_path)
+    primary = tmp_path / "final.json"
+    original = primary.read_bytes()
+    commit_synthetic(tmp_path)
+    if change == "delete_restore":
+        primary.unlink()
+    else:
+        doc = load_json(primary)
+        doc["targets"]["tgt-a"]["primary_sign_test"]["direction"] = "negative"
+        primary.write_text(json.dumps(doc))
+    commit_synthetic(tmp_path)
+    if change != "direction":
+        primary.write_bytes(original)
+        commit_synthetic(tmp_path)
+    for nonce in FIRES:
+        write_regrade(c, nonce, SECOND, "secondary-" + nonce)
+    final_ready(monkeypatch, c)
+    out = tmp_path / "secondary.json"
+    before = primary.read_bytes()
+    assert w3.main(cli_args(c, "--primary-final", str(primary), "--secondary-judge", SECOND,
+                            "--out", str(out))) == 2
+    assert "primary artifact history" in capsys.readouterr().err
+    assert not out.exists() and primary.read_bytes() == before
+
+
+@pytest.mark.parametrize("missing", ["uncommitted", "shallow"])
+def test_primary_history_requires_complete_committed_evidence(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, missing: str) -> None:
+    plumbing(tmp_path, "init", "-q")
+    (tmp_path / "base.txt").write_text("synthetic\n")
+    commit_synthetic(tmp_path)
+    path = tmp_path / "primary.json"
+    path.write_text('{"synthetic": true}\n')
+    monkeypatch.setattr(w3, "REPO_ROOT", tmp_path)
+    if missing == "shallow":
+        commit = commit_synthetic(tmp_path)
+        (tmp_path / ".git" / "shallow").write_text(commit + "\n")
+    with pytest.raises(w3.AnalysisRefusal, match="primary artifact history"):
+        w3.primary_history(path)
+
+
+def test_per_target_description_accepts_one_passing_restricted_seed(tmp_path: Path) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    doc["exploratory_outcomes"]["restricted_to_seeds"][REFERRAL] = [REFERRAL_SEEDS[0]]
+    rule = doc["exploratory_outcomes"][REFERRAL]
+    rule["per_target"] = (rule["per_target"].replace("the two", "the one").replace("seeds", "seed").replace("4 triples", "2 triples")
+                          .replace("two seed", "one seed").replace("n = 4 is 2/16 = 0.12500", "n = 2 is 2/4 = 0.50000"))
+    rule["across_targets"] = (rule["across_targets"].replace("12 with", "6 with").replace("at 12", "at 6")
+                              .replace("10 of one sign (p = 0.039; 9 gives 0.146)",
+                                       "6 of one sign (p = 0.031; 5 gives 0.219)"))
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    assert w3.load_plan(path).restricted[REFERRAL] == (REFERRAL_SEEDS[0],)
+
+
+def test_per_target_rationale_refuses_counts_that_could_pass_its_threshold(tmp_path: Path) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    doc["exploratory_outcomes"]["restricted_to_seeds"][REFERRAL] = SEEDS_IDS
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="per_target rationale"):
+        w3.load_plan(path)

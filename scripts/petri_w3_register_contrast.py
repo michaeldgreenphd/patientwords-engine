@@ -602,6 +602,8 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
                                      "exchanges_1_10, per target",
         "exploratory_outcomes.correction": "Holm, one family of three per target",
     }
+    method_rules["secondary_exchanges_6_10.targets"] = ANALYSIS_CONTRACT["late_targets"]
+    method_rules["judge.regrade_reported"] = ANALYSIS_CONTRACT["regrade_reported"]
     method_rules["general_headline_gate.unit"] = ANALYSIS_CONTRACT["gate_unit"]
     if isinstance(primary_window, str) and primary_window in windows:
         method_rules["decomposition.exchanges"] = ANALYSIS_CONTRACT["decomposition_exchanges"].format(
@@ -707,7 +709,26 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
     restricted_name = w2.SECONDARY_MEASURES[0].name
     if set(restricted) != {restricted_name}:
         problems.append("restricted_to_seeds must retain the registered restricted outcome")
-    n = len(restricted.get(restricted_name, ())) * epochs * len(targets)
+    per_target_n = len(restricted.get(restricted_name, ())) * epochs
+    rule = exploratory.get(restricted_name)
+    actual_rule = rule.get("per_target") if isinstance(rule, dict) else None
+    # At eight non-ties the smallest exact p can pass the stated 0.05 / 4 threshold.
+    if per_target_n > 7:
+        problems.append("restricted per_target rationale requires an unsupported significance description")
+    else:
+        expected_rule = ANALYSIS_CONTRACT["per_target_rule" if per_target_n else "per_target_empty_rule"].format(
+            seeds=len(restricted.get(restricted_name, ())), epochs=epochs, triples=per_target_n,
+            denominator=2 ** per_target_n, minimum=2 / 2 ** per_target_n,
+            seed_unit="seed" if len(restricted.get(restricted_name, ())) == 1 else "seeds",
+            epoch_unit="epoch" if epochs == 1 else "epochs")
+        if isinstance(actual_rule, str):
+            for number, word in enumerate(("zero", "one", "two", "three", "four", "five", "six", "seven",
+                                            "eight", "nine", "ten")):
+                actual_rule = re.sub(r"\b" + word + r"\b", str(number), actual_rule)
+                expected_rule = re.sub(r"\b" + word + r"\b", str(number), expected_rule)
+        if actual_rule != expected_rule:
+            problems.append(f"exploratory_outcomes.{restricted_name}.per_target must match the implemented descriptive rule")
+    n = per_target_n * len(targets)
     expected = ANALYSIS_CONTRACT["pooled_rule"].format(triples=n, targets=len(targets))
     if n:
         majority = w2.majority_needed(n, 0.05)
@@ -2434,6 +2455,7 @@ def bound_primary(args: argparse.Namespace, prep: Prepared, header: Mapping[str,
                 raise AnalysisRefusal(f"primary artifact input {name} is not an unchanged evidence prefix")
             continue
         raise AnalysisRefusal(f"primary artifact input {name} differs")
+    primary_history(args.primary_final)
     secondary_chronology(args, prep, primary)
     return primary
 
@@ -2749,6 +2771,23 @@ def selection_history_problems(plan: Plan) -> list[str]:
     except (AnalysisRefusal, OSError, ValueError, TypeError, AttributeError) as exc:
         return [f"gate selection chronology: {exc}"]
     return []
+
+
+def primary_history(path: Path) -> None:
+    """Require the first committed bytes and every later path version to equal the current artifact."""
+    try:
+        if git_evidence("rev-parse", "--is-shallow-repository").strip() != b"false":
+            raise AnalysisRefusal("complete local history is required")
+        relative = evidence_path(path)
+        commits = git_evidence("log", "--full-history", "--format=%H", "--", relative).decode().splitlines()
+        if not commits:
+            raise AnalysisRefusal("no committed introduction was found")
+        current = path.read_bytes()
+        for commit in commits:
+            if git_evidence("show", f"{commit}:{relative}") != current:
+                raise AnalysisRefusal("the committed artifact was rewritten")
+    except (AnalysisRefusal, OSError, ValueError) as exc:
+        raise AnalysisRefusal(f"primary artifact history: {exc}") from exc
 
 
 def secondary_chronology(args: argparse.Namespace, prep: Prepared, primary: Mapping[str, Any]) -> None:
