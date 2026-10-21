@@ -1022,3 +1022,32 @@ ones are in A6.9; the owner's words are quoted in its approval record as "Gate 6
 3. **The floor.** Chosen: six scenarios, the fewest at which row 1 can be reached at all,
    though only with no scenario mean exactly zero. Not chosen: seven, which tolerates one
    zero mean and would have sent wave 3 to decision 2 whenever two scenarios fail.
+
+
+### Analysis reader contract for the future gate report
+
+The gate application program remains to be implemented under A6.9. The wave-3
+analysis now requires an explicit decision projection in its output; it does not
+infer a report schema from a filename or compute ratings itself. This is a new
+reader contract for that future producer, not a claim that a gate report already
+exists or that the gate has been applied.
+
+The pinned report must contain `wave3_selection`, an object with exactly
+`schema_version: 1`, `summaries`, `passing`, and `failing`. The last three fields
+have the same row shapes and order as the plan's
+`physician_realism_gate.selection`: ordered summary paths/hashes and round numbers;
+passing seed IDs with deciding round and short rounds; failing seed IDs with round,
+short rounds and reason. They are the report's authoritative wave-3 decisions,
+produced from the gate calculation, **not copied back from a proposed plan amendment**.
+Other report sections may retain the detailed evidence A6.9 requires. If that future
+producer also serializes these decisions elsewhere, it must verify those views agree.
+
+Before `--final`, the analysis checks the report's pinned bytes and requires exact
+agreement of all three fields with the plan, including array order and value types.
+A missing/unversioned/unsupported decision projection refuses by name; no legacy
+report layout is guessed. Existing scenario coverage, allowed reason/round values,
+summary pins and minimum-count checks still apply. The future producer needs its
+own reviewed derivation/evidence tests: matching this projection proves that the
+amendment copied the report faithfully, not that the ratings or gate calculation
+are correct. Neither this contract nor merging analysis code authorizes a gate
+application, plan amendment, fire or final analysis.

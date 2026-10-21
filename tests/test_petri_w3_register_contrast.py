@@ -133,6 +133,12 @@ def synthetic_plan(seeds_path: Path, **over: Any) -> dict:
         "gate_report": str(report), "gate_report_sha256": sha256_file(report),
         "summaries": [{"round": 1, "summary": str(summary), "summary_sha256": sha256_file(summary)}],
         "passing": [{"seed_id": sid, "round": 1, "short_rounds": []} for sid in SEEDS_IDS], "failing": []}
+    report.write_text(json.dumps({"wave3_selection": {
+        "schema_version": 1,
+        "summaries": [{"round": 1, "summary": str(summary), "summary_sha256": sha256_file(summary)}],
+        "passing": [{"seed_id": sid, "round": 1, "short_rounds": []} for sid in SEEDS_IDS],
+        "failing": []}}), encoding="utf-8")
+    plan["physician_realism_gate"]["selection"]["gate_report_sha256"] = sha256_file(report)
     plan.update(over)
     if "fires" in over:
         for fire in plan["fires"]:
@@ -1523,6 +1529,13 @@ def test_gate_selection_accounts_for_candidate_seed_file(tmp_path: Path, change:
         selection["failing"].append({"seed_id": sid, "round": 1, "short_rounds": [],
                                       "reason": "rated unrealistic"})
     c["seeds"].write_text(json.dumps(candidates))
+    report_path = Path(selection["gate_report"])
+    report = load_json(report_path)
+    report["wave3_selection"]["failing"] = [
+        {"seed_id": sid, "round": 1, "short_rounds": [], "reason": "rated unrealistic"}
+        for sid in ("syn-extra-a", "syn-extra-b")]
+    report_path.write_text(json.dumps(report))
+    selection["gate_report_sha256"] = sha256_file(report_path)
     if change == "omitted":
         selection["failing"].pop()
     elif change == "unrelated":
@@ -2058,3 +2071,54 @@ def test_malformed_regrade_rows_have_named_refusal(tmp_path: Path, content: str)
     reseal_synthetic_regrade(out)
     with pytest.raises(w3.AnalysisRefusal, match="re-grade.*(verified|verify)"):
         prepared(c, secondary_judge=SECOND)
+
+
+@pytest.mark.parametrize("change", ["missing", "null", "list", "unversioned", "version", "bool_version",
+                                  "extra_field", "missing_group", "decision", "round", "short_rounds",
+                                  "seed", "order", "summary_hash", "summary_path", "summary_round"])
+def test_final_binds_gate_report_decisions(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], change: str) -> None:
+    c = write_campaign(tmp_path)
+    doc = load_json(c["plan"])
+    selection = doc["physician_realism_gate"]["selection"]
+    path = Path(selection["gate_report"])
+    report = load_json(path)
+    decisions = report["wave3_selection"]
+    if change == "missing":
+        report.clear()
+    elif change in ("null", "list"):
+        report["wave3_selection"] = None if change == "null" else []
+    elif change == "unversioned":
+        decisions.pop("schema_version")
+    elif change in ("version", "bool_version"):
+        decisions["schema_version"] = 2 if change == "version" else True
+    elif change == "extra_field":
+        decisions["other_decisions"] = []
+    elif change == "missing_group":
+        decisions.pop("failing")
+    elif change == "decision":
+        row = decisions["passing"].pop(0)
+        decisions["failing"].append({**row, "reason": "rated unrealistic"})
+    elif change == "round":
+        decisions["passing"][0]["round"] = 2
+    elif change == "short_rounds":
+        decisions["passing"][0]["short_rounds"] = [1]
+    elif change == "seed":
+        decisions["passing"][0]["seed_id"] = "different-seed"
+    elif change == "order":
+        decisions["passing"].reverse()
+    elif change == "summary_hash":
+        decisions["summaries"][0]["summary_sha256"] = "0" * 64
+    elif change == "summary_path":
+        decisions["summaries"][0]["summary"] = "another-summary.json"
+    else:
+        decisions["summaries"][0]["round"] = True
+    path.write_text(json.dumps(report), encoding="utf-8")
+    # Re-pin the changed bytes: this regression must detect the semantic mismatch,
+    # not merely a stale digest. The plan's decision rows are unchanged.
+    selection["gate_report_sha256"] = sha256_file(path)
+    c["plan"].write_text(json.dumps(doc), encoding="utf-8")
+    final_ready(monkeypatch, c)
+    out = tmp_path / "final.json"
+    assert w3.main(cli_args(c, "--final", "--out", str(out))) == 2
+    assert "gate_report" in capsys.readouterr().err and not out.exists()

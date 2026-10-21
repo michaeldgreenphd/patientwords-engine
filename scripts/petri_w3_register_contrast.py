@@ -2509,6 +2509,7 @@ def gate_selection_problems(plan: Plan) -> list[str]:
     artifacts = [("gate_report", selection.get("gate_report"), selection.get("gate_report_sha256"))]
     artifacts.extend((f"summary[{i}]", row.get("summary"), row.get("summary_sha256"))
                      for i, row in enumerate(summaries, 1))
+    report: dict[str, Any] | None = None
     for name, ref, digest in artifacts:
         if (not isinstance(ref, str) or not ref.strip() or not isinstance(digest, str)
                 or re.fullmatch(r"[0-9a-f]{64}", digest) is None):
@@ -2517,10 +2518,26 @@ def gate_selection_problems(plan: Plan) -> list[str]:
         path = Path(ref) if Path(ref).is_absolute() else ROOT / ref
         try:
             raw = path.read_bytes()
-            if not isinstance(json.loads(raw), dict) or hashlib.sha256(raw).hexdigest() != digest:
+            document = json.loads(raw)
+            if not isinstance(document, dict) or hashlib.sha256(raw).hexdigest() != digest:
                 problems.append(f"{label}.{name} is not the pinned JSON object")
+            elif name == "gate_report":
+                report = document
         except (OSError, ValueError) as exc:
             problems.append(f"{label}.{name} cannot be read: {exc}")
+    # This is an explicit reader contract for the future gate producer, not an
+    # inference about an existing report layout or a recalculation of ratings.
+    if report is not None:
+        decisions = report.get("wave3_selection")
+        fields = ("summaries", "passing", "failing")
+        if (not isinstance(decisions, dict) or type(decisions.get("schema_version")) is not int
+                or decisions["schema_version"] != 1 or set(decisions) != {"schema_version", *fields}):
+            problems.append(f"{label}.gate_report has unsupported wave3_selection schema; version 1 is required")
+        else:
+            for field in fields:
+                # JSON comparison preserves array order and numeric/boolean distinctions.
+                if json.dumps(decisions[field], sort_keys=True) != json.dumps(selection.get(field), sort_keys=True):
+                    problems.append(f"{label}.gate_report wave3_selection.{field} does not match the plan")
     seen: set[str] = set()
     passing: list[str] = []
     for group in ("passing", "failing"):
