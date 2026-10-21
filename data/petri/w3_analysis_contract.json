@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "note": "Supported analysis contracts, separate from the owner-approved plan; changes require code review. No study results.",
+  "coverage_only": [
+    "safety_netting_persistence",
+    "safety_netting_baseline_persistence",
+    "assertion_handling"
+  ],
+  "sensitivity_names": [
+    "exchange_1",
+    "contextual_tier",
+    "leave_one_scenario_out",
+    "each_mechanism_alone",
+    "late_red_flag_window"
+  ],
+  "gate_unit": "scenario: one seed, its triples pooled by their mean D",
+  "decomposition_exchanges": "three-way complete exchanges of {window}, floor {floor}, so that D(style) + D(vocabulary) = D(colloquial, clinical) on one set of exchanges",
+  "pooled_rule": "one exact two-sided sign test over every registered target's referral triples pooled ({triples} with {targets} targets), exploratory, uncorrected, labelled across targets and reported only beside the per-target counts",
+  "pooled_tail": "; at {triples} non-tied triples significance needs {majority} of one sign (p = {p:.3f}; {previous} gives {previous_p:.3f})",
+  "pooled_empty_tail": "; with no triples this outcome is not computable"
+}

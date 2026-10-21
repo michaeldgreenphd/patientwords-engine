@@ -106,7 +106,7 @@ refused by name or counted with the reason.
 
 Run: python scripts/petri_w3_register_contrast.py                       # coverage only, every run under data/petri/runs
      python scripts/petri_w3_register_contrast.py --final --out X.json  # the once-only final analysis
-     ... --secondary-judge openrouter:openai/gpt-5.4-mini               # the current plan's designated second judge
+     ... --primary-final X.json --secondary-judge <designated-spec> --out secondary.json  # post-final only
 """
 from __future__ import annotations
 
@@ -139,6 +139,9 @@ except ModuleNotFoundError:  # run as a file path: the repository root is not on
     from scripts.petri_audit.framework import ADVICE_RUBRIC, OUTCOME_REGISTRY, ROOT, load_json, sha256_file
     from scripts.petri_audit.manifest import verify_run
     from scripts.petri_audit.seeds import load_seed_file
+
+CONTRACT_FILE = ROOT / "data" / "petri" / "w3_analysis_contract.json"
+ANALYSIS_CONTRACT = load_json(CONTRACT_FILE)
 
 SCRIPT_VERSION = "1.0"
 # the one plan --final reads: the committed default; the repository whose git status decides "committed"
@@ -599,6 +602,10 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
                                      "exchanges_1_10, per target",
         "exploratory_outcomes.correction": "Holm, one family of three per target",
     }
+    method_rules["general_headline_gate.unit"] = ANALYSIS_CONTRACT["gate_unit"]
+    if isinstance(primary_window, str) and primary_window in windows:
+        method_rules["decomposition.exchanges"] = ANALYSIS_CONTRACT["decomposition_exchanges"].format(
+            window=primary_window, floor=windows[primary_window].floor)
     method_rules["decomposition.contrasts.paired_difference"] = "the sign of D(style) - D(vocabulary) per triple"
     if _count(doc["final_triples_per_target"]):
         per_target = doc["final_triples_per_target"]
@@ -675,6 +682,9 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
             continue
         sensitivity.append(Sensitivity(name, s["window"], measure, rule, mechanism))
 
+    if sensitivity_names != set(ANALYSIS_CONTRACT["sensitivity_names"]):
+        problems.append("sensitivity inventory must retain every registered name exactly once")
+
     exploratory = doc["exploratory_outcomes"]
     secondary_names = {m.name for m in w2.SECONDARY_MEASURES}
     family = exploratory["family"]
@@ -694,9 +704,31 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
             if stray:
                 problems.append(f"restricted_to_seeds[{name!r}] names seeds outside the scenario sets: {stray}")
             restricted[name] = tuple(seeds)
+    restricted_name = w2.SECONDARY_MEASURES[0].name
+    if set(restricted) != {restricted_name}:
+        problems.append("restricted_to_seeds must retain the registered restricted outcome")
+    n = len(restricted.get(restricted_name, ())) * epochs * len(targets)
+    expected = ANALYSIS_CONTRACT["pooled_rule"].format(triples=n, targets=len(targets))
+    if n:
+        majority = w2.majority_needed(n, 0.05)
+        if majority is None:
+            problems.append("restricted pooled rule has too few planned triples for its significance description")
+        else:
+            expected += ANALYSIS_CONTRACT["pooled_tail"].format(
+                triples=n, majority=majority, p=w2.exact_sign_test_p(n - majority, n), previous=majority - 1,
+                previous_p=w2.exact_sign_test_p(n - majority + 1, n))
+    else:
+        expected += ANALYSIS_CONTRACT["pooled_empty_tail"]
+    actual = exploratory.get(restricted_name)
+    actual = actual.get("across_targets") if isinstance(actual, dict) else None
+    # The registered default uses a number word; amended counts may use digits.
+    if isinstance(actual, str):
+        actual = actual.replace("with three targets", "with 3 targets")
+    if actual != expected:
+        problems.append(f"exploratory_outcomes.{restricted_name}.across_targets must match the implemented pooled rule")
     coverage_only = exploratory["coverage_only"]
-    if not _seed_list(coverage_only):
-        problems.append("exploratory_outcomes.coverage_only must be a list of outcome dimension ids")
+    if not _seed_list(coverage_only) or coverage_only != ANALYSIS_CONTRACT["coverage_only"]:
+        problems.append("exploratory_outcomes.coverage_only must retain the exact registered outcome dimension ids in order")
         coverage_only = []
     for name in coverage_only:
         if _measure_of(name).kind != "outcome":
@@ -2120,7 +2152,7 @@ def plan_commit_problem(path: Path) -> str | None:
 
 def code_files() -> dict[str, Path]:
     """The analysis module and the local modules whose functions rebuild and validate its inputs."""
-    return {"script": Path(__file__), "wave2_module": Path(w2.__file__),
+    return {"script": Path(__file__), "wave2_module": Path(w2.__file__), "analysis_contract": CONTRACT_FILE,
             **{module.__name__.rsplit(".", 1)[-1]: Path(module.__file__)
                for module in (framework, judge_runner, manifest, rejudge, seeds, spend)}}
 
@@ -2402,6 +2434,7 @@ def bound_primary(args: argparse.Namespace, prep: Prepared, header: Mapping[str,
                 raise AnalysisRefusal(f"primary artifact input {name} is not an unchanged evidence prefix")
             continue
         raise AnalysisRefusal(f"primary artifact input {name} differs")
+    secondary_chronology(args, prep, primary)
     return primary
 
 
@@ -2442,6 +2475,8 @@ def invocation_problems(args: argparse.Namespace) -> list[str]:
         problems.append("--declare-truncated needs a nonblank operational reason")
     if args.out is not None and args.out.exists():
         problems.append(f"--out {args.out} exists; this script never overwrites an artifact")
+    if args.final and args.secondary_judge is not None:
+        problems.append("--secondary-judge final disclosure requires --primary-final after the committed primary")
     if args.primary_final is not None:
         if args.final or args.secondary_judge is None:
             problems.append("--primary-final requires --secondary-judge and cannot accompany --final")
@@ -2511,6 +2546,13 @@ def gate_selection_problems(plan: Plan) -> list[str]:
     if not isinstance(selection, dict):
         return [f"{label} must record the applied gate before final analysis, even when every seed passes"]
     problems = []
+    recorded = selection.get("recorded_on")
+    try:
+        if not isinstance(recorded, str) or re.fullmatch(r"\d{4}-\d{2}-\d{2}", recorded) is None:
+            raise ValueError("expected YYYY-MM-DD")
+        date.fromisoformat(recorded)
+    except ValueError:
+        problems.append(f"{label}.recorded_on must be a valid YYYY-MM-DD amendment date")
     rounds = plan.realism_gate.get("rounds")
     nrounds = len(rounds) if isinstance(rounds, list) else 0
     summaries = selection.get("summaries")
@@ -2639,6 +2681,13 @@ def approval_chronology_problems(prep: Prepared, approved: date) -> list[str]:
         if entry.get("fired_utc") is not None and check(entry["fired_utc"], f"fire {nonce}"):
             recorded.add(nonce)
             fired = datetime.fromisoformat(entry["fired_utc"].replace("Z", "+00:00")).astimezone(timezone.utc)
+            selection = prep.plan.realism_gate_selection
+            try:
+                selected = date.fromisoformat(selection.get("recorded_on", "")) if isinstance(selection, dict) else None
+            except (TypeError, ValueError):
+                selected = None
+            if selected is not None and selected >= fired.date():
+                problems.append("physician_realism_gate.selection.recorded_on must precede every fire's UTC date")
             if date.fromisoformat(fires[nonce].recorded_on) >= fired.date():
                 problems.append(f"fire {nonce}: recorded_on must precede fired_utc's UTC date; a date-only "
                                 "amendment cannot establish order within the same day")
@@ -2646,6 +2695,91 @@ def approval_chronology_problems(prep: Prepared, approved: date) -> list[str]:
         if nonce not in recorded:
             problems.append(f"approval chronology: fire {nonce} has no usable fired_utc in the journal")
     return problems
+
+
+def git_evidence(*args: str) -> bytes:
+    """Read local committed evidence only; missing/shallow history is an explicit refusal."""
+    try:
+        return subprocess.run(["git", "-C", str(REPO_ROOT), *args], capture_output=True,
+                              check=True, timeout=30).stdout
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise AnalysisRefusal(f"committed chronology evidence unavailable: {type(exc).__name__}") from exc
+
+
+def evidence_path(path: Path) -> str:
+    """Require an evidence file inside this repository before reading its historical blob."""
+    try:
+        return path.resolve().relative_to(Path(REPO_ROOT).resolve()).as_posix()
+    except ValueError as exc:
+        raise AnalysisRefusal("committed chronology evidence lies outside the repository") from exc
+
+
+def before_fire_bytes(commit: str, path: Path) -> bytes:
+    """The first-parent blob must exist before a reachable, identified fire commit."""
+    if not isinstance(commit, str) or re.fullmatch(r"[0-9a-f]{40}", commit) is None:
+        raise AnalysisRefusal("committed chronology needs the full fire commit SHA")
+    git_evidence("merge-base", "--is-ancestor", commit, "HEAD")
+    return git_evidence("show", f"{commit}^:{evidence_path(path)}")
+
+
+def selection_history_problems(plan: Plan) -> list[str]:
+    """The current selection and pinned report bytes must precede each nonce's first journal appearance."""
+    try:
+        remaining = set(plan.fires) | set(plan.regrade_fires)
+        path = evidence_path(JOURNAL_FILE)
+        commits = git_evidence("log", "--full-history", "--reverse", "--topo-order", "--format=%H", "--", path).decode().splitlines()
+        for commit in commits:
+            if not remaining:
+                break
+            entries = [json.loads(line) for line in git_evidence("show", f"{commit}:{path}").splitlines() if line.strip()]
+            found = {e.get("nonce") for e in entries if isinstance(e, dict) and e.get("trigger") == "petri-audit"
+                     and isinstance(e.get("nonce"), str)} & remaining
+            if not found:
+                continue
+            old_plan = json.loads(before_fire_bytes(commit, PLAN_FILE))
+            old = old_plan.get("physician_realism_gate", {}).get("selection")
+            if old != plan.realism_gate_selection:
+                raise AnalysisRefusal("selection was not committed unchanged before the first fire evidence")
+            for artifact in selection_files(plan).values():
+                if before_fire_bytes(commit, artifact) != artifact.read_bytes():
+                    raise AnalysisRefusal("selection artifact changed after the first fire evidence")
+            remaining -= found
+        if remaining:
+            raise AnalysisRefusal(f"no committed fire history for {sorted(remaining)}")
+    except (AnalysisRefusal, OSError, ValueError, TypeError, AttributeError) as exc:
+        return [f"gate selection chronology: {exc}"]
+    return []
+
+
+def secondary_chronology(args: argparse.Namespace, prep: Prepared, primary: Mapping[str, Any]) -> None:
+    """Bind each secondary fire to primary bytes already committed before it, plus ordered UTC evidence."""
+    try:
+        generated = datetime.fromisoformat(primary["identity"]["generated_utc"].replace("Z", "+00:00"))
+        if generated.tzinfo is None:
+            raise ValueError("primary timestamp has no UTC offset")
+        for run in prep.secondary_runs:
+            path = prep.rejudge_root / rejudge.judge_slug(prep.secondary_judge) / run.stem / rejudge.MANIFEST_NAME
+            record = load_json(path)
+            fire = record["fire"]
+            if before_fire_bytes(fire["commit"], args.primary_final) != args.primary_final.read_bytes():
+                raise ValueError("primary artifact did not exist unchanged before the secondary fire")
+            journal = git_evidence("show", f"{fire['commit']}:{evidence_path(JOURNAL_FILE)}")
+            entries = [json.loads(line) for line in journal.splitlines() if line.strip()]
+            matching = [e for e in entries if isinstance(e, dict) and e.get("trigger") == "petri-audit"
+                        and e.get("nonce") == fire["journal_nonce"]]
+            if len(matching) != 1:
+                raise ValueError("secondary fire has no unique journal entry at its commit")
+            previous_journal = before_fire_bytes(fire["commit"], JOURNAL_FILE)
+            previous_entries = [json.loads(line) for line in previous_journal.splitlines() if line.strip()]
+            if any(isinstance(e, dict) and e.get("trigger") == "petri-audit"
+                   and e.get("nonce") == fire["journal_nonce"] for e in previous_entries):
+                raise ValueError("secondary nonce already existed before its claimed fire commit")
+            fired = datetime.fromisoformat(matching[0]["fired_utc"].replace("Z", "+00:00"))
+            created = datetime.fromisoformat(record["created_utc"].replace("Z", "+00:00"))
+            if fired.tzinfo is None or created.tzinfo is None or not generated <= fired <= created:
+                raise ValueError("secondary timestamps do not follow the primary final")
+    except (AnalysisRefusal, OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise AnalysisRefusal(f"secondary chronology: {exc}") from exc
 
 
 def final_problems(args: argparse.Namespace, prep: Prepared) -> tuple[list[str], dict[str, list[int]]]:
@@ -2666,6 +2800,7 @@ def final_problems(args: argparse.Namespace, prep: Prepared) -> tuple[list[str],
     else:
         problems.extend(approval_chronology_problems(prep, approved))
     problems.extend(gate_selection_problems(plan))
+    problems.extend(selection_history_problems(plan))
     if plan.analysis_script_path != "scripts/petri_w3_register_contrast.py" or plan.analysis_script_status != "written":
         problems.append("analysis_script must name scripts/petri_w3_register_contrast.py with status 'written' "
                         "in the approved plan before the first paid fire")

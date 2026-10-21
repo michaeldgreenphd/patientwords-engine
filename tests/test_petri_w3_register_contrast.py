@@ -56,7 +56,9 @@ COL, LAY, CLIN = w3.COLLOQUIAL, w3.CAREFUL_LAY, w3.CLINICAL
 # ------------------------------------------------------------------ a synthetic campaign
 
 SEEDS_IDS = ["syn-a", "syn-b", "syn-c", "syn-d"]
-MECHANISMS = {"mech-one": ["syn-a", "syn-b"], "mech-two": ["syn-c", "syn-d"]}
+WINDOW_SENSITIVITY = REAL_PLAN["sensitivity"][-1]["name"]
+WINDOW_MECHANISM = WINDOW_SENSITIVITY.removesuffix(w3.MECHANISM_WINDOW_SUFFIX).replace("_", "-")
+MECHANISMS = {"mech-one": ["syn-a", "syn-b"], WINDOW_MECHANISM: ["syn-c", "syn-d"]}
 REFERRAL_SEEDS = ["syn-c", "syn-d"]
 TARGETS = [{"id": "tgt-a", "role": "anchor", "name": "Target A", "target_specs": ["prov/tgt-a", "alt/tgt-a"]},
            {"id": "tgt-b", "role": "comparison", "name": "Target B", "target_specs": ["prov/tgt-b"]},
@@ -115,10 +117,14 @@ def synthetic_plan(seeds_path: Path, **over: Any) -> dict:
         "Holm-corrected together, labelled across targets")
     plan["fires"] = [{"journal_nonce": n, "target": t, "campaign_epoch": e, "recorded_on": "2026-10-01"} for n, (t, e) in FIRES.items()]
     plan["exploratory_outcomes"]["restricted_to_seeds"] = {REFERRAL: list(REFERRAL_SEEDS)}
+    plan["exploratory_outcomes"][REFERRAL]["across_targets"] = (
+        REAL_PLAN["exploratory_outcomes"][REFERRAL]["across_targets"]
+        .replace("18 with three", "12 with three").replace("at 18", "at 12")
+        .replace("14 of one sign (p = 0.031; 13 gives 0.096)", "10 of one sign (p = 0.039; 9 gives 0.146)"))
     for s in plan["sensitivity"]:     # the plan's mechanism window, renamed for the synthetic mechanism
         if s.get("rule") and s["name"] not in w3.SENSITIVITY_RULES:
-            s["name"] = "mech_two" + w3.MECHANISM_WINDOW_SUFFIX
-            s["rule"] = ("descriptive, on the mech-two seeds only: whether the replies from the warning sign on "
+            s["name"] = WINDOW_SENSITIVITY
+            s["rule"] = (f"descriptive, on the {WINDOW_MECHANISM} seeds only: whether the replies from the warning sign on "
                          "differ by wording")
         elif s["name"] == "leave_one_scenario_out":
             s["rule"] = "the primary test rerun four times, dropping each scenario in turn"
@@ -135,7 +141,7 @@ def synthetic_plan(seeds_path: Path, **over: Any) -> dict:
     report.write_text("{}", encoding="utf-8")
     plan["physician_realism_gate"]["min_scenarios"] = len(SEEDS_IDS)
     plan["physician_realism_gate"]["selection"] = {
-        "gate_report": str(report), "gate_report_sha256": sha256_file(report),
+        "recorded_on": "2026-10-01", "gate_report": str(report), "gate_report_sha256": sha256_file(report),
         "summaries": [{"round": 1, "summary": str(summary), "summary_sha256": sha256_file(summary)}],
         "passing": [{"seed_id": sid, "round": 1, "short_rounds": []} for sid in SEEDS_IDS], "failing": []}
     report.write_text(json.dumps({"wave3_selection": {
@@ -277,6 +283,20 @@ def write_regrade(c: dict[str, Any], nonce: str, spec: str, regrade_nonce: str, 
     """A re-grade of one run in the layout mode rejudge writes (data/petri/rejudge/<slug>/<stem>/): the run's
     judgments again under `spec` (with `value_fn`'s values when given), the analysis rows, the judge sidecar and a
     sealed, schema-valid manifest binding the source run, which the chain file names. Checked with verify_output."""
+    fire_commit = "c" * 40
+    created = "2026-10-14T00:00:00Z"
+    root = c["plan"].parent
+    primary_path = root / "final.json"
+    if primary_path.is_file() and (root / ".git").exists():
+        commit_synthetic(root)
+        generated = load_json(primary_path)["identity"]["generated_utc"]
+        entry = {"trigger": "petri-audit", "nonce": regrade_nonce, "fired_utc": generated,
+                 "resolved": True, "evicted": False}
+        c.setdefault("secondary_entries", []).append(entry)
+        with (root / "journal.jsonl").open("a") as stream:
+            stream.write(json.dumps(entry) + "\n")
+        fire_commit = commit_synthetic(root)
+        created = generated
     run_dir = c["runs"][nonce]
     stem = run_dir.name
     target, epoch = FIRES[nonce]
@@ -307,7 +327,7 @@ def write_regrade(c: dict[str, Any], nonce: str, spec: str, regrade_nonce: str, 
          "max_spend_usd": 2.0, "task": rejudge.TASK}), encoding="utf-8")
     sha = "0" * 64
     rm = {"rejudge_manifest_version": rejudge.MANIFEST_VERSION, "mode": rejudge.MODE, "exploratory": True,
-          "rehearsal": False, "created_utc": "2026-10-14T00:00:00Z",
+          "rehearsal": False, "created_utc": created,
           "source": {"run_stem": stem, "run_id": manifest["run_id"], "eval_id": manifest["eval_id"],
                      "manifest_sha256": sha256_file(run_dir / "manifest.json"),
                      "chain_manifest_sha256": manifest["chain"]["manifest_sha256"],
@@ -322,7 +342,7 @@ def write_regrade(c: dict[str, Any], nonce: str, spec: str, regrade_nonce: str, 
                                                                                             "digest": RUBRIC_PIN},
                          "prompt_files": {}, "plan_sha256": sha, "planned": len(rows),
                          "parity_with_judge_of_record": "exact"},
-          "fire": {"workflow_run_id": run_id, "workflow_run_attempt": "1", "commit": "c" * 40,
+          "fire": {"workflow_run_id": run_id, "workflow_run_attempt": "1", "commit": fire_commit,
                    "journal_nonce": regrade_nonce, "source_runs": [stem], "position": 1},
           "counts": {"planned": len(rows), **totals, "null_share": rejudge.null_share(totals["judged"], totals["null"]),
                      "judge_of_record_null_share": rejudge.null_share(jor["judged"], jor["null"]),
@@ -369,6 +389,20 @@ def plumbing(root: Path, *args: str) -> str:
                           env=GIT_ENV).stdout.strip()
 
 
+def commit_synthetic(root: Path) -> str:
+    """Append a fixture commit without hooks, preserving history for chronology tests."""
+    parent = subprocess.run(["git", "-C", str(root), "rev-parse", "--verify", "HEAD"],
+                            capture_output=True, text=True)
+    plumbing(root, "add", "--all")
+    tree = plumbing(root, "write-tree")
+    args = ["commit-tree", "--no-gpg-sign", "-m", "synthetic", tree]
+    if parent.returncode == 0:
+        args.extend(["-p", parent.stdout.strip()])
+    commit = plumbing(root, *args)
+    plumbing(root, "update-ref", "HEAD", commit)
+    return commit
+
+
 def final_ready(monkeypatch: pytest.MonkeyPatch, c: dict[str, Any], journal: tuple[dict, ...] = ()) -> None:
     """Point --final's guards at the synthetic campaign: its plan is the default plan, committed in a throwaway git
     repository through plumbing (no hook runs), and the trigger journal is a synthetic file holding `journal`."""
@@ -382,6 +416,7 @@ def final_ready(monkeypatch: pytest.MonkeyPatch, c: dict[str, Any], journal: tup
     journal = tuple({"trigger": "petri-audit", "nonce": nonce, "fired_utc": "2026-10-02T00:00:00Z",
                      "resolved": True, "evicted": False} for nonce in [*c["runs"], *[f["journal_nonce"] for f in load_json(c["plan"])["fires"]
                                               if "source_runs" in f]] if nonce not in supplied) + journal
+    journal += tuple(e for e in c.get("secondary_entries", []) if e["nonce"] not in {x.get("nonce") for x in journal})
     journal_path.write_text("".join(json.dumps(e) + "\n" for e in journal), encoding="utf-8")
     # Project the repository's code and fixed validation inputs into this synthetic git repository. The tested
     # files and all campaign artifacts use real git status, while an in-progress edit to the test subject itself
@@ -408,10 +443,13 @@ def final_ready(monkeypatch: pytest.MonkeyPatch, c: dict[str, Any], journal: tup
 
         monkeypatch.setattr(w3, "code_files", lambda: c["code_files"])
         monkeypatch.setattr(w3, "analysis_input_files", projected_inputs)
-    plumbing(root, "add", "--all")
-    tree = plumbing(root, "write-tree")
-    commit = plumbing(root, "commit-tree", "--no-gpg-sign", "-m", "synthetic", tree)
-    plumbing(root, "update-ref", "HEAD", commit)
+    if not c.get("history_started"):
+        journal_bytes = journal_path.read_bytes()
+        journal_path.unlink()
+        commit_synthetic(root)
+        journal_path.write_bytes(journal_bytes)
+        c["history_started"] = True
+    commit_synthetic(root)
     monkeypatch.setattr(w3, "PLAN_FILE", c["plan"])
     monkeypatch.setattr(w3, "REPO_ROOT", root)
     monkeypatch.setattr(w3, "JOURNAL_FILE", journal_path)
@@ -747,8 +785,8 @@ def test_the_final_analysis_on_a_synthetic_campaign(tmp_path, monkeypatch, capsy
     assert a["sensitivity"]["exchange_1"]["tied"] == n
     mech = a["sensitivity"]["each_mechanism_alone"]
     assert mech["mech-one"]["negative"] == EPOCHS * 2 and "p" not in mech["mech-one"]
-    late = a["sensitivity"]["mech_two" + w3.MECHANISM_WINDOW_SUFFIX]
-    assert late["mechanism"] == "mech-two" and late["triples"] == EPOCHS * 2 and "p" not in late
+    late = a["sensitivity"][WINDOW_SENSITIVITY]
+    assert late["mechanism"] == WINDOW_MECHANISM and late["triples"] == EPOCHS * 2 and "p" not in late
     # ties are dropped from the test and counted: tgt-b is all ties, so its row is not computable
     b = doc["targets"]["tgt-b"]
     assert b["primary_sign_test"]["tied"] == n and b["primary_sign_test"]["non_tied"] == 0
@@ -841,9 +879,12 @@ def test_a_target_epoch_not_landed_needs_a_declared_truncation_the_journal_suppo
 
 
 def test_not_computable_outcomes_are_named(tmp_path):
-    c = write_campaign(tmp_path, mechanisms={"mech-one": SEEDS_IDS, "mech-two": []})
+    c = write_campaign(tmp_path, mechanisms={"mech-one": SEEDS_IDS, WINDOW_MECHANISM: []})
     plan = load_json(c["plan"])
     plan["exploratory_outcomes"]["restricted_to_seeds"] = {REFERRAL: []}
+    plan["exploratory_outcomes"][REFERRAL]["across_targets"] = (
+        REAL_PLAN["exploratory_outcomes"][REFERRAL]["across_targets"].split("; at ")[0]
+        .replace("18 with three", "0 with three") + "; with no triples this outcome is not computable")
     for entry in plan["sensitivity"]:
         if entry["name"] == "each_mechanism_alone":
             entry["rule"] = ("descriptive: each mechanism's passing scenarios, two triples each per target; "
@@ -853,9 +894,9 @@ def test_not_computable_outcomes_are_named(tmp_path):
     result = w3.final_analysis(prep, resamples=100)
     w3.validate_saved_tests(result, prep)
     a = result["targets"]["tgt-a"]
-    late = "mech_two" + w3.MECHANISM_WINDOW_SUFFIX
+    late = WINDOW_SENSITIVITY
     assert a["sensitivity"][late]["status"] == "not computable" and "has no seed" in a["sensitivity"][late]["reason"]
-    assert a["sensitivity"]["each_mechanism_alone"]["mech-two"]["status"] == "absent"
+    assert a["sensitivity"]["each_mechanism_alone"][WINDOW_MECHANISM]["status"] == "absent"
     assert a["restricted_outcomes_descriptive"][REFERRAL]["status"] == "not computable"
     assert result["section_9_6"]["restricted_outcomes_across_targets"][REFERRAL]["status"] == "not computable"
     assert w3.coverage(prep)["contrasts"][f"restricted:{REFERRAL}"]["status"] == "not computable"
@@ -875,7 +916,7 @@ def test_the_secondary_judge_gets_its_own_labelled_tables_never_mixed_with_the_r
     c = write_campaign(tmp_path, value_fn=patterned)
     for nonce in FIRES:
         write_regrade(c, nonce, SECOND, f"q8-{nonce}", value_fn=second_values)
-    doc = run_final(monkeypatch, c, tmp_path, "--secondary-judge", SECOND)
+    doc = w3.final_analysis(prepared(c, secondary_judge=SECOND), resamples=100)
     capsys.readouterr()
     n = EPOCHS * len(SEEDS_IDS)
     # the registered tables are the judge of record's alone
@@ -959,7 +1000,8 @@ def test_a_secondary_that_does_not_cover_the_records_exchanges_is_refused_with_c
     assert any("no re-grade by" in (r["reason"] or "") for r in w3.coverage(prep)["secondary_judge"]["runs"])
     final_ready(monkeypatch, c)
     out = tmp_path / "final.json"
-    assert w3.main(cli_args(c, "--final", "--out", str(out), "--secondary-judge", SECOND)) == 2
+    assert w3.main(cli_args(c, "--primary-final", str(tmp_path / "primary.json"),
+                            "--out", str(out), "--secondary-judge", SECOND)) == 2
     assert "do not cover the exchanges" in capsys.readouterr().err and not out.exists()
 
 
@@ -1010,7 +1052,7 @@ def test_registered_test_directions_cover_every_test_the_tables_emit(tmp_path, m
     c = write_campaign(tmp_path, value_fn=patterned)
     for nonce in FIRES:
         write_regrade(c, nonce, SECOND, f"q8-{nonce}", value_fn=second_values)
-    doc = run_final(monkeypatch, c, tmp_path, "--secondary-judge", SECOND)
+    doc = w3.final_analysis(prepared(c, secondary_judge=SECOND), resamples=100)
     capsys.readouterr()
     tests = {r["test"] for r in doc["secondary_judge"]["registered_test_directions"]}
     assert tests == set(w3.emitted_tests(doc))
@@ -1128,7 +1170,7 @@ def test_comparison_statements_use_holm_before_selecting_a_row(tmp_path: Path) -
 
 
 @pytest.mark.parametrize(("dirty", "state"), [("script", "modified"), ("wave2_module", "staged"),
-                                            ("judge_runner", "modified"), ("rejudge", "modified"),
+                                            ("judge_runner", "modified"), ("rejudge", "modified"), ("analysis_contract", "modified"),
                                             ("seed_file", "modified"), ("outcome_registry", "modified"),
                                             ("registry_version", "modified"), ("prompt", "modified"), ("run_manifest", "untracked"),
                                             ("regrade_judgments", "untracked"), ("judge_providers", "modified")])
@@ -1137,11 +1179,14 @@ def test_final_refuses_uncommitted_code_and_data_inputs(
         dirty: str, state: str) -> None:
     c = write_campaign(tmp_path)
     extra: list[str] = []
+    mode = ["--final"]
     version = tmp_path / "registry-version.json"
     if dirty == "registry_version":
         shutil.copyfile(OUTCOME_REGISTRY, version)
         extra = ["--registry-version", str(version)]
     if dirty in ("regrade_judgments", "judge_providers"):
+        run_final(monkeypatch, c, tmp_path)
+        mode = ["--primary-final", str(tmp_path / "final.json")]
         for nonce in FIRES:
             write_regrade(c, nonce, SECOND, f"second-{nonce}")
         extra = ["--secondary-judge", SECOND]
@@ -1159,13 +1204,13 @@ def test_final_refuses_uncommitted_code_and_data_inputs(
         path.write_text(path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
         if state == "staged":
             plumbing(tmp_path, "add", "--", str(path.relative_to(tmp_path)))
-    out = tmp_path / "final.json"
+    out = tmp_path / "result.json"
 
     def unexpected_analysis(*args: Any, **kwargs: Any) -> dict:
         pytest.fail("final statistics ran before the uncommitted-input refusal")
 
     monkeypatch.setattr(w3, "final_analysis", unexpected_analysis)
-    assert w3.main(cli_args(c, "--final", "--out", str(out), *extra)) == 2
+    assert w3.main(cli_args(c, *mode, "--out", str(out), *extra)) == 2
     expected = "cannot be shown to be committed" if state == "untracked" else "has uncommitted changes"
     assert expected in capsys.readouterr().err
     assert not out.exists()
@@ -1281,7 +1326,7 @@ def test_final_refuses_a_claim_grade_fire_that_omits_a_planned_seed(
     # The next epoch covers the missing seed, so a pooled scenario gate alone cannot detect this partial fire.
     assert {s["seed_id"] for s in load_json(c["runs"]["a2"] / "manifest.json")["seeds"]} == set(SEEDS_IDS)
     final_ready(monkeypatch, c)
-    out = tmp_path / "final.json"
+    out = tmp_path / "result.json"
 
     def unexpected_analysis(*args: Any, **kwargs: Any) -> dict:
         pytest.fail("final statistics ran before the partial-fire refusal")
@@ -1341,7 +1386,7 @@ def test_coverage_only_refuses_a_tier_measure(tmp_path: Path) -> None:
     doc = load_json(c["plan"])
     doc["exploratory_outcomes"]["coverage_only"] = [next(m.name for m in w2.SECONDARY_MEASURES if m.kind == "tier")]
     c["plan"].write_text(json.dumps(doc), encoding="utf-8")
-    with pytest.raises(w3.AnalysisRefusal, match="coverage_only.*not an outcome dimension"):
+    with pytest.raises(w3.AnalysisRefusal, match="coverage_only.*exact registered outcome dimension"):
         w3.load_plan(c["plan"])
 
 
@@ -1369,7 +1414,8 @@ def test_final_binds_the_secondary_to_the_plan_designation(
     c["plan"].write_text(json.dumps(doc), encoding="utf-8")
     final_ready(monkeypatch, c)
     out = tmp_path / "final.json"
-    assert w3.main(cli_args(c, "--final", "--out", str(out), "--secondary-judge", SECOND)) == 2
+    assert w3.main(cli_args(c, "--primary-final", str(tmp_path / "primary.json"),
+                            "--out", str(out), "--secondary-judge", SECOND)) == 2
     assert "not the plan's designated" in capsys.readouterr().err
     assert not out.exists()
 
@@ -2170,3 +2216,123 @@ def test_malformed_own_judge_dedup_field_refuses_without_traceback(
     err = capsys.readouterr().err
     assert "judge_runner.analysis_rows refused the rows" in err and "Traceback" not in err
     assert not out.exists()
+
+
+@pytest.mark.parametrize("field", ["unit", "exchanges", "across_targets"])
+@pytest.mark.parametrize("change", ["missing", "different"])
+def test_registered_analysis_rules_cannot_be_ignored(tmp_path: Path, field: str, change: str) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    parent = {"unit": doc["general_headline_gate"], "exchanges": doc["decomposition"],
+              "across_targets": doc["exploratory_outcomes"][REFERRAL]}[field]
+    if change == "missing":
+        del parent[field]
+    else:
+        parent[field] = "descriptive only on another unit or window"
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match=field):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("index", range(5))
+def test_every_registered_sensitivity_is_required(tmp_path: Path, index: int) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    doc["sensitivity"].pop(index)
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="sensitivity.*inventory"):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("change", ["empty", "missing", "substituted"])
+def test_registered_coverage_inventory_cannot_be_reduced(tmp_path: Path, change: str) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    values = doc["exploratory_outcomes"]["coverage_only"]
+    if change == "empty":
+        values.clear()
+    elif change == "missing":
+        values.pop()
+    else:
+        values[0] = RECOMMENDATION
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="coverage_only"):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("recorded", [None, "not-a-date", "2026-10-02", "2026-10-03"])
+def test_gate_selection_must_be_dated_before_every_fire(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], recorded: str | None) -> None:
+    c = write_campaign(tmp_path)
+    doc = load_json(c["plan"])
+    selection = doc["physician_realism_gate"]["selection"]
+    selection.pop("recorded_on", None)
+    if recorded is not None:
+        selection["recorded_on"] = recorded
+    c["plan"].write_text(json.dumps(doc))
+    final_ready(monkeypatch, c)
+    out = tmp_path / "final.json"
+    assert w3.main(cli_args(c, "--final", "--out", str(out))) == 2
+    assert "selection.recorded_on" in capsys.readouterr().err and not out.exists()
+
+
+def test_secondary_fire_requires_preexisting_committed_primary(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    c = write_campaign(tmp_path)
+    for nonce in FIRES:
+        write_regrade(c, nonce, SECOND, "early-" + nonce)
+    run_final(monkeypatch, c, tmp_path)
+    primary = tmp_path / "final.json"
+    final_ready(monkeypatch, c)
+    out = tmp_path / "secondary.json"
+    assert w3.main(cli_args(c, "--primary-final", str(primary), "--secondary-judge", SECOND,
+                            "--out", str(out))) == 2
+    assert "secondary chronology" in capsys.readouterr().err and not out.exists()
+
+
+def test_backdated_selection_added_after_fire_is_refused(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    c = write_campaign(tmp_path)
+    original = c["plan"].read_bytes()
+    doc = load_json(c["plan"])
+    doc["physician_realism_gate"]["selection"] = None
+    c["plan"].write_text(json.dumps(doc))
+    final_ready(monkeypatch, c)
+    c["plan"].write_bytes(original)
+    final_ready(monkeypatch, c)
+    out = tmp_path / "final.json"
+    assert w3.main(cli_args(c, "--final", "--out", str(out))) == 2
+    assert "gate selection chronology" in capsys.readouterr().err and not out.exists()
+
+
+@pytest.mark.parametrize("change", ["commit_before_primary", "created_before_primary", "missing_nonce", "later_commit_same_nonce"])
+def test_secondary_chronology_requires_both_history_and_ordered_timestamps(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], change: str) -> None:
+    c = write_campaign(tmp_path)
+    doc = run_final(monkeypatch, c, tmp_path)
+    for nonce in FIRES:
+        write_regrade(c, nonce, SECOND, "secondary-" + nonce)
+    out_dir = rejudge.output_dir(c["rejudge"], SECOND, STEMS["a1"])
+    manifest_path = out_dir / rejudge.MANIFEST_NAME
+    record = load_json(manifest_path)
+    if change == "commit_before_primary":
+        record["fire"]["commit"] = doc["identity"]["commit"]
+    elif change == "created_before_primary":
+        record["created_utc"] = "2026-10-01T00:00:00Z"
+    elif change == "missing_nonce":
+        record["fire"]["commit"] = plumbing(tmp_path, "rev-parse", record["fire"]["commit"] + "^")
+    else:
+        record["fire"]["commit"] = plumbing(tmp_path, "rev-parse", "HEAD")
+    manifest_path.write_text(json.dumps(record))
+    reseal_synthetic_regrade(out_dir)
+    assert rejudge.verify_output(out_dir, c["runs_dir"]) == []
+    final_ready(monkeypatch, c)
+    out = tmp_path / "secondary.json"
+    assert w3.main(cli_args(c, "--primary-final", str(tmp_path / "final.json"), "--secondary-judge", SECOND,
+                            "--out", str(out))) == 2
+    assert "secondary chronology" in capsys.readouterr().err and not out.exists()
+
+
+def test_combined_final_cannot_bypass_secondary_order() -> None:
+    args = w3.build_parser().parse_args(["--final", "--secondary-judge", SECOND])
+    assert any("requires --primary-final" in p for p in w3.invocation_problems(args))

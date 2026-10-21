@@ -532,6 +532,29 @@ selects row 3 with either gate direction, as its explicit plan rule requires;
 row 2. A malformed judge-of-record deduplication/rebuilding field produces a named
 row refusal in both coverage and final modes, before any output is written.
 
+`data/petri/w3_analysis_contract.json` records the supported gate unit, decomposition
+exchange-rule template, pooled restricted-outcome rule and complete sensitivity and
+coverage-only inventories. It is a code contract included in input provenance, not
+an amendment to the registered plan. Missing analyses and unsupported rule changes
+refuse. The pooled rule's count and exact significance description follow the
+passing restricted seeds; with none, it must explicitly say not computable.
+
+The future gate amendment must additionally record `selection.recorded_on` as
+`YYYY-MM-DD`, before every wave-3 fire's UTC date. A declared date alone is not
+enough: full local Git history must show the identical selection and pinned report
+and summary bytes in the first parent of each nonce's first journal appearance.
+Backdated additions and unavailable history refuse. This reads history only; it
+does not fetch, modify the journal, or fire anything.
+
+Final secondary disclosure requires `--primary-final`; combining `--final` with
+`--secondary-judge` is refused. For each secondary re-grade, the recorded full
+`fire.commit` must be reachable from the current checkout. Its first parent must
+already contain the exact primary-final file. That fire commit must introduce the
+unique journal nonce, with a timestamp no earlier than the primary's generation,
+and the re-grade's `created_utc` must be no earlier than the fire. Missing history,
+an old nonce reused at a later commit, or reversed timestamps refuse. These are
+additional reader gates for future execution, not new fields in landed manifests.
+
 
 For post-final disclosure, the original input inventory stays protected. A
 verified append to a shared source chain may add its new manifests and artifacts;
