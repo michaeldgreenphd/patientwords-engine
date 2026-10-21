@@ -2337,7 +2337,11 @@ def test_secondary_chronology_requires_both_history_and_ordered_timestamps(
     out = tmp_path / "secondary.json"
     assert w3.main(cli_args(c, "--primary-final", str(tmp_path / "final.json"), "--secondary-judge", SECOND,
                             "--out", str(out))) == 2
-    assert "secondary chronology" in capsys.readouterr().err and not out.exists()
+    assert "re-grade artifact history" in capsys.readouterr().err and not out.exists()
+    args = w3.build_parser().parse_args(cli_args(c, "--primary-final", str(tmp_path / "final.json"),
+                                               "--secondary-judge", SECOND, "--out", str(out)))
+    with pytest.raises(w3.AnalysisRefusal, match="secondary chronology"):
+        w3.secondary_chronology(args, prepared(c, secondary_judge=SECOND), doc)
 
 
 def test_combined_final_cannot_bypass_secondary_order() -> None:
@@ -2428,3 +2432,135 @@ def test_per_target_rationale_refuses_counts_that_could_pass_its_threshold(tmp_p
     path.write_text(json.dumps(doc))
     with pytest.raises(w3.AnalysisRefusal, match="per_target rationale"):
         w3.load_plan(path)
+
+
+@pytest.mark.parametrize("change", ["seed_file", "recorded_digest", "missing_digest"])
+def test_run_seed_identity_must_match_loaded_stimulus(tmp_path: Path, change: str) -> None:
+    def update(nonce: str, record: dict) -> None:
+        if nonce == "a1" and change != "seed_file":
+            if change == "missing_digest":
+                record["seeds"][0].pop("seed_sha256")
+            else:
+                record["seeds"][0]["seed_sha256"] = "0" * 64
+
+    c = write_campaign(tmp_path, manifest_update=update)
+    if change == "seed_file":
+        doc = load_json(c["seeds"])
+        doc["seeds"][0]["texts"][0]["text"] = "changed synthetic wording"
+        c["seeds"].write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="seed.*digest|seed_sha256"):
+        prepared(c)
+
+
+@pytest.mark.parametrize("name", tuple(w3.code_files()))
+def test_final_code_must_exist_unchanged_before_fire(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str) -> None:
+    c = write_campaign(tmp_path)
+    final_ready(monkeypatch, c)
+    path = c["code_files"][name]
+    path.write_bytes(path.read_bytes() + b"\n")
+    commit_synthetic(tmp_path)
+    prep = prepared(c)
+    args = w3.build_parser().parse_args(cli_args(c, "--final", "--out", str(tmp_path / "final.json")))
+    problems, _ = w3.final_problems(args, prep)
+    assert any("analysis code" in problem and name in problem for problem in problems)
+
+
+@pytest.mark.parametrize("change", ["window", "floor", "targets", "approval"])
+def test_final_protects_plan_rules_before_fire(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, change: str) -> None:
+    c = write_campaign(tmp_path)
+    final_ready(monkeypatch, c)
+    doc = load_json(c["plan"])
+    if change == "window":
+        doc["windows"]["exchanges_1_10"]["exchanges"] = list(range(2, 11))
+    elif change == "floor":
+        doc["windows"]["exchanges_1_10"]["floor"] = 2
+        doc["decomposition"]["exchanges"] = w3.ANALYSIS_CONTRACT["decomposition_exchanges"].format(
+            window="exchanges_1_10", floor=2)
+    elif change == "targets":
+        doc["targets"][1]["name"] = "Changed target label"
+    else:
+        doc["approval"]["approved_on"] = "2026-09-30"
+    c["plan"].write_text(json.dumps(doc))
+    commit_synthetic(tmp_path)
+    prep = prepared(c)
+    args = w3.build_parser().parse_args(cli_args(c, "--final", "--out", str(tmp_path / "final.json")))
+    problems, _ = w3.final_problems(args, prep)
+    assert any("protected plan" in problem for problem in problems)
+
+
+@pytest.mark.parametrize("judge", [JUDGE, OTHER_ROUTE])
+def test_anchor_route_must_follow_selected_judge_even_after_regrade(tmp_path: Path, judge: str) -> None:
+    wrong = "openrouter/vendor/tgt-a" if judge == JUDGE else "anthropic/tgt-a"
+    other = OTHER_ROUTE if judge == JUDGE else JUDGE
+    c = write_campaign(tmp_path, judge_of=lambda nonce: other if nonce.startswith("a") else judge,
+                       spec_of=lambda nonce: wrong if nonce.startswith("a") else
+                       next(t for t in TARGETS if t["id"] == FIRES[nonce][0])["target_specs"][0])
+    doc = load_json(c["plan"])
+    doc["judge"]["judge_model"] = judge
+    doc["targets"][0]["target_specs"] = ["anthropic/tgt-a", "openrouter/vendor/tgt-a"]
+    c["plan"].write_text(json.dumps(doc))
+    for nonce in ("a1", "a2"):
+        write_regrade(c, nonce, judge, "record-" + nonce)
+        add_regrade_fire(c, "record-" + nonce, [STEMS[nonce]])
+    with pytest.raises(w3.AnalysisRefusal, match="anchor.*channel"):
+        prepared(c)
+
+
+@pytest.mark.parametrize("secondary", [False, True])
+@pytest.mark.parametrize("family", ["manifest", "judgments", "analysis_rows", "judge_report"])
+def test_final_refuses_rewritten_regrade_history(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+        secondary: bool, family: str) -> None:
+    c = write_campaign(tmp_path, judge_of=lambda nonce: OTHER_ROUTE if not secondary and nonce == "b1" else JUDGE)
+    if secondary:
+        run_final(monkeypatch, c, tmp_path)
+        for nonce in FIRES:
+            write_regrade(c, nonce, SECOND, "secondary-" + nonce)
+        out = rejudge.output_dir(c["rejudge"], SECOND, STEMS["b1"])
+    else:
+        out = write_regrade(c, "b1", JUDGE, "record-b1")
+        add_regrade_fire(c, "record-b1", [STEMS["b1"]])
+    final_ready(monkeypatch, c)
+    record = load_json(out / rejudge.MANIFEST_NAME)
+    path = out / (rejudge.MANIFEST_NAME if family == "manifest" else record["artifacts"][family]["path"])
+    # A whitespace-only rewrite is sufficient: the append-only promise concerns exact bytes.
+    if family == "judge_report":
+        report = load_json(path)
+        report["synthetic_note"] = "changed"
+        path.write_text(json.dumps(report))
+    else:
+        path.write_bytes(path.read_bytes() + b"\n")
+    if family != "manifest":
+        reseal_synthetic_regrade(out)
+    commit_synthetic(tmp_path)
+    assert rejudge.verify_output(out, c["runs_dir"]) == []
+    result = tmp_path / "result.json"
+    flags = ["--primary-final", str(tmp_path / "final.json"), "--secondary-judge", SECOND] if secondary else ["--final"]
+    assert w3.main(cli_args(c, *flags, "--out", str(result))) == 2
+    assert "re-grade artifact history" in capsys.readouterr().err
+    assert not result.exists()
+
+
+@pytest.mark.parametrize("judge,spec", [(JUDGE, "anthropic/tgt-a"), (OTHER_ROUTE, "openrouter/vendor/tgt-a")])
+def test_anchor_route_accepts_matching_selected_channel(tmp_path: Path, judge: str, spec: str) -> None:
+    c = write_campaign(tmp_path, judge_of=lambda nonce: judge,
+                       spec_of=lambda nonce: spec if nonce.startswith("a") else
+                       next(t for t in TARGETS if t["id"] == FIRES[nonce][0])["target_specs"][0])
+    doc = load_json(c["plan"])
+    doc["judge"]["judge_model"] = judge
+    doc["targets"][0]["target_specs"] = ["anthropic/tgt-a", "openrouter/vendor/tgt-a"]
+    c["plan"].write_text(json.dumps(doc))
+    assert all(run.registered for run in prepared(c).runs)
+
+
+def test_plan_formatting_after_fire_preserves_registered_rules(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    c = write_campaign(tmp_path)
+    final_ready(monkeypatch, c)
+    c["plan"].write_text(json.dumps(load_json(c["plan"]), indent=2, sort_keys=True))
+    commit_synthetic(tmp_path)
+    prep = prepared(c)
+    args = w3.build_parser().parse_args(cli_args(c, "--final", "--out", str(tmp_path / "final.json")))
+    assert w3.final_problems(args, prep)[0] == []

@@ -552,6 +552,31 @@ strictly descriptive, with its seed/epoch/triple counts and minimum-p rationale
 following the passing set. An unsupported rationale refuses rather than being
 silently ignored; no applicable triples require an explicit not-computable rule.
 
+Every run's recorded per-seed digest must equal the currently loaded seed's
+canonical digest before any arm mapping or judgment reconstruction is accepted.
+The anchor's target channel must match the selected judge route even when a
+replacement re-grade supplies the judge-of-record rows; a replacement judge does
+not change the provider that produced the original transcript. The provider
+registry used for this check is included in the input inventory.
+
+Final mode also requires every file in `code_files()` to have the same bytes before
+each fire's first committed journal appearance. All plan fields except `fires`
+are compared with that pre-fire version using canonical JSON (formatting alone
+may change). Fire-inventory amendments retain their existing dated validation;
+this exception does not permit changes to windows, targets, counts or other
+analysis rules. A later target addition or another analysis-bearing amendment
+needs a separately implemented and reviewed approved-versus-amended reporting
+path; this reader refuses it instead of silently treating it as the original
+analysis. These are execution checks, not edits to the registered plan.
+
+Both primary final mode and post-final disclosure require the replacement and
+secondary re-grade manifest, judgments, analysis rows and report to retain their
+original committed bytes throughout their complete local Git history. Consistent
+internal hashes alone do not establish that preservation. Rewrites, including
+rewrite/restore or delete/restore, missing introductions and shallow history
+refuse before statistics or output writing. Coverage-only inspection retains its
+existing artifact-integrity checks and does not claim historical finality.
+
 Post-final disclosure also checks every committed version at the primary artifact's
 repository path against its current bytes, including its introduction. A changed
 version, deletion followed by restoration, missing introduction, or shallow history

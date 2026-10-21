@@ -131,14 +131,14 @@ try:
     from scripts.petri_audit import framework, judge_runner, manifest, rejudge, seeds, spend
     from scripts.petri_audit.framework import ADVICE_RUBRIC, OUTCOME_REGISTRY, ROOT, load_json, sha256_file
     from scripts.petri_audit.manifest import verify_run
-    from scripts.petri_audit.seeds import load_seed_file
+    from scripts.petri_audit.seeds import load_seed_file, seed_digest
 except ModuleNotFoundError:  # run as a file path: the repository root is not on sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from scripts import petri_w2_register_contrast as w2
     from scripts.petri_audit import framework, judge_runner, manifest, rejudge, seeds, spend
     from scripts.petri_audit.framework import ADVICE_RUBRIC, OUTCOME_REGISTRY, ROOT, load_json, sha256_file
     from scripts.petri_audit.manifest import verify_run
-    from scripts.petri_audit.seeds import load_seed_file
+    from scripts.petri_audit.seeds import load_seed_file, seed_digest
 
 CONTRACT_FILE = ROOT / "data" / "petri" / "w3_analysis_contract.json"
 ANALYSIS_CONTRACT = load_json(CONTRACT_FILE)
@@ -1037,6 +1037,11 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: w2.Reg
                               f"(missing {sorted(planned_seed_ids - run_seed_ids)}; "
                               f"unplanned {sorted(run_seed_ids - planned_seed_ids)}); "
                               f"every landed fire must run the complete planned seed set")
+    for entry in manifest["seeds"]:
+        sid = entry["seed_id"]
+        if sid not in seeds or entry.get("seed_sha256") != seed_digest(seeds[sid]):
+            raise AnalysisRefusal(f"{where}: seed {sid!r} digest differs from the loaded seed; "
+                                  "use the stimulus version recorded by every run")
     artifacts = manifest.get("artifacts") or {}
     if not artifacts.get("judgments_sha256"):
         raise AnalysisRefusal(f"{where}: the manifest binds no judgments (no judge of record)")
@@ -1050,6 +1055,10 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: w2.Reg
     if target_model not in target.target_specs:
         raise AnalysisRefusal(f"{where}: fire {nonce} is recorded for target {target.id}, whose specs are "
                               f"{list(target.target_specs)}, but the run's target is {target_model!r}")
+    if (target.role == "anchor" and plan.judge_model is not None
+            and spend.billing_channel([target_model]) != spend.judge_billing_channel(plan.judge_model)):
+        raise AnalysisRefusal(f"{where}: anchor target channel must match judge.judge_model's channel; "
+                              f"target {target_model!r}, judge {plan.judge_model!r}")
     recorded = (manifest.get("framework") or {}).get("outcome_registry_sha256")
     registry: w2.RegistryVersion | None = None
     registry_problem: str | None = None
@@ -2234,8 +2243,7 @@ def analysis_input_files(args: argparse.Namespace, prep: Prepared) -> dict[str, 
     for root in sorted(roots):
         for path in sorted(root.glob("*/manifest.json")):
             files[f"discovered_manifest[{path}]"] = path
-    if prep.secondary_judge is not None:
-        files["judge_providers"] = spend.PROVIDERS_PATH
+    files["judge_providers"] = spend.PROVIDERS_PATH
     regrade_dirs: set[Path] = set()
     for run in prep.runs:
         prefix = f"run[{run.stem}]"
@@ -2745,8 +2753,11 @@ def before_fire_bytes(commit: str, path: Path) -> bytes:
 
 
 def selection_history_problems(plan: Plan) -> list[str]:
-    """The current selection and pinned report bytes must precede each nonce's first journal appearance."""
+    """Freeze selection, analysis rules and code before each nonce first enters the committed journal."""
     try:
+        if git_evidence("rev-parse", "--is-shallow-repository").strip() != b"false":
+            raise AnalysisRefusal("complete local history is required")
+        current_plan = load_json(plan.path)
         remaining = set(plan.fires) | set(plan.regrade_fires)
         path = evidence_path(JOURNAL_FILE)
         commits = git_evidence("log", "--full-history", "--reverse", "--topo-order", "--format=%H", "--", path).decode().splitlines()
@@ -2762,6 +2773,20 @@ def selection_history_problems(plan: Plan) -> list[str]:
             old = old_plan.get("physician_realism_gate", {}).get("selection")
             if old != plan.realism_gate_selection:
                 raise AnalysisRefusal("selection was not committed unchanged before the first fire evidence")
+            # Only fire inventory amendments have an implemented post-start path. Other changes
+            # need the separate approved-versus-amended reporting path, which is not implemented here.
+            protected = {k: v for k, v in current_plan.items() if k != "fires"}
+            previous = {k: v for k, v in old_plan.items() if k != "fires"}
+            if json.dumps(protected, sort_keys=True) != json.dumps(previous, sort_keys=True):
+                raise AnalysisRefusal("protected plan fields changed after fire evidence; "
+                                      "approved-versus-amended analysis is not supported")
+            for name, source in code_files().items():
+                try:
+                    unchanged = before_fire_bytes(commit, source) == source.read_bytes()
+                except (AnalysisRefusal, OSError) as exc:
+                    raise AnalysisRefusal(f"analysis code {name}: pre-fire bytes unavailable") from exc
+                if not unchanged:
+                    raise AnalysisRefusal(f"analysis code {name} changed after fire evidence")
             for artifact in selection_files(plan).values():
                 if before_fire_bytes(commit, artifact) != artifact.read_bytes():
                     raise AnalysisRefusal("selection artifact changed after the first fire evidence")
@@ -2773,7 +2798,7 @@ def selection_history_problems(plan: Plan) -> list[str]:
     return []
 
 
-def primary_history(path: Path) -> None:
+def artifact_history(path: Path, label: str) -> None:
     """Require the first committed bytes and every later path version to equal the current artifact."""
     try:
         if git_evidence("rev-parse", "--is-shallow-repository").strip() != b"false":
@@ -2787,7 +2812,12 @@ def primary_history(path: Path) -> None:
             if git_evidence("show", f"{commit}:{relative}") != current:
                 raise AnalysisRefusal("the committed artifact was rewritten")
     except (AnalysisRefusal, OSError, ValueError) as exc:
-        raise AnalysisRefusal(f"primary artifact history: {exc}") from exc
+        raise AnalysisRefusal(f"{label}: {path}: {exc}") from exc
+
+
+def primary_history(path: Path) -> None:
+    """Require the once-only primary artifact to retain every committed byte."""
+    artifact_history(path, "primary artifact history")
 
 
 def secondary_chronology(args: argparse.Namespace, prep: Prepared, primary: Mapping[str, Any]) -> None:
@@ -2934,6 +2964,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     problems, truncated = final_problems(args, prep)
     problems.extend(uncommitted_input_problems(header["identity"]))
+    for name, path in inputs.items():
+        if name.startswith("regrade["):
+            try:
+                artifact_history(path, "re-grade artifact history")
+            except AnalysisRefusal as exc:
+                problems.append(str(exc))
     if problems:
         return _refuse(problems)
     try:
