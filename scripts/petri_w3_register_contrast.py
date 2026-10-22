@@ -712,6 +712,8 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
         problems.append("exploratory_outcomes.restricted_to_seeds must map each outcome to a list of seed ids")
     else:
         for name, seeds in restricted_raw.items():
+            if len(seeds) != len(set(seeds)):
+                problems.append(f"restricted_to_seeds[{name!r}] must contain distinct seed ids")
             if name not in secondary_names:
                 problems.append(f"restricted_to_seeds names {name!r}, which is not an outcome this script measures")
             stray = sorted(set(seeds) - set(every))
@@ -2193,8 +2195,9 @@ def plan_commit_problem(path: Path) -> str | None:
 
 
 def code_files() -> dict[str, Path]:
-    """The analysis module and the local modules whose functions rebuild and validate its inputs."""
+    """The implementation and fixed routing data; every member must predate all registered fires."""
     return {"script": Path(__file__), "wave2_module": Path(w2.__file__), "analysis_contract": CONTRACT_FILE,
+            "judge_providers": spend.PROVIDERS_PATH,
             **{module.__name__.rsplit(".", 1)[-1]: Path(module.__file__)
                for module in (framework, judge_runner, manifest, rejudge, seeds, spend)}}
 

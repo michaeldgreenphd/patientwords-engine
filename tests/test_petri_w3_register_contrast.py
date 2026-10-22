@@ -2624,3 +2624,107 @@ def test_fixed_plan_rules_accept_registered_values(tmp_path: Path) -> None:
     path = tmp_path / "plan.json"
     path.write_text(json.dumps(synthetic_plan(tmp_path / "seeds.json")))
     assert len(w3.load_plan(path).scenarios) == len(SEEDS_IDS)
+
+
+@pytest.mark.parametrize("repeat", [0, 1])
+def test_restricted_seed_ids_must_be_distinct(tmp_path: Path, repeat: int) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    doc["exploratory_outcomes"]["restricted_to_seeds"][REFERRAL] = [REFERRAL_SEEDS[repeat]] * 2
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="restricted_to_seeds.*distinct"):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("value", [None, "pooled across epochs", 1])
+def test_analysis_unit_is_bound_to_implemented_triples(tmp_path: Path, value: Any) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    if value is None:
+        del doc["unit"]
+    else:
+        doc["unit"] = value
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="unit must match"):
+        w3.load_plan(path)
+
+
+def test_primary_window_amendment_cannot_move_exploratory_tests(tmp_path: Path) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    alternate = "contextual_2_10"
+    doc["primary"]["window"] = alternate
+    doc["decomposition"]["exchanges"] = w3.ANALYSIS_CONTRACT["decomposition_exchanges"].format(
+        window=alternate, floor=doc["windows"][alternate]["floor"])
+    for entry in doc["sensitivity"]:
+        if entry["name"] in w3.SENSITIVITY_RULES:
+            entry["window"] = alternate
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="primary.window must match"):
+        w3.load_plan(path)
+
+
+@pytest.mark.parametrize("secondary", [False, True])
+def test_final_freezes_provider_registry_before_fire(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], secondary: bool) -> None:
+    c = write_campaign(tmp_path)
+    if secondary:
+        run_final(monkeypatch, c, tmp_path)
+        for nonce in FIRES:
+            write_regrade(c, nonce, SECOND, "secondary-" + nonce)
+    final_ready(monkeypatch, c)
+    path = c["static_files"][w3.spend.PROVIDERS_PATH.resolve()]
+    path.write_bytes(path.read_bytes() + b"\n")
+    commit_synthetic(tmp_path)
+    result = tmp_path / "result.json"
+    flags = ["--primary-final", str(tmp_path / "final.json"), "--secondary-judge", SECOND] if secondary else ["--final"]
+    assert w3.main(cli_args(c, *flags, "--out", str(result))) == 2
+    error = capsys.readouterr().err
+    assert "judge_providers" in error and "changed after fire evidence" in error
+    assert not result.exists()
+
+
+def test_post_fire_routing_edit_cannot_authorize_original_anchor(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    wrong = "openrouter/vendor/tgt-a"
+    c = write_campaign(tmp_path, spec_of=lambda nonce: wrong if nonce.startswith("a") else
+                       next(t for t in TARGETS if t["id"] == FIRES[nonce][0])["target_specs"][0])
+    doc = load_json(c["plan"])
+    doc["targets"][0]["target_specs"] = ["anthropic/tgt-a", wrong]
+    c["plan"].write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="anchor.*channel"):
+        prepared(c)
+    final_ready(monkeypatch, c)
+    path = c["static_files"][w3.spend.PROVIDERS_PATH.resolve()]
+    registry = load_json(path)
+    provider = w3.spend.registry_provider(JUDGE, registry)
+    registry[provider]["key_env"] = "OPENROUTER_API_KEY"
+    path.write_text(json.dumps(registry))
+    commit_synthetic(tmp_path)
+    monkeypatch.setattr(w3.spend, "PROVIDERS_PATH", path)
+    assert all(run.registered for run in prepared(c).runs)
+    result = tmp_path / "result.json"
+    assert w3.main(cli_args(c, "--final", "--out", str(result))) == 2
+    assert "judge_providers" in capsys.readouterr().err
+    assert not result.exists()
+
+
+def test_provider_history_checks_later_fires_after_restoration(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    c = write_campaign(tmp_path)
+    all_runs = c["runs"]
+    c["runs"] = {"a1": all_runs["a1"]}
+    final_ready(monkeypatch, c)
+    c["runs"] = all_runs
+    path = c["static_files"][w3.spend.PROVIDERS_PATH.resolve()]
+    original = path.read_bytes()
+    path.write_bytes(original + b"\n")
+    commit_synthetic(tmp_path)
+    # Later nonces first appear under different routing bytes, even though final bytes are restored.
+    final_ready(monkeypatch, c)
+    path.write_bytes(original)
+    commit_synthetic(tmp_path)
+    prep = prepared(c)
+    args = w3.build_parser().parse_args(cli_args(c, "--final", "--out", str(tmp_path / "final.json")))
+    problems, _ = w3.final_problems(args, prep)
+    assert any("judge_providers changed after fire evidence" in problem for problem in problems)

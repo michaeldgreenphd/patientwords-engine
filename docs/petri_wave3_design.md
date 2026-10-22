@@ -1107,6 +1107,22 @@ scenario set's size, including after a gate amendment. The registered plan and
 wave-2 calculations are unchanged; implementing another method needs a separate
 reviewed change rather than silently analyzing it under the original rules.
 
+The implemented analysis unit is also fixed: one seed, target and campaign epoch
+with its three wording arms. Restricted seed lists must contain distinct IDs;
+counts cannot be inflated by IDs that the contrast builder would deduplicate.
+The primary window selector must remain `exchanges_1_10`, which keeps the
+exploratory contrasts on their registered window. Moving it to a different
+named window is unsupported even if adjacent method text is amended consistently.
+
+The provider registry is both a data input and part of the frozen implementation
+inventory. Its entire file must match the committed bytes before every recorded
+fire, including re-grade fires, in primary and post-final secondary modes.
+This deliberately rejects unrelated registry edits too; selecting only one
+provider entry's history is not implemented. A current hash, or routing that
+matches only after a registry edit, is insufficient. No existing wave-3 final
+artifact needs migration; future compatible analysis requires the implementation
+and routing to be fixed before execution begins.
+
 ### Analysis reader contract for the future gate report
 
 The gate application program remains to be implemented under A6.9. The wave-3
