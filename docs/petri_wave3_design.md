@@ -459,8 +459,9 @@ session.
    only secondary statistics, and compares directions with the saved primary tests.
    It never overwrites or recomputes the primary artifact. If step 8 declared
    truncation, repeat its exact `--declare-truncated` reason. The secondary inputs
-   must also be committed; shared re-grade chains and the truncation journal may append to their original byte
-   prefix. Coverage mode alone still computes no contrasts. These are future
+   must also be committed. Shared re-grade chains preserve their original byte
+   prefix; the shared journal may append and accept the monotonic lifecycle
+   updates described below. Coverage mode alone still computes no contrasts. These are future
    owner-authorized analysis commands, not authorization to execute this plan.
 10. Nothing public until the final analysis has run and each named vendor's
     reproduction pack has been sent.
@@ -620,8 +621,19 @@ additional reader gates for future execution, not new fields in landed manifests
 For post-final disclosure, the original input inventory stays protected. A
 verified append to a shared source chain may add its new manifests and artifacts;
 other added inputs, changed original inputs and altered chain prefixes refuse.
+The journal is compared with its exact hash-bound bytes at the primary's recorded
+commit. Original entries stay in order with unchanged immutable fields; resolution
+and eviction flags may advance to true, and a resolution may add one parseable
+timestamp. Existing timestamps cannot change. Entry deletion, reordering,
+non-boolean flags, reversal and immutable evidence changes refuse. This accepts
+the normal shared writer's lifecycle updates without recomputing primary results.
 Discovery keys use manifest paths so an unrelated newly appended run sorting
 before an old run does not renumber the old evidence.
+
+Default discovery classifies a manifest's usable nonce before requiring judgments.
+An outside-plan or voided fire is explicitly listed as excluded even if unjudged;
+an unknown nonce still refuses, and a live selected run must still supply valid
+judgments. Explicitly selected excluded runs refuse instead of being silently skipped.
 
 The rule-bearing test and correction fields must match the implemented two-sided
 sign tests, sign-flip gate and Holm families. Gate wording follows the amended

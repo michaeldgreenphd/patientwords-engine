@@ -1018,7 +1018,8 @@ def read_regrade(out_dir: Path, runs_dir: Path, judge_model: str, manifest: dict
 def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: w2.RegistryResolver,
              rejudge_root: Path) -> RunInput:
     """One run directory, verified, with its registered rows. Refuses, by name: a file in place of a directory; a
-    directory without manifest.json or judgments.jsonl; a fire outside the plan (NotAPlanFire) or voided (VoidedFire);
+    directory without manifest.json; a fire outside the plan (NotAPlanFire) or voided (VoidedFire), classified before
+    requiring judgments; a live fire without judgments.jsonl;
     a run that fails `manifest.verify_run` or differs from the plan's complete seed set; one that binds no judgments
     or records more than one epoch; a target spec
     that is not one of its fire's target's `target_specs`; judgments carrying two judge specs; a re-grade recorded for
@@ -1034,14 +1035,18 @@ def load_run(path: Path, plan: Plan, seeds: Mapping[str, dict], resolver: w2.Reg
     if not path.is_dir():
         raise AnalysisRefusal(f"{where}: no such run directory")
     manifest = w2.read_manifest(path)
-    if not (path / "judgments.jsonl").is_file():
-        raise AnalysisRefusal(f"{where}: judgments.jsonl is missing, so no row can be rebuilt")
+    spend_record = manifest.get("spend")
+    if (not isinstance(spend_record, Mapping) or not isinstance(spend_record.get("journal_nonce"), str)
+            or not spend_record["journal_nonce"].strip()):
+        raise AnalysisRefusal(f"{where}: the manifest records no usable spend.journal_nonce")
     nonce = w2.run_nonce(path, manifest)
     fire = plan.fires.get(nonce)
     if fire is None:
         raise NotAPlanFire(f"{where}: journal nonce {nonce!r} is not one of the plan's fires {sorted(plan.fires)}")
     if fire.voided is not None:
         raise VoidedFire(f"{where}: fire {nonce} is voided in the plan ({fire.voided})")
+    if not (path / "judgments.jsonl").is_file():
+        raise AnalysisRefusal(f"{where}: judgments.jsonl is missing, so no row can be rebuilt")
     problems = verify_run(path)
     if problems:
         raise AnalysisRefusal(f"{where}: the run does not verify: " + "; ".join(problems))
@@ -2422,6 +2427,48 @@ def validate_saved_tests(primary: Mapping[str, Any], prep: Prepared) -> None:
         raise AnalysisRefusal("primary artifact test inventory differs from the planned tests")
 
 
+def preserve_primary_journal(commit: str, original_sha256: str, path: Path) -> None:
+    """Preserve the primary journal's ordered entries while accepting writer lifecycle updates.
+
+    cmd_resolve and journal_drops_remote_entries permit monotonic resolved/evicted
+    booleans and one parseable resolved_utc. Other fields remain exact. Retrieve
+    original bytes from the primary's committed input identity, verifying its hash;
+    the primary artifact itself is independently checked against its full history.
+    """
+    try:
+        if re.fullmatch(r"[0-9a-f]{40}", commit) is None:
+            raise ValueError("original commit is not a full SHA")
+        git_evidence("merge-base", "--is-ancestor", commit, "HEAD")
+        raw = git_evidence("show", f"{commit}:{evidence_path(path)}")
+        if hashlib.sha256(raw).hexdigest() != original_sha256:
+            raise ValueError("original committed journal does not match its recorded hash")
+        before = [json.loads(line) for line in raw.splitlines() if line.strip()]
+        after = [json.loads(line) for line in path.read_bytes().splitlines() if line.strip()]
+        if any(not isinstance(entry, dict) for entry in [*before, *after]):
+            raise ValueError("entries must be JSON objects")
+        if len(after) < len(before):
+            raise ValueError("original entries were removed")
+        mutable = {"resolved", "evicted", "resolved_utc"}
+        for index, (old, new) in enumerate(zip(before, after)):
+            if json.dumps({k: v for k, v in old.items() if k not in mutable}, sort_keys=True) != json.dumps(
+                    {k: v for k, v in new.items() if k not in mutable}, sort_keys=True):
+                raise ValueError(f"entry {index} immutable evidence changed or moved")
+            for flag in ("resolved", "evicted"):
+                if flag in new and not isinstance(new[flag], bool):
+                    raise ValueError(f"entry {index} {flag} is not a boolean")
+                if (flag in old and flag not in new) or (old.get(flag) is True and new.get(flag) is not True):
+                    raise ValueError(f"entry {index} {flag} was removed or reversed")
+            if "resolved_utc" in old and old["resolved_utc"] != new.get("resolved_utc"):
+                raise ValueError(f"entry {index} resolution timestamp changed")
+            if "resolved_utc" not in old and ("resolved_utc" in new or new.get("resolved") and not old.get("resolved")):
+                stamp = new.get("resolved_utc")
+                if not isinstance(stamp, str) or not new.get("resolved"):
+                    raise ValueError(f"entry {index} resolution needs a timestamp and resolved=true")
+                datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    except (AnalysisRefusal, OSError, ValueError, TypeError) as exc:
+        raise AnalysisRefusal(f"primary artifact input trigger_journal: {exc}") from exc
+
+
 def bound_primary(args: argparse.Namespace, prep: Prepared, header: Mapping[str, Any],
                   truncated: Mapping[str, Any]) -> dict[str, Any]:
     """Bind a committed once-only artifact to the unchanged primary inputs; never rerun its statistics."""
@@ -2469,8 +2516,12 @@ def bound_primary(args: argparse.Namespace, prep: Prepared, header: Mapping[str,
         now = current["inputs"][name]
         if old == now:
             continue
-        # Secondary regrades append the verified chain and journal. Preserve the original byte prefix.
-        if ((name.endswith(".chain") or name == "trigger_journal")
+        if (name == "trigger_journal" and isinstance(old, dict) and old.get("path") == now["path"]
+                and isinstance(old.get("sha256"), str)):
+            preserve_primary_journal(identity["commit"], old["sha256"], paths[name])
+            continue
+        # Chains preserve their byte prefix; the shared journal also permits lifecycle updates above.
+        if (name.endswith(".chain")
                 and isinstance(old, dict) and old.get("path") == now["path"]
                 and isinstance(old.get("sha256"), str)):
             digest = hashlib.sha256()

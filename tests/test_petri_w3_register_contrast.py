@@ -2926,3 +2926,158 @@ def test_fire_history_rejects_invalid_disposition_transitions(
     c["plan"].write_text(json.dumps(doc))
     commit_synthetic(tmp_path)
     assert any("fire inventory" in p for p in w3.selection_history_problems(w3.load_plan(c["plan"])))
+
+
+@pytest.mark.parametrize("state", ["outside", "voided", "live", "unknown"])
+@pytest.mark.parametrize("explicit", [False, True])
+def test_unjudged_runs_are_classified_before_requiring_rows(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str], state: str, explicit: bool) -> None:
+    c = write_campaign(tmp_path)
+    run = c["runs"]["c2"]
+    record = load_json(run / "manifest.json")
+    record["artifacts"].update(judgments_path=None, judgments_sha256=None, judge_of_record=None)
+    if state == "unknown":
+        record["spend"]["journal_nonce"] = None
+    record = seal_manifest(record, record["chain"]["prev_sha256"])
+    (run / "manifest.json").write_text(json.dumps(record))
+    (run / "judgments.jsonl").unlink()
+    if state != "unknown":
+        assert w3.verify_run(run) == []
+    doc = load_json(c["plan"])
+    if state == "outside":
+        doc["fires"] = [f for f in doc["fires"] if f["journal_nonce"] != "c2"]
+    elif state == "voided":
+        next(f for f in doc["fires"] if f["journal_nonce"] == "c2")["voided"] = "synthetic operational failure"
+    c["plan"].write_text(json.dumps(doc))
+    args = cli_args(c, *([str(run)] if explicit else []))
+    code = w3.main(args)
+    output = capsys.readouterr()
+    reason = {"outside": "not one of the plan's fires", "voided": "is voided in the plan",
+              "live": "judgments.jsonl is missing", "unknown": "no usable spend.journal_nonce"}[state]
+    if not explicit and state in {"outside", "voided"}:
+        assert code == 0
+        skipped = json.loads(output.out)["coverage"]["runs_not_analysed"]
+        assert len(skipped) == 1 and reason in skipped[0]["reason"]
+    else:
+        assert code == 2 and reason in output.err
+
+
+@pytest.mark.parametrize("change", ["resolved", "evicted", "immutable"])
+def test_secondary_disclosure_allows_only_journal_lifecycle_changes(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], change: str) -> None:
+    c = write_campaign(tmp_path)
+    unrelated = {"trigger": "synthetic-lane", "nonce": "unrelated", "fired_utc": "2026-10-01T00:00:00Z",
+                 "resolved": False, "evicted": False, "max_spend": 1}
+    final_ready(monkeypatch, c, (unrelated,))
+    primary = tmp_path / "final.json"
+    assert w3.main(cli_args(c, "--final", "--out", str(primary))) == 0
+    original = primary.read_bytes()
+    for nonce in FIRES:
+        write_regrade(c, nonce, SECOND, "secondary-" + nonce)
+    if change == "resolved":
+        unrelated.update(resolved=True, resolved_utc="2026-10-03T00:00:00Z")
+    elif change == "evicted":
+        unrelated["evicted"] = True
+    else:
+        unrelated["max_spend"] = 0
+    final_ready(monkeypatch, c, (unrelated,))
+    out = tmp_path / "secondary.json"
+    code = w3.main(cli_args(c, "--primary-final", str(primary), "--secondary-judge", SECOND, "--out", str(out)))
+    assert primary.read_bytes() == original
+    if change == "immutable":
+        assert code == 2 and not out.exists()
+        assert "trigger_journal" in capsys.readouterr().err
+    else:
+        assert code == 0 and out.is_file()
+
+
+@pytest.mark.parametrize("change", ["resolve", "evict", "append", "format", "drop", "reorder", "immutable",
+                                  "nonboolean", "unresolve", "unevict", "rewrite_timestamp", "missing_timestamp",
+                                  "bad_timestamp", "bad_hash", "extra_field", "bool_amount", "remove_flag"])
+def test_primary_journal_preserves_evidence_and_monotonic_lifecycle(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, change: str) -> None:
+    plumbing(tmp_path, "init", "-q")
+    path = tmp_path / "journal.jsonl"
+    rows = [{"trigger": "synthetic", "nonce": "one", "fired_utc": "2026-10-01T00:00:00Z",
+             "resolved": False, "evicted": False, "max_spend": 1},
+            {"trigger": "synthetic", "nonce": "two", "fired_utc": "2026-10-01T00:01:00Z",
+             "resolved": True, "evicted": True, "resolved_utc": "2026-10-02T00:00:00Z"}]
+    path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    original_hash = sha256_file(path)
+    commit = commit_synthetic(tmp_path)
+    monkeypatch.setattr(w3, "REPO_ROOT", tmp_path)
+    if change in {"resolve", "missing_timestamp", "bad_timestamp"}:
+        rows[0]["resolved"] = True
+        if change != "missing_timestamp":
+            rows[0]["resolved_utc"] = "not-a-time" if change == "bad_timestamp" else "2026-10-02T00:00:00Z"
+    elif change == "evict":
+        rows[0]["evicted"] = True
+    elif change == "append":
+        rows.append({"trigger": "synthetic", "nonce": "three"})
+    elif change == "drop":
+        rows.pop()
+    elif change == "reorder":
+        rows.reverse()
+    elif change == "immutable":
+        rows[0]["max_spend"] = 0
+    elif change == "nonboolean":
+        rows[0]["resolved"] = "false"
+    elif change == "unresolve":
+        rows[1]["resolved"] = False
+    elif change == "unevict":
+        rows[1]["evicted"] = False
+    elif change == "rewrite_timestamp":
+        rows[1]["resolved_utc"] = "2026-10-03T00:00:00Z"
+    elif change == "bad_hash":
+        original_hash = "0" * 64
+    elif change == "extra_field":
+        rows[0]["new_evidence"] = "changed"
+    elif change == "bool_amount":
+        rows[0]["max_spend"] = True
+    elif change == "remove_flag":
+        del rows[0]["resolved"]
+    path.write_text("".join(json.dumps(row, sort_keys=change == "format") + "\n" for row in rows))
+    commit_synthetic(tmp_path)
+    if change in {"resolve", "evict", "append", "format"}:
+        w3.preserve_primary_journal(commit, original_hash, path)
+    else:
+        with pytest.raises(w3.AnalysisRefusal, match="trigger_journal"):
+            w3.preserve_primary_journal(commit, original_hash, path)
+
+
+def test_final_discovery_reports_an_unjudged_unrelated_run_without_blocking_live_runs(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    c = write_campaign(tmp_path)
+    path = c["runs_dir"] / "run_999_1"
+    shutil.copytree(c["runs"]["c2"], path)
+    record = load_json(path / "manifest.json")
+    previous = record["chain"]["manifest_sha256"]
+    record["run_id"] = "synthetic-unrelated"
+    record["spend"]["journal_nonce"] = "unrelated"
+    record["artifacts"].update(judgments_path=None, judgments_sha256=None, judge_of_record=None)
+    for key, value in record["artifacts"].items():
+        if key.endswith("_path") and value:
+            record["artifacts"][key] = f"{path.name}/{Path(value).name}"
+    record = seal_manifest(record, previous)
+    (path / "manifest.json").write_text(json.dumps(record))
+    (path / "judgments.jsonl").unlink()
+    with (c["runs_dir"] / CHAIN_FILE).open("a") as stream:
+        stream.write(f"{path.name}/manifest.json {record['chain']['manifest_sha256']}\n")
+    assert w3.verify_run(path) == [] and w3.manifest.verify_chain(c["runs_dir"])[0]
+    result = run_final(monkeypatch, c, tmp_path)
+    skipped = result["coverage"]["runs_not_analysed"]
+    assert len(result["run_list"]) == len(FIRES)
+    assert len(skipped) == 1 and "unrelated" in skipped[0]["reason"]
+
+
+@pytest.mark.parametrize("spend_block", [1, ["invalid"], {"journal_nonce": " "}])
+def test_unjudged_discovery_refuses_unusable_nonce_without_crashing(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str], spend_block: Any) -> None:
+    c = write_campaign(tmp_path)
+    run = c["runs"]["c2"]
+    record = load_json(run / "manifest.json")
+    record["spend"] = spend_block
+    (run / "manifest.json").write_text(json.dumps(record))
+    (run / "judgments.jsonl").unlink()
+    assert w3.main(cli_args(c)) == 2
+    assert "journal_nonce" in capsys.readouterr().err
