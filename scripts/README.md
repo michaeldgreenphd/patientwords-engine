@@ -37,6 +37,12 @@ session, at the owner's request), or the site's CI. "Imported by" marks a
 module other scripts load. "Publish chain step N" is a step of the
 publish-site-data skill, which the Routine runs in §5 when new results land.
 
+## Staged annotation tools
+
+| Script | What it does | Status | Writes | Who runs it |
+|---|---|---|---|---|
+| `action_annotations.py` | Prepares blinded synthetic requests, validates evidence spans and compares annotations with an independent fixture key; no provider calls | staged | New `action_requests.json` or `action_annotations.json` outside Git; never measurement collectors | owner or session for offline rehearsal; no CI lane |
+
 ## Ops tooling and the Routine
 
 | Script | What it does | Status | Writes | Who runs it |
