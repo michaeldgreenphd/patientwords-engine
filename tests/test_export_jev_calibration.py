@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -825,6 +826,30 @@ def test_wrong_section_types_refused_at_load(tmp_path, metrics, cases):
     assert exc.value.code == 2
 
 
+@pytest.mark.parametrize("petri_cases", [1, 0, 1.5, True, False, None, "rows", {"row": 1}])
+@pytest.mark.parametrize("published", [False, True])
+def test_malformed_petri_cases_refused_before_provenance_or_writes(
+        tmp_path: Path, mock_report_data: dict, capsys: pytest.CaptureFixture[str],
+        petri_cases: object, published: bool) -> None:
+    mock_report_data["petri_cases"] = petri_cases
+    report = tmp_path / "report.json"
+    report.write_text(json.dumps(mock_report_data), encoding="utf-8")
+    site = tmp_path / "site"
+    data_dir = site / "data"
+    data_dir.mkdir(parents=True)
+    if published:
+        for name in ("jev_calibration.json", "petri_register_drift.json"):
+            (data_dir / name).write_text('{"existing": true}\n', encoding="utf-8")
+    before = {path.name: path.read_bytes() for path in data_dir.iterdir()}
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--report", str(report), "--site", str(site)])
+
+    assert exc.value.code == 2
+    assert "Report petri_cases must be a JSON list" in capsys.readouterr().err
+    assert {path.name: path.read_bytes() for path in data_dir.iterdir()} == before
+
+
 def test_case_rows_contradicting_the_matrix_refused(mock_report_data):
     mock_report_data["cases"][3]["predicted_tier"] = TIERS[1]          # matrix still records it one tier higher
     with pytest.raises(SystemExit) as exc:
@@ -1515,3 +1540,663 @@ def test_malformed_manifest_chain_line_refused_cleanly(tmp_path, mock_report_dat
     with pytest.raises(SystemExit) as exc:
         build_petri_drift_payload(mock_report_data, report_sha="sha", repo_root=tmp_path)
     assert exc.value.code == 2
+
+
+# Several runs in one export (owner decision D3, 2026-10-14): one advice report plus Petri-only reports
+# (audit_jev_calibration.py --skip-advice), pooled as conversations. The second run is the committed equity run eq02,
+# so its arm placement also runs end to end; its two conversations here are a colloquial and a careful-lay patient.
+EQ02_TRANSCRIPTS = "data/petri/runs/run_38434195912_1/transcripts.jsonl"
+EQ02_SHA = hashlib.sha256((ROOT / EQ02_TRANSCRIPTS).read_bytes()).hexdigest()
+EQ02_A = "85726acbafe748de9fb0024d071f9da94c192a61fd7c908c4e82afda1f9756bd"
+EQ02_B = "3d1e05bc3b41d0c9b2c6650ba42da9b63c85dc6d068a2b20ee03d4f8668c9201"
+# Combining resolves each report's classifier digest to the files behind it (resolve_classifier), so these reports
+# carry the digest of this checkout's three files, as an audit run here would record it.
+CLASSIFIER_FILES = ("scripts/jev_classifier.py", "medlang_circuits/jev_client.py", "scripts/audit_jev_calibration.py")
+WORKTREE_CLASSIFIER = hashlib.sha256(b"".join((ROOT / f).read_bytes() for f in CLASSIFIER_FILES)).hexdigest()
+# The first live report (2026-10-12) ran at this commit; its digest is the one it recorded
+LIVE_REPORT_COMMIT, LIVE_REPORT_CLASSIFIER = ("8a29a30f82", "a38069f85f0dbd4f0a084f404bb52914cb0e4590386b11b2d91f427bc9b6f145")
+
+
+@pytest.fixture
+def advice_report(mock_report_data) -> dict:
+    report = json.loads(json.dumps(mock_report_data))
+    report["metadata"]["classifier"]["sha256"] = WORKTREE_CLASSIFIER
+    return report
+
+
+def _petri_only(base: dict) -> dict:
+    """A Petri-only report over eq02 with the same instrument as `base`, as --skip-advice writes it."""
+    meta = {k: v for k, v in json.loads(json.dumps(base["metadata"])).items()
+            if k not in ("advice_archive", "advice_judgments")}
+    meta["timestamp_utc"] = "2026-10-14T01:00:00Z"
+    meta["petri_transcripts"] = {"path": EQ02_TRANSCRIPTS, "sha256": EQ02_SHA, "turns_evaluated": 3}
+    row = dict(base["petri_cases"][0], cost_usd=0.0002, estimated_cost_usd=0.0002, input_tokens=100)
+    rows = [dict(row, conversation_id=EQ02_A, turn_index=1),
+            dict(row, conversation_id=EQ02_A, turn_index=3, has_register_drift=True, drift_probability=0.7),
+            dict(row, conversation_id=EQ02_B, turn_index=1)]
+    metrics = {"total_cases": 0, "total_cost_usd": 0.0006, "total_estimated_cost_usd": 0.0006,
+               "total_input_tokens": 300, "unbilled_calls_count": 0, "tier_order": TIERS}
+    return {"metadata": meta, "metrics": metrics, "cases": [], "petri_cases": rows}
+
+
+def _write_reports(tmp_path: Path, *docs: dict) -> list[str]:
+    paths = []
+    for i, doc in enumerate(docs):
+        path = tmp_path / f"r{i}.json"
+        path.write_text(json.dumps(doc), encoding="utf-8")
+        paths.append(str(path))
+    return paths
+
+
+def _export(tmp_path: Path, paths: list[str], *extra: str) -> int:
+    (tmp_path / "site" / "data").mkdir(parents=True, exist_ok=True)
+    return main([arg for p in paths for arg in ("--report", p)] + ["--site", str(tmp_path / "site"), *extra])
+
+
+def _site(tmp_path: Path, name: str) -> dict:
+    return json.loads((tmp_path / "site" / "data" / name).read_text(encoding="utf-8"))
+
+
+def test_a_combined_export_pools_the_petri_runs_and_keeps_the_advice_report(tmp_path, advice_report):
+    paths = _write_reports(tmp_path, advice_report, _petri_only(advice_report))
+    shas = [hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in paths]
+    assert _export(tmp_path, paths) == 0
+    calib, petri = _site(tmp_path, "jev_calibration.json"), _site(tmp_path, "petri_register_drift.json")
+    combined = hashlib.sha256("".join(f"{s}\n" for s in sorted(shas)).encode("ascii")).hexdigest()
+    assert calib["source_report_sha256"] == petri["source_report_sha256"] == combined
+    assert [e["sha256"] for e in calib["source_reports"]] == shas and calib["source_reports"] == petri["source_reports"]
+    assert calib["headline_metrics"]["total_advice_cases"] == 4        # the advice report's, unchanged
+    head = petri["headline_metrics"]
+    assert (head["total_conversations"], head["total_assistant_turns"]) == (4, 6)
+    assert head["petri_phase_spend"]["cost_usd"] == pytest.approx(0.0006)
+    assert [(r["run"], r["conversations"]) for r in petri["provenance"]["petri_runs"]] == [
+        ("run_35937014168_1", 2), ("run_38434195912_1", 2)]
+    assert petri["provenance"]["petri_transcripts"] is None             # several runs: named in petri_runs
+    assert petri["conversations"][EQ02_A]["run"] == "run_38434195912_1"
+    assert petri["conversations"][CONV_A]["run"] == "run_35937014168_1"
+    app = head["applicable"]
+    assert (app["conversations"], app["conversations_with_drift"]) == (4, 2)
+
+
+def test_the_combined_identifier_does_not_depend_on_report_order(tmp_path, advice_report):
+    paths = _write_reports(tmp_path, advice_report, _petri_only(advice_report))
+    assert _export(tmp_path, paths) == 0
+    first = _site(tmp_path, "petri_register_drift.json")["source_report_sha256"]
+    assert _export(tmp_path, paths[::-1]) == 0
+    assert _site(tmp_path, "petri_register_drift.json")["source_report_sha256"] == first
+
+
+def test_a_single_report_export_names_its_report_and_run(tmp_path, advice_report):
+    (path,) = _write_reports(tmp_path, advice_report)
+    assert _export(tmp_path, [path]) == 0
+    petri = _site(tmp_path, "petri_register_drift.json")
+    sha = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    assert petri["source_report_sha256"] == sha and [e["sha256"] for e in petri["source_reports"]] == [sha]
+    assert petri["provenance"]["petri_transcripts"]["path"] == PETRI_RUN_TRANSCRIPTS     # unchanged for one report
+    assert [r["run"] for r in petri["provenance"]["petri_runs"]] == ["run_35937014168_1"]
+
+
+def test_combined_payloads_pass_the_site_contract_gate(tmp_path, advice_report):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("vfc", ROOT / "scripts" / "validate_frontend_contract.py")
+    vfc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(vfc)
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert rep.errors == [] and rep.warnings == []
+    # the gate recomputes the identifier from the listed reports, and holds the two payloads' lists equal
+    petri_path = tmp_path / "site" / "data" / "petri_register_drift.json"
+    petri = json.loads(petri_path.read_text(encoding="utf-8"))
+    petri["source_reports"] = petri["source_reports"][:1]
+    petri_path.write_text(json.dumps(petri), encoding="utf-8")
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert any("source_report_sha256" in str(e) for e in rep.errors)
+    assert any("different source reports" in str(e) for e in rep.errors)
+    # one payload listing its reports and the other not is a partial pair (Codex review of PR #111)
+    del petri["source_reports"]
+    petri_path.write_text(json.dumps(petri), encoding="utf-8")
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert any("only one of the two Jev payloads" in str(e) for e in rep.errors)
+
+
+@pytest.mark.parametrize("strip_equivalence", [False, True])
+def test_combined_payloads_cannot_drop_both_source_lists(
+    tmp_path: Path, advice_report: dict, strip_equivalence: bool,
+) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    for name in ("jev_calibration.json", "petri_register_drift.json"):
+        payload = _site(tmp_path, name)
+        del payload["source_reports"]
+        payload["provenance"].pop("petri_runs", None)
+        if strip_equivalence:
+            del payload["provenance"]["evaluator_equivalence"]
+        (tmp_path / "site" / "data" / name).write_text(json.dumps(payload), encoding="utf-8")
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert any("source_reports" in str(error) for error in rep.errors)
+    assert any("petri_runs" in str(error) and "missing" in str(error) for error in rep.errors)
+
+
+@pytest.mark.parametrize("strip_version", [False, True])
+def test_combined_payloads_cannot_be_stripped_to_the_legacy_shape(
+    tmp_path: Path, advice_report: dict, strip_version: bool,
+) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    for name in ("jev_calibration.json", "petri_register_drift.json"):
+        payload = _site(tmp_path, name)
+        assert payload["schema_version"] == "2.0"
+        del payload["source_reports"], payload["provenance"]["evaluator_equivalence"]
+        payload["provenance"].pop("petri_runs", None)
+        for conversation in payload.get("conversations", {}).values():
+            del conversation["run"]
+        if strip_version:
+            del payload["schema_version"]
+        (tmp_path / "site" / "data" / name).write_text(json.dumps(payload), encoding="utf-8")
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    if strip_version:
+        assert sum("missing_jev_schema" in error for error in rep.errors) == 2
+    else:
+        assert sum("source_reports" in error for error in rep.errors) == 2
+        assert any("petri_runs" in error and "missing" in error for error in rep.errors)
+
+
+def _refused(tmp_path: Path, docs: list[dict], fragment: str, capsys) -> None:
+    with pytest.raises(SystemExit) as exc:
+        _export(tmp_path, _write_reports(tmp_path, *docs), "--dry-run")
+    assert exc.value.code == 2
+    assert fragment in capsys.readouterr().err
+
+
+def test_combining_refuses_two_advice_reports(tmp_path, advice_report, capsys):
+    other = json.loads(json.dumps(advice_report))
+    other["metadata"]["timestamp_utc"] = "2026-10-13T00:00:00Z"
+    del other["metadata"]["petri_transcripts"]          # advice only, so only the advice rule applies
+    other["petri_cases"] = []
+    _refused(tmp_path, [advice_report, other], "2 of the reports carry advice cases", capsys)
+
+
+def test_combining_refuses_the_same_report_twice_and_no_advice_report(tmp_path, advice_report, capsys):
+    only = _petri_only(advice_report)
+    _refused(tmp_path, [only, only], "same report", capsys)
+    other = json.loads(json.dumps(only))
+    path = "data/petri/runs/run_36076994201_1/transcripts.jsonl"
+    other["metadata"]["petri_transcripts"] = {"path": path, "sha256": hashlib.sha256((ROOT / path).read_bytes()).hexdigest(),
+                                              "turns_evaluated": 3}
+    _refused(tmp_path, [only, other], "0 of the reports carry advice cases", capsys)
+
+
+@pytest.mark.parametrize("change, fragment", [
+    (lambda m: m["metadata"].update(model_requested="typesafe/jev-2"), "one instrument"),
+    (lambda m: m["metadata"].update(is_mock=True), "one instrument"),
+    (lambda m: m["metadata"]["classifier"].update(sha256="d" * 64), "matches no commit"),
+    (lambda m: m["metadata"]["register_rubric"].update(sha256="e" * 64), "one instrument"),
+    (lambda m: m["metadata"].update(golden_benchmark={"path": "x", "sha256": "a" * 64}), "golden_benchmark"),
+    (lambda m: m["metrics"].update(total_cost_usd=0.5), "does not equal the sum of its rows"),
+    (lambda m: m["metadata"].update(petri_transcripts={"path": PETRI_RUN_TRANSCRIPTS, "sha256": PETRI_RUN_SHA,
+                                                       "turns_evaluated": 3}), "same Petri transcripts"),
+])
+def test_combining_refuses_reports_that_are_not_one_instrument_or_overlap(tmp_path, advice_report, capsys,
+                                                                         change, fragment):
+    other = _petri_only(advice_report)
+    change(other)
+    _refused(tmp_path, [advice_report, other], fragment, capsys)
+
+
+def test_a_conversation_in_two_reports_is_refused(advice_report):
+    from scripts.export_jev_calibration import build_combined_petri_drift_payload
+    other = _petri_only(advice_report)
+    other["petri_cases"][0]["conversation_id"] = CONV_A
+    arms = [{c: SYNTHETIC_ARM for c in (CONV_A, CONV_B)}, {c: SYNTHETIC_ARM for c in (CONV_A, EQ02_A, EQ02_B)}]
+    with pytest.raises(SystemExit):
+        build_combined_petri_drift_payload([(advice_report, "a" * 64), (other, "b" * 64)], arms=arms)
+
+
+def test_a_runner_change_combines_only_with_a_reviewed_equivalence(tmp_path, advice_report, monkeypatch, capsys):
+    """Codex review of PR #111: the recorded digest covers the runner, so a new runner gave every new report another
+    digest; the scoring files are compared through resolve_classifier. The runner also selects the scored turns and
+    builds their context (round 3), so two runner versions combine only when a reviewed entry links them."""
+    import scripts.export_jev_calibration as ex
+    other = _petri_only(advice_report)
+    other["metadata"]["classifier"]["sha256"] = "9" * 64
+    real = ex.resolve_classifier
+    same_scoring = real(WORKTREE_CLASSIFIER)
+    monkeypatch.setattr(ex, "resolve_classifier", lambda digest, repo_root=ex.REPO_ROOT, hint=None: (
+        {**same_scoring, "commit": "f" * 40, "evaluator_sha256": "e" * 64} if digest == "9" * 64
+        else real(digest, repo_root, hint)))
+    _refused(tmp_path, [advice_report, other], "audit runner version", capsys)
+    equivalence_path = tmp_path / ex.EVALUATOR_EQUIVALENCE
+    equivalence_path.parent.mkdir(parents=True)
+    entry = {"reason": "report writing only", "reviewed_utc": "2026-10-15T00:00:00Z"}
+    edges = [{"evaluator_sha256": "e" * 64, "equivalent_to": "b" * 64, **entry},
+             {"evaluator_sha256": "b" * 64, "equivalent_to": same_scoring["evaluator_sha256"], **entry}]
+    unrelated = {"evaluator_sha256": "a" * 64, "equivalent_to": "c" * 64, **entry}
+    equivalence_path.write_text(json.dumps({"equivalences": [*edges, unrelated]}), encoding="utf-8")
+    equivalence_sha = hashlib.sha256(equivalence_path.read_bytes()).hexdigest()
+    load_equivalence = ex.load_evaluator_equivalence
+    monkeypatch.setattr(ex, "load_evaluator_equivalence", lambda repo_root=ex.REPO_ROOT: load_equivalence(tmp_path))
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, other)) == 0
+    entries = _site(tmp_path, "petri_register_drift.json")["source_reports"]
+    assert [e["evaluator_sha256"] == "e" * 64 for e in entries] == [False, True]
+    assert entries[0]["scoring_sha256"] == entries[1]["scoring_sha256"]
+    # the pooled payload names each run's classifier digest, not the first run's for all (Codex review of PR #111)
+    prov = _site(tmp_path, "petri_register_drift.json")["provenance"]
+    assert prov["classifier_sha256"] is None
+    assert [r["classifier_sha256"] for r in prov["petri_runs"]] == [WORKTREE_CLASSIFIER, "9" * 64]
+    # and the dated models that scored each run (round 3)
+    assert all(r["models_served"] == ["typesafe/jev-1.13-20261001"] for r in prov["petri_runs"])
+    # Codex 4278534625: retain the exact reviewed mapping and all transitive links that allowed these runners to pool.
+    applied = prov["evaluator_equivalence"]
+    assert applied == _site(tmp_path, "jev_calibration.json")["provenance"]["evaluator_equivalence"]
+    assert applied["path"] == ex.EVALUATOR_EQUIVALENCE and applied["sha256"] == equivalence_sha
+    assert applied["applied_equivalences"] == edges
+    assert applied["evaluator_classes"] == {same_scoring["evaluator_sha256"]: same_scoring["evaluator_sha256"],
+                                            "e" * 64: same_scoring["evaluator_sha256"]}
+    # Later edits to the source file cannot erase the decision from the emitted artifact.
+    equivalence_path.write_text(json.dumps({"equivalences": []}), encoding="utf-8")
+    assert _site(tmp_path, "petri_register_drift.json")["provenance"]["evaluator_equivalence"] == applied
+
+
+def test_the_equivalence_file_is_a_reviewed_union(tmp_path):
+    import scripts.export_jev_calibration as ex
+    (tmp_path / "data" / "jev").mkdir(parents=True)
+    path = tmp_path / ex.EVALUATOR_EQUIVALENCE
+    a, b, c = "a" * 64, "b" * 64, "c" * 64
+    entry = {"reason": "flags and spend accounting only", "reviewed_utc": "2026-10-14T00:00:00Z"}
+    path.write_text(json.dumps({"equivalences": [{"evaluator_sha256": a, "equivalent_to": b, **entry},
+                                                 {"evaluator_sha256": b, "equivalent_to": c, **entry}]}))
+    classes = ex.evaluator_classes(tmp_path)
+    assert classes[a] == classes[b] == classes[c]
+    path.write_text(json.dumps({"equivalences": [{"evaluator_sha256": a, "equivalent_to": b}]}))
+    with pytest.raises(SystemExit):
+        ex.evaluator_classes(tmp_path)
+    assert ex.evaluator_classes(tmp_path / "missing") == {}
+
+
+def test_another_scoring_implementation_is_refused(tmp_path, advice_report, monkeypatch, capsys):
+    import scripts.export_jev_calibration as ex
+    other = _petri_only(advice_report)
+    other["metadata"]["classifier"]["sha256"] = "9" * 64
+    real = ex.resolve_classifier
+    monkeypatch.setattr(ex, "resolve_classifier", lambda digest, repo_root=ex.REPO_ROOT, hint=None: (
+        {"commit": "f" * 40, "scoring_sha256": "5" * 64, "evaluator_sha256": "e" * 64} if digest == "9" * 64
+        else real(digest, repo_root, hint)))
+    _refused(tmp_path, [advice_report, other], "scoring implementation", capsys)
+
+
+@pytest.mark.skipif(subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", f"{LIVE_REPORT_COMMIT}^{{commit}}"],
+                                   capture_output=True).returncode != 0,
+                    reason="this clone lacks the commit the first live report ran at (a shallow clone)")
+def test_the_first_live_reports_digest_resolves_to_its_commit():
+    """The first live report's recorded digest is found in history, at the commit it ran, with the scoring files that
+    this checkout's main carried at the time."""
+    from scripts.export_jev_calibration import resolve_classifier
+    found = resolve_classifier(LIVE_REPORT_CLASSIFIER)
+    assert found is not None and found["commit"].startswith(LIVE_REPORT_COMMIT)
+
+
+@pytest.mark.skipif(subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", f"{LIVE_REPORT_COMMIT}^{{commit}}"],
+                                   capture_output=True).returncode != 0,
+                    reason="this clone lacks the commit the first live report ran at (a shallow clone)")
+def test_reviewed_history_combines_with_the_current_runner(tmp_path: Path, advice_report: dict) -> None:
+    from scripts import export_jev_calibration as ex
+
+    current = _petri_only(advice_report)
+    advice_report["metadata"]["classifier"].update(sha256=LIVE_REPORT_CLASSIFIER, commit=LIVE_REPORT_COMMIT)
+    historical_runner = ex.resolve_classifier(LIVE_REPORT_CLASSIFIER, hint=LIVE_REPORT_COMMIT)
+    current_runner = ex.resolve_classifier(WORKTREE_CLASSIFIER)
+    assert historical_runner is not None and current_runner is not None
+    assert historical_runner["scoring_sha256"] == current_runner["scoring_sha256"]
+    assert historical_runner["evaluator_sha256"] != current_runner["evaluator_sha256"]
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, current)) == 0
+    for name in ("jev_calibration.json", "petri_register_drift.json"):
+        payload = _site(tmp_path, name)
+        provenance = payload["provenance"]["evaluator_equivalence"]
+        assert provenance["sha256"] == hashlib.sha256((ROOT / ex.EVALUATOR_EQUIVALENCE).read_bytes()).hexdigest()
+        assert len(provenance["applied_equivalences"]) == 1
+        edge = provenance["applied_equivalences"][0]
+        assert edge["evaluator_sha256"] == historical_runner["evaluator_sha256"]
+        assert edge["equivalent_to"] == current_runner["evaluator_sha256"]
+        assert len(set(provenance["evaluator_classes"].values())) == 1
+
+
+def test_one_unreadable_object_does_not_hide_the_commit_a_report_ran_at(monkeypatch):
+    """Codex review of PR #111: `git log --all` stops at the first unreadable object, which discarded every candidate.
+    The search keeps the partial output and walks each ref on its own, skipping one that cannot be read."""
+    import scripts.export_jev_calibration as ex
+    files = (*ex.JEV_SCORING_FILES, ex.JEV_EVALUATOR_FILE)
+    body = {f: f"content of {f}".encode() for f in files}
+    digest = hashlib.sha256(b"".join(body[f] for f in files)).hexdigest()
+
+    def fake_git(repo_root, *args):
+        ok = lambda out: subprocess.CompletedProcess(args, 0, out.encode(), b"")   # noqa: E731
+        bad = subprocess.CompletedProcess(args, 128, b"", b"fatal: missing tree")
+        if args[:2] == ("log", "--all"):
+            return bad
+        if args[0] == "for-each-ref":
+            return ok("refs/heads/broken\nrefs/heads/main\n")
+        if args[:2] == ("log", "refs/heads/broken"):
+            return bad
+        if args[:2] == ("log", "refs/heads/main"):
+            return ok("c" * 40 + "\n")
+        if args[0] == "rev-parse" and args[-1] == "goodcommit^{commit}":
+            return ok("c" * 40 + "\n")
+        if args[0] == "show" and args[1].startswith("c" * 40 + ":"):
+            return subprocess.CompletedProcess(args, 0, body[args[1].split(":", 1)[1]], b"")
+        return bad
+    monkeypatch.setattr(ex, "_git", fake_git)
+    found = ex.resolve_classifier(digest, repo_root=Path("/nonexistent"))
+    assert found is not None and found["commit"] == "c" * 40
+    assert ex.resolve_classifier(digest, repo_root=Path("/nonexistent"), hint="goodcommit")["commit"] == "c" * 40
+
+
+def test_the_recorded_commit_is_kept_when_the_worktree_also_matches():
+    """Codex review of PR #111: a new report that names its commit keeps it, even when this checkout's three files
+    give the same digest (the worktree match has no commit to name)."""
+    import scripts.export_jev_calibration as ex
+    head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    files = (*ex.JEV_SCORING_FILES, ex.JEV_EVALUATOR_FILE)
+    at_head = [subprocess.run(["git", "-C", str(ROOT), "show", f"{head}:{f}"], capture_output=True).stdout for f in files]
+    digest = hashlib.sha256(b"".join(at_head)).hexdigest()
+    found = ex.resolve_classifier(digest, hint=head)
+    assert found is not None and found["commit"] == head
+
+
+def test_the_gate_reconciles_run_attribution(tmp_path, advice_report):
+    """Codex review of PR #111, round 3: a combined payload whose petri_runs is missing or whose conversations name
+    another run is refused by the site gate."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("vfc", ROOT / "scripts" / "validate_frontend_contract.py")
+    vfc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(vfc)
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    path = tmp_path / "site" / "data" / "petri_register_drift.json"
+    good = json.loads(path.read_text(encoding="utf-8"))
+
+    def errors(doc: dict) -> list:
+        path.write_text(json.dumps(doc), encoding="utf-8")
+        rep = vfc.Report()
+        vfc.check_jev_payloads(rep, tmp_path / "site")
+        return [str(e) for e in rep.errors]
+    assert errors(good) == []
+    no_runs = json.loads(json.dumps(good))
+    del no_runs["provenance"]["petri_runs"]
+    assert any("petri_runs" in e and "missing" in e for e in errors(no_runs))
+    moved = json.loads(json.dumps(good))
+    moved["conversations"][EQ02_A]["run"] = "run_00000000000_1"
+    assert any("not a run listed" in e for e in errors(moved))
+    short = json.loads(json.dumps(good))
+    short["provenance"]["petri_runs"][1]["conversations"] = 1
+    assert any("lists 1 conversation" in e for e in errors(short))
+    # Codex review of PR #111, round 4: deleting the row counts as well cannot make it pass as a legacy payload
+    stripped = json.loads(json.dumps(good))
+    del stripped["provenance"]["petri_runs"]
+    for entry in stripped["source_reports"]:
+        del entry["petri_turns"]
+    assert any("petri_turns" in e and "non-negative integer" in e for e in errors(stripped))
+    # round 5: a count set to zero, with petri_runs removed, no longer passes as a single-run payload
+    zeroed = json.loads(json.dumps(good))
+    del zeroed["provenance"]["petri_runs"]
+    zeroed["source_reports"][1]["petri_turns"] = 0
+    assert any("sum to" in e and "total_assistant_turns" in e for e in errors(zeroed))
+
+
+@pytest.mark.parametrize("field, wrong", [
+    ("source_report_sha256", "0" * 64),
+    ("path", "data/petri/runs/run_other/transcripts.jsonl"),
+    ("sha256", "0" * 64),
+    ("classifier_sha256", "0" * 64),
+    ("models_served", ["other-model"]),
+])
+@pytest.mark.parametrize("change", ["missing", "null", "wrong"])
+def test_run_provenance_is_bound_to_its_source_report(
+        tmp_path: Path, advice_report: dict, field: str, wrong: object, change: str) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert rep.errors == []
+    path = tmp_path / "site/data/petri_register_drift.json"
+    payload = json.loads(path.read_text())
+    entry = payload["provenance"]["petri_runs"][0]
+    if change == "missing":
+        del entry[field]
+    else:
+        entry[field] = None if change == "null" else wrong
+    path.write_text(json.dumps(payload))
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert any("petri_runs" in e and field in e for e in rep.errors)
+
+
+def test_run_turn_counts_and_report_membership_are_reconciled(tmp_path: Path, advice_report: dict) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    path = tmp_path / "site/data/petri_register_drift.json"
+    original = json.loads(path.read_text())
+    for change in ("report_reuse", "turns"):
+        payload = json.loads(json.dumps(original))
+        runs = payload["provenance"]["petri_runs"]
+        if change == "report_reuse":
+            runs[1]["source_report_sha256"] = runs[0]["source_report_sha256"]
+        else:
+            # Move one turn between runs: the overall count remains unchanged.
+            conversations = list(payload["conversations"].values())
+            a = next(c for c in conversations if c["run"] == runs[0]["run"] and len(c["turns"]) > 1)
+            b = next(c for c in conversations if c["run"] == runs[1]["run"])
+            b["turns"].append(a["turns"].pop())
+        path.write_text(json.dumps(payload))
+        rep = vfc.Report()
+        vfc.check_jev_payloads(rep, tmp_path / "site")
+        assert any("petri_runs" in e for e in rep.errors)
+
+
+@pytest.mark.parametrize("mutation", ["missing", "hash", "classes", "edges", "source"])
+def test_pooled_equivalence_provenance_is_required_and_validated(
+        tmp_path: Path, advice_report: dict, mutation: str) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    for name in ("jev_calibration.json", "petri_register_drift.json"):
+        path = tmp_path / "site" / "data" / name
+        data = json.loads(path.read_text(encoding="utf-8"))
+        block = data["provenance"]["evaluator_equivalence"]
+        if mutation == "missing":
+            del data["provenance"]["evaluator_equivalence"]
+        elif mutation == "hash":
+            block["sha256"] = "broken"
+        elif mutation == "classes":
+            block["evaluator_classes"] = {}
+        elif mutation == "edges":
+            block["applied_equivalences"] = [{"evaluator_sha256": "a" * 64}]
+        else:
+            del data["source_reports"][0]["evaluator_sha256"]
+        path.write_text(json.dumps(data), encoding="utf-8")
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert rep.errors and any("evaluator" in str(e) for e in rep.errors)
+
+
+def test_pooled_equivalence_graph_must_reconstruct_its_claimed_class(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    a, b, c = (letter * 64 for letter in "abc")
+    def edge(x: str, y: str) -> dict:
+        return {"evaluator_sha256": x, "equivalent_to": y, "reason": "reviewed", "reviewed_utc": "2026-10-15"}
+
+    block = {"path": "data/jev/evaluator_equivalence.json", "sha256": "d" * 64,
+             "evaluator_classes": {a: c, c: c}, "applied_equivalences": [edge(a, b), edge(b, c)]}
+    payload = {"source_reports": [{"evaluator_sha256": a, "scoring_sha256": a},
+                                  {"evaluator_sha256": c, "scoring_sha256": a}],
+               "provenance": {"evaluator_equivalence": block}}
+    registry = tmp_path / "equivalences.json"
+    registry.write_text(json.dumps({"equivalences": block["applied_equivalences"]}))
+    block["sha256"] = hashlib.sha256(registry.read_bytes()).hexdigest()
+    monkeypatch.setattr(vfc, "JEV_EQUIVALENCE_FILE", registry)
+    rep = vfc.Report()
+    vfc._jev_equivalence(rep, "synthetic", payload)
+    assert not rep.errors
+    block["applied_equivalences"].pop()
+    vfc._jev_equivalence(rep, "synthetic", payload)
+    assert any("reconstruct" in str(e) for e in rep.errors)
+
+
+def test_pooled_pair_keeps_the_same_equivalence_snapshot(tmp_path: Path, advice_report: dict) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    path = tmp_path / "site" / "data" / "petri_register_drift.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["provenance"]["evaluator_equivalence"]["sha256"] = "f" * 64
+    path.write_text(json.dumps(data), encoding="utf-8")
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert any("different evaluator-equivalence" in str(e) for e in rep.errors)
+
+
+@pytest.mark.parametrize("change", ["missing", "null", "malformed", "different", "split_advice"])
+def test_pooled_source_instrument_and_single_advice_origin(tmp_path: Path, advice_report: dict, change: str) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    for name in ("jev_calibration.json", "petri_register_drift.json"):
+        path = tmp_path / "site/data" / name
+        data = json.loads(path.read_text())
+        sources = data["source_reports"]
+        if change == "split_advice":
+            assert sources[0]["advice_cases"] > 1 and sources[1]["advice_cases"] == 0
+            sources[0]["advice_cases"] -= 1
+            sources[1]["advice_cases"] = 1
+        elif change == "missing":
+            del sources[1]["scoring_sha256"]
+        else:
+            sources[1]["scoring_sha256"] = {"null": None, "malformed": "bad", "different": "0" * 64}[change]
+        path.write_text(json.dumps(data))
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    expected = "one advice" if change == "split_advice" else "scoring_sha256"
+    assert any(expected in e for e in rep.errors)
+
+
+def test_positive_source_turns_require_the_drift_counterpart(tmp_path: Path, advice_report: dict) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    path = tmp_path / "site/data/petri_register_drift.json"
+    original = path.read_bytes()
+    path.unlink()
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert any("missing" in e and "petri_register_drift.json" in e for e in rep.errors)
+    path.write_bytes(original)
+    restored = vfc.Report()
+    vfc.check_jev_payloads(restored, tmp_path / "site")
+    assert restored.errors == []
+
+
+@pytest.mark.parametrize("field,value", [("path", None), ("path", []), ("path", "../outside"),
+                                         ("sha256", None), ("sha256", []), ("sha256", "invalid")])
+def test_explicit_arm_builder_refuses_invalid_transcript_identity(
+        advice_report: dict, field: str, value: object) -> None:
+    report = json.loads(json.dumps(advice_report))
+    entry = report["metadata"]["petri_transcripts"]
+    if value is None:
+        del entry[field]
+    else:
+        entry[field] = value
+    arms = {row["conversation_id"]: SYNTHETIC_ARM for row in report["petri_cases"]}
+    with pytest.raises(SystemExit) as exc:
+        build_petri_drift_payload(report, "a" * 64, arms=arms)
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("mutation", ["digest", "fabricated_edges"])
+def test_pooled_equivalence_must_match_reviewed_registry(
+        tmp_path: Path, advice_report: dict, mutation: str) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    for name in ("jev_calibration.json", "petri_register_drift.json"):
+        path = tmp_path / "site/data" / name
+        payload = json.loads(path.read_text())
+        block = payload["provenance"]["evaluator_equivalence"]
+        if mutation == "digest":
+            block["sha256"] = "f" * 64
+        else:
+            a, b = "a" * 64, "b" * 64
+            for source, digest in zip(payload["source_reports"], (a, b), strict=True):
+                source["evaluator_sha256"] = digest
+            block["evaluator_classes"] = {a: b, b: b}
+            block["applied_equivalences"] = [{"evaluator_sha256": a, "equivalent_to": b,
+                                               "reason": "fabricated", "reviewed_utc": "2026-10-20"}]
+        path.write_text(json.dumps(payload))
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    assert any("reviewed registry" in error for error in rep.errors)
+
+
+@pytest.mark.parametrize("classifier", ["not-an-object", ["not-an-object"]])
+def test_combined_export_refuses_nonobject_classifier(
+        tmp_path: Path, advice_report: dict, classifier: object, capsys: pytest.CaptureFixture[str]) -> None:
+    other = _petri_only(advice_report)
+    other["metadata"]["classifier"] = classifier
+    _refused(tmp_path, [advice_report, other], "classifier", capsys)
+
+
+@pytest.mark.parametrize("field", ["rubric", "register_rubric"])
+@pytest.mark.parametrize("value", ["not-an-object", ["not-an-object"]])
+def test_combined_export_refuses_nonobject_rubric(
+        tmp_path: Path, advice_report: dict, field: str, value: object,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    other = _petri_only(advice_report)
+    other["metadata"][field] = value
+    _refused(tmp_path, [advice_report, other], field, capsys)
+
+
+@pytest.mark.parametrize("snapshot", ["valid", "missing", "tampered"])
+def test_reviewed_equivalence_snapshot_survives_registry_extension(
+        tmp_path: Path, advice_report: dict, monkeypatch: pytest.MonkeyPatch, snapshot: str) -> None:
+    from scripts import validate_frontend_contract as vfc
+
+    assert _export(tmp_path, _write_reports(tmp_path, advice_report, _petri_only(advice_report))) == 0
+    original = vfc.JEV_EQUIVALENCE_FILE.read_bytes()
+    digest = hashlib.sha256(original).hexdigest()
+    history = tmp_path / "history"
+    history.mkdir()
+    if snapshot != "missing":
+        (history / f"{digest}.json").write_bytes(original if snapshot == "valid" else b"{}")
+    updated = json.loads(original)
+    updated["equivalences"].append({"evaluator_sha256": "a" * 64, "equivalent_to": "b" * 64,
+                                     "reason": "unrelated reviewed extension", "reviewed_utc": "2026-10-20"})
+    current = tmp_path / "current-registry.json"
+    current.write_text(json.dumps(updated))
+    monkeypatch.setattr(vfc, "JEV_EQUIVALENCE_FILE", current)
+    monkeypatch.setattr(vfc, "JEV_EQUIVALENCE_HISTORY", history, raising=False)
+    rep = vfc.Report()
+    vfc.check_jev_payloads(rep, tmp_path / "site")
+    if snapshot == "valid":
+        assert rep.errors == []
+    else:
+        assert any("reviewed registry" in error for error in rep.errors)
+
+
+@pytest.mark.parametrize("symbolic", [True, False])
+def test_classifier_hint_records_the_resolved_full_commit(symbolic: bool) -> None:
+    import scripts.export_jev_calibration as ex
+
+    head = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True).strip()
+    files = (*ex.JEV_SCORING_FILES, ex.JEV_EVALUATOR_FILE)
+    digest = hashlib.sha256(b"".join(subprocess.check_output(
+        ["git", "-C", str(ROOT), "show", f"{head}:{file}"]) for file in files)).hexdigest()
+    hint = "HEAD" if symbolic else head[:8]
+    assert ex.resolve_classifier(digest, hint=hint)["commit"] == head
